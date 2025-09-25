@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'App\\Console\\Commands\\RegenLives' => $baseDir . '/app/Console/Commands/RegenLives.php',
     'App\\Console\\Kernel' => $baseDir . '/app/Console/Kernel.php',
     'App\\Exceptions\\Handler' => $baseDir . '/app/Exceptions/Handler.php',
     'App\\Http\\Controllers\\AccountController' => $baseDir . '/app/Http/Controllers/AccountController.php',
@@ -23,6 +24,7 @@ return array(
     'App\\Http\\Controllers\\IAController' => $baseDir . '/app/Http/Controllers/IAController.php',
     'App\\Http\\Controllers\\MenuController' => $baseDir . '/app/Http/Controllers/MenuController.php',
     'App\\Http\\Controllers\\ProfileController' => $baseDir . '/app/Http/Controllers/ProfileController.php',
+    'App\\Http\\Controllers\\ProfileRegenController' => $baseDir . '/app/Http/Controllers/ProfileRegenController.php',
     'App\\Http\\Controllers\\SoloController' => $baseDir . '/app/Http/Controllers/SoloController.php',
     'App\\Http\\Controllers\\StaticPageController' => $baseDir . '/app/Http/Controllers/StaticPageController.php',
     'App\\Http\\Kernel' => $baseDir . '/app/Http/Kernel.php',
@@ -36,6 +38,7 @@ return array(
     'App\\Http\\Middleware\\ValidateSignature' => $baseDir . '/app/Http/Middleware/ValidateSignature.php',
     'App\\Http\\Middleware\\VerifyCsrfToken' => $baseDir . '/app/Http/Middleware/VerifyCsrfToken.php',
     'App\\Models\\User' => $baseDir . '/app/Models/User.php',
+    'App\\Notifications\\LifeRegenNotification' => $baseDir . '/app/Notifications/LifeRegenNotification.php',
     'App\\Providers\\AppServiceProvider' => $baseDir . '/app/Providers/AppServiceProvider.php',
     'App\\Providers\\AuthServiceProvider' => $baseDir . '/app/Providers/AuthServiceProvider.php',
     'App\\Providers\\BroadcastServiceProvider' => $baseDir . '/app/Providers/BroadcastServiceProvider.php',
@@ -43,6 +46,7 @@ return array(
     'App\\Providers\\RouteServiceProvider' => $baseDir . '/app/Providers/RouteServiceProvider.php',
     'App\\Services\\AvatarCatalog' => $baseDir . '/app/Services/AvatarCatalog.php',
     'App\\Services\\FirebaseService' => $baseDir . '/app/Services/FirebaseService.php',
+    'App\\Services\\LifeService' => $baseDir . '/app/Services/LifeService.php',
     'Attribute' => $vendorDir . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
     'Beste\\Cache\\CacheItem' => $vendorDir . '/beste/in-memory-cache/src/CacheItem.php',
     'Beste\\Cache\\CacheKey' => $vendorDir . '/beste/in-memory-cache/src/CacheKey.php',

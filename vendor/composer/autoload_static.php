@@ -761,6 +761,7 @@ class ComposerStaticInit24cdbd47cb41a783a595edc6e18d9ccc
     );
 
     public static $classMap = array (
+        'App\\Console\\Commands\\RegenLives' => __DIR__ . '/../..' . '/app/Console/Commands/RegenLives.php',
         'App\\Console\\Kernel' => __DIR__ . '/../..' . '/app/Console/Kernel.php',
         'App\\Exceptions\\Handler' => __DIR__ . '/../..' . '/app/Exceptions/Handler.php',
         'App\\Http\\Controllers\\AccountController' => __DIR__ . '/../..' . '/app/Http/Controllers/AccountController.php',
@@ -778,6 +779,7 @@ class ComposerStaticInit24cdbd47cb41a783a595edc6e18d9ccc
         'App\\Http\\Controllers\\IAController' => __DIR__ . '/../..' . '/app/Http/Controllers/IAController.php',
         'App\\Http\\Controllers\\MenuController' => __DIR__ . '/../..' . '/app/Http/Controllers/MenuController.php',
         'App\\Http\\Controllers\\ProfileController' => __DIR__ . '/../..' . '/app/Http/Controllers/ProfileController.php',
+        'App\\Http\\Controllers\\ProfileRegenController' => __DIR__ . '/../..' . '/app/Http/Controllers/ProfileRegenController.php',
         'App\\Http\\Controllers\\SoloController' => __DIR__ . '/../..' . '/app/Http/Controllers/SoloController.php',
         'App\\Http\\Controllers\\StaticPageController' => __DIR__ . '/../..' . '/app/Http/Controllers/StaticPageController.php',
         'App\\Http\\Kernel' => __DIR__ . '/../..' . '/app/Http/Kernel.php',
@@ -791,6 +793,7 @@ class ComposerStaticInit24cdbd47cb41a783a595edc6e18d9ccc
         'App\\Http\\Middleware\\ValidateSignature' => __DIR__ . '/../..' . '/app/Http/Middleware/ValidateSignature.php',
         'App\\Http\\Middleware\\VerifyCsrfToken' => __DIR__ . '/../..' . '/app/Http/Middleware/VerifyCsrfToken.php',
         'App\\Models\\User' => __DIR__ . '/../..' . '/app/Models/User.php',
+        'App\\Notifications\\LifeRegenNotification' => __DIR__ . '/../..' . '/app/Notifications/LifeRegenNotification.php',
         'App\\Providers\\AppServiceProvider' => __DIR__ . '/../..' . '/app/Providers/AppServiceProvider.php',
         'App\\Providers\\AuthServiceProvider' => __DIR__ . '/../..' . '/app/Providers/AuthServiceProvider.php',
         'App\\Providers\\BroadcastServiceProvider' => __DIR__ . '/../..' . '/app/Providers/BroadcastServiceProvider.php',
@@ -798,6 +801,7 @@ class ComposerStaticInit24cdbd47cb41a783a595edc6e18d9ccc
         'App\\Providers\\RouteServiceProvider' => __DIR__ . '/../..' . '/app/Providers/RouteServiceProvider.php',
         'App\\Services\\AvatarCatalog' => __DIR__ . '/../..' . '/app/Services/AvatarCatalog.php',
         'App\\Services\\FirebaseService' => __DIR__ . '/../..' . '/app/Services/FirebaseService.php',
+        'App\\Services\\LifeService' => __DIR__ . '/../..' . '/app/Services/LifeService.php',
         'Attribute' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
         'Beste\\Cache\\CacheItem' => __DIR__ . '/..' . '/beste/in-memory-cache/src/CacheItem.php',
         'Beste\\Cache\\CacheKey' => __DIR__ . '/..' . '/beste/in-memory-cache/src/CacheKey.php',
