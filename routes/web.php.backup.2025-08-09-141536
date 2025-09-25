@@ -1,0 +1,96 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
+
+use App\Http\Controllers\MenuController;
+use App\Http\Controllers\BoutiqueController;
+use App\Http\Controllers\AvatarController;
+use App\Http\Controllers\IAController;
+use App\Http\Controllers\BadgesController;
+use App\Http\Controllers\ClassementController;
+use App\Http\Controllers\AchatsController;
+use App\Http\Controllers\HistoriqueController;
+use App\Http\Controllers\SoloController;
+use App\Http\Controllers\DuoController;
+use App\Http\Controllers\AuthController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes - StrategyBuzzer
+|--------------------------------------------------------------------------
+*/
+
+// Page d'accueil
+Route::get('/', function () {
+    return view('start');
+})->name('start');
+
+// Page login et alias /connexion
+Route::get('/login', function () {
+    if (Auth::check()) {
+        return redirect('/menu');
+    }
+    return view('login');
+})->name('login');
+
+Route::get('/connexion', fn () => redirect('/login'))->name('connexion');
+
+// Menu principal
+Route::get('/menu', [MenuController::class, 'index'])
+    ->middleware('auth')
+    ->name('menu');
+
+// Déconnexion
+Route::get('/logout', function () {
+    Auth::logout();
+    return redirect('/login')->with('success', 'Déconnecté.');
+})->name('logout');
+
+// Authentification Google
+Route::get('/auth/google', [AuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
+
+// Authentification Facebook
+Route::get('/auth/facebook', [AuthController::class, 'redirectToFacebook'])->name('auth.facebook');
+Route::get('/auth/facebook/callback', [AuthController::class, 'handleFacebookCallback']);
+
+// Pages principales MVP
+Route::view('/accueil', 'accueil')->middleware('auth')->name('accueil');
+Route::view('/solo', 'solo')->middleware('auth')->name('solo');
+Route::view('/guests', 'guests')->middleware('auth')->name('guests');
+Route::view('/duo', 'duo')->middleware('auth')->name('duo');
+Route::view('/master', 'master')->middleware('auth')->name('master');
+Route::view('/ligue', 'ligue')->middleware('auth')->name('ligue');
+Route::view('/reglements', 'reglements')->middleware('auth')->name('reglements');
+Route::view('/profile', 'profile')->middleware('auth')->name('profile');
+Route::view('/quetes', 'quetes')->middleware('auth')->name('quetes');
+
+Route::post('/solo/start', [SoloController::class, 'start'])->middleware('auth')->name('solo.start');
+Route::get('/solo/game', [SoloController::class, 'game'])->middleware('auth')->name('solo.gameplay');
+Route::get('/solo/stat', [SoloController::class, 'stat'])->middleware('auth')->name('solo.stat');
+
+Route::post('/duo/invite', [DuoController::class, 'invite'])->middleware('auth')->name('duo.invite');
+Route::get('/duo/random', [DuoController::class, 'random'])->middleware('auth')->name('duo.random');
+
+// Pages futures prévues
+Route::get('/boutique', [BoutiqueController::class, 'index'])->middleware('auth')->name('boutique');
+Route::get('/avatar', [AvatarController::class, 'index'])->middleware('auth')->name('avatar');
+Route::get('/ia', [IAController::class, 'index'])->name('ia');
+Route::get('/badges', [BadgesController::class, 'index'])->middleware('auth')->name('badges');
+Route::get('/classement', [ClassementController::class, 'index'])->middleware('auth')->name('classement');
+Route::get('/achats', [AchatsController::class, 'index'])->middleware('auth')->name('achats');
+Route::get('/historique', [HistoriqueController::class, 'index'])->middleware('auth')->name('historique');
+
+/*
+|--------------------------------------------------------------------------
+| Route React/Vite (Frontend)
+|--------------------------------------------------------------------------
+| Cette route capture toutes les URL commençant par /app
+| et renvoie public/index.html pour que React gère le reste.
+|--------------------------------------------------------------------------
+*/
+Route::get('/app/{any?}', function () {
+    return File::get(public_path('index.html'));
+})->where('any', '.*');

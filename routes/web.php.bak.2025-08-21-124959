@@ -1,0 +1,55 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AvatarController;
+
+// ===== Avatars (catalogue + actions) =====
+
+Route::get('/avatar', [AvatarController::class, 'index'])->name('avatar'); // utilisé par le menu
+
+Route::prefix('avatar')->name('avatar.')->group(function () {
+    Route::post('/select', [AvatarController::class, 'select'])->name('select');         // choisir un avatar (si débloqué)
+    Route::post('/buy',    [AvatarController::class, 'buy'])->name('buy');               // acheter (coins en session)
+    Route::post('/unlock', [AvatarController::class, 'unlockByQuest'])->name('unlock');  // débloquer via quête
+});
+
+
+/** Accueil : si connecté -> menu ; sinon -> start */
+Route::get('/', function () {
+    return Auth::check()
+        ? redirect()->route('menu')
+        : view('start');
+})->name('start');
+
+/** Connexion (ancienne page avec le logo) */
+Route::view('/connexion', 'auth.login')->name('connexion');
+
+/** Alias /login -> /connexion */
+Route::redirect('/login', '/connexion')->name('login');
+
+/** Menu (ta page menu.blade.php) */
+Route::view('/menu', 'menu')->name('menu');
+
+// === Fixed login / connexion mappings (2025-08-19) ===
+Route::view('/login', 'login')->name('login');         // <-- views/login.blade.php (bannière noire)
+Route::redirect('/connexion', '/login')->name('connexion');  // <-- /connexion -> /login
+// === /fixed ===
+
+// === OAuth Google / Facebook (restauré le 2025-08-19) ===
+Route::get('/auth/google',            [AuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/callback',   [AuthController::class, 'handleGoogleCallback'])->name('google.callback');
+
+Route::get('/auth/facebook',          [AuthController::class, 'redirectToFacebook'])->name('auth.facebook');
+Route::get('/auth/facebook/callback', [AuthController::class, 'handleFacebookCallback'])->name('facebook.callback');
+
+// === Routes SOLO ===
+Route::prefix('solo')->name('solo.')->group(function () {
+    Route::get('/',        [\App\Http\Controllers\SoloController::class, 'index'])->name('index');   // menu/config
+    Route::post('/start',  [\App\Http\Controllers\SoloController::class, 'start'])->name('start');   // soumission formulaire
+    Route::get('/resume',  [\App\Http\Controllers\SoloController::class, 'resume'])->name('resume'); // résumé
+    Route::get('/game',    [\App\Http\Controllers\SoloController::class, 'game'])->name('game');     // écran de jeu
+    Route::post('/answer', [\App\Http\Controllers\SoloController::class, 'answer'])->name('answer'); // réponse
+    Route::get('/stat',    [\App\Http\Controllers\SoloController::class, 'stat'])->name('stat');     // stats
+});

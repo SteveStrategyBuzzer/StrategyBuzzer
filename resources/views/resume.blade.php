@@ -1,0 +1,33 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container text-center mt-5">
+    <h1 class="display-4">🧾 Résumé de la Partie</h1>
+
+    <div class="mt-4">
+        <p class="lead">
+            <strong>Thème :</strong> {{ ucfirst($params['theme']) }} {{ $params['theme_icon'] ?? '' }}<br>
+            <strong>Nombre de questions :</strong> {{ $params['nb_questions'] }}<br>
+            <strong>Niveau choisi :</strong> {{ $params['niveau_joueur'] }}<br>
+            <strong>Avatar Stratégique :</strong> {{ $params['avatar'] ?? 'Aucun' }}
+        </p>
+
+        @if(!empty($params['avatar_skills']))
+            <div class="alert alert-info mx-auto w-75">
+                <strong>Compétences de {{ $params['avatar'] }} :</strong>
+                <ul class="list-unstyled mt-2">
+                    @foreach ($params['avatar_skills'] as $skill)
+                        <li>• {{ $skill }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <form action="{{ route('solo.game') }}" method="GET">
+            <button type="submit" class="btn btn-success btn-lg mt-4">
+                ▶️ Démarrer la Partie
+            </button>
+        </form>
+    </div>
+</div>
+@endsection

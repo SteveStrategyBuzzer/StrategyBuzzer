@@ -1,0 +1,129 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
+
+use App\Http\Controllers\MenuController;
+use App\Http\Controllers\BoutiqueController;
+use App\Http\Controllers\AvatarController;
+use App\Http\Controllers\IAController;
+use App\Http\Controllers\BadgesController;
+use App\Http\Controllers\ClassementController;
+use App\Http\Controllers\AchatsController;
+use App\Http\Controllers\HistoriqueController;
+use App\Http\Controllers\SoloController;
+use App\Http\Controllers\DuoController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AccountController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes - StrategyBuzzer
+|--------------------------------------------------------------------------
+| - Pages publiques : start, login
+| - Auth Social (Google/Facebook) : redirect + callback (nommés)
+| - Pages MVP protégées par 'auth'
+| - Logout en POST (GET redirigé vers POST par confort)
+| - SPA /app/* avant le fallback
+|--------------------------------------------------------------------------
+*/
+
+// ---------- Pages publiques ----------
+Route::get('/', function () {
+    // Si déjà connecté → menu, sinon page d'ouverture
+    return Auth::check() ? redirect()->route('menu') : view('start');
+})->name('start');
+
+// Page login (accessible uniquement aux invités)
+Route::get('/login', function () {
+    return Auth::check() ? redirect()->route('menu') : view('login');
+})->middleware('guest')->name('login');
+
+// Alias pratique
+Route::get('/connexion', fn () => redirect()->route('login'))->name('connexion');
+
+// ---------- Authentification ----------
+// Google
+Route::get('/auth/google', [AuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])->name('google.redirect');
+Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('google.callback');
+
+// Facebook
+Route::get('/auth/facebook', [AuthController::class, 'redirectToFacebook'])->name('auth.facebook');
+Route::get('/auth/facebook/redirect', [AuthController::class, 'redirectToFacebook'])->name('facebook.redirect');
+Route::get('/auth/facebook/callback', [AuthController::class, 'handleFacebookCallback'])->name('facebook.callback');
+
+// Déconnexion (POST recommandé)
+Route::post('/logout', function () {
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+    return redirect()->route('login')->with('success', 'Déconnecté.');
+})->middleware('auth')->name('logout');
+
+// Compat GET → redirection vers POST
+Route::get('/logout', fn () => redirect()->route('logout'))->name('logout.get');
+
+// ---------- Zone authentifiée (MVP) ----------
+Route::middleware('auth')->group(function () {
+
+    // Menu principal (contrôleur)
+    Route::get('/menu', [MenuController::class, 'index'])->name('menu');
+
+    // Vues principales MVP (Blade)
+    Route::view('/accueil', 'accueil')->name('accueil');
+    Route::view('/guests', 'guests')->name('guests');
+    Route::view('/duo', 'duo')->name('duo');
+    Route::view('/master', 'master')->name('master');
+    Route::view('/ligue', 'ligue')->name('ligue');
+    Route::view('/reglements', 'reglements')->name('reglements');
+    Route::view('/profile', 'profile')->name('profile');
+    Route::view('/quetes', 'quetes')->name('quetes');
+
+    // ---------- Pages légales ---------- 
+    Route::view('/privacy-policy', 'static.privacy')->name('privacy.policy');
+    Route::view('/data-deletion-policy', 'static.data-deletion')->name('data.deletion.policy');
+    Route::view('/privacy-policy', 'static.privacy')->name('privacy.policy');
+    Route::view('/data-deletion-policy', 'static.data-deletion')->name('data.deletion.policy');
+    Route::view('/terms-of-service', 'static.terms')->name('terms.of.service');
+
+    // Solo - actions
+    Route::post('/solo/start', [SoloController::class, 'start'])->name('solo.start');
+    Route::get('/solo/game', [SoloController::class, 'game'])->name('solo.gameplay');
+    Route::get('/solo/stat', [SoloController::class, 'stat'])->name('solo.stat');
+
+    // Duo - actions
+    Route::post('/duo/invite', [DuoController::class, 'invite'])->name('duo.invite');
+    Route::get('/duo/random', [DuoController::class, 'random'])->name('duo.random');
+
+    // Pages futures (déjà prototypées)
+    Route::get('/boutique', [BoutiqueController::class, 'index'])->name('boutique');
+    Route::get('/avatar', [AvatarController::class, 'index'])->name('avatar');
+    Route::get('/ia', [IAController::class, 'index'])->name('ia');
+    Route::get('/badges', [BadgesController::class, 'index'])->name('badges');
+    Route::get('/classement', [ClassementController::class, 'index'])->name('classement');
+    Route::get('/achats', [AchatsController::class, 'index'])->name('achats');
+    Route::get('/historique', [HistoriqueController::class, 'index'])->name('historique');
+
+    // Compte — suppression (RGPD/Meta)
+    Route::get('/delete-account', [AccountController::class, 'showDelete'])->name('account.delete.show');
+    Route::post('/delete-account', [AccountController::class, 'delete'])->name('account.delete.perform');
+
+});
+
+// ---------- Front React/Vite (SPA) sous /app/* ----------
+Route::get('/app/{any?}', function () {
+    $index = public_path('index.html');
+    abort_unless(File::exists($index), 404, 'Frontend non construit (public/index.html absent).');
+    return File::get($index);
+})->where('any', '.*')->name('app');
+
+// ---------- Healthcheck basique ----------
+Route::get('/health', fn () => response()->json(['ok' => true, 'time' => now()->toAtomString()]))->name('health');
+
+// ---------- Fallback : tout le reste retourne start ----------
+Route::fallback(function () {
+    return redirect()->route('start');
+});
+Route::view('/solo', 'solo_game')->name('solo');

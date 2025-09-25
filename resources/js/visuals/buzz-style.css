@@ -1,0 +1,31 @@
+body {
+  background: #111;
+  color: #f4f4f4;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.page {
+  padding: 20px;
+  max-width: 960px;
+  margin: auto;
+}
+
+.buzz-button {
+  font-size: 2rem;
+  padding: 15px 40px;
+  border-radius: 8px;
+  background-color: #ff0066;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.buzz-button.actif {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,0,102, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255,0,102, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,0,102, 0); }
+}

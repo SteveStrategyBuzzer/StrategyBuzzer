@@ -1,0 +1,23 @@
+
+# --- Security hardening (ajouts StrategyBuzzer) ---
+client_secret*.json
+*.p12
+*.pem
+*.pfx
+*.crt
+*.key
+*.der
+*.keystore
+*.jks
+
+# Logs et caches volumineux
+storage/logs/*.log
+storage/logs/*.gz
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# .env déjà ignoré par défaut mais on redéclare par sûreté
+.env
+.env.*
+!.env.example

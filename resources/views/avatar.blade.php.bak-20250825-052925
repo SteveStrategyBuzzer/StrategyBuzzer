@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>StrategyBuzzer — Avatars</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root{ --gap:14px; --radius:18px; --shadow:0 10px 24px rgba(0,0,0,.12); }
+        body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto; background:#0b1020; color:#ecf0ff; }
+        .wrap{ max-width:1200px; margin:0 auto; padding:20px 16px 80px; }
+        .topbar{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px; }
+        .pill{ background:linear-gradient(135deg,#22305c,#1a2344); border:1px solid rgba(255,255,255,.08); padding:10px 14px; border-radius:999px; box-shadow:var(--shadow); display:flex; align-items:center; gap:10px; }
+        .grid{ display:grid; gap:var(--gap); }
+        .grid.cols-3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+        .grid.cols-6{ grid-template-columns:repeat(6,minmax(0,1fr)); }
+        @media (max-width:1000px){ .grid.cols-6{ grid-template-columns:repeat(4,1fr);} }
+        @media (max-width:760px){ .grid.cols-6{ grid-template-columns:repeat(3,1fr);} .grid.cols-3{ grid-template-columns:repeat(1,1fr);} }
+
+        .card{ position:relative; border-radius:var(--radius); overflow:hidden; background:linear-gradient(135deg,#19254a,#121a36); border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow); }
+        .card .inner{ padding:16px; display:flex; align-items:center; justify-content:center; min-height:116px; cursor:pointer; }
+        .card h3{ margin:0; font-size:18px; letter-spacing:.4px; }
+        .badge{ position:absolute; top:10px; left:10px; font-size:12px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); }
+        .locked{ filter: blur(2px) saturate(.6); opacity:.72; }
+        .locked-overlay{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,transparent,rgba(10,15,30,.55)); pointer-events:none; }
+        .locked-overlay span{ padding:6px 10px; border-radius:999px; font-size:12px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); }
+        .thumbs{ display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:var(--gap); }
+        @media (max-width:760px){ .thumbs{ grid-template-columns: repeat(3,1fr);} }
+        .thumb{ position:relative; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.08); background:#0f1530; }
+        .thumb img{ width:100%; height:140px; object-fit:cover; display:block; }
+        .actions{ display:flex; gap:8px; padding:8px; justify-content:center; background:rgba(0,0,0,.35); }
+        .btn{ appearance:none; border:none; cursor:pointer; border-radius:10px; padding:10px 12px; background:#2c4bff; color:#fff; font-weight:600; }
+        .btn.alt{ background:#2b385f; } .btn.ghost{ background:transparent; border:1px solid rgba(255,255,255,.2); }
+
+        .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50; background:rgba(0,0,0,.55); }
+        .modal.open{ display:flex; }
+        .modal-panel{ width:min(980px,92vw); max-height:86vh; overflow:auto; background:#0b1020; border:1px solid rgba(255,255,255,.1); border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,.4); }
+        .modal-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 18px; position:sticky; top:0; background:#0b1020; border-bottom:1px solid rgba(255,255,255,.06); }
+        .modal-title{ font-weight:800; letter-spacing:.4px; }
+        .modal-body{ padding:18px; }
+        .toast{ position:fixed; right:16px; bottom:16px; z-index:60; padding:12px 14px; border-radius:12px; background:#1f2d62; border:1px solid rgba(255,255,255,.12); box-shadow:var(--shadow); }
+        .toast.error{ background:#61223a; }
+        a.clean{ color:#9fb6ff; text-decoration:none; }
+    </style>
+</head>
+<body>
+@php
+    // helpers
+    $isUnlocked = function(string $slug) use ($unlocked) {
+        return in_array($slug, $unlocked ?? [], true);
+    };
+@endphp
+
+<div class="wrap">
+    <div class="topbar">
+        <div class="pill">💰 Pièces : <b>{{ number_format($coins ?? 0) }}</b></div>
+        <div class="pill">🎯 Sélection :
+            <b>
+                @if($selected)
+                    {{ str_starts_with($selected,'stratégique:') ? ucfirst(str_replace(['stratégique:','-'],['',' '],$selected)) : 'Image choisie' }}
+                @else
+                    Aucune
+                @endif
+            </b>
+        </div>
+        <div class="pill"><a class="clean" href="{{ route('avatar') }}">↻ Rafraîchir</a></div>
+    </div>
+
+    {{-- SECTION 1 — Haut : 1 bloc Standards --}}
+    <h2 style="margin:10px 0 10px 2px; font-size:20px; opacity:.9;">Standards</h2>
+    @php $std = $catalog['standards']; @endphp
+    <div class="grid cols-3" style="margin-bottom:22px;">
+        @php $stdLocked = !$isUnlocked($std['slug']); @endphp
+        <div class="card" onclick="{{ $stdLocked
+? "window.location.href='".route('boutique',['item'=>$std['slug']])."';"
+            : "openPack('standards')"
+        }}">
+            <div class="badge">{{ count($std['images']) }} avatars</div>
+            <div class="inner {{ $stdLocked ? 'locked' : '' }}"><h3>{{ $std['label'] }}</h3></div>
+            @if($stdLocked)<div class="locked-overlay"><span>Non débloqué</span></div>@endif
+        </div>
+    </div>
+
+    {{-- SECTION 2 — Milieu : autres packs --}}
+    <h2 style="margin:10px 0 10px 2px; font-size:20px; opacity:.9;">Autres packs</h2>
+    <div class="grid cols-3" style="margin-bottom:28px;">
+        @foreach($middlePacks as $key=>$pack)
+            @php $locked = !$isUnlocked($pack['slug']); @endphp
+            <div class="card" onclick="{{ $locked
+                ? "window.location.href='".route('boutique',['item'=>$pack['slug']])."';"
+                : "openDynamicPack('".$pack['slug']."')"
+            }}">
+                <div class="badge">{{ count($pack['images']) }} avatars</div>
+                <div class="inner {{ $locked ? 'locked' : '' }}"><h3>{{ $pack['label'] }}</h3></div>
+                @if($locked)<div class="locked-overlay"><span>Non débloqué</span></div>@endif
+            </div>
+        @endforeach
+    </div>
+
+    {{-- SECTION 3 — Bas : 12 stratégiques visibles directement --}}
+    <h2 style="margin:10px 0 10px 2px; font-size:20px; opacity:.9;">Avatars Stratégiques</h2>
+    <div class="grid cols-6">
+        @php $stratégiques = $catalog['stratégiques']['items'] ?? []; @endphp
+        @foreach($stratégiques as $slug=>$info)
+            @php $unl = $isUnlocked($slug); @endphp
+            <div class="thumb" style="position:relative;" onclick="{{ $unl
+                ? '' // on ne change rien, boutons dessous pour choisir
+                : "window.location.href='".route('boutique',['stratégique'=>$slug])."';"
+            }}">
+                <img src="{{ asset($info['path']) }}" alt="{{ $slug }}" class="{{ $unl ? '' : 'locked' }}">
+                @unless($unl)<div class="locked-overlay"><span>Non débloqué</span></div>@endunless
+                <div class="actions">
+                    @if($unl)
+                        <form method="POST" action="{{ route('avatar.select') }}">
+                            @csrf
+                            <input type="hidden" name="avatar_type" value="stratégique">
+                            <input type="hidden" name="value" value="{{ $slug }}">
+                            <button class="btn" type="submit">Choisir</button>
+                        </form>
+                    @else
+                        <button class="btn alt" type="button" onclick="window.location.href='{{ route('boutique',['stratégique'=>$slug]) }}'">Voir boutique</button>
+                    @endif
+                </div>
+            </div>
+        @endforeach
+    </div>
+</div>
+
+{{-- MODAL Packs (quand débloqués) --}}
+<div id="modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-panel">
+        <div class="modal-head">
+            <div class="modal-title" id="modalTitle">Pack</div>
+            <button class="btn ghost" onclick="closePack()">Fermer</button>
+        </div>
+        <div class="modal-body">
+            <div id="thumbs" class="thumbs"></div>
+        </div>
+    </div>
+</div>
+
+{{-- Toasts --}}
+@if(session('success')) <div class="toast" id="toast">{{ session('success') }}</div> @endif
+@if(session('error'))   <div class="toast error" id="toast">{{ session('error') }}</div> @endif
+
+<script>
+    const CATALOG = @json($catalog);
+    const MIDDLE  = @json($middlePacks);
+    const ROUTE_SELECT = @json(route('avatar.select'));
+    const CSRF = @json(csrf_token());
+    const ASSET_BASE = @json(asset(''));
+
+    function asset(p){ return (ASSET_BASE + p).replace(/\/+$/, '').replace(/([^:]\/)\/+/g, '$1'); }
+
+    function openPack(key){ // standards
+        const pack = CATALOG['standards'];
+        openModalWithPack(pack, 'Standards', 'standard');
+    }
+    function openDynamicPack(slug){ // autres packs
+        const pack = MIDDLE[slug];
+        openModalWithPack(pack, pack?.label || 'Pack', 'pack');
+    }
+    function openModalWithPack(pack, title, type){
+        if(!pack) return;
+        document.getElementById('modalTitle').textContent = title;
+        const thumbs = document.getElementById('thumbs');
+        thumbs.innerHTML = '';
+        (pack.images || []).forEach((path) => {
+            const el = document.createElement('div');
+            el.className = 'thumb';
+            el.innerHTML = `
+                <img src="${asset(path)}" alt="avatar">
+                <div class="actions">
+                    <form method="POST" action="${ROUTE_SELECT}">
+                        <input type="hidden" name="_token" value="${CSRF}">
+                        <input type="hidden" name="avatar_type" value="${type}">
+                        <input type="hidden" name="value" value="${asset(path)}">
+                        <button class="btn" type="submit">Choisir</button>
+                    </form>
+                </div>`;
+            thumbs.appendChild(el);
+        });
+        document.getElementById('modal').classList.add('open');
+    }
+    function closePack(){ document.getElementById('modal').classList.remove('open'); }
+
+    const toast = document.getElementById('toast'); if(toast){ setTimeout(()=>toast.remove(),2200); }
+</script>
+</body>
+</html>
+
+
+
+
+
+

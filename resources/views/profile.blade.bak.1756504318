@@ -1,0 +1,317 @@
+@extends('layouts.app')
+
+@section('title', 'Profile du Joueur — StrategyBuzzer')
+
+@section('content')
+@php
+    use Illuminate\Support\Facades\Auth;
+    $user = Auth::user();
+
+    // Sécurités & raccourcis
+    $s = $settings ?? [];
+    $defaultAvatar = asset('images/avatars/default.png');
+
+    // Avatars + pseudo
+    $mainAvatarUrl = data_get($s, 'avatar.url', $defaultAvatar) ?: $defaultAvatar;
+    $pseudonym     = trim((string) data_get($s, 'pseudonym', $user?->name ?? 'Joueur'));
+    if ($pseudonym === '') { $pseudonym = 'Joueur'; }
+
+    $strategicAvatarUrl  = data_get($s, 'strategic_avatar.url', $defaultAvatar) ?: $defaultAvatar;
+    $strategicAvatarName = data_get($s, 'strategic_avatar.name');
+
+    // Préférences générales
+    $language     = data_get($s, 'language', 'Français');
+    $country      = data_get($s, 'country', '');
+    $showInLeague = data_get($s, 'show_in_league', 'Oui');
+    $showOnline   = (bool) data_get($s, 'show_online', true);
+
+    // Son & trames débloquées
+    $ambianceOn   = (bool) data_get($s, 'sound.ambiance', true);
+    $buzzerId     = data_get($s, 'sound.buzzer_id');
+    $musicId      = data_get($s, 'sound.music_id'); // trame d’ambiance
+    $gameplayMode = data_get($s, 'sound.gameplay_mode', 'pair');   // 'pair' | 'other'
+    $gameplayId   = data_get($s, 'sound.gameplay_id');             // trame gameplay si 'other'
+
+    $unlockedBuzzers = is_array(data_get($s, 'unlocked.buzzers')) ? data_get($s, 'unlocked.buzzers') : [];
+    $unlockedTracks  = is_array(data_get($s, 'unlocked.tracks'))  ? data_get($s, 'unlocked.tracks')  : [];
+
+    // Routes disponibles (venant du contrôleur)
+    $hasUpdate  = (bool) (($routes['update']  ?? false) ?: \Illuminate\Support\Facades\Route::has('profile.update'));
+    $hasAvatars = (bool) (($routes['avatars'] ?? false) ?: \Illuminate\Support\Facades\Route::has('avatars'));
+    $hasShop    = (bool) (($routes['boutique']?? false) ?: \Illuminate\Support\Facades\Route::has('boutique'));
+    $hasDelete  = (bool) (($routes['delete']  ?? false) ?: \Illuminate\Support\Facades\Route::has('account.delete.show'));
+
+    // Pays (fallback local trié, pas de Symfony\Intl)
+    $countries = [
+        'FR'=>'France','CA'=>'Canada','US'=>'États-Unis','GB'=>'Royaume-Uni','BE'=>'Belgique',
+        'CH'=>'Suisse','SN'=>'Sénégal','CI'=>"Côte d’Ivoire",'CM'=>'Cameroun','MA'=>'Maroc',
+        'DZ'=>'Algérie','TN'=>'Tunisie','BF'=>'Burkina Faso','ML'=>'Mali','NE'=>'Niger',
+    ];
+    asort($countries, SORT_NATURAL | SORT_FLAG_CASE);
+@endphp
+
+<div class="min-h-screen bg-[#0A2C66] text-white">
+    <div class="max-w-4xl mx-auto px-4 py-10">
+
+        <h1 class="text-4xl font-extrabold tracking-tight text-center mb-8">Profile du Joueur</h1>
+
+        {{-- Avatars : principal (gauche) & stratégique (droite) --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {{-- Avatar principal --}}
+            <div class="bg-[#0F3B8A] rounded-2xl shadow-xl p-6 text-center">
+                <p class="text-sm uppercase opacity-80 mb-3">Avatar principal</p>
+                <div class="w-24 h-24 mx-auto rounded-full ring-4 ring-white/15 overflow-hidden bg-[#0B2A66]">
+                    <img src="{{ $mainAvatarUrl }}" alt="Avatar principal" class="w-full h-full object-cover"
+                         onerror="this.src='{{ $defaultAvatar }}';">
+                </div>
+                <p class="mt-3 text-lg font-bold">{{ $pseudonym }}</p>
+
+                <div class="mt-4">
+                    @if($hasAvatars)
+                        <a href="{{ route('avatars') }}"
+                           class="bg-white text-[#0A2C66] font-bold py-2 px-4 rounded-xl hover:opacity-90 transition">
+                            Modifier
+                        </a>
+                    @else
+                        <button type="button"
+                                class="bg-white/20 text-white font-bold py-2 px-4 rounded-xl cursor-not-allowed"
+                                title="La page Avatars n'est pas branchée">
+                            Modifier
+                        </button>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Avatar stratégique --}}
+            <div class="bg-[#0F3B8A] rounded-2xl shadow-xl p-6 text-center">
+                <p class="text-sm uppercase opacity-80 mb-3">Avatar stratégique</p>
+                <div class="w-24 h-24 mx-auto rounded-full ring-4 ring-white/15 overflow-hidden bg-[#0B2A66]">
+                    <img src="{{ $strategicAvatarUrl }}" alt="Avatar stratégique" class="w-full h-full object-cover"
+                         onerror="this.src='{{ $defaultAvatar }}';">
+                </div>
+
+                @if($strategicAvatarName)
+                    <p class="mt-3 font-semibold">{{ $strategicAvatarName }}</p>
+                @else
+                    <p class="mt-3 italic text-white/70">Aucun Avatar Stratégique Choisi</p>
+                @endif
+            </div>
+        </div>
+
+        {{-- Formulaire / ou lecture seule si route absente ou utilisateur invité --}}
+        <div class="bg-white text-[#0A2C66] rounded-2xl shadow-xl p-6">
+            @if($hasUpdate && $user)
+                <form method="POST" action="{{ route('profile.update') }}" class="space-y-6">
+                    @csrf
+
+                    {{-- Pseudonyme --}}
+                    <div>
+                        <label class="block font-semibold mb-1">Pseudonyme</label>
+                        <input type="text" name="pseudonym" value="{{ old('pseudonym', $pseudonym) }}"
+                               maxlength="30"
+                               class="w-full rounded p-2 border border-gray-300" placeholder="Votre nom dans le jeu">
+                        @error('pseudonym')
+                            <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {{-- Langue --}}
+                        <div>
+                            <label class="block font-semibold mb-1">Langue</label>
+                            <select name="language" class="w-full rounded p-2 border border-gray-300">
+                                <option value="Français" @selected($language === 'Français')>Français</option>
+                                <option value="Anglais"  @selected($language === 'Anglais')>Anglais</option>
+                            </select>
+                        </div>
+
+                        {{-- Pays (liste locale triée) --}}
+                        <div>
+                            <label class="block font-semibold mb-1">Pays</label>
+                            <select name="country" class="w-full rounded p-2 border border-gray-300">
+                                @foreach($countries as $code => $name)
+                                    <option value="{{ $code }}" @selected($country === $code)>{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {{-- Affichage en Ligue --}}
+                        <div>
+                            <label class="block font-semibold mb-1">Afficher en Ligue</label>
+                            <select name="show_in_league" class="w-full rounded p-2 border border-gray-300">
+                                <option value="Oui" @selected($showInLeague === 'Oui')>Oui</option>
+                                <option value="Non" @selected($showInLeague === 'Non')>Non</option>
+                            </select>
+                        </div>
+
+                        {{-- Affichage en ligne --}}
+                        <div>
+                            <label class="block font-semibold mb-1">Affichage en ligne</label>
+                            <select name="show_online" class="w-full rounded p-2 border border-gray-300">
+                                <option value="1" @selected($showOnline)>Oui</option>
+                                <option value="0" @selected(!$showOnline)>Non</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Ambiance + trame ambiance --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block font-semibold mb-1">Ambiance</label>
+                            <select name="options[ambiance]" class="w-full rounded p-2 border border-gray-300">
+                                <option value="1" @selected($ambianceOn)>Oui</option>
+                                <option value="0" @selected(!$ambianceOn)>Non</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1">Trame d’ambiance</label>
+                            <select name="sound[music_id]" class="w-full rounded p-2 border border-gray-300">
+                                <option value="">— Aucune / par défaut —</option>
+                                @forelse($unlockedTracks as $id => $label)
+                                    <option value="{{ $id }}" @selected($musicId === $id)>{{ $label }}</option>
+                                @empty
+                                    <option value="" disabled>Pas de trame débloquée</option>
+                                @endforelse
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Buzzer sonore --}}
+                    <div>
+                        <label class="block font-semibold mb-1">Buzzer sonore</label>
+                        <select name="sound[buzzer_id]" class="w-full rounded p-2 border border-gray-300">
+                            <option value="">— Par défaut —</option>
+                            @forelse($unlockedBuzzers as $id => $label)
+                                <option value="{{ $id }}" @selected($buzzerId === $id)>{{ $label }}</option>
+                            @empty
+                                <option value="" disabled>Pas de buzzer débloqué</option>
+                            @endforelse
+                        </select>
+                    </div>
+
+                    {{-- Trame Gameplay : Pair / Autre + sélecteur --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block font-semibold mb-1">Trame Gameplay — mode</label>
+                            <div class="flex items-center gap-4">
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" name="sound[gameplay_mode]" value="pair"
+                                           @checked($gameplayMode === 'pair')>
+                                    <span>Pair</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" name="sound[gameplay_mode]" value="other"
+                                           @checked($gameplayMode === 'other')>
+                                    <span>Autre</span>
+                                </label>
+                            </div>
+<p class="text-sm text-gray-500 mt-1">
+                                Pair : même trame partout. Autre : utilise la trame choisie ci-dessous.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1">Trame Gameplay (si “Autre”)</label>
+                            <select name="sound[gameplay_id]" class="w-full rounded p-2 border border-gray-300">
+                                <option value="">— Aucune / par défaut —</option>
+                                @forelse($unlockedTracks as $id => $label)
+                                    <option value="{{ $id }}" @selected($gameplayId === $id)>{{ $label }}</option>
+                                @empty
+                                    <option value="" disabled>Pas de trame débloquée</option>
+                                @endforelse
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Liens utiles --}}
+                    <div class="flex flex-wrap items-center gap-3 pt-2">
+                        @if($hasShop)
+                            <a href="{{ route('boutique') }}" class="underline">Accéder à la Boutique</a>
+                        @endif
+                        @if($hasAvatars)
+                            <a href="{{ route('avatars') }}" class="underline">Choisir / Gérer mes Avatars</a>
+                        @endif
+                    </div>
+
+                    {{-- Submit --}}
+                    <div class="pt-4">
+                        <button class="w-full md:w-auto bg-[#0A2C66] hover:bg-[#0b2a66] text-white font-bold py-3 px-5 rounded-xl">
+                            Enregistrer
+                        </button>
+                    </div>
+                </form>
+            @else
+                {{-- Lecture seule (visiteur ou pas de route update) --}}
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="font-semibold mb-1">Pseudonyme</p>
+                            <p>{{ $pseudonym }}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Langue</p>
+                            <p>{{ $language }}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Pays</p>
+                            <p>{{ $countries[$country] ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Afficher en Ligue</p>
+                            <p>{{ $showInLeague }}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold mb-1">Affichage en ligne</p>
+                            <p>{{ $showOnline ? 'Oui' : 'Non' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        @if($hasShop)
+                            <a href="{{ route('boutique') }}" class="underline">Accéder à la Boutique</a>
+                        @endif
+                        @if($hasAvatars)
+                            <a href="{{ route('avatars') }}" class="underline">Choisir / Gérer mes Avatars</a>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        {{-- Infos utilisateur --}}
+        <div class="bg-white/10 rounded-2xl p-6 mt-8">
+            <h2 class="text-xl font-bold mb-3">Informations du compte</h2>
+            <p><span class="opacity-80">Nom :</span> {{ $user?->name ?? 'Invité' }}</p>
+            <p><span class="opacity-80">Email :</span> {{ $user?->email ?? '—' }}</p>
+        </div>
+
+        {{-- Suppression de compte (si route dispo + authentifié) --}}
+        @if($user && $hasDelete)
+            <div class="bg-red-100 border border-red-300 text-red-800 rounded-2xl p-6 mt-8">
+                <p class="mb-4">⚠ Cette action est <strong>définitive</strong>. Toutes vos données seront supprimées.</p>
+                <a href="{{ route('account.delete.show') }}"
+                   class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                   onclick="return confirm('Voulez-vous vraiment supprimer votre compte ? Cette action est irréversible.');">
+                    Supprimer mon compte
+                </a>
+            </div>
+        @endif
+
+        {{-- CTA invités --}}
+        @guest
+            <div class="text-center mt-10 space-x-3">
+                @if(Route::has('login'))
+                    <a href="{{ route('login') }}" class="underline">Se connecter</a>
+                @endif
+                @if(Route::has('register'))
+                    <a href="{{ route('register') }}" class="underline">Créer un compte</a>
+                @endif
+            </div>
+        @endguest
+
+    </div>
+</div>
+@endsection

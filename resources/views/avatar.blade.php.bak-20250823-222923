@@ -1,0 +1,368 @@
+@extends('layouts.app')
+
+@section('content')
+<style>
+:root{
+  --bg:#003DA5; --card:#0b2a66; --ok:#22c55e; --muted:#94a3b8; --ink:#ffffff;
+  --shadow: 0 10px 24px rgba(0,0,0,.18);
+  --radius: 16px; --gap: 14px;
+}
+.page{min-height:100dvh;background:var(--bg);color:var(--ink);padding:24px;}
+.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+/* header */
+.header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;margin-bottom:4px}
+.h-title{font-size:clamp(1.6rem,3vw,2rem);font-weight:800}
+.pill{background:#0f3b8a;border-radius:999px;padding:8px 12px}
+.pill b{color:#fff}
+
+/* helpers */
+.row{display:flex;gap:var(--gap);justify-content:center;align-items:center}
+.center-wrap{display:flex;justify-content:center}
+
+/* cards */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;border:1px solid rgba(255,255,255,.08);position:relative;box-shadow:var(--shadow)}
+.card .inner{display:flex;align-items:center;justify-content:center;min-height:110px;cursor:pointer}
+.card h3{margin:0;font-size:1.15rem;letter-spacing:.3px}
+.badge{position:absolute;top:10px;left:10px;font-size:.9rem;background:rgba(255,255,255,.12);padding:6px 10px;border-radius:999px}
+.locked{filter: blur(2px) saturate(.7); opacity:.72;}
+.lock-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,transparent,rgba(0,0,0,.45));pointer-events:none;border-radius:var(--radius)}
+.btn{display:inline-block;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 12px;color:#fff;text-decoration:none;cursor:pointer;background:#1e90ff}
+.btn.ok{background:var(--ok);border-color:var(--ok)}
+.alert{margin:6px 0;padding:10px 12px;border-radius:10px}
+.alert-ok{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35)}
+.alert-ko{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35)}
+
+/* Thumbs (modale) */
+.thumbs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
+@media (max-width:760px){ .thumbs{grid-template-columns:repeat(3,1fr)} }
+.thumb{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0f1530}
+.thumb img{width:100%;height:140px;object-fit:cover;display:block}
+.thumb .actions{display:flex;gap:8px;padding:8px;justify-content:center;background:rgba(0,0,0,.35)}
+
+/* Modal */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50;background:rgba(0,0,0,.55)}
+.modal.open{display:flex}
+.modal-panel{width:min(980px,92vw);max-height:86vh;overflow:auto;background:#0b1020;border:1px solid rgba(255,255,255,.1);border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;position:sticky;top:0;background:#0b1020;border-bottom:1px solid rgba(255,255,255,.06)}
+.modal-title{font-weight:800;letter-spacing:.4px}
+.modal-body{padding:18px}
+
+/* Standards mini-carousel */
+.std-wrap{display:flex;justify-content:center}
+.std-viewport{overflow:hidden;max-width:960px}
+.std-track{display:flex;gap:10px;will-change:transform}
+.std-thumb{width:100px;height:100px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#0f1530;flex:0 0 100px}
+.std-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.std-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2);width:34px;height:34px;border-radius:999px;display:grid;place-items:center;cursor:pointer;z-index:5}
+.std-left{left:6px} .std-right{right:6px}
+
+/* Carousel packs (3 visibles desktop) */
+.carousel{position:relative;margin:6px 0 10px}
+.viewport{overflow:hidden;margin:0 auto;max-width:960px}
+.track{display:flex;gap:var(--gap);will-change:transform;touch-action:pan-y;user-select:none}
+.pack-card{width:300px;flex:0 0 300px}
+@media (max-width:760px){
+  .viewport{max-width:92vw}
+  .pack-card{width:92vw;flex:0 0 92vw}
+}
+.arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2);width:38px;height:38px;border-radius:999px;display:grid;place-items:center;cursor:pointer;z-index:5}
+.arrow.left{left:6px} .arrow.right{right:6px}
+.arrow span{font-size:18px;line-height:1}
+
+/* Scale transition hint */
+.pack-anim{transition: transform .3s cubic-bezier(.2,.8,.2,1), opacity .3s ease}
+.pack-anim.outgoing{transform: scale(.96); opacity:.9}
+.pack-anim.incoming{transform: scale(1.02); opacity:1}
+
+/* mini strip in pack cards */
+.mini-strip{display:flex;gap:6px;margin-top:10px;justify-content:center}
+.mini-strip img{width:46px;height:46px;border-radius:8px;object-fit:cover;opacity:.95;border:1px solid rgba(255,255,255,.12)}
+
+/* Standards block (fond) */
+.standards-card .inner{min-height:112px;background:linear-gradient(135deg,#1a2d6b,#0f1e4a);border:1px solid rgba(255,255,255,.1);border-radius:12px}
+
+/* Tiers stratégiques */
+.tier{position:absolute;top:8px;left:8px;padding:4px 8px;border-radius:999px;font-size:.78rem;border:1px solid rgba(255,255,255,.22)}
+.tier.rare{background:#1e3a8a}
+.tier.epic{background:#6d28d9}
+.tier.legendary{background:#b45309}
+</style>
+
+<div class="page">
+  <div class="wrap">
+
+    @if(session('success')) <div class="alert alert-ok">{{ session('success') }}</div> @endif
+    @if(session('error'))   <div class="alert alert-ko">{{ session('error') }}</div>   @endif
+
+    <div class="header">
+      <div class="h-title">🎭 Choix des Avatars</div>
+      <div class="pill">💰 Pièces : <b>{{ number_format($coins ?? 0) }}</b></div>
+      <div class="pill">Sélection : <b>{{ isset($selected) && $selected ? ucfirst($selected) : 'Aucune' }}</b></div>
+    </div>
+
+    {{-- ==== util : scan images packs ==== --}}
+    @php
+      if (!function_exists('__sb_pack_images')) {
+        function __sb_pack_images(string $slug, int $limit = 32): array {
+          $dir = public_path("images/avatars/$slug");
+          $out = [];
+          if (is_dir($dir)) {
+            $files = glob($dir.'/*.{png,jpg,jpeg,webp}', GLOB_BRACE);
+            natsort($files);
+            foreach ($files as $f) {
+              $out[] = 'images/avatars/'.$slug.'/'.basename($f);
+              if (count($out) >= $limit) break;
+            }
+          }
+          return $out;
+        }
+      }
+    @endphp
+
+    {{-- ====== SECTION HAUT — Standards (sans titre) ====== --}}
+    <div class="card standards-card" style="position:relative">
+      <button class="std-arrow std-left"  onclick="stdPrev()" aria-label="Précédent"><span>‹</span></button>
+      <button class="std-arrow std-right" onclick="stdNext()" aria-label="Suivant"><span>›</span></button>
+      <div class="std-wrap">
+        <div class="std-viewport">
+          <div class="std-track" id="stdTrack">
+            @php
+              $stdImgs = [
+                'images/avatars/standard/standard1.png','images/avatars/standard/standard2.png','images/avatars/standard/standard3.png','images/avatars/standard/standard4.png',
+                'images/avatars/standard/standard5.png','images/avatars/standard/standard6.png','images/avatars/standard/standard7.png','images/avatars/standard/standard8.png',
+              ];
+            @endphp
+            @foreach($stdImgs as $simg)
+              <div class="std-thumb" onclick="openStandards()">
+                <img src="{{ asset($simg) }}" alt="standard">
+              </div>
+            @endforeach
+          </div>
+        </div>
+      </div>
+    </div>
+    {{-- ====== SECTION CENTRALE — Carrousel infini de packs ====== --}}
+    <div class="center-wrap"><div class="carousel" id="packsCarousel" aria-label="Packs d’avatars">
+      <button class="arrow left"  onclick="slidePrev()" aria-label="Précédent"><span>‹</span></button>
+      <button class="arrow right" onclick="slideNext()" aria-label="Suivant"><span>›</span></button>
+
+      <div class="viewport">
+        <div class="track" id="track">
+          @php
+            $unlockedPacks = $unlockedPacks ?? [];
+            $packs = [
+              ['slug'=>'portraits',  'label'=>'Portraits'],
+              ['slug'=>'cartoon',    'label'=>'Cartoon'],
+              ['slug'=>'animal',     'label'=>'Animal'],
+              ['slug'=>'mythique',   'label'=>'Mythique'],
+              ['slug'=>'paysage',    'label'=>'Paysage'],
+              ['slug'=>'objet',      'label'=>'Objet'],
+              ['slug'=>'clown',      'label'=>'Clown'],
+              ['slug'=>'musicien',   'label'=>'Musicien'],
+              ['slug'=>'automobile', 'label'=>'Automobile'],
+            ];
+            foreach ($packs as $k => $p) {
+              $imgs = __sb_pack_images($p['slug'], 32);
+              $packs[$k]['images'] = $imgs;
+              $packs[$k]['count']  = count($imgs);
+            }
+            $loopPacks = array_merge([end($packs)], $packs, [reset($packs)]);
+          @endphp
+
+          @foreach($loopPacks as $p)
+            @php
+              $locked = !in_array($p['slug'], $unlockedPacks, true);
+              $count  = (int)($p['count'] ?? 0);
+              $mini   = array_slice($p['images'] ?? [], 0, 3);
+            @endphp
+            <div class="card pack-card pack-anim"
+                 onclick="{{ $locked
+                      ? "window.location.href='".route('boutique',['item'=>$p['slug']])."';"
+                      : "openPack('".$p['slug']."')"
+                 }}">
+              <div class="badge">{{ $p['label'] }}{{ $count ? ' · '.$count : '' }}</div>
+              <div class="inner {{ $locked ? 'locked' : '' }}"><h3>{{ $locked ? '' : $p['label'] }}</h3></div>
+              @if($mini && !$locked)
+                <div class="mini-strip">
+                  @foreach($mini as $m)<img src="{{ asset($m) }}" alt="mini">@endforeach
+                </div>
+              @endif
+              @if($locked)<div class="lock-overlay"></div>@endif
+              <template type="application/json" data-pack="{{ $p['slug'] }}">
+                {!! json_encode($p['images'] ?? []) !!}
+              </template>
+            </div>
+          @endforeach
+        </div>
+      </div>
+    </div></div>
+
+    {{-- ====== SECTION BAS — 12 Stratégiques (tiers depuis le contrôleur) ====== --}}
+    <div class="center-wrap"><div style="max-width:1100px;width:100%">
+      <div class="row" style="flex-wrap:wrap">
+        @php
+          $stratégiqueImages = [
+            'mathematicien'=>'images/avatars/mathematicien.png',
+            'scientifique'=>'images/avatars/scientifique.png',
+            'explorateur'=>'images/avatars/explorateur.png',
+            'defenseur'=>'images/avatars/defenseur.png',
+            'historien'=>'images/avatars/historien.png',
+            'comedienne'=>'images/avatars/comedienne.png',
+            'magicienne'=>'images/avatars/magicienne.png',
+            'challenger'=>'images/avatars/challenger.png',
+            'ia-junior'=>'images/avatars/ia-junior.png',
+            'stratege'=>'images/avatars/stratege.png',
+            'sprinteur'=>'images/avatars/sprinteur.png',
+            'visionnaire'=>'images/avatars/visionnaire.png',
+          ];
+        @endphp
+
+        @foreach(($groups['stratégique'] ?? []) as $a)
+          @php
+            $slug       = $a['slug'];
+            $isUnlocked = !empty($a['unlocked']);
+            $img        = $stratégiqueImages[$slug] ?? null;
+            $tier       = $a['tier'] ?? 'Rare';
+            $tierClass  = $tier==='Légendaire' ? 'legendary' : ($tier==='Épique' ? 'epic' : 'rare');
+          @endphp
+          <div class="thumb" style="width:160px; position:relative">
+            <div onclick="{{ $isUnlocked ? '' : "window.location.href='".route('boutique',['stratégique'=>$slug])."';" }}"
+                 style="position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0f1530">
+              <div class="tier {{ $tierClass }}">{{ $tier }}</div>
+              @if($img)
+                <img src="{{ asset($img) }}" alt="{{ $a['name'] ?? $slug }}" class="{{ $isUnlocked ? '' : 'locked' }}" style="width:100%;height:140px;object-fit:cover">
+              @else
+                <div style="height:140px; display:grid; place-items:center; color:#cbd5e1; background:#0b2a66" class="{{ $isUnlocked ? '' : 'locked' }}">
+                  {{ ucfirst($slug) }}
+                </div>
+              @endif
+              @unless($isUnlocked) <div class="lock-overlay"></div> @endunless
+            </div>
+            <div class="thumb actions" style="border:0">
+              @if($isUnlocked)
+                <form method="POST" action="{{ route('avatar.select') }}">
+                  @csrf
+                  <input type="hidden" name="avatar" value="{{ $slug }}">
+                  <button class="btn ok" type="submit">Choisir</button>
+                </form>
+              @else
+                <button class="btn" type="button" onclick="window.location.href='{{ route('boutique',['stratégique'=>$slug]) }}'">Boutique</button>
+              @endif
+            </div>
+          </div>
+        @endforeach
+      </div>
+    </div></div>
+
+  </div>
+</div>
+{{-- MODALE --}}
+<div id="modal" class="modal" role="dialog" aria-modal="true">
+  <div class="modal-panel">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">Pack</div>
+      <button class="btn" onclick="closeModal()">Fermer</button>
+    </div>
+    <div class="modal-body">
+      <div id="thumbs" class="thumbs"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ROUTE_SELECT = @json(route('avatar.select'));
+  const CSRF = @json(csrf_token()));
+  const ASSET_BASE = @json(asset(''));
+  function assetPath(p){ return (ASSET_BASE + p).replace(/\/+$/, '').replace(/([^:]\/)\/+/g, '$1'); }
+
+  // Standards (mini-carousel + modale)
+  const STANDARDS = [
+    'images/avatars/standard/standard1.png','images/avatars/standard/standard2.png','images/avatars/standard/standard3.png','images/avatars/standard/standard4.png',
+    'images/avatars/standard/standard5.png','images/avatars/standard/standard6.png','images/avatars/standard/standard7.png','images/avatars/standard/standard8.png',
+  ];
+  function openStandards(){ openModal('Standards', STANDARDS); }
+  const stdTrack = document.getElementById('stdTrack');
+  function stdNext(){ stdTrack.scrollBy({left: 220, behavior:'smooth'}); }
+  function stdPrev(){ stdTrack.scrollBy({left:-220, behavior:'smooth'}); }
+
+  // Packs modale
+  function openPack(slug){
+    const tpl = document.querySelector(`template[data-pack="${slug}"]`);
+    if(!tpl) return;
+    try{
+      const images = JSON.parse(tpl.innerHTML.trim());
+      const head = document.querySelector(`.card[onclick*="${slug}"] .badge`)?.textContent || 'Pack';
+      openModal(head, images);
+    }catch(e){ console.error(e); }
+  }
+
+  // Modale générique
+  function openModal(title, images){
+    document.getElementById('modalTitle').textContent = title;
+    const thumbs = document.getElementById('thumbs');
+    thumbs.innerHTML = '';
+    images.forEach((p) => {
+      const el = document.createElement('div');
+      el.className = 'thumb';
+      el.innerHTML = `
+        <img src="${assetPath(p)}" alt="avatar">
+        <div class="actions">
+          <form method="POST" action="${ROUTE_SELECT}">
+            <input type="hidden" name="_token" value="${CSRF}">
+            <input type="hidden" name="avatar" value="${assetPath(p)}">
+            <button class="btn ok" type="submit">Choisir</button>
+          </form>
+        </div>`;
+      thumbs.appendChild(el);
+    });
+    document.getElementById('modal').classList.add('open');
+  }
+  function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+
+  // Carousel packs (boucle & 3 visibles desktop)
+  const track = document.getElementById('track');
+  let index = 1; // démarrage au 1er réel
+  let w = null;
+
+  function cardWidth(){ const c = track.querySelector('.pack-card'); return c ? (c.getBoundingClientRect().width + parseFloat(getComputedStyle(track).gap||0)) : 0; }
+  function measure(){ w = cardWidth(); }
+  function setTransform(tx, withTransition=true){
+    track.style.transition = withTransition ? 'transform .3s cubic-bezier(.2,.8,.2,1)' : 'none';
+    track.style.transform = `translateX(${tx}px)`;
+    hintScale();
+  }
+  function apply(){ if(w==null) measure(); setTransform(-index * w, true); }
+  function noTransApply(){ if(w==null) measure(); setTransform(-index * w, false); }
+
+  function hintScale(){
+    const cards = [...track.querySelectorAll('.pack-card')];
+    cards.forEach((c)=>c.classList.remove('incoming','outgoing'));
+    const prev = cards[index-1], curr = cards[index];
+    if(prev) prev.classList.add('outgoing');
+    if(curr) curr.classList.add('incoming');
+  }
+
+  function slideNext(){ index++; apply(); }
+  function slidePrev(){ index--; apply(); }
+
+  track.addEventListener('transitionend', ()=>{
+    const total = track.querySelectorAll('.pack-card').length;
+    if(index === total-1){ index = 1; noTransApply(); }
+    else if(index === 0){ index = total-2; noTransApply(); }
+  });
+
+  // Drag / swipe
+  let startX=0, delta=0, dragging=false;
+  track.addEventListener('pointerdown',(e)=>{ dragging=true; startX=e.clientX; track.setPointerCapture(e.pointerId); track.style.transition='none'; });
+  track.addEventListener('pointermove',(e)=>{ if(!dragging) return; delta=e.clientX-startX; setTransform((-index*w)+delta, false); });
+  track.addEventListener('pointerup',(e)=>{ if(!dragging) return; dragging=false; track.releasePointerCapture(e.pointerId);
+    if(Math.abs(delta)>50){ delta>0? slidePrev(): slideNext(); } else { apply(); } delta=0;
+  });
+
+  // Init
+  window.addEventListener('resize',()=>{ measure(); noTransApply(); });
+  measure(); noTransApply();
+  requestAnimationFrame(()=>{ apply(); });
+</script>
+@endsection

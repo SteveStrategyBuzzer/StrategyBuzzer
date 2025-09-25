@@ -1,0 +1,174 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
+
+class ProfileController extends Controller
+{
+    /** Valeurs par défaut (aucune image forcée) */
+    private function defaults(): array
+    {
+        return [
+            'pseudonym' => null,
+
+            // Avatar principal (standards & packs)
+            'avatar' => [
+                'type' => 'regular', // regular | strategic
+                'id'   => null,
+                'name' => null,
+                'url'  => null,      // <- pas de fallback image ici
+            ],
+
+            // Avatar stratégique (les 12)
+            'strategic_avatar' => [
+                'id'   => null,
+                'name' => null,
+                'url'  => null,      // <- pas de fallback image ici
+            ],
+
+            'show_in_league' => 'Oui',      // Oui | Non
+            'show_online'    => true,       // visible en train de jouer
+            'language'       => 'Français', // Français | Anglais
+            'country'        => '',
+
+            // Options (placeholders tant que non branché)
+            'sound' => [
+                'ambiance'  => true,
+                'buzzer'    => true,
+                'results'   => false,
+                'buzzer_id' => null,
+                'music_id'  => null,
+            ],
+            'theme' => [
+                'style' => 'Classique',
+                'decor' => null,
+            ],
+        ];
+    }
+
+    /** Lit les préférences JSON de l'utilisateur si disponibles */
+    private function readUserSettings(): array
+    {
+        $user = Auth::user();
+        if (!$user) return [];
+
+        try {
+            if (property_exists($user, 'profile_settings') || isset($user->profile_settings)) {
+                $raw = $user->profile_settings;
+                if (is_string($raw)) return json_decode($raw, true) ?: [];
+                if (is_array($raw))  return $raw;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Profile: lecture profile_settings impossible: '.$e->getMessage());
+        }
+        return [];
+    }
+
+    /** Merge + normalisation (sans forcer d’images) */
+    private function buildSettings(): array
+    {
+        $settings = array_replace_recursive($this->defaults(), $this->readUserSettings());
+
+        // Normalisations
+        $settings['language']       = in_array($settings['language'] ?? null, ['Français','Anglais']) ? $settings['language'] : 'Français';
+        $settings['country'] = strtoupper($settings['country'] ?? '');
+        $settings['show_in_league'] = in_array($settings['show_in_league'] ?? null, ['Oui','Non']) ? $settings['show_in_league'] : 'Oui';
+        $settings['show_online']    = (bool)($settings['show_online'] ?? true);
+
+        // S’assure que les sous-tableaux existent
+        $defs = $this->defaults();
+        $settings['sound'] = is_array($settings['sound'] ?? null) ? $settings['sound'] : ($defs['sound'] ?? []);
+        $settings['theme'] = is_array($settings['theme'] ?? null) ? $settings['theme'] : ($defs['theme'] ?? []);
+
+        // Pseudonyme obligatoire (fallback sur users.name ou "Joueur")
+        $pseudo = trim((string)($settings['pseudonym'] ?? ''));
+        if ($pseudo === '') {
+            $pseudo = trim((string)(Auth::user()?->name ?? 'Joueur'));
+        }
+        $settings['pseudonym'] = $pseudo;
+
+        return $settings;
+    }
+
+    /** Affichage du profil */
+    public function show()
+    {
+        $settings = $this->buildSettings();
+
+        // 1) Corrige la route du sélecteur d’avatars (singulier)
+        $routes = [
+            'avatar'   => Route::has('avatar'),         // <- FIX
+            'boutique' => Route::has('boutique'),
+            'delete'   => Route::has('account.delete.show'),
+            'update'   => Route::has('profile.update'),
+        ];
+
+        // 2) Hydrate depuis la session si un avatar a été choisi sur /avatar
+        $sessionUrl = session('avatar_image') ?? (session('avatar') ? asset(session('avatar')) : null);
+        if (!$settings['avatar']['url'] && $sessionUrl) {
+            $settings['avatar']['url']  = $sessionUrl;
+            $settings['avatar']['name'] = $settings['avatar']['name'] ?? 'Avatar';
+            // Persiste silencieusement pour les prochaines visites
+            try {
+                if ($user = Auth::user()) {
+                    $user->profile_settings = $settings;
+                    $user->save();
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Profile: sync session->profile_settings impossible: '.$e->getMessage());
+            }
+        }
+
+        return view('profile', compact('settings', 'routes'));
+    }
+
+    /** Enregistrement */
+    public function update(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+        $data = $request->validate([
+            'pseudonym'               => 'nullable|string|max:24',
+            'show_in_league'          => 'nullable|in:Oui,Non',
+            'show_online'             => 'nullable|boolean',
+            'language'                => 'nullable|in:Français,Anglais',
+            'country'                 => 'nullable|string|max:2',
+
+            'sound.buzzer_id'         => 'nullable|string|max:64',
+            'sound.music_id'          => 'nullable|string|max:64',
+            'theme.style'             => 'nullable|string|max:32',
+            'theme.decor'             => 'nullable|string|max:64',
+
+            'avatar.type'             => 'nullable|in:regular,strategic',
+            'avatar.id'               => 'nullable|string|max:64',
+            'avatar.name'             => 'nullable|string|max:64',
+            'avatar.url'              => 'nullable|url',
+            'strategic_avatar.id'     => 'nullable|string|max:64',
+            'strategic_avatar.name'   => 'nullable|string|max:64',
+            'strategic_avatar.url'    => 'nullable|url',
+        ]);
+        $data['country'] = strtoupper($data['country'] ?? '');
+Log::debug('REQUÊTE PROFIL', $data);
+
+        $settings = array_replace_recursive($this->buildSettings(), $data);
+
+Log::debug('SAUVEGARDE PROFIL_SETTINGS', $settings);
+
+        // Booleans via checkbox/switch
+        Arr::set($settings, 'show_online', (bool)$request->boolean('show_online', Arr::get($settings, 'show_online', true)));
+
+        try {
+            $user->profile_settings = $settings; // json cast recommandé
+            $user->save();
+        } catch (\Throwable $e) {
+            Log::warning('Profile: sauvegarde profile_settings impossible: '.$e->getMessage());
+        }
+
+        return redirect()->route('profile.show')->with('status', 'Profil mis à jour.');
+    }
+}

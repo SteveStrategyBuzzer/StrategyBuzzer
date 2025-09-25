@@ -1,0 +1,138 @@
+@extends('layouts.app')
+
+@section('content')
+<style>
+  body{ background:#003DA5; color:#fff; }
+  .container-solo{ max-width:980px; margin:60px auto; padding:0 16px; text-align:center; }
+  h1{ font-size:clamp(2rem,5vw,4rem); margin-bottom:24px; }
+  .lead{ font-size:1.15rem; margin:6px 0 22px; opacity:.9; }
+  .row-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+  .btn-theme{ display:block; width:100%; padding:14px 16px; border-radius:10px; background:#1E90FF; color:#fff; border:none; cursor:pointer; }
+  .btn-theme:hover{ background:#339CFF; }
+  .controls{ display:flex; gap:16px; justify-content:center; align-items:center; flex-wrap:wrap; margin:8px 0 18px; }
+  .select, .dropdown{ background:#0848b9; border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:8px; padding:10px 12px; }
+  .dropdown-menu{ position:absolute; background:#0b3f97; border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:6px; margin-top:6px; width:220px; text-align:left; }
+  .dropdown-item{ display:block; width:100%; background:transparent; color:#fff; border:none; text-align:left; padding:8px 10px; border-radius:8px; cursor:pointer; }
+  .dropdown-item:hover{ background:#1156d1; }
+  .muted{ opacity:.85; font-weight:600; }
+  .inline-link{ color:#fff; text-decoration:underline; }
+</style>
+
+<div class="container-solo">
+  <h1>Mode Solo</h1>
+
+  {{-- valeurs envoyées par le contrôleur --}}
+  @php
+    $choix_niveau       = $choix_niveau        ?? 1;         // niveau max atteint
+    $niveau_selectionne = $niveau_selectionne  ?? $choix_niveau;
+    $avatar_stratégique      = $avatar_stratégique       ?? session('Aucun');
+  @endphp
+
+  <p class="lead">Choix de Niveau : <strong class="muted"><span id="niv-label">{{ $niveau_selectionne }}</span></strong></p>
+  <p class="lead">Choisissez vos options puis un thème pour commencer la partie :</p>
+
+  <form id="soloForm" method="POST" action="{{ route('solo.start') }}">
+    @csrf
+
+    {{-- (1) Nombre de questions --}}
+    <div class="controls">
+      <label for="nb_questions" class="muted">Nombre de questions :</label>
+      <select id="nb_questions" name="nb_questions" class="select">
+        <option value="">— Choisissez —</option>
+        <option value="20">20</option>
+        <option value="30">30</option>
+        <option value="40">40</option>
+      </select>
+    </div>
+
+    {{-- (2) Niveau (par défaut = max atteint) --}}
+    <div class="controls" style="position:relative">
+      <span class="muted">Choix de Niveau</span>
+      <button id="nivBtn" type="button" class="dropdown">{{ $niveau_selectionne }} ▼</button>
+      <div id="nivMenu" class="dropdown-menu" style="display:none; max-height:260px; overflow:auto">
+        @for($i=1; $i <= $choix_niveau; $i++)
+          <button type="button" class="dropdown-item" data-level="{{ $i }}">Niveau {{ $i }}</button>
+        @endfor
+      </div>
+    </div>
+    <input type="hidden" id="niveau_joueur" name="niveau_joueur" value="{{ $niveau_selectionne }}">
+
+    {{-- (3) Avatar stratégique (doit être choisi) --}}
+    <div class="controls">
+      <span class="muted">Choix de l’Avatar Stratégique (optionnel) : <strong id="avatar-label">{{ $avatar_stratégique }}</strong></span>
+      <a class="inline-link" href="{{ route('avatar.index') ?? url('/avatar') }}">Sélectionner</a>
+    </div>
+    <input type="hidden" id="avatar" name="avatar" value="{{ $avatar_stratégique }}">
+
+    {{-- (4) Thèmes (le clic sur un thème tente la soumission) --}}
+    <div class="row-grid">
+      <button type="button" class="btn-theme theme-btn" data-theme="general">🧠 Général</button>
+      <button type="button" class="btn-theme theme-btn" data-theme="geographie">🌍 Géographie</button>
+
+      <button type="button" class="btn-theme theme-btn" data-theme="histoire">📜 Histoire</button>
+      <button type="button" class="btn-theme theme-btn" data-theme="art">🎨 Art</button>
+
+      <button type="button" class="btn-theme theme-btn" data-theme="cinema">🎬 Cinéma</button>
+      <button type="button" class="btn-theme theme-btn" data-theme="sport">🏅 Sport</button>
+
+      <button type="button" class="btn-theme theme-btn" data-theme="faune">🦁 Faune</button>
+      <button type="button" class="btn-theme theme-btn" data-theme="cuisine">🍳 Cuisine</button>
+    </div>
+
+    <input type="hidden" id="theme" name="theme" value="">
+  </form>
+</div>
+
+<script>
+(() => {
+  // refs
+  const form = document.getElementById('soloForm');
+  const selNb = document.getElementById('nb_questions');
+  const hidLvl = document.getElementById('niveau_joueur');
+  const lblLvl = document.getElementById('niv-label');
+  const btnLvl = document.getElementById('nivBtn');
+  const menuLvl = document.getElementById('nivMenu');
+  const hidTheme = document.getElementById('theme');
+  const hidAvatar = document.getElementById('avatar');
+
+  // --- Dropdown niveau ---
+  btnLvl.addEventListener('click', () => {
+    menuLvl.style.display = (menuLvl.style.display === 'none' || menuLvl.style.display === '') ? 'block' : 'none';
+  });
+  menuLvl.querySelectorAll('.dropdown-item').forEach(it => {
+    it.addEventListener('click', () => {
+      const lvl = parseInt(it.dataset.level,10);
+      hidLvl.value = lvl;
+      lblLvl.textContent = lvl;
+      btnLvl.textContent = lvl + ' ▼';
+      menuLvl.style.display = 'none';
+    });
+  });
+  document.addEventListener('click', (e) => {
+    if (!btnLvl.contains(e.target) && !menuLvl.contains(e.target)) menuLvl.style.display = 'none';
+  });
+
+  // --- Clic sur un thème : on valide & on envoie si complet ---
+  document.querySelectorAll('.theme-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      hidTheme.value = b.dataset.theme;
+      trySubmitIfComplete();
+    });
+  });
+
+  function trySubmitIfComplete(){
+    const missing = [];
+    if (!selNb.value)            missing.push('le nombre de questions');
+    if (!hidLvl.value)           missing.push('le niveau');
+    if (!hidAvatar.value || hidAvatar.value === 'Aucun') missing.push("l'avatar stratégique");
+    if (!hidTheme.value)         missing.push('la catégorie');
+
+    if (missing.length){
+      alert("Il manque : " + missing.join(', ') + ".\nComplète ces choix avant de commencer.");
+      return;
+    }
+    form.submit(); // POST vers solo.start
+  }
+})();
+</script>
+@endsection

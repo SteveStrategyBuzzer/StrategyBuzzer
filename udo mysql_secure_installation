@@ -1,0 +1,23 @@
+[0;1;32m●[0m mariadb.service - MariaDB 10.11.11 database server
+     Loaded: loaded (]8;;file://strategybuzzer-vm-free/lib/systemd/system/mariadb.service/lib/systemd/system/mariadb.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Mon 2025-08-11 05:17:18 UTC; 1min 2s ago
+       Docs: ]8;;man:mariadbd(8)man:mariadbd(8)]8;;
+             ]8;;https://mariadb.com/kb/en/library/systemd/https://mariadb.com/kb/en/library/systemd/]8;;
+   Main PID: 8324 (mariadbd)
+     Status: "Taking your SQL requests now..."
+      Tasks: 10[0;38;5;245m (limit: 7499)[0m
+     Memory: 91.8M
+        CPU: 804ms
+     CGroup: /system.slice/mariadb.service
+             └─[0;38;5;245m8324 /usr/sbin/mariadbd[0m
+
+Aug 11 05:17:18 strategybuzzer-vm-free mariadbd[8324]: 2025-08-11  5:17:18 0 [Note] Plugin 'FEEDBACK' is disabled.
+Aug 11 05:17:18 strategybuzzer-vm-free mariadbd[8324]: 2025-08-11  5:17:18 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+Aug 11 05:17:18 strategybuzzer-vm-free mariadbd[8324]: 2025-08-11  5:17:18 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+Aug 11 05:17:18 strategybuzzer-vm-free mariadbd[8324]: 2025-08-11  5:17:18 0 [Note] Server socket created on IP: '127.0.0.1'.
+Aug 11 05:17:18 strategybuzzer-vm-free mariadbd[8324]: 2025-08-11  5:17:18 0 [Note] InnoDB: Buffer pool(s) load completed at 250811  5:17:18
+Aug 11 05:17:18 strategybuzzer-vm-free mariadbd[8324]: 2025-08-11  5:17:18 0 [Note] /usr/sbin/mariadbd: ready for connections.
+Aug 11 05:17:18 strategybuzzer-vm-free mariadbd[8324]: Version: '10.11.11-MariaDB-0+deb12u1'  socket: '/run/mysqld/mysqld.sock'  port: 3306  Debian 12
+Aug 11 05:17:18 strategybuzzer-vm-free systemd[1]: Started mariadb.service - MariaDB 10.11.11 database server.
+Aug 11 05:17:18 strategybuzzer-vm-free /etc/mysql/debian-start[8357]: Triggering myisam-recover for all MyISAM tables and aria-recover for all Aria tables
+Aug 11 05:17:19 strategybuzzer-vm-free mariadbd[8324]: 2025-08-11  5:17:19 0 [Note] InnoDB: Memory pressure event freed 165 pages

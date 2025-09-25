@@ -1,0 +1,113 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+class SoloController extends Controller
+{
+    public function index()
+    {
+        $choix_niveau = session('choix_niveau', 10);
+        $avatar = session('avatar', 'Aucun');
+        $niveau_selectionne = session('niveau_selectionne', $choix_niveau);
+
+        return view('solo', [
+            'choix_niveau' => $choix_niveau,
+            'avatar_stratégique' => $avatar,
+            'niveau_selectionne' => $niveau_selectionne,
+        ]);
+    }
+
+    public function start(Request $request)
+    {
+        $validated = $request->validate([
+            'nb_questions' => 'required|integer',
+            'theme' => 'required|string',
+            'niveau_joueur' => 'required|integer',
+        ]);
+
+        $theme = $validated['theme'];
+        $nbQuestions = $validated['nb_questions'];
+        $niveau = $validated['niveau_joueur'];
+
+        session(['niveau_selectionne' => $niveau]);
+        $avatar = session('avatar', 'Aucun');
+
+        $questions = [
+            [
+                'id' => 1,
+                'question_text' => "Combien de pays sont dans l’ONU ?",
+                'answers' => [
+                    ['id' => 1, 'text' => '201'],
+                    ['id' => 2, 'text' => '193'],
+                    ['id' => 3, 'text' => '179'],
+                    ['id' => 4, 'text' => '101'],
+                ],
+                'correct_id' => 2,
+            ],
+        ];
+
+        $themeIcons = [
+            'general' => '🧠',
+            'geographie' => '🌐',
+            'histoire' => '📜',
+            'art' => '🎨',
+            'cinema' => '🎬',
+            'sport' => '🏅',
+            'cuisine' => '🍳',
+            'faune' => '🦁',
+        ];
+
+        $params = [
+            'theme' => $theme,
+            'theme_icon' => $themeIcons[$theme] ?? '❓',
+            'avatar' => $avatar,
+            'avatar_skills' => $this->getAvatarSkills($avatar),
+            'nb_questions' => $nbQuestions,
+            'niveau_joueur' => $niveau,
+            'current' => 1,
+            'question_id' => $questions[0]['id'],
+            'question_text' => $questions[0]['question_text'],
+            'answers' => $questions[0]['answers'],
+        ];
+
+        return view('resume', compact('params'));
+    }
+
+    public function gameplay()
+    {
+        return view('solo_gameplay');
+    }
+
+    private function getAvatarSkills($avatar)
+    {
+        $skills = [
+            'Aucun' => [],
+            'Mathématicien' => ['Rejouer 1 fois', 'Analyse rapide', 'Double points'],
+            'Scientifique' => ['Éliminer 1 mauvaise réponse', 'Indice logique'],
+            'Explorateur' => ['+5 sec', 'Carte bonus'],
+        ];
+
+        return $skills[$avatar] ?? [];
+    }
+
+    public function answer(Request $request)
+    {
+        return redirect()->route('solo.gameplay');
+    }
+
+    public function stat()
+    {
+        $data = [
+            'score' => 8,
+            'total' => 10,
+            'pourcentage' => 80,
+            'niveau' => session('niveau_selectionne', '?'),
+            'theme' => session('theme', '?'),
+            'avatar' => session('avatar', 'Aucun'),
+        ];
+
+        return view('stat', compact('data'));
+    }
+}

@@ -1,0 +1,301 @@
+@extends('layouts.app')
+
+@section('title', 'Profile du Joueur — StrategyBuzzer')
+
+@section('content')
+@php
+    use Symfony\Component\Intl\Countries;
+    $s = $settings ?? [];
+
+    // Normaliser les chemins d’images (Images/... -> images/...) et produire une URL web
+    $normalize = function (?string $path) {
+        if (!$path) return null;
+        $fixed = preg_replace('#^Images/#', 'images/', $path);
+        if (str_starts_with($fixed, 'http') || str_starts_with($fixed, '/')) return $fixed;
+        return asset(ltrim($fixed, '/'));
+    };
+
+    // Avatar principal
+    $avatarUrlRaw = data_get($s, 'avatar.url');
+    $avatarUrl    = $normalize($avatarUrlRaw ?: '');
+    $avatarId     = data_get($s, 'avatar.id');
+    $avatarName   = data_get($s, 'avatar.name', '');
+    $hasAvatar    = !empty($avatarId) || !empty($avatarUrlRaw);
+
+    // Avatar stratégique
+    $stratUrlRaw = data_get($s, 'strategic_avatar.url');
+    $stratUrl    = $normalize($stratUrlRaw ?: '');
+    $stratId     = data_get($s, 'strategic_avatar.id');
+    $stratName   = data_get($s, 'strategic_avatar.name', '');
+    $hasStrat    = !empty($stratId) && !empty($stratUrlRaw);
+
+    // Joueur
+    $player       = Auth::user();
+    $playerIdDb   = $player?->id;
+    $playerName   = $player?->name ?? 'Invité';
+    $playerEmail  = $player?->email ?? '—';
+
+    // ID joueur modifiable (on passe par 'pseudonym' côté settings)
+    $playerIdHuman = (string) data_get($s, 'pseudonym', '');
+
+    // Langue + pays via symfony/intl
+    $language = data_get($s, 'language', 'Français');
+    try {
+        $countries = Countries::getNames($language === 'Anglais' ? 'en' : 'fr');
+        asort($countries, SORT_NATURAL | SORT_FLAG_CASE);
+    } catch (\Throwable $e) {
+        $countries = ['FR'=>'France','CA'=>'Canada','US'=>'États-Unis','BE'=>'Belgique','CH'=>'Suisse'];
+    }
+    $currentCountry = strtoupper((string) data_get($s, 'country', ''));
+
+    // Options audio / thème
+    $ambianceOn = (bool) data_get($s, 'sound.ambiance', true);
+    $buzzerOn   = (bool) data_get($s, 'sound.buzzer', true);
+    $resultsOn  = (bool) data_get($s, 'sound.results', false);
+
+    $buzzerId = data_get($s, 'sound.buzzer_id');
+    $musicId  = data_get($s, 'sound.music_id');
+    $theme    = data_get($s, 'theme.style', 'Classique');
+
+    // Listes débloquées (fallback)
+    $unlockedBuzzers = data_get($s, 'unlocked.buzzers', []);
+    if (empty($unlockedBuzzers)) {
+        $unlockedBuzzers = [
+            ['id'=>'classic_beep','label'=>'Classique'],
+            ['id'=>'retro','label'=>'Rétro'],
+            ['id'=>'laser','label'=>'Laser'],
+        ];
+    }
+    $unlockedMusic = data_get($s, 'unlocked.music', []);
+    if (empty($unlockedMusic)) {
+        $unlockedMusic = [
+            ['id'=>'', 'label'=>'Aucun'],
+            ['id'=>'fun_loop_01','label'=>'Fun 01'],
+            ['id'=>'chill_loop','label'=>'Chill'],
+            ['id'=>'punchy_loop','label'=>'Punchy'],
+        ];
+    }
+    $themes = ['Classique','Fun','Intello','Party','Punchy'];
+
+    // Visibilités
+    $showInLeague = data_get($s, 'show_in_league', 'Oui'); // Oui | Non
+    $showOnline   = (bool) data_get($s, 'show_online', true);
+
+    // Maître du jeu (grade affiché)
+    $grade = (string) data_get($s, 'gm.grade', 'Rookie');
+@endphp
+
+{{-- Mise en page / styles --}}
+<style>
+  .sb-wrap{min-height:100vh;background:#0A2C66;color:#fff}
+  .sb-grid{display:grid;grid-template-columns:520px 1fr;gap:1.25rem}
+  @media (max-width:1200px){.sb-grid{grid-template-columns:1fr}}
+  .sb-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1rem}
+  .sb-card h2{font-size:1.25rem;font-weight:700;margin:0 0 .75rem}
+  .sb-thumb{width:160px;height:160px;border-radius:.75rem;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);box-shadow:0 0 0 2px rgba(255,255,255,.12) inset}
+  .sb-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .sb-row{display:flex;gap:1.25rem;align-items:flex-start}
+  .sb-two{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media (max-width:640px){.sb-two{grid-template-columns:1fr}}
+  .sb-field{display:flex;flex-direction:column;gap:.35rem}
+  .sb-label{font-weight:600;opacity:.9}
+  .sb-select,.sb-input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:.6rem;padding:.6rem .75rem;color:#fff}
+  .sb-toggle{display:flex;align-items:center;gap:.5rem}
+  .sb-hr{height:1px;background:rgba(255,255,255,.15);margin:1rem 0}
+  .sb-muted{opacity:.75}
+  .sb-badge{display:inline-block;border:1px solid rgba(255,255,255,.25);padding:.35rem .6rem;border-radius:.5rem;font-size:.875rem}
+  .sb-id-edit{cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.5)}
+</style>
+
+<div class="sb-wrap">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <h1 class="text-4xl font-extrabold tracking-tight mb-6">Profile du Joueur</h1>
+
+    <form method="POST" action="{{ \Illuminate\Support\Facades\Route::has('profile.update') ? route('profile.update') : '#' }}">
+      @csrf
+
+      <div class="sb-grid">
+        {{-- ======================= Colonne GAUCHE : APERÇU ======================= --}}
+        <div class="sb-card">
+          <h2>Aperçu</h2>
+
+          {{-- Vignettes côte à côte --}}
+          <div class="sb-row">
+            {{-- Avatar principal --}}
+            <div style="flex:1">
+              <div class="sb-label mb-2">Avatar principal</div>
+              <div class="sb-thumb">
+                @if($hasAvatar)
+                  <img src="{{ $avatarUrl ?? asset('images/avatars/default.png') }}" alt="Avatar du joueur">
+                @else
+                  <a href="{{ \Illuminate\Support\Facades\Route::has('avatars') ? route('avatars') : '#' }}" class="underline">Choisir avatar</a>
+                @endif
+              </div>
+              <div class="mt-2">
+                <div class="font-semibold">{{ $playerName }}</div>
+                <div class="sb-muted text-sm">{{ trim($avatarName) !== '' ? $avatarName : '—' }}</div>
+              </div>
+            </div>
+
+            {{-- Avatar stratégique --}}
+            <div style="flex:1">
+              <div class="sb-label mb-2">Avatar stratégique</div>
+              <div class="sb-thumb">
+                @if($hasStrat)
+                  <img src="{{ $stratUrl }}" alt="Avatar stratégique">
+                @else
+                  <a href="@if(\Illuminate\Support\Facades\Route::has('avatars.strategic')){{ route('avatars.strategic') }}@elseif(\Illuminate\Support\Facades\Route::has('avatars')){{ route('avatars') }}@else#@endif" class="underline">Choisir avatar stratégique</a>
+                @endif
+              </div>
+              <div class="mt-2">
+                <div class="font-semibold">{{ trim($stratName) !== '' ? $stratName : '—' }}</div>
+                <div class="sb-muted text-xs">Seuls les 12 avatars stratégiques sont admis</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-hr"></div>
+
+          {{-- Infos rapides sous les vignettes --}}
+          <div class="sb-two">
+            <div class="sb-field">
+              <div class="sb-label">ID joueur (cliquable)</div>
+              <div id="sb-id-display" class="sb-id-edit">
+                {{ $playerIdHuman !== '' ? $playerIdHuman : '—' }}
+              </div>
+              {{-- champ réellement soumis (synchro via JS) --}}
+              <input type="hidden" id="sb-id-input" name="pseudonym" value="{{ $playerIdHuman }}">
+            </div>
+
+            <div class="sb-field">
+              <div class="sb-label">Compte</div>
+              <div class="sb-input sb-muted">#DB: {{ $playerIdDb ?? '—' }} — {{ $playerEmail }}</div>
+            </div>
+          </div>
+        </div>
+
+        {{-- ======================= Colonne DROITE : OPTIONS ======================= --}}
+        <div class="sb-card">
+          <h2>Réglages</h2>
+
+          <div class="sb-two">
+            {{-- Colonne A --}}
+            <div class="flex flex-col gap-3">
+              <div class="sb-field">
+                <label class="sb-label">Maître du jeu</label>
+                <div class="sb-input">{{ $grade }}</div>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label">Langue</label>
+                <select name="language" class="sb-select">
+                  <option value="Français" @selected($language==='Français')>Français</option>
+                  <option value="Anglais"  @selected($language==='Anglais')>Anglais</option>
+                </select>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label">Pays</label>
+                <select name="country" class="sb-select">
+                  <option value="">—</option>
+                  @foreach($countries as $code => $name)
+                    <option value="{{ $code }}" @selected($currentCountry === $code)>{{ $name }}</option>
+                  @endforeach
+                </select>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label">Visible en ligue</label>
+                <select name="show_in_league" class="sb-select">
+                  <option value="Oui" @selected($showInLeague==='Oui')>Oui</option>
+                  <option value="Non" @selected($showInLeague==='Non')>Non</option>
+                </select>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label">Être vu en ligne</label>
+                <label class="sb-toggle">
+                  <input type="checkbox" disabled {{ $showOnline ? 'checked' : '' }}>
+                  <span class="sb-muted text-sm">Oui / Non</span>
+                </label>
+              </div>
+            </div>
+
+            {{-- Colonne B --}}
+            <div class="flex flex-col gap-3">
+              <div class="sb-field">
+                <label class="sb-label">Son ambiance</label>
+                <label class="sb-toggle">
+                  <input type="checkbox" name="options[ambiance]" value="1" {{ $ambianceOn ? 'checked' : '' }}>
+                  <span>Activer</span>
+                </label>
+                <select name="sound[music_id]" class="sb-select mt-1">
+                  @foreach($unlockedMusic as $m)
+                    <option value="{{ $m['id'] }}" @selected((string)$musicId === (string)$m['id'])>{{ $m['label'] }}</option>
+                  @endforeach
+                </select>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label">Son du buzzer</label>
+                <label class="sb-toggle">
+                  <input type="checkbox" name="options[buzzer]" value="1" {{ $buzzerOn ? 'checked' : '' }}>
+                  <span>Activer</span>
+                </label>
+                <select name="sound[buzzer_id]" class="sb-select mt-1">
+                  @foreach($unlockedBuzzers as $b)
+                    <option value="{{ $b['id'] }}" @selected((string)$buzzerId === (string)$b['id'])>{{ $b['label'] }}</option>
+                  @endforeach
+                </select>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label">Trame Gameplay (Pair / Autre)</label>
+                <label class="sb-toggle">
+                  <input type="checkbox" name="options[results]" value="1" {{ $resultsOn ? 'checked' : '' }}>
+                  <span>Activer</span>
+                </label>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label">Thème visuel</label>
+                <select name="theme[style]" class="sb-select">
+                  @foreach($themes as $t)
+                    <option value="{{ $t }}" @selected($theme===$t)>{{ $t }}</option>
+                  @endforeach
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {{-- Bouton enregistrer --}}
+          @if(\Illuminate\Support\Facades\Route::has('profile.update'))
+            <div class="mt-4">
+              <button type="submit" class="bg-white text-[#0A2C66] font-bold py-2 px-4 rounded-lg hover:opacity-90">
+                Enregistrer
+              </button>
+            </div>
+          @endif
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{{-- JS ultra-léger : édition inline de l’ID à gauche (synchro avec le champ caché) --}}
+<script>
+  (function(){
+    const disp = document.getElementById('sb-id-display');
+    const input = document.getElementById('sb-id-input');
+    if(!disp || !input) return;
+    disp.addEventListener('click', function(){
+      const cur = (disp.textContent || '').trim();
+      const next = prompt('Votre ID joueur', cur === '—' ? '' : cur);
+      if (next === null) return; // cancel
+      const v = next.trim().slice(0, 32); // même contrainte que la validation
+      disp.textContent = v || '—';
+      input.value = v;
+    });
+  })();
+</script>
+@endsection

@@ -1,0 +1,204 @@
+@extends('layouts.app')
+
+@section('title', 'Profile du Joueur — StrategyBuzzer')
+
+@section('content')
+@php
+    $s = $settings ?? [];
+    $routes = $routes ?? ['avatars'=>false,'boutique'=>false,'delete'=>false,'update'=>false];
+
+    // Données sécurisées
+    $pseudonym     = trim((string) data_get($s, 'pseudonym', 'Joueur'));
+    $avatarId      = data_get($s, 'avatar.id');
+    $avatarName    = data_get($s, 'avatar.name', 'Aucun avatar');
+    $avatarUrl     = data_get($s, 'avatar.url', asset('images/avatars/default.png'));
+
+    $stratId       = data_get($s, 'strategic_avatar.id');
+    $stratName     = data_get($s, 'strategic_avatar.name', 'Aucun avatar stratégique');
+    $stratUrl      = data_get($s, 'strategic_avatar.url', asset('images/avatars/default.png'));
+
+    $language      = data_get($s, 'language', 'Français');
+    $country       = data_get($s, 'country', '');
+    $showInLeague  = data_get($s, 'show_in_league', 'Oui');
+
+    // Fallback pays sans dépendance externe
+    $countries = [
+        'FR' => 'France',
+        'CA' => 'Canada',
+        'US' => 'États-Unis',
+        'BE' => 'Belgique',
+        'CH' => 'Suisse',
+        'SN' => 'Sénégal',
+        'CI' => "Côte d'Ivoire",
+    ];
+    ksort($countries, SORT_NATURAL | SORT_FLAG_CASE);
+@endphp
+
+<div class="min-h-screen bg-[#0A2C66] text-white">
+  <div class="max-w-5xl mx-auto px-4 py-10">
+
+    <h1 class="text-4xl font-extrabold tracking-tight mb-8">Profile du Joueur</h1>
+
+    {{-- Ligne des 2 vignettes : Avatar principal (gauche) + Stratégique (droite) --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+      {{-- Carte Avatar principal --}}
+      <div class="bg-[#0F3B8A] rounded-2xl shadow-xl p-6">
+        <p class="text-sm opacity-80 mb-3">Avatar principal</p>
+
+        <div class="flex flex-col items-start">
+          <div class="w-32 h-32 rounded-xl overflow-hidden ring-4 ring-white/10 bg-[#0B2A66] flex items-center justify-center">
+            @if(empty($avatarId))
+              {{-- Pas d’avatar choisi : placeholder texte --}}
+              <span class="text-sm opacity-80">Choisir avatar</span>
+            @else
+              <img src="{{ $avatarUrl }}"
+                   alt="Avatar"
+                   class="w-full h-full object-cover"
+                   onerror="this.style.display='none'">
+            @endif
+          </div>
+
+          <div class="mt-3 leading-tight">
+            {{-- Pseudonyme sous la vignette --}}
+            <div class="font-semibold">{{ $pseudonym !== '' ? $pseudonym : 'Joueur' }}</div>
+            <div class="text-white/80 text-sm">
+              {{ $avatarId ? $avatarName : 'Aucun avatar sélectionné' }}
+            </div>
+          </div>
+
+          {{-- Bouton Modifier vers /avatar si dispo --}}
+          <div class="mt-4">
+            @if(\Illuminate\Support\Facades\Route::has('avatars'))
+              <a href="{{ route('avatars') }}"
+                 class="inline-flex items-center bg-white text-[#0A2C66] font-bold py-2 px-4 rounded-xl hover:opacity-90 transition">
+                Modifier
+              </a>
+            @else
+              <span class="inline-flex items-center bg-white/20 text-white font-bold py-2 px-4 rounded-xl opacity-60 cursor-not-allowed">
+                Modifier
+              </span>
+            @endif
+          </div>
+        </div>
+      </div>
+
+      {{-- Carte Avatar stratégique --}}
+      <div class="bg-[#0F3B8A] rounded-2xl shadow-xl p-6">
+        <p class="text-sm opacity-80 mb-3">Avatar stratégique</p>
+
+        <div class="flex flex-col items-start">
+          <div class="w-32 h-32 rounded-xl overflow-hidden ring-4 ring-white/10 bg-[#0B2A66] flex items-center justify-center">
+            @if(empty($stratId))
+              <span class="text-sm opacity-80">Choisir avatar stratégique</span>
+            @else
+              <img src="{{ $stratUrl }}"
+                   alt="Avatar stratégique"
+                   class="w-full h-full object-cover"
+                   onerror="this.style.display='none'">
+            @endif
+          </div>
+
+          <div class="mt-3 leading-tight">
+            <div class="font-semibold">
+              {{ $stratId ? $stratName : 'Aucun Avatar Stratégique Choisi' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{-- Formulaire d’options (aligné à gauche). Si la route POST n’existe pas, lecture seule --}}
+    <div class="bg-white text-[#0A2C66] rounded-2xl shadow-xl p-6">
+      @if(($routes['update'] ?? false) && Auth::check())
+        <form method="POST" action="{{ route('profile.update') }}" class="space-y-6">
+          @csrf
+
+          {{-- Pseudonyme --}}
+          <div>
+            <label class="block font-semibold mb-1">Pseudonyme</label>
+            <input type="text" name="pseudonym"
+                   value="{{ old('pseudonym', $pseudonym) }}"
+                   class="w-full rounded p-2 border border-gray-300" />
+          </div>
+
+          {{-- Langue + Visibilité ligue sur une rangée --}}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block font-semibold mb-1">Langue</label>
+              <select name="language" class="w-full rounded p-2 border border-gray-300">
+                <option value="Français" @selected($language === 'Français')>Français</option>
+                <option value="Anglais"  @selected($language === 'Anglais')>Anglais</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-semibold mb-1">Affichage en ligue</label>
+              <select name="show_in_league" class="w-full rounded p-2 border border-gray-300">
+                <option value="Oui" @selected($showInLeague === 'Oui')>Oui</option>
+                <option value="Non" @selected($showInLeague === 'Non')>Non</option>
+              </select>
+            </div>
+          </div>
+
+          {{-- Pays (fallback sans Intl) --}}
+          <div>
+            <label class="block font-semibold mb-1">Pays</label>
+            <select name="country" class="w-full rounded p-2 border border-gray-300">
+              @foreach($countries as $code => $name)
+                <option value="{{ $code }}" @selected(($country ?? '') === $code)>{{ $name }}</option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="pt-2">
+            <button class="bg-[#0A2C66] hover:bg-[#0b2a66] text-white font-bold py-3 px-5 rounded-xl">
+              Enregistrer
+            </button>
+          </div>
+        </form>
+      @else
+        {{-- Lecture seule si pas de route POST ou pas connecté --}}
+        <div class="space-y-3">
+          <div><span class="font-semibold">Pseudonyme :</span> {{ $pseudonym }}</div>
+          <div><span class="font-semibold">Langue :</span> {{ $language }}</div>
+          <div><span class="font-semibold">Affichage en ligue :</span> {{ $showInLeague }}</div>
+          <div><span class="font-semibold">Pays :</span> {{ $countries[$country] ?? '—' }}</div>
+        </div>
+      @endif
+    </div>
+
+    {{-- Actions diverses --}}
+    <div class="bg-white/10 rounded-2xl p-6 mt-8">
+      <h2 class="text-xl font-bold mb-3">Informations du compte</h2>
+      <p><span class="opacity-80">Nom :</span> {{ Auth::user()?->name ?? 'Invité' }}</p>
+      <p><span class="opacity-80">Email :</span> {{ Auth::user()?->email ?? '—' }}</p>
+
+      <div class="mt-4 flex gap-4">
+        @if(($routes['boutique'] ?? false))
+          <a href="{{ route('boutique') }}" class="underline">Accéder à la Boutique</a>
+        @endif
+
+        @guest
+          @if(Route::has('login'))
+            <a href="{{ route('login') }}" class="underline">Se connecter</a>
+          @endif
+        @endguest
+      </div>
+    </div>
+
+    {{-- Suppression de compte si la route existe --}}
+    @if(Auth::check() && ($routes['delete'] ?? false))
+      <div class="bg-red-100 border border-red-300 text-red-800 rounded-2xl p-6 mt-8">
+        <p class="mb-4">⚠ Cette action est <strong>définitive</strong>. Toutes vos données seront supprimées.</p>
+        <a href="{{ route('account.delete.show') }}"
+           class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+           onclick="return confirm('Voulez-vous vraiment supprimer votre compte ? Cette action est irréversible.');">
+          Supprimer mon compte
+        </a>
+      </div>
+    @endif
+
+  </div>
+</div>
+@endsection

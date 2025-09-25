@@ -1,0 +1,135 @@
+@extends('layouts.app')
+
+@section('content')
+<style>
+:root{ --bg:#003DA5; --card:#0b2a66; --ok:#22c55e; --warn:#f59e0b; --muted:#94a3b8; }
+.page{min-height:100vh;background:var(--bg);color:#fff;padding:24px;}
+.wrap{max-width:1100px;margin:0 auto;}
+.header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+.h-title{font-size:clamp(1.6rem,3vw,2rem);font-weight:700}
+.pill{background:#0f3b8a;border-radius:999px;padding:8px 12px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{background:var(--card);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.08);position:relative}
+.card h3{margin:0 0 6px 0;font-size:1.2rem}
+.skills{font-size:.95rem;opacity:.95;margin:8px 0 12px 0}
+.badge{font-size:.8rem;background:rgba(255,255,255,.12);padding:4px 8px;border-radius:8px;margin-right:6px}
+.lock{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);border-radius:14px;display:grid;place-items:center;text-align:center;padding:12px}
+.btn{display:inline-block;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 12px;color:#fff;text-decoration:none;cursor:pointer}
+.btn + .btn{margin-left:8px}
+.btn-primary{background:#1e90ff;border-color:#1e90ff}
+.btn-ok{background:var(--ok);border-color:var(--ok)}
+.btn-warn{background:var(--warn);border-color:var(--warn)}
+.small{font-size:.9rem;color:#dbeafe}
+.alert{margin:10px 0;padding:10px 12px;border-radius:10px}
+.alert-ok{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35)}
+.alert-ko{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35)}
+.sel{color:#a7f3d0}
+</style>
+
+<div class="page">
+  <div class="wrap">
+
+    @if(session('success')) <div class="alert alert-ok">{{ session('success') }}</div> @endif
+    @if(session('error'))   <div class="alert alert-ko">{{ session('error') }}</div>   @endif
+
+    <div class="header">
+      <div class="h-title">🎭 Choix des Avatars</div>
+      <div class="pill">💰 Coins : <strong>{{ $coins }}</strong></div>
+      <div class="pill">Sélection : <strong class="sel">{{ ucfirst($selected) }}</strong></div>
+    </div>
+
+    <h2>Gratuits</h2>
+    <div class="grid">
+      @foreach($groups['free'] as $a)
+        <div class="card">
+          <h3>{{ $a['name'] }}</h3>
+          <div class="skills">
+            @forelse($a['skills'] as $s) <span class="badge">{{ $s }}</span> @empty <span class="small">Sans bonus</span> @endforelse
+          </div>
+          <form method="POST" action="{{ route('avatar.select') }}">
+            @csrf
+            <input type="hidden" name="avatar" value="{{ $a['slug'] }}">
+            <button class="btn btn-ok" type="submit">✅ Choisir</button>
+          </form>
+        </div>
+      @endforeach
+    </div>
+
+    <h2 class="mt">Avatars Stratégiques</h2>
+    <div class="grid">
+      @foreach($groups['stratégique'] as $a)
+        <div class="card">
+          <h3>{{ $a['name'] }}</h3>
+          <div class="skills">
+            @foreach($a['skills'] as $s) <span class="badge">{{ $s }}</span> @endforeach
+          </div>
+
+          @if($a['unlocked'])
+            <form method="POST" action="{{ route('avatar.select') }}">
+              @csrf
+              <input type="hidden" name="avatar" value="{{ $a['slug'] }}">
+              <button class="btn btn-ok" type="submit">✅ Choisir</button>
+            </form>
+          @else
+            <div class="lock">
+              <div>
+                @if(!empty($a['unlock_quest']))
+                  <div class="small">Débloque via la quête <strong>{{ $a['unlock_quest'] }}</strong></div>
+                  <a class="btn btn-primary" href="{{ $questsUrl }}">Aller aux Quêtes</a>
+                @elseif(!empty($a['price']))
+                  <div class="small">Prix : {{ $a['price'] }} coins</div>
+                  <form method="POST" action="{{ route('avatar.buy') }}" style="display:inline">
+                    @csrf
+                    <input type="hidden" name="avatar" value="{{ $a['slug'] }}">
+                    <button class="btn btn-warn" type="submit">Acheter</button>
+                  </form>
+                  @if($hasShop)
+                    <a class="btn" href="{{ $shopUrl }}">Boutique</a>
+                  @endif
+                @endif
+              </div>
+            </div>
+          @endif
+        </div>
+      @endforeach
+    </div>
+
+    <h2 class="mt">Premium</h2>
+    <div class="grid">
+      @foreach($groups['premium'] as $a)
+        <div class="card">
+          <h3>{{ $a['name'] }}</h3>
+          <div class="skills">
+            @foreach($a['skills'] as $s) <span class="badge">{{ $s }}</span> @endforeach
+          </div>
+
+          @if($a['unlocked'])
+            <form method="POST" action="{{ route('avatar.select') }}">
+              @csrf
+              <input type="hidden" name="avatar" value="{{ $a['slug'] }}">
+              <button class="btn btn-ok" type="submit">✅ Choisir</button>
+            </form>
+          @else
+            <div class="lock">
+              <div>
+                <div class="small">Prix : {{ $a['price'] ?? '—' }} coins</div>
+                @if(!empty($a['price']))
+                  <form method="POST" action="{{ route('avatar.buy') }}" style="display:inline">
+                    @csrf
+                    <input type="hidden" name="avatar" value="{{ $a['slug'] }}">
+                    <button class="btn btn-warn" type="submit">Acheter</button>
+                  </form>
+                @endif
+                @if($hasShop)
+                  <a class="btn" href="{{ $shopUrl }}">Boutique</a>
+                @endif
+              </div>
+            </div>
+          @endif
+        </div>
+      @endforeach
+    </div>
+
+  </div>
+</div>
+@endsection

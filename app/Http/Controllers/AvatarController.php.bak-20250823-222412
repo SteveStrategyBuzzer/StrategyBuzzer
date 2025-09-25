@@ -1,0 +1,158 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+// Optionnel: on lit le catalogue s'il existe
+use App\Services\AvatarCatalog;
+
+class AvatarController extends Controller
+{
+    /** Ordre canonique des 12 stratégiques */
+    private const STRATEGIQUE_ORDER = [
+        'mathematicien','scientifique','explorateur','defenseur',
+        'comedienne','magicienne','challenger','historien',
+        'ia-junior','stratege','sprinteur','visionnaire',
+    ];
+
+    /** Grades de rareté */
+    private const STRATEGIQUE_TIERS = [
+        // Rare
+        'mathematicien' => 'Rare',
+        'scientifique'  => 'Rare',
+        'explorateur'   => 'Rare',
+        'defenseur'     => 'Rare',
+        // Épique
+        'comedienne'    => 'Épique',
+        'magicienne'    => 'Épique',
+        'challenger'    => 'Épique',
+        'historien'     => 'Épique',
+        // Légendaire
+        'ia-junior'     => 'Légendaire',
+        'stratege'      => 'Légendaire',
+        'sprinteur'     => 'Légendaire',
+        'visionnaire'   => 'Légendaire',
+    ];
+
+    /** Packs connus pour le carrousel milieu */
+    private const PACKS = [
+        'portraits','cartoon','animal','mythique','paysage','objet','clown','musicien','automobile',
+    ];
+
+    /** Page principale Avatars */
+    public function index(Request $request)
+    {
+        $coins     = (int) $request->session()->get('coins', 0);
+        $selected  = (string) $request->session()->get('selected', '');
+        $unlocked  = (array) $request->session()->get('unlocked', []); // slugs stratégiques + packs débloqués
+
+        // On tente de lire des infos (nom/prix/quête) depuis un service s'il existe
+        $catalog = class_exists(AvatarCatalog::class) ? (array) AvatarCatalog::get() : [];
+
+        $stratégiquesFromCatalog = (array) ($catalog['stratégiques']['items'] ?? []);
+        $stratégiqueCards = [];
+
+        foreach (self::STRATEGIQUE_ORDER as $slug) {
+            $meta  = $stratégiquesFromCatalog[$slug] ?? [];
+            $name  = $meta['name'] ?? ucfirst(str_replace('-', ' ', $slug));
+            $price = $meta['price'] ?? null;
+            $quest = $meta['unlock_quest'] ?? null;
+
+            $stratégiqueCards[] = [
+                'slug'         => $slug,
+                'name'         => $name,
+                'tier'         => self::STRATEGIQUE_TIERS[$slug] ?? 'Rare',
+                'price'        => $price,
+                'unlock_quest' => $quest,
+                'unlocked'     => in_array($slug, $unlocked, true),
+            ];
+        }
+
+        // Packs débloqués (pour retirer le flou des cartes pack)
+        $unlockedPacks = array_values(array_intersect(self::PACKS, $unlocked));
+
+        // Groupes demandés par la vue (free n'est pas utilisé pour le bloc haut, mais on le laisse)
+        $groups = [
+            'free'    => [
+                ['slug' => 'standard', 'name' => 'standard', 'skills' => [], 'unlocked' => true],
+            ],
+            'stratégique'  => $stratégiqueCards,
+            'premium' => [], // non utilisé ici
+        ];
+
+        return view('avatar', [
+            'coins'          => $coins,
+            'selected'       => $selected,
+            'groups'         => $groups,
+            'unlockedPacks'  => $unlockedPacks,
+        ]);
+    }
+
+    /** Choisir un avatar (chemin image standard / slug stratégique) */
+    public function select(Request $request)
+    {
+        $request->validate(['avatar' => 'required|string']);
+        $avatar = $request->input('avatar');
+
+        $request->session()->put('selected', $avatar);
+
+        return back()->with('success', 'Avatar sélectionné.');
+    }
+
+    /**
+     * Achat direct (hérité de l’ancienne page) — la boutique utilise /boutique/purchase.
+     * On garde un comportement minimal compatible.
+     */
+    public function buy(Request $request)
+    {
+        $request->validate(['avatar' => 'required|string']);
+        $target   = $request->input('avatar');
+        $coins    = (int) $request->session()->get('coins', 0);
+        $unlocked = (array) $request->session()->get('unlocked', []);
+
+        $price = 0;
+        if (class_exists(AvatarCatalog::class)) {
+            $catalog = (array) AvatarCatalog::get();
+            if (isset($catalog[$target]['price'])) {
+                $price = (int) $catalog[$target]['price'];
+            } elseif (isset($catalog['stratégiques']['items'][$target]['price'])) {
+                $price = (int) $catalog['stratégiques']['items'][$target]['price'];
+            }
+        }
+
+        if ($price > $coins) {
+            return back()->with('error', 'Pièces insuffisantes.');
+        }
+
+        $request->session()->put('coins', $coins - $price);
+
+        if (!in_array($target, $unlocked, true)) {
+            $unlocked[] = $target;
+            $request->session()->put('unlocked', $unlocked);
+        }
+
+        return back()->with('success', 'Débloqué avec succès !');
+    }
+
+    /** Déblocage via quête (alias possible: unlockByQuest) */
+    public function unlockByQuest(Request $request)
+    {
+        $request->validate(['avatar' => 'required|string']);
+        $slug = $request->input('avatar');
+
+        $unlocked = (array) $request->session()->get('unlocked', []);
+        if (!in_array($slug, $unlocked, true)) {
+            $unlocked[] = $slug;
+            $request->session()->put('unlocked', $unlocked);
+        }
+
+        return back()->with('success', 'Débloqué via quête !');
+    }
+
+    /** Compat: certaines routes appellent unlock() */
+    public function unlock(Request $request)
+    {
+        return $this->unlockByQuest($request);
+    }
+}

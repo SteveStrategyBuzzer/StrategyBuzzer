@@ -1,0 +1,22 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+
+// Accueil : si connecté -> menu ; sinon -> start
+Route::get('/', function () {
+    return Auth::check()
+        ? redirect()->route('menu')
+        : view('start');
+})->name('start');
+
+// Écran de connexion (deux boutons)
+Route::view('/connexion', 'connexion')->name('connexion');
+
+// Alias /login -> /connexion
+Route::redirect('/login', '/connexion')->name('login');
+
+// Menu
+Route::view('/menu', 'menu')->name('menu');
+
+// (Laisse tes routes OAuth existantes ailleurs dans le projet)

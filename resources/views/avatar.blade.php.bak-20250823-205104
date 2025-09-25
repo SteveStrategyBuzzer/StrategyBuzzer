@@ -1,0 +1,144 @@
+@extends('layouts.app')
+
+@section('content')
+<style>
+:root{
+  --bg:#003DA5; --card:#0b2a66; --ok:#22c55e; --muted:#94a3b8; --ink:#ffffff;
+  --shadow: 0 10px 24px rgba(0,0,0,.18);
+  --radius: 16px; --gap: 14px;
+}
+.page{min-height:100dvh;background:var(--bg);color:var(--ink);padding:24px;}
+.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+/* header */
+.header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;margin-bottom:4px}
+.h-title{font-size:clamp(1.6rem,3vw,2rem);font-weight:800}
+.pill{background:#0f3b8a;border-radius:999px;padding:8px 12px}
+.pill b{color:#fff}
+
+/* helpers */
+.row{display:flex;gap:var(--gap);justify-content:center;align-items:center}
+.center-wrap{display:flex;justify-content:center}
+
+/* cards */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;border:1px solid rgba(255,255,255,.08);position:relative;box-shadow:var(--shadow)}
+.card .inner{display:flex;align-items:center;justify-content:center;min-height:110px;cursor:pointer}
+.card h3{margin:0;font-size:1.15rem;letter-spacing:.3px}
+.badge{position:absolute;top:10px;left:10px;font-size:.9rem;background:rgba(255,255,255,.12);padding:6px 10px;border-radius:999px}
+.locked{filter: blur(2px) saturate(.7); opacity:.72;}
+.lock-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,transparent,rgba(0,0,0,.45));pointer-events:none;border-radius:var(--radius)}
+.btn{display:inline-block;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 12px;color:#fff;text-decoration:none;cursor:pointer;background:#1e90ff}
+.btn.ok{background:var(--ok);border-color:var(--ok)}
+.alert{margin:6px 0;padding:10px 12px;border-radius:10px}
+.alert-ok{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35)}
+.alert-ko{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35)}
+
+/* Thumbs (modale) */
+.thumbs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
+@media (max-width:760px){ .thumbs{grid-template-columns:repeat(3,1fr)} }
+.thumb{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0f1530}
+.thumb img{width:100%;height:140px;object-fit:cover;display:block}
+.thumb .actions{display:flex;gap:8px;padding:8px;justify-content:center;background:rgba(0,0,0,.35)}
+
+/* Modal */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50;background:rgba(0,0,0,.55)}
+.modal.open{display:flex}
+.modal-panel{width:min(980px,92vw);max-height:86vh;overflow:auto;background:#0b1020;border:1px solid rgba(255,255,255,.1);border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;position:sticky;top:0;background:#0b1020;border-bottom:1px solid rgba(255,255,255,.06)}
+.modal-title{font-weight:800;letter-spacing:.4px}
+.modal-body{padding:18px}
+
+/* Standards mini-carousel */
+.std-wrap{display:flex;justify-content:center}
+.std-viewport{overflow:hidden;max-width:960px}
+.std-track{display:flex;gap:10px;will-change:transform}
+.std-thumb{width:100px;height:100px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#0f1530;flex:0 0 100px}
+.std-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.std-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2);width:34px;height:34px;border-radius:999px;display:grid;place-items:center;cursor:pointer;z-index:5}
+.std-left{left:6px} .std-right{right:6px}
+
+/* Carousel packs (3 visibles desktop) */
+.carousel{position:relative;margin:6px 0 10px}
+.viewport{overflow:hidden;margin:0 auto;max-width:960px}
+.track{display:flex;gap:var(--gap);will-change:transform;touch-action:pan-y;user-select:none}
+.pack-card{width:300px;flex:0 0 300px}
+@media (max-width:760px){
+  .viewport{max-width:92vw}
+  .pack-card{width:92vw;flex:0 0 92vw}
+}
+.arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2);width:38px;height:38px;border-radius:999px;display:grid;place-items:center;cursor:pointer;z-index:5}
+.arrow.left{left:6px} .arrow.right{right:6px}
+.arrow span{font-size:18px;line-height:1}
+
+/* Scale transition hint */
+.pack-anim{transition: transform .3s cubic-bezier(.2,.8,.2,1), opacity .3s ease}
+.pack-anim.outgoing{transform: scale(.96); opacity:.9}
+.pack-anim.incoming{transform: scale(1.02); opacity:1}
+
+/* mini strip in pack cards */
+.mini-strip{display:flex;gap:6px;margin-top:10px;justify-content:center}
+.mini-strip img{width:46px;height:46px;border-radius:8px;object-fit:cover;opacity:.95;border:1px solid rgba(255,255,255,.12)}
+
+/* Standards block (fond) */
+.standards-card .inner{min-height:112px;background:linear-gradient(135deg,#1a2d6b,#0f1e4a);border:1px solid rgba(255,255,255,.1);border-radius:12px}
+
+/* Tiers stratégiques */
+.tier{position:absolute;top:8px;left:8px;padding:4px 8px;border-radius:999px;font-size:.78rem;border:1px solid rgba(255,255,255,.22)}
+.tier.rare{background:#1e3a8a}
+.tier.epic{background:#6d28d9}
+.tier.legendary{background:#b45309}
+</style>
+
+<div class="page">
+  <div class="wrap">
+
+    @if(session('success')) <div class="alert alert-ok">{{ session('success') }}</div> @endif
+    @if(session('error'))   <div class="alert alert-ko">{{ session('error') }}</div>   @endif
+
+    <div class="header">
+      <div class="h-title">🎭 Choix des Avatars</div>
+      <div class="pill">💰 Pièces : <b>{{ number_format($coins ?? 0) }}</b></div>
+      <div class="pill">Sélection : <b>{{ isset($selected) && $selected ? ucfirst($selected) : 'Aucune' }}</b></div>
+    </div>
+
+    {{-- ==== util : scan images packs ==== --}}
+    @php
+      if (!function_exists('__sb_pack_images')) {
+        function __sb_pack_images(string $slug, int $limit = 32): array {
+          $dir = public_path("images/avatars/$slug");
+          $out = [];
+          if (is_dir($dir)) {
+            $files = glob($dir.'/*.{png,jpg,jpeg,webp}', GLOB_BRACE);
+            natsort($files);
+            foreach ($files as $f) {
+              $out[] = 'images/avatars/'.$slug.'/'.basename($f);
+              if (count($out) >= $limit) break;
+            }
+          }
+          return $out;
+        }
+      }
+    @endphp
+
+    {{-- ====== SECTION HAUT — Standards (sans titre) ====== --}}
+    <div class="card standards-card" style="position:relative">
+      <button class="std-arrow std-left"  onclick="stdPrev()" aria-label="Précédent"><span>‹</span></button>
+      <button class="std-arrow std-right" onclick="stdNext()" aria-label="Suivant"><span>›</span></button>
+      <div class="std-wrap">
+        <div class="std-viewport">
+          <div class="std-track" id="stdTrack">
+            @php
+              $stdImgs = [
+                'images/avatars/standard/standard1.png','images/avatars/standard/standard2.png','images/avatars/standard/standard3.png','images/avatars/standard/standard4.png',
+                'images/avatars/standard/standard5.png','images/avatars/standard/standard6.png','images/avatars/standard/standard7.png','images/avatars/standard/standard8.png',
+              ];
+            @endphp
+            @foreach($stdImgs as $simg)
+              <div class="std-thumb" onclick="openStandards()">
+                <img src="{{ asset($simg) }}" alt="standard">
+              </div>
+            @endforeach
+          </div>
+        </div>
+      </div>
+    </div>

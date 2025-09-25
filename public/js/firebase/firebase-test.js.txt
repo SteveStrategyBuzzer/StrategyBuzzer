@@ -1,0 +1,23 @@
+// Import de base (tu as déjà firebase-config.js dans le même dossier)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// 🔐 Configuration Firebase (importée de ton autre fichier)
+import { firebaseConfig } from './firebase-config.js';
+
+// 🔄 Initialisation de Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+console.log("✅ Connexion Firebase OK :", db);
+
+// 🔍 Test de lecture : lire tous les joueurs de la collection "Players"
+async function testReadPlayers() {
+  const avatarsRef = collection(db, "Players");
+  const snapshot = await getDocs(avatarsRef);
+  snapshot.forEach(doc => {
+    console.log("👤", doc.id, "=>", doc.data());
+  });
+}
+
+testReadPlayers();

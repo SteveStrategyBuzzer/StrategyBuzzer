@@ -1,0 +1,735 @@
+@extends('layouts.app')
+
+@section('title', 'Profile du Joueur — StrategyBuzzer')
+
+@section('content')
+@php
+    use Symfony\Component\Intl\Countries;
+    use Illuminate\Support\Facades\Route;
+    use Illuminate\Support\Facades\Auth;
+    use Carbon\Carbon;
+
+    $s = $settings ?? [];
+
+    // Normalise chemins Images -> images + fabrique URL web si nécessaire
+    $normalize = function (?string $path) {
+        if (!$path) return null;
+        $fixed = preg_replace('#^Images/#', 'images/', $path);
+        if (str_starts_with($fixed, 'http') || str_starts_with($fixed, '/')) return $fixed;
+        return asset(ltrim($fixed, '/'));
+    };
+
+    // Avatar principal
+    $avatarUrlRaw = data_get($s, 'avatar.url');
+    $avatarUrl    = $normalize($avatarUrlRaw ?: '');
+    $avatarId     = data_get($s, 'avatar.id');
+    $hasAvatar    = !empty($avatarId) || !empty($avatarUrlRaw);
+
+    // Avatar stratégique
+    $stratUrlRaw  = data_get($s, 'strategic_avatar.url');
+    $stratUrl     = $normalize($stratUrlRaw ?: '');
+    $stratId      = data_get($s, 'strategic_avatar.id');
+    $stratName    = data_get($s, 'strategic_avatar.name', '');
+    $hasStrat     = !empty($stratId) && !empty($stratUrlRaw);
+
+    // Infos joueur
+    $player       = Auth::user();
+    $playerId     = $player?->id;
+    $playerName   = $player?->name ?? 'Invité';
+    $playerEmail  = $player?->email ?? '—';
+
+    // Langue & Pays
+    $language = data_get($s, 'language', 'Français');
+    $locale   = $language === 'Anglais' ? 'en' : 'fr';
+
+    try {
+        $countries = Countries::getNames($locale);
+        asort($countries, SORT_NATURAL | SORT_FLAG_CASE);
+    } catch (\Throwable $e) {
+        // fallback si jamais Countries::getNames plante
+        $countries = [
+            'FR' => 'France',
+            'CA' => 'Canada',
+            'US' => 'États-Unis',
+            'BE' => 'Belgique',
+            'CH' => 'Suisse',
+        ];
+    }
+
+    $currentCountry = strtoupper((string) data_get($settings, 'country', ''));
+
+    // Audio / thème / visibilité
+    $ambianceOn = (bool) data_get($s, 'sound.ambiance', true);
+    $buzzerOn   = (bool) data_get($s, 'sound.buzzer', true);
+    $resultsOn  = (bool) data_get($s, 'sound.results', false);
+
+    $buzzerId = data_get($s, 'sound.buzzer_id');
+    $musicId  = data_get($s, 'sound.music_id');
+    $theme    = data_get($s, 'theme.style', 'Classique');
+
+    $unlockedBuzzers = data_get($s, 'unlocked.buzzers', []) ?: [
+        ['id'=>'classic_beep','label'=>'Classique'],
+        ['id'=>'retro','label'=>'Rétro'],
+        ['id'=>'laser','label'=>'Laser'],
+    ];
+    $unlockedMusic = data_get($s, 'unlocked.music', []) ?: [
+        ['id'=>'', 'label'=>'Aucun'],
+        ['id'=>'fun_loop_01','label'=>'Fun 01'],
+        ['id'=>'chill_loop','label'=>'Chill'],
+        ['id'=>'punchy_loop','label'=>'Punchy'],
+    ];
+    $themes = ['Classique','Fun','Intello','Party','Punchy'];
+
+    $showInLeague = data_get($s, 'show_in_league', 'Oui');
+    $showOnline   = (bool) data_get($s, 'show_online', true);
+
+    // “Maître du jeu” & niveaux
+    $grade        = (string) data_get($s, 'gm.grade', 'Rookie');
+    $soloLevel    = (int) data_get($s, 'gm.solo_level', 0);
+    $leagueLevel  = (int) data_get($s, 'gm.league_level', 0);
+
+    // ID public (par défaut = nom)
+    $pseudonym = trim((string) data_get($s, 'pseudonym', ''));
+    if ($pseudonym === '') $pseudonym = $playerName !== 'Invité' ? $playerName : '';
+
+    // URLs de choix d’avatars (retour vers profil)
+    $backToProfile        = route('profile.show');
+    $avatarsUrl           = route('avatars', ['from' => $backToProfile]);
+    $avatarsStrategicUrl  = route('avatars.strategic', ['back' => $backToProfile]);
+
+    // === Vies & compte à rebours ===
+    $lifeService = app(\App\Services\LifeService::class);
+    $user        = $player;
+    $lifeMax     = (int) config('game.life_max', 5);
+    $hasInfinite = $user && !empty($user->infinite_lives_until) && now()->lt($user->infinite_lives_until);
+
+    // Libellé "Vies"
+    $currentLivesLabel = $hasInfinite
+    ? ('∞ / ' . $lifeMax)
+    : ((string) ($user?->lives ?? 0) . ' / ' . $lifeMax);
+
+    // "Vie dans : ..."
+    $lifeCountdown = $hasInfinite
+        ? Carbon::parse($user->infinite_lives_until)->diff(now())->format('%Hh %Im %Ss')
+        : ($user ? $lifeService->timeUntilNextRegen($user) : null);
+
+    // Bust de cache après sélection d’avatar
+    $avatarBust = session('avatar_updated') ? ('?t='.time()) : '';
+@endphp
+
+<style>
+  /* ===== Layout de base ===== */
+  .sb-wrap, .sb-wrap * { box-sizing: border-box; min-width: 0; }
+  .sb-page { overflow-x: hidden; }
+  .sb-wrap { max-width:1280px; margin:0 auto; padding:20px; font-size:14px; }
+  .sb-wrap > h1 { font-size:28px; font-weight:800; text-align:center; margin-bottom:14px; }
+
+  /* ===== Panneaux ===== */
+  .sb-panel {
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:16px;
+    padding:14px;
+    height:100%;
+  }
+
+  /* ===== Grille principale (3 colonnes) ===== */
+  .sb-three{
+    display:grid !important;
+    grid-template-columns:
+      minmax(240px, calc(25% - 8px))
+      minmax(240px, calc(25% - 8px))
+      minmax(400px, calc(50% - 8px));
+    gap:12px;
+    align-items:start;
+  }
+  @media (max-width:900px){ .sb-three{ grid-template-columns:1fr 1fr; } .sb-b3{ grid-column:1 / -1; } }
+  @media (max-width:560px){ .sb-three{ grid-template-columns:1fr; } .sb-b3{ grid-column:auto; } }
+
+  /* ===== Lignes de champs (labels + valeurs) ===== */
+  .sb-row{
+    display:grid;
+    grid-template-columns:110px 1fr; /* largeur standard des labels */
+    gap:6px;
+    align-items:center;
+  }
+
+  /* ===== Vignette avatar ===== */
+  .sb-thumb{
+    width:120px; height:120px; border-radius:12px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.05);
+    box-shadow:0 0 0 2px rgba(255,255,255,.12) inset;
+    margin:0 0 10px 0; position:relative; z-index:1; cursor:pointer;
+  }
+  .sb-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  /* ===== Typo/états ===== */
+  .sb-muted{ opacity:.8; }
+  .sb-title{ font-size:18px; font-weight:800; margin:8px 0 10px; }
+  .sb-rows{ display:flex; flex-direction:column; gap:8px; }
+  .sb-k{ opacity:.85; font-weight:600; }
+  .sb-v{ opacity:.95; text-align:left; word-break:normal; } /* pas de cassures bizarres */
+
+  /* ===== Inputs ===== */
+  .sb-input{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:10px;
+    padding:.55rem .7rem;
+    color:#fff;
+    width:100%;
+    max-width:100%;         /* jamais plus large que la colonne */
+    min-width:140px;
+    text-align:left;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* ===== Inlines / toggles / sélecteurs ===== */
+  .sb-inline{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .sb-toggle{ display:flex; align-items:center; gap:.45rem; }
+  .sb-chooser{
+    position:relative; display:inline-flex; align-items:center; justify-content:center;
+    width:30px; height:28px; border:1px solid rgba(255,255,255,.35); border-radius:8px;
+    background:rgba(255,255,255,.08); cursor:pointer; font-weight:700; user-select:none;
+  }
+  .sb-chooser select{ position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; }
+  .sb-btn{ background:#fff; color:#0A2C66; border:0; border-radius:10px; padding:.6rem 1rem; font-weight:700; }
+
+  /* ===== Bulle 1 : labels alignés à gauche ===== */
+  .sb-three > .sb-panel:first-child .sb-k{ text-align:left; }
+
+  /* ===== Bulle 1 : ligne "ID joueur" seulement ===== */
+  .sb-three > .sb-panel:first-child .sb-rows > .sb-row:first-child{
+    display:grid;
+    grid-template-columns:92px 1fr; /* label compact = 92px, le reste pour le champ */
+    gap:6px;                        /* rapproche le champ du label */
+    align-items:center;
+  }
+  .sb-three > .sb-panel:first-child .sb-rows > .sb-row:first-child .sb-v{
+    padding:0 !important;
+    margin:0 !important;
+    white-space:normal !important;  /* autorise la colonne à s’étirer */
+  }
+  .sb-three > .sb-panel:first-child #idPublic{
+    display:block;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    overflow:hidden;
+    padding:.45rem .6rem;           /* gain de quelques px visuels */
+  }
+
+  /* ===== Compte à rebours d’une seule ligne ===== */
+  .sb-three > .sb-panel:first-child #sb-countdown{ white-space:nowrap; }
+/* === Spécial Bulle 3 : pousser uniquement les menus déroulants à droite === */
+.sb-b3 .sb-row .sb-v .sb-inline {
+  justify-content: flex-end; /* pousse les menus déroulants à droite */
+}
+
+.sb-b3 .sb-row .sb-v .sb-inline label {
+  margin-right: auto; /* garde les checkbox alignées à gauche */
+}
+
+</style>
+
+<div class="min-h-screen bg-[#0A2C66] text-white sb-page">
+  <div class="sb-wrap">
+    <h1>Profile du Joueur</h1>
+
+{{-- Bouton Menu toujours en haut à droite --}}
+    <a href="{{ route('menu') }}" 
+       class="sb-btn" 
+       style="text-decoration:none; position:absolute; top:20px; right:20px; z-index:1000;">
+        Menu
+    </a>
+
+    <div class="sb-three">
+{{-- =================== BULLE 1 (25%) : Avatar principal =================== --}}
+<div class="sb-panel">
+  <div class="sb-muted mb-1">Avatar principal</div>
+
+  <a class="sb-thumb" href="{{ $avatarsUrl }}" title="Choisir / Modifier l'avatar">
+@if(session('avatar_image'))
+  <img src="{{ session('avatar_image') }}" alt="Avatar du joueur" style="width:120px;height:auto;">
+@elseif($hasAvatar)
+  <img src="{{ ($avatarUrl ?? asset('images/avatars/default.png')) . $avatarBust }}" alt="Avatar du joueur">
+@else
+  <span class="underline" style="font-size:13px">Choisir avatar</span>
+@endif
+
+  </a>
+
+  <div class="sb-rows">
+    <div class="sb-row">
+      <div class="sb-k">ID joueur</div>
+      <div class="sb-v">
+        <input class="sb-input" type="text" name="pseudonym" form="profileForm"
+               placeholder="Votre ID public" value="{{ $pseudonym }}" id="idPublic">
+      </div>
+    </div>
+
+    <div class="sb-row">
+      <div class="sb-k">Langue</div>
+      <div class="sb-v" id="apercu-lang">{{ $language }}</div>
+    </div>
+
+    <div class="sb-row">
+      <div class="sb-k">Pays</div>
+      <div class="sb-v" id="apercu-pays">
+        {{ $currentCountry && isset($countries[$currentCountry]) ? $countries[$currentCountry] : '—' }}
+      </div>
+    </div>
+
+    <div class="sb-row">
+      <div class="sb-k">Thème</div>
+      <div class="sb-v" id="apercu-theme">{{ $theme }}</div>
+    </div>
+
+    <div class="sb-row">
+      <div class="sb-k">Ambiance</div>
+      <div class="sb-v" id="apercu-ambiance">
+        {{ $musicId ? collect($unlockedMusic)->firstWhere('id',$musicId)['label'] ?? 'Aucun' : 'Aucun' }}
+      </div>
+    </div>
+
+    <div class="sb-row">
+      <div class="sb-k">Buzzer</div>
+      <div class="sb-v" id="apercu-buzzer">
+        {{ collect($unlockedBuzzers)->firstWhere('id',$buzzerId)['label'] ?? 'Classique' }}
+      </div>
+    </div>
+
+<div class="sb-row">
+  <div class="sb-k">Gameplay</div>
+  <div class="sb-v" id="apercu-gameplay">
+    @if($resultsOn && !empty($musicId))
+      {{ collect($unlockedMusic)->firstWhere('id', $musicId)['label'] ?? '—' }}
+    @else
+      Désactivé
+    @endif
+  </div>
+</div>
+
+    {{-- === DÉPLACÉ DE LA BULLE 2 → BULLE 1 === --}}
+@php
+  $currentLives = $user && isset($user->lives) ? (int)$user->lives : $lifeMax;
+  $livesLabel   = $hasInfinite ? '∞ / ' . $lifeMax : "{$currentLives} / {$lifeMax}";
+  $target       = $hasInfinite ? $user->infinite_lives_until : ($user?->next_life_regen);
+@endphp
+
+<div class="sb-row">
+  <div class="sb-k">Vies</div>
+  <div class="sb-v" id="sb-lives-label">{{ $livesLabel }}</div>
+</div>
+
+<div class="sb-row">
+  <div class="sb-k">Vie dans</div>
+  <div class="sb-v">
+    <span
+      id="sb-countdown"
+      data-type="{{ $hasInfinite ? 'infinite_pack' : (($user && $user->lives < $lifeMax && $user->next_life_regen) ? 'life_regen' : 'idle') }}"
+      data-target="{{ $target ? \Carbon\Carbon::parse($target)->toIso8601String() : '' }}"
+      data-life-max="{{ $lifeMax }}"
+      data-regen-mins="{{ (int) config('game.life_regen_minutes', 60) }}"
+      data-wait-text="{{ (string) config('game.life_wait_text', 'en attente 1h 00m 00s') }}"
+      data-lives="{{ $currentLives }}"
+    >
+      @if($hasInfinite)
+        {{ \Carbon\Carbon::parse($user->infinite_lives_until)->diff(now())->format('%Hh %Im %Ss') }}
+      @elseif($user && $user->lives >= $lifeMax)
+        {{ config('game.life_wait_text', 'en attente 1h 00m 00s') }}
+      @else
+        {{ $lifeService->timeUntilNextRegen($user) ?? '—' }}
+      @endif
+    </span>
+  </div>
+</div>
+
+
+    {{-- === FIN DÉPLACEMENT === --}}
+  </div>
+</div>
+
+{{-- ==================== BULLE 2 (25%) : Avatar stratégique ==================== --}} 
+<div class="sb-panel sb-b2">
+
+  <div class="sb-muted mb-1">Avatar stratégique</div>
+
+  {{-- Vignette avatar stratégique --}}
+  <a class="sb-thumb" 
+     href="{{ route('avatars', ['from' => 'profile']) }}" 
+     title="Choisir / Modifier l'avatar stratégique">
+      @if($stratUrl ?? false)
+          <img src="{{ $stratUrl . $avatarBust }}" alt="Avatar stratégique">
+      @else
+          <span class="underline" style="font-size:13px;">Choisir avatar stratégique</span>
+      @endif
+  </a>
+
+  <div class="sb-rows">
+
+{{-- Nom avatar + Skills --}}
+<div class="sb-row" style="flex-direction:column; align-items:flex-start; text-align:left; gap:4px;">
+  
+  {{-- Label --}}
+  <div class="sb-k" style="font-weight:600; opacity:.9;">Nom avatar</div>
+
+  {{-- Badge du nom --}}
+  @php
+    $tierColors = ['Rare' => '#1E90FF', 'Épique' => '#800080', 'Légendaire' => '#FFD700'];
+    $tier   = $stratTier ?? null;
+    $color  = $tierColors[$tier] ?? '#ccc';
+  @endphp
+  <div style="display:inline-block; background:#fff; color:{{ $color }};
+              padding:2px 8px; border-radius:6px; font-size:13px; font-weight:bold;
+              border:2px solid {{ $color }};">
+    {{ $stratName ?? '—' }}
+  </div>
+
+  {{-- Skills list alignés à gauche --}}
+  @if(!empty($stratSkills))
+    <div style="margin-top:4px; display:flex; flex-direction:column; gap:2px; font-size:12px; text-align:left;">
+      @foreach($stratSkills as $skill)
+        <span>• {{ $skill }}</span>
+      @endforeach
+    </div>
+  @endif
+
+</div>
+
+    {{-- Niveau solo --}}
+    <div class="sb-row">
+      <div class="sb-k" style="text-align:left;">Niveau solo</div>
+      <div class="sb-v" style="text-align:right;">{{ $soloLevel ?? 0 }}</div>
+    </div>
+
+    {{-- Niveau ligue --}}
+    <div class="sb-row">
+      <div class="sb-k" style="text-align:left;">Niveau ligue</div>
+      <div class="sb-v" style="text-align:right;">{{ $leagueLevel ?? 0 }}</div>
+    </div>
+
+    {{-- Maître du jeu --}}
+    <div class="sb-row">
+      <div class="sb-k" style="text-align:left;">Maître du jeu</div>
+      <div class="sb-v" style="text-align:right;">{{ $grade ?? 'Rookie' }}</div>
+    </div>
+
+    {{-- Compte --}}
+    <div class="sb-row" style="margin-top:10px;">
+      <div class="sb-k" style="text-align:left;">Compte</div>
+      <div class="sb-v" style="grid-column: span 2; text-align:left; display:flex; flex-direction:column; gap:2px;">
+        @if($player?->provider === 'facebook')
+          <span>Facebook</span>
+        @elseif($player?->provider === 'google')
+          <span>Google</span>
+        @else
+          <span>#DB: {{ $playerId ?? '—' }}</span>
+        @endif
+        <span>{{ $playerEmail ?? '—' }}</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{{-- =================== BULLE 3 (50%) : Réglages =================== --}}
+<form id="profileForm" method="POST"
+      action="{{ Route::has('profile.update') ? route('profile.update') : '#' }}"
+      class="sb-panel sb-b3">
+  @csrf
+  <div class="sb-title">Réglages</div>
+
+  <div class="sb-rows">
+    {{-- Langue --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">Langue</div>
+      <div class="sb-v" style="text-align:right;">
+        <span class="sb-chooser" title="Choisir">▼
+          <select name="language" id="sel-lang">
+            <option value="Français" @selected($language==='Français')>Français</option>
+            <option value="Anglais"  @selected($language==='Anglais')>Anglais</option>
+          </select>
+        </span>
+      </div>
+    </div>
+
+    {{-- Pays --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">Pays</div>
+      <div class="sb-v" style="text-align:right;">
+        <span class="sb-chooser" title="Choisir">▼
+          <select name="country" id="sel-pays">
+            <option value="">—</option>
+            @foreach($countries as $code => $name)
+              <option value="{{ $code }}" @selected($currentCountry === $code)>{{ $name }}</option>
+            @endforeach
+          </select>
+        </span>
+      </div>
+    </div>
+
+    {{-- Visible en ligue --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">Visible en ligue</div>
+      <div class="sb-v" style="text-align:right;">
+        <span class="sb-chooser" title="Choisir">▼
+          <select name="show_in_league" id="sel-ligue">
+            <option value="Oui" @selected($showInLeague==='Oui')>Oui</option>
+            <option value="Non" @selected($showInLeague==='Non')>Non</option>
+          </select>
+        </span>
+      </div>
+    </div>
+
+    {{-- Thème --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">Thème</div>
+      <div class="sb-v" style="text-align:right;">
+        <span class="sb-chooser" title="Choisir">▼
+          <select name="theme[style]" id="sel-theme">
+            @foreach($themes as $t)
+              <option value="{{ $t }}" @selected($theme === $t)>{{ $t }}</option>
+            @endforeach
+          </select>
+        </span>
+      </div>
+    </div>
+
+    {{-- 🎵 Musique --}}
+    <div style="text-align:center; font-weight:bold; margin:10px 0; opacity:.9;">
+      🎵 Musique
+    </div>
+
+    {{-- Ambiance --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">Ambiance</div>
+      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+        <label class="sb-toggle" style="margin-right:auto;">
+          <input type="checkbox" name="options[ambiance]" value="1" id="chk-amb" {{ $ambianceOn ? 'checked' : '' }}>
+          <span>Activer</span>
+        </label>
+        <span class="sb-chooser" title="Choisir">▼
+          <select name="sound[music_id]" id="sel-amb">
+            @foreach($unlockedMusic as $m)
+              <option value="{{ $m['id'] }}" @selected((string)$musicId === (string)$m['id'])>{{ $m['label'] }}</option>
+            @endforeach
+          </select>
+        </span>
+      </div>
+    </div>
+
+    {{-- Gameplay --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">Gameplay</div>
+      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+        <label class="sb-toggle" style="margin-right:auto;">
+          <input type="checkbox" name="options[results]" value="1" id="chk-gameplay" {{ $resultsOn ? 'checked' : '' }}>
+          <span>Activer</span>
+        </label>
+        <span class="sb-chooser" title="Choisir">▼
+          <select name="gameplay[music_id]" id="sel-gameplay">
+            @foreach($unlockedMusic as $m)
+              <option value="{{ $m['id'] }}">{{ $m['label'] }}</option>
+            @endforeach
+          </select>
+        </span>
+      </div>
+    </div>
+
+    {{-- 🔊 Son --}}
+    <div style="text-align:center; font-weight:bold; margin:10px 0; opacity:.9;">
+      🔊 Son
+    </div>
+
+    {{-- Buzzer --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">Buzzer</div>
+      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+        <label class="sb-toggle" style="margin-right:auto;">
+          <input type="checkbox" name="options[buzzer]" value="1" id="chk-buzz" {{ $buzzerOn ? 'checked' : '' }}>
+          <span>Activer</span>
+        </label>
+        <span class="sb-chooser" title="Choisir">▼
+          <select name="sound[buzzer_id]" id="sel-buzz">
+            @foreach($unlockedBuzzers as $b)
+              <option value="{{ $b['id'] }}" @selected((string)$buzzerId === (string)$b['id'])>{{ $b['label'] }}</option>
+            @endforeach
+          </select>
+        </span>
+      </div>
+    </div>
+
+    {{-- Bouton --}}
+    <div style="margin-top:10px; text-align:center;">
+      <button type="submit" class="sb-btn">Enregistrer</button>
+    </div>
+  </div>
+</form>
+
+<script>
+// Script 1 : Mise à jour immédiate des aperçus
+document.addEventListener('DOMContentLoaded', () => {
+  const byId = id => document.getElementById(id);
+  const setTxt = (id, v) => { const n = byId(id); if(n) n.textContent = v; };
+
+  const selLang  = byId('sel-lang');
+  const selPays  = byId('sel-pays');
+  const selTheme = byId('sel-theme');
+  const selAmb   = byId('sel-amb');
+  const selBuzz  = byId('sel-buzz');
+  const chkAmb   = byId('chk-amb');     // ✅ toggle Ambiance
+  const chkGame  = byId('chk-gameplay'); // ✅ toggle Gameplay
+  const selLigue = byId('sel-ligue');
+
+  // Fonctions génériques pour Ambiance & Gameplay
+  const updateAmbiance = () => {
+    if (chkAmb && selAmb) {
+      if (chkAmb.checked) {
+        setTxt('apercu-ambiance', selAmb.options[selAmb.selectedIndex].text || 'Classique');
+      } else {
+        setTxt('apercu-ambiance', 'Désactivé');
+      }
+    }
+  };
+
+  const updateGameplay = () => {
+    if (chkGame && selAmb) { // Gameplay utilise aussi la musique comme base
+      if (chkGame.checked) {
+        setTxt('apercu-gameplay', selAmb.options[selAmb.selectedIndex].text || 'Classique');
+      } else {
+        setTxt('apercu-gameplay', 'Désactivé');
+      }
+    }
+  };
+
+  // Langue / Pays / Thème
+  if (selLang)  selLang.addEventListener('change', () => setTxt('apercu-lang',  selLang.options[selLang.selectedIndex].text));
+  if (selPays)  selPays.addEventListener('change', () => setTxt('apercu-pays',  selPays.options[selPays.selectedIndex].text || '—'));
+  if (selTheme) selTheme.addEventListener('change', () => setTxt('apercu-theme', selTheme.value));
+  if (selLigue) selLigue.addEventListener('change', () => setTxt('apercu-ligue', selLigue.value));
+
+  // Ambiance (toggle + menu)
+  if (chkAmb)  chkAmb.addEventListener('change', updateAmbiance);
+  if (selAmb)  selAmb.addEventListener('change', updateAmbiance);
+
+  // Gameplay (toggle + menu)
+  if (chkGame) chkGame.addEventListener('change', updateGameplay);
+  if (selAmb)  selAmb.addEventListener('change', updateGameplay);
+
+  // Buzzer
+  if (selBuzz) selBuzz.addEventListener('change', () => setTxt('apercu-buzzer', selBuzz.options[selBuzz.selectedIndex].text));
+
+  // Initialisation au chargement
+  updateAmbiance();
+  updateGameplay();
+});
+</script>
+
+{{-- Script 2 : Compte à rebours vivant (vies & packs) --}}
+<script>
+(function () {
+  const el = document.getElementById('sb-countdown');
+  if (!el) return;
+
+  const livesLabelEl = document.getElementById('sb-lives-label');
+  let type        = el.dataset.type;              // 'life_regen' | 'infinite_pack' | 'idle'
+  let targetIso   = el.dataset.target || null;    // ISO date
+  const lifeMax   = parseInt(el.dataset.lifeMax || '5', 10);
+  const regenMins = parseInt(el.dataset.regenMins || '60', 10);
+  const waitText  = el.dataset.waitText || 'en attente 1h 00m 00s';
+  let lives       = parseInt(el.dataset.lives || '0', 10);
+
+  const fmt = (ms) => {
+    if (ms < 0) ms = 0;
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+  };
+
+  const syncServer = () => {
+    fetch("{{ route('profile.regen') }}", {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    }).then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        // Met à jour l’UI d’après la vérité serveur
+        if (livesLabelEl) livesLabelEl.textContent = `${data.lives} / {{ (int)config('game.life_max',5) }}`;
+        if (data.countdown && el) el.textContent = data.countdown;
+        if (data.next_life_regen) {
+          // Si non max, on repart correctement au nouveau cycle
+          if (data.lives < {{ (int)config('game.life_max',5) }}) {
+            type = 'life_regen';
+            targetIso = data.next_life_regen;
+          } else {
+            type = 'idle';
+            targetIso = null;
+          }
+        }
+      });
+  };
+
+  const tick = () => {
+    if (type === 'idle' || !targetIso) {
+      el.textContent = waitText; // vies max ou pas de timer
+      return;
+    }
+
+    const target = new Date(targetIso).getTime();
+    const now    = Date.now();
+    const diffMs = target - now;
+
+    if (diffMs > 0) {
+      el.textContent = fmt(diffMs);
+      return;
+    }
+
+    // arrivé à 0
+    if (type === 'infinite_pack') {
+      type = 'idle';
+      targetIso = null;
+      el.textContent = waitText;
+      if (livesLabelEl) livesLabelEl.textContent = `${Math.min(lives, lifeMax)} / ${lifeMax}`;
+      // ping au cas où la période infinie a expiré côté serveur
+      syncServer();
+      return;
+    }
+
+    if (type === 'life_regen') {
+      // incrément optimiste côté front
+      lives = Math.min(lives + 1, lifeMax);
+      if (livesLabelEl) livesLabelEl.textContent = `${lives} / ${lifeMax}`;
+
+      if (lives >= lifeMax) {
+        type = 'idle';
+        targetIso = null;
+        el.textContent = waitText;
+      } else {
+        const next = new Date(Date.now() + regenMins * 60 * 1000);
+        targetIso = next.toISOString();
+        el.textContent = fmt(regenMins * 60 * 1000);
+      }
+
+      // synchronise immédiatement côté serveur
+      syncServer();
+    }
+  };
+
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+@endsection

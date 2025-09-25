@@ -1,0 +1,131 @@
+@extends('layouts.app')
+
+@section('title', 'Profile du Joueur — StrategyBuzzer')
+
+@section('content')
+@php
+    $s        = $settings ?? [];
+
+    // petit util pour corriger "Images/..." -> "images/..." et générer une URL web
+    $normalize = function (?string $path) {
+        if (!$path) return null;
+        $fixed = preg_replace('#^Images/#', 'images/', $path);   // corrige la casse
+        if (str_starts_with($fixed, 'http') || str_starts_with($fixed, '/')) {
+            return $fixed;
+        }
+        return asset(ltrim($fixed, '/'));
+    };
+
+    // Données avatar principal
+    $avatarUrlRaw  = data_get($s, 'avatar.url');
+    $avatarUrl     = $normalize($avatarUrlRaw ?: '');
+    $avatarId      = data_get($s, 'avatar.id');
+    $avatarName    = data_get($s, 'avatar.name', '');
+    $hasAvatar     = !empty($avatarId) || !empty($avatarUrlRaw);
+
+    // Données avatar stratégique (12 avatars spéciaux)
+    $stratUrlRaw   = data_get($s, 'strategic_avatar.url');
+    $stratUrl      = $normalize($stratUrlRaw ?: '');
+    $stratId       = data_get($s, 'strategic_avatar.id');
+    $stratName     = data_get($s, 'strategic_avatar.name', '');
+    $hasStrat      = !empty($stratId) && !empty($stratUrlRaw);
+
+    // Pseudo + ID
+    $pseudo   = data_get($s, 'pseudonym', 'Joueur');
+    $playerId = \Illuminate\Support\Facades\Auth::id();
+@endphp
+
+<div class="min-h-screen bg-[#0A2C66] text-white">
+    <div class="max-w-6xl mx-auto px-4 py-10">
+        <h1 class="text-4xl font-extrabold tracking-tight mb-8">Profile du Joueur</h1>
+
+        {{-- ===================== AVATARS (côte-à-côte) ===================== --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {{-- -------- Avatar principal -------- --}}
+            <section class="bg-white/5 border border-white/20 rounded-2xl p-5">
+                <h2 class="text-lg font-semibold mb-3">Avatar principal</h2>
+
+                <div class="flex items-center gap-5">
+                    {{-- vignette (même taille que page Avatars ~128-160px) --}}
+                    <div class="shrink-0 rounded-xl overflow-hidden ring-2 ring-white/10 bg-white/5 flex items-center justify-center"
+                         style="width: 144px; height: 144px;">
+                        @if($hasAvatar)
+                            <img src="{{ $avatarUrl ?? asset('images/avatars/default.png') }}"
+                                 alt="Avatar du joueur"
+                                 class="w-full h-full object-cover">
+                        @else
+                            <a href="{{ \Illuminate\Support\Facades\Route::has('avatars') ? route('avatars') : '#' }}"
+                               class="text-center underline px-2">
+                                Choisir avatar
+                            </a>
+                        @endif
+                    </div>
+
+                    <div class="flex-1">
+                        <div class="font-bold text-xl">{{ $pseudo }}</div>
+                        <div class="opacity-80">{{ $avatarName ?: '—' }}</div>
+
+                        <div class="mt-3">
+                            @if(\Illuminate\Support\Facades\Route::has('avatars'))
+                                <a href="{{ route('avatars') }}"
+                                   class="inline-block bg-white text-[#0A2C66] font-bold py-2 px-4 rounded-lg hover:opacity-90">
+                                    Modifier
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                {{-- encadré d'info sous la vignette --}}
+                <div class="mt-4 border-t border-white/10 pt-3 text-sm">
+                    <span class="opacity-80">ID joueur :</span>
+                    <span>{{ $playerId ?? '—' }}</span>
+                </div>
+            </section>
+
+            {{-- -------- Avatar stratégique -------- --}}
+            <section class="bg-white/5 border border-white/20 rounded-2xl p-5">
+                <h2 class="text-lg font-semibold mb-3">Avatar stratégique</h2>
+
+                <div class="flex items-center gap-5">
+                    {{-- vignette (même taille que page Avatars ~128-160px) --}}
+                    <div class="shrink-0 rounded-xl overflow-hidden ring-2 ring-white/10 bg-white/5 flex items-center justify-center"
+                         style="width: 144px; height: 144px;">
+                        @if($hasStrat)
+                            <img src="{{ $stratUrl }}"
+                                 alt="Avatar stratégique"
+                                 class="w-full h-full object-cover">
+                        @else
+                            <a href="@if(\Illuminate\Support\Facades\Route::has('avatars.strategic')){{ route('avatars.strategic') }}@elseif(\Illuminate\Support\Facades\Route::has('avatars')){{ route('avatars') }}@else#@endif"
+                               class="text-center underline px-2">
+                                Choisir avatar stratégique
+                            </a>
+                        @endif
+                    </div>
+
+                    <div class="flex-1">
+                        <div class="font-bold text-xl">{{ $stratName ?: '—' }}</div>
+                        <div class="opacity-80 text-sm">Seuls les 12 avatars stratégiques sont admis</div>
+                    </div>
+                </div>
+
+                {{-- encadré d'info sous la vignette --}}
+                <div class="mt-4 border-t border-white/10 pt-3 text-sm">
+                    <span class="opacity-80">Nom stratégique :</span>
+                    <span>{{ $stratName ?: '—' }}</span>
+                </div>
+            </section>
+        </div>
+        {{-- ================== / AVATARS ================== --}}
+
+        {{-- Vous pourrez remettre ici vos autres blocs (langue, pays, options...) --}}
+
+        {{-- Infos utilisateur --}}
+        <div class="bg-white/10 rounded-2xl p-6 mt-10">
+            <h2 class="text-xl font-bold mb-3">Informations du compte</h2>
+            <p><span class="opacity-80">Nom :</span> {{ Auth::user()?->name ?? 'Invité' }}</p>
+            <p><span class="opacity-80">Email :</span> {{ Auth::user()?->email ?? '—' }}</p>
+        </div>
+    </div>
+</div>
+@endsection

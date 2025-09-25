@@ -1,0 +1,157 @@
+body {
+    background-color: #003DA5;
+    color: #fff;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    background-size: cover;
+    background-position: center;
+}
+
+.start-screen {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* bouton en bas */
+    align-items: center;
+    height: 100vh;
+    padding-bottom: 80px; /* espace bas */
+}
+
+.logo img {
+    max-width: 250px;
+    margin-bottom: 20px;
+}
+
+h1 {
+    margin: 10px 0 40px;
+    font-size: 2.5rem;
+}
+
+.strategy {
+    color: #51A3DB;
+}
+
+.buzzer {
+    background-color: #1A2F44;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.btn-login {
+    background-color: #000;
+    color: #fff;
+    padding: 20px 60px;
+    text-decoration: none;
+    font-size: 1.8rem;
+    font-weight: bold;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-login:hover {
+    background-color: #333;
+}
+
+@media (max-width: 1024px) {
+    .logo img {
+        max-width: 200px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    .btn-login {
+        padding: 16px 50px;
+        font-size: 1.6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .logo img {
+        max-width: 150px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .btn-login {
+        padding: 12px 40px;
+        font-size: 1.4rem;
+    }
+}
+
+/* Page d'accueil : images selon la résolution */
+@media (min-width: 1200px) {
+    body.start-screen {
+        background-image: url('/images/StrategyBuzzer paysage et ordi HD Connexion.png');
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    body.start-screen {
+        background-image: url('/images/StrategyBuzzer tablette Connexion.png');
+    }
+}
+
+@media (max-width: 767px) {
+    body.start-screen {
+        background-image: url('/images/StrategyBuzzer 1080x 1920 Connexion.png');
+    }
+}
+
+/* Page menu uniquement */
+body.menu-screen {
+    background-image: url('/images/StrategyBuzzer paysage et ordi HD Menu.png');
+}
+
+.start-screen {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.bg-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.btn-connexion {
+    position: absolute;
+    background: black;
+    color: white;
+    font-weight: bold;
+    padding: 10px 20px;
+    text-decoration: none;
+    font-size: 1.2rem;
+    z-index: 10;
+}
+
+/* Desktop / Paysage */
+@media (min-width: 1025px) {
+    .btn-connexion {
+        top: 80%;
+        left: 70%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Tablette */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .btn-connexion {
+        top: 85%;
+        left: 60%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Mobile Portrait */
+@media o(max-width: 767px) {
+    .btn-connexion {
+        top: 90%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    

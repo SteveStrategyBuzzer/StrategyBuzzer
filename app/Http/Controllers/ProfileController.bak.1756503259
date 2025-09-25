@@ -1,0 +1,209 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
+
+class ProfileController extends Controller
+{
+    /**
+     * Valeurs par défaut robustes (ne cassent jamais).
+     */
+    private function defaults(): array
+    {
+        return [
+            // Identité
+            'pseudonym' => null, // sera obligatoire, fallback sur users.name
+
+            // Avatars
+            'avatar' => [
+                'type' => 'regular', // regular | strategic
+                'id'   => null,
+                'name' => 'Aucun avatar',
+                'url'  => asset('images/avatars/default.png'),
+            ],
+            'strategic_avatar' => [
+                'id'   => null,
+                'name' => null,
+                'url'  => asset('images/avatars/default.png'),
+            ],
+
+            // Préférences générales
+            'language'       => 'Français', // Français | Anglais
+            'country'        => '',
+            'show_in_league' => 'Oui',      // Oui | Non
+            'show_online'    => true,       // visible quand je joue
+
+            // Audio & trames
+            'sound' => [
+                'ambiance'     => true,      // toggle
+                'buzzer'       => true,      // conservé pour compat
+                'results'      => false,     // conservé pour compat
+                'buzzer_id'    => null,      // ex: classic_beep
+                'music_id'     => null,      // trame d’ambiance
+                'gameplay_mode'=> 'pair',    // pair | other
+                'gameplay_id'  => null,      // trame gameplay si "other"
+            ],
+
+            // Thème (conservé)
+            'theme' => [
+                'style' => 'Classique',
+                'decor' => null,
+            ],
+        ];
+    }
+
+    /**
+     * Lit les settings depuis l’utilisateur (JSON) si dispo, sinon tableau vide.
+     * Jamais cassant si la colonne n’existe pas.
+     */
+    private function readUserSettings(): array
+    {
+        $user = Auth::user();
+        if (!$user) return [];
+
+        try {
+            if (property_exists($user, 'profile_settings') || isset($user->profile_settings)) {
+                $raw = $user->profile_settings;
+                if (is_string($raw))  return json_decode($raw, true) ?: [];
+                if (is_array($raw))   return $raw;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Profile: lecture profile_settings impossible (colonne manquante ?): '.$e->getMessage());
+        }
+        return [];
+    }
+
+    /**
+     * Merge récursif + normalisation.
+     */
+    private function buildSettings(): array
+    {
+        // Merge des valeurs sauvegardées avec les défauts
+        $settings = array_replace_recursive($this->defaults(), $this->readUserSettings());
+
+        // Fallbacks images
+        if (empty(Arr::get($settings, 'avatar.url'))) {
+            $settings['avatar']['url'] = asset('images/avatars/default.png');
+        }
+        if (empty(Arr::get($settings, 'strategic_avatar.url'))) {
+            $settings['strategic_avatar']['url'] = asset('images/avatars/default.png');
+        }
+
+        // Normalisations
+        $settings['language']       = in_array($settings['language'] ?? null, ['Français','Anglais']) ? $settings['language'] : 'Français';
+        $settings['show_in_league'] = in_array($settings['show_in_league'] ?? null, ['Oui','Non']) ? $settings['show_in_league'] : 'Oui';
+        $settings['show_online']    = (bool)($settings['show_online'] ?? true);
+
+        // Tableaux garantis
+        $defs = $this->defaults();
+        $settings['sound'] = is_array($settings['sound'] ?? null) ? $settings['sound'] : ($defs['sound'] ?? []);
+        $settings['theme'] = is_array($settings['theme'] ?? null) ? $settings['theme'] : ($defs['theme'] ?? []);
+
+        // Pseudonyme obligatoire (fallback users.name -> "Joueur")
+        $pseudo = trim((string)($settings['pseudonym'] ?? ''));
+        if ($pseudo === '') {
+            $pseudo = trim((string)(Auth::user()?->name ?? 'Joueur'));
+        }
+        $settings['pseudonym'] = $pseudo;
+
+        return $settings;
+    }
+
+    /**
+     * Affichage du profile (toujours non-cassant).
+     */
+    public function show()
+    {
+        $settings = $this->buildSettings();
+
+        // Indicateurs de routes disponibles (pour les boutons)
+        $routes = [
+            'avatars'  => Route::has('avatars'),
+            'boutique' => Route::has('boutique'),
+            'delete'   => Route::has('account.delete.show'),
+            'update'   => Route::has('profile.update'),
+        ];
+
+        return view('profile', compact('settings', 'routes'));
+    }
+
+    /**
+     * Enregistrement des préférences.
+     */
+    public function update(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+
+        // Validation
+        $data = $request->validate([
+            // ⚠️ AJOUTS pour compat avec la vue
+            'pseudonym'               => 'required|string|min:3|max:30',
+            'show_online'             => 'nullable|boolean',
+            'sound.gameplay_mode'     => 'nullable|in:pair,other',
+            'sound.gameplay_id'       => 'nullable|string|max:64',
+
+            // Existant
+            'show_in_league'          => 'nullable|in:Oui,Non',
+            'language'                => 'nullable|in:Français,Anglais',
+            'country'                 => 'nullable|string|max:2',
+
+            'options.ambiance'        => 'nullable|boolean',
+            'options.buzzer'          => 'nullable|boolean',
+            'options.results'         => 'nullable|boolean',
+
+            'sound.buzzer_id'         => 'nullable|string|max:64',
+            'sound.music_id'          => 'nullable|string|max:64',
+
+            'theme.style'             => 'nullable|string|max:32',
+            'theme.decor'             => 'nullable|string|max:64',
+
+            'avatar.type'             => 'nullable|in:regular,strategic',
+            'avatar.id'               => 'nullable|string|max:64',
+            'avatar.name'             => 'nullable|string|max:64',
+            'avatar.url'              => 'nullable|url',
+
+            'strategic_avatar.id'     => 'nullable|string|max:64',
+            'strategic_avatar.name'   => 'nullable|string|max:64',
+            'strategic_avatar.url'    => 'nullable|url',
+        ]);
+
+        // Merge sur base actuelle
+        $settings = array_replace_recursive($this->buildSettings(), $data);
+
+        // Booleans & champs simples
+        $settings['show_online'] = $request->boolean('show_online', $settings['show_online'] ?? true);
+        Arr::set($settings, 'sound.ambiance', (bool)$request->boolean('options.ambiance', Arr::get($settings, 'sound.ambiance', true)));
+        Arr::set($settings, 'sound.buzzer',   (bool)$request->boolean('options.buzzer',   Arr::get($settings, 'sound.buzzer', true)));
+        Arr::set($settings, 'sound.results',  (bool)$request->boolean('options.results',  Arr::get($settings, 'sound.results', false)));
+
+        // Gameplay (Pair/Other)
+        Arr::set($settings, 'sound.gameplay_mode', $request->input('sound.gameplay_mode', Arr::get($settings, 'sound.gameplay_mode', 'pair')));
+        Arr::set($settings, 'sound.gameplay_id',   $request->input('sound.gameplay_id',   Arr::get($settings, 'sound.gameplay_id')));
+
+        // Fallback image avatar
+        if (empty($settings['avatar']['url'])) {
+            $settings['avatar']['url'] = asset('images/avatars/default.png');
+        }
+
+        // Pseudonyme -> refléter dans users.name (utile pour l’affichage global)
+        if (!empty($settings['pseudonym'])) {
+            $user->name = $settings['pseudonym'];
+        }
+
+        // Sauvegarde JSON si possible
+        try {
+            $user->profile_settings = $settings; // (idéalement: $casts ['profile_settings'=>'array'])
+            $user->save();
+        } catch (\Throwable $e) {
+            Log::warning('Profile: sauvegarde profile_settings impossible (colonne manquante ?): '.$e->getMessage());
+        }
+
+        return redirect()->route('profile.show')->with('status', 'Profil mis à jour.');
+    }
+}

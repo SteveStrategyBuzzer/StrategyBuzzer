@@ -1,0 +1,129 @@
+@extends('layouts.app')
+
+@section('title', 'Profile du Joueur — StrategyBuzzer')
+
+@section('content')
+@php
+    $s = $settings ?? [];
+
+    // normalise "Images/..." -> "images/..." + fabrique une URL web
+    $normalize = function (?string $path) {
+        if (!$path) return null;
+        $fixed = preg_replace('#^Images/#', 'images/', $path);
+        if (str_starts_with($fixed, 'http') || str_starts_with($fixed, '/')) return $fixed;
+        return asset(ltrim($fixed, '/'));
+    };
+
+    // Avatar principal
+    $avatarUrlRaw = data_get($s, 'avatar.url');
+    $avatarUrl    = $normalize($avatarUrlRaw ?: '');
+    $avatarId     = data_get($s, 'avatar.id');
+    $avatarName   = data_get($s, 'avatar.name', '');
+    $hasAvatar    = !empty($avatarId) || !empty($avatarUrlRaw);
+
+    // Avatar stratégique
+    $stratUrlRaw = data_get($s, 'strategic_avatar.url');
+    $stratUrl    = $normalize($stratUrlRaw ?: '');
+    $stratId     = data_get($s, 'strategic_avatar.id');
+    $stratName   = data_get($s, 'strategic_avatar.name', '');
+    $hasStrat    = !empty($stratId) && !empty($stratUrlRaw);
+
+    // Pseudo & ID
+    $pseudo   = data_get($s, 'pseudonym', 'Joueur');
+    $playerId = \Illuminate\Support\Facades\Auth::id();
+@endphp
+
+{{-- 2 colonnes sur desktop, 1 colonne en mobile --}}
+<style>
+  .sb-two-cols{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+  @media (max-width:640px){.sb-two-cols{grid-template-columns:1fr}}
+  .sb-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.2);border-radius:1rem;padding:1.25rem}
+
+  /* Vignette 160x160 + image couverte pour les DEUX avatars */
+  .sb-thumb{width:160px;height:160px;border-radius:.75rem;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px rgba(255,255,255,.12) inset;background:rgba(255,255,255,.04)}
+  .sb-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+</style>
+
+<div class="min-h-screen bg-[#0A2C66] text-white">
+  <div class="max-w-6xl mx-auto px-4 py-10">
+    <h1 class="text-4xl font-extrabold tracking-tight mb-8">Profile du Joueur</h1>
+
+    {{-- ===================== AVATARS côte-à-côte ===================== --}}
+<div class="sb-two-cols">
+
+  {{-- Avatar principal (gauche) --}}
+  <section class="sb-card">
+    <h2 class="text-lg font-semibold mb-3">Avatar principal</h2>
+
+    <div class="flex items-start gap-5">
+      <div class="sb-thumb">
+        @if($hasAvatar)
+          <img src="{{ $avatarUrl ?? asset('images/avatars/default.png') }}" alt="Avatar du joueur">
+        @else
+          <a href="{{ \Illuminate\Support\Facades\Route::has('avatars') ? route('avatars') : '#' }}"
+             class="text-center underline px-2">
+            Choisir avatar
+          </a>
+        @endif
+      </div>
+
+      <div class="flex-1">
+        <div class="font-bold text-xl">{{ $pseudo }}</div>
+        <div class="opacity-80">{{ $avatarName ?: '—' }}</div>
+
+        @if(\Illuminate\Support\Facades\Route::has('avatars'))
+          <div class="mt-3">
+            <a href="{{ route('avatars') }}"
+               class="inline-block bg-white text-[#0A2C66] font-bold py-2 px-4 rounded-lg hover:opacity-90">
+              Modifier
+            </a>
+          </div>
+        @endif
+      </div>
+    </div>
+
+    <div class="mt-4 border-t border-white/10 pt-3 text-sm">
+      <span class="opacity-80">ID joueur :</span> <span>{{ $playerId ?? '—' }}</span>
+    </div>
+  </section>
+
+  {{-- Avatar stratégique (droite) --}}
+  <section class="sb-card">
+    <h2 class="text-lg font-semibold mb-3">Avatar stratégique</h2>
+
+    <div class="flex items-start gap-5">
+      <div class="sb-thumb">
+        @if($hasStrat)
+          {{-- l’image est DANS .sb-thumb, donc elle rentre/crop correctement --}}
+          <img src="{{ $stratUrl }}" alt="Avatar stratégique">
+        @else
+          <a href="@if(\Illuminate\Support\Facades\Route::has('avatars.strategic')){{ route('avatars.strategic') }}@elseif(\Illuminate\Support\Facades\Route::has('avatars')){{ route('avatars') }}@else#@endif"
+             class="text-center underline px-2">
+            Choisir avatar stratégique
+          </a>
+        @endif
+      </div>
+
+      <div class="flex-1">
+        <div class="font-bold text-xl">{{ $stratName ?: '—' }}</div>
+        <div class="opacity-80 text-sm">Seuls les 12 avatars stratégiques sont admis</div>
+      </div>
+    </div>
+
+    <div class="mt-4 border-t border-white/10 pt-3 text-sm">
+      <span class="opacity-80">Nom stratégique :</span> <span>{{ $stratName ?: '—' }}</span>
+    </div>
+  </section>
+
+</div>
+    {{-- ================== / AVATARS ================== --}}
+
+    {{-- Infos utilisateur --}}
+    <div class="bg-white/10 rounded-2xl p-6 mt-10">
+      <h2 class="text-xl font-bold mb-3">Informations du compte</h2>
+      <p><span class="opacity-80">Nom :</span> {{ Auth::user()?->name ?? 'Invité' }}</p>
+      <p><span class="opacity-80">Email :</span> {{ Auth::user()?->email ?? '—' }}</p>
+    </div>
+  </div>
+</div>
+@endsection

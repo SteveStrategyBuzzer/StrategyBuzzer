@@ -1,0 +1,25 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+
+/** Accueil : si connecté -> menu ; sinon -> start */
+Route::get('/', function () {
+    return Auth::check()
+        ? redirect()->route('menu')
+        : view('start');
+})->name('start');
+
+/** Connexion (ancienne page avec le logo) */
+Route::view('/connexion', 'auth.login')->name('connexion');
+
+/** Alias /login -> /connexion */
+Route::redirect('/login', '/connexion')->name('login');
+
+/** Menu (ta page menu.blade.php) */
+Route::view('/menu', 'menu')->name('menu');
+
+// === Fixed login / connexion mappings (2025-08-19) ===
+Route::view('/login', 'login')->name('login');         // <-- views/login.blade.php (bannière noire)
+Route::redirect('/connexion', '/login')->name('connexion');  // <-- /connexion -> /login
+// === /fixed ===
