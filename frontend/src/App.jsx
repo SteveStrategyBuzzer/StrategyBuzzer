@@ -2,7 +2,7 @@ import React from 'react';
 
 function App() {
   const handleLogin = () => {
-    window.location.href = 'http://localhost:8080/login';
+    window.location.href = 'https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev:8080/login';
   };
 
   return (
