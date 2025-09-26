@@ -37,6 +37,6 @@ body {
 }
 </style>
 
-<a href="{{ route('login') }}" class="btn-connexion">Connexion</a>
+<a href="{{ url('/connexion') }}" class="btn-connexion">Connexion</a>
 
 @endsection
