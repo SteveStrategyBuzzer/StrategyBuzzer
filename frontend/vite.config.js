@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5000,
-    allowedHosts: ["all"], // ✅ autoriser Replit
+    allowedHosts: [".replit.dev"], // ✅ autoriser Replit
     hmr: {
       clientPort: 5000,
     },
