@@ -2,10 +2,6 @@
 
 @section('content')
 <style>
-@extends('layouts.app')
-
-@section('content')
-<style>
 body {
     margin: 0;
     padding: 0;

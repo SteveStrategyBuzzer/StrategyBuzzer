@@ -68,7 +68,7 @@ Route::get('/shop',            fn () => redirect()->route('boutique'))->name('sh
 /* ===== Menu / Auth ===== */
 Route::view('/menu', 'menu')->name('menu');
 Route::view('/login', 'login')->name('login');
-Route::view('/connexion', 'auth.login')->name('connexion');
+Route::get('/connexion', fn() => redirect('/login'))->name('connexion');
 Route::middleware('auth')->group(function () {
 Route::post('/profile/regen', ProfileRegenController::class)->name('profile.regen');
 });
