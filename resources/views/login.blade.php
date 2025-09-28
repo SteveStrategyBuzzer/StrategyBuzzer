@@ -77,7 +77,7 @@
 
 <div class="login-container">
     <div class="header-section">
-        <img src="{{ asset('images/strategybuzzer_header.png') }}" alt="StrategyBuzzer" class="header-logo">
+        <img src="{{ asset('images/strategybuzzer-logo.png') }}" alt="StrategyBuzzer" class="header-logo">
     </div>
     
     <div class="content-section">
