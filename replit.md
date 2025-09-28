@@ -75,3 +75,13 @@ Preferred communication style: Simple, everyday language.
 - **FakerPHP** (^1.9.1) - Test data generation
 - **ESLint** - JavaScript code linting
 - **React Testing utilities** - Frontend component testing
+
+## Recent Changes
+
+### September 28, 2025
+- **Fixed main navigation flow**: Eliminated React intermediate page, direct access to Laravel application
+- **Corrected StrategyBuzzer logo display**: Login page now shows proper logo (strategybuzzer-logo.png)
+- **Fixed connection button**: Home page button now correctly redirects to login page (/login) 
+- **Port configuration**: Changed Laravel server from port 8080 to port 5000 (required for Replit webviews)
+- **URL configuration**: Updated APP_URL and route helpers for proper navigation
+- **OAuth flow ready**: Direct path from home page → login → Google/Facebook authentication
