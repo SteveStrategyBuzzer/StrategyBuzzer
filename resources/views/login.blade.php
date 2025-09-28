@@ -16,10 +16,8 @@
     }
 
     .header-section {
-        background-color: #000;
         padding: 20px 0;
         text-align: center;
-        border-bottom: 3px solid #fff;
     }
 
     .header-logo {
