@@ -2,61 +2,21 @@
 
 @section('content')
 <style>
-    body {
-        margin: 0;
-        padding: 0;
-        background-color: #1f4e96;
-        font-family: Arial, sans-serif;
-    }
-
-    .login-container {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .header-section {
-        padding: 20px 0;
-        text-align: center;
-    }
-
-    .header-logo {
-        max-width: 400px;
+    .header-image {
+        width: 100%;
         height: auto;
-        margin: 0 auto;
         display: block;
+        margin: 0 auto 30px auto; /* espace sous l'image */
     }
 
-    .content-section {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 50px 20px;
-    }
-
-    .content-section h1 {
-        color: #fff;
-        font-size: 2.5rem;
-        margin-bottom: 20px;
-        font-weight: bold;
-    }
-
-    .content-section p {
-        color: #fff;
-        font-size: 1.2rem;
-        margin-bottom: 40px;
-    }
-
-    .auth-buttons {
-        display: flex;
-        gap: 20px;
+    .content-container {
+        text-align: center;
     }
 
     .auth-buttons .btn {
         display: inline-block;
-        padding: 15px 30px;
+        margin: 10px;
+        padding: 12px 24px;
         background-color: #000;
         color: #fff;
         font-size: 1.2rem;
@@ -65,27 +25,23 @@
         border-radius: 6px;
         cursor: pointer;
         text-decoration: none;
-        transition: opacity 0.3s ease;
     }
 
     .auth-buttons .btn:hover {
-        opacity: 0.8;
+        opacity: 0.9;
     }
 </style>
 
-<div class="login-container">
-    <div class="header-section">
-        <img src="{{ asset('images/strategybuzzer-logo.png') }}" alt="StrategyBuzzer" class="header-logo">
-    </div>
-    
-    <div class="content-section">
-        <h1>Connexion</h1>
-        <p>Veuillez choisir votre méthode de connexion.</p>
-        
-        <div class="auth-buttons">
-            <a href="{{ url('/auth/google') }}" class="btn">Connexion avec Google</a>
-            <a href="{{ url('/auth/facebook') }}" class="btn">Connexion avec Facebook</a>
-        </div>
+<img src="{{ asset('images/strategybuzzer_header.png') }}" alt="StrategyBuzzer" class="header-image">
+
+<div class="content-container">
+    <h1>Connexion</h1>
+
+    <p>Veuillez choisir votre méthode de connexion.</p>
+
+    <div class="auth-buttons">
+        <a href="{{ url('/auth/google') }}" class="btn">Connexion avec Google</a>
+        <a href="{{ url('/auth/facebook') }}" class="btn">Connexion avec Facebook</a>
     </div>
 </div>
 @endsection
