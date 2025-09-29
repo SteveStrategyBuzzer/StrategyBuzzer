@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <title>Boutique — StrategyBuzzer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <style>
 :root{
   --gap:14px; --radius:18px; --shadow:0 10px 24px rgba(0,0,0,.12);
@@ -261,10 +262,8 @@ audio{ width:100% }
 
           @if($isUnlockedPack)
             <div class="actions">
-              <button class="btn success" disabled>Disponible</button>
-<button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">
-  Voir le pack
-</button>
+              <button class="btn success" disabled>Actif</button>
+              <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">Voir le pack</button>
             </div>
           @else
             <form method="POST" action="{{ $purchaseUrl }}" class="actions">
@@ -273,12 +272,17 @@ audio{ width:100% }
               <input type="hidden" name="target" value="{{ $p['slug'] }}">
               <span class="price">💰 {{ $p['price'] }}</span>
 <button class="btn danger" type="submit">Acheter le pack</button>
-              <a class="btn ghost" href="{{ $avatarUrl }}#{{ $p['slug'] }}">Voir sur Avatars</a>
+              <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">Voir Avatars</button>
             </form>
           @endif
         </div>
       @endforeach
     </div>
+
+    <!-- Templates de données pour les packs -->
+    @foreach($packs as $p)
+      <template data-pack="{{ $p['slug'] }}">{{ json_encode($p['images']) }}</template>
+    @endforeach
   </section>
 
   <!-- ====== Buzzers d’ambiance ====== -->
@@ -504,8 +508,8 @@ audio{ width:100% }
     const card = document.getElementById('stratégique-'+slug);
     if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
   }
-  // Version Boutique : aperçu simple du pack (pas de bouton Choisir)
-  function openModalPreview(title, images){
+  // Version Boutique : aperçu du pack avec possibilité de sélection si débloqué
+  function openModalPreview(title, images, isUnlocked = false){
     document.getElementById('modalTitle').textContent = title;
     const thumbs = document.getElementById('thumbs');
     thumbs.innerHTML = '';
@@ -513,8 +517,17 @@ audio{ width:100% }
       const imgUrl = assetPath(p);
       const el = document.createElement('div');
       el.className = 'thumb';
-      el.innerHTML = `<img src="${imgUrl}" alt="avatar" 
-                        onerror="this.src='${assetPath('images/avatars/default.png')}'>`;
+      el.style.position = 'relative';
+      
+      let content = `<img src="${imgUrl}" alt="avatar" 
+                       onerror="this.src='${assetPath('images/avatars/default.png')}'">`;
+      
+      if (isUnlocked) {
+        content += `<button class="btn" style="position:absolute;bottom:8px;left:8px;right:8px;padding:6px;font-size:0.85rem" 
+                      onclick="selectAvatar('${p}')">Choisir</button>`;
+      }
+      
+      el.innerHTML = content;
       thumbs.appendChild(el);
     });
     modal.style.display = 'flex';
@@ -525,8 +538,38 @@ audio{ width:100% }
     if(!tpl) return;
     try{
       const images = JSON.parse(tpl.innerHTML.trim());
-      openModalPreview(label || 'Pack', images);
+      // Vérifier si le pack est débloqué en regardant le DOM
+      const packCard = document.getElementById(`pack-${slug}`);
+      const isUnlocked = packCard && packCard.querySelector('.btn.success[disabled]');
+      openModalPreview(label || 'Pack', images, isUnlocked);
     }catch(e){ console.error(e); }
+  }
+
+  // Fonction pour sélectionner un avatar
+  function selectAvatar(imagePath) {
+    fetch('/avatar/select', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+      },
+      body: JSON.stringify({ path: imagePath })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        closeModal();
+        alert('Avatar sélectionné avec succès !');
+        // Optionnel : recharger la page pour voir le changement
+        // window.location.reload();
+      } else {
+        alert('Erreur : ' + (data.message || 'Impossible de sélectionner cet avatar'));
+      }
+    })
+    .catch(error => {
+      console.error('Erreur:', error);
+      alert('Erreur de connexion');
+    });
   }
 function closeModal(){
   document.getElementById('modal').style.display='none';
