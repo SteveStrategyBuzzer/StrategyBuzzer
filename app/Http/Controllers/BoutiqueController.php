@@ -72,7 +72,11 @@ class BoutiqueController extends Controller
             }
         }
 
-        return view('boutique', $context);
+        return response()
+            ->view('boutique', $context)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**
