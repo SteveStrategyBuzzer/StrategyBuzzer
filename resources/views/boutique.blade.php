@@ -530,7 +530,7 @@ audio{ width:100% }
       el.innerHTML = content;
       thumbs.appendChild(el);
     });
-    modal.style.display = 'flex';
+    document.getElementById('modal').style.display = 'flex';
   }
 
   function openPack(slug, label){
