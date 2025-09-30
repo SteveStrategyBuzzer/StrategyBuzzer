@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vider le cache</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body style="font-family: system-ui; padding: 40px; background: #0b1020; color: white;">
+    <h1>🧹 Nettoyage du cache</h1>
+    <p>Cliquez sur le bouton pour vider le cache et voir les nouvelles images :</p>
+    <button onclick="clearAll()" style="background: #2c4bff; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer;">
+        Vider le cache et recharger
+    </button>
+    <div id="status" style="margin-top: 20px;"></div>
+    <script>
+        async function clearAll() {
+            const status = document.getElementById('status');
+            status.innerHTML = 'Nettoyage en cours...';
+            
+            // Vider le cache du service worker
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let reg of registrations) {
+                    await reg.unregister();
+                }
+                status.innerHTML += '<br>✅ Service workers supprimés';
+            }
+            
+            // Vider le cache
+            if ('caches' in window) {
+                const names = await caches.keys();
+                await Promise.all(names.map(name => caches.delete(name)));
+                status.innerHTML += '<br>✅ Cache vidé';
+            }
+            
+            // Vider localStorage et sessionStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            status.innerHTML += '<br>✅ Stockage local vidé';
+            
+            status.innerHTML += '<br><br>✨ Cache nettoyé ! Redirection...';
+            
+            setTimeout(() => {
+                window.location.href = '/boutique';
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
