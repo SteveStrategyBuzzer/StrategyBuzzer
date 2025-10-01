@@ -274,7 +274,7 @@ audio{ width:100% }
               <button class="btn danger" type="submit">Acheter le pack</button>
             </form>
             <div class="actions" style="border-top:none;padding-top:0">
-              <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">Voir Avatars</button>
+              <button class="btn ghost" type="button" onclick="alert('BOUTON CLIQUÉ: {{ $p['slug'] }}'); openPack('{{ $p['slug'] }}','{{ $p['label'] }}'); return false;">Voir Avatars</button>
             </div>
           @endif
         </div>
