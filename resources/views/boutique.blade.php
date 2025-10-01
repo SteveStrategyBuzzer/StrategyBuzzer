@@ -271,9 +271,11 @@ audio{ width:100% }
               <input type="hidden" name="kind" value="pack">
               <input type="hidden" name="target" value="{{ $p['slug'] }}">
               <span class="price">💰 {{ $p['price'] }}</span>
-<button class="btn danger" type="submit">Acheter le pack</button>
-              <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">Voir Avatars</button>
+              <button class="btn danger" type="submit">Acheter le pack</button>
             </form>
+            <div class="actions" style="border-top:none;padding-top:0">
+              <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">Voir Avatars</button>
+            </div>
           @endif
         </div>
       @endforeach
