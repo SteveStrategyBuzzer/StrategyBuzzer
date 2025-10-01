@@ -283,7 +283,7 @@ audio{ width:100% }
 
     <!-- Templates de données pour les packs -->
     @foreach($packs as $p)
-      <template data-pack="{{ $p['slug'] }}">{{ json_encode($p['images']) }}</template>
+      <template data-pack="{{ $p['slug'] }}">{!! json_encode($p['images']) !!}</template>
     @endforeach
   </section>
 
@@ -536,26 +536,29 @@ audio{ width:100% }
   }
 
   function openPack(slug, label){
-    console.log('openPack appelé avec:', slug, label);
+    console.log('✅ openPack appelé avec:', slug, label);
     const tpl = document.querySelector(`template[data-pack="${slug}"]`);
-    console.log('Template trouvé:', tpl);
     if(!tpl) {
-      console.error('Template non trouvé pour:', slug);
+      console.error('❌ Template non trouvé pour:', slug);
+      alert('Template non trouvé pour: ' + slug);
       return;
     }
     try{
-      const rawHTML = tpl.innerHTML.trim();
-      console.log('HTML brut du template:', rawHTML);
-      const images = JSON.parse(rawHTML);
-      console.log('Images parsées:', images);
-      // Vérifier si le pack est débloqué en regardant le DOM
+      const rawContent = tpl.content.textContent || tpl.innerHTML;
+      const jsonStr = rawContent.trim();
+      console.log('📄 JSON brut:', jsonStr);
+      const images = JSON.parse(jsonStr);
+      console.log('✅ Images parsées:', images);
+      
+      // Vérifier si le pack est débloqué
       const packCard = document.getElementById(`pack-${slug}`);
       const isUnlocked = packCard && packCard.querySelector('.btn.success[disabled]');
-      console.log('Pack débloqué?', isUnlocked);
-      openModalPreview(label || 'Pack', images, isUnlocked);
+      console.log('🔓 Pack débloqué?', isUnlocked ? 'OUI' : 'NON');
+      
+      openModalPreview(label || 'Pack', images, !!isUnlocked);
     }catch(e){ 
-      console.error('Erreur dans openPack:', e); 
-      alert('Erreur: ' + e.message);
+      console.error('❌ Erreur dans openPack:', e); 
+      alert('Erreur lors de l\'ouverture du pack: ' + e.message);
     }
   }
 
