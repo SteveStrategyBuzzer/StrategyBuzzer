@@ -15,7 +15,8 @@
 body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto; background:var(--bg); color:var(--ink); }
 .wrap{ max-width:1200px; margin:0 auto; padding:20px 16px 80px; }
 
-.topbar{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap }
+.topbar{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; pointer-events:none; }
+.topbar a{ pointer-events:auto; }
 .pill{ background:linear-gradient(135deg,#1a2344,#15224c); border:1px solid var(--line); padding:10px 14px; border-radius:999px; box-shadow:var(--shadow); display:flex; align-items:center; gap:10px; }
 .pill b{color:#fff}
 a.clean{ color:var(--muted); text-decoration:none; }
@@ -56,6 +57,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
 
 .meta{ padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .actions{ display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); justify-content:center; background:rgba(0,0,0,.22); }
+.actions .btn.ghost{ position:relative; z-index:2; }
 
 .btn{ appearance:none; border:none; cursor:pointer; border-radius:12px; padding:10px 12px; background:var(--blue); color:#fff; font-weight:800; }
 .btn.ghost{ background:transparent; border:1px solid rgba(255,255,255,.25); color:#cfe1ff; }
@@ -274,7 +276,7 @@ audio{ width:100% }
               <button class="btn danger" type="submit">Acheter le pack</button>
             </form>
             <div class="actions" style="border-top:none;padding-top:0">
-              <button class="btn ghost" type="button" onclick="alert('BOUTON CLIQUÉ: {{ $p['slug'] }}'); openPack('{{ $p['slug'] }}','{{ $p['label'] }}'); return false;">Voir Avatars</button>
+              <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}'); return false;">Voir Avatars</button>
             </div>
           @endif
         </div>
