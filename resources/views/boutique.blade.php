@@ -225,11 +225,11 @@ audio{ width:100% }
   @if(session('error'))   <div class="warn">{{ session('error') }}</div> @endif
 
   <div class="tabs" role="tablist">
-    <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs')">🎨 Packs d’avatars</a>
-    <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers')">🎵 Buzzers d’ambiance</a>
-    <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques')">🛡️ Avatars stratégiques</a>
-    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins')">💎 Pièces d'or</a>
-    <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies')">❤️ Vies</a>
+    <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 Packs d’avatars</a>
+    <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🎵 Buzzers d’ambiance</a>
+    <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
+    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;">💎 Pièces d'or</a>
+    <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
   </div>
 
   <!-- ====== Packs d’avatars ====== -->
@@ -520,7 +520,8 @@ audio{ width:100% }
       if(el) el.style.display = (sec===id ? 'block' : 'none');
     }
     document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-    const idx = {packs:0,buzzers:1,stratégiques:2,coins:3,vies:4}[id] ?? 0;
+    const map = {packs:0,buzzers:1,stratégiques:2,coins:3,vies:4};
+    const idx = map.hasOwnProperty(id) ? map[id] : 0;
     const tab = document.querySelectorAll('.tabs .tab')[idx];
     if(tab) tab.classList.add('active');
     if(history.pushState){ history.pushState(null,'', '#'+id); }
