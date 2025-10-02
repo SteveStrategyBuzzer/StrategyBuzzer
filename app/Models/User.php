@@ -20,10 +20,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'coins',                // pièces d’intelligence
-        'lives',                // vies restantes
-        'infinite_lives_until', // fin du pack vies infinies
-        'rank',                 // rang général / grade
+        'coins',
+        'intelligence_pieces',
+        'lives',
+        'infinite_lives_until',
+        'rank',
     ];
 
     /**

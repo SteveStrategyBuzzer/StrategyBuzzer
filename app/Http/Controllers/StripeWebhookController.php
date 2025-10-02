@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use App\Services\StripeService;
 use App\Services\CoinLedgerService;
@@ -32,58 +33,65 @@ class StripeWebhookController extends Controller
         if ($event->type === 'checkout.session.completed') {
             $session = $event->data->object;
 
-            $payment = Payment::where('stripe_session_id', $session->id)
-                ->lockForUpdate()
-                ->first();
-
-            if (!$payment) {
-                Log::warning('Payment not found for session', ['session_id' => $session->id]);
-                return response()->json(['status' => 'payment_not_found'], 404);
-            }
-
-            if ($payment->status === 'completed') {
-                Log::info('Payment already processed', ['payment_id' => $payment->id]);
-                return response()->json(['status' => 'already_processed'], 200);
-            }
-
             try {
-                $payment->update([
-                    'stripe_payment_intent_id' => $session->payment_intent,
-                ]);
+                DB::transaction(function () use ($session) {
+                    $payment = Payment::where('stripe_session_id', $session->id)
+                        ->lockForUpdate()
+                        ->first();
 
-                $coinsToAward = (int) ($session->metadata->coins ?? 0);
+                    if (!$payment) {
+                        Log::warning('Payment not found for session', ['session_id' => $session->id]);
+                        throw new \Exception('Payment not found');
+                    }
 
-                if ($coinsToAward > 0) {
-                    $this->coinLedgerService->credit(
-                        $payment->user,
-                        $coinsToAward,
-                        'stripe_purchase',
-                        'Payment',
-                        $payment->id
-                    );
+                    if ($payment->status === 'completed') {
+                        Log::info('Payment already processed', ['payment_id' => $payment->id]);
+                        return;
+                    }
 
-                    $payment->markAsCompleted($coinsToAward);
-
-                    Log::info('Coins credited successfully', [
-                        'payment_id' => $payment->id,
-                        'user_id' => $payment->user_id,
-                        'coins' => $coinsToAward,
-                        'session_id' => $session->id,
+                    $payment->update([
+                        'stripe_payment_intent_id' => $session->payment_intent,
                     ]);
-                } else {
-                    Log::error('Invalid coins amount from Stripe metadata', [
-                        'payment_id' => $payment->id,
-                        'session_metadata' => $session->metadata,
-                    ]);
-                    $payment->markAsFailed();
-                }
+
+                    $coinsToAward = (int) ($session->metadata->coins ?? 0);
+
+                    if ($coinsToAward > 0) {
+                        $user = $payment->user;
+                        $user->intelligence_pieces = ($user->intelligence_pieces ?? 0) + $coinsToAward;
+                        $user->save();
+
+                        $this->coinLedgerService->credit(
+                            $payment->user,
+                            $coinsToAward,
+                            'stripe_purchase',
+                            'Payment',
+                            $payment->id
+                        );
+
+                        $payment->markAsCompleted($coinsToAward);
+
+                        Log::info('Coins credited successfully', [
+                            'payment_id' => $payment->id,
+                            'user_id' => $payment->user_id,
+                            'coins' => $coinsToAward,
+                            'intelligence_pieces' => $user->intelligence_pieces,
+                            'session_id' => $session->id,
+                        ]);
+                    } else {
+                        Log::error('Invalid coins amount from Stripe metadata', [
+                            'payment_id' => $payment->id,
+                            'session_metadata' => $session->metadata,
+                        ]);
+                        $payment->markAsFailed();
+                        throw new \Exception('Invalid coins amount');
+                    }
+                });
             } catch (\Exception $e) {
                 Log::error('Error processing payment', [
-                    'payment_id' => $payment->id,
+                    'session_id' => $session->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                $payment->markAsFailed();
                 return response()->json(['error' => 'Processing failed'], 500);
             }
         }
