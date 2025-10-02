@@ -22,7 +22,7 @@ body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto; background:
 a.clean{ color:var(--muted); text-decoration:none; }
 
 .tabs{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px }
-.tab{ appearance:none; border:none; cursor:pointer; border-radius:999px; padding:10px 14px; background:#121c3f; color:#cfe1ff; border:1px solid var(--line); }
+.tab{ appearance:none; border:none; cursor:pointer; border-radius:999px; padding:10px 14px; background:#121c3f; color:#cfe1ff; border:1px solid var(--line); text-decoration:none; }
 .tab.active{ background:var(--blue); color:#fff; }
 
 .hero{ background:linear-gradient(135deg,#15224c,#0f1836); border:1px solid var(--line); padding:16px; border-radius:20px; box-shadow:var(--shadow); margin-bottom:18px; }
@@ -40,20 +40,14 @@ a.clean{ color:var(--muted); text-decoration:none; }
   border-radius:16px;
   overflow:hidden;
   box-shadow:var(--shadow);
-  position: relative; /* 🔑 nécessaire pour contenir le cadenas */
+  position: relative;
 }
 .card .head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
 .card .title{ font-weight:800 }
 .badge{ font-size:.85rem; background:rgba(255,255,255,.08); padding:6px 10px; border-radius:999px; }
 
-/* thumbs & previews */
 .thumb{ position:relative; overflow:hidden; border-top:1px solid var(--line); }
 .thumb img{ width:100%; height:100%; object-fit:cover; object-position:top; display:block; image-rendering:-webkit-optimize-contrast; }
-
-.pack-preview{ padding:12px }
-.preview-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px }
-.preview-grid img{ width:100%; height:96px; object-fit:cover; object-position:top; border-radius:10px; border:1px solid var(--line) }
-.preview-main{ width:100%; height:210px; object-fit:cover; object-position:top; border-radius:12px; border:1px solid var(--line) }
 
 .meta{ padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .actions{ display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); justify-content:center; background:rgba(0,0,0,.22); }
@@ -79,11 +73,9 @@ audio{ width:100% }
 .qty{ display:flex; align-items:center; gap:8px }
 .qty input{ width:90px; padding:8px 10px; border-radius:10px; border:1px solid var(--line); background:#0f1530; color:#fff }
 
-/* pastilles tiers (avatars stratégiques) */
 .tier{ position:absolute; top:8px; left:8px; padding:4px 8px; border-radius:999px; font-size:.78rem; border:1px solid rgba(255,255,255,.22) }
 .t-rare{ background:#1e3a8a } .t-epic{ background:#6d28d9 } .t-legend{ background:#b45309 }
 
-/* === Disposition spécifique "Avatars stratégiques" === */
 .avatar-row {
   display: flex;
   justify-content: center;
@@ -92,7 +84,7 @@ audio{ width:100% }
 }
 .avatar-row .thumb img {
   width: auto;
-  height: 240px; /* ajuste selon la maquette */
+  height: 240px;
   object-fit: cover;
   object-position: top center;
   border-radius: 12px;
@@ -118,7 +110,6 @@ audio{ width:100% }
 
 .view-btn{ padding:12px; border-top:1px solid var(--line); text-align:center; background:rgba(0,0,0,.12); }
 
-/* Détails (image grande + skills) */
 .details{ display:none; padding:12px; border-top:1px solid var(--line); background:rgba(255,255,255,.03); }
 .details.open{ display:block; animation:fadeIn .2s ease-out; }
 .details .big{ width:100%; max-height:360px; object-fit:contain; display:block; margin:6px 0 12px; border-radius:12px; border:1px solid var(--line); background:#0f1530; }
@@ -132,12 +123,10 @@ audio{ width:100% }
 <div class="wrap">
 
   @php
-    // ==== Helpers robustes ====
     $coins = (int)($coins ?? (session('coins') ?? 0));
     $avatarUrl   = app('router')->has('avatar')            ? route('avatar')            : url('/avatar');
     $purchaseUrl = app('router')->has('boutique.purchase') ? route('boutique.purchase') : url('/boutique/purchase');
 
-    // cache-busting pour les images
     if (!function_exists('_assetv')) {
       function _assetv($rel) {
         $ts = @filemtime(public_path($rel));
@@ -145,10 +134,8 @@ audio{ width:100% }
       }
     }
 
-    // table de prix éventuellement fournie par le contrôleur
     $pricing = $pricing ?? [];
 
-    // Détecte l’onglet par défaut
     $tab = request('tab');
     if (!$tab) {
       if (request()->has('stratégique')) $tab = 'stratégiques';
@@ -156,7 +143,6 @@ audio{ width:100% }
       else                                $tab = 'packs';
     }
 
-    // Scanner fichiers (pour aperçu des packs)
     function _scan_files($dir, $patterns=array('*')) {
       $out=array(); if(!is_dir($dir)) return $out;
       foreach($patterns as $pat){ foreach(glob(rtrim($dir,'/').'/'.$pat, GLOB_BRACE) as $f){ $out[]=$f; } }
@@ -171,7 +157,6 @@ audio{ width:100% }
       return $abs;
     }
 
-    // ==== Packs d’avatars ====
     $packSlugs = ['portraits','cartoon','animal','mythique','paysage','objet','clown','musicien','automobile'];
     $packs = [];
     foreach($packSlugs as $slug){
@@ -187,7 +172,6 @@ audio{ width:100% }
       ];
     }
 
-    // ==== Buzzers ambiance (audio) ====
     $buzzDir  = is_dir(public_path('audio/buzzers')) ? public_path('audio/buzzers') : public_path('sounds/buzzers');
     $audios   = _scan_files($buzzDir, ['*.mp3','*.ogg','*.wav']);
     $buzzers  = [];
@@ -202,7 +186,6 @@ audio{ width:100% }
       ];
     }
 
-    // ==== Avatars stratégiques (depuis le service) ====
     $stratégiques = $catalog['stratégiques']['items'] ?? [];
     foreach ($stratégiques as $slug => &$a) {
       if (!isset($a['label'])) $a['label'] = $a['name'] ?? ucfirst(str_replace('-', ' ', $slug));
@@ -210,7 +193,6 @@ audio{ width:100% }
     }
     unset($a);
 
-    // raccourcis
     $unlocked = $unlocked ?? [];
   @endphp
 
@@ -225,75 +207,73 @@ audio{ width:100% }
   @if(session('error'))   <div class="warn">{{ session('error') }}</div> @endif
 
   <div class="tabs" role="tablist">
-    <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 Packs d’avatars</a>
-    <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🎵 Buzzers d’ambiance</a>
+    <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 Packs d'avatars</a>
+    <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🎵 Buzzers d'ambiance</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
     <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;">💎 Pièces d'or</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
   </div>
 
-  <!-- ====== Packs d’avatars ====== -->
+  <!-- ====== Packs d'avatars ====== -->
   <section id="packs" style="display: {{ $tab==='packs'?'block':'none' }}">
-    <div class="hero"><b>Packs d’avatars</b> — Prévisualisez tout le contenu des packs avant d’acheter.</div>
+    <div class="hero"><b>Packs d'avatars</b> — Prévisualisez tout le contenu des packs avant d'acheter.</div>
 
-    <div class="grid cols-3">
+    <div class="grid cols-4">
       @foreach($packs as $p)
-        @php $isUnlockedPack = in_array($p['slug'], $unlocked, true); @endphp
+        @php 
+          $isUnlockedPack = in_array($p['slug'], $unlocked, true);
+          $hero = $p['images'][0] ?? null;
+        @endphp
         <div class="card" id="pack-{{ $p['slug'] }}">
           <div class="head">
             <div class="title">{{ $p['label'] }}</div>
-            <div class="badge">{{ $p['count'] }} images</div>
+            @unless($isUnlockedPack)
+              <div class="price">💰 {{ $p['price'] }}</div>
+            @endunless
           </div>
 
-          <div class="pack-preview">
-            @php
-              $grid = array_slice($p['images'], 0, 4);
-              $hero = $p['images'][0] ?? null;
-            @endphp
-            @if($grid)
-              <div class="preview-grid" aria-label="Aperçu">
-                @foreach($grid as $g)
-                  <img src="{{ _assetv($g) }}" alt="vignette pack" loading="lazy" decoding="async">
-                @endforeach
+          <div class="avatar-row">
+            <div class="thumb">
+              <span class="tier t-rare">{{ $p['count'] }} images</span>
+              @if($hero)
+                <img src="{{ _assetv($hero) }}" alt="{{ $p['label'] }}" loading="lazy" decoding="async">
+              @else
+                <div style="padding:40px 14px;color:#cbd5e1;text-align:center;font-size:12px;">Aucune image</div>
+              @endif
+
+              <div class="avatar-actions">
+                @if($isUnlockedPack)
+                  <button class="btn success lock-btn" type="button" disabled title="Débloqué">🔓</button>
+                @else
+                  <form method="POST" action="{{ $purchaseUrl }}">
+                    @csrf
+                    <input type="hidden" name="kind" value="pack">
+                    <input type="hidden" name="target" value="{{ $p['slug'] }}">
+                    <button class="btn danger lock-btn" type="submit" title="Débloquer">🔒</button>
+                  </form>
+                @endif
               </div>
-            @elseif($hero)
-              <img class="preview-main" src="{{ _assetv($hero) }}" alt="aperçu" loading="lazy" decoding="async">
-            @else
-              <div style="padding:14px;color:#cbd5e1">Aucune image trouvée dans <code>public/images/avatars/{{ $p['slug'] }}</code></div>
-            @endif
+            </div>
           </div>
 
-          @if($isUnlockedPack)
-            <div class="actions">
-              <button class="btn success" disabled>Actif</button>
-              <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">Voir le pack</button>
-            </div>
-          @else
-            <form method="POST" action="{{ $purchaseUrl }}" class="actions">
-              @csrf
-              <input type="hidden" name="kind" value="pack">
-              <input type="hidden" name="target" value="{{ $p['slug'] }}">
-              <span class="price">💰 {{ $p['price'] }}</span>
-              <button class="btn danger" type="submit">Acheter le pack</button>
-            </form>
-            <div class="actions" style="border-top:none;padding-top:0">
-              <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}'); return false;">Voir Avatars</button>
-            </div>
-          @endif
+          <div class="view-btn">
+            <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">
+              Voir le pack
+            </button>
+          </div>
         </div>
       @endforeach
     </div>
 
-    <!-- Templates de données pour les packs -->
     @foreach($packs as $p)
       <template data-pack="{{ $p['slug'] }}">{!! json_encode($p['images']) !!}</template>
     @endforeach
   </section>
 
-  <!-- ====== Buzzers d’ambiance ====== -->
+  <!-- ====== Buzzers d'ambiance ====== -->
   <section id="buzzers" style="display: {{ $tab==='buzzers'?'block':'none' }}">
-    <div class="hero"><b>Buzzers & musiques d’ambiance</b> — Écoute avant d’acheter.</div>
- <div class="grid cols-3">
+    <div class="hero"><b>Buzzers & musiques d'ambiance</b> — Écoute avant d'acheter.</div>
+    <div class="grid cols-3">
       @forelse($buzzers as $bz)
         @php $isUnlockedBz = in_array($bz['slug'], $unlocked, true); @endphp
         <div class="card" id="buzzer-{{ $bz['slug'] }}">
@@ -304,7 +284,7 @@ audio{ width:100% }
           <div class="audio">
             <audio controls preload="none">
               <source src="{{ asset($bz['path']) }}" type="audio/{{ pathinfo($bz['path'], PATHINFO_EXTENSION) }}">
-              Votre navigateur ne supporte pas l’audio HTML5.
+              Votre navigateur ne supporte pas l'audio HTML5.
             </audio>
           </div>
 
@@ -332,76 +312,70 @@ audio{ width:100% }
     </div>
   </section>
 
-<!-- ====== Avatars stratégiques ====== --> 
-<section id="stratégiques" style="display: {{ $tab==='stratégiques'?'block':'none' }}">
-  <div class="hero"><b>Avatars stratégiques</b> — Rareté et capacités spéciales. Tout est visible ici (pas de flou).</div>
+  <!-- ====== Avatars stratégiques ====== --> 
+  <section id="stratégiques" style="display: {{ $tab==='stratégiques'?'block':'none' }}">
+    <div class="hero"><b>Avatars stratégiques</b> — Rareté et capacités spéciales. Tout est visible ici (pas de flou).</div>
 
-  <div class="grid cols-4">
-    @foreach($stratégiques as $a)
-      @php
-        $t = $a['tier'];
-        $tClass = $t==='Légendaire' ? 't-legend' : ($t==='Épique' ? 't-epic' : 't-rare');
-        $isUnlockedStrategic = in_array($a['slug'], $unlocked, true);
-        $slug = $a['slug'];
-      @endphp
-      <div class="card" id="stratégique-{{ $slug }}">
-        <!-- Titre + Prix -->
-        <div class="head">
-          <div class="title" style="text-transform:capitalize">{{ $a['label'] }}</div>
-          @unless($isUnlockedStrategic)
-            <div class="price">💰 {{ $a['price'] }}</div>
-          @endunless
-        </div>
+    <div class="grid cols-4">
+      @foreach($stratégiques as $a)
+        @php
+          $t = $a['tier'];
+          $tClass = $t==='Légendaire' ? 't-legend' : ($t==='Épique' ? 't-epic' : 't-rare');
+          $isUnlockedStrategic = in_array($a['slug'], $unlocked, true);
+          $slug = $a['slug'];
+        @endphp
+        <div class="card" id="stratégique-{{ $slug }}">
+          <div class="head">
+            <div class="title" style="text-transform:capitalize">{{ $a['label'] }}</div>
+            @unless($isUnlockedStrategic)
+              <div class="price">💰 {{ $a['price'] }}</div>
+            @endunless
+          </div>
 
-        <!-- Vignette avatar + cadenas -->
-        <div class="avatar-row">
-          <div class="thumb">
-            <span class="tier {{ $tClass }}">{{ $t }}</span>
-            <img src="{{ _assetv($a['path']) }}" alt="{{ $a['label'] }}" loading="lazy" decoding="async">
+          <div class="avatar-row">
+            <div class="thumb">
+              <span class="tier {{ $tClass }}">{{ $t }}</span>
+              <img src="{{ _assetv($a['path']) }}" alt="{{ $a['label'] }}" loading="lazy" decoding="async">
 
-            <div class="avatar-actions">
-              @if($isUnlockedStrategic)
-                <!-- Bulle verte avec cadenas ouvert -->
-                <button class="btn success lock-btn" type="button" disabled title="Débloqué">🔓</button>
-              @else
-                <!-- Bulle rouge avec cadenas fermé -->
-                <form method="POST" action="{{ $purchaseUrl }}">
-                  @csrf
-                  <input type="hidden" name="kind" value="stratégique">
-                  <input type="hidden" name="target" value="{{ $slug }}">
-                  <button class="btn danger lock-btn" type="submit" title="Débloquer">🔒</button>
-                </form>
-              @endif
+              <div class="avatar-actions">
+                @if($isUnlockedStrategic)
+                  <button class="btn success lock-btn" type="button" disabled title="Débloqué">🔓</button>
+                @else
+                  <form method="POST" action="{{ $purchaseUrl }}">
+                    @csrf
+                    <input type="hidden" name="kind" value="stratégique">
+                    <input type="hidden" name="target" value="{{ $slug }}">
+                    <button class="btn danger lock-btn" type="submit" title="Débloquer">🔒</button>
+                  </form>
+                @endif
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Bouton Voir Avatar -->
-        <div class="view-btn">
-          <button class="btn ghost" type="button"
-                  aria-expanded="false"
-                  aria-controls="details-{{ $slug }}"
-                  onclick="toggleDetails('{{ $slug }}')">
-            Voir Avatar
-          </button>
-        </div>
+          <div class="view-btn">
+            <button class="btn ghost" type="button"
+                    aria-expanded="false"
+                    aria-controls="details-{{ $slug }}"
+                    onclick="toggleDetails('{{ $slug }}')">
+              Voir Avatar
+            </button>
+          </div>
 
-        <!-- Détails -->
-        <div class="details" id="details-{{ $slug }}" aria-hidden="true">
-          <img class="big" src="{{ _assetv($a['path']) }}" alt="Aperçu {{ $a['label'] }}">
-          @if(!empty($a['skills']) && is_array($a['skills']))
-            <div class="skills" role="list">
-              @foreach($a['skills'] as $sk)
-                <div role="listitem">• {{ $sk }}</div>
-              @endforeach
-            </div>
-          @endif
-          <button class="btn ghost close" type="button" onclick="toggleDetails('{{ $slug }}')">Fermer</button>
+          <div class="details" id="details-{{ $slug }}" aria-hidden="true">
+            <img class="big" src="{{ _assetv($a['path']) }}" alt="Aperçu {{ $a['label'] }}">
+            @if(!empty($a['skills']) && is_array($a['skills']))
+              <div class="skills" role="list">
+                @foreach($a['skills'] as $sk)
+                  <div role="listitem">• {{ $sk }}</div>
+                @endforeach
+              </div>
+            @endif
+            <button class="btn ghost close" type="button" onclick="toggleDetails('{{ $slug }}')">Fermer</button>
+          </div>
         </div>
-      </div>
-    @endforeach
-  </div>
-</section>
+      @endforeach
+    </div>
+  </section>
 
   <!-- ====== Pièces d'or (Stripe) ====== -->
   <section id="coins" style="display: {{ $tab==='coins'?'block':'none' }}">
@@ -472,7 +446,7 @@ audio{ width:100% }
             </label>
             <button class="btn" type="submit">Acheter</button>
           </div>
-          <div class="muted" style="margin-top:8px">Le débit total sera calculé au moment de l’achat (quantité × prix unitaire).</div>
+          <div class="muted" style="margin-top:8px">Le débit total sera calculé au moment de l'achat (quantité × prix unitaire).</div>
         </form>
       </div>
 
@@ -495,6 +469,9 @@ audio{ width:100% }
       </div>
     </div>
   </section>
+
+</div>
+
 <!-- ====== Modale de prévisualisation ====== -->
 <div id="modal" class="modal" role="dialog" aria-modal="true" style="display:none;
      position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.65);align-items:center;justify-content:center">
@@ -513,141 +490,73 @@ audio{ width:100% }
 </div>
 
 <script>
-  // Active l’onglet (affichage côté client)
   function setTab(id){
     for (const sec of ['packs','buzzers','stratégiques','coins','vies']) {
       const el = document.getElementById(sec);
       if(el) el.style.display = (sec===id ? 'block' : 'none');
     }
-    document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tabs .tab').forEach(function(t){ t.classList.remove('active'); });
     const map = {packs:0,buzzers:1,stratégiques:2,coins:3,vies:4};
     const idx = map.hasOwnProperty(id) ? map[id] : 0;
     const tab = document.querySelectorAll('.tabs .tab')[idx];
     if(tab) tab.classList.add('active');
     if(history.pushState){ history.pushState(null,'', '#'+id); }
   }
-  // Ouvre l’onglet correct selon la query (?item= / ?stratégique=) ou hash
+
   (function initTab(){
-    const hash = (location.hash||'').replace('#','');
-    if(hash && ['packs','buzzers','stratégiques','coins','vies'].includes(hash)) setTab(hash);
+    const hash = location.hash.slice(1);
     const pack = new URLSearchParams(location.search).get('item');
     const aid  = new URLSearchParams(location.search).get('stratégique');
     if (pack) { setTab('packs'); const el=document.getElementById('pack-'+pack); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
-    if (aid)  { setTab('stratégiques'); const el=document.getElementById('stratégique-'+aid); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+    else if (aid) { setTab('stratégiques'); const el=document.getElementById('stratégique-'+aid); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+    else if (hash && ['packs','buzzers','stratégiques','coins','vies'].indexOf(hash)!==-1) setTab(hash);
   })();
 
-  // Ouvre/ferme le panneau "Voir Avatar" dans la boutique (sans quitter la page)
   function toggleDetails(slug){
-    const id = 'details-' + slug;
-    const box = document.getElementById(id);
-    if(!box) return;
-    const opened = box.classList.contains('open');
-    // refermer les autres
-    document.querySelectorAll('.details.open').forEach(d => {
+    const d = document.getElementById('details-'+slug);
+    if (!d) return;
+    if (d.classList.contains('open')) {
       d.classList.remove('open');
       d.setAttribute('aria-hidden','true');
-    });
-    // toggle courant
-    if(!opened){
-      box.classList.add('open');
-      box.setAttribute('aria-hidden','false');
+      const btn = d.previousElementSibling.querySelector('button');
+      if(btn) btn.setAttribute('aria-expanded','false');
     } else {
-      box.classList.remove('open');
-      box.setAttribute('aria-hidden','true');
+      d.classList.add('open');
+      d.setAttribute('aria-hidden','false');
+      const btn = d.previousElementSibling.querySelector('button');
+      if(btn) btn.setAttribute('aria-expanded','true');
     }
-    // aria-expanded du bouton
-    const btn = document.querySelector('button[aria-controls="'+id+'"]');
-    if(btn) btn.setAttribute('aria-expanded', (!opened).toString());
-    // scroll doux vers la carte
-    const card = document.getElementById('stratégique-'+slug);
-    if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
-  }
-  // Version Boutique : aperçu du pack avec possibilité de sélection si débloqué
-  function openModalPreview(title, images, isUnlocked = false){
-    document.getElementById('modalTitle').textContent = title;
-    const thumbs = document.getElementById('thumbs');
-    thumbs.innerHTML = '';
-    images.forEach((p) => {
-      const imgUrl = assetPath(p);
-      const el = document.createElement('div');
-      el.className = 'thumb';
-      el.style.position = 'relative';
-      
-      let content = `<img src="${imgUrl}" alt="avatar" 
-                       onerror="this.src='${assetPath('images/avatars/default.png')}'">`;
-      
-      if (isUnlocked) {
-        content += `<button class="btn" style="position:absolute;bottom:8px;left:8px;right:8px;padding:6px;font-size:0.85rem" 
-                      onclick="selectAvatar('${p}')">Choisir</button>`;
-      }
-      
-      el.innerHTML = content;
-      thumbs.appendChild(el);
-    });
-    document.getElementById('modal').style.display = 'flex';
   }
 
   function openPack(slug, label){
-    console.log('✅ openPack appelé avec:', slug, label);
-    const tpl = document.querySelector(`template[data-pack="${slug}"]`);
-    if(!tpl) {
-      console.error('❌ Template non trouvé pour:', slug);
-      alert('Template non trouvé pour: ' + slug);
-      return;
-    }
-    try{
-      const rawContent = tpl.content.textContent || tpl.innerHTML;
-      const jsonStr = rawContent.trim();
-      console.log('📄 JSON brut:', jsonStr);
-      const images = JSON.parse(jsonStr);
-      console.log('✅ Images parsées:', images);
-      
-      // Vérifier si le pack est débloqué
-      const packCard = document.getElementById(`pack-${slug}`);
-      const isUnlocked = packCard && packCard.querySelector('.btn.success[disabled]');
-      console.log('🔓 Pack débloqué?', isUnlocked ? 'OUI' : 'NON');
-      
-      openModalPreview(label || 'Pack', images, !!isUnlocked);
-    }catch(e){ 
-      console.error('❌ Erreur dans openPack:', e); 
-      alert('Erreur lors de l\'ouverture du pack: ' + e.message);
-    }
-  }
-
-  // Fonction pour sélectionner un avatar
-  function selectAvatar(imagePath) {
-    fetch('/avatar/select', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-      },
-      body: JSON.stringify({ path: imagePath })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        closeModal();
-        alert('Avatar sélectionné avec succès !');
-        // Optionnel : recharger la page pour voir le changement
-        // window.location.reload();
-      } else {
-        alert('Erreur : ' + (data.message || 'Impossible de sélectionner cet avatar'));
-      }
-    })
-    .catch(error => {
-      console.error('Erreur:', error);
-      alert('Erreur de connexion');
+    const tpl = document.querySelector('template[data-pack="'+slug+'"]');
+    if (!tpl) return;
+    let imgs = [];
+    try { imgs = JSON.parse(tpl.textContent.trim()); } catch(e){ }
+    const modal = document.getElementById('modal');
+    const title = document.getElementById('modalTitle');
+    const thumbs= document.getElementById('thumbs');
+    title.textContent = 'Pack: '+label;
+    thumbs.innerHTML='';
+    imgs.forEach(function(p){
+      const wrap = document.createElement('div');
+      wrap.style='aspect-ratio:1;overflow:hidden;border-radius:10px;border:1px solid rgba(255,255,255,.1)';
+      const img = document.createElement('img');
+      img.src = '{{ asset("") }}'+p+'?v='+(Date.now()%100000);
+      img.alt = 'avatar';
+      img.loading='lazy';
+      img.decoding='async';
+      img.style='width:100%;height:100%;object-fit:cover;object-position:top;display:block';
+      wrap.appendChild(img);
+      thumbs.appendChild(wrap);
     });
+    modal.style.display='flex';
   }
-function closeModal(){
-  document.getElementById('modal').style.display='none';
-}
 
-function assetPath(p){
-  if(!p) return '';
-  return (p.startsWith('http') ? p : (window.location.origin + '/' + p)).replace(/([^:]\/)\/+/g, "$1");
-}
+  function closeModal(){
+    const m=document.getElementById('modal');
+    if(m) m.style.display='none';
+  }
 </script>
 </body>
 </html>
