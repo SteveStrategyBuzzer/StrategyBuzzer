@@ -14,12 +14,6 @@ class StripeService
 
     public function createCheckoutSession(array $pack, int $userId): Session
     {
-        $successUrl = str_replace(
-            '{CHECKOUT_SESSION_ID}',
-            '{CHECKOUT_SESSION_ID}',
-            config('coins.urls.success')
-        );
-
         return Session::create([
             'payment_method_types' => ['card'],
             'line_items' => [[
@@ -34,7 +28,7 @@ class StripeService
                 'quantity' => 1,
             ]],
             'mode' => 'payment',
-            'success_url' => $successUrl,
+            'success_url' => config('coins.urls.success'),
             'cancel_url' => config('coins.urls.cancel'),
             'metadata' => [
                 'user_id' => $userId,

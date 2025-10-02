@@ -51,7 +51,7 @@ class StripeWebhookController extends Controller
                     'stripe_payment_intent_id' => $session->payment_intent,
                 ]);
 
-                $coinsToAward = (int) ($payment->metadata['coins'] ?? 0);
+                $coinsToAward = (int) ($session->metadata->coins ?? 0);
 
                 if ($coinsToAward > 0) {
                     $this->coinLedgerService->credit(
@@ -68,15 +68,20 @@ class StripeWebhookController extends Controller
                         'payment_id' => $payment->id,
                         'user_id' => $payment->user_id,
                         'coins' => $coinsToAward,
+                        'session_id' => $session->id,
                     ]);
                 } else {
-                    Log::error('Invalid coins amount', ['payment_id' => $payment->id]);
+                    Log::error('Invalid coins amount from Stripe metadata', [
+                        'payment_id' => $payment->id,
+                        'session_metadata' => $session->metadata,
+                    ]);
                     $payment->markAsFailed();
                 }
             } catch (\Exception $e) {
                 Log::error('Error processing payment', [
                     'payment_id' => $payment->id,
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
                 $payment->markAsFailed();
                 return response()->json(['error' => 'Processing failed'], 500);

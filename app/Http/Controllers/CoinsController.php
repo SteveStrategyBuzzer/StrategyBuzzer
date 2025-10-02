@@ -33,8 +33,11 @@ class CoinsController extends Controller
         }
 
         try {
-            $payment = Payment::create([
+            $session = $this->stripeService->createCheckoutSession($pack, $user->id);
+
+            Payment::create([
                 'user_id' => $user->id,
+                'stripe_session_id' => $session->id,
                 'product_key' => $pack['key'],
                 'amount_cents' => $pack['amount_cents'],
                 'currency' => $pack['currency'],
@@ -43,12 +46,6 @@ class CoinsController extends Controller
                     'coins' => $pack['coins'],
                     'pack_name' => $pack['name'],
                 ],
-            ]);
-
-            $session = $this->stripeService->createCheckoutSession($pack, $user->id);
-
-            $payment->update([
-                'stripe_session_id' => $session->id,
             ]);
 
             return redirect($session->url);
@@ -68,14 +65,18 @@ class CoinsController extends Controller
         $payment = Payment::where('stripe_session_id', $sessionId)->first();
 
         if (!$payment) {
-            return redirect()->route('boutique')->with('error', 'Paiement introuvable.');
+            return redirect()->route('boutique')->with('info', 'Paiement en cours de traitement. Vos pièces seront ajoutées sous peu.');
         }
 
         if ($payment->status === 'completed') {
             return redirect()->route('boutique')->with('success', "Paiement réussi ! {$payment->coins_awarded} pièces d'intelligence ont été ajoutées à votre compte.");
         }
 
-        return redirect()->route('boutique')->with('info', 'Votre paiement est en cours de traitement...');
+        if ($payment->status === 'failed') {
+            return redirect()->route('boutique')->with('error', 'Le paiement a échoué. Veuillez réessayer.');
+        }
+
+        return redirect()->route('boutique')->with('info', 'Votre paiement est en cours de traitement. Vos pièces seront ajoutées automatiquement dans quelques instants.');
     }
 
     public function cancel()

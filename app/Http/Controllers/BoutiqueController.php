@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Services\AvatarCatalog;
 
 class BoutiqueController extends Controller
@@ -24,13 +25,14 @@ class BoutiqueController extends Controller
         $strategiqueSlug = $request->query('stratégique');
 
         $context = [
-            'coins'    => $coins,
-            'unlocked' => $unlocked,
-            'catalog'  => $catalog,
-            'mode'     => null,
-            'entity'   => null,
-            'slug'     => null,
-            'pricing'  => [
+            'coins'     => $coins,
+            'unlocked'  => $unlocked,
+            'catalog'   => $catalog,
+            'mode'      => null,
+            'entity'    => null,
+            'slug'      => null,
+            'coinPacks' => config('coins.packs', []),
+            'pricing'   => [
                 'pack'        => [],
                 'buzzer'      => [],
                 'stratégique' => [],
@@ -99,7 +101,7 @@ class BoutiqueController extends Controller
             return back()->with('error', "Veuillez vous connecter.");
         }
 
-        return \DB::transaction(function () use ($user, $kind, $target, $qty) {
+        return DB::transaction(function () use ($user, $kind, $target, $qty) {
             $user->lockForUpdate()->find($user->id);
             
             $coins    = $user->coins;

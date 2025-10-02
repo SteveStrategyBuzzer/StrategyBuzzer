@@ -228,6 +228,7 @@ audio{ width:100% }
     <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs')">🎨 Packs d’avatars</a>
     <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers')">🎵 Buzzers d’ambiance</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques')">🛡️ Avatars stratégiques</a>
+    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins')">💎 Pièces d'or</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies')">❤️ Vies</a>
   </div>
 
@@ -402,6 +403,54 @@ audio{ width:100% }
   </div>
 </section>
 
+  <!-- ====== Pièces d'or (Stripe) ====== -->
+  <section id="coins" style="display: {{ $tab==='coins'?'block':'none' }}">
+    <div class="hero"><b>Pièces d'intelligence</b> — Achetez des pièces avec de la vraie monnaie pour débloquer des contenus exclusifs.</div>
+
+    <div class="grid cols-3">
+      @foreach($coinPacks ?? [] as $pack)
+        <div class="card">
+          <div class="head">
+            <div class="title">{{ $pack['name'] }}</div>
+            @if($pack['popular'] ?? false)
+              <div class="badge" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff">⭐ Populaire</div>
+            @endif
+          </div>
+
+          <div style="padding:24px;text-align:center">
+            <div style="font-size:3rem;font-weight:900;color:#fbbf24;text-shadow:0 2px 8px rgba(251,191,36,0.3)">
+              {{ number_format($pack['coins']) }}
+            </div>
+            <div style="color:#cbd5e1;margin-top:8px;font-size:0.95rem">pièces d'intelligence</div>
+            
+            <div style="margin-top:24px;font-size:1.8rem;font-weight:800;color:#fff">
+              ${{ number_format($pack['amount_cents'] / 100, 2) }}
+            </div>
+            <div style="color:#94a3b8;font-size:0.85rem;margin-top:4px">
+              {{ number_format($pack['coins'] / ($pack['amount_cents'] / 100), 1) }} pièces par dollar
+            </div>
+          </div>
+
+          <div class="actions">
+            <form method="POST" action="{{ route('coins.checkout') }}" style="width:100%">
+              @csrf
+              <input type="hidden" name="product_key" value="{{ $pack['key'] }}">
+              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);font-size:1.05rem">
+                💳 Acheter
+              </button>
+            </form>
+          </div>
+        </div>
+      @endforeach
+    </div>
+
+    <div class="note" style="margin-top:24px">
+      <b>💡 Paiement sécurisé via Stripe</b><br>
+      Vos pièces seront automatiquement ajoutées à votre compte après le paiement. 
+      Vous pourrez ensuite les utiliser pour acheter des packs d'avatars, des buzzers, des avatars stratégiques et plus encore !
+    </div>
+  </section>
+
   <!-- ====== Achat de vies ====== -->
   <section id="vies" style="display: {{ $tab==='vies'?'block':'none' }}">
     <div class="hero">
@@ -466,12 +515,12 @@ audio{ width:100% }
 <script>
   // Active l’onglet (affichage côté client)
   function setTab(id){
-    for (const sec of ['packs','buzzers','stratégiques','vies']) {
+    for (const sec of ['packs','buzzers','stratégiques','coins','vies']) {
       const el = document.getElementById(sec);
       if(el) el.style.display = (sec===id ? 'block' : 'none');
     }
     document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-    const idx = {packs:0,buzzers:1,stratégiques:2,vies:3}[id] ?? 0;
+    const idx = {packs:0,buzzers:1,stratégiques:2,coins:3,vies:4}[id] ?? 0;
     const tab = document.querySelectorAll('.tabs .tab')[idx];
     if(tab) tab.classList.add('active');
     if(history.pushState){ history.pushState(null,'', '#'+id); }
@@ -479,7 +528,7 @@ audio{ width:100% }
   // Ouvre l’onglet correct selon la query (?item= / ?stratégique=) ou hash
   (function initTab(){
     const hash = (location.hash||'').replace('#','');
-    if(hash && ['packs','buzzers','stratégiques','vies'].includes(hash)) setTab(hash);
+    if(hash && ['packs','buzzers','stratégiques','coins','vies'].includes(hash)) setTab(hash);
     const pack = new URLSearchParams(location.search).get('item');
     const aid  = new URLSearchParams(location.search).get('stratégique');
     if (pack) { setTab('packs'); const el=document.getElementById('pack-'+pack); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
