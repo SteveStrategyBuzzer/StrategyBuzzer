@@ -69,6 +69,10 @@ Preferred communication style: Simple, everyday language.
 - **Guzzle HTTP** (^7.2) - HTTP client for external API calls
 - **Symfony Intl** (^7.3) - Internationalization support
 
+### Payment and E-commerce
+- **Stripe PHP SDK** (latest) - Payment processing and checkout sessions
+- **Stripe Webhooks** - Secure payment confirmation and event handling
+
 ### Testing and Quality Assurance
 - **PHPUnit** (^10.1) - PHP testing framework
 - **Laravel Breeze** - Authentication scaffolding
@@ -77,6 +81,20 @@ Preferred communication style: Simple, everyday language.
 - **React Testing utilities** - Frontend component testing
 
 ## Recent Changes
+
+### October 02, 2025
+- **Implemented Stripe Payment Integration**: Complete real-money coin purchasing system
+  - Created `config/coins.php` with 5 coin packs (Starter $0.99 to Ultimate $29.99)
+  - Built secure payment flow: checkout → Stripe → webhook → coin crediting
+  - Database schema: `payments` table for transaction tracking, `coin_ledger` table for audit trail
+  - Services: `StripeService` for checkout sessions, `CoinLedgerService` for coin management
+  - Controllers: `CoinsController` for checkout flow, `StripeWebhookController` for payment verification
+  - Security: Webhook signature validation, idempotent payment processing, CSRF exemption
+  - UI: Added "💎 Pièces d'or" tab to boutique with visual coin pack cards
+  - Enhanced `BoutiqueController` with DB transactions for atomic purchases
+  - Routes: `/coins/checkout`, `/stripe/webhook`, `/coins/success`, `/coins/cancel`
+  - Models: `Payment` and `CoinLedger` with relationships and status tracking
+  - Note: Requires `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` environment variables
 
 ### September 28, 2025
 - **Fixed main navigation flow**: Eliminated React intermediate page, direct access to Laravel application
