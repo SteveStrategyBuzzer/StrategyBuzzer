@@ -65,6 +65,16 @@ Route::post('/boutique/purchase',   [BoutiqueController::class, 'purchase'])->na
 Route::get('/avatar/boutique', fn () => redirect()->route('boutique'))->name('avatar.boutique');
 Route::get('/shop',            fn () => redirect()->route('boutique'))->name('shop.alias');
 
+/* ===== Pièces d'or (Stripe) ===== */
+Route::middleware('auth')->group(function () {
+    Route::post('/coins/checkout', [App\Http\Controllers\CoinsController::class, 'checkout'])->name('coins.checkout');
+    Route::get('/coins/success', [App\Http\Controllers\CoinsController::class, 'success'])->name('coins.success');
+    Route::get('/coins/cancel', [App\Http\Controllers\CoinsController::class, 'cancel'])->name('coins.cancel');
+});
+
+/* Stripe Webhook (no CSRF) */
+Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('stripe.webhook');
+
 /* ===== Menu / Auth ===== */
 Route::view('/menu', 'menu')->name('menu');
 Route::view('/login', 'login')->name('login');

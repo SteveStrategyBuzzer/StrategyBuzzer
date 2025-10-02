@@ -94,65 +94,95 @@ class BoutiqueController extends Controller
         $target = $request->input('target');
         $qty    = max(1, (int) $request->input('quantity', 1));
 
-        $user     = Auth::user();
+        $user = Auth::user();
         if (!$user) {
             return back()->with('error', "Veuillez vous connecter.");
         }
 
-        $coins    = $user->coins;
-        $settings = (array) ($user->profile_settings ?? []);
-        $unlocked = $settings['unlocked_avatars'] ?? []; // ✅ corrigé
-        $catalog  = AvatarCatalog::get();
+        return \DB::transaction(function () use ($user, $kind, $target, $qty) {
+            $user->lockForUpdate()->find($user->id);
+            
+            $coins    = $user->coins;
+            $settings = (array) ($user->profile_settings ?? []);
+            $unlocked = $settings['unlocked_avatars'] ?? [];
+            $catalog  = AvatarCatalog::get();
 
-        $unitPrice = 0;
+            $unitPrice = 0;
 
-        switch ($kind) {
-            case 'pack':
-                $unitPrice = $catalog[$target]['price'] ?? 300;
-                break;
-            case 'buzzer':
-                $bz = $catalog['buzzers']['items'][$target] ?? null;
-                $unitPrice = $bz['price'] ?? 80;
-                break;
-            case 'stratégique':
-                $strategique = $catalog['stratégiques']['items'][$target] ?? null;
-                if ($strategique && isset($strategique['price'])) {
-                    $unitPrice = (int) $strategique['price'];
-                } else {
-                    $tier = $strategique['tier'] ?? 'Rare';
-                    $map  = ['Rare' => 500, 'Épique' => 1000, 'Légendaire' => 1500];
-                    $unitPrice = $map[$tier] ?? 500;
-                }
-                break;
-            case 'life':
-                $unitPrice = 120;
-                break;
-        }
+            switch ($kind) {
+                case 'pack':
+                    if (!isset($catalog[$target])) {
+                        return back()->with('error', "Pack invalide.");
+                    }
+                    $unitPrice = $catalog[$target]['price'] ?? 300;
+                    break;
+                case 'buzzer':
+                    $bz = $catalog['buzzers']['items'][$target] ?? null;
+                    if (!$bz) {
+                        return back()->with('error', "Buzzer invalide.");
+                    }
+                    $unitPrice = $bz['price'] ?? 80;
+                    break;
+                case 'stratégique':
+                    $strategique = $catalog['stratégiques']['items'][$target] ?? null;
+                    if (!$strategique) {
+                        return back()->with('error', "Avatar stratégique invalide.");
+                    }
+                    if (isset($strategique['price'])) {
+                        $unitPrice = (int) $strategique['price'];
+                    } else {
+                        $tier = $strategique['tier'] ?? 'Rare';
+                        $map  = ['Rare' => 500, 'Épique' => 1000, 'Légendaire' => 1500];
+                        $unitPrice = $map[$tier] ?? 500;
+                    }
+                    break;
+                case 'life':
+                    $unitPrice = 120;
+                    break;
+            }
 
-        $total = $unitPrice * $qty;
+            $total = $unitPrice * $qty;
 
-        if ($total > $coins) {
-            return back()->with('error', "Pièces d'intelligence insuffisantes pour cet achat.");
-        }
+            if ($total > $coins) {
+                return back()->with('error', "Pièces d'intelligence insuffisantes pour cet achat.");
+            }
 
-        // Débit
-        $user->coins -= $total;
+            $user->coins -= $total;
 
-        if ($kind === 'life') {
-            $user->lives += $qty;
+            if ($kind === 'life') {
+                $user->lives += $qty;
+                $user->save();
+                
+                \App\Models\CoinLedger::create([
+                    'user_id' => $user->id,
+                    'delta' => -$total,
+                    'reason' => 'life_purchase',
+                    'ref_type' => null,
+                    'ref_id' => null,
+                    'balance_after' => $user->coins,
+                ]);
+                
+                return back()->with('success', "Achat réussi : +{$qty} vie(s) !");
+            }
+
+            if ($target && !in_array($target, $unlocked, true)) {
+                $unlocked[] = $target;
+                $settings['unlocked_avatars'] = $unlocked;
+            }
+
+            $user->profile_settings = $settings;
             $user->save();
-            return back()->with('success', "Achat réussi : +{$qty} vie(s) !");
-        }
+            
+            \App\Models\CoinLedger::create([
+                'user_id' => $user->id,
+                'delta' => -$total,
+                'reason' => $kind . '_purchase',
+                'ref_type' => null,
+                'ref_id' => null,
+                'balance_after' => $user->coins,
+            ]);
 
-        // Débloque élément
-        if ($target && !in_array($target, $unlocked, true)) {
-            $unlocked[] = $target;
-            $settings['unlocked_avatars'] = $unlocked; // ✅ corrigé : stockage standardisé
-        }
-
-        $user->profile_settings = $settings;
-        $user->save();
-
-        return back()->with('success', "Achat réussi, élément débloqué !");
+            return back()->with('success', "Achat réussi, élément débloqué !");
+        });
     }
 }
