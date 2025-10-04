@@ -5,6 +5,10 @@
   <title>Boutique — StrategyBuzzer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <!-- Version: {{ time() }} -->
   <style>
 :root{
   --gap:14px; --radius:18px; --shadow:0 10px 24px rgba(0,0,0,.12);
