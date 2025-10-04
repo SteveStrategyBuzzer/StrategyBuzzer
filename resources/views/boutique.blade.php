@@ -530,19 +530,31 @@ audio{ width:100% }
 
   function openPack(slug, label){
     const tpl = document.querySelector('template[data-pack="'+slug+'"]');
-    if (!tpl) return;
+    if (!tpl) {
+      console.log('Template non trouvé pour:', slug);
+      return;
+    }
     let imgs = [];
-    try { imgs = JSON.parse(tpl.textContent.trim()); } catch(e){ }
+    try { 
+      imgs = JSON.parse(tpl.textContent.trim()); 
+      console.log('Images trouvées:', imgs);
+    } catch(e){ 
+      console.error('Erreur parsing JSON:', e);
+      return;
+    }
     const modal = document.getElementById('modal');
     const title = document.getElementById('modalTitle');
     const thumbs= document.getElementById('thumbs');
     title.textContent = 'Pack: '+label;
     thumbs.innerHTML='';
+    
+    const baseUrl = window.location.origin + '/';
+    
     imgs.forEach(function(p){
       const wrap = document.createElement('div');
       wrap.style='aspect-ratio:1;overflow:hidden;border-radius:10px;border:1px solid rgba(255,255,255,.1)';
       const img = document.createElement('img');
-      img.src = '{{ asset("") }}'+p+'?v='+(Date.now()%100000);
+      img.src = baseUrl + p + '?v=' + (Date.now() % 100000);
       img.alt = 'avatar';
       img.loading='lazy';
       img.decoding='async';
@@ -551,6 +563,7 @@ audio{ width:100% }
       thumbs.appendChild(wrap);
     });
     modal.style.display='flex';
+    console.log('Modal ouvert avec', imgs.length, 'images');
   }
 
   function closeModal(){
