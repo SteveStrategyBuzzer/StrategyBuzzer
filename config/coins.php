@@ -62,7 +62,7 @@ return [
             'key' => 'supreme',
             'name' => 'Pack Suprême',
             'coins' => 10000,
-            'amount_cents' => 34930,  // $349.30 (30% discount: $0.03493/coin)
+            'amount_cents' => 15000,  // $150.00 ($0.015/coin, 66.7 coins per dollar)
             'currency' => 'usd',
             'popular' => false,
         ],
