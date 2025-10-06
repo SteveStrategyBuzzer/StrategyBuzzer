@@ -201,7 +201,7 @@ audio{ width:100% }
   @endphp
 
   <div class="topbar">
-    <div class="pill"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Pièces : <b>{{ number_format($coins) }}</b></div>
+    <div class="pill"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:32px;height:32px;vertical-align:middle;margin-right:6px;"> Pièces : <b>{{ number_format($coins) }}</b></div>
     <div class="row">
       <a class="pill clean" href="{{ $avatarUrl }}">← Retour Avatars</a>
     </div>
@@ -214,7 +214,7 @@ audio{ width:100% }
     <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 Packs d'avatars</a>
     <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🎵 Buzzers d'ambiance</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
-    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;">💎 Pièces d'Intelligence</a>
+    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Pièces d'Intelligence</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
   </div>
 
@@ -232,7 +232,7 @@ audio{ width:100% }
           <div class="head">
             <div class="title">{{ $p['label'] }}</div>
             @unless($isUnlockedPack)
-              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:18px;height:18px;vertical-align:middle;margin-right:3px;">{{ $p['price'] }}</div>
+              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;">{{ $p['price'] }}</div>
             @endunless
           </div>
 
@@ -299,7 +299,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="buzzer">
               <input type="hidden" name="target" value="{{ $bz['slug'] }}">
-              <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:18px;height:18px;vertical-align:middle;margin-right:3px;">{{ $bz['price'] }}</span>
+              <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;">{{ $bz['price'] }}</span>
               <button class="btn danger" type="submit">Acheter</button>
             </form>
           @endif
@@ -330,7 +330,7 @@ audio{ width:100% }
           <div class="head">
             <div class="title" style="text-transform:capitalize">{{ $a['label'] }}</div>
             @unless($isUnlockedStrategic)
-              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:18px;height:18px;vertical-align:middle;margin-right:3px;">{{ $a['price'] }}</div>
+              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;">{{ $a['price'] }}</div>
             @endunless
           </div>
 
@@ -432,7 +432,7 @@ audio{ width:100% }
     <div class="hero">
       <b>Vies supplémentaires</b> — Achetez des vies pour continuer vos parties.
       <div class="row" style="margin-top:8px">
-        <span class="muted">Prix par vie :</span> <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:18px;height:18px;vertical-align:middle;margin-right:3px;">120</span>
+        <span class="muted">Prix par vie :</span> <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;">120</span>
       </div>
     </div>
 
