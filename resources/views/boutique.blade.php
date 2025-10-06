@@ -74,6 +74,25 @@ audio{ width:100% }
 .note{ margin:10px 0; padding:10px 12px; border-radius:10px; background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.35) }
 .warn{ margin:10px 0; padding:10px 12px; border-radius:10px; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.35) }
 
+/* Coin icon - perfectly round and crisp */
+.coin-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.coin-icon--topbar { width: 40px; height: 40px; }
+.coin-icon--price { width: 32px; height: 32px; }
+.coin-icon--tab { width: 28px; height: 28px; }
+
 .qty{ display:flex; align-items:center; gap:8px }
 .qty input{ width:90px; padding:8px 10px; border-radius:10px; border:1px solid var(--line); background:#0f1530; color:#fff }
 
@@ -201,7 +220,7 @@ audio{ width:100% }
   @endphp
 
   <div class="topbar">
-    <div class="pill"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:32px;height:32px;vertical-align:middle;margin-right:6px;"> Pièces : <b>{{ number_format($coins) }}</b></div>
+    <div class="pill"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--topbar" style="margin-right:6px;"> Pièces : <b>{{ number_format($coins) }}</b></div>
     <div class="row">
       <a class="pill clean" href="{{ $avatarUrl }}">← Retour Avatars</a>
     </div>
@@ -214,7 +233,7 @@ audio{ width:100% }
     <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 Packs d'avatars</a>
     <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🎵 Buzzers d'ambiance</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
-    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Pièces d'Intelligence</a>
+    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--tab" style="margin-right:4px;"> Pièces d'Intelligence</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
   </div>
 
@@ -232,7 +251,7 @@ audio{ width:100% }
           <div class="head">
             <div class="title">{{ $p['label'] }}</div>
             @unless($isUnlockedPack)
-              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;">{{ $p['price'] }}</div>
+              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $p['price'] }}</div>
             @endunless
           </div>
 
@@ -299,7 +318,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="buzzer">
               <input type="hidden" name="target" value="{{ $bz['slug'] }}">
-              <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;">{{ $bz['price'] }}</span>
+              <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $bz['price'] }}</span>
               <button class="btn danger" type="submit">Acheter</button>
             </form>
           @endif
@@ -330,7 +349,7 @@ audio{ width:100% }
           <div class="head">
             <div class="title" style="text-transform:capitalize">{{ $a['label'] }}</div>
             @unless($isUnlockedStrategic)
-              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;">{{ $a['price'] }}</div>
+              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $a['price'] }}</div>
             @endunless
           </div>
 
@@ -432,7 +451,7 @@ audio{ width:100% }
     <div class="hero">
       <b>Vies supplémentaires</b> — Achetez des vies pour continuer vos parties.
       <div class="row" style="margin-top:8px">
-        <span class="muted">Prix par vie :</span> <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:24px;height:24px;vertical-align:middle;margin-right:4px;">120</span>
+        <span class="muted">Prix par vie :</span> <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">120</span>
       </div>
     </div>
 
