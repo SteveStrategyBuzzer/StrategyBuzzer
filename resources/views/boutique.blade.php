@@ -270,7 +270,7 @@ audio{ width:100% }
     </div>
 
     @foreach($packs as $p)
-      <template data-pack="{{ $p['slug'] }}">{!! json_encode($p['images'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</template>
+      <template data-pack="{{ $p['slug'] }}">{!! json_encode($p['images'], JSON_UNESCAPED_SLASHES) !!}</template>
     @endforeach
   </section>
 

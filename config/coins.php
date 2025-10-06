@@ -8,6 +8,7 @@ return [
     |
     | Configure the available coin packs for purchase with real money.
     | Each pack includes a key, number of coins, and price in cents.
+    | Ratio: 100 coins = $4.99 (about $0.0499 per coin)
     |
     */
 
@@ -16,7 +17,7 @@ return [
             'key' => 'starter',
             'name' => 'Pack Débutant',
             'coins' => 100,
-            'amount_cents' => 99,  // $0.99
+            'amount_cents' => 499,  // $4.99
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -24,7 +25,7 @@ return [
             'key' => 'popular',
             'name' => 'Pack Populaire',
             'coins' => 500,
-            'amount_cents' => 399,  // $3.99
+            'amount_cents' => 2495,  // $24.95 (500 × $0.0499)
             'currency' => 'usd',
             'popular' => true,
         ],
@@ -32,7 +33,7 @@ return [
             'key' => 'pro',
             'name' => 'Pack Pro',
             'coins' => 1200,
-            'amount_cents' => 899,  // $8.99
+            'amount_cents' => 5988,  // $59.88 (1200 × $0.0499)
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -40,7 +41,7 @@ return [
             'key' => 'mega',
             'name' => 'Pack Mega',
             'coins' => 2500,
-            'amount_cents' => 1699,  // $16.99
+            'amount_cents' => 12475,  // $124.75 (2500 × $0.0499)
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -48,7 +49,7 @@ return [
             'key' => 'ultimate',
             'name' => 'Pack Ultimate',
             'coins' => 5000,
-            'amount_cents' => 2999,  // $29.99
+            'amount_cents' => 24950,  // $249.50 (5000 × $0.0499)
             'currency' => 'usd',
             'popular' => false,
         ],
