@@ -201,7 +201,7 @@ audio{ width:100% }
   @endphp
 
   <div class="topbar">
-    <div class="pill">💰 Pièces : <b>{{ number_format($coins) }}</b></div>
+    <div class="pill"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:20px;height:20px;vertical-align:middle;margin-right:4px;"> Pièces : <b>{{ number_format($coins) }}</b></div>
     <div class="row">
       <a class="pill clean" href="{{ $avatarUrl }}">← Retour Avatars</a>
     </div>
@@ -232,7 +232,7 @@ audio{ width:100% }
           <div class="head">
             <div class="title">{{ $p['label'] }}</div>
             @unless($isUnlockedPack)
-              <div class="price">💰 {{ $p['price'] }}</div>
+              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:18px;height:18px;vertical-align:middle;margin-right:3px;">{{ $p['price'] }}</div>
             @endunless
           </div>
 
@@ -261,7 +261,8 @@ audio{ width:100% }
           </div>
 
           <div class="view-btn">
-            <button class="btn ghost" type="button" onclick="openPack('{{ $p['slug'] }}','{{ $p['label'] }}')">
+            <button class="btn ghost" type="button" 
+                    onclick='openPack({{ json_encode($p["images"], JSON_UNESCAPED_SLASHES) }},"{{ $p["label"] }}")'>
               Voir le pack
             </button>
           </div>
@@ -269,9 +270,6 @@ audio{ width:100% }
       @endforeach
     </div>
 
-    @foreach($packs as $p)
-      <template data-pack="{{ $p['slug'] }}">{!! json_encode($p['images'], JSON_UNESCAPED_SLASHES) !!}</template>
-    @endforeach
   </section>
 
   <!-- ====== Buzzers d'ambiance ====== -->
@@ -301,7 +299,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="buzzer">
               <input type="hidden" name="target" value="{{ $bz['slug'] }}">
-              <span class="price">💰 {{ $bz['price'] }}</span>
+              <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:18px;height:18px;vertical-align:middle;margin-right:3px;">{{ $bz['price'] }}</span>
               <button class="btn danger" type="submit">Acheter</button>
             </form>
           @endif
@@ -332,7 +330,7 @@ audio{ width:100% }
           <div class="head">
             <div class="title" style="text-transform:capitalize">{{ $a['label'] }}</div>
             @unless($isUnlockedStrategic)
-              <div class="price">💰 {{ $a['price'] }}</div>
+              <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:18px;height:18px;vertical-align:middle;margin-right:3px;">{{ $a['price'] }}</div>
             @endunless
           </div>
 
@@ -434,7 +432,7 @@ audio{ width:100% }
     <div class="hero">
       <b>Vies supplémentaires</b> — Achetez des vies pour continuer vos parties.
       <div class="row" style="margin-top:8px">
-        <span class="muted">Prix par vie :</span> <span class="price">💰 120</span>
+        <span class="muted">Prix par vie :</span> <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" style="width:18px;height:18px;vertical-align:middle;margin-right:3px;">120</span>
       </div>
     </div>
 
@@ -532,34 +530,16 @@ audio{ width:100% }
     }
   }
 
-  function openPack(slug, label){
-    const tpl = document.querySelector('template[data-pack="'+slug+'"]');
-    if (!tpl) {
-      console.log('Template non trouvé pour:', slug);
+  function openPack(imgs, label){
+    if (!Array.isArray(imgs)) {
+      console.error('Images invalides:', imgs);
       return;
     }
-    console.log('Template trouvé:', tpl);
-    console.log('Contenu brut:', tpl.textContent);
-    console.log('Contenu trimé:', tpl.textContent.trim());
-    console.log('innerHTML:', tpl.innerHTML);
-    console.log('content:', tpl.content);
     
-    let imgs = [];
-    try { 
-      const content = tpl.innerHTML.trim();
-      console.log('Tentative de parse:', content);
-      imgs = JSON.parse(content); 
-      console.log('Images trouvées:', imgs);
-    } catch(e){ 
-      console.error('Erreur parsing JSON:', e);
-      console.error('Message:', e.message);
-      console.error('Stack:', e.stack);
-      return;
-    }
     const modal = document.getElementById('modal');
     const title = document.getElementById('modalTitle');
     const thumbs= document.getElementById('thumbs');
-    title.textContent = 'Pack: '+label;
+    title.textContent = 'Pack: ' + label;
     thumbs.innerHTML='';
     
     const baseUrl = window.location.origin + '/';

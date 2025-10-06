@@ -8,7 +8,12 @@ return [
     |
     | Configure the available coin packs for purchase with real money.
     | Each pack includes a key, number of coins, and price in cents.
-    | Ratio: 100 coins = $4.99 (about $0.0499 per coin)
+    | 
+    | Pricing structure with progressive discounts:
+    | - 100 coins: $4.99 (base rate: $0.0499/coin)
+    | - 500 coins: 5% discount ($0.047405/coin)
+    | - 1200 coins: 10% discount ($0.04491/coin)
+    | - 2500+ coins: 15% discount ($0.042415/coin, max discount)
     |
     */
 
@@ -17,7 +22,7 @@ return [
             'key' => 'starter',
             'name' => 'Pack Débutant',
             'coins' => 100,
-            'amount_cents' => 499,  // $4.99
+            'amount_cents' => 499,  // $4.99 (base: $0.0499/coin)
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -25,7 +30,7 @@ return [
             'key' => 'popular',
             'name' => 'Pack Populaire',
             'coins' => 500,
-            'amount_cents' => 2495,  // $24.95 (500 × $0.0499)
+            'amount_cents' => 2370,  // $23.70 (5% discount: $0.047405/coin)
             'currency' => 'usd',
             'popular' => true,
         ],
@@ -33,7 +38,7 @@ return [
             'key' => 'pro',
             'name' => 'Pack Pro',
             'coins' => 1200,
-            'amount_cents' => 5988,  // $59.88 (1200 × $0.0499)
+            'amount_cents' => 5389,  // $53.89 (10% discount: $0.04491/coin)
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -41,7 +46,7 @@ return [
             'key' => 'mega',
             'name' => 'Pack Mega',
             'coins' => 2500,
-            'amount_cents' => 12475,  // $124.75 (2500 × $0.0499)
+            'amount_cents' => 10604,  // $106.04 (15% discount: $0.042415/coin)
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -49,7 +54,15 @@ return [
             'key' => 'ultimate',
             'name' => 'Pack Ultimate',
             'coins' => 5000,
-            'amount_cents' => 24950,  // $249.50 (5000 × $0.0499)
+            'amount_cents' => 21208,  // $212.08 (15% discount: $0.042415/coin)
+            'currency' => 'usd',
+            'popular' => false,
+        ],
+        [
+            'key' => 'supreme',
+            'name' => 'Pack Suprême',
+            'coins' => 10000,
+            'amount_cents' => 42415,  // $424.15 (15% discount: $0.042415/coin)
             'currency' => 'usd',
             'popular' => false,
         ],
