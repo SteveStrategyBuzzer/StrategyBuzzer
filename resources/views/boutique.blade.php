@@ -231,7 +231,8 @@ audio{ width:100% }
 
   <div class="tabs" role="tablist">
     <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 Packs d'avatars</a>
-    <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🎵 Buzzers d'ambiance</a>
+    <a class="tab {{ $tab==='musiques'?'active':'' }}"  href="#musiques"  onclick="setTab('musiques'); return false;">🎵 Musiques d'Ambiance</a>
+    <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🔊 Sons de Buzzers</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
     <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--tab" style="margin-right:4px;"> Pièces d'Intelligence</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
@@ -291,9 +292,51 @@ audio{ width:100% }
 
   </section>
 
-  <!-- ====== Buzzers d'ambiance ====== -->
+  <!-- ====== Musiques d'Ambiance ====== -->
+  <section id="musiques" style="display: {{ $tab==='musiques'?'block':'none' }}">
+    <div class="hero"><b>Musiques d'Ambiance</b> — Écoute avant d'acheter.</div>
+    <div class="grid cols-3">
+      @forelse($buzzers as $bz)
+        @php $isUnlockedBz = in_array($bz['slug'], $unlocked, true); @endphp
+        <div class="card" id="musique-{{ $bz['slug'] }}">
+          <div class="head">
+            <div class="title">{{ $bz['label'] }}</div>
+            <div class="badge">Audio</div>
+          </div>
+          <div class="audio">
+            <audio controls preload="none">
+              <source src="{{ asset($bz['path']) }}" type="audio/{{ pathinfo($bz['path'], PATHINFO_EXTENSION) }}">
+              Votre navigateur ne supporte pas l'audio HTML5.
+            </audio>
+          </div>
+
+          @if($isUnlockedBz)
+            <div class="actions">
+              <button class="btn success" disabled>Disponible</button>
+            </div>
+          @else
+            <form method="POST" action="{{ $purchaseUrl }}" class="actions">
+              @csrf
+              <input type="hidden" name="kind" value="buzzer">
+              <input type="hidden" name="target" value="{{ $bz['slug'] }}">
+              <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $bz['price'] }}</span>
+              <button class="btn danger" type="submit">Acheter</button>
+            </form>
+          @endif
+        </div>
+      @empty
+        <div class="card"><div class="head"><div class="title">Aucune musique d'ambiance trouvée</div></div>
+          <div style="padding:14px;color:#cbd5e1">
+            Place des fichiers dans <code>public/audio/buzzers/</code> (mp3/ogg/wav) ou <code>public/sounds/buzzers/</code>.
+          </div>
+        </div>
+      @endforelse
+    </div>
+  </section>
+
+  <!-- ====== Sons de Buzzers ====== -->
   <section id="buzzers" style="display: {{ $tab==='buzzers'?'block':'none' }}">
-    <div class="hero"><b>Buzzers & musiques d'ambiance</b> — Écoute avant d'acheter.</div>
+    <div class="hero"><b>Sons de Buzzers</b> — Sons d'alerte pour vos parties.</div>
     <div class="grid cols-3">
       @forelse($buzzers as $bz)
         @php $isUnlockedBz = in_array($bz['slug'], $unlocked, true); @endphp
@@ -324,7 +367,7 @@ audio{ width:100% }
           @endif
         </div>
       @empty
-        <div class="card"><div class="head"><div class="title">Aucun fichier audio trouvé</div></div>
+        <div class="card"><div class="head"><div class="title">Aucun son de buzzer trouvé</div></div>
           <div style="padding:14px;color:#cbd5e1">
             Place des fichiers dans <code>public/audio/buzzers/</code> (mp3/ogg/wav) ou <code>public/sounds/buzzers/</code>.
           </div>
@@ -606,12 +649,12 @@ audio{ width:100% }
 
 <script>
   function setTab(id){
-    for (const sec of ['packs','buzzers','stratégiques','coins','vies']) {
+    for (const sec of ['packs','musiques','buzzers','stratégiques','coins','vies']) {
       const el = document.getElementById(sec);
       if(el) el.style.display = (sec===id ? 'block' : 'none');
     }
     document.querySelectorAll('.tabs .tab').forEach(function(t){ t.classList.remove('active'); });
-    const map = {packs:0,buzzers:1,stratégiques:2,coins:3,vies:4};
+    const map = {packs:0,musiques:1,buzzers:2,stratégiques:3,coins:4,vies:5};
     const idx = map.hasOwnProperty(id) ? map[id] : 0;
     const tab = document.querySelectorAll('.tabs .tab')[idx];
     if(tab) tab.classList.add('active');
@@ -624,7 +667,7 @@ audio{ width:100% }
     const aid  = new URLSearchParams(location.search).get('stratégique');
     if (pack) { setTab('packs'); const el=document.getElementById('pack-'+pack); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
     else if (aid) { setTab('stratégiques'); const el=document.getElementById('stratégique-'+aid); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
-    else if (hash && ['packs','buzzers','stratégiques','coins','vies'].indexOf(hash)!==-1) setTab(hash);
+    else if (hash && ['packs','musiques','buzzers','stratégiques','coins','vies'].indexOf(hash)!==-1) setTab(hash);
   })();
 
   function toggleDetails(slug){
