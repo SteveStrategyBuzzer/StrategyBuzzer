@@ -538,12 +538,22 @@ audio{ width:100% }
       console.log('Template non trouvé pour:', slug);
       return;
     }
+    console.log('Template trouvé:', tpl);
+    console.log('Contenu brut:', tpl.textContent);
+    console.log('Contenu trimé:', tpl.textContent.trim());
+    console.log('innerHTML:', tpl.innerHTML);
+    console.log('content:', tpl.content);
+    
     let imgs = [];
     try { 
-      imgs = JSON.parse(tpl.textContent.trim()); 
+      const content = tpl.innerHTML.trim();
+      console.log('Tentative de parse:', content);
+      imgs = JSON.parse(content); 
       console.log('Images trouvées:', imgs);
     } catch(e){ 
       console.error('Erreur parsing JSON:', e);
+      console.error('Message:', e.message);
+      console.error('Stack:', e.stack);
       return;
     }
     const modal = document.getElementById('modal');
