@@ -449,45 +449,139 @@ audio{ width:100% }
   <!-- ====== Achat de vies ====== -->
   <section id="vies" style="display: {{ $tab==='vies'?'block':'none' }}">
     <div class="hero">
-      <b>Vies supplémentaires</b> — Achetez des vies pour continuer vos parties.
-      <div class="row" style="margin-top:8px">
-        <span class="muted">Prix par vie :</span> <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">120</span>
+      <b>Vies supplémentaires</b> — Achetez des vies pour continuer vos parties ou profitez de vies illimitées pendant une durée limitée.
+    </div>
+
+    <div style="margin-bottom:24px">
+      <h3 style="font-size:1.1rem;margin:0 0 12px;color:#fff">❤️ Packs de vies</h3>
+      <div class="grid cols-3">
+        <div class="card">
+          <div style="padding:24px;text-align:center">
+            <div style="font-size:3.5rem;font-weight:900;color:#ef4444;margin-bottom:8px">1</div>
+            <div style="color:#cbd5e1;font-size:0.95rem;margin-bottom:20px">vie</div>
+            
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:20px">
+              <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price">
+              <span style="font-size:1.5rem;font-weight:800;color:#fff">25</span>
+            </div>
+
+            <form method="POST" action="{{ $purchaseUrl }}" style="width:100%">
+              @csrf
+              <input type="hidden" name="kind" value="life">
+              <input type="hidden" name="quantity" value="1">
+              <button class="btn danger" type="submit" style="width:100%">Acheter</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="padding:24px;text-align:center">
+            <div style="font-size:3.5rem;font-weight:900;color:#ef4444;margin-bottom:8px">3</div>
+            <div style="color:#cbd5e1;font-size:0.95rem;margin-bottom:20px">vies</div>
+            
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:20px">
+              <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price">
+              <span style="font-size:1.5rem;font-weight:800;color:#fff">50</span>
+            </div>
+
+            <form method="POST" action="{{ $purchaseUrl }}" style="width:100%">
+              @csrf
+              <input type="hidden" name="kind" value="life">
+              <input type="hidden" name="quantity" value="3">
+              <button class="btn danger" type="submit" style="width:100%">Acheter</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="padding:24px;text-align:center">
+            <div style="font-size:3.5rem;font-weight:900;color:#ef4444;margin-bottom:8px">5</div>
+            <div style="color:#cbd5e1;font-size:0.95rem;margin-bottom:20px">vies</div>
+            
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:20px">
+              <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price">
+              <span style="font-size:1.5rem;font-weight:800;color:#fff">75</span>
+            </div>
+
+            <form method="POST" action="{{ $purchaseUrl }}" style="width:100%">
+              @csrf
+              <input type="hidden" name="kind" value="life">
+              <input type="hidden" name="quantity" value="5">
+              <button class="btn danger" type="submit" style="width:100%">Acheter</button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="grid cols-2">
-      <div class="card">
-        <div class="head"><div class="title">Acheter des vies</div></div>
-        <form method="POST" action="{{ $purchaseUrl }}" style="padding:12px 14px">
-          @csrf
-          <input type="hidden" name="kind" value="life">
-          <div class="row" style="justify-content:space-between">
-            <label class="qty">Quantité
-              <input type="number" name="quantity" value="1" min="1" step="1" required>
-            </label>
-            <button class="btn" type="submit">Acheter</button>
-          </div>
-          <div class="muted" style="margin-top:8px">Le débit total sera calculé au moment de l'achat (quantité × prix unitaire).</div>
-        </form>
-      </div>
+    <div>
+      <h3 style="font-size:1.1rem;margin:0 0 12px;color:#fff">⏱️ Vies illimitées temporaires</h3>
+      <div class="grid cols-3">
+        <div class="card">
+          <div style="padding:24px;text-align:center">
+            <div style="font-size:2.5rem;margin-bottom:8px">⚡</div>
+            <div style="font-size:1.8rem;font-weight:900;color:#fbbf24;margin-bottom:8px">30 min</div>
+            <div style="color:#cbd5e1;font-size:0.9rem;margin-bottom:20px">vies illimitées</div>
+            
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:20px">
+              <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price">
+              <span style="font-size:1.5rem;font-weight:800;color:#fff">125</span>
+            </div>
 
-      <div class="card">
-        <div class="head"><div class="title">Packs de vies rapides</div></div>
-        <div class="actions" style="flex-wrap:wrap">
-          <form method="POST" action="{{ $purchaseUrl }}">
-            @csrf <input type="hidden" name="kind" value="life"><input type="hidden" name="quantity" value="3">
-            <button class="btn" type="submit">+3 vies</button>
-          </form>
-          <form method="POST" action="{{ $purchaseUrl }}">
-            @csrf <input type="hidden" name="kind" value="life"><input type="hidden" name="quantity" value="5">
-            <button class="btn" type="submit">+5 vies</button>
-          </form>
-          <form method="POST" action="{{ $purchaseUrl }}">
-            @csrf <input type="hidden" name="kind" value="life"><input type="hidden" name="quantity" value="10">
-            <button class="btn" type="submit">+10 vies</button>
-          </form>
+            <form method="POST" action="{{ $purchaseUrl }}" style="width:100%">
+              @csrf
+              <input type="hidden" name="kind" value="unlimited_lives">
+              <input type="hidden" name="duration" value="30">
+              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">Acheter</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="padding:24px;text-align:center">
+            <div style="font-size:2.5rem;margin-bottom:8px">🔥</div>
+            <div style="font-size:1.8rem;font-weight:900;color:#fbbf24;margin-bottom:8px">1 heure</div>
+            <div style="color:#cbd5e1;font-size:0.9rem;margin-bottom:20px">vies illimitées</div>
+            
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:20px">
+              <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price">
+              <span style="font-size:1.5rem;font-weight:800;color:#fff">200</span>
+            </div>
+
+            <form method="POST" action="{{ $purchaseUrl }}" style="width:100%">
+              @csrf
+              <input type="hidden" name="kind" value="unlimited_lives">
+              <input type="hidden" name="duration" value="60">
+              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">Acheter</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="padding:24px;text-align:center">
+            <div style="font-size:2.5rem;margin-bottom:8px">💫</div>
+            <div style="font-size:1.8rem;font-weight:900;color:#fbbf24;margin-bottom:8px">2 heures</div>
+            <div style="color:#cbd5e1;font-size:0.9rem;margin-bottom:20px">vies illimitées</div>
+            
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:20px">
+              <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price">
+              <span style="font-size:1.5rem;font-weight:800;color:#fff">350</span>
+            </div>
+
+            <form method="POST" action="{{ $purchaseUrl }}" style="width:100%">
+              @csrf
+              <input type="hidden" name="kind" value="unlimited_lives">
+              <input type="hidden" name="duration" value="120">
+              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">Acheter</button>
+            </form>
+          </div>
         </div>
       </div>
+    </div>
+
+    <div class="note" style="margin-top:24px">
+      <b>💡 Comment ça marche ?</b><br>
+      Les vies normales restent dans votre compte indéfiniment. Les vies illimitées vous permettent de jouer sans limites pendant la durée choisie (le compteur démarre dès l'achat).
     </div>
   </section>
 
