@@ -214,7 +214,7 @@ audio{ width:100% }
     <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 Packs d'avatars</a>
     <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🎵 Buzzers d'ambiance</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
-    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;">💎 Pièces d'or</a>
+    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;">💎 Pièces d'Intelligence</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
   </div>
 
@@ -226,7 +226,7 @@ audio{ width:100% }
       @foreach($packs as $p)
         @php 
           $isUnlockedPack = in_array($p['slug'], $unlocked, true);
-          $hero = $p['images'][0] ?? null;
+          $previewImages = array_slice($p['images'], 0, 4);
         @endphp
         <div class="card" id="pack-{{ $p['slug'] }}">
           <div class="head">
@@ -237,13 +237,13 @@ audio{ width:100% }
           </div>
 
           <div class="avatar-row">
-            <div class="thumb">
-              <span class="tier t-rare">{{ $p['count'] }} images</span>
-              @if($hero)
-                <img src="{{ _assetv($hero) }}" alt="{{ $p['label'] }}" loading="lazy" decoding="async">
-              @else
-                <div style="padding:40px 14px;color:#cbd5e1;text-align:center;font-size:12px;">Aucune image</div>
-              @endif
+            <div class="thumb" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px;">
+              <span class="tier t-rare" style="position:absolute;top:8px;left:8px;">{{ $p['count'] }} images</span>
+              @forelse($previewImages as $img)
+                <img src="{{ _assetv($img) }}" alt="{{ $p['label'] }}" loading="lazy" decoding="async" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
+              @empty
+                <div style="padding:40px 14px;color:#cbd5e1;text-align:center;font-size:12px;grid-column:span 2;">Aucune image</div>
+              @endforelse
 
               <div class="avatar-actions">
                 @if($isUnlockedPack)
@@ -270,7 +270,7 @@ audio{ width:100% }
     </div>
 
     @foreach($packs as $p)
-      <template data-pack="{{ $p['slug'] }}">{!! json_encode($p['images']) !!}</template>
+      <template data-pack="{{ $p['slug'] }}">{!! json_encode($p['images'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</template>
     @endforeach
   </section>
 
@@ -381,7 +381,7 @@ audio{ width:100% }
     </div>
   </section>
 
-  <!-- ====== Pièces d'or (Stripe) ====== -->
+  <!-- ====== Pièces d'Intelligence (Stripe) ====== -->
   <section id="coins" style="display: {{ $tab==='coins'?'block':'none' }}">
     <div class="hero"><b>Pièces d'intelligence</b> — Achetez des pièces avec de la vraie monnaie pour débloquer des contenus exclusifs.</div>
 
