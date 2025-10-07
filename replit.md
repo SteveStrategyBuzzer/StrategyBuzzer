@@ -83,6 +83,18 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 ### October 07, 2025
+- **Enhanced Authentication Options**: Added multiple login methods to improve user accessibility
+  - **Email/Password authentication**: Complete login and registration system with secure password hashing
+  - **Apple authentication**: Placeholder for future Apple Sign-In integration
+  - **Phone authentication**: Placeholder for future SMS-based login
+  - UI improvements: Modern button design with color-coded providers, responsive layout, divider between email and social options
+  - Routes: `/auth/email`, `/auth/email/login`, `/auth/email/register`, `/auth/apple`, `/auth/phone`
+  - New users receive 1000 welcome coins upon registration
+  - Test account available: `test@strategybuzzer.com` / `password` (10,000 coins)
+- **Global Menu Navigation**: Added fixed "🏠 Menu" button in top-right corner
+  - Only appears after user authentication (not on login/register pages)
+  - Hidden on menu page itself to avoid redundancy
+  - Provides quick access to main menu from any authenticated page
 - **Strategic Avatar System with Boss Battles**: Complete boss battle system implementation
   - **No boss for levels 1-9** (training levels), first boss appears at level 10
   - Boss progression: Épiques (⭐) for levels 10-40, Légendaires (👑) for levels 50-100

@@ -88,6 +88,14 @@ Route::get('/auth/google/callback',   [AuthController::class, 'handleGoogleCallb
 Route::get('/auth/facebook',          [AuthController::class, 'redirectToFacebook'])->name('auth.facebook');
 Route::get('/auth/facebook/callback', [AuthController::class, 'handleFacebookCallback'])->name('facebook.callback');
 
+/* Email / Apple / Phone Authentication */
+Route::get('/auth/email',             [AuthController::class, 'showEmailLogin'])->name('email.login');
+Route::post('/auth/email/login',      [AuthController::class, 'handleEmailLogin'])->name('email.login.submit');
+Route::get('/auth/email/register',    [AuthController::class, 'showEmailRegister'])->name('email.register');
+Route::post('/auth/email/register',   [AuthController::class, 'handleEmailRegister'])->name('email.register.submit');
+Route::get('/auth/apple',             [AuthController::class, 'redirectToApple'])->name('auth.apple');
+Route::get('/auth/phone',             [AuthController::class, 'showPhoneLogin'])->name('auth.phone');
+
 /* ===== SOLO ===== */
 Route::prefix('solo')->name('solo.')->group(function () {
     Route::get('/',        [SoloController::class, 'index'])->name('index');

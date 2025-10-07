@@ -13,22 +13,82 @@
         text-align: center;
     }
 
+    .auth-buttons {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
     .auth-buttons .btn {
-        display: inline-block;
-        margin: 10px;
-        padding: 12px 24px;
+        display: block;
+        width: 100%;
+        margin: 15px 0;
+        padding: 15px 24px;
         background-color: #000;
         color: #fff;
-        font-size: 1.2rem;
-        font-weight: bold;
+        font-size: 1.1rem;
+        font-weight: 600;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         cursor: pointer;
         text-decoration: none;
+        text-align: center;
+        transition: all 0.3s ease;
     }
 
     .auth-buttons .btn:hover {
-        opacity: 0.9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-google {
+        background-color: #db4437;
+    }
+
+    .btn-facebook {
+        background-color: #4267B2;
+    }
+
+    .btn-apple {
+        background-color: #000;
+    }
+
+    .btn-phone {
+        background-color: #25D366;
+    }
+
+    .btn-email {
+        background-color: #5865F2;
+    }
+
+    .divider {
+        margin: 25px 0;
+        text-align: center;
+        position: relative;
+    }
+
+    .divider::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 40%;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .divider::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 50%;
+        width: 40%;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .divider span {
+        color: rgba(255, 255, 255, 0.6);
+        padding: 0 10px;
     }
 </style>
 
@@ -40,8 +100,14 @@
     <p>Veuillez choisir votre méthode de connexion.</p>
 
     <div class="auth-buttons">
-        <a href="{{ url('/auth/google') }}" class="btn">Connexion avec Google</a>
-        <a href="{{ url('/auth/facebook') }}" class="btn">Connexion avec Facebook</a>
+        <a href="{{ url('/auth/email') }}" class="btn btn-email">📧 Connexion avec Email</a>
+        
+        <div class="divider"><span>OU</span></div>
+        
+        <a href="{{ url('/auth/google') }}" class="btn btn-google">🔍 Connexion avec Google</a>
+        <a href="{{ url('/auth/facebook') }}" class="btn btn-facebook">📘 Connexion avec Facebook</a>
+        <a href="{{ url('/auth/apple') }}" class="btn btn-apple">🍎 Connexion avec Apple</a>
+        <a href="{{ url('/auth/phone') }}" class="btn btn-phone">📱 Connexion avec Téléphone</a>
     </div>
 </div>
 @endsection
