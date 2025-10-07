@@ -124,7 +124,53 @@ class SoloController extends Controller
 
     public function resume()
     {
-        $params = session('params', []);
+        // Récupérer les paramètres de la session ou créer des valeurs par défaut
+        $theme = session('theme', 'general');
+        $nbQuestions = session('nb_questions', 30);
+        $niveau = session('niveau_selectionne', session('choix_niveau', 1));
+        $avatar = session('avatar', 'Aucun');
+        $playerAvatar = session('selected_avatar', 'default');
+        
+        $themeIcons = [
+            'general'    => '🧠',
+            'geographie' => '🌐',
+            'histoire'   => '📜',
+            'art'        => '🎨',
+            'cinema'     => '🎬',
+            'sport'      => '🏅',
+            'cuisine'    => '🍳',
+            'faune'      => '🦁',
+            'sciences' => '🔬',
+        ];
+        
+        $bossInfo = $this->getBossForLevel($niveau);
+        
+        // Vérifier conflit d'avatar seulement s'il y a un boss
+        $avatarConflict = false;
+        if ($bossInfo) {
+            $bossNameClean = trim(preg_replace('/[\x{1F300}-\x{1F9FF}]/u', '', $bossInfo['name']));
+            if ($avatar !== 'Aucun' && $avatar === $bossNameClean) {
+                $avatarConflict = true;
+                $avatar = 'Aucun';
+                session(['avatar' => 'Aucun']);
+            }
+        }
+        
+        $params = [
+            'theme'           => $theme,
+            'theme_icon'      => $themeIcons[$theme] ?? '❓',
+            'avatar'          => $avatar,
+            'avatar_skills'   => $this->getAvatarSkills($avatar),
+            'nb_questions'    => $nbQuestions,
+            'niveau_joueur'   => $niveau,
+            'boss_name'       => $bossInfo['name'] ?? null,
+            'boss_avatar'     => $bossInfo['avatar'] ?? null,
+            'boss_skills'     => $bossInfo['skills'] ?? [],
+            'player_avatar'   => $playerAvatar,
+            'avatar_conflict' => $avatarConflict,
+            'has_boss'        => $bossInfo !== null,
+        ];
+        
         return view('resume', compact('params'));
     }
 
