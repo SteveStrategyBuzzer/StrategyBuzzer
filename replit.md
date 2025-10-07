@@ -147,6 +147,34 @@ Preferred communication style: Simple, everyday language.
     - Maintains full Question→Result→Next cycle even on timeout
   - **Routes**: `/solo/game`, `/solo/buzz` (POST), `/solo/answer` (POST), `/solo/timeout`, `/solo/next`, `/solo/stat`
   - **Complete gameplay flow**: Login → Menu → Solo config → Resume → Question (BUZZ) → Answer (4 choices) → Result (3s) → Next question → ... → Final stats
+- **Competitive UI Redesign for Gameplay Screens**: Complete visual overhaul for immersive competitive experience
+  - **Question Screen** (`game_question.blade.php`): 
+    - Energetic chronometer with animated glow effects and danger pulse at 3 seconds
+    - Realistic BUZZ button (240x240px) with "Strategy Buzzer" branding, 3D shadow effects, and ring animation
+    - VS header displaying player vs opponent/boss scores with color-coded sections
+    - Boss/Student display showing current adversary (Boss name or Student level)
+    - Gradient backgrounds and backdrop blur for modern aesthetic
+    - Fully responsive design (mobile-first approach)
+  - **Answer Screen** (`game_answer.blade.php`):
+    - Stylized answer bubbles with hover animations and gradient borders
+    - Timer bar with smooth transitions and warning states
+    - Question reminder bubble for context retention
+    - Numbered answer badges (circular, gradient) with slide-in hover effects
+    - Color-coded sections for question/score display
+    - Support for both multiple choice and true/false questions
+  - **Result Screen** (`game_result.blade.php`):
+    - Competitive score battle display with VS divider
+    - Player score (green) vs Opponent score (red) with glow effects
+    - Animated result icons (✅/❌) with scale-in rotation
+    - Answer comparison showing user's choice vs correct answer
+    - 3-second countdown with pulse animation
+    - Timeout handling with special "⏰ Temps écoulé" display
+  - **Menu Button Refinement**: Removed from all gameplay screens (game, answer, result, timeout, stat) to maintain immersion
+    - Menu button now only appears on non-game pages (Resume, Boutique, Config, etc.)
+    - Clean gameplay experience without navigation distractions
+  - **Controller Enhancement**: Made `getBossForLevel()` public in `SoloController` for view access
+  - **Color Palette**: Consistent use of #4ECDC4 (teal), #2ECC71 (success green), #E74C3C (error red), #667eea (purple gradient)
+  - **Accessibility**: Responsive breakpoints at 768px and 480px for tablet and mobile devices
 
 ### October 02, 2025
 - **Implemented Stripe Payment Integration**: Complete real-money coin purchasing system
