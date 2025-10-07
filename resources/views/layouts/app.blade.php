@@ -40,10 +40,13 @@
     </style>
 </head>
 <body>
-    <!-- Bouton Menu en haut à droite -->
-    <a href="{{ route('menu') }}" class="menu-button">
-        🏠 Menu
-    </a>
+    @auth
+        @if(Route::currentRouteName() !== 'menu' && Route::currentRouteName() !== 'login' && Route::currentRouteName() !== 'register' && Route::currentRouteName() !== 'home')
+            <a href="{{ route('menu') }}" class="menu-button">
+                🏠 Menu
+            </a>
+        @endif
+    @endauth
 
     <main class="container">
         @yield('content')
