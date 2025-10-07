@@ -25,9 +25,10 @@ Preferred communication style: Simple, everyday language.
 - **Event-driven system** for real-time game state broadcasting
 
 ### Database and Storage
-- **Firebase Firestore** as the primary NoSQL database for real-time data synchronization
+- **PostgreSQL (Replit Neon)** as the primary relational database for user data, game progress, and transactions
+- **Firebase Firestore** for real-time data synchronization during gameplay
 - **Firebase Authentication** for user management and social login capabilities
-- **Laravel's built-in database abstraction** for potential local data caching
+- **Laravel's Eloquent ORM** for database abstraction and query building
 - **File-based configuration** for game structure and question sets
 
 ### Authentication and Authorization
@@ -83,6 +84,12 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 ### October 07, 2025
+- **Database Migration to PostgreSQL**: Migrated from SQLite to Replit's PostgreSQL (Neon) for improved stability
+  - Configured automatic connection using environment variables (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE)
+  - Updated `config/database.php` to prioritize PostgreSQL connection
+  - Modified `public/index.php` and `artisan` to force PostgreSQL environment variables
+  - All migrations executed successfully on PostgreSQL
+  - Test account migrated: `test@strategybuzzer.com` / `password` (10,000 coins)
 - **Enhanced Authentication Options**: Added multiple login methods to improve user accessibility
   - **Email/Password authentication**: Complete login and registration system with secure password hashing
   - **Apple authentication**: Placeholder for future Apple Sign-In integration

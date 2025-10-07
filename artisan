@@ -5,8 +5,13 @@ use Illuminate\Contracts\Console\Kernel;
 
 define('LARAVEL_START', microtime(true));
 
-// Force PostgreSQL connection
+// Force PostgreSQL connection with environment variables
 putenv('DB_CONNECTION=pgsql');
+if (getenv('PGHOST')) putenv('DB_HOST=' . getenv('PGHOST'));
+if (getenv('PGPORT')) putenv('DB_PORT=' . getenv('PGPORT'));
+if (getenv('PGDATABASE')) putenv('DB_DATABASE=' . getenv('PGDATABASE'));
+if (getenv('PGUSER')) putenv('DB_USERNAME=' . getenv('PGUSER'));
+if (getenv('PGPASSWORD')) putenv('DB_PASSWORD=' . getenv('PGPASSWORD'));
 
 require __DIR__.'/vendor/autoload.php';
 
