@@ -155,6 +155,7 @@ class AvatarController extends Controller
                     'name' => null,
                     'url'  => null,
                 ]);
+                session(['selected_avatar' => 'default']); // Sync avec session
             } else {
                 data_set($settings, 'avatar', [
                     'type' => 'regular',
@@ -162,6 +163,7 @@ class AvatarController extends Controller
                     'name' => null,
                     'url'  => $value, // on stocke le chemin relatif; ta vue le normalise
                 ]);
+                session(['selected_avatar' => basename($value, '.png')]); // Sync avec session
             }
             $changed = true;
         }
@@ -189,6 +191,7 @@ class AvatarController extends Controller
                     'name' => null,
                     'url'  => null,
                 ]);
+                session(['avatar' => 'Aucun']); // Sync avec session pour SoloController
             } else {
                 $img  = self::STRATEGIQUE_IMAGES[$value] ?? 'images/avatars/default.png';
                 $name = self::STRATEGIQUE_NAMES[$value] ?? ucfirst($value);
@@ -197,6 +200,7 @@ class AvatarController extends Controller
                     'name' => $name,
                     'url'  => $img, // stocke le chemin relatif; ta vue le normalise
                 ]);
+                session(['avatar' => $name]); // Sync avec session pour SoloController
             }
             $changed = true;
         }
@@ -214,6 +218,9 @@ class AvatarController extends Controller
         // Redirection douce
         if ($from === 'profile' && app('router')->has('profile.show')) {
             return redirect()->route('profile.show')->with('success', 'Avatar mis à jour.');
+        }
+        if ($from === 'resume' && app('router')->has('solo.resume')) {
+            return redirect()->route('solo.resume')->with('success', 'Avatar mis à jour.');
         }
         if (filter_var($from, FILTER_VALIDATE_URL)) {
             return redirect($from)->with('success', 'Avatar mis à jour.');

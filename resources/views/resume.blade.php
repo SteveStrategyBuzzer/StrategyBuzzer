@@ -258,7 +258,7 @@
       <div class="avatar-title">👤 Avatar Joueur</div>
       
       <!-- Emplacement Avatar Portrait - Cliquable -->
-      <a href="{{ route('avatar') }}" class="avatar-clickable" style="display: block; text-decoration: none; color: inherit;">
+      <a href="{{ route('avatar', ['from' => 'resume']) }}" class="avatar-clickable" style="display: block; text-decoration: none; color: inherit;">
         <img src="{{ asset('images/avatars/portraits/' . ($params['player_avatar'] ?? 'default') . '.png') }}?v={{ time() }}" 
              alt="Avatar Joueur" 
              class="avatar-img"
@@ -267,7 +267,7 @@
       </a>
       
       <!-- Emplacement Avatar Stratégique - Cliquable -->
-      <a href="{{ route('avatar') }}" style="text-decoration: none; color: inherit;">
+      <a href="{{ route('avatar', ['from' => 'resume']) }}" style="text-decoration: none; color: inherit;">
         @if($params['avatar'] !== 'Aucun')
           <div class="avatar-slot selected">
             <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">⚔️ Avatar Stratégique</div>
