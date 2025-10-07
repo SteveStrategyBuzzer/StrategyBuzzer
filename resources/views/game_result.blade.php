@@ -346,6 +346,11 @@
     <!-- Score Battle -->
     <div class="score-battle">
         <div class="score-player">
+            @php
+                $selectedAvatar = session('selected_avatar', 'default');
+                $avatarPath = asset("images/avatars/{$selectedAvatar}.png");
+            @endphp
+            <img src="{{ $avatarPath }}" alt="Player" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid #2ECC71; position: absolute; top: -15px; left: 50%; transform: translateX(-50%);">
             <div class="score-label">🎮 Votre Score</div>
             <div class="score-number">{{ $params['score'] }}</div>
         </div>

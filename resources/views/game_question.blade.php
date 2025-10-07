@@ -40,13 +40,15 @@
     
     .player-info, .opponent-info {
         background: rgba(0,0,0,0.4);
-        padding: 10px 20px;
+        padding: 10px 15px;
         border-radius: 15px;
         backdrop-filter: blur(10px);
         border: 2px solid rgba(255,255,255,0.1);
         flex: 1;
         min-width: 150px;
-        text-align: center;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     
     .player-info {
@@ -356,8 +358,17 @@
     <!-- Header avec VS adversaire -->
     <div class="game-header">
         <div class="player-info">
-            <div class="player-label">🎮 Vous</div>
-            <div class="score-display">{{ $params['score'] }}</div>
+            <div class="player-avatar-small">
+                @php
+                    $selectedAvatar = session('selected_avatar', 'default');
+                    $avatarPath = asset("images/avatars/{$selectedAvatar}.png");
+                @endphp
+                <img src="{{ $avatarPath }}" alt="Player" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #4ECDC4;">
+            </div>
+            <div>
+                <div class="player-label">🎮 Vous</div>
+                <div class="score-display">{{ $params['score'] }}</div>
+            </div>
         </div>
         
         <div class="vs-badge">VS</div>

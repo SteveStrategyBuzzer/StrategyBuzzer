@@ -46,6 +46,9 @@
         backdrop-filter: blur(10px);
         flex: 1;
         min-width: 150px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     
     .answer-title {
@@ -261,8 +264,15 @@
     <!-- Header -->
     <div class="answer-header">
         <div class="answer-info">
-            <div class="answer-title">📝 Réponses Q: {{ $params['current_question'] }}</div>
-            <div class="answer-value">{{ $params['total_questions'] }} questions</div>
+            @php
+                $selectedAvatar = session('selected_avatar', 'default');
+                $avatarPath = asset("images/avatars/{$selectedAvatar}.png");
+            @endphp
+            <img src="{{ $avatarPath }}" alt="Player" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid #4ECDC4;">
+            <div>
+                <div class="answer-title">📝 Réponses Q: {{ $params['current_question'] }}</div>
+                <div class="answer-value">{{ $params['total_questions'] }} questions</div>
+            </div>
         </div>
         
         <div class="answer-info score-box">
