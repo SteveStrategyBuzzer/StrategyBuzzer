@@ -176,12 +176,125 @@ class SoloController extends Controller
 
     public function game()
     {
-        return view('solo_gameplay');
+        $questionService = new \App\Services\QuestionService();
+        
+        // Récupérer les paramètres de session
+        $theme = session('theme', 'general');
+        $nbQuestions = session('nb_questions', 30);
+        $niveau = session('niveau_selectionne', 1);
+        $avatar = session('avatar', 'Aucun');
+        
+        // Initialiser le jeu si première question
+        if (!session()->has('current_question_number')) {
+            session(['current_question_number' => 1]);
+            session(['score' => 0]);
+            session(['answered_questions' => []]);
+        }
+        
+        $currentQuestion = session('current_question_number');
+        
+        // Générer la question
+        $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion);
+        session(['current_question' => $question]);
+        
+        // Calculer le temps de chrono de base (4-8 secondes selon niveau)
+        $baseTime = max(4, 8 - floor($niveau / 10));
+        session(['question_start_time' => time()]);
+        session(['chrono_time' => $baseTime]);
+        
+        $params = [
+            'question' => $question,
+            'current_question' => $currentQuestion,
+            'total_questions' => $nbQuestions,
+            'score' => session('score', 0),
+            'chrono_time' => $baseTime,
+            'avatar' => $avatar,
+            'theme' => $theme,
+            'niveau' => $niveau,
+        ];
+        
+        return view('game_question', compact('params'));
+    }
+
+    public function buzz(Request $request)
+    {
+        // Enregistrer le temps de buzz
+        $buzzTime = time() - session('question_start_time');
+        session(['buzz_time' => $buzzTime]);
+        session(['buzzed' => true]);
+        
+        // Récupérer la question actuelle
+        $question = session('current_question');
+        $currentQuestion = session('current_question_number');
+        $nbQuestions = session('nb_questions', 30);
+        
+        // Calculer temps pour répondre (10 secondes de base)
+        $answerTime = 10;
+        
+        $params = [
+            'question' => $question,
+            'current_question' => $currentQuestion,
+            'total_questions' => $nbQuestions,
+            'score' => session('score', 0),
+            'answer_time' => $answerTime,
+            'buzz_time' => $buzzTime,
+        ];
+        
+        return view('game_answer', compact('params'));
     }
 
     public function answer(Request $request)
     {
-        // TODO: validation/logique de réponse
+        $questionService = new \App\Services\QuestionService();
+        
+        $answerIndex = (int) $request->input('answer_index');
+        $question = session('current_question');
+        
+        // Vérifier la réponse
+        $isCorrect = $questionService->checkAnswer($question, $answerIndex);
+        
+        // Mettre à jour le score
+        if ($isCorrect) {
+            $score = session('score', 0) + 1;
+            session(['score' => $score]);
+        }
+        
+        // Sauvegarder la réponse
+        $answeredQuestions = session('answered_questions', []);
+        $answeredQuestions[] = [
+            'question_id' => $question['id'],
+            'answer_index' => $answerIndex,
+            'is_correct' => $isCorrect,
+        ];
+        session(['answered_questions' => $answeredQuestions]);
+        
+        $params = [
+            'question' => $question,
+            'answer_index' => $answerIndex,
+            'is_correct' => $isCorrect,
+            'current_question' => session('current_question_number'),
+            'total_questions' => session('nb_questions', 30),
+            'score' => session('score', 0),
+        ];
+        
+        return view('game_result', compact('params'));
+    }
+
+    public function nextQuestion()
+    {
+        // Incrémenter le numéro de question
+        $currentQuestion = session('current_question_number', 1);
+        $nbQuestions = session('nb_questions', 30);
+        
+        if ($currentQuestion >= $nbQuestions) {
+            // Fin de la partie
+            return redirect()->route('solo.stat');
+        }
+        
+        session(['current_question_number' => $currentQuestion + 1]);
+        session()->forget('buzzed');
+        session()->forget('buzz_time');
+        
         return redirect()->route('solo.game');
     }
 
