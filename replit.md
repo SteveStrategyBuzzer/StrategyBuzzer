@@ -87,9 +87,15 @@ Preferred communication style: Simple, everyday language.
 - **Database Migration to PostgreSQL**: Migrated from SQLite to Replit's PostgreSQL (Neon) for improved stability
   - Configured automatic connection using environment variables (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE)
   - Updated `config/database.php` to prioritize PostgreSQL connection
-  - Modified `public/index.php` and `artisan` to force PostgreSQL environment variables
   - All migrations executed successfully on PostgreSQL
   - Test account migrated: `test@strategybuzzer.com` / `password` (10,000 coins)
+- **Fixed PostgreSQL Connection in Web Context**: Resolved environment variable access issue
+  - **Problem**: `php artisan serve` creates child process that loses Replit's PG* environment variables
+  - **Solution**: Changed workflow from `php artisan serve` to `php -S 0.0.0.0:5000 -t public` for direct environment inheritance
+  - **Result**: PostgreSQL variables (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD) now accessible via `getenv()` in web requests
+  - Removed unnecessary `bootstrap/database-config.php` workaround
+  - Web server now correctly connects to Replit PostgreSQL instead of falling back to SQLite
+  - Configuration in `config/database.php` uses `getenv()` to read Replit environment variables
 - **Enhanced Authentication Options**: Added multiple login methods to improve user accessibility
   - **Email/Password authentication**: Complete login and registration system with secure password hashing
   - **Apple authentication**: Placeholder for future Apple Sign-In integration

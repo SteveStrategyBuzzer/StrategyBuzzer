@@ -26,7 +26,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "php artisan serve --host=0.0.0.0 --port=5000"
+args = "php -S 0.0.0.0:5000 -t public"
 waitForPort = 5000
 
 [[ports]]
@@ -34,19 +34,11 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 8000
-externalPort = 8000
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
-[[ports]]
 localPort = 33033
 externalPort = 3001
 
 [[ports]]
-localPort = 41471
+localPort = 33555
 externalPort = 3003
 
 [[ports]]

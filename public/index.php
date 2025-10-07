@@ -5,9 +5,6 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// Force PostgreSQL configuration before anything else
-require __DIR__.'/../bootstrap/database-config.php';
-
 /*
 |--------------------------------------------------------------------------
 | Check If The Application Is Under Maintenance
