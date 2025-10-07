@@ -15,7 +15,8 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'pgsql'),
+    // Force PostgreSQL if Replit environment variables are present, ignore .env file
+    'default' => 'pgsql',
 
     /*
     |--------------------------------------------------------------------------
