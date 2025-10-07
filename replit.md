@@ -24,7 +24,11 @@ Preferred communication style: Simple, everyday language.
 - **Service-oriented architecture** for game logic, scoring, and player management.
 - **Event-driven system** for real-time game state broadcasting.
 - **QuestionService** for AI-ready, theme-based question generation with difficulty scaling.
-- **AI Opponent System** with level-based difficulty scaling (20-95% accuracy).
+- **Advanced AI Opponent System** with three-layer behavioral simulation:
+  - **Buzz Decision Layer**: 65-100% chance to buzz (scales with level)
+  - **Speed Competition Layer**: 20-90% chance to be faster than player (scales with level)
+  - **Answer Accuracy Layer**: 60-100% success rate (scales with level)
+  - Progressive difficulty curve from beginner (level 1) to expert (level 100)
 
 ### Database and Storage
 - **PostgreSQL (Replit Neon)** as the primary relational database for user data, game progress, and transactions.
@@ -47,6 +51,12 @@ Preferred communication style: Simple, everyday language.
 - **Complete Gameplay System Implementation** with Question, Answer, and Result screens.
 - **SoloController** for comprehensive game state management and session tracking.
 - **Strategic Avatar System with Boss Battles**: Level-based boss progression and avatar unlocking.
+- **Advanced Scoring System**:
+  - **+2 points** for being first to answer correctly
+  - **+1 point** for being second to answer correctly
+  - **-2 points** for buzzing with wrong answer
+  - **0 points** for not buzzing
+  - Detailed round feedback showing buzz order, speed, and points awarded
 - **Sound system** for audio feedback on game events.
 
 ## External Dependencies
