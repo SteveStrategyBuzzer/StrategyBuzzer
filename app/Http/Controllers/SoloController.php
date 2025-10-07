@@ -50,7 +50,9 @@ class SoloController extends Controller
             'theme'              => $theme,
             'current_question_number' => 1,
             'score' => 0,
+            'opponent_score' => 0,
             'answered_questions' => [],
+            'used_question_ids' => [],
             'current_question' => null,  // Sera généré au premier game()
         ]);
 
@@ -188,11 +190,16 @@ class SoloController extends Controller
         $niveau = session('niveau_selectionne', 1);
         $avatar = session('avatar', 'Aucun');
         $currentQuestion = session('current_question_number', 1);
+        $usedQuestionIds = session('used_question_ids', []);
         
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
-            $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion);
+            $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds);
             session(['current_question' => $question]);
+            
+            // Ajouter l'ID de la question aux questions utilisées
+            $usedQuestionIds[] = $question['id'];
+            session(['used_question_ids' => $usedQuestionIds]);
         } else {
             $question = session('current_question');
         }
@@ -211,6 +218,7 @@ class SoloController extends Controller
             'current_question' => $currentQuestion,
             'total_questions' => $nbQuestions,
             'score' => session('score', 0),
+            'opponent_score' => session('opponent_score', 0),
             'chrono_time' => $baseTime,
             'avatar' => $avatar,
             'theme' => $theme,
@@ -253,14 +261,22 @@ class SoloController extends Controller
         
         $answerIndex = (int) $request->input('answer_index');
         $question = session('current_question');
+        $niveau = session('niveau_selectionne', 1);
         
-        // Vérifier la réponse
+        // Vérifier la réponse du joueur
         $isCorrect = $questionService->checkAnswer($question, $answerIndex);
         
-        // Mettre à jour le score
+        // Mettre à jour le score du joueur
         if ($isCorrect) {
             $score = session('score', 0) + 1;
             session(['score' => $score]);
+        }
+        
+        // Simuler la réponse de l'adversaire IA
+        $opponentCorrect = $questionService->simulateOpponentAnswer($niveau, $question);
+        if ($opponentCorrect) {
+            $opponentScore = session('opponent_score', 0) + 1;
+            session(['opponent_score' => $opponentScore]);
         }
         
         // Sauvegarder la réponse
@@ -269,6 +285,7 @@ class SoloController extends Controller
             'question_id' => $question['id'],
             'answer_index' => $answerIndex,
             'is_correct' => $isCorrect,
+            'opponent_correct' => $opponentCorrect,
         ];
         session(['answered_questions' => $answeredQuestions]);
         
@@ -279,6 +296,7 @@ class SoloController extends Controller
             'current_question' => session('current_question_number'),
             'total_questions' => session('nb_questions', 30),
             'score' => session('score', 0),
+            'opponent_score' => session('opponent_score', 0),
         ];
         
         return view('game_result', compact('params'));
@@ -286,8 +304,18 @@ class SoloController extends Controller
 
     public function timeout()
     {
+        $questionService = new \App\Services\QuestionService();
+        
         // Le joueur n'a pas buzzé à temps - enregistrer comme réponse incorrecte
         $question = session('current_question');
+        $niveau = session('niveau_selectionne', 1);
+        
+        // Simuler la réponse de l'adversaire IA (il peut toujours répondre même si joueur timeout)
+        $opponentCorrect = $questionService->simulateOpponentAnswer($niveau, $question);
+        if ($opponentCorrect) {
+            $opponentScore = session('opponent_score', 0) + 1;
+            session(['opponent_score' => $opponentScore]);
+        }
         
         // Sauvegarder la réponse manquée
         $answeredQuestions = session('answered_questions', []);
@@ -295,6 +323,7 @@ class SoloController extends Controller
             'question_id' => $question['id'] ?? 'unknown',
             'answer_index' => -1, // -1 = pas de réponse (timeout)
             'is_correct' => false,
+            'opponent_correct' => $opponentCorrect,
         ];
         session(['answered_questions' => $answeredQuestions]);
         
@@ -306,6 +335,7 @@ class SoloController extends Controller
             'current_question' => session('current_question_number'),
             'total_questions' => session('nb_questions', 30),
             'score' => session('score', 0),
+            'opponent_score' => session('opponent_score', 0),
         ];
         
         return view('game_result', compact('params'));
