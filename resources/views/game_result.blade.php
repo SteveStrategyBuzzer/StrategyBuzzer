@@ -165,13 +165,18 @@
             $question = $params['question'];
             $userAnswerIndex = $params['answer_index'];
             $correctIndex = $question['correct_index'];
+            $isTimeout = $params['is_timeout'] ?? false;
         @endphp
         
         @if(!$params['is_correct'])
-            <!-- Afficher la réponse incorrecte du joueur -->
+            <!-- Afficher la réponse incorrecte du joueur ou le timeout -->
             <div class="answer-display answer-incorrect">
                 <span class="answer-label">Votre réponse:</span>
-                <span>{{ $question['answers'][$userAnswerIndex] }}</span>
+                @if($isTimeout)
+                    <span>⏰ Temps écoulé - Pas de buzz</span>
+                @else
+                    <span>{{ $question['answers'][$userAnswerIndex] }}</span>
+                @endif
                 <span class="answer-icon">❌</span>
             </div>
         @endif

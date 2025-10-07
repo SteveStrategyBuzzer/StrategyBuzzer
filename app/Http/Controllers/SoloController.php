@@ -43,11 +43,15 @@ class SoloController extends Controller
         $max = session('choix_niveau', 1);
         if ($niveau > $max) $niveau = $max;
 
-        // Persistance session
+        // Persistance session - initialiser TOUTES les variables de jeu
         session([
             'niveau_selectionne' => $niveau,
             'nb_questions'       => $nbQuestions,
             'theme'              => $theme,
+            'current_question_number' => 1,
+            'score' => 0,
+            'answered_questions' => [],
+            'current_question' => null,  // Sera généré au premier game()
         ]);
 
         // Avatar vraiment optionnel
@@ -183,24 +187,24 @@ class SoloController extends Controller
         $nbQuestions = session('nb_questions', 30);
         $niveau = session('niveau_selectionne', 1);
         $avatar = session('avatar', 'Aucun');
+        $currentQuestion = session('current_question_number', 1);
         
-        // Initialiser le jeu si première question
-        if (!session()->has('current_question_number')) {
-            session(['current_question_number' => 1]);
-            session(['score' => 0]);
-            session(['answered_questions' => []]);
+        // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
+        if (!session()->has('current_question') || session('current_question') === null) {
+            $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion);
+            session(['current_question' => $question]);
+        } else {
+            $question = session('current_question');
         }
-        
-        $currentQuestion = session('current_question_number');
-        
-        // Générer la question
-        $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion);
-        session(['current_question' => $question]);
         
         // Calculer le temps de chrono de base (4-8 secondes selon niveau)
         $baseTime = max(4, 8 - floor($niveau / 10));
-        session(['question_start_time' => time()]);
-        session(['chrono_time' => $baseTime]);
+        
+        // Initialiser le timer SEULEMENT si pas déjà commencé (évite reset si on revient)
+        if (!session()->has('question_start_time')) {
+            session(['question_start_time' => time()]);
+            session(['chrono_time' => $baseTime]);
+        }
         
         $params = [
             'question' => $question,
@@ -280,6 +284,33 @@ class SoloController extends Controller
         return view('game_result', compact('params'));
     }
 
+    public function timeout()
+    {
+        // Le joueur n'a pas buzzé à temps - enregistrer comme réponse incorrecte
+        $question = session('current_question');
+        
+        // Sauvegarder la réponse manquée
+        $answeredQuestions = session('answered_questions', []);
+        $answeredQuestions[] = [
+            'question_id' => $question['id'] ?? 'unknown',
+            'answer_index' => -1, // -1 = pas de réponse (timeout)
+            'is_correct' => false,
+        ];
+        session(['answered_questions' => $answeredQuestions]);
+        
+        $params = [
+            'question' => $question,
+            'answer_index' => -1,
+            'is_correct' => false,
+            'is_timeout' => true,
+            'current_question' => session('current_question_number'),
+            'total_questions' => session('nb_questions', 30),
+            'score' => session('score', 0),
+        ];
+        
+        return view('game_result', compact('params'));
+    }
+
     public function nextQuestion()
     {
         // Incrémenter le numéro de question
@@ -292,6 +323,11 @@ class SoloController extends Controller
         }
         
         session(['current_question_number' => $currentQuestion + 1]);
+        
+        // Nettoyer la question actuelle pour forcer une nouvelle génération
+        session()->forget('current_question');
+        session()->forget('question_start_time');
+        session()->forget('chrono_time');
         session()->forget('buzzed');
         session()->forget('buzz_time');
         

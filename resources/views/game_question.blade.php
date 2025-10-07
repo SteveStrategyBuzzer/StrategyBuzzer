@@ -224,9 +224,9 @@ function handleTimeout() {
     // Message d'échec
     document.getElementById('chronoTime').textContent = '0';
     
-    // Rediriger vers les stats après 2 secondes (échec de buzzer = perte)
+    // Rediriger vers écran de résultat (timeout) après 2 secondes
     setTimeout(() => {
-        window.location.href = "{{ route('solo.stat') }}";
+        window.location.href = "{{ route('solo.timeout') }}";
     }, 2000);
 }
 </script>
