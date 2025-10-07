@@ -6,18 +6,25 @@
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
         color: #fff;
         min-height: 100vh;
+        height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 10px;
-        overflow-x: hidden;
+        padding: 5px;
+        overflow: hidden;
+        margin: 0;
     }
     
     .answer-container {
         max-width: 900px;
         width: 100%;
         margin: 0 auto;
-        padding: 20px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        max-height: 100vh;
     }
     
     /* Header info */
@@ -25,30 +32,31 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 10px;
         flex-wrap: wrap;
-        gap: 15px;
+        gap: 10px;
+        flex-shrink: 0;
     }
     
     .answer-info {
         background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
-        padding: 15px 25px;
-        border-radius: 20px;
+        padding: 8px 15px;
+        border-radius: 15px;
         border: 2px solid rgba(78, 205, 196, 0.3);
         backdrop-filter: blur(10px);
         flex: 1;
-        min-width: 200px;
+        min-width: 150px;
     }
     
     .answer-title {
-        font-size: 1.1rem;
+        font-size: 0.85rem;
         color: #4ECDC4;
-        margin-bottom: 5px;
+        margin-bottom: 3px;
         font-weight: 600;
     }
     
     .answer-value {
-        font-size: 1.6rem;
+        font-size: 1.2rem;
         font-weight: bold;
     }
     
@@ -58,22 +66,23 @@
     
     /* Timer barre */
     .answer-timer {
-        margin-bottom: 30px;
+        margin-bottom: 10px;
         position: relative;
+        flex-shrink: 0;
     }
     
     .timer-label {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
-        font-size: 0.95rem;
+        margin-bottom: 6px;
+        font-size: 0.8rem;
     }
     
     .timer-bar-container {
-        height: 12px;
+        height: 8px;
         background: rgba(255,255,255,0.1);
-        border-radius: 10px;
+        border-radius: 8px;
         overflow: hidden;
         position: relative;
         border: 2px solid rgba(255,255,255,0.2);
@@ -100,15 +109,16 @@
     /* Question rappel */
     .question-reminder {
         background: rgba(0,0,0,0.3);
-        padding: 20px;
-        border-radius: 20px;
-        margin-bottom: 30px;
+        padding: 10px 15px;
+        border-radius: 15px;
+        margin-bottom: 10px;
         border: 2px solid rgba(255,255,255,0.1);
         backdrop-filter: blur(10px);
+        flex-shrink: 0;
     }
     
     .question-reminder-text {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         opacity: 0.9;
         text-align: center;
     }
@@ -116,15 +126,17 @@
     /* Choix de réponses - Bulles stylisées */
     .answers-grid {
         display: grid;
-        gap: 15px;
-        margin-bottom: 25px;
+        gap: 8px;
+        margin-bottom: 10px;
+        flex: 1;
+        overflow-y: auto;
     }
     
     .answer-bubble {
         background: linear-gradient(145deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-        border: 3px solid rgba(102, 126, 234, 0.4);
-        border-radius: 20px;
-        padding: 20px 25px;
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 15px;
+        padding: 12px 18px;
         cursor: pointer;
         transition: all 0.3s ease;
         position: relative;
@@ -132,7 +144,7 @@
         backdrop-filter: blur(5px);
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 12px;
     }
     
     .answer-bubble::before {
@@ -167,27 +179,27 @@
     }
     
     .answer-number {
-        width: 45px;
-        height: 45px;
+        width: 35px;
+        height: 35px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.3rem;
+        font-size: 1.1rem;
         font-weight: bold;
         flex-shrink: 0;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
     }
     
     .answer-text {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         font-weight: 500;
         flex: 1;
     }
     
     .answer-icon {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         opacity: 0;
         transition: opacity 0.3s;
     }
@@ -199,15 +211,16 @@
     /* Buzz info */
     .buzz-info {
         text-align: center;
-        padding: 15px;
+        padding: 8px;
         background: rgba(78, 205, 196, 0.15);
-        border-radius: 15px;
-        margin-bottom: 20px;
+        border-radius: 12px;
+        margin-bottom: 5px;
         border: 2px solid rgba(78, 205, 196, 0.3);
+        flex-shrink: 0;
     }
     
     .buzz-info-text {
-        font-size: 0.95rem;
+        font-size: 0.8rem;
         color: #4ECDC4;
     }
     

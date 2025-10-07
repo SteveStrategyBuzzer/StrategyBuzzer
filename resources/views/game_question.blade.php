@@ -6,18 +6,25 @@
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
         min-height: 100vh;
+        height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 10px;
-        overflow-x: hidden;
+        padding: 5px;
+        overflow: hidden;
+        margin: 0;
     }
     
     .game-container {
         max-width: 900px;
         width: 100%;
         margin: 0 auto;
-        padding: 20px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        max-height: 100vh;
     }
     
     /* Header avec VS adversaire */
@@ -25,9 +32,10 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
+        margin-bottom: 10px;
         flex-wrap: wrap;
-        gap: 15px;
+        gap: 10px;
+        flex-shrink: 0;
     }
     
     .player-info, .opponent-info {
@@ -78,14 +86,15 @@
     /* Question bubble */
     .question-bubble {
         background: linear-gradient(145deg, rgba(78, 205, 196, 0.15) 0%, rgba(102, 126, 234, 0.15) 100%);
-        padding: 30px;
-        border-radius: 25px;
-        margin-bottom: 30px;
+        padding: 15px 20px;
+        border-radius: 20px;
+        margin-bottom: 15px;
         border: 2px solid rgba(78, 205, 196, 0.3);
         box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         backdrop-filter: blur(10px);
         position: relative;
         overflow: hidden;
+        flex-shrink: 0;
     }
     
     .question-bubble::before {
@@ -111,27 +120,28 @@
     }
     
     .question-text {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         font-weight: 600;
-        line-height: 1.6;
+        line-height: 1.4;
         text-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
     
     /* Chronomètre énergétique */
     .chrono-container {
-        margin-bottom: 35px;
+        margin-bottom: 15px;
         position: relative;
+        flex-shrink: 0;
     }
     
     .chrono-circle {
-        width: 140px;
-        height: 140px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 15px;
+        margin: 0 auto 10px;
         position: relative;
         box-shadow: 0 10px 40px rgba(102, 126, 234, 0.6);
         animation: pulse-glow 2s ease-in-out infinite;
@@ -163,7 +173,7 @@
     }
     
     .chrono-time {
-        font-size: 3rem;
+        font-size: 2.2rem;
         font-weight: bold;
         position: relative;
         z-index: 1;
@@ -171,7 +181,7 @@
     }
     
     .chrono-label {
-        font-size: 0.95rem;
+        font-size: 0.85rem;
         opacity: 0.9;
         text-align: center;
     }
@@ -198,16 +208,17 @@
     /* Bouton BUZZ réaliste avec Strategy Buzzer */
     .buzz-container {
         text-align: center;
+        flex-shrink: 0;
     }
     
     .buzz-button {
-        width: 240px;
-        height: 240px;
+        width: 160px;
+        height: 160px;
         border-radius: 50%;
         background: linear-gradient(145deg, #FF6B6B 0%, #C0392B 100%);
-        border: 8px solid #8B0000;
+        border: 6px solid #8B0000;
         color: white;
-        font-size: 1.8rem;
+        font-size: 1.4rem;
         font-weight: 900;
         cursor: pointer;
         margin: 0 auto;
@@ -215,7 +226,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 5px;
         transition: all 0.2s ease;
         box-shadow: 
             0 15px 40px rgba(255, 107, 107, 0.6),
@@ -223,7 +234,7 @@
             inset 0 3px 10px rgba(255,255,255,0.2);
         position: relative;
         text-transform: uppercase;
-        letter-spacing: 2px;
+        letter-spacing: 1.5px;
     }
     
     .buzz-button::before {
@@ -261,21 +272,21 @@
     }
     
     .buzz-icon {
-        font-size: 3.5rem;
+        font-size: 2.5rem;
         display: block;
         animation: ring 2s ease-in-out infinite;
     }
     
     .buzz-text {
-        font-size: 1.2rem;
-        margin-top: -5px;
+        font-size: 1rem;
+        margin-top: -3px;
     }
     
     .buzz-brand {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         font-weight: 600;
         opacity: 0.9;
-        letter-spacing: 1px;
+        letter-spacing: 0.8px;
     }
     
     @keyframes ring {

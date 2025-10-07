@@ -6,33 +6,42 @@
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         color: #fff;
         min-height: 100vh;
+        height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 10px;
-        overflow-x: hidden;
+        padding: 5px;
+        overflow: hidden;
+        margin: 0;
     }
     
     .result-container {
         max-width: 800px;
         width: 100%;
         text-align: center;
-        padding: 20px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        max-height: 100vh;
     }
     
     .result-icon {
-        font-size: 120px;
-        margin-bottom: 25px;
+        font-size: 80px;
+        margin-bottom: 10px;
         animation: scaleIn 0.5s ease-out;
+        flex-shrink: 0;
     }
     
     .result-title {
-        font-size: 2.8rem;
+        font-size: 2rem;
         font-weight: 900;
-        margin-bottom: 30px;
+        margin-bottom: 15px;
         animation: slideDown 0.6s ease-out;
         text-transform: uppercase;
         letter-spacing: 2px;
+        flex-shrink: 0;
     }
     
     .result-correct .result-title {
@@ -50,16 +59,17 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 30px;
-        margin-bottom: 30px;
+        gap: 15px;
+        margin-bottom: 15px;
         animation: fadeIn 0.8s ease-out;
+        flex-shrink: 0;
     }
     
     .score-player, .score-opponent {
         flex: 1;
-        max-width: 200px;
-        padding: 25px;
-        border-radius: 20px;
+        max-width: 150px;
+        padding: 15px;
+        border-radius: 15px;
         position: relative;
         backdrop-filter: blur(10px);
     }
@@ -85,7 +95,7 @@
     }
     
     .score-number {
-        font-size: 3.5rem;
+        font-size: 2.5rem;
         font-weight: 900;
         line-height: 1;
     }
@@ -99,39 +109,40 @@
     }
     
     .vs-divider {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         font-weight: bold;
         color: #4ECDC4;
         background: rgba(78, 205, 196, 0.2);
-        padding: 15px;
+        padding: 10px;
         border-radius: 50%;
-        width: 60px;
-        height: 60px;
+        width: 45px;
+        height: 45px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 3px solid #4ECDC4;
+        border: 2px solid #4ECDC4;
         box-shadow: 0 5px 20px rgba(78, 205, 196, 0.5);
     }
     
     /* Answers display */
     .result-answers {
         background: rgba(0,0,0,0.4);
-        padding: 25px;
-        border-radius: 20px;
-        margin-bottom: 25px;
+        padding: 15px;
+        border-radius: 15px;
+        margin-bottom: 15px;
         animation: fadeIn 1s ease-out;
         border: 2px solid rgba(255,255,255,0.1);
+        flex-shrink: 0;
     }
     
     .answer-display {
-        padding: 18px 22px;
-        border-radius: 15px;
-        margin-bottom: 12px;
+        padding: 10px 15px;
+        border-radius: 12px;
+        margin-bottom: 8px;
         display: flex;
         align-items: center;
-        gap: 15px;
-        font-size: 1.1rem;
+        gap: 10px;
+        font-size: 0.95rem;
         backdrop-filter: blur(5px);
     }
     
@@ -168,22 +179,70 @@
         font-size: 1.8rem;
     }
     
-    /* Timer next question */
+    /* Timer next question et boutons */
+    .result-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+    
+    .btn-action {
+        flex: 1;
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .btn-menu {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-menu:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    }
+    
+    .btn-go {
+        background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+        color: white;
+        box-shadow: 0 5px 20px rgba(78, 205, 196, 0.4);
+    }
+    
+    .btn-go:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(78, 205, 196, 0.6);
+    }
+    
     .next-question-timer {
         background: linear-gradient(145deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
-        padding: 25px;
-        border-radius: 20px;
-        font-size: 1.2rem;
+        padding: 15px;
+        border-radius: 15px;
+        font-size: 1rem;
         border: 2px solid rgba(78, 205, 196, 0.3);
         animation: fadeIn 1.2s ease-out;
     }
     
     .timer-count {
-        font-size: 2.5rem;
+        font-size: 2rem;
         font-weight: 900;
         color: #4ECDC4;
         display: inline-block;
-        margin: 0 8px;
+        margin: 0 5px;
         animation: pulse 1s infinite;
     }
     
@@ -331,9 +390,20 @@
         </div>
     </div>
     
-    <!-- Next question timer -->
-    <div class="next-question-timer">
-        Prochaine question dans <span class="timer-count" id="countdown">3</span> secondes...
+    <!-- Actions: Boutons et Timer -->
+    <div class="result-actions">
+        <div class="action-buttons">
+            <a href="{{ route('menu') }}" class="btn-action btn-menu">
+                🏠 Menu
+            </a>
+            <button onclick="goToNextQuestion()" class="btn-action btn-go">
+                🚀 GO
+            </button>
+        </div>
+        
+        <div class="next-question-timer">
+            Prochaine question dans <span class="timer-count" id="countdown">15</span> secondes...
+        </div>
     </div>
 </div>
 
@@ -358,8 +428,8 @@ if (isCorrect) {
     incorrectSound.play().catch(e => console.log('Audio play failed:', e));
 }
 
-// Compte à rebours de 3 secondes
-let countdown = 3;
+// Compte à rebours de 15 secondes
+let countdown = 15;
 const countdownElement = document.getElementById('countdown');
 
 const interval = setInterval(() => {
@@ -369,8 +439,13 @@ const interval = setInterval(() => {
     } else {
         clearInterval(interval);
         // Rediriger vers la prochaine question
-        window.location.href = "{{ route('solo.next') }}";
+        goToNextQuestion();
     }
 }, 1000);
+
+function goToNextQuestion() {
+    clearInterval(interval);
+    window.location.href = "{{ route('solo.next') }}";
+}
 </script>
 @endsection
