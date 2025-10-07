@@ -276,15 +276,23 @@ class SoloController extends Controller
             30 => ['name' => '🔥 Challenger', 'avatar' => 'images/avatars/challenger.png', 'skills' => $this->getAvatarSkills('Challenger')],
             40 => ['name' => '📚 Historien', 'avatar' => 'images/avatars/historien.png', 'skills' => $this->getAvatarSkills('Historien')],
             
-            // Légendaires 👑 (niveaux 50-100)
+            // Légendaires 👑 (niveaux 50-90)
             50 => ['name' => '🤖 IA Junior', 'avatar' => 'images/avatars/ia-junior.png', 'skills' => $this->getAvatarSkills('IA Junior')],
             60 => ['name' => '🏆 Stratège', 'avatar' => 'images/avatars/stratege.png', 'skills' => $this->getAvatarSkills('Stratège')],
             70 => ['name' => '⚡ Sprinteur', 'avatar' => 'images/avatars/sprinteur.png', 'skills' => $this->getAvatarSkills('Sprinteur')],
             80 => ['name' => '🌟 Visionnaire', 'avatar' => 'images/avatars/visionnaire.png', 'skills' => $this->getAvatarSkills('Visionnaire')],
+            90 => ['name' => '🤖 IA Junior', 'avatar' => 'images/avatars/ia-junior.png', 'skills' => $this->getAvatarSkills('IA Junior')],
             
-            // Répétition des Légendaires pour niveaux supérieurs (difficulté croissante)
-            90 => ['name' => '🏆 Stratège Maître', 'avatar' => 'images/avatars/stratege.png', 'skills' => $this->getAvatarSkills('Stratège')],
-            100 => ['name' => '🌟 Visionnaire Suprême', 'avatar' => 'images/avatars/visionnaire.png', 'skills' => $this->getAvatarSkills('Visionnaire')],
+            // Boss Final 🧠 (niveau 100)
+            100 => [
+                'name' => '🧠 Cerveau Ultime', 
+                'avatar' => 'images/avatars/cerveau-boss.png', 
+                'skills' => [
+                    'Possède TOUTES les compétences des 8 avatars stratégiques',
+                    'Intelligence artificielle suprême',
+                    'Maîtrise absolue de toutes les connaissances'
+                ]
+            ],
         ];
 
         // Trouver le boss correspondant au niveau (arrondi à la dizaine inférieure)
