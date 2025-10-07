@@ -50,6 +50,13 @@ Preferred communication style: Simple, everyday language.
 ### Gameplay and Progression
 - **Complete Gameplay System Implementation** with Question, Answer, and Result screens.
 - **SoloController** for comprehensive game state management and session tracking.
+- **5-Round Match System**:
+  - Each game consists of exactly 5 rounds
+  - Intelligent question distribution: questions are distributed equitably across rounds
+  - Handles all edge cases: 1-30+ questions with automatic remainder allocation to early rounds
+  - Round progression tracking with visual indicators on all game screens
+  - Zero-quota rounds are automatically skipped for games with fewer than 5 questions
+  - Enforces total question count regardless of round boundaries
 - **Strategic Avatar System with Boss Battles**: Level-based boss progression and avatar unlocking.
 - **Advanced Scoring System**:
   - **+2 points** for being first to answer correctly
@@ -57,6 +64,7 @@ Preferred communication style: Simple, everyday language.
   - **-2 points** for buzzing with wrong answer
   - **0 points** for not buzzing
   - Detailed round feedback showing buzz order, speed, and points awarded
+- **Expanded Question Database**: 50 unique questions per theme (7 themes × 50 = 350 total questions) eliminating repetition issues.
 - **Sound system** for audio feedback on game events.
 
 ## External Dependencies
