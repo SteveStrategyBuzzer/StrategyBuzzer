@@ -1,199 +1,79 @@
 # StrategyBuzzer
 
 ## Overview
-
-StrategyBuzzer is a real-time quiz buzzer game application that combines Laravel backend with React frontend. The game allows players to participate in interactive quiz sessions with different themed atmospheres (Fun, Party, Intello, Punchy). Players can buzz in to answer questions, track scores, and compete in a game show-style environment. The application integrates with Firebase for authentication and real-time features, making it suitable for both educational and entertainment purposes.
+StrategyBuzzer is a real-time quiz buzzer game application combining a Laravel backend with a React frontend. It offers interactive quiz sessions with various themes, allowing players to buzz in, answer questions, track scores, and compete in a game show-style environment. The application uses Firebase for authentication and real-time features, serving both educational and entertainment purposes. It features a strategic avatar system with boss battles, a comprehensive gameplay cycle, and a complete result page with progression data. The project aims to provide an immersive and competitive quiz experience.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
 ### Frontend Architecture
-- **React 19** with modern hooks and functional components
-- **Vite** as the build tool and development server for fast hot module replacement
-- **Component-based architecture** with reusable UI elements (BoutonBuzz, CarteQuestion, AvatarDisplay, ScoreDisplay)
-- **Dynamic theming system** supporting multiple visual atmospheres through CSS switching
-- **Real-time UI updates** for game state changes and player interactions
+- **React 19** with modern hooks and functional components.
+- **Vite** for fast hot module replacement.
+- **Component-based architecture** with reusable UI elements.
+- **Dynamic theming system** supporting multiple visual atmospheres.
+- **Real-time UI updates** for game state changes and player interactions.
+- **Competitive UI Redesign** for gameplay screens with energetic chronometers, realistic buzz buttons, and score battle displays.
+- **Viewport-Optimized Gameplay Screens** designed for 100% visibility without scrolling.
 
 ### Backend Architecture
-- **Laravel 10** as the primary web framework following MVC pattern
-- **Inertia.js** for seamless SPA-like experience between Laravel and React
-- **API-first design** with both web and API routes for different client types
-- **Service-oriented architecture** with dedicated services for game logic, scoring, and player management
-- **Event-driven system** for real-time game state broadcasting
+- **Laravel 10** as the primary web framework following MVC pattern.
+- **Inertia.js** for seamless SPA-like experience between Laravel and React.
+- **API-first design** with web and API routes.
+- **Service-oriented architecture** for game logic, scoring, and player management.
+- **Event-driven system** for real-time game state broadcasting.
+- **QuestionService** for AI-ready, theme-based question generation with difficulty scaling.
+- **AI Opponent System** with level-based difficulty scaling (20-95% accuracy).
 
 ### Database and Storage
-- **PostgreSQL (Replit Neon)** as the primary relational database for user data, game progress, and transactions
-- **Firebase Firestore** for real-time data synchronization during gameplay
-- **Firebase Authentication** for user management and social login capabilities
-- **Laravel's Eloquent ORM** for database abstraction and query building
-- **File-based configuration** for game structure and question sets
+- **PostgreSQL (Replit Neon)** as the primary relational database for user data, game progress, and transactions.
+- **Firebase Firestore** for real-time data synchronization during gameplay.
+- **Firebase Authentication** for user management and social login.
+- **Laravel's Eloquent ORM** for database abstraction.
 
 ### Authentication and Authorization
-- **Firebase Authentication** with social providers (Google, etc.)
-- **Laravel Sanctum** for API token management and session handling
-- **Multi-provider authentication** supporting both Firebase and Laravel's native auth
-- **Role-based access control** for different user types (players, moderators)
+- **Firebase Authentication** with social providers.
+- **Laravel Sanctum** for API token management and session handling.
+- **Multi-provider authentication** supporting Firebase and Laravel's native auth (Email/Password, Apple, Phone).
+- **Role-based access control**.
 
 ### Real-time Features
-- **Firebase real-time database** for live game state synchronization
-- **WebSocket-like functionality** through Firebase listeners
-- **Event broadcasting** for buzz notifications, score updates, and game transitions
-- **Live player status tracking** and session management
+- **Firebase real-time database** for live game state synchronization.
+- **WebSocket-like functionality** through Firebase listeners.
+- **Event broadcasting** for buzz notifications, score updates, and game transitions.
+
+### Gameplay and Progression
+- **Complete Gameplay System Implementation** with Question, Answer, and Result screens.
+- **SoloController** for comprehensive game state management and session tracking.
+- **Strategic Avatar System with Boss Battles**: Level-based boss progression and avatar unlocking.
+- **Sound system** for audio feedback on game events.
 
 ## External Dependencies
 
 ### Core Framework Dependencies
-- **Laravel Framework** (^10.10) - Primary PHP web framework
-- **React** (^19.1.1) - Frontend JavaScript library
-- **Inertia.js** (^0.6.8) - Full-stack framework bridge
+- **Laravel Framework** (^10.10)
+- **React** (^19.1.1)
+- **Inertia.js** (^0.6.8)
 
 ### Firebase Integration
-- **Firebase PHP SDK** (^7.18) - Server-side Firebase integration
-- **Firebase JavaScript SDK** (v10.12.2) - Client-side Firebase services
-- **Firebase Authentication** - User authentication and social login
-- **Firebase Firestore** - Real-time NoSQL database
-- **Firebase Storage** - File and media storage
+- **Firebase PHP SDK** (^7.18)
+- **Firebase JavaScript SDK** (v10.12.2)
+- **Firebase Authentication**
+- **Firebase Firestore**
 
 ### Authentication Services
-- **Laravel Sanctum** (^3.2) - API authentication
-- **Laravel Socialite** (^5.21) - Social media authentication providers
+- **Laravel Sanctum** (^3.2)
+- **Laravel Socialite** (^5.21)
 
 ### Development and Build Tools
-- **Vite** (^6.3.5) - Frontend build tool and development server
-- **Laravel Vite Plugin** (^1.3.0) - Laravel-Vite integration
-- **Tightenco Ziggy** (^2.0) - Laravel route generation for JavaScript
+- **Vite** (^6.3.5)
+- **Laravel Vite Plugin** (^1.3.0)
+- **Tightenco Ziggy** (^2.0)
 
 ### HTTP and API Libraries
-- **Guzzle HTTP** (^7.2) - HTTP client for external API calls
-- **Symfony Intl** (^7.3) - Internationalization support
+- **Guzzle HTTP** (^7.2)
 
 ### Payment and E-commerce
-- **Stripe PHP SDK** (latest) - Payment processing and checkout sessions
-- **Stripe Webhooks** - Secure payment confirmation and event handling
-
-### Testing and Quality Assurance
-- **PHPUnit** (^10.1) - PHP testing framework
-- **Laravel Breeze** - Authentication scaffolding
-- **FakerPHP** (^1.9.1) - Test data generation
-- **ESLint** - JavaScript code linting
-- **React Testing utilities** - Frontend component testing
-
-## Recent Changes
-
-### October 07, 2025
-- **Database Migration to PostgreSQL**: Migrated from SQLite to Replit's PostgreSQL (Neon) for improved stability
-  - Configured automatic connection using environment variables (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE)
-  - Updated `config/database.php` to prioritize PostgreSQL connection
-  - All migrations executed successfully on PostgreSQL
-  - Test account migrated: `test@strategybuzzer.com` / `password` (10,000 coins)
-- **Fixed PostgreSQL Connection in Web Context**: Resolved environment variable access issue
-  - **Problem**: `php artisan serve` creates child process that loses Replit's PG* environment variables
-  - **Solution**: Changed workflow from `php artisan serve` to `php -S 0.0.0.0:5000 -t public` for direct environment inheritance
-  - **Result**: PostgreSQL variables (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD) now accessible via `getenv()` in web requests
-  - Removed unnecessary `bootstrap/database-config.php` workaround
-  - Web server now correctly connects to Replit PostgreSQL instead of falling back to SQLite
-  - Configuration in `config/database.php` uses `getenv()` to read Replit environment variables
-- **Enhanced Authentication Options**: Added multiple login methods to improve user accessibility
-  - **Email/Password authentication**: Complete login and registration system with secure password hashing
-  - **Apple authentication**: Placeholder for future Apple Sign-In integration
-  - **Phone authentication**: Placeholder for future SMS-based login
-  - UI improvements: Modern button design with color-coded providers, responsive layout, divider between email and social options
-  - Routes: `/auth/email`, `/auth/email/login`, `/auth/email/register`, `/auth/apple`, `/auth/phone`
-  - New users receive 1000 welcome coins upon registration
-  - Test account available: `test@strategybuzzer.com` / `password` (10,000 coins)
-- **Global Menu Navigation**: Added fixed "🏠 Menu" button in top-right corner
-  - Only appears after user authentication (not on login/register pages)
-  - Hidden on menu page itself to avoid redundancy
-  - Provides quick access to main menu from any authenticated page
-- **Strategic Avatar System with Boss Battles**: Complete boss battle system implementation
-  - **No boss for levels 1-9** (training levels), first boss appears at level 10
-  - Boss progression: Épiques (⭐) for levels 10-40, Légendaires (👑) for levels 50-90, Ultimate Boss 🧠 for level 100
-  - Level-based bosses: Comédien (Lv10) → Magicien (Lv20) → Challenger (Lv30) → Historien (Lv40) → IA Junior (Lv50) → Stratège (Lv60) → Sprinteur (Lv70) → Visionnaire (Lv80) → IA Junior (Lv90) → **🧠 Cerveau Ultime (Lv100)**
-  - **Level 100 Final Boss**: "Cerveau Ultime" - A powerful AI brain with all strategic skills combined
-  - Each boss has authentic skills from strategic avatar categories (Rare, Épique, Légendaire)
-  - Player cannot select same strategic avatar as current boss (conflict detection and reset with alert)
-  - Resume page displays: Player avatar (left) with strategic skills, Boss avatar (right) with boss skills (or training message for levels 1-9)
-  - Strategic avatars unlock upon defeating corresponding boss
-  - Real skills system: Mathématicien, Scientifique, Explorateur, Défenseur (Rare 🎯), Comédien, Magicien, Challenger, Historien (Épique ⭐), IA Junior, Stratège, Sprinteur, Visionnaire (Légendaire 👑)
-  - Game progression: 5 manches per level, must succeed 3/5 to advance
-- **Complete Gameplay System Implementation**: Full quiz gameplay cycle with real-time interaction
-  - **QuestionService** (`app/Services/QuestionService.php`): AI-ready question generation with multiple choice and true/false support
-    - Theme-based questions: general, geography, history, art, cinema, sports, cuisine, fauna, sciences
-    - Difficulty scaling by level (1-100)
-    - Answer validation and scoring logic
-  - **Three gameplay screens**: Question screen → Answer screen → Result screen
-    - `game_question.blade.php`: Dynamic timer (4-8 seconds based on level), BUZZ button with sound effects, visual warnings
-    - `game_answer.blade.php`: 4 answer choices, answer validation with green/red feedback, 10-second response timer
-    - `game_result.blade.php`: Correct/incorrect display, 3-second countdown, auto-redirect to next question
-  - **SoloController gameplay methods**: Complete game state management
-    - `game()`: Initialize and display question screen, session-based question persistence
-    - `buzz()`: Handle buzz action, transition to answer screen with buzz time tracking
-    - `answer()`: Validate answer, update score, show result screen
-    - `timeout()`: Handle no-buzz scenario, record as incorrect, show result
-    - `nextQuestion()`: Clear question state, increment counter, generate new question or end game
-  - **Session management**: Full game state tracking initialized in `start()` method
-    - Variables: `current_question_number`, `score`, `answered_questions`, `current_question`, `buzz_time`, `question_start_time`
-    - Question persistence prevents regeneration during buzz/answer flow
-    - Clean state reset between questions via `nextQuestion()`
-  - **Sound system**: Audio feedback for game events (buzz, fail, correct, incorrect, tick, timeout)
-    - Files created in `public/sounds/` directory as placeholders
-    - JavaScript-based audio playback with fallback handling
-  - **Timeout flow**: Proper handling when player doesn't buzz in time
-    - Redirects to `/solo/timeout` instead of skipping to stats
-    - Records as incorrect answer with `answer_index: -1`
-    - Maintains full Question→Result→Next cycle even on timeout
-  - **Routes**: `/solo/game`, `/solo/buzz` (POST), `/solo/answer` (POST), `/solo/timeout`, `/solo/next`, `/solo/stat`
-  - **Complete gameplay flow**: Login → Menu → Solo config → Resume → Question (BUZZ) → Answer (4 choices) → Result (3s) → Next question → ... → Final stats
-- **Competitive UI Redesign for Gameplay Screens**: Complete visual overhaul for immersive competitive experience
-  - **Question Screen** (`game_question.blade.php`): 
-    - Energetic chronometer with animated glow effects and danger pulse at 3 seconds
-    - Realistic BUZZ button (240x240px) with "Strategy Buzzer" branding, 3D shadow effects, and ring animation
-    - VS header displaying player vs opponent/boss scores with color-coded sections
-    - Boss/Student display showing current adversary (Boss name or Student level)
-    - Gradient backgrounds and backdrop blur for modern aesthetic
-    - Fully responsive design (mobile-first approach)
-  - **Answer Screen** (`game_answer.blade.php`):
-    - Stylized answer bubbles with hover animations and gradient borders
-    - Timer bar with smooth transitions and warning states
-    - Question reminder bubble for context retention
-    - Numbered answer badges (circular, gradient) with slide-in hover effects
-    - Color-coded sections for question/score display
-    - Support for both multiple choice and true/false questions
-  - **Result Screen** (`game_result.blade.php`):
-    - Competitive score battle display with VS divider
-    - Player score (green) vs Opponent score (red) with glow effects
-    - Animated result icons (✅/❌) with scale-in rotation
-    - Answer comparison showing user's choice vs correct answer
-    - 3-second countdown with pulse animation
-    - Timeout handling with special "⏰ Temps écoulé" display
-  - **Menu Button Refinement**: Removed from all gameplay screens (game, answer, result, timeout, stat) to maintain immersion
-    - Menu button now only appears on non-game pages (Resume, Boutique, Config, etc.)
-    - Clean gameplay experience without navigation distractions
-  - **Controller Enhancement**: Made `getBossForLevel()` public in `SoloController` for view access
-  - **Color Palette**: Consistent use of #4ECDC4 (teal), #2ECC71 (success green), #E74C3C (error red), #667eea (purple gradient)
-  - **Accessibility**: Responsive breakpoints at 768px and 480px for tablet and mobile devices
-
-### October 02, 2025
-- **Implemented Stripe Payment Integration**: Complete real-money coin purchasing system
-  - Created `config/coins.php` with 5 coin packs (Starter $0.99 to Ultimate $29.99)
-  - Built secure payment flow: checkout → Stripe → webhook → coin crediting
-  - Database schema: `payments` table for transaction tracking, `coin_ledger` table for audit trail
-  - Services: `StripeService` for checkout sessions, `CoinLedgerService` for coin management
-  - Controllers: `CoinsController` for checkout flow, `StripeWebhookController` for payment verification
-  - Security: Webhook signature validation, idempotent payment processing, CSRF exemption
-  - UI: Added "💎 Pièces d'or" tab to boutique with visual coin pack cards
-  - Enhanced `BoutiqueController` with DB transactions for atomic purchases
-  - Routes: `/coins/checkout`, `/stripe/webhook`, `/coins/success`, `/coins/cancel`
-  - Models: `Payment` and `CoinLedger` with relationships and status tracking
-  - Note: Requires `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` environment variables
-
-### September 28, 2025
-- **Fixed main navigation flow**: Eliminated React intermediate page, direct access to Laravel application
-- **Corrected StrategyBuzzer logo display**: Login page now shows proper logo (strategybuzzer-logo.png)
-- **Fixed connection button**: Home page button now correctly redirects to login page (/login) 
-- **Port configuration**: Changed Laravel server from port 8080 to port 5000 (required for Replit webviews)
-- **URL configuration**: Updated APP_URL and route helpers for proper navigation
-- **OAuth flow ready**: Direct path from home page → login → Google/Facebook authentication
+- **Stripe PHP SDK** (latest) - for coin purchasing.
+- **Stripe Webhooks** - for secure payment confirmation.
