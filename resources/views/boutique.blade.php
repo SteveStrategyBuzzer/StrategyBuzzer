@@ -222,7 +222,14 @@ audio{ width:100% }
   <div class="topbar">
     <div class="pill"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--topbar" style="margin-right:6px;"> Pièces : <b>{{ number_format($coins) }}</b></div>
     <div class="row">
-      <a class="pill clean" href="{{ $avatarUrl }}">← Retour Avatars</a>
+      @auth
+        @if(request()->has('item') || request()->has('stratégique'))
+          <a class="pill clean" href="{{ $avatarUrl }}">← Avatars</a>
+        @endif
+        <a href="{{ route('menu') }}" class="pill clean" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none;">
+          🏠 Menu
+        </a>
+      @endauth
     </div>
   </div>
 

@@ -259,7 +259,16 @@
       
       <!-- Emplacement Avatar Portrait - Cliquable -->
       <a href="{{ route('avatar', ['from' => 'resume']) }}" class="avatar-clickable" style="display: block; text-decoration: none; color: inherit;">
-        <img src="{{ asset('images/avatars/portraits/' . ($params['player_avatar'] ?? 'default') . '.png') }}?v={{ time() }}" 
+        @php
+          $avatarPath = $params['player_avatar'] ?? 'default';
+          // Si le chemin contient déjà 'images/', l'utiliser tel quel, sinon construire le chemin
+          if (strpos($avatarPath, 'images/') === 0 || strpos($avatarPath, '/') !== false) {
+            $fullPath = $avatarPath;
+          } else {
+            $fullPath = 'images/avatars/standard/' . $avatarPath . '.png';
+          }
+        @endphp
+        <img src="{{ asset($fullPath) }}?v={{ time() }}" 
              alt="Avatar Joueur" 
              class="avatar-img"
              onerror="this.src='{{ asset('images/avatars/default.png') }}'">

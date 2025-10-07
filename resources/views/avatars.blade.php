@@ -185,28 +185,26 @@
                 <div class="badge">{{ $p['label'] }}{{ $count ? ' · '.$count : '' }}</div>
                 <div class="inner {{ $locked ? 'locked' : '' }}"><h3>{{ $locked ? '' : $p['label'] }}</h3></div>
 
-                @if(!$locked)
-                  @php
-                    $selectedPath = is_string($selected ?? '') ? $selected : '';
-                    $needle = 'images/avatars/'.$p['slug'].'/';
-                    $isFromThisPack = $selectedPath && substr($selectedPath,0,strlen($needle)) === $needle;
-                  @endphp
-                  <div class="pack-preview">
-                    @if($isFromThisPack)
-                      <div style="position:relative">
-                        <img class="preview-main" src="{{ asset($selectedPath) }}" alt="actif" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                        <div class="active-tag">Actif</div>
-                      </div>
-                    @else
-                      @php $grid = array_slice($p['images'] ?? [], 0, 4); @endphp
-                      <div class="preview-grid">
-                        @foreach($grid as $g)
-                          <img src="{{ asset($g) }}" alt="apercu" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                        @endforeach
-                      </div>
-                    @endif
-                  </div>
-                @endif
+                @php
+                  $selectedPath = is_string($selected ?? '') ? $selected : '';
+                  $needle = 'images/avatars/'.$p['slug'].'/';
+                  $isFromThisPack = $selectedPath && substr($selectedPath,0,strlen($needle)) === $needle;
+                @endphp
+                <div class="pack-preview">
+                  @if(!$locked && $isFromThisPack)
+                    <div style="position:relative">
+                      <img class="preview-main" src="{{ asset($selectedPath) }}" alt="actif" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                      <div class="active-tag">Actif</div>
+                    </div>
+                  @else
+                    @php $grid = array_slice($p['images'] ?? [], 0, 4); @endphp
+                    <div class="preview-grid">
+                      @foreach($grid as $g)
+                        <img src="{{ asset($g) }}" alt="apercu" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                      @endforeach
+                    </div>
+                  @endif
+                </div>
 
                 @if($locked)<div class="lock-overlay"></div>@endif
  <template type="application/json" data-pack="{{ $p['slug'] }}">{!! json_encode($p['images'] ?? []) !!}</template>

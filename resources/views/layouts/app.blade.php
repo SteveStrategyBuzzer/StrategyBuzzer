@@ -11,9 +11,9 @@
     <style>
         .menu-button {
             position: fixed;
-            top: 20px;
+            bottom: 20px;
             right: 20px;
-            z-index: 9999;
+            z-index: 10000;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
