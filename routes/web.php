@@ -90,6 +90,7 @@ Route::get('/auth/facebook/callback', [AuthController::class, 'handleFacebookCal
 
 /* Email / Apple / Phone Authentication */
 Route::get('/auth/email',             [AuthController::class, 'showEmailLogin'])->name('email.login');
+Route::get('/auth/email/login',       [AuthController::class, 'showEmailLogin'])->name('email.login.form');
 Route::post('/auth/email/login',      [AuthController::class, 'handleEmailLogin'])->name('email.login.submit');
 Route::get('/auth/email/register',    [AuthController::class, 'showEmailRegister'])->name('email.register');
 Route::post('/auth/email/register',   [AuthController::class, 'handleEmailRegister'])->name('email.register.submit');

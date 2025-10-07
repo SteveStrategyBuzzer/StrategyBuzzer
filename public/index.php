@@ -5,6 +5,9 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+// Force PostgreSQL connection
+putenv('DB_CONNECTION=pgsql');
+
 /*
 |--------------------------------------------------------------------------
 | Check If The Application Is Under Maintenance
