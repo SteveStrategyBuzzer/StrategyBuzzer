@@ -198,6 +198,13 @@
     </div>
   </div>
 
+  <!-- Alerte si conflit d'avatar -->
+  @if($params['avatar_conflict'] ?? false)
+    <div style="background: rgba(220, 53, 69, 0.2); border: 2px solid #dc3545; border-radius: 12px; padding: 15px; margin-bottom: 30px; text-align: center;">
+      <strong>⚠️ Attention :</strong> Vous ne pouvez pas utiliser le même avatar stratégique que le Boss ! Votre avatar a été réinitialisé.
+    </div>
+  @endif
+
   <!-- Avatars côte à côte -->
   <div class="avatars-section">
     <!-- Avatar Joueur (Gauche) -->
@@ -208,25 +215,52 @@
            class="avatar-img"
            onerror="this.src='{{ asset('images/avatars/default.png') }}'">
       <div class="avatar-name">Vous</div>
-    </div>
-
-    <!-- Avatar Boss (Droite) -->
-    <div class="avatar-card boss">
-      <div class="avatar-title">🤖 Boss de Niveau {{ $params['niveau_joueur'] }}</div>
-      <img src="{{ asset($params['boss_avatar']) }}?v={{ time() }}" 
-           alt="{{ $params['boss_name'] }}" 
-           class="avatar-img">
-      <div class="avatar-name">{{ $params['boss_name'] }}</div>
       
-      @if(!empty($params['boss_skills']))
-        <div class="skills-list">
-          <div class="skills-title">⚔️ Compétences du Boss</div>
-          @foreach ($params['boss_skills'] as $skill)
-            <div class="skill-item">{{ $skill }}</div>
-          @endforeach
+      @if($params['avatar'] !== 'Aucun')
+        <div class="skills-list" style="border-color: #28a745;">
+          <div class="skills-title">⚔️ Avatar Stratégique : {{ $params['avatar'] }}</div>
+          @if(!empty($params['avatar_skills']))
+            @foreach ($params['avatar_skills'] as $skill)
+              <div class="skill-item">{{ $skill }}</div>
+            @endforeach
+          @endif
         </div>
+      @else
+        <div style="margin-top: 15px; opacity: 0.7; font-size: 0.95rem;">Aucun avatar stratégique</div>
       @endif
     </div>
+
+    <!-- Avatar Boss (Droite) - Uniquement si niveau >= 10 -->
+    @if($params['has_boss'] ?? false)
+      <div class="avatar-card boss">
+        <div class="avatar-title">🤖 Boss de Niveau {{ $params['niveau_joueur'] }}</div>
+        <img src="{{ asset($params['boss_avatar']) }}?v={{ time() }}" 
+             alt="{{ $params['boss_name'] }}" 
+             class="avatar-img">
+        <div class="avatar-name">{{ $params['boss_name'] }}</div>
+        
+        @if(!empty($params['boss_skills']))
+          <div class="skills-list">
+            <div class="skills-title">⚔️ Compétences du Boss</div>
+            @foreach ($params['boss_skills'] as $skill)
+              <div class="skill-item">{{ $skill }}</div>
+            @endforeach
+          </div>
+        @endif
+      </div>
+    @else
+      <div class="avatar-card" style="border-color: rgba(255,255,255,0.3);">
+        <div class="avatar-title">🎯 Niveau d'Entraînement</div>
+        <div style="padding: 40px 20px; text-align: center;">
+          <div style="font-size: 4rem; margin-bottom: 20px;">🎓</div>
+          <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 10px;">Pas de Boss</div>
+          <div style="opacity: 0.8; font-size: 1rem;">
+            Le premier boss apparaît au niveau 10.<br>
+            Continuez à vous entraîner !
+          </div>
+        </div>
+      </div>
+    @endif
   </div>
 
   <!-- Bouton Démarrer -->

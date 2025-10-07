@@ -82,6 +82,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### October 07, 2025
+- **Strategic Avatar System with Boss Battles**: Complete boss battle system implementation
+  - **No boss for levels 1-9** (training levels), first boss appears at level 10
+  - Boss progression: Épiques (⭐) for levels 10-40, Légendaires (👑) for levels 50-100
+  - Level-based bosses: Comédien (Lv10) → Magicien (Lv20) → Challenger (Lv30) → Historien (Lv40) → IA Junior (Lv50) → Stratège (Lv60) → Sprinteur (Lv70) → Visionnaire (Lv80) → Stratège Maître (Lv90) → Visionnaire Suprême (Lv100)
+  - Each boss has authentic skills from strategic avatar categories (Rare, Épique, Légendaire)
+  - Player cannot select same strategic avatar as current boss (conflict detection and reset with alert)
+  - Resume page displays: Player avatar (left) with strategic skills, Boss avatar (right) with boss skills (or training message for levels 1-9)
+  - Strategic avatars unlock upon defeating corresponding boss
+  - Real skills system: Mathématicien, Scientifique, Explorateur, Défenseur (Rare 🎯), Comédien, Magicien, Challenger, Historien (Épique ⭐), IA Junior, Stratège, Sprinteur, Visionnaire (Légendaire 👑)
+  - Game progression: 5 manches per level, must succeed 3/5 to advance
+
 ### October 02, 2025
 - **Implemented Stripe Payment Integration**: Complete real-money coin purchasing system
   - Created `config/coins.php` with 5 coin packs (Starter $0.99 to Ultimate $29.99)
