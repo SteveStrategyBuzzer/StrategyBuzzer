@@ -93,6 +93,52 @@
     box-shadow: 0 0 20px rgba(220, 53, 69, 0.3);
   }
   
+  .avatar-clickable {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .avatar-clickable::after {
+    content: '✏️ Modifier';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .avatar-clickable:hover::after {
+    opacity: 1;
+  }
+  
+  .avatar-slot {
+    background: rgba(0,0,0,0.3);
+    border: 2px dashed rgba(255,255,255,0.4);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+  
+  .avatar-slot:hover {
+    border-color: #FFD700;
+    background: rgba(255,215,0,0.1);
+    transform: scale(1.02);
+  }
+  
+  .avatar-slot.selected {
+    border-style: solid;
+    border-color: #28a745;
+    background: rgba(40, 167, 69, 0.15);
+  }
+  
   .avatar-title {
     font-size: 0.9rem;
     text-transform: uppercase;
@@ -209,25 +255,39 @@
   <div class="avatars-section">
     <!-- Avatar Joueur (Gauche) -->
     <div class="avatar-card player">
-      <div class="avatar-title">👤 Joueur</div>
-      <img src="{{ asset('images/avatars/portraits/' . ($params['player_avatar'] ?? 'default') . '.png') }}?v={{ time() }}" 
-           alt="Avatar Joueur" 
-           class="avatar-img"
-           onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-      <div class="avatar-name">Vous</div>
+      <div class="avatar-title">👤 Avatar Joueur</div>
       
-      @if($params['avatar'] !== 'Aucun')
-        <div class="skills-list" style="border-color: #28a745;">
-          <div class="skills-title">⚔️ Avatar Stratégique : {{ $params['avatar'] }}</div>
-          @if(!empty($params['avatar_skills']))
-            @foreach ($params['avatar_skills'] as $skill)
-              <div class="skill-item">{{ $skill }}</div>
-            @endforeach
-          @endif
-        </div>
-      @else
-        <div style="margin-top: 15px; opacity: 0.7; font-size: 0.95rem;">Aucun avatar stratégique</div>
-      @endif
+      <!-- Emplacement Avatar Portrait - Cliquable -->
+      <a href="{{ route('avatar') }}" class="avatar-clickable" style="display: block; text-decoration: none; color: inherit;">
+        <img src="{{ asset('images/avatars/portraits/' . ($params['player_avatar'] ?? 'default') . '.png') }}?v={{ time() }}" 
+             alt="Avatar Joueur" 
+             class="avatar-img"
+             onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+        <div class="avatar-name">Vous</div>
+      </a>
+      
+      <!-- Emplacement Avatar Stratégique - Cliquable -->
+      <a href="{{ route('avatar') }}" style="text-decoration: none; color: inherit;">
+        @if($params['avatar'] !== 'Aucun')
+          <div class="avatar-slot selected">
+            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">⚔️ Avatar Stratégique</div>
+            <div style="font-size: 1.3rem; color: #FFD700; margin-bottom: 10px;">{{ $params['avatar'] }}</div>
+            @if(!empty($params['avatar_skills']))
+              <div style="font-size: 0.85rem; opacity: 0.8;">
+                @foreach ($params['avatar_skills'] as $index => $skill)
+                  {{ $skill }}{{ $index < count($params['avatar_skills']) - 1 ? ' • ' : '' }}
+                @endforeach
+              </div>
+            @endif
+          </div>
+        @else
+          <div class="avatar-slot">
+            <div style="font-size: 2rem; margin-bottom: 10px;">⚔️</div>
+            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 5px;">Avatar Stratégique</div>
+            <div style="opacity: 0.7; font-size: 0.9rem;">Cliquez pour choisir</div>
+          </div>
+        @endif
+      </a>
     </div>
 
     <!-- Avatar Boss (Droite) - Uniquement si niveau >= 10 -->
