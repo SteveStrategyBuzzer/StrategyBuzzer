@@ -121,25 +121,107 @@ class QuestionService
         return $answerIndex == $questionData['correct_index'];
     }
     
-    public function simulateOpponentAnswer($niveau, $questionData)
+    /**
+     * Simule le comportement complet de l'adversaire IA
+     * Retourne: ['buzzes' => bool, 'is_faster' => bool, 'is_correct' => bool, 'points' => int]
+     */
+    public function simulateOpponentBehavior($niveau, $questionData, $playerBuzzed = true)
     {
-        // L'adversaire a une probabilité de réussite basée sur son niveau
-        // Niveau 1-10: 20-40% de réussite
-        // Niveau 11-50: 40-70% de réussite
-        // Niveau 51-90: 70-85% de réussite
-        // Niveau 91-100: 85-95% de réussite
+        // ÉTAPE 1: L'IA décide si elle buzz (Sans Réponse)
+        $buzzChance = $this->getOpponentBuzzChance($niveau);
+        $opponentBuzzes = (rand(1, 100) <= $buzzChance);
         
-        if ($niveau <= 10) {
-            $successRate = 20 + ($niveau * 2); // 20% à 40%
-        } elseif ($niveau <= 50) {
-            $successRate = 40 + (($niveau - 10) * 0.75); // 40% à 70%
-        } elseif ($niveau <= 90) {
-            $successRate = 70 + (($niveau - 50) * 0.375); // 70% à 85%
-        } else {
-            $successRate = 85 + (($niveau - 90) * 1); // 85% à 95%
+        // Si l'IA ne buzz pas, elle ne gagne ni ne perd de points
+        if (!$opponentBuzzes) {
+            return [
+                'buzzes' => false,
+                'is_faster' => false,
+                'is_correct' => false,
+                'points' => 0
+            ];
         }
         
-        $random = rand(1, 100);
-        return $random <= $successRate;
+        // ÉTAPE 2: L'IA détermine sa vitesse (si elle est plus rapide que le joueur)
+        $speedChance = $this->getOpponentSpeedChance($niveau);
+        $isFaster = (rand(1, 100) <= $speedChance);
+        
+        // ÉTAPE 3: L'IA répond (Taux de Réussite)
+        $successRate = $this->getOpponentSuccessRate($niveau);
+        $isCorrect = (rand(1, 100) <= $successRate);
+        
+        // ÉTAPE 4: Calcul des points
+        // 1er + correct = +2 pts
+        // 2ème + correct = +1 pt
+        // Buzz + incorrect = -2 pts
+        $points = 0;
+        if ($isCorrect) {
+            $points = $isFaster ? 2 : 1; // 1er = 2 pts, 2ème = 1 pt
+        } else {
+            $points = -2; // Incorrect = -2 pts
+        }
+        
+        return [
+            'buzzes' => true,
+            'is_faster' => $isFaster,
+            'is_correct' => $isCorrect,
+            'points' => $points
+        ];
+    }
+    
+    /**
+     * Détermine la probabilité que l'IA buzz (Sans Réponse inversé)
+     */
+    private function getOpponentBuzzChance($niveau)
+    {
+        if ($niveau <= 20) {
+            return 65 + ($niveau * 0.5); // 65-75% de chance de buzzer
+        } elseif ($niveau <= 60) {
+            return 75 + (($niveau - 20) * 0.25); // 75-85% de chance
+        } elseif ($niveau <= 90) {
+            return 85 + (($niveau - 60) * 0.33); // 85-95% de chance
+        } else {
+            return 95 + (($niveau - 90) * 0.5); // 95-100% de chance
+        }
+    }
+    
+    /**
+     * Détermine la probabilité que l'IA soit plus rapide que le joueur
+     */
+    private function getOpponentSpeedChance($niveau)
+    {
+        if ($niveau <= 20) {
+            return 20 + ($niveau * 0.75); // 20-35% de chance d'être plus rapide
+        } elseif ($niveau <= 60) {
+            return 35 + (($niveau - 20) * 0.625); // 35-60% de chance
+        } elseif ($niveau <= 90) {
+            return 60 + (($niveau - 60) * 0.833); // 60-85% de chance
+        } else {
+            return 85 + (($niveau - 90) * 0.5); // 85-90% de chance
+        }
+    }
+    
+    /**
+     * Détermine le taux de réussite de l'IA
+     */
+    private function getOpponentSuccessRate($niveau)
+    {
+        if ($niveau <= 20) {
+            return 60 + ($niveau * 0.5); // 60-70% de réussite
+        } elseif ($niveau <= 60) {
+            return 70 + (($niveau - 20) * 0.375); // 70-85% de réussite
+        } elseif ($niveau <= 90) {
+            return 85 + (($niveau - 60) * 0.333); // 85-95% de réussite
+        } else {
+            return 95 + (($niveau - 90) * 0.5); // 95-100% de réussite
+        }
+    }
+    
+    /**
+     * Ancienne méthode pour compatibilité (deprecated)
+     */
+    public function simulateOpponentAnswer($niveau, $questionData)
+    {
+        $behavior = $this->simulateOpponentBehavior($niveau, $questionData);
+        return $behavior['is_correct'];
     }
 }

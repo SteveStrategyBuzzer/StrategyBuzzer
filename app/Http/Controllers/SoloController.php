@@ -266,26 +266,38 @@ class SoloController extends Controller
         // Vérifier la réponse du joueur
         $isCorrect = $questionService->checkAnswer($question, $answerIndex);
         
-        // Mettre à jour le score du joueur
+        // Simuler le comportement complet de l'adversaire IA
+        $opponentBehavior = $questionService->simulateOpponentBehavior($niveau, $question, true);
+        
+        // Calculer les points du joueur selon les nouvelles règles
+        $playerPoints = 0;
         if ($isCorrect) {
-            $score = session('score', 0) + 1;
-            session(['score' => $score]);
+            // Le joueur est 2ème (+1 pt) SEULEMENT si l'adversaire est plus rapide ET a répondu correctement
+            // Sinon le joueur est 1er (+2 pts)
+            $playerPoints = ($opponentBehavior['is_faster'] && $opponentBehavior['is_correct']) ? 1 : 2;
+        } else {
+            // Mauvaise réponse = -2 pts
+            $playerPoints = -2;
         }
         
-        // Simuler la réponse de l'adversaire IA
-        $opponentCorrect = $questionService->simulateOpponentAnswer($niveau, $question);
-        if ($opponentCorrect) {
-            $opponentScore = session('opponent_score', 0) + 1;
-            session(['opponent_score' => $opponentScore]);
-        }
+        // Mettre à jour les scores
+        $currentScore = session('score', 0);
+        $currentOpponentScore = session('opponent_score', 0);
         
-        // Sauvegarder la réponse
+        session(['score' => $currentScore + $playerPoints]);
+        session(['opponent_score' => $currentOpponentScore + $opponentBehavior['points']]);
+        
+        // Sauvegarder la réponse avec détails complets
         $answeredQuestions = session('answered_questions', []);
         $answeredQuestions[] = [
             'question_id' => $question['id'],
             'answer_index' => $answerIndex,
             'is_correct' => $isCorrect,
-            'opponent_correct' => $opponentCorrect,
+            'player_points' => $playerPoints,
+            'opponent_buzzed' => $opponentBehavior['buzzes'],
+            'opponent_faster' => $opponentBehavior['is_faster'],
+            'opponent_correct' => $opponentBehavior['is_correct'],
+            'opponent_points' => $opponentBehavior['points'],
         ];
         session(['answered_questions' => $answeredQuestions]);
         
@@ -322,6 +334,12 @@ class SoloController extends Controller
             'questions_restantes' => $questionsRestantes,
             'show_position' => $showPosition,
             'position' => $position,
+            // Données du nouveau système de pointage
+            'player_points' => $playerPoints,
+            'opponent_buzzed' => $opponentBehavior['buzzes'],
+            'opponent_faster' => $opponentBehavior['is_faster'],
+            'opponent_correct' => $opponentBehavior['is_correct'],
+            'opponent_points' => $opponentBehavior['points'],
         ];
         
         return view('game_result', compact('params'));
@@ -331,24 +349,34 @@ class SoloController extends Controller
     {
         $questionService = new \App\Services\QuestionService();
         
-        // Le joueur n'a pas buzzé à temps - enregistrer comme réponse incorrecte
+        // Le joueur n'a pas buzzé à temps - 0 point
         $question = session('current_question');
         $niveau = session('niveau_selectionne', 1);
         
-        // Simuler la réponse de l'adversaire IA (il peut toujours répondre même si joueur timeout)
-        $opponentCorrect = $questionService->simulateOpponentAnswer($niveau, $question);
-        if ($opponentCorrect) {
-            $opponentScore = session('opponent_score', 0) + 1;
-            session(['opponent_score' => $opponentScore]);
-        }
+        // Simuler le comportement complet de l'adversaire IA (le joueur n'a pas buzzé)
+        $opponentBehavior = $questionService->simulateOpponentBehavior($niveau, $question, false);
         
-        // Sauvegarder la réponse manquée
+        // Le joueur n'a pas buzzé = 0 point
+        $playerPoints = 0;
+        
+        // Mettre à jour les scores
+        $currentScore = session('score', 0);
+        $currentOpponentScore = session('opponent_score', 0);
+        
+        session(['score' => $currentScore + $playerPoints]);
+        session(['opponent_score' => $currentOpponentScore + $opponentBehavior['points']]);
+        
+        // Sauvegarder la réponse manquée avec détails complets
         $answeredQuestions = session('answered_questions', []);
         $answeredQuestions[] = [
             'question_id' => $question['id'] ?? 'unknown',
             'answer_index' => -1, // -1 = pas de réponse (timeout)
             'is_correct' => false,
-            'opponent_correct' => $opponentCorrect,
+            'player_points' => $playerPoints,
+            'opponent_buzzed' => $opponentBehavior['buzzes'],
+            'opponent_faster' => $opponentBehavior['is_faster'],
+            'opponent_correct' => $opponentBehavior['is_correct'],
+            'opponent_points' => $opponentBehavior['points'],
         ];
         session(['answered_questions' => $answeredQuestions]);
         
@@ -386,6 +414,12 @@ class SoloController extends Controller
             'questions_restantes' => $questionsRestantes,
             'show_position' => $showPosition,
             'position' => $position,
+            // Données du nouveau système de pointage
+            'player_points' => $playerPoints,
+            'opponent_buzzed' => $opponentBehavior['buzzes'],
+            'opponent_faster' => $opponentBehavior['is_faster'],
+            'opponent_correct' => $opponentBehavior['is_correct'],
+            'opponent_points' => $opponentBehavior['points'],
         ];
         
         return view('game_result', compact('params'));

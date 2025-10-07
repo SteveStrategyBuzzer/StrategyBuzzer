@@ -54,6 +54,78 @@
         text-shadow: 0 0 30px rgba(231, 76, 60, 0.8);
     }
     
+    /* Round Details */
+    .round-details {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 12px;
+        padding: 8px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .round-player, .round-opponent {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .round-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .round-label {
+        font-size: 0.85rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
+    .points-gained {
+        background: linear-gradient(135deg, #2ECC71, #27AE60);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .points-lost {
+        background: linear-gradient(135deg, #E74C3C, #C0392B);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .points-neutral {
+        background: rgba(255,255,255,0.1);
+        color: #95a5a6;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .speed-indicator {
+        font-size: 0.75rem;
+        color: #95a5a6;
+        padding: 2px 8px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+    }
+    
+    .speed-indicator.first {
+        color: #f39c12;
+        background: rgba(243, 156, 18, 0.2);
+    }
+    
     /* Score Battle Display */
     .score-battle {
         display: flex;
@@ -390,6 +462,51 @@
         </div>
     @endif
     
+    <!-- Détails du round -->
+    @if(isset($params['player_points']))
+    <div class="round-details">
+        <div class="round-player">
+            <div class="round-info">
+                <span class="round-label">🎮 Vous</span>
+                @if($params['player_points'] > 0)
+                    <span class="points-gained">+{{ $params['player_points'] }}</span>
+                @elseif($params['player_points'] < 0)
+                    <span class="points-lost">{{ $params['player_points'] }}</span>
+                @else
+                    <span class="points-neutral">0</span>
+                @endif
+            </div>
+            @if(isset($params['opponent_faster']) && $params['opponent_faster'])
+                <div class="speed-indicator">⏱️ 2ème</div>
+            @elseif($params['player_points'] != 0 && !isset($params['is_timeout']))
+                <div class="speed-indicator first">⚡ 1er</div>
+            @endif
+        </div>
+        
+        <div class="round-opponent">
+            <div class="round-info">
+                <span class="round-label">🤖 IA</span>
+                @if(isset($params['opponent_buzzed']) && !$params['opponent_buzzed'])
+                    <span class="points-neutral">Pas buzzé</span>
+                @elseif(isset($params['opponent_points']))
+                    @if($params['opponent_points'] > 0)
+                        <span class="points-gained">+{{ $params['opponent_points'] }}</span>
+                    @elseif($params['opponent_points'] < 0)
+                        <span class="points-lost">{{ $params['opponent_points'] }}</span>
+                    @else
+                        <span class="points-neutral">0</span>
+                    @endif
+                @endif
+            </div>
+            @if(isset($params['opponent_faster']) && $params['opponent_faster'] && isset($params['opponent_buzzed']) && $params['opponent_buzzed'])
+                <div class="speed-indicator first">⚡ 1er</div>
+            @elseif(isset($params['opponent_buzzed']) && $params['opponent_buzzed'] && $params['opponent_points'] != 0 && !$params['opponent_faster'])
+                <div class="speed-indicator">⏱️ 2ème</div>
+            @endif
+        </div>
+    </div>
+    @endif
+    
     <!-- Score Battle -->
     <div class="score-battle">
         <div class="score-player">
@@ -400,8 +517,8 @@
         <div class="vs-divider">VS</div>
         
         <div class="score-opponent">
-            <div class="score-label">🎯 Adversaire</div>
-            <div class="score-number">{{ $params['current_question'] - $params['score'] }}</div>
+            <div class="score-label">🤖 Adversaire</div>
+            <div class="score-number">{{ $params['opponent_score'] ?? 0 }}</div>
         </div>
     </div>
     
