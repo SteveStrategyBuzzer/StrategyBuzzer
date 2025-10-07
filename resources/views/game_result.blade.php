@@ -179,6 +179,53 @@
         font-size: 1.8rem;
     }
     
+    /* Informations de progression */
+    .progress-info {
+        background: rgba(0,0,0,0.3);
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        border-radius: 10px;
+        padding: 8px;
+        margin-top: 10px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .info-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 6px;
+    }
+    
+    .info-row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .info-item {
+        background: rgba(78, 205, 196, 0.1);
+        border: 1px solid rgba(78, 205, 196, 0.3);
+        border-radius: 6px;
+        padding: 4px 8px;
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .info-item.wide {
+        flex: 1;
+    }
+    
+    .info-label {
+        font-size: 0.65rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
+    .info-value {
+        font-size: 0.75rem;
+        color: white;
+        font-weight: bold;
+    }
+    
     /* Timer next question et boutons */
     .result-actions {
         display: flex;
@@ -346,11 +393,6 @@
     <!-- Score Battle -->
     <div class="score-battle">
         <div class="score-player">
-            @php
-                $selectedAvatar = session('selected_avatar', 'default');
-                $avatarPath = asset("images/avatars/{$selectedAvatar}.png");
-            @endphp
-            <img src="{{ $avatarPath }}" alt="Player" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid #2ECC71; position: absolute; top: -15px; left: 50%; transform: translateX(-50%);">
             <div class="score-label">🎮 Votre Score</div>
             <div class="score-number">{{ $params['score'] }}</div>
         </div>
@@ -393,6 +435,44 @@
             <span class="answer-text">{{ $question['answers'][$correctIndex] }}</span>
             <span class="answer-icon">✅</span>
         </div>
+    </div>
+    
+    <!-- Informations de progression (arborescence point 8) -->
+    <div class="progress-info">
+        <div class="info-row">
+            <div class="info-item">
+                <span class="info-label">📊 Niveau:</span>
+                <span class="info-value">{{ $params['niveau'] ?? 1 }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">❤️ Vies:</span>
+                <span class="info-value">{{ $params['vies_restantes'] ?? 3 }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">⚡ Skills:</span>
+                <span class="info-value">{{ $params['skills_restants'] ?? 3 }}</span>
+            </div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-item wide">
+                <span class="info-label">📈 Progression:</span>
+                <span class="info-value">{{ $params['pourcentage'] ?? 0 }}%</span>
+            </div>
+            <div class="info-item wide">
+                <span class="info-label">❓ Restantes:</span>
+                <span class="info-value">{{ $params['questions_restantes'] ?? 0 }}</span>
+            </div>
+        </div>
+        
+        @if(isset($params['show_position']) && $params['show_position'])
+        <div class="info-row">
+            <div class="info-item wide">
+                <span class="info-label">🏆 Position:</span>
+                <span class="info-value">{{ $params['position'] ?? '-' }}{{ $params['position'] == 1 ? 'er' : 'e' }}</span>
+            </div>
+        </div>
+        @endif
     </div>
     
     <!-- Actions: Boutons et Timer -->

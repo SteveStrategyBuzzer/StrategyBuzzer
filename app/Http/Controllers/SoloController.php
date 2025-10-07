@@ -289,14 +289,39 @@ class SoloController extends Controller
         ];
         session(['answered_questions' => $answeredQuestions]);
         
+        // Calculer les données de progression avec valeurs par défaut sécurisées
+        $currentQuestion = session('current_question_number', 1);
+        $nbQuestions = session('nb_questions', 30);
+        $viesRestantes = session('vies_restantes', 3);
+        $skillsRestants = session('skills_restants', 3);
+        
+        // Calculer pourcentage avec protection contre division par zéro
+        $questionsRepondues = max(0, $currentQuestion - 1);
+        $pourcentage = $nbQuestions > 0 ? round(($questionsRepondues / $nbQuestions) * 100) : 0;
+        $questionsRestantes = max(0, $nbQuestions - $questionsRepondues);
+        
+        // Position (niveau >= 70) avec scores actuels
+        $currentScore = session('score', 0);
+        $currentOpponentScore = session('opponent_score', 0);
+        $showPosition = $niveau >= 70;
+        $position = $showPosition ? ($currentScore >= $currentOpponentScore ? 1 : 2) : null;
+
         $params = [
             'question' => $question,
             'answer_index' => $answerIndex,
             'is_correct' => $isCorrect,
-            'current_question' => session('current_question_number'),
-            'total_questions' => session('nb_questions', 30),
+            'current_question' => $currentQuestion,
+            'total_questions' => $nbQuestions,
             'score' => session('score', 0),
             'opponent_score' => session('opponent_score', 0),
+            // Nouvelles données selon arborescence point 8
+            'niveau' => $niveau,
+            'vies_restantes' => $viesRestantes,
+            'skills_restants' => $skillsRestants,
+            'pourcentage' => $pourcentage,
+            'questions_restantes' => $questionsRestantes,
+            'show_position' => $showPosition,
+            'position' => $position,
         ];
         
         return view('game_result', compact('params'));
@@ -327,15 +352,40 @@ class SoloController extends Controller
         ];
         session(['answered_questions' => $answeredQuestions]);
         
+        // Calculer les données de progression avec valeurs par défaut sécurisées
+        $currentQuestion = session('current_question_number', 1);
+        $nbQuestions = session('nb_questions', 30);
+        $viesRestantes = session('vies_restantes', 3);
+        $skillsRestants = session('skills_restants', 3);
+        
+        // Calculer pourcentage avec protection contre division par zéro
+        $questionsRepondues = max(0, $currentQuestion - 1);
+        $pourcentage = $nbQuestions > 0 ? round(($questionsRepondues / $nbQuestions) * 100) : 0;
+        $questionsRestantes = max(0, $nbQuestions - $questionsRepondues);
+        
+        // Position (niveau >= 70) avec scores actuels
+        $currentScore = session('score', 0);
+        $currentOpponentScore = session('opponent_score', 0);
+        $showPosition = $niveau >= 70;
+        $position = $showPosition ? ($currentScore >= $currentOpponentScore ? 1 : 2) : null;
+
         $params = [
             'question' => $question,
             'answer_index' => -1,
             'is_correct' => false,
             'is_timeout' => true,
-            'current_question' => session('current_question_number'),
-            'total_questions' => session('nb_questions', 30),
+            'current_question' => $currentQuestion,
+            'total_questions' => $nbQuestions,
             'score' => session('score', 0),
             'opponent_score' => session('opponent_score', 0),
+            // Nouvelles données selon arborescence point 8
+            'niveau' => $niveau,
+            'vies_restantes' => $viesRestantes,
+            'skills_restants' => $skillsRestants,
+            'pourcentage' => $pourcentage,
+            'questions_restantes' => $questionsRestantes,
+            'show_position' => $showPosition,
+            'position' => $position,
         ];
         
         return view('game_result', compact('params'));
