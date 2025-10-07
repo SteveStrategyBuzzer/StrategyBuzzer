@@ -119,6 +119,34 @@ Preferred communication style: Simple, everyday language.
   - Strategic avatars unlock upon defeating corresponding boss
   - Real skills system: Mathématicien, Scientifique, Explorateur, Défenseur (Rare 🎯), Comédien, Magicien, Challenger, Historien (Épique ⭐), IA Junior, Stratège, Sprinteur, Visionnaire (Légendaire 👑)
   - Game progression: 5 manches per level, must succeed 3/5 to advance
+- **Complete Gameplay System Implementation**: Full quiz gameplay cycle with real-time interaction
+  - **QuestionService** (`app/Services/QuestionService.php`): AI-ready question generation with multiple choice and true/false support
+    - Theme-based questions: general, geography, history, art, cinema, sports, cuisine, fauna, sciences
+    - Difficulty scaling by level (1-100)
+    - Answer validation and scoring logic
+  - **Three gameplay screens**: Question screen → Answer screen → Result screen
+    - `game_question.blade.php`: Dynamic timer (4-8 seconds based on level), BUZZ button with sound effects, visual warnings
+    - `game_answer.blade.php`: 4 answer choices, answer validation with green/red feedback, 10-second response timer
+    - `game_result.blade.php`: Correct/incorrect display, 3-second countdown, auto-redirect to next question
+  - **SoloController gameplay methods**: Complete game state management
+    - `game()`: Initialize and display question screen, session-based question persistence
+    - `buzz()`: Handle buzz action, transition to answer screen with buzz time tracking
+    - `answer()`: Validate answer, update score, show result screen
+    - `timeout()`: Handle no-buzz scenario, record as incorrect, show result
+    - `nextQuestion()`: Clear question state, increment counter, generate new question or end game
+  - **Session management**: Full game state tracking initialized in `start()` method
+    - Variables: `current_question_number`, `score`, `answered_questions`, `current_question`, `buzz_time`, `question_start_time`
+    - Question persistence prevents regeneration during buzz/answer flow
+    - Clean state reset between questions via `nextQuestion()`
+  - **Sound system**: Audio feedback for game events (buzz, fail, correct, incorrect, tick, timeout)
+    - Files created in `public/sounds/` directory as placeholders
+    - JavaScript-based audio playback with fallback handling
+  - **Timeout flow**: Proper handling when player doesn't buzz in time
+    - Redirects to `/solo/timeout` instead of skipping to stats
+    - Records as incorrect answer with `answer_index: -1`
+    - Maintains full Question→Result→Next cycle even on timeout
+  - **Routes**: `/solo/game`, `/solo/buzz` (POST), `/solo/answer` (POST), `/solo/timeout`, `/solo/next`, `/solo/stat`
+  - **Complete gameplay flow**: Login → Menu → Solo config → Resume → Question (BUZZ) → Answer (4 choices) → Result (3s) → Next question → ... → Final stats
 
 ### October 02, 2025
 - **Implemented Stripe Payment Integration**: Complete real-money coin purchasing system
