@@ -83,6 +83,9 @@ class SoloController extends Controller
             'sciences' => '🔬',
         ];
 
+        $bossInfo = $this->getBossForLevel($niveau);
+        $playerAvatar = session('selected_avatar', 'default');
+
         $params = [
             'theme'           => $theme,
             'theme_icon'      => $themeIcons[$theme] ?? '❓',
@@ -94,6 +97,10 @@ class SoloController extends Controller
             'question_id'     => $questions[0]['id'],
             'question_text'   => $questions[0]['question_text'],
             'answers'         => $questions[0]['answers'],
+            'boss_name'       => $bossInfo['name'],
+            'boss_avatar'     => $bossInfo['avatar'],
+            'boss_skills'     => $bossInfo['skills'],
+            'player_avatar'   => $playerAvatar,
         ];
 
         return view('resume', compact('params'));
@@ -139,5 +146,29 @@ class SoloController extends Controller
             'Explorateur'   => ['+5 sec', 'Carte bonus'],
         ];
         return $skills[$avatar] ?? [];
+    }
+
+    private function getBossForLevel($niveau)
+    {
+        $bosses = [
+            1  => ['name' => 'Robot Débutant', 'avatar' => 'images/avatars/ia-junior.png', 'skills' => ['Réflexion basique']],
+            10 => ['name' => 'Challenger', 'avatar' => 'images/avatars/challenger.png', 'skills' => ['Analyse rapide', 'Contre-attaque']],
+            20 => ['name' => 'Stratège', 'avatar' => 'images/avatars/stratege.png', 'skills' => ['Tactique avancée', 'Prédiction']],
+            30 => ['name' => 'Visionnaire', 'avatar' => 'images/avatars/visionnaire.png', 'skills' => ['Anticipation', 'Double chance']],
+            40 => ['name' => 'Sprinteur', 'avatar' => 'images/avatars/sprinteur.png', 'skills' => ['Vitesse accrue', 'Temps réduit']],
+            50 => ['name' => 'Historien', 'avatar' => 'images/avatars/historien.png', 'skills' => ['Connaissance étendue', 'Indices historiques']],
+            60 => ['name' => 'Comédienne', 'avatar' => 'images/avatars/comedienne.png', 'skills' => ['Distraction', 'Fausse réponse']],
+            70 => ['name' => 'Magicienne', 'avatar' => 'images/avatars/magicienne.png', 'skills' => ['Illusion', 'Disparition de réponse']],
+            80 => ['name' => 'Défenseur', 'avatar' => 'images/avatars/defenseur.png', 'skills' => ['Bouclier', 'Annulation d\'attaque']],
+            90 => ['name' => 'Scientifique Suprême', 'avatar' => 'images/avatars/scientifique.png', 'skills' => ['Acidification', 'Analyse moléculaire']],
+            100 => ['name' => 'Le Cerveau Ultime', 'avatar' => 'images/avatars/mathematicien.png', 'skills' => ['Calcul instantané', 'Omniscience', 'Manipulation du temps']],
+        ];
+
+        // Trouver le boss correspondant au niveau (arrondi à la dizaine inférieure)
+        $bossLevel = floor($niveau / 10) * 10;
+        if ($bossLevel < 1) $bossLevel = 1;
+        if ($bossLevel > 100) $bossLevel = 100;
+
+        return $bosses[$bossLevel] ?? $bosses[1];
     }
 }
