@@ -110,8 +110,9 @@ Preferred communication style: Simple, everyday language.
   - Provides quick access to main menu from any authenticated page
 - **Strategic Avatar System with Boss Battles**: Complete boss battle system implementation
   - **No boss for levels 1-9** (training levels), first boss appears at level 10
-  - Boss progression: Épiques (⭐) for levels 10-40, Légendaires (👑) for levels 50-100
-  - Level-based bosses: Comédien (Lv10) → Magicien (Lv20) → Challenger (Lv30) → Historien (Lv40) → IA Junior (Lv50) → Stratège (Lv60) → Sprinteur (Lv70) → Visionnaire (Lv80) → Stratège Maître (Lv90) → Visionnaire Suprême (Lv100)
+  - Boss progression: Épiques (⭐) for levels 10-40, Légendaires (👑) for levels 50-90, Ultimate Boss 🧠 for level 100
+  - Level-based bosses: Comédien (Lv10) → Magicien (Lv20) → Challenger (Lv30) → Historien (Lv40) → IA Junior (Lv50) → Stratège (Lv60) → Sprinteur (Lv70) → Visionnaire (Lv80) → IA Junior (Lv90) → **🧠 Cerveau Ultime (Lv100)**
+  - **Level 100 Final Boss**: "Cerveau Ultime" - A powerful AI brain with all strategic skills combined
   - Each boss has authentic skills from strategic avatar categories (Rare, Épique, Légendaire)
   - Player cannot select same strategic avatar as current boss (conflict detection and reset with alert)
   - Resume page displays: Player avatar (left) with strategic skills, Boss avatar (right) with boss skills (or training message for levels 1-9)
