@@ -41,7 +41,12 @@
 </head>
 <body>
     @auth
-        @if(Route::currentRouteName() !== 'menu' && Route::currentRouteName() !== 'login' && Route::currentRouteName() !== 'register' && Route::currentRouteName() !== 'home')
+        @php
+            $currentRoute = Route::currentRouteName();
+            $gameRoutes = ['solo.game', 'solo.buzz', 'solo.answer', 'solo.timeout', 'solo.next', 'solo.stat'];
+            $hideMenuRoutes = array_merge($gameRoutes, ['menu', 'login', 'register', 'home']);
+        @endphp
+        @if(!in_array($currentRoute, $hideMenuRoutes))
             <a href="{{ route('menu') }}" class="menu-button">
                 🏠 Menu
             </a>

@@ -3,157 +3,282 @@
 @section('content')
 <style>
     body {
-        background: linear-gradient(135deg, #0a3d62 0%, #001F3F 100%);
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
         color: #fff;
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 20px;
+        padding: 10px;
+        overflow-x: hidden;
     }
     
     .answer-container {
-        max-width: 600px;
+        max-width: 900px;
         width: 100%;
+        margin: 0 auto;
+        padding: 20px;
     }
     
+    /* Header info */
     .answer-header {
-        background: rgba(0,0,0,0.3);
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .answer-info {
+        background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
+        padding: 15px 25px;
+        border-radius: 20px;
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        backdrop-filter: blur(10px);
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .answer-title {
+        font-size: 1.1rem;
+        color: #4ECDC4;
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+    
+    .answer-value {
+        font-size: 1.6rem;
+        font-weight: bold;
+    }
+    
+    .score-box {
+        text-align: right;
+    }
+    
+    /* Timer barre */
+    .answer-timer {
+        margin-bottom: 30px;
+        position: relative;
+    }
+    
+    .timer-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+    }
+    
+    .timer-bar-container {
+        height: 12px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        border: 2px solid rgba(255,255,255,0.2);
+    }
+    
+    .timer-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #4ECDC4 0%, #667eea 100%);
+        transition: width 1s linear;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(78, 205, 196, 0.6);
+    }
+    
+    .timer-bar.warning {
+        background: linear-gradient(90deg, #FF6B6B 0%, #EE5A6F 100%);
+        animation: timer-pulse 0.5s infinite;
+    }
+    
+    @keyframes timer-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    /* Question rappel */
+    .question-reminder {
+        background: rgba(0,0,0,0.3);
+        padding: 20px;
+        border-radius: 20px;
+        margin-bottom: 30px;
+        border: 2px solid rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+    }
+    
+    .question-reminder-text {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        text-align: center;
+    }
+    
+    /* Choix de réponses - Bulles stylisées */
+    .answers-grid {
+        display: grid;
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+    
+    .answer-bubble {
+        background: linear-gradient(145deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+        border: 3px solid rgba(102, 126, 234, 0.4);
+        border-radius: 20px;
+        padding: 20px 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .answer-bubble::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        transition: left 0.5s;
+    }
+    
+    .answer-bubble:hover::before {
+        left: 100%;
+    }
+    
+    .answer-bubble:hover:not(.disabled) {
+        transform: translateX(8px) scale(1.02);
+        border-color: #4ECDC4;
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.25) 0%, rgba(102, 126, 234, 0.25) 100%);
+        box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
+    }
+    
+    .answer-bubble:active:not(.disabled) {
+        transform: translateX(4px) scale(0.98);
+    }
+    
+    .answer-bubble.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     
     .answer-number {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #4ECDC4;
-    }
-    
-    .answer-score {
-        font-size: 1rem;
-        opacity: 0.9;
-    }
-    
-    .answers-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 15px;
-        margin-bottom: 20px;
-    }
-    
-    .answer-btn {
-        padding: 20px;
-        background: linear-gradient(135deg, #0074D9 0%, #0056a3 100%);
-        border: 3px solid rgba(255,255,255,0.2);
-        border-radius: 12px;
-        color: white;
-        font-size: 1.2rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    
-    .answer-btn:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 116, 217, 0.4);
-        border-color: rgba(255,255,255,0.4);
-    }
-    
-    .answer-btn:disabled {
-        cursor: not-allowed;
-        opacity: 0.7;
-    }
-    
-    .answer-number-badge {
-        width: 35px;
-        height: 35px;
-        background: rgba(255,255,255,0.2);
-        border-radius: 8px;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 1.3rem;
         font-weight: bold;
-        font-size: 1.1rem;
         flex-shrink: 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
     }
     
-    .chrono-bar-container {
-        background: rgba(0,0,0,0.3);
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
+    .answer-text {
+        font-size: 1.1rem;
+        font-weight: 500;
+        flex: 1;
     }
     
-    .chrono-bar-label {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-size: 0.9rem;
-        opacity: 0.9;
+    .answer-icon {
+        font-size: 1.5rem;
+        opacity: 0;
+        transition: opacity 0.3s;
     }
     
-    .chrono-bar-track {
-        height: 12px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 6px;
-        overflow: hidden;
+    .answer-bubble:hover .answer-icon {
+        opacity: 1;
     }
     
-    .chrono-bar-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #4ECDC4 0%, #44A08D 100%);
-        transition: width 1s linear;
-        border-radius: 6px;
-    }
-    
+    /* Buzz info */
     .buzz-info {
         text-align: center;
-        font-size: 0.9rem;
-        opacity: 0.7;
-        margin-top: 10px;
+        padding: 15px;
+        background: rgba(78, 205, 196, 0.15);
+        border-radius: 15px;
+        margin-bottom: 20px;
+        border: 2px solid rgba(78, 205, 196, 0.3);
     }
     
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-5px); }
-        75% { transform: translateX(5px); }
+    .buzz-info-text {
+        font-size: 0.95rem;
+        color: #4ECDC4;
     }
     
-    .chrono-warning .chrono-bar-fill {
-        background: linear-gradient(90deg, #FF6B6B 0%, #EE5A6F 100%);
-        animation: shake 0.5s infinite;
+    /* Responsive */
+    @media (max-width: 768px) {
+        .answer-header {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .answer-info {
+            width: 100%;
+        }
+        
+        .answer-value {
+            font-size: 1.3rem;
+        }
+        
+        .answer-text {
+            font-size: 1rem;
+        }
+        
+        .answer-number {
+            width: 40px;
+            height: 40px;
+            font-size: 1.1rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .answer-bubble {
+            padding: 15px 18px;
+        }
     }
 </style>
 
 <div class="answer-container">
-    <!-- En-tête -->
+    <!-- Header -->
     <div class="answer-header">
-        <div class="answer-number">Réponses Q: {{ $params['current_question'] }}</div>
-        <div class="answer-score">Score: {{ $params['score'] }} / {{ $params['current_question'] - 1 }}</div>
+        <div class="answer-info">
+            <div class="answer-title">📝 Réponses Q: {{ $params['current_question'] }}</div>
+            <div class="answer-value">{{ $params['total_questions'] }} questions</div>
+        </div>
+        
+        <div class="answer-info score-box">
+            <div class="answer-title">🎯 Score</div>
+            <div class="answer-value">{{ $params['score'] }} / {{ $params['current_question'] - 1 }}</div>
+        </div>
     </div>
     
-    <!-- Chronomètre pour répondre -->
-    <div class="chrono-bar-container" id="chronoContainer">
-        <div class="chrono-bar-label">
+    <!-- Timer -->
+    <div class="answer-timer">
+        <div class="timer-label">
             <span>⏱️ Temps pour répondre</span>
-            <span id="chronoText">{{ $params['answer_time'] }}s</span>
+            <span id="timerText">{{ $params['answer_time'] }}s</span>
         </div>
-        <div class="chrono-bar-track">
-            <div class="chrono-bar-fill" id="chronoBar"></div>
+        <div class="timer-bar-container">
+            <div class="timer-bar" id="timerBar"></div>
         </div>
     </div>
     
-    <!-- Grille de réponses -->
+    <!-- Question rappel -->
+    <div class="question-reminder">
+        <div class="question-reminder-text">{{ $params['question']['text'] }}</div>
+    </div>
+    
+    <!-- Choix de réponses -->
     <form id="answerForm" method="POST" action="{{ route('solo.answer') }}">
         @csrf
+        <input type="hidden" name="answer_index" id="answerIndex">
+        
         <div class="answers-grid">
             @php
                 $question = $params['question'];
@@ -165,25 +290,22 @@
                     @continue
                 @endif
                 
-                <button 
-                    type="button" 
-                    class="answer-btn" 
-                    onclick="selectAnswer({{ $index }})"
-                    data-index="{{ $index }}"
-                >
-                    <div class="answer-number-badge">{{ $index + 1 }}</div>
-                    <div>{{ $answer }}</div>
-                </button>
+                <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
+                    <div class="answer-number">{{ $index + 1 }}</div>
+                    <div class="answer-text">{{ $answer }}</div>
+                    <div class="answer-icon">👉</div>
+                </div>
             @endforeach
         </div>
-        
-        <input type="hidden" name="answer_index" id="answerIndex">
     </form>
     
+    <!-- Buzz info -->
     <div class="buzz-info">
-        @if(isset($params['buzz_time']))
-            Vous avez buzzé en {{ $params['buzz_time'] }}s 🎯
-        @endif
+        <div class="buzz-info-text">
+            @if(isset($params['buzz_time']))
+                Vous avez buzzé en {{ $params['buzz_time'] }}s 💚
+            @endif
+        </div>
     </div>
 </div>
 
@@ -197,55 +319,57 @@
 
 <script>
 let timeLeft = {{ $params['answer_time'] }};
-const totalTime = {{ $params['answer_time'] }};
-let chronoInterval;
+let totalTime = {{ $params['answer_time'] }};
 let answered = false;
 
-// Démarrer le chronomètre
-const chronoBar = document.getElementById('chronoBar');
-chronoBar.style.width = '100%';
+// Animation de la barre de temps
+const timerBar = document.getElementById('timerBar');
+timerBar.style.width = '100%';
 
-chronoInterval = setInterval(() => {
+const timerInterval = setInterval(() => {
     timeLeft--;
     const percentage = (timeLeft / totalTime) * 100;
-    chronoBar.style.width = percentage + '%';
-    document.getElementById('chronoText').textContent = timeLeft + 's';
+    timerBar.style.width = percentage + '%';
+    document.getElementById('timerText').textContent = timeLeft + 's';
     
-    // Avertissement visuel à 3 secondes
-    if (timeLeft <= 3 && timeLeft > 0) {
-        document.getElementById('chronoContainer').classList.add('chrono-warning');
+    // Changement de couleur à 3 secondes
+    if (timeLeft <= 3) {
+        timerBar.classList.add('warning');
         const tickSound = document.getElementById('tickSound');
         tickSound.play().catch(e => console.log('Audio play failed:', e));
     }
     
     // Temps écoulé
     if (timeLeft <= 0) {
-        clearInterval(chronoInterval);
-        handleTimeout();
+        clearInterval(timerInterval);
+        if (!answered) {
+            handleTimeout();
+        }
     }
 }, 1000);
 
 function selectAnswer(index) {
     if (answered) return;
-    
     answered = true;
-    clearInterval(chronoInterval);
     
-    // Marquer la réponse sélectionnée
+    clearInterval(timerInterval);
+    
+    // Marquer la réponse choisie
     document.getElementById('answerIndex').value = index;
     
     // Désactiver tous les boutons
-    document.querySelectorAll('.answer-btn').forEach(btn => {
-        btn.disabled = true;
+    document.querySelectorAll('.answer-bubble').forEach(bubble => {
+        bubble.classList.add('disabled');
     });
     
     // Soumettre le formulaire
-    document.getElementById('answerForm').submit();
+    setTimeout(() => {
+        document.getElementById('answerForm').submit();
+    }, 200);
 }
 
 function handleTimeout() {
     if (answered) return;
-    
     answered = true;
     
     // Jouer son de timeout
@@ -253,9 +377,8 @@ function handleTimeout() {
     timeoutSound.play().catch(e => console.log('Audio play failed:', e));
     
     // Désactiver tous les boutons
-    document.querySelectorAll('.answer-btn').forEach(btn => {
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
+    document.querySelectorAll('.answer-bubble').forEach(bubble => {
+        bubble.classList.add('disabled');
     });
     
     // Rediriger vers les stats (timeout = échec)

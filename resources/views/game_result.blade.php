@@ -9,52 +9,130 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 20px;
+        padding: 10px;
+        overflow-x: hidden;
     }
     
     .result-container {
-        max-width: 600px;
+        max-width: 800px;
         width: 100%;
         text-align: center;
+        padding: 20px;
     }
     
     .result-icon {
         font-size: 120px;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
         animation: scaleIn 0.5s ease-out;
     }
     
     .result-title {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 20px;
+        font-size: 2.8rem;
+        font-weight: 900;
+        margin-bottom: 30px;
         animation: slideDown 0.6s ease-out;
+        text-transform: uppercase;
+        letter-spacing: 2px;
     }
     
     .result-correct .result-title {
         color: #2ECC71;
+        text-shadow: 0 0 30px rgba(46, 204, 113, 0.8);
     }
     
     .result-incorrect .result-title {
         color: #E74C3C;
+        text-shadow: 0 0 30px rgba(231, 76, 60, 0.8);
     }
     
-    .result-answers {
-        background: rgba(0,0,0,0.3);
-        padding: 25px;
-        border-radius: 15px;
-        margin-bottom: 25px;
+    /* Score Battle Display */
+    .score-battle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 30px;
+        margin-bottom: 30px;
         animation: fadeIn 0.8s ease-out;
     }
     
-    .answer-display {
-        padding: 15px;
-        border-radius: 10px;
+    .score-player, .score-opponent {
+        flex: 1;
+        max-width: 200px;
+        padding: 25px;
+        border-radius: 20px;
+        position: relative;
+        backdrop-filter: blur(10px);
+    }
+    
+    .score-player {
+        background: linear-gradient(145deg, rgba(46, 204, 113, 0.2) 0%, rgba(39, 174, 96, 0.2) 100%);
+        border: 3px solid #2ECC71;
+        box-shadow: 0 10px 40px rgba(46, 204, 113, 0.3);
+    }
+    
+    .score-opponent {
+        background: linear-gradient(145deg, rgba(231, 76, 60, 0.2) 0%, rgba(192, 57, 43, 0.2) 100%);
+        border: 3px solid #E74C3C;
+        box-shadow: 0 10px 40px rgba(231, 76, 60, 0.3);
+    }
+    
+    .score-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
         margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .score-number {
+        font-size: 3.5rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+    
+    .score-player .score-number {
+        color: #2ECC71;
+    }
+    
+    .score-opponent .score-number {
+        color: #E74C3C;
+    }
+    
+    .vs-divider {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #4ECDC4;
+        background: rgba(78, 205, 196, 0.2);
+        padding: 15px;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid #4ECDC4;
+        box-shadow: 0 5px 20px rgba(78, 205, 196, 0.5);
+    }
+    
+    /* Answers display */
+    .result-answers {
+        background: rgba(0,0,0,0.4);
+        padding: 25px;
+        border-radius: 20px;
+        margin-bottom: 25px;
+        animation: fadeIn 1s ease-out;
+        border: 2px solid rgba(255,255,255,0.1);
+    }
+    
+    .answer-display {
+        padding: 18px 22px;
+        border-radius: 15px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
         gap: 15px;
         font-size: 1.1rem;
+        backdrop-filter: blur(5px);
     }
     
     .answer-display:last-child {
@@ -62,60 +140,67 @@
     }
     
     .answer-correct {
-        background: rgba(46, 204, 113, 0.2);
+        background: rgba(46, 204, 113, 0.25);
         border: 2px solid #2ECC71;
+        box-shadow: 0 5px 20px rgba(46, 204, 113, 0.3);
     }
     
     .answer-incorrect {
-        background: rgba(231, 76, 60, 0.2);
+        background: rgba(231, 76, 60, 0.25);
         border: 2px solid #E74C3C;
+        box-shadow: 0 5px 20px rgba(231, 76, 60, 0.3);
     }
     
     .answer-label {
-        opacity: 0.8;
-        font-size: 0.9rem;
-        margin-right: auto;
+        opacity: 0.9;
+        font-size: 0.95rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+    
+    .answer-text {
+        flex: 1;
+        text-align: left;
+        font-weight: 500;
     }
     
     .answer-icon {
-        font-size: 1.5rem;
+        font-size: 1.8rem;
     }
     
-    .result-score {
-        font-size: 1.3rem;
-        margin-bottom: 30px;
-        opacity: 0.9;
-    }
-    
+    /* Timer next question */
     .next-question-timer {
-        background: rgba(255,255,255,0.1);
-        padding: 20px;
-        border-radius: 12px;
-        font-size: 1.1rem;
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
+        padding: 25px;
+        border-radius: 20px;
+        font-size: 1.2rem;
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        animation: fadeIn 1.2s ease-out;
     }
     
     .timer-count {
-        font-size: 2rem;
-        font-weight: bold;
+        font-size: 2.5rem;
+        font-weight: 900;
         color: #4ECDC4;
         display: inline-block;
-        margin: 0 5px;
+        margin: 0 8px;
+        animation: pulse 1s infinite;
     }
     
     @keyframes scaleIn {
         from {
-            transform: scale(0);
+            transform: scale(0) rotate(-180deg);
             opacity: 0;
         }
         to {
-            transform: scale(1);
+            transform: scale(1) rotate(0deg);
             opacity: 1;
         }
     }
     
     @keyframes slideDown {
         from {
-            transform: translateY(-30px);
+            transform: translateY(-50px);
             opacity: 0;
         }
         to {
@@ -127,9 +212,11 @@
     @keyframes fadeIn {
         from {
             opacity: 0;
+            transform: translateY(20px);
         }
         to {
             opacity: 1;
+            transform: translateY(0);
         }
     }
     
@@ -138,12 +225,49 @@
             transform: scale(1);
         }
         50% {
-            transform: scale(1.1);
+            transform: scale(1.15);
         }
     }
     
-    .timer-count {
-        animation: pulse 1s infinite;
+    /* Responsive */
+    @media (max-width: 768px) {
+        .result-title {
+            font-size: 2rem;
+        }
+        
+        .score-battle {
+            gap: 15px;
+        }
+        
+        .score-number {
+            font-size: 2.5rem;
+        }
+        
+        .vs-divider {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+        }
+        
+        .answer-text {
+            font-size: 1rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .score-battle {
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .score-player, .score-opponent {
+            max-width: 100%;
+            width: 100%;
+        }
+        
+        .vs-divider {
+            transform: rotate(90deg);
+        }
     }
 </style>
 
@@ -160,6 +284,22 @@
         </div>
     @endif
     
+    <!-- Score Battle -->
+    <div class="score-battle">
+        <div class="score-player">
+            <div class="score-label">🎮 Votre Score</div>
+            <div class="score-number">{{ $params['score'] }}</div>
+        </div>
+        
+        <div class="vs-divider">VS</div>
+        
+        <div class="score-opponent">
+            <div class="score-label">🎯 Adversaire</div>
+            <div class="score-number">{{ $params['current_question'] - $params['score'] }}</div>
+        </div>
+    </div>
+    
+    <!-- Answers -->
     <div class="result-answers">
         @php
             $question = $params['question'];
@@ -172,11 +312,13 @@
             <!-- Afficher la réponse incorrecte du joueur ou le timeout -->
             <div class="answer-display answer-incorrect">
                 <span class="answer-label">Votre réponse:</span>
-                @if($isTimeout)
-                    <span>⏰ Temps écoulé - Pas de buzz</span>
-                @else
-                    <span>{{ $question['answers'][$userAnswerIndex] }}</span>
-                @endif
+                <span class="answer-text">
+                    @if($isTimeout)
+                        ⏰ Temps écoulé - Pas de buzz
+                    @else
+                        {{ $question['answers'][$userAnswerIndex] }}
+                    @endif
+                </span>
                 <span class="answer-icon">❌</span>
             </div>
         @endif
@@ -184,15 +326,12 @@
         <!-- Afficher la bonne réponse -->
         <div class="answer-display answer-correct">
             <span class="answer-label">Bonne réponse:</span>
-            <span>{{ $question['answers'][$correctIndex] }}</span>
+            <span class="answer-text">{{ $question['answers'][$correctIndex] }}</span>
             <span class="answer-icon">✅</span>
         </div>
     </div>
     
-    <div class="result-score">
-        Score: {{ $params['score'] }} / {{ $params['current_question'] }}
-    </div>
-    
+    <!-- Next question timer -->
     <div class="next-question-timer">
         Prochaine question dans <span class="timer-count" id="countdown">3</span> secondes...
     </div>

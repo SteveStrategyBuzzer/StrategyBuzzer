@@ -410,7 +410,7 @@ class SoloController extends Controller
         return $skills[$avatar] ?? [];
     }
 
-    private function getBossForLevel($niveau)
+    public function getBossForLevel($niveau)
     {
         // Pas de boss avant le niveau 10
         if ($niveau < 10) {

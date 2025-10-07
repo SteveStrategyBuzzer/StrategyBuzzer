@@ -3,63 +3,129 @@
 @section('content')
 <style>
     body {
-        background: linear-gradient(135deg, #001F3F 0%, #0a3d62 100%);
+        background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 20px;
+        padding: 10px;
+        overflow-x: hidden;
     }
     
     .game-container {
-        max-width: 500px;
+        max-width: 900px;
         width: 100%;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    /* Header avec VS adversaire */
+    .game-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .player-info, .opponent-info {
+        background: rgba(0,0,0,0.4);
+        padding: 10px 20px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255,255,255,0.1);
+        flex: 1;
+        min-width: 150px;
         text-align: center;
     }
     
-    .question-header {
-        background: rgba(0,0,0,0.3);
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
+    .player-info {
+        border-left: 4px solid #4ECDC4;
+    }
+    
+    .opponent-info {
+        border-right: 4px solid #FF6B6B;
+    }
+    
+    .vs-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-weight: bold;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.6);
+        min-width: 60px;
+    }
+    
+    .score-display {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #4ECDC4;
+    }
+    
+    .opponent-score {
+        color: #FF6B6B;
+    }
+    
+    .player-label, .opponent-label {
+        font-size: 0.85rem;
+        opacity: 0.8;
+        margin-bottom: 5px;
+    }
+    
+    /* Question bubble */
+    .question-bubble {
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.15) 0%, rgba(102, 126, 234, 0.15) 100%);
+        padding: 30px;
+        border-radius: 25px;
+        margin-bottom: 30px;
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .question-bubble::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(45deg, #4ECDC4, #667eea, #764ba2);
+        border-radius: 25px;
+        opacity: 0.1;
+        z-index: -1;
     }
     
     .question-number {
-        font-size: 1.1rem;
-        color: #4ECDC4;
-        margin-bottom: 10px;
-    }
-    
-    .question-score {
         font-size: 0.9rem;
-        opacity: 0.8;
-    }
-    
-    .question-box {
-        background: rgba(255,255,255,0.1);
-        padding: 30px;
-        border-radius: 15px;
-        margin-bottom: 30px;
-        min-height: 150px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        color: #4ECDC4;
+        margin-bottom: 15px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     
     .question-text {
-        font-size: 1.4rem;
-        font-weight: 500;
-        line-height: 1.5;
+        font-size: 1.5rem;
+        font-weight: 600;
+        line-height: 1.6;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
     
+    /* Chronomètre énergétique */
     .chrono-container {
-        margin-bottom: 30px;
+        margin-bottom: 35px;
+        position: relative;
     }
     
     .chrono-circle {
-        width: 120px;
-        height: 120px;
+        width: 140px;
+        height: 140px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
@@ -67,93 +133,270 @@
         justify-content: center;
         margin: 0 auto 15px;
         position: relative;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.6);
+        animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-glow {
+        0%, 100% {
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.6);
+        }
+        50% {
+            box-shadow: 0 10px 60px rgba(102, 126, 234, 0.9);
+        }
+    }
+    
+    .chrono-circle::before {
+        content: '';
+        position: absolute;
+        inset: -5px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #4ECDC4, #667eea, #FF6B6B);
+        opacity: 0.5;
+        filter: blur(15px);
+        animation: rotate-glow 3s linear infinite;
+    }
+    
+    @keyframes rotate-glow {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
     
     .chrono-time {
-        font-size: 2.5rem;
+        font-size: 3rem;
         font-weight: bold;
+        position: relative;
+        z-index: 1;
+        text-shadow: 0 2px 20px rgba(0,0,0,0.5);
     }
     
     .chrono-label {
-        font-size: 0.9rem;
-        opacity: 0.8;
+        font-size: 0.95rem;
+        opacity: 0.9;
+        text-align: center;
+    }
+    
+    .chrono-warning {
+        animation: danger-pulse 0.5s infinite !important;
+    }
+    
+    .chrono-warning .chrono-circle {
+        background: linear-gradient(135deg, #FF6B6B 0%, #EE5A6F 100%);
+    }
+    
+    @keyframes danger-pulse {
+        0%, 100% { 
+            transform: scale(1);
+            box-shadow: 0 10px 40px rgba(255, 107, 107, 0.8);
+        }
+        50% { 
+            transform: scale(1.08);
+            box-shadow: 0 15px 60px rgba(255, 107, 107, 1);
+        }
+    }
+    
+    /* Bouton BUZZ réaliste avec Strategy Buzzer */
+    .buzz-container {
+        text-align: center;
     }
     
     .buzz-button {
-        width: 200px;
-        height: 200px;
+        width: 240px;
+        height: 240px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #FF6B6B 0%, #EE5A6F 100%);
-        border: 8px solid rgba(255,255,255,0.3);
+        background: linear-gradient(145deg, #FF6B6B 0%, #C0392B 100%);
+        border: 8px solid #8B0000;
         color: white;
-        font-size: 2.5rem;
-        font-weight: bold;
+        font-size: 1.8rem;
+        font-weight: 900;
         cursor: pointer;
         margin: 0 auto;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        transition: all 0.3s ease;
-        box-shadow: 0 10px 40px rgba(255, 107, 107, 0.5);
+        gap: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 
+            0 15px 40px rgba(255, 107, 107, 0.6),
+            inset 0 -8px 20px rgba(0,0,0,0.3),
+            inset 0 3px 10px rgba(255,255,255,0.2);
+        position: relative;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    
+    .buzz-button::before {
+        content: '';
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 70%;
+        height: 30%;
+        background: radial-gradient(ellipse at center, rgba(255,255,255,0.3) 0%, transparent 70%);
+        border-radius: 50%;
     }
     
     .buzz-button:hover:not(:disabled) {
-        transform: scale(1.05);
-        box-shadow: 0 15px 50px rgba(255, 107, 107, 0.7);
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 
+            0 20px 60px rgba(255, 107, 107, 0.8),
+            inset 0 -8px 20px rgba(0,0,0,0.3),
+            inset 0 3px 10px rgba(255,255,255,0.3);
     }
     
     .buzz-button:active:not(:disabled) {
-        transform: scale(0.95);
+        transform: translateY(3px) scale(0.98);
+        box-shadow: 
+            0 5px 20px rgba(255, 107, 107, 0.6),
+            inset 0 -3px 10px rgba(0,0,0,0.4);
     }
     
     .buzz-button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+        background: linear-gradient(145deg, #95a5a6 0%, #7f8c8d 100%);
+        border-color: #5a5a5a;
     }
     
     .buzz-icon {
+        font-size: 3.5rem;
         display: block;
-        font-size: 3rem;
+        animation: ring 2s ease-in-out infinite;
     }
     
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
+    .buzz-text {
+        font-size: 1.2rem;
+        margin-top: -5px;
     }
     
-    .chrono-warning {
-        animation: pulse 0.5s infinite;
+    .buzz-brand {
+        font-size: 0.7rem;
+        font-weight: 600;
+        opacity: 0.9;
+        letter-spacing: 1px;
+    }
+    
+    @keyframes ring {
+        0%, 100% { transform: rotate(0deg); }
+        10% { transform: rotate(-15deg); }
+        20% { transform: rotate(15deg); }
+        30% { transform: rotate(-15deg); }
+        40% { transform: rotate(15deg); }
+        50% { transform: rotate(0deg); }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .question-text {
+            font-size: 1.2rem;
+        }
+        
+        .chrono-circle {
+            width: 110px;
+            height: 110px;
+        }
+        
+        .chrono-time {
+            font-size: 2.5rem;
+        }
+        
+        .buzz-button {
+            width: 200px;
+            height: 200px;
+            font-size: 1.5rem;
+        }
+        
+        .buzz-icon {
+            font-size: 3rem;
+        }
+        
+        .buzz-text {
+            font-size: 1rem;
+        }
+        
+        .score-display {
+            font-size: 1.4rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .game-header {
+            flex-direction: column;
+        }
+        
+        .player-info, .opponent-info {
+            width: 100%;
+        }
+        
+        .question-bubble {
+            padding: 20px;
+        }
+        
+        .buzz-button {
+            width: 180px;
+            height: 180px;
+        }
     }
 </style>
 
 <div class="game-container">
-    <!-- En-tête -->
-    <div class="question-header">
-        <div class="question-number">Question {{ $params['current_question'] }} / {{ $params['total_questions'] }}</div>
-        <div class="question-score">Pointage: {{ $params['score'] }} / {{ $params['current_question'] - 1 }}</div>
+    <!-- Header avec VS adversaire -->
+    <div class="game-header">
+        <div class="player-info">
+            <div class="player-label">🎮 Vous</div>
+            <div class="score-display">{{ $params['score'] }}</div>
+        </div>
+        
+        <div class="vs-badge">VS</div>
+        
+        <div class="opponent-info">
+            <div class="opponent-label">
+                @php
+                    $niveau = $params['niveau'];
+                    $bossInfo = (new App\Http\Controllers\SoloController())->getBossForLevel($niveau);
+                @endphp
+                @if($bossInfo)
+                    🏆 {{ $bossInfo['name'] }}
+                @else
+                    📚 Élève Niveau {{ $niveau }}
+                @endif
+            </div>
+            <div class="score-display opponent-score">{{ $params['current_question'] - 1 - $params['score'] }}</div>
+        </div>
     </div>
     
-    <!-- Question -->
-    <div class="question-box">
+    <!-- Question bubble -->
+    <div class="question-bubble">
+        <div class="question-number">
+            Question {{ $params['current_question'] }} / {{ $params['total_questions'] }}
+            @if(!$bossInfo)
+                • Niveau {{ $niveau }} - Élève {{ $niveau % 10 }}/10
+            @endif
+        </div>
         <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     
-    <!-- Chronomètre -->
-    <div class="chrono-container">
-        <div class="chrono-circle" id="chronoCircle">
+    <!-- Chronomètre énergétique -->
+    <div class="chrono-container" id="chronoContainer">
+        <div class="chrono-circle">
             <div class="chrono-time" id="chronoTime">{{ $params['chrono_time'] }}</div>
         </div>
-        <div class="chrono-label">Secondes pour buzzer</div>
+        <div class="chrono-label">⏱️ Secondes pour buzzer</div>
     </div>
     
-    <!-- Bouton BUZZ -->
-    <form id="buzzForm" method="POST" action="{{ route('solo.buzz') }}">
-        @csrf
-        <button type="button" id="buzzButton" class="buzz-button" onclick="handleBuzz()">
-            <span class="buzz-icon">🔔</span>
-        </button>
-    </form>
+    <!-- Bouton BUZZ réaliste -->
+    <div class="buzz-container">
+        <form id="buzzForm" method="POST" action="{{ route('solo.buzz') }}">
+            @csrf
+            <button type="button" id="buzzButton" class="buzz-button" onclick="handleBuzz()">
+                <span class="buzz-icon">🔔</span>
+                <span class="buzz-text">BUZZ</span>
+                <span class="buzz-brand">Strategy Buzzer</span>
+            </button>
+        </form>
+    </div>
 </div>
 
 <audio id="buzzSound" preload="auto">
@@ -178,7 +421,7 @@ chronoInterval = setInterval(() => {
     
     // Avertissement visuel à 3 secondes
     if (timeLeft <= 3 && timeLeft > 0) {
-        document.getElementById('chronoCircle').classList.add('chrono-warning');
+        document.getElementById('chronoContainer').classList.add('chrono-warning');
     }
     
     // Temps écoulé
