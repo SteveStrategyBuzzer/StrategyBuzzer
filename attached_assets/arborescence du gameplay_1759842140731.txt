@@ -1,0 +1,343 @@
+Arborescence et Structure des Pages - Strategy Buzzer
+1. Page d'ouverture (index.html)
+Titre Strategy Buzzer
+Bouton Play → Se Connecter (Facebook/ Google/ etc)
+
+2. Page Se Connecter
+Facebook         →Profil.html
+Google             → Profil.html
+Appel               → Profil.html
+téléphone        → Profil.html
+adresse e-mail→ Profil.html
+
+3.Page D'Acceuil (Acceuil.html)
+🎯 Titre du jeu : Strategy Buzzer
+🟩 Solo : Jouer (Solo) → Solo.html
+🧩 Les Quêtes : Voir les Quêtes → quests.html
+👥 Duo : Mode Duo → duo.html
+🧠 Maître du jeu : Maître du Jeu → master.html
+🏆 Ligue : Ligue → ligue.html
+⚙️ Profil : → Profil.html
+      Règlements : → Règlements.html
+
+4. Page de quiz solo (Solo.html)
+Affichage Titre: Strategy Buzzer Solo
+affichage du niveau actuelle
+Nombre de questions: Menu déroulant: (20, 30, 40)
+Choix des niveaux débloqué 
+Choix Avatar Stratégique  → Avatars(stratégique).html
+Choix de 9 options de catégories 
+Jouer après que tout les options obligatoire sont sélectionnées→ route resume
+Background les robots du plus petit au plus grand un derrière l’autre
+
+5. Page resune de Solo (route resume)
+Titre: Résumé de la Partie
+Niveau qu e le joueur va jouer niveau 20, 30, 40, 50, 60, 70, 80, 90 le nom de l'avatar stratégique (Boss du niveau) et il peut utiliser ces skills contre vous et 100 le boss des boss le cerveau mauve sous une cloche pleine d’eau
+Thème choisi  → ?
+nombre de questions→ ?
+Avatar Stratégique → ?
+de chaque côté un emplacement pour un Avatar (obligatoire) gauche avatar joueur et droite avatar stratégique
+bouton démarrer la partie
+
+6. Page Strategy Buzzer (Gameplay_Solo.html)
+Doit prendre en considérations le ou les skills des avatars Stratégique
+ Affichage Titre: Strategy Buzzer solo
+ Affichage du niveau
+ Affichage d'une question ou une image
+ Affichage d’un compte à rebours
+ Bouton: Buzz → Réponses_solo.html
+ Affichage de l'Avatar
+ Bouton(s): skill → Application automatique du skill ou à sélectionné si il y a lieu 
+
+7. Page Réponse (Réponses_solo.html)
+Affichage Réponses en haut
+Affichage du compte à rebours
+4 boutons de réponse si  “vrai ou faux”. Vrai en haut et le faux sur le troisième
+Toujours démarqué la bonne réponse: Aussitôt que le choix est sélectionné toujours indiquer la bonne réponse avec surbrillance et avec une légère sur dimension, Si le choix est mauvais, crochet rouge devant le mauvais choix (background devient rougeâtre) 
+Bouton(s): skill → Application automatique du skill ou à sélectionnable si il y a lieu 
+🔒 Réponse bloquée après avoir cliqué sur une réponse ou temps écoulé, cela pendant 5 sec, 
+ après les 5 sec (pendant le 5 sec tu peux glisser l’image vers la gauche pour aller au résultat plus vite) → Résultat_solo.html
+Affichage Avatar
+
+8. Page Résultats (Résultat_solo.html)
+(Elle sert de pause active après les questions ou manche, donne au joueur une vue d’ensemble, 12 sec sont alloué dans cette zone dans le mode Solo
+Affichage du temps de réaction joueur et de l’IA
+Dans quel niveau que tu es actuellement
+Combien de thème restant avant le prochain niveau
+Skill restant
+vie restante
+Prochain Match ou nouvelle partie (si la joute est fini) 
+save cette manche → Gameplay_Solo.html
+Page D’accueille → Accueil.html
+Résultat affiché (bonne/mauvaise réponse)
+Position dans la partie à partir du niveau 70 (Compétition avec l’IA)
+Pourcentage atteint et combien de point qui reste à obtenir pour le droit de passage soit 40%, 55% etc (en mode Solo)
+ 
+9. Page Quêtes (quests.html)
+Doit coopérer avec les résultat des gameplays et des achats pour se débloquer
+Affichage des quêtes depuis Firestore
+Affichage des quête(s) terminées
+Nom, condition, effet, rareté, récompense
+Mise en forme dynamique par CSS
+
+10. Page Duo (duo.html)
+Bouton: Choix Avatar  → Avatars.html ou  photo connexion facebook ou Google
+Menu déroulant: nombre de question (20, 30, 40)
+Bouton: Jouer → Strategy Buzzer Game Duo.html applicable quand tous les éléments programmables sont sélectionnés
+Affichage Titre: Strategy Buzzer Duo
+Prévue : connexion avec un ami ou mode aléatoire (si personne, l’IA prend l’aspect d’un joueur)
+Sélection du niveau de difficulté des questions
+
+
+11. Page Strategy Buzzer (Gameplay_Duo.html)
+ Affichage Titre: Strategy Buzzer Duo
+ Affichage d'une question ou d’une image
+ Affichage d’un compte à rebours
+ Bouton: Buzz → Réponses_Duo.html
+ Affichage des joueurs 
+ Bouton(s): skill → S’applique automatiquement ou sélectionnable
+ Affichage unique du joueur sur leur écran respectif
+ Son respectif émit par le buzzer du joueur adverse si celui ci appuie le premier
+ Affichage des scores des joueurs
+
+12. Page Réponses Duo (Réponses_Duo.html)
+Affichage Réponses en haut
+Affichage du compte à rebours
+4 boutons de réponse si  “vrai ou faux”. Vrai en haut et le faux sur le troisième
+Toujours démarqué la bonne réponse: Aussitôt que le choix est sélectionné toujours indiquer la bonne réponse avec surbrillance et avec une légère sur dimension, Si le choix est mauvais, crochet rouge devant le mauvais choix (background devient rougeâtre) 
+Bouton(s): skill → Application automatique du skill ou à sélectionnable si il y a lieu 
+🔒 Réponse bloquée après avoir cliqué sur une réponse ou temps écoulé, cela pendant 5 sec, 
+ après les 5 sec (pendant le 5 sec tu peux glisser l’image vers la gauche pour aller au résultat plus vite) → Résultats_Duo.html
+Affichage Avatar
+
+
+13. Page Résultats (Résultats_Duo.html)
+Doit prendre en considérations le ou les skills des avatars Stratégique
+✅(Elle sert de pause active entre chaque question ou manche, donne au joueur une vue d’ensemble de sa progression et synchronise tous les joueurs pour la continuité de la partie
+✅Affichage du temps de réaction des joueurs 
+✅ Résultat affiché (bonne/mauvaise réponse) des joueurs
+✅Affichages skills restant si applicable
+✅Affichage des points en mode Duo pendant la partie
+✅ Score total fin partie des joueurs
+✅ Position dans la partie 
+✅ Nombre de bonnes réponses
+Affichage d’une barre de temps pour indiquer le temps restant avant la prochaine question → Page Gameplay_Duo.html
+
+
+14. Page Maître du Jeu (master.html)
+Formulaire de création de question” (option automatique “IA”) →formulaire.html
+invitation des joueurs → ?
+Bouton: Lancer le Quiz → (Master_Gameplay.html)
+
+15. Page formulaire de création de question (Formulaire.html)
+Champs : question ou image, réponses (x4) ou (x2) si vrai ou faux, la bonne réponse
+Choix : pays, scolaire (niveau et matière), choix déjà sélectionnable ex: Géographie, Histoire, Général etc. nombre de questions (20,30 ou 40),
+Bouton : Générer (sélectionnable après tout les sélections nécessaires sélectionnées) 
+Prévu après avoir sélectionné “Générer” Bouton: Vérification → Vérification.html
+Prévu : IA + validation + enregistrement dans Firestore
+Activer ou désactiver Avatars Spéciaux
+Confirmer → Master.html
+16. Page Vérification (Vérification.html)
+interface pouvant passer à travers tout les questions et réponse
+numéro de la question
+Une question et les réponses
+question et réponse sélectionnable pour changement
+Glissement vers la gauche pour voir la question suivante et glissement vers la droite pour revenir sur les questions déjà passées.
+Bouton: Accepter (toujours apparent) → master.html
+
+17. Page Master Game (Master_Gameplay.html)
+Pause 
+Prochaine
+Revenir
+Arrêt Partie → confirmer
+Affichage des questions à tour de rôle (le temps sélectionné) → ?
+Affichage des réponses à tour de rôle (le temps sélectionné) → ?
+Page Résultat → Resultats_Master.html
+Joueurs Gameplay traditionnel avec leurs spécificités sélectionnées
+
+ 18. Page Résultats (Résultats_Master.html)  
+
+✅(Elle sert de pause active entre chaque question ou manche, donne au joueur une vue d’ensemble de sa progression et synchronise tous les joueurs pour la continuité de la partie
+✅Affichage du temps de réaction des 3 meilleurs joueurs et la position du joueur si il est 4e et moins 
+✅ Résultat affiché (bonne/mauvaise réponse) du joueurs
+✅Affichages skills restant si applicable
+✅ Score total fin partie des joueurs
+✅ Position dans la partie (apparaît sur le bon emplacement du podium si le joueur se situe en 1e 2e ou 3e place)
+✅ Nombre de bonnes réponses
+Affichage d’une barre de temps pour indiquer le temps restant avant la prochaine question (peut être manuelle en maître du jeu) → Page Master_Gameplay.html
+
+
+
+19. Page Ligue (ligue.html)
+Prévue : classement, tournois, participations
+Affichage du top 5 joueurs ou groupes
+Mode saison ou hebdo
+Option de connection avec FaceBook /Google
+Sélection d’Avatar (si ne veulent pas utiliser la photo de leur connexion FAceBook/Google)
+
+20. Page Résultats (Résultats Gameplay ligue.html)  
+à mettre en place mais pas apparente
+Affichage d’une barre de temps pour indiquer le temps restant avant la prochaine question (peut être manuelle en maître du jeu) → Page Strategy Buzzer Game solo.html
+
+21. Avatar (Avatar.html)
+sélection d’avatar 
+Sélection d’avatar spéciaux → Avatars Spéciaux
+Confirmation → Page précédente
+
+22. Avatars Spéciaux (Avatars Spéciaux.html)
+Choix des Avatars → “nom de l’avatar sélectionné”.html
+Achat (sous chaque Avatar flouter) 
+Gratuit (sous les avatars avec image net quand ils sont débloqués )
+Retour → Avatar.html
+
+23. Avatar Sélectionné (“nom de l’avatar sélectionné”.html)
+Photo complète flouté (si pas payer ou débloqué)
+Confirmé → Avatar.html (si payer ou débloqué)
+Retour → Avatar Spéciaux.html
+Descriptif de(s) skill(s) de l’Avatar
+
+24. Boutique (Boutique.html)
+Page options visuelles (style fun, intello, party...)
+Avatar Spéciaux  
+Son de Buzzer  
+Son de musique D'ambiance 
+Vie
+Pièce d’Intelligence
+
+
+
+
+
+
+25 Profil (Profil.html)
+Avec ou sans son ambiance
+Avec ou sans son Buzzer
+Avec ou sans son Pendant les résultats
+Langue Français ou Anglais
+Choix d’Avatars
+Boutique
+visible ou en Avatar en ligue (configurer mais pas encore visible)
+Confirmer → Acceuil.html (quand tous les choix ont été sélectionnés)
+
+26 Règlements du jeu (Règlements.html)
+🎯 Objectif du jeu
+Accumuler le maximum de points d’intelligence en répondant correctement aux questions et en réussissant des quêtes spéciales.
+ Le joueur ou l’équipe avec le plus grand score à la fin remporte la partie et peut débloquer des récompenses exclusives.👥 Modes de jeu
+Solo : joue seul contre le temps et essaie de battre ton propre score.
+
+
+Duo : affronte un ami ou un joueur aléatoire.
+
+
+Ligue : rejoint un classement saisonnier et accumule des titres prestigieux.
+
+
+Maître du jeu : crée et anime des parties personnalisées pour d’autres joueurs.
+🧑‍🎓 Avatars
+Chaque joueur choisit un avatar et peut débloquer ou acheter des Avatars avec pouvoir spécial :EX
+
+🧠 Mathématicien
+-Peut faire illuminer une bonne réponse si il y a un chiffre dans la réponse
+
+
+
+
+🧪 Scientifique
+-Peut acidifier une mauvaise réponse 1 fois avant de choisir
+
+
+🛡️ Défenseur
+-Peut annuler une attaque.
+
+
+
+
+🧩 Quêtes
+En plus des questions, des quêtes optionnelles apparaissent pendant la partie.
+Quêtes normales : 20 🧠 pièces d’intelligence
+
+
+Quêtes rares : 40 🧠
+
+
+Quêtes épiques : 60 🧠
+
+
+Quêtes légendaires : 100 🧠
+
+
+Les quêtes permettent de débloquer :
+Titres exclusifs (ex. Professeur Buzz, Légende du Quiz…)
+
+
+Vies supplémentaires
+
+
+Styles visuels
+ En accomplissant les quêtes associées à l’avatar, le pouvoir est doublé.
+
+🛒 Achats
+Des styles visuels et sons spéciaux peuvent être achetés ou débloqués :
+sons de buzzer
+Musique d'ambiance
+vie
+pièces d’Intelligence
+Avatars Stratégique 
+Avatar joueur
+
+
+Ces éléments sont purement cosmétiques et ne donnent pas d’avantage compétitif.
+
+📝 Règles des réponses
+Une question peut être :
+
+
+Choix multiple
+
+
+Vrai ou faux
+
+
+Affirmations avec une seule bonne réponse
+
+
+Chaque bonne réponse en étant le premier à Buzzer : +2 points
+Le suivant peut buzzer et tenter sa chance pour +1 point
+Mauvaise réponse : -2 points pour n’importe qui qui a Buzzer
+tu ne buzz pas aucune perte de point, tu peux participer à la question mais tu ne peux pas gagner de point ou en perdre
+⏳ Temps
+Un chronomètre est affiché pour chaque question. Peut varier selon les attaque des Avatars qui ont ce pouvoir
+le buzzer peut être variable selon les skills des Avatars Stratégique
+Le buzzer s’active uniquement après la lecture complète de la question en mode audio(avenir).
+
+
+
+📊 Classements et progression
+Un classement saisonnier est tenu en mode Ligue.
+
+
+Les titres et quêtes complétées apparaissent dans la page Quêtesr.
+
+
+Les styles visuels débloqués sont permanents.
+
+
+
+👨‍🏫 Maître QuizBot
+Le maître du jeu peut utiliser Maître QuizBot pour :
+Générer automatiquement des questions adaptées à un pays, un niveau scolaire et une matière.
+
+
+Personnaliser et valider les questions générées.
+faire appelle à l’intelligence artificiel pour créer des quizz
+invité jusqu’à 40 joueurs
+peut contrôles tous les paramètres disponible son, musique, Avatars Stratégique, etc
+
+🌍 Multiplateforme et mondiale
+Le jeu fonctionne sur téléphone, tablette et ordinateur.
+ Les parties multijoueurs sont synchronisées via Firestore et fonctionnent même entre différents serveurs.
+et se joue entre pays
+
+📌 Astuce :
+ Pense à compléter des quêtes et à acheter des styles pour personnaliser ton expérience !
+
