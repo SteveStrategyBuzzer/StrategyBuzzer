@@ -43,12 +43,29 @@ class SoloController extends Controller
         $max = session('choix_niveau', 1);
         if ($niveau > $max) $niveau = $max;
 
+        // Calculer questions par manche (5 manches au total)
+        // Distribution équitable: base + reste distribué sur les premières manches
+        $totalRounds = 5;
+        $baseQuestionsPerRound = floor($nbQuestions / $totalRounds);
+        $remainderQuestions = $nbQuestions % $totalRounds;
+        
+        // Créer un tableau avec le nombre de questions par manche
+        $questionsDistribution = [];
+        for ($i = 1; $i <= $totalRounds; $i++) {
+            // Les premières manches (selon le reste) ont une question supplémentaire
+            $questionsDistribution[$i] = $baseQuestionsPerRound + ($i <= $remainderQuestions ? 1 : 0);
+        }
+        
         // Persistance session - initialiser TOUTES les variables de jeu
         session([
             'niveau_selectionne' => $niveau,
             'nb_questions'       => $nbQuestions,
             'theme'              => $theme,
             'current_question_number' => 1,
+            'current_round' => 1,
+            'total_rounds' => $totalRounds,
+            'questions_distribution' => $questionsDistribution,
+            'round_start_question' => 1,
             'score' => 0,
             'opponent_score' => 0,
             'answered_questions' => [],
@@ -223,6 +240,8 @@ class SoloController extends Controller
             'avatar' => $avatar,
             'theme' => $theme,
             'niveau' => $niveau,
+            'current_round' => session('current_round', 1),
+            'total_rounds' => session('total_rounds', 5),
         ];
         
         return view('game_question', compact('params'));
@@ -250,6 +269,8 @@ class SoloController extends Controller
             'score' => session('score', 0),
             'answer_time' => $answerTime,
             'buzz_time' => $buzzTime,
+            'current_round' => session('current_round', 1),
+            'total_rounds' => session('total_rounds', 5),
         ];
         
         return view('game_answer', compact('params'));
@@ -340,6 +361,9 @@ class SoloController extends Controller
             'opponent_faster' => $opponentBehavior['is_faster'],
             'opponent_correct' => $opponentBehavior['is_correct'],
             'opponent_points' => $opponentBehavior['points'],
+            // Données de manche
+            'current_round' => session('current_round', 1),
+            'total_rounds' => session('total_rounds', 5),
         ];
         
         return view('game_result', compact('params'));
@@ -420,6 +444,9 @@ class SoloController extends Controller
             'opponent_faster' => $opponentBehavior['is_faster'],
             'opponent_correct' => $opponentBehavior['is_correct'],
             'opponent_points' => $opponentBehavior['points'],
+            // Données de manche
+            'current_round' => session('current_round', 1),
+            'total_rounds' => session('total_rounds', 5),
         ];
         
         return view('game_result', compact('params'));
@@ -427,16 +454,56 @@ class SoloController extends Controller
 
     public function nextQuestion()
     {
-        // Incrémenter le numéro de question
+        // Récupérer les données de session
         $currentQuestion = session('current_question_number', 1);
         $nbQuestions = session('nb_questions', 30);
+        $currentRound = session('current_round', 1);
+        $totalRounds = session('total_rounds', 5);
+        $questionsDistribution = session('questions_distribution', []);
+        $roundStartQuestion = session('round_start_question', 1);
         
+        // GARDE CRITIQUE: Si on a atteint toutes les questions, terminer le jeu
         if ($currentQuestion >= $nbQuestions) {
-            // Fin de la partie
             return redirect()->route('solo.stat');
         }
         
-        session(['current_question_number' => $currentQuestion + 1]);
+        // Obtenir le nombre de questions pour la manche actuelle
+        $questionsThisRound = $questionsDistribution[$currentRound] ?? ceil($nbQuestions / $totalRounds);
+        
+        // Calculer combien de questions ont été faites dans cette manche
+        $questionsInCurrentRound = $currentQuestion - $roundStartQuestion + 1;
+        
+        // Vérifier si on a terminé la manche actuelle OU si elle a 0 questions
+        if ($questionsInCurrentRound >= $questionsThisRound || $questionsThisRound == 0) {
+            // On a terminé cette manche
+            if ($currentRound >= $totalRounds) {
+                // Fin de la partie (5 manches terminées)
+                return redirect()->route('solo.stat');
+            }
+            
+            // Passer à la manche suivante
+            $newRound = $currentRound + 1;
+            $newStartQuestion = $currentQuestion + 1;
+            
+            // Si la prochaine manche a 0 questions, continuer à sauter les manches vides
+            while ($newRound <= $totalRounds && ($questionsDistribution[$newRound] ?? 0) == 0) {
+                $newRound++;
+            }
+            
+            // Si on a sauté toutes les manches restantes, terminer
+            if ($newRound > $totalRounds || $newStartQuestion > $nbQuestions) {
+                return redirect()->route('solo.stat');
+            }
+            
+            session([
+                'current_round' => $newRound,
+                'current_question_number' => $newStartQuestion,
+                'round_start_question' => $newStartQuestion,
+            ]);
+        } else {
+            // Continuer dans la manche actuelle
+            session(['current_question_number' => $currentQuestion + 1]);
+        }
         
         // Nettoyer la question actuelle pour forcer une nouvelle génération
         session()->forget('current_question');

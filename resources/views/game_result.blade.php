@@ -6,12 +6,12 @@
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         color: #fff;
         min-height: 100vh;
-        height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 5px;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
         margin: 0;
     }
     
@@ -558,9 +558,16 @@
     <div class="progress-info">
         <div class="info-row">
             <div class="info-item">
+                <span class="info-label">🎯 Manche:</span>
+                <span class="info-value">{{ $params['current_round'] ?? 1 }}/{{ $params['total_rounds'] ?? 5 }}</span>
+            </div>
+            <div class="info-item">
                 <span class="info-label">📊 Niveau:</span>
                 <span class="info-value">{{ $params['niveau'] ?? 1 }}</span>
             </div>
+        </div>
+        
+        <div class="info-row">
             <div class="info-item">
                 <span class="info-label">❤️ Vies:</span>
                 <span class="info-value">{{ $params['vies_restantes'] ?? 3 }}</span>

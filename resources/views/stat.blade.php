@@ -15,6 +15,6 @@
         <h4>🎯 Précision : {{ $data['pourcentage'] }}%</h4>
     </div>
 
-    <a href="{{ route('solo') }}" class="btn btn-primary mt-4">🔁 Rejouer</a>
+    <a href="{{ route('solo.index') }}" class="btn btn-primary mt-4">🔁 Rejouer</a>
 </div>
 @endsection
