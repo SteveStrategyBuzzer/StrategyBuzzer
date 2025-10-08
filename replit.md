@@ -8,6 +8,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 08, 2025)
 - **Avatar Selection Enhanced**: Modified avatars.blade.php to allow users to click on unlocked avatar packs, opening a modal with all pack images in a grid layout. Users can now select any avatar from an unlocked pack as their active player avatar, matching the preview functionality from the shop page.
+- **Responsive Design Implementation**: Added comprehensive media queries for portrait and landscape orientations across all main pages (avatars, boutique, game screens). Application now adapts seamlessly to mobile portrait, mobile landscape, tablet portrait, and tablet landscape orientations with optimized layouts and element sizing for each viewport.
 
 ## System Architecture
 
