@@ -352,6 +352,105 @@
             height: 180px;
         }
     }
+    
+    /* === RESPONSIVE POUR ORIENTATION === */
+    
+    /* Mobile Portrait */
+    @media (max-width: 480px) and (orientation: portrait) {
+        .game-container {
+            padding: 12px;
+        }
+        
+        .question-bubble {
+            padding: 16px;
+            margin: 12px 0;
+        }
+        
+        .question-text {
+            font-size: 1.1rem;
+        }
+        
+        .buzz-button {
+            width: 160px;
+            height: 160px;
+        }
+        
+        .buzz-icon {
+            font-size: 2.5rem;
+        }
+    }
+    
+    /* Mobile Paysage */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .game-container {
+            padding: 8px;
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .game-header {
+            margin-bottom: 8px;
+        }
+        
+        .question-bubble {
+            padding: 12px;
+            margin: 8px 0;
+        }
+        
+        .question-text {
+            font-size: 1rem;
+        }
+        
+        .chrono-container {
+            margin: 8px 0;
+        }
+        
+        .chrono-circle {
+            width: 90px;
+            height: 90px;
+        }
+        
+        .chrono-time {
+            font-size: 2rem;
+        }
+        
+        .buzz-button {
+            width: 140px;
+            height: 140px;
+        }
+        
+        .buzz-icon {
+            font-size: 2.2rem;
+        }
+        
+        .buzz-text {
+            font-size: 0.9rem;
+        }
+        
+        .buzz-brand {
+            font-size: 0.55rem;
+        }
+    }
+    
+    /* Tablettes Portrait */
+    @media (min-width: 481px) and (max-width: 900px) and (orientation: portrait) {
+        .buzz-button {
+            width: 220px;
+            height: 220px;
+        }
+    }
+    
+    /* Tablettes Paysage */
+    @media (min-width: 481px) and (max-width: 1024px) and (orientation: landscape) {
+        .game-container {
+            padding: 16px;
+        }
+        
+        .buzz-button {
+            width: 200px;
+            height: 200px;
+        }
+    }
 </style>
 
 <div class="game-container">

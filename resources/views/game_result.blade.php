@@ -447,6 +447,107 @@
             transform: rotate(90deg);
         }
     }
+    
+    /* === RESPONSIVE POUR ORIENTATION === */
+    
+    /* Mobile Portrait */
+    @media (max-width: 480px) and (orientation: portrait) {
+        .result-container {
+            padding: 16px;
+        }
+        
+        .result-title {
+            font-size: 1.8rem;
+        }
+        
+        .result-icon {
+            font-size: 4rem;
+        }
+        
+        .score-number {
+            font-size: 2rem;
+        }
+        
+        .round-details {
+            padding: 12px;
+        }
+        
+        .answer-text {
+            font-size: 0.95rem;
+        }
+    }
+    
+    /* Mobile Paysage */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .result-container {
+            padding: 10px;
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .result-correct, .result-incorrect {
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .result-title {
+            font-size: 1.5rem;
+        }
+        
+        .result-icon {
+            font-size: 3rem;
+        }
+        
+        .score-battle {
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .score-number {
+            font-size: 2rem;
+        }
+        
+        .vs-divider {
+            width: 45px;
+            height: 45px;
+            font-size: 1rem;
+        }
+        
+        .round-details {
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .answer-text {
+            font-size: 0.9rem;
+        }
+        
+        .next-button {
+            padding: 12px 24px;
+        }
+    }
+    
+    /* Tablettes Portrait */
+    @media (min-width: 481px) and (max-width: 900px) and (orientation: portrait) {
+        .result-title {
+            font-size: 2.2rem;
+        }
+        
+        .score-number {
+            font-size: 2.8rem;
+        }
+    }
+    
+    /* Tablettes Paysage */
+    @media (min-width: 481px) and (max-width: 1024px) and (orientation: landscape) {
+        .result-container {
+            padding: 18px;
+        }
+        
+        .score-battle {
+            gap: 20px;
+        }
+    }
 </style>
 
 <div class="result-container">

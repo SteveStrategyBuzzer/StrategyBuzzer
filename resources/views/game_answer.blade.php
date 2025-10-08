@@ -258,6 +258,88 @@
             padding: 15px 18px;
         }
     }
+    
+    /* === RESPONSIVE POUR ORIENTATION === */
+    
+    /* Mobile Portrait */
+    @media (max-width: 480px) and (orientation: portrait) {
+        .answer-container {
+            padding: 12px;
+        }
+        
+        .question-reminder {
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .question-reminder-text {
+            font-size: 0.95rem;
+        }
+        
+        .answer-bubble {
+            padding: 12px 16px;
+            margin-bottom: 8px;
+        }
+        
+        .answer-text {
+            font-size: 0.95rem;
+        }
+    }
+    
+    /* Mobile Paysage */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .answer-container {
+            padding: 8px;
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .answer-header {
+            margin-bottom: 8px;
+        }
+        
+        .answer-timer {
+            margin-bottom: 8px;
+        }
+        
+        .question-reminder {
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .question-reminder-text {
+            font-size: 0.9rem;
+        }
+        
+        .answer-bubble {
+            padding: 10px 14px;
+            margin-bottom: 6px;
+        }
+        
+        .answer-text {
+            font-size: 0.9rem;
+        }
+        
+        .answer-number {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
+    }
+    
+    /* Tablettes Portrait */
+    @media (min-width: 481px) and (max-width: 900px) and (orientation: portrait) {
+        .answer-bubble {
+            padding: 16px 20px;
+        }
+    }
+    
+    /* Tablettes Paysage */
+    @media (min-width: 481px) and (max-width: 1024px) and (orientation: landscape) {
+        .answer-container {
+            padding: 16px;
+        }
+    }
 </style>
 
 <div class="answer-container">
