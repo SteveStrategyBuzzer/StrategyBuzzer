@@ -101,6 +101,10 @@ Route::get('/auth/phone',             [AuthController::class, 'showPhoneLogin'])
 Route::prefix('solo')->name('solo.')->group(function () {
     Route::get('/',        [SoloController::class, 'index'])->name('index');
     Route::post('/start',  [SoloController::class, 'start'])->name('start');
+    
+    // Fallback GET for /solo/start (happens when opening in new tab/external browser)
+    Route::get('/start', fn() => redirect()->route('menu'));
+    
     Route::get('/resume',  [SoloController::class, 'resume'])->name('resume');
     Route::get('/game',    [SoloController::class, 'game'])->name('game');
     Route::get('/timeout', [SoloController::class, 'timeout'])->name('timeout');

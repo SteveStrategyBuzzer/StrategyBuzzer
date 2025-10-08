@@ -12,6 +12,7 @@ Preferred communication style: Simple, everyday language.
 - **Gameplay Mobile Optimization**: Redesigned game question screen for mobile to ensure BUZZ button is always visible without scrolling. Reduced padding, margins, and element sizes specifically for portrait mobile orientation.
 - **Answer Without Buzz Feature**: Players can now answer questions even if they didn't buzz in time. New flow: timeout redirects to answer page (instead of result), players can select an answer for 0 points (no penalty/gain). Visual indicator shows "⚠️ Pas buzzé - Vous pouvez quand même répondre (0 point)" in red when player didn't buzz.
 - **Question Removed from Answer Screen**: Answer page no longer displays the question text, keeping only the timer and answer choices for cleaner UI.
+- **External Browser Fix**: Added GET fallback route for `/solo/start` to prevent "Method Not Allowed" errors when opening app in new tab/external browser. Browser attempts to restore last URL with GET request, now safely redirects to menu instead of crashing.
 
 ## System Architecture
 
