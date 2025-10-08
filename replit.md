@@ -6,6 +6,9 @@ StrategyBuzzer is a real-time quiz buzzer game application combining a Laravel b
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (October 08, 2025)
+- **Avatar Selection Enhanced**: Modified avatars.blade.php to allow users to click on unlocked avatar packs, opening a modal with all pack images in a grid layout. Users can now select any avatar from an unlocked pack as their active player avatar, matching the preview functionality from the shop page.
+
 ## System Architecture
 
 ### Frontend Architecture
