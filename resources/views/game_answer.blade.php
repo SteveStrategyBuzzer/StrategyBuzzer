@@ -109,22 +109,6 @@
         50% { opacity: 0.7; }
     }
     
-    /* Question rappel */
-    .question-reminder {
-        background: rgba(0,0,0,0.3);
-        padding: 10px 15px;
-        border-radius: 15px;
-        margin-bottom: 10px;
-        border: 2px solid rgba(255,255,255,0.1);
-        backdrop-filter: blur(10px);
-        flex-shrink: 0;
-    }
-    
-    .question-reminder-text {
-        font-size: 0.95rem;
-        opacity: 0.9;
-        text-align: center;
-    }
     
     /* Choix de réponses - Bulles stylisées */
     .answers-grid {
@@ -267,15 +251,6 @@
             padding: 12px;
         }
         
-        .question-reminder {
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        
-        .question-reminder-text {
-            font-size: 0.95rem;
-        }
-        
         .answer-bubble {
             padding: 12px 16px;
             margin-bottom: 8px;
@@ -300,15 +275,6 @@
         
         .answer-timer {
             margin-bottom: 8px;
-        }
-        
-        .question-reminder {
-            padding: 10px;
-            margin-bottom: 8px;
-        }
-        
-        .question-reminder-text {
-            font-size: 0.9rem;
         }
         
         .answer-bubble {
@@ -372,11 +338,6 @@
         <div class="timer-bar-container">
             <div class="timer-bar" id="timerBar"></div>
         </div>
-    </div>
-    
-    <!-- Question rappel -->
-    <div class="question-reminder">
-        <div class="question-reminder-text">{{ $params['question']['text'] }}</div>
     </div>
     
     <!-- Choix de réponses -->
