@@ -81,6 +81,49 @@
 .tier-pill{position:absolute;top:8px;left:8px;padding:4px 8px;border-radius:999px;font-size:.78rem;border:1px solid rgba(255,255,255,.22)}
 .t-rare{background:#1e3a8a}.t-epic{background:#6d28d9}.t-legend{background:#b45309}
 
+/* === RESPONSIVE POUR ORIENTATION === */
+
+/* Mobile Portrait (320px - 480px) */
+@media (max-width: 480px) and (orientation: portrait) {
+  .page{padding:16px 12px}
+  .h-title{font-size:1.4rem}
+  .pill{font-size:0.85rem;padding:6px 10px}
+  .thumbs{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+  .std-thumb{width:70px;height:70px;flex:0 0 70px}
+  .preview-grid img{height:70px}
+  .stratégique-card img{height:100px}
+}
+
+/* Mobile Paysage (orientation horizontale) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .page{padding:12px}
+  .wrap{gap:10px}
+  .header{margin-bottom:4px}
+  .h-title{font-size:1.3rem}
+  .card{padding:12px}
+  .std-card{padding:8px}
+  .std-thumb{width:70px;height:70px;flex:0 0 70px}
+  .stratégiques{gap:10px}
+  .stratégique-card img{height:90px}
+  .thumbs{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+  .preview-grid{gap:4px}
+  .preview-grid img{height:60px}
+  .modal .card{max-height:85vh;overflow-y:auto}
+}
+
+/* Tablettes Portrait */
+@media (min-width: 481px) and (max-width: 900px) and (orientation: portrait) {
+  .thumbs{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .stratégiques{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* Tablettes Paysage */
+@media (min-width: 481px) and (max-width: 1024px) and (orientation: landscape) {
+  .thumbs{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .stratégiques{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .page{padding:20px}
+}
+
 /* “Actif” */
 .active-tag{
   position:absolute;left:0;right:0;bottom:0;
