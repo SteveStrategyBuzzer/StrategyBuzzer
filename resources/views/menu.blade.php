@@ -77,6 +77,89 @@
         will-change: transform, left, top;
         filter: drop-shadow(0 2px 2px rgba(0,0,0,.25));
     }
+
+    /* === RESPONSIVE POUR ORIENTATION === */
+
+    /* Mobile Portrait (320px - 480px) */
+    @media (max-width: 480px) and (orientation: portrait) {
+        .menu-scene {
+            padding: 16px 12px;
+        }
+
+        .menu-container {
+            grid-template-columns: 1fr;
+            gap: 12px;
+            max-width: 100%;
+        }
+
+        .menu-title {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .menu-link {
+            padding: 14px 16px;
+            font-size: 1.1rem;
+        }
+
+        .brain {
+            width: 60px;
+            height: 60px;
+        }
+    }
+
+    /* Mobile Paysage (orientation horizontale) */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .menu-scene {
+            padding: 12px;
+            min-height: auto;
+        }
+
+        .menu-container {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            max-width: 100%;
+        }
+
+        .menu-title {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .menu-link {
+            padding: 10px 12px;
+            font-size: 1rem;
+        }
+
+        .brain {
+            width: 50px;
+            height: 50px;
+        }
+    }
+
+    /* Tablettes Portrait */
+    @media (min-width: 481px) and (max-width: 900px) and (orientation: portrait) {
+        .menu-container {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .menu-link {
+            font-size: 1.15rem;
+        }
+    }
+
+    /* Tablettes Paysage */
+    @media (min-width: 481px) and (max-width: 1024px) and (orientation: landscape) {
+        .menu-container {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .brain {
+            width: 70px;
+            height: 70px;
+        }
+    }
 </style>
 
 <div class="menu-scene">
