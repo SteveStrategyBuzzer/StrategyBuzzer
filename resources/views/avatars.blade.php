@@ -233,8 +233,10 @@
                 $locked = !in_array($p['slug'], $unlockedPacks, true);
                 $count  = (int)($p['count'] ?? 0);
               @endphp
-<div class="card pack-card pack-anim"
-    onclick="{{ $locked ? "window.location.href='".$rBoutique."?item=".$p['slug']."'" : "openPack('".$p['slug']."', '".$p['label']."')" }}"
+<div class="card pack-card pack-anim pack-clickable"
+    data-locked="{{ $locked ? '1' : '0' }}"
+    data-slug="{{ $p['slug'] }}"
+    data-label="{{ $p['label'] }}"
     style="cursor:pointer"
 >
                 <div class="badge">{{ $p['label'] }}{{ $count ? ' · '.$count : '' }}</div>
@@ -357,6 +359,22 @@
       openModal(label || 'Pack', images);
     }catch(e){ console.error(e); }
   }
+
+  /* ===== Gestion des clics sur les packs ===== */
+  document.addEventListener('click', (e) => {
+    const packCard = e.target.closest('.pack-clickable');
+    if (!packCard) return;
+    
+    const locked = packCard.dataset.locked === '1';
+    const slug = packCard.dataset.slug;
+    const label = packCard.dataset.label;
+    
+    if (locked) {
+      window.location.href = @json($rBoutique) + '?item=' + slug;
+    } else {
+      openPack(slug, label);
+    }
+  });
 
   /* ===== Modale générique ===== */
   const modal = document.getElementById('modal');
