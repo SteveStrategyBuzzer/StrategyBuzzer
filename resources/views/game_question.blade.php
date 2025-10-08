@@ -6,12 +6,10 @@
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
         min-height: 100vh;
-        height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 5px;
-        overflow: hidden;
         margin: 0;
     }
     
@@ -23,8 +21,7 @@
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        height: 100%;
-        max-height: 100vh;
+        min-height: 100vh;
     }
     
     /* Header avec VS adversaire */
@@ -357,26 +354,74 @@
     
     /* Mobile Portrait */
     @media (max-width: 480px) and (orientation: portrait) {
+        body {
+            padding: 0;
+        }
+        
         .game-container {
-            padding: 12px;
+            padding: 8px;
+            min-height: auto;
+            gap: 8px;
+        }
+        
+        .game-header {
+            margin-bottom: 6px;
+        }
+        
+        .player-info, .opponent-info {
+            padding: 6px 10px;
+        }
+        
+        .score-display {
+            font-size: 1.3rem;
         }
         
         .question-bubble {
-            padding: 16px;
-            margin: 12px 0;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+        }
+        
+        .question-number {
+            font-size: 0.75rem;
+            margin-bottom: 8px;
         }
         
         .question-text {
-            font-size: 1.1rem;
+            font-size: 1rem;
+        }
+        
+        .chrono-container {
+            margin: 8px 0;
+        }
+        
+        .chrono-circle {
+            width: 90px;
+            height: 90px;
+        }
+        
+        .chrono-time {
+            font-size: 2rem;
+        }
+        
+        .chrono-label {
+            font-size: 0.75rem;
         }
         
         .buzz-button {
-            width: 160px;
-            height: 160px;
+            width: 140px;
+            height: 140px;
         }
         
         .buzz-icon {
-            font-size: 2.5rem;
+            font-size: 2rem;
+        }
+        
+        .buzz-text {
+            font-size: 0.85rem;
+        }
+        
+        .buzz-brand {
+            font-size: 0.5rem;
         }
     }
     
