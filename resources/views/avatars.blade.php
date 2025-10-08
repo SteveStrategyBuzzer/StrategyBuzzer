@@ -88,6 +88,62 @@
   color:var(--ok);
   text-align:center;padding:6px 8px;font-weight:800;letter-spacing:.2px
 }
+
+/* Modal */
+.modal{
+  position:fixed;inset:0;z-index:999;
+  background:rgba(0,0,0,.75);
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(4px)
+}
+
+/* Thumbs grid in modal */
+.thumbs{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:12px;
+  padding:4px
+}
+.thumb{
+  position:relative;
+  background:#0f1530;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;
+  overflow:hidden;
+  aspect-ratio:1/1;
+  display:flex;
+  flex-direction:column
+}
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block
+}
+.thumb .actions{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  display:flex;
+  justify-content:center;
+  padding:8px;
+  background:linear-gradient(to top,rgba(0,0,0,.8),transparent)
+}
+.thumb .actions .pill{
+  background:#2c4bff;
+  color:#fff;
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:.9rem;
+  font-weight:700;
+  cursor:pointer;
+  border:none
+}
+.thumb .actions form{
+  margin:0
+}
+.thumb .actions button.pill{
+  appearance:none
+}
 </style>
 
 <div class="page">
@@ -178,9 +234,8 @@
                 $count  = (int)($p['count'] ?? 0);
               @endphp
 <div class="card pack-card pack-anim"
-    @if ($locked)
-        onclick="window.location.href='{{ $rBoutique }}?item={{ $p['slug'] }}'"
-    @endif
+    onclick="{{ $locked ? "window.location.href='".$rBoutique."?item=".$p['slug']."'" : "openPack('".$p['slug']."', '".$p['label']."')" }}"
+    style="cursor:pointer"
 >
                 <div class="badge">{{ $p['label'] }}{{ $count ? ' · '.$count : '' }}</div>
                 <div class="inner {{ $locked ? 'locked' : '' }}"><h3>{{ $locked ? '' : $p['label'] }}</h3></div>
