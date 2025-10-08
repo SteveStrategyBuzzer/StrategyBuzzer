@@ -366,13 +366,19 @@
     </form>
     
     <!-- Buzz info -->
-    <div class="buzz-info">
-        <div class="buzz-info-text">
-            @if(isset($params['buzz_time']))
-                Vous avez buzzé en {{ $params['buzz_time'] }}s 💚
-            @endif
+    @if(isset($params['player_buzzed']) && !$params['player_buzzed'])
+        <div class="buzz-info" style="background: rgba(255, 107, 107, 0.15); border-color: rgba(255, 107, 107, 0.3);">
+            <div class="buzz-info-text" style="color: #FF6B6B;">
+                ⚠️ Pas buzzé - Vous pouvez quand même répondre (0 point)
+            </div>
         </div>
-    </div>
+    @elseif(isset($params['buzz_time']))
+        <div class="buzz-info">
+            <div class="buzz-info-text">
+                Vous avez buzzé en {{ $params['buzz_time'] }}s 💚
+            </div>
+        </div>
+    @endif
 </div>
 
 <audio id="tickSound" preload="auto">

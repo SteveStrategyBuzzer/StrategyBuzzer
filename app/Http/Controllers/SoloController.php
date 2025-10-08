@@ -254,6 +254,11 @@ class SoloController extends Controller
         session(['buzz_time' => $buzzTime]);
         session(['buzzed' => true]);
         
+        return $this->renderAnswerView(true, $buzzTime);
+    }
+    
+    private function renderAnswerView($playerBuzzed, $buzzTime = null)
+    {
         // Récupérer la question actuelle
         $question = session('current_question');
         $currentQuestion = session('current_question_number');
@@ -269,6 +274,7 @@ class SoloController extends Controller
             'score' => session('score', 0),
             'answer_time' => $answerTime,
             'buzz_time' => $buzzTime,
+            'player_buzzed' => $playerBuzzed,
             'current_round' => session('current_round', 1),
             'total_rounds' => session('total_rounds', 5),
         ];
@@ -284,21 +290,31 @@ class SoloController extends Controller
         $question = session('current_question');
         $niveau = session('niveau_selectionne', 1);
         
+        // Vérifier si le joueur a buzzé
+        $playerBuzzed = session('buzzed', false);
+        
         // Vérifier la réponse du joueur
         $isCorrect = $questionService->checkAnswer($question, $answerIndex);
         
-        // Simuler le comportement complet de l'adversaire IA
-        $opponentBehavior = $questionService->simulateOpponentBehavior($niveau, $question, true);
+        // Simuler le comportement complet de l'adversaire IA (passer si le joueur a buzzé)
+        $opponentBehavior = $questionService->simulateOpponentBehavior($niveau, $question, $playerBuzzed);
         
         // Calculer les points du joueur selon les nouvelles règles
         $playerPoints = 0;
-        if ($isCorrect) {
-            // Le joueur est 2ème (+1 pt) SEULEMENT si l'adversaire est plus rapide ET a répondu correctement
-            // Sinon le joueur est 1er (+2 pts)
-            $playerPoints = ($opponentBehavior['is_faster'] && $opponentBehavior['is_correct']) ? 1 : 2;
+        
+        if ($playerBuzzed) {
+            // Le joueur a buzzé
+            if ($isCorrect) {
+                // Le joueur est 2ème (+1 pt) SEULEMENT si l'adversaire est plus rapide ET a répondu correctement
+                // Sinon le joueur est 1er (+2 pts)
+                $playerPoints = ($opponentBehavior['is_faster'] && $opponentBehavior['is_correct']) ? 1 : 2;
+            } else {
+                // Mauvaise réponse = -2 pts
+                $playerPoints = -2;
+            }
         } else {
-            // Mauvaise réponse = -2 pts
-            $playerPoints = -2;
+            // Le joueur n'a PAS buzzé mais répond quand même = 0 points (ni gain ni perte)
+            $playerPoints = 0;
         }
         
         // Mettre à jour les scores
@@ -371,85 +387,11 @@ class SoloController extends Controller
 
     public function timeout()
     {
-        $questionService = new \App\Services\QuestionService();
+        // Le joueur n'a pas buzzé à temps - marquer qu'il n'a pas buzzé
+        session(['buzzed' => false]);
         
-        // Le joueur n'a pas buzzé à temps - 0 point
-        $question = session('current_question');
-        $niveau = session('niveau_selectionne', 1);
-        
-        // Simuler le comportement complet de l'adversaire IA (le joueur n'a pas buzzé)
-        $opponentBehavior = $questionService->simulateOpponentBehavior($niveau, $question, false);
-        
-        // Le joueur n'a pas buzzé = 0 point
-        $playerPoints = 0;
-        
-        // Mettre à jour les scores
-        $currentScore = session('score', 0);
-        $currentOpponentScore = session('opponent_score', 0);
-        
-        session(['score' => $currentScore + $playerPoints]);
-        session(['opponent_score' => $currentOpponentScore + $opponentBehavior['points']]);
-        
-        // Sauvegarder la réponse manquée avec détails complets
-        $answeredQuestions = session('answered_questions', []);
-        $answeredQuestions[] = [
-            'question_id' => $question['id'] ?? 'unknown',
-            'answer_index' => -1, // -1 = pas de réponse (timeout)
-            'is_correct' => false,
-            'player_points' => $playerPoints,
-            'opponent_buzzed' => $opponentBehavior['buzzes'],
-            'opponent_faster' => $opponentBehavior['is_faster'],
-            'opponent_correct' => $opponentBehavior['is_correct'],
-            'opponent_points' => $opponentBehavior['points'],
-        ];
-        session(['answered_questions' => $answeredQuestions]);
-        
-        // Calculer les données de progression avec valeurs par défaut sécurisées
-        $currentQuestion = session('current_question_number', 1);
-        $nbQuestions = session('nb_questions', 30);
-        $viesRestantes = session('vies_restantes', 3);
-        $skillsRestants = session('skills_restants', 3);
-        
-        // Calculer pourcentage avec protection contre division par zéro
-        $questionsRepondues = max(0, $currentQuestion - 1);
-        $pourcentage = $nbQuestions > 0 ? round(($questionsRepondues / $nbQuestions) * 100) : 0;
-        $questionsRestantes = max(0, $nbQuestions - $questionsRepondues);
-        
-        // Position (niveau >= 70) avec scores actuels
-        $currentScore = session('score', 0);
-        $currentOpponentScore = session('opponent_score', 0);
-        $showPosition = $niveau >= 70;
-        $position = $showPosition ? ($currentScore >= $currentOpponentScore ? 1 : 2) : null;
-
-        $params = [
-            'question' => $question,
-            'answer_index' => -1,
-            'is_correct' => false,
-            'is_timeout' => true,
-            'current_question' => $currentQuestion,
-            'total_questions' => $nbQuestions,
-            'score' => session('score', 0),
-            'opponent_score' => session('opponent_score', 0),
-            // Nouvelles données selon arborescence point 8
-            'niveau' => $niveau,
-            'vies_restantes' => $viesRestantes,
-            'skills_restants' => $skillsRestants,
-            'pourcentage' => $pourcentage,
-            'questions_restantes' => $questionsRestantes,
-            'show_position' => $showPosition,
-            'position' => $position,
-            // Données du nouveau système de pointage
-            'player_points' => $playerPoints,
-            'opponent_buzzed' => $opponentBehavior['buzzes'],
-            'opponent_faster' => $opponentBehavior['is_faster'],
-            'opponent_correct' => $opponentBehavior['is_correct'],
-            'opponent_points' => $opponentBehavior['points'],
-            // Données de manche
-            'current_round' => session('current_round', 1),
-            'total_rounds' => session('total_rounds', 5),
-        ];
-        
-        return view('game_result', compact('params'));
+        // Afficher la page de réponse pour permettre au joueur de répondre quand même
+        return $this->renderAnswerView(false, null);
     }
 
     public function nextQuestion()
