@@ -334,7 +334,7 @@
     {{-- ==== Avatars stratégiques : une seule grille 4-4-4 (sans titre global) ==== --}}
     @php
       $stratégiques = $groups['stratégique'] ?? [];
-      $selectedVal = $selected ?? '';
+      $selectedVal = $selectedStrat ?? '';
     @endphp
 
     <div class="stratégiques">
