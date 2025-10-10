@@ -100,6 +100,9 @@
         .menu-link {
             padding: 14px 16px;
             font-size: 1.1rem;
+            min-width: 200px;  /* Plus large que "MAÎTRE DU JEU" */
+            width: 100%;
+            max-width: 100%;
         }
 
         .brain {
@@ -226,6 +229,17 @@
     const SPEED_MIN = 90, SPEED_MAX = 160;
     const BRAINS = [];
 
+    function getBrainSize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        if (width <= 480 && window.matchMedia('(orientation: portrait)').matches) return 60;
+        if (height <= 500 && window.matchMedia('(orientation: landscape)').matches) return 50;
+        if (width >= 481 && width <= 900 && window.matchMedia('(orientation: portrait)').matches) return 70;
+        if (width >= 481 && width <= 1024 && window.matchMedia('(orientation: landscape)').matches) return 70;
+        return 96;
+    }
+
     function stageSize(){
         const r = stage.getBoundingClientRect();
         return { w: r.width, h: r.height };
@@ -239,11 +253,14 @@
         img.className = 'brain';
         img.src = BRAIN_SRC;
         img.alt = 'cerveau';
-        img.width = SIZE; img.height = SIZE;
+        
+        const size = getBrainSize();
+        img.width = size;
+        img.height = size;
 
         const { w, h } = stageSize();
-        const startX = (typeof x === 'number') ? x : rand(0, Math.max(0, w - SIZE));
-        const startY = (typeof y === 'number') ? y : rand(0, Math.max(0, h - SIZE));
+        const startX = (typeof x === 'number') ? x : rand(0, Math.max(0, w - size));
+        const startY = (typeof y === 'number') ? y : rand(0, Math.max(0, h - size));
         img.style.left = startX + 'px';
         img.style.top  = startY + 'px';
 
@@ -253,10 +270,14 @@
         img.dataset.vx = Math.cos(dir) * speed;
         img.dataset.vy = Math.sin(dir) * speed;
 
-        img.addEventListener('click', (e) => {
+        const multiply = (e) => {
             e.stopPropagation();
+            e.preventDefault();
             createBrain(parseFloat(img.style.left)||0, parseFloat(img.style.top)||0);
-        });
+        };
+        
+        img.addEventListener('click', multiply);
+        img.addEventListener('touchstart', multiply);
 
         // pointer-events du parent sont off, donc on réactive ici
         img.style.pointerEvents = 'auto';
@@ -280,12 +301,14 @@
             x += vx * dt;
             y += vy * dt;
 
-            // rebonds (on inverse la composante qui touche)
+            const size = getBrainSize();
+
+            // rebonds avec la taille correcte
             if (x <= 0){ x = 0; vx = Math.abs(vx); }
-            else if (x + SIZE >= w){ x = w - SIZE; vx = -Math.abs(vx); }
+            else if (x + size >= w){ x = w - size; vx = -Math.abs(vx); }
 
             if (y <= 0){ y = 0; vy = Math.abs(vy); }
-            else if (y + SIZE >= h){ y = h - SIZE; vy = -Math.abs(vy); }
+            else if (y + size >= h){ y = h - size; vy = -Math.abs(vy); }
 
             img.style.left = x + 'px';
             img.style.top  = y + 'px';
@@ -298,12 +321,17 @@
     createBrain();             // 1 cerveau au départ
     requestAnimationFrame(tick);
 
-    // Ajuste les positions si la fenêtre change
+    // Ajuste les positions et tailles si la fenêtre/orientation change
     window.addEventListener('resize', () => {
         const { w, h } = stageSize();
+        const size = getBrainSize();
+        
         for (const img of BRAINS){
-            let x = Math.min(parseFloat(img.style.left)||0, Math.max(0, w - SIZE));
-            let y = Math.min(parseFloat(img.style.top)||0, Math.max(0, h - SIZE));
+            img.width = size;
+            img.height = size;
+            
+            let x = Math.min(parseFloat(img.style.left)||0, Math.max(0, w - size));
+            let y = Math.min(parseFloat(img.style.top)||0, Math.max(0, h - size));
             img.style.left = x + 'px';
             img.style.top  = y + 'px';
         }
