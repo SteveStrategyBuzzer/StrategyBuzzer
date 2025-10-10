@@ -35,7 +35,7 @@ if (strpos($selectedAvatar, '/') !== false || strpos($selectedAvatar, 'images/')
     $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");
 }
 
-// Avatar stratégique - corriger le chemin
+// Avatar stratégique - les avatars sont dans public/images/avatars/
 $strategicAvatarPath = '';
 if ($currentAvatar !== 'Aucun') {
     // Enlever les accents et normaliser
@@ -43,7 +43,7 @@ if ($currentAvatar !== 'Aucun') {
     $strategicAvatarSlug = str_replace(['é', 'è', 'ê'], 'e', $strategicAvatarSlug);
     $strategicAvatarSlug = str_replace(['à', 'â'], 'a', $strategicAvatarSlug);
     $strategicAvatarSlug = str_replace(' ', '-', $strategicAvatarSlug);
-    $strategicAvatarPath = asset("images/avatars/strategic/{$strategicAvatarSlug}.png");
+    $strategicAvatarPath = asset("images/avatars/{$strategicAvatarSlug}.png");
 }
 
 // Info de l'adversaire
@@ -441,14 +441,13 @@ if ($bossInfo) {
             gap: 20px;
         }
         
-        .player-avatar, .strategic-avatar, .strategic-placeholder {
+        .player-avatar, .opponent-avatar, .strategic-avatar {
             width: 70px;
             height: 70px;
         }
         
-        .strategic-avatar-wrapper {
-            width: 90px;
-            height: 90px;
+        .player-score-display, .opponent-score-display {
+            font-size: 1.8rem;
         }
         
         .chrono-circle {
@@ -460,10 +459,10 @@ if ($bossInfo) {
             font-size: 2.8rem;
         }
         
-        .skill-icon {
-            width: 26px;
-            height: 26px;
-            font-size: 0.9rem;
+        .skill-button {
+            width: 120px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
         }
         
         .buzz-button {
@@ -485,14 +484,17 @@ if ($bossInfo) {
             font-size: 1.1rem;
         }
         
-        .player-avatar, .strategic-avatar, .strategic-placeholder {
+        .player-avatar, .opponent-avatar, .strategic-avatar {
             width: 60px;
             height: 60px;
         }
         
-        .strategic-avatar-wrapper {
-            width: 80px;
-            height: 80px;
+        .player-score-display, .opponent-score-display {
+            font-size: 1.5rem;
+        }
+        
+        .player-name, .opponent-name {
+            font-size: 0.75rem;
         }
         
         .chrono-circle {
@@ -504,10 +506,10 @@ if ($bossInfo) {
             font-size: 2.2rem;
         }
         
-        .skill-icon {
-            width: 22px;
-            height: 22px;
-            font-size: 0.75rem;
+        .skill-button {
+            width: 110px;
+            padding: 7px 10px;
+            font-size: 0.8rem;
         }
         
         .buzz-button {
@@ -521,14 +523,6 @@ if ($bossInfo) {
         
         .buzz-top, .buzz-bottom {
             font-size: 0.55rem;
-        }
-        
-        .score-header {
-            padding: 10px 15px;
-        }
-        
-        .score-value {
-            font-size: 1.4rem;
         }
     }
     
@@ -550,9 +544,17 @@ if ($bossInfo) {
             margin: 10px 0;
         }
         
-        .player-avatar, .strategic-avatar, .strategic-placeholder {
+        .player-avatar, .opponent-avatar, .strategic-avatar {
             width: 60px;
             height: 60px;
+        }
+        
+        .player-score-display, .opponent-score-display {
+            font-size: 1.4rem;
+        }
+        
+        .player-name, .opponent-name {
+            font-size: 0.7rem;
         }
         
         .chrono-circle {
@@ -573,10 +575,15 @@ if ($bossInfo) {
             font-size: 1.6rem;
         }
         
-        .skill-icon {
-            width: 20px;
-            height: 20px;
-            font-size: 0.7rem;
+        .skill-button {
+            width: 100px;
+            padding: 6px 8px;
+            font-size: 0.75rem;
+        }
+        
+        .strategic-section {
+            gap: 10px;
+            margin-top: 10px;
         }
     }
 </style>
