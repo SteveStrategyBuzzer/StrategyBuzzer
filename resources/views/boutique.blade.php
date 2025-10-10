@@ -270,8 +270,20 @@ audio{ width:100% }
         @if(request()->has('item') || request()->has('stratégique'))
           <a class="pill clean" href="{{ $avatarUrl }}">← Avatars</a>
         @endif
-        <a href="{{ route('menu') }}" class="pill clean" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none;">
-          🏠 Menu
+        <a href="{{ route('menu') }}" style="
+          background: white;
+          color: #0b1020;
+          padding: 10px 18px;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 700;
+          font-size: 0.95rem;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+          Menu
         </a>
       @endauth
     </div>
