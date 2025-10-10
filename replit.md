@@ -7,6 +7,7 @@ StrategyBuzzer is a real-time quiz buzzer game application combining a Laravel b
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 10, 2025)
+- **Strategic Avatar Badge Redesign (Boutique)**: Redesigned strategic avatar name badges in boutique page with thinner, centered white badges. Applied white background with dark blue text/border (#003DA5), reduced padding (6px×12px), and flex-based overflow handling. Long names like "Mathématicien" now truncate with ellipsis (max-width: 70%) instead of overflowing card headers. Uses inline-flex with min-width: 0 for proper text truncation.
 - **Answer Randomization for Multiple Choice**: Modified QuestionService to shuffle answer positions ONLY for multiple choice questions. True/false questions keep fixed positions (Vrai always left, Faux always right). Normalized all 119 true/false questions to consistent format with mix of true and false statements. Eliminates predictable patterns while maintaining UX consistency for binary choices.
 - **Strategic Avatar Name Badge Expansion**: Enlarged profile page avatar name badge padding from 2px 8px to 4px 16px with white-space: nowrap. Accommodates longer strategic avatar names like "Mathématicien" without text overflow or wrapping.
 - **Portraits Pack Auto-Unlock**: Modified AvatarController to automatically unlock "portraits" pack for all users as a free default pack. Users can now click on Portraits pack to open avatar selection modal instead of being redirected to boutique. Ensures baseline avatar access for everyone.
