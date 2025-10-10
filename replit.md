@@ -7,7 +7,7 @@ StrategyBuzzer is a real-time quiz buzzer game application combining a Laravel b
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 10, 2025)
-- **Answer Randomization Implementation**: Modified QuestionService to shuffle answer positions randomly for each question. Added shuffle() logic with correct_index tracking to ensure varied answer placements. Works seamlessly with both multiple choice and true/false questions, eliminating predictable answer patterns.
+- **Answer Randomization for Multiple Choice**: Modified QuestionService to shuffle answer positions ONLY for multiple choice questions. True/false questions keep fixed positions (Vrai always left, Faux always right). Normalized all 119 true/false questions to consistent format with mix of true and false statements. Eliminates predictable patterns while maintaining UX consistency for binary choices.
 - **Strategic Avatar Name Badge Expansion**: Enlarged profile page avatar name badge padding from 2px 8px to 4px 16px with white-space: nowrap. Accommodates longer strategic avatar names like "Mathématicien" without text overflow or wrapping.
 - **Portraits Pack Auto-Unlock**: Modified AvatarController to automatically unlock "portraits" pack for all users as a free default pack. Users can now click on Portraits pack to open avatar selection modal instead of being redirected to boutique. Ensures baseline avatar access for everyone.
 - **Locked Pack Visual Blur**: Added "locked" CSS class to preview-grid images for locked packs. Locked packs now display blurred preview thumbnails matching the existing blur effect on pack titles, providing consistent visual feedback.
