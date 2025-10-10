@@ -7,6 +7,8 @@ StrategyBuzzer is a real-time quiz buzzer game application combining a Laravel b
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 10, 2025)
+- **Avatar Pack Preview Grid Expansion**: Increased 2x2 preview grid height from 92px to 140px on desktop, 100px on mobile portrait, 80px on mobile landscape. Gap increased from 6px to 8px. Pack previews now use significantly more available space for better visibility.
+- **Carousel Infinite Loop Removed**: Eliminated visual "gaps" in pack carousel by removing infinite loop clones. Changed from clone-based infinite carousel to normal looping carousel that wraps from end to start with smooth transition. No more duplicate/missing packs visible during autoplay.
 - **Avatar Pack Click Fix**: Fixed regression where unlocked avatar packs couldn't be clicked to open selection modal. Enhanced carousel pointer handling to detect taps (≤50px movement) and manually trigger openPack() while preserving drag functionality. Now users can both swipe carousel and click packs.
 - **Animal Avatar Pack Expansion**: Added 10 new animal avatar images to public/images/avatars/animal/ directory: tigre, elephant, hyene, kodiak, ours-noir, phacochère, porc-epic, rhinoceros, lion, zebre. All images properly integrated and displayed in Animal pack grid preview.
 - **Integrated Menu Buttons**: Replaced floating "Return to Menu" button with integrated header buttons positioned at top-right across all main pages (profile, avatars, boutique, ligue, quetes, solo). Buttons use consistent white background with dark blue text styling, includes hover effects (lift + shadow). No more floating buttons blocking content.
