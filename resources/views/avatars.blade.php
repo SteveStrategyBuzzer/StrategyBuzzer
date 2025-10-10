@@ -491,11 +491,36 @@
   let packsTimer = setInterval(slideNext, 4200);
 
   // drag
-  let startX=0, delta=0, dragging=false;
-  track.addEventListener('pointerdown',(e)=>{ dragging=true; startX=e.clientX; track.setPointerCapture(e.pointerId); track.style.transition='none'; clearInterval(packsTimer); });
+  let startX=0, startY=0, delta=0, dragging=false;
+  track.addEventListener('pointerdown',(e)=>{ dragging=true; startX=e.clientX; startY=e.clientY; track.setPointerCapture(e.pointerId); track.style.transition='none'; clearInterval(packsTimer); });
   track.addEventListener('pointermove',(e)=>{ if(!dragging) return; delta=e.clientX-startX; setTransform((-index*w)+delta, false); });
-  track.addEventListener('pointerup',(e)=>{ if(!dragging) return; dragging=false; track.releasePointerCapture(e.pointerId);
-    if(Math.abs(delta)>50){ delta>0? slidePrev(): slideNext(); } else { apply(); } delta=0; packsTimer=setInterval(slideNext,4200);
+  track.addEventListener('pointerup',(e)=>{ 
+    if(!dragging) return; 
+    dragging=false; 
+    track.releasePointerCapture(e.pointerId);
+    
+    // Détecter un tap (petit mouvement) pour ouvrir la modale
+    if(Math.abs(delta)<=50 && Math.abs(e.clientY-startY)<=50){ 
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const packCard = el?.closest('.pack-clickable');
+      if(packCard){
+        const locked = packCard.dataset.locked === '1';
+        const slug = packCard.dataset.slug;
+        const label = packCard.dataset.label;
+        if(locked){ 
+          window.location.href = @json($rBoutique) + '?item=' + slug; 
+        } else { 
+          openPack(slug, label); 
+        }
+      }
+      apply(); 
+    } else if(Math.abs(delta)>50){ 
+      delta>0? slidePrev(): slideNext(); 
+    } else { 
+      apply(); 
+    } 
+    delta=0; 
+    packsTimer=setInterval(slideNext,4200);
   });
   window.addEventListener('resize',()=>{ measure(); noTransApply(); });
   measure(); noTransApply(); requestAnimationFrame(apply);
