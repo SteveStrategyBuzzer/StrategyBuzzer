@@ -68,18 +68,24 @@ body {
     .mobile-title {
         font-size: 2.5rem;
         font-weight: 900;
-        color: #fff;
+        background: linear-gradient(135deg, #00f5ff 0%, #a855f7 50%, #ec4899 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         text-align: center;
         text-transform: uppercase;
         letter-spacing: 2px;
         margin: 0;
-        text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
     }
 
     .mobile-title-small {
         font-size: 1.8rem;
         font-weight: 700;
-        color: #fff;
+        background: linear-gradient(135deg, #fbbf24 0%, #f97316 50%, #dc2626 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         margin-top: 5px;
     }
 
@@ -157,17 +163,23 @@ body {
     .mobile-title {
         font-size: 1.8rem;
         font-weight: 900;
-        color: #fff;
+        background: linear-gradient(135deg, #00f5ff 0%, #a855f7 50%, #ec4899 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         text-align: center;
         text-transform: uppercase;
         margin: 0;
-        text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
     }
 
     .mobile-title-small {
         font-size: 1.3rem;
         font-weight: 700;
-        color: #fff;
+        background: linear-gradient(135deg, #fbbf24 0%, #f97316 50%, #dc2626 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         margin-top: 3px;
     }
 
