@@ -168,7 +168,7 @@ class AvatarController extends Controller
                     'name' => null,
                     'url'  => $value, // on stocke le chemin relatif; ta vue le normalise
                 ]);
-                session(['selected_avatar' => basename($value, '.png')]); // Sync avec session
+                session(['selected_avatar' => $value]); // Sync avec session (full path)
             }
             $changed = true;
         }
