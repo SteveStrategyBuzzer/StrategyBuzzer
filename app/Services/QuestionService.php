@@ -36,12 +36,22 @@ class QuestionService
         $question = $availableQuestions[$randomIndex];
         $questionId = $theme . '_' . $randomIndex;
         
+        // Randomiser l'emplacement des réponses
+        $answers = $question['answers'];
+        $correctAnswer = $answers[$question['correct_index']];
+        
+        // Mélanger les réponses de manière aléatoire
+        shuffle($answers);
+        
+        // Trouver le nouvel index de la bonne réponse après mélange
+        $newCorrectIndex = array_search($correctAnswer, $answers, true);
+        
         return [
             'id' => $questionId,
             'text' => $question['text'],
             'type' => $question['type'] ?? 'multiple',
-            'answers' => $question['answers'],
-            'correct_index' => $question['correct_index'],
+            'answers' => $answers,
+            'correct_index' => $newCorrectIndex,
             'difficulty' => $niveau,
             'theme' => $theme,
         ];

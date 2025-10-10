@@ -397,8 +397,8 @@
     $color  = $tierColors[$tier] ?? '#ccc';
   @endphp
   <div style="display:inline-block; background:#fff; color:{{ $color }};
-              padding:2px 8px; border-radius:6px; font-size:13px; font-weight:bold;
-              border:2px solid {{ $color }};">
+              padding:4px 16px; border-radius:6px; font-size:13px; font-weight:bold;
+              border:2px solid {{ $color }}; white-space: nowrap;">
     {{ $stratName ?? '—' }}
   </div>
 
