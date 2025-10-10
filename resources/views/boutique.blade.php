@@ -453,7 +453,24 @@ audio{ width:100% }
         @endphp
         <div class="card" id="stratégique-{{ $slug }}">
           <div class="head">
-            <div class="title" style="text-transform:capitalize">{{ $a['label'] }}</div>
+            <div class="title" style="
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              background: white;
+              color: #003DA5;
+              padding: 6px 12px;
+              border-radius: 6px;
+              border: 2px solid #003DA5;
+              font-size: 0.9rem;
+              text-transform: capitalize;
+              max-width: 70%;
+              min-width: 0;
+              flex: 1 1 auto;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            ">{{ $a['label'] }}</div>
             @unless($isUnlockedStrategic)
               <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $a['price'] }}</div>
             @endunless
