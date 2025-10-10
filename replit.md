@@ -7,6 +7,8 @@ StrategyBuzzer is a real-time quiz buzzer game application combining a Laravel b
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 10, 2025)
+- **Pack Spacing Optimization**: Reduced card inner min-height from 110px to 40px to eliminate excessive white space between pack title and preview images. Vignettes now start immediately below pack badge for optimal space utilization.
+- **Animal Images Optimized**: Compressed all 10 animal avatar images from ~4MB to ~200KB each (95% reduction) using ImageMagick. Resized to 400x400px with quality 90 compression. Eliminates pixelation while maintaining visual clarity.
 - **Avatar Pack Preview Grid Expansion**: Increased 2x2 preview grid height from 92px to 140px on desktop, 100px on mobile portrait, 80px on mobile landscape. Gap increased from 6px to 8px. Pack previews now use significantly more available space for better visibility.
 - **Carousel Infinite Loop Removed**: Eliminated visual "gaps" in pack carousel by removing infinite loop clones. Changed from clone-based infinite carousel to normal looping carousel that wraps from end to start with smooth transition. No more duplicate/missing packs visible during autoplay.
 - **Avatar Pack Click Fix**: Fixed regression where unlocked avatar packs couldn't be clicked to open selection modal. Enhanced carousel pointer handling to detect taps (≤50px movement) and manually trigger openPack() while preserving drag functionality. Now users can both swipe carousel and click packs.
