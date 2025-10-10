@@ -7,6 +7,9 @@ StrategyBuzzer is a real-time quiz buzzer game application combining a Laravel b
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 10, 2025)
+- **Portraits Pack Auto-Unlock**: Modified AvatarController to automatically unlock "portraits" pack for all users as a free default pack. Users can now click on Portraits pack to open avatar selection modal instead of being redirected to boutique. Ensures baseline avatar access for everyone.
+- **Locked Pack Visual Blur**: Added "locked" CSS class to preview-grid images for locked packs. Locked packs now display blurred preview thumbnails matching the existing blur effect on pack titles, providing consistent visual feedback.
+- **Event Handler Cleanup**: Removed duplicate global document click listener that conflicted with pointerup tap detection. Prevents potential double-trigger issues when clicking on avatar packs.
 - **Pack Spacing Optimization**: Reduced card inner min-height from 110px to 40px to eliminate excessive white space between pack title and preview images. Vignettes now start immediately below pack badge for optimal space utilization.
 - **Animal Images Optimized**: Compressed all 10 animal avatar images from ~4MB to ~200KB each (95% reduction) using ImageMagick. Resized to 400x400px with quality 90 compression. Eliminates pixelation while maintaining visual clarity.
 - **Avatar Pack Preview Grid Expansion**: Increased 2x2 preview grid height from 92px to 140px on desktop, 100px on mobile portrait, 80px on mobile landscape. Gap increased from 6px to 8px. Pack previews now use significantly more available space for better visibility.
