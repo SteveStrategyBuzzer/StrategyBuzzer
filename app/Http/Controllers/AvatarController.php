@@ -88,6 +88,11 @@ class AvatarController extends Controller
             $unlockedAv
         )));
         $unlockedPacks = array_values(array_intersect(self::PACKS, $unlockedRaw));
+        
+        // Débloquer "portraits" par défaut pour tous les utilisateurs (pack gratuit de base)
+        if (!in_array('portraits', $unlockedPacks, true)) {
+            $unlockedPacks[] = 'portraits';
+        }
 
         // Catalog (si service dispo) pour récupérer prix/overrides
         $catalog = class_exists(AvatarCatalog::class) ? (array) AvatarCatalog::get() : [];

@@ -316,7 +316,7 @@
                     @php $grid = array_slice($p['images'] ?? [], 0, 4); @endphp
                     <div class="preview-grid">
                       @foreach($grid as $g)
-                        <img src="{{ asset($g) }}" alt="apercu" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                        <img class="{{ $locked ? 'locked' : '' }}" src="{{ asset($g) }}" alt="apercu" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
                       @endforeach
                     </div>
                   @endif
@@ -419,21 +419,7 @@
     }catch(e){ console.error(e); }
   }
 
-  /* ===== Gestion des clics sur les packs ===== */
-  document.addEventListener('click', (e) => {
-    const packCard = e.target.closest('.pack-clickable');
-    if (!packCard) return;
-    
-    const locked = packCard.dataset.locked === '1';
-    const slug = packCard.dataset.slug;
-    const label = packCard.dataset.label;
-    
-    if (locked) {
-      window.location.href = @json($rBoutique) + '?item=' + slug;
-    } else {
-      openPack(slug, label);
-    }
-  });
+  /* ===== Gestion des clics sur les packs (géré par pointerup pour compatibilité drag) ===== */
 
   /* ===== Modale générique ===== */
   const modal = document.getElementById('modal');
