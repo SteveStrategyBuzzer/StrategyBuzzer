@@ -36,22 +36,28 @@ class QuestionService
         $question = $availableQuestions[$randomIndex];
         $questionId = $theme . '_' . $randomIndex;
         
-        // Randomiser l'emplacement des réponses
         $answers = $question['answers'];
-        $correctAnswer = $answers[$question['correct_index']];
+        $correctIndex = $question['correct_index'];
+        $questionType = $question['type'] ?? 'multiple';
         
-        // Mélanger les réponses de manière aléatoire
-        shuffle($answers);
-        
-        // Trouver le nouvel index de la bonne réponse après mélange
-        $newCorrectIndex = array_search($correctAnswer, $answers, true);
+        // Randomiser l'emplacement des réponses SEULEMENT pour les questions à choix multiples
+        // Les questions vrai/faux gardent leurs positions fixes (Vrai toujours à gauche, Faux à droite)
+        if ($questionType === 'multiple') {
+            $correctAnswer = $answers[$correctIndex];
+            
+            // Mélanger les réponses de manière aléatoire
+            shuffle($answers);
+            
+            // Trouver le nouvel index de la bonne réponse après mélange
+            $correctIndex = array_search($correctAnswer, $answers, true);
+        }
         
         return [
             'id' => $questionId,
             'text' => $question['text'],
-            'type' => $question['type'] ?? 'multiple',
+            'type' => $questionType,
             'answers' => $answers,
-            'correct_index' => $newCorrectIndex,
+            'correct_index' => $correctIndex,
             'difficulty' => $niveau,
             'theme' => $theme,
         ];
@@ -139,7 +145,7 @@ class QuestionService
                 ['text' => 'La Grande Barrière de Corail est en Australie', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Quel pays a la plus longue côte au monde?', 'type' => 'multiple', 'answers' => ['Canada', 'Australie', 'Russie', 'Indonésie'], 'correct_index' => 0],
                 ['text' => 'Combien d\'États composent les États-Unis?', 'type' => 'multiple', 'answers' => ['50', '48', '52', '51'], 'correct_index' => 0],
-                ['text' => 'Le Danube traverse Paris', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Le Danube traverse Paris', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quelle est la capitale de la Norvège?', 'type' => 'multiple', 'answers' => ['Oslo', 'Stockholm', 'Copenhague', 'Helsinki'], 'correct_index' => 0],
                 ['text' => 'Dans quel pays se trouve Angkor Vat?', 'type' => 'multiple', 'answers' => ['Cambodge', 'Thaïlande', 'Vietnam', 'Laos'], 'correct_index' => 0],
                 ['text' => 'L\'Islande possède des volcans actifs', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
@@ -171,7 +177,7 @@ class QuestionService
                 ['text' => 'Napoléon Bonaparte était français', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Quel pharaon a construit la Grande Pyramide?', 'type' => 'multiple', 'answers' => ['Khéops', 'Ramsès II', 'Toutânkhamon', 'Cléopâtre'], 'correct_index' => 0],
                 ['text' => 'En quelle année s\'est terminée la Seconde Guerre mondiale?', 'type' => 'multiple', 'answers' => ['1945', '1944', '1946', '1943'], 'correct_index' => 0],
-                ['text' => 'Jules César était un empereur romain', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Jules César était un empereur romain', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel événement a déclenché la Première Guerre mondiale?', 'type' => 'multiple', 'answers' => ['Assassinat de l\'archiduc François-Ferdinand', 'Invasion de la Pologne', 'Traité de Versailles', 'Révolution russe'], 'correct_index' => 0],
                 ['text' => 'En quelle année Christophe Colomb a-t-il découvert l\'Amérique?', 'type' => 'multiple', 'answers' => ['1492', '1488', '1500', '1482'], 'correct_index' => 0],
                 ['text' => 'La guerre de Cent Ans a duré 116 ans', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
@@ -296,16 +302,16 @@ class QuestionService
                 ['text' => 'La glace flotte sur l\'eau', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Combien de cœurs a une pieuvre?', 'type' => 'multiple', 'answers' => ['3', '2', '4', '1'], 'correct_index' => 0],
                 ['text' => 'Quel est le plus grand organe du corps humain?', 'type' => 'multiple', 'answers' => ['La peau', 'Le foie', 'Le cerveau', 'Le cœur'], 'correct_index' => 0],
-                ['text' => 'Les antibiotiques tuent les virus', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les antibiotiques tuent les virus', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quelle vitamine est produite par le soleil?', 'type' => 'multiple', 'answers' => ['Vitamine D', 'Vitamine C', 'Vitamine A', 'Vitamine B12'], 'correct_index' => 0],
                 ['text' => 'Combien de chambres a le cœur humain?', 'type' => 'multiple', 'answers' => ['4', '2', '3', '6'], 'correct_index' => 0],
                 ['text' => 'Le diamant est composé de carbone', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Quel est le pH de l\'eau pure?', 'type' => 'multiple', 'answers' => ['7', '6', '8', '5'], 'correct_index' => 0],
                 ['text' => 'Quelle particule a une charge négative?', 'type' => 'multiple', 'answers' => ['Électron', 'Proton', 'Neutron', 'Photon'], 'correct_index' => 0],
-                ['text' => 'Les champignons sont des plantes', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les champignons sont des plantes', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Combien de vertèbres cervicales a l\'homme?', 'type' => 'multiple', 'answers' => ['7', '5', '9', '12'], 'correct_index' => 0],
                 ['text' => 'Quel est le symbole chimique du cuivre?', 'type' => 'multiple', 'answers' => ['Cu', 'Co', 'Cr', 'C'], 'correct_index' => 0],
-                ['text' => 'La Lune produit sa propre lumière', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'La Lune produit sa propre lumière', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quelle est la plus petite unité de vie?', 'type' => 'multiple', 'answers' => ['La cellule', 'L\'atome', 'La molécule', 'Le tissu'], 'correct_index' => 0],
                 ['text' => 'Combien de paires de côtes a l\'être humain?', 'type' => 'multiple', 'answers' => ['12', '10', '14', '16'], 'correct_index' => 0],
                 ['text' => 'L\'eau est un composé chimique', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
@@ -314,10 +320,10 @@ class QuestionService
                 ['text' => 'Le mercure est liquide à température ambiante', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Combien de sens a l\'être humain?', 'type' => 'multiple', 'answers' => ['5', '4', '6', '7'], 'correct_index' => 0],
                 ['text' => 'Quel est le symbole chimique de l\'hélium?', 'type' => 'multiple', 'answers' => ['He', 'H', 'Hl', 'Ho'], 'correct_index' => 0],
-                ['text' => 'Les dinosaures et les humains ont coexisté', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les dinosaures et les humains ont coexisté', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quelle partie du cerveau contrôle l\'équilibre?', 'type' => 'multiple', 'answers' => ['Cervelet', 'Cortex', 'Hippocampe', 'Thalamus'], 'correct_index' => 0],
                 ['text' => 'Combien de litres de sang a un adulte moyen?', 'type' => 'multiple', 'answers' => ['5', '3', '7', '10'], 'correct_index' => 0],
-                ['text' => 'Les requins ont des os', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les requins ont des os', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel est le métal le plus conducteur?', 'type' => 'multiple', 'answers' => ['Argent', 'Cuivre', 'Or', 'Aluminium'], 'correct_index' => 0],
                 ['text' => 'La théorie du Big Bang explique l\'origine de l\'univers', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Combien de molécules d\'eau y a-t-il dans H2O?', 'type' => 'multiple', 'answers' => ['1', '2', '3', '0'], 'correct_index' => 0],
@@ -379,48 +385,48 @@ class QuestionService
                 ['text' => 'Les dauphins sont des mammifères', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Combien de pattes a une araignée?', 'type' => 'multiple', 'answers' => ['8', '6', '10', '12'], 'correct_index' => 0],
                 ['text' => 'Quel est l\'animal le plus rapide au monde?', 'type' => 'multiple', 'answers' => ['Guépard', 'Lion', 'Gazelle', 'Léopard'], 'correct_index' => 0],
-                ['text' => 'Les pingouins vivent au Pôle Nord', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les pingouins vivent au Pôle Nord', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel est le plus grand animal marin?', 'type' => 'multiple', 'answers' => ['Baleine bleue', 'Requin baleine', 'Cachalot', 'Orque'], 'correct_index' => 0],
-                ['text' => 'Les chauves-souris sont des oiseaux', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les chauves-souris sont des oiseaux', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Combien de bosses a un chameau?', 'type' => 'multiple', 'answers' => ['2', '1', '3', '0'], 'correct_index' => 0],
                 ['text' => 'Quel animal est connu pour sa mémoire exceptionnelle?', 'type' => 'multiple', 'answers' => ['Éléphant', 'Dauphin', 'Singe', 'Chien'], 'correct_index' => 0],
-                ['text' => 'Les serpents ont des paupières', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les serpents ont des paupières', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel oiseau peut voler en arrière?', 'type' => 'multiple', 'answers' => ['Colibri', 'Aigle', 'Hirondelle', 'Faucon'], 'correct_index' => 0],
                 ['text' => 'Combien de temps dort un koala par jour?', 'type' => 'multiple', 'answers' => ['20 heures', '12 heures', '16 heures', '8 heures'], 'correct_index' => 0],
                 ['text' => 'Les crocodiles pleurent vraiment', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Quel est le seul mammifère capable de voler?', 'type' => 'multiple', 'answers' => ['Chauve-souris', 'Écureuil volant', 'Poisson volant', 'Lémur volant'], 'correct_index' => 0],
                 ['text' => 'Combien de cœurs a un poulpe?', 'type' => 'multiple', 'answers' => ['3', '1', '2', '4'], 'correct_index' => 0],
-                ['text' => 'Les flamants roses naissent roses', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les flamants roses naissent roses', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel animal a la langue la plus longue?', 'type' => 'multiple', 'answers' => ['Caméléon', 'Girafe', 'Fourmilier', 'Grenouille'], 'correct_index' => 0],
                 ['text' => 'Combien de dents a un requin blanc?', 'type' => 'multiple', 'answers' => ['300', '100', '500', '50'], 'correct_index' => 0],
-                ['text' => 'Les poissons rouges ont une mémoire de 3 secondes', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les poissons rouges ont une mémoire de 3 secondes', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel animal peut survivre sans eau le plus longtemps?', 'type' => 'multiple', 'answers' => ['Chameau', 'Kangourou', 'Girafe', 'Rhinocéros'], 'correct_index' => 0],
                 ['text' => 'Combien d\'estomacs a une vache?', 'type' => 'multiple', 'answers' => ['4', '2', '3', '1'], 'correct_index' => 0],
-                ['text' => 'Les autruches peuvent voler', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les autruches peuvent voler', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel animal a les yeux les plus grands?', 'type' => 'multiple', 'answers' => ['Calmar géant', 'Baleine bleue', 'Éléphant', 'Aigle'], 'correct_index' => 0],
                 ['text' => 'Combien de pattes a un crabe?', 'type' => 'multiple', 'answers' => ['10', '8', '6', '12'], 'correct_index' => 0],
-                ['text' => 'Les tigres sont des animaux sociaux', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les tigres sont des animaux sociaux', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel est le plus grand félin du monde?', 'type' => 'multiple', 'answers' => ['Tigre', 'Lion', 'Jaguar', 'Léopard'], 'correct_index' => 0],
                 ['text' => 'Combien de temps vit une tortue géante?', 'type' => 'multiple', 'answers' => ['100-150 ans', '50-70 ans', '200-300 ans', '30-40 ans'], 'correct_index' => 0],
                 ['text' => 'Les ours polaires ont la peau noire', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Quel oiseau pond le plus gros œuf?', 'type' => 'multiple', 'answers' => ['Autruche', 'Émeu', 'Aigle', 'Albatros'], 'correct_index' => 0],
                 ['text' => 'Combien de vertèbres a un cou de girafe?', 'type' => 'multiple', 'answers' => ['7', '12', '20', '5'], 'correct_index' => 0],
-                ['text' => 'Les kangourous peuvent sauter en arrière', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les kangourous peuvent sauter en arrière', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel animal produit le lait le plus riche?', 'type' => 'multiple', 'answers' => ['Phoque', 'Vache', 'Chèvre', 'Chameau'], 'correct_index' => 0],
                 ['text' => 'Combien de temps dort un paresseux par jour?', 'type' => 'multiple', 'answers' => ['15 heures', '8 heures', '20 heures', '10 heures'], 'correct_index' => 0],
-                ['text' => 'Les éléphants ont peur des souris', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les éléphants ont peur des souris', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel animal a le QI le plus élevé après l\'homme?', 'type' => 'multiple', 'answers' => ['Dauphin', 'Chimpanzé', 'Éléphant', 'Corbeau'], 'correct_index' => 0],
                 ['text' => 'Combien de fois par minute bat le cœur d\'un colibri?', 'type' => 'multiple', 'answers' => ['1200', '500', '200', '100'], 'correct_index' => 0],
-                ['text' => 'Les hippopotames savent nager', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les hippopotames savent nager', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel animal a le venin le plus puissant?', 'type' => 'multiple', 'answers' => ['Méduse-boîte', 'Cobra', 'Scorpion', 'Araignée'], 'correct_index' => 0],
                 ['text' => 'Combien de temps gestation d\'un éléphant?', 'type' => 'multiple', 'answers' => ['22 mois', '12 mois', '18 mois', '9 mois'], 'correct_index' => 0],
                 ['text' => 'Les pandas sont herbivores', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
                 ['text' => 'Quel animal dort debout?', 'type' => 'multiple', 'answers' => ['Cheval', 'Vache', 'Mouton', 'Chèvre'], 'correct_index' => 0],
                 ['text' => 'Combien de rayures a un zèbre?', 'type' => 'multiple', 'answers' => ['Variable selon l\'individu', 'Toujours 50', 'Toujours 100', 'Toujours 30'], 'correct_index' => 0],
-                ['text' => 'Les gorilles sont carnivores', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les gorilles sont carnivores', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel animal a la morsure la plus puissante?', 'type' => 'multiple', 'answers' => ['Crocodile marin', 'Requin blanc', 'Tigre', 'Ours'], 'correct_index' => 0],
                 ['text' => 'Combien pèse un éléphant adulte?', 'type' => 'multiple', 'answers' => ['6 tonnes', '2 tonnes', '10 tonnes', '4 tonnes'], 'correct_index' => 0],
-                ['text' => 'Les mouches ont des dents', 'type' => 'true_false', 'answers' => ['Faux', null, 'Vrai', null], 'correct_index' => 0],
+                ['text' => 'Les mouches ont des dents', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 2],
                 ['text' => 'Quel oiseau ne peut pas marcher?', 'type' => 'multiple', 'answers' => ['Martinet', 'Aigle', 'Moineau', 'Corbeau'], 'correct_index' => 0],
                 ['text' => 'Combien de litres de lait produit une vache par jour?', 'type' => 'multiple', 'answers' => ['25 litres', '10 litres', '50 litres', '5 litres'], 'correct_index' => 0],
                 ['text' => 'Les escargots ont des dents', 'type' => 'true_false', 'answers' => ['Vrai', null, 'Faux', null], 'correct_index' => 0],
