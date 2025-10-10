@@ -4,18 +4,24 @@
 @php
 // Mapping des skills pour chaque avatar stratégique
 $avatarSkills = [
-    'Mathématicien' => ['🔢'],
-    'Scientifique' => ['⚗️'],
-    'Explorateur' => ['🧭'],
-    'Défenseur' => ['🛡️'],
-    'Comédienne' => ['🎯', '🌀'],
-    'Magicienne' => ['✨', '💫'],
-    'Challenger' => ['🔄', '⏳'],
-    'Historien' => ['🪶', '⏰'],
-    'IA Junior' => ['💡', '❌', '🔁'],
-    'Stratège' => ['🧠', '🤝', '💰'],
-    'Sprinteur' => ['⏱️', '🕒', '🔋'],
-    'Visionnaire' => ['👁️', '🏰', '🎯'],
+    'Mathématicien' => [['icon' => '🔢', 'name' => 'Calcul Rapide']],
+    'Scientifique' => [['icon' => '⚗️', 'name' => 'Analyse']],
+    'Explorateur' => [['icon' => '🧭', 'name' => 'Navigation']],
+    'Défenseur' => [['icon' => '🛡️', 'name' => 'Protection']],
+    'Comédienne' => [['icon' => '🎯', 'name' => 'Précision'], ['icon' => '🌀', 'name' => 'Confusion']],
+    'Magicienne' => [['icon' => '✨', 'name' => 'Magie'], ['icon' => '💫', 'name' => 'Étoile']],
+    'Challenger' => [['icon' => '🔄', 'name' => 'Rotation'], ['icon' => '⏳', 'name' => 'Temps']],
+    'Historien' => [['icon' => '🪶', 'name' => 'Histoire'], ['icon' => '⏰', 'name' => 'Chrono']],
+    'IA Junior' => [['icon' => '💡', 'name' => 'Idée'], ['icon' => '❌', 'name' => 'Annulation'], ['icon' => '🔁', 'name' => 'Répétition']],
+    'Stratège' => [['icon' => '🧠', 'name' => 'Intelligence'], ['icon' => '🤝', 'name' => 'Alliance'], ['icon' => '💰', 'name' => 'Richesse']],
+    'Sprinteur' => [['icon' => '⏱️', 'name' => 'Sprint'], ['icon' => '🕒', 'name' => 'Heure'], ['icon' => '🔋', 'name' => 'Énergie']],
+    'Visionnaire' => [['icon' => '👁️', 'name' => 'Vision'], ['icon' => '🏰', 'name' => 'Château'], ['icon' => '🎯', 'name' => 'Cible']],
+];
+
+// Prénoms pour les adversaires selon leur niveau
+$opponentNames = [
+    1 => 'Lucas', 2 => 'Emma', 3 => 'Nathan', 4 => 'Léa', 5 => 'Hugo',
+    6 => 'Chloé', 7 => 'Louis', 8 => 'Jade', 9 => 'Arthur'
 ];
 
 $currentAvatar = $params['avatar'] ?? 'Aucun';
@@ -29,11 +35,28 @@ if (strpos($selectedAvatar, '/') !== false || strpos($selectedAvatar, 'images/')
     $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");
 }
 
-// Avatar stratégique
+// Avatar stratégique - corriger le chemin
 $strategicAvatarPath = '';
 if ($currentAvatar !== 'Aucun') {
-    $strategicAvatarSlug = strtolower(str_replace(' ', '-', $currentAvatar));
-    $strategicAvatarPath = asset("images/avatars/{$strategicAvatarSlug}.png");
+    // Enlever les accents et normaliser
+    $strategicAvatarSlug = strtolower($currentAvatar);
+    $strategicAvatarSlug = str_replace(['é', 'è', 'ê'], 'e', $strategicAvatarSlug);
+    $strategicAvatarSlug = str_replace(['à', 'â'], 'a', $strategicAvatarSlug);
+    $strategicAvatarSlug = str_replace(' ', '-', $strategicAvatarSlug);
+    $strategicAvatarPath = asset("images/avatars/strategic/{$strategicAvatarSlug}.png");
+}
+
+// Info de l'adversaire
+$niveau = $params['niveau'];
+$bossInfo = (new App\Http\Controllers\SoloController())->getBossForLevel($niveau);
+$opponentScore = $params['current_question'] - 1 - $params['score'];
+
+if ($bossInfo) {
+    $opponentName = $bossInfo['name'];
+    $opponentAvatar = asset("images/avatars/boss/{$bossInfo['slug']}.png");
+} else {
+    $opponentName = $opponentNames[$niveau] ?? 'Élève';
+    $opponentAvatar = asset("images/avatars/opponent/default.png");
 }
 @endphp
 
@@ -59,13 +82,14 @@ if ($currentAvatar !== 'Aucun') {
         gap: 20px;
     }
     
-    /* Question en haut */
+    /* Question tout en haut */
     .question-header {
         background: rgba(78, 205, 196, 0.1);
         padding: 20px;
         border-radius: 20px;
         text-align: center;
         border: 2px solid rgba(78, 205, 196, 0.3);
+        margin-bottom: 20px;
     }
     
     .question-number {
@@ -92,12 +116,12 @@ if ($currentAvatar !== 'Aucun') {
         margin: 20px 0;
     }
     
-    /* Avatar joueur (gauche) */
+    /* Avatar joueur (gauche) avec score */
     .player-avatar-container {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
     }
     
     .player-avatar {
@@ -109,10 +133,18 @@ if ($currentAvatar !== 'Aucun') {
         object-fit: cover;
     }
     
-    .player-label {
+    .player-score-display {
+        font-size: 2.2rem;
+        font-weight: 900;
+        color: #4ECDC4;
+        text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
+    }
+    
+    .player-name {
         font-size: 0.9rem;
         color: #4ECDC4;
         font-weight: 600;
+        opacity: 0.9;
     }
     
     /* Chronomètre central */
@@ -193,19 +225,51 @@ if ($currentAvatar !== 'Aucun') {
         }
     }
     
-    /* Avatar stratégique (droite) avec skills */
-    .strategic-avatar-container {
-        position: relative;
+    /* Avatar adversaire (droite) avec score */
+    .opponent-avatar-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .opponent-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 4px solid #FF6B6B;
+        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
+        object-fit: cover;
+    }
+    
+    .opponent-score-display {
+        font-size: 2.2rem;
+        font-weight: 900;
+        color: #FF6B6B;
+        text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+    }
+    
+    .opponent-name {
+        font-size: 0.9rem;
+        color: #FF6B6B;
+        font-weight: 600;
+        opacity: 0.9;
+    }
+    
+    /* Avatar stratégique ET boutons de skills */
+    .strategic-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        margin-top: 20px;
+    }
+    
+    .strategic-avatar-wrapper {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 10px;
-    }
-    
-    .strategic-avatar-wrapper {
-        position: relative;
-        width: 120px;
-        height: 120px;
     }
     
     .strategic-avatar {
@@ -215,9 +279,6 @@ if ($currentAvatar !== 'Aucun') {
         border: 4px solid #FFD700;
         box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
         object-fit: cover;
-        position: absolute;
-        top: 10px;
-        left: 10px;
     }
     
     .strategic-placeholder {
@@ -230,37 +291,54 @@ if ($currentAvatar !== 'Aucun') {
         justify-content: center;
         font-size: 2.5rem;
         opacity: 0.5;
-        position: absolute;
-        top: 10px;
-        left: 10px;
     }
-    
-    .skill-icon {
-        position: absolute;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        border: 2px solid #fff;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    
-    /* Positionnement des skills en cercle */
-    .skill-icon:nth-child(2) { top: 0; left: 50%; transform: translateX(-50%); }
-    .skill-icon:nth-child(3) { top: 20%; right: 5%; }
-    .skill-icon:nth-child(4) { bottom: 20%; right: 5%; }
-    .skill-icon:nth-child(5) { bottom: 0; left: 50%; transform: translateX(-50%); }
-    .skill-icon:nth-child(6) { bottom: 20%; left: 5%; }
-    .skill-icon:nth-child(7) { top: 20%; left: 5%; }
     
     .strategic-label {
         font-size: 0.9rem;
         color: #FFD700;
         font-weight: 600;
+        text-align: center;
+    }
+    
+    /* Boutons de skills empilés */
+    .skills-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .skill-button {
+        width: 140px;
+        padding: 10px 15px;
+        border-radius: 25px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: 2px solid #FFD700;
+        color: white;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .skill-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+    
+    .skill-button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+    }
+    
+    .skill-icon {
+        font-size: 1.2rem;
     }
     
     /* Buzzer redessiné */
@@ -356,43 +434,6 @@ if ($currentAvatar !== 'Aucun') {
         color: rgba(255,255,255,0.8);
     }
     
-    /* Scores en haut */
-    .score-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 30px;
-        background: rgba(0,0,0,0.3);
-        border-radius: 15px;
-        margin-bottom: 10px;
-    }
-    
-    .score-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .score-label {
-        font-size: 0.9rem;
-        opacity: 0.8;
-    }
-    
-    .score-value {
-        font-size: 1.8rem;
-        font-weight: 900;
-    }
-    
-    .player-score { color: #4ECDC4; }
-    .opponent-score { color: #FF6B6B; }
-    
-    .vs-badge {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 8px 20px;
-        border-radius: 25px;
-        font-weight: bold;
-        font-size: 1.2rem;
-    }
     
     /* Responsive */
     @media (max-width: 768px) {
@@ -541,32 +582,7 @@ if ($currentAvatar !== 'Aucun') {
 </style>
 
 <div class="game-container">
-    <!-- Scores en haut -->
-    <div class="score-header">
-        <div class="score-item">
-            <span class="score-label">🎮 Vous</span>
-            <span class="score-value player-score">{{ $params['score'] }}</span>
-        </div>
-        
-        <div class="vs-badge">VS</div>
-        
-        <div class="score-item">
-            @php
-                $niveau = $params['niveau'];
-                $bossInfo = (new App\Http\Controllers\SoloController())->getBossForLevel($niveau);
-            @endphp
-            <span class="score-value opponent-score">{{ $params['current_question'] - 1 - $params['score'] }}</span>
-            <span class="score-label">
-                @if($bossInfo)
-                    🏆 {{ $bossInfo['name'] }}
-                @else
-                    📚 Élève {{ $niveau }}
-                @endif
-            </span>
-        </div>
-    </div>
-    
-    <!-- Question en haut -->
+    <!-- Question TOUT EN HAUT -->
     <div class="question-header">
         <div class="question-number">
             Question {{ $params['current_question'] }} / {{ $params['total_questions'] }}
@@ -574,12 +590,13 @@ if ($currentAvatar !== 'Aucun') {
         <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     
-    <!-- Section centrale : Avatar + Chronomètre + Avatar stratégique -->
+    <!-- Section centrale : Avatar joueur + Chronomètre + Avatar adversaire -->
     <div class="chrono-section">
-        <!-- Avatar joueur (gauche) -->
+        <!-- Avatar joueur (gauche) avec score -->
         <div class="player-avatar-container">
             <img src="{{ $playerAvatarPath }}" alt="Player" class="player-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-            <div class="player-label">Vous</div>
+            <div class="player-score-display">{{ $params['score'] }}</div>
+            <div class="player-name">Vous - Niv {{ $niveau }}</div>
         </div>
         
         <!-- Chronomètre -->
@@ -590,22 +607,38 @@ if ($currentAvatar !== 'Aucun') {
             <div class="chrono-label">⏱️ Secondes</div>
         </div>
         
-        <!-- Avatar stratégique (droite) -->
-        <div class="strategic-avatar-container">
-            <div class="strategic-avatar-wrapper">
-                @if($currentAvatar !== 'Aucun' && !empty($strategicAvatarPath))
-                    <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                    
-                    @foreach($skills as $index => $skill)
-                        <div class="skill-icon">{{ $skill }}</div>
-                    @endforeach
-                @else
-                    <div class="strategic-placeholder">⚔️</div>
-                @endif
-            </div>
-            <div class="strategic-label">{{ $currentAvatar !== 'Aucun' ? $currentAvatar : 'Aucun avatar' }}</div>
+        <!-- Avatar adversaire (droite) avec score -->
+        <div class="opponent-avatar-container">
+            <img src="{{ $opponentAvatar }}" alt="Opponent" class="opponent-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+            <div class="opponent-score-display">{{ $opponentScore }}</div>
+            <div class="opponent-name">{{ $opponentName }} - Niv {{ $niveau }}</div>
         </div>
     </div>
+    
+    <!-- Avatar stratégique avec boutons de skills -->
+    @if($currentAvatar !== 'Aucun')
+    <div class="strategic-section">
+        <div class="strategic-avatar-wrapper">
+            @if(!empty($strategicAvatarPath))
+                <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+            @else
+                <div class="strategic-placeholder">⚔️</div>
+            @endif
+            <div class="strategic-label">{{ $currentAvatar }}</div>
+        </div>
+        
+        @if(count($skills) > 0)
+        <div class="skills-buttons">
+            @foreach($skills as $skill)
+                <button type="button" class="skill-button" onclick="activateSkill('{{ $skill['name'] }}')">
+                    <span class="skill-icon">{{ $skill['icon'] }}</span>
+                    <span>{{ $skill['name'] }}</span>
+                </button>
+            @endforeach
+        </div>
+        @endif
+    </div>
+    @endif
     
     <!-- Buzzer redessiné -->
     <div class="buzz-container">
@@ -692,6 +725,12 @@ function handleTimeout() {
     setTimeout(() => {
         window.location.href = "{{ route('solo.timeout') }}";
     }, 2000);
+}
+
+function activateSkill(skillName) {
+    console.log('Skill activé:', skillName);
+    // Fonctionnalité des skills à implémenter plus tard
+    alert('Skill "' + skillName + '" activé ! (Fonctionnalité à venir)');
 }
 </script>
 @endsection
