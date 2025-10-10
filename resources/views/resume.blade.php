@@ -333,7 +333,7 @@
   </div>
 
   <!-- Bouton Démarrer -->
-  <form action="{{ route('solo.game') }}" method="GET">
+  <form action="{{ route('solo.prepare') }}" method="GET">
     <button type="submit" class="start-button">
       ▶️ Démarrer la Partie
     </button>

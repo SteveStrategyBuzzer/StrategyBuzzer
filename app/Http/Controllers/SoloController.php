@@ -197,6 +197,13 @@ class SoloController extends Controller
         return view('resume', compact('params'));
     }
 
+    public function prepare()
+    {
+        // Simple méthode qui affiche juste l'écran de préparation
+        // Le compte à rebours est géré par JavaScript dans la vue
+        return view('game_preparation');
+    }
+
     public function game()
     {
         $questionService = new \App\Services\QuestionService();
