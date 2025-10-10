@@ -84,13 +84,19 @@
     @media (max-width: 480px) and (orientation: portrait) {
         .menu-scene {
             padding: 12px;
-            overflow-y: auto;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            height: 100vh;
+            min-height: 100vh;
         }
 
         .menu-container {
             grid-template-columns: 1fr;
             gap: 8px;
             max-width: 100%;
+            padding-top: 20px;
         }
 
         .menu-title {
