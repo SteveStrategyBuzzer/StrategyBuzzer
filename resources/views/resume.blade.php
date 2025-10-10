@@ -279,8 +279,19 @@
       <a href="{{ route('avatar', ['from' => 'resume']) }}" style="text-decoration: none; color: inherit;">
         @if($params['avatar'] !== 'Aucun')
           <div class="avatar-slot selected">
-            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">⚔️ Avatar Stratégique</div>
-            <div style="font-size: 1.3rem; color: #FFD700; margin-bottom: 10px;">{{ $params['avatar'] }}</div>
+            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 15px;">⚔️ Avatar Stratégique</div>
+            
+            @if(!empty($params['avatar_image']))
+              <img src="{{ asset($params['avatar_image']) }}" 
+                   alt="{{ $params['avatar'] }}" 
+                   style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #FFD700; margin: 0 auto 15px; display: block; box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4);"
+                   onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+              <div style="display: none; font-size: 3rem; margin-bottom: 10px;">⚔️</div>
+            @else
+              <div style="font-size: 3rem; margin-bottom: 10px;">⚔️</div>
+            @endif
+            
+            <div style="font-size: 1.3rem; color: #FFD700; margin-bottom: 10px; font-weight: 700;">{{ $params['avatar'] }}</div>
             @if(!empty($params['avatar_skills']))
               <div style="font-size: 0.85rem; opacity: 0.8;">
                 @foreach ($params['avatar_skills'] as $index => $skill)

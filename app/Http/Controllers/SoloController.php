@@ -179,10 +179,21 @@ class SoloController extends Controller
             }
         }
         
+        // Construire le chemin de l'image de l'avatar stratégique
+        $strategicAvatarPath = '';
+        if ($avatar !== 'Aucun') {
+            $strategicAvatarSlug = strtolower($avatar);
+            $strategicAvatarSlug = str_replace(['é', 'è', 'ê'], 'e', $strategicAvatarSlug);
+            $strategicAvatarSlug = str_replace(['à', 'â'], 'a', $strategicAvatarSlug);
+            $strategicAvatarSlug = str_replace(' ', '-', $strategicAvatarSlug);
+            $strategicAvatarPath = 'images/avatars/' . $strategicAvatarSlug . '.png';
+        }
+        
         $params = [
             'theme'           => $theme,
             'theme_icon'      => $themeIcons[$theme] ?? '❓',
             'avatar'          => $avatar,
+            'avatar_image'    => $strategicAvatarPath,
             'avatar_skills'   => $this->getAvatarSkills($avatar),
             'nb_questions'    => $nbQuestions,
             'niveau_joueur'   => $niveau,
