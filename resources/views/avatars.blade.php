@@ -30,7 +30,7 @@
 
 /* cards */
 .card{background:var(--card);border-radius:var(--radius);padding:16px;border:1px solid rgba(255,255,255,.08);position:relative;box-shadow:var(--shadow)}
-.card .inner{display:flex;align-items:center;justify-content:center;min-height:110px;cursor:pointer}
+.card .inner{display:flex;align-items:center;justify-content:center;min-height:40px;cursor:pointer}
 .card h3{margin:0;font-size:1.1rem;letter-spacing:.3px}
 .badge{position:absolute;top:10px;left:10px;font-size:.85rem;background:rgba(255,255,255,.12);padding:6px 10px;border-radius:999px}
 .locked{filter: blur(2px) saturate(.7); opacity:.72;}
