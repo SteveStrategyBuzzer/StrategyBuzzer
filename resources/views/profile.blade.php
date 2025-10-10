@@ -240,14 +240,24 @@
 
 <div class="min-h-screen bg-[#0A2C66] text-white sb-page">
   <div class="sb-wrap">
-    <h1>Profile du Joueur</h1>
-
-{{-- Bouton Menu toujours en haut à droite --}}
-    <a href="{{ route('menu') }}" 
-       class="sb-btn" 
-       style="text-decoration:none; position:absolute; top:20px; right:20px; z-index:1000;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h1 style="margin:0;">Profile du Joueur</h1>
+      <a href="{{ route('menu') }}" style="
+        background: white;
+        color: #0A2C66;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
         Menu
-    </a>
+      </a>
+    </div>
 
     <div class="sb-three">
 {{-- =================== BULLE 1 (25%) : Avatar principal =================== --}}
