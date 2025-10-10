@@ -83,23 +83,24 @@
     /* Mobile Portrait (320px - 480px) */
     @media (max-width: 480px) and (orientation: portrait) {
         .menu-scene {
-            padding: 16px 12px;
+            padding: 12px;
+            overflow-y: auto;
         }
 
         .menu-container {
             grid-template-columns: 1fr;
-            gap: 12px;
+            gap: 8px;
             max-width: 100%;
         }
 
         .menu-title {
-            font-size: 2rem;
-            margin-bottom: 12px;
+            font-size: 1.8rem;
+            margin-bottom: 8px;
         }
 
         .menu-link {
-            padding: 14px 16px;
-            font-size: 1.1rem;
+            padding: 12px 16px;
+            font-size: 1rem;
             width: 220px;  /* Largeur fixe pour tous les boutons */
             max-width: 100%;
         }
@@ -280,7 +281,8 @@
         };
         
         img.addEventListener('click', multiply);
-        img.addEventListener('touchstart', multiply);
+        img.addEventListener('touchstart', multiply, { passive: false });
+        img.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
 
         // pointer-events du parent sont off, donc on réactive ici
         img.style.pointerEvents = 'auto';

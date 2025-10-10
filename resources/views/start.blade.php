@@ -68,25 +68,27 @@ body {
     .mobile-title {
         font-size: 2.5rem;
         font-weight: 900;
-        background: linear-gradient(135deg, #00f5ff 0%, #a855f7 50%, #ec4899 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #3b9fd9;
         text-align: center;
         text-transform: uppercase;
         letter-spacing: 2px;
         margin: 0;
+        -webkit-text-stroke: 2px white;
+        text-stroke: 2px white;
         filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
     }
 
     .mobile-title-small {
         font-size: 1.8rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #fbbf24 0%, #f97316 50%, #dc2626 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #e5e5e5;
+        background-color: #1a1a1a;
+        padding: 10px 20px;
+        border-radius: 12px;
         margin-top: 5px;
+        -webkit-text-stroke: 1.5px white;
+        text-stroke: 1.5px white;
+        border: 2px solid white;
     }
 
     .mobile-brain {
@@ -112,7 +114,7 @@ body {
         color: #fff;
         font-size: 1.3rem;
         font-weight: bold;
-        border: none;
+        border: 2px solid white;
         border-radius: 12px;
         cursor: pointer;
         text-decoration: none;
@@ -163,24 +165,26 @@ body {
     .mobile-title {
         font-size: 1.8rem;
         font-weight: 900;
-        background: linear-gradient(135deg, #00f5ff 0%, #a855f7 50%, #ec4899 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #3b9fd9;
         text-align: center;
         text-transform: uppercase;
         margin: 0;
+        -webkit-text-stroke: 1.5px white;
+        text-stroke: 1.5px white;
         filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
     }
 
     .mobile-title-small {
         font-size: 1.3rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #fbbf24 0%, #f97316 50%, #dc2626 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #e5e5e5;
+        background-color: #1a1a1a;
+        padding: 8px 16px;
+        border-radius: 10px;
         margin-top: 3px;
+        -webkit-text-stroke: 1px white;
+        text-stroke: 1px white;
+        border: 2px solid white;
     }
 
     .mobile-brain {
@@ -205,7 +209,7 @@ body {
         color: #fff;
         font-size: 1.2rem;
         font-weight: bold;
-        border: none;
+        border: 2px solid white;
         border-radius: 10px;
         cursor: pointer;
         text-decoration: none;

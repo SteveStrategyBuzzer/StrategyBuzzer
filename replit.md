@@ -13,6 +13,8 @@ Preferred communication style: Simple, everyday language.
   - Fixed brain bounce physics with synchronized CSS/JS sizing: 54px mobile portrait, 44px mobile landscape, 64px tablets, 90px desktop - ensures accurate collision detection and tighter wall bouncing
   - Added touchstart event support for mobile brain multiplication (works with touch and click)
   - Removed unused SIZE constant to prevent future conflicts
+  - Mobile overflow fix: reduced spacing (gap 8px, padding 12px) and font sizes to fit all buttons without bottom overflow
+  - Enhanced touch handling with passive:false and touchend preventDefault for reliable mobile brain multiplication
 
 ## Previous Changes (October 08, 2025)
 - **Avatar Selection Enhanced**: Modified avatars.blade.php to allow users to click on unlocked avatar packs, opening a modal with all pack images in a grid layout. Users can now select any avatar from an unlocked pack as their active player avatar, matching the preview functionality from the shop page.
