@@ -6,7 +6,10 @@ StrategyBuzzer is a real-time quiz buzzer game application combining a Laravel b
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (October 08, 2025)
+## Recent Changes (October 10, 2025)
+- **Mobile Login Page Redesign**: Restructured the connection page (start.blade.php) for mobile devices with vertical layout: title at top, animated brain in center, connection button at bottom. Includes floating brain animation and responsive layouts for both portrait and landscape orientations.
+
+## Previous Changes (October 08, 2025)
 - **Avatar Selection Enhanced**: Modified avatars.blade.php to allow users to click on unlocked avatar packs, opening a modal with all pack images in a grid layout. Users can now select any avatar from an unlocked pack as their active player avatar, matching the preview functionality from the shop page.
 - **Responsive Design Implementation**: Added comprehensive media queries for portrait and landscape orientations across all main pages (menu, avatars, boutique, game screens). Application now adapts seamlessly to mobile portrait, mobile landscape, tablet portrait, and tablet landscape orientations with optimized layouts and element sizing for each viewport.
 - **Gameplay Mobile Optimization**: Redesigned game question screen for mobile to ensure BUZZ button is always visible without scrolling. Reduced padding, margins, and element sizes specifically for portrait mobile orientation.
