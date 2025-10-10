@@ -100,8 +100,7 @@
         .menu-link {
             padding: 14px 16px;
             font-size: 1.1rem;
-            min-width: 220px;  /* Un peu plus large que "MAÎTRE DU JEU" */
-            width: 100%;
+            width: 220px;  /* Largeur fixe pour tous les boutons */
             max-width: 100%;
         }
 

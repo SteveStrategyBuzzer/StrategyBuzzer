@@ -9,7 +9,7 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (October 10, 2025)
 - **Mobile Login Page Redesign**: Restructured the connection page (start.blade.php) for mobile devices with vertical layout: title at top, animated brain in center, connection button at bottom. Includes floating brain animation and responsive layouts for both portrait and landscape orientations.
 - **Menu Mobile Enhancements**: 
-  - Button widths increased to 220px min-width for uniform sizing wider than "MAÎTRE DU JEU" text
+  - Button widths set to fixed 220px for uniform sizing with compact padding - eliminates excessive whitespace around text
   - Fixed brain bounce physics with synchronized CSS/JS sizing: 54px mobile portrait, 44px mobile landscape, 64px tablets, 90px desktop - ensures accurate collision detection and tighter wall bouncing
   - Added touchstart event support for mobile brain multiplication (works with touch and click)
   - Removed unused SIZE constant to prevent future conflicts
