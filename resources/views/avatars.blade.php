@@ -68,8 +68,8 @@
 
 /* pack 2x2 preview or full selected image */
 .pack-preview{margin-top:10px}
-.preview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
-.preview-grid img{width:100%;height:92px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12)}
+.preview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.preview-grid img{width:100%;height:140px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12)}
 .preview-main{width:100%;height:196px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.12)}
 
 /* Stratégiques grid (4-4-4, no global title) */
@@ -90,7 +90,7 @@
   .pill{font-size:0.85rem;padding:6px 10px}
   .thumbs{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
   .std-thumb{width:70px;height:70px;flex:0 0 70px}
-  .preview-grid img{height:70px}
+  .preview-grid img{height:100px}
   .stratégique-card img{height:100px}
 }
 
@@ -107,7 +107,7 @@
   .stratégique-card img{height:90px}
   .thumbs{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
   .preview-grid{gap:4px}
-  .preview-grid img{height:60px}
+  .preview-grid img{height:80px}
   .modal .card{max-height:85vh;overflow-y:auto}
 }
 
@@ -285,10 +285,9 @@
                 $packs[$k]['images'] = $imgs;
                 $packs[$k]['count']  = count($imgs);
               }
-              $loopPacks = array_merge([end($packs)], $packs, [reset($packs)]);
             @endphp
 
-            @foreach($loopPacks as $p)
+            @foreach($packs as $p)
               @php
                 $locked = !in_array($p['slug'], $unlockedPacks, true);
                 $count  = (int)($p['count'] ?? 0);
@@ -463,9 +462,9 @@
   }
   function closeModal(){ modal.style.display = 'none'; }
 
-  /* ===== Packs carousel (boucle + auto) ===== */
+  /* ===== Packs carousel (normal, non-infini) ===== */
   const track = document.getElementById('track');
-  let index = 1, w;
+  let index = 0, w;
   function cardWidth(){ const c = track.querySelector('.pack-card'); return c ? (c.getBoundingClientRect().width + parseFloat(getComputedStyle(track).gap||0)) : 0; }
   function measure(){ w = cardWidth(); }
   function setTransform(tx, withTransition=true){
@@ -481,13 +480,18 @@
     const prev = cards[index-1], curr = cards[index];
     if(prev) prev.classList.add('outgoing'); if(curr) curr.classList.add('incoming');
   }
-  function slideNext(){ index++; apply(); }
-  function slidePrev(){ index--; apply(); }
-  track.addEventListener('transitionend', ()=>{
+  function slideNext(){ 
     const total = track.querySelectorAll('.pack-card').length;
-    if(index === total-1){ index = 1; noTransApply(); }
-    else if(index === 0){ index = total-2; noTransApply(); }
-  });
+    if(index < total - 1){ index++; apply(); }
+    else { index = 0; apply(); }
+  }
+  function slidePrev(){ 
+    if(index > 0){ index--; apply(); }
+    else { 
+      const total = track.querySelectorAll('.pack-card').length;
+      index = total - 1; apply(); 
+    }
+  }
   let packsTimer = setInterval(slideNext, 4200);
 
   // drag
