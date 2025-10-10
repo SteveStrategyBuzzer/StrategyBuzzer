@@ -17,8 +17,30 @@
   .btn-theme:hover{transform:translateY(-1px);} 
   .btn-theme:active{transform:translateY(0);} 
   .grid-2{overflow:hidden;} 
+  .header-menu {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+  }
 
 </style>
+
+<a href="{{ route('menu') }}" class="header-menu" style="
+  background: white;
+  color: #003DA5;
+  padding: 10px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+  Menu
+</a>
 
 <div class="container-solo">
   <h1 class="display-4 text-center">Mode Solo</h1>
