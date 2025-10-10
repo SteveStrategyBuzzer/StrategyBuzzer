@@ -147,6 +147,16 @@ class SoloController extends Controller
 
     public function resume()
     {
+        // Synchroniser l'avatar stratégique depuis profile_settings si absent de la session
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if ($user && !session()->has('avatar')) {
+            $settings = (array) ($user->profile_settings ?? []);
+            $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
+            if ($strategicName) {
+                session(['avatar' => $strategicName]);
+            }
+        }
+        
         // Récupérer les paramètres de la session ou créer des valeurs par défaut
         $theme = session('theme', 'general');
         $nbQuestions = session('nb_questions', 30);
@@ -217,6 +227,16 @@ class SoloController extends Controller
 
     public function game()
     {
+        // Synchroniser l'avatar stratégique depuis profile_settings si absent de la session
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if ($user && !session()->has('avatar')) {
+            $settings = (array) ($user->profile_settings ?? []);
+            $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
+            if ($strategicName) {
+                session(['avatar' => $strategicName]);
+            }
+        }
+        
         $questionService = new \App\Services\QuestionService();
         
         // Récupérer les paramètres de session
