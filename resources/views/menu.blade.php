@@ -250,7 +250,7 @@
     }
     const rand = (a,b)=> Math.random()*(b-a)+a;
 
-    function createBrain(x, y){
+    function createBrain(x, y, isFirst = false){
         if (BRAINS.length >= MAX_BRAINS) return;
 
         const img = new Image();
@@ -274,18 +274,21 @@
         img.dataset.vx = Math.cos(dir) * speed;
         img.dataset.vy = Math.sin(dir) * speed;
 
-        const multiply = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            createBrain(parseFloat(img.style.left)||0, parseFloat(img.style.top)||0);
-        };
-        
-        img.addEventListener('click', multiply);
-        img.addEventListener('touchstart', multiply, { passive: false });
-        img.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
-
-        // pointer-events du parent sont off, donc on réactive ici
-        img.style.pointerEvents = 'auto';
+        // Seul le premier cerveau peut être cliqué pour multiplier
+        if (isFirst) {
+            const multiply = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                createBrain(parseFloat(img.style.left)||0, parseFloat(img.style.top)||0, false);
+            };
+            
+            img.addEventListener('click', multiply);
+            img.addEventListener('touchstart', multiply, { passive: false });
+            img.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+            img.style.pointerEvents = 'auto';
+        } else {
+            img.style.pointerEvents = 'none';
+        }
 
         stage.appendChild(img);
         BRAINS.push(img);
@@ -323,7 +326,7 @@
         requestAnimationFrame(tick);
     }
 
-    createBrain();             // 1 cerveau au départ
+    createBrain(undefined, undefined, true);  // Premier cerveau cliquable
     requestAnimationFrame(tick);
 
     // Ajuste les positions et tailles si la fenêtre/orientation change

@@ -15,6 +15,7 @@ Preferred communication style: Simple, everyday language.
   - Removed unused SIZE constant to prevent future conflicts
   - Mobile overflow fix: reduced spacing (gap 8px, padding 12px) and font sizes to fit all buttons without bottom overflow
   - Enhanced touch handling with passive:false and touchend preventDefault for reliable mobile brain multiplication
+  - Brain multiplication restricted: only the first (original) brain is now interactive/clickable, preventing UI clutter from excessive brain spawning
 
 ## Previous Changes (October 08, 2025)
 - **Avatar Selection Enhanced**: Modified avatars.blade.php to allow users to click on unlocked avatar packs, opening a modal with all pack images in a grid layout. Users can now select any avatar from an unlocked pack as their active player avatar, matching the preview functionality from the shop page.
