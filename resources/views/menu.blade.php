@@ -82,32 +82,47 @@
 
     /* Mobile Portrait (320px - 480px) */
     @media (max-width: 480px) and (orientation: portrait) {
+        body {
+            position: fixed;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
         .menu-scene {
-            padding: 12px;
+            padding: 0;
             overflow: hidden;
             display: flex;
             align-items: flex-start;
-            justify-content: flex-start;
+            justify-content: center;
             height: 100vh;
-            min-height: 100vh;
+            max-height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
         }
 
         .menu-container {
             grid-template-columns: 1fr;
-            gap: 8px;
+            gap: 1.5vh;
             max-width: 100%;
-            padding-top: 20px;
+            width: 100%;
+            max-height: 100vh;
+            padding: 2vh 12px;
+            box-sizing: border-box;
         }
 
         .menu-title {
-            font-size: 1.8rem;
-            margin-bottom: 8px;
+            font-size: clamp(1.5rem, 4vh, 1.8rem);
+            margin-bottom: 1vh;
         }
 
         .menu-link {
-            padding: 12px 16px;
-            font-size: 1rem;
-            width: 220px;  /* Largeur fixe pour tous les boutons */
+            padding: clamp(8px, 1.5vh, 12px) 16px;
+            font-size: clamp(0.9rem, 2vh, 1rem);
+            width: 220px;
             max-width: 100%;
         }
 
