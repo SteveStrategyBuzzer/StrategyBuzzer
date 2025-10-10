@@ -73,9 +73,16 @@ class SoloController extends Controller
             'current_question' => null,  // Sera généré au premier game()
         ]);
 
-        // Avatar vraiment optionnel
+        // Avatar vraiment optionnel - tenter de restaurer depuis profile_settings
         if (!session()->has('avatar') || empty(session('avatar'))) {
-            session(['avatar' => 'Aucun']);
+            $user = \Illuminate\Support\Facades\Auth::user();
+            if ($user) {
+                $settings = (array) ($user->profile_settings ?? []);
+                $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
+                session(['avatar' => $strategicName ?: 'Aucun']);
+            } else {
+                session(['avatar' => 'Aucun']);
+            }
         }
         $avatar = session('avatar', 'Aucun');
 
@@ -147,9 +154,9 @@ class SoloController extends Controller
 
     public function resume()
     {
-        // Synchroniser l'avatar stratégique depuis profile_settings si absent de la session
+        // Synchroniser l'avatar stratégique depuis profile_settings si absent ou 'Aucun'
         $user = \Illuminate\Support\Facades\Auth::user();
-        if ($user && !session()->has('avatar')) {
+        if ($user && (!session()->has('avatar') || session('avatar') === 'Aucun')) {
             $settings = (array) ($user->profile_settings ?? []);
             $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
             if ($strategicName) {
@@ -227,9 +234,9 @@ class SoloController extends Controller
 
     public function game()
     {
-        // Synchroniser l'avatar stratégique depuis profile_settings si absent de la session
+        // Synchroniser l'avatar stratégique depuis profile_settings si absent ou 'Aucun'
         $user = \Illuminate\Support\Facades\Auth::user();
-        if ($user && !session()->has('avatar')) {
+        if ($user && (!session()->has('avatar') || session('avatar') === 'Aucun')) {
             $settings = (array) ($user->profile_settings ?? []);
             $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
             if ($strategicName) {
