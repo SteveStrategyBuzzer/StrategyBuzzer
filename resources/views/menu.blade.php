@@ -70,8 +70,8 @@
     /* Cerveau (image) — x2 (96px) */
     .brain{
         position: absolute;
-        width: 96px;                 /* 2× l’ancienne taille (48px) */
-        height: 96px;                /* 2× */
+        width: 90px;
+        height: 90px;
         pointer-events: auto;        /* cliquable */
         user-select: none;
         will-change: transform, left, top;
@@ -100,14 +100,14 @@
         .menu-link {
             padding: 14px 16px;
             font-size: 1.1rem;
-            min-width: 200px;  /* Plus large que "MAÎTRE DU JEU" */
+            min-width: 220px;  /* Un peu plus large que "MAÎTRE DU JEU" */
             width: 100%;
             max-width: 100%;
         }
 
         .brain {
-            width: 60px;
-            height: 60px;
+            width: 54px;
+            height: 54px;
         }
     }
 
@@ -135,8 +135,8 @@
         }
 
         .brain {
-            width: 50px;
-            height: 50px;
+            width: 44px;
+            height: 44px;
         }
     }
 
@@ -150,6 +150,11 @@
         .menu-link {
             font-size: 1.15rem;
         }
+
+        .brain {
+            width: 64px;
+            height: 64px;
+        }
     }
 
     /* Tablettes Paysage */
@@ -159,8 +164,8 @@
         }
 
         .brain {
-            width: 70px;
-            height: 70px;
+            width: 64px;
+            height: 64px;
         }
     }
 </style>
@@ -224,7 +229,6 @@
 (() => {
     const stage = document.getElementById('brain-stage');
     const BRAIN_SRC = @json(asset('images/brain.png'));  // public/images/brain.png attendu
-    const SIZE = 96;                 // 2× la taille d’avant
     const MAX_BRAINS = 25;
     const SPEED_MIN = 90, SPEED_MAX = 160;
     const BRAINS = [];
@@ -233,11 +237,11 @@
         const width = window.innerWidth;
         const height = window.innerHeight;
         
-        if (width <= 480 && window.matchMedia('(orientation: portrait)').matches) return 60;
-        if (height <= 500 && window.matchMedia('(orientation: landscape)').matches) return 50;
-        if (width >= 481 && width <= 900 && window.matchMedia('(orientation: portrait)').matches) return 70;
-        if (width >= 481 && width <= 1024 && window.matchMedia('(orientation: landscape)').matches) return 70;
-        return 96;
+        if (width <= 480 && window.matchMedia('(orientation: portrait)').matches) return 54;
+        if (height <= 500 && window.matchMedia('(orientation: landscape)').matches) return 44;
+        if (width >= 481 && width <= 900 && window.matchMedia('(orientation: portrait)').matches) return 64;
+        if (width >= 481 && width <= 1024 && window.matchMedia('(orientation: landscape)').matches) return 64;
+        return 90;
     }
 
     function stageSize(){

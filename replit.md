@@ -9,9 +9,10 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (October 10, 2025)
 - **Mobile Login Page Redesign**: Restructured the connection page (start.blade.php) for mobile devices with vertical layout: title at top, animated brain in center, connection button at bottom. Includes floating brain animation and responsive layouts for both portrait and landscape orientations.
 - **Menu Mobile Enhancements**: 
-  - Button widths increased to be wider than "MAÎTRE DU JEU" text with uniform sizing
-  - Fixed brain bounce physics: now uses dynamic size detection (60px portrait, 50px landscape, 70px tablet, 96px desktop) for accurate collision detection
-  - Added touchstart event support for mobile brain multiplication (previously only worked with click)
+  - Button widths increased to 220px min-width for uniform sizing wider than "MAÎTRE DU JEU" text
+  - Fixed brain bounce physics with synchronized CSS/JS sizing: 54px mobile portrait, 44px mobile landscape, 64px tablets, 90px desktop - ensures accurate collision detection and tighter wall bouncing
+  - Added touchstart event support for mobile brain multiplication (works with touch and click)
+  - Removed unused SIZE constant to prevent future conflicts
 
 ## Previous Changes (October 08, 2025)
 - **Avatar Selection Enhanced**: Modified avatars.blade.php to allow users to click on unlocked avatar packs, opening a modal with all pack images in a grid layout. Users can now select any avatar from an unlocked pack as their active player avatar, matching the preview functionality from the shop page.
