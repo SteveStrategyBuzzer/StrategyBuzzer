@@ -18,6 +18,10 @@ $avatarSkills = [
     'Visionnaire' => [['icon' => '👁️', 'name' => 'Vision'], ['icon' => '🏰', 'name' => 'Château'], ['icon' => '🎯', 'name' => 'Cible']],
 ];
 
+// Prénoms pour le joueur
+$playerNames = ['Hugo', 'Léa', 'Lucas', 'Emma', 'Nathan', 'Chloé', 'Louis', 'Jade', 'Arthur', 'Inès', 'Raphaël', 'Camille', 'Gabriel', 'Zoé', 'Thomas', 'Alice'];
+$playerName = $playerNames[array_rand($playerNames)];
+
 // Prénoms pour les adversaires selon leur niveau
 $opponentNames = [
     1 => 'Lucas', 2 => 'Emma', 3 => 'Nathan', 4 => 'Léa', 5 => 'Hugo',
@@ -116,35 +120,49 @@ if ($bossInfo) {
         margin: 20px 0;
     }
     
-    /* Avatar joueur (gauche) avec score */
-    .player-avatar-container {
+    /* Colonne gauche : joueur + adversaire */
+    .left-column {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: 20px;
+    }
+    
+    .player-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
     }
     
     .player-avatar {
-        width: 100px;
-        height: 100px;
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
-        border: 4px solid #4ECDC4;
+        border: 3px solid #4ECDC4;
         box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
         object-fit: cover;
     }
     
     .player-score-display {
-        font-size: 2.2rem;
+        font-size: 2rem;
         font-weight: 900;
         color: #4ECDC4;
         text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
     }
     
-    .player-name {
-        font-size: 0.9rem;
-        color: #4ECDC4;
+    .opponent-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .opponent-info {
+        font-size: 0.85rem;
+        color: #FF6B6B;
         font-weight: 600;
-        opacity: 0.9;
+        text-align: center;
     }
     
     /* Chronomètre central */
@@ -225,56 +243,33 @@ if ($bossInfo) {
         }
     }
     
-    /* Avatar adversaire (droite) avec score */
-    .opponent-avatar-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-    }
-    
     .opponent-avatar {
-        width: 100px;
-        height: 100px;
+        width: 70px;
+        height: 70px;
         border-radius: 50%;
-        border: 4px solid #FF6B6B;
+        border: 3px solid #FF6B6B;
         box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
         object-fit: cover;
     }
     
     .opponent-score-display {
-        font-size: 2.2rem;
+        font-size: 1.8rem;
         font-weight: 900;
         color: #FF6B6B;
         text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
     }
     
-    .opponent-name {
-        font-size: 0.9rem;
-        color: #FF6B6B;
-        font-weight: 600;
-        opacity: 0.9;
-    }
-    
-    /* Avatar stratégique ET boutons de skills */
-    .strategic-section {
+    /* Colonne droite : avatar stratégique + skills */
+    .right-column {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 15px;
-        margin-top: 20px;
-    }
-    
-    .strategic-avatar-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
     }
     
     .strategic-avatar {
-        width: 100px;
-        height: 100px;
+        width: 90px;
+        height: 90px;
         border-radius: 50%;
         border: 4px solid #FFD700;
         box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
@@ -282,156 +277,88 @@ if ($bossInfo) {
     }
     
     .strategic-placeholder {
-        width: 100px;
-        height: 100px;
+        width: 90px;
+        height: 90px;
         border-radius: 50%;
         border: 3px dashed rgba(255,255,255,0.3);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2.5rem;
+        font-size: 2rem;
         opacity: 0.5;
     }
     
-    .strategic-label {
-        font-size: 0.9rem;
-        color: #FFD700;
-        font-weight: 600;
-        text-align: center;
-    }
-    
-    /* Boutons de skills empilés */
-    .skills-buttons {
+    /* Skills icônes seulement */
+    .skills-icons {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
         align-items: center;
     }
     
-    .skill-button {
-        width: 140px;
-        padding: 10px 15px;
-        border-radius: 25px;
+    .skill-icon-circle {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: 2px solid #FFD700;
         color: white;
-        font-weight: 700;
-        font-size: 0.95rem;
+        font-size: 1.3rem;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     }
     
-    .skill-button:hover {
-        transform: translateY(-3px);
+    .skill-icon-circle:hover {
+        transform: translateY(-3px) scale(1.1);
         box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
     }
     
-    .skill-button:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+    .skill-icon-circle:active {
+        transform: translateY(0) scale(0.95);
     }
     
-    .skill-icon {
-        font-size: 1.2rem;
-    }
-    
-    /* Buzzer redessiné */
+    /* Buzzer avec image */
     .buzz-container {
         text-align: center;
         margin-top: 20px;
     }
     
     .buzz-button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transition: all 0.2s ease;
+        display: block;
+        margin: 0 auto;
+    }
+    
+    .buzz-button img {
         width: 200px;
         height: 200px;
-        border-radius: 50%;
-        background: linear-gradient(145deg, #e63946 0%, #a4161a 50%, #660708 100%);
-        border: none;
-        color: white;
-        font-weight: 900;
-        cursor: pointer;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
+        display: block;
         transition: all 0.2s ease;
-        box-shadow: 
-            0 20px 50px rgba(230, 57, 70, 0.6),
-            inset 0 -12px 30px rgba(0,0,0,0.4),
-            inset 0 4px 15px rgba(255,255,255,0.2),
-            0 0 0 8px #8B0000;
-        position: relative;
-        text-transform: uppercase;
+        filter: drop-shadow(0 20px 40px rgba(230, 57, 70, 0.6));
     }
     
-    .buzz-button::before {
-        content: '';
-        position: absolute;
-        top: 18px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 65%;
-        height: 25%;
-        background: radial-gradient(ellipse at center, rgba(255,255,255,0.35) 0%, transparent 70%);
-        border-radius: 50%;
+    .buzz-button:hover:not(:disabled) img {
+        transform: translateY(-8px) scale(1.05);
+        filter: drop-shadow(0 25px 50px rgba(230, 57, 70, 0.8));
     }
     
-    .buzz-button:hover:not(:disabled) {
-        transform: translateY(-8px) scale(1.03);
-        box-shadow: 
-            0 25px 70px rgba(230, 57, 70, 0.8),
-            inset 0 -12px 30px rgba(0,0,0,0.4),
-            inset 0 4px 15px rgba(255,255,255,0.3),
-            0 0 0 8px #8B0000;
+    .buzz-button:active:not(:disabled) img {
+        transform: translateY(4px) scale(0.95);
+        filter: drop-shadow(0 10px 20px rgba(230, 57, 70, 0.6));
     }
     
-    .buzz-button:active:not(:disabled) {
-        transform: translateY(4px) scale(0.97);
-        box-shadow: 
-            0 8px 25px rgba(230, 57, 70, 0.6),
-            inset 0 -6px 15px rgba(0,0,0,0.5),
-            0 0 0 8px #8B0000;
-    }
-    
-    .buzz-button:disabled {
+    .buzz-button:disabled img {
         opacity: 0.5;
         cursor: not-allowed;
-        background: linear-gradient(145deg, #95a5a6 0%, #7f8c8d 50%, #5a5a5a 100%);
-    }
-    
-    .buzz-top {
-        font-size: 0.65rem;
-        font-weight: 700;
-        letter-spacing: 3px;
-        opacity: 0.9;
-        color: rgba(255,255,255,0.8);
-    }
-    
-    .buzz-main {
-        font-size: 2.8rem;
-        font-weight: 900;
-        letter-spacing: 4px;
-        background: linear-gradient(180deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-shadow: 0 2px 10px rgba(255, 215, 0, 0.5);
-    }
-    
-    .buzz-bottom {
-        font-size: 0.7rem;
-        font-weight: 700;
-        letter-spacing: 2px;
-        opacity: 0.9;
-        color: rgba(255,255,255,0.8);
+        filter: grayscale(100%);
     }
     
     
@@ -441,13 +368,23 @@ if ($bossInfo) {
             gap: 20px;
         }
         
-        .player-avatar, .opponent-avatar, .strategic-avatar {
+        .player-avatar {
+            width: 60px;
+            height: 60px;
+        }
+        
+        .opponent-avatar {
+            width: 55px;
+            height: 55px;
+        }
+        
+        .strategic-avatar {
             width: 70px;
             height: 70px;
         }
         
         .player-score-display, .opponent-score-display {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
         }
         
         .chrono-circle {
@@ -459,19 +396,15 @@ if ($bossInfo) {
             font-size: 2.8rem;
         }
         
-        .skill-button {
-            width: 120px;
-            padding: 8px 12px;
-            font-size: 0.85rem;
+        .skill-icon-circle {
+            width: 38px;
+            height: 38px;
+            font-size: 1.1rem;
         }
         
-        .buzz-button {
+        .buzz-button img {
             width: 160px;
             height: 160px;
-        }
-        
-        .buzz-main {
-            font-size: 2.2rem;
         }
     }
     
@@ -512,17 +445,9 @@ if ($bossInfo) {
             font-size: 0.8rem;
         }
         
-        .buzz-button {
+        .buzz-button img {
             width: 140px;
             height: 140px;
-        }
-        
-        .buzz-main {
-            font-size: 1.8rem;
-        }
-        
-        .buzz-top, .buzz-bottom {
-            font-size: 0.55rem;
         }
     }
     
@@ -566,24 +491,23 @@ if ($bossInfo) {
             font-size: 2rem;
         }
         
-        .buzz-button {
+        .buzz-button img {
             width: 120px;
             height: 120px;
         }
         
-        .buzz-main {
-            font-size: 1.6rem;
+        .skill-icon-circle {
+            width: 32px;
+            height: 32px;
+            font-size: 1rem;
         }
         
-        .skill-button {
-            width: 100px;
-            padding: 6px 8px;
-            font-size: 0.75rem;
+        .left-column {
+            gap: 12px;
         }
         
-        .strategic-section {
+        .right-column {
             gap: 10px;
-            margin-top: 10px;
         }
     }
 </style>
@@ -597,16 +521,28 @@ if ($bossInfo) {
         <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     
-    <!-- Section centrale : Avatar joueur + Chronomètre + Avatar adversaire -->
+    <!-- Section centrale : Gauche (joueur+adversaire) + Centre (chrono) + Droite (avatar stratégique+skills) -->
     <div class="chrono-section">
-        <!-- Avatar joueur (gauche) avec score -->
-        <div class="player-avatar-container">
-            <img src="{{ $playerAvatarPath }}" alt="Player" class="player-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-            <div class="player-score-display">{{ $params['score'] }}</div>
-            <div class="player-name">Vous - Niv {{ $niveau }}</div>
+        <!-- GAUCHE : Avatar joueur + Score + Adversaire -->
+        <div class="left-column">
+            <!-- Joueur -->
+            <div class="player-section">
+                <img src="{{ $playerAvatarPath }}" alt="Player" class="player-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                <div class="player-score-display">{{ $params['score'] }}</div>
+            </div>
+            
+            <!-- Adversaire/Boss -->
+            <div class="opponent-section">
+                @if($bossInfo)
+                    <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="opponent-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                    <div class="opponent-score-display">{{ $opponentScore }}</div>
+                @else
+                    <div class="opponent-info">{{ $opponentName }} Niv {{ $niveau }}</div>
+                @endif
+            </div>
         </div>
         
-        <!-- Chronomètre -->
+        <!-- CENTRE : Chronomètre -->
         <div class="chrono-container" id="chronoContainer">
             <div class="chrono-circle">
                 <div class="chrono-time" id="chronoTime">{{ $params['chrono_time'] }}</div>
@@ -614,47 +550,34 @@ if ($bossInfo) {
             <div class="chrono-label">⏱️ Secondes</div>
         </div>
         
-        <!-- Avatar adversaire (droite) avec score -->
-        <div class="opponent-avatar-container">
-            <img src="{{ $opponentAvatar }}" alt="Opponent" class="opponent-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-            <div class="opponent-score-display">{{ $opponentScore }}</div>
-            <div class="opponent-name">{{ $opponentName }} - Niv {{ $niveau }}</div>
-        </div>
-    </div>
-    
-    <!-- Avatar stratégique avec boutons de skills -->
-    @if($currentAvatar !== 'Aucun')
-    <div class="strategic-section">
-        <div class="strategic-avatar-wrapper">
-            @if(!empty($strategicAvatarPath))
-                <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-            @else
-                <div class="strategic-placeholder">⚔️</div>
+        <!-- DROITE : Avatar stratégique + Skills -->
+        <div class="right-column">
+            @if($currentAvatar !== 'Aucun')
+                @if(!empty($strategicAvatarPath))
+                    <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                @else
+                    <div class="strategic-placeholder">⚔️</div>
+                @endif
+                
+                @if(count($skills) > 0)
+                <div class="skills-icons">
+                    @foreach($skills as $skill)
+                        <div class="skill-icon-circle" onclick="activateSkill('{{ $skill['name'] }}')">
+                            {{ $skill['icon'] }}
+                        </div>
+                    @endforeach
+                </div>
+                @endif
             @endif
-            <div class="strategic-label">{{ $currentAvatar }}</div>
         </div>
-        
-        @if(count($skills) > 0)
-        <div class="skills-buttons">
-            @foreach($skills as $skill)
-                <button type="button" class="skill-button" onclick="activateSkill('{{ $skill['name'] }}')">
-                    <span class="skill-icon">{{ $skill['icon'] }}</span>
-                    <span>{{ $skill['name'] }}</span>
-                </button>
-            @endforeach
-        </div>
-        @endif
     </div>
-    @endif
     
     <!-- Buzzer redessiné -->
     <div class="buzz-container">
         <form id="buzzForm" method="POST" action="{{ route('solo.buzz') }}">
             @csrf
             <button type="button" id="buzzButton" class="buzz-button" onclick="handleBuzz()">
-                <span class="buzz-top">STRATEGY</span>
-                <span class="buzz-main">BUZZ</span>
-                <span class="buzz-bottom">BUZZER</span>
+                <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzz Buzzer">
             </button>
         </form>
     </div>
