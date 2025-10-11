@@ -561,9 +561,25 @@ class SoloController extends Controller
                 return redirect()->route('solo.stat');
             }
             
-            // Passer à la manche suivante
+            // Calculer l'efficacité de la manche qui vient de se terminer
+            $answeredQuestions = session('answered_questions', []);
+            $correctAnswers = 0;
+            foreach ($answeredQuestions as $answer) {
+                if ($answer['is_correct']) {
+                    $correctAnswers++;
+                }
+            }
+            $roundEfficiency = count($answeredQuestions) > 0 ? round(($correctAnswers / count($answeredQuestions)) * 100) : 0;
+            
+            // Sauvegarder les infos de la manche pour la page de résultat
             $currentRound = session('current_round', 1);
+            $niveau = session('niveau_selectionne', 1);
+            $viesRestantes = session('vies_restantes', 3);
+            
             session([
+                'last_round_efficiency' => $roundEfficiency,
+                'last_round_player_score' => $playerScore,
+                'last_round_opponent_score' => $opponentScore,
                 'current_round' => $currentRound + 1,
                 'current_question_number' => 1,  // Recommencer à la question 1
                 'score' => 0,                     // Réinitialiser les scores
@@ -594,6 +610,11 @@ class SoloController extends Controller
         $currentRound = session('current_round', 1);
         $playerRoundsWon = session('player_rounds_won', 0);
         $opponentRoundsWon = session('opponent_rounds_won', 0);
+        $niveau = session('niveau_selectionne', 1);
+        $viesRestantes = session('vies_restantes', 3);
+        $roundEfficiency = session('last_round_efficiency', 0);
+        $playerScore = session('last_round_player_score', 0);
+        $opponentScore = session('last_round_opponent_score', 0);
         
         $params = [
             'round_number' => $currentRound - 1,  // La manche qui vient de se terminer
@@ -601,6 +622,11 @@ class SoloController extends Controller
             'player_rounds_won' => $playerRoundsWon,
             'opponent_rounds_won' => $opponentRoundsWon,
             'nb_questions' => session('nb_questions', 30),
+            'niveau_adversaire' => $niveau,        // Niveau de l'adversaire
+            'vies_restantes' => $viesRestantes,    // Vies restantes
+            'round_efficiency' => $roundEfficiency, // % efficacité manche
+            'player_score' => $playerScore,        // Score joueur
+            'opponent_score' => $opponentScore,    // Score adversaire
         ];
         
         return view('round_result', compact('params'));

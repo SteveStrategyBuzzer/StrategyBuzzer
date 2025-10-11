@@ -143,6 +143,29 @@
             Prochaine manche : <strong>{{ $params['nb_questions'] }} questions</strong>
         </div>
         
+        <!-- Statistiques de la manche -->
+        <div style="display: flex; justify-content: space-around; margin: 30px 0; padding: 20px; background: rgba(102, 126, 234, 0.1); border-radius: 15px;">
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 5px;">⚔️ Score</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">{{ $params['player_score'] ?? 0 }}-{{ $params['opponent_score'] ?? 0 }}</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 5px;">❤️ Vies</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">{{ $params['vies_restantes'] ?? 3 }}</div>
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-around; margin: 20px 0; padding: 20px; background: rgba(102, 126, 234, 0.1); border-radius: 15px;">
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 5px;">📈 Efficacité manche</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">{{ $params['round_efficiency'] ?? 0 }}%</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: #666; margin-bottom: 5px;">🎯 Niveau adversaire</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">{{ $params['niveau_adversaire'] ?? 1 }}</div>
+            </div>
+        </div>
+        
         <form action="{{ route('solo.game') }}" method="GET">
             <button type="submit" class="next-button">
                 🚀 Manche {{ $params['next_round'] }}
