@@ -1,6 +1,7 @@
 modules = ["php-8.2", "nodejs-20", "web", "postgresql-16"]
 [agent]
 expertMode = true
+integrations = ["javascript_openai_ai_integrations:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
