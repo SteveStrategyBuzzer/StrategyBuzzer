@@ -529,7 +529,7 @@ if ($bossInfo) {
             <div class="player-section">
                 <img src="{{ $playerAvatarPath }}" alt="Player" class="player-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
                 <div class="player-score-display">{{ $params['score'] }}</div>
-                <div class="opponent-info" style="color: #4ECDC4;">{{ $playerName }} Niv {{ $niveau }}</div>
+                <div class="player-name" style="color: #4ECDC4;">{{ $playerName }} Niv {{ $niveau }}</div>
             </div>
             
             <!-- Adversaire -->
