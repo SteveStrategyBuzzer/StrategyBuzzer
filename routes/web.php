@@ -113,6 +113,8 @@ Route::prefix('solo')->name('solo.')->group(function () {
     Route::post('/answer', [SoloController::class, 'answer'])->name('answer');
     Route::get('/next',    [SoloController::class, 'nextQuestion'])->name('next');
     Route::get('/round-result', [SoloController::class, 'roundResult'])->name('round-result');
+    Route::get('/victory', [SoloController::class, 'victory'])->name('victory');
+    Route::get('/defeat',  [SoloController::class, 'defeat'])->name('defeat');
     Route::get('/stat',    [SoloController::class, 'stat'])->name('stat');
 });
 

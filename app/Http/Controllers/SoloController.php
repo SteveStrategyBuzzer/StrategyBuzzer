@@ -637,6 +637,33 @@ class SoloController extends Controller
         $totalQuestionsPlayed = count($globalStats);
         $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
         
+        // VÉRIFIER SI LA PARTIE EST TERMINÉE (best of 3: premier à 2 manches gagnées)
+        if ($playerRoundsWon >= 2) {
+            // VICTOIRE DU JOUEUR - Débloquer le niveau suivant
+            $currentLevel = session('choix_niveau', 1);
+            $newLevel = min($currentLevel + 1, 100); // Maximum niveau 100
+            
+            // Sauvegarder dans la session
+            session(['choix_niveau' => $newLevel]);
+            
+            // Sauvegarder dans profile_settings si utilisateur connecté
+            $user = \Illuminate\Support\Facades\Auth::user();
+            if ($user && $user instanceof \App\Models\User) {
+                $settings = (array) ($user->profile_settings ?? []);
+                $settings['gm'] = $settings['gm'] ?? [];
+                $settings['gm']['solo_level'] = $newLevel;
+                $user->profile_settings = $settings;
+                $user->save();
+            }
+            
+            // Rediriger vers la page de victoire
+            return redirect()->route('solo.victory');
+        } elseif ($opponentRoundsWon >= 2) {
+            // DÉFAITE DU JOUEUR - Rediriger vers une page de défaite
+            return redirect()->route('solo.defeat');
+        }
+        
+        // Sinon, afficher le résultat de la manche et continuer
         $params = [
             'round_number' => $currentRound - 1,  // La manche qui vient de se terminer
             'next_round' => $currentRound,         // La prochaine manche
@@ -661,6 +688,85 @@ class SoloController extends Controller
         return view('round_result', compact('params'));
     }
 
+    public function victory()
+    {
+        $currentLevel = session('niveau_selectionne', 1);
+        $newLevel = session('choix_niveau', 1);
+        $theme = session('theme', 'Général');
+        
+        // Calculer les statistiques globales finales
+        $globalStats = session('global_stats', []);
+        $totalCorrect = 0;
+        $totalIncorrect = 0;
+        $totalUnanswered = 0;
+        
+        foreach ($globalStats as $stat) {
+            if (!$stat['player_buzzed']) {
+                $totalUnanswered++;
+            } elseif ($stat['is_correct']) {
+                $totalCorrect++;
+            } else {
+                $totalIncorrect++;
+            }
+        }
+        
+        $totalQuestionsPlayed = count($globalStats);
+        $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
+        
+        // Récupérer le nom de l'adversaire du prochain niveau
+        $opponents = config('opponents');
+        $nextOpponentName = $this->getOpponentName($newLevel);
+        
+        $params = [
+            'current_level' => $currentLevel,
+            'new_level' => $newLevel,
+            'theme' => $theme,
+            'total_correct' => $totalCorrect,
+            'total_incorrect' => $totalIncorrect,
+            'total_unanswered' => $totalUnanswered,
+            'global_efficiency' => $globalEfficiency,
+            'next_opponent_name' => $nextOpponentName,
+        ];
+        
+        return view('victory', compact('params'));
+    }
+    
+    public function defeat()
+    {
+        $currentLevel = session('niveau_selectionne', 1);
+        $theme = session('theme', 'Général');
+        
+        // Calculer les statistiques globales finales
+        $globalStats = session('global_stats', []);
+        $totalCorrect = 0;
+        $totalIncorrect = 0;
+        $totalUnanswered = 0;
+        
+        foreach ($globalStats as $stat) {
+            if (!$stat['player_buzzed']) {
+                $totalUnanswered++;
+            } elseif ($stat['is_correct']) {
+                $totalCorrect++;
+            } else {
+                $totalIncorrect++;
+            }
+        }
+        
+        $totalQuestionsPlayed = count($globalStats);
+        $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
+        
+        $params = [
+            'current_level' => $currentLevel,
+            'theme' => $theme,
+            'total_correct' => $totalCorrect,
+            'total_incorrect' => $totalIncorrect,
+            'total_unanswered' => $totalUnanswered,
+            'global_efficiency' => $globalEfficiency,
+        ];
+        
+        return view('defeat', compact('params'));
+    }
+
     public function stat()
     {
         $data = [
@@ -673,6 +779,19 @@ class SoloController extends Controller
         ];
 
         return view('stat', compact('data'));
+    }
+    
+    private function getOpponentName($niveau)
+    {
+        $opponents = config('opponents');
+        
+        // Vérifier si c'est un boss (niveaux 10, 20, 30, etc.)
+        if ($niveau % 10 === 0) {
+            return $opponents['boss_opponents'][$niveau] ?? 'Adversaire';
+        }
+        
+        // Sinon, adversaire régulier
+        return $opponents['regular_opponents'][$niveau] ?? 'Adversaire';
     }
 
     private function getAvatarSkills($avatar)

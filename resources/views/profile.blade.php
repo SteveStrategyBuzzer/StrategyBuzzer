@@ -85,8 +85,8 @@
 
     // “Maître du jeu” & niveaux
     $grade        = (string) data_get($s, 'gm.grade', 'Rookie');
-    $soloLevel    = (int) data_get($s, 'gm.solo_level', 0);
-    $leagueLevel  = (int) data_get($s, 'gm.league_level', 0);
+    $soloLevel    = max(1, (int) data_get($s, 'gm.solo_level', session('choix_niveau', 1))); // Minimum niveau 1, synchronisé avec session
+    $leagueLevel  = max(0, (int) data_get($s, 'gm.league_level', 0));
 
     // ID public (par défaut = nom)
     $pseudonym = trim((string) data_get($s, 'pseudonym', ''));

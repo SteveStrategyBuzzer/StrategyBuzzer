@@ -22,11 +22,10 @@ $avatarSkills = [
 $playerNames = ['Hugo', 'Léa', 'Lucas', 'Emma', 'Nathan', 'Chloé', 'Louis', 'Jade', 'Arthur', 'Inès', 'Raphaël', 'Camille', 'Gabriel', 'Zoé', 'Thomas', 'Alice'];
 $playerName = $playerNames[array_rand($playerNames)];
 
-// Prénoms pour les adversaires selon leur niveau
-$opponentNames = [
-    1 => 'Lucas', 2 => 'Emma', 3 => 'Nathan', 4 => 'Léa', 5 => 'Hugo',
-    6 => 'Chloé', 7 => 'Louis', 8 => 'Jade', 9 => 'Arthur'
-];
+// Récupérer les noms d'adversaires depuis la configuration
+$opponents = config('opponents');
+$regularOpponents = $opponents['regular_opponents'] ?? [];
+$bossOpponents = $opponents['boss_opponents'] ?? [];
 
 $currentAvatar = $params['avatar'] ?? 'Aucun';
 $skills = $currentAvatar !== 'Aucun' ? ($avatarSkills[$currentAvatar] ?? []) : [];
@@ -59,7 +58,8 @@ if ($bossInfo) {
     $opponentName = $bossInfo['name'];
     $opponentAvatar = asset("images/avatars/boss/{$bossInfo['slug']}.png");
 } else {
-    $opponentName = $opponentNames[$niveau] ?? 'Élève';
+    // Utiliser le nom depuis la configuration selon le niveau
+    $opponentName = $regularOpponents[$niveau] ?? 'Adversaire';
     $opponentAvatar = asset("images/avatars/opponent/default.png");
 }
 @endphp
