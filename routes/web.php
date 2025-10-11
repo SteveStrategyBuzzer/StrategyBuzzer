@@ -111,6 +111,7 @@ Route::prefix('solo')->name('solo.')->group(function () {
     Route::get('/timeout', [SoloController::class, 'timeout'])->name('timeout');
     Route::post('/buzz',   [SoloController::class, 'buzz'])->name('buzz');
     Route::post('/answer', [SoloController::class, 'answer'])->name('answer');
+    Route::post('/use-skill', [SoloController::class, 'useSkill'])->name('use-skill');
     Route::get('/next',    [SoloController::class, 'nextQuestion'])->name('next');
     Route::get('/round-result', [SoloController::class, 'roundResult'])->name('round-result');
     Route::get('/victory', [SoloController::class, 'victory'])->name('victory');

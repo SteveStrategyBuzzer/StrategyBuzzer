@@ -71,6 +71,7 @@ class SoloController extends Controller
             'current_question' => null,        // Sera généré au premier game()
             'global_stats' => [],              // Statistiques globales toutes manches
             'match_result_processed' => false, // Réinitialiser le flag pour nouvelle partie
+            'used_skills' => [],               // Tracking des skills utilisés (persistant pour toute la partie)
         ]);
 
         // Avatar vraiment optionnel - tenter de restaurer depuis profile_settings
@@ -363,12 +364,27 @@ class SoloController extends Controller
         return $this->renderAnswerView(true, $buzzTime);
     }
     
+    public function useSkill(Request $request)
+    {
+        $skillName = $request->input('skill_name');
+        
+        // Ajouter le skill à la liste des skills utilisés (persistant pour toute la partie)
+        $usedSkills = session('used_skills', []);
+        if (!in_array($skillName, $usedSkills)) {
+            $usedSkills[] = $skillName;
+            session(['used_skills' => $usedSkills]);
+        }
+        
+        return response()->json(['success' => true, 'used_skills' => $usedSkills]);
+    }
+    
     private function renderAnswerView($playerBuzzed, $buzzTime = null)
     {
         // Récupérer la question actuelle
         $question = session('current_question');
         $currentQuestion = session('current_question_number');
         $nbQuestions = session('nb_questions', 30);
+        $avatar = session('avatar', 'Aucun');
         
         // Calculer temps pour répondre (10 secondes de base)
         $answerTime = 10;
@@ -383,7 +399,9 @@ class SoloController extends Controller
             'player_buzzed' => $playerBuzzed,
             'current_round' => session('current_round', 1),
             'total_rounds' => session('total_rounds', 5),
-            'avatar' => session('avatar', 'Aucun'),  // Avatar stratégique pour les skills
+            'avatar' => $avatar,  // Avatar stratégique pour les skills
+            'avatar_skills' => $this->getAvatarSkills($avatar),  // Skills de l'avatar
+            'used_skills' => session('used_skills', []),  // Skills déjà utilisés dans la partie
         ];
         
         return view('game_answer', compact('params'));
