@@ -1,6 +1,30 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+// Mapping des skills pour chaque avatar stratégique
+$avatarSkills = [
+    'Mathématicien' => [['icon' => '🔢', 'name' => 'Calcul Rapide']],
+    'Scientifique' => [['icon' => '⚗️', 'name' => 'Analyse']],
+    'Explorateur' => [['icon' => '🧭', 'name' => 'Navigation']],
+    'Défenseur' => [['icon' => '🛡️', 'name' => 'Protection']],
+    'Comédienne' => [['icon' => '🎯', 'name' => 'Précision'], ['icon' => '🌀', 'name' => 'Confusion']],
+    'Magicienne' => [['icon' => '✨', 'name' => 'Magie'], ['icon' => '💫', 'name' => 'Étoile']],
+    'Challenger' => [['icon' => '🔄', 'name' => 'Rotation'], ['icon' => '⏳', 'name' => 'Temps']],
+    'Historien' => [['icon' => '🪶', 'name' => 'Histoire'], ['icon' => '⏰', 'name' => 'Chrono']],
+    'IA Junior' => [['icon' => '💡', 'name' => 'Idée'], ['icon' => '❌', 'name' => 'Annulation'], ['icon' => '🔁', 'name' => 'Répétition']],
+    'Stratège' => [['icon' => '🧠', 'name' => 'Intelligence'], ['icon' => '🤝', 'name' => 'Alliance'], ['icon' => '💰', 'name' => 'Richesse']],
+    'Sprinteur' => [['icon' => '⏱️', 'name' => 'Sprint'], ['icon' => '🕒', 'name' => 'Heure'], ['icon' => '🔋', 'name' => 'Énergie']],
+    'Visionnaire' => [['icon' => '👁️', 'name' => 'Vision'], ['icon' => '🏰', 'name' => 'Château'], ['icon' => '🎯', 'name' => 'Cible']],
+];
+
+$currentAvatar = $params['avatar'] ?? 'Aucun';
+$skills = $currentAvatar !== 'Aucun' ? ($avatarSkills[$currentAvatar] ?? []) : [];
+
+// Index de la bonne réponse (pour le skill)
+$correctIndex = $params['question']['correct_index'] ?? -1;
+@endphp
+
 <style>
     body {
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -195,6 +219,62 @@
         opacity: 1;
     }
     
+    /* Style pour la bonne réponse illuminée */
+    .answer-bubble.highlighted {
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.6) 0%, rgba(102, 234, 126, 0.6) 100%) !important;
+        border-color: #4ECDC4 !important;
+        box-shadow: 0 0 30px rgba(78, 205, 196, 0.9), inset 0 0 20px rgba(78, 205, 196, 0.4) !important;
+        animation: glow-pulse 1.5s infinite;
+    }
+    
+    @keyframes glow-pulse {
+        0%, 100% { box-shadow: 0 0 30px rgba(78, 205, 196, 0.9), inset 0 0 20px rgba(78, 205, 196, 0.4); }
+        50% { box-shadow: 0 0 50px rgba(78, 205, 196, 1), inset 0 0 30px rgba(78, 205, 196, 0.6); }
+    }
+    
+    /* Skills container */
+    .skills-container {
+        position: fixed;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 1000;
+    }
+    
+    .skill-icon-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: 2px solid #FFD700;
+        color: white;
+        font-size: 1.4rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .skill-icon-circle:hover {
+        transform: scale(1.15);
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.7);
+    }
+    
+    .skill-icon-circle:active {
+        transform: scale(0.95);
+    }
+    
+    .skill-icon-circle.used {
+        opacity: 0.4;
+        cursor: not-allowed;
+        filter: grayscale(100%);
+    }
+    
     /* Buzz info */
     .buzz-info {
         text-align: center;
@@ -381,6 +461,17 @@
     @endif
 </div>
 
+<!-- Skills de l'avatar stratégique -->
+@if(count($skills) > 0)
+<div class="skills-container">
+    @foreach($skills as $skill)
+        <div class="skill-icon-circle" id="skill-{{ $loop->index }}" onclick="activateSkill('{{ $skill['name'] }}', {{ $loop->index }})" title="{{ $skill['name'] }}">
+            {{ $skill['icon'] }}
+        </div>
+    @endforeach
+</div>
+@endif
+
 <audio id="tickSound" preload="auto">
     <source src="{{ asset('sounds/tick.mp3') }}" type="audio/mpeg">
 </audio>
@@ -457,6 +548,60 @@ function handleTimeout() {
     setTimeout(() => {
         window.location.href = "{{ route('solo.stat') }}";
     }, 2000);
+}
+
+// Variable pour savoir si un skill a été utilisé
+let skillUsed = false;
+
+function activateSkill(skillName, skillIndex) {
+    // Si déjà utilisé, ne rien faire
+    if (skillUsed) {
+        return;
+    }
+    
+    console.log('Skill activé:', skillName);
+    
+    // Marquer le skill comme utilisé
+    skillUsed = true;
+    const skillButton = document.getElementById('skill-' + skillIndex);
+    skillButton.classList.add('used');
+    
+    // Implémenter l'effet du skill selon le nom
+    if (skillName === 'Calcul Rapide') {
+        // Illuminer la bonne réponse
+        const correctIndex = {{ $correctIndex }};
+        const answerBubbles = document.querySelectorAll('.answer-bubble');
+        
+        if (correctIndex >= 0 && correctIndex < answerBubbles.length) {
+            answerBubbles[correctIndex].classList.add('highlighted');
+            
+            // Afficher un message de confirmation
+            const skillMessage = document.createElement('div');
+            skillMessage.textContent = '✨ Bonne réponse révélée !';
+            skillMessage.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+                color: white;
+                padding: 15px 30px;
+                border-radius: 25px;
+                font-weight: bold;
+                box-shadow: 0 10px 30px rgba(78, 205, 196, 0.5);
+                z-index: 10000;
+                animation: slideDown 0.5s ease-out;
+            `;
+            document.body.appendChild(skillMessage);
+            
+            // Supprimer le message après 3 secondes
+            setTimeout(() => {
+                skillMessage.style.animation = 'slideUp 0.5s ease-out';
+                setTimeout(() => skillMessage.remove(), 500);
+            }, 3000);
+        }
+    }
+    // Autres skills à implémenter plus tard...
 }
 </script>
 @endsection

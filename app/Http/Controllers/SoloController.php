@@ -383,6 +383,7 @@ class SoloController extends Controller
             'player_buzzed' => $playerBuzzed,
             'current_round' => session('current_round', 1),
             'total_rounds' => session('total_rounds', 5),
+            'avatar' => session('avatar', 'Aucun'),  // Avatar stratégique pour les skills
         ];
         
         return view('game_answer', compact('params'));
