@@ -265,20 +265,28 @@ if ($bossInfo) {
         flex-direction: column;
         align-items: center;
         gap: 15px;
+        justify-content: flex-start;
+    }
+    
+    .strategic-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
     }
     
     .strategic-avatar {
-        width: 90px;
-        height: 90px;
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
-        border: 4px solid #FFD700;
+        border: 3px solid #FFD700;
         box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
         object-fit: cover;
     }
     
     .strategic-placeholder {
-        width: 90px;
-        height: 90px;
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
         border: 3px dashed rgba(255,255,255,0.3);
         display: flex;
@@ -532,7 +540,8 @@ if ($bossInfo) {
                 <div class="player-name" style="color: #4ECDC4;">{{ $playerName }} Niv {{ $niveau }}</div>
             </div>
             
-            <!-- Adversaire -->
+            <!-- Adversaire (seulement si avatar stratégique présent) -->
+            @if($currentAvatar !== 'Aucun')
             <div class="player-section">
                 @if($bossInfo)
                     <!-- BOSS : Afficher avec cercle et image -->
@@ -550,6 +559,7 @@ if ($bossInfo) {
                     </div>
                 @endif
             </div>
+            @endif
         </div>
         
         <!-- CENTRE : Chronomètre -->
@@ -560,14 +570,18 @@ if ($bossInfo) {
             <div class="chrono-label">⏱️ Secondes</div>
         </div>
         
-        <!-- DROITE : Avatar stratégique + Skills -->
+        <!-- DROITE : Avatar stratégique + Skills OU Adversaire si pas d'avatar stratégique -->
         <div class="right-column">
             @if($currentAvatar !== 'Aucun')
-                @if(!empty($strategicAvatarPath))
-                    <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                @else
-                    <div class="strategic-placeholder">⚔️</div>
-                @endif
+                <!-- Avatar stratégique aligné avec le joueur -->
+                <div class="strategic-section">
+                    @if(!empty($strategicAvatarPath))
+                        <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                    @else
+                        <div class="strategic-placeholder">⚔️</div>
+                    @endif
+                    <div class="player-name" style="color: #FFD700; font-size: 0.8rem;">{{ $currentAvatar }}</div>
+                </div>
                 
                 @if(count($skills) > 0)
                 <div class="skills-icons">
@@ -578,6 +592,25 @@ if ($bossInfo) {
                     @endforeach
                 </div>
                 @endif
+            @else
+                <!-- Pas d'avatar stratégique : afficher l'adversaire ici -->
+                <div class="strategic-section">
+                    @if($bossInfo)
+                        <!-- BOSS : Afficher avec cercle et image -->
+                        <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="strategic-avatar" style="border-color: #FF6B6B;" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                        <div class="player-score-display" style="color: #FF6B6B; font-size: 1.8rem;">{{ $opponentScore }}</div>
+                        <div class="opponent-info" style="color: #FF6B6B; font-size: 0.8rem;">{{ $opponentName }} Niv {{ $niveau }}</div>
+                    @else
+                        <!-- ADVERSAIRE NORMAL : afficher sans cercle -->
+                        <div style="text-align: center;">
+                            <div style="color: #FF6B6B; font-size: 1.1rem; font-weight: 700; margin-bottom: 5px;">
+                                {{ $opponentName }}<br>
+                                <span style="font-size: 0.9rem; opacity: 0.9;">Niv {{ $niveau }}</span>
+                            </div>
+                            <div class="player-score-display" style="color: #FF6B6B;">{{ $opponentScore }}</div>
+                        </div>
+                    @endif
+                </div>
             @endif
         </div>
     </div>
@@ -669,8 +702,8 @@ function handleTimeout() {
 
 function activateSkill(skillName) {
     console.log('Skill activé:', skillName);
-    // Fonctionnalité des skills à implémenter plus tard
-    alert('Skill "' + skillName + '" activé ! (Fonctionnalité à venir)');
+    // Fonctionnalité des skills implémentée dans game_answer.blade.php
+    // Pas de popup, le skill est activé directement
 }
 </script>
 @endsection
