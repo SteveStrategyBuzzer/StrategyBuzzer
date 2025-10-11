@@ -615,6 +615,27 @@ class SoloController extends Controller
         $roundEfficiency = session('last_round_efficiency', 0);
         $playerScore = session('last_round_player_score', 0);
         $opponentScore = session('last_round_opponent_score', 0);
+        $theme = session('theme', 'Général');
+        $avatar = session('avatar', 'Aucun');
+        
+        // Calculer les statistiques globales (toutes manches confondues)
+        $globalStats = session('global_stats', []);
+        $totalCorrect = 0;
+        $totalIncorrect = 0;
+        $totalUnanswered = 0;
+        
+        foreach ($globalStats as $stat) {
+            if (!$stat['player_buzzed']) {
+                $totalUnanswered++;
+            } elseif ($stat['is_correct']) {
+                $totalCorrect++;
+            } else {
+                $totalIncorrect++;
+            }
+        }
+        
+        $totalQuestionsPlayed = count($globalStats);
+        $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
         
         $params = [
             'round_number' => $currentRound - 1,  // La manche qui vient de se terminer
@@ -625,8 +646,16 @@ class SoloController extends Controller
             'niveau_adversaire' => $niveau,        // Niveau de l'adversaire
             'vies_restantes' => $viesRestantes,    // Vies restantes
             'round_efficiency' => $roundEfficiency, // % efficacité manche
-            'player_score' => $playerScore,        // Score joueur
-            'opponent_score' => $opponentScore,    // Score adversaire
+            'player_score' => $playerScore,        // Score joueur manche
+            'opponent_score' => $opponentScore,    // Score adversaire manche
+            'theme' => $theme,                     // Thème joué
+            'avatar' => $avatar,                   // Avatar stratégique
+            // Statistiques globales
+            'total_correct' => $totalCorrect,
+            'total_incorrect' => $totalIncorrect,
+            'total_unanswered' => $totalUnanswered,
+            'total_questions_played' => $totalQuestionsPlayed,
+            'global_efficiency' => $globalEfficiency,
         ];
         
         return view('round_result', compact('params'));

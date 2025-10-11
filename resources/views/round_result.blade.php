@@ -24,11 +24,13 @@
         .result-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            padding: 40px;
-            max-width: 600px;
+            padding: 30px;
+            max-width: 700px;
             width: 100%;
             text-align: center;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
         }
         
         .round-title {
@@ -139,31 +141,71 @@
             @endif
         </div>
         
+        <!-- Informations de base -->
+        <div style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 15px; margin: 20px 0;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left;">
+                <div>
+                    <span style="color: #666; font-size: 0.9rem;">🎯 Thème :</span>
+                    <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['theme'] ?? 'Général' }}</strong>
+                </div>
+                <div>
+                    <span style="color: #666; font-size: 0.9rem;">📊 Niveau :</span>
+                    <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['niveau_adversaire'] ?? 1 }}</strong>
+                </div>
+                <div>
+                    <span style="color: #666; font-size: 0.9rem;">⚔️ Manches gagnées :</span>
+                    <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['player_rounds_won'] }}-{{ $params['opponent_rounds_won'] }}</strong>
+                </div>
+                <div>
+                    <span style="color: #666; font-size: 0.9rem;">❤️ Vies :</span>
+                    <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['vies_restantes'] ?? 3 }}</strong>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Score de la manche -->
+        <div style="background: rgba(78, 205, 196, 0.1); padding: 15px; border-radius: 15px; margin: 20px 0;">
+            <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">⚔️ Pointage manche {{ $params['round_number'] }}</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #667eea;">
+                {{ $params['player_score'] ?? 0 }} - {{ $params['opponent_score'] ?? 0 }}
+            </div>
+        </div>
+        
+        <!-- Efficacité manche -->
+        <div style="background: rgba(243, 156, 18, 0.1); padding: 15px; border-radius: 15px; margin: 20px 0;">
+            <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité manche {{ $params['round_number'] }}</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #f39c12;">{{ $params['round_efficiency'] ?? 0 }}%</div>
+        </div>
+        
+        <!-- Statistiques globales (toutes manches) -->
+        <div style="background: rgba(46, 204, 113, 0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 Statistiques globales</div>
+            
+            <div style="display: grid; gap: 10px;">
+                <div style="background: white; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">✅ Réussi</span>
+                    <strong style="color: #2ECC71; font-size: 1.3rem;">{{ $params['total_correct'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</strong>
+                </div>
+                
+                <div style="background: white; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">❌ Échec</span>
+                    <strong style="color: #E74C3C; font-size: 1.3rem;">{{ $params['total_incorrect'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</strong>
+                </div>
+                
+                <div style="background: white; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">⏭️ Sans réponse</span>
+                    <strong style="color: #95a5a6; font-size: 1.3rem;">{{ $params['total_unanswered'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</strong>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 10px;">
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité globale de la partie</div>
+                <div style="font-size: 2rem; font-weight: 800; color: #667eea;">{{ $params['global_efficiency'] ?? 0 }}%</div>
+            </div>
+        </div>
+        
         <div style="color: #666; margin: 20px 0;">
             Prochaine manche : <strong>{{ $params['nb_questions'] }} questions</strong>
-        </div>
-        
-        <!-- Statistiques de la manche -->
-        <div style="display: flex; justify-content: space-around; margin: 30px 0; padding: 20px; background: rgba(102, 126, 234, 0.1); border-radius: 15px;">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #666; margin-bottom: 5px;">⚔️ Score</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">{{ $params['player_score'] ?? 0 }}-{{ $params['opponent_score'] ?? 0 }}</div>
-            </div>
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #666; margin-bottom: 5px;">❤️ Vies</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">{{ $params['vies_restantes'] ?? 3 }}</div>
-            </div>
-        </div>
-        
-        <div style="display: flex; justify-content: space-around; margin: 20px 0; padding: 20px; background: rgba(102, 126, 234, 0.1); border-radius: 15px;">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #666; margin-bottom: 5px;">📈 Efficacité manche</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">{{ $params['round_efficiency'] ?? 0 }}%</div>
-            </div>
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #666; margin-bottom: 5px;">🎯 Niveau adversaire</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">{{ $params['niveau_adversaire'] ?? 1 }}</div>
-            </div>
         </div>
         
         <form action="{{ route('solo.game') }}" method="GET">
