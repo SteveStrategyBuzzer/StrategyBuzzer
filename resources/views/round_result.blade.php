@@ -158,7 +158,7 @@
                 </div>
                 <div>
                     <span style="color: #666; font-size: 0.9rem;">❤️ Vies :</span>
-                    <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['vies_restantes'] ?? 3 }}</strong>
+                    <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['vies_restantes'] ?? config('game.life_max', 3) }}</strong>
                 </div>
             </div>
         </div>

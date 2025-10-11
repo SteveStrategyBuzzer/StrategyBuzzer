@@ -2,7 +2,7 @@
 
 return [
     // nb max de vies
-    'life_max' => 5,
+    'life_max' => 3,
 
     // délai de régénération (en minutes)
     'life_regen_minutes' => 60, // 1 heure

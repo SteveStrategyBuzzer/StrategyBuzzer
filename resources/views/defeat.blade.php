@@ -184,12 +184,12 @@
         @if(!$params['is_guest'])
         <div class="lives-section" style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 15px; margin: 20px 0;">
             <h3 style="color: #856404; font-size: 1.3rem; margin-bottom: 10px;">
-                ❤️ Vies restantes : {{ $params['remaining_lives'] ?? 0 }} / {{ config('game.life_max', 5) }}
+                ❤️ Vies restantes : {{ $params['remaining_lives'] ?? 0 }} / {{ config('game.life_max', 3) }}
             </h3>
             @if(!$params['has_lives'])
                 <p style="color: #721c24; background: #f8d7da; padding: 15px; border-radius: 10px; margin-top: 10px;">
                     ⏰ Vous n'avez plus de vies !<br>
-                    <strong>Prochaine vie dans : {{ $params['cooldown_time'] }}</strong>
+                    <strong>Prochaine vie dans : <span id="countdown-timer">{{ $params['cooldown_time'] }}</span></strong>
                 </p>
             @endif
         </div>
@@ -204,7 +204,7 @@
             @else
                 <h2 class="retry-title">Plus de vies disponibles</h2>
                 <p style="color: #666; font-size: 1.1rem;">
-                    Revenez dans {{ $params['cooldown_time'] }} pour continuer à jouer !
+                    Revenez dans <span id="countdown-timer-2">{{ $params['cooldown_time'] }}</span> pour continuer à jouer !
                 </p>
             @endif
         </div>
@@ -227,5 +227,44 @@
             <a href="{{ route('menu') }}" class="btn btn-menu">Menu</a>
         </div>
     </div>
+    
+    @if(!$params['is_guest'] && !$params['has_lives'] && $params['next_life_regen'])
+    <script>
+    (function() {
+        const timer1 = document.getElementById('countdown-timer');
+        const timer2 = document.getElementById('countdown-timer-2');
+        const targetIso = '{{ $params['next_life_regen'] }}';
+        
+        if (!targetIso || (!timer1 && !timer2)) return;
+        
+        const fmt = (ms) => {
+            if (ms < 0) ms = 0;
+            const totalSec = Math.floor(ms / 1000);
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            return `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+        };
+        
+        const tick = () => {
+            const target = new Date(targetIso).getTime();
+            const now = Date.now();
+            const diffMs = target - now;
+            
+            const timeText = fmt(diffMs);
+            if (timer1) timer1.textContent = timeText;
+            if (timer2) timer2.textContent = timeText;
+            
+            // Si le temps est écoulé, recharger la page pour régénérer une vie
+            if (diffMs <= 0) {
+                window.location.reload();
+            }
+        };
+        
+        tick();
+        setInterval(tick, 1000);
+    })();
+    </script>
+    @endif
 </body>
 </html>

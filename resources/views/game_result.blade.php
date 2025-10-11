@@ -664,7 +664,7 @@
             </div>
             <div class="info-item">
                 <span class="info-label">❤️ Vies:</span>
-                <span class="info-value">{{ $params['vies_restantes'] ?? 3 }}</span>
+                <span class="info-value">{{ $params['vies_restantes'] ?? config('game.life_max', 3) }}</span>
             </div>
         </div>
         

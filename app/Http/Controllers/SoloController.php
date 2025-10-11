@@ -887,6 +887,7 @@ class SoloController extends Controller
             'remaining_lives' => $remainingLives,
             'has_lives' => $hasLives,
             'cooldown_time' => $cooldownTime,
+            'next_life_regen' => $user && $user->next_life_regen ? $user->next_life_regen->toIso8601String() : null,
             'is_guest' => !$user,
         ];
         
