@@ -523,23 +523,12 @@ if ($bossInfo) {
     
     <!-- Section centrale : Gauche (joueur+adversaire) + Centre (chrono) + Droite (avatar stratégique+skills) -->
     <div class="chrono-section">
-        <!-- GAUCHE : Avatar joueur + Score + Adversaire -->
+        <!-- GAUCHE : Avatar joueur uniquement -->
         <div class="left-column">
-            <!-- Joueur -->
             <div class="player-section">
                 <img src="{{ $playerAvatarPath }}" alt="Player" class="player-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
                 <div class="player-score-display">{{ $params['score'] }}</div>
                 <div class="opponent-info" style="color: #4ECDC4;">{{ $playerName }} Niv {{ $niveau }}</div>
-            </div>
-            
-            <!-- Adversaire/Boss -->
-            <div class="opponent-section">
-                @if($bossInfo)
-                    <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="opponent-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                    <div class="opponent-score-display">{{ $opponentScore }}</div>
-                @else
-                    <div class="opponent-info">{{ $opponentName }} Niv {{ $niveau }}</div>
-                @endif
             </div>
         </div>
         
