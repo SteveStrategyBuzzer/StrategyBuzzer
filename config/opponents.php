@@ -101,15 +101,15 @@ return [
         88 => 'Lara',
         89 => 'Noa',
         
-        // Niveaux 91-99 : Mix (derniers noms - noms uniques restants)
+        // Niveaux 91-99 : Mix (derniers noms)
         91 => 'Axel',
         92 => 'Lian',
         93 => 'Jorge',
         94 => 'Miki',
         95 => 'Dalia',
         96 => 'Nelly',
-        97 => 'Enzo',
-        98 => 'Milo',
+        97 => 'Venetia',
+        98 => 'Kanoa',
         99 => 'Kira',
     ],
     
