@@ -20,7 +20,8 @@ class LifeService
     }
 
     /**
-     * Ajoute 1 vie si l’échéance est passée (et pas au max).
+     * Ajoute 1 vie si l'échéance est passée (et pas au max).
+     * Continue de régénérer vie par vie jusqu'à atteindre le maximum.
      * Accepte un User nullable pour éviter les erreurs quand non connecté.
      */
     public function regenerateLives(?User $user): void
@@ -36,18 +37,26 @@ class LifeService
             return;
         }
 
-        // Si l’heure est atteinte et qu’on n’est pas au max
+        // Si l'heure est atteinte et qu'on n'est pas au max
         $currentLives = (int) ($user->lives ?? 0);
         if (now()->greaterThanOrEqualTo($user->next_life_regen) && $currentLives < $this->maxLives()) {
-            $user->lives         = $currentLives + 1;
-            $user->next_life_regen = now()->addMinutes($this->regenMinutes());
+            $user->lives = $currentLives + 1;
+            
+            // Si on n'est toujours pas au max après la régénération, redémarrer le cooldown
+            if ($user->lives < $this->maxLives()) {
+                $user->next_life_regen = now()->addMinutes($this->regenMinutes());
+            } else {
+                // Si on a atteint le max, supprimer le cooldown
+                $user->next_life_regen = null;
+            }
+            
             $user->save();
         }
     }
 
     /**
-     * Retourne "HHh MMm SSs" jusqu’à la prochaine vie,
-     * ou le texte d’attente figé si au max, ou null si non applicable.
+     * Retourne "HHh MMm SSs" jusqu'à la prochaine vie,
+     * ou le texte d'attente figé si au max, ou null si non applicable.
      * Accepte un User nullable.
      */
     public function timeUntilNextRegen(?User $user): ?string
@@ -56,7 +65,7 @@ class LifeService
             return null;
         }
 
-        // Si déjà au max → texte d’attente figé
+        // Si déjà au max → texte d'attente figé
         if (((int) ($user->lives ?? 0)) >= $this->maxLives()) {
             return (string) config('game.life_wait_text', 'en attente 1h 00m 00s');
         }
@@ -74,7 +83,7 @@ class LifeService
 
     /**
      * Déduit 1 vie au joueur. 
-     * Si c'était la dernière vie, lance le cooldown de régénération.
+     * Si le joueur passe en dessous du max, lance le cooldown de régénération.
      * Accepte un User nullable.
      */
     public function deductLife(?User $user): void
@@ -88,8 +97,9 @@ class LifeService
         // Déduire 1 vie (minimum 0)
         $user->lives = max(0, $currentLives - 1);
         
-        // Si le joueur n'a plus de vies et qu'il n'y a pas de cooldown en cours
-        if ($user->lives === 0 && !$user->next_life_regen) {
+        // Si le joueur n'est pas au max de vies et qu'il n'y a pas de cooldown en cours
+        // Démarrer le cooldown pour régénérer progressivement jusqu'à atteindre le max
+        if ($user->lives < $this->maxLives() && !$user->next_life_regen) {
             $user->next_life_regen = now()->addMinutes($this->regenMinutes());
         }
         

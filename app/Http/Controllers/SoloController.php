@@ -853,6 +853,9 @@ class SoloController extends Controller
         // On récupère juste les informations pour l'affichage
         $lifeService = new \App\Services\LifeService();
         
+        // Régénérer automatiquement les vies si le cooldown est écoulé
+        $lifeService->regenerateLives($user);
+        
         // Récupérer les vies restantes
         $remainingLives = $user ? (int)($user->lives ?? 0) : null;
         $hasLives = $lifeService->hasLivesAvailable($user);
