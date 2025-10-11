@@ -218,7 +218,49 @@
   .start-button:active {
     transform: translateY(-1px);
   }
+  
+  .menu-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 30px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 30px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  .menu-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  @media (max-width: 768px) {
+    .menu-button {
+      top: 10px;
+      right: 10px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+    }
+  }
 </style>
+
+<!-- Bouton Menu -->
+<a href="{{ route('menu') }}" class="menu-button">
+  🏠 Menu
+</a>
 
 <div class="resume-container">
   <!-- Titre -->
