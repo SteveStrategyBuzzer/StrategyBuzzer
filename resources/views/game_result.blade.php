@@ -659,8 +659,8 @@
     <div class="progress-info">
         <div class="info-row">
             <div class="info-item">
-                <span class="info-label">🎯 Manche:</span>
-                <span class="info-value">{{ $params['current_round'] ?? 1 }}/{{ $params['total_rounds'] ?? 5 }}</span>
+                <span class="info-label">⚔️ Score:</span>
+                <span class="info-value">{{ $params['player_rounds_won'] ?? 0 }}-{{ $params['opponent_rounds_won'] ?? 0 }}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">📊 Niveau:</span>
