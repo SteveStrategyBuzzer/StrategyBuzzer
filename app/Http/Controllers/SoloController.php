@@ -8,6 +8,18 @@ class SoloController extends Controller
 {
     public function index(Request $request)
     {
+        // Restaurer le niveau depuis profile_settings pour les utilisateurs authentifiés
+        $user = auth()->user();
+        if ($user) {
+            $settings = (array) ($user->profile_settings ?? []);
+            $savedLevel = (int) data_get($settings, 'gm.solo_level', 1);
+            
+            // Si le niveau sauvegardé est supérieur au niveau en session, utiliser le niveau sauvegardé
+            if ($savedLevel > session('choix_niveau', 1)) {
+                session(['choix_niveau' => $savedLevel]);
+            }
+        }
+        
         // Nouveau joueur : démarre à 1 si absent
         if (!session()->has('choix_niveau')) {
             session(['choix_niveau' => 1]);
@@ -591,16 +603,68 @@ class SoloController extends Controller
             if ($playerRoundsWon >= 2 || $opponentRoundsWon >= 2) {
                 // FIN DE LA PARTIE - rediriger vers victoire ou défaite
                 if ($playerRoundsWon >= 2) {
-                    // Victoire - marquer le flag pour éviter déduction multiple
+                    // VICTOIRE - Débloquer le niveau suivant
+                    $currentChoixNiveau = session('choix_niveau', 1);
+                    $newChoixNiveau = min($currentChoixNiveau + 1, 100); // Maximum niveau 100
+                    
+                    // Mettre à jour la session
+                    session(['choix_niveau' => $newChoixNiveau]);
+                    
+                    // Sauvegarder dans profile_settings pour les utilisateurs authentifiés
+                    $user = auth()->user();
+                    if ($user && method_exists($user, 'save')) {
+                        $settings = (array) ($user->profile_settings ?? []);
+                        
+                        // Initialiser 'gm' si absent
+                        if (!isset($settings['gm'])) {
+                            $settings['gm'] = [];
+                        }
+                        
+                        // Mettre à jour le niveau solo
+                        $settings['gm']['solo_level'] = $newChoixNiveau;
+                        
+                        // Calculer l'XP et les statistiques de progression
+                        $currentXP = (int) data_get($settings, 'gm.xp', 0);
+                        $totalVictories = (int) data_get($settings, 'gm.total_victories', 0);
+                        
+                        // Ajouter XP basé sur le niveau (plus le niveau est élevé, plus on gagne d'XP)
+                        $xpGained = 50 + ($currentChoixNiveau * 10); // 50 base + 10 par niveau
+                        $settings['gm']['xp'] = $currentXP + $xpGained;
+                        $settings['gm']['total_victories'] = $totalVictories + 1;
+                        $settings['gm']['last_victory_date'] = now()->toDateTimeString();
+                        
+                        $user->profile_settings = $settings;
+                        $user->save();
+                    }
+                    
+                    // Marquer le flag pour éviter déduction multiple
                     session(['match_result_processed' => true]);
                     return redirect()->route('solo.victory');
                 } else {
-                    // Défaite - déduire une vie UNE SEULE FOIS
-                    // Vérifier si la vie n'a pas déjà été déduite (protection contre refresh)
+                    // DÉFAITE - déduire une vie UNE SEULE FOIS et sauvegarder les statistiques
                     if (!session('match_result_processed')) {
                         $user = auth()->user();
+                        
+                        // Déduire la vie
                         $lifeService = new \App\Services\LifeService();
                         $lifeService->deductLife($user);
+                        
+                        // Sauvegarder les statistiques de défaite
+                        if ($user && method_exists($user, 'save')) {
+                            $settings = (array) ($user->profile_settings ?? []);
+                            
+                            // Initialiser 'gm' si absent
+                            if (!isset($settings['gm'])) {
+                                $settings['gm'] = [];
+                            }
+                            
+                            $totalDefeats = (int) data_get($settings, 'gm.total_defeats', 0);
+                            $settings['gm']['total_defeats'] = $totalDefeats + 1;
+                            $settings['gm']['last_defeat_date'] = now()->toDateTimeString();
+                            
+                            $user->profile_settings = $settings;
+                            $user->save();
+                        }
                         
                         // Marquer le flag pour éviter déduction multiple
                         session(['match_result_processed' => true]);
