@@ -568,12 +568,12 @@ function activateSkill(skillName, skillIndex) {
     
     // Implémenter l'effet du skill selon le nom
     if (skillName === 'Calcul Rapide') {
-        // Illuminer la bonne réponse
+        // Illuminer la bonne réponse en utilisant data-index pour gérer les questions Vrai/Faux
         const correctIndex = {{ $correctIndex }};
-        const answerBubbles = document.querySelectorAll('.answer-bubble');
+        const correctBubble = document.querySelector(`.answer-bubble[data-index="${correctIndex}"]`);
         
-        if (correctIndex >= 0 && correctIndex < answerBubbles.length) {
-            answerBubbles[correctIndex].classList.add('highlighted');
+        if (correctBubble) {
+            correctBubble.classList.add('highlighted');
             
             // Afficher un message de confirmation
             const skillMessage = document.createElement('div');
