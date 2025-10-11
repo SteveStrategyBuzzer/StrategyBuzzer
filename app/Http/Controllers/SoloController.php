@@ -61,6 +61,7 @@ class SoloController extends Controller
             'answered_questions' => [],
             'used_question_ids' => [],
             'current_question' => null,        // Sera généré au premier game()
+            'global_stats' => [],              // Statistiques globales toutes manches
         ]);
 
         // Avatar vraiment optionnel - tenter de restaurer depuis profile_settings
@@ -431,8 +432,18 @@ class SoloController extends Controller
             'opponent_faster' => $opponentBehavior['is_faster'],
             'opponent_correct' => $opponentBehavior['is_correct'],
             'opponent_points' => $opponentBehavior['points'],
+            'player_buzzed' => $playerBuzzed,
         ];
         session(['answered_questions' => $answeredQuestions]);
+        
+        // Ajouter aux statistiques globales (toutes manches confondues)
+        $globalStats = session('global_stats', []);
+        $globalStats[] = [
+            'is_correct' => $isCorrect,
+            'player_buzzed' => $playerBuzzed,
+            'round' => session('current_round', 1),
+        ];
+        session(['global_stats' => $globalStats]);
         
         // Calculer les données de progression avec valeurs par défaut sécurisées
         $currentQuestion = session('current_question_number', 1);
@@ -450,6 +461,25 @@ class SoloController extends Controller
         $currentOpponentScore = session('opponent_score', 0);
         $showPosition = $niveau >= 70;
         $position = $showPosition ? ($currentScore >= $currentOpponentScore ? 1 : 2) : null;
+        
+        // Calculer les statistiques globales (toutes manches confondues)
+        $globalStats = session('global_stats', []);
+        $totalCorrect = 0;
+        $totalIncorrect = 0;
+        $totalUnanswered = 0;
+        
+        foreach ($globalStats as $stat) {
+            if (!$stat['player_buzzed']) {
+                $totalUnanswered++;
+            } elseif ($stat['is_correct']) {
+                $totalCorrect++;
+            } else {
+                $totalIncorrect++;
+            }
+        }
+        
+        $totalQuestions = count($globalStats);
+        $globalEfficiency = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100) : 0;
 
         $params = [
             'question' => $question,
@@ -477,6 +507,13 @@ class SoloController extends Controller
             'current_round' => session('current_round', 1),
             'player_rounds_won' => session('player_rounds_won', 0),
             'opponent_rounds_won' => session('opponent_rounds_won', 0),
+            // Statistiques globales (toutes manches)
+            'total_correct' => $totalCorrect,
+            'total_incorrect' => $totalIncorrect,
+            'total_unanswered' => $totalUnanswered,
+            'total_questions_played' => $totalQuestions,
+            'global_efficiency' => $globalEfficiency,
+            'theme' => session('theme', 'Général'),
         ];
         
         return view('game_result', compact('params'));

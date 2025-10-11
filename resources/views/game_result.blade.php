@@ -659,8 +659,8 @@
     <div class="progress-info">
         <div class="info-row">
             <div class="info-item">
-                <span class="info-label">⚔️ Score:</span>
-                <span class="info-value">{{ $params['player_rounds_won'] ?? 0 }}-{{ $params['opponent_rounds_won'] ?? 0 }}</span>
+                <span class="info-label">🎯 Thème:</span>
+                <span class="info-value">{{ $params['theme'] ?? 'Général' }}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">📊 Niveau:</span>
@@ -670,23 +670,40 @@
         
         <div class="info-row">
             <div class="info-item">
-                <span class="info-label">❤️ Vies:</span>
-                <span class="info-value">{{ $params['vies_restantes'] ?? 3 }}</span>
+                <span class="info-label">⚔️ Score Manches:</span>
+                <span class="info-value">{{ $params['player_rounds_won'] ?? 0 }}-{{ $params['opponent_rounds_won'] ?? 0 }}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">⚡ Skills:</span>
-                <span class="info-value">{{ $params['skills_restants'] ?? 3 }}</span>
+                <span class="info-label">❤️ Vies:</span>
+                <span class="info-value">{{ $params['vies_restantes'] ?? 3 }}</span>
             </div>
         </div>
         
         <div class="info-row">
             <div class="info-item wide">
-                <span class="info-label">📈 Progression:</span>
-                <span class="info-value">{{ $params['pourcentage'] ?? 0 }}%</span>
+                <span class="info-label">✅ Réussi:</span>
+                <span class="info-value">{{ $params['total_correct'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</span>
             </div>
+        </div>
+        
+        <div class="info-row">
             <div class="info-item wide">
-                <span class="info-label">❓ Restantes:</span>
-                <span class="info-value">{{ $params['questions_restantes'] ?? 0 }}</span>
+                <span class="info-label">❌ Échec:</span>
+                <span class="info-value">{{ $params['total_incorrect'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</span>
+            </div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-item wide">
+                <span class="info-label">⏭️ Sans réponse:</span>
+                <span class="info-value">{{ $params['total_unanswered'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</span>
+            </div>
+        </div>
+        
+        <div class="info-row">
+            <div class="info-item wide">
+                <span class="info-label">📈 Efficacité globale:</span>
+                <span class="info-value">{{ $params['global_efficiency'] ?? 0 }}%</span>
             </div>
         </div>
         
