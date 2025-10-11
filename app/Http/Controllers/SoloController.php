@@ -74,8 +74,8 @@ class SoloController extends Controller
         ]);
 
         // Avatar vraiment optionnel - tenter de restaurer depuis profile_settings
+        $user = \Illuminate\Support\Facades\Auth::user();
         if (!session()->has('avatar') || empty(session('avatar'))) {
-            $user = \Illuminate\Support\Facades\Auth::user();
             if ($user) {
                 $settings = (array) ($user->profile_settings ?? []);
                 $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
@@ -84,6 +84,27 @@ class SoloController extends Controller
                 session(['avatar' => 'Aucun']);
             }
         }
+        
+        // Synchroniser l'avatar joueur depuis profile_settings (normaliser 'default' et valeurs vides)
+        $currentAvatar = session('selected_avatar', '');
+        // Normaliser les anciennes valeurs 'default' ou vides
+        if (!$currentAvatar || $currentAvatar === 'default') {
+            if ($user) {
+                $settings = (array) ($user->profile_settings ?? []);
+                $playerAvatarUrl = (string) data_get($settings, 'avatar.url', '');
+                // Normaliser aussi 'default' dans profile_settings
+                if ($playerAvatarUrl && $playerAvatarUrl !== 'default') {
+                    session(['selected_avatar' => $playerAvatarUrl]);
+                } else {
+                    // Utiliser standard1 comme avatar par défaut
+                    session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+                }
+            } else {
+                // Invités : utiliser standard1 comme avatar par défaut
+                session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+            }
+        }
+        
         $avatar = session('avatar', 'Aucun');
 
         // Questions fictives (placeholder)
@@ -114,7 +135,7 @@ class SoloController extends Controller
         ];
 
         $bossInfo = $this->getBossForLevel($niveau);
-        $playerAvatar = session('selected_avatar', 'default');
+        $playerAvatar = session('selected_avatar', 'images/avatars/standard/standard1.png');
         
         // Vérifier conflit d'avatar seulement s'il y a un boss
         $avatarConflict = false;
@@ -164,12 +185,32 @@ class SoloController extends Controller
             }
         }
         
+        // Synchroniser l'avatar joueur depuis profile_settings (normaliser 'default' et valeurs vides)
+        $currentAvatar = session('selected_avatar', '');
+        // Normaliser les anciennes valeurs 'default' ou vides
+        if (!$currentAvatar || $currentAvatar === 'default') {
+            if ($user) {
+                $settings = (array) ($user->profile_settings ?? []);
+                $playerAvatarUrl = (string) data_get($settings, 'avatar.url', '');
+                // Normaliser aussi 'default' dans profile_settings
+                if ($playerAvatarUrl && $playerAvatarUrl !== 'default') {
+                    session(['selected_avatar' => $playerAvatarUrl]);
+                } else {
+                    // Utiliser standard1 comme avatar par défaut
+                    session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+                }
+            } else {
+                // Invités : utiliser standard1 comme avatar par défaut
+                session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+            }
+        }
+        
         // Récupérer les paramètres de la session ou créer des valeurs par défaut
         $theme = session('theme', 'general');
         $nbQuestions = session('nb_questions', 30);
         $niveau = session('niveau_selectionne', session('choix_niveau', 1));
         $avatar = session('avatar', 'Aucun');
-        $playerAvatar = session('selected_avatar', 'default');
+        $playerAvatar = session('selected_avatar', 'images/avatars/standard/standard1.png');
         
         $themeIcons = [
             'general'    => '🧠',
@@ -241,6 +282,26 @@ class SoloController extends Controller
             $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
             if ($strategicName) {
                 session(['avatar' => $strategicName]);
+            }
+        }
+        
+        // Synchroniser l'avatar joueur depuis profile_settings (normaliser 'default' et valeurs vides)
+        $currentAvatar = session('selected_avatar', '');
+        // Normaliser les anciennes valeurs 'default' ou vides
+        if (!$currentAvatar || $currentAvatar === 'default') {
+            if ($user) {
+                $settings = (array) ($user->profile_settings ?? []);
+                $playerAvatarUrl = (string) data_get($settings, 'avatar.url', '');
+                // Normaliser aussi 'default' dans profile_settings
+                if ($playerAvatarUrl && $playerAvatarUrl !== 'default') {
+                    session(['selected_avatar' => $playerAvatarUrl]);
+                } else {
+                    // Utiliser standard1 comme avatar par défaut
+                    session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+                }
+            } else {
+                // Invités : utiliser standard1 comme avatar par défaut
+                session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
             }
         }
         
