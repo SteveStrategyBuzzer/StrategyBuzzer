@@ -71,4 +71,48 @@ class LifeService
         $hours = $diff->h + ($diff->d * 24);
         return sprintf('%02dh %02dm %02ds', $hours, $diff->i, $diff->s);
     }
+
+    /**
+     * Déduit 1 vie au joueur. 
+     * Si c'était la dernière vie, lance le cooldown de régénération.
+     * Accepte un User nullable.
+     */
+    public function deductLife(?User $user): void
+    {
+        if (!$user) {
+            return;
+        }
+
+        $currentLives = (int) ($user->lives ?? 0);
+        
+        // Déduire 1 vie (minimum 0)
+        $user->lives = max(0, $currentLives - 1);
+        
+        // Si le joueur n'a plus de vies et qu'il n'y a pas de cooldown en cours
+        if ($user->lives === 0 && !$user->next_life_regen) {
+            $user->next_life_regen = now()->addMinutes($this->regenMinutes());
+        }
+        
+        $user->save();
+    }
+
+    /**
+     * Vérifie si le joueur a au moins 1 vie disponible.
+     * Accepte un User nullable (retourne true pour les invités).
+     */
+    public function hasLivesAvailable(?User $user): bool
+    {
+        // Les invités peuvent toujours jouer
+        if (!$user) {
+            return true;
+        }
+
+        // Les utilisateurs avec pack infini peuvent toujours jouer
+        if ($user->infinite_lives_until && now()->lt($user->infinite_lives_until)) {
+            return true;
+        }
+
+        // Vérifier les vies normales
+        return ((int) ($user->lives ?? 0)) > 0;
+    }
 }

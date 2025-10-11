@@ -180,21 +180,49 @@
             </div>
         </div>
         
+        <!-- Affichage des vies restantes -->
+        @if(!$params['is_guest'])
+        <div class="lives-section" style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 15px; margin: 20px 0;">
+            <h3 style="color: #856404; font-size: 1.3rem; margin-bottom: 10px;">
+                ❤️ Vies restantes : {{ $params['remaining_lives'] ?? 0 }} / {{ config('game.life_max', 5) }}
+            </h3>
+            @if(!$params['has_lives'])
+                <p style="color: #721c24; background: #f8d7da; padding: 15px; border-radius: 10px; margin-top: 10px;">
+                    ⏰ Vous n'avez plus de vies !<br>
+                    <strong>Prochaine vie dans : {{ $params['cooldown_time'] }}</strong>
+                </p>
+            @endif
+        </div>
+        @endif
+        
         <div class="retry-section">
-            <h2 class="retry-title">Ne baissez pas les bras !</h2>
-            <p style="color: #666; font-size: 1.1rem;">
-                Réessayez et montrez votre vraie valeur !
-            </p>
+            @if($params['is_guest'] || $params['has_lives'])
+                <h2 class="retry-title">Ne baissez pas les bras !</h2>
+                <p style="color: #666; font-size: 1.1rem;">
+                    Réessayez et montrez votre vraie valeur !
+                </p>
+            @else
+                <h2 class="retry-title">Plus de vies disponibles</h2>
+                <p style="color: #666; font-size: 1.1rem;">
+                    Revenez dans {{ $params['cooldown_time'] }} pour continuer à jouer !
+                </p>
+            @endif
         </div>
         
         <div class="action-buttons">
-            <form action="{{ route('solo.start') }}" method="POST" style="display: inline;">
-                @csrf
-                <input type="hidden" name="nb_questions" value="{{ session('nb_questions', 30) }}">
-                <input type="hidden" name="theme" value="{{ session('theme', 'general') }}">
-                <input type="hidden" name="niveau_joueur" value="{{ $params['current_level'] }}">
-                <button type="submit" class="btn btn-retry">🔄 Réessayer</button>
-            </form>
+            @if($params['is_guest'] || $params['has_lives'])
+                <form action="{{ route('solo.start') }}" method="POST" style="display: inline;">
+                    @csrf
+                    <input type="hidden" name="nb_questions" value="{{ session('nb_questions', 30) }}">
+                    <input type="hidden" name="theme" value="{{ session('theme', 'general') }}">
+                    <input type="hidden" name="niveau_joueur" value="{{ $params['current_level'] }}">
+                    <button type="submit" class="btn btn-retry">🔄 Réessayer</button>
+                </form>
+            @else
+                <button type="button" class="btn btn-retry" disabled style="opacity: 0.5; cursor: not-allowed;">
+                    🔄 Réessayer (Plus de vies)
+                </button>
+            @endif
             
             <a href="{{ route('menu') }}" class="btn btn-menu">Menu</a>
         </div>

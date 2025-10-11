@@ -28,6 +28,14 @@ class SoloController extends Controller
 
     public function start(Request $request)
     {
+        // Vérifier que le joueur a des vies disponibles (sauf pour les invités)
+        $user = auth()->user();
+        $lifeService = new \App\Services\LifeService();
+        
+        if ($user && !$lifeService->hasLivesAvailable($user)) {
+            return redirect()->route('menu')->with('error', 'Vous n\'avez plus de vies disponibles. Revenez plus tard !');
+        }
+        
         // Avatar non requis => on ne le valide pas ici
         $validated = $request->validate([
             'nb_questions'  => 'required|integer|min:1',
@@ -62,6 +70,7 @@ class SoloController extends Controller
             'used_question_ids' => [],
             'current_question' => null,        // Sera généré au premier game()
             'global_stats' => [],              // Statistiques globales toutes manches
+            'match_result_processed' => false, // Réinitialiser le flag pour nouvelle partie
         ]);
 
         // Avatar vraiment optionnel - tenter de restaurer depuis profile_settings
@@ -563,8 +572,20 @@ class SoloController extends Controller
             if ($playerRoundsWon >= 2 || $opponentRoundsWon >= 2) {
                 // FIN DE LA PARTIE - rediriger vers victoire ou défaite
                 if ($playerRoundsWon >= 2) {
+                    // Victoire - marquer le flag pour éviter déduction multiple
+                    session(['match_result_processed' => true]);
                     return redirect()->route('solo.victory');
                 } else {
+                    // Défaite - déduire une vie UNE SEULE FOIS
+                    // Vérifier si la vie n'a pas déjà été déduite (protection contre refresh)
+                    if (!session('match_result_processed')) {
+                        $user = auth()->user();
+                        $lifeService = new \App\Services\LifeService();
+                        $lifeService->deductLife($user);
+                        
+                        // Marquer le flag pour éviter déduction multiple
+                        session(['match_result_processed' => true]);
+                    }
                     return redirect()->route('solo.defeat');
                 }
             }
@@ -743,6 +764,16 @@ class SoloController extends Controller
     {
         $currentLevel = session('niveau_selectionne', 1);
         $theme = session('theme', 'Général');
+        $user = auth()->user();
+        
+        // La vie a déjà été déduite dans nextQuestion() avant la redirection
+        // On récupère juste les informations pour l'affichage
+        $lifeService = new \App\Services\LifeService();
+        
+        // Récupérer les vies restantes
+        $remainingLives = $user ? (int)($user->lives ?? 0) : null;
+        $hasLives = $lifeService->hasLivesAvailable($user);
+        $cooldownTime = $lifeService->timeUntilNextRegen($user);
         
         // Calculer les statistiques globales finales
         $globalStats = session('global_stats', []);
@@ -770,6 +801,10 @@ class SoloController extends Controller
             'total_incorrect' => $totalIncorrect,
             'total_unanswered' => $totalUnanswered,
             'global_efficiency' => $globalEfficiency,
+            'remaining_lives' => $remainingLives,
+            'has_lives' => $hasLives,
+            'cooldown_time' => $cooldownTime,
+            'is_guest' => !$user,
         ];
         
         return view('defeat', compact('params'));
