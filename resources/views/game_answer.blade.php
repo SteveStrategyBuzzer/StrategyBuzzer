@@ -273,6 +273,26 @@ $correctIndex = $params['question']['correct_index'] ?? -1;
         opacity: 0.4;
         cursor: not-allowed;
         filter: grayscale(100%);
+        animation: none !important;
+    }
+    
+    /* Animation de brillance pour les skills non utilisés */
+    @keyframes skillShine {
+        0%, 100% {
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.6),
+                        0 0 20px rgba(255, 215, 0, 0.4),
+                        inset 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        50% {
+            box-shadow: 0 6px 30px rgba(255, 215, 0, 0.9),
+                        0 0 40px rgba(255, 215, 0, 0.7),
+                        inset 0 0 20px rgba(255, 255, 255, 0.4);
+            border-color: #FFE55C;
+        }
+    }
+    
+    .skill-icon-circle:not(.used) {
+        animation: skillShine 2s ease-in-out infinite;
     }
     
     /* Buzz info */
@@ -464,8 +484,18 @@ $correctIndex = $params['question']['correct_index'] ?? -1;
 <!-- Skills de l'avatar stratégique -->
 @if(count($skills) > 0)
 <div class="skills-container">
+    @php
+        $usedSkills = $params['used_skills'] ?? [];
+    @endphp
     @foreach($skills as $skill)
-        <div class="skill-icon-circle" id="skill-{{ $loop->index }}" onclick="activateSkill('{{ $skill['name'] }}', {{ $loop->index }})" title="{{ $skill['name'] }}">
+        @php
+            $isUsed = in_array($skill['name'], $usedSkills);
+        @endphp
+        <div class="skill-icon-circle {{ $isUsed ? 'used' : '' }}" 
+             id="skill-{{ $loop->index }}" 
+             onclick="activateSkill('{{ $skill['name'] }}', {{ $loop->index }})" 
+             title="{{ $skill['name'] }}"
+             data-skill-name="{{ $skill['name'] }}">
             {{ $skill['icon'] }}
         </div>
     @endforeach
@@ -550,21 +580,34 @@ function handleTimeout() {
     }, 2000);
 }
 
-// Variable pour savoir si un skill a été utilisé
-let skillUsed = false;
-
 function activateSkill(skillName, skillIndex) {
-    // Si déjà utilisé, ne rien faire
-    if (skillUsed) {
+    const skillButton = document.getElementById('skill-' + skillIndex);
+    
+    // Vérifier si le skill a déjà été utilisé (classe "used" présente)
+    if (skillButton.classList.contains('used')) {
         return;
     }
     
     console.log('Skill activé:', skillName);
     
-    // Marquer le skill comme utilisé
-    skillUsed = true;
-    const skillButton = document.getElementById('skill-' + skillIndex);
+    // Marquer le skill comme utilisé visuellement immédiatement
     skillButton.classList.add('used');
+    
+    // Enregistrer l'utilisation du skill dans la session via l'API
+    fetch("{{ route('solo.use-skill') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ skill_name: skillName })
+    }).then(response => response.json())
+      .then(data => {
+          console.log('Skill enregistré:', data);
+      })
+      .catch(error => {
+          console.error('Erreur lors de l\'enregistrement du skill:', error);
+      });
     
     // Implémenter l'effet du skill selon le nom
     if (skillName === 'Calcul Rapide') {
