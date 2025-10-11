@@ -612,7 +612,7 @@ class SoloController extends Controller
                     
                     // Sauvegarder dans profile_settings pour les utilisateurs authentifiés
                     $user = auth()->user();
-                    if ($user && method_exists($user, 'save')) {
+                    if ($user instanceof \Illuminate\Database\Eloquent\Model) {
                         $settings = (array) ($user->profile_settings ?? []);
                         
                         // Initialiser 'gm' si absent
@@ -650,7 +650,7 @@ class SoloController extends Controller
                         $lifeService->deductLife($user);
                         
                         // Sauvegarder les statistiques de défaite
-                        if ($user && method_exists($user, 'save')) {
+                        if ($user instanceof \Illuminate\Database\Eloquent\Model) {
                             $settings = (array) ($user->profile_settings ?? []);
                             
                             // Initialiser 'gm' si absent
