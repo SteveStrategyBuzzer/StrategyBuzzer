@@ -43,18 +43,9 @@ class SoloController extends Controller
         $max = session('choix_niveau', 1);
         if ($niveau > $max) $niveau = $max;
 
-        // Calculer questions par manche (5 manches au total)
-        // Distribution équitable: base + reste distribué sur les premières manches
-        $totalRounds = 5;
-        $baseQuestionsPerRound = floor($nbQuestions / $totalRounds);
-        $remainderQuestions = $nbQuestions % $totalRounds;
-        
-        // Créer un tableau avec le nombre de questions par manche
-        $questionsDistribution = [];
-        for ($i = 1; $i <= $totalRounds; $i++) {
-            // Les premières manches (selon le reste) ont une question supplémentaire
-            $questionsDistribution[$i] = $baseQuestionsPerRound + ($i <= $remainderQuestions ? 1 : 0);
-        }
+        // NOUVEAU SYSTÈME : Best of 3 manches
+        // Une manche = TOUTES les questions sélectionnées
+        // Gagner 2 manches sur 3 pour gagner la partie
         
         // Persistance session - initialiser TOUTES les variables de jeu
         session([
@@ -62,15 +53,14 @@ class SoloController extends Controller
             'nb_questions'       => $nbQuestions,
             'theme'              => $theme,
             'current_question_number' => 1,
-            'current_round' => 1,
-            'total_rounds' => $totalRounds,
-            'questions_distribution' => $questionsDistribution,
-            'round_start_question' => 1,
-            'score' => 0,
-            'opponent_score' => 0,
+            'current_round' => 1,              // Manche actuelle (1, 2 ou 3)
+            'player_rounds_won' => 0,          // Manches gagnées par le joueur
+            'opponent_rounds_won' => 0,        // Manches gagnées par l'adversaire
+            'score' => 0,                      // Score de la manche actuelle
+            'opponent_score' => 0,             // Score adversaire de la manche actuelle
             'answered_questions' => [],
             'used_question_ids' => [],
-            'current_question' => null,  // Sera généré au premier game()
+            'current_question' => null,        // Sera généré au premier game()
         ]);
 
         // Avatar vraiment optionnel - tenter de restaurer depuis profile_settings
@@ -483,9 +473,10 @@ class SoloController extends Controller
             'opponent_faster' => $opponentBehavior['is_faster'],
             'opponent_correct' => $opponentBehavior['is_correct'],
             'opponent_points' => $opponentBehavior['points'],
-            // Données de manche
+            // Données de manche (Best of 3)
             'current_round' => session('current_round', 1),
-            'total_rounds' => session('total_rounds', 5),
+            'player_rounds_won' => session('player_rounds_won', 0),
+            'opponent_rounds_won' => session('opponent_rounds_won', 0),
         ];
         
         return view('game_result', compact('params'));
@@ -505,53 +496,51 @@ class SoloController extends Controller
         // Récupérer les données de session
         $currentQuestion = session('current_question_number', 1);
         $nbQuestions = session('nb_questions', 30);
-        $currentRound = session('current_round', 1);
-        $totalRounds = session('total_rounds', 5);
-        $questionsDistribution = session('questions_distribution', []);
-        $roundStartQuestion = session('round_start_question', 1);
         
-        // GARDE CRITIQUE: Si on a atteint toutes les questions, terminer le jeu
+        // SYSTÈME BEST OF 3 : Vérifier si la manche est terminée
         if ($currentQuestion >= $nbQuestions) {
-            return redirect()->route('solo.stat');
-        }
-        
-        // Obtenir le nombre de questions pour la manche actuelle
-        $questionsThisRound = $questionsDistribution[$currentRound] ?? ceil($nbQuestions / $totalRounds);
-        
-        // Calculer combien de questions ont été faites dans cette manche
-        $questionsInCurrentRound = $currentQuestion - $roundStartQuestion + 1;
-        
-        // Vérifier si on a terminé la manche actuelle OU si elle a 0 questions
-        if ($questionsInCurrentRound >= $questionsThisRound || $questionsThisRound == 0) {
-            // On a terminé cette manche
-            if ($currentRound >= $totalRounds) {
-                // Fin de la partie (5 manches terminées)
+            // Fin de la manche - déterminer le gagnant de la manche
+            $playerScore = session('score', 0);
+            $opponentScore = session('opponent_score', 0);
+            
+            $playerRoundsWon = session('player_rounds_won', 0);
+            $opponentRoundsWon = session('opponent_rounds_won', 0);
+            
+            // Qui a gagné cette manche ?
+            if ($playerScore > $opponentScore) {
+                $playerRoundsWon++;
+            } else {
+                $opponentRoundsWon++;
+            }
+            
+            session([
+                'player_rounds_won' => $playerRoundsWon,
+                'opponent_rounds_won' => $opponentRoundsWon,
+            ]);
+            
+            // Vérifier si quelqu'un a gagné la partie (2 manches sur 3)
+            if ($playerRoundsWon >= 2 || $opponentRoundsWon >= 2) {
+                // FIN DE LA PARTIE
                 return redirect()->route('solo.stat');
             }
             
             // Passer à la manche suivante
-            $newRound = $currentRound + 1;
-            $newStartQuestion = $currentQuestion + 1;
-            
-            // Si la prochaine manche a 0 questions, continuer à sauter les manches vides
-            while ($newRound <= $totalRounds && ($questionsDistribution[$newRound] ?? 0) == 0) {
-                $newRound++;
-            }
-            
-            // Si on a sauté toutes les manches restantes, terminer
-            if ($newRound > $totalRounds || $newStartQuestion > $nbQuestions) {
-                return redirect()->route('solo.stat');
-            }
-            
+            $currentRound = session('current_round', 1);
             session([
-                'current_round' => $newRound,
-                'current_question_number' => $newStartQuestion,
-                'round_start_question' => $newStartQuestion,
+                'current_round' => $currentRound + 1,
+                'current_question_number' => 1,  // Recommencer à la question 1
+                'score' => 0,                     // Réinitialiser les scores
+                'opponent_score' => 0,
+                'answered_questions' => [],
+                'used_question_ids' => [],       // Réinitialiser les questions utilisées
             ]);
-        } else {
-            // Continuer dans la manche actuelle
-            session(['current_question_number' => $currentQuestion + 1]);
+            
+            // Rediriger vers une page de transition de manche
+            return redirect()->route('solo.round-result');
         }
+        
+        // Continuer dans la manche actuelle
+        session(['current_question_number' => $currentQuestion + 1]);
         
         // Nettoyer la question actuelle pour forcer une nouvelle génération
         session()->forget('current_question');
@@ -561,6 +550,23 @@ class SoloController extends Controller
         session()->forget('buzz_time');
         
         return redirect()->route('solo.game');
+    }
+
+    public function roundResult()
+    {
+        $currentRound = session('current_round', 1);
+        $playerRoundsWon = session('player_rounds_won', 0);
+        $opponentRoundsWon = session('opponent_rounds_won', 0);
+        
+        $params = [
+            'round_number' => $currentRound - 1,  // La manche qui vient de se terminer
+            'next_round' => $currentRound,         // La prochaine manche
+            'player_rounds_won' => $playerRoundsWon,
+            'opponent_rounds_won' => $opponentRoundsWon,
+            'nb_questions' => session('nb_questions', 30),
+        ];
+        
+        return view('round_result', compact('params'));
     }
 
     public function stat()
