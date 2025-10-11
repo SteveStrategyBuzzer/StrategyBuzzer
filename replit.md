@@ -6,6 +6,10 @@ StrategyBuzzer is a real-time quiz buzzer game application that combines a Larav
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (October 11, 2025)
+- **Game Question Page Complete Redesign**: Major restructure with 3-column layout: (1) LEFT: Player avatar + score + random player name (Jade, Hugo, etc.) with level, (2) CENTER: Chronometer, (3) RIGHT: Strategic avatar + skill icons displayed as circular buttons (icon only, no text) vertically stacked. Removed opponent from main display. Buzzer replaced with realistic image (buzzer.png with "STRATEGY BUZZ BUZZER" text). All responsive breakpoints updated for new layout.
+- **Strategic Avatar Session Sync**: Fixed strategic avatar persistence across sessions. Added auto-restore logic in SoloController (start, resume, game methods) that checks profile_settings when session is empty or 'Aucun'. Strategic avatars now persist correctly after session expiration.
+
 ## System Architecture
 
 ### Frontend Architecture
