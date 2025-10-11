@@ -6,30 +6,6 @@ StrategyBuzzer is a real-time quiz buzzer game application that combines a Larav
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (October 11, 2025)
-- **Continuous Life Regeneration System**: Implemented progressive life regeneration that continues vie-by-vie until reaching maximum (3 lives). Modified deductLife() to start cooldown immediately when lives < max (not just at 0). Enhanced regenerateLives() to automatically restart cooldown after each life recovery until max is reached, then stops (next_life_regen = null). Added automatic regeneration call in defeat() controller. System now properly handles scenarios where player loses multiple lives: recovers 1 life per hour continuously until back to 3 lives.
-- **Life System Configuration & Countdown Timer Fix**: Reduced maximum lives from 5 to 3 (config/game.php -> life_max) to better match long game sessions. Fixed life countdown timer in defeat.blade.php - now updates in real-time every second with JavaScript, displaying "XXh XXm XXs" format. Auto-refreshes page when cooldown completes. Corrected hardcoded life displays in round_result.blade.php and game_result.blade.php to use config values and real params. Added next_life_regen ISO timestamp to defeat controller params for accurate countdown calculation.
-- **Level Progression & Player Improvement System**: Implemented complete level unlock and player progression system. After winning 2 rounds out of 3, players automatically unlock the next level (saved in profile_settings.gm.solo_level, max 100). XP system awards 50 base + (current level × 10) XP per victory. Tracks total victories/defeats in gm.total_victories and gm.total_defeats with timestamps. Level automatically restores from profile_settings when loading Solo page, ensuring progression persists across sessions. Guests unaffected (no saving). Uses instanceof check for Eloquent models to prevent errors with custom guards.
-- **Persistent Skill Glow System**: Implemented complete visual feedback system for strategic avatar skills. Skills now continuously shine with golden pulsating glow (via @keyframes skillShine animation) until used, then stop glowing permanently for remainder of game. Persistence managed via session 'used_skills' array and new /solo/use-skill API endpoint. Skills marked with "used" class on page load based on session data, ensuring consistent state across all questions throughout entire match.
-- **Strategic Avatar Skills Implementation**: Implemented functional skill system for strategic avatars. "Calcul Rapide" skill (Mathématicien avatar) now reveals the correct answer by illuminating it with a glowing effect in game_answer.blade.php. Skills display as circular icons on the right side of the answer page, can be used once per game (persistent), and provide visual feedback. System uses data-index selector to correctly handle both multiple-choice and true/false question types.
-- **Dual Opponent Display Format**: Implemented two distinct visual formats for opponents in game_question.blade.php. Boss opponents (levels 10, 20, 30...100) display with circular avatar image + score + name + level. Regular opponents (levels 1-9, 11-19, etc.) display with simplified textual layout showing only name + level + score without any avatar circle, creating clear visual distinction between boss battles and regular matches.
-- **Life System with 1-Hour Cooldown**: Implemented complete life management system for authenticated users. Players lose 1 life per defeat (protected against page refresh/double submission with session flag 'match_result_processed'). When lives reach 0, automatic 1-hour cooldown activates (tracked via next_life_regen timestamp). Defeat page displays remaining lives, cooldown timer, and disables retry button when no lives available. start() method blocks game start for users at 0 lives. Guest players unaffected by life system. Managed by LifeService with deductLife() and hasLivesAvailable() methods.
-- **Buzz Timing Competition System**: Fixed buzz timing logic to create real competition with AI opponent. Early buzz (0-25% of chrono time) gives player -40% chance for AI to be faster, medium buzz (25-75%) uses normal AI speed chance, late buzz (75-100%) gives AI +30% bonus to be faster. Makes timing strategic and rewards quick reflexes.
-- **Boss Display Fix**: Corrected getBossForLevel() to only show boss opponents at exact boss levels (10, 20, 30...100) using config/opponents.php. Regular levels (1-9, 11-19, etc.) now properly show regular opponent names instead of boss avatars.
-- **Victory/Defeat Flow Fix**: Replaced obsolete stat page redirect with proper victory/defeat routing. When match ends (best of 3), players now see victory.blade.php (if won 2 rounds) or defeat.blade.php (if lost), with level progression and challenge prompts.
-- **Level Progression System with 90 Unique Opponents**: Implemented comprehensive opponent naming system with 89 unique names across 90 regular levels (1-9, 11-19, 21-29, etc., excluding boss levels). Organized by geographical regions: Europe (Léa, Hugo, Enzo, etc.), Italy/Mediterranean (Luca, Tazio, Giada), Anglo-Saxon (Jack, Liam, Alice), Spanish/Latino (Diego, Rosa, Carmen), Japanese (Yumi, Akira, Sora), East Asian (Lin, Mei, Hana), African/Middle Eastern (Omar, Aziz, Leila), Americas/Polynesia (Maya, Tane, Lilo, Venetia, Kanoa). Boss opponents at levels 10, 20, 30...100 (Le Stratège, Le Prodige, Le Maître...Cerveau Ultime).
-- **Automatic Level Unlock on Victory**: When player wins 2 out of 3 rounds, choix_niveau increments automatically and saves to user profile_settings for authenticated users. Victory page displays prompt "Voulez-vous challenger [Next Opponent Name at Level X]?" with Yes/No buttons. Defeat page shows "Vous avez perdu contre [Opponent Name]" with retry/menu options.
-- **Profile Page Level Display**: Fixed solo_level and league_level to display minimum level 1 (instead of 0) and properly synchronize with session choix_niveau.
-- **Progressive AI Difficulty System**: Fully implemented three-layer AI behavior scaling from level 1-100: (1) Buzz chance increases 65%→100%, (2) Speed chance increases 20%→90%, (3) Success rate increases 60%→100%. Chronometer time decreases from 8→4 seconds. Difficulty curve managed by QuestionService with getOpponentBuzzChance(), getOpponentSpeedChance(), getOpponentSuccessRate().
-- **Best of 3 Match System Implementation**: Complete overhaul of gameplay mechanics. Changed from 5-round system to "best of 3 matches" where one match = all selected questions (e.g., 30 questions = 1 match). Players must win 2 matches out of 3 to win the game. Added round_result.blade.php transition page showing match score (X-0, 1-1, etc.). Upon winning, player advances to next level with stronger opponents, progressing toward boss battles at level 10, 20, etc., and the ultimate "Cerveau Ultime" boss at level 100.
-- **Comprehensive Round Result Page**: Consolidated all statistics into round_result.blade.php (end of round page). Displays: theme, level, round scores (manches gagnées X-X), round points (player-opponent), round efficiency %, global statistics across all rounds (Réussi X/total, Échec X/total, Sans réponse X/total), global efficiency %, and remaining lives. This is the single comprehensive stats page shown at end of each round.
-- **Simplified Question Result Page**: Streamlined game_result.blade.php (after each question) to show only essential info: correct/incorrect answer, score, lives, and progression. All detailed statistics are now shown only at end of round.
-- **Global Statistics System**: Implemented comprehensive statistics tracking across all matches. Added global_stats session variable to accumulate question results (correct/incorrect/unanswered) across all rounds.
-- **Player Name Display Fix**: Fixed empty player name bubble in game_question.blade.php. Changed CSS class from 'opponent-info' to 'player-name' to properly display player name and level.
-- **Player Avatar Display Fix**: Fixed player avatar not displaying when starting a game. Added synchronization logic in start(), resume(), and game() methods to restore player avatar from profile_settings. Normalized legacy 'default' values to use 'images/avatars/standard/standard1.png' for both authenticated users and guests. Player avatars now display correctly on all pages.
-- **Game Question Page Complete Redesign**: Major restructure with 3-column layout: (1) LEFT: Player avatar + score + random player name (Jade, Hugo, etc.) with level, PLUS opponent avatar + score + name with level displayed below player, (2) CENTER: Chronometer, (3) RIGHT: Strategic avatar + skill icons displayed as circular buttons (icon only, no text) vertically stacked. Buzzer replaced with realistic image (buzzer.png with "STRATEGY BUZZ BUZZER" text). All responsive breakpoints updated for new layout.
-- **Strategic Avatar Session Sync**: Fixed strategic avatar persistence across sessions. Added auto-restore logic in SoloController (start, resume, game methods) that checks profile_settings when session is empty or 'Aucun'. Strategic avatars now persist correctly after session expiration.
-
 ## System Architecture
 
 ### Frontend Architecture
@@ -39,6 +15,9 @@ Preferred communication style: Simple, everyday language.
 - **Competitive UI Redesign** for gameplay screens, including energetic chronometers, realistic buzz buttons, and score battle displays.
 - **Viewport-Optimized Gameplay Screens** designed for 100% visibility without scrolling, adapting seamlessly to various mobile and tablet orientations.
 - Features a 3-second concentration countdown screen before games.
+- Visual improvements to the game question page, including strategic avatar alignment, balanced 1v1 opponent display, and a 3-column layout when a strategic avatar is selected.
+- Skill activation no longer uses popup alerts.
+- Persistent visual feedback for strategic avatar skills (golden pulsating glow) until used.
 
 ### Backend Architecture
 - **Laravel 10** as the primary web framework, following an MVC pattern.
@@ -46,7 +25,9 @@ Preferred communication style: Simple, everyday language.
 - **API-first design** with web and API routes, and a service-oriented architecture for game logic, scoring, and player management.
 - **Event-driven system** for real-time game state broadcasting.
 - **QuestionService** for AI-ready, theme-based question generation with difficulty scaling and answer randomization for multiple-choice questions.
-- **Advanced AI Opponent System** with a three-layer behavioral simulation (buzz decision, speed competition, answer accuracy) offering a progressive difficulty curve.
+- **Advanced AI Opponent System** with a three-layer behavioral simulation (buzz decision, speed competition, answer accuracy) offering a progressive difficulty curve. This includes strategic buzz timing adjustments based on player buzz time.
+- Implementation of functional strategic avatar skills, such as "Calcul Rapide" to reveal correct answers.
+- Dual opponent display formats: boss opponents (levels 10, 20, etc.) show circular avatar and full details; regular opponents show simplified textual layout.
 
 ### Database and Storage
 - **PostgreSQL (Replit Neon)** as the primary relational database for user data, game progress, and transactions.
@@ -65,13 +46,17 @@ Preferred communication style: Simple, everyday language.
 
 ### Gameplay and Progression
 - **Complete Gameplay System Implementation** with Question, Answer, and Result screens, managed by **SoloController** for game state and session tracking.
-- **5-Round Match System** with intelligent question distribution and automatic round skipping for games with fewer than 5 questions.
-- **Strategic Avatar System with Boss Battles** for level-based progression and avatar unlocking.
+- **Best of 3 Match System** where winning 2 out of 3 matches progresses the player to the next level.
+- **Strategic Avatar System with Boss Battles** for level-based progression and avatar unlocking. Strategic avatars persist across sessions.
 - **Advanced Scoring System** with points for correct answers (+2 for first, +1 for second) and penalties for wrong buzzes (-2 points).
 - **Expanded Question Database** with 50 unique questions per theme (350 total questions).
 - **Sound system** for audio feedback on game events.
 - Allows players to answer questions for 0 points even if they didn't buzz in time.
-- Strategic avatars persist across sessions and pack avatars display correctly.
+- **Life Management System**: Players have 3 lives (configurable), losing one per defeat. A 1-hour cooldown activates when lives reach 0, with continuous life regeneration until max lives are restored.
+- **Level Progression System**: Players unlock the next level after winning 2 rounds out of 3 (max 100 levels). XP is awarded per victory. Features 90 unique opponents and boss opponents at specific levels (10, 20, ... 100).
+- **Comprehensive Round Result Page**: Displays detailed statistics including theme, level, round scores, points, efficiency, global statistics, and remaining lives.
+- **Simplified Question Result Page**: Shows essential information after each question (correct/incorrect, score, lives, progression).
+- **Global Statistics System**: Tracks question results (correct/incorrect/unanswered) across all rounds.
 
 ## External Dependencies
 
