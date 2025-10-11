@@ -535,12 +535,20 @@ if ($bossInfo) {
             <!-- Adversaire -->
             <div class="player-section">
                 @if($bossInfo)
+                    <!-- BOSS : Afficher avec cercle et image -->
                     <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="player-avatar" style="border-color: #FF6B6B;" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                    <div class="player-score-display" style="color: #FF6B6B;">{{ $opponentScore }}</div>
+                    <div class="opponent-info" style="color: #FF6B6B;">{{ $opponentName }} Niv {{ $niveau }}</div>
                 @else
-                    <div class="player-avatar" style="border-color: #FF6B6B; background: rgba(255,107,107,0.2); display: flex; align-items: center; justify-content: center; font-size: 2rem;">👤</div>
+                    <!-- ADVERSAIRE NORMAL : Juste prénom + niveau + score (SANS cercle) -->
+                    <div style="text-align: center;">
+                        <div style="color: #FF6B6B; font-size: 1.1rem; font-weight: 700; margin-bottom: 5px;">
+                            {{ $opponentName }}<br>
+                            <span style="font-size: 0.9rem; opacity: 0.9;">Niv {{ $niveau }}</span>
+                        </div>
+                        <div class="player-score-display" style="color: #FF6B6B;">{{ $opponentScore }}</div>
+                    </div>
                 @endif
-                <div class="player-score-display" style="background: rgba(255,107,107,0.2); color: #FF6B6B;">{{ $opponentScore }}</div>
-                <div class="opponent-info" style="color: #FF6B6B;">{{ $opponentName }} Niv {{ $niveau }}</div>
             </div>
         </div>
         
