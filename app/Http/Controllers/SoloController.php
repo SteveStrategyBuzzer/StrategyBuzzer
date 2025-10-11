@@ -390,11 +390,15 @@ class SoloController extends Controller
         // Vérifier si le joueur a buzzé
         $playerBuzzed = session('buzzed', false);
         
+        // Récupérer le temps de buzz et le temps du chrono
+        $buzzTime = session('buzz_time', 0);
+        $chronoTime = session('chrono_time', 8);
+        
         // Vérifier la réponse du joueur
         $isCorrect = $questionService->checkAnswer($question, $answerIndex);
         
-        // Simuler le comportement complet de l'adversaire IA (passer si le joueur a buzzé)
-        $opponentBehavior = $questionService->simulateOpponentBehavior($niveau, $question, $playerBuzzed);
+        // Simuler le comportement complet de l'adversaire IA (passer timing du buzz)
+        $opponentBehavior = $questionService->simulateOpponentBehavior($niveau, $question, $playerBuzzed, $buzzTime, $chronoTime);
         
         // Calculer les points du joueur selon les nouvelles règles
         $playerPoints = 0;
@@ -557,8 +561,12 @@ class SoloController extends Controller
             
             // Vérifier si quelqu'un a gagné la partie (2 manches sur 3)
             if ($playerRoundsWon >= 2 || $opponentRoundsWon >= 2) {
-                // FIN DE LA PARTIE
-                return redirect()->route('solo.stat');
+                // FIN DE LA PARTIE - rediriger vers victoire ou défaite
+                if ($playerRoundsWon >= 2) {
+                    return redirect()->route('solo.victory');
+                } else {
+                    return redirect()->route('solo.defeat');
+                }
             }
             
             // Calculer l'efficacité de la manche qui vient de se terminer
@@ -858,43 +866,28 @@ class SoloController extends Controller
 
     public function getBossForLevel($niveau)
     {
-        // Pas de boss avant le niveau 10
-        if ($niveau < 10) {
-            return null;
+        // Charger les boss depuis la configuration
+        $opponents = config('opponents');
+        $bossOpponents = $opponents['boss_opponents'] ?? [];
+        
+        // Retourner le boss UNIQUEMENT si le niveau est exactement un niveau de boss (10, 20, 30, etc.)
+        if (isset($bossOpponents[$niveau])) {
+            $bossName = $bossOpponents[$niveau];
+            
+            // Créer le slug pour le chemin de l'image
+            $slug = strtolower($bossName);
+            $slug = str_replace(['é', 'è', 'ê'], 'e', $slug);
+            $slug = str_replace(['à', 'â'], 'a', $slug);
+            $slug = str_replace(' ', '-', $slug);
+            $slug = str_replace('\'', '', $slug);
+            
+            return [
+                'name' => $bossName,
+                'slug' => $slug,
+                'avatar' => "images/avatars/boss/{$slug}.png"
+            ];
         }
         
-        // Bosses = Épiques (⭐) et Légendaires (👑) uniquement
-        $bosses = [
-            // Épiques ⭐ (niveaux 10-40)
-            10 => ['name' => '🎭 Comédien', 'avatar' => 'images/avatars/comedienne.png', 'skills' => $this->getAvatarSkills('Comédien')],
-            20 => ['name' => '🧙‍♂️ Magicien', 'avatar' => 'images/avatars/magicienne.png', 'skills' => $this->getAvatarSkills('Magicien')],
-            30 => ['name' => '🔥 Challenger', 'avatar' => 'images/avatars/challenger.png', 'skills' => $this->getAvatarSkills('Challenger')],
-            40 => ['name' => '📚 Historien', 'avatar' => 'images/avatars/historien.png', 'skills' => $this->getAvatarSkills('Historien')],
-            
-            // Légendaires 👑 (niveaux 50-90)
-            50 => ['name' => '🤖 IA Junior', 'avatar' => 'images/avatars/ia-junior.png', 'skills' => $this->getAvatarSkills('IA Junior')],
-            60 => ['name' => '🏆 Stratège', 'avatar' => 'images/avatars/stratege.png', 'skills' => $this->getAvatarSkills('Stratège')],
-            70 => ['name' => '⚡ Sprinteur', 'avatar' => 'images/avatars/sprinteur.png', 'skills' => $this->getAvatarSkills('Sprinteur')],
-            80 => ['name' => '🌟 Visionnaire', 'avatar' => 'images/avatars/visionnaire.png', 'skills' => $this->getAvatarSkills('Visionnaire')],
-            90 => ['name' => '🤖 IA Junior', 'avatar' => 'images/avatars/ia-junior.png', 'skills' => $this->getAvatarSkills('IA Junior')],
-            
-            // Boss Final 🧠 (niveau 100)
-            100 => [
-                'name' => '🧠 Cerveau Ultime', 
-                'avatar' => 'images/avatars/cerveau-boss.png', 
-                'skills' => [
-                    'Possède TOUTES les compétences des 8 avatars stratégiques',
-                    'Intelligence artificielle suprême',
-                    'Maîtrise absolue de toutes les connaissances'
-                ]
-            ],
-        ];
-
-        // Trouver le boss correspondant au niveau (arrondi à la dizaine inférieure)
-        $bossLevel = floor($niveau / 10) * 10;
-        if ($bossLevel < 10) $bossLevel = 10;
-        if ($bossLevel > 100) $bossLevel = 100;
-
-        return $bosses[$bossLevel] ?? null;
+        return null;
     }
 }

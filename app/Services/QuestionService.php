@@ -446,7 +446,7 @@ class QuestionService
      * Simule le comportement complet de l'adversaire IA
      * Retourne: ['buzzes' => bool, 'is_faster' => bool, 'is_correct' => bool, 'points' => int]
      */
-    public function simulateOpponentBehavior($niveau, $questionData, $playerBuzzed = true)
+    public function simulateOpponentBehavior($niveau, $questionData, $playerBuzzed = true, $buzzTime = 0, $chronoTime = 8)
     {
         // ÉTAPE 1: L'IA décide si elle buzz (Sans Réponse)
         $buzzChance = $this->getOpponentBuzzChance($niveau);
@@ -464,6 +464,26 @@ class QuestionService
         
         // ÉTAPE 2: L'IA détermine sa vitesse (si elle est plus rapide que le joueur)
         $speedChance = $this->getOpponentSpeedChance($niveau);
+        
+        // Ajuster la vitesse en fonction du timing du buzz du joueur
+        if ($playerBuzzed && $buzzTime > 0) {
+            $buzzPercentage = ($buzzTime / $chronoTime) * 100;
+            
+            if ($buzzPercentage <= 25) {
+                // Buzz très tôt (0-25%) : IA a -40% de chance d'être plus rapide
+                $speedChance = max(0, $speedChance - 40);
+            } elseif ($buzzPercentage <= 50) {
+                // Buzz tôt (25-50%) : IA a -20% de chance
+                $speedChance = max(0, $speedChance - 20);
+            } elseif ($buzzPercentage <= 75) {
+                // Buzz moyen (50-75%) : pas de bonus/malus
+                // Garder la vitesse normale
+            } else {
+                // Buzz très tard (75-100%) : IA a +30% de chance d'être plus rapide
+                $speedChance = min(100, $speedChance + 30);
+            }
+        }
+        
         $isFaster = (rand(1, 100) <= $speedChance);
         
         // ÉTAPE 3: L'IA répond (Taux de Réussite)
