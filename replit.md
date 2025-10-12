@@ -68,6 +68,8 @@ Preferred communication style: Simple, everyday language.
 - **WebSocket-like functionality** through Firebase listeners and event broadcasting for buzz notifications, score updates, and game transitions.
 
 ### Gameplay and Progression
+
+### Solo Mode
 - **Complete Gameplay System Implementation** with Question, Answer, and Result screens, managed by **SoloController** for game state and session tracking.
 - **Best of 3 Match System** where winning 2 out of 3 matches progresses the player to the next level.
 - **Strategic Avatar System with Boss Battles** for level-based progression and avatar unlocking. Strategic avatars persist across sessions.
@@ -80,6 +82,16 @@ Preferred communication style: Simple, everyday language.
 - **Comprehensive Round Result Page**: Displays detailed statistics including theme, level, round scores, points, efficiency, global statistics, and remaining lives.
 - **Simplified Question Result Page**: Shows essential information after each question (correct/incorrect, score, lives, progression).
 - **Global Statistics System**: Tracks question results (correct/incorrect/unanswered) across all rounds.
+
+### Duo Mode (October 2025)
+- **Complete Backend Implementation** with DuoController, DuoMatchmakingService, DivisionService.
+- **Division-Based Progression**: Point-based system (0-99 Bronze, 100-199 Silver, 200-299 Gold, 300-399 Platinum, 400+ Legend).
+- **Intelligent Scoring**: +1 vs weaker opponent, +2 vs equal level, +5 vs stronger opponent, -2 for loss.
+- **Matchmaking System**: Invite specific player or random matchmaking within same division.
+- **Best-of-3 System**: Draws replay the same round without consuming a round slot; match ends when a player wins 2 rounds or 3 decisive rounds are played (tiebreaker by total score).
+- **Real-time Gameplay**: Server-side buzz timestamps, fair multi-player buzz validation, anti-cheat measures.
+- **Database Schema**: duo_matches, player_duo_stats, player_divisions tables with proper relations.
+- **Unlock Requirement**: 100 Solo matches played (tracked as defeats-victories/100).
 
 ## External Dependencies
 
