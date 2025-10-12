@@ -108,6 +108,19 @@ Preferred communication style: Simple, everyday language.
 - **API Routes**: Complete REST API with authentication middleware for match creation, gameplay, and statistics.
 - **Web Routes**: Blade template routes for all frontend pages with proper user context.
 
+### League Team Mode (5v5) (October 2025)
+- **Complete Implementation**: Full backend (TeamService, LeagueTeamService, LeagueTeamController) and frontend (4 Blade pages).
+- **Team Management System**: Create teams (name + 3-char tag), invite players, accept/decline invitations, captain role with member management.
+- **5-Player Roster System**: Exactly 5 players per team required for matchmaking, captain auto-assignment on leave, member kick functionality.
+- **Division-Based Progression**: Teams have division/points/stats, identical division system to Duo/Individual modes.
+- **Team Matchmaking**: Automatic random matchmaking within same division for teams with full 5-player rosters.
+- **5v5 Team Gameplay**: Best-of-3 matches with team scores aggregating individual player performances.
+- **Database Schema**: teams, team_members, team_invitations, league_team_matches tables with proper Eloquent relations.
+- **Eloquent Relations**: Team hasMany TeamMember, TeamMember belongsTo User, using teamMembers() relation for member access.
+- **Frontend Pages**: Team management (create/manage), lobby (matchmaking/rankings), game interface (5v5 display), detailed results.
+- **Security**: Authorization checks on all endpoints, only team members can access matches, captain-only actions protected.
+- **Universal Services**: Reuses GameStateService and BuzzManagerService for fair multi-player gameplay with 10 players.
+
 ## External Dependencies
 
 ### Core Framework Dependencies
