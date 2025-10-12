@@ -114,10 +114,18 @@ if ($bossInfo) {
     /* Section centrale avec chronomètre et avatars */
     .chrono-section {
         display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        margin: 20px 0;
+    }
+    
+    .chrono-row {
+        display: flex;
         align-items: center;
         justify-content: center;
         gap: 40px;
-        margin: 20px 0;
     }
     
     /* Colonne gauche : joueur + adversaire */
@@ -369,8 +377,124 @@ if ($bossInfo) {
         filter: grayscale(100%);
     }
     
+    /* Zone desktop cachée par défaut (visible uniquement en desktop/paysage) */
+    .strategic-desktop-zone {
+        display: none;
+    }
     
-    /* Responsive */
+    /* DESKTOP / PAYSAGE : Disposition en grille selon schéma */
+    @media (min-width: 768px) and (orientation: landscape), 
+           (min-width: 1024px) {
+        .game-container {
+            max-width: 1400px;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+        
+        /* Question en haut à gauche */
+        .question-header {
+            grid-column: 1;
+            grid-row: 1;
+            margin-bottom: 0;
+        }
+        
+        /* Avatar stratégique + skills en haut à droite */
+        .strategic-desktop-zone {
+            grid-column: 2;
+            grid-row: 1 / 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(78, 205, 196, 0.05);
+            border-radius: 20px;
+            border: 2px solid rgba(78, 205, 196, 0.2);
+        }
+        
+        .strategic-desktop-zone .strategic-section {
+            margin-bottom: 10px;
+        }
+        
+        .strategic-desktop-zone .skills-icons {
+            margin-top: 10px;
+        }
+        
+        /* Section basse : joueur + adversaire + chrono + buzzer en ligne */
+        .chrono-section {
+            grid-column: 1;
+            grid-row: 2;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 30px;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .chrono-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+        }
+        
+        .left-column {
+            flex-direction: row;
+            gap: 40px;
+        }
+        
+        .right-column {
+            display: none; /* Caché en mode desktop car déplacé dans strategic-desktop-zone */
+        }
+        
+        /* Buzzer plus grand en desktop, s'aligne dans la ligne */
+        .buzz-container {
+            margin-top: 0;
+            flex-shrink: 0;
+        }
+        
+        .buzz-button img {
+            width: 180px;
+            height: 180px;
+        }
+        
+        .chrono-circle {
+            width: 160px;
+            height: 160px;
+        }
+        
+        .chrono-time {
+            font-size: 3.5rem;
+        }
+        
+        .player-avatar {
+            width: 90px;
+            height: 90px;
+        }
+        
+        .opponent-avatar {
+            width: 85px;
+            height: 85px;
+        }
+        
+        .strategic-avatar {
+            width: 100px;
+            height: 100px;
+        }
+        
+        .skill-icon-circle {
+            width: 50px;
+            height: 50px;
+            font-size: 1.4rem;
+        }
+    }
+    
+    /* Responsive Mobile */
     @media (max-width: 768px) {
         .chrono-section {
             gap: 20px;
@@ -529,8 +653,50 @@ if ($bossInfo) {
         <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     
+    <!-- Zone Desktop/Paysage : Avatar stratégique + Skills (visible uniquement en desktop/paysage) -->
+    <div class="strategic-desktop-zone">
+        @if($currentAvatar !== 'Aucun')
+            <div class="strategic-section">
+                @if(!empty($strategicAvatarPath))
+                    <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                @else
+                    <div class="strategic-placeholder">⚔️</div>
+                @endif
+                <div class="player-name" style="color: #FFD700; font-size: 0.9rem; margin-top: 10px;">{{ $currentAvatar }}</div>
+            </div>
+            
+            @if(count($skills) > 0)
+            <div class="skills-icons">
+                @foreach($skills as $skill)
+                    <div class="skill-icon-circle" onclick="activateSkill('{{ $skill['name'] }}')">
+                        {{ $skill['icon'] }}
+                    </div>
+                @endforeach
+            </div>
+            @endif
+        @else
+            <!-- Pas d'avatar stratégique : afficher l'adversaire -->
+            <div class="strategic-section">
+                @if($bossInfo)
+                    <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="strategic-avatar" style="border-color: #FF6B6B;" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                    <div class="player-score-display" style="color: #FF6B6B; font-size: 1.8rem; margin-top: 10px;">{{ $opponentScore }}</div>
+                    <div class="opponent-info" style="color: #FF6B6B; font-size: 0.9rem;">{{ $opponentName }} Niv {{ $niveau }}</div>
+                @else
+                    <div style="text-align: center;">
+                        <div style="color: #FF6B6B; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">
+                            {{ $opponentName }}<br>
+                            <span style="font-size: 1rem; opacity: 0.9;">Niv {{ $niveau }}</span>
+                        </div>
+                        <div class="player-score-display" style="color: #FF6B6B;">{{ $opponentScore }}</div>
+                    </div>
+                @endif
+            </div>
+        @endif
+    </div>
+    
     <!-- Section centrale : Gauche (joueur+adversaire) + Centre (chrono) + Droite (avatar stratégique+skills) -->
     <div class="chrono-section">
+        <div class="chrono-row">
         <!-- GAUCHE : Avatar joueur + adversaire -->
         <div class="left-column">
             <!-- Joueur -->
@@ -613,16 +779,17 @@ if ($bossInfo) {
                 </div>
             @endif
         </div>
-    </div>
-    
-    <!-- Buzzer redessiné -->
-    <div class="buzz-container">
-        <form id="buzzForm" method="POST" action="{{ route('solo.buzz') }}">
-            @csrf
-            <button type="button" id="buzzButton" class="buzz-button" onclick="handleBuzz()">
-                <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzz Buzzer">
-            </button>
-        </form>
+        </div>
+        
+        <!-- Buzzer intégré dans la section (visible en mode desktop dans la ligne, en mobile en bas) -->
+        <div class="buzz-container">
+            <form id="buzzForm" method="POST" action="{{ route('solo.buzz') }}">
+                @csrf
+                <button type="button" id="buzzButton" class="buzz-button" onclick="handleBuzz()">
+                    <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzz Buzzer">
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 
