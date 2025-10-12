@@ -165,6 +165,14 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
     })->name('rankings');
 });
 
+/* ===== LIGUE ÉQUIPE ===== */
+Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(function () {
+    Route::get('/management', [App\Http\Controllers\LeagueTeamController::class, 'showTeamManagement'])->name('management');
+    Route::get('/lobby', [App\Http\Controllers\LeagueTeamController::class, 'showLobby'])->name('lobby');
+    Route::get('/game/{match}', [App\Http\Controllers\LeagueTeamController::class, 'showGame'])->name('game');
+    Route::get('/results/{match}', [App\Http\Controllers\LeagueTeamController::class, 'showResults'])->name('results');
+});
+
 /* ===== Quêtes (si les vues existent) ===== */
 if (view()->exists('quests'))  Route::view('/quests', 'quests')->name('quests');
 if (view()->exists('quetes'))  Route::view('/quetes', 'quetes')->name('quetes');
