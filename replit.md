@@ -29,6 +29,29 @@ Preferred communication style: Simple, everyday language.
 - Implementation of functional strategic avatar skills, such as "Calcul Rapide" to reveal correct answers.
 - Dual opponent display formats: boss opponents (levels 10, 20, etc.) show circular avatar and full details; regular opponents show simplified textual layout.
 
+#### Gameplay Services Architecture (October 2025)
+**Universal gameplay services for all modes** (Solo, Duo, Ligue, Maître du jeu):
+
+- **GameStateService**: Centralized game state management
+  - Best of 3 rounds system with round isolation (scores reset between rounds)
+  - Dual-track scoring: legacy scalaires (player/opponent) + generalized maps (_map suffix)
+  - Tiebreaker by total score when max rounds reached without 2 clear victories
+  - Support for 1-40 players with per-player tracking (player_scores_map, player_rounds_won_map, player_stats_map)
+  - Penalty-aware totals (includes -2 for wrong answers)
+  
+- **BuzzManagerService**: Fair multi-player buzz management
+  - Server-side timestamps (microtime) for guaranteed fairness
+  - Scoring: +2 first correct, +1 second correct, -2 wrong answer, 0 no buzz
+  - Anti-cheat: buzz validation (min/max delay), rate limiting (5 buzz/sec max)
+  - Support for answers without buzz (0 points but counted)
+  
+- **RoomService**: Abstract session/room management
+  - Unified room system for all game modes
+  - Dynamic player limits: Solo (1), Duo (2), Ligue (10), Maître du jeu (40)
+  - Robust host management with automatic reassignment
+  - Array reindexing to prevent sparse indexes
+  - Status tracking: waiting → playing → finished
+
 ### Database and Storage
 - **PostgreSQL (Replit Neon)** as the primary relational database for user data, game progress, and transactions.
 - **Firebase Firestore** for real-time data synchronization during gameplay.
