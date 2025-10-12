@@ -48,4 +48,39 @@ class User extends Authenticatable
         'profile_settings'     => 'array',
         'infinite_lives_until' => 'datetime',
     ];
+
+    public function playerDuoStat()
+    {
+        return $this->hasOne(PlayerDuoStat::class);
+    }
+
+    public function playerDivisions()
+    {
+        return $this->hasMany(PlayerDivision::class);
+    }
+
+    public function duoMatchesAsPlayer1()
+    {
+        return $this->hasMany(DuoMatch::class, 'player1_id');
+    }
+
+    public function duoMatchesAsPlayer2()
+    {
+        return $this->hasMany(DuoMatch::class, 'player2_id');
+    }
+
+    public function getDuoStats()
+    {
+        return $this->playerDuoStat ?? PlayerDuoStat::create([
+            'user_id' => $this->id,
+            'level' => 0,
+        ]);
+    }
+
+    public function getDivisionForMode(string $mode)
+    {
+        return $this->playerDivisions()
+            ->where('mode', $mode)
+            ->first();
+    }
 }
