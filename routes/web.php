@@ -119,6 +119,18 @@ Route::prefix('solo')->name('solo.')->group(function () {
     Route::get('/stat',    [SoloController::class, 'stat'])->name('stat');
 });
 
+/* ===== DUO ===== */
+Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
+    Route::get('/lobby', [App\Http\Controllers\DuoController::class, 'lobby'])->name('lobby');
+    Route::post('/matchmaking/random', [App\Http\Controllers\DuoController::class, 'createMatch'])->name('matchmaking.random');
+    Route::post('/invite', [App\Http\Controllers\DuoController::class, 'invitePlayer'])->name('invite');
+    Route::get('/invitations', [App\Http\Controllers\DuoController::class, 'getInvitations'])->name('invitations');
+    Route::get('/matchmaking', [App\Http\Controllers\DuoController::class, 'matchmaking'])->name('matchmaking');
+    Route::get('/game/{match}', [App\Http\Controllers\DuoController::class, 'game'])->name('game');
+    Route::get('/result/{match}', [App\Http\Controllers\DuoController::class, 'result'])->name('result');
+    Route::get('/rankings', [App\Http\Controllers\DuoController::class, 'rankings'])->name('rankings');
+});
+
 /* ===== Quêtes (si les vues existent) ===== */
 if (view()->exists('quests'))  Route::view('/quests', 'quests')->name('quests');
 if (view()->exists('quetes'))  Route::view('/quetes', 'quetes')->name('quetes');

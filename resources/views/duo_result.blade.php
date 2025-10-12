@@ -1,0 +1,436 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="duo-result-container">
+    <div class="result-header">
+        @if($match_result['player_won'])
+            <div class="result-title victory">VICTOIRE !</div>
+            <div class="result-icon">🏆</div>
+        @else
+            <div class="result-title defeat">DÉFAITE</div>
+            <div class="result-icon">😔</div>
+        @endif
+    </div>
+
+    <div class="final-score">
+        <div class="player-final player-side">
+            <div class="player-avatar">
+                @if(Auth::user()->avatar_url)
+                    <img src="{{ Auth::user()->avatar_url }}" alt="Vous">
+                @else
+                    <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
+                @endif
+            </div>
+            <h3>{{ Auth::user()->name }}</h3>
+            <div class="rounds-won {{ $match_result['player_won'] ? 'winner' : '' }}">
+                {{ $match_result['player_rounds_won'] }}
+            </div>
+        </div>
+
+        <div class="vs-divider">-</div>
+
+        <div class="player-final opponent-side">
+            <div class="player-avatar">
+                @if($opponent['avatar_url'] ?? null)
+                    <img src="{{ $opponent['avatar_url'] }}" alt="{{ $opponent['name'] }}">
+                @else
+                    <div class="default-avatar">{{ substr($opponent['name'] ?? 'O', 0, 1) }}</div>
+                @endif
+            </div>
+            <h3>{{ $opponent['name'] ?? 'Adversaire' }}</h3>
+            <div class="rounds-won {{ !$match_result['player_won'] ? 'winner' : '' }}">
+                {{ $match_result['opponent_rounds_won'] }}
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-section">
+        <div class="stat-card">
+            <div class="stat-label">Points gagnés/perdus</div>
+            <div class="stat-value {{ $points_earned >= 0 ? 'positive' : 'negative' }}">
+                {{ $points_earned >= 0 ? '+' : '' }}{{ $points_earned }}
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Nouvelle division</div>
+            <div class="stat-value division">
+                {{ $new_division['name'] }}
+            </div>
+            <div class="stat-detail">
+                Niveau {{ $new_division['level'] }} • {{ $new_division['points'] }} pts
+            </div>
+        </div>
+
+        @if($division_changed ?? false)
+        <div class="division-change">
+            <div class="change-message">
+                🎉 Vous êtes passé en {{ $new_division['name'] }} !
+            </div>
+        </div>
+        @endif
+    </div>
+
+    <div class="match-stats">
+        <h3>STATISTIQUES DU MATCH</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-icon">✓</span>
+                <span class="stat-number">{{ $global_stats['correct'] ?? 0 }}</span>
+                <span class="stat-text">Bonnes réponses</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon">✗</span>
+                <span class="stat-number">{{ $global_stats['incorrect'] ?? 0 }}</span>
+                <span class="stat-text">Mauvaises réponses</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon">💯</span>
+                <span class="stat-number">{{ $global_stats['total_points'] ?? 0 }}</span>
+                <span class="stat-text">Points totaux</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon">⚡</span>
+                <span class="stat-number">{{ $accuracy ?? 0 }}%</span>
+                <span class="stat-text">Précision</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="round-details">
+        <h3>DÉTAIL DES ROUNDS</h3>
+        <div class="rounds-list">
+            @foreach($round_details ?? [] as $index => $round)
+            <div class="round-item">
+                <div class="round-header">
+                    <span class="round-number">Round {{ $index + 1 }}</span>
+                    <span class="round-winner">
+                        @if($round['winner'] === 'player')
+                            ✓ Gagné
+                        @elseif($round['winner'] === 'opponent')
+                            ✗ Perdu
+                        @else
+                            = Égalité
+                        @endif
+                    </span>
+                </div>
+                <div class="round-score">
+                    {{ $round['player_score'] ?? 0 }} - {{ $round['opponent_score'] ?? 0 }}
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+
+    <div class="actions">
+        <button onclick="window.location.href='{{ route('duo.lobby') }}'" class="btn-primary">
+            REJOUER
+        </button>
+        <button onclick="window.location.href='{{ route('duo.rankings') }}'" class="btn-secondary">
+            CLASSEMENTS
+        </button>
+        <button onclick="window.location.href='{{ route('menu') }}'" class="btn-secondary">
+            MENU PRINCIPAL
+        </button>
+    </div>
+</div>
+
+<style>
+.duo-result-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px 20px;
+    color: white;
+}
+
+.result-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.result-title {
+    font-size: 4em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.result-title.victory {
+    color: #ffd700;
+}
+
+.result-title.defeat {
+    color: #ffcdd2;
+}
+
+.result-icon {
+    font-size: 5em;
+}
+
+.final-score {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 40px;
+    align-items: center;
+    max-width: 800px;
+    margin: 0 auto 40px;
+}
+
+.player-final {
+    text-align: center;
+}
+
+.player-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    overflow: hidden;
+    border: 4px solid white;
+}
+
+.player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.default-avatar {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.3);
+    font-size: 2.5em;
+    font-weight: bold;
+}
+
+.player-final h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.5em;
+}
+
+.rounds-won {
+    font-size: 3em;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.rounds-won.winner {
+    background: #ffd700;
+    color: #1a1a1a;
+}
+
+.vs-divider {
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.stats-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    max-width: 1000px;
+    margin: 0 auto 40px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 25px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+.stat-label {
+    font-size: 1em;
+    opacity: 0.9;
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-size: 2.5em;
+    font-weight: bold;
+}
+
+.stat-value.positive {
+    color: #4caf50;
+}
+
+.stat-value.negative {
+    color: #f44336;
+}
+
+.stat-value.division {
+    color: #ffd700;
+}
+
+.stat-detail {
+    font-size: 0.9em;
+    opacity: 0.9;
+    margin-top: 5px;
+}
+
+.division-change {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #ffd700 0%, #ffeb3b 100%);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+}
+
+.change-message {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #1a1a1a;
+}
+
+.match-stats, .round-details {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 1000px;
+    margin: 0 auto 30px;
+    backdrop-filter: blur(10px);
+}
+
+.match-stats h3, .round-details h3 {
+    margin: 0 0 25px 0;
+    font-size: 1.5em;
+    text-align: center;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-icon {
+    font-size: 2em;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.stat-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.stat-text {
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.rounds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.round-item {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.round-header {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.round-number {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.round-winner {
+    opacity: 0.9;
+}
+
+.round-score {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 15px 40px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: white;
+    color: #667eea;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(255, 255, 255, 0.3);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+    .result-title {
+        font-size: 2.5em;
+    }
+    
+    .final-score {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .vs-divider {
+        transform: rotate(90deg);
+    }
+    
+    .actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+    }
+}
+</style>
+@endsection

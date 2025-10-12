@@ -326,4 +326,121 @@ class DuoController extends Controller
             'rank' => $rank,
         ]);
     }
+
+    public function lobby()
+    {
+        $user = Auth::user();
+        $stats = PlayerDuoStat::firstOrCreate(
+            ['user_id' => $user->id],
+            ['level' => 0]
+        );
+        $division = $this->divisionService->getOrCreateDivision($user, 'duo');
+        $rankings = $this->divisionService->getRankingsForDivision('duo', $division->division, 10);
+
+        return view('duo_lobby', [
+            'stats' => $stats,
+            'division' => $division,
+            'rankings' => $rankings,
+        ]);
+    }
+
+    public function matchmaking(Request $request)
+    {
+        $user = Auth::user();
+        $division = $this->divisionService->getOrCreateDivision($user, 'duo');
+        $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
+
+        return view('duo_matchmaking', [
+            'division' => $division->division,
+            'player_level' => $stats->level,
+        ]);
+    }
+
+    public function game(DuoMatch $match)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        return view('duo_game', [
+            'match_id' => $match->id,
+            'match' => $match->load(['player1', 'player2']),
+        ]);
+    }
+
+    public function result(DuoMatch $match)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        $gameState = $match->game_state;
+        $matchResult = $this->gameStateService->getMatchResult($gameState);
+        
+        $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
+        $division = $this->divisionService->getOrCreateDivision($user, 'duo');
+        
+        $accuracy = 0;
+        $total = ($gameState['global_stats']['correct'] ?? 0) + ($gameState['global_stats']['incorrect'] ?? 0);
+        if ($total > 0) {
+            $accuracy = round(($gameState['global_stats']['correct'] ?? 0) / $total * 100);
+        }
+
+        $pointsEarned = $matchResult['points_earned'] ?? 0;
+
+        return view('duo_result', [
+            'match_result' => $matchResult,
+            'opponent' => $opponent,
+            'new_division' => $division,
+            'points_earned' => $pointsEarned,
+            'global_stats' => $gameState['global_stats'] ?? [],
+            'accuracy' => $accuracy,
+            'round_details' => $gameState['answered_questions'] ?? [],
+        ]);
+    }
+
+    public function rankings(Request $request)
+    {
+        $user = Auth::user();
+        $division = $request->input('division');
+        
+        if (!$division) {
+            $userDivision = $this->divisionService->getOrCreateDivision($user, 'duo');
+            $division = $userDivision->division;
+        }
+
+        $rankings = $this->divisionService->getRankingsForDivision('duo', $division);
+        $myRank = $this->divisionService->getPlayerRank($user, 'duo');
+
+        return view('duo_rankings', [
+            'division' => $division,
+            'rankings' => $rankings,
+            'my_rank' => $myRank,
+        ]);
+    }
+
+    public function getInvitations()
+    {
+        $user = Auth::user();
+        
+        $invitations = DuoMatch::where('player2_id', $user->id)
+            ->where('status', 'waiting')
+            ->with('player1')
+            ->get()
+            ->map(function ($match) {
+                return [
+                    'match_id' => $match->id,
+                    'from_player' => $match->player1,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'invitations' => $invitations,
+        ]);
+    }
 }
