@@ -131,6 +131,40 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::get('/rankings', [App\Http\Controllers\DuoController::class, 'rankings'])->name('rankings');
 });
 
+/* ===== LIGUE INDIVIDUEL ===== */
+Route::prefix('league/individual')->name('league.individual.')->middleware('auth')->group(function () {
+    Route::get('/', [App\Http\Controllers\LeagueIndividualController::class, 'index'])->name('index');
+    Route::get('/lobby', [App\Http\Controllers\LeagueIndividualController::class, 'index'])->name('lobby');
+    Route::get('/game/{match}', function (App\Models\LeagueIndividualMatch $match) {
+        $userId = Auth::id();
+        if ($match->player1_id !== $userId && $match->player2_id !== $userId) {
+            abort(403, 'Unauthorized access to this match');
+        }
+        return view('league_individual_game', compact('match'));
+    })->name('game');
+    Route::get('/results/{match}', function (App\Models\LeagueIndividualMatch $match) {
+        $userId = Auth::id();
+        if ($match->player1_id !== $userId && $match->player2_id !== $userId) {
+            abort(403, 'Unauthorized access to this match');
+        }
+        $match->load(['player1', 'player2']);
+        $gameState = $match->game_state;
+        /** @var App\Models\User $user */
+        $user = Auth::user();
+        $pointsEarned = $match->player1_id == $user->id ? $match->player1_points_earned : $match->player2_points_earned;
+        $stats = $user->leagueIndividualStat;
+        $division = $user->playerDivisions()->where('mode', 'league_individual')->first();
+        return view('league_individual_results', compact('match', 'gameState', 'pointsEarned', 'stats', 'division'));
+    })->name('results');
+    Route::get('/rankings', function () {
+        /** @var App\Models\User $user */
+        $user = Auth::user();
+        $myStats = $user->leagueIndividualStat;
+        $myDivision = $user->playerDivisions()->where('mode', 'league_individual')->first();
+        return view('league_individual_rankings', compact('myStats', 'myDivision'));
+    })->name('rankings');
+});
+
 /* ===== Quêtes (si les vues existent) ===== */
 if (view()->exists('quests'))  Route::view('/quests', 'quests')->name('quests');
 if (view()->exists('quetes'))  Route::view('/quetes', 'quetes')->name('quetes');

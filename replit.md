@@ -95,6 +95,19 @@ Preferred communication style: Simple, everyday language.
 - **Complete Frontend**: 5 pages (Lobby, Matchmaking, Game, Results, Rankings) with responsive design and real-time updates.
 - **Features**: Player invitations, pending invitations display, division-based rankings, detailed match statistics, accuracy tracking.
 
+### League Individual Mode (October 2025)
+- **Complete Implementation**: Full backend (LeagueIndividualService, LeagueIndividualController) and frontend (5 Blade pages).
+- **Permanent 1v1 Career System**: Players progress through divisions in a permanent ranked ladder.
+- **Division System Integration**: Reuses DivisionService from Duo mode (Bronze, Argent, Or, Platine, Diamant, Légende).
+- **Initialization Logic**: First access transfers Duo level as starting level in Bronze division.
+- **Random Matchmaking**: Finds opponents within same division automatically (no invitations).
+- **Identical Scoring**: Same point system as Duo (+1 vs weaker, +2 vs equal, +5 vs stronger, -2 loss).
+- **Universal Gameplay Services**: Reuses GameStateService and BuzzManagerService for best-of-3 matches.
+- **Database Schema**: league_individual_stats, league_individual_matches tables with user relations.
+- **Frontend Pages**: Welcome/initialization, lobby with rankings, game interface, detailed results, division rankings with filters.
+- **API Routes**: Complete REST API with authentication middleware for match creation, gameplay, and statistics.
+- **Web Routes**: Blade template routes for all frontend pages with proper user context.
+
 ## External Dependencies
 
 ### Core Framework Dependencies
