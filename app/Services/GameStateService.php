@@ -251,11 +251,15 @@ class GameStateService
         if ($mode === 'solo' || $mode === 'duo') {
             $playerWon = $gameState['player_rounds_won'] >= 2;
             $opponentWon = $gameState['opponent_rounds_won'] >= 2;
-            $maxRoundsReached = $gameState['current_round'] >= $gameState['total_rounds'];
             
-            // Match terminé si quelqu'un a 2 victoires OU si on a atteint le max de rounds
+            // Compter les rounds décisifs (non-draws) au lieu de current_round
+            // car les draws se rejouent sans consommer un round
+            $decisiveRoundsPlayed = $gameState['player_rounds_won'] + $gameState['opponent_rounds_won'];
+            $maxDecisiveRoundsReached = $decisiveRoundsPlayed >= $gameState['total_rounds'];
+            
+            // Match terminé si quelqu'un a 2 victoires OU si on a joué 3 rounds décisifs
             // (dans ce cas, on départage par le score total)
-            return $playerWon || $opponentWon || $maxRoundsReached;
+            return $playerWon || $opponentWon || $maxDecisiveRoundsReached;
         }
         
         // Mode multi-joueurs : vérifier si un joueur a atteint 2 manches gagnées
