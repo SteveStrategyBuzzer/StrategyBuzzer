@@ -123,18 +123,16 @@ if ($bossInfo) {
     
     .chrono-row {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 40px;
-    }
-    
-    /* Colonne gauche : joueur + adversaire */
-    .left-column {
-        display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
         gap: 20px;
     }
+    
+    .buzz-container-inline {
+        text-align: center;
+    }
+    
     
     .player-section {
         display: flex;
@@ -423,37 +421,32 @@ if ($bossInfo) {
             margin-top: 10px;
         }
         
-        /* Section basse : joueur + adversaire + chrono + buzzer en ligne */
+        /* Section basse : joueur + adversaire + chrono + buzzer en ligne horizontale */
         .chrono-section {
             grid-column: 1;
             grid-row: 2;
             display: flex;
-            flex-direction: row;
             align-items: center;
-            justify-content: space-between;
-            gap: 30px;
+            justify-content: center;
             margin: 0;
             padding: 20px;
         }
         
         .chrono-row {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 40px;
-        }
-        
-        .left-column {
             flex-direction: row;
+            align-items: center;
+            justify-content: space-around;
             gap: 40px;
+            width: 100%;
         }
         
         .right-column {
             display: none; /* Caché en mode desktop car déplacé dans strategic-desktop-zone */
         }
         
-        /* Buzzer plus grand en desktop, s'aligne dans la ligne */
-        .buzz-container {
+        /* Buzzer dans la ligne horizontale */
+        .buzz-container-inline {
             margin-top: 0;
             flex-shrink: 0;
         }
@@ -633,14 +626,6 @@ if ($bossInfo) {
             height: 32px;
             font-size: 1rem;
         }
-        
-        .left-column {
-            gap: 12px;
-        }
-        
-        .right-column {
-            gap: 10px;
-        }
     }
 </style>
 
@@ -694,11 +679,9 @@ if ($bossInfo) {
         @endif
     </div>
     
-    <!-- Section centrale : Gauche (joueur+adversaire) + Centre (chrono) + Droite (avatar stratégique+skills) -->
+    <!-- Section centrale : Joueur | Adversaire | Chrono | Buzzer (alignés en mobile vertical, desktop horizontal) -->
     <div class="chrono-section">
         <div class="chrono-row">
-        <!-- GAUCHE : Avatar joueur + adversaire -->
-        <div class="left-column">
             <!-- Joueur -->
             <div class="player-section">
                 <img src="{{ $playerAvatarPath }}" alt="Player" class="player-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
@@ -706,14 +689,13 @@ if ($bossInfo) {
                 <div class="player-name" style="color: #4ECDC4;">{{ $playerName }} Niv {{ $niveau }}</div>
             </div>
             
-            <!-- Adversaire (seulement si avatar stratégique présent) -->
-            @if($currentAvatar !== 'Aucun')
-            <div class="player-section">
+            <!-- Adversaire (toujours affiché) -->
+            <div class="opponent-section">
                 @if($bossInfo)
                     <!-- BOSS : Afficher avec cercle et image -->
-                    <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="player-avatar" style="border-color: #FF6B6B;" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                    <div class="player-score-display" style="color: #FF6B6B;">{{ $opponentScore }}</div>
-                    <div class="opponent-info" style="color: #FF6B6B;">{{ $opponentName }} Niv {{ $niveau }}</div>
+                    <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="opponent-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                    <div class="opponent-score-display">{{ $opponentScore }}</div>
+                    <div class="opponent-info">{{ $opponentName }} Niv {{ $niveau }}</div>
                 @else
                     <!-- ADVERSAIRE NORMAL : Juste prénom + niveau + score (SANS cercle) -->
                     <div style="text-align: center;">
@@ -721,25 +703,33 @@ if ($bossInfo) {
                             {{ $opponentName }}<br>
                             <span style="font-size: 0.9rem; opacity: 0.9;">Niv {{ $niveau }}</span>
                         </div>
-                        <div class="player-score-display" style="color: #FF6B6B;">{{ $opponentScore }}</div>
+                        <div class="opponent-score-display">{{ $opponentScore }}</div>
                     </div>
                 @endif
             </div>
-            @endif
-        </div>
-        
-        <!-- CENTRE : Chronomètre -->
-        <div class="chrono-container" id="chronoContainer">
-            <div class="chrono-circle">
-                <div class="chrono-time" id="chronoTime">{{ $params['chrono_time'] }}</div>
+            
+            <!-- Chronomètre -->
+            <div class="chrono-container" id="chronoContainer">
+                <div class="chrono-circle">
+                    <div class="chrono-time" id="chronoTime">{{ $params['chrono_time'] }}</div>
+                </div>
+                <div class="chrono-label">⏱️ Secondes</div>
             </div>
-            <div class="chrono-label">⏱️ Secondes</div>
+            
+            <!-- Buzzer -->
+            <div class="buzz-container-inline">
+                <form id="buzzForm" method="POST" action="{{ route('solo.buzz') }}">
+                    @csrf
+                    <button type="button" id="buzzButton" class="buzz-button" onclick="handleBuzz()">
+                        <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzz Buzzer">
+                    </button>
+                </form>
+            </div>
         </div>
         
-        <!-- DROITE : Avatar stratégique + Skills OU Adversaire si pas d'avatar stratégique -->
+        <!-- Avatar stratégique + Skills (mobile uniquement, masqué en desktop) -->
         <div class="right-column">
             @if($currentAvatar !== 'Aucun')
-                <!-- Avatar stratégique aligné avec le joueur -->
                 <div class="strategic-section">
                     @if(!empty($strategicAvatarPath))
                         <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
@@ -758,37 +748,7 @@ if ($bossInfo) {
                     @endforeach
                 </div>
                 @endif
-            @else
-                <!-- Pas d'avatar stratégique : afficher l'adversaire ici -->
-                <div class="strategic-section">
-                    @if($bossInfo)
-                        <!-- BOSS : Afficher avec cercle et image -->
-                        <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="strategic-avatar" style="border-color: #FF6B6B;" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                        <div class="player-score-display" style="color: #FF6B6B; font-size: 1.8rem;">{{ $opponentScore }}</div>
-                        <div class="opponent-info" style="color: #FF6B6B; font-size: 0.8rem;">{{ $opponentName }} Niv {{ $niveau }}</div>
-                    @else
-                        <!-- ADVERSAIRE NORMAL : afficher sans cercle -->
-                        <div style="text-align: center;">
-                            <div style="color: #FF6B6B; font-size: 1.1rem; font-weight: 700; margin-bottom: 5px;">
-                                {{ $opponentName }}<br>
-                                <span style="font-size: 0.9rem; opacity: 0.9;">Niv {{ $niveau }}</span>
-                            </div>
-                            <div class="player-score-display" style="color: #FF6B6B;">{{ $opponentScore }}</div>
-                        </div>
-                    @endif
-                </div>
             @endif
-        </div>
-        </div>
-        
-        <!-- Buzzer intégré dans la section (visible en mode desktop dans la ligne, en mobile en bas) -->
-        <div class="buzz-container">
-            <form id="buzzForm" method="POST" action="{{ route('solo.buzz') }}">
-                @csrf
-                <button type="button" id="buzzButton" class="buzz-button" onclick="handleBuzz()">
-                    <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzz Buzzer">
-                </button>
-            </form>
         </div>
     </div>
 </div>
