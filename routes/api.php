@@ -27,3 +27,16 @@ Route::middleware('auth:sanctum')->prefix('duo')->group(function () {
     Route::get('/rankings', [DuoController::class, 'getRankings']);
     Route::get('/my-stats', [DuoController::class, 'getMyStats']);
 });
+
+Route::middleware('auth:sanctum')->prefix('league/individual')->group(function () {
+    Route::get('/', [App\Http\Controllers\LeagueIndividualController::class, 'index']);
+    Route::post('/initialize', [App\Http\Controllers\LeagueIndividualController::class, 'initialize']);
+    Route::get('/check-initialized', [App\Http\Controllers\LeagueIndividualController::class, 'checkInitialized']);
+    Route::post('/create-match', [App\Http\Controllers\LeagueIndividualController::class, 'createMatch']);
+    Route::get('/match/{match}/game-state', [App\Http\Controllers\LeagueIndividualController::class, 'getGameState']);
+    Route::post('/match/{match}/buzz', [App\Http\Controllers\LeagueIndividualController::class, 'buzz']);
+    Route::post('/match/{match}/submit-answer', [App\Http\Controllers\LeagueIndividualController::class, 'submitAnswer']);
+    Route::post('/match/{match}/finish', [App\Http\Controllers\LeagueIndividualController::class, 'finishMatch']);
+    Route::get('/rankings', [App\Http\Controllers\LeagueIndividualController::class, 'getRankings']);
+    Route::get('/my-stats', [App\Http\Controllers\LeagueIndividualController::class, 'getMyStats']);
+});

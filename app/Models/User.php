@@ -54,6 +54,11 @@ class User extends Authenticatable
         return $this->hasOne(PlayerDuoStat::class);
     }
 
+    public function leagueIndividualStat()
+    {
+        return $this->hasOne(LeagueIndividualStat::class);
+    }
+
     public function playerDivisions()
     {
         return $this->hasMany(PlayerDivision::class);
