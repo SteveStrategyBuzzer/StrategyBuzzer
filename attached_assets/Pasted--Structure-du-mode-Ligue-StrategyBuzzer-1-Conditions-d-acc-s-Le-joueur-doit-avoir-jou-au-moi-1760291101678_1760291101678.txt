@@ -1,0 +1,110 @@
+🏆 Structure du mode Ligue – StrategyBuzzer
+1️⃣ Conditions d’accès
+
+Le joueur doit avoir joué au moins 100 parties Duo.
+
+Ces 100 parties servent à calculer son taux de victoire moyen, qui détermine son niveau de départ individuel.
+
+👥 Structure des équipes
+
+Chaque équipe doit être constituée obligatoirement de 5 joueurs.
+
+Un chef d’équipe (le créateur) peut inscrire l’équipe dans le challenge Ligue via un bouton dans son Profil.
+
+🏅 Divisions
+
+Bronze
+
+Argent
+
+Or
+
+Platine
+
+Diamant
+
+Légende
+
+Chaque division possède :
+
+un classement des victoires/défaites,
+
+un compteur de victoires consécutives,
+
+et un historique des 10 dernières parties.
+
+Les 10 dernières parties déterminent le niveau actuel de l’équipe.
+
+⚔️ Confrontations d’équipes
+
+Une équipe affronte une autre équipe de même division.
+
+Chaque confrontation implique que tous les membres jouent simultanément contre leurs équivalents.
+
+Le résultat collectif (victoire ou défaite) dépend du nombre de duels gagnés par l’équipe.
+
+Les confrontations sont illimitées pendant la durée du challenge du week-end.
+
+Une équipe peut jouer autant de matchs qu’elle le souhaite tant que l’événement du week-end est actif.
+
+📈 Progression des équipes
+
+Si une équipe gagne 10 parties consécutives, elle monte automatiquement à la division supérieure.
+
+Si une équipe perd 10 matchs consécutifs, elle redescend d’une division.
+
+Exemple :
+
+10 victoires consécutives en Bronze → montée en Argent
+
+10 défaites consécutives en Argent → descente en Bronze
+
+Chaque nouvelle division exige 10 nouvelles confrontations pour confirmer son classement.
+
+👤 Progression individuelle (1 contre 1)
+
+Chaque joueur possède un niveau personnel (ex. 60).
+
+Les confrontations 1 contre 1 opposent des joueurs dont les niveaux sont ±5 points du tien.
+
+Points gagnés selon le niveau de l’adversaire :
+Adversaire	Victoire	Points gagnés
+Niveau inférieur (–5 à –1)	✅	+1
+Même niveau (±0)	✅	+2
+Niveau supérieur (+1 à +5)	✅	+3
+
+Le classement individuel se base sur :
+
+les points accumulés,
+
+le ratio victoires/défaites,
+
+et la série de victoires consécutives.
+
+🧮 Classement général
+
+Il existe deux classements :
+
+Classement par équipe : basé sur les divisions, les victoires, défaites et séries consécutives.
+
+Classement par joueur : basé sur les points gagnés et la constance de performance.
+
+🕹️ Cycle de saison
+
+Une saison dure 4 semaines complètes.
+
+À la fin de la saison :
+
+Les 10 meilleures équipes montent automatiquement à la division supérieure.
+
+Les 10 équipes les moins performantes redescendent de division.
+
+Des récompenses sont distribuées selon la division atteinte et la position finale.
+
+💰 Récompenses
+
+Équipes victorieuses : pièces d’intelligence + bonus d’équipe.
+
+Top 10% des joueurs et équipes : avatars, badges, skins ou sons exclusifs.
+
+Participation complète à la saison : gains garantis (même sans victoire).
