@@ -11,18 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('league_individual_stats', function (Blueprint $table) {
+        Schema::create('team_invitations', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('team_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->integer('level')->default(1);
-            $table->integer('matches_played')->default(0);
-            $table->integer('matches_won')->default(0);
-            $table->integer('matches_lost')->default(0);
-            $table->integer('total_points')->default(0);
-            $table->boolean('initialized')->default(false);
+            $table->foreignId('invited_by')->constrained('users')->onDelete('cascade');
+            $table->string('status')->default('pending');
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
             
-            $table->unique('user_id');
+            $table->index(['user_id', 'status']);
         });
     }
 
@@ -31,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('league_individual_stats');
+        Schema::dropIfExists('team_invitations');
     }
 };

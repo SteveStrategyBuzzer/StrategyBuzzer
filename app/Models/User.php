@@ -74,6 +74,23 @@ class User extends Authenticatable
         return $this->hasMany(DuoMatch::class, 'player2_id');
     }
 
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class, 'team_members')
+            ->withPivot(['role', 'joined_at'])
+            ->withTimestamps();
+    }
+
+    public function captainedTeams()
+    {
+        return $this->hasMany(Team::class, 'captain_id');
+    }
+
+    public function teamInvitations()
+    {
+        return $this->hasMany(TeamInvitation::class);
+    }
+
     public function getDuoStats()
     {
         return $this->playerDuoStat ?? PlayerDuoStat::create([
