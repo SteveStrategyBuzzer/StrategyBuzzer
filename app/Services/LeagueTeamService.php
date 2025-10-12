@@ -28,7 +28,7 @@ class LeagueTeamService
 
     public function initializeTeamMatch(Team $team): LeagueTeamMatch
     {
-        if ($team->members()->count() < 5) {
+        if ($team->teamMembers()->count() < 5) {
             throw new \Exception('Votre équipe doit avoir 5 joueurs pour jouer.');
         }
 
@@ -37,12 +37,12 @@ class LeagueTeamService
             throw new \Exception('Aucun adversaire trouvé dans votre division.');
         }
 
-        if ($opponent->members()->count() < 5) {
+        if ($opponent->teamMembers()->count() < 5) {
             throw new \Exception('L\'équipe adverse n\'a pas assez de joueurs.');
         }
 
-        $team1Members = $team->members()->with('user')->get()->pluck('user');
-        $team2Members = $opponent->members()->with('user')->get()->pluck('user');
+        $team1Members = $team->teamMembers()->with('user')->get()->pluck('user');
+        $team2Members = $opponent->teamMembers()->with('user')->get()->pluck('user');
 
         $allPlayers = $team1Members->concat($team2Members)->map(function ($user, $index) {
             return [
@@ -69,9 +69,7 @@ class LeagueTeamService
     {
         return Team::where('division', $team->division)
             ->where('id', '!=', $team->id)
-            ->whereHas('members', function ($query) {
-                $query->havingRaw('COUNT(*) = 5');
-            })
+            ->has('teamMembers', '=', 5)
             ->inRandomOrder()
             ->first();
     }
@@ -243,7 +241,7 @@ class LeagueTeamService
 
     public function getTeamRankings(string $division, int $limit = 20): array
     {
-        return Team::with(['captain', 'members.user'])
+        return Team::with(['captain', 'teamMembers.user'])
             ->where('division', $division)
             ->orderBy('points', 'desc')
             ->limit($limit)

@@ -22,7 +22,7 @@
             <div class="team-roster-card">
                 <h3>👥 VOTRE ÉQUIPE</h3>
                 <div class="roster-grid">
-                    @foreach($team->members as $member)
+                    @foreach($team->teamMembers as $member)
                         <div class="roster-member">
                             <div class="member-avatar-small">
                                 @if($member->user->avatar_url)

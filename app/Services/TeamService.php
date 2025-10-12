@@ -38,7 +38,7 @@ class TeamService
                 'joined_at' => now(),
             ]);
 
-            return $team->fresh(['captain', 'members.user']);
+            return $team->fresh(['captain', 'teamMembers.user']);
         });
     }
 
@@ -48,7 +48,7 @@ class TeamService
             throw new \Exception('Seul le capitaine peut inviter des joueurs.');
         }
 
-        if ($team->members()->count() >= 5) {
+        if ($team->teamMembers()->count() >= 5) {
             throw new \Exception('L\'équipe est complète (5 joueurs maximum).');
         }
 
@@ -95,7 +95,7 @@ class TeamService
         }
 
         $team = $invitation->team;
-        if ($team->members()->count() >= 5) {
+        if ($team->teamMembers()->count() >= 5) {
             throw new \Exception('L\'équipe est complète.');
         }
 
@@ -126,14 +126,14 @@ class TeamService
 
     public function leaveTeam(Team $team, User $user): void
     {
-        $member = $team->members()->where('user_id', $user->id)->first();
+        $member = $team->teamMembers()->where('user_id', $user->id)->first();
         if (!$member) {
             throw new \Exception('Vous n\'êtes pas dans cette équipe.');
         }
 
         if ($team->captain_id === $user->id) {
-            if ($team->members()->count() > 1) {
-                $newCaptain = $team->members()
+            if ($team->teamMembers()->count() > 1) {
+                $newCaptain = $team->teamMembers()
                     ->where('user_id', '!=', $user->id)
                     ->first();
                 
@@ -158,7 +158,7 @@ class TeamService
             throw new \Exception('Le capitaine ne peut pas s\'auto-expulser.');
         }
 
-        $member = $team->members()->where('user_id', $memberId)->first();
+        $member = $team->teamMembers()->where('user_id', $memberId)->first();
         if (!$member) {
             throw new \Exception('Ce joueur n\'est pas dans l\'équipe.');
         }
@@ -168,12 +168,10 @@ class TeamService
 
     public function findTeamsByDivision(string $division, int $limit = 20): array
     {
-        return Team::with(['captain', 'members.user'])
+        return Team::with(['captain', 'teamMembers.user'])
             ->where('division', $division)
             ->where('is_recruiting', true)
-            ->whereHas('members', function ($query) {
-                $query->havingRaw('COUNT(*) < 5');
-            }, '<', 5)
+            ->has('teamMembers', '<', 5)
             ->orderBy('points', 'desc')
             ->limit($limit)
             ->get()

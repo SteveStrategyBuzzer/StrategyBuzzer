@@ -25,7 +25,7 @@ class LeagueTeamController extends Controller
     public function showTeamManagement()
     {
         $user = Auth::user();
-        $team = $user->teams()->with(['captain', 'members.user'])->first();
+        $team = $user->teams()->with(['captain', 'teamMembers.user'])->first();
         $pendingInvitations = $user->teamInvitations()
             ->with(['team.captain'])
             ->where('status', 'pending')
@@ -41,7 +41,7 @@ class LeagueTeamController extends Controller
     public function showLobby()
     {
         $user = Auth::user();
-        $team = $user->teams()->with(['captain', 'members.user'])->first();
+        $team = $user->teams()->with(['captain', 'teamMembers.user'])->first();
 
         if (!$team) {
             return redirect()->route('league.team.management');
@@ -218,11 +218,11 @@ class LeagueTeamController extends Controller
 
     public function showGame($matchId)
     {
-        $match = LeagueTeamMatch::with(['team1.members.user', 'team2.members.user'])->findOrFail($matchId);
+        $match = LeagueTeamMatch::with(['team1.teamMembers.user', 'team2.teamMembers.user'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->members->contains('user_id', $user->id) || 
-                    $match->team2->members->contains('user_id', $user->id);
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+                    $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
             return redirect()->route('league.team.lobby')->with('error', 'Vous n\'êtes pas dans ce match.');
@@ -236,11 +236,11 @@ class LeagueTeamController extends Controller
 
     public function getQuestion($matchId)
     {
-        $match = LeagueTeamMatch::findOrFail($matchId);
+        $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->members->contains('user_id', $user->id) || 
-                    $match->team2->members->contains('user_id', $user->id);
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+                    $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
             return response()->json(['error' => 'Non autorisé.'], 403);
@@ -261,11 +261,11 @@ class LeagueTeamController extends Controller
             'buzz_time' => 'required|numeric',
         ]);
 
-        $match = LeagueTeamMatch::findOrFail($matchId);
+        $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->members->contains('user_id', $user->id) || 
-                    $match->team2->members->contains('user_id', $user->id);
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+                    $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
             return response()->json(['error' => 'Non autorisé.'], 403);
@@ -286,11 +286,11 @@ class LeagueTeamController extends Controller
             'answer' => 'required|string',
         ]);
 
-        $match = LeagueTeamMatch::findOrFail($matchId);
+        $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->members->contains('user_id', $user->id) || 
-                    $match->team2->members->contains('user_id', $user->id);
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+                    $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
             return response()->json(['error' => 'Non autorisé.'], 403);
@@ -307,11 +307,11 @@ class LeagueTeamController extends Controller
 
     public function showResults($matchId)
     {
-        $match = LeagueTeamMatch::with(['team1.members.user', 'team2.members.user', 'winner'])->findOrFail($matchId);
+        $match = LeagueTeamMatch::with(['team1.teamMembers.user', 'team2.teamMembers.user', 'winner'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->members->contains('user_id', $user->id) || 
-                    $match->team2->members->contains('user_id', $user->id);
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+                    $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
             return redirect()->route('league.team.lobby')->with('error', 'Vous n\'êtes pas dans ce match.');

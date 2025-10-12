@@ -23,7 +23,7 @@
             <div class="team-score" id="team1Score">0</div>
             <div class="rounds-won">Manches: <span id="team1RoundsWon">0</span></div>
             <div class="team-members">
-                @foreach($match->team1->members as $member)
+                @foreach($match->team1->teamMembers as $member)
                     <div class="member-mini {{ $member->user_id === Auth::id() ? 'current-user' : '' }}" data-user-id="{{ $member->user_id }}">
                         <div class="member-avatar-mini">
                             @if($member->user->avatar_url)
@@ -50,7 +50,7 @@
             <div class="team-score" id="team2Score">0</div>
             <div class="rounds-won">Manches: <span id="team2RoundsWon">0</span></div>
             <div class="team-members">
-                @foreach($match->team2->members as $member)
+                @foreach($match->team2->teamMembers as $member)
                     <div class="member-mini" data-user-id="{{ $member->user_id }}">
                         <div class="member-avatar-mini">
                             @if($member->user->avatar_url)

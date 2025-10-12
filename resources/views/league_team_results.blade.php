@@ -71,7 +71,7 @@
                     <div class="player-stat-card {{ $player['id'] === Auth::id() ? 'current-user' : '' }}">
                         <div class="player-info-stat">
                             @php
-                                $user = $match->team1->members->firstWhere('user_id', $player['id'])->user ?? null;
+                                $user = $match->team1->teamMembers->firstWhere('user_id', $player['id'])->user ?? null;
                             @endphp
                             <div class="player-avatar-stat">
                                 @if($user && $user->avatar_url)
@@ -108,7 +108,7 @@
                     <div class="player-stat-card {{ $player['id'] === Auth::id() ? 'current-user' : '' }}">
                         <div class="player-info-stat">
                             @php
-                                $user = $match->team2->members->firstWhere('user_id', $player['id'])->user ?? null;
+                                $user = $match->team2->teamMembers->firstWhere('user_id', $player['id'])->user ?? null;
                             @endphp
                             <div class="player-avatar-stat">
                                 @if($user && $user->avatar_url)

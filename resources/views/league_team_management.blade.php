@@ -65,9 +65,9 @@
                 </div>
 
                 <div class="team-members-section">
-                    <h3>👥 Membres ({{ $team->members->count() }}/5)</h3>
+                    <h3>👥 Membres ({{ $team->teamMembers->count() }}/5)</h3>
                     <div class="members-list">
-                        @foreach($team->members as $member)
+                        @foreach($team->teamMembers as $member)
                             <div class="member-card">
                                 <div class="member-info">
                                     <div class="member-avatar">
@@ -98,7 +98,7 @@
                     </div>
                 </div>
 
-                @if($team->captain_id === Auth::id() && $team->members->count() < 5)
+                @if($team->captain_id === Auth::id() && $team->teamMembers->count() < 5)
                     <div class="invite-section">
                         <h3>📩 Inviter un Joueur</h3>
                         <div class="invite-form">
@@ -111,7 +111,7 @@
                 @endif
 
                 <div class="team-actions">
-                    @if($team->members->count() >= 5)
+                    @if($team->teamMembers->count() >= 5)
                         <button onclick="window.location.href='{{ route('league.team.lobby') }}'" class="btn-primary btn-large">
                             <span class="btn-icon">🎮</span>
                             ALLER AU LOBBY
@@ -121,7 +121,7 @@
                     @endif
                     
                     <button onclick="leaveTeam()" class="btn-danger">
-                        {{ $team->captain_id === Auth::id() && $team->members->count() > 1 ? 'Quitter & Transférer Capitanat' : 'Quitter l\'Équipe' }}
+                        {{ $team->captain_id === Auth::id() && $team->teamMembers->count() > 1 ? 'Quitter & Transférer Capitanat' : 'Quitter l\'Équipe' }}
                     </button>
                 </div>
             </div>
