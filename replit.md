@@ -85,13 +85,15 @@ Preferred communication style: Simple, everyday language.
 
 ### Duo Mode (October 2025)
 - **Complete Backend Implementation** with DuoController, DuoMatchmakingService, DivisionService.
-- **Division-Based Progression**: Point-based system (0-99 Bronze, 100-199 Silver, 200-299 Gold, 300-399 Platinum, 400+ Legend).
-- **Intelligent Scoring**: +1 vs weaker opponent, +2 vs equal level, +5 vs stronger opponent, -2 for loss.
-- **Matchmaking System**: Invite specific player or random matchmaking within same division.
+- **Division-Based Progression**: Point-based system (0-99 Bronze, 100-199 Argent, 200-299 Or, 300-399 Platine, 400-499 Diamant, 500+ Légende).
+- **Intelligent Scoring**: +1 vs weaker opponent (lower level), +2 vs equal level, +5 vs stronger opponent (higher level), -2 for loss.
+- **Matchmaking System**: Invite specific player by name or random matchmaking within same division.
 - **Best-of-3 System**: Draws replay the same round without consuming a round slot; match ends when a player wins 2 rounds or 3 decisive rounds are played (tiebreaker by total score).
 - **Real-time Gameplay**: Server-side buzz timestamps, fair multi-player buzz validation, anti-cheat measures.
 - **Database Schema**: duo_matches, player_duo_stats, player_divisions tables with proper relations.
 - **Unlock Requirement**: 100 Solo matches played (tracked as defeats-victories/100).
+- **Complete Frontend**: 5 pages (Lobby, Matchmaking, Game, Results, Rankings) with responsive design and real-time updates.
+- **Features**: Player invitations, pending invitations display, division-based rankings, detailed match statistics, accuracy tracking.
 
 ## External Dependencies
 
