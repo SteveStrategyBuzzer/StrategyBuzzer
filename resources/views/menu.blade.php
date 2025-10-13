@@ -155,6 +155,7 @@
             grid-template-rows: auto repeat(4, 1fr);
             gap: 4px;
             align-items: center;
+            justify-items: center;
             padding-top: 25px;
             max-width: 100%;
             width: 100%;

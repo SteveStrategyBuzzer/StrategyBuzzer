@@ -145,6 +145,19 @@
   }
   @media (max-width:900px){ .sb-three{ grid-template-columns:1fr 1fr; } .sb-b3{ grid-column:1 / -1; } }
   @media (max-width:560px){ .sb-three{ grid-template-columns:1fr; } .sb-b3{ grid-column:auto; } }
+  
+  /* Mode paysage - Pleine largeur */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .sb-wrap { 
+      max-width: 100vw !important; 
+      padding: 10px !important; 
+      margin: 0 !important;
+    }
+    .sb-three { 
+      grid-template-columns: 1fr 1fr 1fr !important; 
+      gap: 8px !important;
+    }
+  }
 
   /* ===== Lignes de champs (labels + valeurs) ===== */
   .sb-row{
