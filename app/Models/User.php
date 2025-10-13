@@ -105,4 +105,17 @@ class User extends Authenticatable
             ->where('mode', $mode)
             ->first();
     }
+
+    public function getAvatarUrlAttribute()
+    {
+        if (!$this->profile_settings) {
+            return null;
+        }
+
+        $settings = is_string($this->profile_settings) 
+            ? json_decode($this->profile_settings, true) 
+            : $this->profile_settings;
+
+        return $settings['avatar']['url'] ?? null;
+    }
 }
