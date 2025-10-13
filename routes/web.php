@@ -120,6 +120,8 @@ Route::prefix('solo')->name('solo.')->group(function () {
 });
 
 /* ===== DUO ===== */
+Route::get('/duo', fn() => redirect()->route('duo.lobby'))->name('duo');
+
 Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::get('/lobby', [App\Http\Controllers\DuoController::class, 'lobby'])->name('lobby');
     Route::post('/matchmaking/random', [App\Http\Controllers\DuoController::class, 'createMatch'])->name('matchmaking.random');
