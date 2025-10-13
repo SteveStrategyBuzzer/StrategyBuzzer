@@ -88,13 +88,12 @@
     font-size: 2.5em;
     color: white;
     margin: 0;
-    text-align: left;
-    padding-left: 0;
+    text-align: center;
 }
 
 .header-avatar {
-    width: 50px;
-    height: 50px;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
     overflow: hidden;
     border: 3px solid white;
@@ -116,7 +115,7 @@
     justify-content: center;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    font-size: 1.5em;
+    font-size: 2em;
     font-weight: bold;
 }
 
@@ -516,18 +515,18 @@
     }
     
     .duo-header h1 {
-        font-size: 1.3rem;
+        font-size: 1.4rem;
         margin: 0;
     }
     
     .header-avatar {
-        width: 40px;
-        height: 40px;
+        width: 55px;
+        height: 55px;
         border: 2px solid white;
     }
     
     .header-avatar .default-avatar {
-        font-size: 1.2em;
+        font-size: 1.6em;
     }
     
     .lobby-content {
