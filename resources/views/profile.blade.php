@@ -589,20 +589,19 @@
       </div>
     </div>
 
+    {{-- Boutons Enregistrer et Déconnexion côte à côte --}}
+    <div style="margin-top:15px; text-align:center; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
+      <button type="submit" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;">Enregistrer</button>
+      <button type="button" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;" onclick="document.getElementById('logout-form').submit();">Déconnexion</button>
+    </div>
+
   </div>
 </form>
 
-{{-- Boutons Enregistrer et Déconnexion --}}
-<div style="margin-top:10px; text-align:center; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-  <form id="profileFormSubmit" method="POST" action="{{ Route::has('profile.update') ? route('profile.update') : '#' }}" style="margin:0;">
-    @csrf
-    <button type="submit" class="sb-btn" form="profileForm">Enregistrer</button>
-  </form>
-  <form method="POST" action="{{ route('logout') }}" style="margin:0;">
-    @csrf
-    <button type="submit" class="sb-btn">Déconnexion</button>
-  </form>
-</div>
+{{-- Formulaire de déconnexion invisible --}}
+<form id="logout-form" method="POST" action="{{ route('logout') }}" style="display:none;">
+  @csrf
+</form>
 
 <script>
 // Script 1 : Mise à jour immédiate des aperçus
