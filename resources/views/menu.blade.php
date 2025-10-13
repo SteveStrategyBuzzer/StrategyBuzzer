@@ -244,6 +244,11 @@
         </a>
 
         <a class="menu-link"
+           href="{{ \Illuminate\Support\Facades\Route::has('badges') ? route('badges') : url('/badges') }}">
+            BADGES
+        </a>
+
+        <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('boutique') ? route('boutique') : url('/boutique') }}">
             BOUTIQUE
         </a>
