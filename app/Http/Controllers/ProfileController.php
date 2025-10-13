@@ -131,6 +131,7 @@ class ProfileController extends Controller
 
         try {
             $user->profile_settings = $settings;
+            $user->profile_completed = true; // Marquer le profil comme complété
             $user->save();
         } catch (\Throwable $e) {
             Log::error('❌ Erreur de sauvegarde', ['exception' => $e->getMessage()]);

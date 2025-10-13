@@ -5,8 +5,8 @@
     use Illuminate\Support\Facades\Auth;
     $user = Auth::user();
     
-    // Vérifier si le profil est complet
-    $profileComplete = $user && !empty($user->name) && !empty($user->email);
+    // Vérifier si le profil a été complété (enregistré au moins une fois)
+    $profileComplete = $user && ($user->profile_completed ?? false);
     
     // Solo : accessible SEULEMENT si profil complet
     $soloUnlocked = $profileComplete;
