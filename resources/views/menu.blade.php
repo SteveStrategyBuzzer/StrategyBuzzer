@@ -337,17 +337,10 @@
             LIGUE {{ !$ligueUnlocked ? '🔒' : '' }}
         </a>
 
-        @if(!$masterPurchased)
-        <a class="menu-link"
-           href="{{ route('boutique') }}?tab=master">
-            MAÎTRE DU JEU
-        </a>
-        @else
         <a class="menu-link {{ $masterUnlocked ? '' : 'disabled' }}"
-           href="{{ $masterUnlocked ? (\Illuminate\Support\Facades\Route::has('master') ? route('master') : url('/master')) : 'javascript:void(0)' }}">
+           href="{{ $masterUnlocked ? url('/master') : (route('boutique') . '?tab=master') }}">
             MAÎTRE DU JEU {{ !$masterUnlocked ? '🔒' : '' }}
         </a>
-        @endif
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}">
