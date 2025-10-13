@@ -3,13 +3,14 @@
 @section('content')
 <div class="duo-lobby-container">
     <div class="duo-header">
-        <button onclick="window.location.href='{{ route('menu') }}'" class="back-button">
-            ← Retour
-        </button>
-        <h1>MODE DUO</h1>
-        <div class="division-badge">
-            <span class="division-name">{{ $division['name'] ?? 'Bronze' }}</span>
-            <span class="division-level">Niveau {{ $division['level'] ?? 1 }}</span>
+        <div class="header-left">
+            <button onclick="window.location.href='{{ route('menu') }}'" class="back-button">
+                Retour
+            </button>
+            <h1>MODE DUO</h1>
+        </div>
+        <div class="division-badge division-{{ strtolower($division['name'] ?? 'bronze') }}">
+            <span class="division-info">{{ $division['name'] ?? 'Bronze' }} Niveau {{ $division['level'] ?? 1 }}</span>
             <span class="division-points">{{ $division['points'] ?? 0 }} pts</span>
         </div>
     </div>
@@ -95,36 +96,60 @@
     margin-bottom: 30px;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
 .duo-header h1 {
     font-size: 2.5em;
-    color: #1a1a1a;
-    text-align: center;
-    flex: 1;
+    color: white;
+    margin: 0;
 }
 
 .division-badge {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    align-items: center;
     color: white;
-    padding: 15px 20px;
+    padding: 10px 20px;
     border-radius: 12px;
 }
 
-.division-name {
-    font-size: 1.2em;
-    font-weight: bold;
+.division-bronze {
+    background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
 }
 
-.division-level {
-    font-size: 0.9em;
-    opacity: 0.9;
+.division-argent {
+    background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+}
+
+.division-or {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+}
+
+.division-platine {
+    background: linear-gradient(135deg, #E5E4E2 0%, #B0C4DE 100%);
+}
+
+.division-diamant {
+    background: linear-gradient(135deg, #B9F2FF 0%, #00CED1 100%);
+}
+
+.division-légende {
+    background: linear-gradient(135deg, #FF1493 0%, #8B008B 100%);
+}
+
+.division-info {
+    font-size: 1em;
+    font-weight: bold;
+    white-space: nowrap;
 }
 
 .division-points {
-    font-size: 0.8em;
-    opacity: 0.8;
+    font-size: 0.85em;
+    opacity: 0.9;
 }
 
 .lobby-content {
@@ -375,39 +400,42 @@
     }
     
     .duo-header {
-        flex-direction: column;
+        flex-direction: row;
+        justify-content: space-between;
         gap: 8px;
-        margin-bottom: 15px;
-        align-items: stretch;
+        margin-bottom: 12px;
+        align-items: center;
+    }
+    
+    .header-left {
+        gap: 10px;
+        flex-shrink: 1;
     }
     
     .back-button {
-        padding: 8px 12px;
-        font-size: 0.9rem;
-        width: fit-content;
+        padding: 6px 10px;
+        font-size: 0.85rem;
+        white-space: nowrap;
     }
     
     .duo-header h1 {
-        font-size: 1.8rem;
-        margin: 5px 0;
+        font-size: 1.4rem;
+        margin: 0;
     }
     
     .division-badge {
-        padding: 10px 12px;
+        padding: 6px 12px;
         align-items: center;
         text-align: center;
+        flex-shrink: 0;
     }
     
-    .division-name {
-        font-size: 1rem;
-    }
-    
-    .division-level {
+    .division-info {
         font-size: 0.85rem;
     }
     
     .division-points {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
     }
     
     .lobby-content {
