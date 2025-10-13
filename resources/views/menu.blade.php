@@ -41,6 +41,7 @@
         gap: 14px;
         align-items: center;
         justify-items: center;
+        pointer-events: none;        /* Laisse passer les clics aux cerveaux */
     }
 
     .menu-title{
@@ -48,6 +49,7 @@
         font-size: clamp(2rem, 5vw, 3rem);
         margin: 0 0 8px 0;
         text-align: center;
+        pointer-events: auto;        /* Titre capturable */
     }
 
     .menu-link{
@@ -65,6 +67,7 @@
         transition: background-color .25s ease, transform .15s ease;
         user-select: none;
         box-sizing: content-box;
+        pointer-events: auto;        /* Boutons cliquables */
     }
     .menu-link:hover{ background-color: var(--btn-hover); transform: translateY(-1px); }
     .menu-link:active{ transform: translateY(0); }
@@ -277,7 +280,7 @@
     }
     const rand = (a,b)=> Math.random()*(b-a)+a;
 
-    function createBrain(x, y, isFirst = false){
+    function createBrain(x, y, isFirst = false, parentAngle = null){
         if (BRAINS.length >= MAX_BRAINS) return;
 
         const img = new Image();
@@ -295,23 +298,39 @@
         img.style.left = startX + 'px';
         img.style.top  = startY + 'px';
 
-        // Vitesse en diagonale (rebonds à 90°)
-        const dir = [45, 135, 225, 315][Math.floor(Math.random()*4)] * Math.PI/180;
+        // Calcul de l'angle de direction
+        let dir;
+        if (parentAngle !== null) {
+            // Duplicata : angle opposé + 35°
+            dir = (parentAngle + 180 + 35) * Math.PI / 180;
+        } else {
+            // Premier cerveau : angle aléatoire
+            dir = [45, 135, 225, 315][Math.floor(Math.random()*4)] * Math.PI/180;
+        }
+        
         const speed = rand(SPEED_MIN, SPEED_MAX);
         img.dataset.vx = Math.cos(dir) * speed;
         img.dataset.vy = Math.sin(dir) * speed;
-
-        // Tous les cerveaux sont cliquables pour multiplier
-        const multiply = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            createBrain(parseFloat(img.style.left)||0, parseFloat(img.style.top)||0, false);
-        };
         
-        img.addEventListener('click', multiply);
-        img.addEventListener('touchstart', multiply, { passive: false });
-        img.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
-        img.style.pointerEvents = 'auto';
+        // Stocke l'angle en degrés pour les duplicatas
+        img.dataset.angle = (dir * 180 / Math.PI) % 360;
+
+        // Seul le premier cerveau est cliquable
+        if (isFirst) {
+            const multiply = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const currentAngle = parseFloat(img.dataset.angle) || 0;
+                createBrain(parseFloat(img.style.left)||0, parseFloat(img.style.top)||0, false, currentAngle);
+            };
+            
+            img.addEventListener('click', multiply);
+            img.addEventListener('touchstart', multiply, { passive: false });
+            img.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+            img.style.pointerEvents = 'auto';
+        } else {
+            img.style.pointerEvents = 'none';
+        }
 
         stage.appendChild(img);
         BRAINS.push(img);
@@ -345,6 +364,10 @@
             img.style.top  = y + 'px';
             img.dataset.vx = vx;
             img.dataset.vy = vy;
+            
+            // Met à jour l'angle après rebond
+            const currentAngle = Math.atan2(vy, vx) * 180 / Math.PI;
+            img.dataset.angle = (currentAngle + 360) % 360;
         }
         requestAnimationFrame(tick);
     }
