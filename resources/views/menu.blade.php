@@ -167,7 +167,7 @@
         .menu-link:nth-of-type(2) { grid-column: 1; grid-row: 3; }
         .menu-link:nth-of-type(3) { grid-column: 1; grid-row: 4; }
 
-        /* Colonne centre - 4 onglets centrés verticalement */
+        /* Colonne centre - 4 onglets (2 en haut alignés, 2 en bas alignés) */
         .menu-link:nth-of-type(4) { grid-column: 2; grid-row: 2; }
         .menu-link:nth-of-type(5) { grid-column: 2; grid-row: 3; }
         .menu-link:nth-of-type(6) { grid-column: 2; grid-row: 4; }
