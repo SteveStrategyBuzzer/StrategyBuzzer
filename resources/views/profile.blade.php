@@ -589,18 +589,22 @@
       </div>
     </div>
 
-    {{-- Boutons --}}
-    <div style="margin-top:10px; text-align:center; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+    {{-- Bouton Enregistrer --}}
+    <div style="margin-top:10px; text-align:center;">
       <button type="submit" class="sb-btn">Enregistrer</button>
-      <form method="POST" action="{{ route('logout') }}" style="margin:0;">
-        @csrf
-        <button type="submit" class="sb-btn" style="background:rgba(220,53,69,.8); border-color:rgba(220,53,69,.9);">
-          Déconnexion
-        </button>
-      </form>
     </div>
   </div>
 </form>
+
+{{-- Bouton Déconnexion (en dehors du formulaire) --}}
+<div style="text-align:center; margin-top:10px;">
+  <form method="POST" action="{{ route('logout') }}" style="display:inline-block; margin:0;">
+    @csrf
+    <button type="submit" class="sb-btn" style="background:rgba(220,53,69,.8); border-color:rgba(220,53,69,.9);">
+      🚪 Déconnexion
+    </button>
+  </form>
+</div>
 
 <script>
 // Script 1 : Mise à jour immédiate des aperçus
