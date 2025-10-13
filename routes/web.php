@@ -186,9 +186,10 @@ Route::get('/ligue', function () {
 /* ===== RÈGLEMENTS ===== */
 Route::view('/reglements', 'reglements')->name('reglements');
 
-/* ===== Quêtes (si les vues existent) ===== */
-if (view()->exists('quests'))  Route::view('/quests', 'quests')->name('quests');
-if (view()->exists('quetes'))  Route::view('/quetes', 'quetes')->name('quetes');
+/* ===== QUÊTES & BADGES ===== */
+Route::get('/quetes', [App\Http\Controllers\QuestesController::class, 'index'])->middleware('auth')->name('quetes');
+Route::post('/quetes/claim/{questId}', [App\Http\Controllers\QuestesController::class, 'claim'])->middleware('auth')->name('quetes.claim');
+Route::get('/badges', [App\Http\Controllers\BadgesController::class, 'index'])->middleware('auth')->name('badges');
 
 // (Optionnel) Fallback 404 propre
 // Route::fallback(fn() => response()->view('notfound', [], 404));
