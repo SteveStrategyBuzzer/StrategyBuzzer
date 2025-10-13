@@ -529,14 +529,13 @@ audio{ width:100% }
     <div class="grid cols-2">
       @php
         $masterPurchased = auth()->check() && (auth()->user()->master_purchased ?? false);
-        $masterPrice = 1000; // Prix en pièces d'intelligence
       @endphp
       
       <div class="card">
         <div class="head">
           <div class="title">🎮 Maître du Jeu</div>
           @unless($masterPurchased)
-            <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $masterPrice }}</div>
+            <div class="price" style="font-size:1.5rem;font-weight:800;color:#10b981">29,99 $</div>
           @endunless
         </div>
 
@@ -561,12 +560,14 @@ audio{ width:100% }
             <button class="btn success" disabled>✓ Mode débloqué</button>
           </div>
         @else
-          <form method="POST" action="{{ $purchaseUrl }}" class="actions">
-            @csrf
-            <input type="hidden" name="kind" value="master">
-            <input type="hidden" name="target" value="mode">
-            <button class="btn" type="submit" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">🔓 Débloquer</button>
-          </form>
+          <div class="actions">
+            <form method="POST" action="{{ route('master.checkout') ?? '#' }}" style="width:100%">
+              @csrf
+              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#10b981,#059669);font-size:1.05rem">
+                💳 Acheter - 29,99 $
+              </button>
+            </form>
+          </div>
         @endif
       </div>
     </div>

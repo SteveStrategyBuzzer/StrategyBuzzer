@@ -11,12 +11,12 @@
     // Solo : accessible SEULEMENT si profil complet
     $soloUnlocked = $profileComplete;
     
-    // Duo : profil complet ET 20 matchs Solo minimum
+    // Duo : 20 matchs Solo joués (victoires + défaites)
     $soloMatches = $user ? (($user->solo_defeats ?? 0) + ($user->solo_victories ?? 0)) : 0;
-    $duoUnlocked = $profileComplete && $soloMatches >= 20;
+    $duoUnlocked = $soloMatches >= 20;
     
-    // Ligue : profil complet ET Duo débloqué
-    $ligueUnlocked = $profileComplete && $duoUnlocked;
+    // Ligue : 100 matchs Solo joués (victoires + défaites)
+    $ligueUnlocked = $soloMatches >= 100;
     
     // Maître du Jeu : accessible si acheté (indépendant du profil)
     $masterPurchased = $user && ($user->master_purchased ?? false);
