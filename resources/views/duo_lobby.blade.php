@@ -73,19 +73,23 @@
 }
 
 .duo-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 20px;
+    gap: 15px;
     margin-bottom: 30px;
+}
+
+.back-button {
+    justify-self: start;
 }
 
 .duo-header h1 {
     font-size: 2.5em;
     color: white;
     margin: 0;
-    flex: 1;
-    text-align: center;
+    text-align: left;
+    padding-left: 0;
 }
 
 .header-avatar {
@@ -95,6 +99,7 @@
     overflow: hidden;
     border: 3px solid white;
     flex-shrink: 0;
+    justify-self: end;
 }
 
 .header-avatar img {
