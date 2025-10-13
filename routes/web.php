@@ -175,6 +175,17 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
     Route::get('/results/{match}', [App\Http\Controllers\LeagueTeamController::class, 'showResults'])->name('results');
 });
 
+/* ===== MAÎTRE DU JEU ===== */
+Route::view('/master', 'master')->name('master');
+
+/* ===== LIGUE (page de sélection) ===== */
+Route::get('/ligue', function () {
+    return view('ligue');
+})->middleware('auth')->name('ligue');
+
+/* ===== RÈGLEMENTS ===== */
+Route::view('/reglements', 'reglements')->name('reglements');
+
 /* ===== Quêtes (si les vues existent) ===== */
 if (view()->exists('quests'))  Route::view('/quests', 'quests')->name('quests');
 if (view()->exists('quetes'))  Route::view('/quetes', 'quetes')->name('quetes');
