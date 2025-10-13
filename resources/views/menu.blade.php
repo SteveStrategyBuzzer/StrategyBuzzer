@@ -51,11 +51,11 @@
     }
 
     .menu-link{
-        display: block;
-        width: 280px;
+        display: inline-block;
+        min-width: 13ch;
         max-width: 100%;
         text-align: center;
-        padding: 16px 18px;
+        padding: 16px 1ch;
         background-color: var(--btn);
         color: #fff;
         text-decoration: none;
@@ -64,6 +64,7 @@
         box-shadow: 2px 2px 6px rgba(0,0,0,.3);
         transition: background-color .25s ease, transform .15s ease;
         user-select: none;
+        box-sizing: content-box;
     }
     .menu-link:hover{ background-color: var(--btn-hover); transform: translateY(-1px); }
     .menu-link:active{ transform: translateY(0); }
@@ -121,11 +122,12 @@
         }
 
         .menu-link {
-            padding: clamp(10px, 1.8vh, 14px) 12px;
+            padding: clamp(10px, 1.8vh, 14px) 1ch;
             font-size: clamp(0.85rem, 1.8vh, 1rem);
-            width: 280px;
+            min-width: 13ch;
             max-width: 95%;
             margin: 0 auto;
+            box-sizing: content-box;
         }
 
         .brain {
@@ -153,8 +155,10 @@
         }
 
         .menu-link {
-            padding: 10px 12px;
+            padding: 10px 1ch;
             font-size: 1rem;
+            min-width: 13ch;
+            box-sizing: content-box;
         }
 
         .brain {
