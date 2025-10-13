@@ -3,16 +3,10 @@
 @section('content')
 <div class="duo-lobby-container">
     <div class="duo-header">
-        <div class="header-left">
-            <button onclick="window.location.href='{{ route('menu') }}'" class="back-button">
-                Retour
-            </button>
-            <h1>MODE DUO</h1>
-        </div>
-        <div class="division-badge division-{{ strtolower($division['name'] ?? 'bronze') }}">
-            <span class="division-info">{{ $division['name'] ?? 'Bronze' }} Niveau {{ $division['level'] ?? 1 }}</span>
-            <span class="division-points">{{ $division['points'] ?? 0 }} pts</span>
-        </div>
+        <button onclick="window.location.href='{{ route('menu') }}'" class="back-button">
+            Retour
+        </button>
+        <h1>MODE DUO</h1>
     </div>
 
     <div class="lobby-content">
@@ -64,7 +58,7 @@
         </div>
     </div>
 
-    <div class="ranking-preview">
+    <div class="ranking-preview ranking-{{ strtolower($division['name'] ?? 'bronze') }}">
         <h3>🏆 Classement {{ $division['name'] ?? 'Bronze' }}</h3>
         <div class="ranking-list">
             @foreach($rankings ?? [] as $index => $player)
@@ -91,21 +85,16 @@
 
 .duo-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 20px;
     margin-bottom: 30px;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
 }
 
 .duo-header h1 {
     font-size: 2.5em;
     color: white;
     margin: 0;
+    flex: 1;
 }
 
 .division-badge {
@@ -303,11 +292,104 @@
     border-radius: 16px;
     padding: 25px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    position: relative;
 }
 
 .ranking-preview h3 {
     margin: 0 0 20px 0;
     color: #1a1a1a;
+}
+
+/* Contours par division */
+.ranking-bronze {
+    border: 4px solid transparent;
+    background-image: 
+        linear-gradient(white, white),
+        linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+.ranking-argent {
+    border: 4px solid transparent;
+    background-image: 
+        linear-gradient(white, white),
+        linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+.ranking-or {
+    border: 4px solid transparent;
+    background-image: 
+        linear-gradient(white, white),
+        linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+.ranking-platine {
+    border: 4px solid transparent;
+    background-image: 
+        linear-gradient(white, white),
+        linear-gradient(135deg, #E5E4E2 0%, #B0C4DE 100%);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+.ranking-diamant {
+    border: 4px solid #00CED1;
+    box-shadow: 
+        0 4px 6px rgba(0,0,0,0.1),
+        0 0 60px rgba(0, 206, 209, 0.4),
+        inset 0 0 80px rgba(185, 242, 255, 0.3);
+}
+
+.ranking-diamant::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    background: 
+        linear-gradient(135deg, transparent 40%, rgba(185, 242, 255, 0.5) 50%, transparent 60%),
+        linear-gradient(225deg, transparent 40%, rgba(0, 206, 209, 0.3) 50%, transparent 60%);
+    pointer-events: none;
+    opacity: 0.6;
+    z-index: 0;
+}
+
+.ranking-légende {
+    border: 4px solid #FF1493;
+    animation: flame-border 2s ease-in-out infinite;
+    box-shadow: 
+        0 4px 6px rgba(0,0,0,0.1),
+        0 0 30px rgba(255, 20, 147, 0.6),
+        0 0 60px rgba(139, 0, 139, 0.4);
+}
+
+@keyframes flame-border {
+    0%, 100% {
+        box-shadow: 
+            0 4px 6px rgba(0,0,0,0.1),
+            0 0 30px rgba(255, 20, 147, 0.6),
+            0 0 60px rgba(139, 0, 139, 0.4),
+            0 0 90px rgba(255, 69, 0, 0.3);
+    }
+    50% {
+        box-shadow: 
+            0 4px 6px rgba(0,0,0,0.1),
+            0 0 40px rgba(255, 69, 0, 0.8),
+            0 0 80px rgba(255, 20, 147, 0.6),
+            0 0 120px rgba(139, 0, 139, 0.5);
+    }
+}
+
+.ranking-preview > * {
+    position: relative;
+    z-index: 1;
 }
 
 .ranking-list {
@@ -400,16 +482,8 @@
     }
     
     .duo-header {
-        flex-direction: row;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 12px;
-        align-items: center;
-    }
-    
-    .header-left {
         gap: 10px;
-        flex-shrink: 1;
+        margin-bottom: 12px;
     }
     
     .back-button {
@@ -421,21 +495,6 @@
     .duo-header h1 {
         font-size: 1.4rem;
         margin: 0;
-    }
-    
-    .division-badge {
-        padding: 6px 12px;
-        align-items: center;
-        text-align: center;
-        flex-shrink: 0;
-    }
-    
-    .division-info {
-        font-size: 0.85rem;
-    }
-    
-    .division-points {
-        font-size: 0.7rem;
     }
     
     .lobby-content {
