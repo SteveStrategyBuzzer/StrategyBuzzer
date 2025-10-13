@@ -589,9 +589,15 @@
       </div>
     </div>
 
-    {{-- Bouton --}}
-    <div style="margin-top:10px; text-align:center;">
+    {{-- Boutons --}}
+    <div style="margin-top:10px; text-align:center; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
       <button type="submit" class="sb-btn">Enregistrer</button>
+      <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+        @csrf
+        <button type="submit" class="sb-btn" style="background:rgba(220,53,69,.8); border-color:rgba(220,53,69,.9);">
+          Déconnexion
+        </button>
+      </form>
     </div>
   </div>
 </form>

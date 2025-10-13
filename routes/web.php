@@ -97,6 +97,14 @@ Route::post('/auth/email/register',   [AuthController::class, 'handleEmailRegist
 Route::get('/auth/apple',             [AuthController::class, 'redirectToApple'])->name('auth.apple');
 Route::get('/auth/phone',             [AuthController::class, 'showPhoneLogin'])->name('auth.phone');
 
+/* Déconnexion */
+Route::post('/logout', function () {
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+    return redirect('/');
+})->name('logout');
+
 /* ===== SOLO ===== */
 Route::prefix('solo')->name('solo.')->group(function () {
     Route::get('/',        [SoloController::class, 'index'])->name('index');
