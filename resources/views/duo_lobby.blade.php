@@ -361,6 +361,161 @@
         gap: 15px;
     }
 }
+
+/* Mobile Portrait - Compactage optimal */
+@media (max-width: 480px) and (orientation: portrait) {
+    body {
+        overflow-x: hidden;
+        padding: 0;
+    }
+    
+    .duo-lobby-container {
+        padding: 8px;
+        max-width: 100%;
+    }
+    
+    .duo-header {
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 15px;
+        align-items: stretch;
+    }
+    
+    .back-button {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        width: fit-content;
+    }
+    
+    .duo-header h1 {
+        font-size: 1.8rem;
+        margin: 5px 0;
+    }
+    
+    .division-badge {
+        padding: 10px 12px;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .division-name {
+        font-size: 1rem;
+    }
+    
+    .division-level {
+        font-size: 0.85rem;
+    }
+    
+    .division-points {
+        font-size: 0.75rem;
+    }
+    
+    .lobby-content {
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+    
+    .player-card {
+        padding: 12px;
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .player-avatar {
+        width: 60px;
+        height: 60px;
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .player-info h3 {
+        font-size: 1.2rem;
+    }
+    
+    .player-stats {
+        font-size: 0.9rem;
+    }
+    
+    .matchmaking-options {
+        gap: 12px;
+    }
+    
+    .option-card {
+        padding: 15px;
+    }
+    
+    .option-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+    
+    .option-card p {
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+    }
+    
+    .invite-section {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .invite-input {
+        padding: 10px;
+        font-size: 0.95rem;
+    }
+    
+    .btn-primary, .btn-secondary {
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+    
+    .pending-invitations {
+        padding: 12px;
+    }
+    
+    .pending-invitations h3 {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+    }
+    
+    .ranking-preview {
+        padding: 12px;
+    }
+    
+    .ranking-preview h3 {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+    
+    .ranking-list {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    
+    .ranking-item {
+        grid-template-columns: 35px 1fr auto;
+        gap: 8px;
+        padding: 8px;
+        font-size: 0.9rem;
+    }
+    
+    .player-level {
+        display: none;
+    }
+    
+    .player-points {
+        font-size: 0.85rem;
+    }
+    
+    .rank {
+        font-size: 0.9rem;
+    }
+    
+    .btn-link {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+}
 </style>
 
 <script>
