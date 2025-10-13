@@ -53,8 +53,10 @@
             @foreach($rankings ?? [] as $index => $player)
             <div class="ranking-item {{ $player['user_id'] == Auth::id() ? 'current-player' : '' }}">
                 <span class="rank">#{{ $index + 1 }}</span>
-                <span class="player-name">{{ $player['user']['name'] }}</span>
-                <span class="player-level">Niv. {{ $player['level'] }}</span>
+                <div class="player-info-ranking">
+                    <span class="player-name">{{ $player['user']['name'] }}</span>
+                    <span class="player-stats-small">{{ $player['matches_won'] ?? 0 }}V - {{ $player['matches_lost'] ?? 0 }}D ({{ number_format(($player['matches_won'] ?? 0) / max(($player['matches_won'] ?? 0) + ($player['matches_lost'] ?? 0), 1) * 100, 1) }}%)</span>
+                </div>
                 <span class="player-points">{{ $player['points'] }} pts</span>
             </div>
             @endforeach
@@ -423,7 +425,7 @@
 
 .ranking-item {
     display: grid;
-    grid-template-columns: 50px 1fr auto auto;
+    grid-template-columns: 50px 1fr auto;
     gap: 15px;
     align-items: center;
     padding: 12px;
@@ -441,8 +443,19 @@
     color: #667eea;
 }
 
+.player-info-ranking {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
 .player-name {
     font-weight: 500;
+}
+
+.player-stats-small {
+    font-size: 0.85em;
+    color: #666;
 }
 
 .player-level, .player-points {
@@ -616,6 +629,18 @@
         gap: 8px;
         padding: 8px;
         font-size: 0.9rem;
+    }
+    
+    .player-info-ranking {
+        gap: 1px;
+    }
+    
+    .player-name {
+        font-size: 0.9rem;
+    }
+    
+    .player-stats-small {
+        font-size: 0.75rem;
     }
     
     .player-level {
