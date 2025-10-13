@@ -207,7 +207,7 @@ audio{ width:100% }
     if (!$tab) {
       if (request()->has('stratégique')) $tab = 'stratégiques';
       elseif (request()->has('item'))     $tab = 'packs';
-      else                                $tab = 'packs';
+      else                                $tab = 'master';
     }
 
     if (!function_exists('_scan_files')) {
@@ -301,7 +301,7 @@ audio{ width:100% }
     <a class="tab {{ $tab==='musiques'?'active':'' }}"  href="#musiques"  onclick="setTab('musiques'); return false;">🎵 Musiques d'Ambiance</a>
     <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🔊 Sons de Buzzers</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
-    <a class="tab {{ $tab==='master'?'active':'' }}"   href="#master"   onclick="setTab('master'); return false;">🎮 Modes de Jeu</a>
+    <a class="tab {{ $tab==='master'?'active':'' }}"   href="#master"   onclick="setTab('master'); return false;">🎮 Maître du Jeu</a>
     <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--tab" style="margin-right:4px;"> Pièces d'Intelligence</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
   </div>
@@ -526,9 +526,9 @@ audio{ width:100% }
     </div>
   </section>
 
-  <!-- ====== Modes de Jeu ====== -->
+  <!-- ====== Maître du Jeu ====== -->
   <section id="master" style="display: {{ $tab==='master'?'block':'none' }}">
-    <div class="hero"><b>Modes de Jeu</b> — Débloquez des modes de jeu exclusifs pour enrichir votre expérience StrategyBuzzer.</div>
+    <div class="hero"><b>Maître du Jeu</b> — Débloquez le mode de jeu exclusif pour créer vos propres parties personnalisées.</div>
 
     <div class="grid cols-2">
       @php
