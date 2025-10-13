@@ -297,6 +297,7 @@ audio{ width:100% }
     <a class="tab {{ $tab==='musiques'?'active':'' }}"  href="#musiques"  onclick="setTab('musiques'); return false;">🎵 Musiques d'Ambiance</a>
     <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🔊 Sons de Buzzers</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
+    <a class="tab {{ $tab==='master'?'active':'' }}"   href="#master"   onclick="setTab('master'); return false;">🎮 Modes de Jeu</a>
     <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--tab" style="margin-right:4px;"> Pièces d'Intelligence</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
   </div>
@@ -518,6 +519,56 @@ audio{ width:100% }
           </div>
         </div>
       @endforeach
+    </div>
+  </section>
+
+  <!-- ====== Modes de Jeu ====== -->
+  <section id="master" style="display: {{ $tab==='master'?'block':'none' }}">
+    <div class="hero"><b>Modes de Jeu</b> — Débloquez des modes de jeu exclusifs pour enrichir votre expérience StrategyBuzzer.</div>
+
+    <div class="grid cols-2">
+      @php
+        $masterPurchased = auth()->check() && (auth()->user()->master_purchased ?? false);
+        $masterPrice = 1000; // Prix en pièces d'intelligence
+      @endphp
+      
+      <div class="card">
+        <div class="head">
+          <div class="title">🎮 Maître du Jeu</div>
+          @unless($masterPurchased)
+            <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $masterPrice }}</div>
+          @endunless
+        </div>
+
+        <div style="padding:20px">
+          <p style="color:#cbd5e1;line-height:1.6;margin:0 0 16px">
+            Devenez Maître du Jeu et créez vos propres parties personnalisées ! Définissez vos questions, invitez jusqu'à 40 joueurs simultanément et animez vos propres quiz en temps réel.
+          </p>
+          
+          <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:12px;margin:16px 0">
+            <div style="font-weight:700;color:#818cf8;margin-bottom:8px">✨ Fonctionnalités incluses :</div>
+            <ul style="margin:0;padding-left:20px;color:#cbd5e1;font-size:0.9rem">
+              <li>Jusqu'à 40 joueurs par partie</li>
+              <li>Questions personnalisées</li>
+              <li>Animation en temps réel</li>
+              <li>Contrôle total de la partie</li>
+            </ul>
+          </div>
+        </div>
+
+        @if($masterPurchased)
+          <div class="actions">
+            <button class="btn success" disabled>✓ Mode débloqué</button>
+          </div>
+        @else
+          <form method="POST" action="{{ $purchaseUrl }}" class="actions">
+            @csrf
+            <input type="hidden" name="kind" value="master">
+            <input type="hidden" name="target" value="mode">
+            <button class="btn" type="submit" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">🔓 Débloquer</button>
+          </form>
+        @endif
+      </div>
     </div>
   </section>
 

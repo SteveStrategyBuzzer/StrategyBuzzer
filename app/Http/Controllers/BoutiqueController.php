@@ -87,7 +87,7 @@ class BoutiqueController extends Controller
     public function purchase(Request $request)
     {
         $request->validate([
-            'kind'     => 'required|string|in:pack,buzzer,stratégique,life',
+            'kind'     => 'required|string|in:pack,buzzer,stratégique,life,master',
             'target'   => 'nullable|string',
             'quantity' => 'nullable|integer|min:1',
         ]);
@@ -141,6 +141,12 @@ class BoutiqueController extends Controller
                 case 'life':
                     $unitPrice = 120;
                     break;
+                case 'master':
+                    if ($user->master_purchased ?? false) {
+                        return back()->with('error', "Vous avez déjà débloqué le mode Maître du Jeu.");
+                    }
+                    $unitPrice = 1000;
+                    break;
             }
 
             $total = $unitPrice * $qty;
@@ -150,6 +156,22 @@ class BoutiqueController extends Controller
             }
 
             $user->coins -= $total;
+
+            if ($kind === 'master') {
+                $user->master_purchased = true;
+                $user->save();
+                
+                \App\Models\CoinLedger::create([
+                    'user_id' => $user->id,
+                    'delta' => -$total,
+                    'reason' => 'master_mode_purchase',
+                    'ref_type' => null,
+                    'ref_id' => null,
+                    'balance_after' => $user->coins,
+                ]);
+                
+                return back()->with('success', "Mode Maître du Jeu débloqué avec succès !");
+            }
 
             if ($kind === 'life') {
                 $user->lives += $qty;

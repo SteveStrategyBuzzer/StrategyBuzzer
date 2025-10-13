@@ -5,15 +5,22 @@
     use Illuminate\Support\Facades\Auth;
     $user = Auth::user();
     
-    // Solo et Maître du Jeu sont toujours accessibles
-    $soloUnlocked = true;
-    $masterPurchased = $user && ($user->master_purchased ?? false); // Vérifier si acheté
-    $masterUnlocked = $masterPurchased || true; // Toujours accessible pour l'instant
+    // Vérifier si le profil est complet
+    $profileComplete = $user && !empty($user->name) && !empty($user->email);
     
-    // Vérifier les conditions de déblocage pour Duo et Ligue
+    // Solo : accessible seulement si profil complet
+    $soloUnlocked = $profileComplete;
+    
+    // Duo : profil complet ET 20 matchs Solo minimum
     $soloMatches = $user ? (($user->solo_defeats ?? 0) + ($user->solo_victories ?? 0)) : 0;
-    $duoUnlocked = $soloMatches >= 20;
-    $ligueUnlocked = $duoUnlocked;
+    $duoUnlocked = $profileComplete && $soloMatches >= 20;
+    
+    // Ligue : profil complet ET Duo débloqué
+    $ligueUnlocked = $profileComplete && $duoUnlocked;
+    
+    // Maître du Jeu : accessible si acheté (indépendant du profil)
+    $masterPurchased = $user && ($user->master_purchased ?? false);
+    $masterUnlocked = $masterPurchased;
     
     // Tous les autres sont toujours accessibles
     $avatarsUnlocked = true;
@@ -314,9 +321,9 @@
             PROFIL
         </a>
 
-        <a class="menu-link {{ $profileComplete ? '' : 'disabled' }}"
-           href="{{ $profileComplete ? (\Illuminate\Support\Facades\Route::has('solo.index') ? route('solo.index') : url('/solo')) : 'javascript:void(0)' }}">
-            SOLO {{ !$profileComplete ? '🔒' : '' }}
+        <a class="menu-link {{ $soloUnlocked ? '' : 'disabled' }}"
+           href="{{ $soloUnlocked ? (\Illuminate\Support\Facades\Route::has('solo.index') ? route('solo.index') : url('/solo')) : 'javascript:void(0)' }}">
+            SOLO {{ !$soloUnlocked ? '🔒' : '' }}
         </a>
 
         <a class="menu-link {{ $duoUnlocked ? '' : 'disabled' }}"
@@ -329,10 +336,17 @@
             LIGUE {{ !$ligueUnlocked ? '🔒' : '' }}
         </a>
 
+        @if(!$masterPurchased)
         <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('master') ? route('master') : url('/master') }}">
+           href="{{ route('boutique') }}?tab=master">
             MAÎTRE DU JEU
         </a>
+        @else
+        <a class="menu-link {{ $masterUnlocked ? '' : 'disabled' }}"
+           href="{{ $masterUnlocked ? (\Illuminate\Support\Facades\Route::has('master') ? route('master') : url('/master')) : 'javascript:void(0)' }}">
+            MAÎTRE DU JEU {{ !$masterUnlocked ? '🔒' : '' }}
+        </a>
+        @endif
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}">
