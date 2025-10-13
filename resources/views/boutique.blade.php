@@ -210,18 +210,22 @@ audio{ width:100% }
       else                                $tab = 'packs';
     }
 
-    function _scan_files($dir, $patterns=array('*')) {
-      $out=array(); if(!is_dir($dir)) return $out;
-      foreach($patterns as $pat){ foreach(glob(rtrim($dir,'/').'/'.$pat, GLOB_BRACE) as $f){ $out[]=$f; } }
-      natsort($out);
-      return array_values($out);
-    }
-    function _rel_public($abs){
-      $pub = public_path();
-      if ($abs && substr($abs, 0, strlen($pub)) === $pub) {
-        return ltrim(substr($abs, strlen($pub)), DIRECTORY_SEPARATOR);
+    if (!function_exists('_scan_files')) {
+      function _scan_files($dir, $patterns=array('*')) {
+        $out=array(); if(!is_dir($dir)) return $out;
+        foreach($patterns as $pat){ foreach(glob(rtrim($dir,'/').'/'.$pat, GLOB_BRACE) as $f){ $out[]=$f; } }
+        natsort($out);
+        return array_values($out);
       }
-      return $abs;
+    }
+    if (!function_exists('_rel_public')) {
+      function _rel_public($abs){
+        $pub = public_path();
+        if ($abs && substr($abs, 0, strlen($pub)) === $pub) {
+          return ltrim(substr($abs, strlen($pub)), DIRECTORY_SEPARATOR);
+        }
+        return $abs;
+      }
     }
 
     $packSlugs = ['portraits','cartoon','animal','mythique','paysage','objet','clown','musicien','automobile'];
