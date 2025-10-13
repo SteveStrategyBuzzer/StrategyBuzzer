@@ -41,6 +41,35 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
 }
+
+/* Responsive Portrait */
+@media (max-width: 480px) and (orientation: portrait) {
+    body {
+        overflow-x: hidden;
+        padding: 0;
+    }
+    .master-container {
+        padding: 1rem;
+        max-width: 100%;
+    }
+    .master-title {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    .master-description {
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 0 0.5rem;
+    }
+    .coming-soon {
+        font-size: 1rem;
+        padding: 0.8rem 1.5rem;
+    }
+    .header-menu {
+        padding: 8px 16px !important;
+        font-size: 0.9rem !important;
+    }
+}
 </style>
 
 <a href="{{ route('menu') }}" class="header-menu" style="

@@ -35,9 +35,50 @@ body {
 }
 .ligue-modes {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
     margin-top: 2rem;
+}
+
+/* Responsive Portrait */
+@media (max-width: 480px) and (orientation: portrait) {
+    body {
+        overflow-x: hidden;
+        padding: 0;
+    }
+    .ligue-container {
+        padding: 1rem;
+        max-width: 100%;
+    }
+    .ligue-title {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    .ligue-subtitle {
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .ligue-modes {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .ligue-mode-card {
+        padding: 1.5rem;
+    }
+    .mode-icon {
+        font-size: 3rem;
+    }
+    .mode-title {
+        font-size: 1.5rem;
+    }
+    .mode-description {
+        font-size: 0.9rem;
+    }
+    .header-menu {
+        padding: 8px 16px !important;
+        font-size: 0.9rem !important;
+    }
 }
 .ligue-mode-card {
     background: rgba(255, 255, 255, 0.1);
