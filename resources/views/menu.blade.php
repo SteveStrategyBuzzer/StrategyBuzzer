@@ -142,24 +142,29 @@
     /* Mobile Paysage (orientation horizontale) - Disposition 3 colonnes (3-4-3) */
     @media (max-height: 500px) and (orientation: landscape) {
         .menu-scene {
-            padding: 8px;
+            padding: 4px;
             min-height: auto;
+            width: 100vw;
+            height: 100vh;
+            box-sizing: border-box;
         }
 
         .menu-container {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             grid-template-rows: auto repeat(4, 1fr);
-            gap: 8px;
+            gap: 4px;
             align-items: center;
-            padding-top: 35px;
+            padding-top: 25px;
+            max-width: 100%;
+            width: 100%;
         }
 
         .menu-title {
             grid-column: 1 / -1;
             grid-row: 1;
-            font-size: 1.3rem;
-            margin-bottom: 5px;
+            font-size: 1.1rem;
+            margin-bottom: 3px;
         }
 
         /* Colonne gauche - 3 onglets */
@@ -179,15 +184,17 @@
         .menu-link:nth-of-type(10) { grid-column: 3; grid-row: 4; }
 
         .menu-link {
-            padding: 8px 1ch;
-            font-size: 0.85rem;
-            width: 15ch;
-            box-sizing: content-box;
+            padding: 6px 4px;
+            font-size: 0.75rem;
+            width: auto;
+            max-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
         }
 
         .brain {
-            width: 40px;
-            height: 40px;
+            width: 30px;
+            height: 30px;
         }
     }
 
