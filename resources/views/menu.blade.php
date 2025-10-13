@@ -181,7 +181,7 @@
         .menu-link {
             padding: 8px 1ch;
             font-size: 0.85rem;
-            min-width: 11ch;
+            width: 15ch;
             box-sizing: content-box;
         }
 
@@ -247,7 +247,8 @@
 
         .menu-link {
             font-size: 0.95rem;
-            min-width: 12ch;
+            width: 15ch;
+            box-sizing: content-box;
         }
 
         .brain {
