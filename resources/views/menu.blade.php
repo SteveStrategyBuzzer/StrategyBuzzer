@@ -139,34 +139,55 @@
         }
     }
 
-    /* Mobile Paysage (orientation horizontale) */
+    /* Mobile Paysage (orientation horizontale) - Disposition 3 colonnes (3-4-3) */
     @media (max-height: 500px) and (orientation: landscape) {
         .menu-scene {
-            padding: 12px;
+            padding: 8px;
             min-height: auto;
         }
 
         .menu-container {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            max-width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto repeat(4, 1fr);
+            gap: 8px;
+            align-items: center;
+            padding-top: 35px;
         }
 
         .menu-title {
-            font-size: 1.5rem;
-            margin-bottom: 8px;
+            grid-column: 1 / -1;
+            grid-row: 1;
+            font-size: 1.3rem;
+            margin-bottom: 5px;
         }
 
+        /* Colonne gauche - 3 onglets */
+        .menu-link:nth-of-type(1) { grid-column: 1; grid-row: 2; }
+        .menu-link:nth-of-type(2) { grid-column: 1; grid-row: 3; }
+        .menu-link:nth-of-type(3) { grid-column: 1; grid-row: 4; }
+
+        /* Colonne centre - 4 onglets centrés verticalement */
+        .menu-link:nth-of-type(4) { grid-column: 2; grid-row: 2; }
+        .menu-link:nth-of-type(5) { grid-column: 2; grid-row: 3; }
+        .menu-link:nth-of-type(6) { grid-column: 2; grid-row: 4; }
+        .menu-link:nth-of-type(7) { grid-column: 2; grid-row: 5; }
+
+        /* Colonne droite - 3 onglets */
+        .menu-link:nth-of-type(8) { grid-column: 3; grid-row: 2; }
+        .menu-link:nth-of-type(9) { grid-column: 3; grid-row: 3; }
+        .menu-link:nth-of-type(10) { grid-column: 3; grid-row: 4; }
+
         .menu-link {
-            padding: 10px 1ch;
-            font-size: 1rem;
-            min-width: 13ch;
+            padding: 8px 1ch;
+            font-size: 0.85rem;
+            min-width: 11ch;
             box-sizing: content-box;
         }
 
         .brain {
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
         }
     }
 
@@ -187,15 +208,51 @@
         }
     }
 
-    /* Tablettes Paysage */
+    /* Tablettes Paysage - Disposition 3 colonnes (3-4-3) */
     @media (min-width: 481px) and (max-width: 1024px) and (orientation: landscape) {
+        .menu-scene {
+            padding: 12px;
+        }
+
         .menu-container {
-            grid-template-columns: repeat(3, 1fr);
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto repeat(4, 1fr);
+            gap: 10px;
+            align-items: center;
+            padding-top: 40px;
+        }
+
+        .menu-title {
+            grid-column: 1 / -1;
+            grid-row: 1;
+            margin-bottom: 10px;
+        }
+
+        /* Colonne gauche - 3 onglets */
+        .menu-link:nth-of-type(1) { grid-column: 1; grid-row: 2; }
+        .menu-link:nth-of-type(2) { grid-column: 1; grid-row: 3; }
+        .menu-link:nth-of-type(3) { grid-column: 1; grid-row: 4; }
+
+        /* Colonne centre - 4 onglets centrés verticalement */
+        .menu-link:nth-of-type(4) { grid-column: 2; grid-row: 2; }
+        .menu-link:nth-of-type(5) { grid-column: 2; grid-row: 3; }
+        .menu-link:nth-of-type(6) { grid-column: 2; grid-row: 4; }
+        .menu-link:nth-of-type(7) { grid-column: 2; grid-row: 5; }
+
+        /* Colonne droite - 3 onglets */
+        .menu-link:nth-of-type(8) { grid-column: 3; grid-row: 2; }
+        .menu-link:nth-of-type(9) { grid-column: 3; grid-row: 3; }
+        .menu-link:nth-of-type(10) { grid-column: 3; grid-row: 4; }
+
+        .menu-link {
+            font-size: 0.95rem;
+            min-width: 12ch;
         }
 
         .brain {
-            width: 64px;
-            height: 64px;
+            width: 50px;
+            height: 50px;
         }
     }
 </style>
