@@ -72,6 +72,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/coins/cancel', [App\Http\Controllers\CoinsController::class, 'cancel'])->name('coins.cancel');
 });
 
+/* ===== Mode Maître du Jeu (Stripe) ===== */
+Route::middleware('auth')->group(function () {
+    Route::post('/master/checkout', [BoutiqueController::class, 'masterCheckout'])->name('master.checkout');
+    Route::get('/master/success', [BoutiqueController::class, 'masterSuccess'])->name('master.success');
+    Route::get('/master/cancel', [BoutiqueController::class, 'masterCancel'])->name('master.cancel');
+});
+
 /* Stripe Webhook (no CSRF) */
 Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 

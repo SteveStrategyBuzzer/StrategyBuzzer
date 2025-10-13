@@ -53,10 +53,23 @@ class StripeWebhookController extends Controller
                         'stripe_payment_intent_id' => $session->payment_intent,
                     ]);
 
+                    $productKey = $session->metadata->product_key ?? '';
                     $coinsToAward = (int) ($session->metadata->coins ?? 0);
 
-                    if ($coinsToAward > 0) {
-                        $user = $payment->user;
+                    $user = $payment->user;
+
+                    if ($productKey === 'master_mode') {
+                        $user->master_purchased = true;
+                        $user->save();
+
+                        $payment->markAsCompleted(0);
+
+                        Log::info('Master mode unlocked successfully', [
+                            'payment_id' => $payment->id,
+                            'user_id' => $payment->user_id,
+                            'session_id' => $session->id,
+                        ]);
+                    } elseif ($coinsToAward > 0) {
                         $user->intelligence_pieces = ($user->intelligence_pieces ?? 0) + $coinsToAward;
                         $user->save();
 
@@ -78,12 +91,12 @@ class StripeWebhookController extends Controller
                             'session_id' => $session->id,
                         ]);
                     } else {
-                        Log::error('Invalid coins amount from Stripe metadata', [
+                        Log::error('Invalid payment type or coins amount from Stripe metadata', [
                             'payment_id' => $payment->id,
                             'session_metadata' => $session->metadata,
                         ]);
                         $payment->markAsFailed();
-                        throw new \Exception('Invalid coins amount');
+                        throw new \Exception('Invalid payment type or coins amount');
                     }
                 });
             } catch (\Exception $e) {

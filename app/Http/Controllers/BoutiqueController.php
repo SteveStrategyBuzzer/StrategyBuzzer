@@ -6,9 +6,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Services\AvatarCatalog;
+use App\Services\StripeService;
+use App\Models\Payment;
 
 class BoutiqueController extends Controller
 {
+    public function __construct(
+        private StripeService $stripeService
+    ) {}
     /**
      * GET /boutique
      */
@@ -186,5 +191,86 @@ class BoutiqueController extends Controller
 
             return back()->with('success', "Achat réussi, élément débloqué !");
         });
+    }
+
+    /**
+     * POST /master/checkout
+     * Créer une session Stripe pour acheter le mode Maître du Jeu (29.99$)
+     */
+    public function masterCheckout(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return back()->with('error', 'Veuillez vous connecter.');
+        }
+
+        if ($user->master_purchased ?? false) {
+            return back()->with('info', 'Vous avez déjà débloqué le mode Maître du Jeu.');
+        }
+
+        try {
+            $masterProduct = [
+                'key' => 'master_mode',
+                'name' => 'Mode Maître du Jeu',
+                'amount_cents' => 2999, // $29.99
+                'currency' => 'usd',
+                'coins' => 0,
+            ];
+
+            $session = $this->stripeService->createCheckoutSession($masterProduct, $user->id);
+
+            Payment::create([
+                'user_id' => $user->id,
+                'stripe_session_id' => $session->id,
+                'product_key' => 'master_mode',
+                'amount_cents' => 2999,
+                'currency' => 'usd',
+                'status' => 'pending',
+                'metadata' => [
+                    'product_type' => 'master_mode',
+                    'product_name' => 'Mode Maître du Jeu',
+                ],
+            ]);
+
+            return redirect($session->url);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la création de la session de paiement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * GET /master/success
+     */
+    public function masterSuccess(Request $request)
+    {
+        $sessionId = $request->query('session_id');
+        
+        if (!$sessionId) {
+            return redirect()->route('boutique')->with('error', 'Session invalide.');
+        }
+
+        $payment = Payment::where('stripe_session_id', $sessionId)->first();
+
+        if (!$payment) {
+            return redirect()->route('boutique')->with('info', 'Paiement en cours de traitement. Le mode Maître du Jeu sera débloqué sous peu.');
+        }
+
+        if ($payment->status === 'completed') {
+            return redirect()->route('boutique')->with('success', 'Mode Maître du Jeu débloqué avec succès ! Vous pouvez maintenant créer vos propres parties.');
+        }
+
+        if ($payment->status === 'failed') {
+            return redirect()->route('boutique')->with('error', 'Le paiement a échoué. Veuillez réessayer.');
+        }
+
+        return redirect()->route('boutique')->with('info', 'Votre paiement est en cours de traitement. Le mode sera débloqué automatiquement dans quelques instants.');
+    }
+
+    /**
+     * GET /master/cancel
+     */
+    public function masterCancel()
+    {
+        return redirect()->route('boutique')->with('error', 'Achat du mode Maître du Jeu annulé.');
     }
 }
