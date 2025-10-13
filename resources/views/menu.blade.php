@@ -1,6 +1,25 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    use Illuminate\Support\Facades\Auth;
+    $user = Auth::user();
+    
+    // Vérifier les conditions de déblocage
+    $profileComplete = $user && !empty($user->name) && !empty($user->email);
+    $soloMatches = $user ? (($user->solo_defeats ?? 0) + ($user->solo_victories ?? 0)) : 0;
+    $duoUnlocked = $soloMatches >= 20;
+    $ligueUnlocked = $duoUnlocked; // Pour l'instant basé sur Duo
+    
+    // Tous les autres sont toujours accessibles
+    $avatarsUnlocked = true;
+    $questesUnlocked = true;
+    $badgesUnlocked = true;
+    $boutiqueUnlocked = true;
+    $reglementsUnlocked = true;
+    $masterUnlocked = true;
+@endphp
+
 <style>
     :root{
         --bg:#003DA5;
@@ -71,6 +90,19 @@
     }
     .menu-link:hover{ background-color: var(--btn-hover); transform: translateY(-1px); }
     .menu-link:active{ transform: translateY(0); }
+    
+    /* Onglets désactivés (verrouillés) */
+    .menu-link.disabled{
+        background-color: #333;
+        color: #666;
+        cursor: not-allowed;
+        pointer-events: none;
+        opacity: 0.5;
+    }
+    .menu-link.disabled:hover{
+        background-color: #333;
+        transform: none;
+    }
 
     /* Cerveau (image) — x2 (96px) */
     .brain{
@@ -279,19 +311,19 @@
             PROFIL
         </a>
 
-        <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('solo.index') ? route('solo.index') : url('/solo') }}">
-            SOLO
+        <a class="menu-link {{ $profileComplete ? '' : 'disabled' }}"
+           href="{{ $profileComplete ? (\Illuminate\Support\Facades\Route::has('solo.index') ? route('solo.index') : url('/solo')) : 'javascript:void(0)' }}">
+            SOLO {{ !$profileComplete ? '🔒' : '' }}
         </a>
 
-        <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('duo') ? route('duo') : url('/duo') }}">
-            DUO
+        <a class="menu-link {{ $duoUnlocked ? '' : 'disabled' }}"
+           href="{{ $duoUnlocked ? (\Illuminate\Support\Facades\Route::has('duo') ? route('duo') : url('/duo')) : 'javascript:void(0)' }}">
+            DUO {{ !$duoUnlocked ? '🔒' : '' }}
         </a>
 
-        <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('ligue') ? route('ligue') : url('/ligue') }}">
-            LIGUE
+        <a class="menu-link {{ $ligueUnlocked ? '' : 'disabled' }}"
+           href="{{ $ligueUnlocked ? (\Illuminate\Support\Facades\Route::has('ligue') ? route('ligue') : url('/ligue')) : 'javascript:void(0)' }}">
+            LIGUE {{ !$ligueUnlocked ? '🔒' : '' }}
         </a>
 
         <a class="menu-link"

@@ -589,16 +589,16 @@
       </div>
     </div>
 
-    {{-- Boutons --}}
-    <div style="margin-top:10px; text-align:center;">
-      <button type="submit" class="sb-btn">Enregistrer</button>
-    </div>
   </div>
 </form>
 
-{{-- Bouton Déconnexion --}}
-<div style="text-align:center; margin-top:10px;">
-  <form method="POST" action="{{ route('logout') }}" style="display:inline-block; margin:0;">
+{{-- Boutons Enregistrer et Déconnexion --}}
+<div style="margin-top:10px; text-align:center; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+  <form id="profileFormSubmit" method="POST" action="{{ Route::has('profile.update') ? route('profile.update') : '#' }}" style="margin:0;">
+    @csrf
+    <button type="submit" class="sb-btn" form="profileForm">Enregistrer</button>
+  </form>
+  <form method="POST" action="{{ route('logout') }}" style="margin:0;">
     @csrf
     <button type="submit" class="sb-btn">Déconnexion</button>
   </form>
