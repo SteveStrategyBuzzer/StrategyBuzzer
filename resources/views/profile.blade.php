@@ -589,20 +589,18 @@
       </div>
     </div>
 
-    {{-- Bouton Enregistrer --}}
+    {{-- Boutons --}}
     <div style="margin-top:10px; text-align:center;">
       <button type="submit" class="sb-btn">Enregistrer</button>
     </div>
   </div>
 </form>
 
-{{-- Bouton Déconnexion (en dehors du formulaire) --}}
+{{-- Bouton Déconnexion --}}
 <div style="text-align:center; margin-top:10px;">
   <form method="POST" action="{{ route('logout') }}" style="display:inline-block; margin:0;">
     @csrf
-    <button type="submit" class="sb-btn" style="background:rgba(220,53,69,.8); border-color:rgba(220,53,69,.9);">
-      🚪 Déconnexion
-    </button>
+    <button type="submit" class="sb-btn">Déconnexion</button>
   </form>
 </div>
 
