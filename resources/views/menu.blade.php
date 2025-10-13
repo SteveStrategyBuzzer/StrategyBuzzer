@@ -8,8 +8,8 @@
     // Vérifier si le profil est complet
     $profileComplete = $user && !empty($user->name) && !empty($user->email);
     
-    // Solo : toujours accessible
-    $soloUnlocked = true;
+    // Solo : accessible SEULEMENT si profil complet
+    $soloUnlocked = $profileComplete;
     
     // Duo : profil complet ET 20 matchs Solo minimum
     $soloMatches = $user ? (($user->solo_defeats ?? 0) + ($user->solo_victories ?? 0)) : 0;
