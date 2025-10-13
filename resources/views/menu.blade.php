@@ -52,7 +52,8 @@
 
     .menu-link{
         display: block;
-        width: 100%;
+        width: 280px;
+        max-width: 100%;
         text-align: center;
         padding: 16px 18px;
         background-color: var(--btn);
@@ -122,7 +123,7 @@
         .menu-link {
             padding: clamp(10px, 1.8vh, 14px) 12px;
             font-size: clamp(0.85rem, 1.8vh, 1rem);
-            width: 100%;
+            width: 280px;
             max-width: 95%;
             margin: 0 auto;
         }
@@ -201,6 +202,11 @@
         <h1 class="menu-title">Menu</h1>
 
         <a class="menu-link"
+           href="{{ \Illuminate\Support\Facades\Route::has('profile') ? route('profile') : url('/profile') }}">
+            PROFIL
+        </a>
+
+        <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('solo.index') ? route('solo.index') : url('/solo') }}">
             SOLO
         </a>
@@ -211,8 +217,18 @@
         </a>
 
         <a class="menu-link"
+           href="{{ \Illuminate\Support\Facades\Route::has('ligue') ? route('ligue') : url('/ligue') }}">
+            LIGUE
+        </a>
+
+        <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('master') ? route('master') : url('/master') }}">
             MAÎTRE DU JEU
+        </a>
+
+        <a class="menu-link"
+           href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}">
+            AVATARS
         </a>
 
         <a class="menu-link"
@@ -221,28 +237,13 @@
         </a>
 
         <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('ligue') ? route('ligue') : url('/ligue') }}">
-            LIGUE
+           href="{{ \Illuminate\Support\Facades\Route::has('boutique') ? route('boutique') : url('/boutique') }}">
+            BOUTIQUE
         </a>
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('reglements') ? route('reglements') : url('/reglements') }}">
             RÈGLEMENTS
-        </a>
-
-        <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('profile') ? route('profile') : url('/profile') }}">
-            PROFIL
-        </a>
-
-        <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}">
-            AVATAR
-        </a>
-
-        <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('boutique') ? route('boutique') : url('/boutique') }}">
-            BOUTIQUE
         </a>
     </div>
 </div>
@@ -296,21 +297,17 @@
         img.dataset.vx = Math.cos(dir) * speed;
         img.dataset.vy = Math.sin(dir) * speed;
 
-        // Seul le premier cerveau peut être cliqué pour multiplier
-        if (isFirst) {
-            const multiply = (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                createBrain(parseFloat(img.style.left)||0, parseFloat(img.style.top)||0, false);
-            };
-            
-            img.addEventListener('click', multiply);
-            img.addEventListener('touchstart', multiply, { passive: false });
-            img.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
-            img.style.pointerEvents = 'auto';
-        } else {
-            img.style.pointerEvents = 'none';
-        }
+        // Tous les cerveaux sont cliquables pour multiplier
+        const multiply = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            createBrain(parseFloat(img.style.left)||0, parseFloat(img.style.top)||0, false);
+        };
+        
+        img.addEventListener('click', multiply);
+        img.addEventListener('touchstart', multiply, { passive: false });
+        img.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+        img.style.pointerEvents = 'auto';
 
         stage.appendChild(img);
         BRAINS.push(img);
