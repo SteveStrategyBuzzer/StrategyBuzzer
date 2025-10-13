@@ -5,11 +5,15 @@
     use Illuminate\Support\Facades\Auth;
     $user = Auth::user();
     
-    // Vérifier les conditions de déblocage
-    $profileComplete = $user && !empty($user->name) && !empty($user->email);
+    // Solo et Maître du Jeu sont toujours accessibles
+    $soloUnlocked = true;
+    $masterPurchased = $user && ($user->master_purchased ?? false); // Vérifier si acheté
+    $masterUnlocked = $masterPurchased || true; // Toujours accessible pour l'instant
+    
+    // Vérifier les conditions de déblocage pour Duo et Ligue
     $soloMatches = $user ? (($user->solo_defeats ?? 0) + ($user->solo_victories ?? 0)) : 0;
     $duoUnlocked = $soloMatches >= 20;
-    $ligueUnlocked = $duoUnlocked; // Pour l'instant basé sur Duo
+    $ligueUnlocked = $duoUnlocked;
     
     // Tous les autres sont toujours accessibles
     $avatarsUnlocked = true;
@@ -17,7 +21,6 @@
     $badgesUnlocked = true;
     $boutiqueUnlocked = true;
     $reglementsUnlocked = true;
-    $masterUnlocked = true;
 @endphp
 
 <style>
