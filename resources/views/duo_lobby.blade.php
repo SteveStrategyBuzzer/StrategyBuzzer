@@ -7,27 +7,16 @@
             Retour
         </button>
         <h1>MODE DUO</h1>
+        <div class="header-avatar">
+            @if(Auth::user()->avatar_url)
+                <img src="{{ Auth::user()->avatar_url }}" alt="Avatar">
+            @else
+                <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
+            @endif
+        </div>
     </div>
 
     <div class="lobby-content">
-        <div class="player-card">
-            <div class="player-avatar">
-                @if(Auth::user()->avatar_url)
-                    <img src="{{ Auth::user()->avatar_url }}" alt="Avatar">
-                @else
-                    <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
-                @endif
-            </div>
-            <div class="player-info">
-                <h3>{{ Auth::user()->name }}</h3>
-                <p class="player-stats">
-                    {{ $stats['matches_won'] ?? 0 }}V - {{ $stats['matches_lost'] ?? 0 }}D
-                    @if(isset($stats['win_rate']))
-                        ({{ number_format($stats['win_rate'], 1) }}%)
-                    @endif
-                </p>
-            </div>
-        </div>
 
         <div class="matchmaking-options">
             <div class="option-card">
@@ -86,6 +75,7 @@
 .duo-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 20px;
     margin-bottom: 30px;
 }
@@ -95,6 +85,34 @@
     color: white;
     margin: 0;
     flex: 1;
+    text-align: center;
+}
+
+.header-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid white;
+    flex-shrink: 0;
+}
+
+.header-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.header-avatar .default-avatar {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 1.5em;
+    font-weight: bold;
 }
 
 .division-badge {
@@ -482,7 +500,7 @@
     }
     
     .duo-header {
-        gap: 10px;
+        gap: 8px;
         margin-bottom: 12px;
     }
     
@@ -493,8 +511,18 @@
     }
     
     .duo-header h1 {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         margin: 0;
+    }
+    
+    .header-avatar {
+        width: 40px;
+        height: 40px;
+        border: 2px solid white;
+    }
+    
+    .header-avatar .default-avatar {
+        font-size: 1.2em;
     }
     
     .lobby-content {
