@@ -9,7 +9,7 @@
         <h1>MODE DUO</h1>
         <div class="header-avatar">
             @if(Auth::user()->avatar_url)
-                <img src="{{ Auth::user()->avatar_url }}" alt="Avatar">
+                <img src="/{{ Auth::user()->avatar_url }}" alt="Avatar">
             @else
                 <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
             @endif
