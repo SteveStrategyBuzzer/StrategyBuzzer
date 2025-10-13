@@ -15,8 +15,9 @@
     $soloMatches = $user ? (($user->solo_defeats ?? 0) + ($user->solo_victories ?? 0)) : 0;
     $duoUnlocked = $soloMatches >= 20;
     
-    // Ligue : 100 matchs Solo joués (victoires + défaites)
-    $ligueUnlocked = $soloMatches >= 100;
+    // Ligue : 100 matchs Duo joués (victoires + défaites)
+    $duoMatches = $user ? (($user->duo_defeats ?? 0) + ($user->duo_victories ?? 0)) : 0;
+    $ligueUnlocked = $duoMatches >= 100;
     
     // Maître du Jeu : accessible si acheté (indépendant du profil)
     $masterPurchased = $user && ($user->master_purchased ?? false);
