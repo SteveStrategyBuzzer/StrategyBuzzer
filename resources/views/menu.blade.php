@@ -19,9 +19,9 @@
     $duoMatches = $user ? (($user->duo_defeats ?? 0) + ($user->duo_victories ?? 0)) : 0;
     $ligueUnlocked = $duoMatches >= 100;
     
-    // Maître du Jeu : accessible si acheté (indépendant du profil)
+    // Maître du Jeu : accessible si acheté ET profil complété
     $masterPurchased = $user && ($user->master_purchased ?? false);
-    $masterUnlocked = $masterPurchased;
+    $masterUnlocked = $masterPurchased && $profileComplete;
     
     // Tous les autres sont toujours accessibles
     $avatarsUnlocked = true;
