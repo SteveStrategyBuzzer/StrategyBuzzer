@@ -33,7 +33,7 @@
                 <h3>👥 INVITER UN AMI</h3>
                 <p>Défiez un joueur spécifique</p>
                 <div class="invite-section">
-                    <input type="text" id="inviteInput" placeholder="Nom du joueur..." class="invite-input">
+                    <input type="text" id="inviteInput" placeholder="Code du joueur (ex: SB-4X2K)..." class="invite-input">
                     <button id="inviteBtn" class="btn-secondary btn-large">
                         INVITER
                     </button>
@@ -698,9 +698,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     inviteBtn.addEventListener('click', function() {
-        const playerName = inviteInput.value.trim();
-        if (!playerName) {
-            alert('Entrez le nom d\'un joueur');
+        const playerCode = inviteInput.value.trim().toUpperCase();
+        if (!playerCode) {
+            alert('Entrez le code du joueur (ex: SB-4X2K)');
             return;
         }
 
@@ -710,12 +710,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({ player_name: playerName })
+            body: JSON.stringify({ player_code: playerCode })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Invitation envoyée à ' + playerName);
+                alert('Invitation envoyée !');
                 inviteInput.value = '';
             } else {
                 alert(data.message || 'Erreur lors de l\'invitation');

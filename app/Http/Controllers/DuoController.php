@@ -40,11 +40,29 @@ class DuoController extends Controller
     public function invitePlayer(Request $request)
     {
         $request->validate([
-            'player_id' => 'required|exists:users,id',
+            'player_code' => 'required|string',
         ]);
 
         $user = Auth::user();
-        $match = $this->matchmaking->createInvitation($user, $request->player_id);
+        
+        // Chercher le joueur par code
+        $opponent = \App\Services\PlayerCodeService::findByCode($request->player_code);
+        
+        if (!$opponent) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Joueur introuvable avec ce code',
+            ], 404);
+        }
+        
+        if ($opponent->id === $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous ne pouvez pas vous inviter vous-même',
+            ], 400);
+        }
+
+        $match = $this->matchmaking->createInvitation($user, $opponent->id);
 
         return response()->json([
             'success' => true,
