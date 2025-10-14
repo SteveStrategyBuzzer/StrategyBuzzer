@@ -798,10 +798,10 @@ function handleBuzz() {
     // Désactiver le bouton
     document.getElementById('buzzButton').disabled = true;
     
-    // Soumettre le formulaire après un court délai pour entendre le son
+    // Soumettre le formulaire après que le son soit fini (1 seconde)
     setTimeout(() => {
         document.getElementById('buzzForm').submit();
-    }, 300);
+    }, 1000);
 }
 
 function handleTimeout() {
