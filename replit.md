@@ -15,7 +15,7 @@ Preferred communication style: Simple, everyday language.
 - **Competitive UI Redesign** for gameplay screens, including energetic chronometers, realistic buzz buttons, and score battle displays.
 - **Viewport-Optimized Gameplay Screens** designed for 100% visibility without scrolling, adapting seamlessly to various mobile and tablet orientations.
 - Features a 3-second concentration countdown screen before games.
-- Visual improvements to the game question page, including strategic avatar alignment, balanced 1v1 opponent display, and a 3-column layout when a strategic avatar is selected.
+- **3-Column Game Question Layout (October 2025)**: Complete redesign with LEFT column (player + opponent circles), CENTER column (large chrono), RIGHT column (strategic avatar + 3 skill circles), and Strategy Buzzer button centered at bottom. Opponent display adapts: Boss opponents show photo, regular opponents show initiale in empty circle.
 - Skill activation no longer uses popup alerts.
 - Persistent visual feedback for strategic avatar skills (golden pulsating glow) until used.
 

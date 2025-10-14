@@ -630,7 +630,7 @@ if ($bossInfo) {
     <!-- Question en haut -->
     <div class="question-header">
         <div class="question-number">QUESTION {{ $params['current_question'] }}/10</div>
-        <div class="question-text">{{ $params['question'] }}</div>
+        <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     
     <!-- Layout 3 colonnes -->
@@ -698,14 +698,14 @@ if ($bossInfo) {
     <!-- Bouton Buzzer centré en bas -->
     <div class="buzz-container-bottom">
         <button id="buzzButton" class="buzz-button">
-            <img src="{{ asset('sounds/buzzer.png') }}" alt="Strategy Buzzer">
+            <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzzer">
         </button>
     </div>
 </div>
 
 <!-- Audio pour le buzzer -->
 <audio id="buzzerSound" preload="auto">
-    <source src="{{ asset('sounds/buzzer.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('sounds/buzz.mp3') }}" type="audio/mpeg">
 </audio>
 
 <script>
@@ -755,7 +755,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Rediriger après le son
         setTimeout(() => {
-            window.location.href = '/solo/answer?theme={{ $params['theme'] }}&niveau={{ $params['niveau'] }}&current_question={{ $params['current_question'] }}&score={{ $params['score'] }}&time={{ timeLeft }}&avatar={{ $params['avatar'] ?? 'Aucun' }}&round={{ $params['round'] ?? 1 }}&player_rounds_won={{ $params['player_rounds_won'] ?? 0 }}&opponent_rounds_won={{ $params['opponent_rounds_won'] ?? 0 }}&correct_answers={{ $params['correct_answers'] ?? 0 }}&incorrect_answers={{ $params['incorrect_answers'] ?? 0 }}&unanswered_questions={{ $params['unanswered_questions'] ?? 0 }}';
+            window.location.href = '/solo/answer?theme={{ $params['theme'] }}&niveau={{ $params['niveau'] }}&current_question={{ $params['current_question'] }}&score={{ $params['score'] }}&time=' + timeLeft + '&avatar={{ $params['avatar'] ?? 'Aucun' }}&round={{ $params['round'] ?? 1 }}&player_rounds_won={{ $params['player_rounds_won'] ?? 0 }}&opponent_rounds_won={{ $params['opponent_rounds_won'] ?? 0 }}&correct_answers={{ $params['correct_answers'] ?? 0 }}&incorrect_answers={{ $params['incorrect_answers'] ?? 0 }}&unanswered_questions={{ $params['unanswered_questions'] ?? 0 }}';
         }, buzzerDuration);
     });
     
