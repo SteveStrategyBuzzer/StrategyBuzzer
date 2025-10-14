@@ -78,22 +78,25 @@ if ($bossInfo) {
     }
     
     .game-container {
-        max-width: 1000px;
+        max-width: 1200px;
         width: 100%;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
         gap: 20px;
+        position: relative;
+        min-height: 100vh;
+        padding-bottom: 180px;
     }
     
-    /* Question tout en haut */
+    /* Question en haut */
     .question-header {
         background: rgba(78, 205, 196, 0.1);
         padding: 20px;
         border-radius: 20px;
         text-align: center;
         border: 2px solid rgba(78, 205, 196, 0.3);
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }
     
     .question-number {
@@ -111,78 +114,121 @@ if ($bossInfo) {
         line-height: 1.5;
     }
     
-    /* Section centrale avec chronomètre et avatars */
-    .chrono-section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 20px;
+    /* Layout 3 colonnes */
+    .game-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 30px;
+        align-items: start;
+        justify-items: center;
         margin: 20px 0;
     }
     
-    .chrono-row {
+    /* COLONNE GAUCHE - Joueur + Adversaire */
+    .left-column {
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 20px;
+        gap: 30px;
+        width: 100%;
     }
     
-    .buzz-container-inline {
-        text-align: center;
-    }
-    
-    
-    .player-section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .player-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        border: 3px solid #4ECDC4;
-        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
-        object-fit: cover;
-    }
-    
-    .player-score-display {
-        font-size: 2rem;
-        font-weight: 900;
-        color: #4ECDC4;
-        text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
-    }
-    
-    .opponent-section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .opponent-info {
-        font-size: 0.85rem;
-        color: #FF6B6B;
-        font-weight: 600;
-        text-align: center;
-    }
-    
-    /* Chronomètre central */
-    .chrono-container {
-        position: relative;
+    .player-circle {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 10px;
     }
     
+    .player-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid #4ECDC4;
+        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
+        object-fit: cover;
+    }
+    
+    .player-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #4ECDC4;
+    }
+    
+    .player-level {
+        font-size: 0.85rem;
+        color: #4ECDC4;
+        opacity: 0.8;
+    }
+    
+    .player-score {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #4ECDC4;
+        text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
+    }
+    
+    .opponent-circle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .opponent-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid #FF6B6B;
+        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
+        object-fit: cover;
+    }
+    
+    .opponent-avatar-empty {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid #FF6B6B;
+        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 107, 107, 0.1);
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: #FF6B6B;
+    }
+    
+    .opponent-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #FF6B6B;
+    }
+    
+    .opponent-level {
+        font-size: 0.85rem;
+        color: #FF6B6B;
+        opacity: 0.8;
+    }
+    
+    .opponent-score {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #FF6B6B;
+        text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+    }
+    
+    /* COLONNE CENTRE - Chronomètre */
+    .center-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
     .chrono-circle {
-        width: 200px;
-        height: 200px;
+        width: 220px;
+        height: 220px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
@@ -219,297 +265,280 @@ if ($bossInfo) {
     }
     
     .chrono-time {
-        font-size: 4.5rem;
+        font-size: 5rem;
         font-weight: 900;
         position: relative;
         z-index: 1;
-        text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+        background: linear-gradient(180deg, #fff 0%, #4ECDC4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
-    .chrono-label {
-        font-size: 0.85rem;
-        opacity: 0.9;
-        text-align: center;
-        color: #4ECDC4;
-    }
-    
-    .chrono-warning .chrono-circle {
-        background: linear-gradient(135deg, #FF6B6B 0%, #EE5A6F 100%);
-        animation: danger-pulse 0.5s infinite !important;
-    }
-    
-    @keyframes danger-pulse {
-        0%, 100% { 
-            transform: scale(1);
-            box-shadow: 0 15px 50px rgba(255, 107, 107, 0.8);
-        }
-        50% { 
-            transform: scale(1.08);
-            box-shadow: 0 20px 70px rgba(255, 107, 107, 1);
-        }
-    }
-    
-    .opponent-avatar {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        border: 3px solid #FF6B6B;
-        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
-        object-fit: cover;
-    }
-    
-    .opponent-score-display {
-        font-size: 1.8rem;
-        font-weight: 900;
-        color: #FF6B6B;
-        text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
-    }
-    
-    /* Colonne droite : avatar stratégique + skills */
+    /* COLONNE DROITE - Avatar stratégique + Skills */
     .right-column {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 15px;
-        justify-content: flex-start;
+        gap: 20px;
+        width: 100%;
     }
     
-    .strategic-section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .strategic-avatar {
-        width: 80px;
-        height: 80px;
+    .strategic-avatar-circle {
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
         border: 3px solid #FFD700;
         box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 215, 0, 0.1);
         object-fit: cover;
     }
     
-    .strategic-placeholder {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        border: 3px dashed rgba(255,255,255,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        opacity: 0.5;
+    .strategic-avatar-circle.empty {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: none;
     }
     
-    /* Skills icônes seulement */
-    .skills-icons {
+    .strategic-avatar-image {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .skills-container {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
         align-items: center;
     }
     
-    .skill-icon-circle {
-        width: 45px;
-        height: 45px;
+    .skill-circle {
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: 2px solid #FFD700;
-        color: white;
-        font-size: 1.3rem;
-        cursor: pointer;
+        border: 2px solid rgba(255, 255, 255, 0.3);
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 1.8rem;
+        background: rgba(255, 255, 255, 0.1);
         transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     }
     
-    .skill-icon-circle:hover {
-        transform: translateY(-3px) scale(1.1);
-        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+    .skill-circle.active {
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.2);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        animation: golden-pulse 2s ease-in-out infinite;
     }
     
-    .skill-icon-circle:active {
-        transform: translateY(0) scale(0.95);
+    @keyframes golden-pulse {
+        0%, 100% {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        }
+        50% {
+            box-shadow: 0 0 35px rgba(255, 215, 0, 0.9);
+        }
     }
     
-    /* Buzzer avec image */
-    .buzz-container {
-        text-align: center;
-        margin-top: 20px;
+    .skill-circle.empty {
+        opacity: 0.3;
+    }
+    
+    /* BOUTON BUZZER CENTRÉ EN BAS */
+    .buzz-container-bottom {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
     }
     
     .buzz-button {
         background: none;
         border: none;
         cursor: pointer;
+        transition: transform 0.2s ease;
         padding: 0;
-        transition: all 0.2s ease;
-        display: block;
-        margin: 0 auto;
+    }
+    
+    .buzz-button:hover {
+        transform: scale(1.05);
+    }
+    
+    .buzz-button:active {
+        transform: scale(0.95);
     }
     
     .buzz-button img {
-        width: 200px;
-        height: 200px;
-        display: block;
-        transition: all 0.2s ease;
-        filter: drop-shadow(0 20px 40px rgba(230, 57, 70, 0.6));
+        width: 180px;
+        height: 180px;
+        filter: drop-shadow(0 10px 30px rgba(78, 205, 196, 0.6));
     }
     
-    .buzz-button:hover:not(:disabled) img {
-        transform: translateY(-8px) scale(1.05);
-        filter: drop-shadow(0 25px 50px rgba(230, 57, 70, 0.8));
+    .buzz-button:hover img {
+        filter: drop-shadow(0 15px 40px rgba(78, 205, 196, 0.8));
     }
     
-    .buzz-button:active:not(:disabled) img {
-        transform: translateY(4px) scale(0.95);
-        filter: drop-shadow(0 10px 20px rgba(230, 57, 70, 0.6));
+    /* Messages et résultats */
+    .result-overlay {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        padding: 40px 60px;
+        border-radius: 30px;
+        text-align: center;
+        z-index: 200;
+        border: 3px solid;
+        animation: fadeIn 0.3s ease;
     }
     
-    .buzz-button:disabled img {
-        opacity: 0.5;
-        cursor: not-allowed;
-        filter: grayscale(100%);
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -60%);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
     }
     
-    /* Zone desktop cachée par défaut (visible uniquement en desktop/paysage) */
-    .strategic-desktop-zone {
-        display: none;
+    .result-overlay.correct {
+        border-color: #4ECDC4;
+        box-shadow: 0 0 50px rgba(78, 205, 196, 0.8);
     }
     
-    /* DESKTOP / PAYSAGE : Disposition en grille selon schéma */
-    @media (min-width: 768px) and (orientation: landscape), 
-           (min-width: 1024px) {
-        .game-container {
-            max-width: 1400px;
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            grid-template-rows: auto 1fr;
+    .result-overlay.incorrect {
+        border-color: #FF6B6B;
+        box-shadow: 0 0 50px rgba(255, 107, 107, 0.8);
+    }
+    
+    .result-text {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin-bottom: 15px;
+    }
+    
+    .result-overlay.correct .result-text {
+        color: #4ECDC4;
+    }
+    
+    .result-overlay.incorrect .result-text {
+        color: #FF6B6B;
+    }
+    
+    .points-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        opacity: 0.9;
+    }
+    
+    /* Responsive Tablette */
+    @media (max-width: 1024px) {
+        .game-layout {
             gap: 20px;
-            align-items: start;
         }
         
-        /* Question en haut à gauche */
-        .question-header {
-            grid-column: 1;
-            grid-row: 1;
-            margin-bottom: 0;
-        }
-        
-        /* Avatar stratégique + skills en haut à droite */
-        .strategic-desktop-zone {
-            grid-column: 2;
-            grid-row: 1 / 3;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            padding: 20px;
-            background: rgba(78, 205, 196, 0.05);
-            border-radius: 20px;
-            border: 2px solid rgba(78, 205, 196, 0.2);
-        }
-        
-        .strategic-desktop-zone .strategic-section {
-            margin-bottom: 10px;
-        }
-        
-        .strategic-desktop-zone .skills-icons {
-            margin-top: 10px;
-        }
-        
-        /* Section basse : joueur + adversaire + chrono + buzzer en ligne horizontale */
-        .chrono-section {
-            grid-column: 1;
-            grid-row: 2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0;
-            padding: 20px;
-        }
-        
-        .chrono-row {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: space-around;
-            gap: 40px;
-            width: 100%;
-        }
-        
-        .right-column {
-            display: none; /* Caché en mode desktop car déplacé dans strategic-desktop-zone */
-        }
-        
-        /* Buzzer dans la ligne horizontale */
-        .buzz-container-inline {
-            margin-top: 0;
-            flex-shrink: 0;
-        }
-        
-        .buzz-button img {
-            width: 180px;
-            height: 180px;
-        }
-        
-        .chrono-circle {
-            width: 160px;
-            height: 160px;
-        }
-        
-        .chrono-time {
-            font-size: 3.5rem;
-        }
-        
-        .player-avatar {
-            width: 90px;
-            height: 90px;
-        }
-        
-        .opponent-avatar {
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
             width: 85px;
             height: 85px;
         }
         
-        .strategic-avatar {
+        .strategic-avatar-circle {
             width: 100px;
             height: 100px;
         }
         
-        .skill-icon-circle {
+        .skill-circle {
             width: 50px;
             height: 50px;
             font-size: 1.4rem;
+        }
+        
+        .chrono-circle {
+            width: 180px;
+            height: 180px;
+        }
+        
+        .chrono-time {
+            font-size: 4rem;
         }
     }
     
     /* Responsive Mobile */
     @media (max-width: 768px) {
-        .chrono-section {
-            gap: 20px;
+        .game-layout {
+            gap: 15px;
         }
         
-        .player-avatar {
-            width: 60px;
-            height: 60px;
-        }
-        
-        .opponent-avatar {
-            width: 55px;
-            height: 55px;
-        }
-        
-        .strategic-avatar {
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
             width: 70px;
             height: 70px;
         }
         
-        .player-score-display, .opponent-score-display {
+        .strategic-avatar-circle {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .player-score, .opponent-score {
             font-size: 1.6rem;
+        }
+        
+        .chrono-circle {
+            width: 140px;
+            height: 140px;
+        }
+        
+        .chrono-time {
+            font-size: 3rem;
+        }
+        
+        .skill-circle {
+            width: 45px;
+            height: 45px;
+            font-size: 1.2rem;
+        }
+        
+        .buzz-button img {
+            width: 150px;
+            height: 150px;
+        }
+        
+        .question-text {
+            font-size: 1.2rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+            width: 60px;
+            height: 60px;
+        }
+        
+        .strategic-avatar-circle {
+            width: 70px;
+            height: 70px;
+        }
+        
+        .player-score, .opponent-score {
+            font-size: 1.4rem;
+        }
+        
+        .player-name, .opponent-name {
+            font-size: 0.85rem;
+        }
+        
+        .player-level, .opponent-level {
+            font-size: 0.75rem;
         }
         
         .chrono-circle {
@@ -518,41 +547,57 @@ if ($bossInfo) {
         }
         
         .chrono-time {
-            font-size: 2.8rem;
+            font-size: 2.5rem;
         }
         
-        .skill-icon-circle {
-            width: 38px;
-            height: 38px;
-            font-size: 1.1rem;
+        .skill-circle {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
         }
         
         .buzz-button img {
-            width: 160px;
-            height: 160px;
-        }
-    }
-    
-    @media (max-width: 480px) and (orientation: portrait) {
-        .chrono-section {
-            gap: 15px;
+            width: 130px;
+            height: 130px;
         }
         
         .question-text {
-            font-size: 1.1rem;
+            font-size: 1rem;
+        }
+    }
+    
+    /* Landscape mode pour mobile */
+    @media (max-height: 600px) and (orientation: landscape) {
+        .game-container {
+            padding-bottom: 140px;
         }
         
-        .player-avatar, .opponent-avatar, .strategic-avatar {
+        .question-header {
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .question-text {
+            font-size: 1rem;
+        }
+        
+        .game-layout {
+            gap: 15px;
+            margin: 10px 0;
+        }
+        
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
             width: 60px;
             height: 60px;
         }
         
-        .player-score-display, .opponent-score-display {
-            font-size: 1.5rem;
+        .strategic-avatar-circle {
+            width: 70px;
+            height: 70px;
         }
         
-        .player-name, .opponent-name {
-            font-size: 0.75rem;
+        .player-score, .opponent-score {
+            font-size: 1.3rem;
         }
         
         .chrono-circle {
@@ -564,281 +609,177 @@ if ($bossInfo) {
             font-size: 2.2rem;
         }
         
-        .skill-button {
+        .skill-circle {
+            width: 35px;
+            height: 35px;
+            font-size: 0.9rem;
+        }
+        
+        .buzz-button img {
             width: 110px;
-            padding: 7px 10px;
-            font-size: 0.8rem;
+            height: 110px;
         }
         
-        .buzz-button img {
-            width: 140px;
-            height: 140px;
-        }
-    }
-    
-    @media (max-height: 600px) and (orientation: landscape) {
-        .game-container {
-            gap: 10px;
-        }
-        
-        .question-header {
-            padding: 12px;
-        }
-        
-        .question-text {
-            font-size: 1rem;
-        }
-        
-        .chrono-section {
-            gap: 20px;
-            margin: 10px 0;
-        }
-        
-        .player-avatar, .opponent-avatar, .strategic-avatar {
-            width: 60px;
-            height: 60px;
-        }
-        
-        .player-score-display, .opponent-score-display {
-            font-size: 1.4rem;
-        }
-        
-        .player-name, .opponent-name {
-            font-size: 0.7rem;
-        }
-        
-        .chrono-circle {
-            width: 90px;
-            height: 90px;
-        }
-        
-        .chrono-time {
-            font-size: 2rem;
-        }
-        
-        .buzz-button img {
-            width: 120px;
-            height: 120px;
-        }
-        
-        .skill-icon-circle {
-            width: 32px;
-            height: 32px;
-            font-size: 1rem;
+        .buzz-container-bottom {
+            bottom: 20px;
         }
     }
 </style>
 
 <div class="game-container">
-    <!-- Question TOUT EN HAUT -->
+    <!-- Question en haut -->
     <div class="question-header">
-        <div class="question-number">
-            Question {{ $params['current_question'] }} / {{ $params['total_questions'] }}
-        </div>
-        <div class="question-text">{{ $params['question']['text'] }}</div>
+        <div class="question-number">QUESTION {{ $params['current_question'] }}/10</div>
+        <div class="question-text">{{ $params['question'] }}</div>
     </div>
     
-    <!-- Zone Desktop/Paysage : Avatar stratégique + Skills (visible uniquement en desktop/paysage) -->
-    <div class="strategic-desktop-zone">
-        @if($currentAvatar !== 'Aucun')
-            <div class="strategic-section">
-                @if(!empty($strategicAvatarPath))
-                    <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                @else
-                    <div class="strategic-placeholder">⚔️</div>
-                @endif
-                <div class="player-name" style="color: #FFD700; font-size: 0.9rem; margin-top: 10px;">{{ $currentAvatar }}</div>
-            </div>
-            
-            @if(count($skills) > 0)
-            <div class="skills-icons">
-                @foreach($skills as $skill)
-                    <div class="skill-icon-circle" onclick="activateSkill('{{ $skill['name'] }}')">
-                        {{ $skill['icon'] }}
-                    </div>
-                @endforeach
-            </div>
-            @endif
-        @else
-            <!-- Pas d'avatar stratégique : afficher l'adversaire -->
-            <div class="strategic-section">
-                @if($bossInfo)
-                    <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="strategic-avatar" style="border-color: #FF6B6B;" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                    <div class="player-score-display" style="color: #FF6B6B; font-size: 1.8rem; margin-top: 10px;">{{ $opponentScore }}</div>
-                    <div class="opponent-info" style="color: #FF6B6B; font-size: 0.9rem;">{{ $opponentName }} Niv {{ $niveau }}</div>
-                @else
-                    <div style="text-align: center;">
-                        <div style="color: #FF6B6B; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">
-                            {{ $opponentName }}<br>
-                            <span style="font-size: 1rem; opacity: 0.9;">Niv {{ $niveau }}</span>
-                        </div>
-                        <div class="player-score-display" style="color: #FF6B6B;">{{ $opponentScore }}</div>
-                    </div>
-                @endif
-            </div>
-        @endif
-    </div>
-    
-    <!-- Section centrale : Joueur | Adversaire | Chrono | Buzzer (alignés en mobile vertical, desktop horizontal) -->
-    <div class="chrono-section">
-        <div class="chrono-row">
+    <!-- Layout 3 colonnes -->
+    <div class="game-layout">
+        <!-- COLONNE GAUCHE : Joueur + Adversaire -->
+        <div class="left-column">
             <!-- Joueur -->
-            <div class="player-section">
-                <img src="{{ $playerAvatarPath }}" alt="Player" class="player-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                <div class="player-score-display">{{ $params['score'] }}</div>
-                <div class="player-name" style="color: #4ECDC4;">{{ $playerName }} Niv {{ $niveau }}</div>
+            <div class="player-circle">
+                <img src="{{ $playerAvatarPath }}" alt="Avatar joueur" class="player-avatar">
+                <div class="player-name">{{ $playerName }}</div>
+                <div class="player-level">Niveau {{ $niveau }}</div>
+                <div class="player-score" id="playerScore">{{ $params['score'] }}</div>
             </div>
             
-            <!-- Adversaire (toujours affiché) -->
-            <div class="opponent-section">
+            <!-- Adversaire -->
+            <div class="opponent-circle">
                 @if($bossInfo)
-                    <!-- BOSS : Afficher avec cercle et image -->
-                    <img src="{{ $opponentAvatar }}" alt="{{ $opponentName }}" class="opponent-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                    <div class="opponent-score-display">{{ $opponentScore }}</div>
-                    <div class="opponent-info">{{ $opponentName }} Niv {{ $niveau }}</div>
+                    <!-- Boss avec photo -->
+                    <img src="{{ $opponentAvatar }}" alt="Avatar Boss" class="opponent-avatar">
                 @else
-                    <!-- ADVERSAIRE NORMAL : Juste prénom + niveau + score (SANS cercle) -->
-                    <div style="text-align: center;">
-                        <div style="color: #FF6B6B; font-size: 1.1rem; font-weight: 700; margin-bottom: 5px;">
-                            {{ $opponentName }}<br>
-                            <span style="font-size: 0.9rem; opacity: 0.9;">Niv {{ $niveau }}</span>
-                        </div>
-                        <div class="opponent-score-display">{{ $opponentScore }}</div>
+                    <!-- Élève sans photo -->
+                    <div class="opponent-avatar-empty">
+                        {{ strtoupper(substr($opponentName, 0, 1)) }}
                     </div>
                 @endif
-            </div>
-            
-            <!-- Chronomètre -->
-            <div class="chrono-container" id="chronoContainer">
-                <div class="chrono-circle">
-                    <div class="chrono-time" id="chronoTime">{{ $params['chrono_time'] }}</div>
-                </div>
-                <div class="chrono-label">⏱️ Secondes</div>
-            </div>
-            
-            <!-- Buzzer -->
-            <div class="buzz-container-inline">
-                <form id="buzzForm" method="POST" action="{{ route('solo.buzz') }}">
-                    @csrf
-                    <button type="button" id="buzzButton" class="buzz-button" onclick="handleBuzz()">
-                        <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzz Buzzer">
-                    </button>
-                </form>
+                <div class="opponent-name">{{ $opponentName }}</div>
+                <div class="opponent-level">Niveau {{ $niveau }}</div>
+                <div class="opponent-score" id="opponentScore">{{ $opponentScore }}</div>
             </div>
         </div>
         
-        <!-- Avatar stratégique + Skills (mobile uniquement, masqué en desktop) -->
-        <div class="right-column">
-            @if($currentAvatar !== 'Aucun')
-                <div class="strategic-section">
-                    @if(!empty($strategicAvatarPath))
-                        <img src="{{ $strategicAvatarPath }}" alt="{{ $currentAvatar }}" class="strategic-avatar" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                    @else
-                        <div class="strategic-placeholder">⚔️</div>
-                    @endif
-                    <div class="player-name" style="color: #FFD700; font-size: 0.8rem;">{{ $currentAvatar }}</div>
-                </div>
-                
-                @if(count($skills) > 0)
-                <div class="skills-icons">
-                    @foreach($skills as $skill)
-                        <div class="skill-icon-circle" onclick="activateSkill('{{ $skill['name'] }}')">
-                            {{ $skill['icon'] }}
-                        </div>
-                    @endforeach
-                </div>
-                @endif
-            @endif
+        <!-- COLONNE CENTRE : Chronomètre -->
+        <div class="center-column">
+            <div class="chrono-circle">
+                <div class="chrono-time" id="chronoTimer">8</div>
+            </div>
         </div>
+        
+        <!-- COLONNE DROITE : Avatar stratégique + Skills -->
+        <div class="right-column">
+            <!-- Avatar stratégique -->
+            @if($currentAvatar !== 'Aucun' && $strategicAvatarPath)
+                <div class="strategic-avatar-circle">
+                    <img src="{{ $strategicAvatarPath }}" alt="Avatar stratégique" class="strategic-avatar-image">
+                </div>
+            @else
+                <div class="strategic-avatar-circle empty"></div>
+            @endif
+            
+            <!-- 3 cercles de skills -->
+            <div class="skills-container">
+                @for($i = 0; $i < 3; $i++)
+                    @if(isset($skills[$i]))
+                        <div class="skill-circle active" data-skill-index="{{ $i }}">
+                            {{ $skills[$i]['icon'] }}
+                        </div>
+                    @else
+                        <div class="skill-circle empty"></div>
+                    @endif
+                @endfor
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bouton Buzzer centré en bas -->
+    <div class="buzz-container-bottom">
+        <button id="buzzButton" class="buzz-button">
+            <img src="{{ asset('sounds/buzzer.png') }}" alt="Strategy Buzzer">
+        </button>
     </div>
 </div>
 
-<audio id="buzzSound" preload="auto">
-    <source src="{{ asset('sounds/buzz.mp3') }}" type="audio/mpeg">
-    <source src="{{ asset('sounds/buzz.wav') }}" type="audio/wav">
-</audio>
-
-<audio id="failSound" preload="auto">
-    <source src="{{ asset('sounds/fail.mp3') }}" type="audio/mpeg">
-    <source src="{{ asset('sounds/fail.wav') }}" type="audio/wav">
+<!-- Audio pour le buzzer -->
+<audio id="buzzerSound" preload="auto">
+    <source src="{{ asset('sounds/buzzer.mp3') }}" type="audio/mpeg">
 </audio>
 
 <script>
-let timeLeft = {{ $params['chrono_time'] }};
-let chronoInterval;
-let buzzed = false;
-let buzzSoundDuration = 1000; // Durée par défaut en millisecondes
-
-// Détecter la durée du son de buzzer automatiquement
-const buzzSound = document.getElementById('buzzSound');
-buzzSound.addEventListener('loadedmetadata', function() {
-    // Convertir la durée en millisecondes et ajouter 100ms de marge
-    buzzSoundDuration = Math.ceil(buzzSound.duration * 1000) + 100;
-    console.log('Durée du buzzer détectée:', buzzSoundDuration + 'ms');
-});
-
-// Démarrer le chronomètre
-chronoInterval = setInterval(() => {
-    timeLeft--;
-    document.getElementById('chronoTime').textContent = timeLeft;
-    
-    // Avertissement visuel à 3 secondes
-    if (timeLeft <= 3 && timeLeft > 0) {
-        document.getElementById('chronoContainer').classList.add('chrono-warning');
-    }
-    
-    // Temps écoulé
-    if (timeLeft <= 0) {
-        clearInterval(chronoInterval);
-        handleTimeout();
-    }
-}, 1000);
-
-function handleBuzz() {
-    if (buzzed) return;
-    
-    buzzed = true;
-    clearInterval(chronoInterval);
-    
-    // Jouer le son de buzz
-    buzzSound.play().catch(e => console.log('Audio play failed:', e));
-    
-    // Désactiver le bouton
-    document.getElementById('buzzButton').disabled = true;
-    
-    // Soumettre le formulaire après que le son soit complètement fini
-    setTimeout(() => {
-        document.getElementById('buzzForm').submit();
-    }, buzzSoundDuration);
-}
-
-function handleTimeout() {
-    if (buzzed) return;
-    
-    buzzed = true;
-    
-    // Jouer le son d'échec
-    const failSound = document.getElementById('failSound');
-    failSound.play().catch(e => console.log('Audio play failed:', e));
-    
-    // Désactiver le bouton
+document.addEventListener('DOMContentLoaded', function() {
     const buzzButton = document.getElementById('buzzButton');
-    buzzButton.disabled = true;
-    buzzButton.style.background = 'linear-gradient(135deg, #95a5a6 0%, #7f8c8d 50%, #5a5a5a 100%)';
+    const buzzerSound = document.getElementById('buzzerSound');
+    const chronoTimer = document.getElementById('chronoTimer');
+    let timeLeft = 8;
+    let timerInterval;
+    let buzzed = false;
+    let buzzerDuration = 1500;
     
-    // Message d'échec
-    document.getElementById('chronoTime').textContent = '0';
+    // Détecter la durée du son automatiquement
+    buzzerSound.addEventListener('loadedmetadata', function() {
+        buzzerDuration = Math.floor(buzzerSound.duration * 1000) + 100;
+    });
     
-    // Rediriger vers écran de résultat (timeout) après 2 secondes
-    setTimeout(() => {
-        window.location.href = "{{ route('solo.timeout') }}";
-    }, 2000);
-}
-
-function activateSkill(skillName) {
-    console.log('Skill activé:', skillName);
-    // Fonctionnalité des skills implémentée dans game_answer.blade.php
-    // Pas de popup, le skill est activé directement
-}
+    // Démarrer le chronomètre
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            chronoTimer.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                if (!buzzed) {
+                    handleNoBuzz();
+                }
+            }
+        }, 1000);
+    }
+    
+    // Gestion du buzz
+    buzzButton.addEventListener('click', function() {
+        if (buzzed) return;
+        
+        buzzed = true;
+        clearInterval(timerInterval);
+        
+        // Jouer le son
+        buzzerSound.currentTime = 0;
+        buzzerSound.play();
+        
+        // Désactiver le bouton
+        buzzButton.disabled = true;
+        buzzButton.style.opacity = '0.5';
+        
+        // Rediriger après le son
+        setTimeout(() => {
+            window.location.href = '/solo/answer?theme={{ $params['theme'] }}&niveau={{ $params['niveau'] }}&current_question={{ $params['current_question'] }}&score={{ $params['score'] }}&time={{ timeLeft }}&avatar={{ $params['avatar'] ?? 'Aucun' }}&round={{ $params['round'] ?? 1 }}&player_rounds_won={{ $params['player_rounds_won'] ?? 0 }}&opponent_rounds_won={{ $params['opponent_rounds_won'] ?? 0 }}&correct_answers={{ $params['correct_answers'] ?? 0 }}&incorrect_answers={{ $params['incorrect_answers'] ?? 0 }}&unanswered_questions={{ $params['unanswered_questions'] ?? 0 }}';
+        }, buzzerDuration);
+    });
+    
+    // Pas de buzz - redirection directe
+    function handleNoBuzz() {
+        window.location.href = '/solo/answer?theme={{ $params['theme'] }}&niveau={{ $params['niveau'] }}&current_question={{ $params['current_question'] }}&score={{ $params['score'] }}&time=0&avatar={{ $params['avatar'] ?? 'Aucun' }}&round={{ $params['round'] ?? 1 }}&player_rounds_won={{ $params['player_rounds_won'] ?? 0 }}&opponent_rounds_won={{ $params['opponent_rounds_won'] ?? 0 }}&correct_answers={{ $params['correct_answers'] ?? 0 }}&incorrect_answers={{ $params['incorrect_answers'] ?? 0 }}&unanswered_questions={{ $params['unanswered_questions'] ?? 0 }}';
+    }
+    
+    // Démarrer le jeu
+    startTimer();
+    
+    // Gestion des skills (click sur les cercles actifs)
+    document.querySelectorAll('.skill-circle.active').forEach(skill => {
+        skill.addEventListener('click', function() {
+            const skillIndex = this.getAttribute('data-skill-index');
+            activateSkill(skillIndex);
+        });
+    });
+    
+    function activateSkill(skillIndex) {
+        // TODO: Implémenter la logique des skills
+        console.log('Skill activé:', skillIndex);
+    }
+});
 </script>
+
 @endsection
