@@ -12,6 +12,20 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
+     * Bootstrap du modèle
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($user) {
+            if (empty($user->player_code)) {
+                $user->player_code = \App\Services\PlayerCodeService::generateUniqueCode();
+            }
+        });
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -20,6 +34,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'player_code',
         'coins',
         'intelligence_pieces',
         'lives',
