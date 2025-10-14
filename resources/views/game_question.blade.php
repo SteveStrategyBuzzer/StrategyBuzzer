@@ -767,6 +767,15 @@ if ($bossInfo) {
 let timeLeft = {{ $params['chrono_time'] }};
 let chronoInterval;
 let buzzed = false;
+let buzzSoundDuration = 1000; // Durée par défaut en millisecondes
+
+// Détecter la durée du son de buzzer automatiquement
+const buzzSound = document.getElementById('buzzSound');
+buzzSound.addEventListener('loadedmetadata', function() {
+    // Convertir la durée en millisecondes et ajouter 100ms de marge
+    buzzSoundDuration = Math.ceil(buzzSound.duration * 1000) + 100;
+    console.log('Durée du buzzer détectée:', buzzSoundDuration + 'ms');
+});
 
 // Démarrer le chronomètre
 chronoInterval = setInterval(() => {
@@ -792,16 +801,15 @@ function handleBuzz() {
     clearInterval(chronoInterval);
     
     // Jouer le son de buzz
-    const buzzSound = document.getElementById('buzzSound');
     buzzSound.play().catch(e => console.log('Audio play failed:', e));
     
     // Désactiver le bouton
     document.getElementById('buzzButton').disabled = true;
     
-    // Soumettre le formulaire après que le son soit fini (1 seconde)
+    // Soumettre le formulaire après que le son soit complètement fini
     setTimeout(() => {
         document.getElementById('buzzForm').submit();
-    }, 1000);
+    }, buzzSoundDuration);
 }
 
 function handleTimeout() {
