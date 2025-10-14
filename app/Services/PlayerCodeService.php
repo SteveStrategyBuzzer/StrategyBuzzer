@@ -18,14 +18,17 @@ class PlayerCodeService
         
         do {
             $code = 'SB-' . self::generateRandomString(4);
+            $exists = User::where('player_code', $code)->exists();
             $attempt++;
+            
+            if (!$exists) {
+                return $code;
+            }
             
             if ($attempt >= $maxAttempts) {
                 throw new \Exception('Impossible de générer un code unique après ' . $maxAttempts . ' tentatives');
             }
-        } while (User::where('player_code', $code)->exists());
-        
-        return $code;
+        } while (true);
     }
     
     /**

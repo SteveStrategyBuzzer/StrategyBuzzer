@@ -61,6 +61,7 @@ Preferred communication style: Simple, everyday language.
 - **Firebase Authentication** with social providers.
 - **Laravel Sanctum** for API token management and session handling.
 - **Multi-provider authentication** supporting Firebase and Laravel's native auth (Email/Password, Apple, Phone).
+- **Player Code System (October 2025)**: Unique alphanumeric codes (SB-XXXX format) auto-generated for all users. Displayed in profile as "Code #SB-XXXX" instead of database ID. Used for player invitations in Duo mode.
 - **Role-based access control**.
 
 ### Real-time Features
@@ -87,13 +88,14 @@ Preferred communication style: Simple, everyday language.
 - **Complete Backend Implementation** with DuoController, DuoMatchmakingService, DivisionService.
 - **Division-Based Progression**: Point-based system (0-99 Bronze, 100-199 Argent, 200-299 Or, 300-399 Platine, 400-499 Diamant, 500+ Légende).
 - **Intelligent Scoring**: +1 vs weaker opponent (lower level), +2 vs equal level, +5 vs stronger opponent (higher level), -2 for loss.
-- **Matchmaking System**: Invite specific player by name or random matchmaking within same division.
+- **Player Code System (October 2025)**: Unique player codes (SB-XXXX format, 4 alphanumeric characters, ~1.6M combinations) for invitations. PlayerCodeService handles generation with uniqueness guarantee. Invitation by code only (no name search).
+- **Matchmaking System**: Invite specific player by code (SB-XXXX) or random matchmaking within same division.
 - **Best-of-3 System**: Draws replay the same round without consuming a round slot; match ends when a player wins 2 rounds or 3 decisive rounds are played (tiebreaker by total score).
 - **Real-time Gameplay**: Server-side buzz timestamps, fair multi-player buzz validation, anti-cheat measures.
-- **Database Schema**: duo_matches, player_duo_stats, player_divisions tables with proper relations.
+- **Database Schema**: duo_matches, player_duo_stats, player_divisions tables with proper relations. Users table includes unique player_code column.
 - **Unlock Requirement**: 100 Solo matches played (tracked as defeats-victories/100).
 - **Complete Frontend**: 5 pages (Lobby, Matchmaking, Game, Results, Rankings) with responsive design and real-time updates.
-- **Features**: Player invitations, pending invitations display, division-based rankings, detailed match statistics, accuracy tracking.
+- **Features**: Player code invitations, pending invitations display, division-based rankings, detailed match statistics, accuracy tracking.
 
 ### League Individual Mode (October 2025)
 - **Complete Implementation**: Full backend (LeagueIndividualService, LeagueIndividualController) and frontend (5 Blade pages).

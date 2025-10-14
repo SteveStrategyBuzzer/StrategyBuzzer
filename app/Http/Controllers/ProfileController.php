@@ -91,10 +91,13 @@ class ProfileController extends Controller
         ];
 
         $currentCountry = strtoupper((string) data_get($settings, 'country', ''));
+        
+        // Récupérer le joueur pour afficher son code
+        $player = Auth::user();
 
         return view('profile', compact(
             'settings','routes','currentCountry',
-            'stratName','stratUrl','stratTier','stratSkills'
+            'stratName','stratUrl','stratTier','stratSkills','player'
         ));
     }
 
