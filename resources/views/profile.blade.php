@@ -453,7 +453,7 @@
         @elseif($player?->provider === 'google')
           <span>Google</span>
         @else
-          <span>#DB: {{ $playerId ?? '—' }}</span>
+          <span>Code #{{ $player?->player_code ?? 'SB-XXXX' }}</span>
         @endif
         <span>{{ $playerEmail ?? '—' }}</span>
       </div>
