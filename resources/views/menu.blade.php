@@ -19,9 +19,9 @@
     $duoMatches = $user ? (($user->duo_defeats ?? 0) + ($user->duo_victories ?? 0)) : 0;
     $ligueUnlocked = $duoMatches >= 100;
     
-    // Maître du Jeu : accessible si acheté ET profil complété
+    // Maître du Jeu : verrouillé SEULEMENT si acheté mais profil incomplet
     $masterPurchased = $user && ($user->master_purchased ?? false);
-    $masterUnlocked = $masterPurchased && $profileComplete;
+    $masterUnlocked = !$masterPurchased || ($masterPurchased && $profileComplete);
     
     // Tous les autres sont toujours accessibles
     $avatarsUnlocked = true;
@@ -338,8 +338,8 @@
         </a>
 
         <a class="menu-link {{ $masterUnlocked ? '' : 'disabled' }}"
-           href="{{ $masterUnlocked ? url('/master') : (route('boutique') . '?tab=master') }}">
-            MAÎTRE DU JEU {{ !$masterUnlocked ? '🔒' : '' }}
+           href="{{ $masterPurchased && $profileComplete ? url('/master') : (route('boutique') . '?tab=master') }}">
+            MAÎTRE DU JEU {{ ($masterPurchased && !$profileComplete) ? '🔒' : '' }}
         </a>
 
         <a class="menu-link"

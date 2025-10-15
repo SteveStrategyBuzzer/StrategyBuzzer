@@ -671,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const livesLabelEl = document.getElementById('sb-lives-label');
   let type        = el.dataset.type;              // 'life_regen' | 'infinite_pack' | 'idle'
   let targetIso   = el.dataset.target || null;    // ISO date
-  const lifeMax   = parseInt(el.dataset.lifeMax || '5', 10);
+  const lifeMax   = parseInt(el.dataset.lifeMax || '3', 10);
   const regenMins = parseInt(el.dataset.regenMins || '60', 10);
   const waitText  = el.dataset.waitText || 'en attente 1h 00m 00s';
   let lives       = parseInt(el.dataset.lives || '0', 10);
@@ -697,11 +697,11 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(data => {
         if (!data) return;
         // Met à jour l’UI d’après la vérité serveur
-        if (livesLabelEl) livesLabelEl.textContent = `${data.lives} / {{ (int)config('game.life_max',5) }}`;
+        if (livesLabelEl) livesLabelEl.textContent = `${data.lives} / {{ (int)config('game.life_max',3) }}`;
         if (data.countdown && el) el.textContent = data.countdown;
         if (data.next_life_regen) {
           // Si non max, on repart correctement au nouveau cycle
-          if (data.lives < {{ (int)config('game.life_max',5) }}) {
+          if (data.lives < {{ (int)config('game.life_max',3) }}) {
             type = 'life_regen';
             targetIso = data.next_life_regen;
           } else {

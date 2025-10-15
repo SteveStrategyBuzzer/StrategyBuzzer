@@ -54,6 +54,11 @@ public function redirectToGoogle()
 
             Auth::login($user);
 
+            // Rediriger vers la page de profil si non complété
+            if (!($user->profile_completed ?? false)) {
+                return redirect()->route('profile.show')->with('info', 'Veuillez compléter votre profil avant de continuer.');
+            }
+
             return redirect('/menu')->with('success', 'Connecté avec Google !');
         } catch (\Exception $e) {
             Log::error("Erreur lors de la connexion Google", ['exception' => $e]);
@@ -99,6 +104,11 @@ public function redirectToGoogle()
 
             Auth::login($user);
 
+            // Rediriger vers la page de profil si non complété
+            if (!($user->profile_completed ?? false)) {
+                return redirect()->route('profile.show')->with('info', 'Veuillez compléter votre profil avant de continuer.');
+            }
+
             return redirect('/menu')->with('success', 'Connecté avec Facebook !');
         } catch (\Exception $e) {
             Log::error("Erreur lors de la connexion Facebook", ['exception' => $e]);
@@ -120,6 +130,13 @@ public function redirectToGoogle()
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            
+            // Vérifier si le profil est complété
+            $user = Auth::user();
+            if (!($user->profile_completed ?? false)) {
+                return redirect()->route('profile.show')->with('info', 'Veuillez compléter votre profil avant de continuer.');
+            }
+            
             return redirect()->intended('/menu')->with('success', 'Connexion réussie !');
         }
 
@@ -150,7 +167,8 @@ public function redirectToGoogle()
 
         Auth::login($user);
 
-        return redirect('/menu')->with('success', 'Compte créé avec succès ! Vous avez reçu 1000 pièces de bienvenue !');
+        // Rediriger vers la page de profil pour compléter l'inscription
+        return redirect()->route('profile.show')->with('success', 'Compte créé avec succès ! Veuillez compléter votre profil.');
     }
 
     public function redirectToApple()
