@@ -167,8 +167,12 @@ public function redirectToGoogle()
 
         Auth::login($user);
 
-        // Rediriger vers la page de profil pour compléter l'inscription
-        return redirect()->route('profile.show')->with('success', 'Compte créé avec succès ! Veuillez compléter votre profil.');
+        // Vérifier si le profil est complété (toujours false pour un nouveau compte)
+        if (!($user->profile_completed ?? false)) {
+            return redirect()->route('profile.show')->with('success', 'Compte créé avec succès ! Veuillez compléter votre profil.');
+        }
+
+        return redirect('/menu')->with('success', 'Compte créé avec succès !');
     }
 
     public function redirectToApple()
@@ -176,8 +180,70 @@ public function redirectToGoogle()
         return redirect('/login')->with('info', 'La connexion Apple sera bientôt disponible !');
     }
 
+    /**
+     * Callback Apple (à implémenter)
+     */
+    public function handleAppleCallback()
+    {
+        try {
+            // TODO: Implémenter la logique Apple quand disponible
+            // $appleUser = Socialite::driver('apple')->stateless()->user();
+            
+            // $user = User::updateOrCreate(
+            //     ['email' => $appleUser->getEmail()],
+            //     [
+            //         'name' => $appleUser->getName() ?? $appleUser->getNickname(),
+            //         'apple_id' => $appleUser->getId(),
+            //         'avatar' => $appleUser->getAvatar(),
+            //     ]
+            // );
+            
+            // Auth::login($user);
+            
+            // // IMPORTANT: Vérifier si le profil est complété
+            // if (!($user->profile_completed ?? false)) {
+            //     return redirect()->route('profile.show')->with('info', 'Veuillez compléter votre profil avant de continuer.');
+            // }
+            
+            // return redirect('/menu')->with('success', 'Connecté avec Apple !');
+            
+            return redirect('/login')->with('info', 'La connexion Apple n\'est pas encore disponible.');
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la connexion Apple", ['exception' => $e]);
+            return redirect('/connexion')->withErrors(['apple_error' => 'Erreur lors de la connexion Apple']);
+        }
+    }
+
     public function showPhoneLogin()
     {
         return view('auth.phone-login');
+    }
+
+    /**
+     * Traitement connexion par téléphone (à implémenter)
+     */
+    public function handlePhoneLogin(Request $request)
+    {
+        // TODO: Implémenter la logique de vérification SMS
+        // $validated = $request->validate([
+        //     'phone' => 'required|string',
+        //     'code' => 'required|string',
+        // ]);
+        
+        // Vérifier le code SMS et trouver/créer l'utilisateur
+        // $user = User::where('phone', $validated['phone'])->first();
+        
+        // if ($user) {
+        //     Auth::login($user);
+        //     
+        //     // IMPORTANT: Vérifier si le profil est complété
+        //     if (!($user->profile_completed ?? false)) {
+        //         return redirect()->route('profile.show')->with('info', 'Veuillez compléter votre profil avant de continuer.');
+        //     }
+        //     
+        //     return redirect('/menu')->with('success', 'Connecté avec succès !');
+        // }
+        
+        return back()->withErrors(['phone' => 'Numéro de téléphone invalide ou code incorrect.']);
     }
 }

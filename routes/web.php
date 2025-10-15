@@ -102,7 +102,9 @@ Route::post('/auth/email/login',      [AuthController::class, 'handleEmailLogin'
 Route::get('/auth/email/register',    [AuthController::class, 'showEmailRegister'])->name('email.register');
 Route::post('/auth/email/register',   [AuthController::class, 'handleEmailRegister'])->name('email.register.submit');
 Route::get('/auth/apple',             [AuthController::class, 'redirectToApple'])->name('auth.apple');
+Route::get('/auth/apple/callback',    [AuthController::class, 'handleAppleCallback'])->name('apple.callback');
 Route::get('/auth/phone',             [AuthController::class, 'showPhoneLogin'])->name('auth.phone');
+Route::post('/auth/phone/login',      [AuthController::class, 'handlePhoneLogin'])->name('phone.login.submit');
 
 /* Déconnexion */
 Route::post('/logout', function () {
