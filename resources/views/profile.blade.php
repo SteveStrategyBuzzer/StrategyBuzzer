@@ -762,6 +762,56 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(tick, 1000);
 })();
 
+// === Sauvegarde/Restauration des données du formulaire ===
+(function() {
+  const form = document.getElementById('profileForm');
+  const avatarLinks = document.querySelectorAll('a.sb-thumb');
+  
+  // Sauvegarder les données du formulaire avant navigation vers avatars
+  avatarLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      if (!form) return;
+      
+      const formData = new FormData(form);
+      const data = {};
+      formData.forEach((value, key) => {
+        data[key] = value;
+      });
+      
+      sessionStorage.setItem('profile_form_backup', JSON.stringify(data));
+    });
+  });
+  
+  // Restaurer les données au chargement de la page
+  const backup = sessionStorage.getItem('profile_form_backup');
+  if (backup && form) {
+    try {
+      const data = JSON.parse(backup);
+      
+      // Restaurer chaque champ
+      Object.keys(data).forEach(name => {
+        const input = form.querySelector(`[name="${name}"]`);
+        if (input) {
+          if (input.type === 'checkbox') {
+            input.checked = data[name] === '1';
+          } else {
+            input.value = data[name];
+            
+            // Déclencher l'événement change pour mettre à jour l'aperçu
+            const event = new Event('change', { bubbles: true });
+            input.dispatchEvent(event);
+          }
+        }
+      });
+      
+      // Nettoyer la sauvegarde après restauration
+      sessionStorage.removeItem('profile_form_backup');
+    } catch(e) {
+      console.error('Erreur restauration:', e);
+    }
+  }
+})();
+
 // === Validation du bouton Enregistrer ===
 (function() {
   const saveBtn = document.querySelector('button[type="submit"].sb-btn');
