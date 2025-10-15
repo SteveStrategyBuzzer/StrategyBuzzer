@@ -63,7 +63,7 @@ Preferred communication style: Simple, everyday language.
 - **Multi-provider authentication** supporting Firebase and Laravel's native auth (Email/Password, Apple, Phone).
 - **Player Code System (October 2025)**: Unique alphanumeric codes (SB-XXXX format) auto-generated for all users. Displayed in profile as "Code #SB-XXXX" instead of database ID. Used for player invitations in Duo mode.
 - **Role-based access control**.
-- **Profile Completion Enforcement (October 2025)**: All login methods (Google, Facebook, Email/Password) enforce profile completion before allowing access to /menu. Users with incomplete profiles are redirected to profile page regardless of login method.
+- **Profile Completion Enforcement (October 2025)**: All login methods (Google, Facebook, Email/Password, Registration) enforce profile completion before allowing access to /menu. Users with incomplete profiles are redirected to profile page regardless of login method. Future authentication methods (Apple, Phone) have profile completion checks already prepared in commented code.
 
 ### Real-time Features
 - **Firebase real-time database** for live game state synchronization.
