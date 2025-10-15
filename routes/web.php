@@ -195,9 +195,11 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
 /* ===== MAÎTRE DU JEU ===== */
 Route::prefix('master')->name('master.')->middleware('auth')->group(function () {
     Route::get('/', [App\Http\Controllers\MasterGameController::class, 'index'])->name('index');
+    Route::post('/join', [App\Http\Controllers\MasterGameController::class, 'join'])->name('join');
     Route::get('/create', [App\Http\Controllers\MasterGameController::class, 'create'])->name('create');
     Route::post('/store', [App\Http\Controllers\MasterGameController::class, 'store'])->name('store');
     Route::get('/{gameId}/compose', [App\Http\Controllers\MasterGameController::class, 'compose'])->name('compose');
+    Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
 });
 
 // Alias pour compatibilité

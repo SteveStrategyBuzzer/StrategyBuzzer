@@ -64,6 +64,23 @@ class MasterGameController extends Controller
         return redirect()->route('master.compose', $game->id);
     }
 
+    // POST: Rejoindre une partie avec un code
+    public function join(Request $request)
+    {
+        $validated = $request->validate([
+            'game_code' => 'required|string|size:6'
+        ]);
+
+        $game = MasterGame::where('game_code', strtoupper($validated['game_code']))->first();
+
+        if (!$game) {
+            return back()->with('error', 'Code invalide. Vérifiez et réessayez.');
+        }
+
+        // Rediriger vers le lobby de la partie
+        return redirect()->route('master.lobby', $game->id);
+    }
+
     // Page 3: Composer le Quiz
     public function compose($gameId)
     {
