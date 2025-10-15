@@ -94,10 +94,13 @@ class ProfileController extends Controller
         
         // Récupérer le joueur pour afficher son code
         $player = Auth::user();
+        
+        // Vérifier si un avatar est sélectionné
+        $hasAvatar = !empty(data_get($settings, 'avatar.url'));
 
         return view('profile', compact(
             'settings','routes','currentCountry',
-            'stratName','stratUrl','stratTier','stratSkills','player'
+            'stratName','stratUrl','stratTier','stratSkills','player','hasAvatar'
         ));
     }
 
@@ -134,7 +137,14 @@ class ProfileController extends Controller
 
         try {
             $user->profile_settings = $settings;
-            $user->profile_completed = true; // Marquer le profil comme complété
+            
+            // Vérifier que les champs obligatoires sont remplis avant de marquer comme complété
+            $hasAvatar = !empty(data_get($settings, 'avatar.url'));
+            $hasPseudonym = !empty(trim((string) data_get($settings, 'pseudonym', '')));
+            
+            // Marquer comme complété uniquement si avatar ET pseudonym sont présents
+            $user->profile_completed = $hasAvatar && $hasPseudonym;
+            
             $user->save();
         } catch (\Throwable $e) {
             Log::error('❌ Erreur de sauvegarde', ['exception' => $e->getMessage()]);

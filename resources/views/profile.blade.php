@@ -761,5 +761,18 @@ document.addEventListener('DOMContentLoaded', () => {
   tick();
   setInterval(tick, 1000);
 })();
+
+// === Validation du bouton Enregistrer ===
+(function() {
+  const saveBtn = document.querySelector('button[type="submit"].sb-btn');
+  const hasAvatar = {{ $hasAvatar ? 'true' : 'false' }};
+  
+  if (saveBtn && !hasAvatar) {
+    saveBtn.disabled = true;
+    saveBtn.style.opacity = '0.5';
+    saveBtn.style.cursor = 'not-allowed';
+    saveBtn.title = 'Veuillez sélectionner un avatar avant d\'enregistrer';
+  }
+})();
 </script>
 @endsection
