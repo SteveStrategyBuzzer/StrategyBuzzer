@@ -63,6 +63,7 @@ Preferred communication style: Simple, everyday language.
 - **Multi-provider authentication** supporting Firebase and Laravel's native auth (Email/Password, Apple, Phone).
 - **Player Code System (October 2025)**: Unique alphanumeric codes (SB-XXXX format) auto-generated for all users. Displayed in profile as "Code #SB-XXXX" instead of database ID. Used for player invitations in Duo mode.
 - **Role-based access control**.
+- **Profile Completion Enforcement (October 2025)**: All login methods (Google, Facebook, Email/Password) enforce profile completion before allowing access to /menu. Users with incomplete profiles are redirected to profile page regardless of login method.
 
 ### Real-time Features
 - **Firebase real-time database** for live game state synchronization.
@@ -78,7 +79,7 @@ Preferred communication style: Simple, everyday language.
 - **Expanded Question Database** with 50 unique questions per theme (350 total questions).
 - **Sound system** for audio feedback on game events.
 - Allows players to answer questions for 0 points even if they didn't buzz in time.
-- **Life Management System**: Players have 3 lives (configurable), losing one per defeat. A 1-hour cooldown activates when lives reach 0, with continuous life regeneration until max lives are restored.
+- **Life Management System**: Players have 3 lives (config('game.life_max', 3)), losing one per defeat. A 1-hour cooldown activates when lives reach 0, with continuous life regeneration until max lives are restored. Life display fixed to show correct 3/3 format across all interfaces.
 - **Level Progression System**: Players unlock the next level after winning 2 rounds out of 3 (max 100 levels). XP is awarded per victory. Features 90 unique opponents and boss opponents at specific levels (10, 20, ... 100).
 - **Comprehensive Round Result Page**: Displays detailed statistics including theme, level, round scores, points, efficiency, global statistics, and remaining lives.
 - **Simplified Question Result Page**: Shows essential information after each question (correct/incorrect, score, lives, progression).
@@ -122,6 +123,13 @@ Preferred communication style: Simple, everyday language.
 - **Frontend Pages**: Team management (create/manage), lobby (matchmaking/rankings), game interface (5v5 display), detailed results.
 - **Security**: Authorization checks on all endpoints, only team members can access matches, captain-only actions protected.
 - **Universal Services**: Reuses GameStateService and BuzzManagerService for fair multi-player gameplay with 10 players.
+
+### Avatar System (October 2025)
+- **Per-User Avatar Isolation**: Avatar selections, unlocked packs, and strategic avatars stored in per-user `profile_settings` JSON column in users table, ensuring complete isolation between user accounts.
+- **Avatar Pack System**: Multiple themed avatar packs (Standard, Portraits, Strategic) with unlock requirements. New users start with NO packs auto-unlocked - all packs must be explicitly purchased or unlocked.
+- **Avatar Selection Requirement**: Users must select a complete avatar (player avatar + opponent avatar) before accessing the menu. Incomplete avatar selection blocks menu access until completed.
+- **Strategic Avatars**: Special avatars with in-game skills persist across sessions and are stored per user.
+- **Menu Access Logic**: Maître du jeu mode accessible to redirect to boutique when not purchased; only locked with 🔒 when purchased but profile incomplete.
 
 ## External Dependencies
 
