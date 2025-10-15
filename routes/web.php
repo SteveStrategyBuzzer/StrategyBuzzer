@@ -193,7 +193,15 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
 });
 
 /* ===== MAÎTRE DU JEU ===== */
-Route::view('/master', 'master')->name('master');
+Route::prefix('master')->name('master.')->middleware('auth')->group(function () {
+    Route::get('/', [App\Http\Controllers\MasterGameController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\MasterGameController::class, 'create'])->name('create');
+    Route::post('/store', [App\Http\Controllers\MasterGameController::class, 'store'])->name('store');
+    Route::get('/{gameId}/compose', [App\Http\Controllers\MasterGameController::class, 'compose'])->name('compose');
+});
+
+// Alias pour compatibilité
+Route::get('/master', fn() => redirect()->route('master.index'))->name('master');
 
 /* ===== LIGUE (page de sélection) ===== */
 Route::get('/ligue', function () {
