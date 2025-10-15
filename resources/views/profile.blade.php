@@ -767,26 +767,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('profileForm');
   const avatarLinks = document.querySelectorAll('a.sb-thumb');
   
+  if (!form) {
+    console.warn('Formulaire profileForm introuvable');
+    return;
+  }
+  
   // Sauvegarder les données du formulaire avant navigation vers avatars
   avatarLinks.forEach(link => {
     link.addEventListener('click', function(e) {
-      if (!form) return;
-      
       const formData = new FormData(form);
       const data = {};
+      
       formData.forEach((value, key) => {
         data[key] = value;
       });
       
       sessionStorage.setItem('profile_form_backup', JSON.stringify(data));
+      console.log('Données sauvegardées:', data);
     });
   });
   
   // Restaurer les données au chargement de la page
   const backup = sessionStorage.getItem('profile_form_backup');
-  if (backup && form) {
+  if (backup) {
     try {
       const data = JSON.parse(backup);
+      console.log('Restauration des données:', data);
       
       // Restaurer chaque champ
       Object.keys(data).forEach(name => {
@@ -796,18 +802,20 @@ document.addEventListener('DOMContentLoaded', () => {
             input.checked = data[name] === '1';
           } else {
             input.value = data[name];
-            
-            // Déclencher l'événement change pour mettre à jour l'aperçu
-            const event = new Event('change', { bubbles: true });
-            input.dispatchEvent(event);
           }
+          
+          // Déclencher l'événement change pour mettre à jour l'aperçu
+          const event = new Event('change', { bubbles: true });
+          input.dispatchEvent(event);
         }
       });
       
       // Nettoyer la sauvegarde après restauration
       sessionStorage.removeItem('profile_form_backup');
+      console.log('Données restaurées avec succès');
     } catch(e) {
       console.error('Erreur restauration:', e);
+      sessionStorage.removeItem('profile_form_backup');
     }
   }
 })();
