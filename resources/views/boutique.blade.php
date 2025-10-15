@@ -539,7 +539,7 @@ audio{ width:100% }
         <div class="head">
           <div class="title">🎮 Maître du Jeu</div>
           @unless($masterPurchased)
-            <div class="price" style="font-size:1.5rem;font-weight:800;color:#10b981">29,99 $</div>
+            <div class="price" style="font-size:1.5rem;font-weight:800;color:#10b981">29,99</div>
           @endunless
         </div>
 
@@ -568,12 +568,20 @@ audio{ width:100% }
             <form method="POST" action="{{ route('master.checkout') ?? '#' }}" style="width:100%">
               @csrf
               <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#10b981,#059669);font-size:1.05rem">
-                💳 Acheter - 29,99 $
+                💳 Acheter - 29,99
               </button>
             </form>
           </div>
         @endif
       </div>
+    </div>
+
+    <!-- Lien vers les pièces d'intelligence -->
+    <div style="margin-top:20px;padding:16px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px">
+      <a href="#coins" onclick="setTab('coins'); return false;" style="color:#818cf8;text-decoration:none;font-weight:600;display:flex;align-items:center;gap:8px;transition:color 0.2s" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='#818cf8'">
+        <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon" style="width:24px;height:24px">
+        <span>Pièces d'intelligence</span> — Achetez des pièces avec de la vraie monnaie pour débloquer des contenus exclusifs.
+      </a>
     </div>
   </section>
 
@@ -598,10 +606,10 @@ audio{ width:100% }
             <div style="color:#cbd5e1;margin-top:8px;font-size:0.95rem">pièces d'intelligence</div>
             
             <div style="margin-top:24px;font-size:1.8rem;font-weight:800;color:#fff">
-              ${{ number_format($pack['amount_cents'] / 100, 2) }}
+              {{ number_format($pack['amount_cents'] / 100, 2) }}
             </div>
             <div style="color:#94a3b8;font-size:0.85rem;margin-top:4px">
-              {{ number_format($pack['coins'] / ($pack['amount_cents'] / 100), 1) }} pièces par dollar
+              {{ number_format($pack['coins'] / ($pack['amount_cents'] / 100), 1) }} pièces
             </div>
           </div>
 
