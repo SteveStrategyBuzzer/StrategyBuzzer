@@ -146,8 +146,24 @@ class ProfileController extends Controller
             $user->profile_completed = $hasAvatar && $hasPseudonym;
             
             $user->save();
+            
+            // Réponse AJAX si requête AJAX
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Profil sauvegardé automatiquement',
+                    'profile_completed' => $user->profile_completed
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::error('❌ Erreur de sauvegarde', ['exception' => $e->getMessage()]);
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur de sauvegarde'
+                ], 500);
+            }
         }
 
         return redirect()->route('profile.show')->with('status', 'Profil mis à jour.');

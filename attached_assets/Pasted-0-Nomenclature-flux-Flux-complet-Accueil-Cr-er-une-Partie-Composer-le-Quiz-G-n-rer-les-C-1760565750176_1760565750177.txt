@@ -1,0 +1,437 @@
+0) Nomenclature & flux
+
+Flux complet : Accueil → Créer une Partie → Composer le Quiz → Générer les Codes → Salon du MJ → Console MJ (jeu en direct) ↔ Scores après chaque question → Fin de partie → Historique
+
+1) Accueil (Host Landing)
+Contenu (à l’écran)
+
+Titre : « Maître du Jeu »
+Sous-titre : Crée une partie, invite des joueurs et anime ton quiz en direct.
+
+Bouton primaire : « Créer une Partie »
+Bloc Rejoindre (même composant réutilisé dans Profil > Stratégique) :
+
+Label : « Entrer un code »
+
+Champ : ___________
+
+Bouton : « Rejoindre »
+
+Note : « Besoin d’un code ? Demande-le au Maître du Jeu. »
+
+Logique
+
+Bouton « Créer une Partie » → /maitrejeu/create
+
+Le champ « Entrer un code » appelle POST /join (validation + redirection /lobby/{gameId})
+
+2) Créer une Partie (Paramétrage de base)
+Contenu
+
+Titre : « Créer une Partie »
+Sections :
+
+A. Informations générales
+
+Nom de la partie (input)
+
+Langue : FR / EN (checkbox)
+
+Nombre de participants attendus (3–40) (select)
+
+B. Mode de jeu
+
+Face à Face / 1 contre Tous / Podium / En Groupes (radio)
+
+C. Questions
+
+Nombre de questions : 10 / 20 / 30 / 40 (radio)
+
+Type : Vrai/Faux, Choix multiple, Image, Random (Random = coche et grise les 3 autres)
+
+D. Domaine
+
+Thème (9 thèmes du Solo)
+
+Scolaire → Pays (select) → Niveau (select dynamique) → Matière (select)
+
+Personnalisé → « Aller à la Création de Quiz »
+
+CTA :
+
+« Continuer » (passe à Composer le Quiz)
+
+« Annuler »
+
+Logique
+
+Validation stricte : langues ⊆ {FR,EN}, nbQ ∈ {10,20,30,40}, participants [3..40], si Scolaire → pays+niveau+matière requis.
+
+POST /game/create → retourne {gameId} → redirige /maitrejeu/{gameId}/compose
+
+3) Composer le Quiz (Automatique / Personnalisé / Recherche)
+Contenu
+
+Titre : « Composer le Quiz »
+Onglets : Automatique | Personnalisé | Recherche
+
+Automatique (texte à l’écran)
+
+« Génère automatiquement les questions selon tes filtres. »
+
+Bouton : « Générer le Quiz »
+
+Après génération : liste de bulles Q1..Qn (énoncé, choix, bonne(s) réponse(s))
+
+Actions par bulle : « Modifier », « Regénérer », « Supprimer »
+
+Bas de page : « Quiz Validé » (enabled si toutes les bulles sont valides)
+
+Personnalisé
+
+« Crée manuellement le quiz. »
+
+N bulles vides → champs : Énoncé, (Faux/Vrai) ou (A/B/C/D + cochage bonnes), média (si Image), bouton « Créer » par bulle
+
+Bas de page : « Quiz Validé »
+
+Recherche
+
+Champ : « Mot-clé ou sujet (ex. spéléologue) »
+
+Bouton : « Créer »
+
+Message : « Les questions sont générées, révise et valide. »
+
+Affiche bulles remplies (modifiables) → « Quiz Validé »
+
+Logique
+
+Automatique : POST /game/{gameId}/quiz/compose?mode=auto → écrit quiz.items
+
+Personnalisé : PATCH/POST par bulle → quiz.items[i]
+
+Recherche : POST /game/{gameId}/quiz/compose?mode=search&query=... (job async + cache)
+
+« Quiz Validé » → POST /game/{gameId}/quiz/validate (met quiz.validated=true) → redirige /maitrejeu/{gameId}/codes
+
+4) Générer les Codes (équipes/groupes)
+Contenu
+
+Titre : « Invitations & Équipes »
+Texte : « Crée jusqu’à 10 codes, associe-les aux équipes/côtés/groupes. »
+
+Table Codes (éditable)
+
+Code (auto) | Rôle (player/host) | Côté/Groupe (A, B, Groupe1..Groupe10) | Capacité | État (actif/révoqué)
+
+Bouton « + Ajouter un code » (jusqu’à 10)
+
+Exemples :
+
+Face à Face : Code A / Code B
+
+1 contre Tous : Code SOLO / Code TOUS
+
+Groupes : Groupe 1..N
+
+Bloc partage :
+
+« Lien d’invitation » + bouton « Copier »
+
+« Partager » (WhatsApp/Messenger)
+
+CTA : « Aller au Salon »
+
+Logique
+
+POST /game/{gameId}/codes (génère/valide unicité, capacité, side mapping)
+
+Interdit réutilisation d’anciens codes
+
+Redirige /lobby/{gameId}
+
+5) Salon du Maître du Jeu (Lobby)
+Contenu
+
+Titre : « Salon du Maître du Jeu »
+Badge : « En attente : X / {participants_expected} »
+Liste des joueurs (live) : pseudo, avatar, division, %victoire, code/équipe.
+Options :
+
+(toggle) « Équilibrage automatique par division/MMR »
+
+(switch) « Verrouiller équipes à T-10s »
+
+CTA principal : « Démarrer la Partie »
+Note : « Les équipes seront figées à T-10s. »
+
+Logique
+
+GET /lobby/{gameId} + écoute Firestore /players (presence/lastSeen TTL 60s)
+
+« Démarrer » → POST /lobby/{gameId}/start → redirige Console MJ /maitrejeu/{gameId}/console
+
+6) Console du Maître du Jeu (Jeu en direct)
+
+C’est la page-clé qui affiche les scores à la fin de chaque question et permet au MJ d’envoyer la suivante.
+
+Contenu (layout)
+
+Header :
+
+« Console MJ » — Partie : {Nom} — Q {k}/{n}
+
+Statuts : Timer, Joueurs connectés, Latence
+
+Panel Question courante
+
+Énoncé (gros), média (si Image)
+
+Boutons :
+
+« Lancer le chrono »
+
+« Arrêter le chrono »
+
+« Révéler la bonne réponse »
+
+« Forcer validation » (si nécessaire)
+
+Panel Contrôle
+
+« Envoyer la prochaine question » (disabled tant que la page Scores courante n’est pas validée)
+
+« Mettre en pause »
+
+« Expulser joueur… » (menu)
+
+Panel Résultats (live pendant la question)
+
+Compteur : réponses reçues / total
+
+Mini-liste : {pseudo} — état : pas répondu / répondu / correct / incorrect
+
+À la fin d’une question :
+→ Automatiquement, la page affiche la section « Scores de la Question k » (voir page 7, mais elle est intégrée ici pour le MJ).
+
+Bouton CTA : « Valider scores & Continuer » (débloque l’envoi de la suivante)
+
+Logique
+
+Cycle d’une question (événements)
+
+MJ clique « Lancer le chrono » → event question.start(k)
+
+Les joueurs voient la question, envoient leurs réponses → answers/{playerId}
+
+Fin du chrono / « Révéler » → event question.reveal(k)
+
+Serveur calcule l’exactitude + points → met à jour /players/{uid}.score et /results/{k}
+
+Console MJ bascule en Vue Scores (résumé question k)
+
+MJ clique « Valider scores & Continuer » → event question.commit(k) + question.next(k+1)
+
+Envoi de la prochaine question aux clients
+
+Anti-course : un seul MJ « owner » autorisé à émettre les events.
+Interlock : question.next interdit tant que question.commit(k) non reçu.
+
+7) Scores — Fin de question (Vue intégrée MJ + Vue Joueurs)
+Contenu (texte affiché)
+
+Titre : « Scores — Question {k}/{n} »
+Sous-titre : Résultats de la question en cours.
+
+Table rapide
+
+Joueur | Réponse | Correct ? | Temps | Points gagnés | Score total
+
+Statistiques
+
+% de bonnes réponses
+
+Répartition A/B/C/D (si QCM)
+
+Meilleur temps (top 3)
+
+CTA MJ (seulement) : « Valider scores & Continuer »
+Bandeau info Joueurs : « Le Maître du Jeu prépare la prochaine question… »
+
+Logique
+
+Affichée automatiquement après question.reveal(k)
+
+MJ seul voit le CTA « Valider… » (débloque question.next)
+
+Côté joueurs : vue en lecture seule (attente prochaine question)
+
+8) Vue Joueur (client)
+Contenu
+
+États :
+
+Attente : « En attente du Maître du Jeu… »
+
+Question active : Énoncé, média, options de réponse, timer local
+
+Réponse envoyée : « Réponse enregistrée » (verrou de l’UI)
+
+Après révélation : coche verte/rouge, feedback court
+
+Scores question : récap (lecture seule)
+
+Fin de partie : classement/podium
+
+Logique
+
+Listener game.status (lobby/running/ended)
+
+Listener currentQuestionIndex, questionPayload
+
+POST answers (une seule fois par question, anti-spam)
+
+Temps local facultatif (serveur tranche l’officiel)
+
+9) Fin de Partie (Récap & Podium)
+Contenu
+
+Titre : « Fin de Partie »
+Podium / Classement complet
+
+Joueur | Score | % bonnes | Temps cumulé | Streak max
+
+Boutons
+
+« Rejouer avec mêmes paramètres »
+
+« Enregistrer dans Historique »
+
+« Quitter »
+
+Logique
+
+Nouvelle partie régénère de nouveaux codes
+
+Sauvegarde snapshot → Historique
+
+10) Historique
+Contenu
+
+Titre : « Historique des parties »
+Liste : Titre, date/heure, mode, nb joueurs, score du vainqueur
+Actions : « Recréer » (recharge paramètres, nouveaux codes), « Voir détails »
+
+Logique
+
+GET /history (hostUid scoping)
+
+« Recréer » → POST /game/create avec params clonés
+
+11) Événements & Endpoints (contrats)
+
+Création / Paramètres
+
+POST /game/create → {gameId}
+
+POST /game/{gameId}/quiz/compose?mode=auto|manual|search
+
+POST /game/{gameId}/quiz/validate → quiz.validated=true
+
+POST /game/{gameId}/codes → crée 1..10 codes (unique, side/capacity/state)
+
+Lobby
+
+GET /lobby/{gameId}
+
+POST /lobby/{gameId}/start → status=running, currentQuestion=1
+
+Jeu en direct (MJ)
+
+POST /game/{gameId}/question/start (k)
+
+POST /game/{gameId}/question/reveal (k)
+
+POST /game/{gameId}/question/commit (k)
+
+POST /game/{gameId}/question/next (k+1) (interdit tant que commit absent)
+
+Réponses (Joueur)
+
+POST /game/{gameId}/answer → {playerId, k, choice, clientTimeMs}
+
+Fin
+
+POST /game/{gameId}/end → status=ended
+
+12) Données (Firestore — minimal)
+/games/{gameId} {
+  status: "draft|lobby|running|ended",
+  currentQuestion: 1,
+  totalQuestions: 20,
+  mode, participants_expected, languages[], domain, school{country,level,subject},
+  quiz: { validated: bool, items: [ {id,type,text,choices[],correctIndexes[],mediaUrl?} ] },
+  codes: [ {code, role:"player|host", side:"A|B|group1..", capacity, used, state:"active|revoked"} ],
+  createdAt, updatedAt, hostUid
+}
+
+.../players/{uid} {
+  displayName, avatarUrl, division, winRate, side, score, answered:{[k]: {choice, timeMs, correct}}
+}
+
+.../results/{k} {
+  correctIndexes[], perChoiceCounts{A:..}, accuracyPct, topTimes: [ {uid, timeMs} ],
+  stampedAt
+}
+
+
+Invariants :
+
+question.next(k+1) uniquement après question.commit(k)
+
+Une seule réponse par {uid,k} (idempotent)
+
+Codes jamais réutilisés d’une autre partie
+
+13) Textes FR prêts à insérer (titres/boutons)
+
+Créer une Partie
+
+Boutons : « Continuer », « Annuler »
+
+Labels : « Nom de la partie », « Langue », « Participants attendus », « Mode de jeu », « Nombre de questions », « Type de questions », « Domaine », « Pays », « Niveau », « Matière »
+
+Composer le Quiz
+
+Onglets : « Automatique », « Personnalisé », « Recherche »
+
+Boutons : « Générer le Quiz », « Modifier », « Regénérer », « Supprimer », « Quiz Validé »
+
+Texte : « Random coche automatiquement tous les types et désactive les autres. »
+
+Invitations & Équipes
+
+Boutons : « + Ajouter un code », « Copier le lien », « Partager », « Aller au Salon »
+
+Salon du Maître du Jeu
+
+Boutons : « Démarrer la Partie »
+
+Toggles : « Équilibrage automatique », « Verrouiller équipes à T-10s »
+
+Badges : « En attente : X/Y »
+
+Console MJ
+
+Boutons : « Lancer le chrono », « Arrêter le chrono », « Révéler la bonne réponse », « Valider scores & Continuer », « Envoyer la prochaine question », « Mettre en pause »
+
+Sections : « Question courante », « Résultats en direct », « Scores — Question {k}/{n} »
+
+Vue Joueur
+
+États : « En attente du Maître du Jeu… », « Réponse enregistrée », « Le Maître du Jeu prépare la prochaine question… »
+
+Fin de Partie
+
+Boutons : « Rejouer avec mêmes paramètres », « Enregistrer dans Historique », « Quitter »

@@ -255,21 +255,39 @@
   <div class="sb-wrap">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
       <h1 style="margin:0;">Profile du Joueur</h1>
-      <a href="{{ route('menu') }}" style="
-        background: white;
-        color: #0A2C66;
-        padding: 10px 20px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-        Menu
-      </a>
+      @if($hasAvatar && !empty(trim($pseudonym ?? '')))
+        <a href="{{ route('menu') }}" style="
+          background: white;
+          color: #0A2C66;
+          padding: 10px 20px;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 700;
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+          Menu
+        </a>
+      @else
+        <div style="
+          background: #94a3b8;
+          color: #475569;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 1rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: not-allowed;
+          opacity: 0.6;
+        " title="Complétez votre profil (avatar + pseudonym) pour accéder au menu">
+          🔒 Menu
+        </div>
+      @endif
     </div>
 
     <div class="sb-three">
@@ -818,6 +836,74 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionStorage.removeItem('profile_form_backup');
     }
   }
+})();
+
+// === Sauvegarde automatique du formulaire ===
+(function() {
+  const form = document.getElementById('profileForm');
+  if (!form) return;
+  
+  let saveTimeout;
+  let isDirty = false;
+  
+  // Fonction de sauvegarde immédiate
+  const saveNow = () => {
+    if (!isDirty) return;
+    
+    clearTimeout(saveTimeout);
+    const formData = new FormData(form);
+    
+    // Utiliser sendBeacon pour garantir l'envoi même si navigation immédiate
+    const blob = new Blob([new URLSearchParams(formData)], { type: 'application/x-www-form-urlencoded' });
+    navigator.sendBeacon(form.action, blob);
+    
+    isDirty = false;
+    console.log('✅ Profil sauvegardé immédiatement');
+  };
+  
+  // Fonction de sauvegarde automatique avec debounce
+  const autoSave = () => {
+    isDirty = true;
+    clearTimeout(saveTimeout);
+    
+    saveTimeout = setTimeout(() => {
+      const formData = new FormData(form);
+      
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        isDirty = false;
+        console.log('✅ Profil sauvegardé automatiquement');
+      })
+      .catch(error => {
+        console.log('⚠️ Erreur sauvegarde auto:', error);
+      });
+    }, 1500);
+  };
+  
+  // Écouter tous les changements de champs
+  form.querySelectorAll('input, select').forEach(field => {
+    field.addEventListener('change', autoSave);
+    if (field.type === 'text') {
+      field.addEventListener('input', autoSave);
+    }
+  });
+  
+  // Forcer la sauvegarde avant navigation
+  document.querySelectorAll('a.sb-thumb').forEach(link => {
+    link.addEventListener('click', function(e) {
+      saveNow();
+    });
+  });
+  
+  // Sauvegarder avant fermeture/rechargement de page
+  window.addEventListener('beforeunload', saveNow);
 })();
 
 // === Validation du bouton Enregistrer ===
