@@ -206,6 +206,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     
     // Flux de jeu
     Route::get('/{gameId}/compose', [App\Http\Controllers\MasterGameController::class, 'compose'])->name('compose');
+    Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
     Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
 });
 

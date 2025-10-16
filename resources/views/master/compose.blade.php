@@ -10,148 +10,88 @@ body {
 }
 
 .compose-container {
-    max-width: 1200px;
+    max-width: 600px;
     margin: 0 auto;
+    padding: 1rem;
 }
 
 .compose-title {
-    font-size: 2.5rem;
+    font-size: 1.8rem;
     font-weight: 900;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     text-align: center;
     color: #FFD700;
 }
 
-.tabs {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.tab {
-    padding: 1rem 2rem;
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border-bottom: 3px solid transparent;
-}
-
-.tab.active {
-    color: #FFD700;
-    border-bottom-color: #FFD700;
-}
-
-.tab:hover {
-    color: #fff;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-.section {
+.question-bubble {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 2rem;
-    margin-bottom: 1.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
 }
 
-.question-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+.bubble-number {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #FFD700;
+    margin-bottom: 0.8rem;
 }
 
-.question-item {
+.bubble-content {
     background: rgba(255, 255, 255, 0.05);
-    padding: 1rem;
     border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 0.8rem;
+    margin-bottom: 0.5rem;
 }
 
-.search-box {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.search-input {
-    flex: 1;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
-    font-size: 1rem;
-}
-
-.btn-generate {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #003DA5;
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    font-weight: 700;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-generate:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #003DA5;
-    padding: 1rem 3rem;
-    border-radius: 10px;
-    font-size: 1.2rem;
-    font-weight: 700;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
-}
-
-.btn-secondary {
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-    padding: 1rem 3rem;
-    border-radius: 10px;
-    font-size: 1.2rem;
+.question-text {
     font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.answer-item {
+    padding: 0.4rem 0;
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+
+.btn-create {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #003DA5;
+    padding: 0.5rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 700;
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
 }
 
-.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.3);
+.btn-create:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
 }
 
-.buttons {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 2rem;
+.btn-validate {
+    background: linear-gradient(135deg, #00D400, #00A000);
+    color: white;
+    padding: 1rem 3rem;
+    border-radius: 12px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block;
+    margin: 2rem auto;
+}
+
+.btn-validate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 212, 0, 0.4);
 }
 
 .header-back {
@@ -160,177 +100,80 @@ body {
     left: 20px;
     background: white;
     color: #003DA5;
-    padding: 10px 20px;
+    padding: 8px 16px;
     border-radius: 8px;
     text-decoration: none;
     font-weight: 700;
-}
-
-.game-info {
-    background: rgba(255, 215, 0, 0.1);
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 2rem;
+    font-size: 0.95rem;
 }
 
 @media (max-width: 768px) {
-    .tabs {
-        flex-direction: column;
-    }
-    
-    .tab {
-        border-bottom: none;
-        border-left: 3px solid transparent;
-    }
-    
-    .tab.active {
-        border-bottom: none;
-        border-left-color: #FFD700;
+    .header-back {
+        top: 10px;
+        left: 10px;
+        padding: 6px 12px;
+        font-size: 0.9rem;
     }
 }
 </style>
 
-<a href="{{ route('menu') }}" class="header-back">← Menu</a>
+<a href="{{ route('menu') }}" class="header-back">Menu</a>
 
 <div class="compose-container">
-    <h1 class="compose-title">📝 Composer le Quiz</h1>
+    <h1 class="compose-title">{{ ucfirst($game->creation_mode) }}</h1>
     
-    <div class="game-info">
-        <strong>Partie :</strong> {{ $game->name }} | 
-        <strong>Mode :</strong> {{ ucfirst(str_replace('_', ' ', $game->mode)) }} | 
-        <strong>Questions :</strong> {{ $game->total_questions }} | 
-        <strong>Participants :</strong> {{ $game->participants_expected }}
-    </div>
-    
-    <div class="tabs">
-        <button class="tab active" data-tab="automatique">🤖 Automatique</button>
-        <button class="tab" data-tab="personnalise">✏️ Personnalisé</button>
-        <button class="tab" data-tab="recherche">🔍 Recherche</button>
-    </div>
-    
-    <!-- Tab 1: Automatique -->
-    <div id="automatique" class="tab-content active">
-        <div class="section">
-            <h3 style="color: #FFD700; margin-bottom: 1rem;">Génération Automatique par IA</h3>
-            <p style="opacity: 0.9; margin-bottom: 1.5rem;">
-                L'IA va générer {{ $game->total_questions }} questions basées sur vos paramètres :
-            </p>
-            <ul style="opacity: 0.9; margin-left: 2rem; margin-bottom: 1.5rem;">
-                <li>Domaine : {{ $game->theme ?? $game->school_subject ?? 'Personnalisé' }}</li>
-                <li>Types : {{ implode(', ', $game->question_types) }}</li>
-                <li>Langue : {{ implode(', ', $game->languages) }}</li>
-            </ul>
-            
-            <div class="buttons">
-                <form action="#" method="POST" style="display: inline;">
-                    @csrf
-                    <button type="submit" class="btn-primary">
-                        ✨ Générer les questions automatiquement
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Tab 2: Personnalisé -->
-    <div id="personnalise" class="tab-content">
-        <div class="section">
-            <h3 style="color: #FFD700; margin-bottom: 1rem;">Créer vos Questions Manuellement</h3>
-            <p style="opacity: 0.9; margin-bottom: 1.5rem;">
-                Créez {{ $game->total_questions }} questions personnalisées une par une.
-            </p>
-            
-            <div class="question-list">
-                @for ($i = 1; $i <= min(5, $game->total_questions); $i++)
-                    <div class="question-item">
-                        <span>Question {{ $i }} : <em style="opacity: 0.7;">Non créée</em></span>
-                        <button class="btn-generate">+ Créer</button>
-                    </div>
-                @endfor
+    @if($game->creation_mode === 'automatique')
+        <!-- Mode Automatique : Bulles de questions -->
+        @for ($i = 1; $i <= $game->total_questions; $i++)
+            <div class="question-bubble">
+                <div class="bubble-number">{{ $i }}</div>
+                <button class="btn-create">Créer</button>
                 
-                @if ($game->total_questions > 5)
-                    <p style="opacity: 0.7; text-align: center;">... et {{ $game->total_questions - 5 }} autres questions</p>
-                @endif
-            </div>
-            
-            <div class="buttons" style="margin-top: 2rem;">
-                <button class="btn-primary">Commencer la création</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Tab 3: Recherche -->
-    <div id="recherche" class="tab-content">
-        <div class="section">
-            <h3 style="color: #FFD700; margin-bottom: 1rem;">Création par Recherche</h3>
-            <p style="opacity: 0.9; margin-bottom: 1.5rem;">
-                Tapez un mot-clé (ex: "spéléologue") et l'IA créera un quiz avec vos critères.
-            </p>
-            
-            <div class="search-box">
-                <input 
-                    type="text" 
-                    class="search-input" 
-                    placeholder="Ex: spéléologue, astronomie, histoire de France..."
-                    id="searchKeyword"
-                >
-                <button class="btn-generate" id="btnSearchGenerate">🔍 Générer</button>
-            </div>
-            
-            <div id="searchPreview" style="display: none;">
-                <h4 style="color: #FFD700; margin-bottom: 1rem;">Aperçu de la recherche</h4>
-                <p style="opacity: 0.9;">
-                    Le quiz sera généré avec :
-                </p>
-                <ul style="opacity: 0.9; margin-left: 2rem; margin-top: 1rem;">
-                    <li>Mot-clé : <strong id="keywordDisplay"></strong></li>
-                    <li>{{ $game->total_questions }} questions</li>
-                    <li>Types : {{ implode(', ', $game->question_types) }}</li>
-                    <li>Langue : {{ implode(', ', $game->languages) }}</li>
-                </ul>
-                
-                <div class="buttons" style="margin-top: 1.5rem;">
-                    <button class="btn-primary">✨ Confirmer et générer</button>
+                <div class="bubble-content">
+                    @if(in_array('multiple_choice', $game->question_types))
+                        <div class="question-text">Question</div>
+                        <div class="answer-item">1. Réponse</div>
+                        <div class="answer-item">2. Réponse</div>
+                        <div class="answer-item">3. Réponse</div>
+                        <div class="answer-item">4. Réponse</div>
+                    @elseif(in_array('true_false', $game->question_types))
+                        <div class="question-text">Question</div>
+                        <div class="answer-item">Vrai</div>
+                        <div class="answer-item">Faux</div>
+                    @elseif(in_array('image', $game->question_types))
+                        <div class="question-text">Image</div>
+                        <div class="answer-item">1</div>
+                        <div class="answer-item">2</div>
+                        <div class="answer-item">3</div>
+                        <div class="answer-item">4</div>
+                    @else
+                        <div class="question-text">Question</div>
+                    @endif
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <div class="buttons" style="margin-top: 2rem;">
-        <a href="{{ route('menu') }}" class="btn-secondary">Annuler</a>
-    </div>
+        @endfor
+        
+        <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
+            Valider
+        </button>
+        
+    @else
+        <!-- Mode Personnalisé : Même structure -->
+        @for ($i = 1; $i <= $game->total_questions; $i++)
+            <div class="question-bubble">
+                <div class="bubble-number">{{ $i }}</div>
+                <button class="btn-create">Créer</button>
+                
+                <div class="bubble-content">
+                    <div class="question-text">Question</div>
+                    <div class="answer-item">Réponse</div>
+                </div>
+            </div>
+        @endfor
+        
+        <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
+            Valider
+        </button>
+    @endif
 </div>
-
-<script>
-// Tab switching
-const tabs = document.querySelectorAll('.tab');
-const tabContents = document.querySelectorAll('.tab-content');
-
-tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        const targetTab = tab.dataset.tab;
-        
-        tabs.forEach(t => t.classList.remove('active'));
-        tabContents.forEach(tc => tc.classList.remove('active'));
-        
-        tab.classList.add('active');
-        document.getElementById(targetTab).classList.add('active');
-    });
-});
-
-// Search functionality
-const searchInput = document.getElementById('searchKeyword');
-const btnSearchGenerate = document.getElementById('btnSearchGenerate');
-const searchPreview = document.getElementById('searchPreview');
-const keywordDisplay = document.getElementById('keywordDisplay');
-
-btnSearchGenerate.addEventListener('click', () => {
-    const keyword = searchInput.value.trim();
-    if (keyword) {
-        keywordDisplay.textContent = keyword;
-        searchPreview.style.display = 'block';
-    }
-});
-</script>
 @endsection

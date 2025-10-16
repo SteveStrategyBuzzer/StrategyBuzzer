@@ -96,6 +96,19 @@ class MasterGameController extends Controller
         return view('master.compose', compact('game'));
     }
 
+    // Page 4: Générer les codes
+    public function codes($gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        // Vérifier que c'est bien l'hôte
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+
+        return view('master.codes', compact('game'));
+    }
+
     // Générer un code unique
     private function generateUniqueGameCode()
     {
