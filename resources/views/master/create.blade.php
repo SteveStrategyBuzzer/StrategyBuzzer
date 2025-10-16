@@ -313,10 +313,6 @@ body {
                                 <input type="radio" name="domain_type" value="scolaire" class="radio-input domain-radio">
                                 <span>Scolaire</span>
                             </label>
-                            <label class="radio-label">
-                                <input type="radio" name="domain_type" value="personnalisé" class="radio-input domain-radio">
-                                <span>Personnalisé</span>
-                            </label>
                         </div>
                     </div>
                     
@@ -366,11 +362,6 @@ body {
                         </select>
                     </div>
                     
-                    <div id="personaliseNote" class="form-group" style="display: none;">
-                        <p style="background: rgba(255,215,0,0.2); padding: 0.8rem; border-radius: 8px; font-size: 0.95rem;">
-                            ℹ️ Mode Personnalisé : Vous serez redirigé vers la création de questions après validation.
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -435,22 +426,14 @@ randomCheck.addEventListener('change', function() {
 const domainRadios = document.querySelectorAll('.domain-radio');
 const themeSection = document.getElementById('themeSection');
 const scolaireSection = document.getElementById('scolaireSection');
-const personaliseNote = document.getElementById('personaliseNote');
-
 domainRadios.forEach(radio => {
     radio.addEventListener('change', function() {
         if (this.value === 'theme') {
             themeSection.style.display = 'block';
             scolaireSection.style.display = 'none';
-            personaliseNote.style.display = 'none';
         } else if (this.value === 'scolaire') {
             themeSection.style.display = 'none';
             scolaireSection.style.display = 'block';
-            personaliseNote.style.display = 'none';
-        } else if (this.value === 'personnalisé') {
-            themeSection.style.display = 'none';
-            scolaireSection.style.display = 'none';
-            personaliseNote.style.display = 'block';
         }
     });
 });

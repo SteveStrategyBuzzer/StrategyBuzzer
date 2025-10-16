@@ -12,13 +12,13 @@ use Illuminate\Support\Facades\Auth;
 
 class MasterGameController extends Controller
 {
-    // Page 1: Accueil Maître du Jeu
+    // Page 1: Accueil Maître du Jeu avec image
     public function index()
     {
         return view('master.index');
     }
 
-    // Page 2: Créer une Partie (formulaire)
+    // Page 2: Créer un Quiz (formulaire)
     public function create()
     {
         return view('master.create');
@@ -34,7 +34,7 @@ class MasterGameController extends Controller
             'mode' => 'required|in:face_to_face,one_vs_all,podium,groups',
             'total_questions' => 'required|in:10,20,30,40',
             'question_types' => 'required|array',
-            'domain_type' => 'required|in:theme,scolaire,personnalisé',
+            'domain_type' => 'required|in:theme,scolaire',
             'theme' => 'nullable|string',
             'school_country' => 'nullable|string',
             'school_level' => 'nullable|string',

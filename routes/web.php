@@ -194,10 +194,8 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
 
 /* ===== MAÎTRE DU JEU ===== */
 Route::middleware('auth')->prefix('master')->name('master.')->group(function () {
-    // Page d'accueil = Transition directe
-    Route::get('/', function() {
-        return view('master.transition');
-    })->name('index');
+    // Page d'accueil avec bouton "Créer un Quizz"
+    Route::get('/', [App\Http\Controllers\MasterGameController::class, 'index'])->name('index');
     
     // Rejoindre une partie (depuis profil)
     Route::post('/join', [App\Http\Controllers\MasterGameController::class, 'join'])->name('join');
