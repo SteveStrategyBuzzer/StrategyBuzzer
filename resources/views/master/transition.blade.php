@@ -28,6 +28,10 @@
             animation: fadeIn 0.5s ease-in;
         }
 
+        .landscape-image {
+            display: none;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -39,26 +43,40 @@
             }
         }
 
-        /* Portrait */
+        /* Portrait : afficher image portrait */
         @media (orientation: portrait) {
-            .transition-image {
-                object-fit: cover;
+            .portrait-image {
+                display: block;
+            }
+            .landscape-image {
+                display: none;
             }
         }
 
-        /* Landscape */
+        /* Landscape : afficher image paysage */
         @media (orientation: landscape) {
-            .transition-image {
-                object-fit: contain;
+            .portrait-image {
+                display: none;
+            }
+            .landscape-image {
+                display: block;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Image Portrait -->
     <img 
         src="{{ asset('images/master-transition-portrait.png') }}" 
         alt="Soyez le Maître du Jeu" 
-        class="transition-image"
+        class="transition-image portrait-image"
+    >
+    
+    <!-- Image Paysage -->
+    <img 
+        src="{{ asset('images/master-transition-landscape.png') }}" 
+        alt="Soyez le Maître du Jeu" 
+        class="transition-image landscape-image"
     >
 
     <script>
