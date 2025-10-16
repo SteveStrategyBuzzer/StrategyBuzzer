@@ -156,7 +156,7 @@ body {
         Crée une partie, invite des joueurs et anime ton quiz en direct.
     </p>
     
-    <a href="{{ route('master.create') }}" class="btn-create">
+    <a href="{{ route('master.transition') }}" class="btn-create">
         Créer une Partie
     </a>
     

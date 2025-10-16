@@ -196,6 +196,9 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
 Route::middleware('auth')->prefix('master')->name('master.')->group(function () {
     Route::get('/', [App\Http\Controllers\MasterGameController::class, 'index'])->name('index');
     Route::post('/join', [App\Http\Controllers\MasterGameController::class, 'join'])->name('join');
+    Route::get('/transition', function() {
+        return view('master.transition');
+    })->name('transition');
     Route::get('/create', [App\Http\Controllers\MasterGameController::class, 'create'])->name('create');
     Route::post('/store', [App\Http\Controllers\MasterGameController::class, 'store'])->name('store');
     Route::get('/{gameId}/compose', [App\Http\Controllers\MasterGameController::class, 'compose'])->name('compose');
