@@ -157,7 +157,7 @@ body {
 }
 </style>
 
-<a href="{{ route('menu') }}" class="header-back">Menu</a>
+<a href="{{ route('master.create') }}" class="header-back">Retour</a>
 
 <div class="codes-container">
     <h1 class="codes-title">Vos Codes</h1>

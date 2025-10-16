@@ -10,7 +10,7 @@ body {
 }
 
 .compose-container {
-    max-width: 600px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 1rem;
 }
@@ -29,6 +29,7 @@ body {
     padding: 1rem;
     margin-bottom: 1rem;
     position: relative;
+    padding-right: 120px;
 }
 
 .bubble-number {
@@ -117,13 +118,13 @@ body {
 }
 </style>
 
-<a href="{{ route('menu') }}" class="header-back">Menu</a>
+<a href="{{ route('master.create') }}" class="header-back">Retour</a>
 
 <div class="compose-container">
     <h1 class="compose-title">{{ ucfirst($game->creation_mode) }}</h1>
     
     @if($game->creation_mode === 'automatique')
-        <!-- Mode Automatique : Bulles de questions -->
+        <!-- Mode Automatique : Questions pré-générées -->
         @for ($i = 1; $i <= $game->total_questions; $i++)
             <div class="question-bubble">
                 <div class="bubble-number">{{ $i }}</div>
@@ -131,23 +132,23 @@ body {
                 
                 <div class="bubble-content">
                     @if(in_array('multiple_choice', $game->question_types))
-                        <div class="question-text">Question</div>
-                        <div class="answer-item">1. Réponse</div>
-                        <div class="answer-item">2. Réponse</div>
-                        <div class="answer-item">3. Réponse</div>
-                        <div class="answer-item">4. Réponse</div>
+                        <div class="question-text">Quelle est la capitale de la France ?</div>
+                        <div class="answer-item">1. Paris</div>
+                        <div class="answer-item">2. Lyon</div>
+                        <div class="answer-item">3. Marseille</div>
+                        <div class="answer-item">4. Bordeaux</div>
                     @elseif(in_array('true_false', $game->question_types))
-                        <div class="question-text">Question</div>
+                        <div class="question-text">La Terre tourne autour du Soleil</div>
                         <div class="answer-item">Vrai</div>
                         <div class="answer-item">Faux</div>
                     @elseif(in_array('image', $game->question_types))
-                        <div class="question-text">Image</div>
+                        <div class="question-text">Identifiez l'image</div>
                         <div class="answer-item">1</div>
                         <div class="answer-item">2</div>
                         <div class="answer-item">3</div>
                         <div class="answer-item">4</div>
                     @else
-                        <div class="question-text">Question</div>
+                        <div class="question-text">Question générée automatiquement</div>
                     @endif
                 </div>
             </div>
@@ -158,15 +159,25 @@ body {
         </button>
         
     @else
-        <!-- Mode Personnalisé : Même structure -->
+        <!-- Mode Personnalisé : Bulles vides -->
         @for ($i = 1; $i <= $game->total_questions; $i++)
             <div class="question-bubble">
                 <div class="bubble-number">{{ $i }}</div>
                 <button class="btn-create">Créer</button>
                 
                 <div class="bubble-content">
-                    <div class="question-text">Question</div>
-                    <div class="answer-item">Réponse</div>
+                    <div class="question-text" style="opacity: 0.4;">Question</div>
+                    @if(in_array('multiple_choice', $game->question_types))
+                        <div class="answer-item" style="opacity: 0.4;">1. Réponse</div>
+                        <div class="answer-item" style="opacity: 0.4;">2. Réponse</div>
+                        <div class="answer-item" style="opacity: 0.4;">3. Réponse</div>
+                        <div class="answer-item" style="opacity: 0.4;">4. Réponse</div>
+                    @elseif(in_array('true_false', $game->question_types))
+                        <div class="answer-item" style="opacity: 0.4;">Vrai</div>
+                        <div class="answer-item" style="opacity: 0.4;">Faux</div>
+                    @else
+                        <div class="answer-item" style="opacity: 0.4;">Réponse</div>
+                    @endif
                 </div>
             </div>
         @endfor
