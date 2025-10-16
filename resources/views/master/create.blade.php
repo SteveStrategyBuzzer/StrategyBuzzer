@@ -375,10 +375,40 @@ body {
             </div>
         </div>
         
-        <!-- Boutons (pleine largeur) -->
-        <div class="buttons" style="margin-top: 2rem;">
-            <button type="submit" class="btn-continue">Continuer</button>
-            <a href="{{ route('menu') }}" class="btn-cancel">Annuler</a>
+        <!-- E. Vos codes d'invitation -->
+        <div class="section section-full" style="margin-top: 1.5rem;">
+            <div class="section-title">E. Vos codes d'invitation</div>
+            <p style="opacity: 0.9; margin-bottom: 1rem;">Jusqu'à 10 codes pour inviter vos participants. Les codes seront générés automatiquement selon votre mode de jeu.</p>
+            
+            <div id="codesPreview" style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.8rem;">
+                    <span style="opacity: 0.7;">Mode sélectionné :</span>
+                    <strong id="selectedMode">Podium</strong>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span style="opacity: 0.7;">Codes à générer :</span>
+                    <strong id="codesCount">1 code général</strong>
+                </div>
+                <p style="font-size: 0.85rem; opacity: 0.6; margin-top: 0.8rem;">
+                    💡 Les codes seront générés lors de la création (format: #BZ734)
+                </p>
+            </div>
+        </div>
+        
+        <!-- Boutons de création -->
+        <div style="margin-top: 2rem;">
+            <div class="section-title" style="text-align: center; margin-bottom: 1rem;">Mode de création du Quiz</div>
+            <div class="buttons">
+                <button type="submit" name="creation_mode" value="automatique" class="btn-continue" style="background: linear-gradient(135deg, #FFD700, #FFA500);">
+                    🤖 Automatique
+                </button>
+                <button type="submit" name="creation_mode" value="personnalise" class="btn-continue" style="background: linear-gradient(135deg, #00D4FF, #0099CC);">
+                    ✏️ Personnalisé
+                </button>
+            </div>
+            <div style="text-align: center; margin-top: 1rem;">
+                <a href="{{ route('menu') }}" class="btn-cancel" style="display: inline-block;">Annuler</a>
+            </div>
         </div>
     </form>
 </div>
@@ -405,7 +435,6 @@ randomCheck.addEventListener('change', function() {
 const domainRadios = document.querySelectorAll('.domain-radio');
 const themeSection = document.getElementById('themeSection');
 const scolaireSection = document.getElementById('scolaireSection');
-
 const personaliseNote = document.getElementById('personaliseNote');
 
 domainRadios.forEach(radio => {
@@ -425,5 +454,43 @@ domainRadios.forEach(radio => {
         }
     });
 });
+
+// Codes logic based on game mode
+const modeRadios = document.querySelectorAll('input[name="mode"]');
+const selectedModeDisplay = document.getElementById('selectedMode');
+const codesCountDisplay = document.getElementById('codesCount');
+
+function updateCodesPreview() {
+    const selectedMode = document.querySelector('input[name="mode"]:checked');
+    if (!selectedMode) return;
+    
+    const modeValue = selectedMode.value;
+    const modeNames = {
+        'face_to_face': 'Face à Face',
+        'one_vs_all': '1 contre Tous',
+        'podium': 'Podium',
+        'groups': 'En Groupes'
+    };
+    
+    selectedModeDisplay.textContent = modeNames[modeValue] || modeValue;
+    
+    // Logic for codes generation
+    if (modeValue === 'one_vs_all') {
+        codesCountDisplay.textContent = '2 codes (1 solo + 1 groupe)';
+    } else if (modeValue === 'face_to_face') {
+        codesCountDisplay.textContent = '2 codes (équipe 1 vs équipe 2)';
+    } else if (modeValue === 'groups') {
+        codesCountDisplay.textContent = 'Jusqu\'à 10 codes (par groupe)';
+    } else {
+        codesCountDisplay.textContent = '1 code général';
+    }
+}
+
+modeRadios.forEach(radio => {
+    radio.addEventListener('change', updateCodesPreview);
+});
+
+// Initialize
+updateCodesPreview();
 </script>
 @endsection
