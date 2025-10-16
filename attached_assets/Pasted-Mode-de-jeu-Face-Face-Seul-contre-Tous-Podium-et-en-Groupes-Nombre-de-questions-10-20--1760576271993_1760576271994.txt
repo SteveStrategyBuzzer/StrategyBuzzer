@@ -1,0 +1,30 @@
+Mode de jeu; (Face à Face, Seul contre Tous, Podium et en Groupes)
+Nombre de questions; (10 / 20 / 30 / 40)
+Nombre de participants; de 3 à 40  indique dans le salon du Maître du Jeu combien de participant nous attendons (qui ne sont pas encore connecté)
+Langue; (Français et ou Anglais)
+Pays; indique dans l’option scolaire dans Type de question, les nom des niveaux qu’il utilise, leur programme
+Type de questions; peut en sélectionner plus d’un ( vrai ou faux, multiple, image, Random) si Random est sélectionné il sélectionne les 3 autres automatiquement
+Choix de question; (Thème, Scolaire, Personnalisé)
+(Thème) donne les 9 choix du mode solo
+(Scolaire) 
+1-se rapporte au pays sélectionné avec équivalence du secondaire et du cégep
+2-donne accès au niveaux que le Maître du Jeu veux sélectionné
+3- Le choix des matières du niveau sélectionné
+(Personnalisé) te transfère sur la page de création question et réponse 
+doit avoir “Création par Recherche” ex tu tapes le mot spéléologue et tu appuis sur le petit bouton (Création) à côté et il te fait un Quizz avec les critères sélectionné (Nombre de questions, langue, Pays si il y a lieu avec la recherche
+
+
+Titre “Vos codes“ jusqu’à 10 pour une même partie
+Génère automatiquement un ou des codes d’invitations uniques (ex: #BZ734)
+Si tu veux déterminer les équipes sans que se soit fait automatiquement
+mode “1 contre Tous” Ça doit générer 2 codes un pour la  personne seul et l’autre pour les autres 
+Chaque code détermine le côté du salon que le joueur va appartenir ou du groupe 
+Mode Face à Face ça doit générer 2 codes et si il y a juste 3 participants celui qui est est seul sur son côté du salon il y a un popup qui dit (Soyez Fort!! vous êtes sur un 1 contre 2)
+
+Bouton mode de création du Quizz : “Automatique” “Personnalisé”
+
+
+les 2 boutons redirige vers la page /maitrejeu/create ou /host/create.
+Mode “Automatique” peut être personnalisé aussi après création. 
+Mode “Automatique” se créé avec les information sélectionnés de la page Créer une Partie
+“Personnalisé” 

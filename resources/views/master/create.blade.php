@@ -321,43 +321,55 @@ body {
                     </div>
                     
                     <div id="themeSection" class="form-group">
-                        <label class="form-label">Thème</label>
+                        <label class="form-label">Thème (9 choix)</label>
                         <select name="theme" class="form-select">
-                            <option value="Géographie">Géo</option>
+                            <option value="Géographie">Géographie</option>
                             <option value="Histoire">Histoire</option>
-                            <option value="Arts et Culture">Arts</option>
-                            <option value="Sciences et Nature">Sciences</option>
-                            <option value="Sports et Loisirs">Sports</option>
+                            <option value="Arts et Culture">Arts et Culture</option>
+                            <option value="Sciences et Nature">Sciences et Nature</option>
+                            <option value="Sports et Loisirs">Sports et Loisirs</option>
+                            <option value="Divertissement">Divertissement</option>
+                            <option value="Technologie">Technologie</option>
                             <option value="Société">Société</option>
                             <option value="Général">Général</option>
                         </select>
                     </div>
                     
                     <div id="scolaireSection" class="form-group" style="display: none;">
-                        <label class="form-label">Pays</label>
-                        <select name="school_country" class="form-select">
-                            <option value="France">FR</option>
-                            <option value="Canada">CA</option>
-                            <option value="Belgique">BE</option>
-                            <option value="Suisse">CH</option>
+                        <label class="form-label">1. Pays (programme scolaire)</label>
+                        <select name="school_country" class="form-select" id="schoolCountry">
+                            <option value="France">France</option>
+                            <option value="Canada">Canada</option>
+                            <option value="Belgique">Belgique</option>
+                            <option value="Suisse">Suisse</option>
                         </select>
                         
-                        <label class="form-label" style="margin-top: 0.8rem;">Niveau</label>
-                        <select name="school_level" class="form-select">
+                        <label class="form-label" style="margin-top: 0.8rem;">2. Niveau scolaire</label>
+                        <select name="school_level" class="form-select" id="schoolLevel">
                             <option value="Primaire">Primaire</option>
-                            <option value="Collège">Collège</option>
+                            <option value="Collège">Collège (Secondaire)</option>
                             <option value="Lycée">Lycée</option>
-                            <option value="Université">Univ.</option>
+                            <option value="Cégep">Cégep</option>
+                            <option value="Université">Université</option>
                         </select>
                         
-                        <label class="form-label" style="margin-top: 0.8rem;">Matière</label>
-                        <select name="school_subject" class="form-select">
-                            <option value="Mathématiques">Maths</option>
+                        <label class="form-label" style="margin-top: 0.8rem;">3. Matière du niveau</label>
+                        <select name="school_subject" class="form-select" id="schoolSubject">
+                            <option value="Mathématiques">Mathématiques</option>
                             <option value="Français">Français</option>
-                            <option value="Histoire-Géo">Hist-Géo</option>
+                            <option value="Histoire-Géographie">Histoire-Géographie</option>
                             <option value="Sciences">Sciences</option>
                             <option value="Anglais">Anglais</option>
+                            <option value="Physique">Physique</option>
+                            <option value="Chimie">Chimie</option>
+                            <option value="Biologie">Biologie</option>
                         </select>
+                    </div>
+                    
+                    <div id="personaliseNote" class="form-group" style="display: none;">
+                        <p style="background: rgba(255,215,0,0.2); padding: 0.8rem; border-radius: 8px; font-size: 0.95rem;">
+                            ℹ️ Mode Personnalisé : Vous serez redirigé vers la création de questions après validation.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -394,18 +406,22 @@ const domainRadios = document.querySelectorAll('.domain-radio');
 const themeSection = document.getElementById('themeSection');
 const scolaireSection = document.getElementById('scolaireSection');
 
+const personaliseNote = document.getElementById('personaliseNote');
+
 domainRadios.forEach(radio => {
     radio.addEventListener('change', function() {
         if (this.value === 'theme') {
             themeSection.style.display = 'block';
             scolaireSection.style.display = 'none';
+            personaliseNote.style.display = 'none';
         } else if (this.value === 'scolaire') {
             themeSection.style.display = 'none';
             scolaireSection.style.display = 'block';
+            personaliseNote.style.display = 'none';
         } else if (this.value === 'personnalisé') {
             themeSection.style.display = 'none';
             scolaireSection.style.display = 'none';
-            alert('Vous serez redirigé vers la création de quiz personnalisé');
+            personaliseNote.style.display = 'block';
         }
     });
 });
