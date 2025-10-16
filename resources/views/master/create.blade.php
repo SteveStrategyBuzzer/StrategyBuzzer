@@ -10,7 +10,7 @@ body {
 }
 
 .create-container {
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
@@ -22,11 +22,20 @@ body {
     color: #FFD700;
 }
 
+.form-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
 .section {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: 1.5rem;
-    margin-bottom: 1.5rem;
+}
+
+.section-full {
+    grid-column: 1 / -1;
 }
 
 .section-title {
@@ -145,6 +154,15 @@ body {
 }
 
 /* Responsive */
+@media (max-width: 768px) {
+    .form-layout {
+        grid-template-columns: 1fr;
+    }
+    .section-full {
+        grid-column: 1;
+    }
+}
+
 @media (max-width: 480px) {
     .create-title {
         font-size: 2rem;
@@ -170,176 +188,183 @@ body {
     <form action="{{ route('master.store') }}" method="POST" id="createForm">
         @csrf
         
-        <!-- A. Informations générales -->
-        <div class="section">
-            <div class="section-title">A. Informations générales</div>
-            
-            <div class="form-group">
-                <label class="form-label">Nom de la partie</label>
-                <input type="text" name="name" class="form-input" placeholder="Ex: Quiz du samedi soir" required>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Langue</label>
-                <div class="checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="languages[]" value="FR" class="checkbox-input" checked>
-                        <span>Français</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="languages[]" value="EN" class="checkbox-input">
-                        <span>Anglais</span>
-                    </label>
+        <div class="form-layout">
+            <!-- Colonne 1 -->
+            <div>
+                <!-- A. Informations générales -->
+                <div class="section">
+                    <div class="section-title">A. Informations générales</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nom du quiz</label>
+                        <input type="text" name="name" class="form-input" placeholder="Ex: Quiz du samedi" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Langue</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="languages[]" value="FR" class="checkbox-input" checked>
+                                <span>🇫🇷 FR</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="languages[]" value="EN" class="checkbox-input">
+                                <span>🇬🇧 EN</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Participants (3-40)</label>
+                        <select name="participants_expected" class="form-select" required>
+                            @for ($i = 3; $i <= 40; $i++)
+                                <option value="{{ $i }}" {{ $i == 10 ? 'selected' : '' }}>{{ $i }}</option>
+                            @endfor
+                        </select>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Nombre de participants attendus (3 à 40)</label>
-                <select name="participants_expected" class="form-select" required>
-                    @for ($i = 3; $i <= 40; $i++)
-                        <option value="{{ $i }}" {{ $i == 10 ? 'selected' : '' }}>{{ $i }}</option>
-                    @endfor
-                </select>
-            </div>
-        </div>
-        
-        <!-- B. Mode de jeu -->
-        <div class="section">
-            <div class="section-title">B. Mode de jeu</div>
-            <div class="radio-group">
-                <label class="radio-label">
-                    <input type="radio" name="mode" value="face_to_face" class="radio-input">
-                    <span>Face à Face</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="mode" value="one_vs_all" class="radio-input">
-                    <span>1 contre Tous</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="mode" value="podium" class="radio-input" checked>
-                    <span>Podium</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="mode" value="groups" class="radio-input">
-                    <span>En Groupes</span>
-                </label>
-            </div>
-        </div>
-        
-        <!-- C. Questions -->
-        <div class="section">
-            <div class="section-title">C. Questions</div>
-            
-            <div class="form-group">
-                <label class="form-label">Nombre de questions</label>
-                <div class="radio-group">
-                    <label class="radio-label">
-                        <input type="radio" name="total_questions" value="10" class="radio-input">
-                        <span>10</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="total_questions" value="20" class="radio-input" checked>
-                        <span>20</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="total_questions" value="30" class="radio-input">
-                        <span>30</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="total_questions" value="40" class="radio-input">
-                        <span>40</span>
-                    </label>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Type de questions</label>
-                <div class="checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="question_types[]" value="true_false" class="checkbox-input type-checkbox">
-                        <span>Vrai/Faux</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="question_types[]" value="multiple_choice" class="checkbox-input type-checkbox" checked>
-                        <span>Choix multiple</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="question_types[]" value="image" class="checkbox-input type-checkbox">
-                        <span>Image</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="question_types[]" value="random" class="checkbox-input" id="randomCheck">
-                        <span>Random</span>
-                    </label>
-                </div>
-                <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;">Random coche automatiquement tous les types et désactive les autres.</p>
-            </div>
-        </div>
-        
-        <!-- D. Domaine -->
-        <div class="section">
-            <div class="section-title">D. Domaine</div>
-            
-            <div class="form-group">
-                <div class="radio-group">
-                    <label class="radio-label">
-                        <input type="radio" name="domain_type" value="theme" class="radio-input domain-radio" checked>
-                        <span>Thème</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="domain_type" value="scolaire" class="radio-input domain-radio">
-                        <span>Scolaire</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="domain_type" value="personnalisé" class="radio-input domain-radio">
-                        <span>Personnalisé</span>
-                    </label>
-                </div>
-            </div>
-            
-            <div id="themeSection" class="form-group">
-                <label class="form-label">Thème</label>
-                <select name="theme" class="form-select">
-                    <option value="Géographie">Géo</option>
-                    <option value="Histoire">Histoire</option>
-                    <option value="Arts et Culture">Arts</option>
-                    <option value="Sciences et Nature">Sciences</option>
-                    <option value="Sports et Loisirs">Sports</option>
-                    <option value="Société">Société</option>
-                    <option value="Général">Général</option>
-                </select>
-            </div>
-            
-            <div id="scolaireSection" class="form-group" style="display: none;">
-                <label class="form-label">Pays</label>
-                <select name="school_country" class="form-select">
-                    <option value="France">FR</option>
-                    <option value="Canada">CA</option>
-                    <option value="Belgique">BE</option>
-                    <option value="Suisse">CH</option>
-                </select>
                 
-                <label class="form-label" style="margin-top: 1rem;">Niveau</label>
-                <select name="school_level" class="form-select">
-                    <option value="Primaire">Primaire</option>
-                    <option value="Collège">Collège</option>
-                    <option value="Lycée">Lycée</option>
-                    <option value="Université">Univ.</option>
-                </select>
+                <!-- C. Questions -->
+                <div class="section" style="margin-top: 1.5rem;">
+                    <div class="section-title">C. Questions</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="total_questions" value="10" class="radio-input">
+                                <span>10</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="total_questions" value="20" class="radio-input" checked>
+                                <span>20</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="total_questions" value="30" class="radio-input">
+                                <span>30</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="total_questions" value="40" class="radio-input">
+                                <span>40</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Types</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="question_types[]" value="true_false" class="checkbox-input type-checkbox">
+                                <span>Vrai/Faux</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="question_types[]" value="multiple_choice" class="checkbox-input type-checkbox" checked>
+                                <span>QCM</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="question_types[]" value="image" class="checkbox-input type-checkbox">
+                                <span>Image</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="question_types[]" value="random" class="checkbox-input" id="randomCheck">
+                                <span>Aléa</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Colonne 2 -->
+            <div>
+                <!-- B. Mode de jeu -->
+                <div class="section">
+                    <div class="section-title">B. Mode de jeu</div>
+                    <div class="radio-group" style="flex-direction: column; gap: 0.8rem;">
+                        <label class="radio-label">
+                            <input type="radio" name="mode" value="face_to_face" class="radio-input">
+                            <span>Face à Face</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="mode" value="one_vs_all" class="radio-input">
+                            <span>1 contre Tous</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="mode" value="podium" class="radio-input" checked>
+                            <span>Podium</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="mode" value="groups" class="radio-input">
+                            <span>En Groupes</span>
+                        </label>
+                    </div>
+                </div>
                 
-                <label class="form-label" style="margin-top: 1rem;">Matière</label>
-                <select name="school_subject" class="form-select">
-                    <option value="Mathématiques">Maths</option>
-                    <option value="Français">Français</option>
-                    <option value="Histoire-Géo">Hist-Géo</option>
-                    <option value="Sciences">Sciences</option>
-                    <option value="Anglais">Anglais</option>
-                </select>
+                <!-- D. Domaine -->
+                <div class="section" style="margin-top: 1.5rem;">
+                    <div class="section-title">D. Domaine</div>
+                    
+                    <div class="form-group">
+                        <div class="radio-group" style="flex-direction: column; gap: 0.8rem;">
+                            <label class="radio-label">
+                                <input type="radio" name="domain_type" value="theme" class="radio-input domain-radio" checked>
+                                <span>Thème</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="domain_type" value="scolaire" class="radio-input domain-radio">
+                                <span>Scolaire</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="domain_type" value="personnalisé" class="radio-input domain-radio">
+                                <span>Personnalisé</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="themeSection" class="form-group">
+                        <label class="form-label">Thème</label>
+                        <select name="theme" class="form-select">
+                            <option value="Géographie">Géo</option>
+                            <option value="Histoire">Histoire</option>
+                            <option value="Arts et Culture">Arts</option>
+                            <option value="Sciences et Nature">Sciences</option>
+                            <option value="Sports et Loisirs">Sports</option>
+                            <option value="Société">Société</option>
+                            <option value="Général">Général</option>
+                        </select>
+                    </div>
+                    
+                    <div id="scolaireSection" class="form-group" style="display: none;">
+                        <label class="form-label">Pays</label>
+                        <select name="school_country" class="form-select">
+                            <option value="France">FR</option>
+                            <option value="Canada">CA</option>
+                            <option value="Belgique">BE</option>
+                            <option value="Suisse">CH</option>
+                        </select>
+                        
+                        <label class="form-label" style="margin-top: 0.8rem;">Niveau</label>
+                        <select name="school_level" class="form-select">
+                            <option value="Primaire">Primaire</option>
+                            <option value="Collège">Collège</option>
+                            <option value="Lycée">Lycée</option>
+                            <option value="Université">Univ.</option>
+                        </select>
+                        
+                        <label class="form-label" style="margin-top: 0.8rem;">Matière</label>
+                        <select name="school_subject" class="form-select">
+                            <option value="Mathématiques">Maths</option>
+                            <option value="Français">Français</option>
+                            <option value="Histoire-Géo">Hist-Géo</option>
+                            <option value="Sciences">Sciences</option>
+                            <option value="Anglais">Anglais</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <!-- Boutons -->
-        <div class="buttons">
+        <!-- Boutons (pleine largeur) -->
+        <div class="buttons" style="margin-top: 2rem;">
             <button type="submit" class="btn-continue">Continuer</button>
             <a href="{{ route('menu') }}" class="btn-cancel">Annuler</a>
         </div>
