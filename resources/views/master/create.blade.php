@@ -298,13 +298,13 @@ body {
             </div>
             
             <div id="themeSection" class="form-group">
-                <label class="form-label">Choisir un thème</label>
+                <label class="form-label">Thème</label>
                 <select name="theme" class="form-select">
-                    <option value="Géographie">Géographie</option>
+                    <option value="Géographie">Géo</option>
                     <option value="Histoire">Histoire</option>
-                    <option value="Arts et Culture">Arts et Culture</option>
-                    <option value="Sciences et Nature">Sciences et Nature</option>
-                    <option value="Sports et Loisirs">Sports et Loisirs</option>
+                    <option value="Arts et Culture">Arts</option>
+                    <option value="Sciences et Nature">Sciences</option>
+                    <option value="Sports et Loisirs">Sports</option>
                     <option value="Société">Société</option>
                     <option value="Général">Général</option>
                 </select>
@@ -313,10 +313,10 @@ body {
             <div id="scolaireSection" class="form-group" style="display: none;">
                 <label class="form-label">Pays</label>
                 <select name="school_country" class="form-select">
-                    <option value="France">France</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Belgique">Belgique</option>
-                    <option value="Suisse">Suisse</option>
+                    <option value="France">FR</option>
+                    <option value="Canada">CA</option>
+                    <option value="Belgique">BE</option>
+                    <option value="Suisse">CH</option>
                 </select>
                 
                 <label class="form-label" style="margin-top: 1rem;">Niveau</label>
@@ -324,14 +324,14 @@ body {
                     <option value="Primaire">Primaire</option>
                     <option value="Collège">Collège</option>
                     <option value="Lycée">Lycée</option>
-                    <option value="Université">Université</option>
+                    <option value="Université">Univ.</option>
                 </select>
                 
                 <label class="form-label" style="margin-top: 1rem;">Matière</label>
                 <select name="school_subject" class="form-select">
-                    <option value="Mathématiques">Mathématiques</option>
+                    <option value="Mathématiques">Maths</option>
                     <option value="Français">Français</option>
-                    <option value="Histoire-Géo">Histoire-Géographie</option>
+                    <option value="Histoire-Géo">Hist-Géo</option>
                     <option value="Sciences">Sciences</option>
                     <option value="Anglais">Anglais</option>
                 </select>
