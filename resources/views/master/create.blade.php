@@ -162,6 +162,23 @@ body {
     font-size: 1rem;
     text-align: center;
 }
+
+/* Paysage : 2 colonnes */
+@media (orientation: landscape) and (min-width: 768px) {
+    .create-container {
+        max-width: 900px;
+    }
+    
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    
+    .section-full {
+        grid-column: 1 / -1;
+    }
+}
 </style>
 
 <a href="{{ route('menu') }}" class="header-back">← Menu</a>
@@ -172,12 +189,13 @@ body {
     <form action="{{ route('master.store') }}" method="POST" id="createForm">
         @csrf
         
-        <!-- Nom du Quiz -->
-        <div class="section">
+        <!-- Nom du Quiz (pleine largeur) -->
+        <div class="section section-full">
             <div class="section-title">Nom du Quizz</div>
             <input type="text" name="name" class="form-input" placeholder="Ex: Quiz du samedi" required>
         </div>
         
+        <div class="form-grid">
         <!-- Langue + Participants -->
         <div class="section">
             <div class="form-group">
@@ -325,9 +343,10 @@ body {
                 </select>
             </div>
         </div>
+        </div>
         
-        <!-- Boutons de création -->
-        <div style="margin-top: 2rem;">
+        <!-- Boutons de création (pleine largeur) -->
+        <div class="section-full" style="margin-top: 2rem;">
             <div class="buttons" style="gap: 1rem;">
                 <button type="submit" name="creation_mode" value="automatique" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #FFD700, #FFA500); font-size: 1.1rem;">
                     Automatique
