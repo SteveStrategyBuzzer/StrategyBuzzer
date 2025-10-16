@@ -140,10 +140,26 @@ body {
     left: 20px;
     background: white;
     color: #003DA5;
-    padding: 10px 20px;
+    padding: 8px 16px;
     border-radius: 8px;
     text-decoration: none;
     font-weight: 700;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.header-back:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+    .header-back {
+        top: 10px;
+        left: 10px;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
 }
 
 .input-with-label {
@@ -181,7 +197,7 @@ body {
 }
 </style>
 
-<a href="{{ route('menu') }}" class="header-back">← Menu</a>
+<a href="{{ route('menu') }}" class="header-back">Menu</a>
 
 <div class="create-container">
     <h1 class="create-title">Général</h1>
