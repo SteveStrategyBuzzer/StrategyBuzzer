@@ -64,6 +64,13 @@ body {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
     font-size: 1rem;
+    cursor: pointer;
+}
+
+.form-select option {
+    background: #003DA5;
+    color: #fff;
+    padding: 0.5rem;
 }
 
 .checkbox-group, .radio-group {
@@ -187,10 +194,10 @@ body {
             </div>
             
             <div class="form-group">
-                <label class="form-label">Nombre de participants attendus</label>
+                <label class="form-label">Nombre de participants attendus (3 à 40)</label>
                 <select name="participants_expected" class="form-select" required>
                     @for ($i = 3; $i <= 40; $i++)
-                        <option value="{{ $i }}" {{ $i == 10 ? 'selected' : '' }}>{{ $i }} joueurs</option>
+                        <option value="{{ $i }}" {{ $i == 10 ? 'selected' : '' }}>{{ $i }}</option>
                     @endfor
                 </select>
             </div>
