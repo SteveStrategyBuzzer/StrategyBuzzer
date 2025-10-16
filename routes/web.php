@@ -194,13 +194,19 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
 
 /* ===== MAÎTRE DU JEU ===== */
 Route::middleware('auth')->prefix('master')->name('master.')->group(function () {
-    Route::get('/', [App\Http\Controllers\MasterGameController::class, 'index'])->name('index');
-    Route::post('/join', [App\Http\Controllers\MasterGameController::class, 'join'])->name('join');
-    Route::get('/transition', function() {
+    // Page d'accueil = Transition directe
+    Route::get('/', function() {
         return view('master.transition');
-    })->name('transition');
+    })->name('index');
+    
+    // Rejoindre une partie (depuis profil)
+    Route::post('/join', [App\Http\Controllers\MasterGameController::class, 'join'])->name('join');
+    
+    // Créer un Quiz (après transition)
     Route::get('/create', [App\Http\Controllers\MasterGameController::class, 'create'])->name('create');
     Route::post('/store', [App\Http\Controllers\MasterGameController::class, 'store'])->name('store');
+    
+    // Flux de jeu
     Route::get('/{gameId}/compose', [App\Http\Controllers\MasterGameController::class, 'compose'])->name('compose');
     Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
 });

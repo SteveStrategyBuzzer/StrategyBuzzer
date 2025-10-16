@@ -155,10 +155,10 @@ body {
 }
 </style>
 
-<a href="{{ route('master.index') }}" class="header-back">← Retour</a>
+<a href="{{ route('menu') }}" class="header-back">← Menu</a>
 
 <div class="create-container">
-    <h1 class="create-title">🎮 Créer une Partie</h1>
+    <h1 class="create-title">📝 Créer un Quiz</h1>
     
     <form action="{{ route('master.store') }}" method="POST" id="createForm">
         @csrf
@@ -334,7 +334,7 @@ body {
         <!-- Boutons -->
         <div class="buttons">
             <button type="submit" class="btn-continue">Continuer</button>
-            <a href="{{ route('master.index') }}" class="btn-cancel">Annuler</a>
+            <a href="{{ route('menu') }}" class="btn-cancel">Annuler</a>
         </div>
     </form>
 </div>
