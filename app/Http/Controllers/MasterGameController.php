@@ -38,7 +38,8 @@ class MasterGameController extends Controller
             'theme' => 'nullable|string',
             'school_country' => 'nullable|string',
             'school_level' => 'nullable|string',
-            'school_subject' => 'nullable|string'
+            'school_subject' => 'nullable|string',
+            'creation_mode' => 'required|in:automatique,personnalise'
         ]);
 
         // Générer un code unique
@@ -58,6 +59,7 @@ class MasterGameController extends Controller
             'school_country' => $validated['school_country'] ?? null,
             'school_level' => $validated['school_level'] ?? null,
             'school_subject' => $validated['school_subject'] ?? null,
+            'creation_mode' => $validated['creation_mode'],
             'status' => 'draft'
         ]);
 
