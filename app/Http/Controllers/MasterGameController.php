@@ -175,9 +175,9 @@ class MasterGameController extends Controller
         // Générer des sous-thèmes variés pour forcer la diversité
         $subTheme = $this->generateSubTheme($game, $questionNumber, $existingQuestions);
 
-        // Construire le prompt basé sur le type de question
-        $isImageQuestion = in_array('image', $game->question_types);
-        $questionType = $game->question_types[0] ?? 'multiple_choice';
+        // Déterminer le type de question pour ce numéro (distribution équilibrée)
+        $questionType = $this->getQuestionTypeForNumber($game, $questionNumber);
+        $isImageQuestion = ($questionType === 'image');
         
         $prompt = $this->buildQuestionPrompt($game, $questionType, $isImageQuestion, $existingQuestions, $questionNumber, $subTheme);
 
@@ -367,6 +367,42 @@ class MasterGameController extends Controller
                 return "Génère une question TRÈS DIFFICILE pour EXPERTS avec des connaissances POINTUES et RARES.";
             }
         }
+    }
+    
+    // Déterminer le type de question pour un numéro donné (distribution équilibrée)
+    private function getQuestionTypeForNumber($game, $questionNumber)
+    {
+        $questionTypes = $game->question_types ?? ['multiple_choice'];
+        
+        // Si un seul type de question, toujours utiliser celui-là
+        if (count($questionTypes) === 1) {
+            return $questionTypes[0];
+        }
+        
+        $totalQuestions = $game->questions_count ?? 20;
+        $numTypes = count($questionTypes);
+        
+        // Calculer combien de questions par type (distribution équilibrée)
+        $questionsPerType = floor($totalQuestions / $numTypes);
+        $remainder = $totalQuestions % $numTypes;
+        
+        // Créer un pattern de distribution
+        $pattern = [];
+        for ($i = 0; $i < $numTypes; $i++) {
+            $count = $questionsPerType + ($i < $remainder ? 1 : 0);
+            for ($j = 0; $j < $count; $j++) {
+                $pattern[] = $questionTypes[$i];
+            }
+        }
+        
+        // Mélanger le pattern de façon unique basée sur le game_id
+        mt_srand($game->id);
+        shuffle($pattern);
+        mt_srand(); // Restaurer
+        
+        // Retourner le type pour ce numéro de question (index 0-based)
+        $index = ($questionNumber - 1) % count($pattern);
+        return $pattern[$index];
     }
     
     // Générer un sous-thème varié pour forcer la diversité
