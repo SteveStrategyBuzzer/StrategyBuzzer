@@ -359,38 +359,78 @@ class MasterGameController extends Controller
     {
         $theme = $game->theme ?? $game->school_subject ?? 'culture générale';
         
-        // Listes de sous-thèmes par thème principal
+        // Listes de sous-thèmes par thème principal (40+ pour supporter 10, 20, 30, 40 questions)
         $subThemes = [
             'géographie' => [
                 'capitales de pays', 'fleuves et rivières', 'montagnes et sommets', 'océans et mers',
                 'déserts et climats', 'îles et archipels', 'villes importantes', 'frontières et pays limitrophes',
                 'population et démographie', 'langues parlées', 'drapeaux nationaux', 'monuments célèbres',
-                'régions et départements', 'volcans', 'lacs', 'forêts', 'parcs naturels', 'continents'
+                'régions et départements', 'volcans', 'lacs', 'forêts', 'parcs naturels', 'continents',
+                'pays et superficies', 'fuseaux horaires', 'zones maritimes', 'détroits et canaux',
+                'plateaux et plaines', 'deltas et estuaires', 'péninsules', 'golfes et baies',
+                'grottes et cavernes', 'cascades', 'glaciers', 'récifs coralliens',
+                'zones protégées', 'métropoles mondiales', 'ports maritimes', 'aéroports internationaux',
+                'autoroutes et routes', 'tunnels et ponts', 'ressources naturelles', 'industries régionales',
+                'agriculture et cultures', 'élevage', 'pêche et aquaculture', 'tourisme'
             ],
             'histoire' => [
                 'dates importantes', 'personnages historiques', 'guerres et conflits', 'révolutions',
                 'découvertes scientifiques', 'dynasties et rois', 'inventions', 'traités et accords',
                 'civilisations anciennes', 'batailles célèbres', 'mouvements sociaux', 'empire et colonies',
-                'art et architecture', 'religion et croyances', 'économie historique'
+                'art et architecture', 'religion et croyances', 'économie historique',
+                'constitutions et lois', 'abolitions et réformes', 'épidémies et catastrophes', 'explorations',
+                'navigation et voyages', 'commerce et routes', 'monnaies anciennes', 'systèmes politiques',
+                'alliances historiques', 'codes et chartes', 'insurrections', 'résistances',
+                'exils et migrations', 'conquêtes territoriales', 'indépendances nationales', 'unifications',
+                'scissions et séparations', 'référendums', 'couronnements', 'abdications',
+                'exécutions célèbres', 'procès historiques', 'espionnage', 'diplomatie',
+                'congrès et sommets', 'premiers historiques'
             ],
             'science' => [
                 'biologie et animaux', 'physique et forces', 'chimie et éléments', 'astronomie et espace',
                 'médecine et santé', 'technologie', 'mathématiques', 'environnement et écologie',
-                'météorologie', 'géologie', 'génétique', 'évolution', 'corps humain', 'plantes'
+                'météorologie', 'géologie', 'génétique', 'évolution', 'corps humain', 'plantes',
+                'bactéries et virus', 'cellules', 'ADN et ARN', 'système nerveux',
+                'système cardiovasculaire', 'système digestif', 'système respiratoire', 'hormones',
+                'vitamines et minéraux', 'maladies', 'vaccins', 'antibiotiques',
+                'électricité', 'magnétisme', 'ondes', 'lumière et optique',
+                'thermodynamique', 'mécanique', 'acoustique', 'radioactivité',
+                'atomes et molécules', 'réactions chimiques', 'table périodique', 'énergie renouvelable',
+                'robotique', 'intelligence artificielle', 'nanotechnologie', 'biotechnologie'
             ],
             'culture générale' => [
                 'cinéma et films', 'musique et artistes', 'littérature et écrivains', 'sports et athlètes',
                 'gastronomie', 'art et peinture', 'télévision', 'mode et tendances',
-                'célébrités', 'jeux vidéo', 'traditions', 'fêtes', 'langues', 'religion'
+                'célébrités', 'jeux vidéo', 'traditions', 'fêtes', 'langues', 'religion',
+                'philosophie', 'mythologie', 'contes et légendes', 'proverbes',
+                'BD et comics', 'mangas et anime', 'séries télévisées', 'émissions cultes',
+                'chansons populaires', 'albums musicaux', 'instruments de musique', 'genres musicaux',
+                'romans célèbres', 'poésie', 'théâtre classique', 'prix littéraires',
+                'recettes traditionnelles', 'vins et spiritueux', 'fromages', 'pâtisseries',
+                'marques célèbres', 'logos', 'slogans publicitaires', 'inventions du quotidien',
+                'expressions populaires', 'superstitions', 'zodiac et astrologie', 'symboles'
             ],
             'sport' => [
                 'football', 'basketball', 'tennis', 'rugby', 'athlétisme', 'natation',
                 'cyclisme', 'jeux olympiques', 'records sportifs', 'équipes célèbres',
-                'stades et infrastructures', 'compétitions internationales', 'sports d\'hiver'
+                'stades et infrastructures', 'compétitions internationales', 'sports d\'hiver',
+                'handball', 'volleyball', 'golf', 'formule 1', 'moto GP',
+                'boxe', 'arts martiaux', 'judo', 'karaté', 'taekwondo',
+                'escrime', 'aviron', 'voile', 'surf', 'plongée',
+                'ski alpin', 'ski de fond', 'biathlon', 'patinage artistique', 'hockey sur glace',
+                'baseball', 'cricket', 'football américain', 'basketball féminin', 'tennis de table',
+                'badminton', 'squash', 'équitation', 'hippisme', 'sports extrêmes'
             ],
             'culture' => [
                 'peinture et tableaux', 'sculpteurs', 'architectes', 'musées', 'opéra et théâtre',
-                'danse', 'cinéma mondial', 'festivals', 'prix et récompenses', 'mouvements artistiques'
+                'danse', 'cinéma mondial', 'festivals', 'prix et récompenses', 'mouvements artistiques',
+                'impressionnisme', 'cubisme', 'surréalisme', 'renaissance', 'baroque',
+                'art moderne', 'art contemporain', 'street art', 'photographie', 'design',
+                'calligraphie', 'gravure', 'mosaïque', 'vitraux', 'tapisserie',
+                'céramique', 'poterie', 'bijouterie', 'orfèvrerie', 'horlogerie',
+                'couture haute gamme', 'parfumerie', 'ballets célèbres', 'compositeurs classiques', 'symphonies',
+                'opéras célèbres', 'cathédrales', 'châteaux et palais', 'monuments antiques', 'art africain',
+                'art asiatique', 'art précolombien', 'patrimoine UNESCO', 'expositions internationales'
             ]
         ];
         
