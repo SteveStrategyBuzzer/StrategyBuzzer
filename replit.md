@@ -9,127 +9,50 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **React 19** with modern hooks and functional components, using **Vite** for fast hot module replacement.
-- **Component-based architecture** with reusable UI elements and a dynamic theming system.
-- **Real-time UI updates** for game state changes and player interactions.
-- **Competitive UI Redesign** for gameplay screens, including energetic chronometers, realistic buzz buttons, and score battle displays.
-- **Viewport-Optimized Gameplay Screens** designed for 100% visibility without scrolling, adapting seamlessly to various mobile and tablet orientations.
-- Features a 3-second concentration countdown screen before games.
-- **3-Column Game Question Layout (October 2025)**: Complete redesign with LEFT column (player + opponent circles), CENTER column (large chrono), RIGHT column (strategic avatar + 3 skill circles), and Strategy Buzzer button centered at bottom. Opponent display adapts: Boss opponents show photo, regular opponents show initiale in empty circle.
-- Skill activation no longer uses popup alerts.
-- Persistent visual feedback for strategic avatar skills (golden pulsating glow) until used.
+- **React 19** with Vite for fast development and a component-based architecture.
+- **Real-time UI updates** for game state and player interactions.
+- **Competitive UI Redesign** with energetic chronometers, realistic buzz buttons, and score battle displays.
+- **Viewport-Optimized Gameplay Screens** for seamless adaptation to various mobile and tablet orientations, without scrolling.
+- **3-Column Game Question Layout**: LEFT (player + opponent circles), CENTER (large chrono), RIGHT (strategic avatar + 3 skill circles), Strategy Buzzer button centered at bottom.
+- Persistent visual feedback for strategic avatar skills (golden pulsating glow).
 
 ### Backend Architecture
-- **Laravel 10** as the primary web framework, following an MVC pattern.
-- **Inertia.js** for a seamless SPA-like experience between Laravel and React.
-- **API-first design** with web and API routes, and a service-oriented architecture for game logic, scoring, and player management.
+- **Laravel 10** as the primary web framework, using an MVC pattern.
+- **Inertia.js** for a seamless SPA-like experience.
+- **API-first design** with a service-oriented architecture for game logic, scoring, and player management.
 - **Event-driven system** for real-time game state broadcasting.
-- **QuestionService** for AI-ready, theme-based question generation with difficulty scaling and answer randomization for multiple-choice questions.
-- **Advanced AI Opponent System** with a three-layer behavioral simulation (buzz decision, speed competition, answer accuracy) offering a progressive difficulty curve. This includes strategic buzz timing adjustments based on player buzz time.
-- Implementation of functional strategic avatar skills, such as "Calcul Rapide" to reveal correct answers.
-- Dual opponent display formats: boss opponents (levels 10, 20, etc.) show circular avatar and full details; regular opponents show simplified textual layout.
+- **QuestionService** for AI-ready, theme-based question generation with difficulty scaling.
+- **Advanced AI Opponent System** with a three-layer behavioral simulation (buzz decision, speed competition, answer accuracy).
+- Functional strategic avatar skills (e.g., "Calcul Rapide").
 
-#### Gameplay Services Architecture (October 2025)
-**Universal gameplay services for all modes** (Solo, Duo, Ligue, Maître du jeu):
-
-- **GameStateService**: Centralized game state management
-  - Best of 3 rounds system with round isolation (scores reset between rounds)
-  - Dual-track scoring: legacy scalaires (player/opponent) + generalized maps (_map suffix)
-  - Tiebreaker by total score when max rounds reached without 2 clear victories
-  - Support for 1-40 players with per-player tracking (player_scores_map, player_rounds_won_map, player_stats_map)
-  - Penalty-aware totals (includes -2 for wrong answers)
-  
-- **BuzzManagerService**: Fair multi-player buzz management
-  - Server-side timestamps (microtime) for guaranteed fairness
-  - Scoring: +2 first correct, +1 second correct, -2 wrong answer, 0 no buzz
-  - Anti-cheat: buzz validation (min/max delay), rate limiting (5 buzz/sec max)
-  - Support for answers without buzz (0 points but counted)
-  
-- **RoomService**: Abstract session/room management
-  - Unified room system for all game modes
-  - Dynamic player limits: Solo (1), Duo (2), Ligue (10), Maître du jeu (40)
-  - Robust host management with automatic reassignment
-  - Array reindexing to prevent sparse indexes
-  - Status tracking: waiting → playing → finished
+#### Gameplay Services Architecture
+- **GameStateService**: Centralized game state management supporting best of 3 rounds, dual-track scoring, tiebreakers, and 1-40 players with per-player tracking.
+- **BuzzManagerService**: Fair multi-player buzz management with server-side timestamps, scoring rules (+2 first correct, +1 second, -2 wrong), and anti-cheat measures.
+- **RoomService**: Abstract session/room management for all game modes (Solo, Duo, Ligue, Maître du jeu) with dynamic player limits and robust host management.
 
 ### Database and Storage
-- **PostgreSQL (Replit Neon)** as the primary relational database for user data, game progress, and transactions.
+- **PostgreSQL (Replit Neon)** as the primary relational database.
 - **Firebase Firestore** for real-time data synchronization during gameplay.
-- **Laravel's Eloquent ORM** for database abstraction.
+- **Laravel Eloquent ORM** for database abstraction.
 
 ### Authentication and Authorization
-- **Firebase Authentication** with social providers.
-- **Laravel Sanctum** for API token management and session handling.
-- **Multi-provider authentication** supporting Firebase and Laravel's native auth (Email/Password, Apple, Phone).
-- **Player Code System (October 2025)**: Unique alphanumeric codes (SB-XXXX format) auto-generated for all users. Displayed in profile as "Code #SB-XXXX" instead of database ID. Used for player invitations in Duo mode.
+- **Firebase Authentication** with social providers and **Laravel Sanctum** for API token management.
+- **Multi-provider authentication** (Firebase, Laravel native Email/Password, Apple, Phone).
+- **Player Code System**: Unique alphanumeric codes (SB-XXXX) for all users, used for invitations in Duo mode.
 - **Role-based access control**.
-- **Profile Completion Enforcement (October 2025)**: All login methods (Google, Facebook, Email/Password, Registration) enforce profile completion before allowing access to /menu. Users with incomplete profiles are redirected to profile page regardless of login method. Future authentication methods (Apple, Phone) have profile completion checks already prepared in commented code.
+- **Profile Completion Enforcement**: Users must complete their profile before accessing the main menu.
 
 ### Real-time Features
 - **Firebase real-time database** for live game state synchronization.
-- **WebSocket-like functionality** through Firebase listeners and event broadcasting for buzz notifications, score updates, and game transitions.
+- **WebSocket-like functionality** through Firebase listeners and event broadcasting.
 
 ### Gameplay and Progression
-
-### Solo Mode
-- **Complete Gameplay System Implementation** with Question, Answer, and Result screens, managed by **SoloController** for game state and session tracking.
-- **Best of 3 Match System** where winning 2 out of 3 matches progresses the player to the next level.
-- **Strategic Avatar System with Boss Battles** for level-based progression and avatar unlocking. Strategic avatars persist across sessions.
-- **Advanced Scoring System** with points for correct answers (+2 for first, +1 for second) and penalties for wrong buzzes (-2 points).
-- **Expanded Question Database** with 50 unique questions per theme (350 total questions).
-- **Sound system** for audio feedback on game events.
-- Allows players to answer questions for 0 points even if they didn't buzz in time.
-- **Life Management System**: Players have 3 lives (config('game.life_max', 3)), losing one per defeat. A 1-hour cooldown activates when lives reach 0, with continuous life regeneration until max lives are restored. Life display fixed to show correct 3/3 format across all interfaces.
-- **Level Progression System**: Players unlock the next level after winning 2 rounds out of 3 (max 100 levels). XP is awarded per victory. Features 90 unique opponents and boss opponents at specific levels (10, 20, ... 100).
-- **Comprehensive Round Result Page**: Displays detailed statistics including theme, level, round scores, points, efficiency, global statistics, and remaining lives.
-- **Simplified Question Result Page**: Shows essential information after each question (correct/incorrect, score, lives, progression).
-- **Global Statistics System**: Tracks question results (correct/incorrect/unanswered) across all rounds.
-
-### Duo Mode (October 2025)
-- **Complete Backend Implementation** with DuoController, DuoMatchmakingService, DivisionService.
-- **Division-Based Progression**: Point-based system (0-99 Bronze, 100-199 Argent, 200-299 Or, 300-399 Platine, 400-499 Diamant, 500+ Légende).
-- **Intelligent Scoring**: +1 vs weaker opponent (lower level), +2 vs equal level, +5 vs stronger opponent (higher level), -2 for loss.
-- **Player Code System (October 2025)**: Unique player codes (SB-XXXX format, 4 alphanumeric characters, ~1.6M combinations) for invitations. PlayerCodeService handles generation with uniqueness guarantee. Invitation by code only (no name search).
-- **Matchmaking System**: Invite specific player by code (SB-XXXX) or random matchmaking within same division.
-- **Best-of-3 System**: Draws replay the same round without consuming a round slot; match ends when a player wins 2 rounds or 3 decisive rounds are played (tiebreaker by total score).
-- **Real-time Gameplay**: Server-side buzz timestamps, fair multi-player buzz validation, anti-cheat measures.
-- **Database Schema**: duo_matches, player_duo_stats, player_divisions tables with proper relations. Users table includes unique player_code column.
-- **Unlock Requirement**: 100 Solo matches played (tracked as defeats-victories/100).
-- **Complete Frontend**: 5 pages (Lobby, Matchmaking, Game, Results, Rankings) with responsive design and real-time updates.
-- **Features**: Player code invitations, pending invitations display, division-based rankings, detailed match statistics, accuracy tracking.
-
-### League Individual Mode (October 2025)
-- **Complete Implementation**: Full backend (LeagueIndividualService, LeagueIndividualController) and frontend (5 Blade pages).
-- **Permanent 1v1 Career System**: Players progress through divisions in a permanent ranked ladder.
-- **Division System Integration**: Reuses DivisionService from Duo mode (Bronze, Argent, Or, Platine, Diamant, Légende).
-- **Initialization Logic**: First access transfers Duo level as starting level in Bronze division.
-- **Random Matchmaking**: Finds opponents within same division automatically (no invitations).
-- **Identical Scoring**: Same point system as Duo (+1 vs weaker, +2 vs equal, +5 vs stronger, -2 loss).
-- **Universal Gameplay Services**: Reuses GameStateService and BuzzManagerService for best-of-3 matches.
-- **Database Schema**: league_individual_stats, league_individual_matches tables with user relations.
-- **Frontend Pages**: Welcome/initialization, lobby with rankings, game interface, detailed results, division rankings with filters.
-- **API Routes**: Complete REST API with authentication middleware for match creation, gameplay, and statistics.
-- **Web Routes**: Blade template routes for all frontend pages with proper user context.
-
-### League Team Mode (5v5) (October 2025)
-- **Complete Implementation**: Full backend (TeamService, LeagueTeamService, LeagueTeamController) and frontend (4 Blade pages).
-- **Team Management System**: Create teams (name + 3-char tag), invite players, accept/decline invitations, captain role with member management.
-- **5-Player Roster System**: Exactly 5 players per team required for matchmaking, captain auto-assignment on leave, member kick functionality.
-- **Division-Based Progression**: Teams have division/points/stats, identical division system to Duo/Individual modes.
-- **Team Matchmaking**: Automatic random matchmaking within same division for teams with full 5-player rosters.
-- **5v5 Team Gameplay**: Best-of-3 matches with team scores aggregating individual player performances.
-- **Database Schema**: teams, team_members, team_invitations, league_team_matches tables with proper Eloquent relations.
-- **Eloquent Relations**: Team hasMany TeamMember, TeamMember belongsTo User, using teamMembers() relation for member access.
-- **Frontend Pages**: Team management (create/manage), lobby (matchmaking/rankings), game interface (5v5 display), detailed results.
-- **Security**: Authorization checks on all endpoints, only team members can access matches, captain-only actions protected.
-- **Universal Services**: Reuses GameStateService and BuzzManagerService for fair multi-player gameplay with 10 players.
-
-### Avatar System (October 2025)
-- **Per-User Avatar Isolation**: Avatar selections, unlocked packs, and strategic avatars stored in per-user `profile_settings` JSON column in users table, ensuring complete isolation between user accounts.
-- **Avatar Pack System**: Multiple themed avatar packs (Standard, Portraits, Strategic) with unlock requirements. New users start with NO packs auto-unlocked - all packs must be explicitly purchased or unlocked.
-- **Avatar Selection Requirement**: Users must select a complete avatar (player avatar + opponent avatar) before accessing the menu. Incomplete avatar selection blocks menu access until completed.
-- **Strategic Avatars**: Special avatars with in-game skills persist across sessions and are stored per user.
-- **Menu Access Logic**: Maître du jeu mode accessible to redirect to boutique when not purchased; only locked with 🔒 when purchased but profile incomplete.
+- **Solo Mode**: Complete gameplay system with best of 3 matches, strategic avatar progression with boss battles, advanced scoring, life management system (3 lives, 1-hour cooldown), and level progression (90 unique opponents, 100 levels).
+- **Duo Mode**: Backend and frontend implementation with division-based progression (Bronze to Légende), intelligent scoring, player code system for invitations, and a best-of-3 match system with real-time gameplay. Unlock requirement: 100 Solo matches played.
+- **League Individual Mode**: Permanent 1v1 career system with division progression, random matchmaking, and identical scoring to Duo mode. Reuses universal gameplay services.
+- **League Team Mode (5v5)**: Team management system (create, invite, manage 5-player rosters), division-based progression, automatic team matchmaking, and 5v5 team gameplay.
+- **Avatar System**: Per-user avatar isolation with themed avatar packs, unlock requirements, and a mandatory avatar selection before menu access. Strategic avatars with in-game skills persist across sessions.
+- **Master Mode (Maître du Jeu)**: Real-time quiz hosting platform for 3-40 participants with mobile-optimized interface. Integrates **AI-Powered Question Generation** via OpenAI API (gpt-3.5-turbo) supporting multiple choice, true/false, and image-based observation questions. Features interactive question editing and image upload.
 
 ## External Dependencies
 
@@ -141,8 +64,6 @@ Preferred communication style: Simple, everyday language.
 ### Firebase Integration
 - **Firebase PHP SDK** (^7.18)
 - **Firebase JavaScript SDK** (v10.12.2)
-- **Firebase Authentication**
-- **Firebase Firestore**
 
 ### Authentication Services
 - **Laravel Sanctum** (^3.2)
@@ -155,7 +76,7 @@ Preferred communication style: Simple, everyday language.
 
 ### HTTP and API Libraries
 - **Guzzle HTTP** (^7.2)
+- **openai-php/laravel** (v0.11.0)
 
 ### Payment and E-commerce
 - **Stripe PHP SDK** (latest)
-- **Stripe Webhooks**
