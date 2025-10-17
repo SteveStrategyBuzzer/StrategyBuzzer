@@ -206,6 +206,9 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     
     // Flux de jeu
     Route::get('/{gameId}/compose', [App\Http\Controllers\MasterGameController::class, 'compose'])->name('compose');
+    Route::get('/{gameId}/question/{questionNumber}/edit', [App\Http\Controllers\MasterGameController::class, 'editQuestion'])->name('question.edit');
+    Route::post('/{gameId}/question/{questionNumber}/save', [App\Http\Controllers\MasterGameController::class, 'saveQuestion'])->name('question.save');
+    Route::post('/{gameId}/question/{questionNumber}/regenerate', [App\Http\Controllers\MasterGameController::class, 'regenerateQuestion'])->name('question.regenerate');
     Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
     Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
 });

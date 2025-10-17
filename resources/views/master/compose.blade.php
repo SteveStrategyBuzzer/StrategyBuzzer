@@ -159,7 +159,7 @@ body {
         @for ($i = 1; $i <= $game->total_questions; $i++)
             <div class="question-bubble">
                 <div class="bubble-number">{{ $i }}</div>
-                <button class="btn-create">Créer</button>
+                <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">Créer</a>
                 
                 <div class="bubble-content">
                     @if(in_array('image', $game->question_types))
@@ -196,7 +196,7 @@ body {
         @for ($i = 1; $i <= $game->total_questions; $i++)
             <div class="question-bubble">
                 <div class="bubble-number">{{ $i }}</div>
-                <button class="btn-create">Créer</button>
+                <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">Créer</a>
                 
                 <div class="bubble-content">
                     @if(in_array('image', $game->question_types))

@@ -96,7 +96,89 @@ class MasterGameController extends Controller
         return view('master.compose', compact('game'));
     }
 
-    // Page 4: Générer les codes
+    // Page 4: Éditer une question
+    public function editQuestion($gameId, $questionNumber)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        // Vérifier que c'est bien l'hôte
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+
+        // Récupérer ou créer la question
+        $question = MasterGameQuestion::where('master_game_id', $gameId)
+            ->where('question_number', $questionNumber)
+            ->first();
+
+        return view('master.edit-question', compact('game', 'questionNumber', 'question'));
+    }
+
+    // Sauvegarder une question
+    public function saveQuestion(Request $request, $gameId, $questionNumber)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+
+        $validated = $request->validate([
+            'question_text' => 'nullable|string|max:500',
+            'question_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'answers' => 'required|array|min:2|max:4',
+            'correct_answer' => 'required|integer|min:0|max:3',
+        ]);
+
+        // Upload de l'image si présente
+        $imagePath = null;
+        if ($request->hasFile('question_image')) {
+            $imagePath = $request->file('question_image')->store('questions', 'public');
+        }
+
+        // Créer ou mettre à jour la question
+        MasterGameQuestion::updateOrCreate(
+            [
+                'master_game_id' => $gameId,
+                'question_number' => $questionNumber,
+            ],
+            [
+                'question_text' => $validated['question_text'],
+                'question_image' => $imagePath,
+                'answers' => $validated['answers'],
+                'correct_answer' => $validated['correct_answer'],
+            ]
+        );
+
+        return redirect()->route('master.compose', $gameId)
+            ->with('success', 'Question sauvegardée !');
+    }
+
+    // Régénérer une question avec IA
+    public function regenerateQuestion(Request $request, $gameId, $questionNumber)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+
+        // TODO: Intégrer OpenAI pour générer la question
+        // Pour l'instant, retourner des données de test
+        
+        return response()->json([
+            'question_text' => 'Question générée par IA',
+            'answers' => [
+                'Réponse 1 générée',
+                'Réponse 2 générée',
+                'Réponse 3 générée',
+                'Réponse 4 générée',
+            ],
+            'correct_answer' => 0,
+        ]);
+    }
+
+    // Page 5: Générer les codes
     public function codes($gameId)
     {
         $game = MasterGame::findOrFail($gameId);
