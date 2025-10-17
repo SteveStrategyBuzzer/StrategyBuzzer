@@ -227,6 +227,15 @@ class MasterGameController extends Controller
     {
         $theme = $game->theme ?? $game->school_subject ?? 'culture générale';
         $language = $game->languages[0] ?? 'FR';
+        $totalQuestions = $game->questions_count ?? 20;
+        
+        // Calculer le niveau de difficulté (1-100) basé sur le numéro de question
+        // Question 1 = niveau 1, dernière question = niveau 100
+        $difficultyLevel = (int) min(100, max(1, ($questionNumber / $totalQuestions) * 100));
+        
+        // Déterminer le label de difficulté
+        $difficultyLabel = $this->getDifficultyLabel($difficultyLevel);
+        $difficultyDescription = $this->getDifficultyDescription($difficultyLevel, $isImageQuestion);
         
         // Ajouter les questions existantes pour éviter les doublons
         $avoidDuplicates = "";
@@ -238,8 +247,14 @@ class MasterGameController extends Controller
             $avoidDuplicates .= "\nTa nouvelle question doit être TOTALEMENT DIFFÉRENTE et porter sur un autre aspect du thème.\n";
         }
         
+        // Message de difficulté pour l'IA
+        $difficultyInstruction = "\n📊 NIVEAU DE DIFFICULTÉ: {$difficultyLevel}/100 ({$difficultyLabel})\n";
+        $difficultyInstruction .= "Question {$questionNumber}/{$totalQuestions}\n";
+        $difficultyInstruction .= "{$difficultyDescription}\n";
+        
         if ($isImageQuestion) {
             $prompt = "Génère une question de type observation d'image pour un quiz sur le thème: {$theme}.\n\n";
+            $prompt .= $difficultyInstruction;
             $prompt .= "IMPORTANT: La question doit tester la capacité d'observation de détails dans une image.\n\n";
             $prompt .= $avoidDuplicates;
             $prompt .= "\nFormat attendu:\n";
@@ -260,6 +275,7 @@ class MasterGameController extends Controller
             $prompt .= "Langue: {$language}";
         } else if ($questionType === 'true_false') {
             $prompt = "Génère une question de type Vrai/Faux sur le thème: {$theme}.\n\n";
+            $prompt .= $difficultyInstruction;
             $prompt .= $avoidDuplicates;
             $prompt .= "\nRéponds UNIQUEMENT avec un JSON valide:\n";
             $prompt .= "{\n";
@@ -270,6 +286,7 @@ class MasterGameController extends Controller
             $prompt .= "Langue: {$language}";
         } else {
             $prompt = "Génère une question à choix multiples (QCM) sur le thème: {$theme}.\n\n";
+            $prompt .= $difficultyInstruction;
             $prompt .= $avoidDuplicates;
             $prompt .= "\nRéponds UNIQUEMENT avec un JSON valide:\n";
             $prompt .= "{\n";
@@ -281,6 +298,46 @@ class MasterGameController extends Controller
         }
         
         return $prompt;
+    }
+    
+    // Obtenir le label de difficulté
+    private function getDifficultyLabel($level)
+    {
+        if ($level <= 20) return "Très Facile";
+        if ($level <= 40) return "Facile";
+        if ($level <= 60) return "Moyen";
+        if ($level <= 80) return "Difficile";
+        return "Très Difficile";
+    }
+    
+    // Obtenir la description de difficulté pour guider l'IA
+    private function getDifficultyDescription($level, $isImageQuestion)
+    {
+        if ($isImageQuestion) {
+            if ($level <= 20) {
+                return "Génère une description d'image SIMPLE avec des détails ÉVIDENTS et FACILES à observer (couleurs principales, objets clairement visibles, nombres petits).";
+            } else if ($level <= 40) {
+                return "Génère une description d'image avec des détails VISIBLES mais nécessitant une observation attentive (positions relatives, vêtements, objets secondaires).";
+            } else if ($level <= 60) {
+                return "Génère une description d'image avec des détails SUBTILS nécessitant concentration (motifs, textures, petits éléments, arrière-plan).";
+            } else if ($level <= 80) {
+                return "Génère une description d'image avec des détails COMPLEXES et peu évidents (ombres, reflets, détails cachés, éléments en arrière-plan).";
+            } else {
+                return "Génère une description d'image TRÈS COMPLEXE avec des détails EXTRÊMEMENT SUBTILS et difficiles à détecter (micro-détails, nuances, éléments partiellement cachés).";
+            }
+        } else {
+            if ($level <= 20) {
+                return "Génère une question TRÈS FACILE avec des connaissances de BASE que tout le monde connaît.";
+            } else if ($level <= 40) {
+                return "Génère une question FACILE avec des connaissances COURANTES accessibles.";
+            } else if ($level <= 60) {
+                return "Génère une question de difficulté MOYENNE nécessitant des connaissances PRÉCISES.";
+            } else if ($level <= 80) {
+                return "Génère une question DIFFICILE nécessitant des connaissances APPROFONDIES et SPÉCIALISÉES.";
+            } else {
+                return "Génère une question TRÈS DIFFICILE pour EXPERTS avec des connaissances POINTUES et RARES.";
+            }
+        }
     }
 
     // Page 5: Générer les codes
