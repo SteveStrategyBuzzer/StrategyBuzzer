@@ -164,11 +164,19 @@ class MasterGameController extends Controller
             abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
         }
 
+        // Récupérer les questions déjà créées pour éviter les doublons
+        $existingQuestions = MasterGameQuestion::where('master_game_id', $gameId)
+            ->where('question_number', '!=', $questionNumber)
+            ->get()
+            ->pluck('question_text')
+            ->filter()
+            ->toArray();
+
         // Construire le prompt basé sur le type de question
         $isImageQuestion = in_array('image', $game->question_types);
         $questionType = $game->question_types[0] ?? 'multiple_choice';
         
-        $prompt = $this->buildQuestionPrompt($game, $questionType, $isImageQuestion);
+        $prompt = $this->buildQuestionPrompt($game, $questionType, $isImageQuestion, $existingQuestions, $questionNumber);
 
         try {
             $response = OpenAI::chat()->create([
@@ -176,7 +184,7 @@ class MasterGameController extends Controller
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'Tu es un expert en création de quiz éducatifs. Tu crées des questions pertinentes et variées avec des réponses plausibles.'
+                        'content' => 'Tu es un expert en création de quiz éducatifs. Tu crées des questions pertinentes, variées et UNIQUES avec des réponses plausibles. Chaque question doit être différente des autres.'
                     ],
                     [
                         'role' => 'user',
@@ -184,7 +192,7 @@ class MasterGameController extends Controller
                     ],
                 ],
                 'max_tokens' => 500,
-                'temperature' => 0.8,
+                'temperature' => 0.9,
             ]);
 
             $content = $response->choices[0]->message->content;
@@ -215,15 +223,26 @@ class MasterGameController extends Controller
     }
 
     // Construire le prompt pour l'IA
-    private function buildQuestionPrompt($game, $questionType, $isImageQuestion)
+    private function buildQuestionPrompt($game, $questionType, $isImageQuestion, $existingQuestions = [], $questionNumber = 1)
     {
         $theme = $game->theme ?? $game->school_subject ?? 'culture générale';
         $language = $game->languages[0] ?? 'FR';
         
+        // Ajouter les questions existantes pour éviter les doublons
+        $avoidDuplicates = "";
+        if (!empty($existingQuestions)) {
+            $avoidDuplicates = "\n\n⚠️ ATTENTION: NE GÉNÈRE PAS une question similaire ou identique aux questions suivantes déjà créées:\n";
+            foreach ($existingQuestions as $index => $existingQ) {
+                $avoidDuplicates .= "- " . $existingQ . "\n";
+            }
+            $avoidDuplicates .= "\nTa nouvelle question doit être TOTALEMENT DIFFÉRENTE et porter sur un autre aspect du thème.\n";
+        }
+        
         if ($isImageQuestion) {
             $prompt = "Génère une question de type observation d'image pour un quiz sur le thème: {$theme}.\n\n";
             $prompt .= "IMPORTANT: La question doit tester la capacité d'observation de détails dans une image.\n\n";
-            $prompt .= "Format attendu:\n";
+            $prompt .= $avoidDuplicates;
+            $prompt .= "\nFormat attendu:\n";
             $prompt .= "- Une description d'image détaillée (ex: 'Une jeune fille à lunettes portant des bas blancs devant un sapin avec 2 cadeaux en dessous et une étoile comme ornement')\n";
             $prompt .= "- 4 affirmations sur l'image dont 3 FAUSSES et 1 VRAIE\n";
             $prompt .= "- Les affirmations doivent porter sur des détails observables (couleur, quantité, présence/absence d'éléments)\n\n";
@@ -241,7 +260,8 @@ class MasterGameController extends Controller
             $prompt .= "Langue: {$language}";
         } else if ($questionType === 'true_false') {
             $prompt = "Génère une question de type Vrai/Faux sur le thème: {$theme}.\n\n";
-            $prompt .= "Réponds UNIQUEMENT avec un JSON valide:\n";
+            $prompt .= $avoidDuplicates;
+            $prompt .= "\nRéponds UNIQUEMENT avec un JSON valide:\n";
             $prompt .= "{\n";
             $prompt .= '  "question_text": "Ta question ici",' . "\n";
             $prompt .= '  "answers": ["Vrai", "Faux"],' . "\n";
@@ -250,7 +270,8 @@ class MasterGameController extends Controller
             $prompt .= "Langue: {$language}";
         } else {
             $prompt = "Génère une question à choix multiples (QCM) sur le thème: {$theme}.\n\n";
-            $prompt .= "Réponds UNIQUEMENT avec un JSON valide:\n";
+            $prompt .= $avoidDuplicates;
+            $prompt .= "\nRéponds UNIQUEMENT avec un JSON valide:\n";
             $prompt .= "{\n";
             $prompt .= '  "question_text": "Ta question ici",' . "\n";
             $prompt .= '  "answers": ["Réponse 1", "Réponse 2", "Réponse 3", "Réponse 4"],' . "\n";
