@@ -51,6 +51,25 @@ body {
     margin-bottom: 0.5rem;
 }
 
+.question-image {
+    width: 100%;
+    max-width: 300px;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.question-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .answer-item {
     padding: 0.4rem 0;
     opacity: 0.9;
@@ -131,7 +150,15 @@ body {
                 <button class="btn-create">Créer</button>
                 
                 <div class="bubble-content">
-                    @if(in_array('multiple_choice', $game->question_types))
+                    @if(in_array('image', $game->question_types))
+                        <div class="question-image">
+                            <img src="https://via.placeholder.com/300x200/003DA5/FFD700?text=Image+Question" alt="Question image">
+                        </div>
+                        <div class="answer-item">1. Tour Eiffel</div>
+                        <div class="answer-item">2. Big Ben</div>
+                        <div class="answer-item">3. Statue de la Liberté</div>
+                        <div class="answer-item">4. Colisée</div>
+                    @elseif(in_array('multiple_choice', $game->question_types))
                         <div class="question-text">Quelle est la capitale de la France ?</div>
                         <div class="answer-item">1. Paris</div>
                         <div class="answer-item">2. Lyon</div>
@@ -141,12 +168,6 @@ body {
                         <div class="question-text">La Terre tourne autour du Soleil</div>
                         <div class="answer-item">Vrai</div>
                         <div class="answer-item">Faux</div>
-                    @elseif(in_array('image', $game->question_types))
-                        <div class="question-text">Identifiez l'image</div>
-                        <div class="answer-item">1</div>
-                        <div class="answer-item">2</div>
-                        <div class="answer-item">3</div>
-                        <div class="answer-item">4</div>
                     @else
                         <div class="question-text">Question générée automatiquement</div>
                     @endif
@@ -166,17 +187,27 @@ body {
                 <button class="btn-create">Créer</button>
                 
                 <div class="bubble-content">
-                    <div class="question-text" style="opacity: 0.4;">Question</div>
-                    @if(in_array('multiple_choice', $game->question_types))
+                    @if(in_array('image', $game->question_types))
+                        <div class="question-image" style="opacity: 0.4; background: rgba(255, 255, 255, 0.05);">
+                            <span style="color: rgba(255, 255, 255, 0.4);">📷 Image</span>
+                        </div>
                         <div class="answer-item" style="opacity: 0.4;">1. Réponse</div>
                         <div class="answer-item" style="opacity: 0.4;">2. Réponse</div>
                         <div class="answer-item" style="opacity: 0.4;">3. Réponse</div>
                         <div class="answer-item" style="opacity: 0.4;">4. Réponse</div>
-                    @elseif(in_array('true_false', $game->question_types))
-                        <div class="answer-item" style="opacity: 0.4;">Vrai</div>
-                        <div class="answer-item" style="opacity: 0.4;">Faux</div>
                     @else
-                        <div class="answer-item" style="opacity: 0.4;">Réponse</div>
+                        <div class="question-text" style="opacity: 0.4;">Question</div>
+                        @if(in_array('multiple_choice', $game->question_types))
+                            <div class="answer-item" style="opacity: 0.4;">1. Réponse</div>
+                            <div class="answer-item" style="opacity: 0.4;">2. Réponse</div>
+                            <div class="answer-item" style="opacity: 0.4;">3. Réponse</div>
+                            <div class="answer-item" style="opacity: 0.4;">4. Réponse</div>
+                        @elseif(in_array('true_false', $game->question_types))
+                            <div class="answer-item" style="opacity: 0.4;">Vrai</div>
+                            <div class="answer-item" style="opacity: 0.4;">Faux</div>
+                        @else
+                            <div class="answer-item" style="opacity: 0.4;">Réponse</div>
+                        @endif
                     @endif
                 </div>
             </div>
