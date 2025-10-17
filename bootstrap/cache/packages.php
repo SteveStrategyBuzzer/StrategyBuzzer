@@ -66,6 +66,13 @@
       0 => 'Termwind\\Laravel\\TermwindServiceProvider',
     ),
   ),
+  'openai-php/laravel' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'OpenAI\\Laravel\\ServiceProvider',
+    ),
+  ),
   'spatie/laravel-ignition' => 
   array (
     'aliases' => 
