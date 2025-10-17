@@ -9,6 +9,7 @@ use App\Models\MasterGamePlayer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use OpenAI\Laravel\Facades\OpenAI;
 
 class MasterGameController extends Controller
 {
@@ -163,19 +164,102 @@ class MasterGameController extends Controller
             abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
         }
 
-        // TODO: Intégrer OpenAI pour générer la question
-        // Pour l'instant, retourner des données de test
+        // Construire le prompt basé sur le type de question
+        $isImageQuestion = in_array('image', $game->question_types);
+        $questionType = $game->question_types[0] ?? 'multiple_choice';
         
-        return response()->json([
-            'question_text' => 'Question générée par IA',
-            'answers' => [
-                'Réponse 1 générée',
-                'Réponse 2 générée',
-                'Réponse 3 générée',
-                'Réponse 4 générée',
-            ],
-            'correct_answer' => 0,
-        ]);
+        $prompt = $this->buildQuestionPrompt($game, $questionType, $isImageQuestion);
+
+        try {
+            $response = OpenAI::chat()->create([
+                'model' => 'gpt-4',
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'Tu es un expert en création de quiz éducatifs. Tu crées des questions pertinentes et variées avec des réponses plausibles.'
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $prompt
+                    ],
+                ],
+                'max_tokens' => 500,
+                'temperature' => 0.8,
+            ]);
+
+            $content = $response->choices[0]->message->content;
+            
+            // Parser la réponse JSON de l'IA
+            $data = json_decode($content, true);
+            
+            if (!$data || !isset($data['answers'])) {
+                throw new \Exception('Format de réponse invalide');
+            }
+
+            return response()->json($data);
+            
+        } catch (\Exception $e) {
+            // En cas d'erreur, retourner des données par défaut
+            return response()->json([
+                'question_text' => 'Question générée automatiquement',
+                'answers' => [
+                    'Réponse A',
+                    'Réponse B', 
+                    'Réponse C',
+                    'Réponse D',
+                ],
+                'correct_answer' => 0,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    // Construire le prompt pour l'IA
+    private function buildQuestionPrompt($game, $questionType, $isImageQuestion)
+    {
+        $theme = $game->theme ?? $game->school_subject ?? 'culture générale';
+        $language = $game->languages[0] ?? 'FR';
+        
+        if ($isImageQuestion) {
+            $prompt = "Génère une question de type observation d'image pour un quiz sur le thème: {$theme}.\n\n";
+            $prompt .= "IMPORTANT: La question doit tester la capacité d'observation de détails dans une image.\n\n";
+            $prompt .= "Format attendu:\n";
+            $prompt .= "- Une description d'image détaillée (ex: 'Une jeune fille à lunettes portant des bas blancs devant un sapin avec 2 cadeaux en dessous et une étoile comme ornement')\n";
+            $prompt .= "- 4 affirmations sur l'image dont 3 FAUSSES et 1 VRAIE\n";
+            $prompt .= "- Les affirmations doivent porter sur des détails observables (couleur, quantité, présence/absence d'éléments)\n\n";
+            $prompt .= "Exemple de réponses:\n";
+            $prompt .= "1. Elle porte des bas noirs (FAUX - détail incorrect)\n";
+            $prompt .= "2. Il y a 3 cadeaux sous le sapin (FAUX - quantité incorrecte)\n";
+            $prompt .= "3. Elle porte des lunettes (VRAI - détail correct)\n";
+            $prompt .= "4. Une cloche orne le sapin (FAUX - ornement incorrect)\n\n";
+            $prompt .= "Réponds UNIQUEMENT avec un JSON valide:\n";
+            $prompt .= "{\n";
+            $prompt .= '  "question_text": "Description de l\'image",' . "\n";
+            $prompt .= '  "answers": ["Affirmation 1", "Affirmation 2", "Affirmation 3", "Affirmation 4"],' . "\n";
+            $prompt .= '  "correct_answer": 2' . "\n";
+            $prompt .= "}\n\n";
+            $prompt .= "Langue: {$language}";
+        } else if ($questionType === 'true_false') {
+            $prompt = "Génère une question de type Vrai/Faux sur le thème: {$theme}.\n\n";
+            $prompt .= "Réponds UNIQUEMENT avec un JSON valide:\n";
+            $prompt .= "{\n";
+            $prompt .= '  "question_text": "Ta question ici",' . "\n";
+            $prompt .= '  "answers": ["Vrai", "Faux"],' . "\n";
+            $prompt .= '  "correct_answer": 0' . "\n";
+            $prompt .= "}\n\n";
+            $prompt .= "Langue: {$language}";
+        } else {
+            $prompt = "Génère une question à choix multiples (QCM) sur le thème: {$theme}.\n\n";
+            $prompt .= "Réponds UNIQUEMENT avec un JSON valide:\n";
+            $prompt .= "{\n";
+            $prompt .= '  "question_text": "Ta question ici",' . "\n";
+            $prompt .= '  "answers": ["Réponse 1", "Réponse 2", "Réponse 3", "Réponse 4"],' . "\n";
+            $prompt .= '  "correct_answer": 0' . "\n";
+            $prompt .= "}\n\n";
+            $prompt .= "Langue: {$language}";
+        }
+        
+        return $prompt;
     }
 
     // Page 5: Générer les codes
