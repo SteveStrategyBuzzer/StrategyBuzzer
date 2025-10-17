@@ -250,11 +250,26 @@ class MasterGameController extends Controller
             $avoidDuplicates .= "\nTa nouvelle question doit être TOTALEMENT DIFFÉRENTE et porter sur un autre aspect du thème.\n";
         }
         
-        // Instruction de sous-thème pour forcer la variété
+        // Instruction de sous-thème pour forcer la variété avec randomisation
         $subThemeInstruction = "";
         if ($subTheme) {
+            // Ajouter de la variabilité dans les instructions pour éviter les mêmes questions
+            $angleVariations = [
+                "Concentre-toi sur un aspect précis et unique de ce sous-thème.",
+                "Trouve un angle original et inattendu dans ce sous-thème.",
+                "Explore une facette peu connue de ce sous-thème.",
+                "Aborde ce sous-thème sous un angle surprenant.",
+                "Choisis un élément spécifique et rare dans ce sous-thème.",
+                "Sélectionne un détail particulier et distinctif de ce sous-thème.",
+                "Questionne sur un cas concret et précis de ce sous-thème.",
+                "Invente une question inédite sur ce sous-thème."
+            ];
+            
+            $randomAngle = $angleVariations[array_rand($angleVariations)];
+            
             $subThemeInstruction = "\n🎯 SOUS-THÈME IMPOSÉ: {$subTheme}\n";
             $subThemeInstruction .= "⚠️ OBLIGATION: Ta question DOIT porter UNIQUEMENT sur ce sous-thème spécifique.\n";
+            $subThemeInstruction .= "{$randomAngle}\n";
             $subThemeInstruction .= "Ne génère PAS de question sur d'autres aspects du thème principal.\n";
         }
         
@@ -359,6 +374,9 @@ class MasterGameController extends Controller
     {
         $theme = $game->theme ?? $game->school_subject ?? 'culture générale';
         
+        // Utiliser le game_id comme seed pour randomiser de façon unique par quiz
+        mt_srand($game->id);
+        
         // Listes de sous-thèmes par thème principal (40+ pour supporter 10, 20, 30, 40 questions)
         $subThemes = [
             'géographie' => [
@@ -452,11 +470,33 @@ class MasterGameController extends Controller
                 "personnalités liées à {$theme}", "événements importants de {$theme}",
                 "chiffres et données sur {$theme}", "lieux et géographie de {$theme}",
                 "terminologie de {$theme}", "concepts clés de {$theme}",
-                "évolution de {$theme}", "impact social de {$theme}"
+                "évolution de {$theme}", "impact social de {$theme}",
+                "origines de {$theme}", "développement de {$theme}",
+                "influences de {$theme}", "techniques de {$theme}",
+                "pratiques de {$theme}", "théories de {$theme}",
+                "applications de {$theme}", "innovations dans {$theme}",
+                "tendances de {$theme}", "défis de {$theme}",
+                "réussites dans {$theme}", "échecs dans {$theme}",
+                "controverses de {$theme}", "avenir de {$theme}",
+                "légendes de {$theme}", "mythes de {$theme}",
+                "vérités sur {$theme}", "mensonges sur {$theme}",
+                "secrets de {$theme}", "mystères de {$theme}",
+                "découvertes dans {$theme}", "révolutions dans {$theme}",
+                "traditions de {$theme}", "modernisation de {$theme}",
+                "globalisation de {$theme}", "localisation de {$theme}",
+                "diversité dans {$theme}", "unité dans {$theme}",
+                "conflits dans {$theme}", "harmonies dans {$theme}",
+                "ruptures dans {$theme}", "continuités dans {$theme}"
             ];
         }
         
-        // Sélectionner un sous-thème basé sur le numéro de question (rotation)
+        // Mélanger les sous-thèmes de façon aléatoire mais consistante pour ce quiz
+        shuffle($availableSubThemes);
+        
+        // Restaurer le générateur aléatoire à son état normal
+        mt_srand();
+        
+        // Sélectionner un sous-thème basé sur le numéro de question (rotation dans l'ordre mélangé)
         $index = ($questionNumber - 1) % count($availableSubThemes);
         return $availableSubThemes[$index];
     }
