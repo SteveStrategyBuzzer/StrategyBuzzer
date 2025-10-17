@@ -172,11 +172,14 @@ class MasterGameController extends Controller
             ->filter()
             ->toArray();
 
+        // Générer des sous-thèmes variés pour forcer la diversité
+        $subTheme = $this->generateSubTheme($game, $questionNumber, $existingQuestions);
+
         // Construire le prompt basé sur le type de question
         $isImageQuestion = in_array('image', $game->question_types);
         $questionType = $game->question_types[0] ?? 'multiple_choice';
         
-        $prompt = $this->buildQuestionPrompt($game, $questionType, $isImageQuestion, $existingQuestions, $questionNumber);
+        $prompt = $this->buildQuestionPrompt($game, $questionType, $isImageQuestion, $existingQuestions, $questionNumber, $subTheme);
 
         try {
             $response = OpenAI::chat()->create([
@@ -223,7 +226,7 @@ class MasterGameController extends Controller
     }
 
     // Construire le prompt pour l'IA
-    private function buildQuestionPrompt($game, $questionType, $isImageQuestion, $existingQuestions = [], $questionNumber = 1)
+    private function buildQuestionPrompt($game, $questionType, $isImageQuestion, $existingQuestions = [], $questionNumber = 1, $subTheme = null)
     {
         $theme = $game->theme ?? $game->school_subject ?? 'culture générale';
         $language = $game->languages[0] ?? 'FR';
@@ -247,6 +250,14 @@ class MasterGameController extends Controller
             $avoidDuplicates .= "\nTa nouvelle question doit être TOTALEMENT DIFFÉRENTE et porter sur un autre aspect du thème.\n";
         }
         
+        // Instruction de sous-thème pour forcer la variété
+        $subThemeInstruction = "";
+        if ($subTheme) {
+            $subThemeInstruction = "\n🎯 SOUS-THÈME IMPOSÉ: {$subTheme}\n";
+            $subThemeInstruction .= "⚠️ OBLIGATION: Ta question DOIT porter UNIQUEMENT sur ce sous-thème spécifique.\n";
+            $subThemeInstruction .= "Ne génère PAS de question sur d'autres aspects du thème principal.\n";
+        }
+        
         // Message de difficulté pour l'IA
         $difficultyInstruction = "\n📊 NIVEAU DE DIFFICULTÉ: {$difficultyLevel}/100 ({$difficultyLabel})\n";
         $difficultyInstruction .= "Question {$questionNumber}/{$totalQuestions}\n";
@@ -254,6 +265,7 @@ class MasterGameController extends Controller
         
         if ($isImageQuestion) {
             $prompt = "Génère une question de type observation d'image pour un quiz sur le thème: {$theme}.\n\n";
+            $prompt .= $subThemeInstruction;
             $prompt .= $difficultyInstruction;
             $prompt .= "IMPORTANT: La question doit tester la capacité d'observation de détails dans une image.\n\n";
             $prompt .= $avoidDuplicates;
@@ -275,6 +287,7 @@ class MasterGameController extends Controller
             $prompt .= "Langue: {$language}";
         } else if ($questionType === 'true_false') {
             $prompt = "Génère une question de type Vrai/Faux sur le thème: {$theme}.\n\n";
+            $prompt .= $subThemeInstruction;
             $prompt .= $difficultyInstruction;
             $prompt .= $avoidDuplicates;
             $prompt .= "\nRéponds UNIQUEMENT avec un JSON valide:\n";
@@ -286,6 +299,7 @@ class MasterGameController extends Controller
             $prompt .= "Langue: {$language}";
         } else {
             $prompt = "Génère une question à choix multiples (QCM) sur le thème: {$theme}.\n\n";
+            $prompt .= $subThemeInstruction;
             $prompt .= $difficultyInstruction;
             $prompt .= $avoidDuplicates;
             $prompt .= "\nRéponds UNIQUEMENT avec un JSON valide:\n";
@@ -338,6 +352,73 @@ class MasterGameController extends Controller
                 return "Génère une question TRÈS DIFFICILE pour EXPERTS avec des connaissances POINTUES et RARES.";
             }
         }
+    }
+    
+    // Générer un sous-thème varié pour forcer la diversité
+    private function generateSubTheme($game, $questionNumber, $existingQuestions)
+    {
+        $theme = $game->theme ?? $game->school_subject ?? 'culture générale';
+        
+        // Listes de sous-thèmes par thème principal
+        $subThemes = [
+            'géographie' => [
+                'capitales de pays', 'fleuves et rivières', 'montagnes et sommets', 'océans et mers',
+                'déserts et climats', 'îles et archipels', 'villes importantes', 'frontières et pays limitrophes',
+                'population et démographie', 'langues parlées', 'drapeaux nationaux', 'monuments célèbres',
+                'régions et départements', 'volcans', 'lacs', 'forêts', 'parcs naturels', 'continents'
+            ],
+            'histoire' => [
+                'dates importantes', 'personnages historiques', 'guerres et conflits', 'révolutions',
+                'découvertes scientifiques', 'dynasties et rois', 'inventions', 'traités et accords',
+                'civilisations anciennes', 'batailles célèbres', 'mouvements sociaux', 'empire et colonies',
+                'art et architecture', 'religion et croyances', 'économie historique'
+            ],
+            'science' => [
+                'biologie et animaux', 'physique et forces', 'chimie et éléments', 'astronomie et espace',
+                'médecine et santé', 'technologie', 'mathématiques', 'environnement et écologie',
+                'météorologie', 'géologie', 'génétique', 'évolution', 'corps humain', 'plantes'
+            ],
+            'culture générale' => [
+                'cinéma et films', 'musique et artistes', 'littérature et écrivains', 'sports et athlètes',
+                'gastronomie', 'art et peinture', 'télévision', 'mode et tendances',
+                'célébrités', 'jeux vidéo', 'traditions', 'fêtes', 'langues', 'religion'
+            ],
+            'sport' => [
+                'football', 'basketball', 'tennis', 'rugby', 'athlétisme', 'natation',
+                'cyclisme', 'jeux olympiques', 'records sportifs', 'équipes célèbres',
+                'stades et infrastructures', 'compétitions internationales', 'sports d\'hiver'
+            ],
+            'culture' => [
+                'peinture et tableaux', 'sculpteurs', 'architectes', 'musées', 'opéra et théâtre',
+                'danse', 'cinéma mondial', 'festivals', 'prix et récompenses', 'mouvements artistiques'
+            ]
+        ];
+        
+        // Trouver la liste de sous-thèmes appropriée
+        $themeLower = strtolower($theme);
+        $availableSubThemes = [];
+        
+        foreach ($subThemes as $key => $values) {
+            if (stripos($themeLower, $key) !== false) {
+                $availableSubThemes = $values;
+                break;
+            }
+        }
+        
+        // Si aucun sous-thème prédéfini, générer des variations génériques
+        if (empty($availableSubThemes)) {
+            $availableSubThemes = [
+                "aspect culturel de {$theme}", "dimension historique de {$theme}",
+                "personnalités liées à {$theme}", "événements importants de {$theme}",
+                "chiffres et données sur {$theme}", "lieux et géographie de {$theme}",
+                "terminologie de {$theme}", "concepts clés de {$theme}",
+                "évolution de {$theme}", "impact social de {$theme}"
+            ];
+        }
+        
+        // Sélectionner un sous-thème basé sur le numéro de question (rotation)
+        $index = ($questionNumber - 1) % count($availableSubThemes);
+        return $availableSubThemes[$index];
     }
 
     // Page 5: Générer les codes
