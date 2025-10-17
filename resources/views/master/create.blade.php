@@ -376,38 +376,23 @@ body {
 </div>
 
 <script>
-// Random checkbox logic
-const randomCheck = document.getElementById('randomCheck');
-const typeCheckboxes = document.querySelectorAll('.type-checkbox');
-
-randomCheck.addEventListener('change', function() {
-    if (this.checked) {
-        typeCheckboxes.forEach(cb => {
-            cb.checked = true;
-            cb.disabled = true;
-        });
-    } else {
-        typeCheckboxes.forEach(cb => {
-            cb.disabled = false;
-        });
-    }
-});
-
 // Domain type logic
 const domainRadios = document.querySelectorAll('.domain-radio');
 const themeSection = document.getElementById('themeSection');
 const scolaireSection = document.getElementById('scolaireSection');
-domainRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-        if (this.value === 'theme') {
-            themeSection.style.display = 'block';
-            scolaireSection.style.display = 'none';
-        } else if (this.value === 'scolaire') {
-            themeSection.style.display = 'none';
-            scolaireSection.style.display = 'block';
-        }
-    });
-});
 
+if (domainRadios.length > 0 && themeSection && scolaireSection) {
+    domainRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'theme') {
+                themeSection.style.display = 'block';
+                scolaireSection.style.display = 'none';
+            } else if (this.value === 'scolaire') {
+                themeSection.style.display = 'none';
+                scolaireSection.style.display = 'block';
+            }
+        });
+    });
+}
 </script>
 @endsection
