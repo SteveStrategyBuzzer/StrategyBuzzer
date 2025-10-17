@@ -53,11 +53,11 @@ body {
 
 .question-image {
     width: 100%;
-    max-width: 300px;
-    height: 200px;
+    max-width: 100%;
+    height: 400px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -68,6 +68,18 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+@media (max-width: 768px) {
+    .question-image {
+        height: 350px;
+    }
+}
+
+@media (min-width: 769px) and (orientation: landscape) {
+    .question-image {
+        height: 300px;
+    }
 }
 
 .answer-item {
