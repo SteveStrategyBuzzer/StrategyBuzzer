@@ -243,6 +243,18 @@ body {
             <input type="text" name="question_text" class="answer-input" 
                    value="{{ $question->question_text ?? '' }}" 
                    placeholder="Entrez votre question...">
+            
+            @if($game->creation_mode === 'personnalise')
+            <!-- Sous-toggle pour Vrai/Faux ou Choix Multiples -->
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.8rem; font-size: 0.9rem;">
+                <button type="button" class="mode-btn" id="trueFalseBtn" onclick="setTextQuestionType('true_false')" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    Vrai/Faux
+                </button>
+                <button type="button" class="mode-btn active" id="multipleChoiceBtn" onclick="setTextQuestionType('multiple_choice')" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    Choix Multiples
+                </button>
+            </div>
+            @endif
         </div>
         
         <!-- Réponses -->
@@ -250,7 +262,7 @@ body {
             <label style="display: block; margin-bottom: 1rem; font-weight: 600;">Réponses (cochez la bonne réponse)</label>
             
             @for ($i = 0; $i < 4; $i++)
-                <div class="answer-item">
+                <div class="answer-item" id="answer-{{ $i }}">
                     <input type="radio" name="correct_answer" value="{{ $i }}" class="answer-radio" 
                            {{ ($question && $question->correct_answer == $i) ? 'checked' : ($i == 0 ? 'checked' : '') }} required>
                     <input type="text" name="answers[]" class="answer-input" 
@@ -294,6 +306,46 @@ function switchMode(mode) {
         modeTextBtn.classList.remove('active');
         modeImageBtn.classList.add('active');
         questionModeInput.value = 'image';
+    }
+}
+
+// Basculer entre Vrai/Faux et Choix Multiples pour les questions texte
+function setTextQuestionType(type) {
+    const answer2 = document.getElementById('answer-2');
+    const answer3 = document.getElementById('answer-3');
+    const trueFalseBtn = document.getElementById('trueFalseBtn');
+    const multipleChoiceBtn = document.getElementById('multipleChoiceBtn');
+    
+    const answerInputs = document.querySelectorAll('input[name="answers[]"]');
+    
+    if (type === 'true_false') {
+        // Mode Vrai/Faux : afficher seulement 2 réponses
+        answer2.style.display = 'none';
+        answer3.style.display = 'none';
+        
+        // Préremplir avec Vrai et Faux
+        if (answerInputs[0]) answerInputs[0].value = 'Vrai';
+        if (answerInputs[1]) answerInputs[1].value = 'Faux';
+        
+        // Désactiver le required pour les 2 derniers champs
+        if (answerInputs[2]) answerInputs[2].removeAttribute('required');
+        if (answerInputs[3]) answerInputs[3].removeAttribute('required');
+        
+        // Mettre à jour les boutons
+        trueFalseBtn.classList.add('active');
+        multipleChoiceBtn.classList.remove('active');
+    } else {
+        // Mode Choix Multiples : afficher 4 réponses
+        answer2.style.display = 'flex';
+        answer3.style.display = 'flex';
+        
+        // Réactiver le required
+        if (answerInputs[2]) answerInputs[2].setAttribute('required', 'required');
+        if (answerInputs[3]) answerInputs[3].setAttribute('required', 'required');
+        
+        // Mettre à jour les boutons
+        trueFalseBtn.classList.remove('active');
+        multipleChoiceBtn.classList.add('active');
     }
 }
 
