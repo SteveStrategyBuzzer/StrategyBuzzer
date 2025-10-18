@@ -3,6 +3,36 @@
 @section('content')
 
 @php
+// Déterminer le type de question pour un numéro donné (distribution équilibrée)
+function getQuestionTypeForNumber($game, $questionNumber) {
+    $questionTypes = $game->question_types ?? ['multiple_choice'];
+    
+    if (count($questionTypes) === 1) {
+        return $questionTypes[0];
+    }
+    
+    $totalQuestions = $game->total_questions ?? 20;
+    $numTypes = count($questionTypes);
+    
+    $questionsPerType = floor($totalQuestions / $numTypes);
+    $remainder = $totalQuestions % $numTypes;
+    
+    $pattern = [];
+    for ($i = 0; $i < $numTypes; $i++) {
+        $count = $questionsPerType + ($i < $remainder ? 1 : 0);
+        for ($j = 0; $j < $count; $j++) {
+            $pattern[] = $questionTypes[$i];
+        }
+    }
+    
+    mt_srand($game->id);
+    shuffle($pattern);
+    mt_srand();
+    
+    $index = ($questionNumber - 1) % count($pattern);
+    return $pattern[$index];
+}
+
 // Générer des exemples de questions et réponses selon le thème
 function getThemeExamples($theme, $questionNumber, $questionType) {
     $themeLower = strtolower($theme ?? 'culture générale');
@@ -256,20 +286,28 @@ body {
     left: 20px;
     background: white;
     color: #003DA5;
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 1rem 3.5rem;
+    border-radius: 12px;
     text-decoration: none;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 @media (max-width: 768px) {
     .header-back {
         top: 10px;
         left: 10px;
-        padding: 6px 12px;
-        font-size: 0.9rem;
+        padding: 0.9rem 3rem;
+        font-size: 1.2rem;
     }
+}
+
+.answer-correct {
+    background: rgba(255, 215, 0, 0.3);
+    border-left: 4px solid #FFD700;
+    padding-left: 0.5rem;
+    font-weight: 700;
 }
 </style>
 
@@ -281,34 +319,55 @@ body {
     @if($game->creation_mode === 'automatique')
         <!-- Mode Automatique : Questions pré-générées -->
         @for ($i = 1; $i <= $game->total_questions; $i++)
+            @php
+                // Trouver la question existante dans la BDD
+                $existingQuestion = $game->questions->firstWhere('question_number', $i);
+                
+                // Déterminer le type pour ce numéro (distribution équilibrée)
+                $questionType = getQuestionTypeForNumber($game, $i);
+                
+                // Utiliser la question existante ou un exemple
+                if ($existingQuestion) {
+                    $displayQuestion = $existingQuestion->question_text;
+                    $displayAnswers = $existingQuestion->answers;
+                    $correctAnswer = $existingQuestion->correct_answer;
+                    $displayImage = $existingQuestion->question_image;
+                } else {
+                    $example = getThemeExamples($game->theme ?? $game->school_subject, $i, $questionType);
+                    $displayQuestion = $example['question'];
+                    $displayAnswers = $example['answers'];
+                    $correctAnswer = null;
+                    $displayImage = null;
+                }
+            @endphp
+            
             <div class="question-bubble">
                 <div class="bubble-number">{{ $i }}</div>
                 <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">Créer</a>
                 
                 <div class="bubble-content">
-                    @php
-                        $example = getThemeExamples($game->theme ?? $game->school_subject, $i, $game->question_types[0] ?? 'multiple_choice');
-                    @endphp
-                    
-                    @if(in_array('image', $game->question_types))
+                    @if($questionType === 'image')
                         <div class="question-image">
-                            <div class="image-placeholder">🖼️</div>
-                            <div class="image-label">Question image</div>
+                            @if($displayImage)
+                                <img src="{{ asset('storage/' . $displayImage) }}" alt="Question Image">
+                            @else
+                                <div class="image-placeholder">🖼️</div>
+                                <div class="image-label">Question image</div>
+                            @endif
                         </div>
-                        @foreach($example['answers'] as $index => $answer)
-                            <div class="answer-item">{{ $index + 1 }}. {{ $answer }}</div>
+                        @foreach($displayAnswers as $index => $answer)
+                            <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $index + 1 }}. {{ $answer }}</div>
                         @endforeach
-                    @elseif(in_array('multiple_choice', $game->question_types))
-                        <div class="question-text">{{ $example['question'] }}</div>
-                        @foreach($example['answers'] as $index => $answer)
-                            <div class="answer-item">{{ $index + 1 }}. {{ $answer }}</div>
+                    @elseif($questionType === 'true_false')
+                        <div class="question-text">{{ $displayQuestion }}</div>
+                        @foreach($displayAnswers as $index => $answer)
+                            <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $answer }}</div>
                         @endforeach
-                    @elseif(in_array('true_false', $game->question_types))
-                        <div class="question-text">{{ $example['question'] }}</div>
-                        <div class="answer-item">Vrai</div>
-                        <div class="answer-item">Faux</div>
                     @else
-                        <div class="question-text">Question générée automatiquement</div>
+                        <div class="question-text">{{ $displayQuestion }}</div>
+                        @foreach($displayAnswers as $index => $answer)
+                            <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $index + 1 }}. {{ $answer }}</div>
+                        @endforeach
                     @endif
                 </div>
             </div>
@@ -319,35 +378,43 @@ body {
         </button>
         
     @else
-        <!-- Mode Personnalisé : Bulles vides -->
+        <!-- Mode Personnalisé : Questions créées ou bulles vides -->
         @for ($i = 1; $i <= $game->total_questions; $i++)
+            @php
+                // Trouver la question existante dans la BDD
+                $existingQuestion = $game->questions->firstWhere('question_number', $i);
+            @endphp
+            
             <div class="question-bubble">
                 <div class="bubble-number">{{ $i }}</div>
                 <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">Créer</a>
                 
                 <div class="bubble-content">
-                    @if(in_array('image', $game->question_types))
-                        <div class="question-image" style="opacity: 0.4; background: rgba(255, 255, 255, 0.05);">
-                            <div class="image-placeholder">🖼️</div>
-                            <div class="image-label">Question image</div>
-                        </div>
+                    @if($existingQuestion)
+                        <!-- Afficher la vraie question -->
+                        @if($existingQuestion->question_image)
+                            <div class="question-image">
+                                <img src="{{ asset('storage/' . $existingQuestion->question_image) }}" alt="Question Image">
+                            </div>
+                        @else
+                            <div class="question-text">{{ $existingQuestion->question_text }}</div>
+                        @endif
+                        
+                        @foreach($existingQuestion->answers as $index => $answer)
+                            <div class="answer-item {{ $existingQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
+                                @if(!$existingQuestion->question_image || count($existingQuestion->answers) > 2)
+                                    {{ $index + 1 }}.
+                                @endif
+                                {{ $answer }}
+                            </div>
+                        @endforeach
+                    @else
+                        <!-- Bulle vide -->
+                        <div class="question-text" style="opacity: 0.4;">Question</div>
                         <div class="answer-item" style="opacity: 0.4;">1. Réponse</div>
                         <div class="answer-item" style="opacity: 0.4;">2. Réponse</div>
                         <div class="answer-item" style="opacity: 0.4;">3. Réponse</div>
                         <div class="answer-item" style="opacity: 0.4;">4. Réponse</div>
-                    @else
-                        <div class="question-text" style="opacity: 0.4;">Question</div>
-                        @if(in_array('multiple_choice', $game->question_types))
-                            <div class="answer-item" style="opacity: 0.4;">1. Réponse</div>
-                            <div class="answer-item" style="opacity: 0.4;">2. Réponse</div>
-                            <div class="answer-item" style="opacity: 0.4;">3. Réponse</div>
-                            <div class="answer-item" style="opacity: 0.4;">4. Réponse</div>
-                        @elseif(in_array('true_false', $game->question_types))
-                            <div class="answer-item" style="opacity: 0.4;">Vrai</div>
-                            <div class="answer-item" style="opacity: 0.4;">Faux</div>
-                        @else
-                            <div class="answer-item" style="opacity: 0.4;">Réponse</div>
-                        @endif
                     @endif
                 </div>
             </div>
