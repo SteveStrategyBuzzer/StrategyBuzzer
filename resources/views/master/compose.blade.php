@@ -61,6 +61,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-direction: column;
     overflow: hidden;
 }
 
@@ -70,9 +71,29 @@ body {
     object-fit: cover;
 }
 
+.image-placeholder {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.image-label {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
 @media (max-width: 768px) {
     .question-image {
         height: 350px;
+    }
+    
+    .image-placeholder {
+        font-size: 2.5rem;
+    }
+    
+    .image-label {
+        font-size: 1rem;
     }
 }
 
@@ -94,17 +115,26 @@ body {
     right: 1rem;
     background: linear-gradient(135deg, #FFD700, #FFA500);
     color: #003DA5;
-    padding: 0.5rem 1.2rem;
-    border-radius: 8px;
+    padding: 0.8rem 2rem;
+    border-radius: 10px;
     font-weight: 700;
+    font-size: 1.1rem;
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .btn-create:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+}
+
+@media (max-width: 768px) {
+    .btn-create {
+        padding: 0.7rem 1.8rem;
+        font-size: 1rem;
+    }
 }
 
 .btn-validate {
@@ -164,7 +194,8 @@ body {
                 <div class="bubble-content">
                     @if(in_array('image', $game->question_types))
                         <div class="question-image">
-                            <img src="https://via.placeholder.com/300x200/003DA5/FFD700?text=Image+Question" alt="Question image">
+                            <div class="image-placeholder">🖼️</div>
+                            <div class="image-label">Question image</div>
                         </div>
                         <div class="answer-item">1. Tour Eiffel</div>
                         <div class="answer-item">2. Big Ben</div>
@@ -201,7 +232,8 @@ body {
                 <div class="bubble-content">
                     @if(in_array('image', $game->question_types))
                         <div class="question-image" style="opacity: 0.4; background: rgba(255, 255, 255, 0.05);">
-                            <span style="color: rgba(255, 255, 255, 0.4);">📷 Image</span>
+                            <div class="image-placeholder">🖼️</div>
+                            <div class="image-label">Question image</div>
                         </div>
                         <div class="answer-item" style="opacity: 0.4;">1. Réponse</div>
                         <div class="answer-item" style="opacity: 0.4;">2. Réponse</div>
