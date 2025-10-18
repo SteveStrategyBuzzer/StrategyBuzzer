@@ -242,10 +242,16 @@ function regenerateQuestion() {
     const questionNumber = {{ $questionNumber }};
     
     // Afficher un loader
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '⏳ Génération en cours...';
-    btn.disabled = true;
+    const btn = event ? event.target : null;
+    let originalText = '';
+    if (btn) {
+        originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ Génération en cours...';
+        btn.disabled = true;
+    } else {
+        // Afficher un indicateur de chargement global
+        document.body.style.cursor = 'wait';
+    }
     
     fetch(`/master/${gameId}/question/${questionNumber}/regenerate`, {
         method: 'POST',
@@ -270,15 +276,33 @@ function regenerateQuestion() {
             correctRadio.checked = true;
         }
         
-        btn.innerHTML = originalText;
-        btn.disabled = false;
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        } else {
+            document.body.style.cursor = 'default';
+        }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        alert('Erreur lors de la génération');
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        } else {
+            document.body.style.cursor = 'default';
+        }
+        alert('Erreur lors de la génération de la question');
     });
 }
+
+// Génération automatique en mode automatique si la question n'existe pas encore
+@if($game->creation_mode === 'automatique' && !$question)
+window.addEventListener('DOMContentLoaded', function() {
+    // Attendre 500ms pour que la page soit complètement chargée
+    setTimeout(function() {
+        regenerateQuestion();
+    }, 500);
+});
+@endif
 </script>
 @endsection
