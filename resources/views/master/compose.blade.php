@@ -121,13 +121,12 @@ body {
     padding: 1rem;
     margin-bottom: 1rem;
     position: relative;
-    padding-right: 120px;
+    padding-top: 4.5rem;
 }
 
 @media (max-width: 768px) {
     .question-bubble {
-        padding-right: 1rem;
-        padding-top: 4rem;
+        padding-top: 5rem;
     }
 }
 
@@ -199,6 +198,7 @@ body {
     padding: 0.4rem 0;
     opacity: 0.9;
     font-size: 0.95rem;
+    text-align: left;
 }
 
 .btn-create {
@@ -207,27 +207,27 @@ body {
     right: 1rem;
     background: linear-gradient(135deg, #FFD700, #FFA500);
     color: #003DA5;
-    padding: 0.8rem 2rem;
-    border-radius: 10px;
+    padding: 1rem 3.5rem;
+    border-radius: 12px;
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .btn-create:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 6px 16px rgba(255, 215, 0, 0.5);
 }
 
 @media (max-width: 768px) {
     .btn-create {
-        padding: 0.7rem 1.8rem;
-        font-size: 1rem;
-        top: 0.5rem;
-        right: 0.5rem;
+        padding: 0.9rem 3rem;
+        font-size: 1.2rem;
+        top: 1rem;
+        right: 1rem;
     }
 }
 
