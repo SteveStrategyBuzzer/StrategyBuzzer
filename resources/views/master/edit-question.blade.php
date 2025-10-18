@@ -310,7 +310,7 @@ function switchMode(mode) {
 }
 
 // Basculer entre Vrai/Faux et Choix Multiples pour les questions texte
-function setTextQuestionType(type) {
+function setTextQuestionType(type, prefillDefaults = true) {
     const answer2 = document.getElementById('answer-2');
     const answer3 = document.getElementById('answer-3');
     const trueFalseBtn = document.getElementById('trueFalseBtn');
@@ -323,17 +323,21 @@ function setTextQuestionType(type) {
         answer2.style.display = 'none';
         answer3.style.display = 'none';
         
-        // Préremplir avec Vrai et Faux
-        if (answerInputs[0]) answerInputs[0].value = 'Vrai';
-        if (answerInputs[1]) answerInputs[1].value = 'Faux';
+        // Préremplir avec Vrai et Faux SEULEMENT pour les nouvelles questions
+        if (prefillDefaults && answerInputs[0] && !answerInputs[0].value) {
+            answerInputs[0].value = 'Vrai';
+        }
+        if (prefillDefaults && answerInputs[1] && !answerInputs[1].value) {
+            answerInputs[1].value = 'Faux';
+        }
         
         // Désactiver le required pour les 2 derniers champs
         if (answerInputs[2]) answerInputs[2].removeAttribute('required');
         if (answerInputs[3]) answerInputs[3].removeAttribute('required');
         
         // Mettre à jour les boutons
-        trueFalseBtn.classList.add('active');
-        multipleChoiceBtn.classList.remove('active');
+        if (trueFalseBtn) trueFalseBtn.classList.add('active');
+        if (multipleChoiceBtn) multipleChoiceBtn.classList.remove('active');
     } else {
         // Mode Choix Multiples : afficher 4 réponses
         answer2.style.display = 'flex';
@@ -344,8 +348,8 @@ function setTextQuestionType(type) {
         if (answerInputs[3]) answerInputs[3].setAttribute('required', 'required');
         
         // Mettre à jour les boutons
-        trueFalseBtn.classList.remove('active');
-        multipleChoiceBtn.classList.add('active');
+        if (trueFalseBtn) trueFalseBtn.classList.remove('active');
+        if (multipleChoiceBtn) multipleChoiceBtn.classList.add('active');
     }
 }
 
@@ -424,34 +428,99 @@ function regenerateQuestion() {
 
 // Initialisation au chargement de la page
 window.addEventListener('DOMContentLoaded', function() {
-    @if($game->creation_mode === 'automatique')
-        // Mode automatique : afficher la section appropriée selon le type de question
-        const questionTypes = @json($game->question_types);
-        const isImageQuestion = questionTypes.includes('image');
+    @if($question)
+        // Question existante : initialiser selon les données
+        const hasImage = {{ $question->question_image ? 'true' : 'false' }};
+        const answersCount = {{ count($question->answers ?? []) }};
         
-        if (isImageQuestion) {
-            // Afficher mode image
+        if (hasImage) {
+            // Question image existante
             document.getElementById('textSection').style.display = 'none';
             document.getElementById('imageSection').style.display = 'flex';
             document.getElementById('questionMode').value = 'image';
+            @if($game->creation_mode === 'personnalise')
+            if (document.getElementById('modeImageBtn')) {
+                document.getElementById('modeTextBtn').classList.remove('active');
+                document.getElementById('modeImageBtn').classList.add('active');
+            }
+            @endif
         } else {
-            // Afficher mode texte
+            // Question texte existante
             document.getElementById('textSection').style.display = 'block';
             document.getElementById('imageSection').style.display = 'none';
             document.getElementById('questionMode').value = 'text';
+            
+            // Détecter Vrai/Faux vs Choix Multiples (pour TOUS les modes)
+            if (answersCount === 2) {
+                // C'est une question Vrai/Faux existante - ne pas préremplir
+                setTextQuestionType('true_false', false);
+            } else {
+                // C'est un choix multiple existant
+                setTextQuestionType('multiple_choice', false);
+            }
+            
+            // Mettre à jour les boutons toggle uniquement en mode personnalisé
+            @if($game->creation_mode === 'personnalise')
+            if (document.getElementById('modeTextBtn')) {
+                document.getElementById('modeTextBtn').classList.add('active');
+                document.getElementById('modeImageBtn').classList.remove('active');
+            }
+            @endif
         }
-        
-        // Générer automatiquement si pas de question existante
-        @if(!$question)
-        setTimeout(function() {
-            regenerateQuestion();
-        }, 500);
-        @endif
     @else
-        // Mode personnalisé : démarrer en mode texte par défaut
-        document.getElementById('textSection').style.display = 'block';
-        document.getElementById('imageSection').style.display = 'none';
-        document.getElementById('questionMode').value = 'text';
+        // Nouvelle question
+        @if($game->creation_mode === 'automatique')
+            // Mode automatique : déterminer le type spécifique pour cette question
+            const questionNumber = {{ $questionNumber }};
+            const questionTypes = @json($game->question_types);
+            
+            // Calculer le type pour ce numéro de question
+            let questionType;
+            if (questionTypes.length === 1) {
+                questionType = questionTypes[0];
+            } else {
+                // Distribution équilibrée des types
+                const totalQuestions = {{ $game->total_questions }};
+                const typeIndex = (questionNumber - 1) % questionTypes.length;
+                questionType = questionTypes[typeIndex];
+            }
+            
+            if (questionType === 'image') {
+                // Afficher mode image
+                document.getElementById('textSection').style.display = 'none';
+                document.getElementById('imageSection').style.display = 'flex';
+                document.getElementById('questionMode').value = 'image';
+            } else if (questionType === 'true_false') {
+                // Afficher mode texte avec 2 réponses
+                document.getElementById('textSection').style.display = 'block';
+                document.getElementById('imageSection').style.display = 'none';
+                document.getElementById('questionMode').value = 'text';
+                // Cacher les réponses 3 et 4 et enlever required
+                const answer2 = document.getElementById('answer-2');
+                const answer3 = document.getElementById('answer-3');
+                answer2.style.display = 'none';
+                answer3.style.display = 'none';
+                const answerInputs = document.querySelectorAll('input[name="answers[]"]');
+                if (answerInputs[2]) answerInputs[2].removeAttribute('required');
+                if (answerInputs[3]) answerInputs[3].removeAttribute('required');
+            } else {
+                // Afficher mode texte avec 4 réponses (choix multiples)
+                document.getElementById('textSection').style.display = 'block';
+                document.getElementById('imageSection').style.display = 'none';
+                document.getElementById('questionMode').value = 'text';
+            }
+            
+            // Générer automatiquement
+            setTimeout(function() {
+                regenerateQuestion();
+            }, 500);
+        @else
+            // Mode personnalisé : démarrer en mode texte choix multiples par défaut
+            document.getElementById('textSection').style.display = 'block';
+            document.getElementById('imageSection').style.display = 'none';
+            document.getElementById('questionMode').value = 'text';
+            setTextQuestionType('multiple_choice');
+        @endif
     @endif
 });
 </script>
