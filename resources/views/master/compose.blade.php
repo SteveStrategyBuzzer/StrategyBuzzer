@@ -124,6 +124,13 @@ body {
     padding-right: 120px;
 }
 
+@media (max-width: 768px) {
+    .question-bubble {
+        padding-right: 1rem;
+        padding-top: 4rem;
+    }
+}
+
 .bubble-number {
     font-size: 1.2rem;
     font-weight: 700;
@@ -219,6 +226,8 @@ body {
     .btn-create {
         padding: 0.7rem 1.8rem;
         font-size: 1rem;
+        top: 0.5rem;
+        right: 0.5rem;
     }
 }
 
