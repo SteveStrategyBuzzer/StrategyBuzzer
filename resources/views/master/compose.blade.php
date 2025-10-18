@@ -1,6 +1,98 @@
 @extends('layouts.app')
 
 @section('content')
+
+@php
+// Générer des exemples de questions et réponses selon le thème
+function getThemeExamples($theme, $questionNumber, $questionType) {
+    $themeLower = strtolower($theme ?? 'culture générale');
+    
+    $examples = [
+        'sport' => [
+            'questions' => [
+                'Qui a remporté le Ballon d\'or en 2023 ?',
+                'Combien de joueurs composent une équipe de football ?',
+                'Quelle est la durée d\'un match de basketball NBA ?',
+                'Dans quel pays se sont déroulés les JO 2024 ?',
+            ],
+            'answers' => [
+                ['Lionel Messi', 'Cristiano Ronaldo', 'Kylian Mbappé', 'Erling Haaland'],
+                ['Rafael Nadal', 'Roger Federer', 'Novak Djokovic', 'Andy Murray'],
+                ['Tour de France', 'Giro d\'Italia', 'Vuelta', 'Paris-Roubaix'],
+                ['NBA', 'NFL', 'MLB', 'NHL'],
+            ],
+        ],
+        'géographie' => [
+            'questions' => [
+                'Quelle est la capitale de la France ?',
+                'Quel est le plus long fleuve du monde ?',
+                'Combien de continents existe-t-il ?',
+                'Quel est le plus grand océan ?',
+            ],
+            'answers' => [
+                ['Paris', 'Lyon', 'Marseille', 'Bordeaux'],
+                ['Nil', 'Amazone', 'Yangtsé', 'Mississippi'],
+                ['Everest', 'K2', 'Kilimandjaro', 'Mont Blanc'],
+                ['Atlantique', 'Pacifique', 'Indien', 'Arctique'],
+            ],
+        ],
+        'histoire' => [
+            'questions' => [
+                'En quelle année a eu lieu la Révolution française ?',
+                'Qui était le premier empereur romain ?',
+                'Quelle guerre a duré de 1914 à 1918 ?',
+                'Qui a découvert l\'Amérique en 1492 ?',
+            ],
+            'answers' => [
+                ['1789', '1792', '1804', '1815'],
+                ['Napoléon', 'Louis XIV', 'Charlemagne', 'César'],
+                ['Versailles', 'Louvre', 'Notre-Dame', 'Arc de Triomphe'],
+                ['Christophe Colomb', 'Vasco de Gama', 'Magellan', 'Marco Polo'],
+            ],
+        ],
+        'science' => [
+            'questions' => [
+                'Quelle est la formule chimique de l\'eau ?',
+                'Combien de planètes compte le système solaire ?',
+                'Quelle est la vitesse de la lumière ?',
+                'Qui a découvert la pénicilline ?',
+            ],
+            'answers' => [
+                ['H2O', 'CO2', 'O2', 'N2'],
+                ['Oxygène', 'Hydrogène', 'Azote', 'Carbone'],
+                ['Einstein', 'Newton', 'Galilée', 'Darwin'],
+                ['Mars', 'Jupiter', 'Vénus', 'Saturne'],
+            ],
+        ],
+    ];
+    
+    // Trouver le thème approprié
+    foreach ($examples as $key => $data) {
+        if (stripos($themeLower, $key) !== false) {
+            $index = ($questionNumber - 1) % count($data['answers']);
+            return [
+                'question' => $data['questions'][$index] ?? 'Question exemple',
+                'answers' => $data['answers'][$index] ?? ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'],
+            ];
+        }
+    }
+    
+    // Par défaut
+    $defaultAnswers = [
+        ['Paris', 'Lyon', 'Marseille', 'Bordeaux'],
+        ['Rouge', 'Bleu', 'Vert', 'Jaune'],
+        ['Mozart', 'Beethoven', 'Bach', 'Chopin'],
+        ['Soleil', 'Lune', 'Étoile', 'Planète'],
+    ];
+    $index = ($questionNumber - 1) % count($defaultAnswers);
+    
+    return [
+        'question' => 'Question exemple',
+        'answers' => $defaultAnswers[$index],
+    ];
+}
+@endphp
+
 <style>
 body {
     background-color: #003DA5;
@@ -185,23 +277,25 @@ body {
                 <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">Créer</a>
                 
                 <div class="bubble-content">
+                    @php
+                        $example = getThemeExamples($game->theme ?? $game->school_subject, $i, $game->question_types[0] ?? 'multiple_choice');
+                    @endphp
+                    
                     @if(in_array('image', $game->question_types))
                         <div class="question-image">
                             <div class="image-placeholder">🖼️</div>
                             <div class="image-label">Question image</div>
                         </div>
-                        <div class="answer-item">1. Tour Eiffel</div>
-                        <div class="answer-item">2. Big Ben</div>
-                        <div class="answer-item">3. Statue de la Liberté</div>
-                        <div class="answer-item">4. Colisée</div>
+                        @foreach($example['answers'] as $index => $answer)
+                            <div class="answer-item">{{ $index + 1 }}. {{ $answer }}</div>
+                        @endforeach
                     @elseif(in_array('multiple_choice', $game->question_types))
-                        <div class="question-text">Quelle est la capitale de la France ?</div>
-                        <div class="answer-item">1. Paris</div>
-                        <div class="answer-item">2. Lyon</div>
-                        <div class="answer-item">3. Marseille</div>
-                        <div class="answer-item">4. Bordeaux</div>
+                        <div class="question-text">{{ $example['question'] }}</div>
+                        @foreach($example['answers'] as $index => $answer)
+                            <div class="answer-item">{{ $index + 1 }}. {{ $answer }}</div>
+                        @endforeach
                     @elseif(in_array('true_false', $game->question_types))
-                        <div class="question-text">La Terre tourne autour du Soleil</div>
+                        <div class="question-text">{{ $example['question'] }}</div>
                         <div class="answer-item">Vrai</div>
                         <div class="answer-item">Faux</div>
                     @else
