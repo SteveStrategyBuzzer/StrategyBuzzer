@@ -161,6 +161,43 @@ body {
 .file-input {
     display: none;
 }
+
+.mode-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    justify-content: center;
+}
+
+.mode-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.8rem 2rem;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mode-btn.active {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #003DA5;
+    border-color: #FFD700;
+}
+
+.mode-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 768px) {
+    .mode-btn {
+        padding: 0.6rem 1.5rem;
+        font-size: 0.9rem;
+    }
+}
 </style>
 
 <a href="{{ route('master.compose', $game->id) }}" class="header-back">← Retour</a>
@@ -168,11 +205,26 @@ body {
 <div class="edit-container">
     <h1 class="edit-title">Question {{ $questionNumber }}</h1>
     
+    @if($game->creation_mode === 'personnalise')
+    <!-- Toggle Mode Texte/Image (uniquement en mode personnalisé) -->
+    <div class="mode-toggle">
+        <button type="button" class="mode-btn active" id="modeTextBtn" onclick="switchMode('text')">
+            📝 Texte
+        </button>
+        <button type="button" class="mode-btn" id="modeImageBtn" onclick="switchMode('image')">
+            🖼️ Image
+        </button>
+    </div>
+    @endif
+    
     <form action="{{ route('master.question.save', [$game->id, $questionNumber]) }}" method="POST" enctype="multipart/form-data" id="questionForm">
         @csrf
         
+        <!-- Champ caché pour stocker le mode actuel -->
+        <input type="hidden" name="question_mode" id="questionMode" value="text">
+        
         <!-- Zone d'upload d'image -->
-        <div class="image-upload-zone" onclick="document.getElementById('imageInput').click()">
+        <div id="imageSection" class="image-upload-zone" onclick="document.getElementById('imageInput').click()" style="display: none;">
             @if($question && $question->question_image)
                 <img src="{{ asset('storage/' . $question->question_image) }}" alt="Question image" id="previewImage">
             @else
@@ -185,15 +237,13 @@ body {
         </div>
         <input type="file" id="imageInput" name="question_image" class="file-input" accept="image/*" onchange="previewImageFile(this)">
         
-        <!-- Texte de la question (optionnel pour type image) -->
-        @if(!in_array('image', $game->question_types))
-        <div class="answer-section">
+        <!-- Texte de la question -->
+        <div id="textSection" class="answer-section">
             <label style="display: block; margin-bottom: 0.5rem; opacity: 0.9;">Texte de la question</label>
             <input type="text" name="question_text" class="answer-input" 
                    value="{{ $question->question_text ?? '' }}" 
                    placeholder="Entrez votre question...">
         </div>
-        @endif
         
         <!-- Réponses -->
         <div class="answer-section">
@@ -222,6 +272,31 @@ body {
 </div>
 
 <script>
+// Basculer entre mode Texte et mode Image (uniquement en mode personnalisé)
+function switchMode(mode) {
+    const textSection = document.getElementById('textSection');
+    const imageSection = document.getElementById('imageSection');
+    const modeTextBtn = document.getElementById('modeTextBtn');
+    const modeImageBtn = document.getElementById('modeImageBtn');
+    const questionModeInput = document.getElementById('questionMode');
+    
+    if (mode === 'text') {
+        // Mode Texte
+        textSection.style.display = 'block';
+        imageSection.style.display = 'none';
+        modeTextBtn.classList.add('active');
+        modeImageBtn.classList.remove('active');
+        questionModeInput.value = 'text';
+    } else {
+        // Mode Image
+        textSection.style.display = 'none';
+        imageSection.style.display = 'flex';
+        modeTextBtn.classList.remove('active');
+        modeImageBtn.classList.add('active');
+        questionModeInput.value = 'image';
+    }
+}
+
 // Prévisualisation de l'image
 function previewImageFile(input) {
     if (input.files && input.files[0]) {
@@ -295,14 +370,37 @@ function regenerateQuestion() {
     });
 }
 
-// Génération automatique en mode automatique si la question n'existe pas encore
-@if($game->creation_mode === 'automatique' && !$question)
+// Initialisation au chargement de la page
 window.addEventListener('DOMContentLoaded', function() {
-    // Attendre 500ms pour que la page soit complètement chargée
-    setTimeout(function() {
-        regenerateQuestion();
-    }, 500);
+    @if($game->creation_mode === 'automatique')
+        // Mode automatique : afficher la section appropriée selon le type de question
+        const questionTypes = @json($game->question_types);
+        const isImageQuestion = questionTypes.includes('image');
+        
+        if (isImageQuestion) {
+            // Afficher mode image
+            document.getElementById('textSection').style.display = 'none';
+            document.getElementById('imageSection').style.display = 'flex';
+            document.getElementById('questionMode').value = 'image';
+        } else {
+            // Afficher mode texte
+            document.getElementById('textSection').style.display = 'block';
+            document.getElementById('imageSection').style.display = 'none';
+            document.getElementById('questionMode').value = 'text';
+        }
+        
+        // Générer automatiquement si pas de question existante
+        @if(!$question)
+        setTimeout(function() {
+            regenerateQuestion();
+        }, 500);
+        @endif
+    @else
+        // Mode personnalisé : démarrer en mode texte par défaut
+        document.getElementById('textSection').style.display = 'block';
+        document.getElementById('imageSection').style.display = 'none';
+        document.getElementById('questionMode').value = 'text';
+    @endif
 });
-@endif
 </script>
 @endsection
