@@ -582,10 +582,11 @@ class MasterGameController extends Controller
         MasterGameQuestion::create([
             'master_game_id' => $game->id,
             'question_number' => $questionNumber,
-            'question_text' => null,
-            'question_image' => null,
-            'answers' => ['', '', '', ''], // 4 réponses vides
-            'correct_answer' => 0,
+            'type' => 'image',
+            'text' => '',
+            'choices' => ['', '', '', ''],
+            'correct_indexes' => [0],
+            'media_url' => null,
         ]);
     }
     
@@ -616,10 +617,11 @@ class MasterGameController extends Controller
             MasterGameQuestion::create([
                 'master_game_id' => $game->id,
                 'question_number' => $questionNumber,
-                'question_text' => $parsedData['question'],
-                'question_image' => null,
-                'answers' => $parsedData['answers'],
-                'correct_answer' => $parsedData['correct_answer'],
+                'type' => $questionType,
+                'text' => $parsedData['question'],
+                'choices' => $parsedData['answers'],
+                'correct_indexes' => [$parsedData['correct_answer']],
+                'media_url' => null,
             ]);
             
         } catch (\Exception $e) {
@@ -631,7 +633,7 @@ class MasterGameController extends Controller
     // Construire le prompt pour OpenAI
     private function buildPromptForQuestion($game, $questionType)
     {
-        $language = $game->languages[0] ?? 'FR';
+        $language = $game->language ?? 'FR';
         $languageNames = ['FR' => 'français', 'EN' => 'anglais', 'ES' => 'espagnol', 'DE' => 'allemand'];
         $languageName = $languageNames[$language] ?? 'français';
         
@@ -724,19 +726,21 @@ class MasterGameController extends Controller
             MasterGameQuestion::create([
                 'master_game_id' => $game->id,
                 'question_number' => $questionNumber,
-                'question_text' => 'Question à compléter',
-                'question_image' => null,
-                'answers' => ['Vrai', 'Faux'],
-                'correct_answer' => 0,
+                'type' => 'true_false',
+                'text' => 'Question à compléter',
+                'choices' => ['Vrai', 'Faux'],
+                'correct_indexes' => [0],
+                'media_url' => null,
             ]);
         } else {
             MasterGameQuestion::create([
                 'master_game_id' => $game->id,
                 'question_number' => $questionNumber,
-                'question_text' => 'Question à compléter',
-                'question_image' => null,
-                'answers' => ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'],
-                'correct_answer' => 0,
+                'type' => 'multiple_choice',
+                'text' => 'Question à compléter',
+                'choices' => ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'],
+                'correct_indexes' => [0],
+                'media_url' => null,
             ]);
         }
     }
