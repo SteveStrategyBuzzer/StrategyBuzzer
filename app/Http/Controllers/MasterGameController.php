@@ -30,7 +30,7 @@ class MasterGameController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'languages' => 'required|array',
+            'language' => 'required|string|in:FR,EN,ES,DE',
             'participants_expected' => 'required|integer|min:3|max:40',
             'mode' => 'required|in:face_to_face,one_vs_all,podium,groups',
             'total_questions' => 'required|in:10,20,30,40',
@@ -39,6 +39,7 @@ class MasterGameController extends Controller
             'theme' => 'nullable|string',
             'school_country' => 'nullable|string',
             'school_level' => 'nullable|string',
+            'school_grade' => 'nullable|string',
             'school_subject' => 'nullable|string',
             'creation_mode' => 'required|in:automatique,personnalise'
         ]);
@@ -50,7 +51,7 @@ class MasterGameController extends Controller
             'game_code' => $gameCode,
             'host_user_id' => Auth::id(),
             'name' => $validated['name'],
-            'languages' => $validated['languages'],
+            'languages' => [$validated['language']], // Store as array for compatibility
             'participants_expected' => $validated['participants_expected'],
             'mode' => $validated['mode'],
             'total_questions' => $validated['total_questions'],
@@ -59,10 +60,16 @@ class MasterGameController extends Controller
             'theme' => $validated['theme'] ?? null,
             'school_country' => $validated['school_country'] ?? null,
             'school_level' => $validated['school_level'] ?? null,
+            'school_grade' => $validated['school_grade'] ?? null,
             'school_subject' => $validated['school_subject'] ?? null,
             'creation_mode' => $validated['creation_mode'],
             'status' => 'draft'
         ]);
+
+        // Mode Automatique : Générer toutes les questions automatiquement
+        if ($validated['creation_mode'] === 'automatique') {
+            $this->generateAllQuestions($game);
+        }
 
         return redirect()->route('master.compose', $game->id);
     }
@@ -550,6 +557,190 @@ class MasterGameController extends Controller
         return view('master.codes', compact('game'));
     }
 
+    // Générer toutes les questions automatiquement (Mode Automatique)
+    private function generateAllQuestions($game)
+    {
+        $totalQuestions = $game->total_questions;
+        
+        // Distribution égale des types de questions avec modulo
+        for ($i = 1; $i <= $totalQuestions; $i++) {
+            $questionType = $this->getQuestionTypeForNumber($game, $i);
+            
+            if ($questionType === 'image') {
+                // Pour les questions image : créer un template vide
+                $this->createEmptyImageQuestionTemplate($game, $i);
+            } else {
+                // Pour les questions texte (MC ou True/False) : générer avec OpenAI
+                $this->generateTextQuestionWithAI($game, $i, $questionType);
+            }
+        }
+    }
+    
+    // Créer un template vide pour une question image
+    private function createEmptyImageQuestionTemplate($game, $questionNumber)
+    {
+        MasterGameQuestion::create([
+            'master_game_id' => $game->id,
+            'question_number' => $questionNumber,
+            'question_text' => null,
+            'question_image' => null,
+            'answers' => ['', '', '', ''], // 4 réponses vides
+            'correct_answer' => 0,
+        ]);
+    }
+    
+    // Générer une question texte avec OpenAI
+    private function generateTextQuestionWithAI($game, $questionNumber, $questionType)
+    {
+        try {
+            // Construire le prompt basé sur les paramètres du quiz
+            $prompt = $this->buildPromptForQuestion($game, $questionType);
+            
+            // Appeler OpenAI
+            $response = OpenAI::chat()->create([
+                'model' => 'gpt-3.5-turbo',
+                'messages' => [
+                    ['role' => 'system', 'content' => 'Tu es un expert en création de questions de quiz éducatives et divertissantes.'],
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'temperature' => 0.8,
+                'max_tokens' => 500
+            ]);
+            
+            $content = $response->choices[0]->message->content;
+            
+            // Parser la réponse
+            $parsedData = $this->parseAIResponse($content, $questionType);
+            
+            // Créer la question
+            MasterGameQuestion::create([
+                'master_game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'question_text' => $parsedData['question'],
+                'question_image' => null,
+                'answers' => $parsedData['answers'],
+                'correct_answer' => $parsedData['correct_answer'],
+            ]);
+            
+        } catch (\Exception $e) {
+            // En cas d'erreur, créer une question placeholder
+            $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
+        }
+    }
+    
+    // Construire le prompt pour OpenAI
+    private function buildPromptForQuestion($game, $questionType)
+    {
+        $language = $game->languages[0] ?? 'FR';
+        $languageNames = ['FR' => 'français', 'EN' => 'anglais', 'ES' => 'espagnol', 'DE' => 'allemand'];
+        $languageName = $languageNames[$language] ?? 'français';
+        
+        // Déterminer le contexte (thème ou scolaire)
+        if ($game->domain_type === 'theme') {
+            $context = "sur le thème : {$game->theme}";
+        } else {
+            $context = "pour le niveau scolaire : {$game->school_level}";
+            if ($game->school_grade) {
+                $context .= ", année {$game->school_grade}";
+            }
+            if ($game->school_subject) {
+                $context .= ", matière : {$game->school_subject}";
+            }
+            if ($game->school_country) {
+                $context .= " ({$game->school_country})";
+            }
+        }
+        
+        if ($questionType === 'true_false') {
+            return "Génère une question Vrai/Faux {$context}. Réponds en {$languageName}.\n\n" .
+                   "Format de réponse EXACTEMENT comme ceci:\n" .
+                   "QUESTION: [ta question]\n" .
+                   "REPONSE1: Vrai\n" .
+                   "REPONSE2: Faux\n" .
+                   "CORRECT: [0 ou 1]";
+        } else {
+            return "Génère une question à choix multiples avec 4 réponses {$context}. Réponds en {$languageName}.\n\n" .
+                   "Format de réponse EXACTEMENT comme ceci:\n" .
+                   "QUESTION: [ta question]\n" .
+                   "REPONSE1: [réponse 1]\n" .
+                   "REPONSE2: [réponse 2]\n" .
+                   "REPONSE3: [réponse 3]\n" .
+                   "REPONSE4: [réponse 4]\n" .
+                   "CORRECT: [0, 1, 2 ou 3]";
+        }
+    }
+    
+    // Parser la réponse d'OpenAI
+    private function parseAIResponse($content, $questionType)
+    {
+        $lines = explode("\n", $content);
+        $question = '';
+        $answers = [];
+        $correct = 0;
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (strpos($line, 'QUESTION:') === 0) {
+                $question = trim(substr($line, 9));
+            } elseif (preg_match('/^REPONSE(\d+):\s*(.+)$/', $line, $matches)) {
+                $answers[] = trim($matches[2]);
+            } elseif (strpos($line, 'CORRECT:') === 0) {
+                $correct = (int) trim(substr($line, 8));
+            }
+        }
+        
+        // Validation et valeurs par défaut
+        if (empty($question)) {
+            $question = 'Question générée';
+        }
+        
+        if ($questionType === 'true_false') {
+            if (count($answers) < 2) {
+                $answers = ['Vrai', 'Faux'];
+            } else {
+                $answers = array_slice($answers, 0, 2);
+            }
+        } else {
+            if (count($answers) < 4) {
+                while (count($answers) < 4) {
+                    $answers[] = 'Réponse ' . (count($answers) + 1);
+                }
+            } else {
+                $answers = array_slice($answers, 0, 4);
+            }
+        }
+        
+        return [
+            'question' => $question,
+            'answers' => $answers,
+            'correct_answer' => max(0, min($correct, count($answers) - 1))
+        ];
+    }
+    
+    // Créer une question placeholder en cas d'erreur
+    private function createPlaceholderQuestion($game, $questionNumber, $questionType)
+    {
+        if ($questionType === 'true_false') {
+            MasterGameQuestion::create([
+                'master_game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'question_text' => 'Question à compléter',
+                'question_image' => null,
+                'answers' => ['Vrai', 'Faux'],
+                'correct_answer' => 0,
+            ]);
+        } else {
+            MasterGameQuestion::create([
+                'master_game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'question_text' => 'Question à compléter',
+                'question_image' => null,
+                'answers' => ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'],
+                'correct_answer' => 0,
+            ]);
+        }
+    }
+    
     // Générer un code unique
     private function generateUniqueGameCode()
     {

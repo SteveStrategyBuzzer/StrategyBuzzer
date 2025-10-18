@@ -179,6 +179,54 @@ body {
     text-align: center;
 }
 
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #003DA5, #0055CC);
+    border: 3px solid #FFD700;
+    border-radius: 15px;
+    padding: 2rem;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #FFD700;
+    margin-bottom: 1rem;
+}
+
+.modal-text {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.modal-btn {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #003DA5;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+}
+
 /* Paysage : 2 colonnes */
 @media (orientation: landscape) and (min-width: 768px) {
     .create-container {
@@ -215,16 +263,13 @@ body {
         <!-- Langue + Participants -->
         <div class="section">
             <div class="form-group">
-                <div class="checkbox-group" style="justify-content: center;">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="languages[]" value="FR" class="checkbox-input" checked>
-                        <span>Langue FR</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="languages[]" value="EN" class="checkbox-input">
-                        <span>EN</span>
-                    </label>
-                </div>
+                <label class="form-label" style="text-align: center;">Langue</label>
+                <select name="language" class="form-select" required style="text-align: center; font-weight: 600;">
+                    <option value="FR">Français</option>
+                    <option value="EN">English</option>
+                    <option value="ES">Español</option>
+                    <option value="DE">Deutsch</option>
+                </select>
             </div>
             <div class="form-group" style="margin-top: 1rem;">
                 <div class="input-with-label" style="justify-content: center;">
@@ -273,7 +318,7 @@ body {
                         <span>QCM</span>
                     </label>
                     <label class="checkbox-label">
-                        <input type="checkbox" name="question_types[]" value="image" class="checkbox-input type-checkbox">
+                        <input type="checkbox" name="question_types[]" value="image" class="checkbox-input type-checkbox" id="imageCheckbox">
                         <span>Image</span>
                     </label>
                 </div>
@@ -335,27 +380,23 @@ body {
             </div>
             
             <div id="scolaireSection" class="form-group" style="display: none; margin-top: 1rem;">
-                <select name="school_country" class="form-select">
-                    <option value="France">France</option>
+                <select name="school_country" id="schoolCountry" class="form-select" style="text-align: center; font-weight: 600;">
+                    <option value="">-- Pays --</option>
                     <option value="Canada">Canada</option>
-                    <option value="Belgique">Belgique</option>
-                    <option value="Suisse">Suisse</option>
+                    <option value="France">France</option>
+                    <option value="USA">États-Unis</option>
                 </select>
                 
-                <select name="school_level" class="form-select" style="margin-top: 0.8rem;">
-                    <option value="Primaire">Primaire</option>
-                    <option value="Collège">Collège</option>
-                    <option value="Lycée">Lycée</option>
-                    <option value="Cégep">Cégep</option>
-                    <option value="Université">Université</option>
+                <select name="school_level" id="schoolLevel" class="form-select" style="margin-top: 0.8rem; text-align: center;">
+                    <option value="">-- Niveau --</option>
                 </select>
                 
-                <select name="school_subject" class="form-select" style="margin-top: 0.8rem;">
-                    <option value="Mathématiques">Mathématiques</option>
-                    <option value="Français">Français</option>
-                    <option value="Histoire-Géographie">Histoire-Géo</option>
-                    <option value="Sciences">Sciences</option>
-                    <option value="Anglais">Anglais</option>
+                <select name="school_grade" id="schoolGrade" class="form-select" style="margin-top: 0.8rem; text-align: center;">
+                    <option value="">-- Année --</option>
+                </select>
+                
+                <select name="school_subject" id="schoolSubject" class="form-select" style="margin-top: 0.8rem; text-align: center;">
+                    <option value="">-- Matière --</option>
                 </select>
             </div>
         </div>
@@ -364,7 +405,7 @@ body {
         <!-- Boutons de création (pleine largeur) -->
         <div class="section-full" style="margin-top: 2rem;">
             <div class="buttons" style="gap: 1rem;">
-                <button type="submit" name="creation_mode" value="automatique" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #FFD700, #FFA500); font-size: 1.1rem;">
+                <button type="submit" name="creation_mode" value="automatique" id="automatiqueBtn" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #FFD700, #FFA500); font-size: 1.1rem;">
                     Automatique
                 </button>
                 <button type="submit" name="creation_mode" value="personnalise" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #00D4FF, #0099CC); font-size: 1.1rem;">
@@ -375,7 +416,49 @@ body {
     </form>
 </div>
 
+<!-- Modal d'avertissement -->
+<div id="imageWarningModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-title">⚠️ Attention</div>
+        <div class="modal-text">
+            En mode Automatique, vous devez uploader les images et remplir les questions manuellement pour chaque question de type Image.
+        </div>
+        <button class="modal-btn" onclick="closeImageModal()">J'ai compris</button>
+    </div>
+</div>
+
 <script>
+// Systèmes éducatifs par pays
+const educationSystems = {
+    'Canada': {
+        levels: {
+            'Primaire': { grades: ['1', '2', '3', '4', '5', '6'] },
+            'Secondaire': { grades: ['1', '2', '3', '4', '5'] },
+            'Cégep': { grades: ['1', '2'] },
+            'Universitaire': { grades: ['1', '2', '3', '4'] }
+        },
+        subjects: ['Mathématiques', 'Français', 'Anglais', 'Sciences', 'Histoire', 'Géographie', 'Éducation physique', 'Arts']
+    },
+    'France': {
+        levels: {
+            'Primaire': { grades: ['CP', 'CE1', 'CE2', 'CM1', 'CM2'] },
+            'Collège': { grades: ['6ème', '5ème', '4ème', '3ème'] },
+            'Lycée': { grades: ['2nde', '1ère', 'Terminale'] },
+            'Université': { grades: ['L1', 'L2', 'L3', 'M1', 'M2'] }
+        },
+        subjects: ['Mathématiques', 'Français', 'Anglais', 'Histoire-Géographie', 'Sciences', 'Physique-Chimie', 'SVT', 'Philosophie', 'Arts']
+    },
+    'USA': {
+        levels: {
+            'Elementary': { grades: ['K', '1', '2', '3', '4', '5'] },
+            'Middle School': { grades: ['6', '7', '8'] },
+            'High School': { grades: ['9', '10', '11', '12'] },
+            'College': { grades: ['Freshman', 'Sophomore', 'Junior', 'Senior'] }
+        },
+        subjects: ['Mathematics', 'English', 'Science', 'History', 'Geography', 'Physical Education', 'Arts', 'Foreign Language']
+    }
+};
+
 // Domain type logic
 const domainRadios = document.querySelectorAll('.domain-radio');
 const themeSection = document.getElementById('themeSection');
@@ -393,6 +476,99 @@ if (domainRadios.length > 0 && themeSection && scolaireSection) {
             }
         });
     });
+}
+
+// Educational system cascading selects
+const schoolCountry = document.getElementById('schoolCountry');
+const schoolLevel = document.getElementById('schoolLevel');
+const schoolGrade = document.getElementById('schoolGrade');
+const schoolSubject = document.getElementById('schoolSubject');
+
+if (schoolCountry) {
+    schoolCountry.addEventListener('change', function() {
+        const country = this.value;
+        
+        // Reset dependent selects
+        schoolLevel.innerHTML = '<option value="">-- Niveau --</option>';
+        schoolGrade.innerHTML = '<option value="">-- Année --</option>';
+        schoolSubject.innerHTML = '<option value="">-- Matière --</option>';
+        
+        if (country && educationSystems[country]) {
+            // Populate levels
+            Object.keys(educationSystems[country].levels).forEach(level => {
+                const option = document.createElement('option');
+                option.value = level;
+                option.textContent = level;
+                schoolLevel.appendChild(option);
+            });
+        }
+    });
+}
+
+if (schoolLevel) {
+    schoolLevel.addEventListener('change', function() {
+        const country = schoolCountry.value;
+        const level = this.value;
+        
+        // Reset dependent selects
+        schoolGrade.innerHTML = '<option value="">-- Année --</option>';
+        schoolSubject.innerHTML = '<option value="">-- Matière --</option>';
+        
+        if (country && level && educationSystems[country] && educationSystems[country].levels[level]) {
+            // Populate grades
+            educationSystems[country].levels[level].grades.forEach(grade => {
+                const option = document.createElement('option');
+                option.value = grade;
+                option.textContent = grade;
+                schoolGrade.appendChild(option);
+            });
+        }
+    });
+}
+
+if (schoolGrade) {
+    schoolGrade.addEventListener('change', function() {
+        const country = schoolCountry.value;
+        
+        // Reset subjects
+        schoolSubject.innerHTML = '<option value="">-- Matière --</option>';
+        
+        if (country && educationSystems[country]) {
+            // Populate subjects
+            educationSystems[country].subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                schoolSubject.appendChild(option);
+            });
+        }
+    });
+}
+
+// Image checkbox warning (only for Automatique mode)
+let imageWarningShown = false;
+const imageCheckbox = document.getElementById('imageCheckbox');
+const imageWarningModal = document.getElementById('imageWarningModal');
+const automatiqueBtn = document.getElementById('automatiqueBtn');
+
+if (imageCheckbox && imageWarningModal) {
+    imageCheckbox.addEventListener('change', function() {
+        if (this.checked && !imageWarningShown) {
+            imageWarningModal.style.display = 'flex';
+            imageWarningShown = true;
+        }
+    });
+}
+
+function closeImageModal() {
+    imageWarningModal.style.display = 'none';
+}
+
+// Close modal on outside click
+window.onclick = function(event) {
+    if (event.target == imageWarningModal) {
+        closeImageModal();
+    }
 }
 </script>
 @endsection
