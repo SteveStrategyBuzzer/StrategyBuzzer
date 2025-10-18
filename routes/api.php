@@ -7,7 +7,7 @@ use App\Http\Controllers\Api\PlayController;
 use App\Http\Controllers\DuoController;
 
 Route::get('/solo/next',  [PlayController::class, 'next']);
-Route::post('/solo/answer', [PlayController::class, 'answer']);
+Route::match(['get', 'post'], '/solo/answer', [PlayController::class, 'answer']);
 Route::get('/status', [GameController::class, 'status']);
 Route::get('/quests', [GameController::class, 'quests']);
 Route::middleware('auth:api')->get('/user', function (Request $request) {
