@@ -53,7 +53,7 @@ body {
 
 .question-image {
     width: 100%;
-    height: 300px;
+    height: 500px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     margin-bottom: 1rem;
@@ -71,27 +71,28 @@ body {
 }
 
 .image-placeholder {
-    font-size: 3rem;
-    margin-bottom: 0.5rem;
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.6;
 }
 
 .image-label {
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.7);
 }
 
 @media (max-width: 768px) {
     .question-image {
-        height: 250px;
+        height: 450px;
     }
     
     .image-placeholder {
-        font-size: 2.5rem;
+        font-size: 3.5rem;
     }
     
     .image-label {
-        font-size: 1rem;
+        font-size: 1.2rem;
     }
 }
 
