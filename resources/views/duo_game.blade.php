@@ -435,6 +435,12 @@ function showResult(data) {
         icon.textContent = '✓';
         text.textContent = 'CORRECT !';
         points.textContent = '+' + data.points + ' points';
+        // Jouer le son de bonne réponse
+        const correctSound = document.getElementById('correctSound');
+        if (correctSound) {
+            correctSound.currentTime = 0;
+            correctSound.play().catch(e => console.log('Audio play failed:', e));
+        }
     } else {
         icon.textContent = '✗';
         text.textContent = 'INCORRECT';
@@ -483,7 +489,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Audio pour les mauvaises réponses -->
+<!-- Audio pour les réponses -->
+<audio id="correctSound" preload="auto">
+    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
+</audio>
 <audio id="incorrectSound" preload="auto">
     <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
 </audio>

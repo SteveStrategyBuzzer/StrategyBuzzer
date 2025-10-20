@@ -595,6 +595,12 @@ function showAnswerResult(isCorrect, points) {
         resultIcon.textContent = '✅';
         resultText.textContent = 'Bonne réponse !';
         resultText.style.color = '#4CAF50';
+        // Jouer le son de bonne réponse
+        const correctSound = document.getElementById('correctSound');
+        if (correctSound) {
+            correctSound.currentTime = 0;
+            correctSound.play().catch(e => console.log('Audio play failed:', e));
+        }
     } else {
         resultIcon.textContent = '❌';
         resultText.textContent = 'Mauvaise réponse';
@@ -661,7 +667,10 @@ loadGameState();
 setInterval(loadGameState, 2000);
 </script>
 
-<!-- Audio pour les mauvaises réponses -->
+<!-- Audio pour les réponses -->
+<audio id="correctSound" preload="auto">
+    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
+</audio>
 <audio id="incorrectSound" preload="auto">
     <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
 </audio>
