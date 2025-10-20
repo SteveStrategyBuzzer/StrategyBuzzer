@@ -3,36 +3,6 @@
 @section('content')
 
 @php
-// Déterminer le type de question pour un numéro donné (distribution équilibrée)
-function getQuestionTypeForNumber($game, $questionNumber) {
-    $questionTypes = $game->question_types ?? ['multiple_choice'];
-    
-    if (count($questionTypes) === 1) {
-        return $questionTypes[0];
-    }
-    
-    $totalQuestions = $game->total_questions ?? 20;
-    $numTypes = count($questionTypes);
-    
-    $questionsPerType = floor($totalQuestions / $numTypes);
-    $remainder = $totalQuestions % $numTypes;
-    
-    $pattern = [];
-    for ($i = 0; $i < $numTypes; $i++) {
-        $count = $questionsPerType + ($i < $remainder ? 1 : 0);
-        for ($j = 0; $j < $count; $j++) {
-            $pattern[] = $questionTypes[$i];
-        }
-    }
-    
-    mt_srand($game->id);
-    shuffle($pattern);
-    mt_srand();
-    
-    $index = ($questionNumber - 1) % count($pattern);
-    return $pattern[$index];
-}
-
 // Générer des exemples de questions et réponses selon le thème
 function getThemeExamples($theme, $questionNumber, $questionType) {
     $themeLower = strtolower($theme ?? 'culture générale');

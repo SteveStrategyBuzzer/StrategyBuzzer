@@ -144,6 +144,13 @@ class MasterGameController extends Controller
             $imagePath = $request->file('question_image')->store('questions', 'public');
         }
 
+        // Déterminer le type de question
+        $questionType = 'multiple_choice';
+        if (count($validated['answers']) == 2 && 
+            (strtolower($validated['answers'][0]) == 'vrai' || strtolower($validated['answers'][0]) == 'true')) {
+            $questionType = 'true_false';
+        }
+        
         // Créer ou mettre à jour la question
         MasterGameQuestion::updateOrCreate(
             [
@@ -151,10 +158,11 @@ class MasterGameController extends Controller
                 'question_number' => $questionNumber,
             ],
             [
-                'question_text' => $validated['question_text'],
-                'question_image' => $imagePath,
-                'answers' => $validated['answers'],
-                'correct_answer' => $validated['correct_answer'],
+                'type' => $questionType,
+                'text' => $validated['question_text'],
+                'media_url' => $imagePath,
+                'choices' => $validated['answers'],
+                'correct_indexes' => [$validated['correct_answer']],
             ]
         );
 
@@ -583,7 +591,7 @@ class MasterGameController extends Controller
             'master_game_id' => $game->id,
             'question_number' => $questionNumber,
             'type' => 'image',
-            'text' => '',
+            'text' => null,
             'choices' => ['', '', '', ''],
             'correct_indexes' => [0],
             'media_url' => null,
