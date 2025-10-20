@@ -563,10 +563,10 @@ function selectAnswer(index) {
         bubble.classList.add('disabled');
     });
     
-    // Soumettre le formulaire
+    // Soumettre le formulaire après un délai pour feedback visuel
     setTimeout(() => {
         document.getElementById('answerForm').submit();
-    }, 200);
+    }, 500);
 }
 
 function handleTimeout() {

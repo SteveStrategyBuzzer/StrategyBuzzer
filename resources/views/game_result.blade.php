@@ -704,13 +704,21 @@
 </audio>
 
 <script>
-// Jouer le son approprié
+// Jouer le son approprié et détecter sa durée
 const isCorrect = {{ $params['is_correct'] ? 'true' : 'false' }};
+let soundDuration = 2000; // Délai par défaut (2 secondes)
+
 if (isCorrect) {
     const correctSound = document.getElementById('correctSound');
+    correctSound.addEventListener('loadedmetadata', function() {
+        soundDuration = Math.floor(correctSound.duration * 1000) + 300;
+    });
     correctSound.play().catch(e => console.log('Audio play failed:', e));
 } else {
     const incorrectSound = document.getElementById('incorrectSound');
+    incorrectSound.addEventListener('loadedmetadata', function() {
+        soundDuration = Math.floor(incorrectSound.duration * 1000) + 300;
+    });
     incorrectSound.play().catch(e => console.log('Audio play failed:', e));
 }
 

@@ -722,10 +722,17 @@ document.addEventListener('DOMContentLoaded', function() {
     let timerInterval;
     let buzzed = false;
     let buzzerDuration = 1500;
+    let noBuzzDuration = 3500; // Délai par défaut pour no_buzz (3.5 secondes)
     
-    // Détecter la durée du son automatiquement
+    // Détecter la durée du son buzzer automatiquement
     buzzerSound.addEventListener('loadedmetadata', function() {
-        buzzerDuration = Math.floor(buzzerSound.duration * 1000) + 100;
+        buzzerDuration = Math.floor(buzzerSound.duration * 1000) + 200;
+    });
+    
+    // Détecter la durée du son no_buzz automatiquement
+    const noBuzzSound = document.getElementById('noBuzzSound');
+    noBuzzSound.addEventListener('loadedmetadata', function() {
+        noBuzzDuration = Math.floor(noBuzzSound.duration * 1000) + 200;
     });
     
     // Démarrer le chronomètre
@@ -782,10 +789,10 @@ document.addEventListener('DOMContentLoaded', function() {
         noBuzzSound.currentTime = 0;
         noBuzzSound.play().catch(e => console.log('Audio play failed:', e));
         
-        // Rediriger vers timeout après un court délai
+        // Rediriger après que le son se soit joué complètement
         setTimeout(() => {
             window.location.href = '{{ route('solo.timeout') }}';
-        }, 500);
+        }, noBuzzDuration);
     }
     
     // Démarrer le jeu
