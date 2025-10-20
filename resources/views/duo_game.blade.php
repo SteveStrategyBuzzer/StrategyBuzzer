@@ -439,6 +439,12 @@ function showResult(data) {
         icon.textContent = '✗';
         text.textContent = 'INCORRECT';
         points.textContent = data.points + ' points';
+        // Jouer le son de mauvaise réponse
+        const incorrectSound = document.getElementById('incorrectSound');
+        if (incorrectSound) {
+            incorrectSound.currentTime = 0;
+            incorrectSound.play().catch(e => console.log('Audio play failed:', e));
+        }
     }
     
     document.getElementById('questionSection').style.display = 'none';
@@ -476,4 +482,10 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(loadGameState, 3000);
 });
 </script>
+
+<!-- Audio pour les mauvaises réponses -->
+<audio id="incorrectSound" preload="auto">
+    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
+</audio>
+
 @endsection

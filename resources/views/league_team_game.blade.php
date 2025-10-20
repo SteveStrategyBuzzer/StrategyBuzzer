@@ -630,6 +630,15 @@ function showResult(icon, text, points) {
     document.getElementById('resultText').textContent = text;
     document.getElementById('pointsEarned').textContent = points;
     document.getElementById('answerResult').style.display = 'block';
+    
+    // Jouer le son de mauvaise réponse
+    if (icon === '✗') {
+        const incorrectSound = document.getElementById('incorrectSound');
+        if (incorrectSound) {
+            incorrectSound.currentTime = 0;
+            incorrectSound.play().catch(e => console.log('Audio play failed:', e));
+        }
+    }
 }
 
 function hideResult() {
@@ -699,4 +708,10 @@ function showMatchResults() {
 
 loadQuestion();
 </script>
+
+<!-- Audio pour les mauvaises réponses -->
+<audio id="incorrectSound" preload="auto">
+    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
+</audio>
+
 @endsection
