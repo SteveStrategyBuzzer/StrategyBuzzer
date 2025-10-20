@@ -693,35 +693,7 @@
     </div>
 </div>
 
-<audio id="correctSound" preload="auto">
-    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
-    <source src="{{ asset('sounds/correct.wav') }}" type="audio/wav">
-</audio>
-
-<audio id="incorrectSound" preload="auto">
-    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
-    <source src="{{ asset('sounds/incorrect.wav') }}" type="audio/wav">
-</audio>
-
 <script>
-// Jouer le son approprié et détecter sa durée
-const isCorrect = {{ $params['is_correct'] ? 'true' : 'false' }};
-let soundDuration = 2000; // Délai par défaut (2 secondes)
-
-if (isCorrect) {
-    const correctSound = document.getElementById('correctSound');
-    correctSound.addEventListener('loadedmetadata', function() {
-        soundDuration = Math.floor(correctSound.duration * 1000) + 300;
-    });
-    correctSound.play().catch(e => console.log('Audio play failed:', e));
-} else {
-    const incorrectSound = document.getElementById('incorrectSound');
-    incorrectSound.addEventListener('loadedmetadata', function() {
-        soundDuration = Math.floor(incorrectSound.duration * 1000) + 300;
-    });
-    incorrectSound.play().catch(e => console.log('Audio play failed:', e));
-}
-
 // Compte à rebours de 15 secondes
 let countdown = 15;
 const countdownElement = document.getElementById('countdown');

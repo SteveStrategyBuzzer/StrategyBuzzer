@@ -722,17 +722,17 @@ document.addEventListener('DOMContentLoaded', function() {
     let timerInterval;
     let buzzed = false;
     let buzzerDuration = 1500;
-    let noBuzzDuration = 3500; // Délai par défaut pour no_buzz (3.5 secondes)
+    let noBuzzDuration = 3500;
     
-    // Détecter la durée du son buzzer automatiquement
+    // Détecter la durée du son buzzer : délai de 100ms APRÈS la fin du son
     buzzerSound.addEventListener('loadedmetadata', function() {
-        buzzerDuration = Math.floor(buzzerSound.duration * 1000) + 200;
+        buzzerDuration = Math.floor(buzzerSound.duration * 1000) + 100;
     });
     
-    // Détecter la durée du son no_buzz automatiquement
+    // Détecter la durée du son no_buzz : délai de 100ms APRÈS la fin du son
     const noBuzzSound = document.getElementById('noBuzzSound');
     noBuzzSound.addEventListener('loadedmetadata', function() {
-        noBuzzDuration = Math.floor(noBuzzSound.duration * 1000) + 200;
+        noBuzzDuration = Math.floor(noBuzzSound.duration * 1000) + 100;
     });
     
     // Démarrer le chronomètre

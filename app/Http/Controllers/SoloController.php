@@ -414,6 +414,7 @@ class SoloController extends Controller
             'avatar' => $avatar,  // Avatar stratégique pour les skills
             'avatar_skills' => $this->getAvatarSkills($avatar),  // Skills de l'avatar
             'used_skills' => session('used_skills', []),  // Skills déjà utilisés dans la partie
+            'correct_index' => $question['correct_index'] ?? -1,  // Index de la bonne réponse pour les sons
         ];
         
         return view('game_answer', compact('params'));

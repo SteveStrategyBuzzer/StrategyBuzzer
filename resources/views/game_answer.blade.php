@@ -433,7 +433,7 @@ $correctIndex = $params['question']['correct_index'] ?? -1;
     <div class="answer-timer">
         <div class="timer-label">
             <span>⏱️ Temps pour répondre</span>
-            <span id="timerText">{{ $params['answer_time'] }}s</span>
+            <span id="timerText">10s</span>
         </div>
         <div class="timer-bar-container">
             <div class="timer-bar" id="timerBar"></div>
@@ -510,10 +510,21 @@ $correctIndex = $params['question']['correct_index'] ?? -1;
     <source src="{{ asset('sounds/timeout.mp3') }}" type="audio/mpeg">
 </audio>
 
+<audio id="correctSound" preload="auto">
+    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
+</audio>
+
+<audio id="incorrectSound" preload="auto">
+    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
+</audio>
+
 <script>
-let timeLeft = {{ $params['answer_time'] }};
-let totalTime = {{ $params['answer_time'] }};
+let timeLeft = 10; // Countdown de 10 secondes
+let totalTime = 10;
 let answered = false;
+const correctIndex = {{ $params['correct_index'] ?? -1 }}; // Index de la bonne réponse
+let correctSoundDuration = 2000; // Délai par défaut
+let incorrectSoundDuration = 500; // Délai par défaut
 
 // Animation de la barre de temps
 const timerBar = document.getElementById('timerBar');
@@ -523,6 +534,17 @@ timerBar.style.width = '100%';
 const tickSound = document.getElementById('tickSound');
 tickSound.currentTime = 0;
 tickSound.play().catch(e => console.log('Audio play failed:', e));
+
+// Détecter la durée des sons correct/incorrect : 100ms APRÈS la fin du son
+const correctSound = document.getElementById('correctSound');
+correctSound.addEventListener('loadedmetadata', function() {
+    correctSoundDuration = Math.floor(correctSound.duration * 1000) + 100;
+});
+
+const incorrectSound = document.getElementById('incorrectSound');
+incorrectSound.addEventListener('loadedmetadata', function() {
+    incorrectSoundDuration = Math.floor(incorrectSound.duration * 1000) + 100;
+});
 
 const timerInterval = setInterval(() => {
     timeLeft--;
@@ -563,10 +585,26 @@ function selectAnswer(index) {
         bubble.classList.add('disabled');
     });
     
-    // Soumettre le formulaire après un délai pour feedback visuel
+    // Vérifier si la réponse est correcte et jouer le son approprié
+    const isCorrect = (index === correctIndex);
+    let soundDelay = 500; // Délai par défaut
+    
+    if (isCorrect) {
+        const correctSound = document.getElementById('correctSound');
+        correctSound.currentTime = 0;
+        correctSound.play().catch(e => console.log('Audio play failed:', e));
+        soundDelay = correctSoundDuration;
+    } else {
+        const incorrectSound = document.getElementById('incorrectSound');
+        incorrectSound.currentTime = 0;
+        incorrectSound.play().catch(e => console.log('Audio play failed:', e));
+        soundDelay = incorrectSoundDuration;
+    }
+    
+    // Soumettre le formulaire 100ms après la fin du son
     setTimeout(() => {
         document.getElementById('answerForm').submit();
-    }, 500);
+    }, soundDelay);
 }
 
 function handleTimeout() {
