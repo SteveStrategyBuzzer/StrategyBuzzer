@@ -708,6 +708,11 @@ if ($bossInfo) {
     <source src="{{ asset('sounds/buzz.mp3') }}" type="audio/mpeg">
 </audio>
 
+<!-- Audio pour "sans buzzer" -->
+<audio id="noBuzzSound" preload="auto">
+    <source src="{{ asset('sounds/no_buzz_tick.mp3') }}" type="audio/mpeg">
+</audio>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const buzzButton = document.getElementById('buzzButton');
@@ -753,15 +758,34 @@ document.addEventListener('DOMContentLoaded', function() {
         buzzButton.disabled = true;
         buzzButton.style.opacity = '0.5';
         
-        // Rediriger après le son
+        // Envoyer requête POST à /solo/buzz après le son
         setTimeout(() => {
-            window.location.href = '/solo/answer?theme={{ $params['theme'] }}&niveau={{ $params['niveau'] }}&current_question={{ $params['current_question'] }}&score={{ $params['score'] }}&time=' + timeLeft + '&avatar={{ $params['avatar'] ?? 'Aucun' }}&round={{ $params['round'] ?? 1 }}&player_rounds_won={{ $params['player_rounds_won'] ?? 0 }}&opponent_rounds_won={{ $params['opponent_rounds_won'] ?? 0 }}&correct_answers={{ $params['correct_answers'] ?? 0 }}&incorrect_answers={{ $params['incorrect_answers'] ?? 0 }}&unanswered_questions={{ $params['unanswered_questions'] ?? 0 }}';
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ route('solo.buzz') }}';
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = '{{ csrf_token() }}';
+            form.appendChild(csrfInput);
+            
+            document.body.appendChild(form);
+            form.submit();
         }, buzzerDuration);
     });
     
-    // Pas de buzz - redirection directe
+    // Pas de buzz - redirection vers /solo/timeout
     function handleNoBuzz() {
-        window.location.href = '/solo/answer?theme={{ $params['theme'] }}&niveau={{ $params['niveau'] }}&current_question={{ $params['current_question'] }}&score={{ $params['score'] }}&time=0&avatar={{ $params['avatar'] ?? 'Aucun' }}&round={{ $params['round'] ?? 1 }}&player_rounds_won={{ $params['player_rounds_won'] ?? 0 }}&opponent_rounds_won={{ $params['opponent_rounds_won'] ?? 0 }}&correct_answers={{ $params['correct_answers'] ?? 0 }}&incorrect_answers={{ $params['incorrect_answers'] ?? 0 }}&unanswered_questions={{ $params['unanswered_questions'] ?? 0 }}';
+        // Jouer le son "sans buzzer"
+        const noBuzzSound = document.getElementById('noBuzzSound');
+        noBuzzSound.currentTime = 0;
+        noBuzzSound.play().catch(e => console.log('Audio play failed:', e));
+        
+        // Rediriger vers timeout après un court délai
+        setTimeout(() => {
+            window.location.href = '{{ route('solo.timeout') }}';
+        }, 500);
     }
     
     // Démarrer le jeu
