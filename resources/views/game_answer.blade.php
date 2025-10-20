@@ -502,7 +502,7 @@ $correctIndex = $params['question']['correct_index'] ?? -1;
 </div>
 @endif
 
-<audio id="tickSound" preload="auto">
+<audio id="tickSound" preload="auto" loop>
     <source src="{{ asset('sounds/tick.mp3') }}" type="audio/mpeg">
 </audio>
 
@@ -519,6 +519,11 @@ let answered = false;
 const timerBar = document.getElementById('timerBar');
 timerBar.style.width = '100%';
 
+// Démarrer le son tic-tac en boucle dès le début
+const tickSound = document.getElementById('tickSound');
+tickSound.currentTime = 0;
+tickSound.play().catch(e => console.log('Audio play failed:', e));
+
 const timerInterval = setInterval(() => {
     timeLeft--;
     const percentage = (timeLeft / totalTime) * 100;
@@ -528,13 +533,12 @@ const timerInterval = setInterval(() => {
     // Changement de couleur à 3 secondes
     if (timeLeft <= 3) {
         timerBar.classList.add('warning');
-        const tickSound = document.getElementById('tickSound');
-        tickSound.play().catch(e => console.log('Audio play failed:', e));
     }
     
     // Temps écoulé
     if (timeLeft <= 0) {
         clearInterval(timerInterval);
+        tickSound.pause(); // Arrêter le son tic-tac
         if (!answered) {
             handleTimeout();
         }
@@ -546,6 +550,10 @@ function selectAnswer(index) {
     answered = true;
     
     clearInterval(timerInterval);
+    
+    // Arrêter le son tic-tac
+    const tickSound = document.getElementById('tickSound');
+    tickSound.pause();
     
     // Marquer la réponse choisie
     document.getElementById('answerIndex').value = index;
