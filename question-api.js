@@ -15,6 +15,8 @@ const THEMES_FR = {
   'general': 'culture générale',
   'geographie': 'géographie',
   'histoire': 'histoire',
+  'art': 'art et culture',
+  'cinema': 'cinéma et films',
   'sport': 'sport',
   'cuisine': 'cuisine et gastronomie',
   'faune': 'animaux et nature',
