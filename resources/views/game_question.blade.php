@@ -705,12 +705,17 @@ if ($bossInfo) {
 
 <!-- Audio pour le buzzer -->
 <audio id="buzzerSound" preload="auto">
-    <source src="{{ asset('sounds/buzz.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
 </audio>
 
-<!-- Audio pour "sans buzzer" -->
+<!-- Audio pour "sans buzzer" (fin du chrono) -->
 <audio id="noBuzzSound" preload="auto">
-    <source src="{{ asset('sounds/no_buzz_tick.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
+</audio>
+
+<!-- Audio de fond "grenouille" pendant le chrono -->
+<audio id="chronoBackgroundSound" preload="auto">
+    <source src="{{ asset('sounds/grenouille.mp3') }}" type="audio/mpeg">
 </audio>
 
 <script>
@@ -737,12 +742,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Démarrer le chronomètre
     function startTimer() {
+        // Jouer le son de fond "grenouille" dès le début du chrono
+        const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
+        chronoBackgroundSound.currentTime = 0;
+        chronoBackgroundSound.play().catch(e => console.log('Audio play failed:', e));
+        
         timerInterval = setInterval(() => {
             timeLeft--;
             chronoTimer.textContent = timeLeft;
             
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
+                chronoBackgroundSound.pause(); // Arrêter le son grenouille
                 if (!buzzed) {
                     handleNoBuzz();
                 }
@@ -757,7 +768,11 @@ document.addEventListener('DOMContentLoaded', function() {
         buzzed = true;
         clearInterval(timerInterval);
         
-        // Jouer le son
+        // Arrêter le son grenouille
+        const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
+        chronoBackgroundSound.pause();
+        
+        // Jouer le son buzzer
         buzzerSound.currentTime = 0;
         buzzerSound.play();
         

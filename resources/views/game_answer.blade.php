@@ -503,7 +503,7 @@ $correctIndex = $params['question']['correct_index'] ?? -1;
 @endif
 
 <audio id="tickSound" preload="auto" loop>
-    <source src="{{ asset('sounds/tick.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('sounds/tic_tac.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="timeoutSound" preload="auto">
