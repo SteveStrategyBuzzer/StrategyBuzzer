@@ -133,7 +133,6 @@ Route::prefix('solo')->name('solo.')->group(function () {
     Route::get('/round-result', [SoloController::class, 'roundResult'])->name('round-result');
     Route::get('/victory', [SoloController::class, 'victory'])->name('victory');
     Route::get('/defeat',  [SoloController::class, 'defeat'])->name('defeat');
-    Route::get('/stat',    [SoloController::class, 'stat'])->name('stat');
 });
 
 /* ===== DUO ===== */

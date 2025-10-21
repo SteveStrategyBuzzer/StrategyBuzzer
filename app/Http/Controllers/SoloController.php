@@ -898,19 +898,6 @@ class SoloController extends Controller
         return view('defeat', compact('params'));
     }
 
-    public function stat()
-    {
-        $data = [
-            'score'        => 8,
-            'total'        => 10,
-            'pourcentage'  => 80,
-            'niveau'       => session('niveau_selectionne', '?'),
-            'theme'        => session('theme', '?'),
-            'avatar'       => session('avatar', 'Aucun'),
-        ];
-
-        return view('stat', compact('data'));
-    }
     
     private function getOpponentName($niveau)
     {

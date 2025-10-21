@@ -620,9 +620,9 @@ function handleTimeout() {
         bubble.classList.add('disabled');
     });
     
-    // Rediriger vers les stats (timeout = échec)
+    // Soumettre le formulaire sans réponse (timeout)
     setTimeout(() => {
-        window.location.href = "{{ route('solo.stat') }}";
+        document.getElementById('answerForm').submit();
     }, 2000);
 }
 
