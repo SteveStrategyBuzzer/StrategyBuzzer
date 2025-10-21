@@ -75,10 +75,9 @@
     ];
     $unlockedMusic = data_get($s, 'unlocked.music', []) ?: [
         ['id'=>'strategybuzzer', 'label'=>'StrategyBuzzer'],
-        ['id'=>'', 'label'=>'Aucun'],
-        ['id'=>'fun_loop_01','label'=>'Fun 01'],
-        ['id'=>'chill_loop','label'=>'Chill'],
-        ['id'=>'punchy_loop','label'=>'Punchy'],
+        ['id'=>'fun_01','label'=>'Fun 01'],
+        ['id'=>'chill','label'=>'Chill'],
+        ['id'=>'punchy','label'=>'Punchy'],
     ];
     $themes = ['Classique','Fun','Intello','Party','Punchy'];
 
