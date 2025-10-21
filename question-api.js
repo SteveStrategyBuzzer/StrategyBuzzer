@@ -52,9 +52,12 @@ app.post('/generate-question', async (req, res) => {
       ? `Tu es un générateur de questions de quiz en français. Génère UNE SEULE question unique de ${themeLabel} avec un niveau de difficulté ${difficultyDesc} (niveau ${niveau}/100).
 
 IMPORTANT:
-- La question doit être unique, intéressante et non-redondante
+- La question doit être VRAIMENT UNIQUE et ORIGINALE - évite absolument les questions clichées ou répétitives
+- Ne pose PAS de questions évidentes ou trop simples (ex: "Quelle est la capitale de la France?", "Quel animal est le meilleur ami de l'homme?")
+- Varie les sujets, les angles d'approche et les formulations
 - Adapte la complexité au niveau ${niveau} (plus le niveau est élevé, plus la question doit être difficile)
 - Pour les niveaux élevés (>50), utilise des détails précis, des dates exactes, des noms complets
+- Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 
 Format JSON requis:
 {
@@ -73,9 +76,12 @@ RÈGLES STRICTES:
       : `Tu es un générateur de questions de quiz en français. Génère UNE SEULE question Vrai/Faux unique de ${themeLabel} avec un niveau de difficulté ${difficultyDesc} (niveau ${niveau}/100).
 
 IMPORTANT:
-- La question doit être unique, intéressante et non-redondante
+- La question doit être VRAIMENT UNIQUE et ORIGINALE - évite absolument les affirmations clichées ou répétitives
+- Ne pose PAS d'affirmations évidentes (ex: "Paris est la capitale de la France", "Le chien est un animal domestique")
+- Varie les sujets et les angles d'approche
 - Adapte la complexité au niveau ${niveau}
 - Pour les niveaux élevés, utilise des affirmations plus nuancées
+- Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 
 Format JSON requis:
 {
@@ -105,7 +111,7 @@ RÈGLES STRICTES:
         }
       ],
       response_format: { type: "json_object" },
-      temperature: 1.0,
+      temperature: 1.2,
       max_completion_tokens: 500
     });
 
