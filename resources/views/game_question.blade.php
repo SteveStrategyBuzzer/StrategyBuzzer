@@ -729,6 +729,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let buzzed = false;
     let buzzerDuration = 1500;
     let noBuzzDuration = 3500;
+    let grenouilleStartDelay = 0; // Délai avant de démarrer grenouille
     
     // Charger le buzzer sélectionné depuis localStorage
     const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default_1';
@@ -746,12 +747,24 @@ document.addEventListener('DOMContentLoaded', function() {
         noBuzzDuration = Math.floor(noBuzzSound.duration * 1000) + 100;
     });
     
+    // Calculer quand démarrer grenouille pour qu'elle se termine à la fin du chrono
+    const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
+    chronoBackgroundSound.addEventListener('loadedmetadata', function() {
+        const grenouilleLength = chronoBackgroundSound.duration; // durée en secondes
+        grenouilleStartDelay = Math.max(0, (timeLeft - grenouilleLength) * 1000); // délai en ms
+        console.log(`Grenouille: durée ${grenouilleLength}s, démarre dans ${grenouilleStartDelay}ms`);
+    });
+    
     // Démarrer le chronomètre
     function startTimer() {
-        // Jouer le son de fond "grenouille" dès le début du chrono
-        const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
-        chronoBackgroundSound.currentTime = 0;
-        chronoBackgroundSound.play().catch(e => console.log('Audio play failed:', e));
+        // Démarrer le son grenouille avec un délai pour qu'il se termine à la fin du chrono
+        setTimeout(() => {
+            if (!buzzed) { // Ne jouer que si pas déjà buzzé
+                const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
+                chronoBackgroundSound.currentTime = 0;
+                chronoBackgroundSound.play().catch(e => console.log('Audio play failed:', e));
+            }
+        }, grenouilleStartDelay);
         
         timerInterval = setInterval(() => {
             timeLeft--;
@@ -759,6 +772,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
+                const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
                 chronoBackgroundSound.pause(); // Arrêter le son grenouille
                 if (!buzzed) {
                     handleNoBuzz();
