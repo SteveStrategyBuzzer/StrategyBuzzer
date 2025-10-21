@@ -69,6 +69,8 @@
     $theme    = data_get($s, 'theme.style', 'Classique');
 
     $unlockedBuzzers = data_get($s, 'unlocked.buzzers', []) ?: [
+        ['id'=>'buzzer_default_1','label'=>'Buzzer Par Défaut 1'],
+        ['id'=>'buzzer_default_2','label'=>'Buzzer Par Défaut 2'],
         ['id'=>'classic_beep','label'=>'Classique'],
         ['id'=>'retro','label'=>'Rétro'],
         ['id'=>'laser','label'=>'Laser'],
@@ -579,6 +581,20 @@
       </div>
     </div>
 
+    {{-- Buzzer --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">Buzzer</div>
+      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+        <span class="sb-chooser" title="Choisir">▼
+          <select name="sound[buzzer_id]" id="sel-buzzer">
+            @foreach($unlockedBuzzers as $b)
+              <option value="{{ $b['id'] }}" @selected((string)$buzzerId === (string)$b['id'])>{{ $b['label'] }}</option>
+            @endforeach
+          </select>
+        </span>
+      </div>
+    </div>
+
     {{-- Boutons Enregistrer et Déconnexion côte à côte --}}
     <div style="margin-top:15px; text-align:center; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
       <button type="submit" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;">Enregistrer</button>
@@ -606,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const chkAmb   = byId('chk-amb');     // ✅ toggle Ambiance
   const chkGame  = byId('chk-gameplay'); // ✅ toggle Gameplay
   const selLigue = byId('sel-ligue');
+  const selBuzzer = byId('sel-buzzer'); // ✅ sélecteur Buzzer
   
   // Synchroniser l'état initial avec localStorage
   if (chkAmb) {
@@ -667,6 +684,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const selGameplay = byId('sel-gameplay');
   if (chkGame) chkGame.addEventListener('change', updateGameplay);
   if (selGameplay) selGameplay.addEventListener('change', updateGameplay);
+
+  // Buzzer - Synchroniser avec localStorage
+  if (selBuzzer) {
+    // Charger le buzzer sélectionné depuis localStorage au chargement
+    const savedBuzzer = localStorage.getItem('selectedBuzzer');
+    if (savedBuzzer) {
+      selBuzzer.value = savedBuzzer;
+    }
+    
+    // Sauvegarder le choix dans localStorage lors du changement
+    selBuzzer.addEventListener('change', function() {
+      localStorage.setItem('selectedBuzzer', selBuzzer.value);
+      console.log('✅ Buzzer changé:', selBuzzer.value);
+    });
+  }
 
   // Initialisation au chargement
   updateAmbiance();

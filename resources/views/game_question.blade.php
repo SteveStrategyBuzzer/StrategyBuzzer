@@ -703,9 +703,9 @@ if ($bossInfo) {
     </div>
 </div>
 
-<!-- Audio pour le buzzer -->
+<!-- Audio pour le buzzer (dynamique selon le choix utilisateur) -->
 <audio id="buzzerSound" preload="auto">
-    <source src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
+    <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
 </audio>
 
 <!-- Audio pour "sans buzzer" (fin du chrono) -->
@@ -722,12 +722,18 @@ if ($bossInfo) {
 document.addEventListener('DOMContentLoaded', function() {
     const buzzButton = document.getElementById('buzzButton');
     const buzzerSound = document.getElementById('buzzerSound');
+    const buzzerSource = document.getElementById('buzzerSource');
     const chronoTimer = document.getElementById('chronoTimer');
     let timeLeft = 8;
     let timerInterval;
     let buzzed = false;
     let buzzerDuration = 1500;
     let noBuzzDuration = 3500;
+    
+    // Charger le buzzer sélectionné depuis localStorage
+    const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default_1';
+    buzzerSource.src = `/sounds/${selectedBuzzer}.mp3`;
+    buzzerSound.load();
     
     // Détecter la durée du son buzzer : délai de 100ms APRÈS la fin du son
     buzzerSound.addEventListener('loadedmetadata', function() {
