@@ -653,7 +653,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  if (selAmb)  selAmb.addEventListener('change', updateAmbiance);
+  if (selAmb) {
+    selAmb.addEventListener('change', function() {
+      updateAmbiance();
+      // Changer la musique en temps réel
+      if (window.changeAmbientMusic) {
+        window.changeAmbientMusic(selAmb.value);
+      }
+    });
+  }
 
   // Gameplay (toggle + menu)
   const selGameplay = byId('sel-gameplay');

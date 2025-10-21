@@ -16,9 +16,7 @@
     </main>
 
     <!-- Musique d'ambiance StrategyBuzzer (joue partout sauf en gameplay) -->
-    <audio id="ambientMusic" preload="auto" loop>
-        <source src="{{ asset('sounds/strategybuzzer_ambient.mp3') }}" type="audio/mpeg">
-    </audio>
+    <audio id="ambientMusic" preload="auto" loop></audio>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -27,6 +25,14 @@
     (function() {
         const ambientMusic = document.getElementById('ambientMusic');
         if (!ambientMusic) return;
+        
+        // Mapping des IDs de musique vers les fichiers
+        const musicFiles = {
+            'strategybuzzer': '/sounds/strategybuzzer_ambient.mp3',
+            'fun_01': '/sounds/fun_01.mp3',
+            'chill': '/sounds/chill.mp3',
+            'punchy': '/sounds/punchy.mp3'
+        };
         
         // Pages de jeu où la musique d'ambiance NE doit PAS jouer
         const gameplayPages = [
@@ -56,9 +62,44 @@
             return enabled === null || enabled === 'true'; // Par défaut activé
         }
         
-        // Écouter les changements d'activation/désactivation depuis le profil
+        // Obtenir la musique choisie (par défaut strategybuzzer)
+        function getSelectedMusic() {
+            return localStorage.getItem('ambient_music_id') || 'strategybuzzer';
+        }
+        
+        // Charger la source audio selon le choix
+        function loadMusicSource() {
+            const musicId = getSelectedMusic();
+            const musicFile = musicFiles[musicId] || musicFiles['strategybuzzer'];
+            
+            // Ne recharger que si la source a changé
+            if (ambientMusic.src !== window.location.origin + musicFile) {
+                const wasPlaying = !ambientMusic.paused;
+                const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + musicId) || '0');
+                
+                ambientMusic.src = musicFile;
+                ambientMusic.load();
+                
+                ambientMusic.addEventListener('loadedmetadata', function onLoaded() {
+                    if (savedTime > 0 && savedTime < ambientMusic.duration) {
+                        ambientMusic.currentTime = savedTime;
+                    }
+                    if (wasPlaying && isMusicEnabled() && !isGameplayPage() && !isResultPage) {
+                        ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
+                    }
+                    ambientMusic.removeEventListener('loadedmetadata', onLoaded);
+                }, { once: true });
+            }
+        }
+        
+        // Charger la source initiale
+        loadMusicSource();
+        
+        // Écouter les changements de musique ou d'activation
         window.addEventListener('storage', function(e) {
-            if (e.key === 'ambient_music_enabled') {
+            if (e.key === 'ambient_music_id') {
+                loadMusicSource();
+            } else if (e.key === 'ambient_music_enabled') {
                 if (e.newValue === 'true' && !isGameplayPage() && !isResultPage) {
                     ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
                 } else {
@@ -69,24 +110,11 @@
         
         // Si on est sur une page de gameplay, arrêter la musique
         if (isGameplayPage() || isResultPage) {
-            // Sauvegarder la position actuelle
-            const currentTime = parseFloat(localStorage.getItem('ambientMusicTime') || '0');
-            ambientMusic.currentTime = currentTime;
-            
-            // Ne pas jouer la musique
             ambientMusic.pause();
-            
-            // Continuer à sauvegarder la position pour la reprendre plus tard
-            setInterval(() => {
-                localStorage.setItem('ambientMusicTime', ambientMusic.currentTime.toString());
-            }, 1000);
         } else {
             // Pages non-gameplay : jouer la musique d'ambiance SI activée
+            const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + getSelectedMusic()) || '0');
             
-            // Restaurer la position de lecture depuis localStorage
-            const savedTime = parseFloat(localStorage.getItem('ambientMusicTime') || '0');
-            
-            // Attendre que les métadonnées soient chargées pour définir currentTime
             ambientMusic.addEventListener('loadedmetadata', function() {
                 if (savedTime > 0 && savedTime < ambientMusic.duration) {
                     ambientMusic.currentTime = savedTime;
@@ -110,12 +138,14 @@
             
             // Sauvegarder la position de lecture toutes les secondes
             setInterval(() => {
-                localStorage.setItem('ambientMusicTime', ambientMusic.currentTime.toString());
+                const musicId = getSelectedMusic();
+                localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
             }, 1000);
             
             // Sauvegarder la position avant de quitter la page
             window.addEventListener('beforeunload', () => {
-                localStorage.setItem('ambientMusicTime', ambientMusic.currentTime.toString());
+                const musicId = getSelectedMusic();
+                localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
             });
         }
         
@@ -127,6 +157,12 @@
             } else {
                 ambientMusic.pause();
             }
+        };
+        
+        // Exposer une fonction pour changer la musique
+        window.changeAmbientMusic = function(musicId) {
+            localStorage.setItem('ambient_music_id', musicId);
+            loadMusicSource();
         };
     })();
     </script>
