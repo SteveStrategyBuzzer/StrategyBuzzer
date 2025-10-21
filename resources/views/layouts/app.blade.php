@@ -50,6 +50,23 @@
         // Variable pour indiquer si c'est la page de résultat (game_result)
         const isResultPage = @json(isset($params) && isset($params['is_correct']));
         
+        // Vérifier si la musique est activée dans les paramètres du profil
+        function isMusicEnabled() {
+            const enabled = localStorage.getItem('ambient_music_enabled');
+            return enabled === null || enabled === 'true'; // Par défaut activé
+        }
+        
+        // Écouter les changements d'activation/désactivation depuis le profil
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'ambient_music_enabled') {
+                if (e.newValue === 'true' && !isGameplayPage() && !isResultPage) {
+                    ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
+                } else {
+                    ambientMusic.pause();
+                }
+            }
+        });
+        
         // Si on est sur une page de gameplay, arrêter la musique
         if (isGameplayPage() || isResultPage) {
             // Sauvegarder la position actuelle
@@ -64,7 +81,7 @@
                 localStorage.setItem('ambientMusicTime', ambientMusic.currentTime.toString());
             }, 1000);
         } else {
-            // Pages non-gameplay : jouer la musique d'ambiance
+            // Pages non-gameplay : jouer la musique d'ambiance SI activée
             
             // Restaurer la position de lecture depuis localStorage
             const savedTime = parseFloat(localStorage.getItem('ambientMusicTime') || '0');
@@ -75,16 +92,20 @@
                     ambientMusic.currentTime = savedTime;
                 }
                 
-                // Jouer la musique automatiquement
-                ambientMusic.play().catch(err => {
-                    console.log('Lecture automatique bloquée. Attente interaction utilisateur.');
-                    
-                    // Si le navigateur bloque la lecture auto, jouer au premier clic
-                    document.addEventListener('click', function playOnClick() {
-                        ambientMusic.play().catch(e => console.log('Erreur lecture:', e));
-                        document.removeEventListener('click', playOnClick);
-                    }, { once: true });
-                });
+                // Jouer la musique automatiquement SEULEMENT si activée
+                if (isMusicEnabled()) {
+                    ambientMusic.play().catch(err => {
+                        console.log('Lecture automatique bloquée. Attente interaction utilisateur.');
+                        
+                        // Si le navigateur bloque la lecture auto, jouer au premier clic
+                        document.addEventListener('click', function playOnClick() {
+                            if (isMusicEnabled()) {
+                                ambientMusic.play().catch(e => console.log('Erreur lecture:', e));
+                            }
+                            document.removeEventListener('click', playOnClick);
+                        }, { once: true });
+                    });
+                }
             });
             
             // Sauvegarder la position de lecture toutes les secondes
@@ -97,6 +118,16 @@
                 localStorage.setItem('ambientMusicTime', ambientMusic.currentTime.toString());
             });
         }
+        
+        // Exposer une fonction globale pour contrôler la musique depuis le profil
+        window.toggleAmbientMusic = function(enabled) {
+            localStorage.setItem('ambient_music_enabled', enabled.toString());
+            if (enabled && !isGameplayPage() && !isResultPage) {
+                ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
+            } else {
+                ambientMusic.pause();
+            }
+        };
     })();
     </script>
 </body>

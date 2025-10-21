@@ -65,6 +65,7 @@
 
     $buzzerId = data_get($s, 'sound.buzzer_id');
     $musicId  = data_get($s, 'sound.music_id');
+    $gameplayMusicId = data_get($s, 'gameplay.music_id', $musicId); // Musique gameplay (par défaut = ambiance)
     $theme    = data_get($s, 'theme.style', 'Classique');
 
     $unlockedBuzzers = data_get($s, 'unlocked.buzzers', []) ?: [
@@ -73,6 +74,7 @@
         ['id'=>'laser','label'=>'Laser'],
     ];
     $unlockedMusic = data_get($s, 'unlocked.music', []) ?: [
+        ['id'=>'strategybuzzer', 'label'=>'StrategyBuzzer'],
         ['id'=>'', 'label'=>'Aucun'],
         ['id'=>'fun_loop_01','label'=>'Fun 01'],
         ['id'=>'chill_loop','label'=>'Chill'],
@@ -339,18 +341,12 @@
       </div>
     </div>
 
-    <div class="sb-row">
-      <div class="sb-k">Buzzer</div>
-      <div class="sb-v" id="apercu-buzzer">
-        {{ collect($unlockedBuzzers)->firstWhere('id',$buzzerId)['label'] ?? 'Classique' }}
-      </div>
-    </div>
 
 <div class="sb-row">
   <div class="sb-k">Gameplay</div>
   <div class="sb-v" id="apercu-gameplay">
-    @if($resultsOn && !empty($musicId))
-      {{ collect($unlockedMusic)->firstWhere('id', $musicId)['label'] ?? '—' }}
+    @if($resultsOn && !empty($gameplayMusicId))
+      {{ collect($unlockedMusic)->firstWhere('id', $gameplayMusicId)['label'] ?? '—' }}
     @else
       Désactivé
     @endif
@@ -577,30 +573,7 @@
         <span class="sb-chooser" title="Choisir">▼
           <select name="gameplay[music_id]" id="sel-gameplay">
             @foreach($unlockedMusic as $m)
-              <option value="{{ $m['id'] }}">{{ $m['label'] }}</option>
-            @endforeach
-          </select>
-        </span>
-      </div>
-    </div>
-
-    {{-- 🔊 Son --}}
-    <div style="text-align:center; font-weight:bold; margin:10px 0; opacity:.9;">
-      🔊 Son
-    </div>
-
-    {{-- Buzzer --}}
-    <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">Buzzer</div>
-      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-        <label class="sb-toggle" style="margin-right:auto;">
-          <input type="checkbox" name="options[buzzer]" value="1" id="chk-buzz" {{ $buzzerOn ? 'checked' : '' }}>
-          <span>Activer</span>
-        </label>
-        <span class="sb-chooser" title="Choisir">▼
-          <select name="sound[buzzer_id]" id="sel-buzz">
-            @foreach($unlockedBuzzers as $b)
-              <option value="{{ $b['id'] }}" @selected((string)$buzzerId === (string)$b['id'])>{{ $b['label'] }}</option>
+              <option value="{{ $m['id'] }}" @selected((string)$gameplayMusicId === (string)$m['id'])>{{ $m['label'] }}</option>
             @endforeach
           </select>
         </span>
@@ -631,10 +604,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const selPays  = byId('sel-pays');
   const selTheme = byId('sel-theme');
   const selAmb   = byId('sel-amb');
-  const selBuzz  = byId('sel-buzz');
   const chkAmb   = byId('chk-amb');     // ✅ toggle Ambiance
   const chkGame  = byId('chk-gameplay'); // ✅ toggle Gameplay
   const selLigue = byId('sel-ligue');
+  
+  // Synchroniser l'état initial avec localStorage
+  if (chkAmb) {
+    const savedState = localStorage.getItem('ambient_music_enabled');
+    if (savedState !== null) {
+      chkAmb.checked = (savedState === 'true');
+    }
+  }
 
   // Fonctions génériques pour Ambiance & Gameplay
   const updateAmbiance = () => {
@@ -648,9 +628,10 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const updateGameplay = () => {
-    if (chkGame && selAmb) { // Gameplay utilise aussi la musique comme base
+    const selGameplay = byId('sel-gameplay');
+    if (chkGame && selGameplay) {
       if (chkGame.checked) {
-        setTxt('apercu-gameplay', selAmb.options[selAmb.selectedIndex].text || 'Classique');
+        setTxt('apercu-gameplay', selGameplay.options[selGameplay.selectedIndex].text || 'StrategyBuzzer');
       } else {
         setTxt('apercu-gameplay', 'Désactivé');
       }
@@ -663,16 +644,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (selTheme) selTheme.addEventListener('change', () => setTxt('apercu-theme', selTheme.value));
   if (selLigue) selLigue.addEventListener('change', () => setTxt('apercu-ligue', selLigue.value));
 
-  // Ambiance (toggle + menu)
-  if (chkAmb)  chkAmb.addEventListener('change', updateAmbiance);
+  // Ambiance (toggle + menu) - Synchroniser avec la musique globale
+  if (chkAmb) {
+    chkAmb.addEventListener('change', function() {
+      updateAmbiance();
+      // Synchroniser avec la musique globale dans app.blade.php
+      if (window.toggleAmbientMusic) {
+        window.toggleAmbientMusic(chkAmb.checked);
+      }
+    });
+  }
   if (selAmb)  selAmb.addEventListener('change', updateAmbiance);
 
   // Gameplay (toggle + menu)
+  const selGameplay = byId('sel-gameplay');
   if (chkGame) chkGame.addEventListener('change', updateGameplay);
-  if (selAmb)  selAmb.addEventListener('change', updateGameplay);
-
-  // Buzzer
-  if (selBuzz) selBuzz.addEventListener('change', () => setTxt('apercu-buzzer', selBuzz.options[selBuzz.selectedIndex].text));
+  if (selGameplay) selGameplay.addEventListener('change', updateGameplay);
 
   // Initialisation au chargement
   updateAmbiance();
