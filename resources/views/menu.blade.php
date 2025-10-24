@@ -505,5 +505,25 @@
         }
     });
 })();
+
+// === Démarrage automatique de la musique d'ambiance dès l'arrivée au menu ===
+(function() {
+  // Attendre que la fonction globale soit définie dans layouts/app.blade.php
+  function tryStartMusic() {
+    if (window.startAmbientMusicSession) {
+      window.startAmbientMusicSession();
+    } else {
+      // Réessayer après un court délai si la fonction n'est pas encore définie
+      setTimeout(tryStartMusic, 100);
+    }
+  }
+  
+  // Démarrer après le chargement complet du DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryStartMusic);
+  } else {
+    tryStartMusic();
+  }
+})();
 </script>
 @endsection

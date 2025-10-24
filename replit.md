@@ -6,6 +6,13 @@ StrategyBuzzer is a real-time quiz buzzer game application that combines a Larav
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+- **Dual Audio System Implemented** (October 24, 2025):
+  - **Ambient Navigation Music**: Starts automatically on menu.blade.php after login with default "StrategyBuzzer" track, continues during navigation (menu/solo/duo/boutique), pauses during gameplay, resumes after, resets on logout. Players can customize/disable via profile settings.
+  - **Gameplay Background Music**: Continuous at -6 dB (volume 0.5) across all gameplay pages (game_question → game_answer → game_result → victory/defeat) with localStorage position tracking and autoplay fallback mechanisms.
+  - **Audio Synchronization**: Countdown synchronized with "ladies and gentlemen are you ready.mp3" (6.5s) using audio.currentTime for perfect sync.
+- Removed obsolete stat.blade.php intermediate page; game redirects directly to comprehensive results (game_result/victory/defeat)
+
 ## System Architecture
 
 ### Frontend Architecture
