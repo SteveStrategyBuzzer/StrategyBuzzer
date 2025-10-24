@@ -752,46 +752,59 @@ document.addEventListener('DOMContentLoaded', function() {
         noBuzzDuration = Math.floor(noBuzzSound.duration * 1000) + 100;
     });
     
-    // Démarrer grenouille quand il reste 3 secondes au chrono
+    // Démarrer grenouille quand il reste 3 secondes au chrono (5 secondes après le début si timeLeft=8)
     const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
+    // Calculer immédiatement le délai (5 secondes pour un chrono de 8s)
+    grenouilleStartDelay = (timeLeft - 3) * 1000; // 5000ms si timeLeft = 8
+    console.log(`Grenouille: démarre dans ${grenouilleStartDelay}ms (quand il reste 3s au chrono)`);
+    
     chronoBackgroundSound.addEventListener('loadedmetadata', function() {
         const grenouilleLength = chronoBackgroundSound.duration; // durée en secondes
-        grenouilleStartDelay = Math.max(0, (timeLeft - 3) * 1000); // Démarre quand il reste 3 secondes
-        console.log(`Grenouille: durée ${grenouilleLength}s, démarre dans ${grenouilleStartDelay}ms (quand il reste 3s)`);
+        console.log(`Grenouille: fichier chargé, durée ${grenouilleLength}s`);
     });
     
-    // Démarrer la musique d'ambiance du gameplay à -6 dB (volume 0.5)
+    // Vérifier si la musique de gameplay est activée (paramètre séparé de l'ambiance navigation)
+    function isGameplayMusicEnabled() {
+        const enabled = localStorage.getItem('gameplay_music_enabled');
+        return enabled === 'true'; // Désactivée par défaut, doit être activée explicitement
+    }
+    
+    // Démarrer la musique d'ambiance du gameplay à -6 dB (volume 0.5) SEULEMENT si activée
     const gameplayAmbient = document.getElementById('gameplayAmbient');
     gameplayAmbient.volume = 0.5; // -6 dB ≈ 50% de volume
     
-    // Restaurer la position depuis localStorage si disponible
-    const savedTime = parseFloat(localStorage.getItem('gameplayMusicTime') || '0');
-    gameplayAmbient.addEventListener('loadedmetadata', function() {
-        if (savedTime > 0 && savedTime < gameplayAmbient.duration) {
-            gameplayAmbient.currentTime = savedTime;
-        }
-        
-        gameplayAmbient.play().catch(e => {
-            console.log('Gameplay ambient music autoplay blocked:', e);
-            // Si bloqué, jouer au premier clic
-            document.addEventListener('click', function playGameplayMusic() {
-                gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
-                document.removeEventListener('click', playGameplayMusic);
-            }, { once: true });
+    if (isGameplayMusicEnabled()) {
+        // Restaurer la position depuis localStorage si disponible
+        const savedTime = parseFloat(localStorage.getItem('gameplayMusicTime') || '0');
+        gameplayAmbient.addEventListener('loadedmetadata', function() {
+            if (savedTime > 0 && savedTime < gameplayAmbient.duration) {
+                gameplayAmbient.currentTime = savedTime;
+            }
+            
+            gameplayAmbient.play().catch(e => {
+                console.log('Gameplay ambient music autoplay blocked:', e);
+                // Si bloqué, jouer au premier clic
+                document.addEventListener('click', function playGameplayMusic() {
+                    gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
+                    document.removeEventListener('click', playGameplayMusic);
+                }, { once: true });
+            });
         });
-    });
-    
-    // Sauvegarder la position toutes les secondes
-    setInterval(() => {
-        if (!gameplayAmbient.paused) {
+        
+        // Sauvegarder la position toutes les secondes SEULEMENT si musique activée
+        setInterval(() => {
+            if (!gameplayAmbient.paused) {
+                localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
+            }
+        }, 1000);
+        
+        // Sauvegarder avant de quitter la page
+        window.addEventListener('beforeunload', () => {
             localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
-        }
-    }, 1000);
-    
-    // Sauvegarder avant de quitter la page
-    window.addEventListener('beforeunload', () => {
-        localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
-    });
+        });
+    } else {
+        console.log('Musique de gameplay désactivée');
+    }
     
     // Démarrer le chronomètre
     function startTimer() {

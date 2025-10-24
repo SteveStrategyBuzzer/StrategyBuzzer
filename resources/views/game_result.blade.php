@@ -699,38 +699,42 @@
 </audio>
 
 <script>
-// Continuer la musique d'ambiance du gameplay à -6 dB
+// Vérifier si la musique de gameplay est activée
+function isGameplayMusicEnabled() {
+    const enabled = localStorage.getItem('gameplay_music_enabled');
+    return enabled === 'true';
+}
+
+// Continuer la musique d'ambiance du gameplay SEULEMENT si activée
 const gameplayAmbient = document.getElementById('gameplayAmbient');
 gameplayAmbient.volume = 0.5; // -6 dB ≈ 50% de volume
 
-// Restaurer la position depuis localStorage
-const savedTime = parseFloat(localStorage.getItem('gameplayMusicTime') || '0');
-gameplayAmbient.addEventListener('loadedmetadata', function() {
-    if (savedTime > 0 && savedTime < gameplayAmbient.duration) {
-        gameplayAmbient.currentTime = savedTime;
-    }
-    
-    gameplayAmbient.play().catch(e => {
-        console.log('Gameplay music autoplay blocked:', e);
-        // Fallback: rejouer au premier clic utilisateur
-        document.addEventListener('click', function playGameplayMusic() {
-            gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
-            document.removeEventListener('click', playGameplayMusic);
-        }, { once: true });
+if (isGameplayMusicEnabled()) {
+    const savedTime = parseFloat(localStorage.getItem('gameplayMusicTime') || '0');
+    gameplayAmbient.addEventListener('loadedmetadata', function() {
+        if (savedTime > 0 && savedTime < gameplayAmbient.duration) {
+            gameplayAmbient.currentTime = savedTime;
+        }
+        
+        gameplayAmbient.play().catch(e => {
+            console.log('Gameplay music autoplay blocked:', e);
+            document.addEventListener('click', function playGameplayMusic() {
+                gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
+                document.removeEventListener('click', playGameplayMusic);
+            }, { once: true });
+        });
     });
-});
 
-// Sauvegarder la position toutes les secondes
-setInterval(() => {
-    if (!gameplayAmbient.paused) {
+    setInterval(() => {
+        if (!gameplayAmbient.paused) {
+            localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
+        }
+    }, 1000);
+
+    window.addEventListener('beforeunload', () => {
         localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
-    }
-}, 1000);
-
-// Sauvegarder avant de quitter la page
-window.addEventListener('beforeunload', () => {
-    localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
-});
+    });
+}
 
 // Compte à rebours de 15 secondes
 let countdown = 15;

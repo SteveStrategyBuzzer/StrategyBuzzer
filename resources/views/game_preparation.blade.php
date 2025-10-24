@@ -156,6 +156,10 @@ let audioDuration = 0;
 let updateInterval = null;
 let hasStarted = false;
 let hasRedirected = false;
+let fallbackTimeout = null;
+
+// Définir le volume au maximum pour être entendu sur mobile
+audio.volume = 1.0;
 
 // Attendre que l'audio soit chargé
 audio.addEventListener('loadedmetadata', function() {
@@ -164,22 +168,31 @@ audio.addEventListener('loadedmetadata', function() {
     // Afficher le compte à rebours initial
     countdownDisplay.textContent = Math.ceil(audioDuration);
     
-    // Jouer l'audio avec un petit délai pour l'effet
-    setTimeout(() => {
-        audio.play().then(() => {
-            hasStarted = true;
-            startCountdownSync();
-        }).catch(e => {
-            console.log('Audio play failed:', e);
-            // Si l'audio ne joue pas, rediriger après 3 secondes
-            setTimeout(() => {
-                if (!hasRedirected) {
-                    hasRedirected = true;
-                    window.location.href = "{{ route('solo.game') }}";
-                }
-            }, 3000);
-        });
-    }, 300);
+    // Jouer l'audio immédiatement sans délai pour mobile
+    audio.play().then(() => {
+        hasStarted = true;
+        startCountdownSync();
+        if (fallbackTimeout) clearTimeout(fallbackTimeout); // Annuler le fallback
+    }).catch(e => {
+        console.log('Audio play failed, trying on user interaction:', e);
+        // Sur mobile, jouer au premier clic
+        document.addEventListener('click', function playOnClick() {
+            audio.play().then(() => {
+                hasStarted = true;
+                startCountdownSync();
+                if (fallbackTimeout) clearTimeout(fallbackTimeout); // Annuler le fallback
+            }).catch(err => console.log('Audio still failed:', err));
+            document.removeEventListener('click', playOnClick);
+        }, { once: true });
+        
+        // Fallback: rediriger après 6 secondes si l'audio ne joue toujours pas
+        fallbackTimeout = setTimeout(() => {
+            if (!hasStarted && !hasRedirected) {
+                hasRedirected = true;
+                window.location.href = "{{ route('solo.game') }}";
+            }
+        }, 6000);
+    });
 });
 
 // Rediriger immédiatement quand l'audio se termine

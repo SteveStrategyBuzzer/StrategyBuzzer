@@ -36,15 +36,19 @@
         
         // Pages de jeu où la musique d'ambiance NE doit PAS jouer
         const gameplayPages = [
+            '/solo/prepare',
             '/solo/game',
-            '/solo/answer', 
+            '/solo/answer',
             '/solo/next',
+            '/solo/victory',
+            '/solo/defeat',
             '/duo/game',
             '/duo/answer',
             '/league-individual/game',
             '/league-individual/answer',
             '/league-team/game',
-            '/league-team/answer'
+            '/league-team/answer',
+            '/game_result'
         ];
         
         // Vérifier si on est sur une page de gameplay
