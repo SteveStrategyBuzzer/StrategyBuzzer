@@ -718,6 +718,11 @@ if ($bossInfo) {
     <source src="{{ asset('sounds/grenouille.mp3') }}" type="audio/mpeg">
 </audio>
 
+<!-- Musique d'ambiance du gameplay (joue en boucle pendant toute la question à -6 dB) -->
+<audio id="gameplayAmbient" preload="auto" loop>
+    <source src="{{ asset('sounds/gameplay_ambient.mp3') }}" type="audio/mpeg">
+</audio>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const buzzButton = document.getElementById('buzzButton');
@@ -753,6 +758,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const grenouilleLength = chronoBackgroundSound.duration; // durée en secondes
         grenouilleStartDelay = Math.max(0, (timeLeft - grenouilleLength) * 1000); // délai en ms
         console.log(`Grenouille: durée ${grenouilleLength}s, démarre dans ${grenouilleStartDelay}ms`);
+    });
+    
+    // Démarrer la musique d'ambiance du gameplay à -6 dB (volume 0.5)
+    const gameplayAmbient = document.getElementById('gameplayAmbient');
+    gameplayAmbient.volume = 0.5; // -6 dB ≈ 50% de volume
+    gameplayAmbient.play().catch(e => {
+        console.log('Gameplay ambient music autoplay blocked:', e);
+        // Si bloqué, jouer au premier clic
+        document.addEventListener('click', function playGameplayMusic() {
+            gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
+            document.removeEventListener('click', playGameplayMusic);
+        }, { once: true });
     });
     
     // Démarrer le chronomètre
