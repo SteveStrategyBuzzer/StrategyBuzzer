@@ -164,12 +164,21 @@
             }
         };
         
-        // Exposer une fonction pour démarrer la musique (appelée depuis la page profil)
+        // Exposer une fonction pour démarrer la musique (appelée depuis le menu)
         window.startAmbientMusicSession = function() {
+            // Si la session est déjà démarrée, ne rien faire (la musique continue déjà)
+            if (isMusicSessionStarted()) {
+                console.log('Session musicale déjà active, musique continue normalement');
+                return;
+            }
+            
+            // Sinon, démarrer la session pour la première fois
             localStorage.setItem('music_session_started', 'true');
+            console.log('Démarrage de la session musicale');
+            
             if (isMusicEnabled() && !isGameplayPage() && !isResultPage) {
                 ambientMusic.play().catch(err => {
-                    console.log('Erreur démarrage musique:', err);
+                    console.log('Lecture automatique bloquée, attente interaction utilisateur');
                     // Fallback : jouer au prochain clic
                     document.addEventListener('click', function playOnClick() {
                         if (isMusicEnabled()) {
