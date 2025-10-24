@@ -83,11 +83,18 @@ class AvatarController extends Controller
         $unlockedRaw   = (array) data_get($settings, 'unlocked', []);                    // parfois un flat array
         $unlockedAv    = (array) data_get($settings, 'unlocked_avatars', []);            // notre clé explicite
         $questsDone    = (array) data_get($settings, 'quests_completed', []);            // quêtes
+        
+        // Fusionner les deux sources pour stratégiques
         $unlockedStrategiques = array_values(array_unique(array_merge(
             array_intersect(self::STRATEGIQUE_ORDER, $unlockedRaw),
-            $unlockedAv
+            array_intersect(self::STRATEGIQUE_ORDER, $unlockedAv)
         )));
-        $unlockedPacks = array_values(array_intersect(self::PACKS, $unlockedRaw));
+        
+        // Fusionner les deux sources pour packs
+        $unlockedPacks = array_values(array_unique(array_merge(
+            array_intersect(self::PACKS, $unlockedRaw),
+            array_intersect(self::PACKS, $unlockedAv)
+        )));
 
         // Catalog (si service dispo) pour récupérer prix/overrides
         $catalog = class_exists(AvatarCatalog::class) ? (array) AvatarCatalog::get() : [];

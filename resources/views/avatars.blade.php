@@ -16,7 +16,7 @@
   --shadow: 0 10px 24px rgba(0,0,0,.18);
   --radius: 16px; --gap: 14px;
 }
-.page{min-height:100dvh;background:var(--bg);color:var(--ink);padding:24px;}
+.page{min-height:100dvh;background:var(--bg);color:var(--ink);padding:24px;overflow-y:auto;}
 .wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 
 /* header */
@@ -41,9 +41,10 @@
 
 /* Standards mini-carousel */
 .std-card{padding:12px}
-.std-viewport{overflow:hidden;max-width:1100px;margin:0 auto}
-.std-track{display:flex;gap:10px;will-change:transform}
-.std-thumb{width:90px;height:90px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#0f1530;flex:0 0 90px;cursor:pointer;position:relative}
+.std-viewport{overflow-x:auto;overflow-y:hidden;max-width:1100px;margin:0 auto;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.std-track{display:flex;gap:10px;will-change:transform;padding:4px 0}
+.std-thumb{width:90px;height:90px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#0f1530;flex:0 0 90px;cursor:pointer;position:relative;transition:transform .2s,box-shadow .2s}
+.std-thumb:hover{transform:scale(1.05);box-shadow:0 4px 12px rgba(255,255,255,.15)}
 .std-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .std-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2);width:34px;height:34px;border-radius:999px;display:grid;place-items:center;cursor:pointer;z-index:5}
 .std-left{left:6px} .std-right{right:6px}
@@ -85,13 +86,14 @@
 
 /* Mobile Portrait (320px - 480px) */
 @media (max-width: 480px) and (orientation: portrait) {
-  .page{padding:16px 12px}
+  .page{padding:16px 12px;overflow-y:auto;height:100vh}
   .h-title{font-size:1.4rem}
   .pill{font-size:0.85rem;padding:6px 10px}
   .thumbs{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
   .std-thumb{width:70px;height:70px;flex:0 0 70px}
   .preview-grid img{height:100px}
   .stratégique-card img{height:100px}
+  .wrap{padding-bottom:80px}
 }
 
 /* Mobile Paysage (orientation horizontale) */
@@ -238,9 +240,10 @@
 
     {{-- ==== Standards (mini-carrousel) ==== --}}
     <div class="card std-card" style="position:relative">
+      <h3 style="margin:0 0 12px 0;font-size:1.1rem;color:#fff">😊 Avatars Standards</h3>
       <button class="std-nav std-left"  onclick="stdPrev()" aria-label="Précédent"><span>‹</span></button>
       <button class="std-nav std-right" onclick="stdNext()" aria-label="Suivant"><span>›</span></button>
-      <div class="std-viewport">
+      <div class="std-viewport" id="stdViewport">
         <div id="stdTrack" class="std-track">
           @php
             $stdImgs = [
@@ -331,13 +334,15 @@
       </div>
     </div>
 
-    {{-- ==== Avatars stratégiques : une seule grille 4-4-4 (sans titre global) ==== --}}
+    {{-- ==== Avatars stratégiques : une seule grille 4-4-4 ==== --}}
     @php
       $stratégiques = $groups['stratégique'] ?? [];
       $selectedVal = $selectedStrat ?? '';
     @endphp
 
-    <div class="stratégiques">
+    <div class="card" style="margin-top:20px">
+      <h3 style="margin:0 0 12px 0;font-size:1.1rem;color:#fff">⚔️ Avatars Stratégiques</h3>
+      <div class="stratégiques">
       @foreach($stratégiques as $a)
         @php
           $slug = $a['slug'];
@@ -372,6 +377,7 @@
           @if($isActive) <div class="active-tag">Actif</div> @endif
         </div>
       @endforeach
+      </div>
     </div>
 
   </div> {{-- /wrap --}}
@@ -404,9 +410,10 @@
     'images/avatars/standard/standard1.png','images/avatars/standard/standard2.png','images/avatars/standard/standard3.png','images/avatars/standard/standard4.png',
     'images/avatars/standard/standard5.png','images/avatars/standard/standard6.png','images/avatars/standard/standard7.png','images/avatars/standard/standard8.png',
   ];
+  const stdViewport = document.querySelector('.std-viewport');
   const stdTrack = document.getElementById('stdTrack');
-  function stdNext(){ stdTrack.scrollBy({left: 220, behavior:'smooth'}); }
-  function stdPrev(){ stdTrack.scrollBy({left:-220, behavior:'smooth'}); }
+  function stdNext(){ stdViewport.scrollBy({left: 220, behavior:'smooth'}); }
+  function stdPrev(){ stdViewport.scrollBy({left:-220, behavior:'smooth'}); }
   let stdTimer = setInterval(stdNext, 3500);
 
   /* ===== Packs (modale + carrousel) ===== */
