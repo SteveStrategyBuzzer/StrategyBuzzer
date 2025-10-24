@@ -23,6 +23,9 @@ $skills = $currentAvatar !== 'Aucun' ? ($avatarSkills[$currentAvatar] ?? []) : [
 
 // Index de la bonne réponse (pour le skill)
 $correctIndex = $params['question']['correct_index'] ?? -1;
+
+// Toutes les réponses pour vérification JavaScript
+$allAnswers = $params['question']['answers'] ?? [];
 @endphp
 
 <style>
@@ -677,30 +680,65 @@ function activateSkill(skillName, skillIndex) {
         return;
     }
     
-    console.log('Skill activé:', skillName);
-    
-    // Marquer le skill comme utilisé visuellement immédiatement
-    skillButton.classList.add('used');
-    
-    // Enregistrer l'utilisation du skill dans la session via l'API
-    fetch("{{ route('solo.use-skill') }}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({ skill_name: skillName })
-    }).then(response => response.json())
-      .then(data => {
-          console.log('Skill enregistré:', data);
-      })
-      .catch(error => {
-          console.error('Erreur lors de l\'enregistrement du skill:', error);
-      });
+    console.log('Tentative d\'activation du skill:', skillName);
     
     // Implémenter l'effet du skill selon le nom
     if (skillName === 'Calcul Rapide') {
-        // Illuminer la bonne réponse en utilisant data-index pour gérer les questions Vrai/Faux
+        // Vérifier si la question contient des chiffres dans les réponses AVANT de consommer le skill
+        const allAnswers = @json($allAnswers);
+        const hasNumbers = allAnswers.some(answer => {
+            if (!answer) return false;
+            return /\d/.test(answer.toString());
+        });
+        
+        // Si pas de chiffres, le skill ne peut pas être utilisé
+        if (!hasNumbers) {
+            // Afficher un message d'erreur
+            const errorMessage = document.createElement('div');
+            errorMessage.textContent = '❌ Cette question ne contient pas de chiffres !';
+            errorMessage.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                color: white;
+                padding: 15px 30px;
+                border-radius: 25px;
+                font-weight: bold;
+                box-shadow: 0 10px 30px rgba(239, 68, 68, 0.5);
+                z-index: 10000;
+                animation: slideDown 0.5s ease-out;
+            `;
+            document.body.appendChild(errorMessage);
+            
+            setTimeout(() => {
+                errorMessage.style.animation = 'slideUp 0.5s ease-out';
+                setTimeout(() => errorMessage.remove(), 500);
+            }, 2500);
+            
+            return; // Ne pas consommer le skill
+        }
+        
+        // Validation réussie : marquer le skill comme utilisé et enregistrer côté serveur
+        skillButton.classList.add('used');
+        
+        fetch("{{ route('solo.use-skill') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ skill_name: skillName })
+        }).then(response => response.json())
+          .then(data => {
+              console.log('Skill enregistré:', data);
+          })
+          .catch(error => {
+              console.error('Erreur lors de l\'enregistrement du skill:', error);
+          });
+        
+        // Illuminer la bonne réponse
         const correctIndex = {{ $correctIndex }};
         const correctBubble = document.querySelector(`.answer-bubble[data-index="${correctIndex}"]`);
         
@@ -732,8 +770,27 @@ function activateSkill(skillName, skillIndex) {
                 setTimeout(() => skillMessage.remove(), 500);
             }, 3000);
         }
+    } else {
+        // Pour les autres skills : marquer comme utilisé immédiatement
+        skillButton.classList.add('used');
+        
+        fetch("{{ route('solo.use-skill') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ skill_name: skillName })
+        }).then(response => response.json())
+          .then(data => {
+              console.log('Skill enregistré:', data);
+          })
+          .catch(error => {
+              console.error('Erreur lors de l\'enregistrement du skill:', error);
+          });
+        
+        // Autres skills à implémenter plus tard...
     }
-    // Autres skills à implémenter plus tard...
 }
 </script>
 @endsection
