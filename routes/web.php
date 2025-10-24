@@ -111,8 +111,12 @@ Route::post('/logout', function () {
     Auth::logout();
     request()->session()->invalidate();
     request()->session()->regenerateToken();
-    return redirect('/login');
+    return redirect('/logout-cleanup');
 })->name('logout');
+
+Route::get('/logout-cleanup', function () {
+    return view('logout_cleanup');
+})->name('logout.cleanup');
 
 /* ===== SOLO ===== */
 Route::prefix('solo')->name('solo.')->group(function () {
