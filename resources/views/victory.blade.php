@@ -229,5 +229,38 @@
         </div>
         @endif
     </div>
+    
+    <!-- Musique d'ambiance du gameplay (fin de partie) -->
+    <audio id="gameplayAmbient" preload="auto" loop>
+        <source src="{{ asset('sounds/gameplay_ambient.mp3') }}" type="audio/mpeg">
+    </audio>
+    
+    <script>
+    // Continuer la musique d'ambiance du gameplay à -6 dB
+    const gameplayAmbient = document.getElementById('gameplayAmbient');
+    gameplayAmbient.volume = 0.5; // -6 dB ≈ 50% de volume
+    
+    // Restaurer la position depuis localStorage
+    const savedTime = parseFloat(localStorage.getItem('gameplayMusicTime') || '0');
+    gameplayAmbient.addEventListener('loadedmetadata', function() {
+        if (savedTime > 0 && savedTime < gameplayAmbient.duration) {
+            gameplayAmbient.currentTime = savedTime;
+        }
+        
+        gameplayAmbient.play().catch(e => {
+            console.log('Gameplay music autoplay blocked:', e);
+            // Fallback: rejouer au premier clic utilisateur
+            document.addEventListener('click', function playGameplayMusic() {
+                gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
+                document.removeEventListener('click', playGameplayMusic);
+            }, { once: true });
+        });
+    });
+    
+    // Nettoyer le localStorage après quelques secondes (fin de partie)
+    setTimeout(() => {
+        localStorage.removeItem('gameplayMusicTime');
+    }, 5000);
+    </script>
 </body>
 </html>

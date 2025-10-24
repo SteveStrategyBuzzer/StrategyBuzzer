@@ -763,13 +763,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Démarrer la musique d'ambiance du gameplay à -6 dB (volume 0.5)
     const gameplayAmbient = document.getElementById('gameplayAmbient');
     gameplayAmbient.volume = 0.5; // -6 dB ≈ 50% de volume
-    gameplayAmbient.play().catch(e => {
-        console.log('Gameplay ambient music autoplay blocked:', e);
-        // Si bloqué, jouer au premier clic
-        document.addEventListener('click', function playGameplayMusic() {
-            gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
-            document.removeEventListener('click', playGameplayMusic);
-        }, { once: true });
+    
+    // Restaurer la position depuis localStorage si disponible
+    const savedTime = parseFloat(localStorage.getItem('gameplayMusicTime') || '0');
+    gameplayAmbient.addEventListener('loadedmetadata', function() {
+        if (savedTime > 0 && savedTime < gameplayAmbient.duration) {
+            gameplayAmbient.currentTime = savedTime;
+        }
+        
+        gameplayAmbient.play().catch(e => {
+            console.log('Gameplay ambient music autoplay blocked:', e);
+            // Si bloqué, jouer au premier clic
+            document.addEventListener('click', function playGameplayMusic() {
+                gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
+                document.removeEventListener('click', playGameplayMusic);
+            }, { once: true });
+        });
+    });
+    
+    // Sauvegarder la position toutes les secondes
+    setInterval(() => {
+        if (!gameplayAmbient.paused) {
+            localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
+        }
+    }, 1000);
+    
+    // Sauvegarder avant de quitter la page
+    window.addEventListener('beforeunload', () => {
+        localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
     });
     
     // Démarrer le chronomètre

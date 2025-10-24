@@ -147,6 +147,9 @@
 </audio>
 
 <script>
+// Nettoyer le localStorage de la musique de gameplay au début d'une nouvelle partie
+localStorage.removeItem('gameplayMusicTime');
+
 const audio = document.getElementById('readyAudio');
 const countdownDisplay = document.getElementById('countdown');
 let audioDuration = 0;
