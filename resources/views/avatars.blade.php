@@ -70,7 +70,7 @@
 /* pack 2x2 preview or full selected image */
 .pack-preview{margin-top:10px}
 .preview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.preview-grid img{width:100%;height:140px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12)}
+.preview-grid img{width:100%;aspect-ratio:1/1;height:auto;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12)}
 .preview-main{width:100%;height:196px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.12)}
 
 /* Stratégiques grid (4-4-4, no global title) */
@@ -91,7 +91,7 @@
   .pill{font-size:0.85rem;padding:6px 10px}
   .thumbs{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
   .std-thumb{width:70px;height:70px;flex:0 0 70px}
-  .preview-grid img{height:100px}
+  .preview-grid img{aspect-ratio:1/1;height:auto}
   .stratégique-card img{height:100px}
   .wrap{padding-bottom:80px}
 }
@@ -109,7 +109,7 @@
   .stratégique-card img{height:90px}
   .thumbs{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
   .preview-grid{gap:4px}
-  .preview-grid img{height:80px}
+  .preview-grid img{aspect-ratio:1/1;height:auto}
   .modal .card{max-height:85vh;overflow-y:auto}
 }
 
@@ -275,7 +275,7 @@
               $packs = [
                 ['slug'=>'portraits','label'=>'Portraits'],
                 ['slug'=>'cartoon','label'=>'Cartoon'],
-                ['slug'=>'animal','label'=>'Animal'],
+                ['slug'=>'animal','label'=>'Animaux 1'],
                 ['slug'=>'mythique','label'=>'Mythique'],
                 ['slug'=>'paysage','label'=>'Paysage'],
                 ['slug'=>'objet','label'=>'Objet'],
