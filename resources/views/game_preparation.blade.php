@@ -23,8 +23,8 @@
     background: linear-gradient(135deg, #003DA5 0%, #001A52 100%);
   }
 
-  .concentration-text {
-    font-size: 3rem;
+  .announcement-text {
+    font-size: 2.5rem;
     font-weight: 700;
     text-align: center;
     margin-bottom: 60px;
@@ -45,36 +45,28 @@
     align-items: center;
   }
 
-  .countdown-number {
-    position: absolute;
+  .countdown-display {
     font-size: 20rem;
     font-weight: 900;
     color: #fff;
-    text-shadow: 0 10px 40px rgba(0,0,0,0.7);
-    opacity: 0;
-    transform: scale(0);
+    text-shadow: 0 10px 40px rgba(255,215,0,0.7),
+                 0 0 60px rgba(255,165,0,0.5),
+                 0 0 100px rgba(255,99,71,0.3);
+    animation: countdownPulse 1s ease-in-out infinite;
   }
 
-  .countdown-number.active {
-    animation: countdownAnimation 1s ease-out forwards;
-  }
-
-  @keyframes countdownAnimation {
-    0% {
-      opacity: 0;
-      transform: scale(3);
+  @keyframes countdownPulse {
+    0%, 100% {
+      transform: scale(1);
+      text-shadow: 0 10px 40px rgba(255,215,0,0.7),
+                   0 0 60px rgba(255,165,0,0.5),
+                   0 0 100px rgba(255,99,71,0.3);
     }
-    10% {
-      opacity: 1;
-      transform: scale(3);
-    }
-    90% {
-      opacity: 1;
-      transform: scale(0.8);
-    }
-    100% {
-      opacity: 0;
-      transform: scale(0.2);
+    50% {
+      transform: scale(1.05);
+      text-shadow: 0 10px 50px rgba(255,215,0,0.9),
+                   0 0 80px rgba(255,165,0,0.7),
+                   0 0 120px rgba(255,99,71,0.5);
     }
   }
 
@@ -89,9 +81,10 @@
 
   /* Responsive pour mobile portrait */
   @media (max-width: 767px) and (orientation: portrait) {
-    .concentration-text {
-      font-size: 2rem;
+    .announcement-text {
+      font-size: 1.8rem;
       margin-bottom: 40px;
+      padding: 0 20px;
     }
     
     .countdown-container {
@@ -99,16 +92,17 @@
       height: 300px;
     }
     
-    .countdown-number {
+    .countdown-display {
       font-size: 12rem;
     }
   }
 
   /* Responsive pour mobile landscape */
   @media (max-width: 767px) and (orientation: landscape) {
-    .concentration-text {
-      font-size: 1.8rem;
+    .announcement-text {
+      font-size: 1.5rem;
       margin-bottom: 30px;
+      padding: 0 20px;
     }
     
     .countdown-container {
@@ -116,15 +110,15 @@
       height: 250px;
     }
     
-    .countdown-number {
+    .countdown-display {
       font-size: 10rem;
     }
   }
 
   /* Responsive pour tablette portrait */
   @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
-    .concentration-text {
-      font-size: 2.5rem;
+    .announcement-text {
+      font-size: 2rem;
       margin-bottom: 50px;
     }
     
@@ -133,49 +127,88 @@
       height: 350px;
     }
     
-    .countdown-number {
+    .countdown-display {
       font-size: 15rem;
     }
   }
 </style>
 
 <div class="preparation-container">
-  <div class="concentration-text">🎯 On se Concentre</div>
+  <div class="announcement-text">🎙️ Ladies and Gentlemen, Are You Ready?</div>
   
   <div class="countdown-container">
-    <div class="countdown-number" id="count-3">3</div>
-    <div class="countdown-number" id="count-2">2</div>
-    <div class="countdown-number" id="count-1">1</div>
+    <div class="countdown-display" id="countdown">--</div>
   </div>
 </div>
 
+<!-- Audio de l'annonce -->
+<audio id="readyAudio" preload="auto">
+  <source src="{{ asset('sounds/ready_announcement.mp3') }}" type="audio/mpeg">
+</audio>
+
 <script>
-  // Lancer le compte à rebours automatiquement
-  let currentCount = 3;
-  
-  function showNumber(num) {
-    const element = document.getElementById('count-' + num);
-    if (element) {
-      element.classList.add('active');
-    }
-  }
-  
-  // Démarrer le compte à rebours
-  setTimeout(() => {
-    showNumber(3);
+const audio = document.getElementById('readyAudio');
+const countdownDisplay = document.getElementById('countdown');
+let audioDuration = 0;
+let updateInterval = null;
+let hasStarted = false;
+let hasRedirected = false;
+
+// Attendre que l'audio soit chargé
+audio.addEventListener('loadedmetadata', function() {
+    audioDuration = audio.duration;
     
+    // Afficher le compte à rebours initial
+    countdownDisplay.textContent = Math.ceil(audioDuration);
+    
+    // Jouer l'audio avec un petit délai pour l'effet
     setTimeout(() => {
-      showNumber(2);
-      
-      setTimeout(() => {
-        showNumber(1);
+        audio.play().then(() => {
+            hasStarted = true;
+            startCountdownSync();
+        }).catch(e => {
+            console.log('Audio play failed:', e);
+            // Si l'audio ne joue pas, rediriger après 3 secondes
+            setTimeout(() => {
+                if (!hasRedirected) {
+                    hasRedirected = true;
+                    window.location.href = "{{ route('solo.game') }}";
+                }
+            }, 3000);
+        });
+    }, 300);
+});
+
+// Rediriger immédiatement quand l'audio se termine
+audio.addEventListener('ended', function() {
+    if (!hasRedirected) {
+        hasRedirected = true;
+        clearInterval(updateInterval);
+        window.location.href = "{{ route('solo.game') }}";
+    }
+});
+
+// Synchroniser le compte à rebours avec audio.currentTime
+function startCountdownSync() {
+    updateInterval = setInterval(() => {
+        const remaining = audioDuration - audio.currentTime;
         
-        // Après le 1, rediriger vers la première question
-        setTimeout(() => {
-          window.location.href = "{{ route('solo.game') }}";
-        }, 1000);
-      }, 1000);
-    }, 1000);
-  }, 100);
+        if (remaining > 0) {
+            // Arrondir à l'unité supérieure pour un compte à rebours propre
+            countdownDisplay.textContent = Math.ceil(remaining);
+        } else {
+            countdownDisplay.textContent = '0';
+        }
+    }, 100); // Mise à jour toutes les 100ms pour une synchronisation fluide
+}
+
+// Fallback sécurisé : si l'audio ne démarre jamais, rediriger après 10 secondes
+setTimeout(() => {
+    if (!hasStarted && !hasRedirected) {
+        console.log('Fallback: audio never started, redirecting');
+        hasRedirected = true;
+        window.location.href = "{{ route('solo.game') }}";
+    }
+}, 10000);
 </script>
 @endsection
