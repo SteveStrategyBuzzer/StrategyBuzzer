@@ -752,12 +752,12 @@ document.addEventListener('DOMContentLoaded', function() {
         noBuzzDuration = Math.floor(noBuzzSound.duration * 1000) + 100;
     });
     
-    // Calculer quand démarrer grenouille pour qu'elle se termine à la fin du chrono
+    // Démarrer grenouille quand il reste 3 secondes au chrono
     const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
     chronoBackgroundSound.addEventListener('loadedmetadata', function() {
         const grenouilleLength = chronoBackgroundSound.duration; // durée en secondes
-        grenouilleStartDelay = Math.max(0, (timeLeft - grenouilleLength) * 1000); // délai en ms
-        console.log(`Grenouille: durée ${grenouilleLength}s, démarre dans ${grenouilleStartDelay}ms`);
+        grenouilleStartDelay = Math.max(0, (timeLeft - 3) * 1000); // Démarre quand il reste 3 secondes
+        console.log(`Grenouille: durée ${grenouilleLength}s, démarre dans ${grenouilleStartDelay}ms (quand il reste 3s)`);
     });
     
     // Démarrer la musique d'ambiance du gameplay à -6 dB (volume 0.5)
