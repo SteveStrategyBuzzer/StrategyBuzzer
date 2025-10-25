@@ -14,16 +14,15 @@ class UserQuestProgress extends Model
     protected $fillable = [
         'user_id',
         'quest_id',
-        'current_value',
-        'completed',
-        'claimed',
+        'progress',
         'completed_at',
+        'rewarded',
     ];
 
     protected $casts = [
-        'completed' => 'boolean',
-        'claimed' => 'boolean',
+        'progress' => 'array',
         'completed_at' => 'datetime',
+        'rewarded' => 'boolean',
     ];
 
     public function user()
@@ -36,9 +35,15 @@ class UserQuestProgress extends Model
         return $this->belongsTo(Quest::class);
     }
 
-    public function getProgressPercentageAttribute()
+    // Vérifier si la quête est complétée
+    public function isCompleted()
     {
-        if ($this->quest->target_value == 0) return 100;
-        return min(100, ($this->current_value / $this->quest->target_value) * 100);
+        return $this->completed_at !== null;
+    }
+    
+    // Vérifier si la récompense a été donnée
+    public function isRewarded()
+    {
+        return $this->rewarded === true;
     }
 }

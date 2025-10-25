@@ -10,24 +10,21 @@ class Quest extends Model
     use HasFactory;
 
     protected $fillable = [
-        'key',
         'name',
-        'description',
-        'tier',
-        'reward_pieces',
-        'icon',
         'category',
-        'requirements',
-        'unlocks',
-        'target_value',
-        'repeatable',
-        'order',
+        'condition',
+        'reward_coins',
+        'rarity',
+        'badge_emoji',
+        'badge_description',
+        'detection_code',
+        'detection_params',
+        'auto_complete',
     ];
 
     protected $casts = [
-        'requirements' => 'array',
-        'unlocks' => 'array',
-        'repeatable' => 'boolean',
+        'detection_params' => 'array',
+        'auto_complete' => 'boolean',
     ];
 
     public function userProgress()
@@ -38,5 +35,12 @@ class Quest extends Model
     public function getUserProgress($userId)
     {
         return $this->userProgress()->where('user_id', $userId)->first();
+    }
+    
+    // Vérifier si la quête est complétée par un utilisateur
+    public function isCompletedBy($userId)
+    {
+        $progress = $this->getUserProgress($userId);
+        return $progress && $progress->completed_at !== null;
     }
 }
