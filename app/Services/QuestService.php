@@ -31,12 +31,14 @@ class QuestService
         foreach ($quests as $quest) {
             // Traiter chaque quête dans une transaction atomique
             $completed = DB::transaction(function () use ($user, $quest, $context) {
-                // Verrouiller et récupérer/créer la progression
-                $progress = UserQuestProgress::lockForUpdate()
-                    ->firstOrCreate(
-                        ['user_id' => $user->id, 'quest_id' => $quest->id],
-                        ['progress' => [], 'rewarded' => false]
-                    );
+                // Récupérer ou créer la progression, puis la verrouiller
+                $progress = UserQuestProgress::firstOrCreate(
+                    ['user_id' => $user->id, 'quest_id' => $quest->id],
+                    ['progress' => [], 'rewarded' => false]
+                );
+                
+                // Recharger avec verrouillage
+                $progress = UserQuestProgress::where('id', $progress->id)->lockForUpdate()->first();
                 
                 // Si déjà complétée et récompensée, skip
                 if ($progress->completed_at !== null && $progress->rewarded) {
@@ -197,13 +199,46 @@ class QuestService
         
         // Ajouter la progression pour chaque quête
         return $quests->map(function ($quest) use ($user) {
-            $progress = $quest->getUserProgress($user->id);
+            $progressRecord = $quest->getUserProgress($user->id);
+            $isCompleted = $quest->isCompletedBy($user->id);
+            
+            // Normaliser la progression pour l'affichage selon le type de quête
+            $currentProgress = 0;
+            $totalProgress = 1;
+            
+            // Déterminer le total selon le type de quête (indépendamment de la progression)
+            switch ($quest->detection_code) {
+                case 'fast_answers_10':
+                    $totalProgress = 10;
+                    if ($progressRecord && $progressRecord->progress) {
+                        $currentProgress = $progressRecord->progress['fast_answers'] ?? 0;
+                    }
+                    break;
+                case 'buzz_fast_10':
+                    $totalProgress = 10;
+                    if ($progressRecord && $progressRecord->progress) {
+                        $currentProgress = $progressRecord->progress['fast_buzzes'] ?? 0;
+                    }
+                    break;
+                case 'first_match_10q':
+                case 'perfect_score':
+                case 'skill_used':
+                default:
+                    $totalProgress = 1;
+                    $currentProgress = $isCompleted ? 1 : 0;
+                    break;
+            }
+            
+            if ($isCompleted) {
+                $currentProgress = $totalProgress;
+            }
             
             return [
                 'quest' => $quest,
-                'is_completed' => $quest->isCompletedBy($user->id),
-                'progress' => $progress ? $progress->progress : null,
-                'completed_at' => $progress ? $progress->completed_at : null,
+                'is_completed' => $isCompleted,
+                'progress_current' => $currentProgress,
+                'progress_total' => $totalProgress,
+                'completed_at' => $progressRecord ? $progressRecord->completed_at : null,
             ];
         });
     }
@@ -219,5 +254,106 @@ class QuestService
         // Pour l'instant, retourner vide
         // TODO: Implémenter un système de notification
         return [];
+    }
+    
+    /**
+     * Scanner l'historique de jeu et débloquer automatiquement les quêtes déjà accomplies
+     * 
+     * @param User $user
+     * @return array - Quêtes débloquées
+     */
+    public function scanAndUnlockRetroactiveQuests(User $user): array
+    {
+        $unlockedQuests = [];
+        
+        // Compter les parties Duo jouées par l'utilisateur
+        $duoMatchesCount = DB::table('duo_matches')
+            ->where(function($query) use ($user) {
+                $query->where('player1_id', $user->id)
+                      ->orWhere('player2_id', $user->id);
+            })
+            ->where('status', 'completed')
+            ->count();
+        
+        // Compter les parties Ligue jouées
+        $leagueMatchesCount = DB::table('league_individual_matches')
+            ->where(function($query) use ($user) {
+                $query->where('player1_id', $user->id)
+                      ->orWhere('player2_id', $user->id);
+            })
+            ->where('status', 'completed')
+            ->count();
+        
+        $totalMatches = $duoMatchesCount + $leagueMatchesCount;
+        
+        // Débloquer "C'est un Départ" si au moins 1 partie jouée
+        if ($totalMatches > 0) {
+            $quest = Quest::where('name', 'C\'est un Départ')->first();
+            if ($quest && !$quest->isCompletedBy($user->id)) {
+                $this->completeQuestRetroactive($user, $quest);
+                $unlockedQuests[] = $quest;
+            }
+        }
+        
+        // Compter les scores parfaits en Duo
+        $perfectScoresDuo = DB::table('duo_matches')
+            ->where(function($query) use ($user) {
+                $query->where(function($q) use ($user) {
+                    $q->where('player1_id', $user->id)
+                      ->whereRaw('player1_score >= 10')
+                      ->whereRaw('player2_score = 0');
+                })
+                ->orWhere(function($q) use ($user) {
+                    $q->where('player2_id', $user->id)
+                      ->whereRaw('player2_score >= 10')
+                      ->whereRaw('player1_score = 0');
+                });
+            })
+            ->where('status', 'completed')
+            ->count();
+        
+        // Débloquer "Génie du jour" si au moins 1 score parfait
+        if ($perfectScoresDuo > 0) {
+            $quest = Quest::where('name', 'Génie du jour')->first();
+            if ($quest && !$quest->isCompletedBy($user->id)) {
+                $this->completeQuestRetroactive($user, $quest);
+                $unlockedQuests[] = $quest;
+            }
+        }
+        
+        return $unlockedQuests;
+    }
+    
+    /**
+     * Compléter une quête de manière rétroactive avec transaction atomique
+     */
+    protected function completeQuestRetroactive(User $user, Quest $quest): void
+    {
+        DB::transaction(function () use ($user, $quest) {
+            // Créer ou récupérer la progression avec verrouillage
+            $progress = UserQuestProgress::firstOrCreate(
+                ['user_id' => $user->id, 'quest_id' => $quest->id],
+                ['progress' => [], 'rewarded' => false]
+            );
+            
+            $progress = UserQuestProgress::where('id', $progress->id)->lockForUpdate()->first();
+            
+            // Si déjà complétée, skip
+            if ($progress->completed_at !== null && $progress->rewarded) {
+                return;
+            }
+            
+            // Marquer comme complétée
+            $progress->completed_at = now();
+            $progress->rewarded = true;
+            $progress->save();
+            
+            // Attribuer les pièces
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
+            if ($lockedUser) {
+                $lockedUser->coins = ($lockedUser->coins ?? 0) + $quest->reward_coins;
+                $lockedUser->save();
+            }
+        });
     }
 }

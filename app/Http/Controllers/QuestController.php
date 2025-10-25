@@ -19,6 +19,16 @@ class QuestController extends Controller
     {
         $user = $request->user();
         
+        // Scanner l'historique et débloquer les quêtes rétroactives (une seule fois)
+        $sessionKey = 'quests_retroactive_scan_' . $user->id;
+        if (!session()->has($sessionKey)) {
+            $unlockedQuests = $this->questService->scanAndUnlockRetroactiveQuests($user);
+            session()->put($sessionKey, true);
+            
+            // Recharger l'utilisateur pour avoir les coins à jour
+            $user->refresh();
+        }
+        
         $rarity = $request->query('rarity', 'Standard');
         
         $questsWithProgress = $this->questService->getUserQuests($user, $rarity);

@@ -10,13 +10,13 @@
   <meta http-equiv="Expires" content="0">
   <style>
 :root{
-  --gap:14px; --radius:18px; --shadow:0 10px 24px rgba(0,0,0,.12);
+  --gap:16px; --radius:20px; --shadow:0 10px 24px rgba(0,0,0,.12);
   --bg:#0b1020; --card:#111735; --ink:#ecf0ff; --muted:#9fb6ff;
   --blue:#2c4bff; --ok:#22c55e; --danger:#ef4444; --line:rgba(255,255,255,.08);
   --gold:#fbbf24;
 }
 *{box-sizing:border-box}
-body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto; background:var(--bg); color:var(--ink); }
+body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto; background:var(--bg); color:var(--ink); overflow-x:hidden; }
 .wrap{ max-width:1200px; margin:0 auto; padding:20px 16px 80px; }
 
 .topbar{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; pointer-events:none; }
@@ -35,85 +35,73 @@ a.clean{ color:var(--muted); text-decoration:none; }
 .hero p{ margin:0; color:var(--muted); }
 
 .grid{ display:grid; gap:var(--gap); }
-.cols-4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
-.cols-3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
-@media (max-width:960px){ .cols-4{ grid-template-columns:repeat(3,1fr);} }
-@media (max-width:760px){ .cols-4,.cols-3{ grid-template-columns:repeat(2,1fr);} }
+.badge-grid{ grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); }
+@media (max-width:760px){ .badge-grid{ grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); } }
 
-.quest-card{
+.badge-item{
   background:var(--card);
-  border:1px solid var(--line);
+  border:2px solid var(--line);
   border-radius:var(--radius);
-  padding:16px;
+  padding:20px;
   box-shadow:var(--shadow);
   display:flex;
-  flex-direction:column;
   align-items:center;
-  text-align:center;
-  transition:transform .2s, box-shadow .2s;
+  justify-content:center;
+  cursor:pointer;
+  transition:all .3s cubic-bezier(0.4, 0, 0.2, 1);
   position:relative;
+  aspect-ratio:1;
 }
 
-.quest-card:hover{ transform:translateY(-2px); box-shadow:0 16px 40px rgba(0,0,0,.2); }
+.badge-item:hover{ transform:translateY(-4px) scale(1.05); box-shadow:0 20px 40px rgba(0,0,0,.25); }
 
-.quest-card.locked{
-  opacity:0.5;
-  filter:grayscale(1);
+.badge-item.locked{
+  opacity:0.4;
+  filter:grayscale(1) blur(1px);
+  cursor:default;
 }
 
-.quest-card.completed{
+.badge-item.locked:hover{
+  transform:none;
+  box-shadow:var(--shadow);
+}
+
+.badge-item.completed{
   border-color:var(--gold);
-  background:linear-gradient(135deg,#1a2344,#15224c);
+  border-width:3px;
+  background:linear-gradient(135deg,rgba(251,191,36,0.1),rgba(251,191,36,0.05));
+  box-shadow:0 0 20px rgba(251,191,36,0.3), var(--shadow);
 }
 
-.quest-card.completed .badge{
-  filter:none !important;
+.badge-item.completed:hover{
+  box-shadow:0 0 30px rgba(251,191,36,0.5), 0 20px 40px rgba(0,0,0,.25);
 }
 
-.badge{
-  font-size:3rem;
-  margin-bottom:8px;
+.badge-emoji{
+  font-size:3.5rem;
   line-height:1;
+  filter:drop-shadow(0 2px 8px rgba(0,0,0,.3));
 }
 
-.quest-card.locked .badge{
-  filter:grayscale(1) brightness(0.5);
+.badge-item.locked .badge-emoji{
+  filter:grayscale(1) brightness(0.6) blur(1px);
 }
 
-.quest-name{
-  font-size:1rem;
-  font-weight:600;
-  color:#fff;
-  margin:0 0 6px;
-}
-
-.quest-desc{
-  font-size:0.85rem;
-  color:var(--muted);
-  margin:0 0 10px;
-  line-height:1.4;
-}
-
-.quest-reward{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  font-size:0.9rem;
-  color:var(--gold);
-  font-weight:600;
-}
-
-.completed-badge{
+.completed-mark{
   position:absolute;
-  top:8px;
-  right:8px;
+  top:6px;
+  right:6px;
   background:var(--ok);
   color:#fff;
-  padding:4px 8px;
-  border-radius:999px;
-  font-size:0.7rem;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:0.75rem;
   font-weight:700;
-  text-transform:uppercase;
+  box-shadow:0 2px 8px rgba(34,197,94,0.4);
 }
 
 .coin-icon{
@@ -150,15 +138,198 @@ a.clean{ color:var(--muted); text-decoration:none; }
   color:var(--muted);
 }
 
+.modal-overlay{
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+  background:rgba(0,0,0,0.8);
+  backdrop-filter:blur(8px);
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  animation:fadeIn .2s;
+}
+
+.modal-overlay.show{
+  display:flex;
+}
+
+@keyframes fadeIn{
+  from{ opacity:0; }
+  to{ opacity:1; }
+}
+
+.modal{
+  background:linear-gradient(135deg,#1a2344,#15224c);
+  border:2px solid var(--line);
+  border-radius:24px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+  max-width:500px;
+  width:100%;
+  max-height:90vh;
+  overflow-y:auto;
+  animation:slideUp .3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp{
+  from{ transform:translateY(40px); opacity:0; }
+  to{ transform:translateY(0); opacity:1; }
+}
+
+.modal-header{
+  padding:24px 24px 16px;
+  text-align:center;
+  border-bottom:1px solid var(--line);
+}
+
+.modal-emoji{
+  font-size:5rem;
+  line-height:1;
+  margin-bottom:12px;
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));
+}
+
+.modal-title{
+  font-size:1.6rem;
+  font-weight:700;
+  color:#fff;
+  margin:0 0 8px;
+}
+
+.modal-desc{
+  font-size:1rem;
+  color:var(--muted);
+  margin:0;
+  line-height:1.5;
+}
+
+.modal-body{
+  padding:20px 24px;
+}
+
+.progress-section{
+  margin-bottom:20px;
+}
+
+.progress-label{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+  font-size:0.9rem;
+}
+
+.progress-text{
+  color:var(--muted);
+}
+
+.progress-value{
+  color:#fff;
+  font-weight:600;
+}
+
+.progress-bar-bg{
+  background:rgba(255,255,255,0.05);
+  border-radius:999px;
+  height:12px;
+  overflow:hidden;
+  border:1px solid var(--line);
+}
+
+.progress-bar-fill{
+  background:linear-gradient(90deg,var(--blue),#4f6fff);
+  height:100%;
+  border-radius:999px;
+  transition:width .3s;
+  box-shadow:0 0 10px rgba(44,75,255,0.5);
+}
+
+.reward-box{
+  background:rgba(251,191,36,0.1);
+  border:2px solid var(--gold);
+  border-radius:16px;
+  padding:16px;
+  text-align:center;
+  margin-bottom:16px;
+}
+
+.reward-label{
+  font-size:0.85rem;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+
+.reward-amount{
+  font-size:2rem;
+  font-weight:700;
+  color:var(--gold);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+.status-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 16px;
+  border-radius:999px;
+  font-size:0.9rem;
+  font-weight:600;
+  margin-top:12px;
+}
+
+.status-badge.completed{
+  background:var(--ok);
+  color:#fff;
+}
+
+.status-badge.locked{
+  background:rgba(255,255,255,0.1);
+  color:var(--muted);
+}
+
+.modal-footer{
+  padding:16px 24px 24px;
+  text-align:center;
+}
+
+.close-btn{
+  appearance:none;
+  border:none;
+  background:rgba(255,255,255,0.1);
+  color:#fff;
+  padding:12px 24px;
+  border-radius:999px;
+  font-size:1rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .2s;
+  border:1px solid var(--line);
+}
+
+.close-btn:hover{
+  background:rgba(255,255,255,0.15);
+  transform:translateY(-2px);
+}
+
 @media (max-width:480px){
   .wrap{padding:16px 12px 60px}
   .topbar{flex-direction:column;align-items:stretch}
   .pill{padding:8px 12px;font-size:0.9rem}
   .tabs{gap:6px}
   .tab{padding:8px 12px;font-size:0.9rem}
-  .cols-4,.cols-3{grid-template-columns:repeat(2,1fr)}
   .stats{grid-template-columns:1fr}
   .hero h1{font-size:1.4rem}
+  .badge-emoji{font-size:2.8rem}
+  .modal{max-width:calc(100vw - 32px)}
+  .modal-emoji{font-size:4rem}
+  .modal-title{font-size:1.3rem}
 }
   </style>
 </head>
@@ -181,7 +352,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
   <!-- Hero -->
   <div class="hero">
     <h1>🏆 Quêtes</h1>
-    <p>Complétez des quêtes pour gagner des pièces et débloquer des récompenses</p>
+    <p>Cliquez sur un badge pour voir les détails</p>
   </div>
 
   <!-- Stats -->
@@ -210,28 +381,31 @@ a.clean{ color:var(--muted); text-decoration:none; }
     <a href="/quests?rarity=Quotidiennes" class="tab {{ $currentRarity === 'Quotidiennes' ? 'active' : '' }}">📅 Quotidiennes</a>
   </div>
 
-  <!-- Quests Grid -->
-  <div class="grid cols-4">
+  <!-- Badge Grid -->
+  <div class="grid badge-grid">
     @foreach($quests as $questData)
       @php
         $quest = $questData['quest'];
         $isCompleted = $questData['is_completed'];
+        $progressCurrent = $questData['progress_current'] ?? 0;
+        $progressTotal = $questData['progress_total'] ?? 1;
+        $progressPercent = $progressTotal > 0 ? min(100, ($progressCurrent / $progressTotal) * 100) : 0;
       @endphp
-      <div class="quest-card {{ $isCompleted ? 'completed' : 'locked' }}">
+      <div class="badge-item {{ $isCompleted ? 'completed' : 'locked' }}" 
+           onclick="openModal({{ json_encode([
+             'name' => $quest->name,
+             'emoji' => $quest->badge_emoji,
+             'description' => $quest->condition,
+             'reward' => $quest->reward_coins,
+             'completed' => $isCompleted,
+             'progress' => $progressCurrent,
+             'total' => $progressTotal,
+             'progressPercent' => $progressPercent
+           ]) }})">
         @if($isCompleted)
-          <span class="completed-badge">✓ Fait</span>
+          <span class="completed-mark">✓</span>
         @endif
-        
-        <div class="badge">{{ $quest->badge_emoji }}</div>
-        <h3 class="quest-name">{{ $quest->name }}</h3>
-        <p class="quest-desc">{{ $quest->condition }}</p>
-        <div class="quest-reward">
-          <svg class="coin-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" fill="#fbbf24"/>
-            <text x="12" y="16" text-anchor="middle" font-size="12" font-weight="bold" fill="#0b1020">C</text>
-          </svg>
-          +{{ $quest->reward_coins }}
-        </div>
+        <div class="badge-emoji">{{ $quest->badge_emoji }}</div>
       </div>
     @endforeach
   </div>
@@ -244,6 +418,82 @@ a.clean{ color:var(--muted); text-decoration:none; }
   @endif
 
 </div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="questModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-emoji" id="modalEmoji"></div>
+      <h2 class="modal-title" id="modalTitle"></h2>
+      <p class="modal-desc" id="modalDesc"></p>
+    </div>
+    <div class="modal-body">
+      <div class="reward-box">
+        <div class="reward-label">Récompense</div>
+        <div class="reward-amount">
+          <svg class="coin-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px">
+            <circle cx="12" cy="12" r="10" fill="#fbbf24"/>
+            <text x="12" y="16" text-anchor="middle" font-size="12" font-weight="bold" fill="#0b1020">C</text>
+          </svg>
+          <span id="modalReward"></span>
+        </div>
+      </div>
+      
+      <div class="progress-section" id="progressSection">
+        <div class="progress-label">
+          <span class="progress-text">Progression</span>
+          <span class="progress-value" id="progressValue"></span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+      </div>
+
+      <div style="text-align:center">
+        <span class="status-badge" id="statusBadge"></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="close-btn" onclick="closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(data) {
+  document.getElementById('modalEmoji').textContent = data.emoji;
+  document.getElementById('modalTitle').textContent = data.name;
+  document.getElementById('modalDesc').textContent = data.description;
+  document.getElementById('modalReward').textContent = '+' + data.reward;
+  document.getElementById('progressValue').textContent = data.progress + ' / ' + data.total;
+  document.getElementById('progressBar').style.width = data.progressPercent + '%';
+  
+  const statusBadge = document.getElementById('statusBadge');
+  if (data.completed) {
+    statusBadge.className = 'status-badge completed';
+    statusBadge.innerHTML = '✓ Complétée';
+  } else {
+    statusBadge.className = 'status-badge locked';
+    statusBadge.innerHTML = '🔒 En cours';
+  }
+  
+  document.getElementById('questModal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(event) {
+  if (!event || event.target.id === 'questModal') {
+    document.getElementById('questModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeModal();
+  }
+});
+</script>
 
 </body>
 </html>
