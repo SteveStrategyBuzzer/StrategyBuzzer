@@ -1,0 +1,253 @@
+#
+Nom de la Quête
+Catégorie
+Condition
+Récompense
+Rareté
+Badge associé
+1
+C’est un Départ
+⚔️ Jeu
+Faire une manche d’un Quiz de 10 questions
++10 pièces
+Standard
+💚 Cœur vert
+2
+Génie du jour
+🧠 Intellectuelle
+Obtenir un score parfait en mode Solo
++30 pièces
+Standard
+🌟 Trophée doré
+3
+Œil Vif
+🧠 Intellectuelle
+Répondre à 10 questions en moins de 2 sec chacune
++10 pièces
+Standard
+⚡ Oeil avec halo de feu
+4
+Encyclopédie vivante
+🧠 Intellectuelle
+Finir un Quiz de chaque thème
++50 pièces
+Standard
+📚 Globe ouvert
+5
+Chicken
+🧠 Intellectuelle
+3 bonnes réponses sans buzzer
++10 pièces
+Standard
+🧩 Cerveau puzzle
+6
+MathExpress
+🧠 Intellectuelle
+5 questions de calcul consécutives bien répondus
++30 pièces
+Standard
+➗ Symbole sigma
+7
+Réflexion éclair
+⚔️ Jeu
+Buzzer en moins de 3 sec à 10 questions
++30 pièces
+Standard
+💡 Ampoule flash
+8
+Polyglotte
+🧠 Intellectuelle
+Réussir à 60% un Quiz dans une autre langue
++10 pièces
+Standard
+🇬🇧 Drapeau bilingue
+9
+Philosophe
+🧠 Intellectuelle
+Gagner un quiz de 40 questions sans skill
++30 pièces
+Standard
+🧙‍♂️ Rouleau antique
+10
+Liseur de l’ombre
+🧬 Avatars
+Trouver une réponse grâce à un Avatar Stratégique
++10 pièces
+Standard
+🔍 Loupe brillante
+11
+Buzz rapide
+⚔️ Jeu
+Être le premier à buzzer 10 fois
++10 pièces
+Standard
+🔔 Buzzer éclatant
+12
+Survie
+⚔️ Jeu
+Finir une partie avec 1 vie restante
++30 pièces
+Standard
+❤️ Cœur fissuré
+13
+Résilient
+⚔️ Jeu
+Perdre 3 parties puis gagner la 4e
++50 pièces
+Standard
+💪 Bouclier vert
+14
+Maître du temps
+⚔️ Jeu
+Passer une manche sans fin de chronos
++50 pièces
+Standard
+⏱️ Horloge d’or
+15
+Buzz silencieux
+⚔️ Jeu
+Gagner sans son Gameplay activé
++10 pièces
+Standard
+🔇 Buzzer muet
+16
+Réveil matinal
+⚔️ Jeu
+Jouer entre 5h et 7h du matin
++15 pièces
+Standard
+🌅 Soleil levant
+17
+Noctambule
+⚔️ Jeu
+Jouer entre 23h et 3h du matin
++15 pièces
+Standard
+🌙 Lune bleue
+18
+Ami fidèle
+🧩 Sociale
+Inviter 1 ami via Facebook
++30 pièces
+Standard
+🤝 Icône bleue
+19
+Communautaire
+🧩 Sociale
+Rejoindre une équipe active
++50 pièces
+Standard
+👥 Main levée
+20
+Soutien
+🧩 Sociale
+1X Aider un coéquipier
++10 pièces
+Standard
+👍 Icône like
+21
+Curieux
+🧩 Sociale
+Socialiser avec 5 joueurs différents
++50 pièces
+Standard
+👀 Icône œil
+22
+Partageur
+🧩 Sociale
+Publier un résultat sur les réseaux
++50 pièces
+Standard
+📤 Flèche sociale
+23
+Répondeur
+🧩 Sociale
+3X Aider un coéquipier
++50 pièces
+Standard
+📬 Enveloppe
+24
+Actif du jour
+🧩 Sociale
+Participer à un chat public
++15 pièces
+Standard
+🗨️ Bulle de chat
+25
+Fête virtuelle
+🧩 Sociale
+1X recevez de l’aide
++50 pièces
+Standard
+🎉 Confettis
+26
+Ligue ouverte
+🧩 Sociale
+Participer à un affrontement (Ligue)
++50 pièces
+Standard
+🔗 Maillon bleu
+27
+Historien social
+🧩 Sociale
+1X Voir scores, anciens tournois
++10 pièces
+Standard
+📜 Rouleau
+28
+Globe-trotter
+🌍 Exploration
+Jouer un quiz de Géographie
++10 pièces
+Standard
+🌎 Planète bleue
+29
+Curieux du monde
+🌍 Exploration
+Réussir 10 questions sur des monuments
++30 pièces
+Standard
+🏰 Tour stylisée
+30
+Archéologue
+🌍 Exploration
+Jouer un quiz d’Histoire 
++10 pièces
+Standard
+🏺 Amphore dorée
+31
+Océanographe
+🌍 Exploration
+Réussir 3 questions sur les océans
++10 pièces
+Standard
+🌊 Vague bleue
+32
+Citadin
+🌍 Exploration
+Gagner un quiz sur la Cuisine
++20 pièces
+Standard
+🏙️ Skyline
+33
+Touriste averti
+🌍 Exploration
+Réussir 1X une question piégée
++50 pièces
+Standard
+🪞 Globe reflet
+34
+Nouveau visage
+🧬 Avatars
+Finir 2 quiz avec avatars différents 
++30 pièces
+Standard
+👤 Silhouette
+35
+Collectionneur sonore
+🛒 Boutique & Monnaie
+Acheter un son de buzzer
++50 pièces
+Standard
+🔔 Buzzer argenté
+
