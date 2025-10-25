@@ -7,6 +7,13 @@ StrategyBuzzer is a real-time quiz buzzer game application that combines a Larav
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **Quest System UI Redesign** (October 25, 2025):
+  - **Minimalist Badge Grid**: Quests page displays only emoji badges (no text) in responsive grid format
+  - **Click-to-Reveal Modal**: Detailed quest information (name, description, progression bar, rewards, status) appears in elegant modal popup
+  - **35 Representative Emojis**: Updated all quest badges to match their descriptions (e.g., 🚀 for "C'est un Départ", 💯 for "Génie du jour")
+  - **Visual States**: Locked badges are grayed + blurred, completed badges have golden border + glow effect
+  - **Retroactive Quest Unlock**: Automatic scan of game history on first /quests visit to unlock already-accomplished quests with coin distribution
+  - **Atomic Transaction Safety**: All quest completions and rewards use row-level locking to prevent race conditions and double-rewards
 - **Dual Audio System Implemented** (October 24, 2025):
   - **Ambient Navigation Music**: Starts automatically on menu.blade.php after login with default "StrategyBuzzer" track, continues during navigation (menu/solo/duo/boutique), pauses during gameplay, resumes after, resets on logout. Players can customize/disable via profile settings.
   - **Gameplay Background Music**: Continuous at -6 dB (volume 0.5) across all gameplay pages (game_question → game_answer → game_result → victory/defeat) with localStorage position tracking and autoplay fallback mechanisms.
@@ -60,6 +67,7 @@ Preferred communication style: Simple, everyday language.
 - **League Team Mode (5v5)**: Team management system (create, invite, manage 5-player rosters), division-based progression, automatic team matchmaking, and 5v5 team gameplay.
 - **Avatar System**: Per-user avatar isolation with themed avatar packs, unlock requirements, and a mandatory avatar selection before menu access. Strategic avatars with in-game skills persist across sessions.
 - **Master Mode (Maître du Jeu)**: Real-time quiz hosting platform for 3-40 participants with mobile-optimized interface. Integrates **AI-Powered Question Generation** via OpenAI API (gpt-3.5-turbo) supporting multiple choice, true/false, and image-based observation questions. Features interactive question editing and image upload.
+- **Quest/Achievement System**: Comprehensive quest system with 35 Standard quests, automatic event-driven detection (first match, perfect scores, fast answers/buzzes, skill usage), atomic transaction-based reward distribution, retroactive unlock scanning, and minimalist badge-grid UI with detailed modal popups.
 
 ## External Dependencies
 
