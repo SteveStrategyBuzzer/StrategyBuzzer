@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Services\QuestService;
 
 class SoloController extends Controller
 {
@@ -490,6 +491,28 @@ class SoloController extends Controller
         ];
         session(['global_stats' => $globalStats]);
         
+        // Vérifier et compléter les quêtes (si connecté)
+        $user = auth()->user();
+        if ($user && $isCorrect && $playerBuzzed) {
+            $questService = new QuestService();
+            
+            // Quête : Réponses rapides (fast_answers_10)
+            // Si le joueur a répondu rapidement (< 2 secondes)
+            if ($buzzTime < 2) {
+                $questService->checkAndCompleteQuests($user, 'fast_answers_10', [
+                    'answer_time' => $buzzTime,
+                ]);
+            }
+            
+            // Quête : Buzz rapides (buzz_fast_10)
+            // Si le joueur a buzzé rapidement (< 3 secondes)
+            if ($buzzTime < 3) {
+                $questService->checkAndCompleteQuests($user, 'buzz_fast_10', [
+                    'buzz_time' => $buzzTime,
+                ]);
+            }
+        }
+        
         // Calculer les données de progression avec valeurs par défaut sécurisées
         $currentQuestion = session('current_question_number', 1);
         $nbQuestions = session('nb_questions', 30);
@@ -825,6 +848,26 @@ class SoloController extends Controller
         
         $totalQuestionsPlayed = count($globalStats);
         $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
+        
+        // Vérifier et compléter les quêtes
+        $user = auth()->user();
+        if ($user) {
+            $questService = new QuestService();
+            
+            // Quête : Première partie de 10 questions
+            $questService->checkAndCompleteQuests($user, 'first_match_10q', [
+                'match_completed' => true,
+                'total_questions' => $totalQuestionsPlayed,
+            ]);
+            
+            // Quête : Score parfait
+            if ($totalCorrect == $totalQuestionsPlayed && $totalQuestionsPlayed >= 10) {
+                $questService->checkAndCompleteQuests($user, 'perfect_score', [
+                    'user_correct_answers' => $totalCorrect,
+                    'total_questions' => $totalQuestionsPlayed,
+                ]);
+            }
+        }
         
         // Récupérer le nom de l'adversaire du prochain niveau
         $opponents = config('opponents');

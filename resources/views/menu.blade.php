@@ -348,7 +348,7 @@
         </a>
 
         <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('quetes') ? route('quetes') : url('/quetes') }}">
+           href="{{ \Illuminate\Support\Facades\Route::has('quests.index') ? route('quests.index') : url('/quests') }}">
             QUÊTES
         </a>
 

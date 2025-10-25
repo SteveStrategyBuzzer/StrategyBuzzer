@@ -9,6 +9,7 @@ use App\Http\Controllers\BoutiqueController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SoloController;
 use App\Http\Controllers\ProfileRegenController;
+use App\Http\Controllers\QuestController;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +65,13 @@ Route::post('/boutique/purchase',   [BoutiqueController::class, 'purchase'])->na
 /* Aliases boutique (anciens liens) */
 Route::get('/avatar/boutique', fn () => redirect()->route('boutique'))->name('avatar.boutique');
 Route::get('/shop',            fn () => redirect()->route('boutique'))->name('shop.alias');
+
+/* ===== Quêtes ===== */
+Route::middleware('auth')->group(function () {
+    Route::get('/quests', [QuestController::class, 'index'])->name('quests.index');
+    Route::get('/quests/{rarity}', [QuestController::class, 'getQuestsByRarity'])->name('quests.rarity');
+    Route::get('/quests/progress/all', [QuestController::class, 'getUserProgress'])->name('quests.progress');
+});
 
 /* ===== Pièces d'or (Stripe) ===== */
 Route::middleware('auth')->group(function () {
