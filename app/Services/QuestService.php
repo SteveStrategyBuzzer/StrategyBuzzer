@@ -266,62 +266,282 @@ class QuestService
     {
         $unlockedQuests = [];
         
-        // Compter les parties Duo jouées par l'utilisateur
-        $duoMatchesCount = DB::table('duo_matches')
-            ->where(function($query) use ($user) {
-                $query->where('player1_id', $user->id)
-                      ->orWhere('player2_id', $user->id);
-            })
-            ->where('status', 'completed')
-            ->count();
+        // Récupérer toutes les quêtes non complétées pour cet utilisateur
+        $allQuests = Quest::all();
         
-        // Compter les parties Ligue jouées
-        $leagueMatchesCount = DB::table('league_individual_matches')
-            ->where(function($query) use ($user) {
-                $query->where('player1_id', $user->id)
-                      ->orWhere('player2_id', $user->id);
-            })
-            ->where('status', 'completed')
-            ->count();
-        
-        $totalMatches = $duoMatchesCount + $leagueMatchesCount;
-        
-        // Débloquer "C'est un Départ" si au moins 1 partie jouée
-        if ($totalMatches > 0) {
-            $quest = Quest::where('name', 'C\'est un Départ')->first();
-            if ($quest && !$quest->isCompletedBy($user->id)) {
-                $this->completeQuestRetroactive($user, $quest);
-                $unlockedQuests[] = $quest;
+        foreach ($allQuests as $quest) {
+            // Ignorer les quêtes déjà complétées
+            if ($quest->isCompletedBy($user->id)) {
+                continue;
             }
-        }
-        
-        // Compter les scores parfaits en Duo
-        $perfectScoresDuo = DB::table('duo_matches')
-            ->where(function($query) use ($user) {
-                $query->where(function($q) use ($user) {
-                    $q->where('player1_id', $user->id)
-                      ->whereRaw('player1_score >= 10')
-                      ->whereRaw('player2_score = 0');
-                })
-                ->orWhere(function($q) use ($user) {
-                    $q->where('player2_id', $user->id)
-                      ->whereRaw('player2_score >= 10')
-                      ->whereRaw('player1_score = 0');
-                });
-            })
-            ->where('status', 'completed')
-            ->count();
-        
-        // Débloquer "Génie du jour" si au moins 1 score parfait
-        if ($perfectScoresDuo > 0) {
-            $quest = Quest::where('name', 'Génie du jour')->first();
-            if ($quest && !$quest->isCompletedBy($user->id)) {
+            
+            // Vérifier si la condition rétroactive est remplie
+            $isMet = $this->checkRetroactiveCondition($user, $quest);
+            
+            if ($isMet) {
                 $this->completeQuestRetroactive($user, $quest);
                 $unlockedQuests[] = $quest;
             }
         }
         
         return $unlockedQuests;
+    }
+    
+    /**
+     * Vérifier si une quête est complétée rétroactivement selon son detection_code
+     */
+    protected function checkRetroactiveCondition(User $user, Quest $quest): bool
+    {
+        $code = $quest->detection_code;
+        $params = $quest->detection_params ? json_decode($quest->detection_params, true) : [];
+        
+        // Compter les parties totales
+        $totalMatches = $this->getTotalMatchesCount($user);
+        
+        switch ($code) {
+            // Parties jouées
+            case 'first_match_10q':
+            case 'play_50_matches':
+            case 'play_100_matches':
+            case 'play_250_matches':
+            case 'play_500_matches':
+                $required = $params['matches'] ?? 1;
+                return $totalMatches >= $required;
+            
+            // Séries de victoires (impossible à détecter rétroactivement de manière fiable)
+            case 'win_streak_3':
+            case 'win_streak_5':
+            case 'win_streak_10':
+                return false; // Nécessite tracking en temps réel
+            
+            // Scores parfaits
+            case 'perfect_score':
+            case 'perfect_score_3':
+            case 'perfect_score_10':
+            case 'perfect_score_25':
+                $required = $params['count'] ?? 1;
+                $perfectScores = $this->getPerfectScoresCount($user);
+                return $perfectScores >= $required;
+            
+            // Niveaux
+            case 'level_25':
+            case 'level_50':
+            case 'level_75':
+            case 'level_100':
+                $requiredLevel = $params['level'] ?? 1;
+                return ($user->level ?? 0) >= $requiredLevel;
+            
+            // Pièces accumulées
+            case 'coins_1000':
+            case 'coins_5000':
+                $requiredCoins = $params['coins'] ?? 0;
+                return ($user->coins ?? 0) >= $requiredCoins;
+            
+            // Divisions (Duo/Ligue)
+            case 'division_silver':
+            case 'division_gold':
+            case 'division_legend':
+                return $this->checkDivisionReached($user, $code);
+            
+            // Victoires Duo
+            case 'duo_wins_10':
+                $required = $params['wins'] ?? 10;
+                $duoWins = $this->getDuoWinsCount($user);
+                return $duoWins >= $required;
+            
+            // Boss defeats (Solo mode)
+            case 'boss_defeats_5':
+            case 'boss_defeats_10':
+                $required = $params['count'] ?? 10;
+                // Compter les boss uniques battus
+                $bossDefeats = DB::table('solo_boss_history')
+                    ->where('user_id', $user->id)
+                    ->where('defeated', true)
+                    ->distinct('boss_id')
+                    ->count('boss_id');
+                return $bossDefeats >= $required;
+            
+            // Avatars débloqués
+            case 'avatars_unlocked_10':
+            case 'avatars_unlocked_25':
+                $required = $params['count'] ?? 1;
+                $avatarsUnlocked = DB::table('user_avatars')
+                    ->where('user_id', $user->id)
+                    ->count();
+                return $avatarsUnlocked >= $required;
+            
+            // Thèmes joués
+            case 'themes_5':
+            case 'themes_10':
+                $required = $params['themes'] ?? 1;
+                $themesPlayed = $this->getUniqueThemesCount($user);
+                return $themesPlayed >= $required;
+            
+            // Compétences utilisées
+            case 'skill_used':
+            case 'skills_used_50':
+                $required = $params['count'] ?? 1;
+                // Compter depuis game_history ou équivalent
+                return false; // Nécessite tracking spécifique
+            
+            // Réponses rapides (nécessite tracking temps réel)
+            case 'fast_answers_10':
+            case 'ultra_fast_answers_10':
+            case 'buzz_fast_10':
+            case 'ultra_fast_buzz_20':
+            case 'correct_streak_25':
+            case 'correct_streak_50':
+                return false; // Impossible à détecter rétroactivement de manière fiable
+            
+            // Quêtes spéciales
+            case 'comeback_0_5':
+            case 'perfect_10_0':
+            case 'night_owl':
+                return false; // Nécessite tracking en temps réel
+            
+            default:
+                return false;
+        }
+    }
+    
+    /**
+     * Compter le nombre total de parties jouées
+     */
+    protected function getTotalMatchesCount(User $user): int
+    {
+        $duoMatches = DB::table('duo_matches')
+            ->where(function($query) use ($user) {
+                $query->where('player1_id', $user->id)
+                      ->orWhere('player2_id', $user->id);
+            })
+            ->where('status', 'completed')
+            ->count();
+        
+        $leagueMatches = DB::table('league_individual_matches')
+            ->where(function($query) use ($user) {
+                $query->where('player1_id', $user->id)
+                      ->orWhere('player2_id', $user->id);
+            })
+            ->where('status', 'completed')
+            ->count();
+        
+        return $duoMatches + $leagueMatches;
+    }
+    
+    /**
+     * Compter les scores parfaits (10/10 bonnes réponses pour le joueur)
+     */
+    protected function getPerfectScoresCount(User $user): int
+    {
+        $duoPerfect = DB::table('duo_matches')
+            ->where(function($query) use ($user) {
+                $query->where(function($q) use ($user) {
+                    $q->where('player1_id', $user->id)
+                      ->whereRaw('player1_score >= 10');
+                })
+                ->orWhere(function($q) use ($user) {
+                    $q->where('player2_id', $user->id)
+                      ->whereRaw('player2_score >= 10');
+                });
+            })
+            ->where('status', 'completed')
+            ->count();
+        
+        $leaguePerfect = DB::table('league_individual_matches')
+            ->where(function($query) use ($user) {
+                $query->where(function($q) use ($user) {
+                    $q->where('player1_id', $user->id)
+                      ->whereRaw('player1_score >= 10');
+                })
+                ->orWhere(function($q) use ($user) {
+                    $q->where('player2_id', $user->id)
+                      ->whereRaw('player2_score >= 10');
+                });
+            })
+            ->where('status', 'completed')
+            ->count();
+        
+        return $duoPerfect + $leaguePerfect;
+    }
+    
+    /**
+     * Compter les victoires Duo
+     */
+    protected function getDuoWinsCount(User $user): int
+    {
+        return DB::table('duo_matches')
+            ->where(function($query) use ($user) {
+                $query->where(function($q) use ($user) {
+                    $q->where('player1_id', $user->id)
+                      ->whereRaw('player1_score > player2_score');
+                })
+                ->orWhere(function($q) use ($user) {
+                    $q->where('player2_id', $user->id)
+                      ->whereRaw('player2_score > player1_score');
+                });
+            })
+            ->where('status', 'completed')
+            ->count();
+    }
+    
+    /**
+     * Vérifier si une division a été atteinte
+     */
+    protected function checkDivisionReached(User $user, string $code): bool
+    {
+        $divisionMap = [
+            'division_silver' => ['Argent', 'Or', 'Platine', 'Diamant', 'Légende'],
+            'division_gold' => ['Or', 'Platine', 'Diamant', 'Légende'],
+            'division_legend' => ['Légende'],
+        ];
+        
+        $requiredDivisions = $divisionMap[$code] ?? [];
+        
+        // Vérifier division Duo
+        if (in_array($user->duo_division ?? 'Bronze', $requiredDivisions)) {
+            return true;
+        }
+        
+        // Vérifier division Ligue
+        if (in_array($user->league_division ?? 'Bronze', $requiredDivisions)) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Compter les thèmes uniques joués (union Duo + Ligue)
+     */
+    protected function getUniqueThemesCount(User $user): int
+    {
+        // Récupérer tous les theme_id uniques depuis Duo
+        $duoThemes = DB::table('duo_matches')
+            ->where(function($query) use ($user) {
+                $query->where('player1_id', $user->id)
+                      ->orWhere('player2_id', $user->id);
+            })
+            ->where('status', 'completed')
+            ->whereNotNull('theme_id')
+            ->distinct()
+            ->pluck('theme_id')
+            ->toArray();
+        
+        // Récupérer tous les theme_id uniques depuis Ligue
+        $leagueThemes = DB::table('league_individual_matches')
+            ->where(function($query) use ($user) {
+                $query->where('player1_id', $user->id)
+                      ->orWhere('player2_id', $user->id);
+            })
+            ->where('status', 'completed')
+            ->whereNotNull('theme_id')
+            ->distinct()
+            ->pluck('theme_id')
+            ->toArray();
+        
+        // Union des deux tableaux et compter les uniques
+        $allThemes = array_unique(array_merge($duoThemes, $leagueThemes));
+        return count($allThemes);
     }
     
     /**

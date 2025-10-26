@@ -11,20 +11,8 @@ class AdvancedQuestsSeeder extends Seeder
     {
         $quests = [
             // ============================
-            // RARE (15 quêtes) - 75-150 pièces
+            // RARE (8 quêtes fonctionnelles) - 75-150 pièces
             // ============================
-            [
-                'name' => 'Série de 3',
-                'category' => '⚔️ Jeu',
-                'condition' => 'Gagnez 3 parties consécutives',
-                'reward_coins' => 100,
-                'rarity' => 'Rare',
-                'badge_emoji' => '🔥',
-                'badge_description' => 'Flamme',
-                'detection_code' => 'win_streak_3',
-                'detection_params' => json_encode(['streak' => 3]),
-                'auto_complete' => true,
-            ],
             [
                 'name' => 'Marathonien',
                 'category' => '⚔️ Jeu',
@@ -35,30 +23,6 @@ class AdvancedQuestsSeeder extends Seeder
                 'badge_description' => 'Coureur',
                 'detection_code' => 'play_50_matches',
                 'detection_params' => json_encode(['matches' => 50]),
-                'auto_complete' => true,
-            ],
-            [
-                'name' => 'Sans Faute',
-                'category' => '🧠 Intellectuelle',
-                'condition' => 'Répondez correctement à 25 questions consécutives',
-                'reward_coins' => 125,
-                'rarity' => 'Rare',
-                'badge_emoji' => '🎯',
-                'badge_description' => 'Cible',
-                'detection_code' => 'correct_streak_25',
-                'detection_params' => json_encode(['streak' => 25]),
-                'auto_complete' => true,
-            ],
-            [
-                'name' => 'Éclair',
-                'category' => '⚡ Vitesse',
-                'condition' => 'Répondez en moins d\'1 seconde à 10 questions',
-                'reward_coins' => 100,
-                'rarity' => 'Rare',
-                'badge_emoji' => '⚡',
-                'badge_description' => 'Éclair',
-                'detection_code' => 'ultra_fast_answers_10',
-                'detection_params' => json_encode(['threshold' => 1.0, 'count' => 10]),
                 'auto_complete' => true,
             ],
             [
@@ -98,30 +62,6 @@ class AdvancedQuestsSeeder extends Seeder
                 'auto_complete' => true,
             ],
             [
-                'name' => 'Buzzer Pro',
-                'category' => '⚡ Vitesse',
-                'condition' => 'Buzzez en moins de 1 seconde 20 fois',
-                'reward_coins' => 100,
-                'rarity' => 'Rare',
-                'badge_emoji' => '🔔',
-                'badge_description' => 'Cloche dorée',
-                'detection_code' => 'ultra_fast_buzz_20',
-                'detection_params' => json_encode(['threshold' => 1.0, 'count' => 20]),
-                'auto_complete' => true,
-            ],
-            [
-                'name' => 'Expert Stratégique',
-                'category' => '🎮 Avatar',
-                'condition' => 'Utilisez 50 compétences d\'avatar',
-                'reward_coins' => 125,
-                'rarity' => 'Rare',
-                'badge_emoji' => '🧙‍♂️',
-                'badge_description' => 'Mage',
-                'detection_code' => 'skills_used_50',
-                'detection_params' => json_encode(['count' => 50]),
-                'auto_complete' => true,
-            ],
-            [
                 'name' => 'Collectionneur',
                 'category' => '🎨 Collection',
                 'condition' => 'Déverrouillez 10 avatars différents',
@@ -158,44 +98,20 @@ class AdvancedQuestsSeeder extends Seeder
                 'auto_complete' => true,
             ],
             [
-                'name' => 'Comeback King',
-                'category' => '⚔️ Jeu',
-                'condition' => 'Gagnez une partie après avoir été mené 0-5',
-                'reward_coins' => 150,
-                'rarity' => 'Rare',
-                'badge_emoji' => '👑',
-                'badge_description' => 'Couronne',
-                'detection_code' => 'comeback_0_5',
-                'detection_params' => json_encode(['deficit' => 5]),
-                'auto_complete' => true,
-            ],
-            [
-                'name' => 'Domination',
-                'category' => '⚔️ Jeu',
-                'condition' => 'Gagnez une partie 10-0',
+                'name' => 'Boss Hunter',
+                'category' => '👹 Combat',
+                'condition' => 'Battez 5 boss différents en mode Solo',
                 'reward_coins' => 125,
                 'rarity' => 'Rare',
-                'badge_emoji' => '⚔️',
-                'badge_description' => 'Épées croisées',
-                'detection_code' => 'perfect_10_0',
-                'detection_params' => null,
-                'auto_complete' => true,
-            ],
-            [
-                'name' => 'Fin de Soirée',
-                'category' => '🕐 Temporel',
-                'condition' => 'Jouez entre minuit et 6h du matin',
-                'reward_coins' => 75,
-                'rarity' => 'Rare',
-                'badge_emoji' => '🌙',
-                'badge_description' => 'Lune',
-                'detection_code' => 'night_owl',
-                'detection_params' => json_encode(['start_hour' => 0, 'end_hour' => 6]),
+                'badge_emoji' => '👹',
+                'badge_description' => 'Ogre japonais',
+                'detection_code' => 'boss_defeats_5',
+                'detection_params' => json_encode(['count' => 5]),
                 'auto_complete' => true,
             ],
 
             // ============================
-            // ÉPIQUE (10 quêtes) - 200-400 pièces
+            // ÉPIQUE (7 quêtes fonctionnelles) - 200-400 pièces
             // ============================
             [
                 'name' => 'Centurion',
@@ -207,18 +123,6 @@ class AdvancedQuestsSeeder extends Seeder
                 'badge_description' => 'Biceps',
                 'detection_code' => 'play_100_matches',
                 'detection_params' => json_encode(['matches' => 100]),
-                'auto_complete' => true,
-            ],
-            [
-                'name' => 'Série de 5',
-                'category' => '⚔️ Jeu',
-                'condition' => 'Gagnez 5 parties consécutives',
-                'reward_coins' => 250,
-                'rarity' => 'Épique',
-                'badge_emoji' => '🔥',
-                'badge_description' => 'Feu intense',
-                'detection_code' => 'win_streak_5',
-                'detection_params' => json_encode(['streak' => 5]),
                 'auto_complete' => true,
             ],
             [
@@ -293,33 +197,9 @@ class AdvancedQuestsSeeder extends Seeder
                 'detection_params' => null,
                 'auto_complete' => true,
             ],
-            [
-                'name' => 'Invincible',
-                'category' => '⚔️ Jeu',
-                'condition' => 'Répondez correctement à 50 questions consécutives',
-                'reward_coins' => 400,
-                'rarity' => 'Épique',
-                'badge_emoji' => '🛡️',
-                'badge_description' => 'Bouclier',
-                'detection_code' => 'correct_streak_50',
-                'detection_params' => json_encode(['streak' => 50]),
-                'auto_complete' => true,
-            ],
-            [
-                'name' => 'Boss Hunter',
-                'category' => '👹 Combat',
-                'condition' => 'Battez 10 boss différents en mode Solo',
-                'reward_coins' => 300,
-                'rarity' => 'Épique',
-                'badge_emoji' => '👹',
-                'badge_description' => 'Ogre japonais',
-                'detection_code' => 'boss_defeats_10',
-                'detection_params' => json_encode(['count' => 10]),
-                'auto_complete' => true,
-            ],
 
             // ============================
-            // LÉGENDAIRE (5 quêtes) - 500-1000 pièces
+            // LÉGENDAIRE (4 quêtes fonctionnelles) - 500-1000 pièces
             // ============================
             [
                 'name' => 'Vétéran',
@@ -331,18 +211,6 @@ class AdvancedQuestsSeeder extends Seeder
                 'badge_description' => 'Étoile brillante',
                 'detection_code' => 'play_250_matches',
                 'detection_params' => json_encode(['matches' => 250]),
-                'auto_complete' => true,
-            ],
-            [
-                'name' => 'Série de 10',
-                'category' => '⚔️ Jeu',
-                'condition' => 'Gagnez 10 parties consécutives',
-                'reward_coins' => 750,
-                'rarity' => 'Légendaire',
-                'badge_emoji' => '🌟',
-                'badge_description' => 'Étoile rayonnante',
-                'detection_code' => 'win_streak_10',
-                'detection_params' => json_encode(['streak' => 10]),
                 'auto_complete' => true,
             ],
             [
@@ -383,7 +251,7 @@ class AdvancedQuestsSeeder extends Seeder
             ],
 
             // ============================
-            // MAÎTRE (3 quêtes) - 1500-3000 pièces
+            // MAÎTRE (3 quêtes fonctionnelles) - 1500-3000 pièces
             // ============================
             [
                 'name' => 'Maître Absolu',
