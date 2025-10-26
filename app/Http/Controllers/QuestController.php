@@ -31,7 +31,24 @@ class QuestController extends Controller
         
         $rarity = $request->query('rarity', 'Standard');
         
-        $questsWithProgress = $this->questService->getUserQuests($user, $rarity);
+        // Si rareté "Quotidiennes", récupérer les quêtes quotidiennes actives
+        if ($rarity === 'Quotidiennes') {
+            $dailyQuests = $this->questService->getDailyQuests();
+            $questsWithProgress = $dailyQuests->map(function($quest) use ($user) {
+                $progressRecord = $quest->getUserProgress($user->id);
+                $isCompleted = $quest->isCompletedBy($user->id);
+                
+                return [
+                    'quest' => $quest,
+                    'is_completed' => $isCompleted,
+                    'progress_current' => $isCompleted ? 1 : 0,
+                    'progress_total' => 1,
+                    'completed_at' => $progressRecord ? $progressRecord->completed_at : null,
+                ];
+            });
+        } else {
+            $questsWithProgress = $this->questService->getUserQuests($user, $rarity);
+        }
         
         return view('quests', [
             'quests' => $questsWithProgress,

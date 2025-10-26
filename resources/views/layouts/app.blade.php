@@ -48,7 +48,12 @@
             '/league-individual/answer',
             '/league-team/game',
             '/league-team/answer',
-            '/game_result'
+            '/game_preparation',
+            '/game_question',
+            '/game_answer',
+            '/game_result',
+            '/victory',
+            '/defeat'
         ];
         
         // Vérifier si on est sur une page de gameplay

@@ -179,6 +179,54 @@ class QuestService
         return isset($context['skill_used']) && $context['skill_used'] === true;
     }
     
+    /**
+     * Calculer la progression d'une quête selon ses paramètres
+     * @return array ['current' => int, 'max' => int]
+     */
+    protected function getQuestProgression(Quest $quest, $progressRecord, bool $isCompleted): array
+    {
+        $params = is_array($quest->detection_params) ? $quest->detection_params : [];
+        
+        // Par défaut : quête one-shot
+        $max = 1;
+        $current = $isCompleted ? 1 : 0;
+        
+        // Extraire max depuis detection_params si disponible
+        if (isset($params['count'])) {
+            $max = $params['count'];
+        } elseif (isset($params['wins'])) {
+            $max = $params['wins'];
+        } elseif (isset($params['matches'])) {
+            $max = $params['matches'];
+        } elseif (isset($params['themes'])) {
+            $max = $params['themes'];
+        } elseif (isset($params['level'])) {
+            $max = $params['level'];
+        } elseif (isset($params['coins'])) {
+            $max = $params['coins'];
+        }
+        
+        // Extraire current depuis progress si disponible
+        if ($progressRecord && $progressRecord->progress) {
+            $progressData = $progressRecord->progress;
+            
+            // Essayer différentes clés selon le type de quête
+            if (isset($progressData['current'])) {
+                $current = $progressData['current'];
+            } elseif (isset($progressData['fast_answers'])) {
+                $current = $progressData['fast_answers'];
+            } elseif (isset($progressData['fast_buzzes'])) {
+                $current = $progressData['fast_buzzes'];
+            } elseif (isset($progressData['count'])) {
+                $current = $progressData['count'];
+            }
+        }
+        
+        return [
+            'current' => min($current, $max), // Ne jamais dépasser max
+            'max' => $max
+        ];
+    }
     
     /**
      * Récupérer toutes les quêtes avec progression pour un utilisateur
@@ -202,32 +250,10 @@ class QuestService
             $progressRecord = $quest->getUserProgress($user->id);
             $isCompleted = $quest->isCompletedBy($user->id);
             
-            // Normaliser la progression pour l'affichage selon le type de quête
-            $currentProgress = 0;
-            $totalProgress = 1;
-            
-            // Déterminer le total selon le type de quête (indépendamment de la progression)
-            switch ($quest->detection_code) {
-                case 'fast_answers_10':
-                    $totalProgress = 10;
-                    if ($progressRecord && $progressRecord->progress) {
-                        $currentProgress = $progressRecord->progress['fast_answers'] ?? 0;
-                    }
-                    break;
-                case 'buzz_fast_10':
-                    $totalProgress = 10;
-                    if ($progressRecord && $progressRecord->progress) {
-                        $currentProgress = $progressRecord->progress['fast_buzzes'] ?? 0;
-                    }
-                    break;
-                case 'first_match_10q':
-                case 'perfect_score':
-                case 'skill_used':
-                default:
-                    $totalProgress = 1;
-                    $currentProgress = $isCompleted ? 1 : 0;
-                    break;
-            }
+            // Extraire la progression depuis detection_params et progress
+            $progression = $this->getQuestProgression($quest, $progressRecord, $isCompleted);
+            $currentProgress = $progression['current'];
+            $totalProgress = $progression['max'];
             
             if ($isCompleted) {
                 $currentProgress = $totalProgress;
@@ -254,6 +280,65 @@ class QuestService
         // Pour l'instant, retourner vide
         // TODO: Implémenter un système de notification
         return [];
+    }
+    
+    /**
+     * Obtenir les 3 quêtes quotidiennes actives pour aujourd'hui
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getDailyQuests()
+    {
+        $today = now()->toDateString();
+        
+        // Vérifier s'il y a une rotation pour aujourd'hui
+        $rotation = DB::table('daily_quest_rotation')
+            ->where('rotation_date', $today)
+            ->first();
+        
+        // Si pas de rotation ou date périmée, en créer une nouvelle
+        if (!$rotation) {
+            $this->rotateDailyQuests();
+            $rotation = DB::table('daily_quest_rotation')
+                ->where('rotation_date', $today)
+                ->first();
+        }
+        
+        if (!$rotation) {
+            return collect([]); // Retourner une Collection vide
+        }
+        
+        // Récupérer les quêtes depuis les IDs
+        $questIds = json_decode($rotation->quest_ids, true);
+        return Quest::whereIn('id', $questIds)->get();
+    }
+    
+    /**
+     * Rotation des quêtes quotidiennes : sélectionner 3 quêtes aléatoires
+     * @return void
+     */
+    public function rotateDailyQuests()
+    {
+        $today = now()->toDateString();
+        
+        // Récupérer toutes les quêtes quotidiennes disponibles
+        $availableQuests = Quest::where('rarity', 'Quotidienne')->get();
+        
+        if ($availableQuests->count() < 3) {
+            return; // Pas assez de quêtes quotidiennes
+        }
+        
+        // Sélectionner 3 quêtes aléatoires
+        $selectedQuests = $availableQuests->random(min(3, $availableQuests->count()));
+        $questIds = $selectedQuests->pluck('id')->toArray();
+        
+        // Supprimer l'ancienne rotation et créer la nouvelle
+        DB::table('daily_quest_rotation')->where('rotation_date', $today)->delete();
+        DB::table('daily_quest_rotation')->insert([
+            'rotation_date' => $today,
+            'quest_ids' => json_encode($questIds),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
     }
     
     /**
