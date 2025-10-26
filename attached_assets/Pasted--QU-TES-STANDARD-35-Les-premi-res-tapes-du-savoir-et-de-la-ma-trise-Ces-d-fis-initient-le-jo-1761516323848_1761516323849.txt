@@ -1,0 +1,1406 @@
+🟢 QUÊTES STANDARD (35)
+“Les premières étapes du savoir et de la maîtrise. Ces défis initient le joueur à l’univers StrategyBuzzer.”
+#
+Nom de la Quête
+Catégorie
+Condition
+Récompense
+Rareté
+Badge associé
+1
+C’est un Départ
+⚔️ Jeu
+Faire une manche d’un Quiz de 10 questions
++10 pièces
+Standard
+💚 Cœur vert
+2
+Génie du jour
+🧠 Intellectuelle
+Obtenir un score parfait en mode Solo
++50 pièces
+Standard
+🌟 Trophée doré
+3
+Œil Vif
+🧠 Intellectuelle
+Buzzer à 10 questions en moins de 2 sec 
++50 pièces
+Standard
+⚡ Oeil avec halo de feu
+4
+Encyclopédie vivante
+🧠 Intellectuelle
+Finir un Quiz de chaque thème
++50 pièces
+Standard
+📚 Globe ouvert
+5
+Chicken
+🧠 Intellectuelle
+3 bonnes réponses sans buzzer
++10 pièces
+Standard
+🧩 Cerveau puzzle
+6
+Math Express
+🧠 Intellectuelle
+5 questions de calcul consécutives bien répondus
++30 pièces
+Standard
+➗ Symbole sigma
+7
+Réflexion éclair
+⚔️ Jeu
+Buzzer en moins de 3 sec à 10 questions
++30 pièces
+Standard
+💡 Ampoule flash
+8
+Polyglotte
+🧠 Intellectuelle
+Réussir à 60% d'efficacité un Quiz dans une autre langue
++10 pièces
+Standard
+🇬🇧 Drapeau bilingue
+9
+Philosophe
+🧠 Intellectuelle
+Gagner un quiz de 40 questions sans skill
++30 pièces
+Standard
+🧙‍♂️ Rouleau antique
+10
+Liseur de l’ombre
+🧬 Avatars
+Trouver une réponse grâce à un Avatar Stratégique
++10 pièces
+Standard
+🔍 Loupe brillante
+11
+Buzz rapide
+⚔️ Jeu
+Être le premier à buzzer, 10X
++10 pièces
+Standard
+🔔 Buzzer éclatant
+12
+Survie
+⚔️ Jeu
+Finir une partie avec 1 vie restante
++30 pièces
+Standard
+❤️ Cœur fissuré
+13
+Résilient
+⚔️ Jeu
+Perdre 3 parties puis gagner la 4e
++50 pièces
+Standard
+💪 Bouclier vert
+14
+Maître du temps
+⚔️ Jeu
+Passer une manche sans fin de chronos
++50 pièces
+Standard
+⏱️ Horloge d’or
+15
+Buzz silencieux
+⚔️ Jeu
+Gagner sans son Gameplay activé
++10 pièces
+Standard
+🔇 Buzzer muet
+16
+Réveil matinal
+⚔️ Jeu
+Jouer entre 5h et 7h du matin
++15 pièces
+Standard
+🌅 Soleil levant
+17
+Noctambule
+⚔️ Jeu
+Jouer entre 23h et 3h du matin
++15 pièces
+Standard
+🌙 Lune bleue
+18
+Ami fidèle
+🧩 Sociale
+Inviter 1 ami via Facebook
++30 pièces
+Standard
+🤝 Icône bleue
+19
+Communautaire
+🧩 Sociale
+Rejoindre une équipe active
++50 pièces
+Standard
+👥 Main levée
+20
+Soutien
+🧩 Sociale
+1X Aider un coéquipier
++10 pièces
+Standard
+👍 Icône like
+21
+Curieux
+🧩 Sociale
+Socialiser avec 5 joueurs différents
++50 pièces
+Standard
+👀 Icône œil
+22
+Partageur
+🧩 Sociale
+Publier un résultat sur les réseaux
++100 pièces
+Standard
+📤 Flèche sociale
+23
+Répondeur
+🧩 Sociale
+3X Aider un coéquipier
++50 pièces
+Standard
+📬 Enveloppe
+24
+Actif du jour
+🧩 Sociale
+Participer à un chat public
++20 pièces
+Standard
+🗨️ Bulle de chat
+25
+Fête virtuelle
+🧩 Sociale
+1X recevez de l’aide
++50 pièces
+Standard
+🎉 Confettis
+26
+Ligue ouverte
+🧩 Sociale
+Participer à un affrontement (Ligue)
++50 pièces
+Standard
+🔗 Maillon bleu
+27
+Historien social
+🧩 Sociale
+1X Voir scores, anciens tournois
++10 pièces
+Standard
+📜 Rouleau
+28
+Globe-trotter
+🌍 Exploration
+Jouer un quiz de Géographie
++10 pièces
+Standard
+🌎 Planète bleue
+29
+Curieux du monde
+🌍 Exploration
+Réussir 10 questions sur des monuments
++10 pièces
+Standard
+🏰 Tour stylisée
+30
+Archéologue
+🌍 Exploration
+Jouer un quiz d’Histoire 
++10 pièces
+Standard
+🏺 Amphore dorée
+31
+Océanographe
+🌍 Exploration
+Réussir 3 questions sur les océans
++10 pièces
+Standard
+🌊 Vague bleue
+32
+Citadin
+🌍 Exploration
+Gagner un quiz sur la Cuisine
++50 pièces
+Standard
+🏙️ Skyline
+33
+Touriste averti
+🌍 Exploration
+Réussir 1X une question piégée
++50 pièces
+Standard
+🪞 Globe reflet
+34
+Nouveau visage
+🧬 Avatars
+Finir 2 quiz avec des avatars différents 
++30 pièces
+Standard
+👤 Silhouette
+35
+Collectionneur sonore
+🛒 Boutique & Monnaie
+Acheter un son de buzzer
++100 pièces
+Standard
+🔔 Buzzer argenté
+
+
+
+
+
+🔵 QUÊTES RARES (36)
+🧩 Synthèse du bloc Rare
+
+“Les joueurs expérimentés commencent à forger leur style. Ces défis demandent régularité, précision et coopération.”
+#
+Nom de la Quête
+Catégorie
+Condition
+Récompense
+Rareté
+Badge associé
+1
+Culture Man
+🧠 Intellectuelle
+Répondre à 50 questions cinéma ou art
++80 pièces
+Rare
+🎬 Masque d’or
+2
+Stratège mental
+🧠 Intellectuelle
+Utiliser 3 skills d’avatars différents dans 1 partie
++100 pièces
+Rare
+🎯 Icône stratégie
+3
+Archiviste
+🧠 Intellectuelle
+Accéder à la page “Règlements” 1×
++60 pièces
+Rare
+🧾 Rouleau
+4
+Marathon
+⚔️ Jeu
+Jouer 5 Quizz à 40 questions d’affilée
++100 pièces
+Rare
+🏃‍♂️ Médaillon argenté
+5
+Duo King
+⚔️ Jeu
+Gagner 10 parties Duo
++80 pièces
+Rare
+🤝 Poignée de main
+6
+Champion de Ligue
+⚔️ Jeu
+Monter d’une division (Ligue)
++60 pièces
+Rare
+🏆 Badge doré
+7
+Duo Express
+⚔️ Jeu
+Gagner une partie Duo en moins de 5 min
++60 pièces
+Rare
+⚡ Duel Flash
+8
+Recruteur
+🧩 Sociale
+Inviter 5 amis
++150 pièces
+Rare
+🗣️ Haut-parleur
+9
+Buzz Together
+🧩 Sociale
+Gagner en duo avec un ami
++50 pièces
+Rare
+🧠 Cerveaux liés
+10
+Altruiste
+🧩 Sociale
+Donner une vie à un joueur
++40 pièces
+Rare
+💗 Main cœur
+11
+Ambassadeur
+🧩 Sociale
+Gagner une partie en ayant invité un ami
++60 pièces
+Rare
+🏛️ Badge ambassade
+12
+Loyal
+🧩 Sociale
+Se connecter 5 jours consécutifs
++50 pièces
+Rare
+📅 Calendrier étoilé
+13
+Mentor
+🧩 Sociale
+Aider un joueur à finir un quiz
++60 pièces
+Rare
+🧑‍🏫 Silhouette or
+14
+Hôte
+🧩 Sociale
+Créer une partie publique
++40 pièces
+Rare
+🏠 Porte ouverte
+15
+Buzz Club
+🧩 Sociale
+Créer un groupe de discussion
++30 pièces
+Rare
+💬 Bulle multicolore
+16
+Aventurier
+🌍 Exploration
+Gagner un quiz sur 3 continents différents
++50 pièces
+Rare
+🧭 Boussole dorée
+17
+Voyageur érudit
+🌍 Exploration
+Finir un quiz “Pays et Capitales” sans échec
++60 pièces
+Rare
+🗺️ Carte antique
+18
+Explorateur Alpha
+🌍 Exploration
+Utiliser l’avatar Explorateur dans 3 parties
++60 pièces
+Rare
+🧭 Icône avatar
+19
+Naturaliste
+🌍 Exploration
+Finir un quiz sur la faune sans échec
++40 pièces
+Rare
+🐘 Éléphant stylisé
+20
+Montagnard
+🌍 Exploration
+Réussir 3 quiz Général consécutifs
++50 pièces
+Rare
+🏔️ Sommet blanc
+21
+Safari
+🌍 Exploration
+10 bonnes réponses sur les animaux
++50 pièces
+Rare
+🦁 Griffes dorées
+22
+Découvreur
+🌍 Exploration
+Jouer 3 parties “Sciences”
++80 pièces
+Rare
+🔬 Loupe bleue
+23
+Astronaute
+🌍 Exploration
+5 bonnes réponses sur l’astronomie
++60 pièces
+Rare
+🚀 Planète
+24
+Math Power
+🧬 Avatars
+Gagnez un manche que vous avez utilisé le Mathématicien
++40 pièces
+Rare
+➗ Icône de calcul
+25
+Science Power
+🧬 Avatars
+Gagner avec le Scientifique
++40 pièces
+Rare
+⚗️ Éprouvette bleue
+26
+Défenseur actif
+🧬 Avatars
+Annuler une attaque d’avatar
++50 pièces
+Rare
+🛡️ Bouclier bleu
+27
+Comédien rusé
+🧬 Avatars
+Faire perdre un joueur avec ton skill
++50 pièces
+Rare
+🎭 Masque
+28
+Magicien tactique
+🧬 Avatars
+Reprendre une question pendant une partie
++80 pièces
+Rare
+🪄 Baguette magique
+29
+IA Précise
+🧬 Avatars
+Utiliser l’aide IA Junior avec succès
++50 pièces
+Rare
+🤖 Pixel bleu
+30
+
+
+
+31
+
+
+
+32
+
+
+
+33
+
+
+
+34
+
+
+Mathématicien
+
+
+
+Scientifique
+
+
+
+Explorateur
+
+
+
+Défenseur
+
+
+
+Audiophile
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🛒 Boutique & Monnaie
+Gagner contre lui d’un quiz de 10 questions et plus
+
+Gagner contre lui d’un quiz de 10 questions et plus
+
+Gagner contre lui d’un quiz de 10 questions et plus
+
+Gagner contre lui d’un quiz de 10 questions et plus
+
+Tester tous les sons de buzzer
+Débloque Mathématicien
+
+
+Débloque Scientifique
+
+
+Débloque Explorateur
+
+
+Débloque Défenseur
+
+
++40 pièces
+Rare
+
+
+
+Rare
+
+
+
+Rare
+
+
+
+Rare
+
+
+
+Rare
+
+
+Image du Mathématicien
+
+
+Image du Scientifique
+
+
+Image du Explorateur
+
+
+Image du Défenseur
+
+
+🎧 Casque
+
+
+35
+
+
+
+
+Rentrée du Savoir
+🎉 Spéciales & Événementielles
+Gagner un quiz scolaire entre le 1er et le 10 septembre
++70 pièces
+Rare
+📚 Cartable doré
+36
+Buzz Summer
+🎉 Spéciales & Événementielles
+Jouer une partie entre le 1er et le 15 juillet (Semaine du Quiz Estival)
++50 pièces
+Rare
+☀️ Soleil doré
+
+
+🟣 QUÊTES ÉPIQUES (30)
+🧩 Synthèse du bloc Épique
+ 
+“Ces défis distinguent les vrais stratèges. Chaque réussite témoigne d’une parfaite maîtrise du jeu, des avatars et du savoir.”
+#
+Nom de la Quête
+Catégorie
+Condition
+Récompense
+Rareté
+Badge associé
+1
+Mémoire d’acier
+🧠 Intellectuelle
+Gagner 3 parties Solo sans erreur
++100 pièces
+Épique
+🪙 Disque mental
+2
+Infaillible
+🧠 Intellectuelle
+Zéro faute en 20 questions consécutives
++80 pièces
+Épique
+🧩 Bouclier bleu
+3
+Calculateur
+🧠 Intellectuelle
+Gagner 3 quiz mathématiques consécutifs
++80 pièces
+Épique
+🔢 Icône abaque
+4
+Maître des thèmes
+🧠 Intellectuelle
+Réussir 1 quiz dans chaque catégorie thématique
++100 pièces
+Épique
+🎨 Icône multicolore
+5
+Buzzer Ardent
+⚔️ Jeu
+Ne jamais rater un buzzer sur un Quiz à 40 questions
++50 pièces
+Épique
+🏅 Trophée buzzer
+6
+Ultime stratège
+⚔️ Jeu
+Activer un skill décisif pour gagner
++90 pièces
+Épique
+🧠 Bulle d’énergie
+7
+Revanche
+⚔️ Jeu
+Battre un joueur qui t’avait déjà battu
++100 pièces
+Épique
+🔁 Flèches croisées
+8
+Sans avatar
+⚔️ Jeu
+Gagner sans avatar stratégique 5 parties
++60 pièces
+Épique
+🚫 Silhouette grise
+9
+Commandant
+⚔️ Jeu
+Gagner 3 matchs de Ligue solo consécutifs
++100 pièces
+Épique
+🛡️ Épée royale
+10
+Esquiveur
+⚔️ Jeu
+Ne jamais perdre 2 fois d’affilée pendant 20 parties
++80 pièces
+Épique
+🌀 Flèche double
+11
+Champion social
+🧩 Sociale
+10 victoires Duo avec amis Facebook
++100 pièces
+Épique
+👬 Couronne bleue
+12
+Marathon social
+🧩 Sociale
+10 jours de connexion consécutifs
++100 pièces
+Épique
+🔥 Flamme dorée
+13
+Collectionneur
+🌍 Exploration
+Trouver 5 badges d’exploration
++80 pièces
+Épique
+🏅 Globe en or
+14
+Historien voyageur
+🌍 Exploration
+Gagner 5 quiz de culture générale
++80 pièces
+Épique
+⏳ Sablier
+15
+Conquérant
+🌍 Exploration
+Obtenir un score parfait sur un quiz historique
++80 pièces
+Épique
+🛡️ Casque antique
+16
+Challenger alpha
+🧬 Avatars
+Réduire le temps des adversaires 3×
++60 pièces
+Épique
+🔥 Chrono rouge
+17
+Visionnaire
+🧬 Avatars
+Répondre juste grâce à la prévision
++60 pièces
+Épique
+🌟 Œil lumineux
+18
+
+
+
+19
+
+
+
+20
+
+
+
+21
+
+
+
+22
+Duo de génie
+
+
+
+Comédien
+
+
+
+Magicien
+
+
+
+Challenger
+
+
+
+Historien
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+Gagner une partie avec 2 avatars stratégiques
+
+Gagner contre lui d’un quiz de 20 questions et plus
+
+Gagner contre lui d’un quiz de 20 questions et plus
+
+Gagner contre lui d’un quiz de 20 questions et plus
+
+Gagner contre lui d’un quiz de 20 questions et plus
+
+
++80 pièces
+
+
+
+Débloque Comédien
+
+
+Débloque Magicien
+
+
+Débloque Challenger
+
+
+Débloque Historien
+
+
+Épique
+
+
+
+Épique
+
+
+
+Épique
+
+
+
+Épique
+
+
+
+Épique
+🧠 Deux visages
+
+
+
+Image du Comédien
+
+
+
+Image du Magicien
+
+
+
+Image du Challenger
+
+
+
+Image de l’Historien
+23
+Pack Premium
+🛒 Boutique & Monnaie
+Acheter un pack d’avatars
++100 pièces
+Épique
+🎁 Coffret doré
+24
+Dépensier fou
+🛒 Boutique & Monnaie
+Acheter 5 items 
++200 pièces
+Épique
+💸 Sac de pièces
+25
+Strateco
+🛒 Boutique & Monnaie
+débloqué un Avatar Stratégique avec les pièces d’intelligence
++60 pièces
+Épique
+💼 Icône argent
+26
+Enseignant
+🎯 Maîtrise du Jeu
+Lancer 5 parties “Maître du Jeu”
++500 pièces
+Épique
+🧑‍🏫 Tableau vert
+27
+Producteur
+🎯 Maîtrise du Jeu
+Générer 10 questions IA validées
++100 pièces
+Épique
+💻 Icône plume
+28
+Scénariste
+🎯 Maîtrise du Jeu
+Créer un quiz thématique complet
++500 pièces
+Épique
+🎬 Clapperboard
+29
+
+
+Maître d’école
+🎯 Maîtrise du Jeu
+Créer 3 quiz scolaires complets
++300 pièces
+Épique
+🧮 Pupitre
+30
+Quiz Valentin
+🎉 Spéciales & Événementielles
+Jouer le 14 février avec un ami en Duo
++80 pièces
+Épique
+💘 Cœur rose
+
+
+
+🟡 QUÊTES LÉGENDAIRES (23)
+🧩 Synthèse du bloc Légendaire
+
+“Les quêtes des légendes. Réservées aux maîtres du savoir, aux champions des ligues et aux explorateurs d’exception. Chacune marque une étape majeure dans la progression du joueur.”
+#
+Nom de la Quête
+Catégorie
+Condition
+Récompense
+Rareté
+Badge associé
+1
+Esprit vi
+🧠 Intellectuelle
+Terminer 5 parties parfaites
++100 pièces
+Légendaire
+💭 Silhouette méditative
+2
+Génie collectif
+🧠 Intellectuelle
+Gagner une partie d’équipe Ligue avec score parfait
++300 pièces
+Légendaire
+🏆 Globe d’équipe
+3
+Historien dans l’Âme
+🧠 Intellectuelle
+Répondre à 20 questions d’histoire sans échec de suite
++200 pièces
+Légendaire
+🏺 Pyramide dorée
+4
+Dernier debout
+⚔️ Jeu
+Être le seul gagnant en individuel par équipe (Ligue)
++250 pièces
+Légendaire
+☠️ Icône tête de lion
+5
+Explorateur Légendaire
+🌍 Exploration
+Gagner 10 quiz “Sport”
++500 pièces
+Légendaire
+🧭 Boussole enflammée
+6
+Visionnaire du Monde
+🌍 Exploration
+Gagner 10 quiz “Art”
++500 pièces
+Légendaire
+🌍 Globe lumineux
+7
+Stratège suprême
+🧬 Avatars
+Utilisez les compétences du Stratège 10×
++450 pièces
+Légendaire
+♟️ Pièce d’échec
+8
+Multiface
+🧬 Avatars
+Posséder 5 Avatars Stratégique débloqués
++100 pièces
+Légendaire
+🧑‍🎤 Masque multiple
+9
+
+
+
+10
+
+
+
+11
+
+
+
+12
+
+
+
+13
+Collectionneur d’âmes
+
+
+IA Junior
+
+
+
+Stratège
+
+
+
+Sprinteur
+
+
+
+Visionnaire
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+
+
+
+🧬 Avatars
+Avoir 4 Packs d’Avatars 
+
+
+Gagner contre lui d’un quiz de 30 questions et plus
+
+Gagner contre lui d’un quiz de 30 questions et plus
+
+Gagner contre lui d’un quiz de 30 questions et plus
+
+Gagner contre lui d’un quiz de 30 questions et plus
++300 pièces
+
+
+
+Débloquer IA Junior
+
+
+Débloquer Stratège
+
+
+Débloquer Sprinteur
+
+
+Débloquer Visionnaire
+
+
+Légendaire
+
+
+
+Légendaire
+
+
+
+Légendaire
+
+
+
+Légendaire
+
+
+
+Légendaire
+
+
+
+💎 Cristal
+
+
+
+Image de l’IA Junior
+
+
+
+Image du Stratège
+
+
+
+
+Image du Sprinteur
+
+
+Image de Visionnaire
+14
+Fanatique
+🛒 Boutique & Monnaie
+Acheter un pack Avatars
++100 pièces
+Légendaire
+👑 Couronne dorée
+15
+Millionnaire
+🛒 Boutique & Monnaie
+Dépenser + de 500 pièces d’un coup
++100 pièces
+Légendaire
+🪙 Sac royal
+16
+Directeur
+🎯 Maîtrise du Jeu
+Gérer 10 joueurs simultanément
++120 pièces
+Légendaire
+🧠 Chapeau doré
+17
+Animateur légendaire
+🎯 Maîtrise du Jeu
+Organiser un quiz avec 20+ participants
++300 pièces
+Légendaire
+🏆 Couronne dorée
+18
+Créateur vedette
+🎯 Maîtrise du Jeu
+Atteindre 100 likes sur vos quiz
++150 pièces
+Légendaire
+⭐ Étoile dorée
+19
+Architecte du savoir
+🎯 Maîtrise du Jeu
+Créer 20 quiz dans historique
++300 pièces
+Légendaire
+🏛️ Temple du savoir
+20
+Réseau global
+🧩 Sociale
+Avoir un ami d’un autre pays
++100 pièces
+Légendaire
+🌍 Globe connecté
+21
+Confrérie
+🧩 Sociale
+Gagner 10 Parties de Ligue avec ton équipe
++300 pièces
+Légendaire
+🏆 Main levée
+22
+
+
+
+Légende du Buzzer
+☀️ Spéciales & Événementielles
+Terminer toutes les quêtes quotidiennes
++500 pièces
+Légendaire
+🏅 Trophée ultime
+23
+Fête du Buzz
+🎉 Spéciales & Événementielles
+Participer à un événement “Week-end des Buzzers” (48h d’activité)
++300 pièces
+Légendaire
+🎊 Médaille du Buzzer
+
+
+
+🧠 QUÊTES DE RANG MAÎTRE (8)
+🧩 Synthèse du bloc Maître
+
+“Les Maîtres du Jeu façonnent l’univers StrategyBuzzer. Ils enseignent, orchestrent et font vivre l’intelligence collective du quiz.”
+#
+Nom de la Quête
+Catégorie
+Condition
+Récompense
+Rareté
+Badge associé
+1
+Questionneur
+🧠 Intellectuelle
+Changer une question en mode automatique par l’IA
++100 pièces
+Maître
+🤖 Plume IA
+2
+Prof du jour
+🎯 Maîtrise du Jeu
+Créer un quiz complet en mode Maître du Jeu
++500 pièces
+Maître
+🧑‍🏫 Tableau vert
+3
+Érudit mondial
+🧠 Intellectuelle
+Réussir un quiz dans chaque catégorie scolaire
++1000 pièces
+Maître
+🌍 Livre doré
+4
+Méta-Maître
+🎯 Maîtrise du Jeu
+Créer 5 quiz en mode Personnalisé
++500 pièces
+Maître
+📜 Badge en plume dorée
+5
+MultiJoueur
+⚔️ Jeu
+Participer à 5 parties à 4 joueurs ou +
++350 pièces
+Maître
+👥 Icône réseau
+6
+Capitaine
+⚔️ Jeu
+Créer une équipe de Ligue
++1500 pièces
+Maître
+👑 Écusson doré
+7
+Maître du jeu
+🎯 Maîtrise du Jeu
+Être Maître du jeu
++450 pièces
+Maître
+👁️ Icône vision
+8
+
+
+
+
+Récidiviste
+
+
+🎯 Maîtrise du Jeu
+
+
+Rejouer le même quiz 3× (Maître du Jeu)
+
+
++250 pièces
+
+
+
+
+
+
+Maître
+
+
+
+ 
+🔄 Icône répétition
+
+
+
+
+☀️ QUÊTES QUOTIDIENNES (20)
+
+🧩 Répartition équilibrée :
+“3 quêtes dans les 20, prisent aléatoirements au quotidien pour une durée de 24 heure ”
+#
+Nom de la Quête
+Catégorie
+Condition
+Récompense
+Rareté
+Badge associé
+Q1
+Réveil du génie
+🧠 Intellectuelle
+Gagné une manche sans buzzer 5X
++50 pièces
+Quotidienne
+☀️ Ampoule matinale
+Q2
+Coup de buzz
+⚔️ Jeu
+Être le premier à buzzer au moins 3 fois dans la journée
++55 pièces
+Quotidienne
+🔔 Buzzer rapide
+Q3
+Ami du jour
+🧩 Sociale
+Envoyer une invitation à un joueur
++50 pièces
+Quotidienne
+🤝 Icône main tendue
+Q4
+Quiz éclair
+⚔️ Jeu
+Finir un quiz de 10 questions sans erreur
++70 pièces
+Quotidienne
+⚡ Éclair jaune
+Q5
+Exploration express
+🌍 Exploration
+Jouer un quiz d’un thème différent du jour précédent
++55 pièces
+Quotidienne
+🌎 Globe bleu
+Q6
+Avatar du matin
+🧬 Avatars
+Changer d’avatar avant ta première partie
++50 pièces
+Quotidienne
+👤 Silhouette mobile
+Q7
+Buzz du soir
+⚔️ Jeu
+Finir une partie entre 19h et 23h
++50 pièces
+Quotidienne
+🌙 Demi-lune
+Q8
+Apprenti du jour
+🎯 Maîtrise du Jeu
+Créer une question personnalisée avec l’IA
++70 pièces
+Quotidienne
+🤖 Plume IA
+Q9
+Partage matinal
+🧩 Sociale
+Publier un résultat sur les réseaux
++50 pièces
+Quotidienne
+📤 Icône sociale
+Q10
+Collectionneur actif
+🛒 Boutique & Monnaie
+Consulter la boutique
++25 pièces
+Quotidienne
+🛒 Panier bleu
+Q11
+Curieux constant
+🧠 Intellectuelle
+Lire la description d’un Avatar Stratégique
++25 pièces
+Quotidienne
+📚 Livre ouvert
+Q12
+Duel du jour
+⚔️ Jeu
+Gagner une partie Duo
++75 pièces
+Quotidienne
+🤜🤛 Icône duel
+Q13
+Maître en herbe
+🎯 Maîtrise du Jeu
+Finissez une partie personnalisée 4+ joueurs
++75 pièces
+Quotidienne
+🎛️ Icône console
+Q14
+Réactif
+🧠 Intellectuelle
+sélectionné une réponse en moins d’1,5 sec
++50 pièces
+Quotidienne
+⏱️ Chrono vert
+Q15
+Fidèle du jour
+🧩 Sociale
+Une partie en Solo dans Ligue
++75 pièces
+Quotidienne
+📅 Soleil
+Q16
+Petit investisseur
+🛒 Boutique & Monnaie
+Acheter un objet dans la boutique
++200 pièces
+Quotidienne
+💰 Pièce dorée
+Q17
+Découvreur du jour
+🌍 Exploration
+Jouer 5 quiz “Général”
++75 pièces
+Quotidienne
+🔬 Icône microscope
+Q18
+Stratégie éclair
+🧬 Avatars
+Utiliser un skill d’avatar stratégique
++50 pièces
+Quotidienne
+🎯 Icône pouvoir
+Q19
+Coach social
+🧩 Sociale
+Aider un joueur dans le besoin vie ou pièces
++100 pièces
+Quotidienne
+🧑‍🏫 Étoile bleue
+Q20
+Focus ultime
+🧠 Intellectuelle
+Terminer 5 Parties en 2 manche 
++75 pièces
+Quotidienne
+👁️ Œil concentré
+
