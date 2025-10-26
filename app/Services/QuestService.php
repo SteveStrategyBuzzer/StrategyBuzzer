@@ -293,7 +293,7 @@ class QuestService
     protected function checkRetroactiveCondition(User $user, Quest $quest): bool
     {
         $code = $quest->detection_code;
-        $params = $quest->detection_params ? json_decode($quest->detection_params, true) : [];
+        $params = is_array($quest->detection_params) ? $quest->detection_params : [];
         
         // Compter les parties totales
         $totalMatches = $this->getTotalMatchesCount($user);
@@ -349,17 +349,10 @@ class QuestService
                 $duoWins = $this->getDuoWinsCount($user);
                 return $duoWins >= $required;
             
-            // Boss defeats (Solo mode)
+            // Boss defeats (Solo mode) - Table non disponible
             case 'boss_defeats_5':
             case 'boss_defeats_10':
-                $required = $params['count'] ?? 10;
-                // Compter les boss uniques battus
-                $bossDefeats = DB::table('solo_boss_history')
-                    ->where('user_id', $user->id)
-                    ->where('defeated', true)
-                    ->distinct('boss_id')
-                    ->count('boss_id');
-                return $bossDefeats >= $required;
+                return false; // Aucune table solo_boss_history dans la base
             
             // Avatars débloqués
             case 'avatars_unlocked_10':
@@ -430,6 +423,7 @@ class QuestService
     
     /**
      * Compter les scores parfaits (10/10 bonnes réponses pour le joueur)
+     * Note: Seuls les matchs Duo stockent les scores, pas les matchs Ligue
      */
     protected function getPerfectScoresCount(User $user): int
     {
@@ -447,21 +441,7 @@ class QuestService
             ->where('status', 'completed')
             ->count();
         
-        $leaguePerfect = DB::table('league_individual_matches')
-            ->where(function($query) use ($user) {
-                $query->where(function($q) use ($user) {
-                    $q->where('player1_id', $user->id)
-                      ->whereRaw('player1_score >= 10');
-                })
-                ->orWhere(function($q) use ($user) {
-                    $q->where('player2_id', $user->id)
-                      ->whereRaw('player2_score >= 10');
-                });
-            })
-            ->where('status', 'completed')
-            ->count();
-        
-        return $duoPerfect + $leaguePerfect;
+        return $duoPerfect;
     }
     
     /**
@@ -511,37 +491,24 @@ class QuestService
     }
     
     /**
-     * Compter les thèmes uniques joués (union Duo + Ligue)
+     * Compter les thèmes uniques joués
+     * Note: duo_matches stocke 'theme' (string), league n'a pas de thèmes
      */
     protected function getUniqueThemesCount(User $user): int
     {
-        // Récupérer tous les theme_id uniques depuis Duo
+        // Récupérer tous les thèmes uniques depuis Duo (colonne 'theme' pas 'theme_id')
         $duoThemes = DB::table('duo_matches')
             ->where(function($query) use ($user) {
                 $query->where('player1_id', $user->id)
                       ->orWhere('player2_id', $user->id);
             })
             ->where('status', 'completed')
-            ->whereNotNull('theme_id')
+            ->whereNotNull('theme')
             ->distinct()
-            ->pluck('theme_id')
+            ->pluck('theme')
             ->toArray();
         
-        // Récupérer tous les theme_id uniques depuis Ligue
-        $leagueThemes = DB::table('league_individual_matches')
-            ->where(function($query) use ($user) {
-                $query->where('player1_id', $user->id)
-                      ->orWhere('player2_id', $user->id);
-            })
-            ->where('status', 'completed')
-            ->whereNotNull('theme_id')
-            ->distinct()
-            ->pluck('theme_id')
-            ->toArray();
-        
-        // Union des deux tableaux et compter les uniques
-        $allThemes = array_unique(array_merge($duoThemes, $leagueThemes));
-        return count($allThemes);
+        return count($duoThemes);
     }
     
     /**
