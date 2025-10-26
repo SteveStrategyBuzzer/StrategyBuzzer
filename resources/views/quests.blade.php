@@ -318,6 +318,79 @@ a.clean{ color:var(--muted); text-decoration:none; }
   transform:translateY(-2px);
 }
 
+.daily-banner{
+  background:linear-gradient(135deg, #ff9a00, #ff6a00);
+  border:2px solid #ff7700;
+  border-radius:20px;
+  padding:20px 24px;
+  margin-bottom:20px;
+  box-shadow:0 10px 30px rgba(255,106,0,0.3);
+  display:flex;
+  align-items:center;
+  gap:20px;
+  animation:pulseGlow 3s infinite;
+}
+
+@keyframes pulseGlow{
+  0%, 100%{ box-shadow:0 10px 30px rgba(255,106,0,0.3); }
+  50%{ box-shadow:0 10px 40px rgba(255,106,0,0.5); }
+}
+
+.daily-icon{
+  font-size:3.5rem;
+  line-height:1;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+  animation:rotate 10s linear infinite;
+}
+
+@keyframes rotate{
+  from{ transform:rotate(0deg); }
+  to{ transform:rotate(360deg); }
+}
+
+.daily-content{
+  flex:1;
+}
+
+.daily-title{
+  font-size:1.5rem;
+  font-weight:700;
+  color:#fff;
+  margin:0 0 4px;
+  text-shadow:0 2px 4px rgba(0,0,0,0.3);
+}
+
+.daily-subtitle{
+  font-size:0.95rem;
+  color:rgba(255,255,255,0.9);
+  margin:0;
+}
+
+.daily-timer{
+  background:rgba(0,0,0,0.2);
+  border:1px solid rgba(255,255,255,0.3);
+  border-radius:12px;
+  padding:12px 16px;
+  text-align:center;
+  backdrop-filter:blur(10px);
+}
+
+.timer-label{
+  font-size:0.75rem;
+  color:rgba(255,255,255,0.8);
+  margin-bottom:4px;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+
+.timer-value{
+  font-size:1.3rem;
+  font-weight:700;
+  color:#fff;
+  font-family:'Courier New', monospace;
+  text-shadow:0 2px 4px rgba(0,0,0,0.3);
+}
+
 @media (max-width:480px){
   .wrap{padding:16px 12px 60px}
   .topbar{flex-direction:column;align-items:stretch}
@@ -330,6 +403,10 @@ a.clean{ color:var(--muted); text-decoration:none; }
   .modal{max-width:calc(100vw - 32px)}
   .modal-emoji{font-size:4rem}
   .modal-title{font-size:1.3rem}
+  .daily-banner{flex-direction:column;text-align:center;gap:16px;padding:16px}
+  .daily-icon{font-size:3rem}
+  .daily-title{font-size:1.3rem}
+  .timer-value{font-size:1.1rem}
 }
   </style>
 </head>
@@ -380,6 +457,21 @@ a.clean{ color:var(--muted); text-decoration:none; }
     <a href="/quests?rarity=Maître" class="tab {{ $currentRarity === 'Maître' ? 'active' : '' }}">👑 Maître</a>
     <a href="/quests?rarity=Quotidiennes" class="tab {{ $currentRarity === 'Quotidiennes' ? 'active' : '' }}">📅 Quotidiennes</a>
   </div>
+
+  <!-- Bannière Quêtes Quotidiennes -->
+  @if($currentRarity === 'Quotidiennes')
+  <div class="daily-banner">
+    <div class="daily-icon">☀️</div>
+    <div class="daily-content">
+      <h3 class="daily-title">Quêtes Quotidiennes</h3>
+      <p class="daily-subtitle">3 nouvelles quêtes chaque jour</p>
+    </div>
+    <div class="daily-timer">
+      <div class="timer-label">Reset dans</div>
+      <div class="timer-value" id="dailyTimer">--:--:--</div>
+    </div>
+  </div>
+  @endif
 
   <!-- Badge Grid -->
   <div class="grid badge-grid">
@@ -493,6 +585,43 @@ document.addEventListener('keydown', function(e) {
     closeModal();
   }
 });
+
+// Timer de reset quotidien
+function updateDailyTimer() {
+  const timerElement = document.getElementById('dailyTimer');
+  if (!timerElement) return;
+  
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  
+  const diff = tomorrow - now;
+  
+  if (diff <= 0) {
+    timerElement.textContent = '00:00:00';
+    // Recharger la page pour obtenir les nouvelles quêtes
+    setTimeout(() => window.location.reload(), 1000);
+    return;
+  }
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  
+  const formatted = 
+    String(hours).padStart(2, '0') + ':' +
+    String(minutes).padStart(2, '0') + ':' +
+    String(seconds).padStart(2, '0');
+  
+  timerElement.textContent = formatted;
+}
+
+// Mettre à jour le timer toutes les secondes si on est sur l'onglet quotidien
+if (document.getElementById('dailyTimer')) {
+  updateDailyTimer();
+  setInterval(updateDailyTimer, 1000);
+}
 </script>
 
 </body>
