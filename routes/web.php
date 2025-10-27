@@ -73,6 +73,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/quests/progress/all', [QuestController::class, 'getUserProgress'])->name('quests.progress');
 });
 
+/* ===== Statistiques ===== */
+Route::middleware('auth')->group(function () {
+    Route::get('/stats', [App\Http\Controllers\StatisticsController::class, 'index'])->name('stats.index');
+});
+
 /* ===== Pièces d'or (Stripe) ===== */
 Route::middleware('auth')->group(function () {
     Route::post('/coins/checkout', [App\Http\Controllers\CoinsController::class, 'checkout'])->name('coins.checkout');
