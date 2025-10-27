@@ -87,6 +87,28 @@ a.clean{ color:var(--muted); text-decoration:none; }
   filter:grayscale(1) brightness(0.6) blur(1px);
 }
 
+.badge-item.in-progress{
+  border-color:var(--gold);
+  border-width:3px;
+  background:var(--card);
+  opacity:0.85;
+}
+
+.badge-item.in-progress .badge-emoji{
+  filter:grayscale(1) brightness(0.7) blur(1px);
+}
+
+.badge-item.in-progress:hover{
+  transform:translateY(-4px) scale(1.05);
+  box-shadow:0 0 20px rgba(251,191,36,0.4), 0 20px 40px rgba(0,0,0,.25);
+}
+
+.tab.has-progress{
+  border-color:var(--gold);
+  border-width:2px;
+  box-shadow:0 0 15px rgba(251,191,36,0.2);
+}
+
 .completed-mark{
   position:absolute;
   top:6px;
@@ -450,12 +472,12 @@ a.clean{ color:var(--muted); text-decoration:none; }
 
   <!-- Tabs -->
   <div class="tabs">
-    <a href="/quests?rarity=Standard" class="tab {{ $currentRarity === 'Standard' ? 'active' : '' }}">💚 Standard</a>
-    <a href="/quests?rarity=Rare" class="tab {{ $currentRarity === 'Rare' ? 'active' : '' }}">💎 Rare</a>
-    <a href="/quests?rarity=Épique" class="tab {{ $currentRarity === 'Épique' ? 'active' : '' }}">🔮 Épique</a>
-    <a href="/quests?rarity=Légendaire" class="tab {{ $currentRarity === 'Légendaire' ? 'active' : '' }}">🌟 Légendaire</a>
-    <a href="/quests?rarity=Maître" class="tab {{ $currentRarity === 'Maître' ? 'active' : '' }}">👑 Maître</a>
-    <a href="/quests?rarity=Quotidiennes" class="tab {{ $currentRarity === 'Quotidiennes' ? 'active' : '' }}">📅 Quotidiennes</a>
+    <a href="/quests?rarity=Standard" class="tab {{ $currentRarity === 'Standard' ? 'active' : '' }} {{ in_array('Standard', $raritiesWithProgress) ? 'has-progress' : '' }}">💚 Standard</a>
+    <a href="/quests?rarity=Rare" class="tab {{ $currentRarity === 'Rare' ? 'active' : '' }} {{ in_array('Rare', $raritiesWithProgress) ? 'has-progress' : '' }}">💎 Rare</a>
+    <a href="/quests?rarity=Épique" class="tab {{ $currentRarity === 'Épique' ? 'active' : '' }} {{ in_array('Épique', $raritiesWithProgress) ? 'has-progress' : '' }}">🔮 Épique</a>
+    <a href="/quests?rarity=Légendaire" class="tab {{ $currentRarity === 'Légendaire' ? 'active' : '' }} {{ in_array('Légendaire', $raritiesWithProgress) ? 'has-progress' : '' }}">🌟 Légendaire</a>
+    <a href="/quests?rarity=Maître" class="tab {{ $currentRarity === 'Maître' ? 'active' : '' }} {{ in_array('Maître', $raritiesWithProgress) ? 'has-progress' : '' }}">👑 Maître</a>
+    <a href="/quests?rarity=Quotidiennes" class="tab {{ $currentRarity === 'Quotidiennes' ? 'active' : '' }} {{ in_array('Quotidiennes', $raritiesWithProgress) ? 'has-progress' : '' }}">📅 Quotidiennes</a>
   </div>
 
   <!-- Bannière Quêtes Quotidiennes -->
@@ -479,11 +501,14 @@ a.clean{ color:var(--muted); text-decoration:none; }
       @php
         $quest = $questData['quest'];
         $isCompleted = $questData['is_completed'];
+        $hasProgress = $questData['has_progress'] ?? false;
         $progressCurrent = $questData['progress_current'] ?? 0;
         $progressTotal = $questData['progress_total'] ?? 1;
         $progressPercent = $progressTotal > 0 ? min(100, ($progressCurrent / $progressTotal) * 100) : 0;
+        
+        $badgeClass = $isCompleted ? 'completed' : ($hasProgress ? 'in-progress' : 'locked');
       @endphp
-      <div class="badge-item {{ $isCompleted ? 'completed' : 'locked' }}" 
+      <div class="badge-item {{ $badgeClass }}" 
            onclick="openModal({{ json_encode([
              'name' => $quest->name,
              'emoji' => $quest->badge_emoji,

@@ -37,11 +37,13 @@ class QuestController extends Controller
             $questsWithProgress = $dailyQuests->map(function($quest) use ($user) {
                 $progressRecord = $quest->getUserProgress($user->id);
                 $isCompleted = $quest->isCompletedBy($user->id);
+                $progressCurrent = $progressRecord ? $progressRecord->progress_current : 0;
                 
                 return [
                     'quest' => $quest,
                     'is_completed' => $isCompleted,
-                    'progress_current' => $isCompleted ? 1 : 0,
+                    'has_progress' => $progressCurrent > 0 && !$isCompleted,
+                    'progress_current' => $isCompleted ? 1 : $progressCurrent,
                     'progress_total' => 1,
                     'completed_at' => $progressRecord ? $progressRecord->completed_at : null,
                 ];
@@ -50,11 +52,35 @@ class QuestController extends Controller
             $questsWithProgress = $this->questService->getUserQuests($user, $rarity);
         }
         
+        // Calculer quelles raretés ont des quêtes en progression
+        $raritiesWithProgress = [];
+        $allRarities = ['Standard', 'Rare', 'Épique', 'Légendaire', 'Maître', 'Quotidiennes'];
+        
+        foreach ($allRarities as $rarityCheck) {
+            if ($rarityCheck === 'Quotidiennes') {
+                $dailyQuests = $this->questService->getDailyQuests();
+                $hasProgress = $dailyQuests->contains(function($quest) use ($user) {
+                    $progressRecord = $quest->getUserProgress($user->id);
+                    $isCompleted = $quest->isCompletedBy($user->id);
+                    $progressCurrent = $progressRecord ? $progressRecord->progress_current : 0;
+                    return $progressCurrent > 0 && !$isCompleted;
+                });
+            } else {
+                $quests = $this->questService->getUserQuests($user, $rarityCheck);
+                $hasProgress = $quests->contains(fn($q) => $q['has_progress'] ?? false);
+            }
+            
+            if ($hasProgress) {
+                $raritiesWithProgress[] = $rarityCheck;
+            }
+        }
+        
         return view('quests', [
             'quests' => $questsWithProgress,
             'currentRarity' => $rarity,
             'userCoins' => $user->coins ?? 0,
             'user' => $user,
+            'raritiesWithProgress' => $raritiesWithProgress,
         ]);
     }
 

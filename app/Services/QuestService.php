@@ -262,6 +262,7 @@ class QuestService
             return [
                 'quest' => $quest,
                 'is_completed' => $isCompleted,
+                'has_progress' => $currentProgress > 0 && !$isCompleted,
                 'progress_current' => $currentProgress,
                 'progress_total' => $totalProgress,
                 'completed_at' => $progressRecord ? $progressRecord->completed_at : null,
