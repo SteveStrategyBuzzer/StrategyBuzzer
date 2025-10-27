@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\QuestService;
+use App\Services\StatisticsService;
 
 class SoloController extends Controller
 {
@@ -869,6 +870,31 @@ class SoloController extends Controller
             }
         }
         
+        // Enregistrer les statistiques de match (victoire)
+        $matchStats = null;
+        $statsMetrics = null;
+        if ($user) {
+            $statsService = new StatisticsService();
+            $matchData = $this->calculateMatchStatistics();
+            
+            $gameId = 'solo_' . $currentLevel . '_' . time();
+            $matchStats = $statsService->recordMatchStatistics(
+                $user->id,
+                'solo',
+                $gameId,
+                $matchData
+            );
+            
+            $statsMetrics = [
+                'efficacite_brute' => $matchStats->efficacite_brute,
+                'taux_participation' => $matchStats->taux_participation,
+                'taux_precision' => $matchStats->taux_precision,
+                'ratio_performance' => $matchStats->ratio_performance,
+            ];
+            
+            $statsService->updateGlobalStatistics($user->id, 'solo');
+        }
+        
         // Récupérer le nom de l'adversaire du prochain niveau
         $opponents = config('opponents');
         $nextOpponentName = $this->getOpponentName($newLevel);
@@ -882,6 +908,7 @@ class SoloController extends Controller
             'total_unanswered' => $totalUnanswered,
             'global_efficiency' => $globalEfficiency,
             'next_opponent_name' => $nextOpponentName,
+            'stats_metrics' => $statsMetrics,
         ];
         
         return view('victory', compact('params'));
@@ -924,6 +951,31 @@ class SoloController extends Controller
         $totalQuestionsPlayed = count($globalStats);
         $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
         
+        // Enregistrer les statistiques de match (défaite)
+        $matchStats = null;
+        $statsMetrics = null;
+        if ($user) {
+            $statsService = new StatisticsService();
+            $matchData = $this->calculateMatchStatistics();
+            
+            $gameId = 'solo_' . $currentLevel . '_' . time();
+            $matchStats = $statsService->recordMatchStatistics(
+                $user->id,
+                'solo',
+                $gameId,
+                $matchData
+            );
+            
+            $statsMetrics = [
+                'efficacite_brute' => $matchStats->efficacite_brute,
+                'taux_participation' => $matchStats->taux_participation,
+                'taux_precision' => $matchStats->taux_precision,
+                'ratio_performance' => $matchStats->ratio_performance,
+            ];
+            
+            $statsService->updateGlobalStatistics($user->id, 'solo');
+        }
+        
         $params = [
             'current_level' => $currentLevel,
             'theme' => $theme,
@@ -936,6 +988,7 @@ class SoloController extends Controller
             'cooldown_time' => $cooldownTime,
             'next_life_regen' => $user && $user->next_life_regen ? $user->next_life_regen->toIso8601String() : null,
             'is_guest' => !$user,
+            'stats_metrics' => $statsMetrics,
         ];
         
         return view('defeat', compact('params'));
@@ -1042,5 +1095,43 @@ class SoloController extends Controller
         }
         
         return null;
+    }
+
+    private function calculateMatchStatistics()
+    {
+        $globalStats = session('global_stats', []);
+        
+        $totalQuestions = 0;
+        $questionsBuzzed = 0;
+        $correctAnswers = 0;
+        $wrongAnswers = 0;
+        $pointsEarned = 0;
+        $pointsPossible = 0;
+        
+        foreach ($globalStats as $stat) {
+            $totalQuestions++;
+            $pointsPossible += 2;
+            
+            if ($stat['player_buzzed']) {
+                $questionsBuzzed++;
+                
+                if ($stat['is_correct']) {
+                    $correctAnswers++;
+                    $pointsEarned += 2;
+                } else {
+                    $wrongAnswers++;
+                    $pointsEarned -= 2;
+                }
+            }
+        }
+        
+        return [
+            'total_questions' => $totalQuestions,
+            'questions_buzzed' => $questionsBuzzed,
+            'correct_answers' => $correctAnswers,
+            'wrong_answers' => $wrongAnswers,
+            'points_earned' => $pointsEarned,
+            'points_possible' => $pointsPossible,
+        ];
     }
 }
