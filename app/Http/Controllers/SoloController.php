@@ -1027,20 +1027,24 @@ class SoloController extends Controller
                 return [
                     'name' => $bossData['name'],
                     'is_boss' => true,
-                    'avatar_slug' => $bossData['slug'],
+                    'avatar' => $bossData['slug'],
                     'age' => null,
+                    'next_boss' => null,
+                    'description' => null,
                 ];
             }
         } else {
             // Sinon, adversaire régulier
             $opponentData = $opponents['regular_opponents'][$niveau] ?? null;
             if ($opponentData) {
+                $description = "Votre adversaire {$opponentData['name']} {$opponentData['age']} ans élève de {$opponentData['next_boss']}";
                 return [
                     'name' => $opponentData['name'],
                     'is_boss' => false,
-                    'avatar_slug' => $opponentData['avatar'],
+                    'avatar' => $opponentData['avatar'],
                     'age' => $opponentData['age'],
                     'next_boss' => $opponentData['next_boss'],
+                    'description' => $description,
                 ];
             }
         }
@@ -1048,9 +1052,10 @@ class SoloController extends Controller
         return [
             'name' => 'Adversaire',
             'is_boss' => false,
-            'avatar_slug' => 'default',
+            'avatar' => 'default',
             'age' => 8,
             'next_boss' => 'Le Stratège',
+            'description' => 'Votre adversaire Adversaire 8 ans élève de Le Stratège',
         ];
     }
 
