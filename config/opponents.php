@@ -115,14 +115,14 @@ return [
     
     'boss_opponents' => [
         10 => ['name' => 'Le Stratège', 'slug' => 'le-stratege'],
-        20 => ['name' => 'Le Prodige', 'slug' => 'le-prodige'],
+        20 => ['name' => 'La Prodige', 'slug' => 'la-prodige'],
         30 => ['name' => 'Le Maître', 'slug' => 'le-maitre'],
         40 => ['name' => 'Le Sage', 'slug' => 'le-sage'],
-        50 => ['name' => 'Le Champion', 'slug' => 'le-champion'],
-        60 => ['name' => 'Le Légende', 'slug' => 'le-legende'],
+        50 => ['name' => 'La Championne', 'slug' => 'la-championne'],
+        60 => ['name' => 'La Légende', 'slug' => 'la-legende'],
         70 => ['name' => 'Le Titan', 'slug' => 'le-titan'],
-        80 => ['name' => 'Le Virtuose', 'slug' => 'le-virtuose'],
+        80 => ['name' => 'La Virtuose', 'slug' => 'la-virtuose'],
         90 => ['name' => 'Le Génie', 'slug' => 'le-genie'],
-        100 => ['name' => 'Cerveau Ultime', 'slug' => 'cerveau-ultime'],
+        100 => ['name' => "L'Intelligence Ultime", 'slug' => 'intelligence-ultime'],
     ],
 ];

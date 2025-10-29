@@ -374,9 +374,9 @@
         <div class="boss-label">BOSS</div>
       </div>
       
-      <!-- Grille 3x3 des étudiants -->
+      <!-- Grille 3x3 des étudiants (ordre inversé : niveau suivant au-dessus) -->
       <div class="students-grid-portrait">
-        @foreach($section['levels'] as $level)
+        @foreach(array_reverse($section['levels']) as $level)
           @php
             $opponent = $opponents[$level] ?? null;
             $isLocked = $level > $playerLevel;
