@@ -1162,19 +1162,13 @@ class SoloController extends Controller
         
         // Retourner le boss UNIQUEMENT si le niveau est exactement un niveau de boss (10, 20, 30, etc.)
         if (isset($bossOpponents[$niveau])) {
-            $bossName = $bossOpponents[$niveau];
+            $bossData = $bossOpponents[$niveau];
             
-            // Créer le slug pour le chemin de l'image
-            $slug = strtolower($bossName);
-            $slug = str_replace(['é', 'è', 'ê'], 'e', $slug);
-            $slug = str_replace(['à', 'â'], 'a', $slug);
-            $slug = str_replace(' ', '-', $slug);
-            $slug = str_replace('\'', '', $slug);
-            
+            // Les boss sont stockés comme ['name' => ..., 'slug' => ...]
             return [
-                'name' => $bossName,
-                'slug' => $slug,
-                'avatar' => "images/avatars/boss/{$slug}.png"
+                'name' => $bossData['name'],
+                'slug' => $bossData['slug'],
+                'avatar' => "images/avatars/bosses/{$bossData['slug']}.png"
             ];
         }
         
