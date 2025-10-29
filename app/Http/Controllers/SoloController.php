@@ -42,13 +42,17 @@ class SoloController extends Controller
 
     public function opponents()
     {
-        $opponents = config('opponents.opponents', []);
+        $regularOpponents = config('opponents.regular_opponents', []);
         $bossOpponents = config('opponents.boss_opponents', []);
+        
+        // Fusionner en préservant les clés numériques (niveau) avec l'opérateur +
+        // array_merge() réindexerait les clés, ce qui casserait la correspondance niveau->adversaire
+        $opponents = $regularOpponents + $bossOpponents;
+        
         $playerLevel = session('choix_niveau', 1);
 
         return view('opponents_gallery', [
             'opponents' => $opponents,
-            'bossOpponents' => $bossOpponents,
             'playerLevel' => $playerLevel,
         ]);
     }
