@@ -351,6 +351,9 @@ class SoloController extends Controller
             session(['chrono_time' => $baseTime]);
         }
         
+        // Récupérer les informations complètes de l'adversaire
+        $opponentInfo = $this->getOpponentInfo($niveau);
+        
         $params = [
             'question' => $question,
             'current_question' => $currentQuestion,
@@ -363,6 +366,7 @@ class SoloController extends Controller
             'niveau' => $niveau,
             'current_round' => session('current_round', 1),
             'total_rounds' => session('total_rounds', 5),
+            'opponent_info' => $opponentInfo,
         ];
         
         return view('game_question', compact('params'));
@@ -1001,11 +1005,51 @@ class SoloController extends Controller
         
         // Vérifier si c'est un boss (niveaux 10, 20, 30, etc.)
         if ($niveau % 10 === 0) {
-            return $opponents['boss_opponents'][$niveau] ?? 'Adversaire';
+            $bossData = $opponents['boss_opponents'][$niveau] ?? null;
+            return $bossData ? $bossData['name'] : 'Adversaire';
         }
         
         // Sinon, adversaire régulier
-        return $opponents['regular_opponents'][$niveau] ?? 'Adversaire';
+        $opponentData = $opponents['regular_opponents'][$niveau] ?? null;
+        return $opponentData ? $opponentData['name'] : 'Adversaire';
+    }
+    
+    private function getOpponentInfo($niveau)
+    {
+        $opponents = config('opponents');
+        
+        // Vérifier si c'est un boss (niveaux 10, 20, 30, etc.)
+        if ($niveau % 10 === 0) {
+            $bossData = $opponents['boss_opponents'][$niveau] ?? null;
+            if ($bossData) {
+                return [
+                    'name' => $bossData['name'],
+                    'is_boss' => true,
+                    'avatar_slug' => $bossData['slug'],
+                    'age' => null,
+                ];
+            }
+        } else {
+            // Sinon, adversaire régulier
+            $opponentData = $opponents['regular_opponents'][$niveau] ?? null;
+            if ($opponentData) {
+                return [
+                    'name' => $opponentData['name'],
+                    'is_boss' => false,
+                    'avatar_slug' => $opponentData['avatar'],
+                    'age' => $opponentData['age'],
+                    'next_boss' => $opponentData['next_boss'],
+                ];
+            }
+        }
+        
+        return [
+            'name' => 'Adversaire',
+            'is_boss' => false,
+            'avatar_slug' => 'default',
+            'age' => 8,
+            'next_boss' => 'Le Stratège',
+        ];
     }
 
     private function getAvatarSkills($avatar)

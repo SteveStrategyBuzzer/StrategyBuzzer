@@ -22,11 +22,7 @@ $avatarSkills = [
 $playerNames = ['Hugo', 'Léa', 'Lucas', 'Emma', 'Nathan', 'Chloé', 'Louis', 'Jade', 'Arthur', 'Inès', 'Raphaël', 'Camille', 'Gabriel', 'Zoé', 'Thomas', 'Alice'];
 $playerName = $playerNames[array_rand($playerNames)];
 
-// Récupérer les noms d'adversaires depuis la configuration
-$opponents = config('opponents');
-$regularOpponents = $opponents['regular_opponents'] ?? [];
-$bossOpponents = $opponents['boss_opponents'] ?? [];
-
+// Info avatar stratégique du joueur
 $currentAvatar = $params['avatar'] ?? 'Aucun';
 $skills = $currentAvatar !== 'Aucun' ? ($avatarSkills[$currentAvatar] ?? []) : [];
 
@@ -49,18 +45,22 @@ if ($currentAvatar !== 'Aucun') {
     $strategicAvatarPath = asset("images/avatars/{$strategicAvatarSlug}.png");
 }
 
-// Info de l'adversaire
+// Info de l'adversaire - récupéré depuis les params
 $niveau = $params['niveau'];
-$bossInfo = (new App\Http\Controllers\SoloController())->getBossForLevel($niveau);
+$opponentInfo = $params['opponent_info'] ?? [];
 $opponentScore = $params['current_question'] - 1 - $params['score'];
 
-if ($bossInfo) {
-    $opponentName = $bossInfo['name'];
-    $opponentAvatar = asset("images/avatars/boss/{$bossInfo['slug']}.png");
+// Déterminer l'avatar et le nom de l'adversaire
+if ($opponentInfo['is_boss'] ?? false) {
+    $opponentName = $opponentInfo['name'];
+    $opponentAvatar = asset("images/avatars/boss/{$opponentInfo['avatar_slug']}.png");
+    $opponentDescription = '';
 } else {
-    // Utiliser le nom depuis la configuration selon le niveau
-    $opponentName = $regularOpponents[$niveau] ?? 'Adversaire';
-    $opponentAvatar = asset("images/avatars/opponent/default.png");
+    $opponentName = $opponentInfo['name'] ?? 'Adversaire';
+    $opponentAge = $opponentInfo['age'] ?? 8;
+    $nextBoss = $opponentInfo['next_boss'] ?? 'Le Stratège';
+    $opponentAvatar = asset("images/avatars/students/{$opponentInfo['avatar_slug']}.png");
+    $opponentDescription = "Votre adversaire {$opponentName} {$opponentAge} ans élève du {$nextBoss}";
 }
 @endphp
 
@@ -647,16 +647,14 @@ if ($bossInfo) {
             
             <!-- Adversaire -->
             <div class="opponent-circle">
-                @if($bossInfo)
-                    <!-- Boss avec photo -->
-                    <img src="{{ $opponentAvatar }}" alt="Avatar Boss" class="opponent-avatar">
-                @else
-                    <!-- Élève sans photo -->
-                    <div class="opponent-avatar-empty">
-                        {{ strtoupper(substr($opponentName, 0, 1)) }}
+                <!-- Avatar avec photo (boss ou élève) -->
+                <img src="{{ $opponentAvatar }}" alt="Avatar {{ $opponentName }}" class="opponent-avatar">
+                <div class="opponent-name">{{ $opponentName }}</div>
+                @if(!empty($opponentDescription))
+                    <div style="font-size: 0.8rem; text-align: center; opacity: 0.9; margin-top: 5px;">
+                        {{ $opponentDescription }}
                     </div>
                 @endif
-                <div class="opponent-name">{{ $opponentName }}</div>
                 <div class="opponent-level">Niveau {{ $niveau }}</div>
                 <div class="opponent-score" id="opponentScore">{{ $opponentScore }}</div>
             </div>
