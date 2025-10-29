@@ -44,7 +44,7 @@ return [
         36 => ['name' => 'Lucia', 'age' => 14, 'avatar' => 'lucia', 'next_boss' => 'Le Sage'],
         37 => ['name' => 'Pablo', 'age' => 14, 'avatar' => 'pablo', 'next_boss' => 'Le Sage'],
         38 => ['name' => 'Wei', 'age' => 14, 'avatar' => 'wei', 'next_boss' => 'Le Sage'],
-        39 => ['name' => 'Carla', 'age' => 14, 'avatar' => 'carla', 'next_boss' => 'Le Sage'],
+        39 => ['name' => 'Nelly', 'age' => 14, 'avatar' => 'nelly', 'next_boss' => 'Le Sage'],
         
         // Niveaux 41-49 : 🌏 Asie - 16 ans (diversité ethnique globale)
         41 => ['name' => 'Amina', 'age' => 16, 'avatar' => 'amina', 'next_boss' => 'Le Champion'],
@@ -55,7 +55,7 @@ return [
         46 => ['name' => 'Kofi', 'age' => 16, 'avatar' => 'kofi', 'next_boss' => 'Le Champion'],
         47 => ['name' => 'Natalia', 'age' => 16, 'avatar' => 'natalia', 'next_boss' => 'Le Champion'],
         48 => ['name' => 'Raj', 'age' => 16, 'avatar' => 'raj', 'next_boss' => 'Le Champion'],
-        49 => ['name' => 'Rena', 'age' => 16, 'avatar' => 'rena', 'next_boss' => 'Le Champion'],
+        49 => ['name' => 'Emi', 'age' => 16, 'avatar' => 'emi', 'next_boss' => 'Le Champion'],
         
         // Niveaux 51-59 : 🇨🇳 & 🇰🇷 Asie de l'Est - 18 ans
         51 => ['name' => 'Hana', 'age' => 18, 'avatar' => 'hana', 'next_boss' => 'Le Légende'],
@@ -77,7 +77,7 @@ return [
         66 => ['name' => 'Samir', 'age' => 20, 'avatar' => 'samir', 'next_boss' => 'Le Titan'],
         67 => ['name' => 'Karim', 'age' => 20, 'avatar' => 'karim', 'next_boss' => 'Le Titan'],
         68 => ['name' => 'Colin', 'age' => 20, 'avatar' => 'colin', 'next_boss' => 'Le Titan'],
-        69 => ['name' => 'Ivan', 'age' => 20, 'avatar' => 'ivan', 'next_boss' => 'Le Titan'],
+        69 => ['name' => 'Rubie', 'age' => 20, 'avatar' => 'rubie', 'next_boss' => 'Le Titan'],
         
         // Niveaux 71-79 : 🌎 Amériques / Polynésie / Autres - 22 ans
         71 => ['name' => 'Maya', 'age' => 22, 'avatar' => 'maya', 'next_boss' => 'Le Virtuose'],
@@ -99,7 +99,7 @@ return [
         86 => ['name' => 'Koa', 'age' => 24, 'avatar' => 'koa', 'next_boss' => 'Le Génie'],
         87 => ['name' => 'Rena', 'age' => 24, 'avatar' => 'rena24', 'next_boss' => 'Le Génie'],
         88 => ['name' => 'Ming', 'age' => 24, 'avatar' => 'ming', 'next_boss' => 'Le Génie'],
-        89 => ['name' => 'Omar', 'age' => 24, 'avatar' => 'omar', 'next_boss' => 'Le Génie'],
+        89 => ['name' => 'Antoine', 'age' => 24, 'avatar' => 'antoine', 'next_boss' => 'Le Génie'],
         
         // Niveaux 91-99 : Mix (derniers noms) - 26 ans
         91 => ['name' => 'Mateo', 'age' => 26, 'avatar' => 'mateo26', 'next_boss' => 'Cerveau Ultime'],
@@ -109,7 +109,7 @@ return [
         95 => ['name' => 'Jorge', 'age' => 26, 'avatar' => 'jorge', 'next_boss' => 'Cerveau Ultime'],
         96 => ['name' => 'Miki', 'age' => 26, 'avatar' => 'miki', 'next_boss' => 'Cerveau Ultime'],
         97 => ['name' => 'Dalia', 'age' => 26, 'avatar' => 'dalia', 'next_boss' => 'Cerveau Ultime'],
-        98 => ['name' => 'Nelly', 'age' => 26, 'avatar' => 'nelly', 'next_boss' => 'Cerveau Ultime'],
+        98 => ['name' => 'Ivan', 'age' => 26, 'avatar' => 'ivan', 'next_boss' => 'Cerveau Ultime'],
         99 => ['name' => 'Venetia', 'age' => 26, 'avatar' => 'venetia', 'next_boss' => 'Cerveau Ultime'],
     ],
     
