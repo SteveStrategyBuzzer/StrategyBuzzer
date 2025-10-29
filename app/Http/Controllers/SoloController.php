@@ -150,6 +150,7 @@ class SoloController extends Controller
         ];
 
         $bossInfo = $this->getBossForLevel($niveau);
+        $opponentInfo = $this->getOpponentInfo($niveau);
         $playerAvatar = session('selected_avatar', 'images/avatars/standard/standard1.png');
         
         // Vérifier conflit d'avatar seulement s'il y a un boss
@@ -180,6 +181,7 @@ class SoloController extends Controller
             'boss_name'       => $bossInfo['name'] ?? null,
             'boss_avatar'     => $bossInfo['avatar'] ?? null,
             'boss_skills'     => $bossInfo['skills'] ?? [],
+            'opponent_info'   => $opponentInfo,
             'player_avatar'   => $playerAvatar,
             'avatar_conflict' => $avatarConflict,
             'has_boss'        => $bossInfo !== null,
