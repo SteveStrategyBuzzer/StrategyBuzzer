@@ -373,21 +373,30 @@
     @else
       <div class="avatar-card" style="border-color: rgba(255,255,255,0.3);">
         <div class="avatar-title">🎯 Niveau d'Entraînement</div>
-        <div style="padding: 40px 20px; text-align: center;">
-          <div style="font-size: 4rem; margin-bottom: 20px;">🎓</div>
-          @if(isset($params['opponent_info']) && !$params['opponent_info']['is_boss'])
-            <!-- Texte descriptif de l'adversaire élève -->
-            <div style="font-size: 1.1rem; font-weight: 600; opacity: 0.95;">
+        @if(isset($params['opponent_info']) && !$params['opponent_info']['is_boss'])
+          <!-- Photo de l'adversaire élève -->
+          <img src="/images/avatars/students/{{ $params['opponent_info']['avatar'] }}.png" 
+               alt="Avatar {{ $params['opponent_info']['name'] }}" 
+               class="avatar-img"
+               onerror="this.src='/images/avatars/students/default.png'"
+               style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; margin: 20px auto; display: block;">
+          
+          <!-- Texte descriptif de l'adversaire -->
+          <div style="padding: 0 20px 30px; text-align: center;">
+            <div style="font-size: 1.1rem; font-weight: 600; opacity: 0.95; line-height: 1.5;">
               Votre adversaire {{ $params['opponent_info']['name'] }} {{ $params['opponent_info']['age'] }} ans élève de {{ $params['opponent_info']['next_boss'] }}
             </div>
-          @else
+          </div>
+        @else
+          <div style="padding: 40px 20px; text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">🎓</div>
             <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 10px;">Pas de Boss</div>
             <div style="opacity: 0.8; font-size: 1rem;">
               Le premier boss apparaît au niveau 10.<br>
               Continuez à vous entraîner !
             </div>
-          @endif
-        </div>
+          </div>
+        @endif
       </div>
     @endif
   </div>
