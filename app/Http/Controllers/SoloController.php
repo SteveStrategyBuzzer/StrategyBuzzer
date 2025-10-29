@@ -244,10 +244,6 @@ class SoloController extends Controller
         $bossInfo = $this->getBossForLevel($niveau);
         $opponentInfo = $this->getOpponentInfo($niveau);
         
-        // DEBUG TEMPORAIRE
-        \Illuminate\Support\Facades\Log::info('RESUME DEBUG - Niveau: ' . $niveau);
-        \Illuminate\Support\Facades\Log::info('RESUME DEBUG - OpponentInfo: ' . json_encode($opponentInfo));
-        
         // Vérifier conflit d'avatar seulement s'il y a un boss
         $avatarConflict = false;
         if ($bossInfo) {
