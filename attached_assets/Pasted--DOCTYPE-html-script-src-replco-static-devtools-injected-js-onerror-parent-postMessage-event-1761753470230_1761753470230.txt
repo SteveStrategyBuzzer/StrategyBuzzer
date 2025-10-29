@@ -1,0 +1,550 @@
+<!DOCTYPE html><script src="/__replco/static/devtools/injected.js"onerror="parent.postMessage({event:'error',payload:'script.onerror: Failed to load '+event.target.src},'https://replit.com')"></script>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StrategyBuzzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon" type="image/png" href="https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev/favicon.png">
+    <link rel="shortcut icon" href="https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev/favicon.png">
+</head>
+<body>
+
+    <main class="container">
+        <style>
+  body { 
+    background: linear-gradient(135deg, #003DA5 0%, #001A52 100%); 
+    color: #fff; 
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  
+  .resume-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 20px;
+  }
+  
+  .title-section {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .title-section h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    margin-bottom: 10px;
+  }
+  
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  
+  .info-card {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .info-label {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 8px;
+  }
+  
+  .info-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  
+  .avatars-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 40px;
+  }
+  
+  @media (max-width: 768px) {
+    .avatars-section {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+  }
+  
+  .avatar-card {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .avatar-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  
+  .avatar-card.player {
+    border-color: #28a745;
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.3);
+  }
+  
+  .avatar-card.boss {
+    border-color: #dc3545;
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.3);
+  }
+  
+  .avatar-clickable {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .avatar-clickable::after {
+    content: '✏️ Modifier';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .avatar-clickable:hover::after {
+    opacity: 1;
+  }
+  
+  .avatar-slot {
+    background: rgba(0,0,0,0.3);
+    border: 2px dashed rgba(255,255,255,0.4);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+  
+  .avatar-slot:hover {
+    border-color: #FFD700;
+    background: rgba(255,215,0,0.1);
+    transform: scale(1.02);
+  }
+  
+  .avatar-slot.selected {
+    border-style: solid;
+    border-color: #28a745;
+    background: rgba(40, 167, 69, 0.15);
+  }
+  
+  .avatar-title {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+    opacity: 0.8;
+  }
+  
+  .avatar-img {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid rgba(255,255,255,0.3);
+    margin: 0 auto 20px;
+    display: block;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  }
+  
+  .avatar-name {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+  }
+  
+  .skills-list {
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 15px;
+  }
+  
+  .skills-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #FFD700;
+  }
+  
+  .skill-item {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 6px 0;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .skill-item::before {
+    content: '⚡';
+    margin-right: 8px;
+    font-size: 1.2rem;
+  }
+  
+  .start-button {
+    display: block;
+    margin: 0 auto;
+    padding: 18px 60px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: #fff;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+  }
+  
+  .start-button:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.6);
+  }
+  
+  .start-button:active {
+    transform: translateY(-1px);
+  }
+  
+  .menu-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 30px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 30px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  .menu-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  @media (max-width: 768px) {
+    .menu-button {
+      top: 10px;
+      right: 10px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+
+<!-- Bouton Menu -->
+<a href="https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev/menu" class="menu-button">
+  🏠 Menu
+</a>
+
+<div class="resume-container">
+  <!-- Titre -->
+  <div class="title-section">
+    <h1>🧾 Résumé de la Partie</h1>
+  </div>
+
+  <!-- Informations de la partie -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-label">Thème</div>
+      <div class="info-value">General 🧠</div>
+    </div>
+    
+    <div class="info-card">
+      <div class="info-label">Questions</div>
+      <div class="info-value">10</div>
+    </div>
+    
+    <div class="info-card">
+      <div class="info-label">Niveau</div>
+      <div class="info-value">1</div>
+    </div>
+  </div>
+
+  <!-- Alerte si conflit d'avatar -->
+  
+  <!-- Avatars côte à côte -->
+  <div class="avatars-section">
+    <!-- Avatar Joueur (Gauche) -->
+    <div class="avatar-card player">
+      <div class="avatar-title">👤 Avatar Joueur</div>
+      
+      <!-- Emplacement Avatar Portrait - Cliquable -->
+      <a href="https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev/avatar?from=resume" class="avatar-clickable" style="display: block; text-decoration: none; color: inherit;">
+                <img src="https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev/images/avatars/standard/standard2.png?v=1761753433" 
+             alt="Avatar Joueur" 
+             class="avatar-img"
+             onerror="this.src='https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev/images/avatars/default.png'">
+        <div class="avatar-name">Vous</div>
+      </a>
+      
+      <!-- Emplacement Avatar Stratégique - Cliquable -->
+      <a href="https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev/avatar?from=resume" style="text-decoration: none; color: inherit;">
+                  <div class="avatar-slot selected">
+            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 15px;">⚔️ Avatar Stratégique</div>
+            
+                          <div style="font-size: 3rem; margin-bottom: 10px;">⚔️</div>
+                        
+            <div style="font-size: 1.3rem; color: #FFD700; margin-bottom: 10px; font-weight: 700;">Mathématicien</div>
+                          <div style="font-size: 0.85rem; opacity: 0.8;">
+                                  Peut faire illuminer une bonne réponse si il y a un chiffre dans la réponse
+                              </div>
+                      </div>
+              </a>
+    </div>
+
+    <!-- DEBUG -->
+    <!-- DEBUG: opponent_info NOT SET -->    
+    <!-- Avatar Boss (Droite) - Uniquement si niveau >= 10 -->
+          <div class="avatar-card" style="border-color: rgba(255,255,255,0.3);">
+        <div class="avatar-title">🎯 Niveau d'Entraînement</div>
+                  <div style="padding: 40px 20px; text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">🎓</div>
+            <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 10px;">Pas de Boss</div>
+            <div style="opacity: 0.8; font-size: 1rem;">
+              Le premier boss apparaît au niveau 10.<br>
+              Continuez à vous entraîner !
+            </div>
+          </div>
+              </div>
+      </div>
+
+  <!-- Bouton Démarrer -->
+  <form action="https://a2836f7b-0195-4fff-b2d8-7d4368d26b55-00-3accm9exzmt5t.riker.replit.dev/solo/prepare" method="GET">
+    <button type="submit" class="start-button">
+      ▶️ Démarrer la Partie
+    </button>
+  </form>
+</div>
+    </main>
+
+    <!-- Musique d'ambiance StrategyBuzzer (joue partout sauf en gameplay) -->
+    <audio id="ambientMusic" preload="auto" loop></audio>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    // Système de musique d'ambiance globale StrategyBuzzer
+    (function() {
+        const ambientMusic = document.getElementById('ambientMusic');
+        if (!ambientMusic) return;
+        
+        // Mapping des IDs de musique vers les fichiers
+        const musicFiles = {
+            'strategybuzzer': '/sounds/strategybuzzer_ambient.mp3',
+            'fun_01': '/sounds/fun_01.mp3',
+            'chill': '/sounds/chill.mp3',
+            'punchy': '/sounds/punchy.mp3'
+        };
+        
+        // Pages de jeu où la musique d'ambiance NE doit PAS jouer
+        const gameplayPages = [
+            '/solo/prepare',
+            '/solo/game',
+            '/solo/answer',
+            '/solo/next',
+            '/solo/victory',
+            '/solo/defeat',
+            '/duo/game',
+            '/duo/answer',
+            '/league-individual/game',
+            '/league-individual/answer',
+            '/league-team/game',
+            '/league-team/answer',
+            '/game_preparation',
+            '/game_question',
+            '/game_answer',
+            '/game_result',
+            '/victory',
+            '/defeat'
+        ];
+        
+        // Vérifier si on est sur une page de gameplay
+        function isGameplayPage() {
+            const currentPath = window.location.pathname;
+            return gameplayPages.some(page => currentPath.includes(page));
+        }
+        
+        // Variable pour indiquer si c'est la page de résultat (game_result)
+        const isResultPage = false;
+        
+        // Vérifier si la musique est activée dans les paramètres du profil
+        function isMusicEnabled() {
+            const enabled = localStorage.getItem('ambient_music_enabled');
+            return enabled === null || enabled === 'true'; // Par défaut activé
+        }
+        
+        // Obtenir la musique choisie (par défaut strategybuzzer)
+        function getSelectedMusic() {
+            return localStorage.getItem('ambient_music_id') || 'strategybuzzer';
+        }
+        
+        // Charger la source audio selon le choix
+        function loadMusicSource() {
+            const musicId = getSelectedMusic();
+            const musicFile = musicFiles[musicId] || musicFiles['strategybuzzer'];
+            
+            // Ne recharger que si la source a changé
+            if (ambientMusic.src !== window.location.origin + musicFile) {
+                const wasPlaying = !ambientMusic.paused;
+                const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + musicId) || '0');
+                
+                ambientMusic.src = musicFile;
+                ambientMusic.load();
+                
+                ambientMusic.addEventListener('loadedmetadata', function onLoaded() {
+                    if (savedTime > 0 && savedTime < ambientMusic.duration) {
+                        ambientMusic.currentTime = savedTime;
+                    }
+                    if (wasPlaying && isMusicEnabled() && !isGameplayPage() && !isResultPage) {
+                        ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
+                    }
+                    ambientMusic.removeEventListener('loadedmetadata', onLoaded);
+                }, { once: true });
+            }
+        }
+        
+        // Charger la source initiale
+        loadMusicSource();
+        
+        // Écouter les changements de musique ou d'activation
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'ambient_music_id') {
+                loadMusicSource();
+            } else if (e.key === 'ambient_music_enabled') {
+                if (e.newValue === 'true' && !isGameplayPage() && !isResultPage) {
+                    ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
+                } else {
+                    ambientMusic.pause();
+                }
+            }
+        });
+        
+        // Vérifier si la session musicale a été démarrée (flag défini sur la page profil)
+        function isMusicSessionStarted() {
+            return localStorage.getItem('music_session_started') === 'true';
+        }
+        
+        // Si on est sur une page de gameplay, arrêter la musique
+        if (isGameplayPage() || isResultPage) {
+            ambientMusic.pause();
+        } else {
+            // Pages non-gameplay : jouer la musique d'ambiance SI activée ET session démarrée
+            const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + getSelectedMusic()) || '0');
+            
+            ambientMusic.addEventListener('loadedmetadata', function() {
+                if (savedTime > 0 && savedTime < ambientMusic.duration) {
+                    ambientMusic.currentTime = savedTime;
+                }
+                
+                // Jouer la musique SEULEMENT si activée ET session démarrée après connexion
+                if (isMusicEnabled() && isMusicSessionStarted()) {
+                    ambientMusic.play().catch(err => {
+                        console.log('Lecture automatique bloquée. Attente interaction utilisateur.');
+                        
+                        // Si le navigateur bloque la lecture auto, jouer au premier clic
+                        document.addEventListener('click', function playOnClick() {
+                            if (isMusicEnabled() && isMusicSessionStarted()) {
+                                ambientMusic.play().catch(e => console.log('Erreur lecture:', e));
+                            }
+                            document.removeEventListener('click', playOnClick);
+                        }, { once: true });
+                    });
+                }
+            });
+            
+            // Sauvegarder la position de lecture toutes les secondes
+            setInterval(() => {
+                const musicId = getSelectedMusic();
+                localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
+            }, 1000);
+            
+            // Sauvegarder la position avant de quitter la page
+            window.addEventListener('beforeunload', () => {
+                const musicId = getSelectedMusic();
+                localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
+            });
+        }
+        
+        // Exposer une fonction globale pour contrôler la musique depuis le profil
+        window.toggleAmbientMusic = function(enabled) {
+            localStorage.setItem('ambient_music_enabled', enabled.toString());
+            if (enabled && isMusicSessionStarted() && !isGameplayPage() && !isResultPage) {
+                ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
+            } else {
+                ambientMusic.pause();
+            }
+        };
+        
+        // Exposer une fonction pour démarrer la musique (appelée depuis le menu)
+        window.startAmbientMusicSession = function() {
+            // Si la session est déjà démarrée, ne rien faire (la musique continue déjà)
+            if (isMusicSessionStarted()) {
+                console.log('Session musicale déjà active, musique continue normalement');
+                return;
+            }
+            
+            // Sinon, démarrer la session pour la première fois
+            localStorage.setItem('music_session_started', 'true');
+            console.log('Démarrage de la session musicale');
+            
+            if (isMusicEnabled() && !isGameplayPage() && !isResultPage) {
+                ambientMusic.play().catch(err => {
+                    console.log('Lecture automatique bloquée, attente interaction utilisateur');
+                    // Fallback : jouer au prochain clic
+                    document.addEventListener('click', function playOnClick() {
+                        if (isMusicEnabled()) {
+                            ambientMusic.play().catch(e => console.log('Erreur lecture:', e));
+                        }
+                        document.removeEventListener('click', playOnClick);
+                    }, { once: true });
+                });
+            }
+        };
+        
+        // Exposer une fonction pour changer la musique
+        window.changeAmbientMusic = function(musicId) {
+            localStorage.setItem('ambient_music_id', musicId);
+            loadMusicSource();
+        };
+    })();
+    </script>
+</body>
+</html>
