@@ -333,15 +333,15 @@
 @php
   $sections = [
     ['levels' => range(1, 9), 'boss' => 10, 'boss_name' => 'Le Stratège', 'boss_slug' => 'le-stratege'],
-    ['levels' => range(11, 19), 'boss' => 20, 'boss_name' => 'Le Prodige', 'boss_slug' => 'le-prodige'],
+    ['levels' => range(11, 19), 'boss' => 20, 'boss_name' => 'La Prodige', 'boss_slug' => 'la-prodige'],
     ['levels' => range(21, 29), 'boss' => 30, 'boss_name' => 'Le Maître', 'boss_slug' => 'le-maitre'],
     ['levels' => range(31, 39), 'boss' => 40, 'boss_name' => 'Le Sage', 'boss_slug' => 'le-sage'],
-    ['levels' => range(41, 49), 'boss' => 50, 'boss_name' => 'Le Champion', 'boss_slug' => 'le-champion'],
-    ['levels' => range(51, 59), 'boss' => 60, 'boss_name' => 'Le Légende', 'boss_slug' => 'le-legende'],
+    ['levels' => range(41, 49), 'boss' => 50, 'boss_name' => 'La Championne', 'boss_slug' => 'la-championne'],
+    ['levels' => range(51, 59), 'boss' => 60, 'boss_name' => 'La Légende', 'boss_slug' => 'la-legende'],
     ['levels' => range(61, 69), 'boss' => 70, 'boss_name' => 'Le Titan', 'boss_slug' => 'le-titan'],
-    ['levels' => range(71, 79), 'boss' => 80, 'boss_name' => 'Le Virtuose', 'boss_slug' => 'le-virtuose'],
+    ['levels' => range(71, 79), 'boss' => 80, 'boss_name' => 'La Virtuose', 'boss_slug' => 'la-virtuose'],
     ['levels' => range(81, 89), 'boss' => 90, 'boss_name' => 'Le Génie', 'boss_slug' => 'le-genie'],
-    ['levels' => range(91, 99), 'boss' => 100, 'boss_name' => 'Cerveau Ultime', 'boss_slug' => 'cerveau-ultime'],
+    ['levels' => range(91, 99), 'boss' => 100, 'boss_name' => "L'Intelligence Ultime", 'boss_slug' => 'intelligence-ultime'],
   ];
 @endphp
 

@@ -10,12 +10,13 @@ Preferred communication style: Simple, everyday language.
 - **Dual-Layout Opponents Gallery System** (October 29, 2025):
   - **Responsive Portrait Mode**: 3×3 grid layout with vertical scroll, Boss card displayed at top-right with distinctive styling (red border, "BOSS" badge), supports 10 sections (levels 1-100)
   - **Responsive Landscape Mode**: Horizontal swipe carousel with Boss on right side, students in 3 vertical columns (levels 1-2-3, 4-5-6, 7-8-9), pagination dots for navigation
-  - **99-Level Opponent System**: 90 unique student opponents (ages 8-26) organized by regions + 9 themed Boss battles + 1 final Boss "Cerveau Ultime" (level 100)
+  - **100-Level Opponent System**: 90 unique student opponents (ages 8-26) organized by regions + 10 Boss battles with gender-balanced representation
+  - **Boss Roster**: Le Stratège (10), La Prodige (20), Le Maître (30), Le Sage (40), La Championne (50), La Légende (60), Le Titan (70), La Virtuose (80), Le Génie (90), L'Intelligence Ultime (100)
   - **Logical Ascending Progression**: Continuous level order (1→2→3...→100) for intuitive navigation, level 1 starts progression, level 100 represents ultimate challenge
   - **Orientation Media Queries**: Automatic layout switching between portrait (@media orientation: portrait) and landscape modes based on device orientation
   - **Data Architecture**: Unified config/opponents.php with Boss differentiation via 'slug' vs 'avatar' keys, SoloController using + operator to preserve level keys during array merge
   - **Visual Feedback**: Current level highlighted with golden border + "ACTUEL" badge, locked levels shown with 🔒 icon in bottom-right corner, smooth carousel transitions with JavaScript
-  - **Production-Ready**: Validated data integrity, robust isset() checks for Boss/Student handling, responsive pagination system
+  - **Production-Ready**: Validated data integrity, robust isset() checks for Boss/Student handling, responsive pagination system, all Boss images loading correctly
 - **Quest System UI Redesign** (October 25, 2025):
   - **Minimalist Badge Grid**: Quests page displays only emoji badges (no text) in responsive grid format
   - **Click-to-Reveal Modal**: Detailed quest information (name, description, progression bar, rewards, status) appears in elegant modal popup
