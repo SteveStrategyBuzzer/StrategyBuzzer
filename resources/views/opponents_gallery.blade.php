@@ -55,7 +55,8 @@
   /* MODE PORTRAIT - Vertical Scroll (Mobile Portrait, Tablet Portrait) */
   @media (orientation: portrait), (max-aspect-ratio: 1/1) {
     .gallery-container {
-      display: block !important;
+      display: flex !important;
+      flex-direction: column-reverse;
       position: absolute;
       top: 120px;
       left: 0;
@@ -87,6 +88,7 @@
     .students-grid-portrait {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
+      grid-auto-flow: row;
       gap: 12px;
     }
     
@@ -374,9 +376,17 @@
         <div class="boss-label">BOSS</div>
       </div>
       
-      <!-- Grille 3x3 des étudiants (ordre inversé : niveau suivant au-dessus) -->
+      <!-- Grille 3x3 des étudiants (ordre ascendant : 1 en bas, 9 en haut) -->
       <div class="students-grid-portrait">
-        @foreach(array_reverse($section['levels']) as $level)
+        @php
+          // Réorganiser pour afficher 7-8-9 / 4-5-6 / 1-2-3 (de haut en bas)
+          $reorderedLevels = [
+            $section['levels'][6], $section['levels'][7], $section['levels'][8], // 7, 8, 9
+            $section['levels'][3], $section['levels'][4], $section['levels'][5], // 4, 5, 6
+            $section['levels'][0], $section['levels'][1], $section['levels'][2], // 1, 2, 3
+          ];
+        @endphp
+        @foreach($reorderedLevels as $level)
           @php
             $opponent = $opponents[$level] ?? null;
             $isLocked = $level > $playerLevel;
@@ -418,9 +428,10 @@
       <div class="landscape-layout">
         @php
           $levels = $section['levels'];
-          $col1 = [$levels[0], $levels[1], $levels[2]]; // 1, 2, 3
-          $col2 = [$levels[3], $levels[4], $levels[5]]; // 4, 5, 6
-          $col3 = [$levels[6], $levels[7], $levels[8]]; // 7, 8, 9
+          // Ordre ascendant : niveau 1 en bas → niveau 9 en haut
+          $col1 = [$levels[2], $levels[1], $levels[0]]; // 3, 2, 1 (1 sera en bas)
+          $col2 = [$levels[5], $levels[4], $levels[3]]; // 6, 5, 4
+          $col3 = [$levels[8], $levels[7], $levels[6]]; // 9, 8, 7
           $bossLevel = $section['boss'];
           $bossData = $opponents[$bossLevel] ?? ['name' => $section['boss_name']];
           $isBossLocked = $bossLevel > $playerLevel;
