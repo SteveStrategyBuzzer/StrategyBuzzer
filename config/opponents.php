@@ -25,15 +25,15 @@ return [
         19 => ['name' => 'Livia', 'age' => 10, 'avatar' => 'livia', 'next_boss' => 'Le Prodige'],
         
         // Niveaux 21-29 : 🇬🇧 Anglo-saxon / Irlandais - 12 ans
-        21 => ['name' => 'Jack', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
-        22 => ['name' => 'Liam', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
-        23 => ['name' => 'Alice', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
-        24 => ['name' => 'Chloe', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
-        25 => ['name' => 'Ethan', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
-        26 => ['name' => 'Grace', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
-        27 => ['name' => 'Mason', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
-        28 => ['name' => 'Ruby', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
-        29 => ['name' => 'Daisy', 'age' => 12, 'avatar' => 'default', 'next_boss' => 'Le Maître'],
+        21 => ['name' => 'Jack', 'age' => 12, 'avatar' => 'jack', 'next_boss' => 'Le Maître'],
+        22 => ['name' => 'Liam', 'age' => 12, 'avatar' => 'liam', 'next_boss' => 'Le Maître'],
+        23 => ['name' => 'Alice', 'age' => 12, 'avatar' => 'alice', 'next_boss' => 'Le Maître'],
+        24 => ['name' => 'Chloe', 'age' => 12, 'avatar' => 'chloe', 'next_boss' => 'Le Maître'],
+        25 => ['name' => 'Ethan', 'age' => 12, 'avatar' => 'ethan', 'next_boss' => 'Le Maître'],
+        26 => ['name' => 'Grace', 'age' => 12, 'avatar' => 'grace', 'next_boss' => 'Le Maître'],
+        27 => ['name' => 'Mason', 'age' => 12, 'avatar' => 'mason', 'next_boss' => 'Le Maître'],
+        28 => ['name' => 'Ruby', 'age' => 12, 'avatar' => 'ruby', 'next_boss' => 'Le Maître'],
+        29 => ['name' => 'Daisy', 'age' => 12, 'avatar' => 'daisy', 'next_boss' => 'Le Maître'],
         
         // Niveaux 31-39 : 🇪🇸 Espagnol / Latino - 14 ans
         31 => ['name' => 'Diego', 'age' => 14, 'avatar' => 'default', 'next_boss' => 'Le Sage'],
