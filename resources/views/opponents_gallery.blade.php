@@ -139,7 +139,7 @@
   }
 </style>
 
-<a href="{{ route('solo') }}" class="header-menu">← Retour Solo</a>
+<a href="{{ route('solo.index') }}" class="header-menu">← Retour Solo</a>
 
 <div class="container-gallery">
   <h1 class="display-4 text-center">Galerie d'Adversaires</h1>
@@ -201,35 +201,18 @@
     </div>
   @endforeach
 
-  <div class="section-title">Boss Final (Niveau 100)</div>
-  <div class="gallery-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-    @php
-      $boss100 = $bossOpponents[100] ?? null;
-      $isLocked = 100 > $playerLevel;
-      $isCurrent = 100 == $playerLevel;
-    @endphp
-    
-    @if($boss100)
-      <div class="opponent-card boss {{ $isLocked ? 'locked' : '' }} {{ $isCurrent ? 'current' : '' }}"
-           onclick="{{ $isLocked ? '' : 'selectOpponent(100)' }}">
-        
-        @if($isCurrent)
-          <div class="current-badge">ACTUEL</div>
-        @endif
-        
-        <div class="avatar-wrapper">
-          <img src="{{ asset('images/avatars/bosses/' . $boss100['slug'] . '.png') }}" 
-               alt="{{ $boss100['name'] }}">
-          @if($isLocked)
-            <div class="lock-icon">🔒</div>
-          @endif
-        </div>
-        
-        <div class="opponent-name" style="font-size:1.2rem">{{ $boss100['name'] }}</div>
-        <div class="opponent-level">Niveau 100</div>
-        <div class="boss-label">BOSS ULTIME</div>
-      </div>
-    @endif
+  <div class="section-title">Boss - Niveau 100</div>
+  <div style="text-align:center; padding:30px; background:rgba(255,69,0,0.1); border-radius:12px; border:2px solid #FF4500;">
+    <div style="font-size:3rem; margin-bottom:15px;">🏆</div>
+    <div style="font-size:1.5rem; font-weight:700; color:#FFD700; margin-bottom:10px;">Cerveau Ultime</div>
+    <div style="font-size:1rem; color:#fff; opacity:0.9;">
+      Le Boss Final vous attend au niveau 100 !
+      @if($playerLevel >= 100)
+        <br><span style="color:#FFD700;">✅ Débloqué</span>
+      @else
+        <br><span style="opacity:0.7;">🔒 Atteignez le niveau 100 pour le défier</span>
+      @endif
+    </div>
   </div>
 </div>
 
@@ -245,7 +228,7 @@
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        window.location.href = '{{ route('solo') }}';
+        window.location.href = '{{ route('solo.index') }}';
       }
     })
     .catch(error => {
