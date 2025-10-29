@@ -66,7 +66,7 @@ return [
         56 => ['name' => 'Youssef', 'age' => 18, 'avatar' => 'youssef', 'next_boss' => 'Le Légende'],
         57 => ['name' => 'Inès', 'age' => 18, 'avatar' => 'ines', 'next_boss' => 'Le Légende'],
         58 => ['name' => 'Leilani', 'age' => 18, 'avatar' => 'leilani', 'next_boss' => 'Le Légende'],
-        59 => ['name' => 'Théo', 'age' => 18, 'avatar' => 'theo', 'next_boss' => 'Le Légende'],
+        59 => ['name' => 'Venetia', 'age' => 18, 'avatar' => 'venetia', 'next_boss' => 'Le Légende'],
         
         // Niveaux 61-69 : 🌍 Afrique / Moyen-Orient - 20 ans
         61 => ['name' => 'Aziz', 'age' => 20, 'avatar' => 'aziz', 'next_boss' => 'Le Titan'],
@@ -110,7 +110,7 @@ return [
         96 => ['name' => 'Miki', 'age' => 26, 'avatar' => 'miki', 'next_boss' => 'Cerveau Ultime'],
         97 => ['name' => 'Dalia', 'age' => 26, 'avatar' => 'dalia', 'next_boss' => 'Cerveau Ultime'],
         98 => ['name' => 'Ivan', 'age' => 26, 'avatar' => 'ivan', 'next_boss' => 'Cerveau Ultime'],
-        99 => ['name' => 'Venetia', 'age' => 26, 'avatar' => 'venetia', 'next_boss' => 'Cerveau Ultime'],
+        99 => ['name' => 'Théo', 'age' => 26, 'avatar' => 'theo', 'next_boss' => 'Cerveau Ultime'],
     ],
     
     'boss_opponents' => [
