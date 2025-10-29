@@ -352,6 +352,15 @@
       </a>
     </div>
 
+    <!-- DEBUG -->
+    @php
+        if (isset($params['opponent_info'])) {
+            echo "<!-- DEBUG opponent_info: " . json_encode($params['opponent_info']) . " -->";
+        } else {
+            echo "<!-- DEBUG: opponent_info NOT SET -->";
+        }
+    @endphp
+    
     <!-- Avatar Boss (Droite) - Uniquement si niveau >= 10 -->
     @if($params['has_boss'] ?? false)
       <div class="avatar-card boss">
