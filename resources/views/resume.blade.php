@@ -375,11 +375,18 @@
         <div class="avatar-title">🎯 Niveau d'Entraînement</div>
         <div style="padding: 40px 20px; text-align: center;">
           <div style="font-size: 4rem; margin-bottom: 20px;">🎓</div>
-          <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 10px;">Pas de Boss</div>
-          <div style="opacity: 0.8; font-size: 1rem;">
-            Le premier boss apparaît au niveau 10.<br>
-            Continuez à vous entraîner !
-          </div>
+          @if(isset($params['opponent_info']) && !$params['opponent_info']['is_boss'])
+            <!-- Texte descriptif de l'adversaire élève -->
+            <div style="font-size: 1.1rem; font-weight: 600; opacity: 0.95;">
+              Votre adversaire {{ $params['opponent_info']['name'] }} {{ $params['opponent_info']['age'] }} ans élève de {{ $params['opponent_info']['next_boss'] }}
+            </div>
+          @else
+            <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 10px;">Pas de Boss</div>
+            <div style="opacity: 0.8; font-size: 1rem;">
+              Le premier boss apparaît au niveau 10.<br>
+              Continuez à vous entraîner !
+            </div>
+          @endif
         </div>
       </div>
     @endif
