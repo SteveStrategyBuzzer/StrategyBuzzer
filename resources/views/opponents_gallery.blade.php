@@ -55,7 +55,6 @@
   }
   
   .opponent-card.locked {
-    opacity: 0.6;
     cursor: not-allowed;
   }
   
