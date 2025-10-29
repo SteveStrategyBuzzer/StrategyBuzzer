@@ -241,10 +241,9 @@
   
   .lock-icon {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 2rem;
+    bottom: 5px;
+    right: 5px;
+    font-size: 1.5rem;
     opacity: 0.9;
     z-index: 10;
   }
@@ -377,7 +376,7 @@
       
       <!-- Grille 3x3 des étudiants -->
       <div class="students-grid-portrait">
-        @foreach(array_reverse($section['levels']) as $level)
+        @foreach($section['levels'] as $level)
           @php
             $opponent = $opponents[$level] ?? null;
             $isLocked = $level > $playerLevel;
