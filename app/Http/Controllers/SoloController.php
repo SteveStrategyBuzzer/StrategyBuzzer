@@ -40,6 +40,33 @@ class SoloController extends Controller
         ]);
     }
 
+    public function opponents()
+    {
+        $opponents = config('opponents.opponents', []);
+        $bossOpponents = config('opponents.boss_opponents', []);
+        $playerLevel = session('choix_niveau', 1);
+
+        return view('opponents_gallery', [
+            'opponents' => $opponents,
+            'bossOpponents' => $bossOpponents,
+            'playerLevel' => $playerLevel,
+        ]);
+    }
+
+    public function selectOpponent($level)
+    {
+        $level = (int) $level;
+        $maxLevel = session('choix_niveau', 1);
+        
+        if ($level > $maxLevel) {
+            return response()->json(['success' => false, 'message' => 'Niveau verrouillé'], 403);
+        }
+        
+        session(['niveau_selectionne' => $level]);
+        
+        return response()->json(['success' => true]);
+    }
+
     public function start(Request $request)
     {
         // Vérifier que le joueur a des vies disponibles (sauf pour les invités)

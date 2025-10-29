@@ -281,8 +281,14 @@
     </div>
     
     <div class="info-card">
-      <div class="info-label">Niveau</div>
-      <div class="info-value">{{ $params['niveau_joueur'] }}</div>
+      <div class="info-label">Adversaire</div>
+      <div class="info-value">
+        @if(isset($params['opponent_info']) && isset($params['opponent_info']['name']))
+          {{ $params['opponent_info']['name'] }} (Niveau {{ $params['niveau_joueur'] }})
+        @else
+          Niveau {{ $params['niveau_joueur'] }}
+        @endif
+      </div>
     </div>
   </div>
 

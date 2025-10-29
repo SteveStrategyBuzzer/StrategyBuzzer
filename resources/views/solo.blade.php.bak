@@ -102,9 +102,16 @@
   document.querySelectorAll('.btn-theme').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const nbq = document.getElementById('nb_questions').value;
+      const niv = document.getElementById('niveau_joueur');
       if (!nbq) {
         e.preventDefault();
         alert('Choisissez le nombre de questions.');
+        return false;
+      }
+      // Si l’option niveau sélectionnée est disabled (devrait pas arriver), on bloque
+      if (niv.selectedOptions.length && niv.selectedOptions[0].disabled) {
+        e.preventDefault();
+        alert('Ce niveau est verrouillé.');
         return false;
       }
     });

@@ -139,6 +139,9 @@ Route::prefix('solo')->name('solo.')->group(function () {
     // Fallback GET for /solo/start (happens when opening in new tab/external browser)
     Route::get('/start', fn() => redirect()->route('menu'));
     
+    Route::get('/opponents', [SoloController::class, 'opponents'])->name('opponents');
+    Route::post('/select-opponent/{level}', [SoloController::class, 'selectOpponent'])->name('select-opponent');
+    
     Route::get('/resume',  [SoloController::class, 'resume'])->name('resume');
     Route::get('/prepare', [SoloController::class, 'prepare'])->name('prepare');
     Route::get('/game',    [SoloController::class, 'game'])->name('game');
