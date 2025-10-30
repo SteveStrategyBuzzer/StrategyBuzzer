@@ -53,13 +53,13 @@ $opponentScore = $params['current_question'] - 1 - $params['score'];
 // Déterminer l'avatar et le nom de l'adversaire
 if ($opponentInfo['is_boss'] ?? false) {
     $opponentName = $opponentInfo['name'];
-    $opponentAvatar = asset("images/avatars/boss/{$opponentInfo['avatar_slug']}.png");
+    $opponentAvatar = asset("images/avatars/boss/{$opponentInfo['avatar']}.png");
     $opponentDescription = '';
 } else {
     $opponentName = $opponentInfo['name'] ?? 'Adversaire';
     $opponentAge = $opponentInfo['age'] ?? 8;
     $nextBoss = $opponentInfo['next_boss'] ?? 'Le Stratège';
-    $opponentAvatar = asset("images/avatars/students/{$opponentInfo['avatar_slug']}.png");
+    $opponentAvatar = asset("images/avatars/students/{$opponentInfo['avatar']}.png");
     $opponentDescription = "Votre adversaire {$opponentName} {$opponentAge} ans élève du {$nextBoss}";
 }
 @endphp
