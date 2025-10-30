@@ -586,8 +586,9 @@ class SoloController extends Controller
             }
         }
         
-        $totalQuestions = count($globalStats);
-        $globalEfficiency = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100) : 0;
+        // Utiliser le nombre réel de questions jouées (nombre de stats) ou le nombre configuré
+        $totalQuestionsPlayed = max(count($globalStats), $nbQuestions);
+        $globalEfficiency = $totalCorrect > 0 && $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
 
         $params = [
             'question' => $question,
@@ -619,7 +620,7 @@ class SoloController extends Controller
             'total_correct' => $totalCorrect,
             'total_incorrect' => $totalIncorrect,
             'total_unanswered' => $totalUnanswered,
-            'total_questions_played' => $totalQuestions,
+            'total_questions_played' => $totalQuestionsPlayed,
             'global_efficiency' => $globalEfficiency,
             'theme' => session('theme', 'Général'),
         ];
@@ -810,8 +811,11 @@ class SoloController extends Controller
             }
         }
         
-        $totalQuestionsPlayed = count($globalStats);
-        $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
+        // Calculer le total attendu : nb_questions * nombre de manches jouées
+        $completedRounds = ($currentRound > 1) ? $currentRound - 1 : 1;
+        $totalQuestionsExpected = session('nb_questions', 30) * $completedRounds;
+        $totalQuestionsPlayed = max(count($globalStats), $totalQuestionsExpected);
+        $globalEfficiency = $totalCorrect > 0 && $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
         
         // VÉRIFIER SI LA PARTIE EST TERMINÉE (best of 3: premier à 2 manches gagnées)
         if ($playerRoundsWon >= 2) {
@@ -886,8 +890,10 @@ class SoloController extends Controller
             }
         }
         
-        $totalQuestionsPlayed = count($globalStats);
-        $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
+        // Calculer le total attendu basé sur le nombre de questions par manche
+        $nbQuestions = session('nb_questions', 30);
+        $totalQuestionsPlayed = max(count($globalStats), $nbQuestions);
+        $globalEfficiency = $totalCorrect > 0 && $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
         
         // Vérifier et compléter les quêtes
         $user = auth()->user();
@@ -987,8 +993,10 @@ class SoloController extends Controller
             }
         }
         
-        $totalQuestionsPlayed = count($globalStats);
-        $globalEfficiency = $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
+        // Calculer le total attendu basé sur le nombre de questions par manche
+        $nbQuestions = session('nb_questions', 30);
+        $totalQuestionsPlayed = max(count($globalStats), $nbQuestions);
+        $globalEfficiency = $totalCorrect > 0 && $totalQuestionsPlayed > 0 ? round(($totalCorrect / $totalQuestionsPlayed) * 100) : 0;
         
         // Enregistrer les statistiques de match (défaite)
         $matchStats = null;
