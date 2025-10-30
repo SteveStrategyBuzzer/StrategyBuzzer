@@ -113,18 +113,24 @@ class StatisticsService
         $pointsEarned = $data['points_earned'] ?? 0;
         $pointsPossible = $data['points_possible'] ?? 0;
 
-        $efficaciteBrute = $totalQuestions > 0 
-            ? ($pointsEarned / $totalQuestions) * 100 
+        // Efficacité brute : (Points gagnés / Points max possibles) × 100
+        // Points max possibles = nb_questions × 2
+        $efficaciteBrute = $pointsPossible > 0 
+            ? ($pointsEarned / $pointsPossible) * 100 
             : 0;
 
+        // Taux de participation : (Questions buzzées / Total questions) × 100
         $tauxParticipation = $totalQuestions > 0 
             ? ($questionsBuzzed / $totalQuestions) * 100 
             : 0;
 
+        // Taux de précision : (Bonnes réponses / Buzz tentés) × 100
         $tauxPrecision = $questionsBuzzed > 0 
             ? ($correctAnswers / $questionsBuzzed) * 100 
             : 0;
 
+        // Ratio performance : (Points obtenus / Points max des buzz) × 100
+        // Seulement sur les questions buzzées
         $ratioPerformance = $pointsPossible > 0 
             ? ($pointsEarned / $pointsPossible) * 100 
             : 0;
