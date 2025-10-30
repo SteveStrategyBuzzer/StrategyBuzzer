@@ -53,7 +53,7 @@ $opponentScore = $params['current_question'] - 1 - $params['score'];
 // Déterminer l'avatar et le nom de l'adversaire
 if ($opponentInfo['is_boss'] ?? false) {
     $opponentName = $opponentInfo['name'];
-    $opponentAvatar = asset("images/avatars/boss/{$opponentInfo['avatar']}.png");
+    $opponentAvatar = asset("images/avatars/bosses/{$opponentInfo['avatar']}.png");
     $opponentDescription = '';
 } else {
     $opponentName = $opponentInfo['name'] ?? 'Adversaire';
