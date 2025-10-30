@@ -341,9 +341,38 @@
             
             <div style="font-size: 1.3rem; color: #FFD700; margin-bottom: 10px; font-weight: 700;">{{ $params['avatar'] }}</div>
             @if(!empty($params['avatar_skills']))
-              <div style="font-size: 0.85rem; opacity: 0.8;">
-                @foreach ($params['avatar_skills'] as $index => $skill)
-                  {{ $skill }}{{ $index < count($params['avatar_skills']) - 1 ? ' • ' : '' }}
+              @php
+                // Mapping des icônes pour chaque avatar
+                $avatarSkillIcons = [
+                    'Mathématicien' => [['icon' => '🔢', 'name' => 'Calcul Rapide']],
+                    'Scientifique' => [['icon' => '⚗️', 'name' => 'Analyse']],
+                    'Explorateur' => [['icon' => '🧭', 'name' => 'Navigation']],
+                    'Défenseur' => [['icon' => '🛡️', 'name' => 'Protection']],
+                    'Comédien' => [['icon' => '🎯', 'name' => 'Précision'], ['icon' => '🌀', 'name' => 'Confusion']],
+                    'Comédienne' => [['icon' => '🎯', 'name' => 'Précision'], ['icon' => '🌀', 'name' => 'Confusion']],
+                    'Magicien' => [['icon' => '✨', 'name' => 'Magie'], ['icon' => '💫', 'name' => 'Étoile']],
+                    'Magicienne' => [['icon' => '✨', 'name' => 'Magie'], ['icon' => '💫', 'name' => 'Étoile']],
+                    'Challenger' => [['icon' => '🔄', 'name' => 'Rotation'], ['icon' => '⏳', 'name' => 'Temps']],
+                    'Historien' => [['icon' => '🪶', 'name' => 'Histoire'], ['icon' => '⏰', 'name' => 'Chrono']],
+                ];
+                $currentSkills = $avatarSkillIcons[$params['avatar']] ?? [];
+              @endphp
+              <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
+                @foreach ($currentSkills as $skill)
+                  <div style="
+                    width: 35px; 
+                    height: 35px; 
+                    border-radius: 50%; 
+                    background: rgba(255, 215, 0, 0.2); 
+                    border: 2px solid #FFD700; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: 1.2rem;
+                    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+                  " title="{{ $skill['name'] }}">
+                    {{ $skill['icon'] }}
+                  </div>
                 @endforeach
               </div>
             @endif
