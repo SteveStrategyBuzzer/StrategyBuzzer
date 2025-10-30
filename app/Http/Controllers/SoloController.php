@@ -480,8 +480,22 @@ class SoloController extends Controller
         // Vérifier la réponse du joueur
         $isCorrect = $questionService->checkAnswer($question, $answerIndex);
         
+        // Récupérer les scores actuels et le numéro de question pour l'algorithme Boss
+        $playerScore = session('score', 0);
+        $opponentScore = session('opponent_score', 0);
+        $questionNumber = session('current_question_number', 1);
+        
         // Simuler le comportement complet de l'adversaire IA (passer timing du buzz)
-        $opponentBehavior = $questionService->simulateOpponentBehavior($niveau, $question, $playerBuzzed, $buzzTime, $chronoTime);
+        $opponentBehavior = $questionService->simulateOpponentBehavior(
+            $niveau, 
+            $question, 
+            $playerBuzzed, 
+            $buzzTime, 
+            $chronoTime,
+            $playerScore,
+            $opponentScore,
+            $questionNumber
+        );
         
         // Calculer les points du joueur selon les nouvelles règles
         $playerPoints = 0;

@@ -38,12 +38,45 @@ function getDifficultyDescription(niveau) {
   }
 }
 
+// Fonction pour déterminer la longueur de question adaptée au niveau
+function getQuestionLengthConstraint(niveau) {
+  // Déterminer le Boss de référence (arrondir au multiple de 10 supérieur)
+  const bossLevel = Math.ceil(niveau / 10) * 10;
+  
+  // Vitesses de lecture par Boss (mots par minute)
+  const speeds = {
+    10: 120, 20: 130, 30: 130, 40: 140, 50: 140,
+    60: 140, 70: 145, 80: 145, 90: 150, 100: 155
+  };
+  
+  const readingSpeed = speeds[bossLevel] || 120;
+  const wordsPerSecond = readingSpeed / 60;
+  
+  // Distribution : 85% <6s, 10% 7s, 5% >7s
+  const random = Math.random() * 100;
+  
+  if (random < 85) {
+    // 85% : questions courtes (<6s de lecture)
+    const maxWords = Math.floor(wordsPerSecond * 6);
+    return `Question COURTE de maximum ${maxWords} mots (lisible en moins de 6 secondes)`;
+  } else if (random < 95) {
+    // 10% : questions moyennes (7s de lecture)
+    const targetWords = Math.floor(wordsPerSecond * 7);
+    return `Question MOYENNE d'environ ${targetWords} mots (lisible en 7 secondes)`;
+  } else {
+    // 5% : questions longues (>7s de lecture)
+    const minWords = Math.floor(wordsPerSecond * 7.5);
+    return `Question LONGUE de ${minWords} mots ou plus (nécessite plus de 7 secondes)`;
+  }
+}
+
 app.post('/generate-question', async (req, res) => {
   try {
     const { theme, niveau, questionNumber } = req.body;
     
     const themeLabel = THEMES_FR[theme] || 'culture générale';
     const difficultyDesc = getDifficultyDescription(niveau);
+    const lengthConstraint = getQuestionLengthConstraint(niveau);
     
     // Décider aléatoirement entre question à choix multiple (80%) et vrai/faux (20%)
     const isMultipleChoice = Math.random() > 0.2;
@@ -58,6 +91,7 @@ IMPORTANT:
 - Adapte la complexité au niveau ${niveau} (plus le niveau est élevé, plus la question doit être difficile)
 - Pour les niveaux élevés (>50), utilise des détails précis, des dates exactes, des noms complets
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
+- LONGUEUR: ${lengthConstraint}
 
 Format JSON requis:
 {
@@ -82,6 +116,7 @@ IMPORTANT:
 - Adapte la complexité au niveau ${niveau}
 - Pour les niveaux élevés, utilise des affirmations plus nuancées
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
+- LONGUEUR: ${lengthConstraint}
 
 Format JSON requis:
 {
