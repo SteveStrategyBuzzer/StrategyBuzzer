@@ -1,0 +1,55 @@
+📊 Système d'Efficacité Proposé
+Métriques de base à tracker :
+Taux de participation : % de questions où le joueur a buzzé de la manche, de la partie et globale (dans chaque mode; Ligue, duo, solo, Maître du jeu)
+Taux de précision : % de bonnes réponses parmi les buzz tentés
+Taux de rapidité au buzzer : % maximum de points +2 dans une partie ou dans la manche
+Score d'efficacité global : formule combinée
+Formule d'efficacité globale :
+Efficacité = (Points gagnés / Points max possibles) × 100 
+Détails :
+- Points gagnés = (bonnes × valeur moyenne) - (mauvaises × 2)
+- Points max possibles = nb_questions × 2
+Exemple concret :
+Sur 10 questions, un joueur :
+5 bonnes réponses à +2pts = +10
+2 mauvaises réponses = -4
+3 pas de buzz = 0
+Calculs :
+Points réels : 10 - 4 = 6 points
+Points max : 10 × 2 = 20 points
+Efficacité brute : (6/20) × 100 = 30%
+
+
+Métriques complémentaires :
+Taux de participation : 7/10 = 70%
+Taux de précision : 5/7 = 71%
+Performance au risque : combien de points gagnés / perdus
+
+
+📊 Système de Statistiques Proposé
+4 Métriques clés :
+Efficacité brute : (Points gagnés / Points max possibles) × 100
+Mesure la performance globale sur TOUTES les questions des quiz fait
+Exemple : 6 Quiz (Duo Solo Ligue et Maître du jeu) fait avec un taux d’efficacité de 20%, 55%, 80% 10% 0% 5% / 6 partie  = 6 Quiz : 28.33%
+Efficacité de manche : dans la page statistique de la première manche nous avons le même calcul mais de la manche  (Points gagnés / Points max possibles) × 100
+Efficacité Max Possible : Fin première Manche (% efficacité de la Manche +  100%) /2
+
+Efficacité de la Partie :Après les 2 Manches (% efficacité de la première Manche + % efficacité de la deuxième Manche) / 2
+
+Taux de participation : (Questions buzzées / Total questions) × 100
+Exemple : 7 buzz sur 10 questions = 70%
+Taux de précision : (Bonnes réponses / Buzz tentés) × 100
+Exemple : 5 bonnes sur 7 buzz = 71%
+Ratio performance : (Points obtenus / Points max des buzz) × 100
+Seulement sur les questions buzzées
+Exemple : 5 bonnes à +2 pts = 10/20= 50% 🎯
+Plan d'implémentation :
+tu dois créer un système qui :
+Calcule ces métriques après chaque manche et partie
+Les stocke en base de données (par manche, par partie, et cumul global)
+Les affiche sur les pages de résultats
+Permet de voir l'évolution dans le temps (historique/ statistique Joueur)
+
+
+Tu dois Arranger la page Statistique  pour après une manche et une partie
+Tu dois créer une page  qui : montre tous les aspects mentionnés et plus, comme  (niveau du joueur dans Ligue solo et groupe, dans solo et dans Maître du jeu), Niveau étant Maître du jeu et d’autres points que tu pourrais penser.
