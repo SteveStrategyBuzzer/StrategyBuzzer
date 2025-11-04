@@ -131,8 +131,17 @@
             
             // Utiliser canplay au lieu de loadedmetadata pour s'assurer que l'audio est prêt
             ambientMusic.addEventListener('canplay', function onCanPlay() {
-                if (savedTime > 0 && savedTime < ambientMusic.duration) {
-                    ambientMusic.currentTime = savedTime;
+                // Restaurer la position sauvegardée
+                if (savedTime > 0) {
+                    // Vérifier que savedTime est valide (pas après la fin de la piste)
+                    if (!isNaN(ambientMusic.duration) && savedTime < ambientMusic.duration) {
+                        ambientMusic.currentTime = savedTime;
+                        console.log('Musique restaurée à:', savedTime + 's');
+                    } else if (isNaN(ambientMusic.duration) || ambientMusic.duration === Infinity) {
+                        // Si duration pas encore connue, forcer quand même
+                        ambientMusic.currentTime = savedTime;
+                        console.log('Musique restaurée à:', savedTime + 's (duration inconnue)');
+                    }
                 }
                 
                 // Jouer la musique SEULEMENT si activée ET session démarrée après connexion
