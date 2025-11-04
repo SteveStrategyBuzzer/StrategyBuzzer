@@ -252,7 +252,7 @@
                 </button>
             @endif
             
-            <a href="{{ route('menu') }}" class="btn btn-menu">Menu</a>
+            <a href="{{ route('solo.index') }}" class="btn btn-menu">← Solo</a>
         </div>
     </div>
     

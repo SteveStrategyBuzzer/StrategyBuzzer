@@ -679,8 +679,8 @@
     <!-- Actions: Boutons et Timer -->
     <div class="result-actions">
         <div class="action-buttons">
-            <a href="{{ route('menu') }}" class="btn-action btn-menu">
-                🏠 Menu
+            <a href="{{ route('solo.index') }}" class="btn-action btn-menu">
+                ← Solo
             </a>
             <button onclick="goToNextQuestion()" class="btn-action btn-go">
                 🚀 GO

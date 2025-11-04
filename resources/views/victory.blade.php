@@ -241,7 +241,7 @@
                 <button type="submit" class="btn btn-yes">OUI ⚔️</button>
             </form>
             
-            <a href="{{ route('menu') }}" class="btn btn-no">NON</a>
+            <a href="{{ route('solo.index') }}" class="btn btn-no">NON</a>
         </div>
         @else
         <div class="challenge-section">
@@ -253,7 +253,7 @@
         </div>
         
         <div class="action-buttons">
-            <a href="{{ route('menu') }}" class="btn btn-yes">Retour au Menu</a>
+            <a href="{{ route('solo.index') }}" class="btn btn-yes">← Retour Solo</a>
         </div>
         @endif
     </div>
