@@ -11,9 +11,9 @@
     // Solo : accessible SEULEMENT si profil complet
     $soloUnlocked = $profileComplete;
     
-    // Duo : 20 matchs Solo joués (victoires + défaites)
-    $soloMatches = $user ? (($user->solo_defeats ?? 0) + ($user->solo_victories ?? 0)) : 0;
-    $duoUnlocked = $soloMatches >= 20;
+    // Duo : débloqué après avoir battu le boss du niveau 10 (choix_niveau >= 11)
+    $choixNiveau = $user && $user->profile_settings ? (json_decode($user->profile_settings, true)['choix_niveau'] ?? 1) : 1;
+    $duoUnlocked = $choixNiveau >= 11;
     
     // Ligue : 100 matchs Duo joués (victoires + défaites)
     $duoMatches = $user ? (($user->duo_defeats ?? 0) + ($user->duo_victories ?? 0)) : 0;
