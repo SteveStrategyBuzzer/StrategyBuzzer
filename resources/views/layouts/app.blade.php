@@ -150,16 +150,26 @@
                 }
             });
             
-            // Sauvegarder la position de lecture toutes les secondes
+            // Sauvegarder la position de lecture toutes les 250ms pour plus de précision
             setInterval(() => {
-                const musicId = getSelectedMusic();
-                localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
-            }, 1000);
+                if (!ambientMusic.paused) {
+                    const musicId = getSelectedMusic();
+                    localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
+                }
+            }, 250);
             
-            // Sauvegarder la position avant de quitter la page
-            window.addEventListener('beforeunload', () => {
+            // Sauvegarder la position avant de quitter la page (plusieurs événements pour compatibilité)
+            const savePosition = () => {
                 const musicId = getSelectedMusic();
                 localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
+            };
+            
+            window.addEventListener('beforeunload', savePosition);
+            window.addEventListener('pagehide', savePosition);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    savePosition();
+                }
             });
         }
         
