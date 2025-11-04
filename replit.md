@@ -7,6 +7,12 @@ StrategyBuzzer is a real-time quiz buzzer game application that combines a Larav
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **Navigation & UI Fixes** (November 4, 2025):
+  - **Hierarchical Navigation**: Fixed all Solo sub-pages (resume, game_result, victory, defeat) to return to Solo page instead of Menu, following correct hierarchy
+  - **Gameplay Music Default**: Gameplay music now activé par défaut in both profile.blade.php and ProfileController defaults
+  - **Profile Persistence Fix**: ProfileController now correctly validates and saves options.ambiance, options.results, and gameplay.music_id to prevent data loss on profile save
+  - **Music Continuity Enhancement**: Changed from loadedmetadata to canplay event in app.blade.php to reduce audio stuttering during page transitions (note: micro-coupures will persist with Blade architecture)
+  - **Code Cleanup**: Removed obsolete guest session references (guest_all_questions, guest_all_answers, is_guest) from SoloController since all routes require authentication
 - **Question Anti-Duplication System** (November 4, 2025):
   - **Permanent Question History**: Created `question_history` table to track all questions seen by each authenticated user (user_id, question_id, question_hash, correct_answer, theme, niveau)
   - **Guest Session Persistence**: Guests accumulate question/answer history in session (`guest_all_questions`, `guest_all_answers`) that persists across multiple matches
