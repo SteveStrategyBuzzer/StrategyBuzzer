@@ -109,6 +109,8 @@
         
         @if($playerWon && $params['player_rounds_won'] >= 1)
             <div class="winner-emoji">🎉</div>
+        @elseif($tied && $params['player_rounds_won'] >= 1)
+            <div class="winner-emoji">😌</div>
         @elseif(!$playerWon && $params['opponent_rounds_won'] >= 1)
             <div class="winner-emoji">😤</div>
         @endif
