@@ -20,7 +20,7 @@ class ProfileController extends Controller
             'show_online' => true,
             'language' => 'Français',
             'country' => '',
-            'sound' => ['ambiance' => true,'buzzer' => true,'results' => false,'buzzer_id' => null,'music_id' => null],
+            'sound' => ['ambiance' => true,'buzzer' => true,'results' => true,'buzzer_id' => null,'music_id' => null], // Gameplay activé par défaut
             'theme' => ['style' => 'Classique','decor' => null],
         ];
     }

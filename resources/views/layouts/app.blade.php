@@ -129,7 +129,8 @@
             // Pages non-gameplay : jouer la musique d'ambiance SI activée ET session démarrée
             const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + getSelectedMusic()) || '0');
             
-            ambientMusic.addEventListener('loadedmetadata', function() {
+            // Utiliser canplay au lieu de loadedmetadata pour s'assurer que l'audio est prêt
+            ambientMusic.addEventListener('canplay', function onCanPlay() {
                 if (savedTime > 0 && savedTime < ambientMusic.duration) {
                     ambientMusic.currentTime = savedTime;
                 }
@@ -148,6 +149,8 @@
                         }, { once: true });
                     });
                 }
+                // Retirer l'événement après la première exécution
+                ambientMusic.removeEventListener('canplay', onCanPlay);
             });
             
             // Sauvegarder la position de lecture toutes les 250ms pour plus de précision

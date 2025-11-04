@@ -61,7 +61,7 @@
     // Audio / thème / visibilité
     $ambianceOn = (bool) data_get($s, 'sound.ambiance', true);
     $buzzerOn   = (bool) data_get($s, 'sound.buzzer', true);
-    $resultsOn  = (bool) data_get($s, 'sound.results', false);
+    $resultsOn  = (bool) data_get($s, 'sound.results', true); // Gameplay activé par défaut
 
     $buzzerId = data_get($s, 'sound.buzzer_id');
     $musicId  = data_get($s, 'sound.music_id');
