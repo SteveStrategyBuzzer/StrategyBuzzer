@@ -7,6 +7,17 @@ StrategyBuzzer is a real-time quiz buzzer game application that combines a Larav
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **Music System Enhancements** (November 4, 2025):
+  - **Database-Backed Preferences**: Created migration adding music preferences columns (ambient_music_id, ambient_music_enabled, gameplay_music_id, gameplay_music_enabled) to users table, activated by default for new users
+  - **Enhanced Continuity**: Improved music persistence between page transitions with 250ms position saving (instead of 1000ms), multiple save events (beforeunload, pagehide, visibilitychange), and play-state checking
+  - **Cleaned Game Answer Page**: Removed ambient music from game_answer.blade.php to ensure silence during answer selection phase
+- **Avatar Skills Display Update** (November 4, 2025):
+  - **Complete Skills Mapping**: Created comprehensive emoji + name + description mapping for all strategic avatars (Mathématicien, Scientifique, Explorateur, Défenseur, Comédien/ne, Magicien/ne, Challenger, Historien, IA Junior, Stratège, Sprinteur, Visionnaire)
+  - **Long Press Details Modal**: Implemented 500ms long-press detection (mobile + desktop) in avatars page to show enlarged avatar popup with full skills breakdown, includes haptic feedback (50ms vibration) and click-suppression guard
+  - **Enhanced Resume Display**: Strategic avatar bubble now shows skills with emoji + name (gold) + full description in vertical list format
+- **UI Text Updates** (November 4, 2025):
+  - Changed "Résumé de la Partie" to "Descriptif de la Partie" in resume.blade.php for clarity
+  - Verified all Menu button routes point to route('menu') consistently
 - **Dual-Layout Opponents Gallery System** (October 29, 2025):
   - **Responsive Portrait Mode**: 3×3 grid layout with vertical scroll, Boss card displayed at top-right with distinctive styling (red border, "BOSS" badge), supports 10 sections (levels 1-100)
   - **Responsive Landscape Mode**: Horizontal swipe carousel with Boss on right side, students in 3 vertical columns (levels 1-2-3, 4-5-6, 7-8-9), pagination dots for navigation
