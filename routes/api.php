@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->prefix('league/individual')->group(function (
     Route::post('/match/{match}/buzz', [App\Http\Controllers\LeagueIndividualController::class, 'buzz']);
     Route::post('/match/{match}/submit-answer', [App\Http\Controllers\LeagueIndividualController::class, 'submitAnswer']);
     Route::post('/match/{match}/finish', [App\Http\Controllers\LeagueIndividualController::class, 'finishMatch']);
+    Route::get('/match/{match}/sync', [App\Http\Controllers\LeagueIndividualController::class, 'syncGameState']);
     Route::get('/rankings', [App\Http\Controllers\LeagueIndividualController::class, 'getRankings']);
     Route::get('/my-stats', [App\Http\Controllers\LeagueIndividualController::class, 'getMyStats']);
 });
@@ -53,6 +54,7 @@ Route::middleware('auth:sanctum')->prefix('league/team')->group(function () {
     Route::get('/match/{match}/question', [App\Http\Controllers\LeagueTeamController::class, 'getQuestion']);
     Route::post('/match/{match}/buzz', [App\Http\Controllers\LeagueTeamController::class, 'buzz']);
     Route::post('/match/{match}/submit-answer', [App\Http\Controllers\LeagueTeamController::class, 'submitAnswer']);
+    Route::get('/match/{match}/sync', [App\Http\Controllers\LeagueTeamController::class, 'syncGameState']);
     Route::get('/rankings/{division}', [App\Http\Controllers\LeagueTeamController::class, 'getRankings']);
 });
 
