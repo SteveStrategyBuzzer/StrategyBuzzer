@@ -521,11 +521,6 @@ $allAnswers = $params['question']['answers'] ?? [];
     <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
 </audio>
 
-<!-- Musique d'ambiance du gameplay (continue depuis game_question) -->
-<audio id="gameplayAmbient" preload="auto" loop>
-    <source src="{{ asset('sounds/gameplay_ambient.mp3') }}" type="audio/mpeg">
-</audio>
-
 <script>
 let timeLeft = 10; // Countdown de 10 secondes
 let totalTime = 10;
@@ -537,44 +532,6 @@ let incorrectSoundDuration = 500; // Délai par défaut
 // Animation de la barre de temps
 const timerBar = document.getElementById('timerBar');
 timerBar.style.width = '100%';
-
-// Vérifier si la musique de gameplay est activée (paramètre séparé)
-function isGameplayMusicEnabled() {
-    const enabled = localStorage.getItem('gameplay_music_enabled');
-    return enabled === 'true';
-}
-
-// Continuer la musique d'ambiance du gameplay SEULEMENT si activée
-const gameplayAmbient = document.getElementById('gameplayAmbient');
-gameplayAmbient.volume = 0.5; // -6 dB ≈ 50% de volume
-
-if (isGameplayMusicEnabled()) {
-    // Restaurer la position depuis localStorage
-    const savedTime = parseFloat(localStorage.getItem('gameplayMusicTime') || '0');
-    gameplayAmbient.addEventListener('loadedmetadata', function() {
-        if (savedTime > 0 && savedTime < gameplayAmbient.duration) {
-            gameplayAmbient.currentTime = savedTime;
-        }
-        
-        gameplayAmbient.play().catch(e => {
-            console.log('Gameplay music autoplay blocked:', e);
-            document.addEventListener('click', function playGameplayMusic() {
-                gameplayAmbient.play().catch(err => console.log('Audio play failed:', err));
-                document.removeEventListener('click', playGameplayMusic);
-            }, { once: true });
-        });
-    });
-
-    setInterval(() => {
-        if (!gameplayAmbient.paused) {
-            localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
-        }
-    }, 1000);
-
-    window.addEventListener('beforeunload', () => {
-        localStorage.setItem('gameplayMusicTime', gameplayAmbient.currentTime.toString());
-    });
-}
 
 // Démarrer le son tic-tac en boucle dès le début
 const tickSound = document.getElementById('tickSound');

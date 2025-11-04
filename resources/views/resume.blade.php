@@ -265,7 +265,7 @@
 <div class="resume-container">
   <!-- Titre -->
   <div class="title-section">
-    <h1>🧾 Résumé de la Partie</h1>
+    <h1>🧾 Descriptif de la Partie</h1>
   </div>
 
   <!-- Informations de la partie -->
