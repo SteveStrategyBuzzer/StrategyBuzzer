@@ -62,7 +62,11 @@ class DailyQuestsController extends Controller
             Carbon::parse($dailyQuestsData['reset_at'])->isPast()) {
             
             // Sélectionner 3 nouvelles quêtes aléatoires
-            $selectedIds = $allDailyQuests->random(min(3, $allDailyQuests->count()))->pluck('id')->toArray();
+            $count = min(3, $allDailyQuests->count());
+            $selected = $allDailyQuests->random($count);
+            // Normaliser en Collection (random retourne Collection si count > 1, sinon un modèle unique)
+            $selectedCollection = ($selected instanceof \Illuminate\Support\Collection) ? $selected : collect([$selected]);
+            $selectedIds = $selectedCollection->pluck('id')->toArray();
             
             // Calculer le prochain reset (24h)
             $resetAt = $now->copy()->addHours(24);
