@@ -9,6 +9,7 @@ use App\Services\LeagueIndividualService;
 use App\Services\GameStateService;
 use App\Services\BuzzManagerService;
 use App\Services\DivisionService;
+use App\Services\LeagueIndividualFirestoreService;
 
 class LeagueIndividualController extends Controller
 {
@@ -16,7 +17,8 @@ class LeagueIndividualController extends Controller
         private LeagueIndividualService $leagueService,
         private GameStateService $gameStateService,
         private BuzzManagerService $buzzManager,
-        private DivisionService $divisionService
+        private DivisionService $divisionService,
+        private LeagueIndividualFirestoreService $firestoreService
     ) {}
 
     /**
@@ -105,6 +107,14 @@ class LeagueIndividualController extends Controller
 
         $match = $this->leagueService->createMatch($user, $opponent);
 
+        $this->firestoreService->createMatchSession($match->id, [
+            'player1_id' => $match->player1_id,
+            'player2_id' => $match->player2_id,
+            'player1_name' => $user->name,
+            'player2_name' => $opponent->name,
+            'questionStartTime' => microtime(true),
+        ]);
+
         return response()->json([
             'success' => true,
             'match_id' => $match->id,
@@ -151,6 +161,8 @@ class LeagueIndividualController extends Controller
         $gameState['buzzes'][] = $buzz;
         $match->game_state = $gameState;
         $match->save();
+
+        $this->firestoreService->recordBuzz($match->id, $playerId, $buzz['server_time']);
 
         return response()->json([
             'success' => true,
@@ -215,6 +227,27 @@ class LeagueIndividualController extends Controller
         $match->game_state = $gameState;
         $match->save();
 
+        $this->firestoreService->updateScores(
+            $match->id,
+            $gameState['player_score'] ?? 0,
+            $gameState['opponent_score'] ?? 0
+        );
+
+        if ($hasMoreQuestions) {
+            $this->firestoreService->nextQuestion(
+                $match->id,
+                $gameState['current_question_index'] ?? 1,
+                microtime(true)
+            );
+        } elseif ($roundResult && !$this->gameStateService->isMatchFinished($gameState)) {
+            $this->firestoreService->finishRound(
+                $match->id,
+                $gameState['current_round'] ?? 1,
+                $gameState['player_rounds_won'] ?? 0,
+                $gameState['opponent_rounds_won'] ?? 0
+            );
+        }
+
         return response()->json([
             'success' => true,
             'isCorrect' => $result['is_correct'],
@@ -249,10 +282,32 @@ class LeagueIndividualController extends Controller
         $matchResult = $this->gameStateService->getMatchResult($gameState);
         $this->leagueService->finishMatch($match, $matchResult);
 
+        $this->firestoreService->deleteMatchSession($match->id);
+
         return response()->json([
             'success' => true,
             'match_result' => $matchResult,
             'points_earned' => $match->player1_id == $user->id ? $match->player1_points_earned : $match->player2_points_earned,
+        ]);
+    }
+
+    /**
+     * API: Synchronise l'état du jeu pour polling temps réel
+     */
+    public function syncGameState(LeagueIndividualMatch $match)
+    {
+        $user = Auth::user();
+
+        if (!$match->isPlayerInMatch($user->id)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $firestoreState = $this->firestoreService->syncGameState($match->id);
+
+        return response()->json([
+            'success' => true,
+            'firestore_state' => $firestoreState,
+            'status' => $match->status,
         ]);
     }
 
