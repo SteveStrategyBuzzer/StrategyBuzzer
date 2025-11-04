@@ -477,23 +477,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
     <a href="/quests?rarity=Épique" class="tab {{ $currentRarity === 'Épique' ? 'active' : '' }} {{ in_array('Épique', $raritiesWithProgress) ? 'has-progress' : '' }}">🔮 Épique</a>
     <a href="/quests?rarity=Légendaire" class="tab {{ $currentRarity === 'Légendaire' ? 'active' : '' }} {{ in_array('Légendaire', $raritiesWithProgress) ? 'has-progress' : '' }}">🌟 Légendaire</a>
     <a href="/quests?rarity=Maître" class="tab {{ $currentRarity === 'Maître' ? 'active' : '' }} {{ in_array('Maître', $raritiesWithProgress) ? 'has-progress' : '' }}">👑 Maître</a>
-    <a href="/quests?rarity=Quotidiennes" class="tab {{ $currentRarity === 'Quotidiennes' ? 'active' : '' }} {{ in_array('Quotidiennes', $raritiesWithProgress) ? 'has-progress' : '' }}">📅 Quotidiennes</a>
   </div>
-
-  <!-- Bannière Quêtes Quotidiennes -->
-  @if($currentRarity === 'Quotidiennes')
-  <div class="daily-banner">
-    <div class="daily-icon">☀️</div>
-    <div class="daily-content">
-      <h3 class="daily-title">Quêtes Quotidiennes</h3>
-      <p class="daily-subtitle">3 nouvelles quêtes chaque jour</p>
-    </div>
-    <div class="daily-timer">
-      <div class="timer-label">Reset dans</div>
-      <div class="timer-value" id="dailyTimer">--:--:--</div>
-    </div>
-  </div>
-  @endif
 
   <!-- Badge Grid -->
   <div class="grid badge-grid">
