@@ -12,7 +12,8 @@
     $soloUnlocked = $profileComplete;
     
     // Duo : débloqué après avoir battu le boss du niveau 10 (choix_niveau >= 11)
-    $choixNiveau = $user && $user->profile_settings ? (json_decode($user->profile_settings, true)['choix_niveau'] ?? 1) : 1;
+    $profileSettings = $user && $user->profile_settings ? $user->profile_settings : [];
+    $choixNiveau = is_array($profileSettings) ? ($profileSettings['choix_niveau'] ?? 1) : 1;
     $duoUnlocked = $choixNiveau >= 11;
     
     // Ligue : 100 matchs Duo joués (victoires + défaites)
