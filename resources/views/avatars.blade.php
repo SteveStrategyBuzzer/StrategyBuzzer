@@ -396,6 +396,21 @@
   </div>
 </div>
 
+{{-- MODALE AVATAR STRATÉGIQUE (Long Press) --}}
+<div id="stratModal" class="modal" role="dialog" aria-modal="true" style="display:none">
+  <div class="card" style="width:min(500px,90vw);max-height:90vh;overflow:auto;border-radius:20px;background:#0b1020;border:2px solid #FFD700;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:#0b1020;border-bottom:1px solid rgba(255,215,0,.2)">
+      <div class="h-title" id="stratModalTitle" style="font-size:1.3rem;color:#FFD700">⚔️ Avatar Stratégique</div>
+      <button class="pill" onclick="closeStratModal()">✕</button>
+    </div>
+    <div style="padding:24px;text-align:center">
+      <img id="stratModalImage" src="" alt="Avatar" style="width:180px;height:180px;border-radius:50%;object-fit:cover;border:4px solid #FFD700;margin:0 auto 20px;display:block;box-shadow:0 8px 20px rgba(255,215,0,.4);">
+      <div id="stratModalName" style="font-size:1.5rem;color:#FFD700;margin-bottom:20px;font-weight:700"></div>
+      <div id="stratModalSkills" style="background:rgba(0,0,0,0.3);border-radius:12px;padding:15px;text-align:left"></div>
+    </div>
+  </div>
+</div>
+
 <script>
   const ROUTE_SELECT = @json($rAvatarSelect);
   const CSRF        = @json(csrf_token());
@@ -522,6 +537,219 @@
   window.addEventListener('resize',()=>{ measure(); noTransApply(); });
   measure(); noTransApply(); requestAnimationFrame(apply);
 
+  /* ===== Mapping complet des skills ===== */
+  const AVATAR_SKILLS = {
+    'Mathématicien': {
+      name: 'Mathématicien',
+      skills: [
+        {icon: '🔢', name: 'Calcul Rapide', desc: 'Peut faire illuminer une bonne réponse si il y a un chiffre dans la réponse'}
+      ]
+    },
+    'Scientifique': {
+      name: 'Scientifique',
+      skills: [
+        {icon: '⚗️', name: 'Analyse', desc: 'Peut acidifier une mauvaise réponse 1 fois avant de choisir'}
+      ]
+    },
+    'Explorateur': {
+      name: 'Explorateur',
+      skills: [
+        {icon: '🧭', name: 'Navigation', desc: 'La réponse s\'illumine du choix du joueur adverse ou la réponse la plus cliqué'}
+      ]
+    },
+    'Défenseur': {
+      name: 'Défenseur',
+      skills: [
+        {icon: '🛡️', name: 'Protection', desc: 'Peut annuler une attaque de n\'importe quel Avatar'}
+      ]
+    },
+    'Comédienne': {
+      name: 'Comédienne',
+      skills: [
+        {icon: '🎯', name: 'Précision', desc: 'Peut indiquer un score moins élevé jusqu\'à la fin de la partie'},
+        {icon: '🌀', name: 'Confusion', desc: 'Capacité de tromper les joueurs sur une bonne réponse en mauvaise réponse'}
+      ]
+    },
+    'Magicienne': {
+      name: 'Magicienne',
+      skills: [
+        {icon: '✨', name: 'Magie', desc: 'Peut avoir une question bonus par partie'},
+        {icon: '💫', name: 'Étoile', desc: 'Peut annuler une mauvaise réponse non buzzer 1 fois par partie'}
+      ]
+    },
+    'Challenger': {
+      name: 'Challenger',
+      skills: [
+        {icon: '🔄', name: 'Rotation', desc: 'Fait changer les réponses des participants d\'emplacement au 2 sec'},
+        {icon: '⏳', name: 'Temps', desc: 'Diminue aux autres joueurs leur compte à rebours'}
+      ]
+    },
+    'Historien': {
+      name: 'Historien',
+      skills: [
+        {icon: '🪶', name: 'Histoire', desc: 'Voit un indice texte avant les autres'},
+        {icon: '⏰', name: 'Chrono', desc: '1 fois 2 sec de plus pour répondre'}
+      ]
+    },
+    'IA Junior': {
+      name: 'IA Junior',
+      skills: [
+        {icon: '🤖', name: 'IA Assist', desc: 'Voit une suggestion IA qui illumine pour la réponse 1 fois'},
+        {icon: '🎯', name: 'Élimination', desc: 'Peut éliminer 2 mauvaises réponses sur les 4'},
+        {icon: '↩️', name: 'Reprise', desc: 'Peut reprendre une réponse 1 fois'}
+      ]
+    },
+    'Stratège': {
+      name: 'Stratège',
+      skills: [
+        {icon: '💰', name: 'Bonus Pièces', desc: 'Gagne +20% de pièces d\'intelligence sur une victoire'},
+        {icon: '👥', name: 'Team', desc: 'Peut créer un team (Ajouter 1 Avatar rare) en mode solo'},
+        {icon: '💎', name: 'Réduction', desc: 'Réduit le coût de déblocage des Avatars de 10%'}
+      ]
+    },
+    'Sprinteur': {
+      name: 'Sprinteur',
+      skills: [
+        {icon: '⚡', name: 'Vitesse', desc: 'Peut reculer son temps de buzzer jusqu\'à 0.5s du plus rapide'},
+        {icon: '⏱️', name: 'Réflexion', desc: 'Peut utiliser 3 secondes de réflexion de plus 1 fois'},
+        {icon: '🔄', name: 'Auto-Reset', desc: 'Après chaque niveau se réactivent automatiquement'}
+      ]
+    },
+    'Visionnaire': {
+      name: 'Visionnaire',
+      skills: [
+        {icon: '🔮', name: 'Futur', desc: 'Peut voir 5 questions "future" (prochaine question révélée)'},
+        {icon: '🛡️', name: 'Contre', desc: 'Peut contrer l\'attaque du Challenger'},
+        {icon: '🎯', name: 'Certitude', desc: 'Si 2 points dans une manche, seule la bonne réponse est sélectionnable'}
+      ]
+    }
+  };
+
+  /* ===== Modale Avatar Stratégique ===== */
+  const stratModal = document.getElementById('stratModal');
+  function closeStratModal(){ stratModal.style.display = 'none'; }
+  
+  function openStratModal(slug){
+    const slugToName = {
+      'mathematicien': 'Mathématicien',
+      'scientifique': 'Scientifique',
+      'explorateur': 'Explorateur',
+      'defenseur': 'Défenseur',
+      'comedienne': 'Comédienne',
+      'magicienne': 'Magicienne',
+      'challenger': 'Challenger',
+      'historien': 'Historien',
+      'ia-junior': 'IA Junior',
+      'stratege': 'Stratège',
+      'sprinteur': 'Sprinteur',
+      'visionnaire': 'Visionnaire'
+    };
+    
+    const imgMap = {
+      'mathematicien': 'images/avatars/mathematicien.png',
+      'scientifique': 'images/avatars/scientifique.png',
+      'explorateur': 'images/avatars/explorateur.png',
+      'defenseur': 'images/avatars/defenseur.png',
+      'historien': 'images/avatars/historien.png',
+      'comedienne': 'images/avatars/comedienne.png',
+      'magicienne': 'images/avatars/magicienne.png',
+      'challenger': 'images/avatars/challenger.png',
+      'ia-junior': 'images/avatars/ia-junior.png',
+      'stratege': 'images/avatars/stratege.png',
+      'sprinteur': 'images/avatars/sprinteur.png',
+      'visionnaire': 'images/avatars/visionnaire.png'
+    };
+    
+    const avatarName = slugToName[slug];
+    const avatarData = AVATAR_SKILLS[avatarName];
+    
+    if (!avatarData) return;
+    
+    document.getElementById('stratModalImage').src = assetPath(imgMap[slug]);
+    document.getElementById('stratModalName').textContent = avatarData.name;
+    
+    const skillsContainer = document.getElementById('stratModalSkills');
+    skillsContainer.innerHTML = '';
+    
+    avatarData.skills.forEach((skill, idx) => {
+      const skillDiv = document.createElement('div');
+      skillDiv.style.cssText = `
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 0;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        border-bottom: ${idx === avatarData.skills.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.1)'};
+      `;
+      skillDiv.innerHTML = `
+        <span style="font-size: 1.4rem; flex-shrink: 0;">${skill.icon}</span>
+        <div style="flex: 1;">
+          <div style="color: #FFD700; font-weight: 600; margin-bottom: 4px;">${skill.name}</div>
+          <div style="opacity: 0.9; font-size: 0.9rem;">${skill.desc}</div>
+        </div>
+      `;
+      skillsContainer.appendChild(skillDiv);
+    });
+    
+    stratModal.style.display = 'flex';
+  }
+
+  /* ===== Long Press Detection ===== */
+  let longPressTimer = null;
+  let longPressTriggered = false;
+  
+  document.querySelectorAll('.stratégique-card').forEach(card => {
+    const handleLongPressStart = (e) => {
+      longPressTriggered = false;
+      const slug = card.getAttribute('onclick').match(/'([^']+)'/)[1];
+      
+      longPressTimer = setTimeout(() => {
+        longPressTriggered = true;
+        openStratModal(slug);
+        if (navigator.vibrate) navigator.vibrate(50);
+      }, 500);
+    };
+    
+    const handleLongPressEnd = (e) => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      
+      if (longPressTriggered) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    
+    card.addEventListener('touchstart', handleLongPressStart, {passive: true});
+    card.addEventListener('touchend', handleLongPressEnd);
+    card.addEventListener('touchmove', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+    
+    card.addEventListener('mousedown', handleLongPressStart);
+    card.addEventListener('mouseup', handleLongPressEnd);
+    card.addEventListener('mouseleave', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+    
+    card.addEventListener('click', (e) => {
+      if (longPressTriggered) {
+        e.preventDefault();
+        e.stopPropagation();
+        longPressTriggered = false;
+      }
+    }, true);
+  });
+
   /* ===== Sélection serveur ===== */
   function postSelect(value){
     const f = document.createElement('form');
@@ -532,6 +760,10 @@
     document.body.appendChild(f); f.submit();
   }
   function onStratégiqueClick(slug, unlocked){
+    if (longPressTriggered) {
+      longPressTriggered = false;
+      return;
+    }
     if(unlocked){ postSelect(slug); }
     else { window.location.href = @json($rBoutique).concat(`?stratégique=${encodeURIComponent(slug)}`); }
   }
