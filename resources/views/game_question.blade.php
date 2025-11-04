@@ -26,6 +26,21 @@ $playerName = $playerNames[array_rand($playerNames)];
 $currentAvatar = $params['avatar'] ?? 'Aucun';
 $skills = $currentAvatar !== 'Aucun' ? ($avatarSkills[$currentAvatar] ?? []) : [];
 
+// Récupérer les skills utilisés pour afficher les emojis en or
+$usedSkills = session('used_skills', []);
+$cancelErrorUsed = in_array('cancel_error', $usedSkills);
+$bonusQuestionUsed = in_array('bonus_question', $usedSkills);
+
+// Pour la Magicienne, remplacer les icônes par des versions or si utilisés
+if ($currentAvatar === 'Magicienne' && !empty($skills)) {
+    if ($cancelErrorUsed && isset($skills[0])) {
+        $skills[0]['icon'] = '🌟'; // ✨ devient 🌟
+    }
+    if ($bonusQuestionUsed && isset($skills[1])) {
+        $skills[1]['icon'] = '⭐'; // 💫 devient ⭐
+    }
+}
+
 // Avatar du joueur
 $selectedAvatar = session('selected_avatar', 'default');
 if (strpos($selectedAvatar, '/') !== false || strpos($selectedAvatar, 'images/') === 0) {

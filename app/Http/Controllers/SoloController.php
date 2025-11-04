@@ -1350,4 +1350,135 @@ class SoloController extends Controller
             ? round(($pointsEarned / $pointsPossible) * 100, 2)
             : 0;
     }
+
+    public function cancelError(Request $request)
+    {
+        $avatar = session('avatar', 'Aucun');
+        
+        if ($avatar !== 'Magicienne') {
+            return response()->json(['success' => false, 'message' => 'Skill non disponible pour cet avatar'], 403);
+        }
+        
+        $usedSkills = session('used_skills', []);
+        if (in_array('cancel_error', $usedSkills)) {
+            return response()->json(['success' => false, 'message' => 'Skill déjà utilisé'], 403);
+        }
+        
+        $globalStats = session('global_stats', []);
+        if (empty($globalStats)) {
+            return response()->json(['success' => false, 'message' => 'Aucune question à annuler'], 403);
+        }
+        
+        $lastIndex = count($globalStats) - 1;
+        $lastStat = $globalStats[$lastIndex];
+        
+        if (!$lastStat['player_buzzed'] || $lastStat['is_correct']) {
+            return response()->json(['success' => false, 'message' => 'La dernière question n\'était pas une erreur'], 403);
+        }
+        
+        $playerPoints = $lastStat['player_points'] ?? -2;
+        if ($playerPoints >= 0) {
+            return response()->json(['success' => false, 'message' => 'La dernière question n\'était pas une erreur'], 403);
+        }
+        
+        $pointsToRecover = abs($playerPoints);
+        $currentScore = session('score', 0);
+        session(['score' => $currentScore + $pointsToRecover]);
+        
+        $globalStats[$lastIndex]['player_points'] = 0;
+        $globalStats[$lastIndex]['skill_adjusted'] = true;
+        session(['global_stats' => $globalStats]);
+        
+        $usedSkills[] = 'cancel_error';
+        session(['used_skills' => $usedSkills]);
+        
+        return response()->json([
+            'success' => true, 
+            'message' => 'Erreur annulée ! +' . $pointsToRecover . ' points récupérés',
+            'new_score' => session('score'),
+            'used_skills' => $usedSkills
+        ]);
+    }
+
+    public function bonusQuestion()
+    {
+        $avatar = session('avatar', 'Aucun');
+        
+        if ($avatar !== 'Magicienne') {
+            return redirect()->route('solo.game')->with('error', 'Skill non disponible pour cet avatar');
+        }
+        
+        $usedSkills = session('used_skills', []);
+        if (in_array('bonus_question', $usedSkills)) {
+            return redirect()->route('solo.game')->with('error', 'Skill déjà utilisé');
+        }
+        
+        $usedSkills[] = 'bonus_question';
+        session(['used_skills' => $usedSkills]);
+        
+        $questionService = new \App\Services\QuestionService();
+        $theme = session('theme', 'Général');
+        $niveau = session('niveau_selectionne', 1);
+        $usedQuestionIds = session('used_question_ids', []);
+        $usedAnswers = session('used_answers', []);
+        $sessionUsedAnswers = session('session_used_answers', []);
+        
+        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers);
+        
+        session(['bonus_question' => $question]);
+        session(['bonus_question_start_time' => time()]);
+        
+        $params = [
+            'question' => $question,
+            'score' => session('score', 0),
+            'opponent_score' => session('opponent_score', 0),
+            'current_round' => session('current_round', 1),
+            'avatar' => $avatar,
+        ];
+        
+        return view('bonus_question', compact('params'));
+    }
+
+    public function answerBonus(Request $request)
+    {
+        $avatar = session('avatar', 'Aucun');
+        
+        if ($avatar !== 'Magicienne') {
+            return redirect()->route('solo.game')->with('error', 'Skill non disponible pour cet avatar');
+        }
+        
+        $answerIndex = (int) $request->input('answer_index', -1);
+        $question = session('bonus_question');
+        $startTime = session('bonus_question_start_time', time());
+        $timeElapsed = time() - $startTime;
+        
+        if (!$question) {
+            return redirect()->route('solo.game')->with('error', 'Question bonus expirée');
+        }
+        
+        $questionService = new \App\Services\QuestionService();
+        $isCorrect = false;
+        $points = 0;
+        
+        if ($answerIndex >= 0) {
+            $isCorrect = $questionService->checkAnswer($question, $answerIndex);
+            $points = $isCorrect ? 2 : -2;
+        }
+        
+        $currentScore = session('score', 0);
+        session(['score' => $currentScore + $points]);
+        
+        $usedSkills = session('used_skills', []);
+        $usedSkills[] = 'bonus_question';
+        session(['used_skills' => $usedSkills]);
+        
+        session()->forget('bonus_question');
+        session()->forget('bonus_question_start_time');
+        
+        return redirect()->route('solo.game')->with('bonus_result', [
+            'is_correct' => $isCorrect,
+            'points' => $points,
+            'time_elapsed' => $timeElapsed
+        ]);
+    }
 }

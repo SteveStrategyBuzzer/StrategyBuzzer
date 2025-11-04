@@ -365,6 +365,97 @@
         animation: pulse 1s infinite;
     }
     
+    /* Skills Magicienne */
+    .skills-container {
+        background: rgba(102, 126, 234, 0.15);
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .skills-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 12px;
+        text-align: center;
+    }
+    
+    .skills-grid {
+        display: grid;
+        gap: 10px;
+    }
+    
+    .skill-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 12px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.3s;
+    }
+    
+    .skill-item.used {
+        background: rgba(255, 215, 0, 0.1);
+        border-color: gold;
+    }
+    
+    .skill-icon {
+        font-size: 2rem;
+    }
+    
+    .skill-info {
+        flex: 1;
+        text-align: left;
+    }
+    
+    .skill-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #667eea;
+    }
+    
+    .skill-desc {
+        font-size: 0.75rem;
+        opacity: 0.8;
+        margin-top: 2px;
+    }
+    
+    .skill-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .skill-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+    }
+    
+    .skill-btn:disabled {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.5);
+        cursor: not-allowed;
+    }
+    
+    .skill-used-badge {
+        background: gold;
+        color: #1a1a2e;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
     @keyframes scaleIn {
         from {
             transform: scale(0) rotate(-180deg);
@@ -623,6 +714,51 @@
         </div>
     </div>
     
+    <!-- Skills Magicienne -->
+    @php
+        $avatar = session('avatar', 'Aucun');
+        $usedSkills = session('used_skills', []);
+        $cancelErrorUsed = in_array('cancel_error', $usedSkills);
+        $bonusQuestionUsed = in_array('bonus_question', $usedSkills);
+    @endphp
+    
+    @if($avatar === 'Magicienne')
+    <div class="skills-container">
+        <div class="skills-title">✨ Compétences Magicienne ✨</div>
+        <div class="skills-grid">
+            <!-- Skill 1: Annule erreur -->
+            <div class="skill-item {{ $cancelErrorUsed ? 'used' : '' }}">
+                <div class="skill-icon">{{ $cancelErrorUsed ? '🌟' : '✨' }}</div>
+                <div class="skill-info">
+                    <div class="skill-name">Annule erreur</div>
+                    <div class="skill-desc">Transforme une mauvaise réponse en sans réponse (1x)</div>
+                </div>
+                @if($cancelErrorUsed)
+                    <div class="skill-used-badge">UTILISÉ</div>
+                @elseif(!$params['is_correct'] && isset($params['player_points']) && $params['player_points'] < 0)
+                    <button class="skill-btn" onclick="useCancelError()">Activer</button>
+                @else
+                    <button class="skill-btn" disabled>Activer</button>
+                @endif
+            </div>
+            
+            <!-- Skill 2: Question bonus -->
+            <div class="skill-item {{ $bonusQuestionUsed ? 'used' : '' }}">
+                <div class="skill-icon">{{ $bonusQuestionUsed ? '⭐' : '💫' }}</div>
+                <div class="skill-info">
+                    <div class="skill-name">Question bonus</div>
+                    <div class="skill-desc">Active une question bonus sans buzzer (+2/-2/0 pts, 1x)</div>
+                </div>
+                @if($bonusQuestionUsed)
+                    <div class="skill-used-badge">UTILISÉ</div>
+                @else
+                    <button class="skill-btn" onclick="useBonusQuestion()">Activer</button>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+    
     <!-- Answers -->
     <div class="result-answers">
         @php
@@ -750,6 +886,42 @@ const interval = setInterval(() => {
         goToNextQuestion();
     }
 }, 1000);
+
+// Skills Magicienne
+function useCancelError() {
+    if (!confirm('Voulez-vous annuler votre dernière erreur ? (-2 pts devient 0 pt)')) {
+        return;
+    }
+    
+    fetch("{{ route('solo.cancel-error') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message || 'Erreur lors de l\'activation du skill');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de l\'activation du skill');
+    });
+}
+
+function useBonusQuestion() {
+    if (!confirm('Voulez-vous activer la question bonus ? (chrono 10 sec, +2/-2/0 pts)')) {
+        return;
+    }
+    
+    window.location.href = "{{ route('solo.bonus-question') }}";
+}
 
 function goToNextQuestion() {
     clearInterval(interval);

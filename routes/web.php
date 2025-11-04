@@ -149,6 +149,9 @@ Route::prefix('solo')->name('solo.')->group(function () {
     Route::post('/buzz',   [SoloController::class, 'buzz'])->name('buzz');
     Route::match(['get', 'post'], '/answer', [SoloController::class, 'answer'])->name('answer');
     Route::post('/use-skill', [SoloController::class, 'useSkill'])->name('use-skill');
+    Route::post('/cancel-error', [SoloController::class, 'cancelError'])->name('cancel-error');
+    Route::get('/bonus-question', [SoloController::class, 'bonusQuestion'])->name('bonus-question');
+    Route::post('/answer-bonus', [SoloController::class, 'answerBonus'])->name('answer-bonus');
     Route::get('/next',    [SoloController::class, 'nextQuestion'])->name('next');
     Route::get('/round-result', [SoloController::class, 'roundResult'])->name('round-result');
     Route::get('/victory', [SoloController::class, 'victory'])->name('victory');
