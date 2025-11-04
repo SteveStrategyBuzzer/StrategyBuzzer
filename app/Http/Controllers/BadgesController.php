@@ -13,10 +13,17 @@ class BadgesController extends Controller
     {
         $user = Auth::user();
         
-        $bronzeQuests = Quest::where('tier', 'bronze')->orderBy('order')->get();
-        $silverQuests = Quest::where('tier', 'silver')->orderBy('order')->get();
-        $goldQuests = Quest::where('tier', 'gold')->orderBy('order')->get();
+        // Mapper les rarités aux tiers (bronze/silver/gold)
+        // Bronze: Quêtes faciles (Standard, Quotidiennes)
+        $bronzeQuests = Quest::whereIn('rarity', ['Standard', 'Quotidiennes'])->get();
         
+        // Silver: Quêtes moyennes (Rare, Épique)
+        $silverQuests = Quest::whereIn('rarity', ['Rare', 'Épique'])->get();
+        
+        // Gold: Quêtes difficiles (Légendaire, Maître)
+        $goldQuests = Quest::whereIn('rarity', ['Légendaire', 'Maître'])->get();
+        
+        // Attacher les progrès de l'utilisateur à chaque quête
         foreach ($bronzeQuests as $quest) {
             $quest->progress = UserQuestProgress::where('user_id', $user->id)
                 ->where('quest_id', $quest->id)
