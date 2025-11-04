@@ -24,6 +24,7 @@ Route::middleware('auth:sanctum')->prefix('duo')->group(function () {
     Route::post('/match/{match}/answer', [DuoController::class, 'submitAnswer']);
     Route::post('/match/{match}/finish', [DuoController::class, 'finishMatch']);
     Route::get('/match/{match}', [DuoController::class, 'getMatch']);
+    Route::get('/match/{match}/sync', [DuoController::class, 'syncGameState']);
     Route::get('/rankings', [DuoController::class, 'getRankings']);
     Route::get('/my-stats', [DuoController::class, 'getMyStats']);
 });

@@ -116,4 +116,27 @@ class BuzzManagerService
         
         return count($playerBuzzes) < $maxBuzzPerSecond;
     }
+    
+    /**
+     * Traite une réponse après un buzz et calcule les points
+     */
+    public function processBuzzAnswer(array &$gameState, string $playerId, string $answer, string $correctAnswer): array
+    {
+        $serverTime = microtime(true);
+        $isCorrect = strcasecmp(trim($answer), trim($correctAnswer)) === 0;
+        
+        $buzzes = $gameState['buzzes'] ?? [];
+        $fastestBuzz = $this->determineFastest($buzzes);
+        $isFirst = $fastestBuzz && $fastestBuzz['player_id'] === $playerId;
+        
+        $points = $isCorrect ? ($isFirst ? 2 : 1) : -2;
+        
+        return [
+            'is_correct' => $isCorrect,
+            'is_first' => $isFirst,
+            'points' => $points,
+            'server_time' => $serverTime,
+            'answer' => $answer,
+        ];
+    }
 }

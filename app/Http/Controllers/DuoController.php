@@ -8,6 +8,7 @@ use App\Services\DuoMatchmakingService;
 use App\Services\DivisionService;
 use App\Services\GameStateService;
 use App\Services\BuzzManagerService;
+use App\Services\DuoFirestoreService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
@@ -18,7 +19,8 @@ class DuoController extends Controller
         private DuoMatchmakingService $matchmaking,
         private DivisionService $divisionService,
         private GameStateService $gameStateService,
-        private BuzzManagerService $buzzManager
+        private BuzzManagerService $buzzManager,
+        private DuoFirestoreService $firestoreService
     ) {}
 
     public function index()
@@ -120,6 +122,14 @@ class DuoController extends Controller
         $match->game_state = $gameState;
         $match->save();
 
+        $this->firestoreService->createMatchSession($match->id, [
+            'player1_id' => $match->player1_id,
+            'player2_id' => $match->player2_id,
+            'player1_name' => $match->player1->name ?? 'Player 1',
+            'player2_name' => $match->player2->name ?? 'Player 2',
+            'questionStartTime' => $gameState['question_start_time'],
+        ]);
+
         return response()->json([
             'success' => true,
             'match' => $match->load(['player1', 'player2']),
@@ -139,6 +149,10 @@ class DuoController extends Controller
         }
 
         $this->matchmaking->cancelMatch($match);
+
+        if ($this->firestoreService->sessionExists($match->id)) {
+            $this->firestoreService->deleteMatchSession($match->id);
+        }
 
         return response()->json([
             'success' => true,
@@ -179,6 +193,12 @@ class DuoController extends Controller
         $gameState['buzzes'] = $buzzes;
         $match->game_state = $gameState;
         $match->save();
+
+        $this->firestoreService->recordBuzz(
+            $match->id,
+            $playerId,
+            $buzzRecord['server_time']
+        );
 
         $fastest = $this->buzzManager->determineFastest($buzzes);
 
@@ -250,6 +270,34 @@ class DuoController extends Controller
         $match->game_state = $gameState;
         $match->save();
 
+        $this->firestoreService->updateScores(
+            $match->id,
+            $gameState['player_scores_map']['player'] ?? 0,
+            $gameState['player_scores_map']['opponent'] ?? 0
+        );
+
+        if ($hasMoreQuestions) {
+            $this->firestoreService->updateGameState($match->id, [
+                'currentQuestion' => $gameState['current_question_number'],
+                'questionStartTime' => $gameState['question_start_time'] ?? microtime(true),
+            ]);
+        } else {
+            $this->firestoreService->finishRound(
+                $match->id,
+                $gameState['current_round'],
+                $gameState['player_rounds_won'],
+                $gameState['opponent_rounds_won']
+            );
+            
+            if (!$this->gameStateService->isMatchFinished($gameState)) {
+                $this->firestoreService->updateGameState($match->id, [
+                    'currentQuestion' => $gameState['current_question_number'],
+                    'questionStartTime' => $gameState['question_start_time'] ?? microtime(true),
+                    'currentRound' => $gameState['current_round'],
+                ]);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'isCorrect' => $isCorrect,
@@ -294,6 +342,9 @@ class DuoController extends Controller
                 $gameState
             );
 
+            $this->firestoreService->finishMatch($match->id, $matchResult['winner']);
+            $this->firestoreService->deleteMatchSession($match->id);
+
             return response()->json([
                 'success' => true,
                 'match' => $finishedMatch->load(['player1', 'player2', 'winner']),
@@ -312,6 +363,36 @@ class DuoController extends Controller
         return response()->json([
             'success' => true,
             'match' => $match->load(['player1', 'player2', 'winner']),
+        ]);
+    }
+
+    public function syncGameState(DuoMatch $match)
+    {
+        $user = Auth::user();
+
+        if ($match->player1_id !== $user->id && $match->player2_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous n\'appartenez pas à ce match.',
+            ], 403);
+        }
+
+        $firestoreState = $this->firestoreService->getGameState($match->id);
+        $firestoreBuzzes = $this->firestoreService->getBuzzes($match->id);
+
+        if (!$firestoreState) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session Firestore introuvable',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'firestoreState' => $firestoreState,
+            'buzzes' => $firestoreBuzzes,
+            'matchId' => $match->id,
+            'timestamp' => microtime(true),
         ]);
     }
 
