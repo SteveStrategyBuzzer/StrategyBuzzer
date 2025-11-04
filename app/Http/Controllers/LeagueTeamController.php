@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\TeamService;
 use App\Services\LeagueTeamService;
+use App\Services\LeagueTeamFirestoreService;
 use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Models\LeagueTeamMatch;
@@ -15,11 +16,16 @@ class LeagueTeamController extends Controller
 {
     private TeamService $teamService;
     private LeagueTeamService $leagueTeamService;
+    private LeagueTeamFirestoreService $firestoreService;
 
-    public function __construct(TeamService $teamService, LeagueTeamService $leagueTeamService)
-    {
+    public function __construct(
+        TeamService $teamService, 
+        LeagueTeamService $leagueTeamService,
+        LeagueTeamFirestoreService $firestoreService
+    ) {
         $this->teamService = $teamService;
         $this->leagueTeamService = $leagueTeamService;
+        $this->firestoreService = $firestoreService;
     }
 
     public function showTeamManagement()
@@ -204,6 +210,26 @@ class LeagueTeamController extends Controller
         try {
             $match = $this->leagueTeamService->initializeTeamMatch($team);
 
+            $team1Players = $match->team1->teamMembers->map(fn($m) => [
+                'id' => $m->user_id,
+                'name' => $m->user->name ?? 'Player',
+            ])->toArray();
+            
+            $team2Players = $match->team2->teamMembers->map(fn($m) => [
+                'id' => $m->user_id,
+                'name' => $m->user->name ?? 'Player',
+            ])->toArray();
+
+            $this->firestoreService->createMatchSession($match->id, [
+                'team1_id' => $match->team1_id,
+                'team2_id' => $match->team2_id,
+                'team1_name' => $match->team1->name,
+                'team2_name' => $match->team2->name,
+                'team1_players' => $team1Players,
+                'team2_players' => $team2Players,
+                'questionStartTime' => microtime(true),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'match_id' => $match->id,
@@ -274,6 +300,9 @@ class LeagueTeamController extends Controller
         try {
             $result = $this->leagueTeamService->processBuzz($match, $user, $request->buzz_time);
 
+            $teamId = $match->team1->teamMembers->contains('user_id', $user->id) ? 'team1' : 'team2';
+            $this->firestoreService->recordBuzz($match->id, $teamId, $user->id, microtime(true));
+
             return response()->json($result);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
@@ -299,6 +328,21 @@ class LeagueTeamController extends Controller
         try {
             $result = $this->leagueTeamService->submitAnswer($match, $user, $request->answer);
 
+            $gameState = $match->game_state ?? [];
+            $this->firestoreService->updateScores(
+                $match->id,
+                $gameState['team1_score'] ?? 0,
+                $gameState['team2_score'] ?? 0
+            );
+
+            if ($result['next_question'] ?? false) {
+                $this->firestoreService->nextQuestion(
+                    $match->id,
+                    $gameState['current_question'] ?? 1,
+                    microtime(true)
+                );
+            }
+
             return response()->json($result);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
@@ -317,6 +361,8 @@ class LeagueTeamController extends Controller
             return redirect()->route('league.team.lobby')->with('error', 'Vous n\'êtes pas dans ce match.');
         }
 
+        $this->firestoreService->deleteMatchSession($match->id);
+
         return Inertia::render('LeagueTeamResults', [
             'user' => $user,
             'match' => $match,
@@ -328,5 +374,29 @@ class LeagueTeamController extends Controller
         $rankings = $this->leagueTeamService->getTeamRankings($division);
 
         return response()->json($rankings);
+    }
+
+    /**
+     * API: Synchronise l'état du jeu pour polling temps réel
+     */
+    public function syncGameState($matchId)
+    {
+        $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
+        $user = Auth::user();
+
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+                    $match->team2->teamMembers->contains('user_id', $user->id);
+
+        if (!$isPlayer) {
+            return response()->json(['error' => 'Non autorisé.'], 403);
+        }
+
+        $firestoreState = $this->firestoreService->syncGameState($match->id);
+
+        return response()->json([
+            'success' => true,
+            'firestore_state' => $firestoreState,
+            'status' => $match->status,
+        ]);
     }
 }
