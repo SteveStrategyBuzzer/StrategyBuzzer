@@ -106,9 +106,14 @@ class SoloController extends Controller
         $permanentUsedAnswers = [];
         
         if ($user) {
-            // Charger toutes les questions et réponses déjà vues par ce joueur
+            // Utilisateur connecté : Charger depuis la database
             $permanentUsedQuestionIds = QuestionHistory::getSeenQuestionIds($user->id);
             $permanentUsedAnswers = QuestionHistory::getSeenAnswers($user->id);
+        } else {
+            // Invité (guest) : Charger depuis la session (historique accumulé pendant toute la session)
+            // Ces arrays s'accumulent au fil des parties et ne sont jamais réinitialisés
+            $permanentUsedQuestionIds = session('guest_all_questions', []);
+            $permanentUsedAnswers = session('guest_all_answers', []);
         }
         
         // Persistance session - initialiser TOUTES les variables de jeu
@@ -123,8 +128,8 @@ class SoloController extends Controller
             'score' => 0,                      // Score de la manche actuelle
             'opponent_score' => 0,             // Score adversaire de la manche actuelle
             'answered_questions' => [],
-            'used_question_ids' => $permanentUsedQuestionIds,  // HISTORIQUE PERMANENT du joueur
-            'used_answers' => $permanentUsedAnswers,           // RÉPONSES PERMANENTES déjà vues
+            'used_question_ids' => $permanentUsedQuestionIds,  // HISTORIQUE PERMANENT (DB ou session)
+            'used_answers' => $permanentUsedAnswers,           // RÉPONSES PERMANENTES (DB ou session)
             'session_used_answers' => [],      // Réponses utilisées dans cette partie seulement (réinitialisé chaque partie)
             'current_question' => null,        // Sera généré au premier game()
             'global_stats' => [],              // Statistiques globales toutes manches
@@ -398,9 +403,28 @@ class SoloController extends Controller
                 session(['session_used_answers' => $sessionUsedAnswers]);
             }
             
-            // Sauvegarder dans l'historique permanent si utilisateur connecté
+            // Sauvegarder dans l'historique permanent
             if ($user && $user instanceof \App\Models\User) {
+                // Utilisateur connecté : Sauvegarder dans la database
                 QuestionHistory::recordQuestion($user->id, $question);
+            } else {
+                // Invité (guest) : Sauvegarder dans la session permanente
+                // Ces arrays s'accumulent pendant toute la session et ne sont jamais réinitialisés
+                $guestAllQuestions = session('guest_all_questions', []);
+                $guestAllAnswers = session('guest_all_answers', []);
+                
+                if (!in_array($question['id'], $guestAllQuestions)) {
+                    $guestAllQuestions[] = $question['id'];
+                }
+                
+                if ($correctAnswer && !in_array($correctAnswer, $guestAllAnswers)) {
+                    $guestAllAnswers[] = $correctAnswer;
+                }
+                
+                session([
+                    'guest_all_questions' => $guestAllQuestions,
+                    'guest_all_answers' => $guestAllAnswers,
+                ]);
             }
         } else {
             $question = session('current_question');
