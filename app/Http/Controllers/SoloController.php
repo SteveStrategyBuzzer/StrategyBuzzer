@@ -1109,6 +1109,15 @@ class SoloController extends Controller
             $partyEfficiency = round(array_sum($roundEfficiencies) / count($roundEfficiencies), 2);
         }
         
+        $nextLifeRegen = null;
+        if ($user && $user->next_life_regen) {
+            if ($user->next_life_regen instanceof \DateTimeInterface) {
+                $nextLifeRegen = $user->next_life_regen->format('c');
+            } elseif (is_string($user->next_life_regen)) {
+                $nextLifeRegen = $user->next_life_regen;
+            }
+        }
+        
         $params = [
             'current_level' => $currentLevel,
             'theme' => $theme,
@@ -1120,7 +1129,7 @@ class SoloController extends Controller
             'remaining_lives' => $remainingLives,
             'has_lives' => $hasLives,
             'cooldown_time' => $cooldownTime,
-            'next_life_regen' => $user && $user->next_life_regen ? $user->next_life_regen->toIso8601String() : null,
+            'next_life_regen' => $nextLifeRegen,
             'is_guest' => false, // Toujours false car auth middleware requis
             'stats_metrics' => $statsMetrics,
         ];
