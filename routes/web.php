@@ -247,3 +247,7 @@ Route::get('/badges', [App\Http\Controllers\BadgesController::class, 'index'])->
 
 // (Optionnel) Fallback 404 propre
 // Route::fallback(fn() => response()->view('notfound', [], 404));
+
+/* ===== TEST FIREBASE (temporary routes for testing) ===== */
+Route::get('/test/firebase', [App\Http\Controllers\TestFirebaseController::class, 'testConnection'])->name('test.firebase');
+Route::get('/test/firebase/buzz', [App\Http\Controllers\TestFirebaseController::class, 'testBuzz'])->name('test.firebase.buzz');

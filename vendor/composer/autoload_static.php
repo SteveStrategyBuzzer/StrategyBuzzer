@@ -823,6 +823,7 @@ class ComposerStaticInit24cdbd47cb41a783a595edc6e18d9ccc
         'App\\Http\\Controllers\\StaticPageController' => __DIR__ . '/../..' . '/app/Http/Controllers/StaticPageController.php',
         'App\\Http\\Controllers\\StatisticsController' => __DIR__ . '/../..' . '/app/Http/Controllers/StatisticsController.php',
         'App\\Http\\Controllers\\StripeWebhookController' => __DIR__ . '/../..' . '/app/Http/Controllers/StripeWebhookController.php',
+        'App\\Http\\Controllers\\TestFirebaseController' => __DIR__ . '/../..' . '/app/Http/Controllers/TestFirebaseController.php',
         'App\\Http\\Controllers\\UserController' => __DIR__ . '/../..' . '/app/Http/Controllers/UserController.php',
         'App\\Http\\Kernel' => __DIR__ . '/../..' . '/app/Http/Kernel.php',
         'App\\Http\\Middleware\\Authenticate' => __DIR__ . '/../..' . '/app/Http/Middleware/Authenticate.php',

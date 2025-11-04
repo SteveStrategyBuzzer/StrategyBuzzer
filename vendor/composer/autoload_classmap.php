@@ -36,6 +36,7 @@ return array(
     'App\\Http\\Controllers\\StaticPageController' => $baseDir . '/app/Http/Controllers/StaticPageController.php',
     'App\\Http\\Controllers\\StatisticsController' => $baseDir . '/app/Http/Controllers/StatisticsController.php',
     'App\\Http\\Controllers\\StripeWebhookController' => $baseDir . '/app/Http/Controllers/StripeWebhookController.php',
+    'App\\Http\\Controllers\\TestFirebaseController' => $baseDir . '/app/Http/Controllers/TestFirebaseController.php',
     'App\\Http\\Controllers\\UserController' => $baseDir . '/app/Http/Controllers/UserController.php',
     'App\\Http\\Kernel' => $baseDir . '/app/Http/Kernel.php',
     'App\\Http\\Middleware\\Authenticate' => $baseDir . '/app/Http/Middleware/Authenticate.php',
