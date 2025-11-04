@@ -121,6 +121,9 @@ class ProfileController extends Controller
             'country' => 'nullable|string|max:2',
             'sound.buzzer_id' => 'nullable|string|max:64',
             'sound.music_id' => 'nullable|string|max:64',
+            'options.ambiance' => 'nullable|boolean',
+            'options.results' => 'nullable|boolean',
+            'gameplay.music_id' => 'nullable|string|max:64',
             'theme.style' => 'nullable|string|max:32',
             'theme.decor' => 'nullable|string|max:64',
             'avatar.type' => 'nullable|in:regular,strategic',
@@ -133,6 +136,15 @@ class ProfileController extends Controller
         ]);
 
         $data['show_online'] = $request->boolean('show_online');
+        
+        // Normaliser les booleans options -> sound
+        if ($request->has('options')) {
+            if (!isset($data['sound'])) $data['sound'] = [];
+            $data['sound']['ambiance'] = $request->boolean('options.ambiance');
+            $data['sound']['results'] = $request->boolean('options.results');
+            unset($data['options']);
+        }
+        
         $settings = array_replace_recursive($this->buildSettings(), $data);
 
         try {

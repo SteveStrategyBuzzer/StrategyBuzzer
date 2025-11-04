@@ -257,9 +257,9 @@
   }
 </style>
 
-<!-- Bouton Menu -->
-<a href="{{ route('menu') }}" class="menu-button">
-  🏠 Menu
+<!-- Bouton Retour Solo -->
+<a href="{{ route('solo.index') }}" class="menu-button">
+  ← Solo
 </a>
 
 <div class="resume-container">
