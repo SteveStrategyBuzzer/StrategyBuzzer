@@ -339,39 +339,84 @@
               <div style="font-size: 3rem; margin-bottom: 10px;">⚔️</div>
             @endif
             
-            <div style="font-size: 1.3rem; color: #FFD700; margin-bottom: 10px; font-weight: 700;">{{ $params['avatar'] }}</div>
-            @if(!empty($params['avatar_skills']))
-              @php
-                // Mapping des icônes pour chaque avatar
-                $avatarSkillIcons = [
-                    'Mathématicien' => [['icon' => '🔢', 'name' => 'Calcul Rapide']],
-                    'Scientifique' => [['icon' => '⚗️', 'name' => 'Analyse']],
-                    'Explorateur' => [['icon' => '🧭', 'name' => 'Navigation']],
-                    'Défenseur' => [['icon' => '🛡️', 'name' => 'Protection']],
-                    'Comédien' => [['icon' => '🎯', 'name' => 'Précision'], ['icon' => '🌀', 'name' => 'Confusion']],
-                    'Comédienne' => [['icon' => '🎯', 'name' => 'Précision'], ['icon' => '🌀', 'name' => 'Confusion']],
-                    'Magicien' => [['icon' => '✨', 'name' => 'Magie'], ['icon' => '💫', 'name' => 'Étoile']],
-                    'Magicienne' => [['icon' => '✨', 'name' => 'Magie'], ['icon' => '💫', 'name' => 'Étoile']],
-                    'Challenger' => [['icon' => '🔄', 'name' => 'Rotation'], ['icon' => '⏳', 'name' => 'Temps']],
-                    'Historien' => [['icon' => '🪶', 'name' => 'Histoire'], ['icon' => '⏰', 'name' => 'Chrono']],
-                ];
-                $currentSkills = $avatarSkillIcons[$params['avatar']] ?? [];
-              @endphp
-              <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
+            <div style="font-size: 1.3rem; color: #FFD700; margin-bottom: 15px; font-weight: 700;">{{ $params['avatar'] }}</div>
+            @php
+              // Mapping complet : emoji + nom + description pour chaque avatar
+              $avatarSkillsComplete = [
+                  'Mathématicien' => [
+                      ['icon' => '🔢', 'name' => 'Calcul Rapide', 'desc' => 'Peut faire illuminer une bonne réponse si il y a un chiffre dans la réponse']
+                  ],
+                  'Scientifique' => [
+                      ['icon' => '⚗️', 'name' => 'Analyse', 'desc' => 'Peut acidifier une mauvaise réponse 1 fois avant de choisir']
+                  ],
+                  'Explorateur' => [
+                      ['icon' => '🧭', 'name' => 'Navigation', 'desc' => 'La réponse s\'illumine du choix du joueur adverse ou la réponse la plus cliqué']
+                  ],
+                  'Défenseur' => [
+                      ['icon' => '🛡️', 'name' => 'Protection', 'desc' => 'Peut annuler une attaque de n\'importe quel Avatar']
+                  ],
+                  'Comédien' => [
+                      ['icon' => '🎯', 'name' => 'Précision', 'desc' => 'Peut indiquer un score moins élevé jusqu\'à la fin de la partie'],
+                      ['icon' => '🌀', 'name' => 'Confusion', 'desc' => 'Capacité de tromper les joueurs sur une bonne réponse en mauvaise réponse']
+                  ],
+                  'Comédienne' => [
+                      ['icon' => '🎯', 'name' => 'Précision', 'desc' => 'Peut indiquer un score moins élevé jusqu\'à la fin de la partie'],
+                      ['icon' => '🌀', 'name' => 'Confusion', 'desc' => 'Capacité de tromper les joueurs sur une bonne réponse en mauvaise réponse']
+                  ],
+                  'Magicien' => [
+                      ['icon' => '✨', 'name' => 'Magie', 'desc' => 'Peut avoir une question bonus par partie'],
+                      ['icon' => '💫', 'name' => 'Étoile', 'desc' => 'Peut annuler une mauvaise réponse non buzzer 1 fois par partie']
+                  ],
+                  'Magicienne' => [
+                      ['icon' => '✨', 'name' => 'Magie', 'desc' => 'Peut avoir une question bonus par partie'],
+                      ['icon' => '💫', 'name' => 'Étoile', 'desc' => 'Peut annuler une mauvaise réponse non buzzer 1 fois par partie']
+                  ],
+                  'Challenger' => [
+                      ['icon' => '🔄', 'name' => 'Rotation', 'desc' => 'Fait changer les réponses des participants d\'emplacement au 2 sec'],
+                      ['icon' => '⏳', 'name' => 'Temps', 'desc' => 'Diminue aux autres joueurs leur compte à rebours']
+                  ],
+                  'Historien' => [
+                      ['icon' => '🪶', 'name' => 'Histoire', 'desc' => 'Voit un indice texte avant les autres'],
+                      ['icon' => '⏰', 'name' => 'Chrono', 'desc' => '1 fois 2 sec de plus pour répondre']
+                  ],
+                  'IA Junior' => [
+                      ['icon' => '🤖', 'name' => 'IA Assist', 'desc' => 'Voit une suggestion IA qui illumine pour la réponse 1 fois'],
+                      ['icon' => '🎯', 'name' => 'Élimination', 'desc' => 'Peut éliminer 2 mauvaises réponses sur les 4'],
+                      ['icon' => '↩️', 'name' => 'Reprise', 'desc' => 'Peut reprendre une réponse 1 fois']
+                  ],
+                  'Stratège' => [
+                      ['icon' => '💰', 'name' => 'Bonus Pièces', 'desc' => 'Gagne +20% de pièces d\'intelligence sur une victoire'],
+                      ['icon' => '👥', 'name' => 'Team', 'desc' => 'Peut créer un team (Ajouter 1 Avatar rare) en mode solo'],
+                      ['icon' => '💎', 'name' => 'Réduction', 'desc' => 'Réduit le coût de déblocage des Avatars de 10%']
+                  ],
+                  'Sprinteur' => [
+                      ['icon' => '⚡', 'name' => 'Vitesse', 'desc' => 'Peut reculer son temps de buzzer jusqu\'à 0.5s du plus rapide'],
+                      ['icon' => '⏱️', 'name' => 'Réflexion', 'desc' => 'Peut utiliser 3 secondes de réflexion de plus 1 fois'],
+                      ['icon' => '🔄', 'name' => 'Auto-Reset', 'desc' => 'Après chaque niveau se réactivent automatiquement']
+                  ],
+                  'Visionnaire' => [
+                      ['icon' => '🔮', 'name' => 'Futur', 'desc' => 'Peut voir 5 questions "future" (prochaine question révélée)'],
+                      ['icon' => '🛡️', 'name' => 'Contre', 'desc' => 'Peut contrer l\'attaque du Challenger'],
+                      ['icon' => '🎯', 'name' => 'Certitude', 'desc' => 'Si 2 points dans une manche, seule la bonne réponse est sélectionnable']
+                  ],
+              ];
+              $currentSkills = $avatarSkillsComplete[$params['avatar']] ?? [];
+            @endphp
+            @if(!empty($currentSkills))
+              <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; margin-top: 10px;">
                 @foreach ($currentSkills as $skill)
                   <div style="
-                    width: 35px; 
-                    height: 35px; 
-                    border-radius: 50%; 
-                    background: rgba(255, 215, 0, 0.2); 
-                    border: 2px solid #FFD700; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    font-size: 1.2rem;
-                    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
-                  " title="{{ $skill['name'] }}">
-                    {{ $skill['icon'] }}
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 8px;
+                    padding: 6px 0;
+                    font-size: 0.85rem;
+                    line-height: 1.3;
+                    border-bottom: {{ $loop->last ? 'none' : '1px solid rgba(255,255,255,0.1)' }};
+                  ">
+                    <span style="font-size: 1.2rem; flex-shrink: 0;">{{ $skill['icon'] }}</span>
+                    <span style="color: #FFD700; font-weight: 600; min-width: 80px;">{{ $skill['name'] }}</span>
+                    <span style="opacity: 0.9; flex: 1;">{{ $skill['desc'] }}</span>
                   </div>
                 @endforeach
               </div>
