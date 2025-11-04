@@ -354,8 +354,8 @@
         </a>
 
         <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('badges') ? route('badges') : url('/badges') }}">
-            BADGES
+           href="{{ \Illuminate\Support\Facades\Route::has('quetes-quotidiennes') ? route('quetes-quotidiennes') : url('/quetes-quotidiennes') }}">
+            QUÊTES QUOTIDIENNES
         </a>
 
         <a class="menu-link"
