@@ -7,6 +7,14 @@ StrategyBuzzer is a real-time quiz buzzer game application that combines a Larav
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **Question Anti-Duplication System** (November 4, 2025):
+  - **Permanent Question History**: Created `question_history` table to track all questions seen by each authenticated user (user_id, question_id, question_hash, correct_answer, theme, niveau)
+  - **Guest Session Persistence**: Guests accumulate question/answer history in session (`guest_all_questions`, `guest_all_answers`) that persists across multiple matches
+  - **Zero Repetition Guarantee**: No player (authenticated or guest) ever sees the same question twice, even across different game sessions
+  - **Answer Deduplication**: Prevents duplicate answers within same match (across all 3 rounds) using `session_used_answers` tracking
+  - **Multi-Layer Protection**: Questions filtered at PHP service layer (QuestionService, AIQuestionGeneratorService) and validated at Node.js API endpoint
+  - **Smart AI Prompting**: OpenAI receives list of forbidden answers in prompt context to avoid generating questions with already-used correct answers
+  - **Persistent Between Rounds**: Fixed bug where `used_question_ids` was reset between rounds - now maintained throughout entire best-of-3 match
 - **Music System Enhancements** (November 4, 2025):
   - **Database-Backed Preferences**: Created migration adding music preferences columns (ambient_music_id, ambient_music_enabled, gameplay_music_id, gameplay_music_enabled) to users table, activated by default for new users
   - **Enhanced Continuity**: Improved music persistence between page transitions with 250ms position saving (instead of 1000ms), multiple save events (beforeunload, pagehide, visibilitychange), and play-state checking
