@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\QuestService;
 use App\Services\StatisticsService;
+use App\Models\QuestionHistory;
 
 class SoloController extends Controller
 {
@@ -100,6 +101,16 @@ class SoloController extends Controller
         // Une manche = TOUTES les questions sélectionnées
         // Gagner 2 manches sur 3 pour gagner la partie
         
+        // CHARGER L'HISTORIQUE PERMANENT DES QUESTIONS DU JOUEUR
+        $permanentUsedQuestionIds = [];
+        $permanentUsedAnswers = [];
+        
+        if ($user) {
+            // Charger toutes les questions et réponses déjà vues par ce joueur
+            $permanentUsedQuestionIds = QuestionHistory::getSeenQuestionIds($user->id);
+            $permanentUsedAnswers = QuestionHistory::getSeenAnswers($user->id);
+        }
+        
         // Persistance session - initialiser TOUTES les variables de jeu
         session([
             'niveau_selectionne' => $niveau,
@@ -112,7 +123,9 @@ class SoloController extends Controller
             'score' => 0,                      // Score de la manche actuelle
             'opponent_score' => 0,             // Score adversaire de la manche actuelle
             'answered_questions' => [],
-            'used_question_ids' => [],
+            'used_question_ids' => $permanentUsedQuestionIds,  // HISTORIQUE PERMANENT du joueur
+            'used_answers' => $permanentUsedAnswers,           // RÉPONSES PERMANENTES déjà vues
+            'session_used_answers' => [],      // Réponses utilisées dans cette partie seulement (réinitialisé chaque partie)
             'current_question' => null,        // Sera généré au premier game()
             'global_stats' => [],              // Statistiques globales toutes manches
             'round_efficiencies' => [],        // Efficacités de chaque manche (pour calcul de l'efficacité de la partie)
@@ -374,6 +387,19 @@ class SoloController extends Controller
             // Ajouter l'ID de la question aux questions utilisées
             $usedQuestionIds[] = $question['id'];
             session(['used_question_ids' => $usedQuestionIds]);
+            
+            // Ajouter la réponse correcte aux réponses utilisées dans cette partie (évite doublons)
+            $correctAnswer = $question['answers'][$question['correct_index']] ?? null;
+            if ($correctAnswer) {
+                $sessionUsedAnswers = session('session_used_answers', []);
+                $sessionUsedAnswers[] = $correctAnswer;
+                session(['session_used_answers' => $sessionUsedAnswers]);
+            }
+            
+            // Sauvegarder dans l'historique permanent si utilisateur connecté
+            if ($user && $user instanceof \App\Models\User) {
+                QuestionHistory::recordQuestion($user->id, $question);
+            }
         } else {
             $question = session('current_question');
         }
@@ -788,7 +814,8 @@ class SoloController extends Controller
                 'score' => 0,                     // Réinitialiser les scores
                 'opponent_score' => 0,
                 'answered_questions' => [],
-                'used_question_ids' => [],       // Réinitialiser les questions utilisées
+                // NE PAS réinitialiser used_question_ids (historique permanent + questions de la partie)
+                // NE PAS réinitialiser session_used_answers (doublons réponses interdits dans toute la partie)
             ]);
             
             // Rediriger vers une page de transition de manche
