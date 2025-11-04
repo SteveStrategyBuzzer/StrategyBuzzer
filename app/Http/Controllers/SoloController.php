@@ -102,19 +102,9 @@ class SoloController extends Controller
         // Gagner 2 manches sur 3 pour gagner la partie
         
         // CHARGER L'HISTORIQUE PERMANENT DES QUESTIONS DU JOUEUR
-        $permanentUsedQuestionIds = [];
-        $permanentUsedAnswers = [];
-        
-        if ($user) {
-            // Utilisateur connecté : Charger depuis la database
-            $permanentUsedQuestionIds = QuestionHistory::getSeenQuestionIds($user->id);
-            $permanentUsedAnswers = QuestionHistory::getSeenAnswers($user->id);
-        } else {
-            // Invité (guest) : Charger depuis la session (historique accumulé pendant toute la session)
-            // Ces arrays s'accumulent au fil des parties et ne sont jamais réinitialisés
-            $permanentUsedQuestionIds = session('guest_all_questions', []);
-            $permanentUsedAnswers = session('guest_all_answers', []);
-        }
+        // Note : $user est toujours présent car toutes les routes Solo nécessitent auth middleware
+        $permanentUsedQuestionIds = QuestionHistory::getSeenQuestionIds($user->id);
+        $permanentUsedAnswers = QuestionHistory::getSeenAnswers($user->id);
         
         // Persistance session - initialiser TOUTES les variables de jeu
         session([
@@ -403,29 +393,9 @@ class SoloController extends Controller
                 session(['session_used_answers' => $sessionUsedAnswers]);
             }
             
-            // Sauvegarder dans l'historique permanent
-            if ($user && $user instanceof \App\Models\User) {
-                // Utilisateur connecté : Sauvegarder dans la database
-                QuestionHistory::recordQuestion($user->id, $question);
-            } else {
-                // Invité (guest) : Sauvegarder dans la session permanente
-                // Ces arrays s'accumulent pendant toute la session et ne sont jamais réinitialisés
-                $guestAllQuestions = session('guest_all_questions', []);
-                $guestAllAnswers = session('guest_all_answers', []);
-                
-                if (!in_array($question['id'], $guestAllQuestions)) {
-                    $guestAllQuestions[] = $question['id'];
-                }
-                
-                if ($correctAnswer && !in_array($correctAnswer, $guestAllAnswers)) {
-                    $guestAllAnswers[] = $correctAnswer;
-                }
-                
-                session([
-                    'guest_all_questions' => $guestAllQuestions,
-                    'guest_all_answers' => $guestAllAnswers,
-                ]);
-            }
+            // Sauvegarder dans l'historique permanent de la database
+            // Note : $user est toujours présent car toutes les routes Solo nécessitent auth middleware
+            QuestionHistory::recordQuestion($user->id, $question);
         } else {
             $question = session('current_question');
         }
@@ -1151,7 +1121,7 @@ class SoloController extends Controller
             'has_lives' => $hasLives,
             'cooldown_time' => $cooldownTime,
             'next_life_regen' => $user && $user->next_life_regen ? $user->next_life_regen->toIso8601String() : null,
-            'is_guest' => !$user,
+            'is_guest' => false, // Toujours false car auth middleware requis
             'stats_metrics' => $statsMetrics,
         ];
         
