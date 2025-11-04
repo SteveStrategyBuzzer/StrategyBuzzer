@@ -6,6 +6,7 @@ use App\Models\MasterGame;
 use App\Models\MasterGameCode;
 use App\Models\MasterGameQuestion;
 use App\Models\MasterGamePlayer;
+use App\Services\MasterFirestoreService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,12 @@ use OpenAI\Laravel\Facades\OpenAI;
 
 class MasterGameController extends Controller
 {
+    private MasterFirestoreService $firestoreService;
+    
+    public function __construct(MasterFirestoreService $firestoreService)
+    {
+        $this->firestoreService = $firestoreService;
+    }
     // Page 1: Accueil Maître du Jeu avec image
     public function index()
     {
@@ -771,5 +778,338 @@ class MasterGameController extends Controller
         } while (MasterGameCode::where('code', $code)->exists());
 
         return $code;
+    }
+    
+    // ===== MÉTHODES DE JEU EN TEMPS RÉEL =====
+    
+    /**
+     * Lobby: Affiche le lobby avec les participants qui rejoignent
+     */
+    public function lobby($gameId)
+    {
+        $game = MasterGame::with(['players.user', 'questions'])->findOrFail($gameId);
+        
+        return view('master.lobby', compact('game'));
+    }
+    
+    /**
+     * Rejoindre une partie (participant)
+     */
+    public function joinGame(Request $request, $gameId)
+    {
+        $user = Auth::user();
+        $game = MasterGame::findOrFail($gameId);
+        
+        // Vérifier que le jeu est en lobby
+        if ($game->status !== 'lobby') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le jeu a déjà commencé ou est terminé'
+            ], 400);
+        }
+        
+        // Créer ou mettre à jour le joueur PostgreSQL
+        $player = MasterGamePlayer::firstOrCreate(
+            [
+                'master_game_id' => $gameId,
+                'user_id' => $user->id,
+            ],
+            [
+                'score' => 0,
+                'answered' => [],
+                'status' => 'joined'
+            ]
+        );
+        
+        // Ajouter à la session Firestore
+        $this->firestoreService->addParticipant($gameId, $user->id, $user->name);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Vous avez rejoint la partie',
+            'player' => $player
+        ]);
+    }
+    
+    /**
+     * Quitter une partie (participant)
+     */
+    public function leaveGame(Request $request, $gameId)
+    {
+        $user = Auth::user();
+        $game = MasterGame::findOrFail($gameId);
+        
+        // Supprimer le joueur PostgreSQL
+        MasterGamePlayer::where('master_game_id', $gameId)
+            ->where('user_id', $user->id)
+            ->delete();
+        
+        // Retirer de la session Firestore
+        $this->firestoreService->removeParticipant($gameId, $user->id);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Vous avez quitté la partie'
+        ]);
+    }
+    
+    /**
+     * Récupère l'état du jeu en temps réel (polling)
+     */
+    public function syncGameState(Request $request, $gameId)
+    {
+        $gameState = $this->firestoreService->syncGameState((int) $gameId);
+        
+        if (!$gameState) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session non trouvée'
+            ], 404);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'gameState' => $gameState
+        ]);
+    }
+    
+    /**
+     * Valide le quiz (marque toutes les questions comme finalisées)
+     */
+    public function validateQuiz(Request $request, $gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous n\'êtes pas l\'hôte de cette partie'
+            ], 403);
+        }
+        
+        $game->quiz_validated = true;
+        $game->status = 'lobby';
+        $game->save();
+        
+        // Créer la session Firestore pour le lobby
+        $this->firestoreService->createGameSession($game->id, [
+            'host_id' => $game->host_user_id,
+            'host_name' => $game->host->name ?? 'Host',
+            'game_mode' => $game->mode,
+            'total_questions' => $game->total_questions,
+            'participants_expected' => $game->participants_expected,
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Quiz validé et lobby créé',
+            'game' => $game
+        ]);
+    }
+    
+    /**
+     * Démarre le jeu (passe du lobby au jeu)
+     */
+    public function startGame(Request $request, $gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seul l\'hôte peut démarrer le jeu'
+            ], 403);
+        }
+        
+        // Mettre à jour PostgreSQL
+        $game->status = 'playing';
+        $game->current_question = 1;
+        $game->started_at = now();
+        $game->save();
+        
+        // Démarrer dans Firestore
+        $this->firestoreService->startGame($game->id);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Jeu démarré',
+            'game' => $game
+        ]);
+    }
+    
+    /**
+     * Passe à la question suivante
+     */
+    public function nextQuestion(Request $request, $gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seul l\'hôte peut avancer les questions'
+            ], 403);
+        }
+        
+        $nextQuestionNumber = $game->current_question + 1;
+        
+        if ($nextQuestionNumber > $game->total_questions) {
+            return response()->json([
+                'success' => false,
+                'message' => 'C\'est déjà la dernière question'
+            ], 400);
+        }
+        
+        // Mettre à jour PostgreSQL
+        $game->current_question = $nextQuestionNumber;
+        $game->save();
+        
+        // Mettre à jour Firestore
+        $this->firestoreService->nextQuestion($game->id, $nextQuestionNumber);
+        
+        return response()->json([
+            'success' => true,
+            'current_question' => $nextQuestionNumber,
+            'question' => MasterGameQuestion::where('master_game_id', $gameId)
+                ->where('question_number', $nextQuestionNumber)
+                ->first()
+        ]);
+    }
+    
+    /**
+     * Soumet la réponse d'un participant
+     */
+    public function submitAnswer(Request $request, $gameId)
+    {
+        $validated = $request->validate([
+            'question_number' => 'required|integer|min:1',
+            'answer_index' => 'required|integer|min:0|max:3',
+        ]);
+        
+        $user = Auth::user();
+        $game = MasterGame::findOrFail($gameId);
+        
+        // Récupérer la question
+        $question = MasterGameQuestion::where('master_game_id', $gameId)
+            ->where('question_number', $validated['question_number'])
+            ->firstOrFail();
+        
+        // Vérifier si la réponse est correcte
+        $isCorrect = in_array($validated['answer_index'], $question->correct_indexes);
+        
+        // Calculer le score (exemple: +10 si correct, 0 sinon)
+        $score = $isCorrect ? 10 : 0;
+        
+        // Mettre à jour ou créer le joueur PostgreSQL
+        $player = MasterGamePlayer::updateOrCreate(
+            [
+                'master_game_id' => $gameId,
+                'user_id' => $user->id,
+            ],
+            [
+                'status' => 'playing'
+            ]
+        );
+        
+        // Mettre à jour le score et les réponses
+        $answered = $player->answered ?? [];
+        $answered[$validated['question_number']] = $validated['answer_index'];
+        $player->answered = $answered;
+        $player->score += $score;
+        $player->save();
+        
+        // Enregistrer dans Firestore
+        $this->firestoreService->recordAnswer(
+            $gameId,
+            $validated['question_number'],
+            $user->id,
+            $validated['answer_index'],
+            $isCorrect,
+            $score
+        );
+        
+        // Mettre à jour le score Firestore
+        $this->firestoreService->updateParticipantScore(
+            $gameId,
+            $user->id,
+            $player->score,
+            array_keys($answered)
+        );
+        
+        return response()->json([
+            'success' => true,
+            'is_correct' => $isCorrect,
+            'score' => $score,
+            'total_score' => $player->score,
+        ]);
+    }
+    
+    /**
+     * Termine le jeu
+     */
+    public function finishGame(Request $request, $gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seul l\'hôte peut terminer le jeu'
+            ], 403);
+        }
+        
+        // Déterminer le gagnant (joueur avec le score le plus élevé)
+        $winner = MasterGamePlayer::where('master_game_id', $gameId)
+            ->orderBy('score', 'desc')
+            ->first();
+        
+        // Mettre à jour PostgreSQL
+        $game->status = 'finished';
+        $game->ended_at = now();
+        $game->save();
+        
+        // Terminer dans Firestore
+        $this->firestoreService->finishGame($game->id, $winner?->user_id);
+        
+        // Cleanup: supprimer la session Firestore
+        $this->firestoreService->deleteGameSession($game->id);
+        
+        return response()->json([
+            'success' => true,
+            'winner' => $winner ? $winner->load('user') : null,
+            'players' => MasterGamePlayer::where('master_game_id', $gameId)
+                ->with('user')
+                ->orderBy('score', 'desc')
+                ->get()
+        ]);
+    }
+    
+    /**
+     * Annule le jeu (avant qu'il ne démarre ou en cours)
+     */
+    public function cancelGame(Request $request, $gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seul l\'hôte peut annuler le jeu'
+            ], 403);
+        }
+        
+        // Mettre à jour PostgreSQL
+        $game->status = 'cancelled';
+        $game->save();
+        
+        // Cleanup Firestore
+        if ($this->firestoreService->sessionExists($game->id)) {
+            $this->firestoreService->deleteGameSession($game->id);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Jeu annulé'
+        ]);
     }
 }

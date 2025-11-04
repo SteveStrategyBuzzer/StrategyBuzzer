@@ -7,6 +7,37 @@ StrategyBuzzer is a real-time quiz buzzer game application designed for both edu
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **Master Mode Firestore Integration - Production Ready** (November 4, 2025):
+  - **Complete Real-time Multiplayer**: Fully integrated Firestore as real-time synchronization layer for Master Mode (Maître du Jeu) quiz hosting with 3-40 participants
+  - **MasterFirestoreService Created**: Dedicated service encapsulating all Firestore operations for Master Mode
+    - createGameSession(): Creates lobby session when host validates quiz
+    - addParticipant()/removeParticipant(): Real-time participant management in lobby
+    - startGame(): Transitions from lobby to playing with first question timestamp
+    - nextQuestion(): Updates current question number and timestamp for each new question
+    - recordAnswer(): Records individual participant answers with timestamps in subcollection
+    - updateParticipantScore(): Synchronizes individual participant scores in real-time
+    - updateMultipleScores(): Bulk score updates for all participants
+    - finishGame(): Marks winner and completes game
+    - syncGameState(): Retrieves complete game state + current question answers for client polling
+    - getQuestionAnswers()/getAllAnswers(): Fetches answer statistics for host display
+    - deleteGameSession(): Cleanup when game finishes or is cancelled
+    - sessionExists(): Validates session before operations
+  - **Real-time Game Flow**: Quiz validation → Lobby (participants join) → Game start → Questions progression → Answers recording → Finish with leaderboard
+  - **API Endpoints Created**:
+    - POST /api/master/game/{id}/validate-quiz - Validates quiz and creates Firestore lobby
+    - POST /api/master/game/{id}/join - Participant joins lobby
+    - POST /api/master/game/{id}/leave - Participant leaves lobby
+    - POST /api/master/game/{id}/start - Host starts game (lobby → playing)
+    - POST /api/master/game/{id}/next-question - Host advances to next question
+    - POST /api/master/game/{id}/answer - Participant submits answer
+    - POST /api/master/game/{id}/finish - Host finishes game with final scores
+    - POST /api/master/game/{id}/cancel - Host cancels game
+    - GET /api/master/game/{id}/sync - Real-time polling of game state
+  - **Hybrid Data Flow**: PostgreSQL for permanent game records/questions/final scores, Firestore for live lobby + gameplay (auto-deleted on completion)
+  - **Answer Tracking**: Participant answers stored in Firestore subcollection `/games/master-game-{id}/answers/` with per-question filtering
+  - **Scalable Architecture**: Supports all Master Mode game modes (face_to_face, one_vs_all, podium, groups) with 3-40 concurrent participants
+  - **FirebaseService Enhanced**: Added createDocument() and getCollection() methods for flexible Firestore document/collection operations
+
 - **Duo Mode Firestore Integration - Production Ready** (November 4, 2025):
   - **Complete Real-time Multiplayer**: Fully integrated Firestore as real-time synchronization layer for Duo mode 2-player quiz battles
   - **DuoFirestoreService Created**: Dedicated service encapsulating all Firestore operations for Duo mode

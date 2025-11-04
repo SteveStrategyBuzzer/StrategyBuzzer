@@ -55,3 +55,15 @@ Route::middleware('auth:sanctum')->prefix('league/team')->group(function () {
     Route::post('/match/{match}/submit-answer', [App\Http\Controllers\LeagueTeamController::class, 'submitAnswer']);
     Route::get('/rankings/{division}', [App\Http\Controllers\LeagueTeamController::class, 'getRankings']);
 });
+
+Route::middleware('auth:sanctum')->prefix('master')->group(function () {
+    Route::post('/game/{gameId}/validate-quiz', [App\Http\Controllers\MasterGameController::class, 'validateQuiz']);
+    Route::post('/game/{gameId}/join', [App\Http\Controllers\MasterGameController::class, 'joinGame']);
+    Route::post('/game/{gameId}/leave', [App\Http\Controllers\MasterGameController::class, 'leaveGame']);
+    Route::post('/game/{gameId}/start', [App\Http\Controllers\MasterGameController::class, 'startGame']);
+    Route::post('/game/{gameId}/next-question', [App\Http\Controllers\MasterGameController::class, 'nextQuestion']);
+    Route::post('/game/{gameId}/answer', [App\Http\Controllers\MasterGameController::class, 'submitAnswer']);
+    Route::post('/game/{gameId}/finish', [App\Http\Controllers\MasterGameController::class, 'finishGame']);
+    Route::post('/game/{gameId}/cancel', [App\Http\Controllers\MasterGameController::class, 'cancelGame']);
+    Route::get('/game/{gameId}/sync', [App\Http\Controllers\MasterGameController::class, 'syncGameState']);
+});

@@ -432,4 +432,73 @@ class FirebaseService
             return false;
         }
     }
+    
+    /**
+     * Crée un document dans une collection/sous-collection Firestore
+     * 
+     * @param string $collectionPath Chemin de la collection (ex: "games/game-123/answers")
+     * @param string $documentId ID du document à créer
+     * @param array $data Données du document
+     * @return bool
+     */
+    public function createDocument(string $collectionPath, string $documentId, array $data): bool
+    {
+        if (!$this->initialized) {
+            Log::error('Firebase not initialized');
+            return false;
+        }
+
+        try {
+            $documentPath = "projects/{$this->projectId}/databases/(default)/documents/{$collectionPath}/{$documentId}";
+            $firestoreData = $this->convertToFirestoreFormat($data);
+
+            $this->makeRequestWithRetry('PATCH', $documentPath, [
+                'json' => $firestoreData,
+            ]);
+
+            Log::info("Document created in Firestore", [
+                'collection' => $collectionPath,
+                'document_id' => $documentId
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Failed to create document: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Récupère tous les documents d'une collection/sous-collection
+     * 
+     * @param string $collectionPath Chemin de la collection (ex: "games/game-123/answers")
+     * @return array Tableau associatif [documentId => data]
+     */
+    public function getCollection(string $collectionPath): array
+    {
+        if (!$this->initialized) {
+            return [];
+        }
+
+        try {
+            $fullPath = "projects/{$this->projectId}/databases/(default)/documents/{$collectionPath}";
+            $response = $this->makeRequestWithRetry('GET', $fullPath);
+
+            $documents = [];
+            if (isset($response['documents'])) {
+                foreach ($response['documents'] as $doc) {
+                    if (isset($doc['fields']) && isset($doc['name'])) {
+                        // Extraire l'ID du document depuis le chemin complet
+                        $nameParts = explode('/', $doc['name']);
+                        $documentId = end($nameParts);
+                        $documents[$documentId] = $this->convertFromFirestoreFormat($doc);
+                    }
+                }
+            }
+
+            return $documents;
+        } catch (\Exception $e) {
+            Log::error("Failed to get collection: " . $e->getMessage());
+            return [];
+        }
+    }
 }
