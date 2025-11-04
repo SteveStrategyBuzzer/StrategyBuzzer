@@ -243,10 +243,10 @@ Route::get('/ligue', function () {
 /* ===== RÈGLEMENTS ===== */
 Route::view('/reglements', 'reglements')->name('reglements');
 
-/* ===== QUÊTES & BADGES ===== */
+/* ===== QUÊTES & QUÊTES QUOTIDIENNES ===== */
 Route::get('/quetes', [App\Http\Controllers\QuestesController::class, 'index'])->middleware('auth')->name('quetes');
 Route::post('/quetes/claim/{questId}', [App\Http\Controllers\QuestesController::class, 'claim'])->middleware('auth')->name('quetes.claim');
-Route::get('/badges', [App\Http\Controllers\BadgesController::class, 'index'])->middleware('auth')->name('badges');
+Route::get('/quetes-quotidiennes', [App\Http\Controllers\DailyQuestsController::class, 'index'])->middleware('auth')->name('quetes-quotidiennes');
 
 // (Optionnel) Fallback 404 propre
 // Route::fallback(fn() => response()->view('notfound', [], 404));
