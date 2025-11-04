@@ -26,18 +26,20 @@ $playerName = $playerNames[array_rand($playerNames)];
 $currentAvatar = $params['avatar'] ?? 'Aucun';
 $skills = $currentAvatar !== 'Aucun' ? ($avatarSkills[$currentAvatar] ?? []) : [];
 
-// Récupérer les skills utilisés pour afficher les emojis en or
+// Récupérer les skills utilisés pour griser les emojis
 $usedSkills = session('used_skills', []);
 $cancelErrorUsed = in_array('cancel_error', $usedSkills);
 $bonusQuestionUsed = in_array('bonus_question', $usedSkills);
 
-// Pour la Magicienne, remplacer les icônes par des versions or si utilisés
+// Pour la Magicienne, remplacer les icônes par des versions grisées si utilisés
 if ($currentAvatar === 'Magicienne' && !empty($skills)) {
     if ($cancelErrorUsed && isset($skills[0])) {
-        $skills[0]['icon'] = '🌟'; // ✨ devient 🌟
+        $skills[0]['icon'] = '⚪'; // ✨ devient grisé
+        $skills[0]['used'] = true;
     }
     if ($bonusQuestionUsed && isset($skills[1])) {
-        $skills[1]['icon'] = '⭐'; // 💫 devient ⭐
+        $skills[1]['icon'] = '⚪'; // 💫 devient grisé
+        $skills[1]['used'] = true;
     }
 }
 
@@ -645,6 +647,13 @@ if ($opponentInfo['is_boss'] ?? false) {
     <!-- Question en haut -->
     <div class="question-header">
         <div class="question-number">QUESTION {{ $params['current_question'] }}/10</div>
+        <div style="background: rgba(255, 215, 0, 0.15); padding: 8px 15px; border-radius: 10px; margin: 10px 0; font-weight: 600; color: #667eea;">
+            @if(isset($params['player_buzzed']) && $params['player_buzzed'])
+                ⚡ Vous jouez pour {{ $params['potential_points'] ?? 2 }} point(s)
+            @else
+                📝 Testez une réponse (0 point si vous n'avez pas buzzé)
+            @endif
+        </div>
         <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     

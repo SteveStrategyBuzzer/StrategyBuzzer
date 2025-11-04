@@ -889,10 +889,6 @@ const interval = setInterval(() => {
 
 // Skills Magicienne
 function useCancelError() {
-    if (!confirm('Voulez-vous annuler votre dernière erreur ? (-2 pts devient 0 pt)')) {
-        return;
-    }
-    
     fetch("{{ route('solo.cancel-error') }}", {
         method: 'POST',
         headers: {
@@ -916,10 +912,6 @@ function useCancelError() {
 }
 
 function useBonusQuestion() {
-    if (!confirm('Voulez-vous activer la question bonus ? (chrono 10 sec, +2/-2/0 pts)')) {
-        return;
-    }
-    
     window.location.href = "{{ route('solo.bonus-question') }}";
 }
 

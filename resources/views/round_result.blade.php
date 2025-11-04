@@ -173,9 +173,9 @@
             </div>
         </div>
         
-        <!-- Efficacité manche -->
+        <!-- Efficacité de la Manche -->
         <div style="background: rgba(243, 156, 18, 0.1); padding: 15px; border-radius: 15px; margin: 20px 0;">
-            <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité manche {{ $params['round_number'] }}</div>
+            <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité de la Manche {{ $params['round_number'] }}</div>
             <div style="font-size: 1.8rem; font-weight: 800; color: #f39c12;">{{ $params['round_efficiency'] ?? 0 }}%</div>
         </div>
         
@@ -201,8 +201,8 @@
             </div>
             
             <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 10px;">
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité globale de la partie</div>
-                <div style="font-size: 2rem; font-weight: 800; color: #667eea;">{{ $params['global_efficiency'] ?? 0 }}%</div>
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité de la Partie</div>
+                <div style="font-size: 2rem; font-weight: 800; color: #667eea;">{{ $params['party_efficiency'] ?? $params['global_efficiency'] ?? 0 }}%</div>
             </div>
         </div>
         

@@ -28,7 +28,7 @@ class StatisticsService
             'wrong_answers' => $roundData['wrong_answers'],
             'points_earned' => $roundData['points_earned'],
             'points_possible' => $roundData['points_possible'],
-            'efficacite_brute' => $stats['efficacite_brute'],
+            'efficacite_manche' => $stats['efficacite_manche'],
             'taux_participation' => $stats['taux_participation'],
             'taux_precision' => $stats['taux_precision'],
             'ratio_performance' => $stats['ratio_performance'],
@@ -42,6 +42,13 @@ class StatisticsService
         string $gameId,
         array $matchData
     ): PlayerStatistic {
+        $roundStats = PlayerStatistic::where('user_id', $userId)
+            ->where('game_id', $gameId)
+            ->where('scope', 'round')
+            ->get();
+        
+        $efficacitePartie = $roundStats->avg('efficacite_manche') ?? 0;
+        
         $stats = $this->calculateMetrics($matchData);
         
         return PlayerStatistic::create([
@@ -56,7 +63,7 @@ class StatisticsService
             'wrong_answers' => $matchData['wrong_answers'],
             'points_earned' => $matchData['points_earned'],
             'points_possible' => $matchData['points_possible'],
-            'efficacite_brute' => $stats['efficacite_brute'],
+            'efficacite_partie' => round($efficacitePartie, 2),
             'taux_participation' => $stats['taux_participation'],
             'taux_precision' => $stats['taux_precision'],
             'ratio_performance' => $stats['ratio_performance'],
@@ -70,6 +77,15 @@ class StatisticsService
             ->where('game_mode', $gameMode)
             ->where('scope', 'match')
             ->get();
+
+        $last10Matches = PlayerStatistic::where('user_id', $userId)
+            ->where('game_mode', $gameMode)
+            ->where('scope', 'match')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        $efficaciteJoueur = $last10Matches->avg('efficacite_partie') ?? 0;
 
         $aggregated = [
             'total_questions' => $matchStats->sum('total_questions'),
@@ -97,7 +113,7 @@ class StatisticsService
                 'wrong_answers' => $aggregated['wrong_answers'],
                 'points_earned' => $aggregated['points_earned'],
                 'points_possible' => $aggregated['points_possible'],
-                'efficacite_brute' => $stats['efficacite_brute'],
+                'efficacite_joueur' => round($efficaciteJoueur, 2),
                 'taux_participation' => $stats['taux_participation'],
                 'taux_precision' => $stats['taux_precision'],
                 'ratio_performance' => $stats['ratio_performance'],
@@ -113,9 +129,9 @@ class StatisticsService
         $pointsEarned = $data['points_earned'] ?? 0;
         $pointsPossible = $data['points_possible'] ?? 0;
 
-        // Efficacité brute : (Points gagnés / Points max possibles) × 100
+        // Efficacité de la manche : (Points réels gagnés / Points max possibles) × 100
         // Points max possibles = nb_questions × 2
-        $efficaciteBrute = $pointsPossible > 0 
+        $efficaciteManche = $pointsPossible > 0 
             ? ($pointsEarned / $pointsPossible) * 100 
             : 0;
 
@@ -136,7 +152,7 @@ class StatisticsService
             : 0;
 
         return [
-            'efficacite_brute' => round($efficaciteBrute, 2),
+            'efficacite_manche' => round($efficaciteManche, 2),
             'taux_participation' => round($tauxParticipation, 2),
             'taux_precision' => round($tauxPrecision, 2),
             'ratio_performance' => round($ratioPerformance, 2),

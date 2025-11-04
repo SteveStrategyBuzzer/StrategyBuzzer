@@ -182,8 +182,8 @@
             </div>
             
             <div class="stat-card">
-                <div class="stat-label">Efficacité</div>
-                <div class="stat-value">{{ $params['global_efficiency'] }}%</div>
+                <div class="stat-label">Efficacité de la Partie</div>
+                <div class="stat-value">{{ $params['party_efficiency'] ?? $params['global_efficiency'] }}%</div>
             </div>
             
             <div class="stat-card">
@@ -200,9 +200,9 @@
         @if(isset($params['stats_metrics']) && $params['stats_metrics'])
         <div class="stats-grid" style="margin-top: 30px; border-top: 2px dashed #e0e0e0; padding-top: 30px;">
             <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <div class="stat-label">🎯 Efficacité Brute</div>
-                <div class="stat-value">{{ number_format($params['stats_metrics']['efficacite_brute'], 1) }}%</div>
-                <div style="font-size: 0.75rem; margin-top: 5px; opacity: 0.8;">Points / Questions</div>
+                <div class="stat-label">🎯 Efficacité du Joueur</div>
+                <div class="stat-value">{{ number_format($params['stats_metrics']['efficacite_joueur'] ?? 0, 1) }}%</div>
+                <div style="font-size: 0.75rem; margin-top: 5px; opacity: 0.8;">Moyenne 10 parties</div>
             </div>
             
             <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
@@ -226,8 +226,27 @@
         @endif
         
         @if($params['new_level'] <= 100)
+        @php
+            $unlocks = [];
+            if ($params['new_level'] == 10) {
+                $unlocks[] = 'Mode Duo';
+            }
+        @endphp
+        
+        @if(count($unlocks) > 0)
+        <div class="challenge-section" style="background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%); padding: 20px; border-radius: 15px; margin: 20px 0;">
+            <h2 style="color: white; font-size: 1.8rem; margin-bottom: 10px;">🎉 Félicitation !</h2>
+            <p style="color: white; font-size: 1.2rem;">
+                @foreach($unlocks as $index => $unlock)
+                    @if($index > 0), @endif
+                    Vous avez débloqué le <strong>{{ $unlock }}</strong>
+                @endforeach
+            </p>
+        </div>
+        @endif
+        
         <div class="challenge-section">
-            <h2 class="challenge-title">Voulez-vous challenger</h2>
+            <h2 class="challenge-title">Prochain adversaire</h2>
             <div class="opponent-name">{{ $params['next_opponent_name'] }}</div>
             <p style="color: #666; font-size: 1.1rem;">Niveau {{ $params['new_level'] }}</p>
         </div>

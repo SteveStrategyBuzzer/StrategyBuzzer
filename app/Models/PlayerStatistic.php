@@ -22,7 +22,9 @@ class PlayerStatistic extends Model
         'wrong_answers',
         'points_earned',
         'points_possible',
-        'efficacite_brute',
+        'efficacite_joueur',
+        'efficacite_partie',
+        'efficacite_manche',
         'taux_participation',
         'taux_precision',
         'ratio_performance',
@@ -31,7 +33,9 @@ class PlayerStatistic extends Model
 
     protected $casts = [
         'details' => 'array',
-        'efficacite_brute' => 'decimal:2',
+        'efficacite_joueur' => 'decimal:2',
+        'efficacite_partie' => 'decimal:2',
+        'efficacite_manche' => 'decimal:2',
         'taux_participation' => 'decimal:2',
         'taux_precision' => 'decimal:2',
         'ratio_performance' => 'decimal:2',
