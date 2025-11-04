@@ -72,11 +72,16 @@ function getQuestionLengthConstraint(niveau) {
 
 app.post('/generate-question', async (req, res) => {
   try {
-    const { theme, niveau, questionNumber } = req.body;
+    const { theme, niveau, questionNumber, usedAnswers = [] } = req.body;
     
     const themeLabel = THEMES_FR[theme] || 'culture générale';
     const difficultyDesc = getDifficultyDescription(niveau);
     const lengthConstraint = getQuestionLengthConstraint(niveau);
+    
+    // Créer un contexte pour éviter les réponses déjà utilisées
+    const usedAnswersContext = usedAnswers.length > 0
+      ? `\n\nRÉPONSES INTERDITES - La réponse correcte NE DOIT PAS être parmi ces réponses déjà utilisées:\n${usedAnswers.map(a => `- ${a}`).join('\n')}\nChoisis une réponse complètement différente.`
+      : '';
     
     // Décider aléatoirement entre question à choix multiple (80%) et vrai/faux (20%)
     const isMultipleChoice = Math.random() > 0.2;
@@ -91,7 +96,7 @@ IMPORTANT:
 - Adapte la complexité au niveau ${niveau} (plus le niveau est élevé, plus la question doit être difficile)
 - Pour les niveaux élevés (>50), utilise des détails précis, des dates exactes, des noms complets
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
-- LONGUEUR: ${lengthConstraint}
+- LONGUEUR: ${lengthConstraint}${usedAnswersContext}
 
 Format JSON requis:
 {
@@ -116,7 +121,7 @@ IMPORTANT:
 - Adapte la complexité au niveau ${niveau}
 - Pour les niveaux élevés, utilise des affirmations plus nuancées
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
-- LONGUEUR: ${lengthConstraint}
+- LONGUEUR: ${lengthConstraint}${usedAnswersContext}
 
 Format JSON requis:
 {
@@ -162,6 +167,19 @@ RÈGLES STRICTES:
     // Validation de la structure
     if (!questionData.text || !questionData.type || !questionData.answers || questionData.correct_index === undefined) {
       throw new Error('Invalid question structure from AI');
+    }
+    
+    // VÉRIFICATION CRITIQUE : La réponse correcte ne doit PAS être dans usedAnswers
+    const correctAnswer = questionData.answers[questionData.correct_index];
+    if (correctAnswer && usedAnswers.length > 0) {
+      // Normaliser pour comparaison (ignorer casse et espaces)
+      const normalizedCorrect = correctAnswer.toLowerCase().trim();
+      const normalizedUsed = usedAnswers.map(a => a.toLowerCase().trim());
+      
+      if (normalizedUsed.includes(normalizedCorrect)) {
+        console.log(`⚠️ RÉPONSE DUPLIQUÉE DÉTECTÉE: "${correctAnswer}" déjà utilisée. Rejet de cette question.`);
+        throw new Error(`Duplicate answer detected: ${correctAnswer}`);
+      }
     }
     
     console.log('Generated question:', questionData);

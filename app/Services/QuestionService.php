@@ -19,13 +19,18 @@ class QuestionService
      * @param string $theme Le thème de la question
      * @param int $niveau Le niveau du joueur (1-100)
      * @param int $questionNumber Le numéro de la question dans la partie
-     * @param array $usedQuestionIds Les IDs des questions déjà utilisées
+     * @param array $usedQuestionIds Les IDs des questions déjà utilisées (historique permanent + session)
+     * @param array $usedAnswers Réponses permanentes déjà vues par le joueur (historique complet)
+     * @param array $sessionUsedAnswers Réponses utilisées dans la partie en cours seulement
      * @return array La question générée avec réponses randomisées
      */
-    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [])
+    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $sessionUsedAnswers = [])
     {
+        // Combiner les réponses permanentes et de session pour éviter tous les doublons
+        $allUsedAnswers = array_unique(array_merge($usedAnswers, $sessionUsedAnswers));
+        
         // Générer la question via l'IA
-        $question = $this->aiGenerator->generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds);
+        $question = $this->aiGenerator->generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds, $allUsedAnswers);
         
         // Randomiser les réponses pour questions à choix multiples
         // Les questions vrai/faux gardent leurs positions fixes (Vrai toujours à gauche, Faux à droite)

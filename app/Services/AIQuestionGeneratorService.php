@@ -14,9 +14,10 @@ class AIQuestionGeneratorService
      * @param int $niveau Le niveau du joueur (1-100)
      * @param int $questionNumber Le numéro de la question dans la partie
      * @param array $usedQuestionIds Les IDs des questions déjà utilisées
+     * @param array $usedAnswers Toutes les réponses déjà utilisées (permanent + session)
      * @return array La question générée
      */
-    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [])
+    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [])
     {
         // Extraire les hash de texte de toutes les questions IA déjà utilisées
         $usedTextHashes = $this->extractUsedTextHashes($usedQuestionIds);
@@ -33,6 +34,7 @@ class AIQuestionGeneratorService
                     'niveau' => $niveau,
                     'questionNumber' => $questionNumber,
                     'attempt' => $attempt,
+                    'usedAnswers' => $usedAnswers, // NOUVEAU : Éviter doublons de réponses
                 ]);
 
                 if ($response->successful()) {

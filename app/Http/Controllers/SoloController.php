@@ -378,10 +378,12 @@ class SoloController extends Controller
         $avatar = session('avatar', 'Aucun');
         $currentQuestion = session('current_question_number', 1);
         $usedQuestionIds = session('used_question_ids', []);
+        $usedAnswers = session('used_answers', []);               // Historique permanent
+        $sessionUsedAnswers = session('session_used_answers', []); // Réponses de cette partie
         
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
-            $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds);
+            $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers);
             session(['current_question' => $question]);
             
             // Ajouter l'ID de la question aux questions utilisées
