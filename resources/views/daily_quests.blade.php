@@ -73,7 +73,7 @@
     .quest-card {
         background-color: var(--card-bg);
         border-radius: 12px;
-        padding: 20px;
+        padding: 15px;
         box-shadow: 0 4px 8px rgba(0,0,0,.3);
         transition: transform .2s ease, box-shadow .2s ease;
         position: relative;
@@ -98,10 +98,22 @@
         opacity: 0.8;
     }
 
+    .quest-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+
+    .quest-title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+    }
+
     .quest-emoji {
-        font-size: 3rem;
-        text-align: center;
-        margin-bottom: 15px;
+        font-size: 2rem;
     }
 
     .quest-card.inactive .quest-emoji {
@@ -109,10 +121,8 @@
     }
 
     .quest-title {
-        font-size: 1.3rem;
+        font-size: 1.1rem;
         font-weight: bold;
-        margin-bottom: 10px;
-        text-align: center;
         color: #fff;
     }
 
@@ -120,11 +130,21 @@
         color: #888;
     }
 
+    .quest-reward {
+        font-size: 1rem;
+        color: var(--active-border);
+        font-weight: bold;
+        white-space: nowrap;
+    }
+
+    .quest-card.inactive .quest-reward {
+        color: #555;
+    }
+
     .quest-desc {
-        font-size: 0.95rem;
+        font-size: 0.85rem;
         color: #ddd;
-        margin-bottom: 15px;
-        text-align: center;
+        margin-bottom: 10px;
     }
 
     .quest-card.inactive .quest-desc {
@@ -132,21 +152,15 @@
     }
 
     .quest-progress {
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid rgba(255,255,255,0.2);
-    }
-
-    .quest-card.inactive .quest-progress {
-        border-top-color: rgba(255,255,255,0.1);
+        margin-top: 10px;
     }
 
     .progress-bar {
         background-color: rgba(0,0,0,0.3);
         border-radius: 10px;
-        height: 20px;
+        height: 18px;
         overflow: hidden;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
     .progress-fill {
@@ -156,24 +170,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: bold;
     }
 
     .quest-card.inactive .progress-fill {
         background: linear-gradient(90deg, #333, #444);
-    }
-
-    .quest-reward {
-        text-align: center;
-        font-size: 1.1rem;
-        color: var(--active-border);
-        font-weight: bold;
-        margin-top: 10px;
-    }
-
-    .quest-card.inactive .quest-reward {
-        color: #555;
     }
 
     .completed-badge {
@@ -243,8 +245,14 @@
                         <div class="completed-badge">✓ Complétée</div>
                     @endif
                     
-                    <div class="quest-emoji">{{ $quest->badge_emoji ?? '🎯' }}</div>
-                    <div class="quest-title">{{ $quest->name }}</div>
+                    <div class="quest-header">
+                        <div class="quest-title-row">
+                            <span class="quest-emoji">{{ $quest->badge_emoji ?? '🎯' }}</span>
+                            <span class="quest-title">{{ $quest->name }}</span>
+                        </div>
+                        <div class="quest-reward">💰 +{{ $quest->reward_coins ?? 10 }}</div>
+                    </div>
+                    
                     <div class="quest-desc">{{ $quest->condition ?? 'Quête quotidienne' }}</div>
                     
                     <div class="quest-progress">
@@ -258,13 +266,9 @@
                                 {{ number_format($percentage, 0) }}%
                             </div>
                         </div>
-                        <div style="text-align: center; font-size: 0.9rem; color: #ddd;">
+                        <div style="text-align: center; font-size: 0.8rem; color: #ddd;">
                             {{ $currentValue }} / {{ $targetValue }}
                         </div>
-                    </div>
-                    
-                    <div class="quest-reward">
-                        💰 +{{ $quest->reward_coins ?? 10 }} pièces
                     </div>
                 </div>
             @endforeach
@@ -277,13 +281,15 @@
         <div class="quests-grid">
             @foreach($inactiveQuests as $quest)
                 <div class="quest-card inactive">
-                    <div class="quest-emoji">{{ $quest->badge_emoji ?? '📋' }}</div>
-                    <div class="quest-title">{{ $quest->name }}</div>
-                    <div class="quest-desc">{{ $quest->condition ?? 'Quête quotidienne' }}</div>
-                    
-                    <div class="quest-reward">
-                        💰 +{{ $quest->reward_coins ?? 10 }} pièces
+                    <div class="quest-header">
+                        <div class="quest-title-row">
+                            <span class="quest-emoji">{{ $quest->badge_emoji ?? '📋' }}</span>
+                            <span class="quest-title">{{ $quest->name }}</span>
+                        </div>
+                        <div class="quest-reward">💰 +{{ $quest->reward_coins ?? 10 }}</div>
                     </div>
+                    
+                    <div class="quest-desc">{{ $quest->condition ?? 'Quête quotidienne' }}</div>
                 </div>
             @endforeach
         </div>
