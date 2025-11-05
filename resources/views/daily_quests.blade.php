@@ -245,7 +245,7 @@
                     
                     <div class="quest-emoji">{{ $quest->badge_emoji ?? '🎯' }}</div>
                     <div class="quest-title">{{ $quest->name }}</div>
-                    <div class="quest-desc">{{ $quest->badge_description ?? 'Quête quotidienne' }}</div>
+                    <div class="quest-desc">{{ $quest->condition ?? 'Quête quotidienne' }}</div>
                     
                     <div class="quest-progress">
                         @php
@@ -279,7 +279,7 @@
                 <div class="quest-card inactive">
                     <div class="quest-emoji">{{ $quest->badge_emoji ?? '📋' }}</div>
                     <div class="quest-title">{{ $quest->name }}</div>
-                    <div class="quest-desc">{{ $quest->badge_description ?? 'Quête quotidienne' }}</div>
+                    <div class="quest-desc">{{ $quest->condition ?? 'Quête quotidienne' }}</div>
                     
                     <div class="quest-reward">
                         💰 +{{ $quest->reward_coins ?? 10 }} pièces
