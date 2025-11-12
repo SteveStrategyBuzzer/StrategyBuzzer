@@ -560,6 +560,7 @@
             @endforeach
           </select>
         </span>
+        <button type="button" id="test-ambiance" title="Tester la musique" style="background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0 5px;">🔊</button>
       </div>
     </div>
 
@@ -578,6 +579,7 @@
             @endforeach
           </select>
         </span>
+        <button type="button" id="test-gameplay" title="Tester la musique" style="background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0 5px;">🔊</button>
       </div>
     </div>
 
@@ -592,6 +594,7 @@
             @endforeach
           </select>
         </span>
+        <button type="button" id="test-buzzer" title="Tester le buzzer" style="background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0 5px;">🔊</button>
       </div>
     </div>
 
@@ -697,6 +700,91 @@ document.addEventListener('DOMContentLoaded', () => {
     selBuzzer.addEventListener('change', function() {
       localStorage.setItem('selectedBuzzer', selBuzzer.value);
       console.log('✅ Buzzer changé:', selBuzzer.value);
+    });
+  }
+
+  // Boutons de test audio
+  let currentTestAudio = null;
+  let currentTestTimeout = null;
+
+  const testAmbiance = byId('test-ambiance');
+  const testGameplay = byId('test-gameplay');
+  const testBuzzer = byId('test-buzzer');
+
+  // Fonction pour tester une musique
+  function playTestAudio(audioId, duration = 10000) {
+    // Annuler le timeout précédent s'il existe
+    if (currentTestTimeout) {
+      clearTimeout(currentTestTimeout);
+      currentTestTimeout = null;
+    }
+
+    // Arrêter l'audio précédent s'il existe
+    if (currentTestAudio) {
+      currentTestAudio.pause();
+      currentTestAudio.currentTime = 0;
+      currentTestAudio = null;
+    }
+
+    // Créer et jouer le nouvel audio
+    const audioPath = `/sounds/${audioId}.mp3`;
+    const audio = new Audio(audioPath);
+    audio.volume = 0.5;
+    currentTestAudio = audio;
+    
+    audio.play().catch(err => {
+      console.error('Erreur lors de la lecture audio:', err);
+      currentTestAudio = null;
+    });
+
+    // Nettoyer quand l'audio se termine naturellement
+    audio.addEventListener('ended', () => {
+      if (currentTestAudio === audio) {
+        currentTestAudio = null;
+      }
+    });
+
+    // Arrêter automatiquement après la durée spécifiée
+    currentTestTimeout = setTimeout(() => {
+      if (currentTestAudio === audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        currentTestAudio = null;
+      }
+      currentTestTimeout = null;
+    }, duration);
+  }
+
+  // Test musique Ambiance
+  if (testAmbiance && selAmb) {
+    testAmbiance.addEventListener('click', function(e) {
+      e.preventDefault();
+      const selectedMusicId = selAmb.value;
+      if (selectedMusicId) {
+        playTestAudio(selectedMusicId, 10000);
+      }
+    });
+  }
+
+  // Test musique Gameplay
+  if (testGameplay && selGameplay) {
+    testGameplay.addEventListener('click', function(e) {
+      e.preventDefault();
+      const selectedMusicId = selGameplay.value;
+      if (selectedMusicId) {
+        playTestAudio(selectedMusicId, 10000);
+      }
+    });
+  }
+
+  // Test Buzzer
+  if (testBuzzer && selBuzzer) {
+    testBuzzer.addEventListener('click', function(e) {
+      e.preventDefault();
+      const selectedBuzzerId = selBuzzer.value;
+      if (selectedBuzzerId) {
+        playTestAudio(selectedBuzzerId, 2000);
+      }
     });
   }
 
