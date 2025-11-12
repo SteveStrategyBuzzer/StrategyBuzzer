@@ -77,11 +77,15 @@ class QuestionHistory extends Model
             ->exists();
         
         if (!$exists) {
+            // Normaliser la réponse correcte en chaîne de texte
+            $correctAnswer = $question['answers'][$question['correct_index']] ?? '';
+            $normalizedAnswer = is_array($correctAnswer) ? json_encode($correctAnswer) : trim(strtolower((string)$correctAnswer));
+            
             self::create([
                 'user_id' => $userId,
                 'question_id' => $question['id'],
                 'question_hash' => md5($question['text']),
-                'correct_answer' => $question['answers'][$question['correct_index']] ?? '',
+                'correct_answer' => $normalizedAnswer,
                 'theme' => $question['theme'] ?? null,
                 'niveau' => $question['difficulty'] ?? null,
             ]);

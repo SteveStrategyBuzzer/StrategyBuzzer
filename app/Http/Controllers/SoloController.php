@@ -388,8 +388,11 @@ class SoloController extends Controller
             // Ajouter la réponse correcte aux réponses utilisées dans cette partie (évite doublons)
             $correctAnswer = $question['answers'][$question['correct_index']] ?? null;
             if ($correctAnswer) {
+                // Normaliser la réponse en chaîne de texte (trim + lowercase pour comparaison robuste)
+                $normalizedAnswer = is_array($correctAnswer) ? json_encode($correctAnswer) : trim(strtolower((string)$correctAnswer));
+                
                 $sessionUsedAnswers = session('session_used_answers', []);
-                $sessionUsedAnswers[] = $correctAnswer;
+                $sessionUsedAnswers[] = $normalizedAnswer;
                 session(['session_used_answers' => $sessionUsedAnswers]);
             }
             
@@ -1426,6 +1429,24 @@ class SoloController extends Controller
         $sessionUsedAnswers = session('session_used_answers', []);
         
         $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers);
+        
+        // Enregistrer la question bonus dans l'historique permanent
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if ($user) {
+            QuestionHistory::recordQuestion($user->id, $question);
+            
+            // Ajouter l'ID et la réponse aux listes d'exclusion
+            $usedQuestionIds[] = $question['id'];
+            session(['used_question_ids' => $usedQuestionIds]);
+            
+            // Normaliser et ajouter la réponse correcte
+            $correctAnswer = $question['answers'][$question['correct_index']] ?? null;
+            if ($correctAnswer) {
+                $normalizedAnswer = is_array($correctAnswer) ? json_encode($correctAnswer) : trim(strtolower((string)$correctAnswer));
+                $sessionUsedAnswers[] = $normalizedAnswer;
+                session(['session_used_answers' => $sessionUsedAnswers]);
+            }
+        }
         
         session(['bonus_question' => $question]);
         session(['bonus_question_start_time' => time()]);
