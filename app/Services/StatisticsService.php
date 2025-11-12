@@ -42,14 +42,11 @@ class StatisticsService
         string $gameId,
         array $matchData
     ): PlayerStatistic {
-        $roundStats = PlayerStatistic::where('user_id', $userId)
-            ->where('game_id', $gameId)
-            ->where('scope', 'round')
-            ->get();
-        
-        $efficacitePartie = $roundStats->avg('efficacite_manche') ?? 0;
-        
         $stats = $this->calculateMetrics($matchData);
+        
+        // Utiliser ratio_performance comme efficacite_partie (calculé directement sur les données du match)
+        // Cela évite de dépendre d'une requête SQL sur les rounds qui pourrait être vide
+        $efficacitePartie = $stats['ratio_performance'];
         
         return PlayerStatistic::create([
             'user_id' => $userId,
