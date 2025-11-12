@@ -127,6 +127,7 @@ class SoloController extends Controller
             'current_question' => null,        // Sera généré au premier game()
             'global_stats' => [],              // Statistiques globales toutes manches
             'round_efficiencies' => [],        // Efficacités de chaque manche (pour calcul de l'efficacité de la partie)
+            'round_summaries' => [],           // Stats détaillées par manche (pour affichage UI)
             'match_result_processed' => false, // Réinitialiser le flag pour nouvelle partie
             'used_skills' => [],               // Tracking des skills utilisés (persistant pour toute la partie)
         ]);

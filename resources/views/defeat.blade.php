@@ -158,6 +158,42 @@
             Niveau {{ $params['current_level'] }}
         </p>
         
+        <!-- Stats par manche (afficher toutes les manches de la partie) -->
+        @if(!empty($params['round_summaries']))
+        <div style="background: rgba(231, 76, 60, 0.1); padding: 20px; border-radius: 15px; margin: 25px 0;">
+            <div style="font-size: 1.3rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 Statistiques par Manche</div>
+            
+            @foreach($params['round_summaries'] as $roundNum => $roundStats)
+            <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #e74c3c;">
+                <div style="font-weight: 700; color: #e74c3c; margin-bottom: 10px;">🏆 Manche {{ $roundNum }}</div>
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 0.9rem;">
+                    <div>
+                        <span style="color: #666;">✅ Réussi:</span>
+                        <strong style="color: #2ECC71;">{{ $roundStats['correct'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
+                    </div>
+                    <div>
+                        <span style="color: #666;">❌ Échec:</span>
+                        <strong style="color: #E74C3C;">{{ $roundStats['wrong'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
+                    </div>
+                    <div>
+                        <span style="color: #666;">⏭️ Sans réponse:</span>
+                        <strong style="color: #95a5a6;">{{ $roundStats['unanswered'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
+                    </div>
+                    <div>
+                        <span style="color: #666;">📈 Efficacité:</span>
+                        <strong style="color: #e74c3c;">{{ number_format($roundStats['efficiency'] ?? 0, 1) }}%</strong>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.85rem; color: #666;">
+                    Points: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / {{ $roundStats['points_possible'] ?? 0 }}
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+        
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Réussi</div>
@@ -166,7 +202,7 @@
             
             <div class="stat-card">
                 <div class="stat-label">Efficacité</div>
-                <div class="stat-value">{{ $params['global_efficiency'] }}%</div>
+                <div class="stat-value">{{ number_format($params['party_efficiency'] ?? $params['global_efficiency'] ?? 0, 1) }}%</div>
             </div>
             
             <div class="stat-card">
