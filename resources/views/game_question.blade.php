@@ -647,13 +647,11 @@ if ($opponentInfo['is_boss'] ?? false) {
     <!-- Question en haut -->
     <div class="question-header">
         <div class="question-number">QUESTION {{ $params['current_question'] }}/10</div>
-        <div style="background: rgba(255, 215, 0, 0.15); padding: 8px 15px; border-radius: 10px; margin: 10px 0; font-weight: 600; color: #667eea;">
-            @if(isset($params['player_buzzed']) && $params['player_buzzed'])
+        @if(isset($params['player_buzzed']) && $params['player_buzzed'])
+            <div style="background: rgba(255, 215, 0, 0.15); padding: 8px 15px; border-radius: 10px; margin: 10px 0; font-weight: 600; color: #667eea;">
                 ⚡ Vous jouez pour {{ $params['potential_points'] ?? 2 }} point(s)
-            @else
-                📝 Testez une réponse (0 point si vous n'avez pas buzzé)
-            @endif
-        </div>
+            </div>
+        @endif
         <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     
