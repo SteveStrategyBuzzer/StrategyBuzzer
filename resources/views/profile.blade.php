@@ -794,6 +794,145 @@
   </div>
 </form>
 
+    </div> {{-- Fin de sb-three --}}
+
+{{-- =================== BULLE STATS (Pleine largeur) =================== --}}
+@php
+    use App\Models\ProfileStat;
+    $stats = $user ? ProfileStat::where('user_id', $user->id)->first() : null;
+    
+    // Stats Solo
+    $soloMatchs = $stats ? ($stats->solo_matchs_joues ?? 0) : 0;
+    $soloVictoires = $stats ? ($stats->solo_victoires ?? 0) : 0;
+    $soloDefaites = $stats ? ($stats->solo_defaites ?? 0) : 0;
+    $soloRatio = ($soloMatchs > 0) ? round(($soloVictoires / $soloMatchs) * 100, 1) : 0;
+    $soloMatchs3 = $stats ? ($stats->solo_matchs_3_manches ?? 0) : 0;
+    $soloVictoires3 = $stats ? ($stats->solo_victoires_difficiles ?? 0) : 0;
+    $soloPerf = $stats ? round($stats->solo_performance_moyenne ?? 0, 1) : 0;
+    
+    // Stats Duo
+    $duoMatchs = $stats ? ($stats->duo_matchs_joues ?? 0) : 0;
+    $duoVictoires = $stats ? ($stats->duo_victoires ?? 0) : 0;
+    $duoDefaites = $stats ? ($stats->duo_defaites ?? 0) : 0;
+    $duoRatio = ($duoMatchs > 0) ? round(($duoVictoires / $duoMatchs) * 100, 1) : 0;
+    $duoMatchs3 = $stats ? ($stats->duo_matchs_3_manches ?? 0) : 0;
+    $duoVictoires3 = $stats ? ($stats->duo_victoires_difficiles ?? 0) : 0;
+    $duoPerf = $stats ? round($stats->duo_performance_moyenne ?? 0, 1) : 0;
+    
+    // Stats Ligue
+    $ligueMatchs = $stats ? ($stats->league_matchs_joues ?? 0) : 0;
+    $ligueVictoires = $stats ? ($stats->league_victoires ?? 0) : 0;
+    $ligueDefaites = $stats ? ($stats->league_defaites ?? 0) : 0;
+    $ligueRatio = ($ligueMatchs > 0) ? round(($ligueVictoires / $ligueMatchs) * 100, 1) : 0;
+    $ligueMatchs3 = $stats ? ($stats->league_matchs_3_manches ?? 0) : 0;
+    $ligueVictoires3 = $stats ? ($stats->league_victoires_difficiles ?? 0) : 0;
+    $liguePerf = $stats ? round($stats->league_performance_moyenne ?? 0, 1) : 0;
+@endphp
+
+<div class="sb-panel" style="margin-top:12px;">
+  <div class="sb-title" style="text-align:center; margin-bottom:16px;">📊 Statistiques du Joueur</div>
+  
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+    
+    {{-- SOLO --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:12px;">
+      <div style="font-size:16px; font-weight:700; margin-bottom:10px; color:#4FC3F7;">🎯 Solo</div>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Matchs joués</span>
+          <span style="font-weight:700;">{{ $soloMatchs }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Victoires / Défaites</span>
+          <span style="font-weight:700; color:#4CAF50;">{{ $soloVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $soloDefaites }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Ratio victoires</span>
+          <span style="font-weight:700; color:#FFD700;">{{ $soloRatio }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Performance moyenne</span>
+          <span style="font-weight:700; color:#9C27B0;">{{ $soloPerf }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Matchs 3 manches</span>
+          <span style="font-weight:700;">{{ $soloMatchs3 }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Victoires difficiles</span>
+          <span style="font-weight:700; color:#FF9800;">{{ $soloVictoires3 }}</span>
+        </div>
+      </div>
+    </div>
+    
+    {{-- DUO --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:12px;">
+      <div style="font-size:16px; font-weight:700; margin-bottom:10px; color:#AB47BC;">👥 Duo</div>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Matchs joués</span>
+          <span style="font-weight:700;">{{ $duoMatchs }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Victoires / Défaites</span>
+          <span style="font-weight:700; color:#4CAF50;">{{ $duoVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $duoDefaites }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Ratio victoires</span>
+          <span style="font-weight:700; color:#FFD700;">{{ $duoRatio }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Performance moyenne</span>
+          <span style="font-weight:700; color:#9C27B0;">{{ $duoPerf }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Matchs 3 manches</span>
+          <span style="font-weight:700;">{{ $duoMatchs3 }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Victoires difficiles</span>
+          <span style="font-weight:700; color:#FF9800;">{{ $duoVictoires3 }}</span>
+        </div>
+      </div>
+    </div>
+    
+    {{-- LIGUE --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:12px;">
+      <div style="font-size:16px; font-weight:700; margin-bottom:10px; color:#FFD700;">🏆 Ligue</div>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Matchs joués</span>
+          <span style="font-weight:700;">{{ $ligueMatchs }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Victoires / Défaites</span>
+          <span style="font-weight:700; color:#4CAF50;">{{ $ligueVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $ligueDefaites }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Ratio victoires</span>
+          <span style="font-weight:700; color:#FFD700;">{{ $ligueRatio }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Performance moyenne</span>
+          <span style="font-weight:700; color:#9C27B0;">{{ $liguePerf }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Matchs 3 manches</span>
+          <span style="font-weight:700;">{{ $ligueMatchs3 }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">Victoires difficiles</span>
+          <span style="font-weight:700; color:#FF9800;">{{ $ligueVictoires3 }}</span>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+  </div> {{-- Fin de sb-wrap --}}
+</div> {{-- Fin de sb-page --}}
+
 {{-- Formulaire de déconnexion invisible --}}
 <form id="logout-form" method="POST" action="{{ route('logout') }}" style="display:none;">
   @csrf
