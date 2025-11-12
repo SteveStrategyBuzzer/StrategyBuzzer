@@ -252,6 +252,154 @@
   margin-right: auto; /* garde les checkbox alignées à gauche */
 }
 
+/* ===== Sélecteurs audio custom dépliables ===== */
+.sb-audio-selector {
+  position: relative;
+  z-index: 10;
+}
+
+.sb-selector-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  text-align: left;
+}
+
+.sb-selector-toggle:hover {
+  background: rgba(255,255,255,.12);
+  border-color: rgba(255,255,255,.5);
+}
+
+.sb-selector-toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.sb-selector-toggle[aria-expanded="true"] .sb-selector-arrow {
+  transform: rotate(180deg);
+}
+
+.sb-selector-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-selector-arrow {
+  transition: transform 0.2s ease;
+  font-size: 12px;
+}
+
+.sb-selector-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  background: rgba(10, 44, 102, 0.98);
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 220px;
+  max-width: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  z-index: 100;
+}
+
+.sb-selector-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  margin-bottom: 4px;
+}
+
+.sb-selector-option:last-child {
+  margin-bottom: 0;
+}
+
+.sb-selector-option:hover {
+  background: rgba(255,255,255,.1);
+}
+
+.sb-selector-option:focus-within {
+  background: rgba(255,255,255,.15);
+  outline: 2px solid rgba(255,255,255,.5);
+  outline-offset: -2px;
+}
+
+.sb-selector-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #fff;
+}
+
+.sb-selector-option input[type="radio"]:checked + .sb-option-text {
+  font-weight: 700;
+}
+
+.sb-option-text {
+  flex: 1;
+  font-size: 14px;
+  color: #fff;
+}
+
+.sb-option-speaker {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sb-option-speaker:hover {
+  background: rgba(255,255,255,.2);
+  border-color: rgba(255,255,255,.4);
+  transform: scale(1.1);
+}
+
+.sb-option-speaker:active {
+  transform: scale(0.95);
+}
+
+/* Scrollbar pour dropdown */
+.sb-selector-dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sb-selector-dropdown::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.05);
+  border-radius: 4px;
+}
+
+.sb-selector-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.2);
+  border-radius: 4px;
+}
+
+.sb-selector-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,.3);
+}
+
 </style>
 
 <div class="min-h-screen bg-[#0A2C66] text-white sb-page">
@@ -553,14 +701,27 @@
           <input type="checkbox" name="options[ambiance]" value="1" id="chk-amb" {{ $ambianceOn ? 'checked' : '' }}>
           <span>Activer</span>
         </label>
-        <span class="sb-chooser" title="Choisir">▼
-          <select name="sound[music_id]" id="sel-amb">
+        
+        {{-- Sélecteur custom dépliable --}}
+        <div class="sb-audio-selector" id="ambiance-selector">
+          <button type="button" class="sb-selector-toggle" data-selector="ambiance" 
+                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="ambiance-dropdown">
+            <span class="sb-selector-label">{{ collect($unlockedMusic)->firstWhere('id', (string)$musicId)['label'] ?? 'Choisir' }}</span>
+            <span class="sb-selector-arrow">▼</span>
+          </button>
+          
+          <div class="sb-selector-dropdown" id="ambiance-dropdown" data-dropdown="ambiance" 
+               role="listbox" style="display:none;">
+            <input type="hidden" name="sound[music_id]" id="sel-amb" value="{{ $musicId }}">
             @foreach($unlockedMusic as $m)
-              <option value="{{ $m['id'] }}" @selected((string)$musicId === (string)$m['id'])>{{ $m['label'] }}</option>
+              <label class="sb-selector-option" data-value="{{ $m['id'] }}" data-label="{{ $m['label'] }}" role="option">
+                <input type="radio" name="ambiance_choice" value="{{ $m['id'] }}" {{ (string)$musicId === (string)$m['id'] ? 'checked' : '' }}>
+                <span class="sb-option-text">{{ $m['label'] }}</span>
+                <button type="button" class="sb-option-speaker" data-audio="{{ $m['id'] }}" data-duration="10000" title="Tester">🔊</button>
+              </label>
             @endforeach
-          </select>
-        </span>
-        <button type="button" id="test-ambiance" title="Tester la musique" style="background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0 5px;">🔊</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -572,14 +733,27 @@
           <input type="checkbox" name="options[results]" value="1" id="chk-gameplay" {{ $resultsOn ? 'checked' : '' }}>
           <span>Activer</span>
         </label>
-        <span class="sb-chooser" title="Choisir">▼
-          <select name="gameplay[music_id]" id="sel-gameplay">
+        
+        {{-- Sélecteur custom dépliable --}}
+        <div class="sb-audio-selector" id="gameplay-selector">
+          <button type="button" class="sb-selector-toggle" data-selector="gameplay"
+                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="gameplay-dropdown">
+            <span class="sb-selector-label">{{ collect($unlockedMusic)->firstWhere('id', (string)$gameplayMusicId)['label'] ?? 'Choisir' }}</span>
+            <span class="sb-selector-arrow">▼</span>
+          </button>
+          
+          <div class="sb-selector-dropdown" id="gameplay-dropdown" data-dropdown="gameplay"
+               role="listbox" style="display:none;">
+            <input type="hidden" name="gameplay[music_id]" id="sel-gameplay" value="{{ $gameplayMusicId }}">
             @foreach($unlockedMusic as $m)
-              <option value="{{ $m['id'] }}" @selected((string)$gameplayMusicId === (string)$m['id'])>{{ $m['label'] }}</option>
+              <label class="sb-selector-option" data-value="{{ $m['id'] }}" data-label="{{ $m['label'] }}" role="option">
+                <input type="radio" name="gameplay_choice" value="{{ $m['id'] }}" {{ (string)$gameplayMusicId === (string)$m['id'] ? 'checked' : '' }}>
+                <span class="sb-option-text">{{ $m['label'] }}</span>
+                <button type="button" class="sb-option-speaker" data-audio="{{ $m['id'] }}" data-duration="10000" title="Tester">🔊</button>
+              </label>
             @endforeach
-          </select>
-        </span>
-        <button type="button" id="test-gameplay" title="Tester la musique" style="background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0 5px;">🔊</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -587,14 +761,27 @@
     <div class="sb-row" style="text-align:left;">
       <div class="sb-k">Buzzer</div>
       <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-        <span class="sb-chooser" title="Choisir">▼
-          <select name="sound[buzzer_id]" id="sel-buzzer">
+        
+        {{-- Sélecteur custom dépliable --}}
+        <div class="sb-audio-selector" id="buzzer-selector">
+          <button type="button" class="sb-selector-toggle" data-selector="buzzer"
+                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="buzzer-dropdown">
+            <span class="sb-selector-label">{{ collect($unlockedBuzzers)->firstWhere('id', (string)$buzzerId)['label'] ?? 'Choisir' }}</span>
+            <span class="sb-selector-arrow">▼</span>
+          </button>
+          
+          <div class="sb-selector-dropdown" id="buzzer-dropdown" data-dropdown="buzzer"
+               role="listbox" style="display:none;">
+            <input type="hidden" name="sound[buzzer_id]" id="sel-buzzer" value="{{ $buzzerId }}">
             @foreach($unlockedBuzzers as $b)
-              <option value="{{ $b['id'] }}" @selected((string)$buzzerId === (string)$b['id'])>{{ $b['label'] }}</option>
+              <label class="sb-selector-option" data-value="{{ $b['id'] }}" data-label="{{ $b['label'] }}" role="option">
+                <input type="radio" name="buzzer_choice" value="{{ $b['id'] }}" {{ (string)$buzzerId === (string)$b['id'] ? 'checked' : '' }}>
+                <span class="sb-option-text">{{ $b['label'] }}</span>
+                <button type="button" class="sb-option-speaker" data-audio="{{ $b['id'] }}" data-duration="2000" title="Tester">🔊</button>
+              </label>
             @endforeach
-          </select>
-        </span>
-        <button type="button" id="test-buzzer" title="Tester le buzzer" style="background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0 5px;">🔊</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -635,11 +822,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Fonctions génériques pour Ambiance & Gameplay
+  // Fonctions génériques pour Ambiance & Gameplay (adaptées pour les custom selectors)
   const updateAmbiance = () => {
     if (chkAmb && selAmb) {
       if (chkAmb.checked) {
-        setTxt('apercu-ambiance', selAmb.options[selAmb.selectedIndex].text || 'Classique');
+        // Récupérer le label depuis le bouton toggle
+        const toggleLabel = document.querySelector('#ambiance-selector .sb-selector-label');
+        const labelText = toggleLabel ? toggleLabel.textContent : 'Classique';
+        setTxt('apercu-ambiance', labelText);
       } else {
         setTxt('apercu-ambiance', 'Désactivé');
       }
@@ -650,7 +840,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const selGameplay = byId('sel-gameplay');
     if (chkGame && selGameplay) {
       if (chkGame.checked) {
-        setTxt('apercu-gameplay', selGameplay.options[selGameplay.selectedIndex].text || 'StrategyBuzzer');
+        // Récupérer le label depuis le bouton toggle
+        const toggleLabel = document.querySelector('#gameplay-selector .sb-selector-label');
+        const labelText = toggleLabel ? toggleLabel.textContent : 'StrategyBuzzer';
+        setTxt('apercu-gameplay', labelText);
       } else {
         setTxt('apercu-gameplay', 'Désactivé');
       }
@@ -703,30 +896,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Boutons de test audio
+  // ===== SYSTÈME DE SÉLECTEURS AUDIO CUSTOM =====
   let currentTestAudio = null;
   let currentTestTimeout = null;
-
-  const testAmbiance = byId('test-ambiance');
-  const testGameplay = byId('test-gameplay');
-  const testBuzzer = byId('test-buzzer');
+  let currentOpenDropdown = null;
 
   // Fonction pour tester une musique
   function playTestAudio(audioId, duration = 10000) {
-    // Annuler le timeout précédent s'il existe
     if (currentTestTimeout) {
       clearTimeout(currentTestTimeout);
       currentTestTimeout = null;
     }
 
-    // Arrêter l'audio précédent s'il existe
     if (currentTestAudio) {
       currentTestAudio.pause();
       currentTestAudio.currentTime = 0;
       currentTestAudio = null;
     }
 
-    // Créer et jouer le nouvel audio
     const audioPath = `/sounds/${audioId}.mp3`;
     const audio = new Audio(audioPath);
     audio.volume = 0.5;
@@ -737,14 +924,12 @@ document.addEventListener('DOMContentLoaded', () => {
       currentTestAudio = null;
     });
 
-    // Nettoyer quand l'audio se termine naturellement
     audio.addEventListener('ended', () => {
       if (currentTestAudio === audio) {
         currentTestAudio = null;
       }
     });
 
-    // Arrêter automatiquement après la durée spécifiée
     currentTestTimeout = setTimeout(() => {
       if (currentTestAudio === audio) {
         audio.pause();
@@ -755,38 +940,134 @@ document.addEventListener('DOMContentLoaded', () => {
     }, duration);
   }
 
-  // Test musique Ambiance
-  if (testAmbiance && selAmb) {
-    testAmbiance.addEventListener('click', function(e) {
-      e.preventDefault();
-      const selectedMusicId = selAmb.value;
-      if (selectedMusicId) {
-        playTestAudio(selectedMusicId, 10000);
+  // Classe pour gérer un sélecteur audio
+  class AudioSelector {
+    constructor(selectorName) {
+      this.name = selectorName;
+      this.container = byId(`${selectorName}-selector`);
+      if (!this.container) return;
+
+      this.toggle = this.container.querySelector('.sb-selector-toggle');
+      this.dropdown = this.container.querySelector('.sb-selector-dropdown');
+      this.hiddenInput = this.container.querySelector('input[type="hidden"]');
+      this.label = this.toggle.querySelector('.sb-selector-label');
+      this.options = this.dropdown.querySelectorAll('.sb-selector-option');
+      
+      this.init();
+    }
+
+    init() {
+      // Toggle dropdown
+      this.toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleDropdown();
+      });
+
+      // Sélection d'option
+      this.options.forEach(option => {
+        const radio = option.querySelector('input[type="radio"]');
+        const speaker = option.querySelector('.sb-option-speaker');
+
+        // Clic sur l'option (sauf speaker)
+        option.addEventListener('click', (e) => {
+          if (e.target === speaker || speaker.contains(e.target)) return;
+          radio.checked = true;
+          this.updateSelection(option);
+        });
+
+        // Bouton speaker
+        if (speaker) {
+          speaker.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const audioId = speaker.dataset.audio;
+            const duration = parseInt(speaker.dataset.duration) || 10000;
+            playTestAudio(audioId, duration);
+          });
+        }
+      });
+
+      // Fermer au clic en dehors
+      document.addEventListener('click', (e) => {
+        if (!this.container.contains(e.target) && this.isOpen()) {
+          this.closeDropdown();
+        }
+      });
+
+      // Navigation clavier
+      this.toggle.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.toggleDropdown();
+        } else if (e.key === 'Escape') {
+          this.closeDropdown();
+        }
+      });
+    }
+
+    updateSelection(option) {
+      const value = option.dataset.value;
+      const label = option.dataset.label;
+
+      // Mettre à jour le hidden input
+      this.hiddenInput.value = value;
+      
+      // Mettre à jour le label du bouton
+      this.label.textContent = label;
+
+      // Déclencher l'événement change pour la synchronisation
+      const changeEvent = new Event('change', { bubbles: true });
+      this.hiddenInput.dispatchEvent(changeEvent);
+
+      // Synchronisation spécifique pour Ambiance et Gameplay
+      if (this.name === 'ambiance') {
+        updateAmbiance();
+        if (window.changeAmbientMusic) {
+          window.changeAmbientMusic(value);
+        }
+      } else if (this.name === 'gameplay') {
+        updateGameplay();
+      } else if (this.name === 'buzzer') {
+        localStorage.setItem('selectedBuzzer', value);
+        console.log('✅ Buzzer changé:', value);
       }
-    });
+    }
+
+    toggleDropdown() {
+      if (this.isOpen()) {
+        this.closeDropdown();
+      } else {
+        this.openDropdown();
+      }
+    }
+
+    openDropdown() {
+      // Fermer les autres dropdowns
+      if (currentOpenDropdown && currentOpenDropdown !== this) {
+        currentOpenDropdown.closeDropdown();
+      }
+
+      this.dropdown.style.display = 'block';
+      this.toggle.setAttribute('aria-expanded', 'true');
+      currentOpenDropdown = this;
+    }
+
+    closeDropdown() {
+      this.dropdown.style.display = 'none';
+      this.toggle.setAttribute('aria-expanded', 'false');
+      if (currentOpenDropdown === this) {
+        currentOpenDropdown = null;
+      }
+    }
+
+    isOpen() {
+      return this.dropdown.style.display === 'block';
+    }
   }
 
-  // Test musique Gameplay
-  if (testGameplay && selGameplay) {
-    testGameplay.addEventListener('click', function(e) {
-      e.preventDefault();
-      const selectedMusicId = selGameplay.value;
-      if (selectedMusicId) {
-        playTestAudio(selectedMusicId, 10000);
-      }
-    });
-  }
-
-  // Test Buzzer
-  if (testBuzzer && selBuzzer) {
-    testBuzzer.addEventListener('click', function(e) {
-      e.preventDefault();
-      const selectedBuzzerId = selBuzzer.value;
-      if (selectedBuzzerId) {
-        playTestAudio(selectedBuzzerId, 2000);
-      }
-    });
-  }
+  // Initialiser les trois sélecteurs
+  const ambianceSelector = new AudioSelector('ambiance');
+  const gameplaySelector = new AudioSelector('gameplay');
+  const buzzerSelector = new AudioSelector('buzzer');
 
   // Initialisation au chargement
   updateAmbiance();
