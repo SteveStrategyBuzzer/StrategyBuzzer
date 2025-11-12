@@ -897,9 +897,17 @@ class SoloController extends Controller
             return redirect()->route('solo.defeat');
         }
         
+        // Calculer les statistiques de la manche qui vient de se terminer
+        $roundNumber = $currentRound - 1; // La manche qui vient de se terminer
+        $completedRoundStats = $this->calculateRoundStatistics($roundNumber);
+        
+        // Stocker les stats de cette manche dans round_summaries
+        $roundSummaries = session('round_summaries', []);
+        $roundSummaries[$roundNumber] = $completedRoundStats;
+        session(['round_summaries' => $roundSummaries]);
+        
         // Calculer les métriques supplémentaires selon le système défini
         $roundEfficiencies = session('round_efficiencies', []);
-        $roundNumber = $currentRound - 1; // La manche qui vient de se terminer
         
         // Efficacité Max Possible (fin manche 1) : (% efficacité Manche + 100%) / 2
         $efficiencyMaxPossible = null;
@@ -936,6 +944,8 @@ class SoloController extends Controller
             // Métriques supplémentaires
             'efficiency_max_possible' => $efficiencyMaxPossible,
             'party_efficiency' => $partyEfficiency,
+            // Stats par manche (toutes les manches complétées jusqu'à maintenant)
+            'round_summaries' => $roundSummaries,
         ];
         
         return view('round_result', compact('params'));
@@ -1036,6 +1046,9 @@ class SoloController extends Controller
             $partyEfficiency = round(array_sum($roundEfficiencies) / count($roundEfficiencies), 2);
         }
         
+        // Récupérer les stats par manche (toutes les manches complétées)
+        $roundSummaries = session('round_summaries', []);
+        
         // Récupérer le nom de l'adversaire du prochain niveau
         $opponents = config('opponents');
         $nextOpponentName = $this->getOpponentName($newLevel);
@@ -1051,6 +1064,8 @@ class SoloController extends Controller
             'party_efficiency' => $partyEfficiency,
             'next_opponent_name' => $nextOpponentName,
             'stats_metrics' => $statsMetrics,
+            // Stats par manche (toutes les manches de la partie)
+            'round_summaries' => $roundSummaries,
         ];
         
         return view('victory', compact('params'));
@@ -1143,6 +1158,9 @@ class SoloController extends Controller
             $partyEfficiency = round(array_sum($roundEfficiencies) / count($roundEfficiencies), 2);
         }
         
+        // Récupérer les stats par manche (toutes les manches complétées)
+        $roundSummaries = session('round_summaries', []);
+        
         $nextLifeRegen = null;
         if ($user && $user->next_life_regen) {
             if ($user->next_life_regen instanceof \DateTimeInterface) {
@@ -1166,6 +1184,8 @@ class SoloController extends Controller
             'next_life_regen' => $nextLifeRegen,
             'is_guest' => false, // Toujours false car auth middleware requis
             'stats_metrics' => $statsMetrics,
+            // Stats par manche (toutes les manches de la partie)
+            'round_summaries' => $roundSummaries,
         ];
         
         return view('defeat', compact('params'));
