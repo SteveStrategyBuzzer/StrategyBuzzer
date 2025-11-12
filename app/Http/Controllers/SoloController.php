@@ -532,9 +532,9 @@ class SoloController extends Controller
         if ($playerBuzzed) {
             // Le joueur a buzzé
             if ($isCorrect) {
-                // Le joueur est 2ème (+1 pt) SEULEMENT si l'adversaire est plus rapide ET a répondu correctement
+                // Le joueur est 2ème (+1 pt) si l'adversaire est plus rapide (peu importe s'il a réussi ou raté)
                 // Sinon le joueur est 1er (+2 pts)
-                $playerPoints = ($opponentBehavior['is_faster'] && $opponentBehavior['is_correct']) ? 1 : 2;
+                $playerPoints = $opponentBehavior['is_faster'] ? 1 : 2;
             } else {
                 // Mauvaise réponse = -2 pts
                 $playerPoints = -2;
@@ -572,6 +572,8 @@ class SoloController extends Controller
             'is_correct' => $isCorrect,
             'player_buzzed' => $playerBuzzed,
             'player_points' => $playerPoints,  // Stocker les points RÉELS (+2, +1, 0, ou -2)
+            'opponent_faster' => $opponentBehavior['is_faster'],  // Nécessaire pour calculer max points possible
+            'opponent_correct' => $opponentBehavior['is_correct'],
             'round' => session('current_round', 1),
         ];
         session(['global_stats' => $globalStats]);
@@ -1399,7 +1401,11 @@ class SoloController extends Controller
         
         foreach ($roundStats as $stat) {
             $questions++;
-            $pointsPossible += 2;
+            
+            // Calculer le maximum de points possibles pour cette question
+            // Si adversaire a buzzé en premier → max = 1 pt, sinon max = 2 pts
+            $maxPointsForQuestion = (isset($stat['opponent_faster']) && $stat['opponent_faster']) ? 1 : 2;
+            $pointsPossible += $maxPointsForQuestion;
             
             // Utiliser les points RÉELS si disponibles
             if (isset($stat['player_points'])) {
@@ -1443,7 +1449,7 @@ class SoloController extends Controller
      * Calcule l'efficacité basée sur les points RÉELS selon la formule :
      * Efficacité = (Points gagnés / Points max possibles) × 100
      * Utilise les points réels stockés qui peuvent être +2, +1, 0, ou -2
-     * Points max = nb_questions × 2
+     * Points max dépend de opponent_faster : 1 pt si adversaire plus rapide, sinon 2 pts
      */
     private function calculateEfficiency(array $stats): float
     {
@@ -1451,7 +1457,10 @@ class SoloController extends Controller
         $pointsPossible = 0;
         
         foreach ($stats as $stat) {
-            $pointsPossible += 2;
+            // Calculer le maximum de points possibles pour cette question
+            // Si adversaire a buzzé en premier → max = 1 pt, sinon max = 2 pts
+            $maxPointsForQuestion = (isset($stat['opponent_faster']) && $stat['opponent_faster']) ? 1 : 2;
+            $pointsPossible += $maxPointsForQuestion;
             
             // Utiliser les points RÉELS si disponibles, sinon fallback sur l'ancienne logique
             if (isset($stat['player_points'])) {
@@ -1468,9 +1477,13 @@ class SoloController extends Controller
             }
         }
         
-        return $pointsPossible > 0 
-            ? round(($pointsEarned / $pointsPossible) * 100, 2)
-            : 0;
+        if ($pointsPossible > 0) {
+            $efficiency = ($pointsEarned / $pointsPossible) * 100;
+            $efficiency = max(-100, min(100, $efficiency)); // Clamp entre -100 et 100
+            return round($efficiency, 2);
+        }
+        
+        return 0;
     }
 
     public function cancelError(Request $request)
