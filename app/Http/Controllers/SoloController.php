@@ -1007,6 +1007,7 @@ class SoloController extends Controller
             );
             
             $statsMetrics = [
+                'efficacite_brute' => $matchStats->efficacite_brute ?? 0,
                 'efficacite_partie' => $matchStats->efficacite_partie,
                 'efficacite_joueur' => $statsService->getPlayerStatistics($user->id, 'solo')->efficacite_joueur ?? 0,
                 'taux_participation' => $matchStats->taux_participation,
@@ -1114,6 +1115,7 @@ class SoloController extends Controller
             );
             
             $statsMetrics = [
+                'efficacite_brute' => $matchStats->efficacite_brute ?? 0,
                 'efficacite_partie' => $matchStats->efficacite_partie,
                 'efficacite_joueur' => $statsService->getPlayerStatistics($user->id, 'solo')->efficacite_joueur ?? 0,
                 'taux_participation' => $matchStats->taux_participation,
