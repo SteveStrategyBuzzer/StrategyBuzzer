@@ -32,27 +32,26 @@ class ProfileStatsService
         ?int $roundsPlayed = null,
         ?int $newLevel = null
     ): ProfileStat {
-        // Enregistrer le match dans l'historique
-        MatchPerformance::create([
-            'user_id' => $user->id,
-            'game_mode' => $gameMode,
-            'game_id' => $gameId,
-            'performance' => round($performance, 2),
-            'rounds_played' => $roundsPlayed,
-            'is_victory' => $isVictory,
-            'played_at' => now(),
-        ]);
-        
         // Récupérer ou créer ProfileStat
         $profileStat = ProfileStat::firstOrCreate(
             ['user_id' => $user->id],
             self::getDefaultStats()
         );
         
-        // Mettre à jour les compteurs avec opérations atomiques
+        // Mettre à jour les compteurs avec opérations atomiques DANS UNE TRANSACTION
         $prefix = $gameMode . '_';
         
-        DB::transaction(function () use ($profileStat, $prefix, $isVictory, $roundsPlayed) {
+        DB::transaction(function () use ($user, $gameMode, $gameId, $performance, $roundsPlayed, $isVictory, $profileStat, $prefix) {
+            // Enregistrer le match dans l'historique (DANS la transaction pour atomicité)
+            MatchPerformance::create([
+                'user_id' => $user->id,
+                'game_mode' => $gameMode,
+                'game_id' => $gameId,
+                'performance' => round($performance, 2),
+                'rounds_played' => $roundsPlayed,
+                'is_victory' => $isVictory,
+                'played_at' => now(),
+            ]);
             // Incrémenter matchs joués (atomique)
             $profileStat->increment($prefix . 'matchs_joues');
             
@@ -92,7 +91,9 @@ class ProfileStatsService
         // Mettre à jour le niveau Solo dans profile_settings si fourni
         if ($gameMode === 'solo' && $newLevel !== null) {
             $settings = (array) ($user->profile_settings ?? []);
-            $settings['choix_niveau'] = $newLevel;
+            $settings['gm'] = $settings['gm'] ?? [];
+            $settings['gm']['solo_level'] = $newLevel;
+            $settings['choix_niveau'] = $newLevel; // Garder aussi pour compatibilité
             $user->profile_settings = $settings;
             $user->save();
         }

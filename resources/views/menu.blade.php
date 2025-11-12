@@ -3,6 +3,7 @@
 @section('content')
 @php
     use Illuminate\Support\Facades\Auth;
+    use App\Models\ProfileStat;
     $user = Auth::user();
     
     // Vérifier si le profil a été complété (enregistré au moins une fois)
@@ -16,7 +17,8 @@
     $choixNiveau = is_array($profileSettings) ? ($profileSettings['choix_niveau'] ?? 1) : 1;
     $duoUnlocked = $choixNiveau >= 11;
     
-    // Ligue : 100 matchs Duo joués (victoires + défaites)
+    // Ligue : 100 matchs Duo joués (victoires + défaites) - TEMPORAIRE: ancien système jusqu'à intégration Duo
+    // TODO: Utiliser profile_stats une fois DuoController intégré
     $duoMatches = $user ? (($user->duo_defeats ?? 0) + ($user->duo_victories ?? 0)) : 0;
     $ligueUnlocked = $duoMatches >= 100;
     

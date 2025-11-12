@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Services\QuestService;
 use App\Services\StatisticsService;
 use App\Services\AnswerNormalizationService;
+use App\Services\ProfileStatsService;
 use App\Models\QuestionHistory;
 
 class SoloController extends Controller
@@ -1014,6 +1015,20 @@ class SoloController extends Controller
             ];
             
             $statsService->updateGlobalStatistics($user->id, 'solo');
+            
+            // Enregistrer les stats dans profile_stats pour déblocage et suivi
+            $playerRoundsWon = session('player_rounds_won', 2);
+            $opponentRoundsWon = session('opponent_rounds_won', 0);
+            $roundsPlayed = $playerRoundsWon + $opponentRoundsWon;
+            
+            ProfileStatsService::updateSoloStats(
+                $user,
+                true, // victoire
+                $roundsPlayed,
+                $matchStats->efficacite_partie,
+                $newLevel,
+                $gameId
+            );
         }
         
         // Calculer l'efficacité moyenne de la partie
@@ -1107,6 +1122,20 @@ class SoloController extends Controller
             ];
             
             $statsService->updateGlobalStatistics($user->id, 'solo');
+            
+            // Enregistrer les stats dans profile_stats pour suivi
+            $playerRoundsWon = session('player_rounds_won', 0);
+            $opponentRoundsWon = session('opponent_rounds_won', 2);
+            $roundsPlayed = $playerRoundsWon + $opponentRoundsWon;
+            
+            ProfileStatsService::updateSoloStats(
+                $user,
+                false, // défaite
+                $roundsPlayed,
+                $matchStats->efficacite_partie,
+                null, // pas de nouveau niveau en cas de défaite
+                $gameId
+            );
         }
         
         // Calculer l'efficacité moyenne de la partie
