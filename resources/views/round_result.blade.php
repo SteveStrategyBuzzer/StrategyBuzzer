@@ -179,6 +179,17 @@
             <div style="font-size: 1.8rem; font-weight: 800; color: #f39c12;">{{ $params['round_efficiency'] ?? 0 }}%</div>
         </div>
         
+        <!-- Widget Performance (apparaît seulement après la manche 1) -->
+        @if($params['round_number'] == 1)
+        <div style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 87, 34, 0.15) 100%); padding: 20px; border-radius: 15px; margin: 20px 0; border: 2px solid rgba(255, 152, 0, 0.3);">
+            <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">⭐ Performance</div>
+            <div style="font-size: 2rem; font-weight: 800; color: #FF9800;">
+                {{ $params['round_efficiency'] ?? 0 }}%
+            </div>
+            <div style="color: #999; font-size: 0.85rem; margin-top: 5px;">Points / Max. Possible</div>
+        </div>
+        @endif
+        
         <!-- Statistiques globales (toutes manches) -->
         <div style="background: rgba(46, 204, 113, 0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">
             <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 Statistiques globales</div>
