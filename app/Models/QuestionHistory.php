@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Services\AnswerNormalizationService;
 
 class QuestionHistory extends Model
 {
@@ -65,7 +66,7 @@ class QuestionHistory extends Model
             ->pluck('correct_answer')
             ->toArray();
     }
-
+    
     /**
      * Enregistre une question vue par un utilisateur
      */
@@ -77,9 +78,9 @@ class QuestionHistory extends Model
             ->exists();
         
         if (!$exists) {
-            // Normaliser la réponse correcte en chaîne de texte
+            // Normaliser la réponse correcte avec le service partagé
             $correctAnswer = $question['answers'][$question['correct_index']] ?? '';
-            $normalizedAnswer = is_array($correctAnswer) ? json_encode($correctAnswer) : trim(strtolower((string)$correctAnswer));
+            $normalizedAnswer = AnswerNormalizationService::normalize($correctAnswer);
             
             self::create([
                 'user_id' => $userId,

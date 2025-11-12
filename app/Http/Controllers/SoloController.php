@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\QuestService;
 use App\Services\StatisticsService;
+use App\Services\AnswerNormalizationService;
 use App\Models\QuestionHistory;
 
 class SoloController extends Controller
 {
+    
     public function index(Request $request)
     {
         // Restaurer le niveau depuis profile_settings pour les utilisateurs authentifiés
@@ -388,8 +390,8 @@ class SoloController extends Controller
             // Ajouter la réponse correcte aux réponses utilisées dans cette partie (évite doublons)
             $correctAnswer = $question['answers'][$question['correct_index']] ?? null;
             if ($correctAnswer) {
-                // Normaliser la réponse en chaîne de texte (trim + lowercase pour comparaison robuste)
-                $normalizedAnswer = is_array($correctAnswer) ? json_encode($correctAnswer) : trim(strtolower((string)$correctAnswer));
+                // Normaliser la réponse avec le service partagé
+                $normalizedAnswer = AnswerNormalizationService::normalize($correctAnswer);
                 
                 $sessionUsedAnswers = session('session_used_answers', []);
                 $sessionUsedAnswers[] = $normalizedAnswer;
@@ -1442,7 +1444,7 @@ class SoloController extends Controller
             // Normaliser et ajouter la réponse correcte
             $correctAnswer = $question['answers'][$question['correct_index']] ?? null;
             if ($correctAnswer) {
-                $normalizedAnswer = is_array($correctAnswer) ? json_encode($correctAnswer) : trim(strtolower((string)$correctAnswer));
+                $normalizedAnswer = AnswerNormalizationService::normalize($correctAnswer);
                 $sessionUsedAnswers[] = $normalizedAnswer;
                 session(['session_used_answers' => $sessionUsedAnswers]);
             }
