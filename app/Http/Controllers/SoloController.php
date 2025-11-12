@@ -630,8 +630,8 @@ class SoloController extends Controller
             }
         }
         
-        // Utiliser le nombre réel de questions jouées (nombre de stats) ou le nombre configuré
-        $totalQuestionsPlayed = max(count($globalStats), $nbQuestions);
+        // Utiliser le nombre réel de questions jouées (comptage exact)
+        $totalQuestionsPlayed = count($globalStats);
         // Calculer l'efficacité basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
 
@@ -866,10 +866,8 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer le total attendu : nb_questions * nombre de manches jouées
-        $completedRounds = ($currentRound > 1) ? $currentRound - 1 : 1;
-        $totalQuestionsExpected = session('nb_questions', 30) * $completedRounds;
-        $totalQuestionsPlayed = max(count($globalStats), $totalQuestionsExpected);
+        // Utiliser le nombre réel de questions jouées (comptage exact)
+        $totalQuestionsPlayed = count($globalStats);
         // Calculer l'efficacité globale basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
         
@@ -965,9 +963,8 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer le total attendu basé sur le nombre de questions par manche
-        $nbQuestions = session('nb_questions', 30);
-        $totalQuestionsPlayed = max(count($globalStats), $nbQuestions);
+        // Utiliser le nombre réel de questions jouées (comptage exact)
+        $totalQuestionsPlayed = count($globalStats);
         // Calculer l'efficacité globale basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
         
@@ -1093,9 +1090,8 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer le total attendu basé sur le nombre de questions par manche
-        $nbQuestions = session('nb_questions', 30);
-        $totalQuestionsPlayed = max(count($globalStats), $nbQuestions);
+        // Utiliser le nombre réel de questions jouées (comptage exact)
+        $totalQuestionsPlayed = count($globalStats);
         // Calculer l'efficacité globale basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
         
@@ -1352,6 +1348,73 @@ class SoloController extends Controller
             'wrong_answers' => $wrongAnswers,
             'points_earned' => $pointsEarned,
             'points_possible' => $pointsPossible,
+        ];
+    }
+
+    /**
+     * Calcule les statistiques pour une manche spécifique
+     * Filtre global_stats par numéro de manche et agrège les résultats
+     * 
+     * @param int $roundNumber Le numéro de la manche (1, 2, ou 3)
+     * @return array Stats détaillées de la manche
+     */
+    private function calculateRoundStatistics(int $roundNumber): array
+    {
+        $globalStats = session('global_stats', []);
+        
+        // Filtrer les stats pour cette manche uniquement
+        $roundStats = array_filter($globalStats, function($stat) use ($roundNumber) {
+            return isset($stat['round']) && $stat['round'] == $roundNumber;
+        });
+        
+        // Agrégation des statistiques
+        $questions = 0;
+        $buzzed = 0;
+        $correct = 0;
+        $wrong = 0;
+        $unanswered = 0;
+        $pointsEarned = 0;
+        $pointsPossible = 0;
+        
+        foreach ($roundStats as $stat) {
+            $questions++;
+            $pointsPossible += 2;
+            
+            // Utiliser les points RÉELS si disponibles
+            if (isset($stat['player_points'])) {
+                $pointsEarned += $stat['player_points'];
+            }
+            
+            if (!$stat['player_buzzed']) {
+                $unanswered++;
+            } else {
+                $buzzed++;
+                if ($stat['is_correct']) {
+                    $correct++;
+                } else {
+                    $wrong++;
+                }
+            }
+        }
+        
+        // Calculer l'efficacité de la manche (clamped entre -100 et 100)
+        $efficiency = 0;
+        if ($pointsPossible > 0) {
+            $efficiency = ($pointsEarned / $pointsPossible) * 100;
+            $efficiency = max(-100, min(100, $efficiency)); // Clamp entre -100 et 100
+            $efficiency = round($efficiency, 2);
+        }
+        
+        return [
+            'round' => $roundNumber,
+            'questions' => $questions,
+            'buzzed' => $buzzed,
+            'correct' => $correct,
+            'wrong' => $wrong,
+            'unanswered' => $unanswered,
+            'points_earned' => $pointsEarned,
+            'points_possible' => $pointsPossible,
+            'efficiency' => $efficiency,
         ];
     }
 
