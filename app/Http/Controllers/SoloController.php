@@ -18,7 +18,9 @@ class SoloController extends Controller
         $user = auth()->user();
         if ($user) {
             $settings = (array) ($user->profile_settings ?? []);
-            $savedLevel = (int) data_get($settings, 'gm.solo_level', 1);
+            
+            // Restaurer depuis choix_niveau (source de vérité unique)
+            $savedLevel = (int) data_get($settings, 'choix_niveau', 1);
             
             // Si le niveau sauvegardé est supérieur au niveau en session, utiliser le niveau sauvegardé
             if ($savedLevel > session('choix_niveau', 1)) {
@@ -737,8 +739,8 @@ class SoloController extends Controller
                             $settings['gm'] = [];
                         }
                         
-                        // Mettre à jour le niveau solo
-                        $settings['gm']['solo_level'] = $newChoixNiveau;
+                        // Mettre à jour le niveau solo (choix_niveau = source unique de vérité)
+                        $settings['choix_niveau'] = $newChoixNiveau;
                         
                         // Calculer l'XP et les statistiques de progression
                         $currentXP = (int) data_get($settings, 'gm.xp', 0);
@@ -892,7 +894,7 @@ class SoloController extends Controller
             if ($user && $user instanceof \App\Models\User) {
                 $settings = (array) ($user->profile_settings ?? []);
                 $settings['gm'] = $settings['gm'] ?? [];
-                $settings['gm']['solo_level'] = $newLevel;
+                $settings['choix_niveau'] = $newLevel; // Source unique de vérité pour le niveau solo
                 $user->profile_settings = $settings;
                 $user->save();
             }

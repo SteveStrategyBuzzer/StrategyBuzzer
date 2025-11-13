@@ -92,8 +92,7 @@ class ProfileStatsService
         if ($gameMode === 'solo' && $newLevel !== null) {
             $settings = (array) ($user->profile_settings ?? []);
             $settings['gm'] = $settings['gm'] ?? [];
-            $settings['gm']['solo_level'] = $newLevel;
-            $settings['choix_niveau'] = $newLevel; // Garder aussi pour compatibilité
+            $settings['choix_niveau'] = $newLevel; // Source unique de vérité pour le niveau solo
             $user->profile_settings = $settings;
             $user->save();
         }
