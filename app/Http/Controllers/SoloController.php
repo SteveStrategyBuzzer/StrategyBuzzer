@@ -582,23 +582,27 @@ class SoloController extends Controller
         
         // Vérifier et compléter les quêtes (si connecté)
         $user = auth()->user();
-        if ($user && $isCorrect && $playerBuzzed) {
+        if ($user) {
             $questService = new QuestService();
             
-            // Quête : Réponses rapides (fast_answers_10)
-            // Si le joueur a répondu rapidement (< 2 secondes)
-            if ($buzzTime < 2) {
-                $questService->checkAndCompleteQuests($user, 'fast_answers_10', [
-                    'answer_time' => $buzzTime,
+            // Quête : Buzz rapides (first_buzz_10)
+            // Le joueur est premier si : il a buzzé ET (l'adversaire n'a pas buzzé OU l'adversaire était plus lent)
+            $playerWasFirst = $playerBuzzed && (!$opponentBehavior['buzzes'] || $opponentBehavior['is_faster'] === false);
+            if ($playerWasFirst) {
+                $questService->checkAndCompleteQuests($user, 'first_buzz_10', [
+                    'first_buzz' => true,
                 ]);
             }
             
-            // Quête : Buzz rapides (buzz_fast_10)
-            // Si le joueur a buzzé rapidement (< 3 secondes)
-            if ($buzzTime < 3) {
-                $questService->checkAndCompleteQuests($user, 'buzz_fast_10', [
-                    'buzz_time' => $buzzTime,
-                ]);
+            // Quêtes nécessitant une réponse correcte
+            if ($isCorrect && $playerBuzzed) {
+                // Quête : Réponses rapides (fast_answers_10)
+                // Si le joueur a répondu rapidement (< 2 secondes)
+                if ($buzzTime < 2) {
+                    $questService->checkAndCompleteQuests($user, 'fast_answers_10', [
+                        'answer_time' => $buzzTime,
+                    ]);
+                }
             }
         }
         

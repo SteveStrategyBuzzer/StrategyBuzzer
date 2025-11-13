@@ -93,8 +93,8 @@ class QuestService
             case 'fast_answers_10':
                 return $this->checkFastAnswers10($progress, $context);
             
-            case 'buzz_fast_10':
-                return $this->checkBuzzFast10($progress, $context);
+            case 'first_buzz_10':
+                return $this->checkFirstBuzz10($progress, $context);
             
             case 'skill_used':
                 return $this->checkSkillUsed($context);
@@ -147,9 +147,10 @@ class QuestService
         return $fastAnswers >= 10;
     }
     
-    protected function checkBuzzFast10(UserQuestProgress $progress, array $context): bool
+    protected function checkFirstBuzz10(UserQuestProgress $progress, array $context): bool
     {
-        if (!isset($context['buzz_time']) || $context['buzz_time'] >= 3) {
+        // Vérifier que le joueur est le premier à buzzer
+        if (!isset($context['first_buzz']) || $context['first_buzz'] !== true) {
             return false;
         }
         
@@ -159,19 +160,23 @@ class QuestService
         }
         
         $progressData = $progress->progress ?? [];
-        $fastBuzzes = $progressData['fast_buzzes'] ?? 0;
+        
+        // Migrer les anciennes données : lire depuis first_buzzes OU fast_buzzes (legacy)
+        $firstBuzzes = $progressData['first_buzzes'] ?? $progressData['fast_buzzes'] ?? 0;
         
         // Ne pas dépasser 10
-        if ($fastBuzzes >= 10) {
+        if ($firstBuzzes >= 10) {
             return true;
         }
         
-        $fastBuzzes++;
+        $firstBuzzes++;
         
-        $progress->progress = array_merge($progressData, ['fast_buzzes' => $fastBuzzes]);
+        // Sauvegarder dans la nouvelle clé et nettoyer l'ancienne
+        unset($progressData['fast_buzzes']); // Supprimer l'ancienne clé pour éviter confusion
+        $progress->progress = array_merge($progressData, ['first_buzzes' => $firstBuzzes]);
         $progress->save();
         
-        return $fastBuzzes >= 10;
+        return $firstBuzzes >= 10;
     }
     
     protected function checkSkillUsed(array $context): bool
@@ -215,7 +220,10 @@ class QuestService
                 $current = $progressData['current'];
             } elseif (isset($progressData['fast_answers'])) {
                 $current = $progressData['fast_answers'];
+            } elseif (isset($progressData['first_buzzes'])) {
+                $current = $progressData['first_buzzes'];
             } elseif (isset($progressData['fast_buzzes'])) {
+                // Fallback pour anciennes progressions
                 $current = $progressData['fast_buzzes'];
             } elseif (isset($progressData['count'])) {
                 $current = $progressData['count'];
