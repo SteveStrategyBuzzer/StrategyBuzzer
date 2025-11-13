@@ -89,6 +89,7 @@
     // “Maître du jeu” & niveaux
     $grade        = (string) data_get($s, 'gm.grade', 'Rookie');
     $soloLevel    = max(1, (int) data_get($s, 'choix_niveau', session('choix_niveau', 1))); // Minimum niveau 1, synchronisé avec session
+    $duoLevel     = max(0, (int) data_get($s, 'gm.duo_level', 0)); // Niveau Duo
     $leagueLevel  = max(0, (int) data_get($s, 'gm.league_level', 0));
 
     // ID public (par défaut = nom)
@@ -593,6 +594,12 @@
     <div class="sb-row">
       <div class="sb-k" style="text-align:left;">Niveau solo</div>
       <div class="sb-v" style="text-align:right;">{{ $soloLevel ?? 0 }}</div>
+    </div>
+
+    {{-- Niveau Duo --}}
+    <div class="sb-row">
+      <div class="sb-k" style="text-align:left;">Niveau Duo</div>
+      <div class="sb-v" style="text-align:right;">{{ $duoLevel ?? 0 }}</div>
     </div>
 
     {{-- Niveau ligue --}}
