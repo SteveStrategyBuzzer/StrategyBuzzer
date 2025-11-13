@@ -712,6 +712,10 @@ class SoloController extends Controller
                 'opponent_rounds_won' => $opponentRoundsWon,
             ]);
             
+            // IMPORTANT : Sauvegarder les stats de la manche qui vient de se terminer
+            // (même si le match va se terminer après)
+            $this->saveRoundStatistics();
+            
             // Vérifier si quelqu'un a gagné la partie (2 manches sur 3)
             if ($playerRoundsWon >= 2 || $opponentRoundsWon >= 2) {
                 // FIN DE LA PARTIE - rediriger vers victoire ou défaite
@@ -1633,5 +1637,24 @@ class SoloController extends Controller
             'points' => $points,
             'time_elapsed' => $timeElapsed
         ]);
+    }
+
+    /**
+     * Sauvegarder les statistiques de la manche qui vient de se terminer dans round_summaries
+     * Cette méthode est appelée à la fin de chaque manche, que le match continue ou se termine
+     */
+    private function saveRoundStatistics(): void
+    {
+        // La manche qui vient de se terminer = current_round - 1
+        // (car current_round a déjà été incrémenté par endRound())
+        $roundNumber = max(1, session('current_round', 1) - 1);
+        
+        // Calculer les statistiques de la manche
+        $completedRoundStats = $this->calculateRoundStatistics($roundNumber);
+        
+        // Stocker les stats de cette manche dans round_summaries
+        $roundSummaries = session('round_summaries', []);
+        $roundSummaries[$roundNumber] = $completedRoundStats;
+        session(['round_summaries' => $roundSummaries]);
     }
 }

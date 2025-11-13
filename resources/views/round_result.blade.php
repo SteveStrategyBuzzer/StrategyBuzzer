@@ -179,17 +179,6 @@
             <div style="font-size: 1.8rem; font-weight: 800; color: #f39c12;">{{ $params['round_efficiency'] ?? 0 }}%</div>
         </div>
         
-        <!-- Widget Performance (apparaît seulement après la manche 1) -->
-        @if($params['round_number'] == 1)
-        <div style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 87, 34, 0.15) 100%); padding: 20px; border-radius: 15px; margin: 20px 0; border: 2px solid rgba(255, 152, 0, 0.3);">
-            <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">⭐ Performance</div>
-            <div style="font-size: 2rem; font-weight: 800; color: #FF9800;">
-                {{ $params['round_efficiency'] ?? 0 }}%
-            </div>
-            <div style="color: #999; font-size: 0.85rem; margin-top: 5px;">Points / Max. Possible</div>
-        </div>
-        @endif
-        
         <!-- Stats par manche (afficher toutes les manches complétées jusqu'à maintenant) -->
         @if(!empty($params['round_summaries']))
         <div style="background: rgba(46, 204, 113, 0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">
@@ -219,7 +208,7 @@
                 </div>
                 
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.85rem; color: #666;">
-                    Points: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / {{ $roundStats['points_possible'] ?? 0 }}
+                    Points gagnés: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / Points possibles: <strong style="color: #333;">{{ $roundStats['points_possible'] ?? 0 }}</strong>
                 </div>
             </div>
             @endforeach

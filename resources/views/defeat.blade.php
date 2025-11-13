@@ -187,7 +187,7 @@
                 </div>
                 
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.85rem; color: #666;">
-                    Points: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / {{ $roundStats['points_possible'] ?? 0 }}
+                    Points gagnés: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / Points possibles: <strong style="color: #333;">{{ $roundStats['points_possible'] ?? 0 }}</strong>
                 </div>
             </div>
             @endforeach
@@ -215,34 +215,6 @@
                 <div class="stat-value">{{ $params['total_unanswered'] }}</div>
             </div>
         </div>
-        
-        @if(isset($params['stats_metrics']) && $params['stats_metrics'])
-        <div class="stats-grid" style="margin-top: 30px; border-top: 2px dashed #e0e0e0; padding-top: 30px;">
-            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <div class="stat-label">🎯 Efficacité Brute</div>
-                <div class="stat-value">{{ number_format($params['stats_metrics']['efficacite_brute'], 1) }}%</div>
-                <div style="font-size: 0.75rem; margin-top: 5px; opacity: 0.8;">Points / Questions</div>
-            </div>
-            
-            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <div class="stat-label">🙋 Participation</div>
-                <div class="stat-value">{{ number_format($params['stats_metrics']['taux_participation'], 1) }}%</div>
-                <div style="font-size: 0.75rem; margin-top: 5px; opacity: 0.8;">Buzzes / Total</div>
-            </div>
-            
-            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                <div class="stat-label">✅ Précision</div>
-                <div class="stat-value">{{ number_format($params['stats_metrics']['taux_precision'], 1) }}%</div>
-                <div style="font-size: 0.75rem; margin-top: 5px; opacity: 0.8;">Correct / Buzzes</div>
-            </div>
-            
-            <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                <div class="stat-label">⭐ Performance</div>
-                <div class="stat-value">{{ number_format($params['stats_metrics']['ratio_performance'], 1) }}%</div>
-                <div style="font-size: 0.75rem; margin-top: 5px; opacity: 0.8;">Points / Max Possible</div>
-            </div>
-        </div>
-        @endif
         
         <!-- Affichage des vies restantes -->
         @if(!$params['is_guest'])
