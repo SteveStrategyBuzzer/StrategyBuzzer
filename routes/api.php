@@ -18,6 +18,7 @@ Route::middleware('auth:sanctum')->prefix('duo')->group(function () {
     Route::get('/', [DuoController::class, 'index']);
     Route::post('/invite', [DuoController::class, 'invitePlayer']);
     Route::post('/find-random', [DuoController::class, 'findRandomOpponent']);
+    Route::get('/contacts', [DuoController::class, 'getContacts']);
     Route::post('/match/{match}/accept', [DuoController::class, 'acceptMatch']);
     Route::post('/match/{match}/cancel', [DuoController::class, 'cancelMatch']);
     Route::post('/match/{match}/buzz', [DuoController::class, 'buzz']);

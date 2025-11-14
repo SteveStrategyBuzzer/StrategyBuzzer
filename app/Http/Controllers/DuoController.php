@@ -9,6 +9,7 @@ use App\Services\DivisionService;
 use App\Services\GameStateService;
 use App\Services\BuzzManagerService;
 use App\Services\DuoFirestoreService;
+use App\Services\PlayerContactService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
@@ -20,7 +21,8 @@ class DuoController extends Controller
         private DivisionService $divisionService,
         private GameStateService $gameStateService,
         private BuzzManagerService $buzzManager,
-        private DuoFirestoreService $firestoreService
+        private DuoFirestoreService $firestoreService,
+        private PlayerContactService $contactService
     ) {}
 
     public function index()
@@ -345,6 +347,25 @@ class DuoController extends Controller
             $this->firestoreService->finishMatch($match->id, $matchResult['winner']);
             $this->firestoreService->deleteMatchSession($match->id);
 
+            $wasDecisiveRound = ($gameState['current_round'] ?? 1) === 3;
+            
+            $player1Won = $matchResult['winner'] === 'player1' ? true : ($matchResult['winner'] === 'player2' ? false : null);
+            $player2Won = $matchResult['winner'] === 'player2' ? true : ($matchResult['winner'] === 'player1' ? false : null);
+            
+            $this->contactService->addOrUpdateContact(
+                $match->player1_id,
+                $match->player2_id,
+                $player1Won,
+                $wasDecisiveRound
+            );
+            
+            $this->contactService->addOrUpdateContact(
+                $match->player2_id,
+                $match->player1_id,
+                $player2Won,
+                $wasDecisiveRound
+            );
+
             return response()->json([
                 'success' => true,
                 'match' => $finishedMatch->load(['player1', 'player2', 'winner']),
@@ -540,6 +561,17 @@ class DuoController extends Controller
         return response()->json([
             'success' => true,
             'invitations' => $invitations,
+        ]);
+    }
+
+    public function getContacts()
+    {
+        $user = Auth::user();
+        $contacts = $this->contactService->getContacts($user->id);
+
+        return response()->json([
+            'success' => true,
+            'contacts' => $contacts,
         ]);
     }
 }
