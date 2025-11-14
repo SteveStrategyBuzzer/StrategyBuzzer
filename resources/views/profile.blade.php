@@ -763,6 +763,19 @@
         </div>
       </div>
     </div>
+    
+    {{-- Script inline pour initialiser localStorage AVANT le chargement de app.blade.php --}}
+    <script>
+    (function() {
+      // Initialiser localStorage avec l'état serveur PHP si pas déjà défini
+      const savedAmbianceState = localStorage.getItem('ambient_music_enabled');
+      if (savedAmbianceState === null) {
+        // Utiliser l'état serveur PHP
+        const serverAmbianceState = {{ $ambianceOn ? 'true' : 'false' }};
+        localStorage.setItem('ambient_music_enabled', serverAmbianceState.toString());
+      }
+    })();
+    </script>
 
     {{-- Buzzer --}}
     <div class="sb-row" style="text-align:left;">
@@ -966,31 +979,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedState !== null) {
       chkAmb.checked = (savedState === 'true');
     }
+    // Note: L'initialisation localStorage est faite dans le script inline avant DOMContentLoaded
   }
 
   // Fonctions génériques pour Ambiance & Gameplay (adaptées pour les custom selectors)
   const updateAmbiance = () => {
+    const ambianceSelector = byId('ambiance-selector');
     if (chkAmb && selAmb) {
       if (chkAmb.checked) {
-        // Récupérer le label depuis le bouton toggle
+        // Afficher le sélecteur et récupérer le label
+        if (ambianceSelector) ambianceSelector.style.display = '';
         const toggleLabel = document.querySelector('#ambiance-selector .sb-selector-label');
         const labelText = toggleLabel ? toggleLabel.textContent : 'Classique';
         setTxt('apercu-ambiance', labelText);
       } else {
+        // Masquer le sélecteur quand désactivé
+        if (ambianceSelector) ambianceSelector.style.display = 'none';
         setTxt('apercu-ambiance', 'Désactivé');
       }
     }
   };
 
   const updateGameplay = () => {
+    const gameplaySelector = byId('gameplay-selector');
     const selGameplay = byId('sel-gameplay');
     if (chkGame && selGameplay) {
       if (chkGame.checked) {
-        // Récupérer le label depuis le bouton toggle
+        // Afficher le sélecteur et récupérer le label
+        if (gameplaySelector) gameplaySelector.style.display = '';
         const toggleLabel = document.querySelector('#gameplay-selector .sb-selector-label');
         const labelText = toggleLabel ? toggleLabel.textContent : 'StrategyBuzzer';
         setTxt('apercu-gameplay', labelText);
       } else {
+        // Masquer le sélecteur quand désactivé
+        if (gameplaySelector) gameplaySelector.style.display = 'none';
         setTxt('apercu-gameplay', 'Désactivé');
       }
     }
@@ -1211,13 +1233,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Initialiser les trois sélecteurs
-  const ambianceSelector = new AudioSelector('ambiance');
-  const gameplaySelector = new AudioSelector('gameplay');
-  const buzzerSelector = new AudioSelector('buzzer');
+  const ambianceSelectorObj = new AudioSelector('ambiance');
+  const gameplaySelectorObj = new AudioSelector('gameplay');
+  const buzzerSelectorObj = new AudioSelector('buzzer');
 
   // Initialisation au chargement
   updateAmbiance();
   updateGameplay();
+  
+  // Masquer initialement les sélecteurs si les checkboxes ne sont pas cochées
+  const ambianceSelectorEl = byId('ambiance-selector');
+  const gameplaySelectorEl = byId('gameplay-selector');
+  if (ambianceSelectorEl && chkAmb && !chkAmb.checked) {
+    ambianceSelectorEl.style.display = 'none';
+  }
+  if (gameplaySelectorEl && chkGame && !chkGame.checked) {
+    gameplaySelectorEl.style.display = 'none';
+  }
 });
 </script>
 
