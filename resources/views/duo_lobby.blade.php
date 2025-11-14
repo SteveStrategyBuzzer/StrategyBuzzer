@@ -38,12 +38,17 @@
                         INVITER
                     </button>
                 </div>
+                <button id="openContactsBtn" class="btn-contacts">
+                    📒 Carnet
+                </button>
             </div>
         </div>
 
-        <div class="pending-invitations" id="pendingInvitations" style="display: none;">
+        <div class="pending-invitations" id="pendingInvitations">
             <h3>📬 Invitations reçues</h3>
-            <div id="invitationsList"></div>
+            <div id="invitationsList">
+                <p class="no-invitations">Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement</p>
+            </div>
         </div>
     </div>
 
@@ -64,6 +69,21 @@
         <button onclick="window.location.href='{{ route('duo.rankings') }}'" class="btn-link">
             Voir le classement complet →
         </button>
+    </div>
+</div>
+
+<div id="contactsModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content contacts-modal">
+        <div class="modal-header">
+            <h2>📒 CARNET DE JOUEURS</h2>
+            <button class="modal-close" onclick="closeContactsModal()">&times;</button>
+        </div>
+        <button id="inviteSelectedBtn" class="btn-invite-selected" disabled>
+            INVITER LE JOUEUR SÉLECTIONNÉ
+        </button>
+        <div id="contactsList" class="contacts-list">
+            <p class="loading-contacts">Chargement...</p>
+        </div>
     </div>
 </div>
 
@@ -660,6 +680,217 @@
         padding: 8px;
     }
 }
+
+.btn-contacts {
+    margin-top: 15px;
+    width: 100%;
+    padding: 12px 20px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-contacts:hover {
+    background: #e0e0e0;
+}
+
+.no-invitations {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    margin: 10px 0;
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #1a1a1a;
+    font-size: 1.5em;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2em;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: #1a1a1a;
+}
+
+.btn-invite-selected {
+    margin: 15px 25px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-invite-selected:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-invite-selected:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.contacts-list {
+    overflow-y: auto;
+    padding: 10px 25px 25px 25px;
+}
+
+.contact-card {
+    border-bottom: 1px solid #e0e0e0;
+    padding: 15px 0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.contact-card:hover {
+    background: #f9f9f9;
+}
+
+.contact-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.contact-checkbox {
+    font-size: 1.5em;
+    color: #999;
+    min-width: 20px;
+}
+
+.contact-checkbox.selected {
+    color: #667eea;
+}
+
+.contact-info {
+    flex: 1;
+}
+
+.contact-name-code {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.contact-name {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.contact-code {
+    color: #999;
+    font-size: 0.9em;
+}
+
+.contact-stats {
+    color: #666;
+    font-size: 0.95em;
+}
+
+.contact-details {
+    margin-top: 10px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    display: none;
+}
+
+.contact-details.expanded {
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+    }
+}
+
+.contact-details h4 {
+    margin: 0 0 10px 0;
+    color: #667eea;
+    font-size: 0.9em;
+    text-transform: uppercase;
+}
+
+.contact-details p {
+    margin: 5px 0;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.loading-contacts {
+    text-align: center;
+    color: #999;
+    padding: 40px 0;
+}
+
+.no-contacts {
+    text-align: center;
+    color: #999;
+    padding: 40px 20px;
+}
 </style>
 
 <script>
@@ -739,18 +970,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayInvitations(invitations) {
-        const container = document.getElementById('pendingInvitations');
         const list = document.getElementById('invitationsList');
         
-        list.innerHTML = invitations.map(inv => `
-            <div class="invitation-item">
-                <span>${inv.from_player.name} vous invite</span>
-                <button onclick="acceptInvitation(${inv.match_id})" class="btn-accept">Accepter</button>
-                <button onclick="declineInvitation(${inv.match_id})" class="btn-decline">Refuser</button>
-            </div>
-        `).join('');
-        
-        container.style.display = 'block';
+        if (invitations.length === 0) {
+            list.innerHTML = '<p class="no-invitations">Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement</p>';
+        } else {
+            list.innerHTML = invitations.map(inv => `
+                <div class="invitation-item">
+                    <span>${inv.from_player.name} vous invite</span>
+                    <button onclick="acceptInvitation(${inv.match_id})" class="btn-accept">Accepter</button>
+                    <button onclick="declineInvitation(${inv.match_id})" class="btn-decline">Refuser</button>
+                </div>
+            `).join('');
+        }
     }
 
     checkInvitations();
@@ -777,5 +1009,153 @@ function declineInvitation(matchId) {
     // TODO: Implémenter le refus d'invitation
     location.reload();
 }
+
+let selectedContactId = null;
+
+function openContactsModal() {
+    document.getElementById('contactsModal').style.display = 'flex';
+    loadContacts();
+}
+
+function closeContactsModal() {
+    document.getElementById('contactsModal').style.display = 'none';
+    selectedContactId = null;
+    updateInviteButton();
+}
+
+function loadContacts() {
+    const contactsList = document.getElementById('contactsList');
+    contactsList.innerHTML = '<p class="loading-contacts">Chargement...</p>';
+
+    fetch('/api/duo/contacts', {
+        headers: {
+            'Authorization': 'Bearer ' + document.querySelector('meta[name="auth-token"]')?.content,
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.contacts.length > 0) {
+            displayContacts(data.contacts);
+        } else {
+            contactsList.innerHTML = '<p class="no-contacts">Aucun contact pour le moment.<br>Jouez des parties Duo pour créer votre carnet !</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading contacts:', error);
+        contactsList.innerHTML = '<p class="no-contacts">Erreur lors du chargement des contacts.</p>';
+    });
+}
+
+function displayContacts(contacts) {
+    const contactsList = document.getElementById('contactsList');
+    
+    contactsList.innerHTML = contacts.map(contact => `
+        <div class="contact-card" data-contact-id="${contact.id}">
+            <div class="contact-header" onclick="toggleContactSelection(${contact.id})">
+                <div class="contact-checkbox" id="checkbox-${contact.id}">☐</div>
+                <div class="contact-info">
+                    <div class="contact-name-code">
+                        <span class="contact-name">${contact.name}</span>
+                        <span class="contact-code">${contact.player_code}</span>
+                    </div>
+                    <div class="contact-stats">
+                        ⭐ Niveau ${contact.level} | 🏆 ${contact.division} (#${contact.division_rank})
+                    </div>
+                </div>
+            </div>
+            <div class="contact-details" id="details-${contact.id}">
+                <h4>👤 STATS PERSONNELLES DUO</h4>
+                <p>📊 Efficacité: ${contact.duo_efficiency}%</p>
+                <p>🎮 Parties totales: ${contact.duo_total_matches}</p>
+                <p>🏆 Bilan global: ${contact.duo_wins}V - ${contact.duo_losses}D</p>
+                
+                <h4 style="margin-top: 15px;">🤝 CONTRE VOUS</h4>
+                <p>🏆 Bilan: ${contact.matches_won}V - ${contact.matches_lost}D (${contact.win_rate}%)</p>
+                <p>🎮 Parties jouées: ${contact.matches_played_together}</p>
+                <p>⚡ Manches Décisives: ${contact.decisive_rounds_stats}</p>
+                <p>⏱️ Dernière partie: ${contact.last_played_at}</p>
+            </div>
+        </div>
+    `).join('');
+
+    document.querySelectorAll('.contact-card').forEach(card => {
+        card.querySelector('.contact-header').addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            toggleContactDetails(card.dataset.contactId);
+        });
+    });
+}
+
+function toggleContactSelection(contactId) {
+    if (selectedContactId === contactId) {
+        selectedContactId = null;
+        document.getElementById(`checkbox-${contactId}`).textContent = '☐';
+        document.getElementById(`checkbox-${contactId}`).classList.remove('selected');
+    } else {
+        if (selectedContactId) {
+            document.getElementById(`checkbox-${selectedContactId}`).textContent = '☐';
+            document.getElementById(`checkbox-${selectedContactId}`).classList.remove('selected');
+        }
+        selectedContactId = contactId;
+        document.getElementById(`checkbox-${contactId}`).textContent = '☑';
+        document.getElementById(`checkbox-${contactId}`).classList.add('selected');
+    }
+    updateInviteButton();
+}
+
+function toggleContactDetails(contactId) {
+    const details = document.getElementById(`details-${contactId}`);
+    details.classList.toggle('expanded');
+}
+
+function updateInviteButton() {
+    const inviteBtn = document.getElementById('inviteSelectedBtn');
+    inviteBtn.disabled = !selectedContactId;
+}
+
+function inviteSelectedContact() {
+    if (!selectedContactId) return;
+
+    const contact = Array.from(document.querySelectorAll('.contact-card'))
+        .find(card => card.dataset.contactId == selectedContactId);
+    
+    if (!contact) return;
+
+    const playerCode = contact.querySelector('.contact-code').textContent;
+
+    fetch('{{ route("duo.invite") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ player_code: playerCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Invitation envoyée !');
+            closeContactsModal();
+        } else {
+            alert(data.message || 'Erreur lors de l\'invitation');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur de connexion');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('openContactsBtn').addEventListener('click', openContactsModal);
+    document.getElementById('inviteSelectedBtn').addEventListener('click', inviteSelectedContact);
+    
+    document.getElementById('contactsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeContactsModal();
+        }
+    });
+});
 </script>
 @endsection
