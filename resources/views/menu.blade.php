@@ -185,7 +185,7 @@
         }
     }
 
-    /* Mobile Paysage (orientation horizontale) - Disposition 3 colonnes (3-4-3) */
+    /* Mobile Paysage (orientation horizontale) - Grille 3×3 + Quêtes Quotidiennes centré */
     @media (max-height: 500px) and (orientation: landscape) {
         .menu-scene {
             padding: 4px;
@@ -214,21 +214,23 @@
             margin-bottom: 3px;
         }
 
-        /* Colonne gauche - 3 onglets */
+        /* Grille 3×3 - Ligne 1 */
         .menu-link:nth-of-type(1) { grid-column: 1; grid-row: 2; }
-        .menu-link:nth-of-type(2) { grid-column: 1; grid-row: 3; }
-        .menu-link:nth-of-type(3) { grid-column: 1; grid-row: 4; }
+        .menu-link:nth-of-type(2) { grid-column: 2; grid-row: 2; }
+        .menu-link:nth-of-type(3) { grid-column: 3; grid-row: 2; }
 
-        /* Colonne centre - 4 onglets (2 en haut alignés, 2 en bas alignés) */
-        .menu-link:nth-of-type(4) { grid-column: 2; grid-row: 2; }
+        /* Grille 3×3 - Ligne 2 */
+        .menu-link:nth-of-type(4) { grid-column: 1; grid-row: 3; }
         .menu-link:nth-of-type(5) { grid-column: 2; grid-row: 3; }
-        .menu-link:nth-of-type(6) { grid-column: 2; grid-row: 4; }
-        .menu-link:nth-of-type(7) { grid-column: 2; grid-row: 5; }
+        .menu-link:nth-of-type(6) { grid-column: 3; grid-row: 3; }
 
-        /* Colonne droite - 3 onglets */
-        .menu-link:nth-of-type(8) { grid-column: 3; grid-row: 2; }
-        .menu-link:nth-of-type(9) { grid-column: 3; grid-row: 3; }
-        .menu-link:nth-of-type(10) { grid-column: 3; grid-row: 4; }
+        /* Grille 3×3 - Ligne 3 */
+        .menu-link:nth-of-type(7) { grid-column: 1; grid-row: 4; }
+        .menu-link:nth-of-type(8) { grid-column: 2; grid-row: 4; }
+        .menu-link:nth-of-type(9) { grid-column: 3; grid-row: 4; }
+
+        /* Quêtes Quotidiennes - Centré en dessous */
+        .menu-link:nth-of-type(10) { grid-column: 1 / -1; grid-row: 5; }
 
         .menu-link {
             padding: 6px 4px;
@@ -262,7 +264,7 @@
         }
     }
 
-    /* Tablettes Paysage - Disposition 3 colonnes (3-4-3) */
+    /* Tablettes Paysage - Grille 3×3 + Quêtes Quotidiennes centré */
     @media (min-width: 481px) and (max-width: 1024px) and (orientation: landscape) {
         .menu-scene {
             padding: 12px;
@@ -283,21 +285,23 @@
             margin-bottom: 10px;
         }
 
-        /* Colonne gauche - 3 onglets */
+        /* Grille 3×3 - Ligne 1 */
         .menu-link:nth-of-type(1) { grid-column: 1; grid-row: 2; }
-        .menu-link:nth-of-type(2) { grid-column: 1; grid-row: 3; }
-        .menu-link:nth-of-type(3) { grid-column: 1; grid-row: 4; }
+        .menu-link:nth-of-type(2) { grid-column: 2; grid-row: 2; }
+        .menu-link:nth-of-type(3) { grid-column: 3; grid-row: 2; }
 
-        /* Colonne centre - 4 onglets centrés verticalement */
-        .menu-link:nth-of-type(4) { grid-column: 2; grid-row: 2; }
+        /* Grille 3×3 - Ligne 2 */
+        .menu-link:nth-of-type(4) { grid-column: 1; grid-row: 3; }
         .menu-link:nth-of-type(5) { grid-column: 2; grid-row: 3; }
-        .menu-link:nth-of-type(6) { grid-column: 2; grid-row: 4; }
-        .menu-link:nth-of-type(7) { grid-column: 2; grid-row: 5; }
+        .menu-link:nth-of-type(6) { grid-column: 3; grid-row: 3; }
 
-        /* Colonne droite - 3 onglets */
-        .menu-link:nth-of-type(8) { grid-column: 3; grid-row: 2; }
-        .menu-link:nth-of-type(9) { grid-column: 3; grid-row: 3; }
-        .menu-link:nth-of-type(10) { grid-column: 3; grid-row: 4; }
+        /* Grille 3×3 - Ligne 3 */
+        .menu-link:nth-of-type(7) { grid-column: 1; grid-row: 4; }
+        .menu-link:nth-of-type(8) { grid-column: 2; grid-row: 4; }
+        .menu-link:nth-of-type(9) { grid-column: 3; grid-row: 4; }
+
+        /* Quêtes Quotidiennes - Centré en dessous */
+        .menu-link:nth-of-type(10) { grid-column: 1 / -1; grid-row: 5; }
 
         .menu-link {
             font-size: 0.95rem;
@@ -356,11 +360,6 @@
         </a>
 
         <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('quetes-quotidiennes') ? route('quetes-quotidiennes') : url('/quetes-quotidiennes') }}">
-            QUÊTES QUOTIDIENNES
-        </a>
-
-        <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('boutique') ? route('boutique') : url('/boutique') }}">
             BOUTIQUE
         </a>
@@ -368,6 +367,11 @@
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('reglements') ? route('reglements') : url('/reglements') }}">
             RÈGLEMENTS
+        </a>
+
+        <a class="menu-link"
+           href="{{ \Illuminate\Support\Facades\Route::has('quetes-quotidiennes') ? route('quetes-quotidiennes') : url('/quetes-quotidiennes') }}">
+            QUÊTES QUOTIDIENNES
         </a>
     </div>
 </div>
