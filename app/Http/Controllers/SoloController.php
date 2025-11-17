@@ -385,7 +385,27 @@ class SoloController extends Controller
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
             $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers);
+            
+            // DEBUG Bug #1: Log la question fraîchement générée
+            \Log::info('[BUG#1 DEBUG] Question AFTER generation:', [
+                'id' => $question['id'] ?? 'no-id',
+                'text' => $question['text'] ?? 'no-text',
+                'answers' => $question['answers'] ?? [],
+                'correct_index' => $question['correct_index'] ?? -1,
+                'correct_answer' => isset($question['answers'], $question['correct_index']) ? $question['answers'][$question['correct_index']] : 'N/A',
+            ]);
+            
             session(['current_question' => $question]);
+            
+            // DEBUG Bug #1: Log ce qui est stocké en session
+            $stored = session('current_question');
+            \Log::info('[BUG#1 DEBUG] Question AFTER session write:', [
+                'id' => $stored['id'] ?? 'no-id',
+                'text' => $stored['text'] ?? 'no-text',
+                'answers' => $stored['answers'] ?? [],
+                'correct_index' => $stored['correct_index'] ?? -1,
+                'correct_answer' => isset($stored['answers'], $stored['correct_index']) ? $stored['answers'][$stored['correct_index']] : 'N/A',
+            ]);
             
             // Ajouter l'ID de la question aux questions utilisées
             $usedQuestionIds[] = $question['id'];
@@ -407,6 +427,15 @@ class SoloController extends Controller
             QuestionHistory::recordQuestion($user->id, $question);
         } else {
             $question = session('current_question');
+            
+            // DEBUG Bug #1: Log la question récupérée depuis session
+            \Log::info('[BUG#1 DEBUG] Question FROM session (already exists):', [
+                'id' => $question['id'] ?? 'no-id',
+                'text' => $question['text'] ?? 'no-text',
+                'answers' => $question['answers'] ?? [],
+                'correct_index' => $question['correct_index'] ?? -1,
+                'correct_answer' => isset($question['answers'], $question['correct_index']) ? $question['answers'][$question['correct_index']] : 'N/A',
+            ]);
         }
         
         // Calculer le temps de chrono de base (4-8 secondes selon niveau)
@@ -420,6 +449,15 @@ class SoloController extends Controller
         
         // Récupérer les informations complètes de l'adversaire
         $opponentInfo = $this->getOpponentInfo($niveau);
+        
+        // DEBUG Bug #1: Log la question AVANT passage à la vue
+        \Log::info('[BUG#1 DEBUG] Question BEFORE view render:', [
+            'id' => $question['id'] ?? 'no-id',
+            'text' => $question['text'] ?? 'no-text',
+            'answers' => $question['answers'] ?? [],
+            'correct_index' => $question['correct_index'] ?? -1,
+            'correct_answer' => isset($question['answers'], $question['correct_index']) ? $question['answers'][$question['correct_index']] : 'N/A',
+        ]);
         
         $params = [
             'question' => $question,
