@@ -1507,11 +1507,13 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer l'efficacité de la manche (clamped entre -100 et 100)
+        // Calculer l'efficacité de la manche avec formule (efficacité_brute + 100%) / 2
         $efficiency = 0;
         if ($pointsPossible > 0) {
-            $efficiency = ($pointsEarned / $pointsPossible) * 100;
-            $efficiency = max(-100, min(100, $efficiency)); // Clamp entre -100 et 100
+            $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
+            $rawEfficiency = max(-100, min(100, $rawEfficiency)); // Clamp entre -100 et 100
+            // Transformer échelle -100/+100 en 0/100 avec formule utilisateur
+            $efficiency = ($rawEfficiency + 100) / 2;
             $efficiency = round($efficiency, 2);
         }
         
@@ -1566,12 +1568,14 @@ class SoloController extends Controller
         }
         
         if ($pointsPossible > 0) {
-            $efficiency = ($pointsEarned / $pointsPossible) * 100;
-            $efficiency = max(-100, min(100, $efficiency)); // Clamp entre -100 et 100
+            $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
+            $rawEfficiency = max(-100, min(100, $rawEfficiency)); // Clamp entre -100 et 100
+            // Transformer échelle -100/+100 en 0/100 avec formule (efficacité_brute + 100%) / 2
+            $efficiency = ($rawEfficiency + 100) / 2;
             return round($efficiency, 2);
         }
         
-        return 0;
+        return 50; // 50% = neutre (0% brut transformé)
     }
 
     public function cancelError(Request $request)
