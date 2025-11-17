@@ -30,7 +30,7 @@
 
 /* Standards mini-carousel */
 .std-card{padding:12px}
-.std-viewport{overflow:hidden;max-width:1100px;margin:0 auto}
+.std-viewport{overflow-x:auto;max-width:1100px;margin:0 auto;-webkit-overflow-scrolling:touch}
 .std-track{display:flex;gap:10px;will-change:transform}
 .std-thumb{width:90px;height:90px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#0f1530;flex:0 0 90px;cursor:pointer;position:relative}
 .std-thumb img{width:100%;height:100%;object-fit:cover;display:block}

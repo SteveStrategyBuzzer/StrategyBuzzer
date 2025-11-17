@@ -20,7 +20,17 @@ class ProfileController extends Controller
             'show_online' => true,
             'language' => 'Français',
             'country' => '',
-            'sound' => ['ambiance' => true,'buzzer' => true,'results' => true,'buzzer_id' => null,'music_id' => null], // Gameplay activé par défaut
+            // BUG FIX #4/#8: Valeurs par défaut pour musique activée avec pistes sélectionnées
+            'sound' => [
+                'ambiance' => true,
+                'buzzer' => true,
+                'results' => true, // Gameplay activé par défaut
+                'buzzer_id' => 'buzzer_default_1', // Par défaut: Buzzer 1
+                'music_id' => 'strategybuzzer',    // Par défaut: StrategyBuzzer Ambiance
+            ],
+            'gameplay' => [
+                'music_id' => 'strategybuzzer',    // Par défaut: StrategyBuzzer Gameplay
+            ],
             'theme' => ['style' => 'Classique','decor' => null],
         ];
     }

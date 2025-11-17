@@ -63,9 +63,10 @@
     $buzzerOn   = (bool) data_get($s, 'sound.buzzer', true);
     $resultsOn  = (bool) data_get($s, 'sound.results', true); // Gameplay activé par défaut
 
-    $buzzerId = data_get($s, 'sound.buzzer_id');
-    $musicId  = data_get($s, 'sound.music_id');
-    $gameplayMusicId = data_get($s, 'gameplay.music_id', $musicId); // Musique gameplay (par défaut = ambiance)
+    // BUG FIX #8: Valeurs par défaut pour les nouveaux comptes
+    $buzzerId = data_get($s, 'sound.buzzer_id', 'buzzer_default_1'); // Par défaut: Buzzer 1
+    $musicId  = data_get($s, 'sound.music_id', 'strategybuzzer');     // Par défaut: StrategyBuzzer
+    $gameplayMusicId = data_get($s, 'gameplay.music_id', $musicId ?: 'strategybuzzer'); // Par défaut = ambiance ou StrategyBuzzer
     $theme    = data_get($s, 'theme.style', 'Classique');
 
     $unlockedBuzzers = data_get($s, 'unlocked.buzzers', []) ?: [

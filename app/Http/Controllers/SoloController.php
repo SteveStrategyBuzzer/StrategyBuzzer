@@ -833,6 +833,13 @@ class SoloController extends Controller
                 // NE PAS réinitialiser session_used_answers (doublons réponses interdits dans toute la partie)
             ]);
             
+            // BUG FIX #7: Nettoyer la question actuelle pour éviter qu'elle réapparaisse dans la nouvelle manche
+            session()->forget('current_question');
+            session()->forget('question_start_time');
+            session()->forget('chrono_time');
+            session()->forget('buzzed');
+            session()->forget('buzz_time');
+            
             // Rediriger vers une page de transition de manche
             return redirect()->route('solo.round-result');
         }

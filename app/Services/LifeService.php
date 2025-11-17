@@ -29,6 +29,15 @@ class LifeService
         if (!$user) {
             return;
         }
+        
+        // BUG FIX #2: Garantir que les vies ne dépassent jamais le maximum (même rétroactivement)
+        $currentLives = (int) ($user->lives ?? 0);
+        if ($currentLives > $this->maxLives()) {
+            $user->lives = $this->maxLives();
+            $user->next_life_regen = null;
+            $user->save();
+            return;
+        }
 
         // Init si vide
         if (!$user->next_life_regen) {
@@ -40,7 +49,8 @@ class LifeService
         // Si l'heure est atteinte et qu'on n'est pas au max
         $currentLives = (int) ($user->lives ?? 0);
         if (now()->greaterThanOrEqualTo($user->next_life_regen) && $currentLives < $this->maxLives()) {
-            $user->lives = $currentLives + 1;
+            // BUG FIX #2: S'assurer de ne jamais dépasser le maximum
+            $user->lives = min($currentLives + 1, $this->maxLives());
             
             // Si on n'est toujours pas au max après la régénération, redémarrer le cooldown
             if ($user->lives < $this->maxLives()) {
