@@ -1568,6 +1568,15 @@ class SoloController extends Controller
         $currentScore = session('score', 0);
         session(['score' => $currentScore + $pointsToRecover]);
         
+        // BUG FIX #9: Mettre à jour AUSSI answered_questions pour que l'affichage soit correct
+        $answeredQuestions = session('answered_questions', []);
+        $answeredLastIndex = count($answeredQuestions) - 1;
+        if ($answeredLastIndex >= 0) {
+            $answeredQuestions[$answeredLastIndex]['player_points'] = 0;
+            $answeredQuestions[$answeredLastIndex]['skill_adjusted'] = true;
+            session(['answered_questions' => $answeredQuestions]);
+        }
+        
         $globalStats[$lastIndex]['player_points'] = 0;
         $globalStats[$lastIndex]['skill_adjusted'] = true;
         session(['global_stats' => $globalStats]);
