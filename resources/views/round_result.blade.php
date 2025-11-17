@@ -242,6 +242,49 @@
             </div>
         </div>
         
+        <!-- Skills utilisés -->
+        @php
+            $avatar = session('avatar', 'Aucun');
+            $bonusResult = session('bonus_question_result', null);
+            $cancelErrorUsed = in_array('cancel_error', session('used_skills', []));
+        @endphp
+        
+        @if($avatar === 'Magicienne')
+        <div style="background: rgba(155, 89, 182, 0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">✨ Skills utilisés</div>
+            
+            @if($bonusResult)
+                <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #666;">💫 Question Bonus</span>
+                        @if($bonusResult['answered'])
+                            <strong style="color: {{ $bonusResult['points'] > 0 ? '#2ECC71' : ($bonusResult['points'] < 0 ? '#E74C3C' : '#95a5a6') }}; font-size: 1.2rem;">
+                                {{ $bonusResult['points'] > 0 ? '+' : '' }}{{ $bonusResult['points'] }} points
+                            </strong>
+                        @else
+                            <strong style="color: #95a5a6; font-size: 1.2rem;">0 point</strong>
+                        @endif
+                    </div>
+                </div>
+            @endif
+            
+            @if($cancelErrorUsed)
+                <div style="background: white; padding: 15px; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #666;">✨ Annule erreur</span>
+                        <strong style="color: #2ECC71; font-size: 1.2rem;">Utilisé</strong>
+                    </div>
+                </div>
+            @endif
+            
+            @if(!$bonusResult && !$cancelErrorUsed)
+                <div style="background: white; padding: 15px; border-radius: 10px; text-align: center; color: #95a5a6;">
+                    Aucun
+                </div>
+            @endif
+        </div>
+        @endif
+        
         <div style="color: #666; margin: 20px 0;">
             Prochaine manche : <strong>{{ $params['nb_questions'] }} questions</strong>
         </div>

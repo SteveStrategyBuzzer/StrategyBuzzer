@@ -1396,6 +1396,11 @@ class SoloController extends Controller
         $pointsPossible = 0;
         
         foreach ($globalStats as $stat) {
+            // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les stats globales
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                continue;  // Sauter les questions bonus
+            }
+            
             $totalQuestions++;
             $pointsPossible += 2;
             
@@ -1448,6 +1453,11 @@ class SoloController extends Controller
         $pointsPossible = 0;
         
         foreach ($roundStats as $stat) {
+            // FILTRER LES QUESTIONS BONUS : ne pas les compter dans le total
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                continue;  // Sauter les questions bonus
+            }
+            
             $questions++;
             
             // Calculer le maximum de points possibles pour cette question
@@ -1505,6 +1515,11 @@ class SoloController extends Controller
         $pointsPossible = 0;
         
         foreach ($stats as $stat) {
+            // FILTRER LES QUESTIONS BONUS : ne pas les compter dans le calcul d'efficacité
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                continue;  // Sauter les questions bonus
+            }
+            
             // Calculer le maximum de points possibles pour cette question
             // Si adversaire a buzzé en premier → max = 1 pt, sinon max = 2 pts
             $maxPointsForQuestion = (isset($stat['opponent_faster']) && $stat['opponent_faster']) ? 1 : 2;
@@ -1678,9 +1693,30 @@ class SoloController extends Controller
         $currentScore = session('score', 0);
         session(['score' => $currentScore + $points]);
         
+        // Enregistrer la question bonus dans global_stats avec flag is_bonus
+        $currentRound = session('current_round', 1);
+        $globalStats = session('global_stats', []);
+        $globalStats[] = [
+            'is_correct' => $isCorrect,
+            'player_buzzed' => $answerIndex >= 0,
+            'player_points' => $points,
+            'opponent_buzzed' => false,
+            'opponent_faster' => false,
+            'round' => $currentRound,
+            'is_bonus' => true,  // FLAG POUR IDENTIFIER LES QUESTIONS BONUS
+        ];
+        session(['global_stats' => $globalStats]);
+        
         $usedSkills = session('used_skills', []);
         $usedSkills[] = 'bonus_question';
         session(['used_skills' => $usedSkills]);
+        
+        // Sauvegarder le résultat du bonus pour affichage ultérieur
+        session(['bonus_question_result' => [
+            'points' => $points,
+            'is_correct' => $isCorrect,
+            'answered' => $answerIndex >= 0
+        ]]);
         
         session()->forget('bonus_question');
         session()->forget('bonus_question_start_time');
