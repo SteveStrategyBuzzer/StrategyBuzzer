@@ -615,6 +615,7 @@ class SoloController extends Controller
             'opponent_faster' => $opponentBehavior['is_faster'],  // Nécessaire pour calculer max points possible
             'opponent_correct' => $opponentBehavior['is_correct'],
             'round' => session('current_round', 1),
+            'is_bonus' => false,  // Marquer explicitement comme question normale (pas bonus)
         ];
         session(['global_stats' => $globalStats]);
         
@@ -666,8 +667,16 @@ class SoloController extends Controller
         $totalCorrect = 0;
         $totalIncorrect = 0;
         $totalUnanswered = 0;
+        $totalQuestionsPlayed = 0;
         
         foreach ($globalStats as $stat) {
+            // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                continue;
+            }
+            
+            $totalQuestionsPlayed++;
+            
             if (!$stat['player_buzzed']) {
                 $totalUnanswered++;
             } elseif ($stat['is_correct']) {
@@ -677,8 +686,6 @@ class SoloController extends Controller
             }
         }
         
-        // Utiliser le nombre réel de questions jouées (comptage exact)
-        $totalQuestionsPlayed = count($globalStats);
         // Calculer l'efficacité basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
 
@@ -906,8 +913,16 @@ class SoloController extends Controller
         $totalCorrect = 0;
         $totalIncorrect = 0;
         $totalUnanswered = 0;
+        $totalQuestionsPlayed = 0;
         
         foreach ($globalStats as $stat) {
+            // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                continue;
+            }
+            
+            $totalQuestionsPlayed++;
+            
             if (!$stat['player_buzzed']) {
                 $totalUnanswered++;
             } elseif ($stat['is_correct']) {
@@ -917,8 +932,6 @@ class SoloController extends Controller
             }
         }
         
-        // Utiliser le nombre réel de questions jouées (comptage exact)
-        $totalQuestionsPlayed = count($globalStats);
         // Calculer l'efficacité globale basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
         
@@ -1013,8 +1026,16 @@ class SoloController extends Controller
         $totalCorrect = 0;
         $totalIncorrect = 0;
         $totalUnanswered = 0;
+        $totalQuestionsPlayed = 0;
         
         foreach ($globalStats as $stat) {
+            // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                continue;
+            }
+            
+            $totalQuestionsPlayed++;
+            
             if (!$stat['player_buzzed']) {
                 $totalUnanswered++;
             } elseif ($stat['is_correct']) {
@@ -1024,8 +1045,6 @@ class SoloController extends Controller
             }
         }
         
-        // Utiliser le nombre réel de questions jouées (comptage exact)
-        $totalQuestionsPlayed = count($globalStats);
         // Calculer l'efficacité globale basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
         
@@ -1145,8 +1164,16 @@ class SoloController extends Controller
         $totalCorrect = 0;
         $totalIncorrect = 0;
         $totalUnanswered = 0;
+        $totalQuestionsPlayed = 0;
         
         foreach ($globalStats as $stat) {
+            // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                continue;
+            }
+            
+            $totalQuestionsPlayed++;
+            
             if (!$stat['player_buzzed']) {
                 $totalUnanswered++;
             } elseif ($stat['is_correct']) {
@@ -1156,8 +1183,6 @@ class SoloController extends Controller
             }
         }
         
-        // Utiliser le nombre réel de questions jouées (comptage exact)
-        $totalQuestionsPlayed = count($globalStats);
         // Calculer l'efficacité globale basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
         
