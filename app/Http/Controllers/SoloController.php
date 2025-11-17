@@ -1494,6 +1494,7 @@ class SoloController extends Controller
             // Utiliser les points RÉELS si disponibles
             if (isset($stat['player_points'])) {
                 $pointsEarned += $stat['player_points'];
+                Log::info("Manche {$roundNumber} - Q#{$questions}: pts={$stat['player_points']}, buzzed=" . ($stat['player_buzzed'] ? '1' : '0') . ", correct=" . ($stat['is_correct'] ? '1' : '0') . ", skill=" . (isset($stat['skill_adjusted']) ? '1' : '0') . " | Total cumulé: {$pointsEarned}");
             }
             
             if (!$stat['player_buzzed']) {
