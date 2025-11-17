@@ -1608,15 +1608,20 @@ class SoloController extends Controller
         $currentScore = session('score', 0);
         session(['score' => $currentScore + $pointsToRecover]);
         
-        // BUG FIX #9: Mettre à jour AUSSI answered_questions pour que l'affichage soit correct
+        // BUG FIX #9 & #14: Transformer l'échec en "sans réponse" (annuler complètement l'action)
         $answeredQuestions = session('answered_questions', []);
         $answeredLastIndex = count($answeredQuestions) - 1;
         if ($answeredLastIndex >= 0) {
+            $answeredQuestions[$answeredLastIndex]['player_buzzed'] = false;  // Plus de buzz
+            $answeredQuestions[$answeredLastIndex]['is_correct'] = false;      // Plus correct
             $answeredQuestions[$answeredLastIndex]['player_points'] = 0;
             $answeredQuestions[$answeredLastIndex]['skill_adjusted'] = true;
             session(['answered_questions' => $answeredQuestions]);
         }
         
+        // Transformer aussi dans global_stats
+        $globalStats[$lastIndex]['player_buzzed'] = false;  // Maintenant compté comme "sans réponse"
+        $globalStats[$lastIndex]['is_correct'] = false;
         $globalStats[$lastIndex]['player_points'] = 0;
         $globalStats[$lastIndex]['skill_adjusted'] = true;
         session(['global_stats' => $globalStats]);
