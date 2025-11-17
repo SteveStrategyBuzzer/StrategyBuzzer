@@ -1508,11 +1508,12 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer l'efficacité : moyenne entre (% bonnes réponses) et 100%
-        $efficiency = 0;
-        if ($questions > 0) {
-            // Efficacité brute = % de bonnes réponses
-            $rawEfficiency = ($correct / $questions) * 100;
+        // Calculer l'efficacité : (points_gagnés / max_possible) puis moyenne avec 100%
+        $efficiency = 50; // Défaut si pas de questions
+        if ($pointsPossible > 0) {
+            // Efficacité brute = (points gagnés / max possible) × 100
+            $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
+            $rawEfficiency = max(-100, min(100, $rawEfficiency));
             // Efficacité finale = moyenne entre efficacité brute et 100%
             $efficiency = ($rawEfficiency + 100) / 2;
             $efficiency = round($efficiency, 2);
