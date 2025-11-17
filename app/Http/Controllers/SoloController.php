@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Services\QuestService;
 use App\Services\StatisticsService;
 use App\Services\AnswerNormalizationService;
@@ -1507,12 +1508,12 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer l'efficacité de la manche avec formule (efficacité_brute + 100%) / 2
+        // Calculer l'efficacité : moyenne entre (% bonnes réponses) et 100%
         $efficiency = 0;
-        if ($pointsPossible > 0) {
-            $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
-            $rawEfficiency = max(-100, min(100, $rawEfficiency)); // Clamp entre -100 et 100
-            // Transformer échelle -100/+100 en 0/100 avec formule utilisateur
+        if ($questions > 0) {
+            // Efficacité brute = % de bonnes réponses
+            $rawEfficiency = ($correct / $questions) * 100;
+            // Efficacité finale = moyenne entre efficacité brute et 100%
             $efficiency = ($rawEfficiency + 100) / 2;
             $efficiency = round($efficiency, 2);
         }
