@@ -15,8 +15,7 @@ class FixOverflowLives extends Command
     {
         $this->info('Starting overflow lives correction for all users...');
         
-        $lifeService = new LifeService();
-        $maxLives = $lifeService->getMaxLives();
+        $maxLives = (int) config('game.life_max', 5);
         
         $users = User::all();
         $fixedCount = 0;
@@ -27,6 +26,7 @@ class FixOverflowLives extends Command
             
             if ($currentLives > $maxLives) {
                 $user->lives = $maxLives;
+                $user->next_life_regen = null;  // Reset cooldown si on était au-dessus du max
                 $user->save();
                 
                 $this->line("Fixed user #{$user->id}: {$currentLives} → {$maxLives} lives");
