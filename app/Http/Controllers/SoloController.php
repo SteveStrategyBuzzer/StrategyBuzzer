@@ -835,22 +835,15 @@ class SoloController extends Controller
             }
             
             // Calculer l'efficacité de la manche qui vient de se terminer basée sur les points RÉELS
-            $answeredQuestions = session('answered_questions', []);
-            $nbQuestions = session('nb_questions', 30);
-            
-            // Utiliser les points RÉELS gagnés dans cette manche (peuvent être +2, +1, 0, ou -2)
-            $pointsEarned = 0;
-            foreach ($answeredQuestions as $answer) {
-                $pointsEarned += $answer['player_points'];
-            }
-            
-            // Points max possibles = nb_questions × 2
-            $pointsPossible = $nbQuestions * 2;
-            $roundEfficiency = $pointsPossible > 0 ? round(($pointsEarned / $pointsPossible) * 100, 2) : 0;
+            // BUG FIX #11: Utiliser calculateRoundStatistics() pour avoir les mêmes calculs partout
+            $currentRound = session('current_round', 1);
+            $roundStats = $this->calculateRoundStatistics($currentRound);
+            $roundEfficiency = $roundStats['efficiency'];
+            $pointsEarned = $roundStats['points_earned'];
+            $pointsPossible = $roundStats['points_possible'];
             
             // Sauvegarder l'efficacité de cette manche dans un tableau
             $roundEfficiencies = session('round_efficiencies', []);
-            $currentRound = session('current_round', 1);
             $roundEfficiencies[$currentRound] = $roundEfficiency;
             session(['round_efficiencies' => $roundEfficiencies]);
             
