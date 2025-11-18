@@ -71,22 +71,28 @@ function getQuestionLengthConstraint(niveau) {
 }
 
 app.post('/generate-question', async (req, res) => {
-  try {
-    const { theme, niveau, questionNumber, usedAnswers = [] } = req.body;
-    
-    const themeLabel = THEMES_FR[theme] || 'culture générale';
-    const difficultyDesc = getDifficultyDescription(niveau);
-    const lengthConstraint = getQuestionLengthConstraint(niveau);
-    
-    // Créer un contexte pour éviter les réponses déjà utilisées
-    const usedAnswersContext = usedAnswers.length > 0
-      ? `\n\nRÉPONSES INTERDITES - La réponse correcte NE DOIT PAS être parmi ces réponses déjà utilisées:\n${usedAnswers.map(a => `- ${a}`).join('\n')}\nChoisis une réponse complètement différente.`
-      : '';
-    
-    // Décider aléatoirement entre question à choix multiple (80%) et vrai/faux (20%)
-    const isMultipleChoice = Math.random() > 0.2;
-    
-    const prompt = isMultipleChoice 
+  const MAX_RETRIES = 3;
+  
+  const { theme, niveau, questionNumber, usedAnswers = [] } = req.body;
+  
+  const themeLabel = THEMES_FR[theme] || 'culture générale';
+  const difficultyDesc = getDifficultyDescription(niveau);
+  const lengthConstraint = getQuestionLengthConstraint(niveau);
+  
+  // Créer un contexte pour éviter les réponses déjà utilisées
+  const usedAnswersContext = usedAnswers.length > 0
+    ? `\n\nRÉPONSES INTERDITES - La réponse correcte NE DOIT PAS être parmi ces réponses déjà utilisées:\n${usedAnswers.map(a => `- ${a}`).join('\n')}\nChoisis une réponse complètement différente.`
+    : '';
+  
+  // Boucle de retry pour régénérer automatiquement si validation échoue
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`🔄 Tentative ${attempt}/${MAX_RETRIES} de génération de question...`);
+      
+      // Décider aléatoirement entre question à choix multiple (80%) et vrai/faux (20%)
+      const isMultipleChoice = Math.random() > 0.2;
+      
+      const prompt = isMultipleChoice 
       ? `Tu es un générateur de questions de quiz en français. Génère UNE SEULE question unique de ${themeLabel} avec un niveau de difficulté ${difficultyDesc} (niveau ${niveau}/100).
 
 IMPORTANT:
@@ -99,22 +105,32 @@ IMPORTANT:
 - LONGUEUR: ${lengthConstraint}${usedAnswersContext}
 
 VALIDATION FACTUELLE STRICTE:
-- VÉRIFIE que la question et la réponse correcte sont VRAIES et EXACTES
+- VÉRIFIE que la question et la réponse correcte sont VRAIES et EXACTES à 100%
 - Pour les questions sur les animaux: vérifie les comportements, habitats, et caractéristiques réels
 - INTERDICTION ABSOLUE DES MOTS INVENTÉS:
   * Utilise UNIQUEMENT des noms d'animaux/plantes qui EXISTENT RÉELLEMENT
   * EXEMPLES DE MOTS INVENTÉS INTERDITS: "endurolâtre", "gaboulon", "hermite", "toupinel"
   * Avant d'utiliser un nom d'animal, VÉRIFIE qu'il existe dans la nature
   * En cas de DOUTE, utilise un animal/plante CONNU et COMMUN
-- EXEMPLES DE QUESTIONS INTERDITES (car factuellement fausses):
+
+- EXEMPLES DE QUESTIONS INTERDITES (car factuellement fausses ou imprécises):
+  * "Quel oiseau tisse son nid de fils colorés? → Le tisserin" (FAUX: le tisserin tisse mais PAS avec des fils colorés!)
+  * "Quel mammifère lézard se trouve en Australie? → L'ornithorynque" (INCORRECT: l'ornithorynque n'est PAS un "mammifère lézard", c'est un monotrème)
+  * "Quel animal est connu pour vivre dans les construits de boue?" (FRANÇAIS INCORRECT: dis "constructions" pas "construits")
   * "Quel animal fait son nid dans la boue? → singe" (FAUX: les singes ne font pas de nid dans la boue)
   * "Quel serpent change de couleur?" (FAUX: c'est le caméléon, pas un serpent)
-  * "Quel animal est connu pour se camoufler? → L'endurolâtre" (ABSURDE: mot inventé, n'existe pas!)
-  * "Quel animal construit avec du safran/hermite?" (ABSURDE: ces réponses n'ont aucun sens)
+  * "Quel animal est connu pour se camoufler? → L'endurolâtre" (ABSURDE: mot inventé!)
+  * "Quel animal construit avec du safran/hermite?" (ABSURDE: non-sens total)
   * "La girafe a une langue plus longue que son corps" (FAUX biologiquement impossible)
   * "Le cacatoès utilise l'urine pour se marquer" (FAUX: comportement inexistant)
   * "Le merle découvre son aliment grâce à son chant" (FAUX: le chant ne sert pas à trouver la nourriture)
   * "Les rats de champ sculptent des tunnels complexes" (IMPRÉCIS: ce sont les taupes ou les lapins)
+
+- RÈGLES LINGUISTIQUES:
+  * Utilise un FRANÇAIS PARFAIT: "constructions" (nom), pas "construits" (participe passé)
+  * Ne mélange JAMAIS des termes incompatibles: "mammifère lézard" est ABSURDE
+  * Utilise "animal" pour les questions générales, pas "insecte" ou "mammifère" si tu n'es pas sûr
+
 - RÈGLE D'OR: Si tu n'es PAS ABSOLUMENT CERTAIN à 100% qu'un fait est vrai, choisis un autre sujet
 - Les réponses doivent être des animaux/plantes RÉELS, CONNUS et VÉRIFIABLES
 - ÉVITE les questions sur des comportements animaux rares ou peu connus - reste sur des faits bien établis
@@ -236,6 +252,37 @@ RÈGLES STRICTES:
       }
     }
     
+    // VALIDATION FACTUELLE : Bloquer les questions factuellement incorrectes connues
+    const questionText = questionData.text.toLowerCase().trim();
+    const correctAnswerText = questionData.answers[questionData.correct_index]?.toLowerCase().trim() || '';
+    
+    // Patterns problématiques à rejeter
+    const invalidPatterns = [
+      // Combinaisons de termes incompatibles (avec support de tirets/slashes)
+      { pattern: /mammif[eè]re[\s\-\/]+l[ée]zard/i, reason: 'Combinaison de termes incompatibles (mammifère lézard)' },
+      { pattern: /reptile[\s\-\/]+mammif[eè]re/i, reason: 'Combinaison de termes incompatibles (reptile mammifère)' },
+      { pattern: /insecte[\s\-\/]+mammif[eè]re/i, reason: 'Combinaison de termes incompatibles (insecte mammifère)' },
+      { pattern: /oiseau[\s\-\/]+reptile/i, reason: 'Combinaison de termes incompatibles (oiseau reptile)' },
+      
+      // Formulations factuellement fausses connues
+      { pattern: /fils\s+color[ée]s/i, reason: 'Formulation imprécise ou fausse (fils colorés)' },
+      { pattern: /tiss[ée]\s+.*\s+fils\s+color[ée]s/i, reason: 'Formulation fausse (tisse avec fils colorés)' },
+      
+      // Erreurs de français
+      { pattern: /construits\s+de\s+/i, reason: 'Erreur de français (construits au lieu de constructions)' },
+      { pattern: /dans\s+les\s+construits(?!\s+par)/i, reason: 'Erreur de français (construits au lieu de constructions)' },
+      { pattern: /interpell[ée]\s+un\s+insecte?/i, reason: 'Erreur de français (interpelle un insect/insecte)' },
+    ];
+    
+    for (const { pattern, reason } of invalidPatterns) {
+      if (pattern.test(questionText) || pattern.test(correctAnswerText)) {
+        console.log(`⚠️ QUESTION REJETÉE : ${reason}`);
+        console.log(`   Question: "${questionData.text}"`);
+        console.log(`   Réponse: "${correctAnswerText}"`);
+        throw new Error(`Invalid question pattern: ${reason}`);
+      }
+    }
+    
     // VÉRIFICATION CRITIQUE : La réponse correcte ne doit PAS être dans usedAnswers
     const correctAnswer = questionData.answers[questionData.correct_index];
     if (correctAnswer && usedAnswers.length > 0) {
@@ -249,12 +296,26 @@ RÈGLES STRICTES:
       }
     }
     
-    console.log('Generated question:', questionData);
-    res.json(questionData);
-    
-  } catch (error) {
-    console.error('Error generating question:', error);
-    res.status(500).json({ error: 'Failed to generate question', details: error.message });
+      // Si toutes les validations passent, renvoyer la question
+      console.log(`✅ Question validée avec succès (tentative ${attempt})`, questionData);
+      return res.json(questionData);
+      
+    } catch (error) {
+      // Si une validation échoue, logger et réessayer
+      console.log(`❌ Tentative ${attempt}/${MAX_RETRIES} échouée:`, error.message);
+      
+      // Si c'est la dernière tentative, renvoyer l'erreur
+      if (attempt === MAX_RETRIES) {
+        console.error('🚫 Échec après', MAX_RETRIES, 'tentatives:', error);
+        return res.status(500).json({ 
+          error: 'Failed to generate valid question after retries', 
+          details: error.message 
+        });
+      }
+      
+      // Sinon, continuer la boucle pour réessayer
+      console.log(`🔄 Nouvelle tentative...`);
+    }
   }
 });
 

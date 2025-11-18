@@ -1802,7 +1802,8 @@ class SoloController extends Controller
         session()->forget('bonus_question');
         session()->forget('bonus_question_start_time');
         
-        return redirect()->route('solo.game')->with('bonus_result', [
+        // Rediriger vers nextQuestion() au lieu de solo.game pour éviter de générer une 11ème question
+        return redirect()->route('solo.next-question')->with('bonus_result', [
             'is_correct' => $isCorrect,
             'points' => $points,
             'time_elapsed' => $timeElapsed
