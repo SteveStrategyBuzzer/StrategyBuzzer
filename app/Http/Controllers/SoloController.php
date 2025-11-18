@@ -751,6 +751,15 @@ class SoloController extends Controller
         $currentQuestion = session('current_question_number', 1);
         $nbQuestions = session('nb_questions', 30);
         
+        // DEBUG: Log pour diagnostiquer le problème des 11 questions au lieu de 10
+        \Log::info('[BUG#3 DEBUG] nextQuestion() appelé:', [
+            'current_question_number' => $currentQuestion,
+            'nb_questions' => $nbQuestions,
+            'will_end_round' => ($currentQuestion >= $nbQuestions),
+            'global_stats_count' => count(session('global_stats', [])),
+            'answered_questions_count' => count(session('answered_questions', []))
+        ]);
+        
         // SYSTÈME BEST OF 3 : Vérifier si la manche est terminée
         if ($currentQuestion >= $nbQuestions) {
             // Fin de la manche - déterminer le gagnant de la manche
@@ -1628,7 +1637,18 @@ class SoloController extends Controller
         
         $pointsToRecover = abs($playerPoints);
         $currentScore = session('score', 0);
-        session(['score' => $currentScore + $pointsToRecover]);
+        $newScore = $currentScore + $pointsToRecover;
+        session(['score' => $newScore]);
+        
+        // DEBUG BUG #4: Log AVANT modifications
+        \Log::info('[BUG#4 DEBUG] cancelError() AVANT:', [
+            'score_avant' => $currentScore,
+            'points_to_recover' => $pointsToRecover,
+            'new_score' => $newScore,
+            'last_stat_buzzed' => $lastStat['player_buzzed'],
+            'last_stat_correct' => $lastStat['is_correct'],
+            'last_stat_points' => $lastStat['player_points'],
+        ]);
         
         // BUG FIX #9 & #14: Transformer l'échec en "sans réponse" (annuler complètement l'action)
         $answeredQuestions = session('answered_questions', []);
@@ -1647,6 +1667,15 @@ class SoloController extends Controller
         $globalStats[$lastIndex]['player_points'] = 0;
         $globalStats[$lastIndex]['skill_adjusted'] = true;
         session(['global_stats' => $globalStats]);
+        
+        // DEBUG BUG #4: Log APRÈS modifications
+        \Log::info('[BUG#4 DEBUG] cancelError() APRÈS:', [
+            'new_score_in_session' => session('score'),
+            'modified_stat_buzzed' => $globalStats[$lastIndex]['player_buzzed'],
+            'modified_stat_correct' => $globalStats[$lastIndex]['is_correct'],
+            'modified_stat_points' => $globalStats[$lastIndex]['player_points'],
+            'global_stats_count' => count($globalStats),
+        ]);
         
         $usedSkills[] = 'cancel_error';
         session(['used_skills' => $usedSkills]);

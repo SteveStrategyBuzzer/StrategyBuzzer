@@ -899,16 +899,58 @@ function useCancelError() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
-            location.reload();
+            showSkillMessage(data.message);
+            setTimeout(() => location.reload(), 2000);
         } else {
-            alert(data.message || 'Erreur lors de l\'activation du skill');
+            showSkillMessage(data.message || 'Erreur lors de l\'activation du skill', false);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Erreur lors de l\'activation du skill');
+        showSkillMessage('Erreur lors de l\'activation du skill', false);
     });
+}
+
+function showSkillMessage(message, isSuccess = true) {
+    // Créer l'overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.3s ease-out;
+    `;
+    
+    // Créer la boîte de message
+    const messageBox = document.createElement('div');
+    messageBox.style.cssText = `
+        background: linear-gradient(135deg, ${isSuccess ? '#2ECC71' : '#E74C3C'} 0%, ${isSuccess ? '#27AE60' : '#C0392B'} 100%);
+        color: white;
+        padding: 30px 40px;
+        border-radius: 20px;
+        text-align: center;
+        font-size: 1.3rem;
+        font-weight: 700;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        max-width: 90%;
+        animation: scaleIn 0.3s ease-out;
+    `;
+    messageBox.textContent = message;
+    
+    overlay.appendChild(messageBox);
+    document.body.appendChild(overlay);
+    
+    // Fermer au clic pour les erreurs seulement
+    if (!isSuccess) {
+        overlay.addEventListener('click', () => overlay.remove());
+    }
 }
 
 function useBonusQuestion() {

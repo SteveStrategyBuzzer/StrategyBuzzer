@@ -101,12 +101,17 @@ IMPORTANT:
 VALIDATION FACTUELLE STRICTE:
 - VÉRIFIE que la question et la réponse correcte sont VRAIES et EXACTES
 - Pour les questions sur les animaux: vérifie les comportements, habitats, et caractéristiques réels
-- EXEMPLE DE QUESTIONS INTERDITES (car factuellement fausses):
+- EXEMPLES DE QUESTIONS INTERDITES (car factuellement fausses):
   * "Quel animal fait son nid dans la boue? → singe" (FAUX: les singes ne font pas de nid dans la boue)
   * "Quel serpent change de couleur?" (FAUX: c'est le caméléon, pas un serpent)
   * "Quel animal construit avec du safran/hermite?" (ABSURDE: ces réponses n'ont aucun sens)
-- Si tu n'es PAS CERTAIN à 100% d'un fait, choisis un autre sujet
-- Les réponses doivent être des mots réels et sensés (pas de mots inventés)
+  * "La girafe a une langue plus longue que son corps" (FAUX biologiquement impossible)
+  * "Le cacatoès utilise l'urine pour se marquer" (FAUX: comportement inexistant)
+  * "Le merle découvre son aliment grâce à son chant" (FAUX: le chant ne sert pas à trouver la nourriture)
+  * "Les rats de champ sculptent des tunnels complexes" (IMPRÉCIS: ce sont les taupes ou les lapins)
+- RÈGLE D'OR: Si tu n'es PAS ABSOLUMENT CERTAIN à 100% qu'un fait est vrai, choisis un autre sujet
+- Les réponses doivent être des mots réels, sensés et vérifiables
+- ÉVITE les questions sur des comportements animaux rares ou peu connus - reste sur des faits bien établis
 
 Format JSON requis:
 {
