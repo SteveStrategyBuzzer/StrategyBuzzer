@@ -127,6 +127,7 @@ class SoloController extends Controller
             'used_question_ids' => $permanentUsedQuestionIds,  // HISTORIQUE PERMANENT (DB ou session)
             'used_answers' => $permanentUsedAnswers,           // RÉPONSES PERMANENTES (DB ou session)
             'session_used_answers' => [],      // Réponses utilisées dans cette partie seulement (réinitialisé chaque partie)
+            'session_used_question_texts' => [], // Textes des questions posées dans cette partie (évite doublons dans la même partie)
             'current_question' => null,        // Sera généré au premier game()
             'global_stats' => [],              // Statistiques globales toutes manches
             'round_efficiencies' => [],        // Efficacités de chaque manche (pour calcul de l'efficacité de la partie)
@@ -382,10 +383,11 @@ class SoloController extends Controller
         $usedQuestionIds = session('used_question_ids', []);
         $usedAnswers = session('used_answers', []);               // Historique permanent
         $sessionUsedAnswers = session('session_used_answers', []); // Réponses de cette partie
+        $sessionUsedQuestionTexts = session('session_used_question_texts', []); // Textes des questions de cette partie
         
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
-            $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers);
+            $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers, $sessionUsedQuestionTexts);
             
             // DEBUG Bug #1: Log la question fraîchement générée
             \Log::info('[BUG#1 DEBUG] Question AFTER generation:', [
@@ -411,6 +413,12 @@ class SoloController extends Controller
             // Ajouter l'ID de la question aux questions utilisées
             $usedQuestionIds[] = $question['id'];
             session(['used_question_ids' => $usedQuestionIds]);
+            
+            // Ajouter le texte de la question aux textes utilisés dans cette partie (évite doublons)
+            if (isset($question['text'])) {
+                $sessionUsedQuestionTexts[] = $question['text'];
+                session(['session_used_question_texts' => $sessionUsedQuestionTexts]);
+            }
             
             // Ajouter la réponse correcte aux réponses utilisées dans cette partie (évite doublons)
             $correctAnswer = $question['answers'][$question['correct_index']] ?? null;
@@ -889,7 +897,17 @@ class SoloController extends Controller
                 // NE PAS réinitialiser session_used_answers (doublons réponses interdits dans toute la partie)
             ]);
             
-            // BUG FIX #7: Nettoyer la question actuelle pour éviter qu'elle réapparaisse dans la nouvelle manche
+            // BUG FIX #7: Sauvegarder le texte de la question actuelle AVANT de la nettoyer
+            $currentQuestionData = session('current_question');
+            if ($currentQuestionData && isset($currentQuestionData['text'])) {
+                $sessionUsedQuestionTexts = session('session_used_question_texts', []);
+                if (!in_array($currentQuestionData['text'], $sessionUsedQuestionTexts)) {
+                    $sessionUsedQuestionTexts[] = $currentQuestionData['text'];
+                    session(['session_used_question_texts' => $sessionUsedQuestionTexts]);
+                }
+            }
+            
+            // Nettoyer la question actuelle pour éviter qu'elle réapparaisse dans la nouvelle manche
             session()->forget('current_question');
             session()->forget('question_start_time');
             session()->forget('chrono_time');
@@ -902,6 +920,16 @@ class SoloController extends Controller
         
         // Continuer dans la manche actuelle
         session(['current_question_number' => $currentQuestion + 1]);
+        
+        // Sauvegarder le texte de la question actuelle AVANT de la nettoyer
+        $currentQuestionData = session('current_question');
+        if ($currentQuestionData && isset($currentQuestionData['text'])) {
+            $sessionUsedQuestionTexts = session('session_used_question_texts', []);
+            if (!in_array($currentQuestionData['text'], $sessionUsedQuestionTexts)) {
+                $sessionUsedQuestionTexts[] = $currentQuestionData['text'];
+                session(['session_used_question_texts' => $sessionUsedQuestionTexts]);
+            }
+        }
         
         // Nettoyer la question actuelle pour forcer une nouvelle génération
         session()->forget('current_question');
@@ -1710,8 +1738,9 @@ class SoloController extends Controller
         $usedQuestionIds = session('used_question_ids', []);
         $usedAnswers = session('used_answers', []);
         $sessionUsedAnswers = session('session_used_answers', []);
+        $sessionUsedQuestionTexts = session('session_used_question_texts', []);
         
-        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers);
+        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers, $sessionUsedQuestionTexts);
         
         // Enregistrer la question bonus dans l'historique permanent
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -1721,6 +1750,12 @@ class SoloController extends Controller
             // Ajouter l'ID et la réponse aux listes d'exclusion
             $usedQuestionIds[] = $question['id'];
             session(['used_question_ids' => $usedQuestionIds]);
+            
+            // Ajouter le texte de la question bonus aux textes utilisés
+            if (isset($question['text'])) {
+                $sessionUsedQuestionTexts[] = $question['text'];
+                session(['session_used_question_texts' => $sessionUsedQuestionTexts]);
+            }
             
             // Normaliser et ajouter la réponse correcte
             $correctAnswer = $question['answers'][$question['correct_index']] ?? null;

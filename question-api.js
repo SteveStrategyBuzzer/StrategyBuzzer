@@ -73,7 +73,7 @@ function getQuestionLengthConstraint(niveau) {
 app.post('/generate-question', async (req, res) => {
   const MAX_RETRIES = 3;
   
-  const { theme, niveau, questionNumber, usedAnswers = [] } = req.body;
+  const { theme, niveau, questionNumber, usedAnswers = [], usedQuestionTexts = [] } = req.body;
   
   const themeLabel = THEMES_FR[theme] || 'culture générale';
   const difficultyDesc = getDifficultyDescription(niveau);
@@ -293,6 +293,18 @@ RÈGLES STRICTES:
       if (normalizedUsed.includes(normalizedCorrect)) {
         console.log(`⚠️ RÉPONSE DUPLIQUÉE DÉTECTÉE: "${correctAnswer}" déjà utilisée. Rejet de cette question.`);
         throw new Error(`Duplicate answer detected: ${correctAnswer}`);
+      }
+    }
+    
+    // NOUVELLE VÉRIFICATION : Le texte de la question ne doit PAS être dans usedQuestionTexts
+    if (questionData.text && usedQuestionTexts.length > 0) {
+      // Normaliser pour comparaison (ignorer casse et espaces multiples)
+      const normalizedQuestionText = questionData.text.toLowerCase().trim().replace(/\s+/g, ' ');
+      const normalizedUsedTexts = usedQuestionTexts.map(q => q.toLowerCase().trim().replace(/\s+/g, ' '));
+      
+      if (normalizedUsedTexts.includes(normalizedQuestionText)) {
+        console.log(`⚠️ QUESTION DUPLIQUÉE DÉTECTÉE: "${questionData.text}" déjà posée. Rejet de cette question.`);
+        throw new Error(`Duplicate question text detected: ${questionData.text}`);
       }
     }
     
