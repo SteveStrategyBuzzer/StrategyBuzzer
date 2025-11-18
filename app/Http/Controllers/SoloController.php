@@ -96,8 +96,8 @@ class SoloController extends Controller
         ]);
 
         $theme        = $validated['theme'];
-        $nbQuestions  = $validated['nb_questions'];
-        $niveau       = $validated['niveau_joueur'];
+        $nbQuestions  = (int) $validated['nb_questions'];  // Cast explicite en integer
+        $niveau       = (int) $validated['niveau_joueur'];
 
         // Sécurise : ne pas dépasser le niveau débloqué
         $max = session('choix_niveau', 1);
@@ -747,9 +747,9 @@ class SoloController extends Controller
 
     public function nextQuestion()
     {
-        // Récupérer les données de session
-        $currentQuestion = session('current_question_number', 1);
-        $nbQuestions = session('nb_questions', 30);
+        // Récupérer les données de session avec cast explicite en integer
+        $currentQuestion = (int) session('current_question_number', 1);
+        $nbQuestions = (int) session('nb_questions', 30);
         
         // DEBUG: Log pour diagnostiquer le problème des 11 questions au lieu de 10
         \Log::info('[BUG#3 DEBUG] nextQuestion() appelé:', [
