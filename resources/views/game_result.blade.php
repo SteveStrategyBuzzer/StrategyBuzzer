@@ -959,8 +959,11 @@ function showSkillMessage(message, isSuccess = true) {
     overlay.appendChild(messageBox);
     document.body.appendChild(overlay);
     
-    // Fermer au clic pour les erreurs seulement
-    if (!isSuccess) {
+    // Auto-fermeture après 2 secondes pour les succès (compétence +2 points)
+    if (isSuccess) {
+        setTimeout(() => overlay.remove(), 2000);
+    } else {
+        // Fermer au clic pour les erreurs
         overlay.addEventListener('click', () => overlay.remove());
     }
 }
@@ -969,8 +972,27 @@ function useBonusQuestion() {
     window.location.href = "{{ route('solo.bonus-question') }}";
 }
 
+// Protection contre les double-clics
+let navigationInProgress = false;
+
 function goToNextQuestion() {
+    // Empêcher les appels multiples
+    if (navigationInProgress) {
+        return;
+    }
+    
+    navigationInProgress = true;
     clearInterval(interval);
+    
+    // Désactiver le bouton GO pour éviter les double-clics
+    const goButton = document.querySelector('.btn-go');
+    if (goButton) {
+        goButton.disabled = true;
+        goButton.style.opacity = '0.5';
+        goButton.style.cursor = 'not-allowed';
+        goButton.textContent = '⏳ Chargement...';
+    }
+    
     window.location.href = "{{ route('solo.next') }}";
 }
 </script>

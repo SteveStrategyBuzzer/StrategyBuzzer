@@ -342,6 +342,10 @@ class SoloController extends Controller
 
     public function game()
     {
+        // IMPORTANT : Désactiver le flag de génération dès le début de game()
+        // pour éviter qu'il reste bloqué en cas d'erreur ou de flux alternatif
+        session(['question_generation_pending' => false]);
+        
         // Synchroniser l'avatar stratégique depuis profile_settings si absent ou 'Aucun'
         $user = \Illuminate\Support\Facades\Auth::user();
         if ($user && (!session()->has('avatar') || session('avatar') === 'Aucun')) {
@@ -755,8 +759,26 @@ class SoloController extends Controller
 
     public function nextQuestion()
     {
-        // Récupérer les données de session avec cast explicite en integer
+        // GARDE DE RÉENTRANCE : Empêcher les appels concurrents pendant la génération de question
+        $answeredCount = count(session('answered_questions', []));
         $currentQuestion = (int) session('current_question_number', 1);
+        $isGenerating = session('question_generation_pending', false);
+        
+        // Si une question est en cours de génération OU si on est en avance sur les questions répondues
+        if ($isGenerating || $currentQuestion > $answeredCount + 1) {
+            \Log::warning('[REENTRANCY GUARD] nextQuestion() bloqué - génération déjà en cours', [
+                'current_question' => $currentQuestion,
+                'answered_count' => $answeredCount,
+                'is_generating' => $isGenerating
+            ]);
+            
+            // Rediriger immédiatement vers la question en cours au lieu de sauter
+            return redirect()->route('solo.game');
+        }
+        
+        // Activer le flag de génération pour bloquer les appels concurrents
+        session(['question_generation_pending' => true]);
+        
         $nbQuestions = (int) session('nb_questions', 30);
         
         // DEBUG: Log pour diagnostiquer le problème des 11 questions au lieu de 10
@@ -765,7 +787,7 @@ class SoloController extends Controller
             'nb_questions' => $nbQuestions,
             'will_end_round' => ($currentQuestion > $nbQuestions),
             'global_stats_count' => count(session('global_stats', [])),
-            'answered_questions_count' => count(session('answered_questions', []))
+            'answered_questions_count' => $answeredCount
         ]);
         
         // SYSTÈME BEST OF 3 : Vérifier si la manche est terminée
@@ -833,6 +855,10 @@ class SoloController extends Controller
                     
                     // Marquer le flag pour éviter déduction multiple
                     session(['match_result_processed' => true]);
+                    
+                    // Désactiver le flag de génération avant de quitter le flux
+                    session(['question_generation_pending' => false]);
+                    
                     return redirect()->route('solo.victory');
                 } else {
                     // DÉFAITE - déduire une vie UNE SEULE FOIS et sauvegarder les statistiques
@@ -863,6 +889,10 @@ class SoloController extends Controller
                         // Marquer le flag pour éviter déduction multiple
                         session(['match_result_processed' => true]);
                     }
+                    
+                    // Désactiver le flag de génération avant de quitter le flux
+                    session(['question_generation_pending' => false]);
+                    
                     return redirect()->route('solo.defeat');
                 }
             }
@@ -914,6 +944,9 @@ class SoloController extends Controller
             session()->forget('buzzed');
             session()->forget('buzz_time');
             
+            // Désactiver le flag de génération avant de quitter le flux
+            session(['question_generation_pending' => false]);
+            
             // Rediriger vers une page de transition de manche
             return redirect()->route('solo.round-result');
         }
@@ -937,6 +970,10 @@ class SoloController extends Controller
         session()->forget('chrono_time');
         session()->forget('buzzed');
         session()->forget('buzz_time');
+        
+        // Désactiver le flag de génération AVANT de rediriger (même si game() le fait aussi)
+        // Cela garantit que le flag est désactivé même si la redirection est annulée
+        session(['question_generation_pending' => false]);
         
         return redirect()->route('solo.game');
     }
