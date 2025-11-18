@@ -736,7 +736,7 @@
                 @if($cancelErrorUsed)
                     <div class="skill-used-badge">UTILISÉ</div>
                 @elseif(!$params['is_correct'] && isset($params['player_points']) && $params['player_points'] < 0)
-                    <button class="skill-btn" onclick="useCancelError()">Activer</button>
+                    <button class="skill-btn" id="cancelErrorBtn" onclick="useCancelError()">Activer</button>
                 @else
                     <button class="skill-btn" disabled>Activer</button>
                 @endif
@@ -899,8 +899,20 @@ function useCancelError() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Mettre à jour le score affiché immédiatement
+            const scoreElement = document.querySelector('.score-player .score-number');
+            if (scoreElement && data.new_score !== undefined) {
+                scoreElement.textContent = data.new_score;
+            }
+            
+            // Supprimer le bouton du skill pour éviter double utilisation
+            const cancelErrorBtn = document.getElementById('cancelErrorBtn');
+            if (cancelErrorBtn) {
+                cancelErrorBtn.remove();
+            }
+            
+            // Afficher le message de confirmation
             showSkillMessage(data.message);
-            setTimeout(() => location.reload(), 2000);
         } else {
             showSkillMessage(data.message || 'Erreur lors de l\'activation du skill', false);
         }
