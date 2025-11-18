@@ -6,6 +6,24 @@ StrategyBuzzer is a real-time quiz buzzer game application offering an immersive
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### November 18, 2025 - Critical Bug Fixes
+
+**Fixed: Question 10 Skip Bug (Race Condition)**
+- **Problem**: During AI question generation (2-3 second delay), two rapid clicks on "GO" would increment `current_question_number` twice, skipping question 10
+- **Root Cause**: OpenAI API latency created a vulnerability window allowing concurrent `/solo/next` requests
+- **Solution Implemented**: 
+  - **Server-side reentrancy guard**: Session flag `question_generation_pending` prevents concurrent `nextQuestion()` calls
+  - **Comprehensive flag cleanup**: Flag reset in ALL exit paths (game() entry, victory/defeat/round-result redirects, normal flow)
+  - **Frontend double-click protection**: GO button disabled after first click, countdown timer cleared
+- **Files Modified**: `app/Http/Controllers/SoloController.php` (lines 350, 767-779, 863, 897, 951, 979), `resources/views/game_result.blade.php` (lines 975-997)
+
+**Fixed: Skill Notification Display**
+- **Problem**: "+2 points" skill bubble required manual dismissal
+- **Solution**: Auto-close after 2 seconds for success notifications
+- **Files Modified**: `resources/views/game_result.blade.php` (lines 965-971)
+
 ## System Architecture
 
 ### Frontend Architecture
