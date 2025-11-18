@@ -1120,6 +1120,14 @@ class SoloController extends Controller
         // Récupérer les stats par manche (toutes les manches complétées)
         $roundSummaries = session('round_summaries', []);
         
+        // Calculer les points gagnés et points possibles CUMULÉS de toutes les manches
+        $totalPointsEarned = 0;
+        $totalPointsPossible = 0;
+        foreach ($roundSummaries as $roundStats) {
+            $totalPointsEarned += $roundStats['points_earned'] ?? 0;
+            $totalPointsPossible += $roundStats['points_possible'] ?? 0;
+        }
+        
         // Récupérer le nom de l'adversaire du prochain niveau
         $opponents = config('opponents');
         $nextOpponentName = $this->getOpponentName($newLevel);
@@ -1137,6 +1145,9 @@ class SoloController extends Controller
             'stats_metrics' => $statsMetrics,
             // Stats par manche (toutes les manches de la partie)
             'round_summaries' => $roundSummaries,
+            // Points cumulés de toutes les manches
+            'total_points_earned' => $totalPointsEarned,
+            'total_points_possible' => $totalPointsPossible,
         ];
         
         return view('victory', compact('params'));
@@ -1509,15 +1520,13 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer l'efficacité : (points_gagnés / max_possible) puis moyenne avec 100%
-        $efficiency = 50; // Défaut si pas de questions
+        // Calculer l'efficacité : (points_gagnés / max_possible) × 100
+        $efficiency = 0; // Défaut si pas de questions
         if ($pointsPossible > 0) {
-            // Efficacité brute = (points gagnés / max possible) × 100
+            // Efficacité = (points gagnés / max possible) × 100
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
-            $rawEfficiency = max(-100, min(100, $rawEfficiency));
-            // Efficacité finale = moyenne entre efficacité brute et 100%
-            $efficiency = ($rawEfficiency + 100) / 2;
-            $efficiency = round($efficiency, 2);
+            $rawEfficiency = max(0, min(100, $rawEfficiency)); // Clamp entre 0 et 100
+            $efficiency = round($rawEfficiency, 2);
         }
         
         return [
@@ -1572,13 +1581,11 @@ class SoloController extends Controller
         
         if ($pointsPossible > 0) {
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
-            $rawEfficiency = max(-100, min(100, $rawEfficiency)); // Clamp entre -100 et 100
-            // Transformer échelle -100/+100 en 0/100 avec formule (efficacité_brute + 100%) / 2
-            $efficiency = ($rawEfficiency + 100) / 2;
-            return round($efficiency, 2);
+            $rawEfficiency = max(0, min(100, $rawEfficiency)); // Clamp entre 0 et 100
+            return round($rawEfficiency, 2);
         }
         
-        return 50; // 50% = neutre (0% brut transformé)
+        return 0; // 0% si aucune question
     }
 
     public function cancelError(Request $request)
@@ -1771,16 +1778,21 @@ class SoloController extends Controller
      */
     private function saveRoundStatistics(): void
     {
-        // La manche qui vient de se terminer = current_round - 1
-        // (car current_round a déjà été incrémenté par endRound())
-        $roundNumber = max(1, session('current_round', 1) - 1);
+        // La manche actuelle (vient de se terminer)
+        $currentRound = session('current_round', 1);
         
-        // Calculer les statistiques de la manche
-        $completedRoundStats = $this->calculateRoundStatistics($roundNumber);
+        // Calculer les statistiques de la manche qui vient de se terminer
+        $completedRoundStats = $this->calculateRoundStatistics($currentRound);
         
         // Stocker les stats de cette manche dans round_summaries
         $roundSummaries = session('round_summaries', []);
-        $roundSummaries[$roundNumber] = $completedRoundStats;
+        $roundSummaries[$currentRound] = $completedRoundStats;
         session(['round_summaries' => $roundSummaries]);
+        
+        Log::info("Round {$currentRound} stats saved in round_summaries", [
+            'round' => $currentRound,
+            'stats' => $completedRoundStats,
+            'all_summaries' => $roundSummaries
+        ]);
     }
 }

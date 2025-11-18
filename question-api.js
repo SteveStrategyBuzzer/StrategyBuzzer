@@ -98,6 +98,16 @@ IMPORTANT:
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 - LONGUEUR: ${lengthConstraint}${usedAnswersContext}
 
+VALIDATION FACTUELLE STRICTE:
+- VÉRIFIE que la question et la réponse correcte sont VRAIES et EXACTES
+- Pour les questions sur les animaux: vérifie les comportements, habitats, et caractéristiques réels
+- EXEMPLE DE QUESTIONS INTERDITES (car factuellement fausses):
+  * "Quel animal fait son nid dans la boue? → singe" (FAUX: les singes ne font pas de nid dans la boue)
+  * "Quel serpent change de couleur?" (FAUX: c'est le caméléon, pas un serpent)
+  * "Quel animal construit avec du safran/hermite?" (ABSURDE: ces réponses n'ont aucun sens)
+- Si tu n'es PAS CERTAIN à 100% d'un fait, choisis un autre sujet
+- Les réponses doivent être des mots réels et sensés (pas de mots inventés)
+
 Format JSON requis:
 {
   "text": "La question en français",
@@ -122,6 +132,14 @@ IMPORTANT:
 - Pour les niveaux élevés, utilise des affirmations plus nuancées
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 - LONGUEUR: ${lengthConstraint}${usedAnswersContext}
+
+VALIDATION FACTUELLE STRICTE:
+- VÉRIFIE que l'affirmation est soit VRAIE soit FAUSSE de manière claire et vérifiable
+- Pour les questions sur les animaux/nature: vérifie les faits biologiques réels
+- EXEMPLES D'AFFIRMATIONS INTERDITES (car factuellement inexactes):
+  * "Le serpent à sonnette change de couleur" (FAUX: confusion avec le caméléon)
+  * "Le castor fait son nid avec du safran" (ABSURDE: non-sens total)
+- Si tu n'es PAS CERTAIN à 100% d'un fait, choisis un autre sujet
 
 Format JSON requis:
 {
