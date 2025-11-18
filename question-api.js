@@ -101,16 +101,22 @@ IMPORTANT:
 VALIDATION FACTUELLE STRICTE:
 - VÉRIFIE que la question et la réponse correcte sont VRAIES et EXACTES
 - Pour les questions sur les animaux: vérifie les comportements, habitats, et caractéristiques réels
+- INTERDICTION ABSOLUE DES MOTS INVENTÉS:
+  * Utilise UNIQUEMENT des noms d'animaux/plantes qui EXISTENT RÉELLEMENT
+  * EXEMPLES DE MOTS INVENTÉS INTERDITS: "endurolâtre", "gaboulon", "hermite", "toupinel"
+  * Avant d'utiliser un nom d'animal, VÉRIFIE qu'il existe dans la nature
+  * En cas de DOUTE, utilise un animal/plante CONNU et COMMUN
 - EXEMPLES DE QUESTIONS INTERDITES (car factuellement fausses):
   * "Quel animal fait son nid dans la boue? → singe" (FAUX: les singes ne font pas de nid dans la boue)
   * "Quel serpent change de couleur?" (FAUX: c'est le caméléon, pas un serpent)
+  * "Quel animal est connu pour se camoufler? → L'endurolâtre" (ABSURDE: mot inventé, n'existe pas!)
   * "Quel animal construit avec du safran/hermite?" (ABSURDE: ces réponses n'ont aucun sens)
   * "La girafe a une langue plus longue que son corps" (FAUX biologiquement impossible)
   * "Le cacatoès utilise l'urine pour se marquer" (FAUX: comportement inexistant)
   * "Le merle découvre son aliment grâce à son chant" (FAUX: le chant ne sert pas à trouver la nourriture)
   * "Les rats de champ sculptent des tunnels complexes" (IMPRÉCIS: ce sont les taupes ou les lapins)
 - RÈGLE D'OR: Si tu n'es PAS ABSOLUMENT CERTAIN à 100% qu'un fait est vrai, choisis un autre sujet
-- Les réponses doivent être des mots réels, sensés et vérifiables
+- Les réponses doivent être des animaux/plantes RÉELS, CONNUS et VÉRIFIABLES
 - ÉVITE les questions sur des comportements animaux rares ou peu connus - reste sur des faits bien établis
 
 Format JSON requis:
@@ -216,16 +222,17 @@ RÈGLES STRICTES:
         throw new Error('Answers too short');
       }
       
-      // Vérifier qu'il n'y a pas de mots absurdes ou inventés (liste noire EXACTE uniquement)
-      // Bloque seulement les réponses qui sont EXACTEMENT ces mots absurdes
-      const blacklist = ['hermite', 'safran', 'xxxxx', 'yyyyy', 'zzzzz'];
+      // Vérifier qu'il n'y a pas de mots absurdes ou inventés (liste noire)
+      // Bloque les mots qui contiennent ou sont exactement ces termes absurdes
+      const blacklist = ['hermite', 'safran', 'xxxxx', 'yyyyy', 'zzzzz', 'endurolâtre', 'endurolat', 'gaboulon', 'toupinel', 'zorbifex'];
       const hasBlacklisted = validAnswers.some(a => {
-        const normalized = a.toLowerCase().trim();
-        return blacklist.includes(normalized);
+        const normalized = a.toLowerCase().trim().replace(/['']/g, '');
+        // Vérifie si la réponse contient un mot de la liste noire
+        return blacklist.some(bad => normalized.includes(bad));
       });
       if (hasBlacklisted) {
-        console.log(`⚠️ MOTS ABSURDES détectés dans les réponses: ${JSON.stringify(validAnswers)}`);
-        throw new Error('Nonsense words in answers');
+        console.log(`⚠️ MOTS ABSURDES/INVENTÉS détectés dans les réponses: ${JSON.stringify(validAnswers)}`);
+        throw new Error('Nonsense or invented words in answers');
       }
     }
     
