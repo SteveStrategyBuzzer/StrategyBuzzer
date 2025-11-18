@@ -755,13 +755,13 @@ class SoloController extends Controller
         \Log::info('[BUG#3 DEBUG] nextQuestion() appelé:', [
             'current_question_number' => $currentQuestion,
             'nb_questions' => $nbQuestions,
-            'will_end_round' => ($currentQuestion >= $nbQuestions),
+            'will_end_round' => ($currentQuestion > $nbQuestions),
             'global_stats_count' => count(session('global_stats', [])),
             'answered_questions_count' => count(session('answered_questions', []))
         ]);
         
         // SYSTÈME BEST OF 3 : Vérifier si la manche est terminée
-        if ($currentQuestion >= $nbQuestions) {
+        if ($currentQuestion > $nbQuestions) {
             // Fin de la manche - déterminer le gagnant de la manche
             $playerScore = session('score', 0);
             $opponentScore = session('opponent_score', 0);
