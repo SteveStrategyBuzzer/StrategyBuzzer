@@ -670,13 +670,19 @@ class SoloController extends Controller
         $totalUnanswered = 0;
         $totalQuestionsPlayed = 0;
         
-        foreach ($globalStats as $stat) {
+        Log::info("Computing global stats from " . count($globalStats) . " entries, nb_questions=" . session('nb_questions', 'N/A'));
+        
+        foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                Log::info("  [{$index}] SKIPPED: bonus question");
                 continue;
             }
             
             $totalQuestionsPlayed++;
+            
+            // Log chaque question pour déboguer
+            Log::info("  [{$index}] Q#{$totalQuestionsPlayed}: buzzed=" . ($stat['player_buzzed'] ? 'yes' : 'no') . ", correct=" . ($stat['is_correct'] ? 'yes' : 'no') . ", points=" . ($stat['player_points'] ?? 'N/A') . ", skill_adjusted=" . (isset($stat['skill_adjusted']) && $stat['skill_adjusted'] ? 'yes' : 'no'));
             
             if (!$stat['player_buzzed']) {
                 $totalUnanswered++;
@@ -686,6 +692,8 @@ class SoloController extends Controller
                 $totalIncorrect++;
             }
         }
+        
+        Log::info("Final tally: correct={$totalCorrect}, incorrect={$totalIncorrect}, unanswered={$totalUnanswered}, total={$totalQuestionsPlayed}");
         
         // Calculer l'efficacité basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
@@ -916,7 +924,7 @@ class SoloController extends Controller
         $totalUnanswered = 0;
         $totalQuestionsPlayed = 0;
         
-        foreach ($globalStats as $stat) {
+        foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
                 continue;
@@ -1029,7 +1037,7 @@ class SoloController extends Controller
         $totalUnanswered = 0;
         $totalQuestionsPlayed = 0;
         
-        foreach ($globalStats as $stat) {
+        foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
                 continue;
@@ -1178,7 +1186,7 @@ class SoloController extends Controller
         $totalUnanswered = 0;
         $totalQuestionsPlayed = 0;
         
-        foreach ($globalStats as $stat) {
+        foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
                 continue;

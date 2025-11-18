@@ -202,20 +202,8 @@
                         <strong style="color: #11998e;">{{ number_format($roundStats['efficiency'] ?? 0, 1) }}%</strong>
                     </div>
                 </div>
-                
-                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.85rem; color: #666;">
-                    Points gagnés: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / Points possibles: <strong style="color: #333;">{{ $roundStats['points_possible'] ?? 0 }}</strong>
-                </div>
             </div>
             @endforeach
-            
-            <!-- Total cumulé de toutes les manches -->
-            <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 15px; border-radius: 10px; margin-top: 15px; color: white; text-align: center;">
-                <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 5px;">🎯 Total de la Partie</div>
-                <div style="font-size: 1.5rem; font-weight: 900;">
-                    {{ $params['total_points_earned'] ?? 0 }} / {{ $params['total_points_possible'] ?? 0 }} points
-                </div>
-            </div>
         </div>
         @endif
         

@@ -96,15 +96,29 @@
   </form>
 </div>
 
+<div id="validationMessage" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 25px 40px; border-radius: 15px; font-size: 1.2rem; font-weight: 700; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); z-index: 10000; text-align: center;">
+  Choisissez le nombre de questions.
+</div>
+
 <script>
   // Avatar est optionnel → on ne vérifie que nb_questions et que le niveau sélectionné est valide
   const form = document.getElementById('soloForm');
+  const validationMsg = document.getElementById('validationMessage');
+  
   document.querySelectorAll('.btn-theme').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const nbq = document.getElementById('nb_questions').value;
       if (!nbq) {
         e.preventDefault();
-        alert('Choisissez le nombre de questions.');
+        
+        // Afficher le message élégant au lieu de alert()
+        validationMsg.style.display = 'block';
+        
+        // Masquer après 2 secondes
+        setTimeout(() => {
+          validationMsg.style.display = 'none';
+        }, 2000);
+        
         return false;
       }
     });

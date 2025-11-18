@@ -187,6 +187,43 @@ RÈGLES STRICTES:
       throw new Error('Invalid question structure from AI');
     }
     
+    // NOUVELLE VALIDATION: Vérifier la qualité des réponses pour questions à choix multiple
+    if (questionData.type === 'multiple') {
+      const validAnswers = questionData.answers.filter(a => a && a.trim().length > 0);
+      
+      // Vérifier qu'il y a exactement 4 réponses non vides
+      if (validAnswers.length !== 4) {
+        console.log(`⚠️ RÉPONSES INVALIDES: ${validAnswers.length} réponses au lieu de 4`);
+        throw new Error(`Invalid number of answers: ${validAnswers.length}`);
+      }
+      
+      // Vérifier qu'il n'y a pas de doublons dans les réponses
+      const uniqueAnswers = [...new Set(validAnswers.map(a => a.toLowerCase().trim()))];
+      if (uniqueAnswers.length !== validAnswers.length) {
+        console.log(`⚠️ DOUBLONS DÉTECTÉS dans les réponses: ${JSON.stringify(validAnswers)}`);
+        throw new Error('Duplicate answers in question');
+      }
+      
+      // Vérifier que les réponses ne sont pas trop courtes (minimum 2 caractères)
+      const tooShort = validAnswers.filter(a => a.trim().length < 2);
+      if (tooShort.length > 0) {
+        console.log(`⚠️ RÉPONSES TROP COURTES: ${JSON.stringify(tooShort)}`);
+        throw new Error('Answers too short');
+      }
+      
+      // Vérifier qu'il n'y a pas de mots absurdes ou inventés (liste noire EXACTE uniquement)
+      // Bloque seulement les réponses qui sont EXACTEMENT ces mots absurdes
+      const blacklist = ['hermite', 'safran', 'xxxxx', 'yyyyy', 'zzzzz'];
+      const hasBlacklisted = validAnswers.some(a => {
+        const normalized = a.toLowerCase().trim();
+        return blacklist.includes(normalized);
+      });
+      if (hasBlacklisted) {
+        console.log(`⚠️ MOTS ABSURDES détectés dans les réponses: ${JSON.stringify(validAnswers)}`);
+        throw new Error('Nonsense words in answers');
+      }
+    }
+    
     // VÉRIFICATION CRITIQUE : La réponse correcte ne doit PAS être dans usedAnswers
     const correctAnswer = questionData.answers[questionData.correct_index];
     if (correctAnswer && usedAnswers.length > 0) {
