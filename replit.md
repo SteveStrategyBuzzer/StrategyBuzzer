@@ -8,6 +8,29 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### November 19, 2025 - Proactive Question Generation & Bonus Points System
+
+**Feature: Zero-Delay Proactive Question Generation**
+- **Objective**: Eliminate all waiting delays between questions during gameplay
+- **Implementation**: 
+  - New endpoint `/solo/generate-batch` generates 10-11 questions (11 for Magicienne avatar)
+  - AJAX call during 9-second countdown pre-generates all questions for the round
+  - AJAX call during round statistics screen pre-generates questions for next round
+  - Questions stored in session: `pregenerated_questions_round_X`
+  - Fallback to on-demand generation if batch fails
+- **Result**: Players experience instant question transitions with zero API delays
+- **Files Modified**: `routes/web.php`, `app/Http/Controllers/SoloController.php`, `resources/views/game_preparation.blade.php`, `resources/views/round_result.blade.php`
+
+**Feature: Strategic Bonus Question Mechanics**
+- **Objective**: Bonus question skill ("Question bonus") usable only after question 10
+- **Implementation**:
+  - Button disabled with CSS (grayscale, opacity 0.4) until question 10
+  - Popup alert "✨ Ce skill est utilisable après la question 10" if clicked early
+  - Separate tracking: `bonus_points_total` in session
+  - Display format: "Points Gagnés: X +2 / 20" (base + bonus shown separately)
+  - Bonus points excluded from efficiency calculation but included in total score
+- **Files Modified**: `resources/views/game_question.blade.php`, `app/Http/Controllers/SoloController.php`, `resources/views/defeat.blade.php`, `resources/views/victory.blade.php`, `resources/views/round_result.blade.php`
+
 ### November 18, 2025 - Critical Bug Fixes
 
 **Fixed: Question 10 Skip Bug (Race Condition)**
