@@ -413,7 +413,7 @@ class SoloController extends Controller
                 ]);
             } else {
                 // Fallback : générer à la demande si pas de question pré-générée
-                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers, $sessionUsedQuestionTexts);
+                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts);
                 Log::info('[FALLBACK] Generating question on-demand (no pregenerated available)', [
                     'round' => $currentRound,
                     'question_number' => $currentQuestion
@@ -1805,11 +1805,10 @@ class SoloController extends Controller
         $theme = session('theme', 'Général');
         $niveau = session('niveau_selectionne', 1);
         $usedQuestionIds = session('used_question_ids', []);
-        $usedAnswers = session('used_answers', []);
         $sessionUsedAnswers = session('session_used_answers', []);
         $sessionUsedQuestionTexts = session('session_used_question_texts', []);
         
-        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers, $sessionUsedQuestionTexts);
+        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts);
         
         // Enregistrer la question bonus dans l'historique permanent
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -1978,7 +1977,7 @@ class SoloController extends Controller
                     $niveau, 
                     $i, 
                     $tempUsedIds, 
-                    $usedAnswers, 
+                    [],  // Ne pas utiliser l'historique permanent pour éviter trop de conflits
                     $tempSessionUsedAnswers,
                     $tempSessionUsedTexts
                 );
