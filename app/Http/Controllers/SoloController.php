@@ -108,9 +108,9 @@ class SoloController extends Controller
         // Gagner 2 manches sur 3 pour gagner la partie
         
         // CHARGER L'HISTORIQUE PERMANENT DES QUESTIONS DU JOUEUR
-        // Note : $user est toujours présent car toutes les routes Solo nécessitent auth middleware
-        $permanentUsedQuestionIds = QuestionHistory::getSeenQuestionIds($user->id);
-        $permanentUsedAnswers = QuestionHistory::getSeenAnswers($user->id);
+        // Vérifier si $user existe (invités n'ont pas d'historique permanent)
+        $permanentUsedQuestionIds = $user ? QuestionHistory::getSeenQuestionIds($user->id) : [];
+        $permanentUsedAnswers = $user ? QuestionHistory::getSeenAnswers($user->id) : [];
         
         // Persistance session - initialiser TOUTES les variables de jeu
         session([
