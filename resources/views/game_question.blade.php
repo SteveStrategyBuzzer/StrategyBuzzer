@@ -715,7 +715,7 @@ if ($opponentInfo['is_boss'] ?? false) {
                         @php
                             // Désactiver le bouton Question Bonus (index 1 pour Magicienne) jusqu'à la question 10
                             $isBonusSkill = ($currentAvatar === 'Magicienne' && $i === 1);
-                            $isDisabled = ($isBonusSkill && $currentQuestionNumber < 10);
+                            $isDisabled = ($isBonusSkill && $params['current_question'] < 10);
                             $disabledClass = $isDisabled ? 'disabled' : '';
                         @endphp
                         <div class="skill-circle active {{ $disabledClass }}" 
