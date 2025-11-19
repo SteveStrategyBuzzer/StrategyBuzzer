@@ -1611,11 +1611,6 @@ class SoloController extends Controller
             
             $questions++;
             
-            // Calculer le maximum de points possibles pour cette question
-            // Si adversaire a buzzé en premier → max = 1 pt, sinon max = 2 pts
-            $maxPointsForQuestion = (isset($stat['opponent_faster']) && $stat['opponent_faster']) ? 1 : 2;
-            $pointsPossible += $maxPointsForQuestion;
-            
             // Utiliser les points RÉELS si disponibles
             if (isset($stat['player_points'])) {
                 $pointsEarned += $stat['player_points'];
@@ -1634,14 +1629,17 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer l'efficacité : (points_gagnés / max_possible) × 100
+        // FORMULE SIMPLIFIÉE : toujours 2 points max par question
+        // Efficacité = (points gagnés / (questions × 2)) × 100
+        $pointsPossible = $questions * 2; // 2 points max par question
+        
         $efficiency = 0; // Défaut si pas de questions
         if ($pointsPossible > 0) {
             // Efficacité = (points gagnés / max possible) × 100
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
             // Permettre les valeurs négatives, mais limiter à 100% maximum
             $rawEfficiency = min(100, $rawEfficiency);
-            $efficiency = round($rawEfficiency, 2);
+            $efficiency = round($rawEfficiency, 1);
         }
         
         return [
@@ -1659,15 +1657,14 @@ class SoloController extends Controller
     }
 
     /**
-     * Calcule l'efficacité basée sur les points RÉELS selon la formule :
-     * Efficacité = (Points gagnés / Points max possibles) × 100
-     * Utilise les points réels stockés qui peuvent être +2, +1, 0, ou -2
-     * Points max dépend de opponent_faster : 1 pt si adversaire plus rapide, sinon 2 pts
+     * Calcule l'efficacité basée sur les points RÉELS selon la formule SIMPLIFIÉE :
+     * Efficacité = (Points gagnés / (Questions × 2)) × 100
+     * Toujours 2 points max par question pour simplifier le calcul
      */
     private function calculateEfficiency(array $stats): float
     {
         $pointsEarned = 0;
-        $pointsPossible = 0;
+        $questionsCount = 0;
         
         foreach ($stats as $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans le calcul d'efficacité
@@ -1675,10 +1672,7 @@ class SoloController extends Controller
                 continue;  // Sauter les questions bonus
             }
             
-            // Calculer le maximum de points possibles pour cette question
-            // Si adversaire a buzzé en premier → max = 1 pt, sinon max = 2 pts
-            $maxPointsForQuestion = (isset($stat['opponent_faster']) && $stat['opponent_faster']) ? 1 : 2;
-            $pointsPossible += $maxPointsForQuestion;
+            $questionsCount++;
             
             // Utiliser les points RÉELS si disponibles, sinon fallback sur l'ancienne logique
             if (isset($stat['player_points'])) {
@@ -1695,11 +1689,14 @@ class SoloController extends Controller
             }
         }
         
+        // FORMULE SIMPLIFIÉE : toujours 2 points max par question
+        $pointsPossible = $questionsCount * 2;
+        
         if ($pointsPossible > 0) {
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
             // Permettre les valeurs négatives, mais limiter à 100% maximum
             $rawEfficiency = min(100, $rawEfficiency);
-            return round($rawEfficiency, 2);
+            return round($rawEfficiency, 1);
         }
         
         return 0; // 0% si aucune question
