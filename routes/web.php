@@ -132,7 +132,7 @@ Route::get('/logout-cleanup', function () {
 })->name('logout.cleanup');
 
 /* ===== SOLO ===== */
-Route::prefix('solo')->name('solo.')->group(function () {
+Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     Route::get('/',        [SoloController::class, 'index'])->name('index');
     Route::post('/start',  [SoloController::class, 'start'])->name('start');
     
