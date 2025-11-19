@@ -187,7 +187,11 @@
                 </div>
                 
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.85rem; color: #666;">
-                    Points Gagnés: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / 20
+                    @php
+                        $basePoints = $roundStats['points_earned'] ?? 0;
+                        $bonusPoints = $roundStats['bonus_points'] ?? 0;
+                    @endphp
+                    Points Gagnés: <strong style="color: #333;">{{ $basePoints }}</strong>@if($bonusPoints != 0)<strong style="color: {{ $bonusPoints > 0 ? '#2ECC71' : '#E74C3C' }}"> {{ $bonusPoints > 0 ? '+' : '' }}{{ $bonusPoints }}</strong>@endif / 20
                 </div>
             </div>
             @endforeach

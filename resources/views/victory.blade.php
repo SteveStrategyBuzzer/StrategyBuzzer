@@ -201,6 +201,14 @@
                         <span style="color: #666;">📈 Efficacité:</span>
                         <strong style="color: #11998e;">{{ number_format($roundStats['efficiency'] ?? 0, 1) }}%</strong>
                     </div>
+                    <div style="grid-column: 1 / -1;">
+                        @php
+                            $basePoints = $roundStats['points_earned'] ?? 0;
+                            $bonusPoints = $roundStats['bonus_points'] ?? 0;
+                        @endphp
+                        <span style="color: #666;">🎯 Points Gagnés:</span>
+                        <strong style="color: #333;">{{ $basePoints }}</strong>@if($bonusPoints != 0)<strong style="color: {{ $bonusPoints > 0 ? '#2ECC71' : '#E74C3C' }}"> {{ $bonusPoints > 0 ? '+' : '' }}{{ $bonusPoints }}</strong>@endif / 20
+                    </div>
                 </div>
             </div>
             @endforeach

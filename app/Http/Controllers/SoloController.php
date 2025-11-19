@@ -391,7 +391,28 @@ class SoloController extends Controller
         
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
-            $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers, $sessionUsedQuestionTexts);
+            // NOUVEAU : Vérifier si des questions pré-générées existent pour cette manche
+            $currentRound = session('current_round', 1);
+            $pregeneratedKey = "pregenerated_questions_round_{$currentRound}";
+            $pregeneratedQuestions = session($pregeneratedKey, []);
+            
+            // Utiliser les questions pré-générées si disponibles (index = current_question_number - 1)
+            $questionIndex = $currentQuestion - 1;
+            if (!empty($pregeneratedQuestions) && isset($pregeneratedQuestions[$questionIndex])) {
+                $question = $pregeneratedQuestions[$questionIndex];
+                Log::info('[PROACTIVE] Using pregenerated question', [
+                    'round' => $currentRound,
+                    'question_number' => $currentQuestion,
+                    'total_pregenerated' => count($pregeneratedQuestions)
+                ]);
+            } else {
+                // Fallback : générer à la demande si pas de question pré-générée
+                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, $usedAnswers, $sessionUsedAnswers, $sessionUsedQuestionTexts);
+                Log::info('[FALLBACK] Generating question on-demand (no pregenerated available)', [
+                    'round' => $currentRound,
+                    'question_number' => $currentQuestion
+                ]);
+            }
             
             // DEBUG Bug #1: Log la question fraîchement générée
             \Log::info('[BUG#1 DEBUG] Question AFTER generation:', [
@@ -922,6 +943,7 @@ class SoloController extends Controller
                 'current_question_number' => 1,  // Recommencer à la question 1
                 'score' => 0,                     // Réinitialiser les scores
                 'opponent_score' => 0,
+                'bonus_points_total' => 0,        // Réinitialiser les points bonus
                 'answered_questions' => [],
                 // NE PAS réinitialiser used_question_ids (historique permanent + questions de la partie)
                 // NE PAS réinitialiser session_used_answers (doublons réponses interdits dans toute la partie)
@@ -1570,11 +1592,15 @@ class SoloController extends Controller
         $unanswered = 0;
         $pointsEarned = 0;
         $pointsPossible = 0;
+        $bonusPoints = 0;  // NOUVEAU : Points bonus séparés
         
         foreach ($roundStats as $stat) {
-            // FILTRER LES QUESTIONS BONUS : ne pas les compter dans le total
+            // QUESTIONS BONUS : les compter séparément
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
-                continue;  // Sauter les questions bonus
+                if (isset($stat['player_points'])) {
+                    $bonusPoints += $stat['player_points'];
+                }
+                continue;  // Sauter pour le comptage des questions normales
             }
             
             $questions++;
@@ -1622,6 +1648,7 @@ class SoloController extends Controller
             'points_earned' => $pointsEarned,
             'points_possible' => $pointsPossible,
             'efficiency' => $efficiency,
+            'bonus_points' => $bonusPoints,  // NOUVEAU : Points bonus
         ];
     }
 
@@ -1848,6 +1875,10 @@ class SoloController extends Controller
         $currentScore = session('score', 0);
         session(['score' => $currentScore + $points]);
         
+        // NOUVEAU : Tracker les points bonus séparément pour affichage "X +2 / 20"
+        $bonusPointsTotal = session('bonus_points_total', 0);
+        session(['bonus_points_total' => $bonusPointsTotal + $points]);
+        
         // Enregistrer la question bonus dans global_stats avec flag is_bonus
         $currentRound = session('current_round', 1);
         $globalStats = session('global_stats', []);
@@ -1906,5 +1937,92 @@ class SoloController extends Controller
             'stats' => $completedRoundStats,
             'all_summaries' => $roundSummaries
         ]);
+    }
+
+    /**
+     * Génère un batch de questions en avance pour éliminer les délais d'attente
+     * Appelé via AJAX au début du countdown et entre les manches
+     */
+    public function generateBatch(Request $request)
+    {
+        try {
+            $roundNumber = $request->input('round', 1);
+            $questionService = new \App\Services\QuestionService();
+            
+            // Récupérer les paramètres de session
+            $theme = session('theme', 'general');
+            $niveau = session('niveau_selectionne', 1);
+            $avatar = session('avatar', 'Aucun');
+            $nbQuestions = session('nb_questions', 10);
+            $usedQuestionIds = session('used_question_ids', []);
+            $usedAnswers = session('used_answers', []);
+            $sessionUsedAnswers = session('session_used_answers', []);
+            $sessionUsedQuestionTexts = session('session_used_question_texts', []);
+            
+            // Déterminer le nombre de questions à générer
+            // Si avatar Magicienne, générer 11 questions (10 + 1 bonus)
+            $questionsToGenerate = ($avatar === 'Magicienne') ? $nbQuestions + 1 : $nbQuestions;
+            
+            $questions = [];
+            $tempUsedIds = $usedQuestionIds;
+            $tempSessionUsedAnswers = $sessionUsedAnswers;
+            $tempSessionUsedTexts = $sessionUsedQuestionTexts;
+            
+            // Générer toutes les questions en séquence
+            for ($i = 1; $i <= $questionsToGenerate; $i++) {
+                $question = $questionService->generateQuestion(
+                    $theme, 
+                    $niveau, 
+                    $i, 
+                    $tempUsedIds, 
+                    $usedAnswers, 
+                    $tempSessionUsedAnswers,
+                    $tempSessionUsedTexts
+                );
+                
+                $questions[] = $question;
+                
+                // Mettre à jour les IDs temporaires pour éviter les doublons dans le batch
+                $tempUsedIds[] = $question['id'];
+                
+                if (isset($question['text'])) {
+                    $tempSessionUsedTexts[] = $question['text'];
+                }
+                
+                $correctAnswer = $question['answers'][$question['correct_index']] ?? null;
+                if ($correctAnswer) {
+                    $normalizedAnswer = AnswerNormalizationService::normalize($correctAnswer);
+                    $tempSessionUsedAnswers[] = $normalizedAnswer;
+                }
+            }
+            
+            // Stocker les questions pré-générées en session
+            $key = "pregenerated_questions_round_{$roundNumber}";
+            session([$key => $questions]);
+            
+            Log::info("Batch generation complete", [
+                'round' => $roundNumber,
+                'count' => count($questions),
+                'avatar' => $avatar,
+                'session_key' => $key
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'count' => count($questions),
+                'round' => $roundNumber
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error("Batch generation failed", [
+                'error' => $e->getMessage(),
+                'round' => $request->input('round', 1)
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

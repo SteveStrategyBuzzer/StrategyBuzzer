@@ -367,6 +367,14 @@ if ($opponentInfo['is_boss'] ?? false) {
         opacity: 0.3;
     }
     
+    .skill-circle.disabled {
+        opacity: 0.4;
+        filter: grayscale(100%);
+        cursor: not-allowed;
+        animation: none !important;
+        box-shadow: none !important;
+    }
+    
     /* BOUTON BUZZER CENTRÉ EN BAS */
     .buzz-container-bottom {
         position: fixed;
@@ -704,7 +712,16 @@ if ($opponentInfo['is_boss'] ?? false) {
             <div class="skills-container">
                 @for($i = 0; $i < 3; $i++)
                     @if(isset($skills[$i]))
-                        <div class="skill-circle active" data-skill-index="{{ $i }}">
+                        @php
+                            // Désactiver le bouton Question Bonus (index 1 pour Magicienne) jusqu'à la question 10
+                            $isBonusSkill = ($currentAvatar === 'Magicienne' && $i === 1);
+                            $isDisabled = ($isBonusSkill && $currentQuestionNumber < 10);
+                            $disabledClass = $isDisabled ? 'disabled' : '';
+                        @endphp
+                        <div class="skill-circle active {{ $disabledClass }}" 
+                             data-skill-index="{{ $i }}" 
+                             data-is-bonus="{{ $isBonusSkill ? 'true' : 'false' }}"
+                             data-disabled-until="10">
                             {{ $skills[$i]['icon'] }}
                         </div>
                     @else
@@ -913,8 +930,30 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function activateSkill(skillIndex) {
-        // TODO: Implémenter la logique des skills
-        console.log('Skill activé:', skillIndex);
+        const skillElement = document.querySelector(`.skill-circle[data-skill-index="${skillIndex}"]`);
+        
+        if (!skillElement) {
+            console.log('Skill element not found');
+            return;
+        }
+        
+        // Vérifier si le skill est désactivé
+        if (skillElement.classList.contains('disabled')) {
+            const disabledUntil = skillElement.getAttribute('data-disabled-until');
+            alert(`✨ Ce skill est utilisable après la question ${disabledUntil}`);
+            return;
+        }
+        
+        // Vérifier si c'est la question bonus
+        const isBonus = skillElement.getAttribute('data-is-bonus') === 'true';
+        
+        if (isBonus) {
+            // Rediriger vers la route de question bonus
+            window.location.href = '{{ route('solo.bonus-question') }}';
+        } else {
+            // TODO: Implémenter les autres skills (Annule erreur, etc.)
+            console.log('Skill activé:', skillIndex);
+        }
     }
 });
 </script>

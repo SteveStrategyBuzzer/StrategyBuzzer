@@ -205,6 +205,14 @@
                         <span style="color: #666;">📈 Efficacité:</span>
                         <strong style="color: #667eea;">{{ number_format($roundStats['efficiency'] ?? 0, 1) }}%</strong>
                     </div>
+                    <div style="grid-column: 1 / -1;">
+                        @php
+                            $basePoints = $roundStats['points_earned'] ?? 0;
+                            $bonusPoints = $roundStats['bonus_points'] ?? 0;
+                        @endphp
+                        <span style="color: #666;">🎯 Points Gagnés:</span>
+                        <strong style="color: #333;">{{ $basePoints }}</strong>@if($bonusPoints != 0)<strong style="color: {{ $bonusPoints > 0 ? '#2ECC71' : '#E74C3C' }}"> {{ $bonusPoints > 0 ? '+' : '' }}{{ $bonusPoints }}</strong>@endif / 20
+                    </div>
                 </div>
             </div>
             @endforeach
@@ -291,5 +299,30 @@
             </button>
         </form>
     </div>
+    
+    <script>
+    // GÉNÉRATION PROACTIVE : Lancer la génération des questions de la manche suivante en arrière-plan
+    document.addEventListener('DOMContentLoaded', function() {
+        // Lancer la génération batch pour la manche suivante
+        const nextRound = {{ $params['next_round'] }};
+        
+        fetch("{{ route('solo.generate-batch') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                round: nextRound
+            })
+        }).then(response => response.json())
+          .then(data => {
+              console.log('[PROACTIVE] Questions for round', nextRound, 'pregenerated:', data);
+          })
+          .catch(err => {
+              console.error('[PROACTIVE] Batch generation failed for round', nextRound, ':', err);
+          });
+    });
+    </script>
 </body>
 </html>
