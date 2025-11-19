@@ -95,6 +95,13 @@ app.post('/generate-question', async (req, res) => {
       const prompt = isMultipleChoice 
       ? `Tu es un générateur de questions de quiz en français. Génère UNE SEULE question unique de ${themeLabel} avec un niveau de difficulté ${difficultyDesc} (niveau ${niveau}/100).
 
+⚠️ RESPECT DU THÈME OBLIGATOIRE ⚠️
+- La question DOIT porter sur "${themeLabel}" et UNIQUEMENT sur ce thème
+- Exemple pour "histoire": événements historiques, personnages, guerres, dates, civilisations
+- Exemple pour "géographie": pays, capitales, lieux, montagnes, fleuves, climat
+- Exemple pour "faune": animaux réels et leurs comportements, habitats, caractéristiques
+- NE JAMAIS mélanger les thèmes (pas de questions sur la nature si le thème est "histoire")
+
 IMPORTANT:
 - La question doit être VRAIMENT UNIQUE et ORIGINALE - évite absolument les questions clichées ou répétitives
 - Ne pose PAS de questions évidentes ou trop simples (ex: "Quelle est la capitale de la France?", "Quel animal est le meilleur ami de l'homme?")
@@ -240,7 +247,14 @@ RÈGLES STRICTES:
       
       // Vérifier qu'il n'y a pas de mots absurdes ou inventés (liste noire)
       // Bloque les mots qui contiennent ou sont exactement ces termes absurdes
-      const blacklist = ['hermite', 'safran', 'xxxxx', 'yyyyy', 'zzzzz', 'endurolâtre', 'endurolat', 'gaboulon', 'toupinel', 'zorbifex'];
+      const blacklist = [
+        'hermite', 'safran', 'xxxxx', 'yyyyy', 'zzzzz', 
+        'endurolâtre', 'endurolat', 'gaboulon', 'toupinel', 'zorbifex',
+        'résilience arctique', 'resilience arctique', 'éperlan sculpte', 'éperlan sculpté',
+        'hermitique', 'hermitisme', 'safranier', 'toupinelle', 'gaboulette',
+        'zorbifexien', 'endurolâtrique', 'résilieniste', 'arctiquien',
+        'poisson-lune géant', 'dauphin volant', 'baleine terrestre'
+      ];
       const hasBlacklisted = validAnswers.some(a => {
         const normalized = a.toLowerCase().trim().replace(/['']/g, '');
         // Vérifie si la réponse contient un mot de la liste noire
@@ -252,9 +266,72 @@ RÈGLES STRICTES:
       }
     }
     
-    // VALIDATION FACTUELLE : Bloquer les questions factuellement incorrectes connues
+    // VALIDATION DU THÈME : Vérifier que la question correspond au thème demandé
     const questionText = questionData.text.toLowerCase().trim();
     const correctAnswerText = questionData.answers[questionData.correct_index]?.toLowerCase().trim() || '';
+    
+    // Mots-clés spécifiques par thème pour validation
+    const themeKeywords = {
+      'histoire': ['guerre', 'roi', 'empire', 'révolution', 'siècle', 'bataille', 'civilisation', 'conquête', 'dynastie', 'empereur', 'république', 'monarchie', 'traité', 'indépendance', 'colonisation', 'explorateur', 'découverte', 'président', 'première guerre', 'seconde guerre', 'moyen âge', 'antiquité', 'renaissance', 'napoléon', 'louis', 'charles', '14', '15', '16', '17', '18', '19', '20', 'siècle'],
+      'geographie': ['pays', 'capitale', 'continent', 'océan', 'montagne', 'fleuve', 'ville', 'région', 'désert', 'forêt', 'lac', 'mer', 'île', 'volcán', 'frontière', 'territoire', 'climat', 'population', 'géographie'],
+      'faune': ['animal', 'mammifère', 'oiseau', 'poisson', 'reptile', 'insecte', 'espèce', 'habitat', 'prédateur', 'herbivore', 'carnivore', 'faune', 'zoo', 'savane', 'jungle', 'océan', 'marin'],
+      'sciences': ['atome', 'molécule', 'énergie', 'force', 'physique', 'chimie', 'biologie', 'planète', 'système solaire', 'cellule', 'adn', 'théorie', 'découverte scientifique', 'expérience', 'chercheur'],
+      'art': ['peinture', 'sculpture', 'musée', 'artiste', 'tableau', 'œuvre', 'exposition', 'galerie', 'style artistique', 'courant', 'renaissance', 'impressionnisme', 'cubisme'],
+      'cinema': ['film', 'acteur', 'réalisateur', 'cinéma', 'oscar', 'festival', 'scénario', 'tournage', 'production'],
+      'sport': ['match', 'équipe', 'joueur', 'championnat', 'coupe', 'médaille', 'jeux olympiques', 'compétition', 'entraîneur'],
+      'cuisine': ['recette', 'plat', 'ingrédient', 'cuisson', 'chef', 'gastronomie', 'restaurant', 'saveur']
+    };
+    
+    // MATRICE DE BLOCAGE CROISÉ : Bloquer les mots d'autres thèmes pour chaque thème
+    const themeBlocklist = {
+      'histoire': {
+        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'cinéma', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'jeux olympiques', 'recette', 'plat', 'ingrédient', 'cuisson', 'arbre', 'érable', 'chêne', 'pin', 'saule', 'bouleau', 'insecte', 'mammifère', 'reptile', 'amphibien', 'plante', 'fleur', 'botanique', 'zoologie'],
+        reason: 'sport/cinéma/nature/cuisine'
+      },
+      'geographie': {
+        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'recette', 'plat', 'ingrédient', 'cuisson'],
+        reason: 'sport/cinéma/cuisine'
+      },
+      'faune': {
+        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'guerre', 'roi', 'empire', 'révolution', 'bataille', 'recette', 'plat', 'ingrédient', 'cuisson'],
+        reason: 'cinéma/sport/histoire/cuisine'
+      },
+      'sciences': {
+        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'recette', 'plat', 'ingrédient', 'cuisson'],
+        reason: 'cinéma/sport/cuisine'
+      },
+      'art': {
+        blocked: ['match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'jeux olympiques', 'recette', 'plat', 'ingrédient', 'cuisson', 'animal', 'poisson', 'oiseau', 'insecte', 'mammifère', 'reptile'],
+        reason: 'sport/cuisine/faune'
+      },
+      'cinema': {
+        blocked: ['guerre', 'roi', 'empire', 'révolution', 'bataille', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'jeux olympiques', 'recette', 'plat', 'ingrédient', 'cuisson', 'animal', 'poisson', 'oiseau', 'insecte', 'mammifère'],
+        reason: 'histoire/sport/cuisine/faune'
+      },
+      'sport': {
+        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'guerre', 'roi', 'empire', 'révolution', 'bataille', 'recette', 'plat', 'ingrédient', 'cuisson', 'animal', 'poisson', 'oiseau', 'insecte', 'mammifère'],
+        reason: 'cinéma/histoire/cuisine/faune'
+      },
+      'cuisine': {
+        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'guerre', 'roi', 'empire', 'révolution', 'bataille', 'animal', 'poisson', 'oiseau', 'insecte', 'mammifère'],
+        reason: 'cinéma/sport/histoire/faune'
+      }
+    };
+    
+    // Pour tous les thèmes (sauf général), bloquer les mots d'autres thèmes
+    if (theme !== 'general' && themeBlocklist[theme]) {
+      const blockedWords = themeBlocklist[theme].blocked;
+      const hasBlockedWord = blockedWords.some(word => 
+        questionText.includes(word) || correctAnswerText.includes(word)
+      );
+      
+      if (hasBlockedWord) {
+        console.log(`⚠️ THÈME INCORRECT: Mot d'un autre thème (${themeBlocklist[theme].reason}) détecté pour "${theme}"`);
+        console.log(`   Question: "${questionData.text}"`);
+        console.log(`   Réponse: "${correctAnswerText}"`);
+        throw new Error(`Off-topic question: contains words from ${themeBlocklist[theme].reason} for ${theme} theme`);
+      }
+    }
     
     // Patterns problématiques à rejeter
     const invalidPatterns = [

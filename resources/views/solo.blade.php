@@ -53,7 +53,7 @@
       <div class="mb-2"><strong>Choisissez vos options puis un thème pour commencer la partie :</strong></div>
 
       <div class="mb-2">
-        <span class="lbl">Nombre de questions :</span>
+        <span class="lbl">Questions par Manche :</span>
         <select name="nb_questions" id="nb_questions" class="form-select d-inline-block" style="width:auto;">
           <option value="">-- Choisissez --</option>
           <option value="10"  {{ (isset($nb_questions) && $nb_questions==10)  ? 'selected' : '' }}>10</option>

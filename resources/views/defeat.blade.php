@@ -187,7 +187,7 @@
                 </div>
                 
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.85rem; color: #666;">
-                    Points gagnés: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / Points possibles: <strong style="color: #333;">{{ $roundStats['points_possible'] ?? 0 }}</strong>
+                    Points Gagnés: <strong style="color: #333;">{{ $roundStats['points_earned'] ?? 0 }}</strong> / 20
                 </div>
             </div>
             @endforeach

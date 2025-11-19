@@ -785,13 +785,13 @@ class SoloController extends Controller
         \Log::info('[BUG#3 DEBUG] nextQuestion() appelé:', [
             'current_question_number' => $currentQuestion,
             'nb_questions' => $nbQuestions,
-            'will_end_round' => ($currentQuestion > $nbQuestions),
+            'will_end_round' => ($currentQuestion >= $nbQuestions),
             'global_stats_count' => count(session('global_stats', [])),
             'answered_questions_count' => $answeredCount
         ]);
         
         // SYSTÈME BEST OF 3 : Vérifier si la manche est terminée
-        if ($currentQuestion > $nbQuestions) {
+        if ($currentQuestion >= $nbQuestions) {
             // Fin de la manche - déterminer le gagnant de la manche
             $playerScore = session('score', 0);
             $opponentScore = session('opponent_score', 0);
@@ -1607,7 +1607,8 @@ class SoloController extends Controller
         if ($pointsPossible > 0) {
             // Efficacité = (points gagnés / max possible) × 100
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
-            $rawEfficiency = max(0, min(100, $rawEfficiency)); // Clamp entre 0 et 100
+            // Permettre les valeurs négatives, mais limiter à 100% maximum
+            $rawEfficiency = min(100, $rawEfficiency);
             $efficiency = round($rawEfficiency, 2);
         }
         
@@ -1663,7 +1664,8 @@ class SoloController extends Controller
         
         if ($pointsPossible > 0) {
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
-            $rawEfficiency = max(0, min(100, $rawEfficiency)); // Clamp entre 0 et 100
+            // Permettre les valeurs négatives, mais limiter à 100% maximum
+            $rawEfficiency = min(100, $rawEfficiency);
             return round($rawEfficiency, 2);
         }
         
