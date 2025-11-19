@@ -93,14 +93,29 @@ app.post('/generate-question', async (req, res) => {
       const isMultipleChoice = Math.random() > 0.2;
       
       const prompt = isMultipleChoice 
-      ? `Tu es un générateur de questions de quiz en français. Génère UNE SEULE question unique de ${themeLabel} avec un niveau de difficulté ${difficultyDesc} (niveau ${niveau}/100).
+      ? `Tu es un générateur de questions de quiz en français. Utilise cette méthode en 3 ÉTAPES pour garantir la pertinence :
 
-⚠️ RESPECT DU THÈME OBLIGATOIRE ⚠️
-- La question DOIT porter sur "${themeLabel}" et UNIQUEMENT sur ce thème
-- Exemple pour "histoire": événements historiques, personnages, guerres, dates, civilisations
-- Exemple pour "géographie": pays, capitales, lieux, montagnes, fleuves, climat
-- Exemple pour "faune": animaux réels et leurs comportements, habitats, caractéristiques
-- NE JAMAIS mélanger les thèmes (pas de questions sur la nature si le thème est "histoire")
+📋 MÉTHODE STRUCTURÉE OBLIGATOIRE :
+
+ÉTAPE 1 - GÉNÉRATION D'UN FAIT VÉRIFIÉ :
+- Pense d'abord à un FAIT HISTORIQUE/GÉOGRAPHIQUE/SCIENTIFIQUE réel et vérifié lié au thème "${themeLabel}"
+- Ce fait doit être PRÉCIS, VÉRIFIABLE et directement lié au thème
+- Niveau de difficulté : ${difficultyDesc} (niveau ${niveau}/100)
+- Exemples de faits acceptables :
+  * Histoire : "Le Bitcoin a été créé en 2009 par Satoshi Nakamoto" (technologie dans l'histoire)
+  * Géographie : "Le Mont Everest culmine à 8849 mètres d'altitude"
+  * Faune : "Le guépard peut atteindre 120 km/h en course"
+
+ÉTAPE 2 - FORMULATION DE LA QUESTION :
+- Transforme ce fait en une question claire et précise
+- La question doit tester la connaissance de ce fait spécifique
+- Adapte la difficulté au niveau ${niveau}/100
+
+ÉTAPE 3 - AUTO-VALIDATION THÉMATIQUE :
+- VÉRIFIE que le fait est bien lié au thème "${themeLabel}"
+- Un fait historique peut concerner la technologie, l'économie, la société (ex: Bitcoin en histoire = OK)
+- Un fait géographique peut concerner le climat, la population, l'urbanisme
+- Si le fait ne correspond PAS clairement au thème, RECOMMENCE avec un autre fait
 
 IMPORTANT:
 - La question doit être VRAIMENT UNIQUE et ORIGINALE - évite absolument les questions clichées ou répétitives
@@ -282,54 +297,40 @@ RÈGLES STRICTES:
       'cuisine': ['recette', 'plat', 'ingrédient', 'cuisson', 'chef', 'gastronomie', 'restaurant', 'saveur']
     };
     
-    // MATRICE DE BLOCAGE CROISÉ : Bloquer les mots d'autres thèmes pour chaque thème
-    const themeBlocklist = {
+    // VALIDATION THÉMATIQUE ASSOUPLIE : Détecte les mélanges flagrants mais autorise les sujets connexes
+    // Exemple acceptable : "Bitcoin" dans Histoire (technologie historique)
+    // Exemple bloqué : "Match de football" dans Géographie
+    const strictlyIncompatible = {
       'histoire': {
-        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'cinéma', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'jeux olympiques', 'recette', 'plat', 'ingrédient', 'cuisson', 'arbre', 'érable', 'chêne', 'pin', 'saule', 'bouleau', 'insecte', 'mammifère', 'reptile', 'amphibien', 'plante', 'fleur', 'botanique', 'zoologie'],
-        reason: 'sport/cinéma/nature/cuisine'
+        blocked: ['match de football', 'championnat', 'coupe du monde', 'jeux olympiques 2024', 'finale de la ligue', 'recette de cuisine', 'plat gastronomique', 'ingrédient culinaire', 'cuisson au four'],
+        reason: 'sport compétitif/cuisine pratique (non historique)'
       },
       'geographie': {
-        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'recette', 'plat', 'ingrédient', 'cuisson'],
-        reason: 'sport/cinéma/cuisine'
+        blocked: ['oscar du meilleur film', 'acteur principal', 'réalisateur célèbre', 'match de football', 'championnat', 'finale de la ligue', 'recette de cuisine', 'plat gastronomique'],
+        reason: 'cinéma/sport/cuisine (non géographique)'
       },
       'faune': {
-        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'guerre', 'roi', 'empire', 'révolution', 'bataille', 'recette', 'plat', 'ingrédient', 'cuisson'],
-        reason: 'cinéma/sport/histoire/cuisine'
+        blocked: ['oscar du meilleur film', 'match de football', 'championnat', 'guerre mondiale', 'bataille historique', 'recette de cuisine', 'plat gastronomique'],
+        reason: 'cinéma/sport/histoire militaire/cuisine'
       },
       'sciences': {
-        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'recette', 'plat', 'ingrédient', 'cuisson'],
+        blocked: ['oscar du meilleur film', 'match de football', 'championnat', 'recette de cuisine', 'plat gastronomique'],
         reason: 'cinéma/sport/cuisine'
-      },
-      'art': {
-        blocked: ['match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'jeux olympiques', 'recette', 'plat', 'ingrédient', 'cuisson', 'animal', 'poisson', 'oiseau', 'insecte', 'mammifère', 'reptile'],
-        reason: 'sport/cuisine/faune'
-      },
-      'cinema': {
-        blocked: ['guerre', 'roi', 'empire', 'révolution', 'bataille', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'jeux olympiques', 'recette', 'plat', 'ingrédient', 'cuisson', 'animal', 'poisson', 'oiseau', 'insecte', 'mammifère'],
-        reason: 'histoire/sport/cuisine/faune'
-      },
-      'sport': {
-        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'guerre', 'roi', 'empire', 'révolution', 'bataille', 'recette', 'plat', 'ingrédient', 'cuisson', 'animal', 'poisson', 'oiseau', 'insecte', 'mammifère'],
-        reason: 'cinéma/histoire/cuisine/faune'
-      },
-      'cuisine': {
-        blocked: ['film', 'acteur', 'réalisateur', 'oscar', 'match', 'équipe', 'joueur', 'championnat', 'coupe du monde', 'guerre', 'roi', 'empire', 'révolution', 'bataille', 'animal', 'poisson', 'oiseau', 'insecte', 'mammifère'],
-        reason: 'cinéma/sport/histoire/faune'
       }
     };
     
-    // Pour tous les thèmes (sauf général), bloquer les mots d'autres thèmes
-    if (theme !== 'general' && themeBlocklist[theme]) {
-      const blockedWords = themeBlocklist[theme].blocked;
-      const hasBlockedWord = blockedWords.some(word => 
-        questionText.includes(word) || correctAnswerText.includes(word)
+    // Vérifier UNIQUEMENT les combinaisons strictement incompatibles
+    if (theme !== 'general' && strictlyIncompatible[theme]) {
+      const incompatiblePhrases = strictlyIncompatible[theme].blocked;
+      const hasIncompatible = incompatiblePhrases.some(phrase => 
+        questionText.includes(phrase) || correctAnswerText.includes(phrase)
       );
       
-      if (hasBlockedWord) {
-        console.log(`⚠️ THÈME INCORRECT: Mot d'un autre thème (${themeBlocklist[theme].reason}) détecté pour "${theme}"`);
+      if (hasIncompatible) {
+        console.log(`⚠️ THÈME INCOMPATIBLE: Sujet strictement incompatible (${strictlyIncompatible[theme].reason}) pour "${theme}"`);
         console.log(`   Question: "${questionData.text}"`);
         console.log(`   Réponse: "${correctAnswerText}"`);
-        throw new Error(`Off-topic question: contains words from ${themeBlocklist[theme].reason} for ${theme} theme`);
+        throw new Error(`Incompatible topic: ${strictlyIncompatible[theme].reason} for ${theme} theme`);
       }
     }
     
