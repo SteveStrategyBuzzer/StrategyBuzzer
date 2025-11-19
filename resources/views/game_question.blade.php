@@ -367,14 +367,6 @@ if ($opponentInfo['is_boss'] ?? false) {
         opacity: 0.3;
     }
     
-    .skill-circle.disabled {
-        opacity: 0.4;
-        filter: grayscale(100%);
-        cursor: not-allowed;
-        animation: none !important;
-        box-shadow: none !important;
-    }
-    
     /* BOUTON BUZZER CENTRÉ EN BAS */
     .buzz-container-bottom {
         position: fixed;
