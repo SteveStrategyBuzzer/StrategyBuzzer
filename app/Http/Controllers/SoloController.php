@@ -15,7 +15,7 @@ class SoloController extends Controller
     
     public function index(Request $request)
     {
-        // Restaurer le niveau depuis profile_settings pour les utilisateurs authentifiés
+        // Restaurer le niveau et l'avatar depuis profile_settings pour les utilisateurs authentifiés
         $user = auth()->user();
         if ($user) {
             $settings = (array) ($user->profile_settings ?? []);
@@ -26,6 +26,12 @@ class SoloController extends Controller
             // Si le niveau sauvegardé est supérieur au niveau en session, utiliser le niveau sauvegardé
             if ($savedLevel > session('choix_niveau', 1)) {
                 session(['choix_niveau' => $savedLevel]);
+            }
+            
+            // Restaurer l'avatar stratégique depuis profile_settings
+            $savedAvatar = (string) data_get($settings, 'strategic_avatar.name', '');
+            if (!empty($savedAvatar)) {
+                session(['avatar' => $savedAvatar]);
             }
         }
         
