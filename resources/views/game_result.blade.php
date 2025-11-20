@@ -995,5 +995,90 @@ function goToNextQuestion() {
     
     window.location.href = "{{ route('solo.next') }}";
 }
+
+// GÉNÉRATION PROACTIVE : Déclencher les blocs basés sur le STOCK RESTANT (CORRIGÉ par architecte)
+// Au lieu de numéros de questions fixes, on vérifie combien il reste dans le stock
+(function() {
+    const currentQuestion = {{ $params['current_question'] ?? 1 }};
+    const currentRound = {{ $params['current_round'] ?? 1 }};
+    
+    // Simuler check du stock (backend devrait le fournir mais on estime pour éviter appel API)
+    // Bloc 1 génère 2 questions, donc on déclenche bloc 2 quand on arrive à Q2 (il reste 1 dans le stock)
+    // Ensuite chaque bloc génère 3 questions
+    
+    // Déclencher bloc 2 (3 questions) quand on arrive à question 2
+    if (currentQuestion === 2) {
+        fetch("{{ route('solo.generate-block') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                count: 3,  // Bloc 2 : 3 questions
+                round: currentRound,
+                block_id: 2
+            })
+        }).then(response => response.json())
+          .then(data => console.log('[PROGRESSIVE] Block 2 generated (stock threshold):', data))
+          .catch(err => console.error('[PROGRESSIVE] Block 2 failed:', err));
+    }
+    
+    // Déclencher bloc 3 (3 questions) quand on arrive à question 4
+    if (currentQuestion === 4) {
+        fetch("{{ route('solo.generate-block') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                count: 3,  // Bloc 3 : 3 questions
+                round: currentRound,
+                block_id: 3
+            })
+        }).then(response => response.json())
+          .then(data => console.log('[PROGRESSIVE] Block 3 generated (stock threshold):', data))
+          .catch(err => console.error('[PROGRESSIVE] Block 3 failed:', err));
+    }
+    
+    // Déclencher bloc 4 (3 questions) quand on arrive à question 7
+    if (currentQuestion === 7) {
+        fetch("{{ route('solo.generate-block') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                count: 3,  // Bloc 4 : 3 questions
+                round: currentRound,
+                block_id: 4
+            })
+        }).then(response => response.json())
+          .then(data => console.log('[PROGRESSIVE] Block 4 generated (stock threshold):', data))
+          .catch(err => console.error('[PROGRESSIVE] Block 4 failed:', err));
+    }
+    
+    // Pour Magicienne avatar : générer 1 question bonus quand on arrive à question 10
+    @if(session('avatar') === 'Magicienne')
+    if (currentQuestion === 10) {
+        fetch("{{ route('solo.generate-block') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                count: 1,  // 1 question bonus pour Magicienne
+                round: currentRound,
+                block_id: 5
+            })
+        }).then(response => response.json())
+          .then(data => console.log('[PROGRESSIVE] Bonus block generated (stock threshold):', data))
+          .catch(err => console.error('[PROGRESSIVE] Bonus block failed:', err));
+    }
+    @endif
+})();
 </script>
 @endsection

@@ -520,6 +520,9 @@ function handleTimeout() {
         bubble.classList.add('disabled');
     });
     
+    // Marquer explicitement "Aucun choix" avec -1 (BUG #2 FIX)
+    document.getElementById('answerIndex').value = -1;
+    
     // Soumettre le formulaire sans réponse (timeout)
     setTimeout(() => {
         document.getElementById('answerForm').submit();

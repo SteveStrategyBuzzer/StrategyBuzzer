@@ -174,23 +174,26 @@ audio.addEventListener('loadedmetadata', function() {
         startCountdownSync();
         if (fallbackTimeout) clearTimeout(fallbackTimeout); // Annuler le fallback
         
-        // NOUVEAU : Lancer la génération proactive des questions en arrière-plan
-        // Utilise le système batch qui génère toutes les questions pendant le countdown
-        fetch("{{ route('solo.generate-batch') }}", {
+        // NOUVEAU SYSTÈME PROGRESSIF : Générer le BLOC 1 (2 questions) pendant le countdown
+        // Les blocs 2-3-4 (3 questions chacun) seront générés pendant le gameplay
+        fetch("{{ route('solo.generate-block') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify({
-                round: {{ session('current_round', 1) }}
+                count: 2,  // Bloc 1 : 2 questions seulement
+                round: {{ session('current_round', 1) }},
+                block_id: 1
             })
         }).then(response => response.json())
           .then(data => {
-              console.log('[PROACTIVE] Batch generation started:', data);
+              console.log('[PROGRESSIVE] Block 1 generated:', data);
+              // Le jeu peut démarrer immédiatement avec ces 2 premières questions !
           })
           .catch(err => {
-              console.error('[PROACTIVE] Batch generation failed:', err);
+              console.error('[PROGRESSIVE] Block 1 generation failed:', err);
           });
     }).catch(e => {
         console.log('Audio play failed, trying on user interaction:', e);
@@ -201,22 +204,24 @@ audio.addEventListener('loadedmetadata', function() {
                 startCountdownSync();
                 if (fallbackTimeout) clearTimeout(fallbackTimeout); // Annuler le fallback
                 
-                // NOUVEAU : Lancer la génération proactive (même code que ci-dessus)
-                fetch("{{ route('solo.generate-batch') }}", {
+                // NOUVEAU SYSTÈME PROGRESSIF : Générer le BLOC 1 (même code que ci-dessus)
+                fetch("{{ route('solo.generate-block') }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     body: JSON.stringify({
-                        round: {{ session('current_round', 1) }}
+                        count: 2,  // Bloc 1 : 2 questions
+                        round: {{ session('current_round', 1) }},
+                        block_id: 1
                     })
                 }).then(response => response.json())
                   .then(data => {
-                      console.log('[PROACTIVE] Batch generation started (after click):', data);
+                      console.log('[PROGRESSIVE] Block 1 generated (after click):', data);
                   })
                   .catch(err => {
-                      console.error('[PROACTIVE] Batch generation failed (after click):', err);
+                      console.error('[PROGRESSIVE] Block 1 generation failed (after click):', err);
                   });
             }).catch(err => console.log('Audio still failed:', err));
             document.removeEventListener('click', playOnClick);

@@ -301,26 +301,29 @@
     </div>
     
     <script>
-    // GÉNÉRATION PROACTIVE : Lancer la génération des questions de la manche suivante en arrière-plan
+    // GÉNÉRATION PROGRESSIVE : Générer le BLOC 1 (2 questions) de la manche suivante immédiatement
+    // Les blocs 2-3-4 seront générés pendant la manche suivante
     document.addEventListener('DOMContentLoaded', function() {
-        // Lancer la génération batch pour la manche suivante
         const nextRound = {{ $params['next_round'] }};
         
-        fetch("{{ route('solo.generate-batch') }}", {
+        fetch("{{ route('solo.generate-block') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify({
-                round: nextRound
+                count: 2,  // Bloc 1 : 2 questions seulement
+                round: nextRound,
+                block_id: 1
             })
         }).then(response => response.json())
           .then(data => {
-              console.log('[PROACTIVE] Questions for round', nextRound, 'pregenerated:', data);
+              console.log('[PROGRESSIVE] Block 1 for round', nextRound, 'generated:', data);
+              // La manche suivante peut démarrer immédiatement avec ces 2 premières questions !
           })
           .catch(err => {
-              console.error('[PROACTIVE] Batch generation failed for round', nextRound, ':', err);
+              console.error('[PROGRESSIVE] Block 1 generation failed for round', nextRound, ':', err);
           });
     });
     </script>

@@ -398,26 +398,45 @@ class SoloController extends Controller
         
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
-            // NOUVEAU : Vérifier si des questions pré-générées existent pour cette manche
+            // NOUVEAU SYSTÈME PROGRESSIF : Utiliser le stock de questions généré par blocs
             $currentRound = session('current_round', 1);
-            $pregeneratedKey = "pregenerated_questions_round_{$currentRound}";
-            $pregeneratedQuestions = session($pregeneratedKey, []);
+            $stockKey = "question_stock_round_{$currentRound}";
+            $questionStock = session($stockKey, []);
             
-            // Utiliser les questions pré-générées si disponibles (index = current_question_number - 1)
+            // NETTOYAGE AUTOMATIQUE : Si on démarre une nouvelle manche (question 1) et que le stock existe déjà,
+            // c'est probablement un reste de la manche précédente → le nettoyer pour éviter questions stale
+            if ($currentQuestion === 1 && !empty($questionStock)) {
+                Log::info('[STOCK CLEANUP] Clearing stale stock from previous round', [
+                    'round' => $currentRound,
+                    'stale_stock_size' => count($questionStock)
+                ]);
+                $questionStock = [];
+                session([$stockKey => []]);
+            }
+            
+            // Piocher la question dans le stock (index = current_question_number - 1)
             $questionIndex = $currentQuestion - 1;
-            if (!empty($pregeneratedQuestions) && isset($pregeneratedQuestions[$questionIndex])) {
-                $question = $pregeneratedQuestions[$questionIndex];
-                Log::info('[PROACTIVE] Using pregenerated question', [
+            if (!empty($questionStock) && isset($questionStock[$questionIndex])) {
+                $question = $questionStock[$questionIndex];
+                Log::info('[PROGRESSIVE STOCK] Using question from progressive stock', [
                     'round' => $currentRound,
                     'question_number' => $currentQuestion,
-                    'total_pregenerated' => count($pregeneratedQuestions)
+                    'total_in_stock' => count($questionStock),
+                    'remaining' => count($questionStock) - $currentQuestion
                 ]);
             } else {
-                // Fallback : générer à la demande si pas de question pré-générée
+                // Fallback : générer à la demande si le stock est vide (CORRIGÉ : ajouter au stock !)
                 $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts);
-                Log::info('[FALLBACK] Generating question on-demand (no pregenerated available)', [
+                
+                // CRITIQUE : Ajouter la question générée au stock pour éviter régénération
+                $questionStock[$questionIndex] = $question;
+                session([$stockKey => $questionStock]);
+                
+                Log::info('[FALLBACK] Generated question on-demand and added to stock', [
                     'round' => $currentRound,
-                    'question_number' => $currentQuestion
+                    'question_number' => $currentQuestion,
+                    'stock_size_before' => count($questionStock) - 1,
+                    'stock_size_after' => count($questionStock)
                 ]);
             }
             
@@ -576,7 +595,8 @@ class SoloController extends Controller
     {
         $questionService = new \App\Services\QuestionService();
         
-        $answerIndex = (int) $request->input('answer_index');
+        $answerIndex = $request->input('answer_index', -1);
+        $answerIndex = ($answerIndex === null || $answerIndex === '') ? -1 : (int) $answerIndex;
         $question = session('current_question');
         $niveau = session('niveau_selectionne', 1);
         
@@ -587,8 +607,8 @@ class SoloController extends Controller
         $buzzTime = session('buzz_time', 0);
         $chronoTime = session('chrono_time', 8);
         
-        // Vérifier la réponse du joueur
-        $isCorrect = $questionService->checkAnswer($question, $answerIndex);
+        // Vérifier la réponse du joueur (BUG #2 FIX: -1 = aucun choix)
+        $isCorrect = ($answerIndex >= 0) ? $questionService->checkAnswer($question, $answerIndex) : false;
         
         // Récupérer les scores actuels et le numéro de question pour l'algorithme Boss
         $playerScore = session('score', 0);
@@ -607,12 +627,15 @@ class SoloController extends Controller
             $questionNumber
         );
         
-        // Calculer les points du joueur selon les nouvelles règles
+        // Calculer les points du joueur selon les nouvelles règles (BUG #2 FIX)
         $playerPoints = 0;
         
         if ($playerBuzzed) {
             // Le joueur a buzzé
-            if ($isCorrect) {
+            if ($answerIndex === -1) {
+                // Aucun choix de réponse = -2 pts (BUG #2 FIX)
+                $playerPoints = -2;
+            } elseif ($isCorrect) {
                 // Le joueur est 2ème (+1 pt) si l'adversaire est plus rapide (peu importe s'il a réussi ou raté)
                 // Sinon le joueur est 1er (+2 pts)
                 $playerPoints = $opponentBehavior['is_faster'] ? 1 : 2;
@@ -1063,6 +1086,9 @@ class SoloController extends Controller
             $partyEfficiency = round(($partyTotalPoints / $partyPointsPossible) * 100, 1);
         }
         Log::info("📊 EFFICACITÉ DE LA PARTIE: {$partyTotalPoints} pts / {$partyTotalQuestions} questions ({$partyPointsPossible} pts possibles) = {$partyEfficiency}%");
+        
+        // Calculer l'efficacité globale basée sur les points (CORRIGÉ BUG #1)
+        $globalEfficiency = $this->calculateEfficiency($globalStats);
         
         // Calculer les statistiques de la manche qui vient de se terminer
         $roundNumber = $currentRound - 1; // La manche qui vient de se terminer
@@ -1985,6 +2011,110 @@ class SoloController extends Controller
             'stats' => $completedRoundStats,
             'all_summaries' => $roundSummaries
         ]);
+    }
+
+    /**
+     * NOUVEAU : Génère un bloc de questions (2 ou 3) progressivement
+     * Appelé via AJAX pendant le countdown et le gameplay
+     * Architecture progressive : bloc 1 (2q) → bloc 2-3-4 (3q chacun)
+     */
+    public function generateBlock(Request $request)
+    {
+        try {
+            $count = (int) $request->input('count', 2); // 2 ou 3 questions
+            $roundNumber = $request->input('round', 1);
+            $blockId = $request->input('block_id', 1); // ID du bloc (1, 2, 3, 4)
+            
+            $questionService = new \App\Services\QuestionService();
+            
+            // Récupérer les paramètres de session
+            $theme = session('theme', 'general');
+            $niveau = session('niveau_selectionne', 1);
+            $usedQuestionIds = session('used_question_ids', []);
+            $sessionUsedAnswers = session('session_used_answers', []);
+            $sessionUsedQuestionTexts = session('session_used_question_texts', []);
+            
+            // Récupérer le stock progressif actuel
+            $stockKey = "question_stock_round_{$roundNumber}";
+            $questionStock = session($stockKey, []);
+            $currentStockSize = count($questionStock);
+            
+            $questions = [];
+            $tempUsedIds = $usedQuestionIds;
+            $tempSessionUsedAnswers = $sessionUsedAnswers;
+            $tempSessionUsedTexts = $sessionUsedQuestionTexts;
+            
+            // Ajouter les réponses déjà dans le stock pour éviter duplications
+            foreach ($questionStock as $existingQ) {
+                $tempUsedIds[] = $existingQ['id'];
+                if (isset($existingQ['text'])) {
+                    $tempSessionUsedTexts[] = $existingQ['text'];
+                }
+                $correctAnswer = $existingQ['answers'][$existingQ['correct_index']] ?? null;
+                if ($correctAnswer) {
+                    $tempSessionUsedAnswers[] = AnswerNormalizationService::normalize($correctAnswer);
+                }
+            }
+            
+            // Générer les questions du bloc
+            for ($i = 0; $i < $count; $i++) {
+                $questionNumber = $currentStockSize + $i + 1;
+                
+                $question = $questionService->generateQuestion(
+                    $theme, 
+                    $niveau, 
+                    $questionNumber, 
+                    $tempUsedIds, 
+                    [],  // Pas d'historique permanent
+                    $tempSessionUsedAnswers,
+                    $tempSessionUsedTexts
+                );
+                
+                $questions[] = $question;
+                
+                // Mettre à jour les listes temporaires pour éviter doublons dans le bloc
+                $tempUsedIds[] = $question['id'];
+                if (isset($question['text'])) {
+                    $tempSessionUsedTexts[] = $question['text'];
+                }
+                $correctAnswer = $question['answers'][$question['correct_index']] ?? null;
+                if ($correctAnswer) {
+                    $tempSessionUsedAnswers[] = AnswerNormalizationService::normalize($correctAnswer);
+                }
+            }
+            
+            // Ajouter au stock progressif
+            $questionStock = array_merge($questionStock, $questions);
+            session([$stockKey => $questionStock]);
+            
+            Log::info("Block generation complete", [
+                'round' => $roundNumber,
+                'block_id' => $blockId,
+                'block_count' => count($questions),
+                'total_stock' => count($questionStock),
+                'session_key' => $stockKey
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'count' => count($questions),
+                'total_stock' => count($questionStock),
+                'round' => $roundNumber,
+                'block_id' => $blockId
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error("Block generation failed", [
+                'error' => $e->getMessage(),
+                'round' => $request->input('round', 1),
+                'block_id' => $request->input('block_id', 1)
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
