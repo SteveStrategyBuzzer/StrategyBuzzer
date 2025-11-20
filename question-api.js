@@ -144,15 +144,25 @@ VALIDATION FACTUELLE STRICTE:
   * ✅ Poissons réels: thon, barracuda, requin, saumon, truite, espadon, mérou
   * ✅ Mammifères marins: dauphin, baleine, orque, cachalot, phoque, otarie
 
-- DISTINCTION ANIMAUX VS INSECTES (TRÈS IMPORTANT):
-  * ❌ NE JAMAIS MÉLANGER animaux et insectes dans les options de réponse
-  * Si la question commence par "Quel INSECTE...", TOUTES les options doivent être des insectes
-  * Si la question commence par "Quel ANIMAL...", TOUTES les options doivent être des animaux (pas d'insectes)
-  * ✅ Insectes réels: fourmi, abeille, papillon, scarabée, libellule, moustique, mouche, coccinelle
-  * ✅ Animaux (non-insectes): lion, éléphant, cheval, lapin, souris, oiseau, poisson, reptile
-  * EXEMPLE INCORRECT: "Quel insecte soulève 50× son poids? → fourmi, tourterelle, écureuil, chat" (mélange insectes + animaux)
-  * EXEMPLE CORRECT: "Quel insecte soulève 50× son poids? → fourmi, scarabée, abeille, libellule" (tous des insectes)
-  * EXEMPLE CORRECT: "Quel animal court le plus vite? → guépard, lion, autruche, cheval" (tous des animaux)
+- DISTINCTION ANIMAUX VS INSECTES (RÈGLE CRITIQUE):
+  * ❌ NE JAMAIS MÉLANGER animaux et insectes - ni dans les options, ni entre la question et les réponses
+  * Si la RÉPONSE CORRECTE est un INSECTE, la question DOIT dire "Quel INSECTE..." (pas "Quel animal...")
+  * Si la RÉPONSE CORRECTE est un ANIMAL, la question DOIT dire "Quel ANIMAL..." (pas "Quel insecte...")
+  * Si la question dit "Quel INSECTE...", TOUTES les 4 options doivent être des insectes
+  * Si la question dit "Quel ANIMAL...", TOUTES les 4 options doivent être des animaux (JAMAIS d'insectes)
+  
+  * ✅ Insectes réels: fourmi, abeille, papillon, scarabée, libellule, moustique, mouche, coccinelle, criquet, sauterelle
+  * ✅ Animaux vertébrés (non-insectes): lion, éléphant, cheval, lapin, souris, oiseau, reptile, mammifère, poisson
+  
+  * EXEMPLES INCORRECTS À ÉVITER ABSOLUMENT:
+    - ❌ "Quel ANIMAL soulève 50× son poids? → fourmi, scarabée, abeille, libellule" (ERREUR: "animal" mais réponses = insectes)
+    - ❌ "Quel INSECTE court le plus vite? → guépard, lion, autruche, cheval" (ERREUR: "insecte" mais réponses = animaux)
+    - ❌ "Quel INSECTE soulève 50× son poids? → fourmi, tourterelle, écureuil, chat" (ERREUR: mélange insectes + oiseaux + mammifères)
+  
+  * EXEMPLES CORRECTS:
+    - ✅ "Quel INSECTE soulève 50× son poids? → fourmi, scarabée, abeille, libellule" (question + réponses = tous insectes)
+    - ✅ "Quel ANIMAL court le plus vite? → guépard, lion, autruche, cheval" (question + réponses = tous animaux vertébrés)
+    - ✅ "Quel MAMMIFÈRE vit dans l'eau? → dauphin, baleine, phoque, loutre" (question + réponses = tous mammifères)
 
 - QUESTIONS AVEC PLUSIEURS RÉPONSES CORRECTES - ÉVITER:
   * "Quel animal peut vivre jusqu'à 80 ans?" → Perroquet ET tortue de mer sont corrects (évite cette question)
