@@ -144,6 +144,16 @@ VALIDATION FACTUELLE STRICTE:
   * ✅ Poissons réels: thon, barracuda, requin, saumon, truite, espadon, mérou
   * ✅ Mammifères marins: dauphin, baleine, orque, cachalot, phoque, otarie
 
+- DISTINCTION ANIMAUX VS INSECTES (TRÈS IMPORTANT):
+  * ❌ NE JAMAIS MÉLANGER animaux et insectes dans les options de réponse
+  * Si la question commence par "Quel INSECTE...", TOUTES les options doivent être des insectes
+  * Si la question commence par "Quel ANIMAL...", TOUTES les options doivent être des animaux (pas d'insectes)
+  * ✅ Insectes réels: fourmi, abeille, papillon, scarabée, libellule, moustique, mouche, coccinelle
+  * ✅ Animaux (non-insectes): lion, éléphant, cheval, lapin, souris, oiseau, poisson, reptile
+  * EXEMPLE INCORRECT: "Quel insecte soulève 50× son poids? → fourmi, tourterelle, écureuil, chat" (mélange insectes + animaux)
+  * EXEMPLE CORRECT: "Quel insecte soulève 50× son poids? → fourmi, scarabée, abeille, libellule" (tous des insectes)
+  * EXEMPLE CORRECT: "Quel animal court le plus vite? → guépard, lion, autruche, cheval" (tous des animaux)
+
 - QUESTIONS AVEC PLUSIEURS RÉPONSES CORRECTES - ÉVITER:
   * "Quel animal peut vivre jusqu'à 80 ans?" → Perroquet ET tortue de mer sont corrects (évite cette question)
   * "Quel animal peut nager à 70 km/h?" → Thon ET dauphin sont corrects (évite cette question)
