@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use App\Services\QuestService;
 use App\Services\StatisticsService;
 use App\Services\AnswerNormalizationService;
@@ -397,26 +398,29 @@ class SoloController extends Controller
         
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
-            // NOUVEAU : Vérifier si des questions pré-générées existent pour cette manche
+            // NOUVEAU SYSTÈME DE QUEUE : Vérifier si des questions dans la queue existent pour cette manche
             $currentRound = session('current_round', 1);
-            $pregeneratedKey = "pregenerated_questions_round_{$currentRound}";
-            $pregeneratedQuestions = session($pregeneratedKey, []);
+            $queueKey = "question_queue_round_{$currentRound}";
+            $questionQueue = session($queueKey, []);
             
-            // Utiliser les questions pré-générées si disponibles (index = current_question_number - 1)
+            // SYSTÈME DE QUEUE : Piocher la première question disponible (index = current_question_number - 1)
+            // Avantage : Le jeu peut démarrer dès que la 1ère question est générée, sans attendre les 10
             $questionIndex = $currentQuestion - 1;
-            if (!empty($pregeneratedQuestions) && isset($pregeneratedQuestions[$questionIndex])) {
-                $question = $pregeneratedQuestions[$questionIndex];
-                Log::info('[PROACTIVE] Using pregenerated question', [
+            if (!empty($questionQueue) && isset($questionQueue[$questionIndex]) && $questionQueue[$questionIndex] !== null) {
+                $question = $questionQueue[$questionIndex];
+                Log::info('[QUEUE SYSTEM] Using question from queue', [
                     'round' => $currentRound,
                     'question_number' => $currentQuestion,
-                    'total_pregenerated' => count($pregeneratedQuestions)
+                    'queue_size' => count(array_filter($questionQueue, fn($q) => $q !== null))
                 ]);
             } else {
-                // Fallback : générer à la demande si pas de question pré-générée
+                // Fallback : générer à la demande si pas de question dans la queue
                 $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts);
-                Log::info('[FALLBACK] Generating question on-demand (no pregenerated available)', [
+                Log::info('[FALLBACK] Generating question on-demand (queue empty or incomplete)', [
                     'round' => $currentRound,
-                    'question_number' => $currentQuestion
+                    'question_number' => $currentQuestion,
+                    'queue_exists' => !empty($questionQueue),
+                    'queue_size' => count(array_filter($questionQueue, fn($q) => $q !== null))
                 ]);
             }
             
@@ -2062,6 +2066,76 @@ class SoloController extends Controller
             
         } catch (\Exception $e) {
             Log::error("Batch generation failed", [
+                'error' => $e->getMessage(),
+                'round' => $request->input('round', 1)
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * NOUVEAU SYSTÈME DE QUEUE : Génère les questions progressivement pendant le countdown
+     * Les questions sont stockées dans une queue et le jeu pioche la première disponible
+     * Appelé via AJAX au début du countdown pour démarrer la génération en arrière-plan
+     */
+    public function generateQueue(Request $request)
+    {
+        try {
+            $roundNumber = $request->input('round', 1);
+            
+            // Récupérer les paramètres de session
+            $theme = session('theme', 'general');
+            $niveau = session('niveau_selectionne', 1);
+            $avatar = session('avatar', 'Aucun');
+            
+            Log::info("Queue generation started via Node.js API", [
+                'round' => $roundNumber,
+                'theme' => $theme,
+                'niveau' => $niveau,
+                'avatar' => $avatar
+            ]);
+            
+            // Appeler l'API Node.js pour générer les questions progressivement
+            $response = Http::post('http://localhost:3000/generate-queue', [
+                'theme' => $theme,
+                'niveau' => $niveau,
+                'avatar' => $avatar,
+                'roundNumber' => $roundNumber
+            ]);
+            
+            if (!$response->successful()) {
+                throw new \Exception('Queue generation API failed: ' . $response->body());
+            }
+            
+            $data = $response->json();
+            $questions = $data['questions'] ?? [];
+            
+            // Stocker les questions générées dans la queue de session
+            $queueKey = "question_queue_round_{$roundNumber}";
+            session([$queueKey => $questions]);
+            
+            Log::info("Queue generation complete", [
+                'round' => $roundNumber,
+                'total' => $data['total'] ?? 0,
+                'generated' => $data['generated'] ?? 0,
+                'failed' => $data['failed'] ?? 0,
+                'session_key' => $queueKey
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'total' => $data['total'] ?? 0,
+                'generated' => $data['generated'] ?? 0,
+                'failed' => $data['failed'] ?? 0,
+                'round' => $roundNumber
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error("Queue generation failed", [
                 'error' => $e->getMessage(),
                 'round' => $request->input('round', 1)
             ]);

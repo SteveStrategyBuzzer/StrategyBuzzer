@@ -126,7 +126,49 @@ IMPORTANT:
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 - LONGUEUR: ${lengthConstraint}
 
-VALIDATION FACTUELLE STRICTE:
+VALIDATION FACTUELLE STRICTE - 10 RÈGLES OBLIGATOIRES:
+
+1. NE JAMAIS inventer, extrapoler ou deviner des informations
+   - Utilise UNIQUEMENT des faits vérifiables et documentés
+   - Si tu n'es pas sûr à 100%, ne l'utilise PAS
+
+2. Si une information n'est pas vérifiable, ne la mets pas
+   - Chaque fait doit pouvoir être vérifié dans des sources fiables
+   - Évite les affirmations vagues ou approximatives
+
+3. Baser chaque affirmation sur des sources crédibles, récentes et vérifiables
+   - Privilégie les connaissances encyclopédiques établies
+   - Évite les informations obsolètes ou controversées
+
+4. Élaborer clairement chaque réponse par une phrase courte
+   - Les réponses doivent être précises et non ambiguës
+   - Une seule réponse doit être incontestablement correcte
+
+5. NE PAS utiliser de sources vagues, obsolètes ou douteuses
+   - Reste sur des faits établis et consensuels
+   - Évite les théories non prouvées ou marginales
+
+6. RESTER neutre et objectif
+   - Évite les jugements de valeur ou opinions personnelles
+   - Présente uniquement des faits vérifiables
+
+7. EXPLIQUER le raisonnement ou le calcul si une donnée peut être discutée
+   - Pour les questions mathématiques ou logiques: vérifie tes calculs
+   - Pour les dates historiques: assure-toi de leur exactitude
+
+8. PRIORISER l'exactitude sur la rapidité ou le style
+   - Mieux vaut une question simple mais vraie qu'une question élaborée mais fausse
+   - La véracité est TOUJOURS la priorité absolue
+
+9. VÉRIFIER avant d'inclure la question/réponse : "Tout est-il factuel, sourcé et vérifiable ?"
+   - Relis ta question et vérifie chaque élément
+   - Pose-toi: "Suis-je certain à 100% que c'est vrai ?"
+
+10. Si non → corrige avant d'envoyer
+    - Si le moindre doute subsiste, RECOMMENCE avec un autre sujet
+    - Ne propose jamais une question dont tu n'es pas absolument certain
+
+RÈGLES COMPLÉMENTAIRES SPÉCIFIQUES:
 - VÉRIFIE que la question et la réponse correcte sont VRAIES et EXACTES à 100%
 - Pour les questions sur les animaux: vérifie les comportements, habitats, et caractéristiques réels
 - INTERDICTION ABSOLUE DES MOTS INVENTÉS:
@@ -219,7 +261,49 @@ IMPORTANT:
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 - LONGUEUR: ${lengthConstraint}
 
-VALIDATION FACTUELLE STRICTE:
+VALIDATION FACTUELLE STRICTE - 10 RÈGLES OBLIGATOIRES:
+
+1. NE JAMAIS inventer, extrapoler ou deviner des informations
+   - Utilise UNIQUEMENT des faits vérifiables et documentés
+   - Si tu n'es pas sûr à 100%, ne l'utilise PAS
+
+2. Si une information n'est pas vérifiable, ne la mets pas
+   - Chaque fait doit pouvoir être vérifié dans des sources fiables
+   - Évite les affirmations vagues ou approximatives
+
+3. Baser chaque affirmation sur des sources crédibles, récentes et vérifiables
+   - Privilégie les connaissances encyclopédiques établies
+   - Évite les informations obsolètes ou controversées
+
+4. Élaborer clairement chaque réponse par une phrase courte
+   - Les réponses doivent être précises et non ambiguës
+   - Une seule réponse doit être incontestablement correcte
+
+5. NE PAS utiliser de sources vagues, obsolètes ou douteuses
+   - Reste sur des faits établis et consensuels
+   - Évite les théories non prouvées ou marginales
+
+6. RESTER neutre et objectif
+   - Évite les jugements de valeur ou opinions personnelles
+   - Présente uniquement des faits vérifiables
+
+7. EXPLIQUER le raisonnement ou le calcul si une donnée peut être discutée
+   - Pour les questions mathématiques ou logiques: vérifie tes calculs
+   - Pour les dates historiques: assure-toi de leur exactitude
+
+8. PRIORISER l'exactitude sur la rapidité ou le style
+   - Mieux vaut une question simple mais vraie qu'une question élaborée mais fausse
+   - La véracité est TOUJOURS la priorité absolue
+
+9. VÉRIFIER avant d'inclure la question/réponse : "Tout est-il factuel, sourcé et vérifiable ?"
+   - Relis ta question et vérifie chaque élément
+   - Pose-toi: "Suis-je certain à 100% que c'est vrai ?"
+
+10. Si non → corrige avant d'envoyer
+    - Si le moindre doute subsiste, RECOMMENCE avec un autre sujet
+    - Ne propose jamais une question dont tu n'es pas absolument certain
+
+RÈGLES COMPLÉMENTAIRES SPÉCIFIQUES:
 - VÉRIFIE que l'affirmation est soit VRAIE soit FAUSSE de manière claire et vérifiable
 - Pour les questions sur les animaux/nature: vérifie les faits biologiques réels
 - EXEMPLES D'AFFIRMATIONS INTERDITES (car factuellement inexactes):
@@ -444,6 +528,85 @@ RÈGLES STRICTES:
       console.log(`🔄 Nouvelle tentative...`);
     }
   }
+});
+
+// NOUVEAU ENDPOINT : Génération progressive de questions (queue system)
+// Génère les questions une par une et les stocke dans la session Laravel
+app.post('/generate-queue', async (req, res) => {
+  const { theme, niveau, avatar, roundNumber } = req.body;
+  
+  // Nombre de questions à générer (11 pour Magicienne, 10 pour les autres)
+  const totalQuestions = avatar === 'magicienne' ? 11 : 10;
+  
+  console.log(`🎯 Début génération progressive: ${totalQuestions} questions (Round ${roundNumber}, Theme: ${theme}, Niveau: ${niveau})`);
+  
+  // Variables de suivi
+  const usedAnswers = [];
+  const usedQuestionTexts = [];
+  const generatedQuestions = [];
+  let successCount = 0;
+  let failureCount = 0;
+  
+  // Fonction pour générer UNE question
+  const generateSingleQuestion = async (questionNumber) => {
+    try {
+      console.log(`  📝 Génération question ${questionNumber}/${totalQuestions}...`);
+      
+      const response = await fetch('http://localhost:3000/generate-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme,
+          niveau,
+          questionNumber,
+          usedAnswers,
+          usedQuestionTexts
+        })
+      });
+      
+      if (!response.ok) {
+        console.log(`  ❌ Échec question ${questionNumber}: ${response.status}`);
+        failureCount++;
+        return null;
+      }
+      
+      const question = await response.json();
+      
+      // Ajouter la réponse correcte et le texte aux listes d'exclusion
+      if (question.type === 'multiple' && question.answers && question.answers[question.correct_index]) {
+        usedAnswers.push(question.answers[question.correct_index]);
+      }
+      if (question.text) {
+        usedQuestionTexts.push(question.text);
+      }
+      
+      generatedQuestions.push(question);
+      successCount++;
+      console.log(`  ✅ Question ${questionNumber} générée avec succès`);
+      
+      return question;
+    } catch (error) {
+      console.log(`  ❌ Erreur génération question ${questionNumber}:`, error.message);
+      failureCount++;
+      return null;
+    }
+  };
+  
+  // Générer les questions de manière séquentielle
+  for (let i = 1; i <= totalQuestions; i++) {
+    await generateSingleQuestion(i);
+  }
+  
+  console.log(`\n📊 Génération terminée: ${successCount} succès, ${failureCount} échecs\n`);
+  
+  // Retourner toutes les questions générées
+  res.json({
+    success: true,
+    questions: generatedQuestions,
+    total: totalQuestions,
+    generated: successCount,
+    failed: failureCount
+  });
 });
 
 const PORT = 3000;

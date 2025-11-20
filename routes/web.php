@@ -154,6 +154,7 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     Route::post('/answer-bonus', [SoloController::class, 'answerBonus'])->name('answer-bonus');
     Route::get('/next',    [SoloController::class, 'nextQuestion'])->name('next');
     Route::post('/generate-batch', [SoloController::class, 'generateBatch'])->name('generate-batch');
+    Route::post('/generate-queue', [SoloController::class, 'generateQueue'])->name('generate-queue');
     Route::get('/round-result', [SoloController::class, 'roundResult'])->name('round-result');
     Route::get('/victory', [SoloController::class, 'victory'])->name('victory');
     Route::get('/defeat',  [SoloController::class, 'defeat'])->name('defeat');
