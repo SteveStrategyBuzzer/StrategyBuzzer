@@ -135,7 +135,24 @@ VALIDATION FACTUELLE STRICTE:
   * Avant d'utiliser un nom d'animal, VÉRIFIE qu'il existe dans la nature
   * En cas de DOUTE, utilise un animal/plante CONNU et COMMUN
 
+- CONFUSIONS COURANTES À ÉVITER ABSOLUMENT:
+  * ❌ "bar tendre" = NOURRITURE (collation), PAS un poisson! Utilise "barracuda" pour le poisson
+  * ❌ Le dauphin est un MAMMIFÈRE MARIN, PAS un poisson (ne jamais classer comme poisson)
+  * ❌ La baleine est un MAMMIFÈRE MARIN, PAS un poisson
+  * ❌ L'orque est un MAMMIFÈRE MARIN (delphinidé), PAS un poisson
+  * ❌ Le phoque est un MAMMIFÈRE MARIN, PAS un poisson
+  * ✅ Poissons réels: thon, barracuda, requin, saumon, truite, espadon, mérou
+  * ✅ Mammifères marins: dauphin, baleine, orque, cachalot, phoque, otarie
+
+- QUESTIONS AVEC PLUSIEURS RÉPONSES CORRECTES - ÉVITER:
+  * "Quel animal peut vivre jusqu'à 80 ans?" → Perroquet ET tortue de mer sont corrects (évite cette question)
+  * "Quel animal peut nager à 70 km/h?" → Thon ET dauphin sont corrects (évite cette question)
+  * "Quel oiseau peut voler en arrière?" → Seul le colibri est correct (OK à utiliser)
+  * Choisis UNIQUEMENT des questions avec UNE SEULE réponse correcte incontestable
+
 - EXEMPLES DE QUESTIONS INTERDITES (car factuellement fausses ou imprécises):
+  * "Quel poisson peut vivre jusqu'à 80 ans? → Le bar tendre" (TRIPLE ERREUR: bar tendre = nourriture, pas poisson, durée de vie fausse)
+  * "Quel poisson peut nager à 70 km/h? → Le dauphin" (FAUX: dauphin = mammifère, pas poisson)
   * "Quel oiseau tisse son nid de fils colorés? → Le tisserin" (FAUX: le tisserin tisse mais PAS avec des fils colorés!)
   * "Quel mammifère lézard se trouve en Australie? → L'ornithorynque" (INCORRECT: l'ornithorynque n'est PAS un "mammifère lézard", c'est un monotrème)
   * "Quel animal est connu pour vivre dans les construits de boue?" (FRANÇAIS INCORRECT: dis "constructions" pas "construits")
