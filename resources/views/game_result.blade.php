@@ -775,6 +775,8 @@
                 <span class="answer-text">
                     @if($isTimeout)
                         ⏰ Temps écoulé - Pas de buzz
+                    @elseif($userAnswerIndex === -1)
+                        ❌ Aucun choix sélectionné
                     @else
                         {{ $question['answers'][$userAnswerIndex] }}
                     @endif
