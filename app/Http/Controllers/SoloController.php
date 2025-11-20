@@ -398,29 +398,26 @@ class SoloController extends Controller
         
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
-            // NOUVEAU SYSTÈME DE QUEUE : Vérifier si des questions dans la queue existent pour cette manche
+            // NOUVEAU : Vérifier si des questions pré-générées existent pour cette manche
             $currentRound = session('current_round', 1);
-            $queueKey = "question_queue_round_{$currentRound}";
-            $questionQueue = session($queueKey, []);
+            $pregeneratedKey = "pregenerated_questions_round_{$currentRound}";
+            $pregeneratedQuestions = session($pregeneratedKey, []);
             
-            // SYSTÈME DE QUEUE : Piocher la première question disponible (index = current_question_number - 1)
-            // Avantage : Le jeu peut démarrer dès que la 1ère question est générée, sans attendre les 10
+            // Utiliser les questions pré-générées si disponibles (index = current_question_number - 1)
             $questionIndex = $currentQuestion - 1;
-            if (!empty($questionQueue) && isset($questionQueue[$questionIndex]) && $questionQueue[$questionIndex] !== null) {
-                $question = $questionQueue[$questionIndex];
-                Log::info('[QUEUE SYSTEM] Using question from queue', [
+            if (!empty($pregeneratedQuestions) && isset($pregeneratedQuestions[$questionIndex])) {
+                $question = $pregeneratedQuestions[$questionIndex];
+                Log::info('[PROACTIVE] Using pregenerated question', [
                     'round' => $currentRound,
                     'question_number' => $currentQuestion,
-                    'queue_size' => count(array_filter($questionQueue, fn($q) => $q !== null))
+                    'total_pregenerated' => count($pregeneratedQuestions)
                 ]);
             } else {
-                // Fallback : générer à la demande si pas de question dans la queue
+                // Fallback : générer à la demande si pas de question pré-générée
                 $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts);
-                Log::info('[FALLBACK] Generating question on-demand (queue empty or incomplete)', [
+                Log::info('[FALLBACK] Generating question on-demand (no pregenerated available)', [
                     'round' => $currentRound,
-                    'question_number' => $currentQuestion,
-                    'queue_exists' => !empty($questionQueue),
-                    'queue_size' => count(array_filter($questionQueue, fn($q) => $q !== null))
+                    'question_number' => $currentQuestion
                 ]);
             }
             

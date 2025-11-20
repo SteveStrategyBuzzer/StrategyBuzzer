@@ -174,8 +174,9 @@ audio.addEventListener('loadedmetadata', function() {
         startCountdownSync();
         if (fallbackTimeout) clearTimeout(fallbackTimeout); // Annuler le fallback
         
-        // NOUVEAU : Lancer la génération proactive des questions en arrière-plan (queue system)
-        fetch("{{ route('solo.generate-queue') }}", {
+        // NOUVEAU : Lancer la génération proactive des questions en arrière-plan
+        // Utilise le système batch qui génère toutes les questions pendant le countdown
+        fetch("{{ route('solo.generate-batch') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -186,10 +187,10 @@ audio.addEventListener('loadedmetadata', function() {
             })
         }).then(response => response.json())
           .then(data => {
-              console.log('[PROACTIVE QUEUE] Generation started:', data);
+              console.log('[PROACTIVE] Batch generation started:', data);
           })
           .catch(err => {
-              console.error('[PROACTIVE QUEUE] Generation failed:', err);
+              console.error('[PROACTIVE] Batch generation failed:', err);
           });
     }).catch(e => {
         console.log('Audio play failed, trying on user interaction:', e);
@@ -201,7 +202,7 @@ audio.addEventListener('loadedmetadata', function() {
                 if (fallbackTimeout) clearTimeout(fallbackTimeout); // Annuler le fallback
                 
                 // NOUVEAU : Lancer la génération proactive (même code que ci-dessus)
-                fetch("{{ route('solo.generate-queue') }}", {
+                fetch("{{ route('solo.generate-batch') }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -212,10 +213,10 @@ audio.addEventListener('loadedmetadata', function() {
                     })
                 }).then(response => response.json())
                   .then(data => {
-                      console.log('[PROACTIVE QUEUE] Generation started (after click):', data);
+                      console.log('[PROACTIVE] Batch generation started (after click):', data);
                   })
                   .catch(err => {
-                      console.error('[PROACTIVE QUEUE] Generation failed (after click):', err);
+                      console.error('[PROACTIVE] Batch generation failed (after click):', err);
                   });
             }).catch(err => console.log('Audio still failed:', err));
             document.removeEventListener('click', playOnClick);
