@@ -1676,10 +1676,15 @@ class SoloController extends Controller
     {
         $pointsEarned = 0;
         $questionsCount = 0;
+        $bonusQuestionsSkipped = 0;
         
-        foreach ($stats as $stat) {
+        Log::info("🔍 DÉBUT CALCUL EFFICACITÉ - Total stats: " . count($stats));
+        
+        foreach ($stats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans le calcul d'efficacité
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                $bonusQuestionsSkipped++;
+                Log::info("  Q#{$index} BONUS SKIPPED: pts=" . ($stat['player_points'] ?? 'N/A'));
                 continue;  // Sauter les questions bonus
             }
             
@@ -1687,15 +1692,21 @@ class SoloController extends Controller
             
             // Utiliser les points RÉELS si disponibles, sinon fallback sur l'ancienne logique
             if (isset($stat['player_points'])) {
+                $pointsBefore = $pointsEarned;
                 $pointsEarned += $stat['player_points'];
+                Log::info("  Q#{$questionsCount}: pts={$stat['player_points']}, buzzed=" . ($stat['player_buzzed'] ? '1' : '0') . ", correct=" . ($stat['is_correct'] ? '1' : '0') . " | Total: {$pointsBefore} → {$pointsEarned}");
             } else {
                 // Fallback pour compatibilité avec anciennes données
                 if ($stat['player_buzzed']) {
                     if ($stat['is_correct']) {
                         $pointsEarned += 2;
+                        Log::info("  Q#{$questionsCount}: FALLBACK +2 (correct)");
                     } else {
                         $pointsEarned -= 2;
+                        Log::info("  Q#{$questionsCount}: FALLBACK -2 (incorrect)");
                     }
+                } else {
+                    Log::info("  Q#{$questionsCount}: FALLBACK 0 (no buzz)");
                 }
             }
         }
@@ -1703,13 +1714,23 @@ class SoloController extends Controller
         // FORMULE SIMPLIFIÉE : toujours 2 points max par question
         $pointsPossible = $questionsCount * 2;
         
+        Log::info("📊 RÉSULTAT CALCUL:");
+        Log::info("  - Questions normales: {$questionsCount}");
+        Log::info("  - Questions bonus skipped: {$bonusQuestionsSkipped}");
+        Log::info("  - Points gagnés: {$pointsEarned}");
+        Log::info("  - Points possibles: {$pointsPossible}");
+        
         if ($pointsPossible > 0) {
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
             // Limiter à 100% maximum, mais permettre valeurs négatives
             $rawEfficiency = min(100, $rawEfficiency);
-            return round($rawEfficiency, 1);
+            $finalEfficiency = round($rawEfficiency, 1);
+            Log::info("  - Efficacité RAW: {$rawEfficiency}%");
+            Log::info("  - Efficacité FINALE: {$finalEfficiency}%");
+            return $finalEfficiency;
         }
         
+        Log::info("  - Efficacité: 0% (aucune question)");
         return 0; // 0% si aucune question
     }
 
