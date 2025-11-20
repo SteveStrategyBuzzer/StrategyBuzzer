@@ -367,6 +367,12 @@ if ($opponentInfo['is_boss'] ?? false) {
         opacity: 0.3;
     }
     
+    /* Classe 'disabled' pour logique JS uniquement - PAS de style grisé visuel */
+    .skill-circle.disabled {
+        /* Pas de style visuel - le bouton reste normal */
+        /* La classe sert uniquement à déclencher le popup JS */
+    }
+    
     /* BOUTON BUZZER CENTRÉ EN BAS */
     .buzz-container-bottom {
         position: fixed;

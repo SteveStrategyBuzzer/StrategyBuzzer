@@ -1637,8 +1637,8 @@ class SoloController extends Controller
         if ($pointsPossible > 0) {
             // Efficacité = (points gagnés / max possible) × 100
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
-            // Permettre les valeurs négatives, mais limiter à 100% maximum
-            $rawEfficiency = min(100, $rawEfficiency);
+            // Limiter entre -5% (minimum) et 100% (maximum)
+            $rawEfficiency = max(-5, min(100, $rawEfficiency));
             $efficiency = round($rawEfficiency, 1);
         }
         
@@ -1694,8 +1694,8 @@ class SoloController extends Controller
         
         if ($pointsPossible > 0) {
             $rawEfficiency = ($pointsEarned / $pointsPossible) * 100;
-            // Permettre les valeurs négatives, mais limiter à 100% maximum
-            $rawEfficiency = min(100, $rawEfficiency);
+            // Limiter entre -5% (minimum) et 100% (maximum)
+            $rawEfficiency = max(-5, min(100, $rawEfficiency));
             return round($rawEfficiency, 1);
         }
         

@@ -339,7 +339,7 @@ $allAnswers = $params['question']['answers'] ?? [];
             @endphp
             <img src="{{ $avatarPath }}" alt="Player" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid #4ECDC4;">
             <div>
-                <div class="answer-title">📝 Réponses Q: {{ $params['current_question'] }}</div>
+                <div class="answer-title">📝 Question {{ $params['current_question'] }}</div>
                 <div class="answer-value">{{ $params['total_questions'] }} questions</div>
             </div>
         </div>
