@@ -79,10 +79,10 @@ app.post('/generate-question', async (req, res) => {
   const difficultyDesc = getDifficultyDescription(niveau);
   const lengthConstraint = getQuestionLengthConstraint(niveau);
   
-  // Créer un contexte pour éviter les réponses déjà utilisées
-  const usedAnswersContext = usedAnswers.length > 0
-    ? `\n\nRÉPONSES INTERDITES - La réponse correcte NE DOIT PAS être parmi ces réponses déjà utilisées:\n${usedAnswers.map(a => `- ${a}`).join('\n')}\nChoisis une réponse complètement différente.`
-    : '';
+  // NOTE: On NE dit PLUS à l'IA d'éviter certaines réponses dans le prompt
+  // Au lieu de ça, la validation POST-génération (ligne ~401) rejette les questions 
+  // dont la réponse correcte est déjà utilisée, ce qui force une régénération complète
+  // avec un NOUVEAU sujet/question, évitant ainsi les réponses factuellement fausses
   
   // Boucle de retry pour régénérer automatiquement si validation échoue
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -124,7 +124,7 @@ IMPORTANT:
 - Adapte la complexité au niveau ${niveau} (plus le niveau est élevé, plus la question doit être difficile)
 - Pour les niveaux élevés (>50), utilise des détails précis, des dates exactes, des noms complets
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
-- LONGUEUR: ${lengthConstraint}${usedAnswersContext}
+- LONGUEUR: ${lengthConstraint}
 
 VALIDATION FACTUELLE STRICTE:
 - VÉRIFIE que la question et la réponse correcte sont VRAIES et EXACTES à 100%
@@ -217,7 +217,7 @@ IMPORTANT:
 - Adapte la complexité au niveau ${niveau}
 - Pour les niveaux élevés, utilise des affirmations plus nuancées
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
-- LONGUEUR: ${lengthConstraint}${usedAnswersContext}
+- LONGUEUR: ${lengthConstraint}
 
 VALIDATION FACTUELLE STRICTE:
 - VÉRIFIE que l'affirmation est soit VRAIE soit FAUSSE de manière claire et vérifiable
