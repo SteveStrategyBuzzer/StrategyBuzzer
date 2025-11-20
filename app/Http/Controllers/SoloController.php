@@ -1359,6 +1359,17 @@ class SoloController extends Controller
         // Récupérer les stats par manche (toutes les manches complétées)
         $roundSummaries = session('round_summaries', []);
         
+        // DEBUG : Log des efficacités pour comprendre le problème -30%
+        Log::info("EFFICACITÉ DEBUG (Defeat):", [
+            'round_efficiencies' => $roundEfficiencies,
+            'party_efficiency_calculated' => $partyEfficiency,
+            'global_efficiency' => $globalEfficiency,
+            'total_correct' => $totalCorrect,
+            'total_incorrect' => $totalIncorrect,
+            'total_unanswered' => $totalUnanswered,
+            'round_summaries' => $roundSummaries,
+        ]);
+        
         $nextLifeRegen = null;
         if ($user && $user->next_life_regen) {
             if ($user->next_life_regen instanceof \DateTimeInterface) {
