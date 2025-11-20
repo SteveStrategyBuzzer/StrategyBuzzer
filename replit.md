@@ -8,18 +8,34 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### November 19, 2025 - Proactive Question Generation & Bonus Points System
+### November 20, 2025 - Progressive Block Generation System & Critical Bug Fixes
 
-**Feature: Zero-Delay Proactive Question Generation**
-- **Objective**: Eliminate all waiting delays between questions during gameplay
+**Feature: Progressive Block-Based Question Generation (2→3→3→3)**
+- **Objective**: Reduce initial wait time while eliminating delays between questions
 - **Implementation**: 
-  - New endpoint `/solo/generate-batch` generates 10-11 questions (11 for Magicienne avatar)
-  - AJAX call during 9-second countdown pre-generates all questions for the round
-  - AJAX call during round statistics screen pre-generates questions for next round
-  - Questions stored in session: `pregenerated_questions_round_X`
-  - Fallback to on-demand generation if batch fails
-- **Result**: Players experience instant question transitions with zero API delays
-- **Files Modified**: `routes/web.php`, `app/Http/Controllers/SoloController.php`, `resources/views/game_preparation.blade.php`, `resources/views/round_result.blade.php`
+  - **Replaced batch system** with progressive blocks: Bloc 1 (2Q) → Bloc 2 (3Q) → Bloc 3 (3Q) → Bloc 4 (3Q) → Bloc bonus (1Q for Magicienne)
+  - New endpoint `/solo/generate-block` generates 2 or 3 questions per block with anti-duplication
+  - **Countdown phase**: Generates Bloc 1 (2 questions) during 9-second countdown → game starts immediately
+  - **During gameplay**: Proactively generates blocks 2-3-4 at questions 2, 4, and 7 while player answers
+  - **Round transitions**: Generates Bloc 1 of next round during pause screen
+  - **Fallback persistence**: On-demand questions now added to stock to prevent repeated slow calls
+  - **Stock cleanup**: Automatic removal of stale questions at start of each round
+  - Questions stored in session: `question_stock_round_{round}`
+- **Architecture**: Progressive just-in-time generation maintains 2-3 question buffer without generating all 11 upfront
+- **Known Limitation**: Triggers based on fixed question numbers (2,4,7) may skip during fast play or page refresh, causing stock depletion and fallback generation
+- **Files Modified**: `routes/web.php`, `app/Http/Controllers/SoloController.php`, `resources/views/game_preparation.blade.php`, `resources/views/game_result.blade.php`, `resources/views/round_result.blade.php`
+
+**Bug #1 Fixed: Missing $globalEfficiency Calculation**
+- **Problem**: `roundResult()` displayed efficiency as null (line 1132)
+- **Solution**: Added `$this->calculateEfficiency($globalStats)` call to compute global efficiency
+- **Impact**: Round summary now displays correct efficiency percentage
+
+**Bug #2 Fixed: "No Choice" Answer Handling**
+- **Problem**: Timeout auto-selected last answer instead of allowing "no choice" penalty
+- **Solution**: 
+  - Frontend: `handleTimeout()` sets `answer_index = -1` explicitly
+  - Backend: Detects `answerIndex === -1` and applies -2 points if player buzzed
+- **Impact**: Players can now receive -2 points for not selecting an answer after buzzing
 
 **Feature: Strategic Bonus Question Mechanics**
 - **Objective**: Bonus question skill ("Question bonus") usable only after question 10
