@@ -344,7 +344,16 @@ class SoloController extends Controller
     {
         // Simple méthode qui affiche juste l'écran de préparation
         // Le compte à rebours est géré par JavaScript dans la vue
-        return view('game_preparation');
+        
+        // Récupérer le niveau sélectionné pour afficher le profil du boss si c'est un niveau boss
+        $niveau = session('niveau_selectionne', 1);
+        $bossProfile = $this->getBossProfile($niveau);
+        
+        // Passer le profil boss à la vue (null si ce n'est pas un boss)
+        return view('game_preparation', [
+            'boss_profile' => $bossProfile,
+            'niveau' => $niveau
+        ]);
     }
 
     public function game()
@@ -2272,5 +2281,193 @@ class SoloController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+    
+    /**
+     * Retourne le profil de compétences d'un boss selon son niveau
+     * Profil = pourcentages de maîtrise dans les 9 thèmes
+     */
+    private function getBossProfile($niveau)
+    {
+        // Les 9 thèmes : Général, Cinéma, Science, Géo, Histoire, Art, Culture, Sport, Cuisine
+        $profiles = [
+            // Niveau 10 : Le Stratège - Tacticien, fort en logique et stratégie
+            10 => [
+                'name' => 'Le Stratège',
+                'description' => 'Tacticien méthodique maîtrisant l\'art de la stratégie et de l\'analyse.',
+                'skills' => [
+                    'Général' => 75,
+                    'Cinéma' => 40,
+                    'Science' => 70,
+                    'Géo' => 55,
+                    'Histoire' => 65,
+                    'Art' => 45,
+                    'Culture' => 50,
+                    'Sport' => 35,
+                    'Cuisine' => 30
+                ]
+            ],
+            
+            // Niveau 20 : La Prodige - Intellect pur, brillante académique
+            20 => [
+                'name' => 'La Prodige',
+                'description' => 'Brillante stratège maîtrisant l\'art de l\'analyse et de la logique pure.',
+                'skills' => [
+                    'Général' => 85,
+                    'Cinéma' => 50,
+                    'Science' => 80,
+                    'Géo' => 60,
+                    'Histoire' => 75,
+                    'Art' => 55,
+                    'Culture' => 70,
+                    'Sport' => 25,
+                    'Cuisine' => 30
+                ]
+            ],
+            
+            // Niveau 30 : Le Maître - Équilibré, maître de plusieurs domaines
+            30 => [
+                'name' => 'Le Maître',
+                'description' => 'Maître équilibré possédant une connaissance approfondie dans de multiples domaines.',
+                'skills' => [
+                    'Général' => 80,
+                    'Cinéma' => 65,
+                    'Science' => 75,
+                    'Géo' => 70,
+                    'Histoire' => 80,
+                    'Art' => 65,
+                    'Culture' => 75,
+                    'Sport' => 55,
+                    'Cuisine' => 60
+                ]
+            ],
+            
+            // Niveau 40 : Le Sage - Sagesse ancestrale, fort en culture et histoire
+            40 => [
+                'name' => 'Le Sage',
+                'description' => 'Sage possédant une connaissance ancestrale de l\'histoire et de la culture.',
+                'skills' => [
+                    'Général' => 85,
+                    'Cinéma' => 60,
+                    'Science' => 70,
+                    'Géo' => 75,
+                    'Histoire' => 90,
+                    'Art' => 80,
+                    'Culture' => 90,
+                    'Sport' => 40,
+                    'Cuisine' => 65
+                ]
+            ],
+            
+            // Niveau 50 : La Championne - Athlète d'élite, forte en sport et nutrition
+            50 => [
+                'name' => 'La Championne',
+                'description' => 'Championne olympique alliant performance sportive et excellence nutritionnelle.',
+                'skills' => [
+                    'Général' => 70,
+                    'Cinéma' => 45,
+                    'Science' => 60,
+                    'Géo' => 80,
+                    'Histoire' => 50,
+                    'Art' => 40,
+                    'Culture' => 50,
+                    'Sport' => 95,
+                    'Cuisine' => 85
+                ]
+            ],
+            
+            // Niveau 60 : La Légendaire - Légende vivante, très équilibrée et puissante
+            60 => [
+                'name' => 'La Légendaire',
+                'description' => 'Légende vivante dont la réputation dépasse les frontières de la connaissance.',
+                'skills' => [
+                    'Général' => 90,
+                    'Cinéma' => 80,
+                    'Science' => 85,
+                    'Géo' => 85,
+                    'Histoire' => 85,
+                    'Art' => 80,
+                    'Culture' => 85,
+                    'Sport' => 75,
+                    'Cuisine' => 75
+                ]
+            ],
+            
+            // Niveau 70 : Le Titan - Force brute intellectuelle, puissant partout
+            70 => [
+                'name' => 'Le Titan',
+                'description' => 'Titan de la connaissance possédant une force intellectuelle impressionnante.',
+                'skills' => [
+                    'Général' => 92,
+                    'Cinéma' => 70,
+                    'Science' => 90,
+                    'Géo' => 88,
+                    'Histoire' => 88,
+                    'Art' => 65,
+                    'Culture' => 75,
+                    'Sport' => 85,
+                    'Cuisine' => 70
+                ]
+            ],
+            
+            // Niveau 80 : La Virtuose - Artiste d'exception, maîtresse des arts
+            80 => [
+                'name' => 'La Virtuose',
+                'description' => 'Virtuose d\'exception maîtrisant tous les arts avec une élégance parfaite.',
+                'skills' => [
+                    'Général' => 85,
+                    'Cinéma' => 95,
+                    'Science' => 75,
+                    'Géo' => 80,
+                    'Histoire' => 85,
+                    'Art' => 98,
+                    'Culture' => 95,
+                    'Sport' => 60,
+                    'Cuisine' => 90
+                ]
+            ],
+            
+            // Niveau 90 : Le Génie - Scientifique brillant, esprit rationnel supérieur
+            90 => [
+                'name' => 'Le Génie',
+                'description' => 'Génie scientifique dont l\'esprit rationnel repousse les limites de la connaissance.',
+                'skills' => [
+                    'Général' => 95,
+                    'Cinéma' => 80,
+                    'Science' => 98,
+                    'Géo' => 90,
+                    'Histoire' => 88,
+                    'Art' => 75,
+                    'Culture' => 85,
+                    'Sport' => 65,
+                    'Cuisine' => 80
+                ]
+            ],
+            
+            // Niveau 100 : L'Intelligence Ultime - Perfection absolue dans tous les domaines
+            100 => [
+                'name' => 'L\'Intelligence Ultime',
+                'description' => 'Incarnation parfaite de l\'intelligence absolue, maîtrisant tous les domaines de la connaissance.',
+                'skills' => [
+                    'Général' => 100,
+                    'Cinéma' => 98,
+                    'Science' => 100,
+                    'Géo' => 98,
+                    'Histoire' => 98,
+                    'Art' => 95,
+                    'Culture' => 98,
+                    'Sport' => 90,
+                    'Cuisine' => 95
+                ]
+            ],
+        ];
+        
+        // Si le niveau correspond à un boss, retourner son profil
+        if (isset($profiles[$niveau])) {
+            return $profiles[$niveau];
+        }
+        
+        // Pour les adversaires normaux (non-boss), retourner null
+        return null;
     }
 }
