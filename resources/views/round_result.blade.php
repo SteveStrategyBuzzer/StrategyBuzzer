@@ -241,8 +241,8 @@
             </div>
             
             <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 10px;">
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité Max de la Partie</div>
-                <div style="font-size: 2rem; font-weight: 800; color: #667eea;">{{ number_format($params['party_efficiency'] ?? $params['global_efficiency'] ?? 0, 1) }}%</div>
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité de la Partie</div>
+                <div style="font-size: 2rem; font-weight: 800; color: #667eea;">{{ number_format($params['party_efficiency'] ?? 0, 1) }}%</div>
             </div>
         </div>
         

@@ -806,19 +806,20 @@ class SoloController extends Controller
         // Activer le flag de génération pour bloquer les appels concurrents
         session(['question_generation_pending' => true]);
         
-        $nbQuestions = (int) session('nb_questions', 30);
+        // BEST OF 3 : 10 questions par manche (pas 30 total !)
+        $questionsPerRound = 10;
         
         // DEBUG: Log pour diagnostiquer le problème des 11 questions au lieu de 10
         \Log::info('[BUG#3 DEBUG] nextQuestion() appelé:', [
             'current_question_number' => $currentQuestion,
-            'nb_questions' => $nbQuestions,
-            'will_end_round' => ($currentQuestion >= $nbQuestions),
+            'questions_per_round' => $questionsPerRound,
+            'will_end_round' => ($currentQuestion >= $questionsPerRound),
             'global_stats_count' => count(session('global_stats', [])),
             'answered_questions_count' => $answeredCount
         ]);
         
-        // SYSTÈME BEST OF 3 : Vérifier si la manche est terminée
-        if ($currentQuestion >= $nbQuestions) {
+        // SYSTÈME BEST OF 3 : Vérifier si la manche est terminée (10 questions par manche)
+        if ($currentQuestion >= $questionsPerRound) {
             // Fin de la manche - déterminer le gagnant de la manche
             $playerScore = session('score', 0);
             $opponentScore = session('opponent_score', 0);
@@ -1043,8 +1044,24 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer l'efficacité globale basée sur les points (POUR L'ÉCRAN FINAL UNIQUEMENT)
-        $globalEfficiency = $this->calculateEfficiency($globalStats);
+        // CALCUL DE L'EFFICACITÉ DE LA PARTIE : somme de TOUS les points / (total questions × 2) × 100
+        $partyTotalPoints = 0;
+        $partyTotalQuestions = 0;
+        foreach ($globalStats as $stat) {
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
+                continue; // Exclure les questions bonus
+            }
+            $partyTotalQuestions++;
+            if (isset($stat['player_points'])) {
+                $partyTotalPoints += $stat['player_points'];
+            }
+        }
+        $partyEfficiency = 0;
+        if ($partyTotalQuestions > 0) {
+            $partyPointsPossible = $partyTotalQuestions * 2;
+            $partyEfficiency = round(($partyTotalPoints / $partyPointsPossible) * 100, 1);
+        }
+        Log::info("📊 EFFICACITÉ DE LA PARTIE: {$partyTotalPoints} pts / {$partyTotalQuestions} questions ({$partyPointsPossible} pts possibles) = {$partyEfficiency}%");
         
         // Calculer les statistiques de la manche qui vient de se terminer
         $roundNumber = $currentRound - 1; // La manche qui vient de se terminer
@@ -1088,12 +1105,6 @@ class SoloController extends Controller
         $efficiencyMaxPossible = null;
         if ($roundNumber == 1 && isset($roundEfficiencies[1])) {
             $efficiencyMaxPossible = round(($roundEfficiencies[1] + 100) / 2, 2);
-        }
-        
-        // Efficacité de la Partie (moyenne de toutes les manches jouées)
-        $partyEfficiency = null;
-        if (count($roundEfficiencies) > 0) {
-            $partyEfficiency = round(array_sum($roundEfficiencies) / count($roundEfficiencies), 2);
         }
         
         // Sinon, afficher le résultat de la manche et continuer
