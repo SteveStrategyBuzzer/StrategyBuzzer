@@ -1043,8 +1043,12 @@ class SoloController extends Controller
             }
         }
         
-        // Calculer l'efficacité globale basée sur les points
+        // Calculer l'efficacité globale basée sur les points (POUR L'ÉCRAN FINAL UNIQUEMENT)
         $globalEfficiency = $this->calculateEfficiency($globalStats);
+        
+        // Calculer les statistiques de la manche qui vient de se terminer
+        $roundNumber = $currentRound - 1; // La manche qui vient de se terminer
+        $completedRoundStats = $this->calculateRoundStatistics($roundNumber);
         
         // VÉRIFIER SI LA PARTIE EST TERMINÉE (best of 3: premier à 2 manches gagnées)
         if ($playerRoundsWon >= 2) {
@@ -1071,10 +1075,6 @@ class SoloController extends Controller
             // DÉFAITE DU JOUEUR - Rediriger vers une page de défaite
             return redirect()->route('solo.defeat');
         }
-        
-        // Calculer les statistiques de la manche qui vient de se terminer
-        $roundNumber = $currentRound - 1; // La manche qui vient de se terminer
-        $completedRoundStats = $this->calculateRoundStatistics($roundNumber);
         
         // Stocker les stats de cette manche dans round_summaries
         $roundSummaries = session('round_summaries', []);
@@ -1105,12 +1105,14 @@ class SoloController extends Controller
             'nb_questions' => session('nb_questions', 30),
             'niveau_adversaire' => $niveau,        // Niveau de l'adversaire
             'vies_restantes' => $viesRestantes,    // Vies restantes
-            'round_efficiency' => $roundEfficiency, // % efficacité manche
+            'round_efficiency' => $completedRoundStats['efficiency'], // % efficacité de LA MANCHE (CORRIGÉ!)
             'player_score' => $playerScore,        // Score joueur manche
             'opponent_score' => $opponentScore,    // Score adversaire manche
             'theme' => $theme,                     // Thème joué
             'avatar' => $avatar,                   // Avatar stratégique
-            // Statistiques globales
+            // Statistiques de LA MANCHE complétée (NOUVEAU!)
+            'round_stats' => $completedRoundStats,
+            // Statistiques globales (toutes manches confondues)
             'total_correct' => $totalCorrect,
             'total_incorrect' => $totalIncorrect,
             'total_unanswered' => $totalUnanswered,
