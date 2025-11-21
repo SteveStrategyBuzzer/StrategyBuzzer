@@ -1111,26 +1111,7 @@ class SoloController extends Controller
             }
         }
         
-        // CALCUL DE L'EFFICACITÉ DE LA PARTIE : somme de TOUS les points / (total questions × 2) × 100
-        $partyTotalPoints = 0;
-        $partyTotalQuestions = 0;
-        foreach ($globalStats as $stat) {
-            if (isset($stat['is_bonus']) && $stat['is_bonus']) {
-                continue; // Exclure les questions bonus
-            }
-            $partyTotalQuestions++;
-            if (isset($stat['player_points'])) {
-                $partyTotalPoints += $stat['player_points'];
-            }
-        }
-        $partyEfficiency = 0;
-        if ($partyTotalQuestions > 0) {
-            $partyPointsPossible = $partyTotalQuestions * 2;
-            $partyEfficiency = round(($partyTotalPoints / $partyPointsPossible) * 100, 1);
-        }
-        Log::info("📊 EFFICACITÉ DE LA PARTIE: {$partyTotalPoints} pts / {$partyTotalQuestions} questions ({$partyPointsPossible} pts possibles) = {$partyEfficiency}%");
-        
-        // Calculer l'efficacité globale basée sur les points (CORRIGÉ BUG #1)
+        // Calculer l'efficacité globale basée sur les points (utilise calculateEfficiency qui fonctionne correctement)
         $globalEfficiency = $this->calculateEfficiency($globalStats);
         
         // Calculer les statistiques de la manche qui vient de se terminer
@@ -1211,9 +1192,9 @@ class SoloController extends Controller
             'total_unanswered' => $totalUnanswered,
             'total_questions_played' => $totalQuestionsPlayed,
             'global_efficiency' => $globalEfficiency,
+            'party_efficiency' => $globalEfficiency,  // Utilise le calcul qui fonctionne
             // Métriques supplémentaires
             'efficiency_max_possible' => $efficiencyMaxPossible,
-            'party_efficiency' => $partyEfficiency,
             // Stats par manche (toutes les manches complétées jusqu'à maintenant)
             'round_summaries' => $roundSummaries,
         ];
