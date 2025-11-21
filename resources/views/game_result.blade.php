@@ -27,6 +27,23 @@
         max-height: 100vh;
     }
     
+    .opponent-header {
+        margin-bottom: 15px;
+        padding: 12px;
+        background: rgba(102, 126, 234, 0.2);
+        border-radius: 12px;
+        border: 2px solid rgba(102, 126, 234, 0.4);
+    }
+    
+    .opponent-name {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #667eea;
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
     .result-icon {
         font-size: 80px;
         margin-bottom: 10px;
@@ -87,7 +104,7 @@
     }
     
     .points-gained {
-        background: linear-gradient(135deg, #2ECC71, #27AE60);
+        background: linear-gradient(135deg, #667eea, #764ba2);
         color: white;
         padding: 4px 12px;
         border-radius: 20px;
@@ -96,7 +113,7 @@
     }
     
     .points-lost {
-        background: linear-gradient(135deg, #E74C3C, #C0392B);
+        background: linear-gradient(135deg, #f093fb, #f5576c);
         color: white;
         padding: 4px 12px;
         border-radius: 20px;
@@ -147,15 +164,15 @@
     }
     
     .score-player {
-        background: linear-gradient(145deg, rgba(46, 204, 113, 0.2) 0%, rgba(39, 174, 96, 0.2) 100%);
-        border: 3px solid #2ECC71;
-        box-shadow: 0 10px 40px rgba(46, 204, 113, 0.3);
+        background: linear-gradient(145deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+        border: 3px solid #667eea;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
     }
     
     .score-opponent {
-        background: linear-gradient(145deg, rgba(231, 76, 60, 0.2) 0%, rgba(192, 57, 43, 0.2) 100%);
-        border: 3px solid #E74C3C;
-        box-shadow: 0 10px 40px rgba(231, 76, 60, 0.3);
+        background: linear-gradient(145deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+        border: 3px solid #667eea;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
     }
     
     .score-label {
@@ -173,11 +190,11 @@
     }
     
     .score-player .score-number {
-        color: #2ECC71;
+        color: #667eea;
     }
     
     .score-opponent .score-number {
-        color: #E74C3C;
+        color: #667eea;
     }
     
     .vs-divider {
@@ -256,46 +273,64 @@
         background: rgba(0,0,0,0.3);
         border: 2px solid rgba(78, 205, 196, 0.3);
         border-radius: 10px;
-        padding: 8px;
+        padding: 12px;
         margin-top: 10px;
+        margin-bottom: 15px;
         backdrop-filter: blur(10px);
     }
     
-    .info-row {
-        display: flex;
-        gap: 6px;
-        margin-bottom: 6px;
-    }
-    
-    .info-row:last-child {
-        margin-bottom: 0;
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
     }
     
     .info-item {
         background: rgba(78, 205, 196, 0.1);
         border: 1px solid rgba(78, 205, 196, 0.3);
         border-radius: 6px;
-        padding: 4px 8px;
-        flex: 1;
+        padding: 8px 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
     
-    .info-item.wide {
-        flex: 1;
-    }
-    
     .info-label {
-        font-size: 0.65rem;
+        font-size: 0.75rem;
         color: #4ECDC4;
         font-weight: 600;
     }
     
     .info-value {
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         color: white;
         font-weight: bold;
+    }
+    
+    /* Section "Le saviez-vous" */
+    .did-you-know {
+        background: rgba(102, 126, 234, 0.15);
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 15px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .did-you-know-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .did-you-know-content {
+        font-size: 0.9rem;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.9);
+        text-align: center;
+        font-style: italic;
     }
     
     /* Timer next question et boutons */
@@ -642,17 +677,10 @@
 </style>
 
 <div class="result-container">
-    @if($params['is_correct'])
-        <div class="result-correct">
-            <div class="result-icon">✅</div>
-            <h1 class="result-title">Bonne réponse !</h1>
-        </div>
-    @else
-        <div class="result-incorrect">
-            <div class="result-icon">❌</div>
-            <h1 class="result-title">Mauvaise réponse</h1>
-        </div>
-    @endif
+    <!-- En-tête avec nom de l'adversaire -->
+    <div class="opponent-header">
+        <h2 class="opponent-name">Vs {{ $params['opponent_name'] ?? 'Adversaire' }}</h2>
+    </div>
     
     <!-- Détails du round -->
     @if(isset($params['player_points']))
@@ -677,7 +705,7 @@
         
         <div class="round-opponent">
             <div class="round-info">
-                <span class="round-label">🤖 IA</span>
+                <span class="round-label">🎯 {{ $params['opponent_name'] ?? 'Adversaire' }}</span>
                 @if(isset($params['opponent_buzzed']) && !$params['opponent_buzzed'])
                     <span class="points-neutral">Pas buzzé</span>
                 @elseif(isset($params['opponent_points']))
@@ -709,7 +737,7 @@
         <div class="vs-divider">VS</div>
         
         <div class="score-opponent">
-            <div class="score-label">🤖 Adversaire</div>
+            <div class="score-label">🎯 {{ $params['opponent_name'] ?? 'Adversaire' }}</div>
             <div class="score-number">{{ $params['opponent_score'] ?? 0 }}</div>
         </div>
     </div>
@@ -793,9 +821,9 @@
         </div>
     </div>
     
-    <!-- Informations de progression simplifiées -->
+    <!-- Informations de progression en 2 colonnes -->
     <div class="progress-info">
-        <div class="info-row">
+        <div class="info-grid">
             <div class="info-item">
                 <span class="info-label">⚔️ Score:</span>
                 <span class="info-value">{{ $params['player_rounds_won'] ?? 0 }}-{{ $params['opponent_rounds_won'] ?? 0 }}</span>
@@ -804,13 +832,22 @@
                 <span class="info-label">❤️ Vies:</span>
                 <span class="info-value">{{ $params['vies_restantes'] ?? config('game.life_max', 3) }}</span>
             </div>
-        </div>
-        
-        <div class="info-row">
-            <div class="info-item wide">
+            <div class="info-item">
                 <span class="info-label">📈 Progression:</span>
                 <span class="info-value">{{ $params['current_question'] ?? 1 }}/{{ $params['total_questions'] ?? 30 }}</span>
             </div>
+            <div class="info-item">
+                <span class="info-label">🎯 Niveau:</span>
+                <span class="info-value">{{ $params['niveau'] ?? 1 }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Section "Le saviez-vous" -->
+    <div class="did-you-know">
+        <div class="did-you-know-title">💡 Le saviez-vous ?</div>
+        <div class="did-you-know-content">
+            {{ $params['did_you_know'] ?? 'Chargement...' }}
         </div>
     </div>
     
@@ -820,13 +857,29 @@
             <a href="{{ route('solo.index') }}" class="btn-action btn-menu">
                 ← Solo
             </a>
-            <button onclick="goToNextQuestion()" class="btn-action btn-go">
-                🚀 GO
-            </button>
+            
+            @php
+                $gameMode = session('game_mode', 'solo');
+                $isMultiplayer = in_array($gameMode, ['duo', 'league', 'master']);
+            @endphp
+            
+            @if($isMultiplayer)
+                <button onclick="markAsReady()" class="btn-action btn-ready" id="readyBtn">
+                    ✅ Prêt (<span id="readyCount">0</span>/<span id="totalPlayers">2</span>)
+                </button>
+            @else
+                <button onclick="goToNextQuestion()" class="btn-action btn-go">
+                    🚀 GO
+                </button>
+            @endif
         </div>
         
         <div class="next-question-timer">
-            Prochaine question dans <span class="timer-count" id="countdown">15</span> secondes...
+            @if($isMultiplayer)
+                En attente des autres joueurs...
+            @else
+                Prochaine question dans <span class="timer-count" id="countdown">15</span> secondes...
+            @endif
         </div>
     </div>
 </div>

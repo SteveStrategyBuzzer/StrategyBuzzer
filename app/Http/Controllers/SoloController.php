@@ -770,6 +770,12 @@ class SoloController extends Controller
         // Calculer l'efficacité basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
 
+        // Récupérer le nom de l'adversaire pour l'affichage
+        $opponentInfo = $this->getOpponentInfo($niveau);
+        
+        // Générer le fait intéressant "Le saviez-vous"
+        $didYouKnow = $this->generateDidYouKnow($question, $isCorrect);
+        
         $params = [
             'question' => $question,
             'answer_index' => $answerIndex,
@@ -782,6 +788,7 @@ class SoloController extends Controller
             'niveau' => $niveau,
             'vies_restantes' => $viesRestantes,
             'skills_restants' => $skillsRestants,
+            'opponent_name' => $opponentInfo['name'] ?? 'Adversaire',
             'pourcentage' => $pourcentage,
             'questions_restantes' => $questionsRestantes,
             'show_position' => $showPosition,
@@ -803,6 +810,7 @@ class SoloController extends Controller
             'total_questions_played' => $totalQuestionsPlayed,
             'global_efficiency' => $globalEfficiency,
             'theme' => session('theme', 'Général'),
+            'did_you_know' => $didYouKnow,
         ];
         
         return view('game_result', compact('params'));
@@ -2469,5 +2477,38 @@ class SoloController extends Controller
         
         // Pour les adversaires normaux (non-boss), retourner null
         return null;
+    }
+    
+    /**
+     * Génère un fait intéressant "Le saviez-vous" basé sur la question avec OpenAI
+     */
+    private function generateDidYouKnow($question, $isCorrect)
+    {
+        try {
+            $correctAnswer = $question['answers'][$question['correct_index']] ?? '';
+            $questionText = $question['text'] ?? '';
+            
+            $prompt = "Basé sur cette question de quiz : \"{$questionText}\" avec la bonne réponse \"{$correctAnswer}\", génère un fait intéressant court (maximum 2 phrases, 120 caractères) en français commençant par un détail captivant. Sois concis et pédagogique.";
+            
+            $client = \OpenAI::client(config('openai.api_key'));
+            
+            $response = $client->chat()->create([
+                'model' => 'gpt-3.5-turbo',
+                'messages' => [
+                    ['role' => 'system', 'content' => 'Tu es un expert en culture générale qui génère des faits intéressants courts et captivants.'],
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'max_tokens' => 80,
+                'temperature' => 0.7,
+            ]);
+            
+            $didYouKnow = $response->choices[0]->message->content ?? 'Continuez à apprendre et vous découvrirez encore plus de choses fascinantes !';
+            
+            return trim($didYouKnow);
+            
+        } catch (\Exception $e) {
+            \Log::error('Erreur génération "Le saviez-vous": ' . $e->getMessage());
+            return 'Chaque question est une opportunité d\'apprendre quelque chose de nouveau !';
+        }
     }
 }
