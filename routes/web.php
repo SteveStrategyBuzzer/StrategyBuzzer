@@ -143,7 +143,9 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     Route::post('/select-opponent/{level}', [SoloController::class, 'selectOpponent'])->name('select-opponent');
     
     Route::get('/resume',  [SoloController::class, 'resume'])->name('resume');
+    Route::get('/boss-presentation', [SoloController::class, 'bossPresentation'])->name('boss-presentation');
     Route::get('/prepare', [SoloController::class, 'prepare'])->name('prepare');
+    Route::get('/preparation', [SoloController::class, 'prepare'])->name('preparation');
     Route::get('/game',    [SoloController::class, 'game'])->name('game');
     Route::get('/timeout', [SoloController::class, 'timeout'])->name('timeout');
     Route::post('/buzz',   [SoloController::class, 'buzz'])->name('buzz');
