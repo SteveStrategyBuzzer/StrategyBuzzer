@@ -114,15 +114,155 @@ return [
     ],
     
     'boss_opponents' => [
-        10 => ['name' => 'Le Stratège', 'slug' => 'le-stratege'],
-        20 => ['name' => 'La Prodige', 'slug' => 'la-prodige'],
-        30 => ['name' => 'Le Maître', 'slug' => 'le-maitre'],
-        40 => ['name' => 'Le Sage', 'slug' => 'le-sage'],
-        50 => ['name' => 'La Championne', 'slug' => 'la-championne'],
-        60 => ['name' => 'La Légende', 'slug' => 'la-legende'],
-        70 => ['name' => 'Le Titan', 'slug' => 'le-titan'],
-        80 => ['name' => 'La Virtuose', 'slug' => 'la-virtuose'],
-        90 => ['name' => 'Le Génie', 'slug' => 'le-genie'],
-        100 => ['name' => "L'Intelligence Ultime", 'slug' => 'intelligence-ultime'],
+        10 => [
+            'name' => 'Le Stratège', 
+            'slug' => 'le-stratege',
+            'radar' => [
+                'Général' => 60,
+                'Cinéma' => 45,
+                'Science' => 55,
+                'Géographie' => 70,
+                'Histoire' => 65,
+                'Art' => 40,
+                'Culture' => 50,
+                'Sport' => 55,
+                'Cuisine' => 35,
+            ]
+        ],
+        20 => [
+            'name' => 'La Prodige', 
+            'slug' => 'la-prodige',
+            'radar' => [
+                'Général' => 70,
+                'Cinéma' => 80,
+                'Science' => 65,
+                'Géographie' => 60,
+                'Histoire' => 55,
+                'Art' => 75,
+                'Culture' => 85,
+                'Sport' => 50,
+                'Cuisine' => 60,
+            ]
+        ],
+        30 => [
+            'name' => 'Le Maître', 
+            'slug' => 'le-maitre',
+            'radar' => [
+                'Général' => 80,
+                'Cinéma' => 70,
+                'Science' => 75,
+                'Géographie' => 85,
+                'Histoire' => 90,
+                'Art' => 65,
+                'Culture' => 80,
+                'Sport' => 60,
+                'Cuisine' => 70,
+            ]
+        ],
+        40 => [
+            'name' => 'Le Sage', 
+            'slug' => 'le-sage',
+            'radar' => [
+                'Général' => 85,
+                'Cinéma' => 60,
+                'Science' => 90,
+                'Géographie' => 75,
+                'Histoire' => 95,
+                'Art' => 70,
+                'Culture' => 85,
+                'Sport' => 55,
+                'Cuisine' => 80,
+            ]
+        ],
+        50 => [
+            'name' => 'La Championne', 
+            'slug' => 'la-championne',
+            'radar' => [
+                'Général' => 90,
+                'Cinéma' => 75,
+                'Science' => 70,
+                'Géographie' => 80,
+                'Histoire' => 85,
+                'Art' => 80,
+                'Culture' => 90,
+                'Sport' => 95,
+                'Cuisine' => 75,
+            ]
+        ],
+        60 => [
+            'name' => 'La Légende', 
+            'slug' => 'la-legende',
+            'radar' => [
+                'Général' => 92,
+                'Cinéma' => 90,
+                'Science' => 85,
+                'Géographie' => 88,
+                'Histoire' => 90,
+                'Art' => 85,
+                'Culture' => 95,
+                'Sport' => 80,
+                'Cuisine' => 85,
+            ]
+        ],
+        70 => [
+            'name' => 'Le Titan', 
+            'slug' => 'le-titan',
+            'radar' => [
+                'Général' => 95,
+                'Cinéma' => 85,
+                'Science' => 95,
+                'Géographie' => 90,
+                'Histoire' => 92,
+                'Art' => 88,
+                'Culture' => 90,
+                'Sport' => 90,
+                'Cuisine' => 88,
+            ]
+        ],
+        80 => [
+            'name' => 'La Virtuose', 
+            'slug' => 'la-virtuose',
+            'radar' => [
+                'Général' => 96,
+                'Cinéma' => 95,
+                'Science' => 90,
+                'Géographie' => 92,
+                'Histoire' => 94,
+                'Art' => 98,
+                'Culture' => 97,
+                'Sport' => 85,
+                'Cuisine' => 92,
+            ]
+        ],
+        90 => [
+            'name' => 'Le Génie', 
+            'slug' => 'le-genie',
+            'radar' => [
+                'Général' => 98,
+                'Cinéma' => 92,
+                'Science' => 99,
+                'Géographie' => 95,
+                'Histoire' => 96,
+                'Art' => 93,
+                'Culture' => 95,
+                'Sport' => 88,
+                'Cuisine' => 94,
+            ]
+        ],
+        100 => [
+            'name' => "L'Intelligence Ultime", 
+            'slug' => 'intelligence-ultime',
+            'radar' => [
+                'Général' => 100,
+                'Cinéma' => 98,
+                'Science' => 100,
+                'Géographie' => 99,
+                'Histoire' => 100,
+                'Art' => 97,
+                'Culture' => 99,
+                'Sport' => 95,
+                'Cuisine' => 98,
+            ]
+        ],
     ],
 ];
