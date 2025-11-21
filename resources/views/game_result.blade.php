@@ -758,9 +758,10 @@
         <div class="skills-grid">
             <!-- Skill 1: Annule erreur -->
             <div class="skill-item {{ $cancelErrorUsed ? 'used' : '' }}">
-                <div class="skill-icon">{{ $cancelErrorUsed ? '🌟' : '✨' }}</div>
+                <div class="skill-icon">⭐</div>
                 <div class="skill-info">
                     <div class="skill-name">Annule erreur</div>
+                    <div class="skill-desc">Transforme une mauvaise réponse en sans réponse (1x)</div>
                 </div>
                 @if($cancelErrorUsed)
                     <div class="skill-used-badge">UTILISÉ</div>
@@ -773,9 +774,10 @@
             
             <!-- Skill 2: Question bonus -->
             <div class="skill-item {{ $bonusQuestionUsed ? 'used' : '' }}">
-                <div class="skill-icon">{{ $bonusQuestionUsed ? '⭐' : '💫' }}</div>
+                <div class="skill-icon">✨</div>
                 <div class="skill-info">
                     <div class="skill-name">Question bonus</div>
+                    <div class="skill-desc">Active une question bonus sans buzzer (+2/+0 pts, 1x)</div>
                 </div>
                 @if($bonusQuestionUsed)
                     <div class="skill-used-badge">UTILISÉ</div>
