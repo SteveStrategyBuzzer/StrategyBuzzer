@@ -1163,6 +1163,18 @@ class SoloController extends Controller
             return redirect()->route('solo.defeat');
         }
         
+        // TODO: VÉRIFIER ÉGALITÉ EN MANCHE 3 (Jeu Décisif) - DÉSACTIVÉ TEMPORAIREMENT
+        // Système en cours de développement - nécessite implémentation complète avant activation
+        // if ($roundNumber == 3 && $playerRoundsWon == 1 && $opponentRoundsWon == 1) {
+        //     $playerTotalPoints = session('player_total_points', 0);
+        //     $opponentTotalPoints = session('opponent_total_points', 0);
+        //     
+        //     if ($playerTotalPoints == $opponentTotalPoints) {
+        //         Log::info("⚔️ ÉGALITÉ DÉTECTÉE EN MANCHE 3: {$playerTotalPoints}-{$opponentTotalPoints} → Jeu Décisif");
+        //         return redirect()->route('solo.tiebreaker-choice');
+        //     }
+        // }
+        
         // Stocker les stats de cette manche dans round_summaries
         $roundSummaries = session('round_summaries', []);
         $roundSummaries[$roundNumber] = $completedRoundStats;
@@ -2536,5 +2548,153 @@ class SoloController extends Controller
             \Log::error('Erreur génération "Le saviez-vous": ' . $e->getMessage());
             return 'Chaque question est une opportunité d\'apprendre quelque chose de nouveau !';
         }
+    }
+
+    /**
+     * ============================================
+     * SYSTÈME JEU DÉCISIF (TIEBREAKER)
+     * ============================================
+     */
+
+    /**
+     * Affiche la page de choix du mode de départage
+     */
+    public function tiebreakerChoice()
+    {
+        $params = [
+            'is_multiplayer' => false, // TODO: déterminer si multijoueur
+            'game_mode' => 'solo',
+        ];
+        
+        return view('tiebreaker_choice', compact('params'));
+    }
+
+    /**
+     * Option B : Départage par efficacité globale
+     */
+    public function tiebreakerEfficiency()
+    {
+        $globalStats = session('global_stats', []);
+        
+        // Calculer l'efficacité du joueur
+        $playerEfficiency = $this->calculateEfficiency($globalStats);
+        
+        // Calculer les points totaux
+        $playerTotalPoints = 0;
+        foreach ($globalStats as $stat) {
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) continue;
+            if (isset($stat['player_points'])) {
+                $playerTotalPoints += $stat['player_points'];
+            }
+        }
+        
+        // TODO: Calculer efficacité adversaire (pour l'instant, simulation)
+        $opponentEfficiency = rand(40, 80);
+        $opponentTotalPoints = session('opponent_total_points', 0);
+        
+        // Déterminer le gagnant
+        if ($playerEfficiency > $opponentEfficiency) {
+            $winner = 'player';
+        } elseif ($playerEfficiency < $opponentEfficiency) {
+            $winner = 'opponent';
+        } else {
+            // Égalité d'efficacité → tiebreaker sur points totaux
+            if ($playerTotalPoints > $opponentTotalPoints) {
+                $winner = 'player';
+            } else {
+                $winner = 'opponent';
+            }
+        }
+        
+        // Rediriger vers victoire ou défaite
+        if ($winner == 'player') {
+            return redirect()->route('solo.victory');
+        } else {
+            return redirect()->route('solo.defeat');
+        }
+    }
+
+    /**
+     * Option A : Question Bonus décisive
+     */
+    public function tiebreakerBonus()
+    {
+        // Générer une question bonus
+        $theme = session('theme', 'Général');
+        $niveau = session('niveau_selectionne', 1);
+        
+        // TODO: Générer question via API
+        $question = [
+            'id' => 'tiebreaker_bonus',
+            'text' => 'Question de départage',
+            'answers' => ['A', 'B', 'C', 'D'],
+            'correct_index' => 0,
+        ];
+        
+        session(['tiebreaker_question' => $question]);
+        
+        return view('tiebreaker_bonus', [
+            'question' => $question,
+            'theme' => $theme,
+        ]);
+    }
+
+    /**
+     * Traite la réponse à la question bonus
+     */
+    public function tiebreakerBonusAnswer(Request $request)
+    {
+        $answerIndex = $request->input('answer_index', -1);
+        $question = session('tiebreaker_question');
+        
+        $isCorrect = ($answerIndex == $question['correct_index']);
+        
+        // TODO: Logique des 4 scénarios
+        // Pour l'instant, victoire si bonne réponse
+        if ($isCorrect) {
+            return redirect()->route('solo.victory');
+        } else {
+            return redirect()->route('solo.defeat');
+        }
+    }
+
+    /**
+     * Option C : Sudden Death
+     */
+    public function tiebreakerSuddenDeath()
+    {
+        // Initialiser le mode Sudden Death
+        session(['sudden_death_active' => true, 'sudden_death_question_number' => 1]);
+        
+        // Générer première question
+        $theme = session('theme', 'Général');
+        
+        return view('tiebreaker_sudden_death', [
+            'question_number' => 1,
+            'theme' => $theme,
+        ]);
+    }
+
+    /**
+     * Traite les réponses en Sudden Death
+     */
+    public function tiebreakerSuddenDeathAnswer(Request $request)
+    {
+        $answerIndex = $request->input('answer_index', -1);
+        $question = session('sudden_death_question');
+        
+        $isCorrect = ($answerIndex == $question['correct_index']);
+        
+        // Première erreur = défaite
+        if (!$isCorrect) {
+            return redirect()->route('solo.defeat');
+        }
+        
+        // TODO: Vérifier si adversaire a fait une erreur
+        // Pour l'instant, continuer avec une nouvelle question
+        $questionNumber = session('sudden_death_question_number', 1) + 1;
+        session(['sudden_death_question_number' => $questionNumber]);
+        
+        return redirect()->route('solo.tiebreaker-sudden-death');
     }
 }

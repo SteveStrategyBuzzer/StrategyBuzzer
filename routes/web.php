@@ -161,6 +161,14 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     Route::get('/round-result', [SoloController::class, 'roundResult'])->name('round-result');
     Route::get('/victory', [SoloController::class, 'victory'])->name('victory');
     Route::get('/defeat',  [SoloController::class, 'defeat'])->name('defeat');
+    
+    // JEU DÉCISIF (Tiebreaker)
+    Route::get('/tiebreaker-choice', [SoloController::class, 'tiebreakerChoice'])->name('tiebreaker-choice');
+    Route::get('/tiebreaker-bonus', [SoloController::class, 'tiebreakerBonus'])->name('tiebreaker-bonus');
+    Route::post('/tiebreaker-bonus-answer', [SoloController::class, 'tiebreakerBonusAnswer'])->name('tiebreaker-bonus-answer');
+    Route::get('/tiebreaker-efficiency', [SoloController::class, 'tiebreakerEfficiency'])->name('tiebreaker-efficiency');
+    Route::get('/tiebreaker-sudden-death', [SoloController::class, 'tiebreakerSuddenDeath'])->name('tiebreaker-sudden-death');
+    Route::post('/tiebreaker-sudden-death-answer', [SoloController::class, 'tiebreakerSuddenDeathAnswer'])->name('tiebreaker-sudden-death-answer');
 });
 
 /* ===== DUO ===== */

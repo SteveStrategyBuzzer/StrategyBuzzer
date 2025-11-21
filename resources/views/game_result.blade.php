@@ -560,17 +560,19 @@
     
     @media (max-width: 480px) {
         .score-battle {
-            flex-direction: column;
-            gap: 20px;
+            gap: 12px;
         }
         
         .score-player, .score-opponent {
-            max-width: 100%;
-            width: 100%;
+            max-width: 140px;
         }
         
-        .vs-divider {
-            transform: rotate(90deg);
+        .score-label {
+            font-size: 0.75rem;
+        }
+        
+        .score-number {
+            font-size: 2rem;
         }
     }
     
@@ -730,7 +732,7 @@
     <!-- Score Battle -->
     <div class="score-battle">
         <div class="score-player">
-            <div class="score-label">🎮 Votre Score</div>
+            <div class="score-label">🎮 Vous</div>
             <div class="score-number">{{ $params['score'] }}</div>
         </div>
         
@@ -759,7 +761,6 @@
                 <div class="skill-icon">{{ $cancelErrorUsed ? '🌟' : '✨' }}</div>
                 <div class="skill-info">
                     <div class="skill-name">Annule erreur</div>
-                    <div class="skill-desc">Transforme une mauvaise réponse en sans réponse (1x)</div>
                 </div>
                 @if($cancelErrorUsed)
                     <div class="skill-used-badge">UTILISÉ</div>
@@ -775,7 +776,6 @@
                 <div class="skill-icon">{{ $bonusQuestionUsed ? '⭐' : '💫' }}</div>
                 <div class="skill-info">
                     <div class="skill-name">Question bonus</div>
-                    <div class="skill-desc">Active une question bonus sans buzzer (+2/-2/0 pts, 1x)</div>
                 </div>
                 @if($bonusQuestionUsed)
                     <div class="skill-used-badge">UTILISÉ</div>
