@@ -8,6 +8,28 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### November 21, 2025 - Boss Radar Diagram System & UI Improvements
+
+**Feature: Boss Presentation Screen with Radar Competency Diagrams**
+- **Objective**: Display boss strengths/weaknesses across 9 themes before battle for strategic gameplay
+- **Implementation**:
+  - **New View**: `boss_presentation.blade.php` with 2-column layout "Vous vs Boss"
+  - **Radar Chart**: Chart.js integration showing boss competency (0-100) across 9 themes (Général, Cinéma, Science, Géographie, Histoire, Art, Culture, Sport, Cuisine)
+  - **Boss Data**: Extended `config/opponents.php` with radar profiles for all 10 boss (levels 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+  - **Flow**: Boss detection in `SoloController::start()` → redirect to `boss_presentation` → auto-continue after 10 seconds → `game_preparation`
+  - **Player Side**: Displays selected strategic avatar with active skills
+  - **Boss Side**: Shows boss avatar, name, level, and radar diagram
+- **Files Modified**: `config/opponents.php`, `resources/views/boss_presentation.blade.php`, `app/Http/Controllers/SoloController.php`, `routes/web.php`
+
+**Feature: Enhanced Game Result Screen**
+- **Removed**: Large checkmark/X header to reduce visual bias
+- **Added**: Dynamic opponent naming (Solo: boss/student name, Duo/League: player ID, Master: quiz name)
+- **Unified Colors**: Changed score display from green/red to neutral purple to avoid winner/loser bias
+- **2-Column Stats Grid**: Responsive CSS Grid layout for Score, Lives, Progress, Level
+- **"Le saviez-vous" Section**: OpenAI-generated fun facts (2 sentences max) related to question with graceful fallbacks
+- **Multiplayer "Prêt" Button**: Conditional display for Duo/League/Master modes with player counter
+- **Files Modified**: `app/Http/Controllers/SoloController.php`, `resources/views/game_result.blade.php`
+
 ### November 20, 2025 - Progressive Block Generation System & Critical Bug Fixes
 
 **Feature: Progressive Block-Based Question Generation (2→3→3→3)**
