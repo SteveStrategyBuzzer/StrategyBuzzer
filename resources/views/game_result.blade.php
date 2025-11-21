@@ -761,7 +761,6 @@
                 <div class="skill-icon">⭐</div>
                 <div class="skill-info">
                     <div class="skill-name">Annule erreur</div>
-                    <div class="skill-desc">Transforme une mauvaise réponse en sans réponse (1x)</div>
                 </div>
                 @if($cancelErrorUsed)
                     <div class="skill-used-badge">UTILISÉ</div>
@@ -777,7 +776,6 @@
                 <div class="skill-icon">✨</div>
                 <div class="skill-info">
                     <div class="skill-name">Question bonus</div>
-                    <div class="skill-desc">Active une question bonus sans buzzer (+2/+0 pts, 1x)</div>
                 </div>
                 @if($bonusQuestionUsed)
                     <div class="skill-used-badge">UTILISÉ</div>
