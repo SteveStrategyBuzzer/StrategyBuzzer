@@ -455,7 +455,7 @@
     <!-- Avatar Joueur (Gauche) -->
     <div class="avatar-card player">
       @php
-        $playerName = session('user_name', 'Joueur');
+        $playerName = $params['player_pseudonym'] ?? 'Joueur';
         $niveauProgression = $params['niveau_progression'] ?? 1;
       @endphp
       <div class="avatar-title">{{ $playerName }}</div>

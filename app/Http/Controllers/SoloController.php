@@ -208,6 +208,13 @@ class SoloController extends Controller
         $opponentInfo = $this->getOpponentInfo($niveau);
         $playerAvatar = session('selected_avatar', 'images/avatars/standard/standard1.png');
         
+        // Récupérer le pseudonyme du joueur depuis profile_settings
+        $playerPseudonym = 'Joueur';
+        if ($user) {
+            $settings = (array) ($user->profile_settings ?? []);
+            $playerPseudonym = (string) data_get($settings, 'pseudonym', 'Joueur');
+        }
+        
         // Vérifier conflit d'avatar seulement s'il y a un boss
         $avatarConflict = false;
         if ($bossInfo) {
@@ -239,6 +246,7 @@ class SoloController extends Controller
             'boss_skills'     => $bossInfo['skills'] ?? [],
             'opponent_info'   => $opponentInfo,
             'player_avatar'   => $playerAvatar,
+            'player_pseudonym' => $playerPseudonym,
             'avatar_conflict' => $avatarConflict,
             'has_boss'        => $bossInfo !== null,
         ];
@@ -326,6 +334,13 @@ class SoloController extends Controller
         $bossInfo = $this->getBossForLevel($niveau);
         $opponentInfo = $this->getOpponentInfo($niveau);
         
+        // Récupérer le pseudonyme du joueur depuis profile_settings
+        $playerPseudonym = 'Joueur';
+        if ($user) {
+            $settings = (array) ($user->profile_settings ?? []);
+            $playerPseudonym = (string) data_get($settings, 'pseudonym', 'Joueur');
+        }
+        
         // Vérifier conflit d'avatar seulement s'il y a un boss
         $avatarConflict = false;
         if ($bossInfo) {
@@ -361,6 +376,7 @@ class SoloController extends Controller
             'boss_skills'     => $bossInfo['skills'] ?? [],
             'opponent_info'   => $opponentInfo,
             'player_avatar'   => $playerAvatar,
+            'player_pseudonym' => $playerPseudonym,
             'avatar_conflict' => $avatarConflict,
             'has_boss'        => $bossInfo !== null,
         ];
