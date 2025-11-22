@@ -67,6 +67,7 @@ class AIQuestionGeneratorService
                         'type' => $data['type'],
                         'answers' => $data['answers'],
                         'correct_index' => $data['correct_index'],
+                        'explanation' => $data['explanation'] ?? null,
                         'difficulty' => $niveau,
                         'theme' => $theme,
                     ];

@@ -817,8 +817,8 @@ class SoloController extends Controller
         // Récupérer le nom de l'adversaire pour l'affichage
         $opponentInfo = $this->getOpponentInfo($niveau);
         
-        // Générer le fait intéressant "Le saviez-vous"
-        $didYouKnow = $this->generateDidYouKnow($question, $isCorrect);
+        // Récupérer l'explication "Le saviez-vous" depuis la question ou générer si absente
+        $didYouKnow = $question['explanation'] ?? $this->generateDidYouKnow($question, $isCorrect);
         
         $params = [
             'question' => $question,

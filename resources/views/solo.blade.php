@@ -6,7 +6,7 @@
   *, *::before, *::after { box-sizing: border-box; }
   body{ background:#003DA5; color:#fff;  overflow-x:hidden; }
   .container-solo{ max-width:980px; margin:40px auto;  padding:0 16px; overflow-x:hidden; overflow-y:visible; }
-  .grid-2{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
+  .grid-2{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; width: 100%; }
   .btn-theme{ display:block; width:100%; padding:14px 16px; border-radius:10px; background:#1E90FF; color:#fff; border:0; cursor:pointer;  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .btn-theme:disabled{ opacity:.4; cursor:not-allowed; }
   .box{ background:rgba(0,0,0,.15); padding:18px; border-radius:12px; margin-bottom:16px; }
@@ -22,6 +22,12 @@
     top: 20px;
     right: 20px;
     z-index: 1000;
+  }
+  
+  @media (max-width: 600px) {
+    .grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
 
 </style>
