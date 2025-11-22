@@ -359,7 +359,7 @@
     // Vérifier si la musique de gameplay est activée
     function isGameplayMusicEnabled() {
         const enabled = localStorage.getItem('gameplay_music_enabled');
-        return enabled === 'true';
+        return enabled === null || enabled === 'true'; // Activé par défaut
     }
     
     // Continuer la musique d'ambiance du gameplay SEULEMENT si activée

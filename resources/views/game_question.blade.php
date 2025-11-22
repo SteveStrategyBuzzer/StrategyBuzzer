@@ -801,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si la musique de gameplay est activée (paramètre séparé de l'ambiance navigation)
     function isGameplayMusicEnabled() {
         const enabled = localStorage.getItem('gameplay_music_enabled');
-        return enabled === 'true'; // Désactivée par défaut, doit être activée explicitement
+        return enabled === null || enabled === 'true'; // Activé par défaut
     }
     
     // Démarrer la musique d'ambiance du gameplay à -6 dB (volume 0.5) SEULEMENT si activée
