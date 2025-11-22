@@ -6,6 +6,28 @@ StrategyBuzzer is a real-time quiz buzzer game application designed for an immer
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### November 22, 2025 - Resume Screen UI Refinements
+
+**UI Enhancement: Resume Screen Simplification & Clarity**
+- **Removed Redundant Card**: Deleted "Adversaire Igor (Niveau 8)" info card from top section - now shows only Theme and Questions
+- **Opponent Title Correction**: Changed opponent card title from boss/teacher name to actual opponent name (ex: "Igor" instead of "Le Stratège")
+- **Player Name Simplification**: Simplified player avatar caption from "Joueur    Niv: 8" to just player ID/name (ex: "Antoine")
+- **Strategic Avatar Renaming**: Changed "⚔️ Avatar Stratégique" to "⚔️ A.S [Avatar Name]" format (ex: "⚔️ A.S Magicienne")
+- **Rationale**: Cleaner layout, reduced redundancy, more intuitive labeling for competitive gameplay
+- **Files Modified**: `resources/views/resume.blade.php`
+
+**UI Redesign: Symmetric Resume Screen Layout**
+- **Objective**: Complete redesign of `resume.blade.php` with symmetric player vs opponent presentation
+- **Dynamic Title**: "Boss Challenge" for boss battles (levels 10/20/30/etc.), "Descriptif de la Partie" for regular matches
+- **Symmetric Avatar Display**: Forced 2-column grid layout (1fr 1fr) maintained even on mobile portrait
+- **Skills Section Below**: Strategic avatar card (left) vs Boss radar diagram Chart.js (right)
+- **Boss Radar Integration**: Chart.js radar showing boss competencies across 9 themes using `config('opponents.boss_opponents')` data
+- **Enhanced Mobile Responsiveness**: Added @media (max-width: 400px) breakpoint to prevent overflow on 320-360px screens
+- **Technical Fixes**: Removed DEBUG echo block, corrected boss radar data access, unified avatar sizing
+- **Files Modified**: `resources/views/resume.blade.php`
+
 ## System Architecture
 
 ### UI/UX Decisions
