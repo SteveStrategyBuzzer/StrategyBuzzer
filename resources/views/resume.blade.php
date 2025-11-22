@@ -336,6 +336,110 @@
       font-size: 0.9rem;
     }
   }
+
+  /* Mobile portrait optimization - garde 2 colonnes mais réduit tout */
+  @media (max-width: 400px) {
+    .info-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .info-card {
+      padding: 12px 8px;
+    }
+
+    .info-label {
+      font-size: 0.7rem;
+      margin-bottom: 4px;
+    }
+
+    .info-value {
+      font-size: 1rem;
+    }
+
+    .avatar-section {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .avatar-card {
+      padding: 12px 8px;
+      border-radius: 12px;
+    }
+
+    .avatar-title {
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .avatar-img {
+      width: 100px;
+      height: 100px;
+      border-width: 2px;
+      margin-bottom: 10px;
+    }
+
+    .avatar-name {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .skills-section {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .strategic-avatar-box,
+    .radar-container-box {
+      padding: 12px 8px;
+      border-radius: 12px;
+    }
+
+    .strategic-avatar-box > a > div:first-child {
+      font-size: 1rem !important;
+      margin-bottom: 12px !important;
+    }
+
+    .skill-wrapper {
+      margin-bottom: 8px;
+    }
+
+    .skill-name {
+      font-size: 0.75rem;
+      margin-bottom: 3px;
+    }
+
+    .skill-desc {
+      font-size: 0.65rem;
+      line-height: 1.2;
+    }
+
+    .radar-container-box > div:first-child {
+      font-size: 0.85rem !important;
+      margin-bottom: 10px !important;
+    }
+
+    #radarChart {
+      max-width: 160px !important;
+    }
+
+    .start-button {
+      padding: 14px 40px;
+      font-size: 1.1rem;
+      margin-top: 15px;
+    }
+
+    /* Réduire aussi les textes descriptifs */
+    .avatar-card > div:last-of-type {
+      font-size: 0.75rem !important;
+      margin-top: 6px !important;
+      line-height: 1.2 !important;
+    }
+  }
 </style>
 
 <!-- Bouton Retour Solo -->
