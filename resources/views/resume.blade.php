@@ -407,7 +407,7 @@
     <!-- Avatar Boss (Droite) - Uniquement si niveau >= 10 -->
     @if($params['has_boss'] ?? false)
       <div class="avatar-card boss">
-        <div class="avatar-title">🤖 {{ $params['boss_name'] }}</div>
+        <div class="avatar-title">{{ $params['boss_name'] }}</div>
         <img src="{{ asset($params['boss_avatar']) }}?v={{ time() }}" 
              alt="{{ $params['boss_name'] }}" 
              class="avatar-img">
@@ -437,7 +437,7 @@
             $nextBoss = $params['opponent_info']['next_boss'] ?? 'Le Maître';
             $opponentName = $params['opponent_info']['name'] ?? 'Adversaire';
           @endphp
-          <div class="avatar-title">🤖 {{ $opponentName }}</div>
+          <div class="avatar-title">{{ $opponentName }}</div>
           
           <!-- Photo de l'adversaire élève -->
           <img src="/images/avatars/students/{{ $params['opponent_info']['avatar'] }}.png" 

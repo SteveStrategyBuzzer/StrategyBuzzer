@@ -461,10 +461,10 @@
 
   <div class="sb-rows">
     <div class="sb-row">
-      <div class="sb-k">ID joueur</div>
+      <div class="sb-k" style="cursor: pointer;" onclick="document.getElementById('idPublic').focus()" title="Cliquer pour modifier">ID joueur</div>
       <div class="sb-v">
         <input class="sb-input" type="text" name="pseudonym" form="profileForm"
-               placeholder="Votre ID public" value="{{ $pseudonym }}" id="idPublic">
+               placeholder="Votre ID public" value="{{ $pseudonym }}" id="idPublic" maxlength="10">
       </div>
     </div>
 
