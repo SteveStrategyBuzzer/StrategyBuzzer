@@ -93,15 +93,7 @@ app.post('/generate-question', async (req, res) => {
       const isMultipleChoice = Math.random() > 0.2;
       
       const prompt = isMultipleChoice 
-      ? `Tu es un générateur de questions de quiz en français. Utilise cette méthode en 3 ÉTAPES pour garantir la pertinence :
-
-🌐 RÈGLE CRITIQUE - LANGUE FRANÇAISE UNIQUEMENT :
-- TOUTE la question doit être rédigée UNIQUEMENT en français
-- TOUTES les réponses (correcte ET incorrectes) doivent être UNIQUEMENT en français
-- INTERDICTION ABSOLUE de mots en arabe, anglais, chinois ou toute autre langue étrangère
-- Si un terme existe en plusieurs langues, utilise UNIQUEMENT la version française
-- Exemples INTERDITS: "كبور" (arabe), "elephant" (anglais) → Utilise "éléphant" (français)
-- Si tu ne connais pas la traduction française d'un terme, choisis un autre sujet
+      ? `Tu es un générateur de questions de quiz. Génère TOUT le contenu (question, réponses et explication) en français uniquement.
 
 📋 MÉTHODE STRUCTURÉE OBLIGATOIRE :
 
@@ -259,14 +251,7 @@ RÈGLES STRICTES:
 3. Les mauvaises réponses doivent être crédibles mais incorrectes
 4. Question unique et originale, pas de répétition
 5. Réponds UNIQUEMENT avec le JSON, rien d'autre`
-      : `Tu es un générateur de questions de quiz en français. Génère UNE SEULE question Vrai/Faux unique de ${themeLabel} avec un niveau de difficulté ${difficultyDesc} (niveau ${niveau}/100).
-
-🌐 RÈGLE CRITIQUE - LANGUE FRANÇAISE UNIQUEMENT :
-- TOUTE la question doit être rédigée UNIQUEMENT en français
-- INTERDICTION ABSOLUE de mots en arabe, anglais, chinois ou toute autre langue étrangère
-- Si un terme existe en plusieurs langues, utilise UNIQUEMENT la version française
-- Exemples INTERDITS: "كبور" (arabe), "elephant" (anglais) → Utilise "éléphant" (français)
-- Si tu ne connais pas la traduction française d'un terme, choisis un autre sujet
+      : `Tu es un générateur de questions de quiz. Génère UNE SEULE question Vrai/Faux unique de ${themeLabel} avec un niveau de difficulté ${difficultyDesc} (niveau ${niveau}/100). Génère TOUT le contenu (question et explication) en français uniquement.
 
 IMPORTANT:
 - La question doit être VRAIMENT UNIQUE et ORIGINALE - évite absolument les affirmations clichées ou répétitives
