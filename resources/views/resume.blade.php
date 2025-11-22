@@ -366,17 +366,6 @@
       <div class="info-label">Questions</div>
       <div class="info-value">{{ $params['nb_questions'] }}</div>
     </div>
-    
-    <div class="info-card">
-      <div class="info-label">Adversaire</div>
-      <div class="info-value">
-        @if(isset($params['opponent_info']) && isset($params['opponent_info']['name']))
-          {{ $params['opponent_info']['name'] }} (Niveau {{ $params['niveau_joueur'] }})
-        @else
-          Niveau {{ $params['niveau_joueur'] }}
-        @endif
-      </div>
-    </div>
   </div>
 
   <!-- Alerte si conflit d'avatar -->
@@ -409,7 +398,7 @@
              alt="Avatar Joueur" 
              class="avatar-img"
              onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-        <div class="avatar-name">{{ $playerName }}    Niv: {{ $params['niveau_joueur'] }}</div>
+        <div class="avatar-name">{{ $playerName }}</div>
       </a>
     </div>
 
@@ -444,8 +433,9 @@
         @if(isset($params['opponent_info']) && !$params['opponent_info']['is_boss'])
           @php
             $nextBoss = $params['opponent_info']['next_boss'] ?? 'Le Maître';
+            $opponentName = $params['opponent_info']['name'] ?? 'Adversaire';
           @endphp
-          <div class="avatar-title">🤖 {{ $nextBoss }}</div>
+          <div class="avatar-title">🤖 {{ $opponentName }}</div>
           
           <!-- Photo de l'adversaire élève -->
           <img src="/images/avatars/students/{{ $params['opponent_info']['avatar'] }}.png" 
@@ -480,7 +470,7 @@
     <div class="strategic-avatar-box">
       <a href="{{ route('avatar', ['from' => 'resume']) }}" style="text-decoration: none; color: inherit;">
         @if($params['avatar'] !== 'Aucun')
-          <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 15px;">⚔️ Avatar Stratégique</div>
+          <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 15px;">⚔️ A.S {{ $params['avatar'] }}</div>
           
           @if(!empty($params['avatar_image']))
             <img src="{{ asset($params['avatar_image']) }}" 
