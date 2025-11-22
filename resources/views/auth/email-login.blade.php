@@ -56,6 +56,32 @@
         color: rgba(255, 255, 255, 0.5);
     }
 
+    .password-wrapper {
+        position: relative;
+    }
+
+    .password-wrapper input {
+        padding-right: 45px;
+    }
+
+    .toggle-password {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.3rem;
+        user-select: none;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+    }
+
+    .toggle-password:hover {
+        opacity: 1;
+    }
+
     .btn-submit {
         width: 100%;
         padding: 15px;
@@ -142,7 +168,10 @@
 
         <div class="form-group">
             <label for="password">Mot de passe</label>
-            <input type="password" id="password" name="password" placeholder="••••••••" required>
+            <div class="password-wrapper">
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
+                <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">👁️</button>
+            </div>
         </div>
 
         <button type="submit" class="btn-submit">Se connecter</button>
@@ -154,4 +183,19 @@
 
     <a href="{{ route('login') }}" class="back-link">← Retour aux options de connexion</a>
 </div>
+
+<script>
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.querySelector('.toggle-password');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleButton.textContent = '🙈';
+    } else {
+        passwordInput.type = 'password';
+        toggleButton.textContent = '👁️';
+    }
+}
+</script>
 @endsection
