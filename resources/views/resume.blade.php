@@ -82,30 +82,6 @@
     }
   }
 
-  /* Très petits écrans : réduire encore plus pour éviter overflow */
-  @media (max-width: 400px) {
-    .avatars-section {
-      gap: 10px;
-    }
-    
-    .avatar-card {
-      padding: 15px 10px;
-    }
-    
-    .avatar-img {
-      width: 100px;
-      height: 100px;
-    }
-    
-    .avatar-title {
-      font-size: 0.7rem;
-    }
-    
-    .avatar-name {
-      font-size: 0.9rem;
-    }
-  }
-
   /* Section Skills en dessous des avatars */
   .skills-section {
     display: grid;
@@ -118,16 +94,6 @@
     .skills-section {
       grid-template-columns: 1fr 1fr;
       gap: 15px;
-    }
-  }
-
-  @media (max-width: 400px) {
-    .skills-section {
-      gap: 10px;
-    }
-    
-    .strategic-avatar-box, .radar-container-box {
-      padding: 15px 10px;
     }
   }
 
@@ -337,16 +303,21 @@
     }
   }
 
-  /* Mobile portrait optimization - garde 2 colonnes mais réduit tout */
+  /* Mobile portrait optimization - maximise largeur écran */
   @media (max-width: 400px) {
+    .resume-container {
+      margin: 10px auto;
+      padding: 6px;
+    }
+
     .info-grid {
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 6px;
       margin-bottom: 20px;
     }
 
     .info-card {
-      padding: 12px 8px;
+      padding: 10px 6px;
     }
 
     .info-label {
@@ -358,14 +329,14 @@
       font-size: 1rem;
     }
 
-    .avatar-section {
+    .avatars-section {
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 6px;
       margin-bottom: 20px;
     }
 
     .avatar-card {
-      padding: 12px 8px;
+      padding: 10px 6px;
       border-radius: 12px;
     }
 
@@ -389,13 +360,13 @@
 
     .skills-section {
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 6px;
       margin-bottom: 20px;
     }
 
     .strategic-avatar-box,
     .radar-container-box {
-      padding: 12px 8px;
+      padding: 10px 6px;
       border-radius: 12px;
     }
 
