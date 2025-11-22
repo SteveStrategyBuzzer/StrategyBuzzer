@@ -363,7 +363,7 @@
     </div>
     
     <div class="info-card">
-      <div class="info-label">Questions</div>
+      <div class="info-label">Questions Par Manche</div>
       <div class="info-value">{{ $params['nb_questions'] }}</div>
     </div>
   </div>
@@ -379,7 +379,11 @@
   <div class="avatars-section">
     <!-- Avatar Joueur (Gauche) -->
     <div class="avatar-card player">
-      <div class="avatar-title">👤 Vous</div>
+      @php
+        $playerName = session('user_name', 'Joueur');
+        $niveauProgression = $params['niveau_progression'] ?? 1;
+      @endphp
+      <div class="avatar-title">{{ $playerName }}</div>
       
       <!-- Emplacement Avatar Portrait - Cliquable -->
       <a href="{{ route('avatar', ['from' => 'resume']) }}" class="avatar-clickable" style="display: block; text-decoration: none; color: inherit;">
@@ -391,14 +395,12 @@
           } else {
             $fullPath = 'images/avatars/standard/' . $avatarPath . '.png';
           }
-          // Récupérer le nom du joueur depuis la session ou utiliser un défaut
-          $playerName = session('user_name', 'Joueur');
         @endphp
         <img src="{{ asset($fullPath) }}?v={{ time() }}" 
              alt="Avatar Joueur" 
              class="avatar-img"
              onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-        <div class="avatar-name">{{ $playerName }}</div>
+        <div class="avatar-name">Niv: {{ $niveauProgression }}</div>
       </a>
     </div>
 
@@ -470,81 +472,77 @@
     <div class="strategic-avatar-box">
       <a href="{{ route('avatar', ['from' => 'resume']) }}" style="text-decoration: none; color: inherit;">
         @if($params['avatar'] !== 'Aucun')
-          <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 15px;">⚔️ A.S {{ $params['avatar'] }}</div>
-          
-          @if(!empty($params['avatar_image']))
-            <img src="{{ asset($params['avatar_image']) }}" 
-                 alt="{{ $params['avatar'] }}" 
-                 style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #FFD700; margin: 0 auto 15px; display: block; box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4);"
-                 onerror="this.style.display='none';">
-          @endif
-          
-          <div style="font-size: 1.2rem; color: #FFD700; margin-bottom: 15px; font-weight: 700;">{{ $params['avatar'] }}</div>
+          <div style="font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; color: #FFD700;">⚔️ {{ $params['avatar'] }}</div>
           
           @php
-            // Mapping complet des skills
+            // Mapping complet des skills avec descriptions
             $avatarSkillsComplete = [
                 'Mathématicien' => [
-                    ['icon' => '🔢', 'name' => 'Calcul Rapide']
+                    ['icon' => '🔢', 'name' => 'Calcul Rapide', 'description' => 'Active automatiquement']
                 ],
                 'Scientifique' => [
-                    ['icon' => '⚗️', 'name' => 'Analyse']
+                    ['icon' => '⚗️', 'name' => 'Analyse', 'description' => 'Active automatiquement']
                 ],
                 'Explorateur' => [
-                    ['icon' => '🧭', 'name' => 'Navigation']
+                    ['icon' => '🧭', 'name' => 'Navigation', 'description' => 'Active automatiquement']
                 ],
                 'Défenseur' => [
-                    ['icon' => '🛡️', 'name' => 'Protection']
+                    ['icon' => '🛡️', 'name' => 'Protection', 'description' => 'Active automatiquement']
                 ],
                 'Comédien' => [
-                    ['icon' => '🎯', 'name' => 'Précision'],
-                    ['icon' => '🌀', 'name' => 'Confusion']
+                    ['icon' => '🎯', 'name' => 'Précision', 'description' => 'Active automatiquement'],
+                    ['icon' => '🌀', 'name' => 'Confusion', 'description' => 'Active automatiquement']
                 ],
                 'Comédienne' => [
-                    ['icon' => '🎯', 'name' => 'Précision'],
-                    ['icon' => '🌀', 'name' => 'Confusion']
+                    ['icon' => '🎯', 'name' => 'Précision', 'description' => 'Active automatiquement'],
+                    ['icon' => '🌀', 'name' => 'Confusion', 'description' => 'Active automatiquement']
                 ],
                 'Magicien' => [
-                    ['icon' => '✨', 'name' => 'Magie'],
-                    ['icon' => '💫', 'name' => 'Étoile']
+                    ['icon' => '✨', 'name' => 'Cancel une mauvaise réponse', 'description' => 'Elle vous la transforme en sans réponse'],
+                    ['icon' => '💫', 'name' => 'Question Bonus', 'description' => 'Gagnez une question supplémentaire']
                 ],
                 'Magicienne' => [
-                    ['icon' => '✨', 'name' => 'Magie'],
-                    ['icon' => '💫', 'name' => 'Étoile']
+                    ['icon' => '✨', 'name' => 'Cancel une mauvaise réponse', 'description' => 'Elle vous la transforme en sans réponse'],
+                    ['icon' => '💫', 'name' => 'Question Bonus', 'description' => 'Gagnez une question supplémentaire']
                 ],
                 'Challenger' => [
-                    ['icon' => '🔄', 'name' => 'Rotation'],
-                    ['icon' => '⏳', 'name' => 'Temps']
+                    ['icon' => '🔄', 'name' => 'Rotation', 'description' => 'Active automatiquement'],
+                    ['icon' => '⏳', 'name' => 'Temps', 'description' => 'Active automatiquement']
                 ],
                 'Historien' => [
-                    ['icon' => '🪶', 'name' => 'Histoire'],
-                    ['icon' => '⏰', 'name' => 'Chrono']
+                    ['icon' => '🪶', 'name' => 'Histoire', 'description' => 'Active automatiquement'],
+                    ['icon' => '⏰', 'name' => 'Chrono', 'description' => 'Active automatiquement']
                 ],
                 'IA Junior' => [
-                    ['icon' => '🤖', 'name' => 'IA Assist'],
-                    ['icon' => '🎯', 'name' => 'Élimination']
+                    ['icon' => '🤖', 'name' => 'IA Assist', 'description' => 'Active automatiquement'],
+                    ['icon' => '🎯', 'name' => 'Élimination', 'description' => 'Active automatiquement']
                 ],
                 'Stratège' => [
-                    ['icon' => '💰', 'name' => 'Bonus Pièces'],
-                    ['icon' => '👥', 'name' => 'Team']
+                    ['icon' => '💰', 'name' => 'Bonus Pièces', 'description' => 'Active automatiquement'],
+                    ['icon' => '👥', 'name' => 'Team', 'description' => 'Active automatiquement']
                 ],
                 'Sprinteur' => [
-                    ['icon' => '⚡', 'name' => 'Vitesse'],
-                    ['icon' => '⏱️', 'name' => 'Réflexion']
+                    ['icon' => '⚡', 'name' => 'Vitesse', 'description' => 'Active automatiquement'],
+                    ['icon' => '⏱️', 'name' => 'Réflexion', 'description' => 'Active automatiquement']
                 ],
                 'Visionnaire' => [
-                    ['icon' => '🔮', 'name' => 'Futur'],
-                    ['icon' => '🛡️', 'name' => 'Contre']
+                    ['icon' => '🔮', 'name' => 'Futur', 'description' => 'Active automatiquement'],
+                    ['icon' => '🛡️', 'name' => 'Contre', 'description' => 'Active automatiquement']
                 ],
             ];
             $currentSkills = $avatarSkillsComplete[$params['avatar']] ?? [];
           @endphp
           
           @if(!empty($currentSkills))
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 10px;">
               @foreach ($currentSkills as $skill)
-                <div style="background: rgba(255,215,0,0.2); border: 1px solid #FFD700; border-radius: 20px; padding: 6px 12px; font-size: 0.9rem;">
-                  <span style="font-size: 1.1rem;">{{ $skill['icon'] }}</span> {{ $skill['name'] }}
+                <div style="background: rgba(255,215,0,0.15); border: 2px solid #FFD700; border-radius: 12px; padding: 12px; text-align: left;">
+                  <div style="font-size: 1.1rem; font-weight: 600; color: #FFD700; margin-bottom: 5px;">
+                    <span style="font-size: 1.3rem;">{{ $skill['icon'] }}</span> {{ $skill['name'] }}
+                  </div>
+                  <div style="font-size: 0.85rem; opacity: 0.9; line-height: 1.3;">
+                    {{ $skill['description'] }}
+                  </div>
                 </div>
               @endforeach
             </div>
