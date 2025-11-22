@@ -100,5 +100,5 @@ build = ["cd", "frontend", "&&", "npm", "run", "build"]
 
 [userenv.shared]
 SESSION_DOMAIN = ""
-SESSION_SECURE_COOKIE = "true"
+SESSION_SECURE_COOKIE = "false"
 SESSION_SAME_SITE = "lax"
