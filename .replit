@@ -84,10 +84,6 @@ localPort = 44285
 externalPort = 6000
 
 [[ports]]
-localPort = 44701
-externalPort = 8000
-
-[[ports]]
 localPort = 45037
 externalPort = 3002
 
@@ -104,5 +100,5 @@ build = ["cd", "frontend", "&&", "npm", "run", "build"]
 
 [userenv.shared]
 SESSION_DOMAIN = ""
-SESSION_SECURE_COOKIE = "false"
+SESSION_SECURE_COOKIE = "true"
 SESSION_SAME_SITE = "lax"
