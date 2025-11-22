@@ -10,6 +10,13 @@ Preferred communication style: Simple, everyday language.
 
 ### November 22, 2025 - Resume Screen UI Refinements
 
+**UI Enhancement: ID Player Management & Adversary Display**
+- **ID Player Length Limit**: Added `maxlength="10"` constraint to player ID input (pseudonym)
+- **ID Label Clickable**: Made "ID joueur" label clickable in profile page - clicking focuses on input field for quick editing
+- **Removed Adversary Emoji**: Removed 🤖 emoji from adversary names in resume screen (both boss and student opponents)
+- **Rationale**: Better ID management (prevents overly long names), cleaner adversary display without decorative emojis
+- **Files Modified**: `resources/views/profile.blade.php`, `resources/views/resume.blade.php`
+
 **UI Enhancement: Player Progression Display & Strategic Avatar Clarity**
 - **"Questions Par Manche" Label**: Changed info-card label from "Questions" to "Questions Par Manche" for clarity
 - **Player Card Redesign**: 
