@@ -10,6 +10,22 @@ Preferred communication style: Simple, everyday language.
 
 ### November 22, 2025 - Resume Screen UI Refinements
 
+**UI Enhancement: Player Progression Display & Strategic Avatar Clarity**
+- **"Questions Par Manche" Label**: Changed info-card label from "Questions" to "Questions Par Manche" for clarity
+- **Player Card Redesign**: 
+  - Removed emoji 👤 from "Vous" title
+  - Title now shows player ID/name directly (ex: "Antoine" instead of "👤 Vous")
+  - Displays unlocked progression level (ex: "Niv: 78") instead of current game level
+  - Correctly shows progression even when replaying lower levels (player level 78 playing level 6 → displays "Niv: 78")
+- **Strategic Avatar Section Redesign**:
+  - Removed avatar portrait image
+  - Simplified title: "⚔️ Magicienne" in gold (emoji + name only)
+  - Skills displayed vertically with full descriptions
+  - Format: Icon + skill name (bold gold) + description below
+  - Example Magicienne: "✨ Cancel une mauvaise réponse / Elle vous la transforme en sans réponse"
+- **Backend Enhancement**: Added `niveau_progression` parameter in both SoloController::start() and ::resume() methods
+- **Files Modified**: `resources/views/resume.blade.php`, `app/Http/Controllers/SoloController.php`
+
 **UI Enhancement: Resume Screen Simplification & Clarity**
 - **Removed Redundant Card**: Deleted "Adversaire Igor (Niveau 8)" info card from top section - now shows only Theme and Questions
 - **Opponent Title Correction**: Changed opponent card title from boss/teacher name to actual opponent name (ex: "Igor" instead of "Le Stratège")
