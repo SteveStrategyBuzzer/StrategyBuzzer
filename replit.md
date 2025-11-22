@@ -10,6 +10,14 @@ Preferred communication style: Simple, everyday language.
 
 ### November 22, 2025 - Resume Screen UI Refinements
 
+**Mobile Responsive Optimization**
+- **Mobile Portrait Fix**: Added comprehensive @media (max-width: 400px) query to prevent horizontal overflow
+- **2-Column Layout Preserved**: All grids maintain 1fr 1fr layout on small screens
+- **Size Reductions**: Avatars 180px→100px, gaps 20px→8-10px, radar 350px→160px
+- **Typography Scaled**: Font sizes reduced proportionally (avatar-name 1.8rem→1rem, labels 0.9rem→0.7rem)
+- **Rationale**: Ensures clean 2-column display without scrolling on mobile portrait (320-400px width devices)
+- **Files Modified**: `resources/views/resume.blade.php`
+
 **UI Enhancement: ID Player Management & Adversary Display**
 - **ID Player Length Limit**: Added `maxlength="10"` constraint to player ID input (pseudonym)
 - **ID Label Clickable**: Made "ID joueur" label clickable in profile page - clicking focuses on input field for quick editing
