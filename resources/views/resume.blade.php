@@ -61,11 +61,92 @@
     margin-bottom: 40px;
   }
   
+  /* Force 2 colonnes même sur mobile portrait */
   @media (max-width: 768px) {
     .avatars-section {
-      grid-template-columns: 1fr;
-      gap: 20px;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
     }
+    
+    .avatar-img {
+      width: 120px;
+      height: 120px;
+    }
+    
+    .avatar-title {
+      font-size: 0.75rem;
+    }
+    
+    .avatar-name {
+      font-size: 1.1rem;
+    }
+  }
+
+  /* Très petits écrans : réduire encore plus pour éviter overflow */
+  @media (max-width: 400px) {
+    .avatars-section {
+      gap: 10px;
+    }
+    
+    .avatar-card {
+      padding: 15px 10px;
+    }
+    
+    .avatar-img {
+      width: 100px;
+      height: 100px;
+    }
+    
+    .avatar-title {
+      font-size: 0.7rem;
+    }
+    
+    .avatar-name {
+      font-size: 0.9rem;
+    }
+  }
+
+  /* Section Skills en dessous des avatars */
+  .skills-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 768px) {
+    .skills-section {
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .skills-section {
+      gap: 10px;
+    }
+    
+    .strategic-avatar-box, .radar-container-box {
+      padding: 15px 10px;
+    }
+  }
+
+  .radar-container-box {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(220, 53, 69, 0.3);
+    border-radius: 20px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .strategic-avatar-box {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(40, 167, 69, 0.3);
+    border-radius: 20px;
+    padding: 20px;
+    text-align: center;
   }
   
   .avatar-card {
@@ -265,7 +346,13 @@
 <div class="resume-container">
   <!-- Titre -->
   <div class="title-section">
-    <h1>🧾 Descriptif de la Partie</h1>
+    <h1>
+      @if($params['has_boss'] ?? false)
+        ⚔️ Boss Challenge
+      @else
+        🧾 Descriptif de la Partie
+      @endif
+    </h1>
   </div>
 
   <!-- Informations de la partie -->
@@ -303,7 +390,7 @@
   <div class="avatars-section">
     <!-- Avatar Joueur (Gauche) -->
     <div class="avatar-card player">
-      <div class="avatar-title">👤 Avatar Joueur</div>
+      <div class="avatar-title">👤 Vous</div>
       
       <!-- Emplacement Avatar Portrait - Cliquable -->
       <a href="{{ route('avatar', ['from' => 'resume']) }}" class="avatar-clickable" style="display: block; text-decoration: none; color: inherit;">
@@ -315,143 +402,36 @@
           } else {
             $fullPath = 'images/avatars/standard/' . $avatarPath . '.png';
           }
+          // Récupérer le nom du joueur depuis la session ou utiliser un défaut
+          $playerName = session('user_name', 'Joueur');
         @endphp
         <img src="{{ asset($fullPath) }}?v={{ time() }}" 
              alt="Avatar Joueur" 
              class="avatar-img"
              onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-        <div class="avatar-name">Vous</div>
-      </a>
-      
-      <!-- Emplacement Avatar Stratégique - Cliquable -->
-      <a href="{{ route('avatar', ['from' => 'resume']) }}" style="text-decoration: none; color: inherit;">
-        @if($params['avatar'] !== 'Aucun')
-          <div class="avatar-slot selected">
-            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 15px;">⚔️ Avatar Stratégique</div>
-            
-            @if(!empty($params['avatar_image']))
-              <img src="{{ asset($params['avatar_image']) }}" 
-                   alt="{{ $params['avatar'] }}" 
-                   style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #FFD700; margin: 0 auto 15px; display: block; box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4);"
-                   onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-              <div style="display: none; font-size: 3rem; margin-bottom: 10px;">⚔️</div>
-            @else
-              <div style="font-size: 3rem; margin-bottom: 10px;">⚔️</div>
-            @endif
-            
-            <div style="font-size: 1.3rem; color: #FFD700; margin-bottom: 15px; font-weight: 700;">{{ $params['avatar'] }}</div>
-            @php
-              // Mapping complet : emoji + nom + description pour chaque avatar
-              $avatarSkillsComplete = [
-                  'Mathématicien' => [
-                      ['icon' => '🔢', 'name' => 'Calcul Rapide', 'desc' => 'Peut faire illuminer une bonne réponse si il y a un chiffre dans la réponse']
-                  ],
-                  'Scientifique' => [
-                      ['icon' => '⚗️', 'name' => 'Analyse', 'desc' => 'Peut acidifier une mauvaise réponse 1 fois avant de choisir']
-                  ],
-                  'Explorateur' => [
-                      ['icon' => '🧭', 'name' => 'Navigation', 'desc' => 'La réponse s\'illumine du choix du joueur adverse ou la réponse la plus cliqué']
-                  ],
-                  'Défenseur' => [
-                      ['icon' => '🛡️', 'name' => 'Protection', 'desc' => 'Peut annuler une attaque de n\'importe quel Avatar']
-                  ],
-                  'Comédien' => [
-                      ['icon' => '🎯', 'name' => 'Précision', 'desc' => 'Peut indiquer un score moins élevé jusqu\'à la fin de la partie'],
-                      ['icon' => '🌀', 'name' => 'Confusion', 'desc' => 'Capacité de tromper les joueurs sur une bonne réponse en mauvaise réponse']
-                  ],
-                  'Comédienne' => [
-                      ['icon' => '🎯', 'name' => 'Précision', 'desc' => 'Peut indiquer un score moins élevé jusqu\'à la fin de la partie'],
-                      ['icon' => '🌀', 'name' => 'Confusion', 'desc' => 'Capacité de tromper les joueurs sur une bonne réponse en mauvaise réponse']
-                  ],
-                  'Magicien' => [
-                      ['icon' => '✨', 'name' => 'Magie', 'desc' => 'Peut avoir une question bonus par partie'],
-                      ['icon' => '💫', 'name' => 'Étoile', 'desc' => 'Peut annuler une mauvaise réponse non buzzer 1 fois par partie']
-                  ],
-                  'Magicienne' => [
-                      ['icon' => '✨', 'name' => 'Magie', 'desc' => 'Peut avoir une question bonus par partie'],
-                      ['icon' => '💫', 'name' => 'Étoile', 'desc' => 'Peut annuler une mauvaise réponse non buzzer 1 fois par partie']
-                  ],
-                  'Challenger' => [
-                      ['icon' => '🔄', 'name' => 'Rotation', 'desc' => 'Fait changer les réponses des participants d\'emplacement au 2 sec'],
-                      ['icon' => '⏳', 'name' => 'Temps', 'desc' => 'Diminue aux autres joueurs leur compte à rebours']
-                  ],
-                  'Historien' => [
-                      ['icon' => '🪶', 'name' => 'Histoire', 'desc' => 'Voit un indice texte avant les autres'],
-                      ['icon' => '⏰', 'name' => 'Chrono', 'desc' => '1 fois 2 sec de plus pour répondre']
-                  ],
-                  'IA Junior' => [
-                      ['icon' => '🤖', 'name' => 'IA Assist', 'desc' => 'Voit une suggestion IA qui illumine pour la réponse 1 fois'],
-                      ['icon' => '🎯', 'name' => 'Élimination', 'desc' => 'Peut éliminer 2 mauvaises réponses sur les 4'],
-                      ['icon' => '↩️', 'name' => 'Reprise', 'desc' => 'Peut reprendre une réponse 1 fois']
-                  ],
-                  'Stratège' => [
-                      ['icon' => '💰', 'name' => 'Bonus Pièces', 'desc' => 'Gagne +20% de pièces d\'intelligence sur une victoire'],
-                      ['icon' => '👥', 'name' => 'Team', 'desc' => 'Peut créer un team (Ajouter 1 Avatar rare) en mode solo'],
-                      ['icon' => '💎', 'name' => 'Réduction', 'desc' => 'Réduit le coût de déblocage des Avatars de 10%']
-                  ],
-                  'Sprinteur' => [
-                      ['icon' => '⚡', 'name' => 'Vitesse', 'desc' => 'Peut reculer son temps de buzzer jusqu\'à 0.5s du plus rapide'],
-                      ['icon' => '⏱️', 'name' => 'Réflexion', 'desc' => 'Peut utiliser 3 secondes de réflexion de plus 1 fois'],
-                      ['icon' => '🔄', 'name' => 'Auto-Reset', 'desc' => 'Après chaque niveau se réactivent automatiquement']
-                  ],
-                  'Visionnaire' => [
-                      ['icon' => '🔮', 'name' => 'Futur', 'desc' => 'Peut voir 5 questions "future" (prochaine question révélée)'],
-                      ['icon' => '🛡️', 'name' => 'Contre', 'desc' => 'Peut contrer l\'attaque du Challenger'],
-                      ['icon' => '🎯', 'name' => 'Certitude', 'desc' => 'Si 2 points dans une manche, seule la bonne réponse est sélectionnable']
-                  ],
-              ];
-              $currentSkills = $avatarSkillsComplete[$params['avatar']] ?? [];
-            @endphp
-            @if(!empty($currentSkills))
-              <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; margin-top: 10px;">
-                @foreach ($currentSkills as $skill)
-                  <div style="
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 8px;
-                    padding: 6px 0;
-                    font-size: 0.85rem;
-                    line-height: 1.3;
-                    border-bottom: {{ $loop->last ? 'none' : '1px solid rgba(255,255,255,0.1)' }};
-                  ">
-                    <span style="font-size: 1.2rem; flex-shrink: 0;">{{ $skill['icon'] }}</span>
-                    <span style="color: #FFD700; font-weight: 600; min-width: 80px;">{{ $skill['name'] }}</span>
-                    <span style="opacity: 0.9; flex: 1;">{{ $skill['desc'] }}</span>
-                  </div>
-                @endforeach
-              </div>
-            @endif
-          </div>
-        @else
-          <div class="avatar-slot">
-            <div style="font-size: 2rem; margin-bottom: 10px;">⚔️</div>
-            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 5px;">Avatar Stratégique</div>
-            <div style="opacity: 0.7; font-size: 0.9rem;">Cliquez pour choisir</div>
-          </div>
-        @endif
+        <div class="avatar-name">{{ $playerName }}    Niv: {{ $params['niveau_joueur'] }}</div>
       </a>
     </div>
 
-    <!-- DEBUG -->
-    @php
-        if (isset($params['opponent_info'])) {
-            echo "<!-- DEBUG opponent_info: " . json_encode($params['opponent_info']) . " -->";
-        } else {
-            echo "<!-- DEBUG: opponent_info NOT SET -->";
-        }
-    @endphp
-    
     <!-- Avatar Boss (Droite) - Uniquement si niveau >= 10 -->
     @if($params['has_boss'] ?? false)
       <div class="avatar-card boss">
-        <div class="avatar-title">🤖 Boss de Niveau {{ $params['niveau_joueur'] }}</div>
+        <div class="avatar-title">🤖 {{ $params['boss_name'] }}</div>
         <img src="{{ asset($params['boss_avatar']) }}?v={{ time() }}" 
              alt="{{ $params['boss_name'] }}" 
              class="avatar-img">
-        <div class="avatar-name">{{ $params['boss_name'] }}</div>
+        @php
+          $opponentInfo = $params['opponent_info'] ?? null;
+          $opponentName = $opponentInfo['name'] ?? 'Adversaire';
+          $opponentAge = $opponentInfo['age'] ?? 0;
+        @endphp
+        <div class="avatar-name">{{ $opponentName }}    Niv: {{ $params['niveau_joueur'] }}</div>
+        <div style="font-size: 0.95rem; opacity: 0.9; margin-top: 10px; line-height: 1.4;">
+          Votre adversaire, {{ $opponentAge }} ans, élève de "{{ $params['boss_name'] }}"
+        </div>
         
         @if(!empty($params['boss_skills']))
-          <div class="skills-list">
+          <div class="skills-list" style="margin-top: 20px;">
             <div class="skills-title">⚔️ Compétences du Boss</div>
             @foreach ($params['boss_skills'] as $skill)
               <div class="skill-item">{{ $skill }}</div>
@@ -461,20 +441,24 @@
       </div>
     @else
       <div class="avatar-card" style="border-color: rgba(255,255,255,0.3);">
-        <div class="avatar-title">🎯 Niveau d'Entraînement</div>
         @if(isset($params['opponent_info']) && !$params['opponent_info']['is_boss'])
+          @php
+            $nextBoss = $params['opponent_info']['next_boss'] ?? 'Le Maître';
+          @endphp
+          <div class="avatar-title">🤖 {{ $nextBoss }}</div>
+          
           <!-- Photo de l'adversaire élève -->
           <img src="/images/avatars/students/{{ $params['opponent_info']['avatar'] }}.png" 
                alt="Avatar {{ $params['opponent_info']['name'] }}" 
                class="avatar-img"
-               onerror="this.src='/images/avatars/students/default.png'"
-               style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; margin: 20px auto; display: block;">
+               onerror="this.src='/images/avatars/students/default.png'">
+          
+          <!-- Format symétrique nom + niveau -->
+          <div class="avatar-name">{{ $params['opponent_info']['name'] }}    Niv: {{ $params['niveau_joueur'] }}</div>
           
           <!-- Texte descriptif de l'adversaire -->
-          <div style="padding: 0 20px 30px; text-align: center;">
-            <div style="font-size: 1.1rem; font-weight: 600; opacity: 0.95; line-height: 1.5;">
-              Votre adversaire {{ $params['opponent_info']['name'] }} {{ $params['opponent_info']['age'] }} ans élève de {{ $params['opponent_info']['next_boss'] }}
-            </div>
+          <div style="font-size: 0.95rem; opacity: 0.9; margin-top: 10px; line-height: 1.4;">
+            Votre adversaire, {{ $params['opponent_info']['age'] }} ans, élève de "{{ $nextBoss }}"
           </div>
         @else
           <div style="padding: 40px 20px; text-align: center;">
@@ -490,6 +474,114 @@
     @endif
   </div>
 
+  <!-- Section Skills : Avatar Stratégique (gauche) et Radar Boss (droite) -->
+  <div class="skills-section">
+    <!-- Avatar Stratégique (Gauche) -->
+    <div class="strategic-avatar-box">
+      <a href="{{ route('avatar', ['from' => 'resume']) }}" style="text-decoration: none; color: inherit;">
+        @if($params['avatar'] !== 'Aucun')
+          <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 15px;">⚔️ Avatar Stratégique</div>
+          
+          @if(!empty($params['avatar_image']))
+            <img src="{{ asset($params['avatar_image']) }}" 
+                 alt="{{ $params['avatar'] }}" 
+                 style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #FFD700; margin: 0 auto 15px; display: block; box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4);"
+                 onerror="this.style.display='none';">
+          @endif
+          
+          <div style="font-size: 1.2rem; color: #FFD700; margin-bottom: 15px; font-weight: 700;">{{ $params['avatar'] }}</div>
+          
+          @php
+            // Mapping complet des skills
+            $avatarSkillsComplete = [
+                'Mathématicien' => [
+                    ['icon' => '🔢', 'name' => 'Calcul Rapide']
+                ],
+                'Scientifique' => [
+                    ['icon' => '⚗️', 'name' => 'Analyse']
+                ],
+                'Explorateur' => [
+                    ['icon' => '🧭', 'name' => 'Navigation']
+                ],
+                'Défenseur' => [
+                    ['icon' => '🛡️', 'name' => 'Protection']
+                ],
+                'Comédien' => [
+                    ['icon' => '🎯', 'name' => 'Précision'],
+                    ['icon' => '🌀', 'name' => 'Confusion']
+                ],
+                'Comédienne' => [
+                    ['icon' => '🎯', 'name' => 'Précision'],
+                    ['icon' => '🌀', 'name' => 'Confusion']
+                ],
+                'Magicien' => [
+                    ['icon' => '✨', 'name' => 'Magie'],
+                    ['icon' => '💫', 'name' => 'Étoile']
+                ],
+                'Magicienne' => [
+                    ['icon' => '✨', 'name' => 'Magie'],
+                    ['icon' => '💫', 'name' => 'Étoile']
+                ],
+                'Challenger' => [
+                    ['icon' => '🔄', 'name' => 'Rotation'],
+                    ['icon' => '⏳', 'name' => 'Temps']
+                ],
+                'Historien' => [
+                    ['icon' => '🪶', 'name' => 'Histoire'],
+                    ['icon' => '⏰', 'name' => 'Chrono']
+                ],
+                'IA Junior' => [
+                    ['icon' => '🤖', 'name' => 'IA Assist'],
+                    ['icon' => '🎯', 'name' => 'Élimination']
+                ],
+                'Stratège' => [
+                    ['icon' => '💰', 'name' => 'Bonus Pièces'],
+                    ['icon' => '👥', 'name' => 'Team']
+                ],
+                'Sprinteur' => [
+                    ['icon' => '⚡', 'name' => 'Vitesse'],
+                    ['icon' => '⏱️', 'name' => 'Réflexion']
+                ],
+                'Visionnaire' => [
+                    ['icon' => '🔮', 'name' => 'Futur'],
+                    ['icon' => '🛡️', 'name' => 'Contre']
+                ],
+            ];
+            $currentSkills = $avatarSkillsComplete[$params['avatar']] ?? [];
+          @endphp
+          
+          @if(!empty($currentSkills))
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 10px;">
+              @foreach ($currentSkills as $skill)
+                <div style="background: rgba(255,215,0,0.2); border: 1px solid #FFD700; border-radius: 20px; padding: 6px 12px; font-size: 0.9rem;">
+                  <span style="font-size: 1.1rem;">{{ $skill['icon'] }}</span> {{ $skill['name'] }}
+                </div>
+              @endforeach
+            </div>
+          @endif
+        @else
+          <div style="padding: 30px 10px;">
+            <div style="font-size: 2rem; margin-bottom: 10px;">⚔️</div>
+            <div style="font-size: 1rem; opacity: 0.7;">Aucun avatar stratégique</div>
+          </div>
+        @endif
+      </a>
+    </div>
+
+    <!-- Radar Boss (Droite) - Seulement si c'est un boss -->
+    <div class="radar-container-box">
+      @if($params['has_boss'] ?? false)
+        <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 15px;">📊 Compétences du Boss</div>
+        <canvas id="radarChart" style="max-width: 350px; margin: 0 auto;"></canvas>
+      @else
+        <div style="padding: 30px 10px;">
+          <div style="font-size: 2rem; margin-bottom: 10px;">📊</div>
+          <div style="font-size: 1rem; opacity: 0.7;">Pas de diagramme pour élève</div>
+        </div>
+      @endif
+    </div>
+  </div>
+
   <!-- Bouton Démarrer -->
   <form action="{{ route('solo.prepare') }}" method="GET">
     <button type="submit" class="start-button">
@@ -497,4 +589,81 @@
     </button>
   </form>
 </div>
+
+<!-- Chart.js pour le radar du boss -->
+@if($params['has_boss'] ?? false)
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+@php
+  // Récupérer les données radar du boss depuis config/opponents.php
+  $niveau = $params['niveau_joueur'];
+  $bossOpponents = config('opponents.boss_opponents', []);
+  $bossData = $bossOpponents[$niveau] ?? null;
+@endphp
+
+@if($bossData && isset($bossData['radar']))
+const radarData = {
+  labels: {!! json_encode(array_keys($bossData['radar'])) !!},
+  datasets: [{
+    label: '{{ $bossData['name'] }}',
+    data: {!! json_encode(array_values($bossData['radar'])) !!},
+    fill: true,
+    backgroundColor: 'rgba(220, 53, 69, 0.2)',
+    borderColor: '#dc3545',
+    borderWidth: 2,
+    pointBackgroundColor: '#dc3545',
+    pointBorderColor: '#fff',
+    pointBorderWidth: 2,
+    pointRadius: 4,
+    pointHoverRadius: 6
+  }]
+};
+
+const config = {
+  type: 'radar',
+  data: radarData,
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    scales: {
+      r: {
+        beginAtZero: true,
+        max: 100,
+        ticks: {
+          stepSize: 20,
+          color: '#FFD700',
+          backdropColor: 'transparent',
+          font: {
+            size: 10,
+            weight: 'bold'
+          }
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.2)',
+          lineWidth: 1
+        },
+        pointLabels: {
+          color: '#FFD700',
+          font: {
+            size: 11,
+            weight: 'bold'
+          }
+        }
+      }
+    },
+    plugins: {
+      legend: {
+        display: false
+      }
+    }
+  }
+};
+
+const radarChart = new Chart(
+  document.getElementById('radarChart'),
+  config
+);
+@endif
+</script>
+@endif
 @endsection
