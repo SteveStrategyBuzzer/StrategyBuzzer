@@ -8,6 +8,46 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### November 22, 2025 - UI/UX Polish & Critical Bug Fixes
+
+**Bug Fixed: Opponent Score Display**
+- **Problem**: In-game scoreboard (`game_question.blade.php`) showed incorrect opponent score (e.g., 4/5 displayed when actual score was 5/0)
+- **Root Cause**: Used derived calculation `current_question - 1 - score` instead of authoritative session data
+- **Solution**: Changed to use `$params['opponent_score']` directly from session
+- **Impact**: Real-time scoreboard now accurately reflects opponent's actual score throughout gameplay
+
+**UI Enhancement: Boss Presentation Simplification**
+- **Change**: Simplified `boss_presentation.blade.php` from 2-column layout to single-column centered layout
+- **New Layout**: Boss avatar + name at top, radar competency diagram directly underneath
+- **Rationale**: Cleaner, more focused presentation before boss battles
+
+**UI Enhancement: "Le saviez-vous" OpenAI Prompt Improvement**
+- **Change**: Modified OpenAI prompt in `game_result.blade.php` to request contextual explanations
+- **New Prompt**: Now asks "POURQUOI est-ce la bonne réponse?" (Why is this the correct answer?)
+- **Example**: For pink flamingos question, generates explanation about diet (algae/crustaceans with carotenoids) instead of generic facts
+- **Impact**: More educational and contextually relevant fun facts after each question
+
+**UI Enhancement: Game Question Header Redesign**
+- **Old Format**: "QUESTION X/10" with separate score display
+- **New Format**: "Réponse #X | Valeur de X point(s) | Actuellement -2/4"
+- **Improvement**: Single-line header showing question number, point value, and live scores in compact format
+
+**UI Enhancement: Fixed-Width Score Cards**
+- **Problem**: Score cards in `game_result.blade.php` resized during gameplay causing visual jumps
+- **Solution**: Changed from `max-width` to fixed `width: 150px` for VOUS and ADVERSAIRE cards
+- **Impact**: Stable, consistent card sizing throughout match
+
+**UI Fix: Removed Duplicate Efficiency Block**
+- **Problem**: `round_result.blade.php` displayed isolated "Efficacité de la Manche X" block separate from per-round stats
+- **Solution**: Removed redundant block since efficiency already shown in detailed round statistics
+- **Impact**: Cleaner, less redundant round result screen
+
+**UI Enhancement: Efficiency Label Clarification**
+- **Change**: Renamed "Efficacité Max de la Partie" → "Efficacité du Match"
+- **Rationale**: "Max" was misleading (displayed max efficiency per round instead of match average)
+- **New Behavior**: Now correctly displays global match efficiency (total points earned / max possible points × 100)
+- **Files Modified**: `resources/views/victory.blade.php`, `resources/views/defeat.blade.php`, `resources/views/round_result.blade.php`
+
 ### November 21, 2025 - Boss Radar Diagram System & UI Improvements
 
 **Feature: Boss Presentation Screen with Radar Competency Diagrams**
