@@ -222,7 +222,7 @@
             </div>
             
             <div class="stat-card">
-                <div class="stat-label">Efficacité Max de la Partie</div>
+                <div class="stat-label">Efficacité du Match</div>
                 <div class="stat-value">{{ number_format($params['party_efficiency'] ?? $params['global_efficiency'] ?? 0, 1) }}%</div>
             </div>
             

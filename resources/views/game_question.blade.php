@@ -65,7 +65,7 @@ if ($currentAvatar !== 'Aucun') {
 // Info de l'adversaire - récupéré depuis les params
 $niveau = $params['niveau'];
 $opponentInfo = $params['opponent_info'] ?? [];
-$opponentScore = $params['current_question'] - 1 - $params['score'];
+$opponentScore = $params['opponent_score'] ?? 0;
 
 // Déterminer l'avatar et le nom de l'adversaire
 if ($opponentInfo['is_boss'] ?? false) {
@@ -652,12 +652,9 @@ if ($opponentInfo['is_boss'] ?? false) {
 <div class="game-container">
     <!-- Question en haut -->
     <div class="question-header">
-        <div class="question-number">QUESTION {{ $params['current_question'] }}/10</div>
-        @if(isset($params['player_buzzed']) && $params['player_buzzed'])
-            <div style="background: rgba(255, 215, 0, 0.15); padding: 8px 15px; border-radius: 10px; margin: 10px 0; font-weight: 600; color: #667eea;">
-                ⚡ Vous jouez pour {{ $params['potential_points'] ?? 2 }} point(s)
-            </div>
-        @endif
+        <div class="question-number">
+            Réponse #{{ $params['current_question'] }} | Valeur de {{ $params['potential_points'] ?? 2 }} point(s) | Actuellement {{ $params['score'] }}/{{ $opponentScore }}
+        </div>
         <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     

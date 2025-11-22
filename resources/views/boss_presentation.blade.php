@@ -37,23 +37,25 @@
   }
 
   .battle-layout {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 40px;
-    width: 100%;
-    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: 30px;
+    width: 100%;
+    max-width: 600px;
   }
 
-  .player-column, .boss-column {
+  .boss-section {
     background: rgba(255,255,255,0.1);
     border-radius: 20px;
     padding: 30px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     backdrop-filter: blur(10px);
+    width: 100%;
+    text-align: center;
   }
 
-  .column-header {
+  .boss-header {
     text-align: center;
     font-size: 1.8rem;
     font-weight: 700;
@@ -62,59 +64,19 @@
   }
 
   .avatar-display {
-    width: 150px;
-    height: 150px;
+    width: 180px;
+    height: 180px;
     margin: 0 auto 20px auto;
     border-radius: 15px;
     overflow: hidden;
-    border: 4px solid #FFD700;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    border: 4px solid #FF4500;
+    box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
   }
 
   .avatar-display img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-  }
-
-  .skills-list {
-    background: rgba(0,0,0,0.2);
-    border-radius: 12px;
-    padding: 15px;
-    margin-top: 15px;
-  }
-
-  .skill-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    margin-bottom: 8px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 8px;
-    font-size: 0.9rem;
-  }
-
-  .skill-icon {
-    font-size: 1.3rem;
-  }
-
-  .skill-name {
-    font-weight: 600;
-    color: #FFD700;
-  }
-
-  .skill-description {
-    font-size: 0.85rem;
-    opacity: 0.9;
-  }
-
-  .vs-divider {
-    font-size: 4rem;
-    font-weight: 900;
-    color: #FF4500;
-    text-shadow: 0 0 30px rgba(255, 69, 0, 0.8);
-    animation: pulse 1.5s ease-in-out infinite;
   }
 
   .radar-container {
@@ -200,74 +162,11 @@
   <div class="vs-header">⚔️ BOSS BATTLE ⚔️</div>
   
   <div class="battle-layout">
-    <!-- Colonne Joueur -->
-    <div class="player-column">
-      <div class="column-header">Vous</div>
+    <!-- Section Boss -->
+    <div class="boss-section">
+      <div class="boss-header">{{ $bossData['name'] }}</div>
       
-      @if(session('avatar_strategique'))
-        <div class="avatar-display">
-          @php
-            $avatarName = session('avatar_strategique');
-            $avatarSlug = strtolower(str_replace(' ', '-', $avatarName));
-          @endphp
-          <img src="{{ asset('images/avatars/' . $avatarSlug . '.png') }}" 
-               alt="{{ $avatarName }}"
-               onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-        </div>
-        
-        <div style="text-align: center; font-weight: 700; font-size: 1.2rem; color: #FFD700;">
-          {{ session('avatar_strategique') }}
-        </div>
-        
-        <div class="skills-list">
-          <div style="font-weight: 700; margin-bottom: 10px; color: #FFD700;">✨ Skills Actifs</div>
-          
-          @php
-            $avatarSkills = [
-              'Magicienne' => [
-                ['icon' => '✨', 'name' => 'Magie', 'desc' => 'Question bonus par partie'],
-                ['icon' => '🌟', 'name' => 'Étoile', 'desc' => 'Annule une mauvaise réponse'],
-              ],
-              'Boxeur' => [
-                ['icon' => '🥊', 'name' => 'K.O.', 'desc' => 'Double les points d\'une bonne réponse'],
-              ],
-              'Footballeur' => [
-                ['icon' => '⚽', 'name' => 'Tir au but', 'desc' => 'Rejouer une question manquée'],
-              ],
-            ];
-            
-            $currentSkills = $avatarSkills[session('avatar_strategique')] ?? [];
-          @endphp
-          
-          @if(count($currentSkills) > 0)
-            @foreach($currentSkills as $skill)
-              <div class="skill-item">
-                <span class="skill-icon">{{ $skill['icon'] }}</span>
-                <div>
-                  <div class="skill-name">{{ $skill['name'] }}</div>
-                  <div class="skill-description">{{ $skill['desc'] }}</div>
-                </div>
-              </div>
-            @endforeach
-          @else
-            <div style="opacity: 0.7; text-align: center;">Aucun skill disponible</div>
-          @endif
-        </div>
-      @else
-        <div style="text-align: center; opacity: 0.7; padding: 40px 20px;">
-          Aucun avatar sélectionné
-        </div>
-      @endif
-    </div>
-    
-    <!-- Divider VS -->
-    <div class="vs-divider">VS</div>
-    
-    <!-- Colonne Boss -->
-    <div class="boss-column">
-      <div class="column-header">{{ $bossData['name'] }}</div>
-      
-      <div class="avatar-display" style="border-color: #FF4500;">
+      <div class="avatar-display">
         <img src="{{ asset('images/avatars/bosses/' . $bossData['slug'] . '.png') }}" 
              alt="{{ $bossData['name'] }}">
       </div>

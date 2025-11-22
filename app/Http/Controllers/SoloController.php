@@ -2507,7 +2507,7 @@ class SoloController extends Controller
             $correctAnswer = $question['answers'][$question['correct_index']] ?? '';
             $questionText = $question['text'] ?? '';
             
-            $prompt = "Basé sur cette question de quiz : \"{$questionText}\" avec la bonne réponse \"{$correctAnswer}\", génère un fait intéressant court (maximum 2 phrases, 120 caractères) en français commençant par un détail captivant. Sois concis et pédagogique.";
+            $prompt = "Basé sur cette question de quiz : \"{$questionText}\" avec la bonne réponse \"{$correctAnswer}\", explique POURQUOI cette réponse est correcte ou donne le contexte qui permet de comprendre la réponse. Maximum 2 phrases (120 caractères). Exemple : si la question est 'Les flamants roses naissent-ils gris ?' et la réponse 'Oui', explique : 'C'est l'ingestion de pigments caroténoïdes qui leur donne cette couleur rose caractéristique.'";
             
             $client = \OpenAI::client(config('openai.api_key'));
             

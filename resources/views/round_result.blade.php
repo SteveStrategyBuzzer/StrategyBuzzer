@@ -173,12 +173,6 @@
             </div>
         </div>
         
-        <!-- Efficacité de la Manche -->
-        <div style="background: rgba(243, 156, 18, 0.1); padding: 15px; border-radius: 15px; margin: 20px 0;">
-            <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité de la Manche {{ $params['round_number'] }}</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: #f39c12;">{{ $params['round_efficiency'] ?? 0 }}%</div>
-        </div>
-        
         <!-- Stats par manche (afficher toutes les manches complétées jusqu'à maintenant) -->
         @if(!empty($params['round_summaries']))
         <div style="background: rgba(46, 204, 113, 0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">

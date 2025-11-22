@@ -155,8 +155,9 @@
     }
     
     .score-player, .score-opponent {
-        flex: 1;
-        max-width: 150px;
+        width: 150px;
+        min-width: 150px;
+        flex-shrink: 0;
         padding: 15px;
         border-radius: 15px;
         position: relative;
