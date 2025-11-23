@@ -336,7 +336,7 @@ $allAnswers = $params['question']['answers'] ?? [];
             <!-- Points en gros -->
             @php
                 $potentialPoints = $params['potential_points'] ?? 0;
-                $pointColor = $potentialPoints == 0 ? '#FF6B6B' : ($potentialPoints == 1 ? '#FFD700' : '#4ECDC4');
+                $pointColor = $potentialPoints == 0 ? '#FFD700' : '#4ECDC4'; // Jaune pour 0, Vert pour 1 ou 2
             @endphp
             <div style="font-size: 2.5rem; font-weight: 900; color: {{ $pointColor }}; text-shadow: 0 0 20px {{ $pointColor }}80;">
                 +{{ $potentialPoints }}
