@@ -251,21 +251,30 @@
                 
                 if (confirmChange) {
                     // Envoyer une requête pour sauvegarder la langue
+                    const formData = new FormData();
+                    formData.append('language', browserLang);
+                    formData.append('_token', '{{ csrf_token() }}');
+                    
                     fetch('{{ route("profile.update") }}', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
                         },
-                        body: JSON.stringify({
-                            language: browserLang,
-                            _token: '{{ csrf_token() }}'
-                        })
+                        body: formData
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             location.reload(); // Recharger la page pour appliquer la langue
+                        } else {
+                            console.error('Failed to save language preference');
                         }
                     })
                     .catch(err => console.error('Erreur sauvegarde langue:', err));

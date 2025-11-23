@@ -18,7 +18,7 @@ class ProfileController extends Controller
             'strategic_avatar' => ['id' => null,'name' => null,'url' => null],
             'show_in_league' => 'Oui',
             'show_online' => true,
-            'language' => 'Français',
+            'language' => 'fr',
             'country' => '',
             // BUG FIX #4/#8: Valeurs par défaut pour musique activée avec pistes sélectionnées
             'sound' => [
@@ -54,8 +54,7 @@ class ProfileController extends Controller
     {
         $settings = array_replace_recursive($this->defaults(), $this->readUserSettings());
 
-        $settings['language'] = in_array($settings['language'] ?? null, ['Français','Anglais'])
-            ? $settings['language'] : 'Français';
+        // Ne plus normaliser la langue ici - utiliser le code directement
         $settings['country'] = strtoupper((string) ($settings['country'] ?? ''));
         $settings['show_in_league'] = in_array($settings['show_in_league'] ?? null, ['Oui','Non'])
             ? $settings['show_in_league'] : 'Oui';
