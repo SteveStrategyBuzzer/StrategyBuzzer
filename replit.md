@@ -13,7 +13,8 @@ The frontend utilizes React 19 with Vite, employing a component-based architectu
 
 ### Technical Implementations
 The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It uses an API-first, service-oriented design with an event-driven system for real-time game state broadcasting. Key services include:
-- **QuestionService**: Manages AI-ready, theme-based question generation with adaptive difficulty scaling based on opponent characteristics (age for students, expert level for bosses), anti-duplication, a progressive block-based question generation system, and language-specific strict spelling verification.
+- **QuestionService**: Manages AI-ready, theme-based question generation with adaptive difficulty scaling based on opponent characteristics (age for students, expert level for bosses), **reinforced 3-layer anti-duplication system** (persistent storage of ALL answers including distractors, cumulative session tracking across blocks, and explicit OpenAI prompt instructions), a progressive block-based question generation system, and language-specific strict spelling verification.
+- **AnswerNormalizationService**: Normalizes all answers (correct + distractors) to prevent duplicates even when written differently (lowercase, accents removed, special chars normalized).
 - **Advanced AI Opponent System**: Features a three-layer behavioral simulation for buzz decisions, speed, and answer accuracy. Boss battles include a radar competency diagram system to display boss strengths/weaknesses.
 - **Gameplay Services**:
     - **GameStateService**: Manages centralized game state, supporting best-of-3 rounds, dual-track scoring, tiebreakers, and scalability for 1-40 players.
