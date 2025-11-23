@@ -139,7 +139,8 @@ class SoloController extends Controller
             'answered_questions' => [],
             'used_question_ids' => $permanentUsedQuestionIds,  // HISTORIQUE PERMANENT (DB ou session)
             'used_answers' => $permanentUsedAnswers,           // RÉPONSES PERMANENTES (DB ou session)
-            'session_used_answers' => [],      // Réponses utilisées dans cette partie seulement (réinitialisé chaque partie)
+            'session_used_answers' => [],      // Réponses CORRECTES utilisées dans cette partie seulement (réinitialisé chaque partie)
+            'session_used_all_answers' => [],  // TOUTES les réponses (correctes + distracteurs) pour éviter redondance complète
             'session_used_question_texts' => [], // Textes des questions posées dans cette partie (évite doublons dans la même partie)
             'current_question' => null,        // Sera généré au premier game()
             'global_stats' => [],              // Statistiques globales toutes manches
@@ -426,7 +427,8 @@ class SoloController extends Controller
         $currentQuestion = session('current_question_number', 1);
         $usedQuestionIds = session('used_question_ids', []);
         $usedAnswers = session('used_answers', []);               // Historique permanent
-        $sessionUsedAnswers = session('session_used_answers', []); // Réponses de cette partie
+        $sessionUsedAnswers = session('session_used_answers', []); // Réponses CORRECTES de cette partie
+        $sessionUsedAllAnswers = session('session_used_all_answers', []); // TOUTES les réponses (correctes + distracteurs)
         $sessionUsedQuestionTexts = session('session_used_question_texts', []); // Textes des questions de cette partie
         
         // NOUVEAU : Récupérer l'info de l'adversaire pour adapter la difficulté des questions
@@ -465,7 +467,7 @@ class SoloController extends Controller
             } else {
                 // Fallback : générer à la demande si le stock est vide (CORRIGÉ : ajouter au stock !)
                 $language = $this->getUserLanguage();
-                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
+                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAllAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
                 
                 // CRITIQUE : Ajouter la question générée au stock pour éviter régénération
                 $questionStock[$questionIndex] = $question;
@@ -519,6 +521,20 @@ class SoloController extends Controller
                 $sessionUsedAnswers = session('session_used_answers', []);
                 $sessionUsedAnswers[] = $normalizedAnswer;
                 session(['session_used_answers' => $sessionUsedAnswers]);
+            }
+            
+            // Ajouter TOUTES les réponses (correctes + distracteurs) pour éviter toute redondance
+            if (isset($question['answers']) && is_array($question['answers'])) {
+                $sessionUsedAllAnswers = session('session_used_all_answers', []);
+                foreach ($question['answers'] as $answer) {
+                    if ($answer && trim($answer) !== '') {
+                        $normalized = AnswerNormalizationService::normalize($answer);
+                        if (!in_array($normalized, $sessionUsedAllAnswers)) {
+                            $sessionUsedAllAnswers[] = $normalized;
+                        }
+                    }
+                }
+                session(['session_used_all_answers' => $sessionUsedAllAnswers]);
             }
             
             // Sauvegarder dans l'historique permanent de la database
@@ -1933,6 +1949,7 @@ class SoloController extends Controller
         $niveau = session('niveau_selectionne', 1);
         $usedQuestionIds = session('used_question_ids', []);
         $sessionUsedAnswers = session('session_used_answers', []);
+        $sessionUsedAllAnswers = session('session_used_all_answers', []);
         $sessionUsedQuestionTexts = session('session_used_question_texts', []);
         
         // Récupérer l'info de l'adversaire pour adapter la difficulté de la question bonus
@@ -1941,7 +1958,7 @@ class SoloController extends Controller
         $isBoss = $opponentInfo['is_boss'] ?? false;
         
         $language = $this->getUserLanguage();
-        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
+        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, [], $sessionUsedAllAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
         
         // Enregistrer la question bonus dans l'historique permanent
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -2093,6 +2110,7 @@ class SoloController extends Controller
             $niveau = session('niveau_selectionne', 1);
             $usedQuestionIds = session('used_question_ids', []);
             $sessionUsedAnswers = session('session_used_answers', []);
+            $sessionUsedAllAnswers = session('session_used_all_answers', []); // TOUTES les réponses (correctes + distracteurs)
             $sessionUsedQuestionTexts = session('session_used_question_texts', []);
             
             // Récupérer l'info de l'adversaire pour adapter la difficulté des questions du bloc
@@ -2108,6 +2126,7 @@ class SoloController extends Controller
             $questions = [];
             $tempUsedIds = $usedQuestionIds;
             $tempSessionUsedAnswers = $sessionUsedAnswers;
+            $tempSessionUsedAllAnswers = $sessionUsedAllAnswers;
             $tempSessionUsedTexts = $sessionUsedQuestionTexts;
             
             // Ajouter les réponses déjà dans le stock pour éviter duplications
@@ -2119,6 +2138,14 @@ class SoloController extends Controller
                 $correctAnswer = $existingQ['answers'][$existingQ['correct_index']] ?? null;
                 if ($correctAnswer) {
                     $tempSessionUsedAnswers[] = AnswerNormalizationService::normalize($correctAnswer);
+                }
+                // Ajouter TOUTES les réponses du stock
+                if (isset($existingQ['answers']) && is_array($existingQ['answers'])) {
+                    foreach ($existingQ['answers'] as $ans) {
+                        if ($ans && trim($ans) !== '') {
+                            $tempSessionUsedAllAnswers[] = AnswerNormalizationService::normalize($ans);
+                        }
+                    }
                 }
             }
             
@@ -2133,7 +2160,7 @@ class SoloController extends Controller
                     $questionNumber, 
                     $tempUsedIds, 
                     [],  // Pas d'historique permanent
-                    $tempSessionUsedAnswers,
+                    $tempSessionUsedAllAnswers,  // Toutes les réponses (correctes + distracteurs)
                     $tempSessionUsedTexts,
                     $opponentAge,
                     $isBoss,
@@ -2151,18 +2178,30 @@ class SoloController extends Controller
                 if ($correctAnswer) {
                     $tempSessionUsedAnswers[] = AnswerNormalizationService::normalize($correctAnswer);
                 }
+                // Ajouter TOUTES les réponses de cette question
+                if (isset($question['answers']) && is_array($question['answers'])) {
+                    foreach ($question['answers'] as $ans) {
+                        if ($ans && trim($ans) !== '') {
+                            $tempSessionUsedAllAnswers[] = AnswerNormalizationService::normalize($ans);
+                        }
+                    }
+                }
             }
             
             // Ajouter au stock progressif
             $questionStock = array_merge($questionStock, $questions);
             session([$stockKey => $questionStock]);
             
+            // CRITIQUE : Sauvegarder la liste complète des réponses utilisées pour les prochains blocs
+            session(['session_used_all_answers' => $tempSessionUsedAllAnswers]);
+            
             Log::info("Block generation complete", [
                 'round' => $roundNumber,
                 'block_id' => $blockId,
                 'block_count' => count($questions),
                 'total_stock' => count($questionStock),
-                'session_key' => $stockKey
+                'session_key' => $stockKey,
+                'total_answers_tracked' => count($tempSessionUsedAllAnswers)
             ]);
             
             return response()->json([
@@ -2205,6 +2244,7 @@ class SoloController extends Controller
             $usedQuestionIds = session('used_question_ids', []);
             $usedAnswers = session('used_answers', []);
             $sessionUsedAnswers = session('session_used_answers', []);
+            $sessionUsedAllAnswers = session('session_used_all_answers', []);
             $sessionUsedQuestionTexts = session('session_used_question_texts', []);
             
             // Récupérer l'info de l'adversaire pour adapter la difficulté du batch
@@ -2219,6 +2259,7 @@ class SoloController extends Controller
             $questions = [];
             $tempUsedIds = $usedQuestionIds;
             $tempSessionUsedAnswers = $sessionUsedAnswers;
+            $tempSessionUsedAllAnswers = $sessionUsedAllAnswers;
             $tempSessionUsedTexts = $sessionUsedQuestionTexts;
             
             // Générer toutes les questions en séquence
@@ -2230,7 +2271,7 @@ class SoloController extends Controller
                     $i, 
                     $tempUsedIds, 
                     [],  // Ne pas utiliser l'historique permanent pour éviter trop de conflits
-                    $tempSessionUsedAnswers,
+                    $tempSessionUsedAllAnswers,  // Toutes les réponses (correctes + distracteurs)
                     $tempSessionUsedTexts,
                     $opponentAge,
                     $isBoss,
@@ -2251,17 +2292,30 @@ class SoloController extends Controller
                     $normalizedAnswer = AnswerNormalizationService::normalize($correctAnswer);
                     $tempSessionUsedAnswers[] = $normalizedAnswer;
                 }
+                
+                // Ajouter TOUTES les réponses de cette question
+                if (isset($question['answers']) && is_array($question['answers'])) {
+                    foreach ($question['answers'] as $ans) {
+                        if ($ans && trim($ans) !== '') {
+                            $tempSessionUsedAllAnswers[] = AnswerNormalizationService::normalize($ans);
+                        }
+                    }
+                }
             }
             
             // Stocker les questions pré-générées en session
             $key = "pregenerated_questions_round_{$roundNumber}";
             session([$key => $questions]);
             
+            // CRITIQUE : Sauvegarder la liste complète des réponses utilisées pour les prochaines générations
+            session(['session_used_all_answers' => $tempSessionUsedAllAnswers]);
+            
             Log::info("Batch generation complete", [
                 'round' => $roundNumber,
                 'count' => count($questions),
                 'avatar' => $avatar,
-                'session_key' => $key
+                'session_key' => $key,
+                'total_answers_tracked' => count($tempSessionUsedAllAnswers)
             ]);
             
             return response()->json([

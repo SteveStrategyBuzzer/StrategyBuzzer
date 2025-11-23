@@ -159,6 +159,13 @@ IMPORTANT:
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 - LONGUEUR: ${lengthConstraint}
 
+🚫 INTERDICTION ABSOLUE DE DUPLICATION:
+${usedAnswers.length > 0 ? `- NE JAMAIS générer une question dont la RÉPONSE CORRECTE serait l'une des suivantes (déjà utilisées dans ce match):
+  ${usedAnswers.slice(0, 20).map(a => `  * "${a}"`).join('\n')}
+  ${usedAnswers.length > 20 ? `  ... et ${usedAnswers.length - 20} autres réponses déjà utilisées` : ''}
+- Si tu penses à une question avec l'une de ces réponses, CHANGE COMPLÈTEMENT de sujet
+- Choisis un NOUVEAU sujet/personnalité/concept DIFFÉRENT de tous ceux déjà couverts` : '- Génère une question avec une réponse unique et originale'}
+
 VALIDATION FACTUELLE STRICTE - 10 RÈGLES OBLIGATOIRES:
 
 1. NE JAMAIS inventer, extrapoler ou deviner des informations
@@ -307,6 +314,13 @@ IMPORTANT:
 - Pour les niveaux jeunes (8-12 ans), utilise un vocabulaire simple et des affirmations claires
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 - LONGUEUR: ${lengthConstraint}
+
+🚫 INTERDICTION ABSOLUE DE DUPLICATION:
+${usedAnswers.length > 0 ? `- NE JAMAIS générer une affirmation dont le SUJET PRINCIPAL serait l'un des suivants (déjà utilisés dans ce match):
+  ${usedAnswers.slice(0, 20).map(a => `  * "${a}"`).join('\n')}
+  ${usedAnswers.length > 20 ? `  ... et ${usedAnswers.length - 20} autres sujets déjà utilisés` : ''}
+- Si tu penses à une affirmation concernant l'un de ces sujets, CHANGE COMPLÈTEMENT de sujet
+- Choisis un NOUVEAU sujet/personnalité/concept DIFFÉRENT de tous ceux déjà couverts` : '- Génère une affirmation avec un sujet unique et original'}
 
 VALIDATION FACTUELLE STRICTE - 10 RÈGLES OBLIGATOIRES:
 
