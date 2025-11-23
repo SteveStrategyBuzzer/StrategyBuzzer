@@ -770,12 +770,13 @@ class SoloController extends Controller
         $totalIncorrect = 0;
         $totalUnanswered = 0;
         
-        // Calculer le total basé sur le nombre configuré et le nombre de manches jouées
-        $currentRound = session('current_round', 1);
+        // Calculer le total basé sur le nombre configuré et le nombre de manches COMPLÉTÉES
+        $roundSummaries = session('round_summaries', []);
+        $roundsCompleted = count($roundSummaries);
         $questionsPerRound = session('nb_questions', 12);
-        $totalQuestionsPlayed = $currentRound * $questionsPerRound;
+        $totalQuestionsPlayed = $roundsCompleted * $questionsPerRound;
         
-        Log::info("Computing global stats from " . count($globalStats) . " entries, nb_questions=" . $questionsPerRound . ", rounds=" . $currentRound . ", total=" . $totalQuestionsPlayed);
+        Log::info("Computing global stats from " . count($globalStats) . " entries, nb_questions=" . $questionsPerRound . ", rounds completed=" . $roundsCompleted . ", total=" . $totalQuestionsPlayed);
         
         foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
@@ -1098,10 +1099,11 @@ class SoloController extends Controller
         $totalIncorrect = 0;
         $totalUnanswered = 0;
         
-        // Calculer le total basé sur le nombre configuré et le nombre de manches jouées
-        $currentRound = session('current_round', 1);
+        // Calculer le total basé sur le nombre configuré et le nombre de manches COMPLÉTÉES
+        $roundSummaries = session('round_summaries', []);
+        $roundsCompleted = count($roundSummaries);
         $questionsPerRound = session('nb_questions', 12);
-        $totalQuestionsPlayed = $currentRound * $questionsPerRound;
+        $totalQuestionsPlayed = $roundsCompleted * $questionsPerRound;
         
         foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
@@ -1221,8 +1223,9 @@ class SoloController extends Controller
         $totalIncorrect = 0;
         $totalUnanswered = 0;
         
-        // Calculer le total basé sur le nombre configuré et le nombre de manches complétées
-        $roundsCompleted = session('current_round', 1);
+        // Calculer le total basé sur le nombre configuré et le nombre de manches COMPLÉTÉES
+        $roundSummaries = session('round_summaries', []);
+        $roundsCompleted = count($roundSummaries);
         $questionsPerRound = session('nb_questions', 12);
         $totalQuestionsPlayed = $roundsCompleted * $questionsPerRound;
         
@@ -1372,8 +1375,9 @@ class SoloController extends Controller
         $totalIncorrect = 0;
         $totalUnanswered = 0;
         
-        // Calculer le total basé sur le nombre configuré et le nombre de manches complétées
-        $roundsCompleted = session('current_round', 1);
+        // Calculer le total basé sur le nombre configuré et le nombre de manches COMPLÉTÉES
+        $roundSummaries = session('round_summaries', []);
+        $roundsCompleted = count($roundSummaries);
         $questionsPerRound = session('nb_questions', 12);
         $totalQuestionsPlayed = $roundsCompleted * $questionsPerRound;
         
