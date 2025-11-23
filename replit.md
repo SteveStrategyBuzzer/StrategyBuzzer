@@ -8,6 +8,32 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### November 23, 2025 - Adaptive Question Difficulty System
+
+**Objective**: Adapt question difficulty to opponent characteristics for fair and balanced gameplay
+- **Étudiants (Levels 1-9, 11-19, etc.)**: Questions adapted to student's age (8, 10, 12, 14, 16, 18, 20, 22, 24, 26 years)
+- **Boss (Levels 10, 20, 30, etc.)**: University-level/expert questions for challenging battles
+
+**Implementation**:
+- **QuestionService.php**: Added `$opponentAge` (8-26 years) and `$isBoss` (boolean) parameters to `generateQuestion()`
+- **AIQuestionGeneratorService.php**: Transmits opponent info to Node.js API for prompt adaptation
+- **question-api.js**: Adaptive prompt logic:
+  - `isBoss=true` → "niveau universitaire / expert"
+  - `opponentAge` present → "niveau X ans" (ex: "niveau 8 ans", "niveau 24 ans")
+  - Fallback → classic game level difficulty
+- **SoloController.php**: All question generation calls updated (4 locations: `game()`, `bonusQuestion()`, `generateBlock()`, `generateBatch()`)
+- **config/opponents.php**: All 90 students have `age` field; all 10 Boss have `is_boss=true` flag
+
+**Design Rationale**:
+- Young students (8 years) get simple vocabulary and basic concepts accessible to children
+- Older students (24-26 years) get adult-level questions with more sophisticated content  
+- Boss battles use expert-level questions with precise details, exact dates, and technical terminology
+- This system ensures fair difficulty progression aligned with opponent characteristics, preventing situations where children face overly complex questions or adults receive trivial ones
+
+**Affected Modes**: Solo mode (Duo/League use Firestore, not AI generation system)
+
+**Files Modified**: `app/Services/QuestionService.php`, `app/Services/AIQuestionGeneratorService.php`, `question-api.js`, `app/Http/Controllers/SoloController.php`, `replit.md`
+
 ### November 22, 2025 - Resume Screen UI Refinements
 
 **Mobile Responsive Optimization**

@@ -16,9 +16,11 @@ class AIQuestionGeneratorService
      * @param array $usedQuestionIds Les IDs des questions déjà utilisées
      * @param array $usedAnswers Toutes les réponses déjà utilisées (permanent + session)
      * @param array $usedQuestionTexts Textes des questions déjà posées dans la session
+     * @param int|null $opponentAge L'âge de l'adversaire étudiant (8-26 ans) ou null si Boss
+     * @param bool $isBoss True si c'est un combat contre un Boss (questions niveau universitaire)
      * @return array La question générée
      */
-    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $usedQuestionTexts = [])
+    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $usedQuestionTexts = [], $opponentAge = null, $isBoss = false)
     {
         // Extraire les hash de texte de toutes les questions IA déjà utilisées
         $usedTextHashes = $this->extractUsedTextHashes($usedQuestionIds);
@@ -37,6 +39,8 @@ class AIQuestionGeneratorService
                     'attempt' => $attempt,
                     'usedAnswers' => $usedAnswers, // Éviter doublons de réponses
                     'usedQuestionTexts' => $usedQuestionTexts, // NOUVEAU : Éviter doublons de questions
+                    'opponentAge' => $opponentAge, // NOUVEAU : Âge de l'adversaire étudiant
+                    'isBoss' => $isBoss, // NOUVEAU : Combat contre un Boss
                 ]);
 
                 if ($response->successful()) {

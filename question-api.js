@@ -73,11 +73,22 @@ function getQuestionLengthConstraint(niveau) {
 app.post('/generate-question', async (req, res) => {
   const MAX_RETRIES = 3;
   
-  const { theme, niveau, questionNumber, usedAnswers = [], usedQuestionTexts = [] } = req.body;
+  const { theme, niveau, questionNumber, usedAnswers = [], usedQuestionTexts = [], opponentAge = null, isBoss = false } = req.body;
   
   const themeLabel = THEMES_FR[theme] || 'culture générale';
   const difficultyDesc = getDifficultyDescription(niveau);
   const lengthConstraint = getQuestionLengthConstraint(niveau);
+  
+  // NOUVEAU : Déterminer le niveau de difficulté selon l'adversaire
+  let difficultyLevel;
+  if (isBoss) {
+    difficultyLevel = 'niveau universitaire / expert';
+  } else if (opponentAge) {
+    difficultyLevel = `niveau ${opponentAge} ans`;
+  } else {
+    // Fallback : utiliser le niveau de jeu
+    difficultyLevel = difficultyDesc;
+  }
   
   // NOTE: On NE dit PLUS à l'IA d'éviter certaines réponses dans le prompt
   // Au lieu de ça, la validation POST-génération (ligne ~401) rejette les questions 
@@ -100,7 +111,7 @@ app.post('/generate-question', async (req, res) => {
 ÉTAPE 1 - GÉNÉRATION D'UN FAIT VÉRIFIÉ :
 - Pense d'abord à un FAIT HISTORIQUE/GÉOGRAPHIQUE/SCIENTIFIQUE réel et vérifié lié au thème "${themeLabel}"
 - Ce fait doit être PRÉCIS, VÉRIFIABLE et directement lié au thème
-- Niveau de difficulté : ${difficultyDesc} (niveau ${niveau}/100)
+- Niveau de difficulté : ${difficultyLevel}
 - Exemples de faits acceptables :
   * Histoire : "Le Bitcoin a été créé en 2009 par Satoshi Nakamoto" (technologie dans l'histoire)
   * Géographie : "Le Mont Everest culmine à 8849 mètres d'altitude"
@@ -109,7 +120,7 @@ app.post('/generate-question', async (req, res) => {
 ÉTAPE 2 - FORMULATION DE LA QUESTION :
 - Transforme ce fait en une question claire et précise
 - La question doit tester la connaissance de ce fait spécifique
-- Adapte la difficulté au niveau ${niveau}/100
+- Adapte la difficulté au ${difficultyLevel}
 
 ÉTAPE 3 - AUTO-VALIDATION THÉMATIQUE :
 - VÉRIFIE que le fait est bien lié au thème "${themeLabel}"
@@ -121,8 +132,9 @@ IMPORTANT:
 - La question doit être VRAIMENT UNIQUE et ORIGINALE - évite absolument les questions clichées ou répétitives
 - Ne pose PAS de questions évidentes ou trop simples (ex: "Quelle est la capitale de la France?", "Quel animal est le meilleur ami de l'homme?")
 - Varie les sujets, les angles d'approche et les formulations
-- Adapte la complexité au niveau ${niveau} (plus le niveau est élevé, plus la question doit être difficile)
-- Pour les niveaux élevés (>50), utilise des détails précis, des dates exactes, des noms complets
+- Adapte la complexité au ${difficultyLevel}
+- Pour le niveau universitaire/expert, utilise des détails précis, des dates exactes, des noms complets
+- Pour les niveaux jeunes (8-12 ans), utilise un vocabulaire simple et des concepts de base accessibles
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 - LONGUEUR: ${lengthConstraint}
 
@@ -251,14 +263,15 @@ RÈGLES STRICTES:
 3. Les mauvaises réponses doivent être crédibles mais incorrectes
 4. Question unique et originale, pas de répétition
 5. Réponds UNIQUEMENT avec le JSON, rien d'autre`
-      : `Tu es un générateur de questions de quiz. Génère UNE SEULE question Vrai/Faux unique de ${themeLabel} avec un niveau de difficulté ${difficultyDesc} (niveau ${niveau}/100). Génère TOUT le contenu (question et explication) en français uniquement.
+      : `Tu es un générateur de questions de quiz. Génère UNE SEULE question Vrai/Faux unique de ${themeLabel} avec un niveau de difficulté ${difficultyLevel}. Génère TOUT le contenu (question et explication) en français uniquement.
 
 IMPORTANT:
 - La question doit être VRAIMENT UNIQUE et ORIGINALE - évite absolument les affirmations clichées ou répétitives
 - Ne pose PAS d'affirmations évidentes (ex: "Paris est la capitale de la France", "Le chien est un animal domestique")
 - Varie les sujets et les angles d'approche
-- Adapte la complexité au niveau ${niveau}
-- Pour les niveaux élevés, utilise des affirmations plus nuancées
+- Adapte la complexité au ${difficultyLevel}
+- Pour le niveau universitaire/expert, utilise des affirmations plus nuancées et techniques
+- Pour les niveaux jeunes (8-12 ans), utilise un vocabulaire simple et des affirmations claires
 - Ceci est la question ${questionNumber} de la partie - évite de répéter des concepts déjà couverts
 - LONGUEUR: ${lengthConstraint}
 

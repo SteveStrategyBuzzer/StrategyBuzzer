@@ -423,6 +423,11 @@ class SoloController extends Controller
         $sessionUsedAnswers = session('session_used_answers', []); // Réponses de cette partie
         $sessionUsedQuestionTexts = session('session_used_question_texts', []); // Textes des questions de cette partie
         
+        // NOUVEAU : Récupérer l'info de l'adversaire pour adapter la difficulté des questions
+        $opponentInfo = $this->getOpponentInfo($niveau);
+        $opponentAge = $opponentInfo['age'] ?? null;          // 8-26 ans pour étudiants, null pour Boss
+        $isBoss = $opponentInfo['is_boss'] ?? false;         // true si combat contre Boss
+        
         // Générer la question SEULEMENT si elle n'existe pas déjà (première visite ou après nextQuestion)
         if (!session()->has('current_question') || session('current_question') === null) {
             // NOUVEAU SYSTÈME PROGRESSIF : Utiliser le stock de questions généré par blocs
@@ -453,7 +458,7 @@ class SoloController extends Controller
                 ]);
             } else {
                 // Fallback : générer à la demande si le stock est vide (CORRIGÉ : ajouter au stock !)
-                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts);
+                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss);
                 
                 // CRITIQUE : Ajouter la question générée au stock pour éviter régénération
                 $questionStock[$questionIndex] = $question;
@@ -1908,7 +1913,12 @@ class SoloController extends Controller
         $sessionUsedAnswers = session('session_used_answers', []);
         $sessionUsedQuestionTexts = session('session_used_question_texts', []);
         
-        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts);
+        // Récupérer l'info de l'adversaire pour adapter la difficulté de la question bonus
+        $opponentInfo = $this->getOpponentInfo($niveau);
+        $opponentAge = $opponentInfo['age'] ?? null;
+        $isBoss = $opponentInfo['is_boss'] ?? false;
+        
+        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss);
         
         // Enregistrer la question bonus dans l'historique permanent
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -2062,6 +2072,11 @@ class SoloController extends Controller
             $sessionUsedAnswers = session('session_used_answers', []);
             $sessionUsedQuestionTexts = session('session_used_question_texts', []);
             
+            // Récupérer l'info de l'adversaire pour adapter la difficulté des questions du bloc
+            $opponentInfo = $this->getOpponentInfo($niveau);
+            $opponentAge = $opponentInfo['age'] ?? null;
+            $isBoss = $opponentInfo['is_boss'] ?? false;
+            
             // Récupérer le stock progressif actuel
             $stockKey = "question_stock_round_{$roundNumber}";
             $questionStock = session($stockKey, []);
@@ -2095,7 +2110,9 @@ class SoloController extends Controller
                     $tempUsedIds, 
                     [],  // Pas d'historique permanent
                     $tempSessionUsedAnswers,
-                    $tempSessionUsedTexts
+                    $tempSessionUsedTexts,
+                    $opponentAge,
+                    $isBoss
                 );
                 
                 $questions[] = $question;
@@ -2165,6 +2182,11 @@ class SoloController extends Controller
             $sessionUsedAnswers = session('session_used_answers', []);
             $sessionUsedQuestionTexts = session('session_used_question_texts', []);
             
+            // Récupérer l'info de l'adversaire pour adapter la difficulté du batch
+            $opponentInfo = $this->getOpponentInfo($niveau);
+            $opponentAge = $opponentInfo['age'] ?? null;
+            $isBoss = $opponentInfo['is_boss'] ?? false;
+            
             // Déterminer le nombre de questions à générer
             // Si avatar Magicienne, générer 11 questions (10 + 1 bonus)
             $questionsToGenerate = ($avatar === 'Magicienne') ? $nbQuestions + 1 : $nbQuestions;
@@ -2183,7 +2205,9 @@ class SoloController extends Controller
                     $tempUsedIds, 
                     [],  // Ne pas utiliser l'historique permanent pour éviter trop de conflits
                     $tempSessionUsedAnswers,
-                    $tempSessionUsedTexts
+                    $tempSessionUsedTexts,
+                    $opponentAge,
+                    $isBoss
                 );
                 
                 $questions[] = $question;

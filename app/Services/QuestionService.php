@@ -23,15 +23,17 @@ class QuestionService
      * @param array $usedAnswers Réponses permanentes déjà vues par le joueur (historique complet)
      * @param array $sessionUsedAnswers Réponses utilisées dans la partie en cours seulement
      * @param array $sessionUsedQuestionTexts Textes des questions déjà posées dans la partie
+     * @param int|null $opponentAge L'âge de l'adversaire étudiant (8-26 ans) ou null si Boss
+     * @param bool $isBoss True si c'est un combat contre un Boss (questions niveau universitaire)
      * @return array La question générée avec réponses randomisées
      */
-    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $sessionUsedAnswers = [], $sessionUsedQuestionTexts = [])
+    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $sessionUsedAnswers = [], $sessionUsedQuestionTexts = [], $opponentAge = null, $isBoss = false)
     {
         // Combiner les réponses permanentes et de session pour éviter tous les doublons
         $allUsedAnswers = array_unique(array_merge($usedAnswers, $sessionUsedAnswers));
         
-        // Générer la question via l'IA
-        $question = $this->aiGenerator->generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts);
+        // Générer la question via l'IA avec info adversaire
+        $question = $this->aiGenerator->generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss);
         
         // Randomiser les réponses pour questions à choix multiples
         // Les questions vrai/faux gardent leurs positions fixes (Vrai toujours à gauche, Faux à droite)
