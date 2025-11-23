@@ -1,18 +1,9 @@
 const http = require('http');
 
-const THEMES = [
-  'general',
-  'geographie',
-  'histoire',
-  'art',
-  'cinema',
-  'sport',
-  'cuisine',
-  'faune',
-  'sciences'
-];
-
+// Test match réel : 50 questions × 3 manches sur le MÊME thème
+const THEMES = ['geographie']; // Un seul thème
 const QUESTIONS_PER_THEME = 50;
+const ROUNDS = 3; // Simuler 3 manches
 
 function makeRequest(data) {
   return new Promise((resolve, reject) => {
@@ -55,12 +46,12 @@ function normalizeAnswer(answer) {
     .replace(/[^a-z0-9]/g, '');
 }
 
-async function testTheme(theme) {
+async function testTheme(theme, round, existingUsedAnswers = []) {
   console.log(`\n${'='.repeat(80)}`);
-  console.log(`🎯 TEST THÈME: ${theme.toUpperCase()}`);
+  console.log(`🏆 MANCHE ${round}/${ROUNDS} - ${theme.toUpperCase()}`);
   console.log(`${'='.repeat(80)}\n`);
 
-  const usedAnswers = [];
+  const usedAnswers = [...existingUsedAnswers]; // Commencer avec les réponses existantes
   const questions = [];
   const duplicates = {
     literal: [],
@@ -158,16 +149,19 @@ async function testTheme(theme) {
 
 async function runTests() {
   console.log('\n╔════════════════════════════════════════════════════════════════════════════╗');
-  console.log('║   TEST ANTI-DUPLICATION - 50 QUESTIONS × 9 THÈMES = 450 QUESTIONS         ║');
+  console.log('║   TEST MATCH RÉEL - 50 QUESTIONS × 3 MANCHES = 150 QUESTIONS              ║');
+  console.log('║   THÈME: GÉOGRAPHIE (comme dans un vrai match)                             ║');
   console.log('╚════════════════════════════════════════════════════════════════════════════╝\n');
 
   const results = [];
+  let accumulatedAnswers = []; // Pool global pour les 3 manches
 
-  for (const theme of THEMES) {
-    const result = await testTheme(theme);
+  for (let round = 1; round <= ROUNDS; round++) {
+    const result = await testTheme(THEMES[0], round, accumulatedAnswers);
+    accumulatedAnswers = result.usedAnswers; // Garder les réponses pour la prochaine manche
     results.push(result);
     
-    // Pause entre les thèmes
+    // Pause entre les manches
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
