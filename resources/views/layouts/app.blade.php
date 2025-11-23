@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>StrategyBuzzer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
@@ -226,6 +227,52 @@
             localStorage.setItem('ambient_music_id', musicId);
             loadMusicSource();
         };
+    })();
+    </script>
+
+    <!-- Détection automatique de la langue du navigateur -->
+    <script>
+    (function() {
+        @auth
+        const userLang = @json(auth()->user()->preferred_language ?? null);
+        const supportedLanguages = @json(array_keys(config('languages.supported', ['fr' => []])));
+        
+        // Si l'utilisateur n'a pas de langue définie, détecter automatiquement
+        if (!userLang || userLang === 'fr') {
+            const browserLang = (navigator.language || navigator.userLanguage || 'fr').split('-')[0].toLowerCase();
+            
+            // Vérifier si la langue du navigateur est supportée
+            if (supportedLanguages.includes(browserLang) && browserLang !== 'fr') {
+                // Proposer de changer automatiquement
+                const confirmChange = confirm(
+                    `Votre navigateur est en ${browserLang}. Voulez-vous utiliser StrategyBuzzer dans cette langue ?\n\n` +
+                    `Your browser is in ${browserLang}. Do you want to use StrategyBuzzer in this language?`
+                );
+                
+                if (confirmChange) {
+                    // Envoyer une requête pour sauvegarder la langue
+                    fetch('{{ route("profile.update") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                        },
+                        body: JSON.stringify({
+                            language: browserLang,
+                            _token: '{{ csrf_token() }}'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload(); // Recharger la page pour appliquer la langue
+                        }
+                    })
+                    .catch(err => console.error('Erreur sauvegarde langue:', err));
+                }
+            }
+        }
+        @endauth
     })();
     </script>
 </body>
