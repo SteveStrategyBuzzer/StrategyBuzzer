@@ -160,11 +160,12 @@ IMPORTANT:
 - LONGUEUR: ${lengthConstraint}
 
 🚫 INTERDICTION ABSOLUE DE DUPLICATION:
-${usedAnswers.length > 0 ? `- NE JAMAIS générer une question dont la RÉPONSE CORRECTE serait l'une des suivantes (déjà utilisées dans ce match):
-  ${usedAnswers.slice(0, 20).map(a => `  * "${a}"`).join('\n')}
-  ${usedAnswers.length > 20 ? `  ... et ${usedAnswers.length - 20} autres réponses déjà utilisées` : ''}
-- Si tu penses à une question avec l'une de ces réponses, CHANGE COMPLÈTEMENT de sujet
-- Choisis un NOUVEAU sujet/personnalité/concept DIFFÉRENT de tous ceux déjà couverts` : '- Génère une question avec une réponse unique et originale'}
+${usedAnswers.length > 0 ? `- Réponses déjà utilisées dans ce match: ${usedAnswers.slice(0, 20).map(a => `"${a}"`).join(', ')}${usedAnswers.length > 20 ? ` ... et ${usedAnswers.length - 20} autres` : ''}` : ''}
+
+RÈGLES ANTI-DUPLICATION STRICTES:
+1. Change de sujet de question si tu arrives à une réponse déjà générée
+2. Ne jamais répéter une autre fois une même question
+3. Soit créatif dans tes choix de questions${theme === 'general' ? '. Dans le thème Général utilise le plus possible des questions de tous les thèmes' : ''}
 
 VALIDATION FACTUELLE STRICTE - 10 RÈGLES OBLIGATOIRES:
 
@@ -316,11 +317,12 @@ IMPORTANT:
 - LONGUEUR: ${lengthConstraint}
 
 🚫 INTERDICTION ABSOLUE DE DUPLICATION:
-${usedAnswers.length > 0 ? `- NE JAMAIS générer une affirmation dont le SUJET PRINCIPAL serait l'un des suivants (déjà utilisés dans ce match):
-  ${usedAnswers.slice(0, 20).map(a => `  * "${a}"`).join('\n')}
-  ${usedAnswers.length > 20 ? `  ... et ${usedAnswers.length - 20} autres sujets déjà utilisés` : ''}
-- Si tu penses à une affirmation concernant l'un de ces sujets, CHANGE COMPLÈTEMENT de sujet
-- Choisis un NOUVEAU sujet/personnalité/concept DIFFÉRENT de tous ceux déjà couverts` : '- Génère une affirmation avec un sujet unique et original'}
+${usedAnswers.length > 0 ? `- Réponses/sujets déjà utilisés dans ce match: ${usedAnswers.slice(0, 20).map(a => `"${a}"`).join(', ')}${usedAnswers.length > 20 ? ` ... et ${usedAnswers.length - 20} autres` : ''}` : ''}
+
+RÈGLES ANTI-DUPLICATION STRICTES:
+1. Change de sujet de question si tu arrives à une réponse déjà générée
+2. Ne jamais répéter une autre fois une même question
+3. Soit créatif dans tes choix de questions${theme === 'general' ? '. Dans le thème Général utilise le plus possible des questions de tous les thèmes' : ''}
 
 VALIDATION FACTUELLE STRICTE - 10 RÈGLES OBLIGATOIRES:
 
