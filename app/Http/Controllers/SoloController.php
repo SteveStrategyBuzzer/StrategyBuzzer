@@ -251,33 +251,7 @@ class SoloController extends Controller
             'has_boss'        => $bossInfo !== null,
         ];
 
-        // Si le niveau est un boss (10, 20, 30, etc.), afficher l'écran de présentation avec radar
-        $bossLevels = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-        if (in_array($niveau, $bossLevels)) {
-            return redirect()->route('solo.boss-presentation');
-        }
-
         return view('resume', compact('params'));
-    }
-
-    public function bossPresentation()
-    {
-        $niveau = session('niveau_selectionne', 1);
-        $opponents = config('opponents');
-        $bossOpponents = $opponents['boss_opponents'] ?? [];
-        
-        // Vérifier si le niveau est un boss
-        if (!isset($bossOpponents[$niveau])) {
-            // Si ce n'est pas un boss, rediriger vers le flow normal
-            return redirect()->route('solo.preparation');
-        }
-        
-        $bossData = $bossOpponents[$niveau];
-        
-        return view('boss_presentation', [
-            'niveau' => $niveau,
-            'bossData' => $bossData,
-        ]);
     }
 
     public function resume()
