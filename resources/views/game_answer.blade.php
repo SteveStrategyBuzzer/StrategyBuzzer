@@ -332,19 +332,22 @@ $allAnswers = $params['question']['answers'] ?? [];
 <div class="answer-container">
     <!-- Header -->
     <div class="answer-header">
-        <div class="answer-info" style="text-align: center; width: 100%; flex-direction: column; gap: 8px;">
-            <!-- Points en gros -->
+        <div class="answer-info" style="text-align: center; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 15px;">
             @php
                 $potentialPoints = $params['potential_points'] ?? 0;
                 $pointColor = $potentialPoints == 0 ? '#FFD700' : '#4ECDC4'; // Jaune pour 0, Vert pour 1 ou 2
             @endphp
+            <!-- Question # -->
+            <div style="font-size: 1.7rem; font-weight: 700; flex: 1; text-align: left;">
+                Question #{{ $params['current_question'] }}
+            </div>
+            <!-- Points en gros au centre -->
             <div style="font-size: 2.5rem; font-weight: 900; color: {{ $pointColor }}; text-shadow: 0 0 20px {{ $pointColor }}80;">
                 +{{ $potentialPoints }}
             </div>
-            <!-- Info en dessous -->
-            <div style="display: flex; justify-content: space-around; width: 100%; font-size: 0.85rem; opacity: 0.9;">
-                <span>Question #{{ $params['current_question'] }}</span>
-                <span>Score Actuel {{ $params['score'] }}/{{ $params['opponent_score'] ?? ($params['current_question'] - 1) }}</span>
+            <!-- Score à droite -->
+            <div style="font-size: 1.7rem; font-weight: 700; flex: 1; text-align: right;">
+                Score {{ $params['score'] }}/{{ $params['opponent_score'] ?? ($params['current_question'] - 1) }}</span>
             </div>
         </div>
     </div>
