@@ -623,9 +623,36 @@ class SoloController extends Controller
         $currentQuestion = session('current_question_number');
         $nbQuestions = session('nb_questions', 30);
         $avatar = session('avatar', 'Aucun');
+        $niveau = session('niveau_selectionne', 1);
         
         // Calculer temps pour répondre (10 secondes de base)
         $answerTime = 10;
+        
+        // NOUVEAU : Calculer potential_points en simulant le comportement de l'adversaire
+        $potentialPoints = 0;  // Par défaut : 0 si pas buzzé
+        
+        if ($playerBuzzed) {
+            // Simuler le comportement de l'adversaire pour déterminer qui est le plus rapide
+            $questionService = new \App\Services\QuestionService();
+            $playerScore = session('score', 0);
+            $opponentScore = session('opponent_score', 0);
+            $chronoTime = session('chrono_time', 8);
+            
+            $opponentBehavior = $questionService->simulateOpponentBehavior(
+                $niveau,
+                $question,
+                $playerBuzzed,
+                $buzzTime,
+                $chronoTime,
+                $playerScore,
+                $opponentScore,
+                $currentQuestion
+            );
+            
+            // Calculer les points potentiels (si le joueur répond correctement)
+            // +2 si le joueur est premier, +1 si le joueur est deuxième
+            $potentialPoints = $opponentBehavior['is_faster'] ? 1 : 2;
+        }
         
         $params = [
             'question' => $question,
@@ -635,6 +662,7 @@ class SoloController extends Controller
             'answer_time' => $answerTime,
             'buzz_time' => $buzzTime,
             'player_buzzed' => $playerBuzzed,
+            'potential_points' => $potentialPoints,  // NOUVEAU : Points potentiels
             'current_round' => session('current_round', 1),
             'total_rounds' => session('total_rounds', 5),
             'avatar' => $avatar,  // Avatar stratégique pour les skills
