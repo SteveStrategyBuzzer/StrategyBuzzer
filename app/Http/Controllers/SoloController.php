@@ -13,6 +13,11 @@ use App\Models\QuestionHistory;
 
 class SoloController extends Controller
 {
+    private function getUserLanguage(): string
+    {
+        $user = auth()->user();
+        return $user?->preferred_language ?? config('languages.default', 'fr');
+    }
     
     public function index(Request $request)
     {
@@ -458,7 +463,8 @@ class SoloController extends Controller
                 ]);
             } else {
                 // Fallback : générer à la demande si le stock est vide (CORRIGÉ : ajouter au stock !)
-                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss);
+                $language = $this->getUserLanguage();
+                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
                 
                 // CRITIQUE : Ajouter la question générée au stock pour éviter régénération
                 $questionStock[$questionIndex] = $question;
@@ -1918,7 +1924,8 @@ class SoloController extends Controller
         $opponentAge = $opponentInfo['age'] ?? null;
         $isBoss = $opponentInfo['is_boss'] ?? false;
         
-        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss);
+        $language = $this->getUserLanguage();
+        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, [], $sessionUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
         
         // Enregistrer la question bonus dans l'historique permanent
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -2100,6 +2107,7 @@ class SoloController extends Controller
             }
             
             // Générer les questions du bloc
+            $language = $this->getUserLanguage();
             for ($i = 0; $i < $count; $i++) {
                 $questionNumber = $currentStockSize + $i + 1;
                 
@@ -2112,7 +2120,8 @@ class SoloController extends Controller
                     $tempSessionUsedAnswers,
                     $tempSessionUsedTexts,
                     $opponentAge,
-                    $isBoss
+                    $isBoss,
+                    $language
                 );
                 
                 $questions[] = $question;
@@ -2197,6 +2206,7 @@ class SoloController extends Controller
             $tempSessionUsedTexts = $sessionUsedQuestionTexts;
             
             // Générer toutes les questions en séquence
+            $language = $this->getUserLanguage();
             for ($i = 1; $i <= $questionsToGenerate; $i++) {
                 $question = $questionService->generateQuestion(
                     $theme, 
@@ -2207,7 +2217,8 @@ class SoloController extends Controller
                     $tempSessionUsedAnswers,
                     $tempSessionUsedTexts,
                     $opponentAge,
-                    $isBoss
+                    $isBoss,
+                    $language
                 );
                 
                 $questions[] = $question;
