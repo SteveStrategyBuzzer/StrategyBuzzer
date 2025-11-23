@@ -8,6 +8,41 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### November 23, 2025 - Multi-Language Support & Spelling Verification System
+
+**Objective**: Enable StrategyBuzzer to generate questions in multiple languages with strict spelling verification
+- **Multi-Language Architecture**: System prepared for 10 languages (French, English, Spanish, Italian, Greek, German, Portuguese, Russian, Arabic, Chinese)
+- **Adaptive Spelling Rules**: Language-specific orthography verification in AI prompts
+- **Default Language**: French (fr) - ready for expansion
+
+**Implementation**:
+- **QuestionService.php**: Added `$language = 'fr'` parameter to `generateQuestion()` method
+- **AIQuestionGeneratorService.php**: Added `$language = 'fr'` parameter and transmits to Node.js API
+- **question-api.js**: 
+  - Created `LANGUAGES` mapping (fr→Français, en→English, es→Español, it→Italiano, el→Ελληνικά, de→Deutsch, pt→Português, ru→Русский, ar→العربية, zh→中文)
+  - Dynamic prompt adaptation: all "en français" references replaced with `en ${languageName}` variables
+  - Added comprehensive "RÈGLES D'ORTHOGRAPHE STRICTE" section in both multiple-choice and true/false prompts
+- **Spelling Verification Rules** (applied to all languages):
+  1. Verify EVERY word in language-specific dictionary before generation
+  2. Language-specific spelling examples (e.g., French: panthère ✓ vs phantère ✗)
+  3. Double-check animal names, place names, proper nouns, technical terms
+  4. Mandatory final review before sending question to player
+  5. If spelling doubt → use synonym with confirmed spelling
+  6. Spelling correctness = same priority as factual accuracy
+
+**Design Rationale**:
+- Spelling errors (like "phantère") break immersion and educational value
+- Multi-language readiness enables future international expansion without major refactoring
+- Language parameter defaults to 'fr' for backward compatibility
+- Architecture supports adding new languages by simply extending LANGUAGES mapping
+
+**Future-Ready**: Adding a new language requires:
+  1. Add entry to `LANGUAGES` object in question-api.js
+  2. (Optional) Create language-specific theme translations  
+  3. **Note**: Currently, True/False answers remain in French ("Vrai"/"Faux") for frontend/backend compatibility. Full localization would require updating UI buttons and answer validation logic
+
+**Files Modified**: `app/Services/QuestionService.php`, `app/Services/AIQuestionGeneratorService.php`, `question-api.js`, `replit.md`
+
 ### November 23, 2025 - Adaptive Question Difficulty System
 
 **Objective**: Adapt question difficulty to opponent characteristics for fair and balanced gameplay
