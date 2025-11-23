@@ -1688,7 +1688,7 @@ class SoloController extends Controller
             return isset($stat['round']) && $stat['round'] == $roundNumber;
         });
         
-        // Utiliser le nombre de questions CONFIGURÉ au lieu de compter ce qui est enregistré
+        // Utiliser le nombre de questions CONFIGURÉ pour l'affichage
         $questionsPerRound = session('nb_questions', 12);
         
         // Agrégation des statistiques
@@ -1699,7 +1699,7 @@ class SoloController extends Controller
         $pointsEarned = 0;
         $bonusPoints = 0;  // Points bonus séparés
         
-        $questionsPlayed = 0;  // Compter uniquement pour le log
+        $questionsPlayed = 0;  // Compter les questions réellement jouées pour le calcul
         
         foreach ($roundStats as $stat) {
             // QUESTIONS BONUS : les compter séparément
@@ -1731,7 +1731,7 @@ class SoloController extends Controller
         }
         
         // FORMULE SIMPLIFIÉE : toujours 2 points max par question
-        // Efficacité = (points gagnés / (questions configurées × 2)) × 100
+        // Utiliser le nombre configuré pour le calcul des points possibles
         $pointsPossible = $questionsPerRound * 2; // 2 points max par question configurée
         
         $efficiency = 0; // Défaut si pas de questions
