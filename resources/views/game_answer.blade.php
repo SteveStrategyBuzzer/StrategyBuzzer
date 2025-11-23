@@ -334,8 +334,12 @@ $allAnswers = $params['question']['answers'] ?? [];
     <div class="answer-header">
         <div class="answer-info" style="text-align: center; width: 100%; flex-direction: column; gap: 8px;">
             <!-- Points en gros -->
-            <div style="font-size: 2rem; font-weight: 900; color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);">
-                Valeur +{{ $params['potential_points'] ?? 2 }}
+            @php
+                $potentialPoints = $params['potential_points'] ?? 0;
+                $pointColor = $potentialPoints == 0 ? '#FF6B6B' : ($potentialPoints == 1 ? '#FFD700' : '#4ECDC4');
+            @endphp
+            <div style="font-size: 2.5rem; font-weight: 900; color: {{ $pointColor }}; text-shadow: 0 0 20px {{ $pointColor }}80;">
+                +{{ $potentialPoints }}
             </div>
             <!-- Info en dessous -->
             <div style="display: flex; justify-content: space-around; width: 100%; font-size: 0.85rem; opacity: 0.9;">
