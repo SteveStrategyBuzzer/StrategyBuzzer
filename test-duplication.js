@@ -69,7 +69,7 @@ async function testTheme(theme) {
 
   for (let i = 1; i <= QUESTIONS_PER_THEME; i++) {
     try {
-      const response = await makeRequest({
+      const q = await makeRequest({
         theme: theme,
         difficulty: 'medium',
         questionNumber: i,
@@ -79,8 +79,7 @@ async function testTheme(theme) {
         language: 'fr'
       });
 
-      if (response.success && response.question) {
-        const q = response.question;
+      if (q && q.text && q.answers) {
         const correctAnswer = q.answers[q.correct_index];
         const normalizedAnswer = normalizeAnswer(correctAnswer);
 
@@ -142,7 +141,7 @@ async function testTheme(theme) {
         process.stdout.write(`✓ Q${i} `);
         if (i % 10 === 0) console.log('');
       } else {
-        console.log(`\n❌ Q${i}: Erreur de génération`);
+        console.log(`\n❌ Q${i}: Réponse invalide - ${JSON.stringify(q).substring(0, 100)}`);
       }
 
       // Petit délai pour ne pas surcharger l'API
