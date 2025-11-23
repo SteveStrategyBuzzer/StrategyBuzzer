@@ -652,9 +652,6 @@ if ($opponentInfo['is_boss'] ?? false) {
 <div class="game-container">
     <!-- Question en haut -->
     <div class="question-header">
-        <div class="question-number">
-            Réponse #{{ $params['current_question'] }} | Valeur de {{ $params['potential_points'] ?? 2 }} point(s) | Actuellement {{ $params['score'] }}/{{ $opponentScore }}
-        </div>
         <div class="question-text">{{ $params['question']['text'] }}</div>
     </div>
     

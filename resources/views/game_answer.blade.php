@@ -332,9 +332,15 @@ $allAnswers = $params['question']['answers'] ?? [];
 <div class="answer-container">
     <!-- Header -->
     <div class="answer-header">
-        <div class="answer-info" style="text-align: center; width: 100%;">
-            <div class="answer-title" style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
-                RÉPONSE #{{ $params['current_question'] }} | VALEUR DE {{ $params['potential_points'] ?? 2 }} POINT(S) | ACTUELLEMENT {{ $params['score'] }}/{{ $params['opponent_score'] ?? ($params['current_question'] - 1) }}
+        <div class="answer-info" style="text-align: center; width: 100%; flex-direction: column; gap: 8px;">
+            <!-- Points en gros -->
+            <div style="font-size: 2rem; font-weight: 900; color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);">
+                Valeur +{{ $params['potential_points'] ?? 2 }}
+            </div>
+            <!-- Info en dessous -->
+            <div style="display: flex; justify-content: space-around; width: 100%; font-size: 0.85rem; opacity: 0.9;">
+                <span>Question #{{ $params['current_question'] }}</span>
+                <span>Score Actuel {{ $params['score'] }}/{{ $params['opponent_score'] ?? ($params['current_question'] - 1) }}</span>
             </div>
         </div>
     </div>
