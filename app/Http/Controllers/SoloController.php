@@ -129,6 +129,7 @@ class SoloController extends Controller
             'niveau_selectionne' => $niveau,
             'nb_questions'       => $nbQuestions,
             'theme'              => $theme,
+            'match_uuid'         => uniqid('match_', true), // Identifiant unique de match pour isolation sessionStorage
             'current_question_number' => 1,
             'current_round' => 1,              // Manche actuelle (1, 2 ou 3)
             'player_rounds_won' => 0,          // Manches gagnées par le joueur
@@ -879,8 +880,8 @@ class SoloController extends Controller
         // Activer le flag de génération pour bloquer les appels concurrents
         session(['question_generation_pending' => true]);
         
-        // BEST OF 3 : 10 questions par manche (pas 30 total !)
-        $questionsPerRound = 10;
+        // BEST OF 3 : Utiliser le nombre de questions configuré par l'utilisateur
+        $questionsPerRound = session('nb_questions', 10);
         
         // DEBUG: Log pour diagnostiquer le problème des 11 questions au lieu de 10
         \Log::info('[BUG#3 DEBUG] nextQuestion() appelé:', [

@@ -1052,73 +1052,80 @@ function goToNextQuestion() {
     window.location.href = "{{ route('solo.next') }}";
 }
 
-// GÉNÉRATION PROACTIVE : Déclencher les blocs basés sur le STOCK RESTANT (CORRIGÉ par architecte)
-// Au lieu de numéros de questions fixes, on vérifie combien il reste dans le stock
+// GÉNÉRATION PROACTIVE DYNAMIQUE AVEC IDEMPOTENCE : Génère les blocs basés sur le nombre de questions configuré
 (function() {
     const currentQuestion = {{ $params['current_question'] ?? 1 }};
     const currentRound = {{ $params['current_round'] ?? 1 }};
+    const questionsPerRound = {{ session('nb_questions', 10) }};
+    const matchUuid = "{{ session('match_uuid', 'default') }}"; // Identifiant unique de match
     
-    // Simuler check du stock (backend devrait le fournir mais on estime pour éviter appel API)
-    // Bloc 1 génère 2 questions, donc on déclenche bloc 2 quand on arrive à Q2 (il reste 1 dans le stock)
-    // Ensuite chaque bloc génère 3 questions
-    
-    // Déclencher bloc 2 (3 questions) quand on arrive à question 2
-    if (currentQuestion === 2) {
-        fetch("{{ route('solo.generate-block') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                count: 3,  // Bloc 2 : 3 questions
-                round: currentRound,
-                block_id: 2
-            })
-        }).then(response => response.json())
-          .then(data => console.log('[PROGRESSIVE] Block 2 generated (stock threshold):', data))
-          .catch(err => console.error('[PROGRESSIVE] Block 2 failed:', err));
+    // GARDE D'IDEMPOTENCE : Récupérer les blocs déjà demandés pour ce match + cette manche
+    const storageKey = `blocks_${matchUuid}_round_${currentRound}`;
+    let requestedBlocks = [];
+    try {
+        const stored = sessionStorage.getItem(storageKey);
+        requestedBlocks = stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        console.warn('[PROGRESSIVE] Failed to read sessionStorage:', e);
     }
     
-    // Déclencher bloc 3 (3 questions) quand on arrive à question 4
-    if (currentQuestion === 4) {
-        fetch("{{ route('solo.generate-block') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                count: 3,  // Bloc 3 : 3 questions
-                round: currentRound,
-                block_id: 3
-            })
-        }).then(response => response.json())
-          .then(data => console.log('[PROGRESSIVE] Block 3 generated (stock threshold):', data))
-          .catch(err => console.error('[PROGRESSIVE] Block 3 failed:', err));
+    // Architecture progressive : Bloc 1 = 2 questions (déjà généré au démarrage), blocs suivants = 3 questions chacun
+    const blocksNeeded = Math.ceil((questionsPerRound - 2) / 3);
+    
+    // CALCUL DYNAMIQUE DES TRIGGERS : Déclencher chaque bloc pour rester en avance
+    // Bloc 2 (3q) à Q2 = 2+3-1 = 4 dans le stock, Bloc 3 à Q4, Bloc 4 à Q7, etc.
+    // Pattern : Bloc n déclenche quand on arrive à Q=(n-1)*3 - 1
+    for (let blockId = 2; blockId <= blocksNeeded + 1; blockId++) {
+        // Calcul du trigger : Bloc 2 à Q2, puis tous les 3 questions
+        const triggerQuestion = blockId === 2 ? 2 : 2 + (blockId - 2) * 3;
+        
+        // Ne pas déclencher si le trigger dépasse le nombre total de questions
+        if (triggerQuestion > questionsPerRound) {
+            break;
+        }
+        
+        // IDEMPOTENCE : Déclencher si on a ATTEINT OU DÉPASSÉ le trigger ET que ce bloc n'a jamais été demandé
+        // Cela permet la récupération si un fetch a échoué ou si la page a été rechargée
+        if (currentQuestion >= triggerQuestion && !requestedBlocks.includes(blockId)) {
+            console.log(`[PROGRESSIVE] Requesting block ${blockId} at Q${currentQuestion} (trigger was Q${triggerQuestion})`);
+            
+            fetch("{{ route('solo.generate-block') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    count: 3,
+                    round: currentRound,
+                    block_id: blockId
+                })
+            }).then(response => response.json())
+              .then(data => {
+                  // MARQUER COMME DEMANDÉ SEULEMENT APRÈS SUCCÈS
+                  if (data.success) {
+                      requestedBlocks.push(blockId);
+                      sessionStorage.setItem(storageKey, JSON.stringify(requestedBlocks));
+                      console.log(`[PROGRESSIVE] Block ${blockId} generated successfully:`, data);
+                  } else {
+                      console.error(`[PROGRESSIVE] Block ${blockId} returned success=false:`, data);
+                  }
+              })
+              .catch(err => {
+                  console.error(`[PROGRESSIVE] Block ${blockId} failed - will retry on next visit:`, err);
+                  // NE PAS marquer comme demandé pour permettre un retry
+              });
+        } else if (currentQuestion >= triggerQuestion) {
+            console.log(`[PROGRESSIVE] Block ${blockId} already requested, skipping`);
+        }
     }
     
-    // Déclencher bloc 4 (3 questions) quand on arrive à question 7
-    if (currentQuestion === 7) {
-        fetch("{{ route('solo.generate-block') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                count: 3,  // Bloc 4 : 3 questions
-                round: currentRound,
-                block_id: 4
-            })
-        }).then(response => response.json())
-          .then(data => console.log('[PROGRESSIVE] Block 4 generated (stock threshold):', data))
-          .catch(err => console.error('[PROGRESSIVE] Block 4 failed:', err));
-    }
-    
-    // Pour Magicienne avatar : générer 1 question bonus quand on arrive à question 10
+    // Pour Magicienne avatar : générer 1 question bonus à la dernière question
     @if(session('avatar') === 'Magicienne')
-    if (currentQuestion === 10) {
+    const bonusBlockId = 999;
+    if (currentQuestion === questionsPerRound && !requestedBlocks.includes(bonusBlockId)) {
+        console.log(`[PROGRESSIVE] Requesting bonus block at Q${currentQuestion}`);
+        
         fetch("{{ route('solo.generate-block') }}", {
             method: 'POST',
             headers: {
@@ -1126,13 +1133,24 @@ function goToNextQuestion() {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify({
-                count: 1,  // 1 question bonus pour Magicienne
+                count: 1,
                 round: currentRound,
-                block_id: 5
+                block_id: bonusBlockId
             })
         }).then(response => response.json())
-          .then(data => console.log('[PROGRESSIVE] Bonus block generated (stock threshold):', data))
-          .catch(err => console.error('[PROGRESSIVE] Bonus block failed:', err));
+          .then(data => {
+              // MARQUER COMME DEMANDÉ SEULEMENT APRÈS SUCCÈS
+              if (data.success) {
+                  requestedBlocks.push(bonusBlockId);
+                  sessionStorage.setItem(storageKey, JSON.stringify(requestedBlocks));
+                  console.log('[PROGRESSIVE] Bonus block generated successfully:', data);
+              } else {
+                  console.error('[PROGRESSIVE] Bonus block returned success=false:', data);
+              }
+          })
+          .catch(err => {
+              console.error('[PROGRESSIVE] Bonus block failed - will retry on next visit:', err);
+          });
     }
     @endif
 })();
