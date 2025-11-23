@@ -769,9 +769,13 @@ class SoloController extends Controller
         $totalCorrect = 0;
         $totalIncorrect = 0;
         $totalUnanswered = 0;
-        $totalQuestionsPlayed = 0;
         
-        Log::info("Computing global stats from " . count($globalStats) . " entries, nb_questions=" . session('nb_questions', 'N/A'));
+        // Calculer le total basé sur le nombre configuré et le nombre de manches jouées
+        $currentRound = session('current_round', 1);
+        $questionsPerRound = session('nb_questions', 12);
+        $totalQuestionsPlayed = $currentRound * $questionsPerRound;
+        
+        Log::info("Computing global stats from " . count($globalStats) . " entries, nb_questions=" . $questionsPerRound . ", rounds=" . $currentRound . ", total=" . $totalQuestionsPlayed);
         
         foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
@@ -779,8 +783,6 @@ class SoloController extends Controller
                 Log::info("  [{$index}] SKIPPED: bonus question");
                 continue;
             }
-            
-            $totalQuestionsPlayed++;
             
             // Log chaque question pour déboguer
             Log::info("  [{$index}] Q#{$totalQuestionsPlayed}: buzzed=" . ($stat['player_buzzed'] ? 'yes' : 'no') . ", correct=" . ($stat['is_correct'] ? 'yes' : 'no') . ", points=" . ($stat['player_points'] ?? 'N/A') . ", skill_adjusted=" . (isset($stat['skill_adjusted']) && $stat['skill_adjusted'] ? 'yes' : 'no'));
@@ -1095,15 +1097,17 @@ class SoloController extends Controller
         $totalCorrect = 0;
         $totalIncorrect = 0;
         $totalUnanswered = 0;
-        $totalQuestionsPlayed = 0;
+        
+        // Calculer le total basé sur le nombre configuré et le nombre de manches jouées
+        $currentRound = session('current_round', 1);
+        $questionsPerRound = session('nb_questions', 12);
+        $totalQuestionsPlayed = $currentRound * $questionsPerRound;
         
         foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
                 continue;
             }
-            
-            $totalQuestionsPlayed++;
             
             if (!$stat['player_buzzed']) {
                 $totalUnanswered++;
@@ -1216,15 +1220,17 @@ class SoloController extends Controller
         $totalCorrect = 0;
         $totalIncorrect = 0;
         $totalUnanswered = 0;
-        $totalQuestionsPlayed = 0;
+        
+        // Calculer le total basé sur le nombre configuré et le nombre de manches complétées
+        $roundsCompleted = session('current_round', 1);
+        $questionsPerRound = session('nb_questions', 12);
+        $totalQuestionsPlayed = $roundsCompleted * $questionsPerRound;
         
         foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
                 continue;
             }
-            
-            $totalQuestionsPlayed++;
             
             if (!$stat['player_buzzed']) {
                 $totalUnanswered++;
@@ -1365,15 +1371,17 @@ class SoloController extends Controller
         $totalCorrect = 0;
         $totalIncorrect = 0;
         $totalUnanswered = 0;
-        $totalQuestionsPlayed = 0;
+        
+        // Calculer le total basé sur le nombre configuré et le nombre de manches complétées
+        $roundsCompleted = session('current_round', 1);
+        $questionsPerRound = session('nb_questions', 12);
+        $totalQuestionsPlayed = $roundsCompleted * $questionsPerRound;
         
         foreach ($globalStats as $index => $stat) {
             // FILTRER LES QUESTIONS BONUS : ne pas les compter dans les statistiques globales
             if (isset($stat['is_bonus']) && $stat['is_bonus']) {
                 continue;
             }
-            
-            $totalQuestionsPlayed++;
             
             if (!$stat['player_buzzed']) {
                 $totalUnanswered++;
@@ -1680,15 +1688,18 @@ class SoloController extends Controller
             return isset($stat['round']) && $stat['round'] == $roundNumber;
         });
         
+        // Utiliser le nombre de questions CONFIGURÉ au lieu de compter ce qui est enregistré
+        $questionsPerRound = session('nb_questions', 12);
+        
         // Agrégation des statistiques
-        $questions = 0;
         $buzzed = 0;
         $correct = 0;
         $wrong = 0;
         $unanswered = 0;
         $pointsEarned = 0;
-        $pointsPossible = 0;
-        $bonusPoints = 0;  // NOUVEAU : Points bonus séparés
+        $bonusPoints = 0;  // Points bonus séparés
+        
+        $questionsPlayed = 0;  // Compter uniquement pour le log
         
         foreach ($roundStats as $stat) {
             // QUESTIONS BONUS : les compter séparément
@@ -1699,12 +1710,12 @@ class SoloController extends Controller
                 continue;  // Sauter pour le comptage des questions normales
             }
             
-            $questions++;
+            $questionsPlayed++;
             
             // Utiliser les points RÉELS si disponibles
             if (isset($stat['player_points'])) {
                 $pointsEarned += $stat['player_points'];
-                Log::info("Manche {$roundNumber} - Q#{$questions}: pts={$stat['player_points']}, buzzed=" . ($stat['player_buzzed'] ? '1' : '0') . ", correct=" . ($stat['is_correct'] ? '1' : '0') . ", skill=" . (isset($stat['skill_adjusted']) ? '1' : '0') . " | Total cumulé: {$pointsEarned}");
+                Log::info("Manche {$roundNumber} - Q#{$questionsPlayed}: pts={$stat['player_points']}, buzzed=" . ($stat['player_buzzed'] ? '1' : '0') . ", correct=" . ($stat['is_correct'] ? '1' : '0') . ", skill=" . (isset($stat['skill_adjusted']) ? '1' : '0') . " | Total cumulé: {$pointsEarned}");
             }
             
             if (!$stat['player_buzzed']) {
@@ -1720,8 +1731,8 @@ class SoloController extends Controller
         }
         
         // FORMULE SIMPLIFIÉE : toujours 2 points max par question
-        // Efficacité = (points gagnés / (questions × 2)) × 100
-        $pointsPossible = $questions * 2; // 2 points max par question
+        // Efficacité = (points gagnés / (questions configurées × 2)) × 100
+        $pointsPossible = $questionsPerRound * 2; // 2 points max par question configurée
         
         $efficiency = 0; // Défaut si pas de questions
         if ($pointsPossible > 0) {
@@ -1734,7 +1745,7 @@ class SoloController extends Controller
         
         return [
             'round' => $roundNumber,
-            'questions' => $questions,
+            'questions' => $questionsPerRound,  // Nombre configuré (10, 20, 30, 40, 50)
             'buzzed' => $buzzed,
             'correct' => $correct,
             'wrong' => $wrong,
@@ -1742,7 +1753,7 @@ class SoloController extends Controller
             'points_earned' => $pointsEarned,
             'points_possible' => $pointsPossible,
             'efficiency' => $efficiency,
-            'bonus_points' => $bonusPoints,  // NOUVEAU : Points bonus
+            'bonus_points' => $bonusPoints,
         ];
     }
 
