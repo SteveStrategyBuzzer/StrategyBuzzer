@@ -95,31 +95,56 @@ class QuestionService
     }
 
     /**
-     * Obtient les statistiques de base d'un Boss
+     * Obtient les statistiques de base d'un Boss depuis la config
      */
     private function getBossStats($niveau)
     {
-        if ($niveau >= 10 && $niveau <= 30) {
+        $bossOpponents = config('opponents.boss_opponents', []);
+        $bossData = $bossOpponents[$niveau] ?? null;
+        
+        if (!$bossData) {
+            // Valeur par défaut si le Boss n'est pas trouvé
             return [
-                'precision' => 60,      // 60% de bonnes réponses
-                'abstention' => 60,     // 60% d'abstention si erreur pressentie
-            ];
-        } elseif ($niveau >= 40 && $niveau <= 60) {
-            return [
-                'precision' => 70,
                 'abstention' => 70,
-            ];
-        } elseif ($niveau >= 70 && $niveau <= 90) {
-            return [
-                'precision' => 80,
-                'abstention' => 80,
-            ];
-        } else { // niveau 100
-            return [
-                'precision' => 85,
-                'abstention' => 90,
+                'radar' => [],
             ];
         }
+        
+        return [
+            'abstention' => $bossData['abstention'] ?? 70,
+            'radar' => $bossData['radar'] ?? [],
+        ];
+    }
+    
+    /**
+     * Mapper les noms de thèmes entre les questions et le config
+     */
+    private function normalizeThemeName($theme)
+    {
+        $mapping = [
+            'general' => 'Général',
+            'cinema' => 'Cinéma',
+            'science' => 'Science',
+            'geographie' => 'Géographie',
+            'histoire' => 'Histoire',
+            'art' => 'Art',
+            'culture' => 'Culture',
+            'sport' => 'Sport',
+            'cuisine' => 'Cuisine',
+        ];
+        
+        return $mapping[strtolower($theme)] ?? 'Général';
+    }
+    
+    /**
+     * Récupère la précision du Boss pour un thème spécifique
+     */
+    private function getBossPrecisionForTheme($niveau, $theme)
+    {
+        $bossStats = $this->getBossStats($niveau);
+        $normalizedTheme = $this->normalizeThemeName($theme);
+        
+        return $bossStats['radar'][$normalizedTheme] ?? 70;
     }
 
     /**
@@ -265,10 +290,13 @@ class QuestionService
      */
     private function simulateBossBehavior($niveau, $question, $playerBuzzed, $buzzTime, $chronoTime, $playerScore, $opponentScore, $questionNumber)
     {
-        // 1. Obtenir les statistiques de base du Boss
+        // 1. Obtenir les statistiques de base du Boss et la précision par thème
         $bossStats = $this->getBossStats($niveau);
-        $basePrecision = $bossStats['precision'];
         $baseAbstention = $bossStats['abstention'];
+        
+        // Récupérer la précision spécifique pour le thème de la question
+        $questionTheme = $question['theme'] ?? 'general';
+        $basePrecision = $this->getBossPrecisionForTheme($niveau, $questionTheme);
         
         // 2. Calculer la nervosité (impact psychologique de l'écart de score)
         $nervousness = $this->calculateNervousness($playerScore, $opponentScore);
