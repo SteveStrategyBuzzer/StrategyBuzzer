@@ -332,21 +332,10 @@ $allAnswers = $params['question']['answers'] ?? [];
 <div class="answer-container">
     <!-- Header -->
     <div class="answer-header">
-        <div class="answer-info">
-            @php
-                $selectedAvatar = session('selected_avatar', 'default');
-                $avatarPath = asset("images/avatars/{$selectedAvatar}.png");
-            @endphp
-            <img src="{{ $avatarPath }}" alt="Player" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid #4ECDC4;">
-            <div>
-                <div class="answer-title">📝 Question {{ $params['current_question'] }}</div>
-                <div class="answer-value">{{ $params['total_questions'] }} questions</div>
+        <div class="answer-info" style="text-align: center; width: 100%;">
+            <div class="answer-title" style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                RÉPONSE #{{ $params['current_question'] }} | VALEUR DE {{ $params['potential_points'] ?? 2 }} POINT(S) | ACTUELLEMENT {{ $params['score'] }}/{{ $params['opponent_score'] ?? ($params['current_question'] - 1) }}
             </div>
-        </div>
-        
-        <div class="answer-info score-box">
-            <div class="answer-title">🎯 Score</div>
-            <div class="answer-value">{{ $params['score'] }} / {{ $params['current_question'] - 1 }}</div>
         </div>
     </div>
     
