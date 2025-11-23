@@ -35,6 +35,7 @@ class User extends Authenticatable
         'email',
         'password',
         'player_code',
+        'preferred_language',
         'coins',
         'intelligence_pieces',
         'lives',

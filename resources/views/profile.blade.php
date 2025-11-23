@@ -39,8 +39,11 @@
     $playerEmail  = $player?->email ?? '—';
 
     // Langue & Pays
-    $language = data_get($s, 'language', 'Français');
-    $locale   = $language === 'Anglais' ? 'en' : 'fr';
+    $allLanguages = config('languages.supported');
+    $currentLangCode = $player?->preferred_language ?? config('languages.default', 'fr');
+    $currentLangData = $allLanguages[$currentLangCode] ?? $allLanguages['fr'];
+    $language = $currentLangData['native_name'];
+    $locale   = $currentLangCode;
 
     try {
         $countries = Countries::getNames($locale);
@@ -647,8 +650,11 @@
       <div class="sb-v" style="text-align:right;">
         <span class="sb-chooser" title="Choisir">▼
           <select name="language" id="sel-lang">
-            <option value="Français" @selected($language==='Français')>Français</option>
-            <option value="Anglais"  @selected($language==='Anglais')>Anglais</option>
+            @foreach($allLanguages as $code => $langData)
+              <option value="{{ $code }}" @selected($currentLangCode === $code)>
+                {{ $langData['flag'] }} {{ $langData['native_name'] }}
+              </option>
+            @endforeach
           </select>
         </span>
       </div>

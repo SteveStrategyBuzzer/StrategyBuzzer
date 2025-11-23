@@ -123,11 +123,13 @@ class ProfileController extends Controller
 
         $request->merge(['country' => strtoupper($request->input('country', ''))]);
 
+        $supportedLangCodes = array_keys(config('languages.supported', ['fr' => []]));
+        
         $data = $request->validate([
             'pseudonym' => 'nullable|string|max:24',
             'show_in_league' => 'nullable|in:Oui,Non',
             'show_online' => 'nullable|boolean',
-            'language' => 'nullable|in:Français,Anglais',
+            'language' => 'nullable|in:' . implode(',', $supportedLangCodes),
             'country' => 'nullable|string|max:2',
             'sound.buzzer_id' => 'nullable|string|max:64',
             'sound.music_id' => 'nullable|string|max:64',
@@ -158,6 +160,11 @@ class ProfileController extends Controller
         $settings = array_replace_recursive($this->buildSettings(), $data);
 
         try {
+            // Sauvegarder la langue dans le champ dédié preferred_language
+            if (isset($data['language'])) {
+                $user->preferred_language = $data['language'];
+            }
+            
             $user->profile_settings = $settings;
             
             // Vérifier que les champs obligatoires sont remplis avant de marquer comme complété
