@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Profile du Joueur — StrategyBuzzer')
+@section('title', __('Profile du Joueur') . ' — StrategyBuzzer')
 
 @section('content')
 @php
@@ -35,7 +35,7 @@
     // Infos joueur
     $player       = Auth::user();
     $playerId     = $player?->id;
-    $playerName   = $player?->name ?? 'Invité';
+    $playerName   = $player?->name ?? __('Invité');
     $playerEmail  = $player?->email ?? '—';
 
     // Langue & Pays
@@ -73,32 +73,39 @@
     $theme    = data_get($s, 'theme.style', 'Classique');
 
     $unlockedBuzzers = data_get($s, 'unlocked.buzzers', []) ?: [
-        ['id'=>'buzzer_default_1','label'=>'Buzzer Par Défaut 1'],
-        ['id'=>'buzzer_default_2','label'=>'Buzzer Par Défaut 2'],
-        ['id'=>'classic_beep','label'=>'Classique'],
-        ['id'=>'retro','label'=>'Rétro'],
-        ['id'=>'laser','label'=>'Laser'],
+        ['id'=>'buzzer_default_1','label'=>__('Buzzer Par Défaut 1')],
+        ['id'=>'buzzer_default_2','label'=>__('Buzzer Par Défaut 2')],
+        ['id'=>'classic_beep','label'=>__('Classique')],
+        ['id'=>'retro','label'=>__('Rétro')],
+        ['id'=>'laser','label'=>__('Laser')],
     ];
     $unlockedMusic = data_get($s, 'unlocked.music', []) ?: [
-        ['id'=>'strategybuzzer', 'label'=>'StrategyBuzzer'],
-        ['id'=>'fun_01','label'=>'Fun 01'],
-        ['id'=>'chill','label'=>'Chill'],
-        ['id'=>'punchy','label'=>'Punchy'],
+        ['id'=>'strategybuzzer', 'label'=>__('StrategyBuzzer')],
+        ['id'=>'fun_01','label'=>__('Fun 01')],
+        ['id'=>'chill','label'=>__('Chill')],
+        ['id'=>'punchy','label'=>__('Punchy')],
     ];
-    $themes = ['Classique','Fun','Intello','Party','Punchy'];
+    // Thèmes : identifiants canoniques (stockés en DB)
+    $themeOptions = [
+        'Classique' => __('Classique'),
+        'Fun' => __('Fun'),
+        'Intello' => __('Intello'),
+        'Party' => __('Party'),
+        'Punchy' => __('Punchy')
+    ];
 
     $showInLeague = data_get($s, 'show_in_league', 'Oui');
     $showOnline   = (bool) data_get($s, 'show_online', true);
 
     // “Maître du jeu” & niveaux
-    $grade        = (string) data_get($s, 'gm.grade', 'Rookie');
+    $grade        = (string) data_get($s, 'gm.grade', __('Rookie'));
     $soloLevel    = max(1, (int) data_get($s, 'choix_niveau', session('choix_niveau', 1))); // Minimum niveau 1, synchronisé avec session
     $duoLevel     = max(0, (int) data_get($s, 'gm.duo_level', 0)); // Niveau Duo
     $leagueLevel  = max(0, (int) data_get($s, 'gm.league_level', 0));
 
     // ID public (par défaut = nom)
     $pseudonym = trim((string) data_get($s, 'pseudonym', ''));
-    if ($pseudonym === '') $pseudonym = $playerName !== 'Invité' ? $playerName : '';
+    if ($pseudonym === '') $pseudonym = $playerName !== __('Invité') ? $playerName : '';
 
     // URLs de choix d’avatars (retour vers profil)
     $backToProfile        = route('profile.show');
@@ -410,7 +417,7 @@
 <div class="min-h-screen bg-[#0A2C66] text-white sb-page">
   <div class="sb-wrap">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <h1 style="margin:0;">Profile du Joueur</h1>
+      <h1 style="margin:0;">{{ __('Profile du Joueur') }}</h1>
       @if($hasAvatar && !empty(trim($pseudonym ?? '')))
         <a href="{{ route('menu') }}" style="
           background: white;
@@ -425,7 +432,7 @@
           align-items: center;
           gap: 6px;
         " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-          Menu
+          {{ __('Menu') }}
         </a>
       @else
         <div style="
@@ -440,8 +447,8 @@
           gap: 6px;
           cursor: not-allowed;
           opacity: 0.6;
-        " title="Complétez votre profil (avatar + pseudonym) pour accéder au menu">
-          🔒 Menu
+        " title="{{ __('Complétez votre profil (avatar + pseudonym) pour accéder au menu') }}">
+          🔒 {{ __('Menu') }}
         </div>
       @endif
     </div>
@@ -449,60 +456,60 @@
     <div class="sb-three">
 {{-- =================== BULLE 1 (25%) : Avatar principal =================== --}}
 <div class="sb-panel">
-  <div class="sb-muted mb-1">Avatar principal</div>
+  <div class="sb-muted mb-1">{{ __('Avatar principal') }}</div>
 
-  <a class="sb-thumb" href="{{ $avatarsUrl }}" title="Choisir / Modifier l'avatar">
+  <a class="sb-thumb" href="{{ $avatarsUrl }}" title="{{ __('Choisir / Modifier l\'avatar') }}">
 @if(session('avatar_image'))
-  <img src="{{ session('avatar_image') }}" alt="Avatar du joueur" style="width:120px;height:auto;">
+  <img src="{{ session('avatar_image') }}" alt="{{ __('Avatar principal') }}" style="width:120px;height:auto;">
 @elseif($hasAvatar)
-  <img src="{{ ($avatarUrl ?? asset('images/avatars/default.png')) . $avatarBust }}" alt="Avatar du joueur">
+  <img src="{{ ($avatarUrl ?? asset('images/avatars/default.png')) . $avatarBust }}" alt="{{ __('Avatar principal') }}">
 @else
-  <span class="underline" style="font-size:13px">Choisir avatar</span>
+  <span class="underline" style="font-size:13px">{{ __('Choisir avatar') }}</span>
 @endif
 
   </a>
 
   <div class="sb-rows">
     <div class="sb-row">
-      <div class="sb-k" style="cursor: pointer;" onclick="document.getElementById('idPublic').focus()" title="Cliquer pour modifier">ID joueur</div>
+      <div class="sb-k" style="cursor: pointer;" onclick="document.getElementById('idPublic').focus()" title="{{ __('Cliquer pour modifier') }}">{{ __('ID joueur') }}</div>
       <div class="sb-v">
         <input class="sb-input" type="text" name="pseudonym" form="profileForm"
-               placeholder="Votre ID public" value="{{ $pseudonym }}" id="idPublic" maxlength="10">
+               placeholder="{{ __('Votre ID public') }}" value="{{ $pseudonym }}" id="idPublic" maxlength="10">
       </div>
     </div>
 
     <div class="sb-row">
-      <div class="sb-k">Langue</div>
+      <div class="sb-k">{{ __('Langue') }}</div>
       <div class="sb-v" id="apercu-lang">{{ $language }}</div>
     </div>
 
     <div class="sb-row">
-      <div class="sb-k">Pays</div>
+      <div class="sb-k">{{ __('Pays') }}</div>
       <div class="sb-v" id="apercu-pays">
         {{ $currentCountry && isset($countries[$currentCountry]) ? $countries[$currentCountry] : '—' }}
       </div>
     </div>
 
     <div class="sb-row">
-      <div class="sb-k">Thème</div>
-      <div class="sb-v" id="apercu-theme">{{ $theme }}</div>
+      <div class="sb-k">{{ __('Thème') }}</div>
+      <div class="sb-v" id="apercu-theme">{{ $themeOptions[$theme] ?? $theme }}</div>
     </div>
 
     <div class="sb-row">
-      <div class="sb-k">Ambiance</div>
+      <div class="sb-k">{{ __('Ambiance') }}</div>
       <div class="sb-v" id="apercu-ambiance">
-        {{ $musicId ? collect($unlockedMusic)->firstWhere('id',$musicId)['label'] ?? 'Aucun' : 'Aucun' }}
+        {{ $musicId ? collect($unlockedMusic)->firstWhere('id',$musicId)['label'] ?? __('Aucun') : __('Aucun') }}
       </div>
     </div>
 
 
 <div class="sb-row">
-  <div class="sb-k">Gameplay</div>
+  <div class="sb-k">{{ __('Gameplay') }}</div>
   <div class="sb-v" id="apercu-gameplay">
     @if($resultsOn && !empty($gameplayMusicId))
-      {{ collect($unlockedMusic)->firstWhere('id', $gameplayMusicId)['label'] ?? '—' }}
+      {{ collect($unlockedMusic)->firstWhere('id', $gameplayMusicId)['label'] ?? __('Aucun') }}
     @else
-      Désactivé
+      {{ __('Désactivé') }}
     @endif
   </div>
 </div>
@@ -515,12 +522,12 @@
 @endphp
 
 <div class="sb-row">
-  <div class="sb-k">Vies</div>
+  <div class="sb-k">{{ __('Vies') }}</div>
   <div class="sb-v" id="sb-lives-label">{{ $livesLabel }}</div>
 </div>
 
 <div class="sb-row">
-  <div class="sb-k">Vie dans</div>
+  <div class="sb-k">{{ __('Vie dans') }}</div>
   <div class="sb-v">
     <span
       id="sb-countdown"
@@ -528,13 +535,13 @@
       data-target="{{ $target ? \Carbon\Carbon::parse($target)->toIso8601String() : '' }}"
       data-life-max="{{ $lifeMax }}"
       data-regen-mins="{{ (int) config('game.life_regen_minutes', 60) }}"
-      data-wait-text="{{ (string) config('game.life_wait_text', 'en attente 1h 00m 00s') }}"
+      data-wait-text="{{ (string) config('game.life_wait_text', __('en attente')) }} 1h 00m 00s"
       data-lives="{{ $currentLives }}"
     >
       @if($hasInfinite)
         {{ \Carbon\Carbon::parse($user->infinite_lives_until)->diff(now())->format('%Hh %Im %Ss') }}
       @elseif($user && $user->lives >= $lifeMax)
-        {{ config('game.life_wait_text', 'en attente 1h 00m 00s') }}
+        {{ config('game.life_wait_text', __('en attente')) }} 1h 00m 00s
       @else
         {{ $lifeService->timeUntilNextRegen($user) ?? '—' }}
       @endif
@@ -550,16 +557,16 @@
 {{-- ==================== BULLE 2 (25%) : Avatar stratégique ==================== --}} 
 <div class="sb-panel sb-b2">
 
-  <div class="sb-muted mb-1">Avatar stratégique</div>
+  <div class="sb-muted mb-1">{{ __('Avatar stratégique') }}</div>
 
   {{-- Vignette avatar stratégique --}}
   <a class="sb-thumb" 
      href="{{ route('avatars', ['from' => 'profile']) }}" 
-     title="Choisir / Modifier l'avatar stratégique">
+     title="{{ __('Choisir / Modifier l\'avatar stratégique') }}">
       @if($stratUrl ?? false)
-          <img src="{{ $stratUrl . $avatarBust }}" alt="Avatar stratégique">
+          <img src="{{ $stratUrl . $avatarBust }}" alt="{{ __('Avatar stratégique') }}">
       @else
-          <span class="underline" style="font-size:13px;">Choisir avatar stratégique</span>
+          <span class="underline" style="font-size:13px;">{{ __('Choisir avatar stratégique') }}</span>
       @endif
   </a>
 
@@ -569,10 +576,16 @@
 <div class="sb-row" style="flex-direction:column; align-items:flex-start; text-align:left; gap:4px;">
   
   {{-- Label --}}
-  <div class="sb-k" style="font-weight:600; opacity:.9;">Nom avatar</div>
+  <div class="sb-k" style="font-weight:600; opacity:.9;">{{ __('Nom avatar') }}</div>
 
   {{-- Badge du nom --}}
   @php
+    // Traduction des tiers avec couleurs
+    $tierLabels = [
+        'Rare' => __('Rare'),
+        'Épique' => __('Épique'),
+        'Légendaire' => __('Légendaire')
+    ];
     $tierColors = ['Rare' => '#1E90FF', 'Épique' => '#800080', 'Légendaire' => '#FFD700'];
     $tier   = $stratTier ?? null;
     $color  = $tierColors[$tier] ?? '#ccc';
@@ -596,38 +609,38 @@
 
     {{-- Niveau solo --}}
     <div class="sb-row">
-      <div class="sb-k" style="text-align:left;">Niveau solo</div>
+      <div class="sb-k" style="text-align:left;">{{ __('Niveau solo') }}</div>
       <div class="sb-v" style="text-align:right;">{{ $soloLevel ?? 0 }}</div>
     </div>
 
     {{-- Niveau Duo --}}
     <div class="sb-row">
-      <div class="sb-k" style="text-align:left;">Niveau Duo</div>
+      <div class="sb-k" style="text-align:left;">{{ __('Niveau Duo') }}</div>
       <div class="sb-v" style="text-align:right;">{{ $duoLevel ?? 0 }}</div>
     </div>
 
     {{-- Niveau ligue --}}
     <div class="sb-row">
-      <div class="sb-k" style="text-align:left;">Niveau ligue</div>
+      <div class="sb-k" style="text-align:left;">{{ __('Niveau ligue') }}</div>
       <div class="sb-v" style="text-align:right;">{{ $leagueLevel ?? 0 }}</div>
     </div>
 
     {{-- Maître du jeu --}}
     <div class="sb-row">
-      <div class="sb-k" style="text-align:left;">Maître du jeu</div>
-      <div class="sb-v" style="text-align:right;">{{ $grade ?? 'Rookie' }}</div>
+      <div class="sb-k" style="text-align:left;">{{ __('Maître du jeu') }}</div>
+      <div class="sb-v" style="text-align:right;">{{ $grade ?? __('Rookie') }}</div>
     </div>
 
     {{-- Compte --}}
     <div class="sb-row" style="margin-top:10px;">
-      <div class="sb-k" style="text-align:left;">Compte</div>
+      <div class="sb-k" style="text-align:left;">{{ __('Compte') }}</div>
       <div class="sb-v" style="grid-column: span 2; text-align:left; display:flex; flex-direction:column; gap:2px;">
         @if($player?->provider === 'facebook')
-          <span>Facebook</span>
+          <span>{{ __('Facebook') }}</span>
         @elseif($player?->provider === 'google')
-          <span>Google</span>
+          <span>{{ __('Google') }}</span>
         @else
-          <span>Code #{{ $player?->player_code ?? 'SB-XXXX' }}</span>
+          <span>{{ __('Code') }} #{{ $player?->player_code ?? 'SB-XXXX' }}</span>
         @endif
         <span>{{ $playerEmail ?? '—' }}</span>
       </div>
@@ -641,18 +654,18 @@
       action="{{ Route::has('profile.update') ? route('profile.update') : '#' }}"
       class="sb-panel sb-b3">
   @csrf
-  <div class="sb-title">Réglages</div>
+  <div class="sb-title">{{ __('Réglages') }}</div>
 
   <div class="sb-rows">
     {{-- Langue --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">Langue</div>
+      <div class="sb-k">{{ __('Langue') }}</div>
       <div class="sb-v" style="text-align:right;">
-        <span class="sb-chooser" title="Choisir">▼
+        <span class="sb-chooser" title="{{ __('Choisir') }}">▼
           <select name="language" id="sel-lang">
             @foreach($allLanguages as $code => $langData)
               <option value="{{ $code }}" @selected($currentLangCode === $code)>
-                {{ $langData['flag'] }} {{ $langData['native_name'] }}
+                {{ $langData['native_name'] }}
               </option>
             @endforeach
           </select>
@@ -662,9 +675,9 @@
 
     {{-- Pays --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">Pays</div>
+      <div class="sb-k">{{ __('Pays') }}</div>
       <div class="sb-v" style="text-align:right;">
-        <span class="sb-chooser" title="Choisir">▼
+        <span class="sb-chooser" title="{{ __('Choisir') }}">▼
           <select name="country" id="sel-pays">
             <option value="">—</option>
             @foreach($countries as $code => $name)
@@ -677,12 +690,12 @@
 
     {{-- Visible en ligue --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">Visible en ligue</div>
+      <div class="sb-k">{{ __('Visible en ligue') }}</div>
       <div class="sb-v" style="text-align:right;">
-        <span class="sb-chooser" title="Choisir">▼
+        <span class="sb-chooser" title="{{ __('Choisir') }}">▼
           <select name="show_in_league" id="sel-ligue">
-            <option value="Oui" @selected($showInLeague==='Oui')>Oui</option>
-            <option value="Non" @selected($showInLeague==='Non')>Non</option>
+            <option value="Oui" @selected($showInLeague==='Oui')>{{ __('Oui') }}</option>
+            <option value="Non" @selected($showInLeague==='Non')>{{ __('Non') }}</option>
           </select>
         </span>
       </div>
@@ -690,12 +703,12 @@
 
     {{-- Thème --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">Thème</div>
+      <div class="sb-k">{{ __('Thème') }}</div>
       <div class="sb-v" style="text-align:right;">
-        <span class="sb-chooser" title="Choisir">▼
+        <span class="sb-chooser" title="{{ __('Choisir') }}">▼
           <select name="theme[style]" id="sel-theme">
-            @foreach($themes as $t)
-              <option value="{{ $t }}" @selected($theme === $t)>{{ $t }}</option>
+            @foreach($themeOptions as $themeId => $themeLabel)
+              <option value="{{ $themeId }}" @selected($theme === $themeId)>{{ $themeLabel }}</option>
             @endforeach
           </select>
         </span>
@@ -704,23 +717,23 @@
 
     {{-- 🎵 Musique --}}
     <div style="text-align:center; font-weight:bold; margin:10px 0; opacity:.9;">
-      🎵 Musique
+      {{ __('🎵 Musique') }}
     </div>
 
     {{-- Ambiance --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">Ambiance</div>
+      <div class="sb-k">{{ __('Ambiance') }}</div>
       <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
         <label class="sb-toggle" style="margin-right:auto;">
           <input type="checkbox" name="options[ambiance]" value="1" id="chk-amb" {{ $ambianceOn ? 'checked' : '' }}>
-          <span>Activer</span>
+          <span>{{ __('Activer') }}</span>
         </label>
         
         {{-- Sélecteur custom dépliable --}}
         <div class="sb-audio-selector" id="ambiance-selector">
           <button type="button" class="sb-selector-toggle" data-selector="ambiance" 
                   role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="ambiance-dropdown">
-            <span class="sb-selector-label">{{ collect($unlockedMusic)->firstWhere('id', (string)$musicId)['label'] ?? 'Choisir' }}</span>
+            <span class="sb-selector-label">{{ collect($unlockedMusic)->firstWhere('id', (string)$musicId)['label'] ?? __('Choisir') }}</span>
             <span class="sb-selector-arrow">▼</span>
           </button>
           
@@ -731,7 +744,7 @@
               <label class="sb-selector-option" data-value="{{ $m['id'] }}" data-label="{{ $m['label'] }}" role="option">
                 <input type="radio" name="ambiance_choice" value="{{ $m['id'] }}" {{ (string)$musicId === (string)$m['id'] ? 'checked' : '' }}>
                 <span class="sb-option-text">{{ $m['label'] }}</span>
-                <button type="button" class="sb-option-speaker" data-audio="{{ $m['id'] }}" data-duration="10000" title="Tester">🔊</button>
+                <button type="button" class="sb-option-speaker" data-audio="{{ $m['id'] }}" data-duration="10000" title="{{ __('Tester') }}">🔊</button>
               </label>
             @endforeach
           </div>
@@ -741,18 +754,18 @@
 
     {{-- Gameplay --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">Gameplay</div>
+      <div class="sb-k">{{ __('Gameplay') }}</div>
       <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
         <label class="sb-toggle" style="margin-right:auto;">
           <input type="checkbox" name="options[results]" value="1" id="chk-gameplay" {{ $resultsOn ? 'checked' : '' }}>
-          <span>Activer</span>
+          <span>{{ __('Activer') }}</span>
         </label>
         
         {{-- Sélecteur custom dépliable --}}
         <div class="sb-audio-selector" id="gameplay-selector">
           <button type="button" class="sb-selector-toggle" data-selector="gameplay"
                   role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="gameplay-dropdown">
-            <span class="sb-selector-label">{{ collect($unlockedMusic)->firstWhere('id', (string)$gameplayMusicId)['label'] ?? 'Choisir' }}</span>
+            <span class="sb-selector-label">{{ collect($unlockedMusic)->firstWhere('id', (string)$gameplayMusicId)['label'] ?? __('Choisir') }}</span>
             <span class="sb-selector-arrow">▼</span>
           </button>
           
@@ -763,7 +776,7 @@
               <label class="sb-selector-option" data-value="{{ $m['id'] }}" data-label="{{ $m['label'] }}" role="option">
                 <input type="radio" name="gameplay_choice" value="{{ $m['id'] }}" {{ (string)$gameplayMusicId === (string)$m['id'] ? 'checked' : '' }}>
                 <span class="sb-option-text">{{ $m['label'] }}</span>
-                <button type="button" class="sb-option-speaker" data-audio="{{ $m['id'] }}" data-duration="10000" title="Tester">🔊</button>
+                <button type="button" class="sb-option-speaker" data-audio="{{ $m['id'] }}" data-duration="10000" title="{{ __('Tester') }}">🔊</button>
               </label>
             @endforeach
           </div>
@@ -786,14 +799,14 @@
 
     {{-- Buzzer --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">Buzzer</div>
+      <div class="sb-k">{{ __('Son du buzzer') }}</div>
       <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
         
         {{-- Sélecteur custom dépliable --}}
         <div class="sb-audio-selector" id="buzzer-selector">
           <button type="button" class="sb-selector-toggle" data-selector="buzzer"
                   role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="buzzer-dropdown">
-            <span class="sb-selector-label">{{ collect($unlockedBuzzers)->firstWhere('id', (string)$buzzerId)['label'] ?? 'Choisir' }}</span>
+            <span class="sb-selector-label">{{ collect($unlockedBuzzers)->firstWhere('id', (string)$buzzerId)['label'] ?? __('Choisir') }}</span>
             <span class="sb-selector-arrow">▼</span>
           </button>
           
@@ -804,7 +817,7 @@
               <label class="sb-selector-option" data-value="{{ $b['id'] }}" data-label="{{ $b['label'] }}" role="option">
                 <input type="radio" name="buzzer_choice" value="{{ $b['id'] }}" {{ (string)$buzzerId === (string)$b['id'] ? 'checked' : '' }}>
                 <span class="sb-option-text">{{ $b['label'] }}</span>
-                <button type="button" class="sb-option-speaker" data-audio="{{ $b['id'] }}" data-duration="2000" title="Tester">🔊</button>
+                <button type="button" class="sb-option-speaker" data-audio="{{ $b['id'] }}" data-duration="2000" title="{{ __('Tester') }}">🔊</button>
               </label>
             @endforeach
           </div>
@@ -814,8 +827,8 @@
 
     {{-- Boutons Enregistrer et Déconnexion côte à côte --}}
     <div style="margin-top:15px; text-align:center; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
-      <button type="submit" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;">Enregistrer</button>
-      <button type="button" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;" onclick="document.getElementById('logout-form').submit();">Déconnexion</button>
+      <button type="submit" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;">{{ __('Sauvegarder') }}</button>
+      <button type="button" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;" onclick="document.getElementById('logout-form').submit();">{{ __('Déconnexion') }}</button>
     </div>
 
   </div>
@@ -997,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Afficher le sélecteur et récupérer le label
         if (ambianceSelector) ambianceSelector.style.display = '';
         const toggleLabel = document.querySelector('#ambiance-selector .sb-selector-label');
-        const labelText = toggleLabel ? toggleLabel.textContent : 'Classique';
+        const labelText = toggleLabel ? toggleLabel.textContent : '{{ __("Classique") }}';
         setTxt('apercu-ambiance', labelText);
       } else {
         // Masquer le sélecteur quand désactivé
@@ -1271,7 +1284,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let targetIso   = el.dataset.target || null;    // ISO date
   const lifeMax   = parseInt(el.dataset.lifeMax || '3', 10);
   const regenMins = parseInt(el.dataset.regenMins || '60', 10);
-  const waitText  = el.dataset.waitText || 'en attente 1h 00m 00s';
+  const waitText  = el.dataset.waitText || '{{ __("en attente") }} 1h 00m 00s';
   let lives       = parseInt(el.dataset.lives || '0', 10);
 
   const fmt = (ms) => {
