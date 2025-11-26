@@ -600,7 +600,7 @@
   @if(!empty($stratSkills))
     <div style="margin-top:4px; display:flex; flex-direction:column; gap:2px; font-size:12px; text-align:left;">
       @foreach($stratSkills as $skill)
-        <span>• {{ $skill }}</span>
+        <span>• {{ __($skill) }}</span>
       @endforeach
     </div>
   @endif
