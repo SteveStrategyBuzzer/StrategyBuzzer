@@ -308,7 +308,7 @@ audio { width: 100%; }
                         <div class="thumb" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px;">
                             <span class="tier t-rare" style="position:absolute;top:8px;left:8px;">{{ $p['count'] ?? count($p['images'] ?? []) }} {{ __('images') }}</span>
                             @forelse($previewImages as $img)
-                                <img src="{{ _assetv($img) }}" alt="{{ $p['label'] ?? '' }}" loading="lazy" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
+                                <img src="{{ asset($img) }}" alt="{{ $p['label'] ?? '' }}" loading="lazy" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
                             @empty
                                 <div style="padding:40px 14px;color:#cbd5e1;text-align:center;font-size:12px;grid-column:span 2;">{{ __('Aucune image') }}</div>
                             @endforelse
@@ -411,7 +411,7 @@ audio { width: 100%; }
                     <div class="avatar-row">
                         <div class="thumb">
                             <span class="tier {{ $tClass }}">{{ $t }}</span>
-                            <img src="{{ _assetv($a['path'] ?? '') }}" alt="{{ $a['label'] ?? '' }}" loading="lazy">
+                            <img src="{{ asset($a['path'] ?? '') }}" alt="{{ $a['label'] ?? '' }}" loading="lazy">
                             <div class="avatar-actions">
                                 @if($isUnlockedStrategic)
                                     <button class="btn success lock-btn" type="button" disabled>🔓</button>
