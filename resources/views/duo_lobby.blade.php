@@ -4,9 +4,9 @@
 <div class="duo-lobby-container">
     <div class="duo-header">
         <button onclick="window.location.href='{{ route('menu') }}'" class="back-button">
-            Retour
+            {{ __('Retour') }}
         </button>
-        <h1>MODE DUO</h1>
+        <h1>{{ __('MODE DUO') }}</h1>
         <div class="header-avatar">
             @if(Auth::user()->avatar_url)
                 <img src="/{{ Auth::user()->avatar_url }}" alt="Avatar">
@@ -20,40 +20,40 @@
 
         <div class="matchmaking-options">
             <div class="option-card">
-                <h3>🎯 MATCHMAKING ALÉATOIRE</h3>
-                <p>Affrontez un adversaire de votre division</p>
+                <h3>🎯 {{ __('MATCHMAKING ALÉATOIRE') }}</h3>
+                <p>{{ __('Affrontez un adversaire de votre division') }}</p>
                 <button id="randomMatchBtn" class="btn-primary btn-large">
-                    CHERCHER UN ADVERSAIRE
+                    {{ __('CHERCHER UN ADVERSAIRE') }}
                 </button>
             </div>
 
-            <div class="divider">OU</div>
+            <div class="divider">{{ __('OU') }}</div>
 
             <div class="option-card">
-                <h3>👥 INVITER UN AMI</h3>
-                <p>Défiez un joueur spécifique</p>
+                <h3>👥 {{ __('INVITER UN AMI') }}</h3>
+                <p>{{ __('Défiez un joueur spécifique') }}</p>
                 <div class="invite-section">
-                    <input type="text" id="inviteInput" placeholder="Code du joueur (ex: SB-4X2K)..." class="invite-input">
+                    <input type="text" id="inviteInput" placeholder="{{ __('Code du joueur (ex: SB-4X2K)...') }}" class="invite-input">
                     <button id="inviteBtn" class="btn-secondary btn-large">
-                        INVITER
+                        {{ __('INVITER') }}
                     </button>
                 </div>
                 <button id="openContactsBtn" class="btn-contacts">
-                    📒 Carnet
+                    📒 {{ __('Carnet') }}
                 </button>
             </div>
         </div>
 
         <div class="pending-invitations" id="pendingInvitations">
-            <h3>📬 Invitations reçues</h3>
+            <h3>📬 {{ __('Invitations reçues') }}</h3>
             <div id="invitationsList">
-                <p class="no-invitations">Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement</p>
+                <p class="no-invitations">{{ __('Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement') }}</p>
             </div>
         </div>
     </div>
 
     <div class="ranking-preview ranking-{{ strtolower($division['name'] ?? 'bronze') }}">
-        <h3>🏆 Classement {{ $division['name'] ?? 'Bronze' }}</h3>
+        <h3>🏆 {{ __('Classement') }} {{ $division['name'] ?? 'Bronze' }}</h3>
         <div class="ranking-list">
             @foreach($rankings ?? [] as $index => $player)
             <div class="ranking-item {{ $player['user_id'] == Auth::id() ? 'current-player' : '' }}">
@@ -67,7 +67,7 @@
             @endforeach
         </div>
         <button onclick="window.location.href='{{ route('duo.rankings') }}'" class="btn-link">
-            Voir le classement complet →
+            {{ __('Voir le classement complet') }} →
         </button>
     </div>
 </div>
@@ -75,14 +75,14 @@
 <div id="contactsModal" class="modal-backdrop" style="display: none;">
     <div class="modal-content contacts-modal">
         <div class="modal-header">
-            <h2>📒 CARNET DE JOUEURS</h2>
+            <h2>📒 {{ __('CARNET DE JOUEURS') }}</h2>
             <button class="modal-close" onclick="closeContactsModal()">&times;</button>
         </div>
         <button id="inviteSelectedBtn" class="btn-invite-selected" disabled>
-            INVITER LE JOUEUR SÉLECTIONNÉ
+            {{ __('INVITER LE JOUEUR SÉLECTIONNÉ') }}
         </button>
         <div id="contactsList" class="contacts-list">
-            <p class="loading-contacts">Chargement...</p>
+            <p class="loading-contacts">{{ __('Chargement...') }}</p>
         </div>
     </div>
 </div>
@@ -894,6 +894,40 @@
 </style>
 
 <script>
+const duoTranslations = @json([
+    'RECHERCHE EN COURS...' => __('RECHERCHE EN COURS...'),
+    'Erreur lors de la recherche' => __('Erreur lors de la recherche'),
+    'CHERCHER UN ADVERSAIRE' => __('CHERCHER UN ADVERSAIRE'),
+    'Erreur de connexion' => __('Erreur de connexion'),
+    'Entrez le code du joueur (ex: SB-4X2K)' => __('Entrez le code du joueur (ex: SB-4X2K)'),
+    'Invitation envoyée !' => __('Invitation envoyée !'),
+    "Erreur lors de l'invitation" => __("Erreur lors de l'invitation"),
+    'Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement' => __('Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement'),
+    'vous invite' => __('vous invite'),
+    'Accepter' => __('Accepter'),
+    'Refuser' => __('Refuser'),
+    'Aucun joueur dans votre carnet' => __('Aucun joueur dans votre carnet'),
+    'Historique' => __('Historique'),
+    'matchs joués' => __('matchs joués'),
+    'Dernière partie' => __('Dernière partie'),
+    'Victoires' => __('Victoires'),
+    'Défaites' => __('Défaites'),
+    'Chargement...' => __('Chargement...'),
+    'Aucun contact pour le moment' => __('Aucun contact pour le moment'),
+    'Jouez des parties Duo pour créer votre carnet !' => __('Jouez des parties Duo pour créer votre carnet !'),
+    'Erreur lors du chargement des contacts' => __('Erreur lors du chargement des contacts'),
+    'Niveau' => __('Niveau'),
+    'STATS PERSONNELLES DUO' => __('STATS PERSONNELLES DUO'),
+    'Efficacité' => __('Efficacité'),
+    'Parties totales' => __('Parties totales'),
+    'Bilan global' => __('Bilan global'),
+    'CONTRE VOUS' => __('CONTRE VOUS'),
+    'Bilan' => __('Bilan'),
+    'Parties jouées' => __('Parties jouées'),
+    'Manches Décisives' => __('Manches Décisives')
+]);
+function t(key) { return duoTranslations[key] || key; }
+
 document.addEventListener('DOMContentLoaded', function() {
     const randomMatchBtn = document.getElementById('randomMatchBtn');
     const inviteBtn = document.getElementById('inviteBtn');
@@ -901,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     randomMatchBtn.addEventListener('click', function() {
         this.disabled = true;
-        this.textContent = 'RECHERCHE EN COURS...';
+        this.textContent = t('RECHERCHE EN COURS...');
         
         fetch('{{ route("duo.matchmaking.random") }}', {
             method: 'POST',
@@ -915,23 +949,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 window.location.href = '{{ route("duo.matchmaking") }}?match_id=' + data.match_id;
             } else {
-                alert(data.message || 'Erreur lors de la recherche');
+                alert(data.message || t('Erreur lors de la recherche'));
                 this.disabled = false;
-                this.textContent = 'CHERCHER UN ADVERSAIRE';
+                this.textContent = t('CHERCHER UN ADVERSAIRE');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Erreur de connexion');
+            alert(t('Erreur de connexion'));
             this.disabled = false;
-            this.textContent = 'CHERCHER UN ADVERSAIRE';
+            this.textContent = t('CHERCHER UN ADVERSAIRE');
         });
     });
 
     inviteBtn.addEventListener('click', function() {
         const playerCode = inviteInput.value.trim().toUpperCase();
         if (!playerCode) {
-            alert('Entrez le code du joueur (ex: SB-4X2K)');
+            alert(t('Entrez le code du joueur (ex: SB-4X2K)'));
             return;
         }
 
@@ -946,15 +980,15 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Invitation envoyée !');
+                alert(t('Invitation envoyée !'));
                 inviteInput.value = '';
             } else {
-                alert(data.message || 'Erreur lors de l\'invitation');
+                alert(data.message || t("Erreur lors de l'invitation"));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Erreur de connexion');
+            alert(t('Erreur de connexion'));
         });
     });
 
@@ -973,13 +1007,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const list = document.getElementById('invitationsList');
         
         if (invitations.length === 0) {
-            list.innerHTML = '<p class="no-invitations">Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement</p>';
+            list.innerHTML = '<p class="no-invitations">' + t('Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement') + '</p>';
         } else {
             list.innerHTML = invitations.map(inv => `
                 <div class="invitation-item">
-                    <span>${inv.from_player.name} vous invite</span>
-                    <button onclick="acceptInvitation(${inv.match_id})" class="btn-accept">Accepter</button>
-                    <button onclick="declineInvitation(${inv.match_id})" class="btn-decline">Refuser</button>
+                    <span>${inv.from_player.name} ${t('vous invite')}</span>
+                    <button onclick="acceptInvitation(${inv.match_id})" class="btn-accept">${t('Accepter')}</button>
+                    <button onclick="declineInvitation(${inv.match_id})" class="btn-decline">${t('Refuser')}</button>
                 </div>
             `).join('');
         }
@@ -1025,7 +1059,7 @@ function closeContactsModal() {
 
 function loadContacts() {
     const contactsList = document.getElementById('contactsList');
-    contactsList.innerHTML = '<p class="loading-contacts">Chargement...</p>';
+    contactsList.innerHTML = '<p class="loading-contacts">' + t('Chargement...') + '</p>';
 
     fetch('/api/duo/contacts', {
         headers: {
@@ -1038,12 +1072,12 @@ function loadContacts() {
         if (data.success && data.contacts.length > 0) {
             displayContacts(data.contacts);
         } else {
-            contactsList.innerHTML = '<p class="no-contacts">Aucun contact pour le moment.<br>Jouez des parties Duo pour créer votre carnet !</p>';
+            contactsList.innerHTML = '<p class="no-contacts">' + t('Aucun contact pour le moment') + '<br>' + t('Jouez des parties Duo pour créer votre carnet !') + '</p>';
         }
     })
     .catch(error => {
         console.error('Error loading contacts:', error);
-        contactsList.innerHTML = '<p class="no-contacts">Erreur lors du chargement des contacts.</p>';
+        contactsList.innerHTML = '<p class="no-contacts">' + t('Erreur lors du chargement des contacts') + '</p>';
     });
 }
 
@@ -1060,21 +1094,21 @@ function displayContacts(contacts) {
                         <span class="contact-code">${contact.player_code}</span>
                     </div>
                     <div class="contact-stats">
-                        ⭐ Niveau ${contact.level} | 🏆 ${contact.division} (#${contact.division_rank})
+                        ⭐ ${t('Niveau')} ${contact.level} | 🏆 ${contact.division} (#${contact.division_rank})
                     </div>
                 </div>
             </div>
             <div class="contact-details" id="details-${contact.id}">
-                <h4>👤 STATS PERSONNELLES DUO</h4>
-                <p>📊 Efficacité: ${contact.duo_efficiency}%</p>
-                <p>🎮 Parties totales: ${contact.duo_total_matches}</p>
-                <p>🏆 Bilan global: ${contact.duo_wins}V - ${contact.duo_losses}D</p>
+                <h4>👤 ${t('STATS PERSONNELLES DUO')}</h4>
+                <p>📊 ${t('Efficacité')}: ${contact.duo_efficiency}%</p>
+                <p>🎮 ${t('Parties totales')}: ${contact.duo_total_matches}</p>
+                <p>🏆 ${t('Bilan global')}: ${contact.duo_wins}V - ${contact.duo_losses}D</p>
                 
-                <h4 style="margin-top: 15px;">🤝 CONTRE VOUS</h4>
-                <p>🏆 Bilan: ${contact.matches_won}V - ${contact.matches_lost}D (${contact.win_rate}%)</p>
-                <p>🎮 Parties jouées: ${contact.matches_played_together}</p>
-                <p>⚡ Manches Décisives: ${contact.decisive_rounds_stats}</p>
-                <p>⏱️ Dernière partie: ${contact.last_played_at}</p>
+                <h4 style="margin-top: 15px;">🤝 ${t('CONTRE VOUS')}</h4>
+                <p>🏆 ${t('Bilan')}: ${contact.matches_won}V - ${contact.matches_lost}D (${contact.win_rate}%)</p>
+                <p>🎮 ${t('Parties jouées')}: ${contact.matches_played_together}</p>
+                <p>⚡ ${t('Manches Décisives')}: ${contact.decisive_rounds_stats}</p>
+                <p>⏱️ ${t('Dernière partie')}: ${contact.last_played_at}</p>
             </div>
         </div>
     `).join('');
@@ -1135,15 +1169,15 @@ function inviteSelectedContact() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Invitation envoyée !');
+            alert(t('Invitation envoyée !'));
             closeContactsModal();
         } else {
-            alert(data.message || 'Erreur lors de l\'invitation');
+            alert(data.message || t("Erreur lors de l'invitation"));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Erreur de connexion');
+        alert(t('Erreur de connexion'));
     });
 }
 
