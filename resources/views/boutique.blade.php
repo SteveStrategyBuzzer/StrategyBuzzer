@@ -297,12 +297,12 @@ audio{ width:100% }
   @if(session('error'))   <div class="warn">{{ session('error') }}</div> @endif
 
   <div class="tabs" role="tablist">
-    <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 {{ __('Packs d'avatars') }}</a>
-    <a class="tab {{ $tab==='musiques'?'active':'' }}"  href="#musiques"  onclick="setTab('musiques'); return false;">🎵 {{ __('Musiques d'Ambiance') }}</a>
+    <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 {{ __("Packs d'avatars") }}</a>
+    <a class="tab {{ $tab==='musiques'?'active':'' }}"  href="#musiques"  onclick="setTab('musiques'); return false;">🎵 {{ __("Musiques d'Ambiance") }}</a>
     <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🔊 {{ __('Sons de Buzzers') }}</a>
     <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ {{ __('Avatars Stratégiques') }}</a>
     <a class="tab {{ $tab==='master'?'active':'' }}"   href="#master"   onclick="setTab('master'); return false;">🎮 {{ __('Maître du Jeu') }}</a>
-    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--tab" style="margin-right:4px;"> Pièces d'Intelligence</a>
+    <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--tab" style="margin-right:4px;"> {{ __("Pièces d'Intelligence") }}</a>
     <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ {{ __('Vies') }}</a>
   </div>
 
