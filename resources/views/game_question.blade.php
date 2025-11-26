@@ -77,7 +77,7 @@ if ($opponentInfo['is_boss'] ?? false) {
     $opponentAge = $opponentInfo['age'] ?? 8;
     $nextBoss = $opponentInfo['next_boss'] ?? 'Le Stratège';
     $opponentAvatar = asset("images/avatars/students/{$opponentInfo['avatar']}.png");
-    $opponentDescription = "Votre adversaire {$opponentName} {$opponentAge} ans élève du {$nextBoss}";
+    $opponentDescription = __('Votre adversaire') . " {$opponentName} {$opponentAge} " . __('ans élève du') . " {$nextBoss}";
 }
 @endphp
 
@@ -663,7 +663,7 @@ if ($opponentInfo['is_boss'] ?? false) {
             <div class="player-circle">
                 <img src="{{ $playerAvatarPath }}" alt="Avatar joueur" class="player-avatar">
                 <div class="player-name">{{ $playerName }}</div>
-                <div class="player-level">Niveau {{ $niveau }}</div>
+                <div class="player-level">{{ __('Niveau') }} {{ $niveau }}</div>
                 <div class="player-score" id="playerScore">{{ $params['score'] }}</div>
             </div>
             
@@ -677,7 +677,7 @@ if ($opponentInfo['is_boss'] ?? false) {
                         {{ $opponentDescription }}
                     </div>
                 @endif
-                <div class="opponent-level">Niveau {{ $niveau }}</div>
+                <div class="opponent-level">{{ __('Niveau') }} {{ $niveau }}</div>
                 <div class="opponent-score" id="opponentScore">{{ $opponentScore }}</div>
             </div>
         </div>

@@ -800,12 +800,12 @@
         @if(!$params['is_correct'])
             <!-- Afficher la réponse incorrecte du joueur ou le timeout -->
             <div class="answer-display answer-incorrect">
-                <span class="answer-label">Votre réponse:</span>
+                <span class="answer-label">{{ __('Votre réponse') }}:</span>
                 <span class="answer-text">
                     @if($isTimeout)
-                        ⏰ Temps écoulé - Pas de buzz
+                        ⏰ {{ __('Temps écoulé - Pas de buzz') }}
                     @elseif($userAnswerIndex === -1)
-                        ❌ Aucun choix sélectionné
+                        ❌ {{ __('Aucun choix sélectionné') }}
                     @else
                         {{ $question['answers'][$userAnswerIndex] }}
                     @endif
@@ -816,7 +816,7 @@
         
         <!-- Afficher la bonne réponse -->
         <div class="answer-display answer-correct">
-            <span class="answer-label">Bonne réponse:</span>
+            <span class="answer-label">{{ __('Bonne réponse') }}:</span>
             <span class="answer-text">{{ $question['answers'][$correctIndex] }}</span>
             <span class="answer-icon">✅</span>
         </div>
@@ -826,19 +826,19 @@
     <div class="progress-info">
         <div class="info-grid">
             <div class="info-item">
-                <span class="info-label">⚔️ Score:</span>
+                <span class="info-label">⚔️ {{ __('Score') }}:</span>
                 <span class="info-value">{{ $params['player_rounds_won'] ?? 0 }}-{{ $params['opponent_rounds_won'] ?? 0 }}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">❤️ Vies:</span>
+                <span class="info-label">❤️ {{ __('Vies') }}:</span>
                 <span class="info-value">{{ $params['vies_restantes'] ?? config('game.life_max', 3) }}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">📈 Progression:</span>
+                <span class="info-label">📈 {{ __('Progression') }}:</span>
                 <span class="info-value">{{ $params['current_question'] ?? 1 }}/{{ $params['total_questions'] ?? 30 }}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">🎯 Niveau:</span>
+                <span class="info-label">🎯 {{ __('Niveau') }}:</span>
                 <span class="info-value">{{ $params['niveau'] ?? 1 }}</span>
             </div>
         </div>
@@ -846,9 +846,9 @@
     
     <!-- Section "Le saviez-vous" -->
     <div class="did-you-know">
-        <div class="did-you-know-title">💡 Le saviez-vous ?</div>
+        <div class="did-you-know-title">💡 {{ __('Le saviez-vous ?') }}</div>
         <div class="did-you-know-content">
-            {{ $params['did_you_know'] ?? 'Chargement...' }}
+            {{ $params['did_you_know'] ?? __('Chargement...') }}
         </div>
     </div>
     
@@ -877,9 +877,9 @@
         
         <div class="next-question-timer">
             @if($isMultiplayer)
-                En attente des autres joueurs...
+                {{ __('En attente des autres joueurs...') }}
             @else
-                Prochaine question dans <span class="timer-count" id="countdown">15</span> secondes...
+                {{ __('Prochaine question dans') }} <span class="timer-count" id="countdown">15</span> {{ __('secondes...') }}
             @endif
         </div>
     </div>

@@ -415,7 +415,7 @@
 
 <!-- Bouton Retour Solo -->
 <a href="{{ route('solo.index') }}" class="menu-button">
-  ← Solo
+  ← {{ __('SOLO') }}
 </a>
 
 <div class="resume-container">
@@ -423,9 +423,9 @@
   <div class="title-section">
     <h1>
       @if($params['has_boss'] ?? false)
-        ⚔️ Boss Challenge
+        ⚔️ {{ __('Boss Challenge') }}
       @else
-        🧾 Descriptif de la Partie
+        🧾 {{ __('Descriptif de la Partie') }}
       @endif
     </h1>
   </div>
@@ -433,12 +433,12 @@
   <!-- Informations de la partie -->
   <div class="info-grid">
     <div class="info-card">
-      <div class="info-label">Thème</div>
+      <div class="info-label">{{ __('Thème') }}</div>
       <div class="info-value">{{ ucfirst($params['theme']) }} {{ $params['theme_icon'] ?? '' }}</div>
     </div>
     
     <div class="info-card">
-      <div class="info-label">Questions Par Manche</div>
+      <div class="info-label">{{ __('Questions Par Manche') }}</div>
       <div class="info-value">{{ $params['nb_questions'] }}</div>
     </div>
   </div>
@@ -446,7 +446,7 @@
   <!-- Alerte si conflit d'avatar -->
   @if($params['avatar_conflict'] ?? false)
     <div style="background: rgba(220, 53, 69, 0.2); border: 2px solid #dc3545; border-radius: 12px; padding: 15px; margin-bottom: 30px; text-align: center;">
-      <strong>⚠️ Attention :</strong> Vous ne pouvez pas utiliser le même avatar stratégique que le Boss ! Votre avatar a été réinitialisé.
+      <strong>⚠️ {{ __('Attention') }} :</strong> {{ __('Vous ne pouvez pas utiliser le même avatar stratégique que le Boss ! Votre avatar a été réinitialisé.') }}
     </div>
   @endif
 
@@ -493,12 +493,12 @@
         @endphp
         <div class="avatar-name">{{ $opponentName }}    Niv: {{ $params['niveau_joueur'] }}</div>
         <div style="font-size: 0.95rem; opacity: 0.9; margin-top: 10px; line-height: 1.4;">
-          Votre adversaire, {{ $opponentAge }} ans, élève de "{{ $params['boss_name'] }}"
+          {{ __('Votre adversaire') }}, {{ $opponentAge }} {{ __('ans élève du') }} "{{ $params['boss_name'] }}"
         </div>
         
         @if(!empty($params['boss_skills']))
           <div class="skills-list" style="margin-top: 20px;">
-            <div class="skills-title">⚔️ Compétences du Boss</div>
+            <div class="skills-title">⚔️ {{ __('Compétences du Boss') }}</div>
             @foreach ($params['boss_skills'] as $skill)
               <div class="skill-item">{{ $skill }}</div>
             @endforeach

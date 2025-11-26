@@ -585,6 +585,39 @@ NOTE TECHNIQUE: Les réponses restent en français ("Vrai"/"Faux") pour compatib
       }
     }
     
+    // DÉTECTION DE CONCEPTS SIMILAIRES : Rejeter les questions sur le même sujet
+    // Extraction des mots-clés significatifs (> 4 caractères, pas de mots communs)
+    const extractKeywords = (text) => {
+      const stopWords = ['le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'est', 'sont', 'qui', 'que', 'quoi', 'quel', 'quelle', 'quels', 'quelles', 'dans', 'sur', 'sous', 'avec', 'pour', 'par', 'plus', 'moins', 'très', 'bien', 'fait', 'être', 'avoir', 'peut', 'monde', 'terre', 'pays', 'grand', 'petit', 'premier', 'première', 'vrai', 'faux', 'appelle', 'connu', 'connue', 'appelé', 'appelée', 'situé', 'située', 'trouve', 'trouve', 'the', 'is', 'are', 'was', 'were', 'what', 'which', 'where', 'when', 'who', 'how', 'most', 'largest', 'biggest', 'smallest', 'called', 'known', 'located', 'found', 'true', 'false', 'animal', 'animaux', 'lequel', 'laquelle'];
+      const words = text.toLowerCase()
+        .replace(/[''`´]/g, "'")
+        .replace(/[^\wàâäéèêëïîôùûüç\s'-]/gi, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 4 && !stopWords.includes(word));
+      return [...new Set(words)];
+    };
+    
+    // Combiner question + réponse correcte pour extraire tous les concepts
+    const currentKeywords = extractKeywords(questionData.text + ' ' + correctAnswerText);
+    
+    // Vérifier la similarité avec les questions ET réponses déjà posées
+    // usedAnswers contient TOUTES les réponses (correctes + distracteurs) déjà utilisées
+    const allUsedConcepts = [...usedQuestionTexts, ...usedAnswers].join(' ');
+    const usedKeywords = extractKeywords(allUsedConcepts);
+    
+    if (usedKeywords.length > 0 && currentKeywords.length > 0) {
+      // Calculer le nombre de mots-clés communs
+      const commonKeywords = currentKeywords.filter(kw => usedKeywords.includes(kw));
+      
+      // Si >= 2 mots-clés significatifs en commun, rejeter (même sujet probable)
+      if (commonKeywords.length >= 2) {
+        console.log(`⚠️ CONCEPT SIMILAIRE DÉTECTÉ: ${commonKeywords.join(', ')}`);
+        console.log(`   Nouvelle question: "${questionData.text}" (réponse: "${correctAnswerText}")`);
+        console.log(`   Mots-clés communs avec questions précédentes`);
+        throw new Error(`Similar concept detected: ${commonKeywords.join(', ')}`);
+      }
+    }
+    
       // Si toutes les validations passent, renvoyer la question
       console.log(`✅ Question validée avec succès (tentative ${attempt})`, questionData);
       return res.json(questionData);

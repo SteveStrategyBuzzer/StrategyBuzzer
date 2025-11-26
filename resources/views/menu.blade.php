@@ -322,56 +322,56 @@
 
     <!-- Boutons du menu -->
     <div class="menu-container">
-        <h1 class="menu-title">Menu</h1>
+        <h1 class="menu-title">{{ __('Menu') }}</h1>
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('profile') ? route('profile') : url('/profile') }}">
-            PROFIL
+            {{ __('PROFIL') }}
         </a>
 
         <a class="menu-link {{ $soloUnlocked ? '' : 'disabled' }}"
            href="{{ $soloUnlocked ? (\Illuminate\Support\Facades\Route::has('solo.index') ? route('solo.index') : url('/solo')) : 'javascript:void(0)' }}">
-            SOLO {{ !$soloUnlocked ? '🔒' : '' }}
+            {{ __('SOLO') }} {{ !$soloUnlocked ? '🔒' : '' }}
         </a>
 
         <a class="menu-link {{ $duoUnlocked ? '' : 'disabled' }}"
            href="{{ $duoUnlocked ? (\Illuminate\Support\Facades\Route::has('duo') ? route('duo') : url('/duo')) : 'javascript:void(0)' }}">
-            DUO {{ !$duoUnlocked ? '🔒' : '' }}
+            {{ __('DUO') }} {{ !$duoUnlocked ? '🔒' : '' }}
         </a>
 
         <a class="menu-link {{ $ligueUnlocked ? '' : 'disabled' }}"
            href="{{ $ligueUnlocked ? (\Illuminate\Support\Facades\Route::has('ligue') ? route('ligue') : url('/ligue')) : 'javascript:void(0)' }}">
-            LIGUE {{ !$ligueUnlocked ? '🔒' : '' }}
+            {{ __('LIGUE') }} {{ !$ligueUnlocked ? '🔒' : '' }}
         </a>
 
         <a class="menu-link {{ $masterUnlocked ? '' : 'disabled' }}"
            href="{{ $masterPurchased && $profileComplete ? url('/master') : (route('boutique') . '?tab=master') }}">
-            MAÎTRE DU JEU {{ ($masterPurchased && !$profileComplete) ? '🔒' : '' }}
+            {{ __('MAÎTRE DU JEU') }} {{ ($masterPurchased && !$profileComplete) ? '🔒' : '' }}
         </a>
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}">
-            AVATARS
+            {{ __('AVATARS') }}
         </a>
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('quests.index') ? route('quests.index') : url('/quests') }}">
-            QUÊTES
+            {{ __('QUÊTES') }}
         </a>
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('boutique') ? route('boutique') : url('/boutique') }}">
-            BOUTIQUE
+            {{ __('BOUTIQUE') }}
         </a>
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('reglements') ? route('reglements') : url('/reglements') }}">
-            RÈGLEMENTS
+            {{ __('RÈGLEMENTS') }}
         </a>
 
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('quetes-quotidiennes') ? route('quetes-quotidiennes') : url('/quetes-quotidiennes') }}">
-            QUÊTES QUOTIDIENNES
+            {{ __('QUÊTES QUOTIDIENNES') }}
         </a>
     </div>
 </div>
