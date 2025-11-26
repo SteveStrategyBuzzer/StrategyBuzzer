@@ -218,10 +218,10 @@
                 {{ __('Une question décisive avec buzz et réponse') }}
             </div>
             <div class="option-rules">
-                <div class="rule-item">Un seul buzz → l'autre perd automatiquement</div>
-                <div class="rule-item">Seul buzzeur échoue → double échec → Option B</div>
-                <div class="rule-item">Double réussite → le plus rapide gagne 2pts, l'autre 1pt</div>
-                <div class="rule-item">Une seule réussite → l'autre perd</div>
+                <div class="rule-item">{{ __('Un seul buzz → l'autre perd automatiquement') }}</div>
+                <div class="rule-item">{{ __('Seul buzzeur échoue → double échec → Option B') }}</div>
+                <div class="rule-item">{{ __('Double réussite → le plus rapide gagne 2pts, l'autre 1pt') }}</div>
+                <div class="rule-item">{{ __('Une seule réussite → l'autre perd') }}</div>
             </div>
         </div>
 
@@ -233,9 +233,9 @@
                 {{ __('Départage selon les performances du match') }}
             </div>
             <div class="option-rules">
-                <div class="rule-item">Comparaison de l'efficacité globale</div>
-                <div class="rule-item">Si égalité → score de points gagnés</div>
-                <div class="rule-item">Le meilleur profil l'emporte</div>
+                <div class="rule-item">{{ __('Comparaison de l'efficacité globale') }}</div>
+                <div class="rule-item">{{ __('Si égalité → score de points gagnés') }}</div>
+                <div class="rule-item">{{ __('Le meilleur profil l'emporte') }}</div>
             </div>
         </div>
 
@@ -247,9 +247,9 @@
                 {{ __('Questions jusqu'au premier échec') }}
             </div>
             <div class="option-rules">
-                <div class="rule-item">Pas de course de vitesse</div>
-                <div class="rule-item">Première erreur → défaite immédiate</div>
-                <div class="rule-item">Tension maximale garantie</div>
+                <div class="rule-item">{{ __('Pas de course de vitesse') }}</div>
+                <div class="rule-item">{{ __('Première erreur → défaite immédiate') }}</div>
+                <div class="rule-item">{{ __('Tension maximale garantie') }}</div>
             </div>
         </div>
     </div>
@@ -278,7 +278,7 @@ function selectOption(option) {
     
     const badge = document.createElement('div');
     badge.className = 'selected-badge';
-    badge.textContent = '✓ SÉLECTIONNÉ';
+    badge.textContent = '{{ __('SÉLECTIONNÉ') }}';
     card.appendChild(badge);
 
     selectedOption = option;

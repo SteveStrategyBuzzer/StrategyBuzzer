@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistiques - StrategyBuzzer</title>
+    <title>{{ __('Statistiques') }} - StrategyBuzzer</title>
     <style>
         * {
             margin: 0;
@@ -168,7 +168,7 @@
                 </div>
             @else
                 <div class="no-data">
-                    Aucune donnée disponible. Jouez des parties en mode Solo pour voir vos statistiques !
+                    {{ __('Aucune donnée disponible. Jouez des parties en mode Solo pour voir vos statistiques !') }}
                 </div>
             @endif
         </div>
@@ -213,7 +213,7 @@
                 </div>
             @else
                 <div class="no-data">
-                    Aucune donnée disponible. Jouez des parties en mode Duo pour voir vos statistiques !
+                    {{ __('Aucune donnée disponible. Jouez des parties en mode Duo pour voir vos statistiques !') }}
                 </div>
             @endif
         </div>
@@ -258,7 +258,7 @@
                 </div>
             @else
                 <div class="no-data">
-                    Aucune donnée disponible. Jouez des parties en mode Ligue pour voir vos statistiques !
+                    {{ __('Aucune donnée disponible. Jouez des parties en mode Ligue pour voir vos statistiques !') }}
                 </div>
             @endif
         </div>

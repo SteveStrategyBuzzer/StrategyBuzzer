@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Résultat de la Manche - StrategyBuzzer</title>
+    <title>{{ __('Résultat de la manche') }} - StrategyBuzzer</title>
     <style>
         * {
             margin: 0;
@@ -285,7 +285,7 @@
         @endif
         
         <div style="color: #666; margin: 20px 0;">
-            Prochaine manche : <strong>{{ $params['nb_questions'] }} questions</strong>
+            Prochaine manche : <strong>{{ $params['nb_questions'] }} {{ __('questions') }}</strong>
         </div>
         
         <form action="{{ route('solo.game') }}" method="GET">
