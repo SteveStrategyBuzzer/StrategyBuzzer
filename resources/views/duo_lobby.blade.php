@@ -893,8 +893,8 @@
 }
 </style>
 
-<script>
-const duoTranslations = @json([
+@php
+$duoTranslations = [
     'RECHERCHE EN COURS...' => __('RECHERCHE EN COURS...'),
     'Erreur lors de la recherche' => __('Erreur lors de la recherche'),
     'CHERCHER UN ADVERSAIRE' => __('CHERCHER UN ADVERSAIRE'),
@@ -925,7 +925,10 @@ const duoTranslations = @json([
     'Bilan' => __('Bilan'),
     'Parties jouées' => __('Parties jouées'),
     'Manches Décisives' => __('Manches Décisives')
-]);
+];
+@endphp
+<script>
+const duoTranslations = @json($duoTranslations);
 function t(key) { return duoTranslations[key] || key; }
 
 document.addEventListener('DOMContentLoaded', function() {
