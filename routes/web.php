@@ -60,6 +60,7 @@ Route::post('/avatars/select', [AvatarController::class, 'select'])->name('avata
 
 /* ===== Boutique ===== */
 Route::get('/boutique',             [BoutiqueController::class, 'index'])->name('boutique');
+Route::get('/boutique/{category}',  [BoutiqueController::class, 'category'])->name('boutique.category');
 Route::post('/boutique/purchase',   [BoutiqueController::class, 'purchase'])->name('boutique.purchase');
 
 /* Aliases boutique (anciens liens) */

@@ -87,6 +87,62 @@ class BoutiqueController extends Controller
     }
 
     /**
+     * GET /boutique/{category}
+     */
+    public function category(Request $request, string $category)
+    {
+        $validCategories = ['packs', 'musiques', 'buzzers', 'strategiques', 'master', 'coins', 'vies'];
+        
+        if (!in_array($category, $validCategories)) {
+            return redirect()->route('boutique');
+        }
+
+        $catalog  = AvatarCatalog::get();
+        $user     = Auth::user();
+        $coins    = $user?->coins ?? 0;
+        $settings = (array) ($user?->profile_settings ?? []);
+        $unlocked = $settings['unlocked_avatars'] ?? [];
+        $masterPurchased = $user && ($user->master_purchased ?? false);
+
+        $context = [
+            'category'        => $category,
+            'coins'           => $coins,
+            'unlocked'        => $unlocked,
+            'catalog'         => $catalog,
+            'coinPacks'       => config('coins.packs', []),
+            'masterPurchased' => $masterPurchased,
+            'pricing'         => [
+                'pack'        => [],
+                'buzzer'      => [],
+                'stratégique' => [],
+            ],
+        ];
+
+        // Build pricing arrays
+        foreach ($catalog as $slug => $entry) {
+            if (is_array($entry) && isset($entry['price'])) {
+                $context['pricing']['pack'][$slug] = (int) $entry['price'];
+            }
+        }
+        foreach (($catalog['buzzers']['items'] ?? []) as $slug => $bz) {
+            if (isset($bz['price'])) {
+                $context['pricing']['buzzer'][$slug] = (int) $bz['price'];
+            }
+        }
+        foreach (($catalog['stratégiques']['items'] ?? []) as $slug => $a) {
+            if (isset($a['price'])) {
+                $context['pricing']['stratégique'][$slug] = (int) $a['price'];
+            }
+        }
+
+        return response()
+            ->view('boutique_category', $context)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
+
+    /**
      * POST /boutique/purchase
      */
     public function purchase(Request $request)
