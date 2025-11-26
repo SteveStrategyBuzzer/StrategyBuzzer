@@ -99,35 +99,35 @@ body {
   font-size: 1rem;
   transition: all 0.3s ease;
 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-  ← Menu
+  ← {{ __('Menu') }}
 </a>
 
 <div class="reglements-container">
-    <h1 class="reglements-title">📜 RÈGLEMENTS</h1>
+    <h1 class="reglements-title">📜 {{ __('RÈGLEMENTS') }}</h1>
     
     <div class="reglements-content">
-        <h2>🎮 Règles du Jeu</h2>
+        <h2>🎮 {{ __('Règles du Jeu') }}</h2>
         <ul>
-            <li>Répondez aux questions le plus rapidement possible</li>
-            <li>Utilisez le buzzer pour être le premier à répondre</li>
-            <li>Une bonne réponse rapporte des points</li>
-            <li>Une mauvaise réponse entraîne une pénalité</li>
+            <li>{{ __('Répondez aux questions le plus rapidement possible') }}</li>
+            <li>{{ __('Utilisez le buzzer pour être le premier à répondre') }}</li>
+            <li>{{ __('Une bonne réponse rapporte des points') }}</li>
+            <li>{{ __('Une mauvaise réponse entraîne une pénalité') }}</li>
         </ul>
 
-        <h2>🏆 Système de Points</h2>
+        <h2>🏆 {{ __('Système de Points') }}</h2>
         <ul>
-            <li>+2 points pour la première bonne réponse</li>
-            <li>+1 point pour la deuxième bonne réponse</li>
-            <li>-2 points pour une mauvaise réponse</li>
-            <li>0 point si pas de réponse</li>
+            <li>{{ __('Points première bonne réponse') }}</li>
+            <li>{{ __('Points deuxième bonne réponse') }}</li>
+            <li>{{ __('Points mauvaise réponse') }}</li>
+            <li>{{ __('Points pas de réponse') }}</li>
         </ul>
 
-        <h2>⚖️ Fair-Play</h2>
+        <h2>⚖️ {{ __('Fair-Play') }}</h2>
         <ul>
-            <li>Respectez vos adversaires</li>
-            <li>Jouez dans l'esprit du jeu</li>
-            <li>Pas de triche ou d'exploitation de bugs</li>
-            <li>Signalez tout problème technique</li>
+            <li>{{ __('Respectez vos adversaires') }}</li>
+            <li>{{ __('Jouez dans l\'esprit du jeu') }}</li>
+            <li>{{ __('Pas de triche ou d\'exploitation de bugs') }}</li>
+            <li>{{ __('Signalez tout problème technique') }}</li>
         </ul>
     </div>
 </div>

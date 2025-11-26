@@ -225,24 +225,24 @@
 
 <div class="daily-quests-container">
     <div class="header">
-        <h1>☀️ QUÊTES QUOTIDIENNES</h1>
-        <p style="font-size: 1.2rem; color: #ddd;">Complétez 3 quêtes quotidiennes pour gagner des pièces !</p>
+        <h1>☀️ {{ __('QUÊTES QUOTIDIENNES') }}</h1>
+        <p style="font-size: 1.2rem; color: #ddd;">{{ __('Complétez 3 quêtes quotidiennes pour gagner des pièces') }} !</p>
     </div>
 
     <div class="timer-section">
-        <div class="timer-label">⏰ Temps restant avant réinitialisation</div>
+        <div class="timer-label">⏰ {{ __('Temps restant avant réinitialisation') }}</div>
         <div class="timer-display" id="timer">
             <span id="hours">00</span>:<span id="minutes">00</span>:<span id="seconds">00</span>
         </div>
     </div>
 
     @if($activeQuests->count() > 0)
-        <h2 class="section-header">🎯 Quêtes actives du jour</h2>
+        <h2 class="section-header">🎯 {{ __('Quêtes actives du jour') }}</h2>
         <div class="quests-grid">
             @foreach($activeQuests as $quest)
                 <div class="quest-card active">
                     @if($quest->progress && $quest->progress->completed)
-                        <div class="completed-badge">✓ Complétée</div>
+                        <div class="completed-badge">✓ {{ __('Complétée') }}</div>
                     @endif
                     
                     <div class="quest-header">
@@ -253,7 +253,7 @@
                         <div class="quest-reward">💰 +{{ $quest->reward_coins ?? 10 }}</div>
                     </div>
                     
-                    <div class="quest-desc">{{ $quest->condition ?? 'Quête quotidienne' }}</div>
+                    <div class="quest-desc">{{ $quest->condition ?? __('Quête quotidienne') }}</div>
                     
                     <div class="quest-progress">
                         @php
@@ -276,8 +276,8 @@
     @endif
 
     @if($inactiveQuests->count() > 0)
-        <h2 class="section-header" style="border-left-color: #555;">📋 Prochaines quêtes quotidiennes</h2>
-        <div class="inactive-section-note">Ces quêtes seront disponibles lors des prochaines rotations</div>
+        <h2 class="section-header" style="border-left-color: #555;">📋 {{ __('Prochaines quêtes quotidiennes') }}</h2>
+        <div class="inactive-section-note">{{ __('Ces quêtes seront disponibles lors des prochaines rotations') }}</div>
         <div class="quests-grid">
             @foreach($inactiveQuests as $quest)
                 <div class="quest-card inactive">
@@ -289,24 +289,22 @@
                         <div class="quest-reward">💰 +{{ $quest->reward_coins ?? 10 }}</div>
                     </div>
                     
-                    <div class="quest-desc">{{ $quest->condition ?? 'Quête quotidienne' }}</div>
+                    <div class="quest-desc">{{ $quest->condition ?? __('Quête quotidienne') }}</div>
                 </div>
             @endforeach
         </div>
     @endif
 
     <div style="text-align: center;">
-        <a href="{{ route('menu') }}" class="back-btn">← Retour au Menu</a>
+        <a href="{{ route('menu') }}" class="back-btn">← {{ __('Retour au Menu') }}</a>
     </div>
 </div>
 
 <script>
-// Countdown timer
 let timeRemaining = {{ $timeRemaining }};
 
 function updateTimer() {
     if (timeRemaining <= 0) {
-        // Recharger la page pour obtenir de nouvelles quêtes
         location.reload();
         return;
     }
@@ -322,7 +320,6 @@ function updateTimer() {
     timeRemaining--;
 }
 
-// Mettre à jour immédiatement puis toutes les secondes
 updateTimer();
 setInterval(updateTimer, 1000);
 </script>

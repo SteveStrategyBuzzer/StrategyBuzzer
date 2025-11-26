@@ -82,17 +82,17 @@ body {
   font-size: 1rem;
   transition: all 0.3s ease;
 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-  ← Menu
+  ← {{ __('Menu') }}
 </a>
 
 <div class="master-container">
-    <h1 class="master-title">🎓 MAÎTRE DU JEU</h1>
+    <h1 class="master-title">🎓 {{ __('MAÎTRE DU JEU') }}</h1>
     <p class="master-description">
-        Interface pour créer et lancer des parties avec IA.<br>
-        Créez vos propres questions et devenez le maître du jeu !
+        {{ __('Interface pour créer et lancer des parties avec IA') }}.<br>
+        {{ __('Créez vos propres questions et devenez le maître du jeu') }} !
     </p>
     <div class="coming-soon">
-        🚧 Bientôt disponible
+        🚧 {{ __('Bientôt disponible') }}
     </div>
 </div>
 @endsection

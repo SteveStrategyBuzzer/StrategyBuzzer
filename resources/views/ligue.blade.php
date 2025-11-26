@@ -138,31 +138,31 @@ body {
   align-items: center;
   gap: 6px;
 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-  ← Menu
+  ← {{ __('Menu') }}
 </a>
 
 <div class="ligue-container">
-    <h1 class="ligue-title">🏆 LIGUE</h1>
-    <p class="ligue-subtitle">Choisissez votre mode de compétition</p>
+    <h1 class="ligue-title">🏆 {{ __('LIGUE') }}</h1>
+    <p class="ligue-subtitle">{{ __('Choisissez votre mode de compétition') }}</p>
     
     <div class="ligue-modes">
         <a href="{{ route('league.individual.lobby') }}" class="ligue-mode-card">
             <div class="mode-icon">👤</div>
-            <h2 class="mode-title">INDIVIDUEL</h2>
-            <p class="mode-description">Affrontez des adversaires en 1v1 et grimpez dans les divisions</p>
-            <div class="mode-badge">Carrière Solo</div>
+            <h2 class="mode-title">{{ __('INDIVIDUEL') }}</h2>
+            <p class="mode-description">{{ __('Affrontez des adversaires en 1v1 et grimpez dans les divisions') }}</p>
+            <div class="mode-badge">{{ __('Carrière Solo') }}</div>
         </a>
 
         <a href="{{ route('league.team.management') }}" class="ligue-mode-card">
             <div class="mode-icon">👥</div>
-            <h2 class="mode-title">ÉQUIPE</h2>
-            <p class="mode-description">Formez une équipe de 5 joueurs et dominez la compétition</p>
+            <h2 class="mode-title">{{ __('ÉQUIPE') }}</h2>
+            <p class="mode-description">{{ __('Formez une équipe de 5 joueurs et dominez la compétition') }}</p>
             <div class="mode-badge">5v5</div>
         </a>
     </div>
 
     <div style="margin-top: 3rem; opacity: 0.8; font-size: 0.9rem;">
-        <p>📊 Système de divisions: Bronze → Argent → Or → Platine → Diamant → Légende</p>
+        <p>📊 {{ __('Système de divisions') }}: {{ __('Bronze') }} → {{ __('Argent') }} → {{ __('Or') }} → {{ __('Platine') }} → {{ __('Diamant') }} → {{ __('Légende') }}</p>
     </div>
 </div>
 @endsection

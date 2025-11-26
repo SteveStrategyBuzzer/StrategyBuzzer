@@ -45,23 +45,23 @@
   align-items: center;
   gap: 6px;
 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-  Menu
+  {{ __('Menu') }}
 </a>
 
 <div class="container-solo">
-  <h1 class="display-4 text-center">Mode Solo</h1>
-  <p class="lead text-center" style="margin-top:6px">Votre Niveau : <strong>{{ $choix_niveau }}</strong></p>
+  <h1 class="display-4 text-center">{{ __('Mode Solo') }}</h1>
+  <p class="lead text-center" style="margin-top:6px">{{ __('Votre Niveau') }} : <strong>{{ $choix_niveau }}</strong></p>
 
   <form id="soloForm" action="{{ route('solo.start') }}" method="POST">
     @csrf
 
     <div class="box text-center">
-      <div class="mb-2"><strong>Choisissez vos options puis un thème pour commencer la partie :</strong></div>
+      <div class="mb-2"><strong>{{ __('Choisissez vos options puis un thème pour commencer la partie') }} :</strong></div>
 
       <div class="mb-2">
-        <span class="lbl">Questions par Manche :</span>
+        <span class="lbl">{{ __('Questions par Manche') }} :</span>
         <select name="nb_questions" id="nb_questions" class="form-select d-inline-block" style="width:auto;">
-          <option value="">-- Choisissez --</option>
+          <option value="">-- {{ __('Choisissez') }} --</option>
           <option value="10"  {{ (isset($nb_questions) && $nb_questions==10)  ? 'selected' : '' }}>10</option>
           <option value="20"  {{ (isset($nb_questions) && $nb_questions==20)  ? 'selected' : '' }}>20</option>
           <option value="30"  {{ (isset($nb_questions) && $nb_questions==30)  ? 'selected' : '' }}>30</option>
@@ -73,41 +73,40 @@
       <div class="mb-3">
         <input type="hidden" name="niveau_joueur" id="niveau_joueur" value="{{ $niveau_selectionne ?? $choix_niveau }}">
         <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
-          <span class="lbl">Niveau sélectionné : <strong>{{ $niveau_selectionne ?? $choix_niveau }}</strong></span>
+          <span class="lbl">{{ __('Niveau sélectionné') }} : <strong>{{ $niveau_selectionne ?? $choix_niveau }}</strong></span>
           <a href="{{ route('solo.opponents') }}" class="btn btn-outline-light btn-sm">
-            👥 Choisir un Adversaire
+            👥 {{ __('Choisir un Adversaire') }}
           </a>
         </div>
       </div>
 
       <div class="mb-1">
-        <span class="lbl">Choix de l’Avatar Stratégique (optionnel) :</span>
-        <span>{{ $avatar_stratégique ?? 'Aucun' }}</span>
+        <span class="lbl">{{ __('Choix de l\'Avatar Stratégique (optionnel)') }} :</span>
+        <span>{{ $avatar_stratégique ?? __('Aucun') }}</span>
         <a href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}"
-           class="btn btn-sm btn-outline-light ms-2">Sélectionner</a>
+           class="btn btn-sm btn-outline-light ms-2">{{ __('Sélectionner') }}</a>
       </div>
     </div>
 
     <div class="grid-2">
-      <button type="submit" class="btn-theme" name="theme" value="general">🧠 Général</button>
-      <button type="submit" class="btn-theme" name="theme" value="geographie">🌐 Géographie</button>
-      <button type="submit" class="btn-theme" name="theme" value="histoire">📜 Histoire</button>
-      <button type="submit" class="btn-theme" name="theme" value="art">🎨 Art</button>
-      <button type="submit" class="btn-theme" name="theme" value="cinema">🎬 Cinéma</button>
-      <button type="submit" class="btn-theme" name="theme" value="sport">🏅 Sport</button>
-      <button type="submit" class="btn-theme" name="theme" value="faune">🦁 Faune</button>
-      <button type="submit" class="btn-theme" name="theme" value="cuisine">🍳 Cuisine</button>
-                  <button type="submit" name="theme" value="sciences" class="btn-theme">🔬 Sciences</button>
+      <button type="submit" class="btn-theme" name="theme" value="general">🧠 {{ __('Général') }}</button>
+      <button type="submit" class="btn-theme" name="theme" value="geographie">🌐 {{ __('Géographie') }}</button>
+      <button type="submit" class="btn-theme" name="theme" value="histoire">📜 {{ __('Histoire') }}</button>
+      <button type="submit" class="btn-theme" name="theme" value="art">🎨 {{ __('Art') }}</button>
+      <button type="submit" class="btn-theme" name="theme" value="cinema">🎬 {{ __('Cinéma') }}</button>
+      <button type="submit" class="btn-theme" name="theme" value="sport">🏅 {{ __('Sport') }}</button>
+      <button type="submit" class="btn-theme" name="theme" value="faune">🦁 {{ __('Faune') }}</button>
+      <button type="submit" class="btn-theme" name="theme" value="cuisine">🍳 {{ __('Cuisine') }}</button>
+      <button type="submit" name="theme" value="sciences" class="btn-theme">🔬 {{ __('Sciences') }}</button>
     </div>
   </form>
 </div>
 
 <div id="validationMessage" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 25px 40px; border-radius: 15px; font-size: 1.2rem; font-weight: 700; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); z-index: 10000; text-align: center;">
-  Choisissez le nombre de questions.
+  {{ __('Choisissez le nombre de questions') }}.
 </div>
 
 <script>
-  // Avatar est optionnel → on ne vérifie que nb_questions et que le niveau sélectionné est valide
   const form = document.getElementById('soloForm');
   const validationMsg = document.getElementById('validationMessage');
   
@@ -117,10 +116,8 @@
       if (!nbq) {
         e.preventDefault();
         
-        // Afficher le message élégant au lieu de alert()
         validationMsg.style.display = 'block';
         
-        // Masquer après 2 secondes
         setTimeout(() => {
           validationMsg.style.display = 'none';
         }, 2000);
@@ -135,7 +132,6 @@
   .btn-theme{display:block;width:100%;padding:14px 18px;border-radius:12px;font-size:1.1rem;box-shadow:2px 2px 6px rgba(0,0,0,.3);}
   .btn-theme:hover{transform:translateY(-1px);}
   .btn-theme:active{transform:translateY(0);}
-  /* Empêche tout débordement visuel dans la carte d'options */
   .container .row{overflow:hidden;}
 </style>
 
