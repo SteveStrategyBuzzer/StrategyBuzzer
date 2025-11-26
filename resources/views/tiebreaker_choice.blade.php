@@ -260,6 +260,15 @@
 </div>
 
 <script>
+const i18n = {
+    selected: "{{ __('SÉLECTIONNÉ') }}",
+    yourChoice: "{{ __('Votre choix') }}",
+    waitingPlayers: "{{ __('En attente des autres joueurs...') }}",
+    questionBonus: "{{ __('Question Bonus') }}",
+    globalEfficiency: "{{ __('Efficacité Globale') }}",
+    suddenDeath: "{{ __('Sudden Death') }}"
+};
+
 let selectedOption = null;
 const isSolo = {{ isset($params['is_multiplayer']) && $params['is_multiplayer'] ? 'false' : 'true' }};
 const gameMode = "{{ $params['game_mode'] ?? 'solo' }}";
@@ -278,7 +287,7 @@ function selectOption(option) {
     
     const badge = document.createElement('div');
     badge.className = 'selected-badge';
-    badge.textContent = '{{ __('SÉLECTIONNÉ') }}';
+    badge.textContent = '✓ ' + i18n.selected;
     card.appendChild(badge);
 
     selectedOption = option;
@@ -299,7 +308,7 @@ function submitVote(option) {
     console.log('Vote submitted:', option);
     
     document.getElementById('voteStatus').classList.add('show');
-    document.getElementById('voteInfo').textContent = `Votre choix: ${getOptionName(option)}. En attente des autres joueurs...`;
+    document.getElementById('voteInfo').textContent = `${i18n.yourChoice}: ${getOptionName(option)}. ${i18n.waitingPlayers}`;
 }
 
 function applyTiebreaker(mode) {
@@ -325,9 +334,9 @@ function applyTiebreaker(mode) {
 
 function getOptionName(option) {
     const names = {
-        'bonus': 'Question Bonus',
-        'efficiency': 'Efficacité Globale',
-        'sudden_death': 'Sudden Death'
+        'bonus': i18n.questionBonus,
+        'efficiency': i18n.globalEfficiency,
+        'sudden_death': i18n.suddenDeath
     };
     return names[option] || option;
 }
