@@ -268,11 +268,11 @@ audio{ width:100% }
   @endphp
 
   <div class="topbar">
-    <div class="pill"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--topbar" style="margin-right:6px;"> Pièces : <b>{{ number_format($coins) }}</b></div>
+    <div class="pill"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--topbar" style="margin-right:6px;"> {{ __('Pièces') }} : <b>{{ number_format($coins) }}</b></div>
     <div class="row">
       @auth
         @if(request()->has('item') || request()->has('stratégique'))
-          <a class="pill clean" href="{{ $avatarUrl }}">← Avatars</a>
+          <a class="pill clean" href="{{ $avatarUrl }}">← {{ __('Avatars') }}</a>
         @endif
         <a href="{{ route('menu') }}" style="
           background: white;
@@ -297,13 +297,13 @@ audio{ width:100% }
   @if(session('error'))   <div class="warn">{{ session('error') }}</div> @endif
 
   <div class="tabs" role="tablist">
-    <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 Packs d'avatars</a>
-    <a class="tab {{ $tab==='musiques'?'active':'' }}"  href="#musiques"  onclick="setTab('musiques'); return false;">🎵 Musiques d'Ambiance</a>
-    <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🔊 Sons de Buzzers</a>
-    <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ Avatars stratégiques</a>
-    <a class="tab {{ $tab==='master'?'active':'' }}"   href="#master"   onclick="setTab('master'); return false;">🎮 Maître du Jeu</a>
+    <a class="tab {{ $tab==='packs'?'active':'' }}"    href="#packs"    onclick="setTab('packs'); return false;">🎨 {{ __('Packs d'avatars') }}</a>
+    <a class="tab {{ $tab==='musiques'?'active':'' }}"  href="#musiques"  onclick="setTab('musiques'); return false;">🎵 {{ __('Musiques d'Ambiance') }}</a>
+    <a class="tab {{ $tab==='buzzers'?'active':'' }}"  href="#buzzers"  onclick="setTab('buzzers'); return false;">🔊 {{ __('Sons de Buzzers') }}</a>
+    <a class="tab {{ $tab==='stratégiques'?'active':'' }}"  href="#stratégiques"  onclick="setTab('stratégiques'); return false;">🛡️ {{ __('Avatars Stratégiques') }}</a>
+    <a class="tab {{ $tab==='master'?'active':'' }}"   href="#master"   onclick="setTab('master'); return false;">🎮 {{ __('Maître du Jeu') }}</a>
     <a class="tab {{ $tab==='coins'?'active':'' }}"    href="#coins"    onclick="setTab('coins'); return false;"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--tab" style="margin-right:4px;"> Pièces d'Intelligence</a>
-    <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ Vies</a>
+    <a class="tab {{ $tab==='vies'?'active':'' }}"     href="#vies"     onclick="setTab('vies'); return false;">❤️ {{ __('Vies') }}</a>
   </div>
 
   <!-- ====== Packs d'avatars ====== -->
@@ -326,22 +326,22 @@ audio{ width:100% }
 
           <div class="avatar-row">
             <div class="thumb" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px;">
-              <span class="tier t-rare" style="position:absolute;top:8px;left:8px;">{{ $p['count'] }} images</span>
+              <span class="tier t-rare" style="position:absolute;top:8px;left:8px;">{{ $p['count'] }} {{ __('images') }}</span>
               @forelse($previewImages as $img)
                 <img src="{{ _assetv($img) }}" alt="{{ $p['label'] }}" loading="lazy" decoding="async" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
               @empty
-                <div style="padding:40px 14px;color:#cbd5e1;text-align:center;font-size:12px;grid-column:span 2;">Aucune image</div>
+                <div style="padding:40px 14px;color:#cbd5e1;text-align:center;font-size:12px;grid-column:span 2;">{{ __('Aucune image') }}</div>
               @endforelse
 
               <div class="avatar-actions">
                 @if($isUnlockedPack)
-                  <button class="btn success lock-btn" type="button" disabled title="Débloqué">🔓</button>
+                  <button class="btn success lock-btn" type="button" disabled title="{{ __('Débloqué') }}">🔓</button>
                 @else
                   <form method="POST" action="{{ $purchaseUrl }}">
                     @csrf
                     <input type="hidden" name="kind" value="pack">
                     <input type="hidden" name="target" value="{{ $p['slug'] }}">
-                    <button class="btn danger lock-btn" type="submit" title="Débloquer">🔒</button>
+                    <button class="btn danger lock-btn" type="submit" title="{{ __('Débloquer') }}">🔒</button>
                   </form>
                 @endif
               </div>
@@ -380,7 +380,7 @@ audio{ width:100% }
 
           @if($isUnlockedBz)
             <div class="actions">
-              <button class="btn success" disabled>Disponible</button>
+              <button class="btn success" disabled>{{ __('Disponible') }}</button>
             </div>
           @else
             <form method="POST" action="{{ $purchaseUrl }}" class="actions">
@@ -388,7 +388,7 @@ audio{ width:100% }
               <input type="hidden" name="kind" value="buzzer">
               <input type="hidden" name="target" value="{{ $bz['slug'] }}">
               <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $bz['price'] }}</span>
-              <button class="btn danger" type="submit">Acheter</button>
+              <button class="btn danger" type="submit">{{ __('Acheter') }}</button>
             </form>
           @endif
         </div>
@@ -422,7 +422,7 @@ audio{ width:100% }
 
           @if($isUnlockedBz)
             <div class="actions">
-              <button class="btn success" disabled>Disponible</button>
+              <button class="btn success" disabled>{{ __('Disponible') }}</button>
             </div>
           @else
             <form method="POST" action="{{ $purchaseUrl }}" class="actions">
@@ -430,7 +430,7 @@ audio{ width:100% }
               <input type="hidden" name="kind" value="buzzer">
               <input type="hidden" name="target" value="{{ $bz['slug'] }}">
               <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon coin-icon--price" style="margin-right:4px;">{{ $bz['price'] }}</span>
-              <button class="btn danger" type="submit">Acheter</button>
+              <button class="btn danger" type="submit">{{ __('Acheter') }}</button>
             </form>
           @endif
         </div>
@@ -488,13 +488,13 @@ audio{ width:100% }
 
               <div class="avatar-actions">
                 @if($isUnlockedStrategic)
-                  <button class="btn success lock-btn" type="button" disabled title="Débloqué">🔓</button>
+                  <button class="btn success lock-btn" type="button" disabled title="{{ __('Débloqué') }}">🔓</button>
                 @else
                   <form method="POST" action="{{ $purchaseUrl }}">
                     @csrf
                     <input type="hidden" name="kind" value="stratégique">
                     <input type="hidden" name="target" value="{{ $slug }}">
-                    <button class="btn danger lock-btn" type="submit" title="Débloquer">🔒</button>
+                    <button class="btn danger lock-btn" type="submit" title="{{ __('Débloquer') }}">🔒</button>
                   </form>
                 @endif
               </div>
@@ -519,7 +519,7 @@ audio{ width:100% }
                 @endforeach
               </div>
             @endif
-            <button class="btn ghost close" type="button" onclick="toggleDetails('{{ $slug }}')">Fermer</button>
+            <button class="btn ghost close" type="button" onclick="toggleDetails('{{ $slug }}')">{{ __('Fermer') }}</button>
           </div>
         </div>
       @endforeach
@@ -537,7 +537,7 @@ audio{ width:100% }
       
       <div class="card">
         <div class="head">
-          <div class="title">🎮 Maître du Jeu</div>
+          <div class="title">🎮 {{ __('Maître du Jeu') }}</div>
           @unless($masterPurchased)
             <div class="price" style="font-size:1.5rem;font-weight:800;color:#10b981">29,99</div>
           @endunless
@@ -656,7 +656,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="life">
               <input type="hidden" name="quantity" value="1">
-              <button class="btn danger" type="submit" style="width:100%">Acheter</button>
+              <button class="btn danger" type="submit" style="width:100%">{{ __('Acheter') }}</button>
             </form>
           </div>
         </div>
@@ -675,7 +675,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="life">
               <input type="hidden" name="quantity" value="3">
-              <button class="btn danger" type="submit" style="width:100%">Acheter</button>
+              <button class="btn danger" type="submit" style="width:100%">{{ __('Acheter') }}</button>
             </form>
           </div>
         </div>
@@ -694,7 +694,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="life">
               <input type="hidden" name="quantity" value="5">
-              <button class="btn danger" type="submit" style="width:100%">Acheter</button>
+              <button class="btn danger" type="submit" style="width:100%">{{ __('Acheter') }}</button>
             </form>
           </div>
         </div>
@@ -719,7 +719,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="unlimited_lives">
               <input type="hidden" name="duration" value="30">
-              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">Acheter</button>
+              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">{{ __('Acheter') }}</button>
             </form>
           </div>
         </div>
@@ -739,7 +739,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="unlimited_lives">
               <input type="hidden" name="duration" value="60">
-              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">Acheter</button>
+              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">{{ __('Acheter') }}</button>
             </form>
           </div>
         </div>
@@ -759,7 +759,7 @@ audio{ width:100% }
               @csrf
               <input type="hidden" name="kind" value="unlimited_lives">
               <input type="hidden" name="duration" value="120">
-              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">Acheter</button>
+              <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)">{{ __('Acheter') }}</button>
             </form>
           </div>
         </div>
@@ -783,7 +783,7 @@ audio{ width:100% }
          padding:16px 18px;position:sticky;top:0;background:#0b1020;
          border-bottom:1px solid rgba(255,255,255,.06)">
       <div class="title" id="modalTitle" style="font-size:1.1rem">Pack</div>
-      <button class="btn ghost" onclick="closeModal()">Fermer</button>
+      <button class="btn ghost" onclick="closeModal()">{{ __('Fermer') }}</button>
     </div>
     <div style="padding:18px">
       <div id="thumbs" class="grid cols-4" style="gap:12px"></div>

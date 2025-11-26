@@ -197,9 +197,9 @@
     @if(session('error'))   <div class="alert alert-ko">{{ session('error') }}</div>   @endif
 
     <div class="header">
-      <div class="h-title">🎭 Choix des Avatars</div>
+      <div class="h-title">🎭 {{ __('Choix des Avatars') }}</div>
       <div style="display:flex; align-items:center; gap:12px;">
-        <div class="pill">💰 Pièces : <b>{{ number_format($coins ?? 0) }}</b></div>
+        <div class="pill">💰 {{ __('Pièces') }} : <b>{{ number_format($coins ?? 0) }}</b></div>
         <a href="{{ route('menu') }}" style="
           background: white;
           color: #003DA5;
@@ -213,7 +213,7 @@
           align-items: center;
           gap: 6px;
         " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-          Menu
+          {{ __('Menu') }}
         </a>
       </div>
     </div>
@@ -240,9 +240,9 @@
 
     {{-- ==== Standards (mini-carrousel) ==== --}}
     <div class="card std-card" style="position:relative">
-      <h3 style="margin:0 0 12px 0;font-size:1.1rem;color:#fff">😊 Avatars Standards</h3>
-      <button class="std-nav std-left"  onclick="stdPrev()" aria-label="Précédent"><span>‹</span></button>
-      <button class="std-nav std-right" onclick="stdNext()" aria-label="Suivant"><span>›</span></button>
+      <h3 style="margin:0 0 12px 0;font-size:1.1rem;color:#fff">😊 {{ __('Avatars Standards') }}</h3>
+      <button class="std-nav std-left"  onclick="stdPrev()" aria-label="{{ __('Précédent') }}"><span>‹</span></button>
+      <button class="std-nav std-right" onclick="stdNext()" aria-label="{{ __('Suivant') }}"><span>›</span></button>
       <div class="std-viewport" id="stdViewport">
         <div id="stdTrack" class="std-track">
           @php
@@ -255,7 +255,7 @@
             @php $isStdActive = ($selected ?? '') === $simg; @endphp
             <div class="std-thumb" onclick="stdSelect('{{ $simg }}')">
               <img src="{{ asset($simg) }}" alt="standard" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-              @if($isStdActive)<div class="active-tag">Actif</div>@endif
+              @if($isStdActive)<div class="active-tag">{{ __('Actif') }}</div>@endif
             </div>
           @endforeach
         </div>
@@ -265,8 +265,8 @@
     {{-- ==== Packs (carrousel) ==== --}}
     <div class="center-wrap">
       <div class="carousel" aria-label="Packs d’avatars">
-        <button class="arrow left"  onclick="slidePrev()" aria-label="Précédent"><span>‹</span></button>
-        <button class="arrow right" onclick="slideNext()" aria-label="Suivant"><span>›</span></button>
+        <button class="arrow left"  onclick="slidePrev()" aria-label="{{ __('Précédent') }}"><span>‹</span></button>
+        <button class="arrow right" onclick="slideNext()" aria-label="{{ __('Suivant') }}"><span>›</span></button>
 
         <div class="viewport">
           <div class="track" id="track">
@@ -313,7 +313,7 @@
                   @if(!$locked && $isFromThisPack)
                     <div style="position:relative">
                       <img class="preview-main" src="{{ asset($selectedPath) }}" alt="actif" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-                      <div class="active-tag">Actif</div>
+                      <div class="active-tag">{{ __('Actif') }}</div>
                     </div>
                   @else
                     @php $grid = array_slice($p['images'] ?? [], 0, 4); @endphp
@@ -341,7 +341,7 @@
     @endphp
 
     <div class="card" style="margin-top:20px">
-      <h3 style="margin:0 0 12px 0;font-size:1.1rem;color:#fff">⚔️ Avatars Stratégiques</h3>
+      <h3 style="margin:0 0 12px 0;font-size:1.1rem;color:#fff">⚔️ {{ __('Avatars Stratégiques') }}</h3>
       <div class="stratégiques">
       @foreach($stratégiques as $a)
         @php
@@ -374,7 +374,7 @@
           @else
             <div style="height:120px;display:grid;place-items:center;color:#cbd5e1">{{ ucfirst($slug) }}</div>
           @endif
-          @if($isActive) <div class="active-tag">Actif</div> @endif
+          @if($isActive) <div class="active-tag">{{ __('Actif') }}</div> @endif
         </div>
       @endforeach
       </div>
@@ -388,7 +388,7 @@
   <div class="card" style="width:min(980px,92vw);max-height:86vh;overflow:auto;border-radius:20px;background:#0b1020;border:1px solid rgba(255,255,255,.1)">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;position:sticky;top:0;background:#0b1020;border-bottom:1px solid rgba(255,255,255,.06)">
       <div class="h-title" id="modalTitle" style="font-size:1.1rem">Pack</div>
-      <button class="pill" onclick="closeModal()">Fermer</button>
+      <button class="pill" onclick="closeModal()">{{ __('Fermer') }}</button>
     </div>
     <div style="padding:18px">
       <div id="thumbs" class="thumbs"></div>
@@ -400,7 +400,7 @@
 <div id="stratModal" class="modal" role="dialog" aria-modal="true" style="display:none">
   <div class="card" style="width:min(500px,90vw);max-height:90vh;overflow:auto;border-radius:20px;background:#0b1020;border:2px solid #FFD700;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:#0b1020;border-bottom:1px solid rgba(255,215,0,.2)">
-      <div class="h-title" id="stratModalTitle" style="font-size:1.3rem;color:#FFD700">⚔️ Avatar Stratégique</div>
+      <div class="h-title" id="stratModalTitle" style="font-size:1.3rem;color:#FFD700">⚔️ {{ __('Avatar stratégique') }}</div>
       <button class="pill" onclick="closeStratModal()">✕</button>
     </div>
     <div style="padding:24px;text-align:center">

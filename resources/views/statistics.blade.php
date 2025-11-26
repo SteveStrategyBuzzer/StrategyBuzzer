@@ -126,43 +126,43 @@
 </head>
 <body>
     <div class="stats-container">
-        <h1>📊 Vos Statistiques</h1>
+        <h1>📊 {{ __('Vos Statistiques') }}</h1>
         
         <!-- Solo Mode Stats -->
         <div class="mode-section">
-            <h2 class="mode-title">🎯 Mode Solo</h2>
+            <h2 class="mode-title">🎯 {{ __('Mode Solo') }}</h2>
             
             @if($params['global_stats']['solo'])
                 <div class="stats-grid">
                     <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                        <div class="stat-label">🎯 Efficacité Brute</div>
+                        <div class="stat-label">🎯 {{ __('Efficacité Brute') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['solo']->efficacite_brute, 1) }}%</div>
-                        <div class="stat-subtitle">Points / Questions</div>
+                        <div class="stat-subtitle">{{ __('Points / Questions') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                        <div class="stat-label">🙋 Participation</div>
+                        <div class="stat-label">🙋 {{ __('Participation') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['solo']->taux_participation, 1) }}%</div>
-                        <div class="stat-subtitle">Buzzes / Total</div>
+                        <div class="stat-subtitle">{{ __('Buzzes / Total') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                        <div class="stat-label">✅ Précision</div>
+                        <div class="stat-label">✅ {{ __('Précision') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['solo']->taux_precision, 1) }}%</div>
-                        <div class="stat-subtitle">Correct / Buzzes</div>
+                        <div class="stat-subtitle">{{ __('Correct / Buzzes') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                        <div class="stat-label">⭐ Performance</div>
+                        <div class="stat-label">⭐ {{ __('Performance') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['solo']->ratio_performance, 1) }}%</div>
-                        <div class="stat-subtitle">Points / Max Possible</div>
+                        <div class="stat-subtitle">{{ __('Points / Max Possible') }}</div>
                     </div>
                 </div>
                 
                 <div style="margin-top: 20px; padding: 20px; background: #f7f9fc; border-radius: 15px;">
                     <p style="color: #333; font-size: 1.1rem; text-align: center;">
-                        <strong>{{ $params['global_stats']['solo']->total_questions }}</strong> questions jouées &nbsp;•&nbsp; 
-                        <strong>{{ $params['global_stats']['solo']->correct_answers }}</strong> correctes &nbsp;•&nbsp; 
+                        <strong>{{ $params['global_stats']['solo']->total_questions }}</strong> {{ __('questions jouées') }} &nbsp;•&nbsp; 
+                        <strong>{{ $params['global_stats']['solo']->correct_answers }}</strong> {{ __('correctes') }} &nbsp;•&nbsp; 
                         <strong>{{ $params['global_stats']['solo']->wrong_answers }}</strong> incorrectes
                     </p>
                 </div>
@@ -175,39 +175,39 @@
         
         <!-- Duo Mode Stats -->
         <div class="mode-section">
-            <h2 class="mode-title">🤝 Mode Duo</h2>
+            <h2 class="mode-title">🤝 {{ __('Mode Duo') }}</h2>
             
             @if($params['global_stats']['duo'])
                 <div class="stats-grid">
                     <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                        <div class="stat-label">🎯 Efficacité Brute</div>
+                        <div class="stat-label">🎯 {{ __('Efficacité Brute') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['duo']->efficacite_brute, 1) }}%</div>
-                        <div class="stat-subtitle">Points / Questions</div>
+                        <div class="stat-subtitle">{{ __('Points / Questions') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                        <div class="stat-label">🙋 Participation</div>
+                        <div class="stat-label">🙋 {{ __('Participation') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['duo']->taux_participation, 1) }}%</div>
-                        <div class="stat-subtitle">Buzzes / Total</div>
+                        <div class="stat-subtitle">{{ __('Buzzes / Total') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                        <div class="stat-label">✅ Précision</div>
+                        <div class="stat-label">✅ {{ __('Précision') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['duo']->taux_precision, 1) }}%</div>
-                        <div class="stat-subtitle">Correct / Buzzes</div>
+                        <div class="stat-subtitle">{{ __('Correct / Buzzes') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                        <div class="stat-label">⭐ Performance</div>
+                        <div class="stat-label">⭐ {{ __('Performance') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['duo']->ratio_performance, 1) }}%</div>
-                        <div class="stat-subtitle">Points / Max Possible</div>
+                        <div class="stat-subtitle">{{ __('Points / Max Possible') }}</div>
                     </div>
                 </div>
                 
                 <div style="margin-top: 20px; padding: 20px; background: #f7f9fc; border-radius: 15px;">
                     <p style="color: #333; font-size: 1.1rem; text-align: center;">
-                        <strong>{{ $params['global_stats']['duo']->total_questions }}</strong> questions jouées &nbsp;•&nbsp; 
-                        <strong>{{ $params['global_stats']['duo']->correct_answers }}</strong> correctes &nbsp;•&nbsp; 
+                        <strong>{{ $params['global_stats']['duo']->total_questions }}</strong> {{ __('questions jouées') }} &nbsp;•&nbsp; 
+                        <strong>{{ $params['global_stats']['duo']->correct_answers }}</strong> {{ __('correctes') }} &nbsp;•&nbsp; 
                         <strong>{{ $params['global_stats']['duo']->wrong_answers }}</strong> incorrectes
                     </p>
                 </div>
@@ -220,39 +220,39 @@
         
         <!-- League Mode Stats -->
         <div class="mode-section">
-            <h2 class="mode-title">🏆 Mode Ligue</h2>
+            <h2 class="mode-title">🏆 {{ __('Mode Ligue') }}</h2>
             
             @if($params['global_stats']['league'])
                 <div class="stats-grid">
                     <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                        <div class="stat-label">🎯 Efficacité Brute</div>
+                        <div class="stat-label">🎯 {{ __('Efficacité Brute') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['league']->efficacite_brute, 1) }}%</div>
-                        <div class="stat-subtitle">Points / Questions</div>
+                        <div class="stat-subtitle">{{ __('Points / Questions') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                        <div class="stat-label">🙋 Participation</div>
+                        <div class="stat-label">🙋 {{ __('Participation') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['league']->taux_participation, 1) }}%</div>
-                        <div class="stat-subtitle">Buzzes / Total</div>
+                        <div class="stat-subtitle">{{ __('Buzzes / Total') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                        <div class="stat-label">✅ Précision</div>
+                        <div class="stat-label">✅ {{ __('Précision') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['league']->taux_precision, 1) }}%</div>
-                        <div class="stat-subtitle">Correct / Buzzes</div>
+                        <div class="stat-subtitle">{{ __('Correct / Buzzes') }}</div>
                     </div>
                     
                     <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                        <div class="stat-label">⭐ Performance</div>
+                        <div class="stat-label">⭐ {{ __('Performance') }}</div>
                         <div class="stat-value">{{ number_format($params['global_stats']['league']->ratio_performance, 1) }}%</div>
-                        <div class="stat-subtitle">Points / Max Possible</div>
+                        <div class="stat-subtitle">{{ __('Points / Max Possible') }}</div>
                     </div>
                 </div>
                 
                 <div style="margin-top: 20px; padding: 20px; background: #f7f9fc; border-radius: 15px;">
                     <p style="color: #333; font-size: 1.1rem; text-align: center;">
-                        <strong>{{ $params['global_stats']['league']->total_questions }}</strong> questions jouées &nbsp;•&nbsp; 
-                        <strong>{{ $params['global_stats']['league']->correct_answers }}</strong> correctes &nbsp;•&nbsp; 
+                        <strong>{{ $params['global_stats']['league']->total_questions }}</strong> {{ __('questions jouées') }} &nbsp;•&nbsp; 
+                        <strong>{{ $params['global_stats']['league']->correct_answers }}</strong> {{ __('correctes') }} &nbsp;•&nbsp; 
                         <strong>{{ $params['global_stats']['league']->wrong_answers }}</strong> incorrectes
                     </p>
                 </div>
@@ -263,7 +263,7 @@
             @endif
         </div>
         
-        <a href="{{ route('menu') }}" class="back-button">← Retour au Menu</a>
+        <a href="{{ route('menu') }}" class="back-button">← {{ __('Retour au Menu') }}</a>
     </div>
 </body>
 </html>

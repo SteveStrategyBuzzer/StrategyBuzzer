@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="connexion-screen">
-    <h1>Connexion</h1>
+    <h1>{{ __('Connexion') }}</h1>
 
     {{-- Messages --}}
     @if (session('error'))
@@ -17,11 +17,11 @@
         </div>
     @endif
 
-    <p>Veuillez choisir votre méthode de connexion :</p>
+    <p>{{ __('Veuillez choisir votre méthode de connexion') }} :</p>
 
     <div class="auth-buttons">
-        <a href="{{ url('/auth/google') }}" class="btn-google">Connexion avec Google</a>
-        <a href="{{ url('/auth/facebook') }}" class="btn-facebook">Connexion avec Facebook</a>
+        <a href="{{ url('/auth/google') }}" class="btn-google">{{ __('Connexion avec Google') }}</a>
+        <a href="{{ url('/auth/facebook') }}" class="btn-facebook">{{ __('Connexion avec Facebook') }}</a>
     </div>
 </div>
 

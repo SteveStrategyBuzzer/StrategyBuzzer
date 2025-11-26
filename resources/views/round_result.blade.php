@@ -104,7 +104,7 @@
         @endphp
         
         <div class="round-title">
-            ⚔️ Manche {{ $params['round_number'] }} terminée !
+            ⚔️ {{ __('Manche') }} {{ $params['round_number'] }} {{ __('terminée !') }}
         </div>
         
         @if($playerWon && $params['player_rounds_won'] >= 1)
@@ -120,7 +120,7 @@
                 <div class="score-card" style="background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);">
                     {{ $params['player_rounds_won'] }}
                 </div>
-                <div class="score-label">VOUS</div>
+                <div class="score-label">{{ __('VOUS') }}</div>
             </div>
             
             <div style="font-size: 3rem; color: #667eea; align-self: center;">-</div>
@@ -129,17 +129,17 @@
                 <div class="score-card" style="background: linear-gradient(135deg, #FF6B6B 0%, #EE5A6F 100%);">
                     {{ $params['opponent_rounds_won'] }}
                 </div>
-                <div class="score-label">ADVERSAIRE</div>
+                <div class="score-label">{{ __('ADVERSAIRE') }}</div>
             </div>
         </div>
         
         <div class="match-status">
             @if($playerWon)
-                ✅ Vous menez la partie !
+                ✅ {{ __('Vous menez la partie !') }}
             @elseif($tied)
-                ⚡ Égalité parfaite !
+                ⚡ {{ __('Égalité parfaite !') }}
             @else
-                💪 Votre adversaire mène !
+                💪 {{ __('Votre adversaire mène !') }}
             @endif
         </div>
         
@@ -147,19 +147,19 @@
         <div style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 15px; margin: 20px 0;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left;">
                 <div>
-                    <span style="color: #666; font-size: 0.9rem;">🎯 Thème :</span>
+                    <span style="color: #666; font-size: 0.9rem;">🎯 {{ __('Thème') }} :</span>
                     <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['theme'] ?? 'Général' }}</strong>
                 </div>
                 <div>
-                    <span style="color: #666; font-size: 0.9rem;">📊 Niveau :</span>
+                    <span style="color: #666; font-size: 0.9rem;">📊 {{ __('Niveau') }} :</span>
                     <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['niveau_adversaire'] ?? 1 }}</strong>
                 </div>
                 <div>
-                    <span style="color: #666; font-size: 0.9rem;">⚔️ Manches gagnées :</span>
+                    <span style="color: #666; font-size: 0.9rem;">⚔️ {{ __('Manches gagnées') }} :</span>
                     <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['player_rounds_won'] }}-{{ $params['opponent_rounds_won'] }}</strong>
                 </div>
                 <div>
-                    <span style="color: #666; font-size: 0.9rem;">❤️ Vies :</span>
+                    <span style="color: #666; font-size: 0.9rem;">❤️ {{ __('Vies') }} :</span>
                     <strong style="color: #333; display: block; font-size: 1.1rem;">{{ $params['vies_restantes'] ?? config('game.life_max', 3) }}</strong>
                 </div>
             </div>
@@ -176,27 +176,27 @@
         <!-- Stats par manche (afficher toutes les manches complétées jusqu'à maintenant) -->
         @if(!empty($params['round_summaries']))
         <div style="background: rgba(46, 204, 113, 0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">
-            <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 Statistiques par Manche</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 {{ __('Statistiques par Manche') }}</div>
             
             @foreach($params['round_summaries'] as $roundNum => $roundStats)
             <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #667eea;">
-                <div style="font-weight: 700; color: #667eea; margin-bottom: 10px;">🏆 Manche {{ $roundNum }}</div>
+                <div style="font-weight: 700; color: #667eea; margin-bottom: 10px;">🏆 {{ __('Manche') }} {{ $roundNum }}</div>
                 
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 0.9rem;">
                     <div>
-                        <span style="color: #666;">✅ Réussi:</span>
+                        <span style="color: #666;">✅ {{ __('Réussi') }}:</span>
                         <strong style="color: #2ECC71;">{{ $roundStats['correct'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
                     </div>
                     <div>
-                        <span style="color: #666;">❌ Échec:</span>
+                        <span style="color: #666;">❌ {{ __('Échec') }}:</span>
                         <strong style="color: #E74C3C;">{{ $roundStats['wrong'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
                     </div>
                     <div>
-                        <span style="color: #666;">⏭️ Sans réponse:</span>
+                        <span style="color: #666;">⏭️ {{ __('Sans réponse') }}:</span>
                         <strong style="color: #95a5a6;">{{ $roundStats['unanswered'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
                     </div>
                     <div>
-                        <span style="color: #666;">📈 Efficacité:</span>
+                        <span style="color: #666;">📈 {{ __('Efficacité') }}:</span>
                         <strong style="color: #667eea;">{{ number_format($roundStats['efficiency'] ?? 0, 1) }}%</strong>
                     </div>
                     <div style="grid-column: 1 / -1;">
@@ -205,7 +205,7 @@
                             $bonusPoints = $roundStats['bonus_points'] ?? 0;
                             $pointsPossible = $roundStats['points_possible'] ?? 20;
                         @endphp
-                        <span style="color: #666;">🎯 Points Gagnés:</span>
+                        <span style="color: #666;">🎯 {{ __('Points Gagnés') }}:</span>
                         <strong style="color: #333;">{{ $basePoints }}</strong>@if($bonusPoints != 0)<strong style="color: {{ $bonusPoints > 0 ? '#2ECC71' : '#E74C3C' }}"> {{ $bonusPoints > 0 ? '+' : '' }}{{ $bonusPoints }}</strong>@endif / {{ $pointsPossible }}
                     </div>
                 </div>
@@ -216,27 +216,27 @@
         
         <!-- Statistiques globales (toutes manches) -->
         <div style="background: rgba(46, 204, 113, 0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">
-            <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 Statistiques globales</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 {{ __('Statistiques globales') }}</div>
             
             <div style="display: grid; gap: 10px;">
                 <div style="background: white; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">✅ Réussi</span>
+                    <span style="color: #666;">✅ {{ __('Réussi') }}</span>
                     <strong style="color: #2ECC71; font-size: 1.3rem;">{{ $params['total_correct'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</strong>
                 </div>
                 
                 <div style="background: white; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">❌ Échec</span>
+                    <span style="color: #666;">❌ {{ __('Échec') }}</span>
                     <strong style="color: #E74C3C; font-size: 1.3rem;">{{ $params['total_incorrect'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</strong>
                 </div>
                 
                 <div style="background: white; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">⏭️ Sans réponse</span>
+                    <span style="color: #666;">⏭️ {{ __('Sans réponse') }}</span>
                     <strong style="color: #95a5a6; font-size: 1.3rem;">{{ $params['total_unanswered'] ?? 0 }} / {{ $params['total_questions_played'] ?? 0 }}</strong>
                 </div>
             </div>
             
             <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 10px;">
-                <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 Efficacité de la Partie</div>
+                <div style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📈 {{ __('Efficacité de la Partie') }}</div>
                 <div style="font-size: 2rem; font-weight: 800; color: #667eea;">{{ number_format($params['party_efficiency'] ?? 0, 1) }}%</div>
             </div>
         </div>
@@ -250,18 +250,18 @@
         
         @if($avatar === 'Magicienne')
         <div style="background: rgba(155, 89, 182, 0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">
-            <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">✨ Skills utilisés</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 15px;">✨ {{ __('Skills utilisés') }}</div>
             
             @if($bonusResult)
                 <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color: #666;">💫 Question Bonus</span>
+                        <span style="color: #666;">💫 {{ __('Question Bonus') }}</span>
                         @if($bonusResult['answered'])
                             <strong style="color: {{ $bonusResult['points'] > 0 ? '#2ECC71' : ($bonusResult['points'] < 0 ? '#E74C3C' : '#95a5a6') }}; font-size: 1.2rem;">
                                 {{ $bonusResult['points'] > 0 ? '+' : '' }}{{ $bonusResult['points'] }} points
                             </strong>
                         @else
-                            <strong style="color: #95a5a6; font-size: 1.2rem;">0 point</strong>
+                            <strong style="color: #95a5a6; font-size: 1.2rem;">0 {{ __('point') }}</strong>
                         @endif
                     </div>
                 </div>
@@ -271,7 +271,7 @@
                 <div style="background: white; padding: 15px; border-radius: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="color: #666;">✨ Annule erreur</span>
-                        <strong style="color: #2ECC71; font-size: 1.2rem;">Utilisé</strong>
+                        <strong style="color: #2ECC71; font-size: 1.2rem;">{{ __('Utilisé') }}</strong>
                     </div>
                 </div>
             @endif

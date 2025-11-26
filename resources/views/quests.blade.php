@@ -438,7 +438,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
 
   <!-- Topbar -->
   <div class="topbar">
-    <a href="/menu" class="clean">← Menu</a>
+    <a href="/menu" class="clean">← {{ __('Menu') }}</a>
     <div class="pill">
       <svg class="coin-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="12" cy="12" r="10" fill="#fbbf24"/>
@@ -450,33 +450,33 @@ a.clean{ color:var(--muted); text-decoration:none; }
 
   <!-- Hero -->
   <div class="hero">
-    <h1>🏆 Quêtes</h1>
-    <p>Cliquez sur un badge pour voir les détails</p>
+    <h1>🏆 {{ __('Quêtes') }}</h1>
+    <p>{{ __('Cliquez sur un badge pour voir les détails') }}</p>
   </div>
 
   <!-- Stats -->
   <div class="stats">
     <div class="stat-card">
       <div class="stat-value">{{ $quests->filter(fn($q) => $q['is_completed'])->count() }}</div>
-      <div class="stat-label">Complétées</div>
+      <div class="stat-label">{{ __('Complétées') }}</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">{{ $quests->count() }}</div>
-      <div class="stat-label">Total</div>
+      <div class="stat-label">{{ __('Total') }}</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">{{ $quests->filter(fn($q) => $q['is_completed'])->sum(fn($q) => $q['quest']->reward_coins) }}</div>
-      <div class="stat-label">Pièces gagnées</div>
+      <div class="stat-label">{{ __('Pièces gagnées') }}</div>
     </div>
   </div>
 
   <!-- Tabs -->
   <div class="tabs">
-    <a href="/quests?rarity=Standard" class="tab {{ $currentRarity === 'Standard' ? 'active' : '' }} {{ in_array('Standard', $raritiesWithProgress) ? 'has-progress' : '' }}">💚 Standard</a>
-    <a href="/quests?rarity=Rare" class="tab {{ $currentRarity === 'Rare' ? 'active' : '' }} {{ in_array('Rare', $raritiesWithProgress) ? 'has-progress' : '' }}">💎 Rare</a>
-    <a href="/quests?rarity=Épique" class="tab {{ $currentRarity === 'Épique' ? 'active' : '' }} {{ in_array('Épique', $raritiesWithProgress) ? 'has-progress' : '' }}">🔮 Épique</a>
-    <a href="/quests?rarity=Légendaire" class="tab {{ $currentRarity === 'Légendaire' ? 'active' : '' }} {{ in_array('Légendaire', $raritiesWithProgress) ? 'has-progress' : '' }}">🌟 Légendaire</a>
-    <a href="/quests?rarity=Maître" class="tab {{ $currentRarity === 'Maître' ? 'active' : '' }} {{ in_array('Maître', $raritiesWithProgress) ? 'has-progress' : '' }}">👑 Maître</a>
+    <a href="/quests?rarity=Standard" class="tab {{ $currentRarity === 'Standard' ? 'active' : '' }} {{ in_array('Standard', $raritiesWithProgress) ? 'has-progress' : '' }}">💚 {{ __('Standard') }}</a>
+    <a href="/quests?rarity=Rare" class="tab {{ $currentRarity === 'Rare' ? 'active' : '' }} {{ in_array('Rare', $raritiesWithProgress) ? 'has-progress' : '' }}">💎 {{ __('Rare') }}</a>
+    <a href="/quests?rarity=Épique" class="tab {{ $currentRarity === 'Épique' ? 'active' : '' }} {{ in_array('Épique', $raritiesWithProgress) ? 'has-progress' : '' }}">🔮 {{ __('Épique') }}</a>
+    <a href="/quests?rarity=Légendaire" class="tab {{ $currentRarity === 'Légendaire' ? 'active' : '' }} {{ in_array('Légendaire', $raritiesWithProgress) ? 'has-progress' : '' }}">🌟 {{ __('Légendaire') }}</a>
+    <a href="/quests?rarity=Maître" class="tab {{ $currentRarity === 'Maître' ? 'active' : '' }} {{ in_array('Maître', $raritiesWithProgress) ? 'has-progress' : '' }}">👑 {{ __('Maître') }}</a>
   </div>
 
   <!-- Badge Grid -->
@@ -514,7 +514,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
   @if($quests->isEmpty())
     <div style="text-align:center; padding:60px 20px; color:var(--muted)">
       <p style="font-size:3rem; margin:0">🎯</p>
-      <p style="margin:12px 0 0">Aucune quête dans cette catégorie pour le moment</p>
+      <p style="margin:12px 0 0">{{ __('Aucune quête dans cette catégorie pour le moment') }}</p>
     </div>
   @endif
 
@@ -530,7 +530,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
     </div>
     <div class="modal-body">
       <div class="reward-box">
-        <div class="reward-label">Récompense</div>
+        <div class="reward-label">{{ __('Récompense') }}</div>
         <div class="reward-amount">
           <svg class="coin-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px">
             <circle cx="12" cy="12" r="10" fill="#fbbf24"/>
@@ -542,7 +542,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
       
       <div class="progress-section" id="progressSection">
         <div class="progress-label">
-          <span class="progress-text">Progression</span>
+          <span class="progress-text">{{ __('Progression') }}</span>
           <span class="progress-value" id="progressValue"></span>
         </div>
         <div class="progress-bar-bg">
@@ -555,7 +555,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
       </div>
     </div>
     <div class="modal-footer">
-      <button class="close-btn" onclick="closeModal()">Fermer</button>
+      <button class="close-btn" onclick="closeModal()">{{ __('Fermer') }}</button>
     </div>
   </div>
 </div>
@@ -572,10 +572,10 @@ function openModal(data) {
   const statusBadge = document.getElementById('statusBadge');
   if (data.completed) {
     statusBadge.className = 'status-badge completed';
-    statusBadge.innerHTML = '✓ Complétée';
+    statusBadge.innerHTML = '✓ {{ __('Complétée') }}';
   } else {
     statusBadge.className = 'status-badge locked';
-    statusBadge.innerHTML = '🔒 En cours';
+    statusBadge.innerHTML = '🔒 {{ __('En cours') }}';
   }
   
   document.getElementById('questModal').classList.add('show');

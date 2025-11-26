@@ -199,8 +199,8 @@
 
 <div class="tiebreaker-container">
     <div class="header-section">
-        <h1 class="title">⚔️ JEU DÉCISIF ⚔️</h1>
-        <p class="subtitle">Choisissez votre mode de départage</p>
+        <h1 class="title">⚔️ {{ __('JEU DÉCISIF') }} ⚔️</h1>
+        <p class="subtitle">{{ __('Choisissez votre mode de départage') }}</p>
         
         @if(isset($params['is_multiplayer']) && $params['is_multiplayer'])
         <div class="timer-bar">
@@ -213,9 +213,9 @@
         <!-- Option A: Question Bonus -->
         <div class="option-card" data-option="bonus" onclick="selectOption('bonus')">
             <div class="option-icon">❓</div>
-            <div class="option-title">Question Bonus</div>
+            <div class="option-title">{{ __('Question Bonus') }}</div>
             <div class="option-description">
-                Une question décisive avec buzz et réponse
+                {{ __('Une question décisive avec buzz et réponse') }}
             </div>
             <div class="option-rules">
                 <div class="rule-item">Un seul buzz → l'autre perd automatiquement</div>
@@ -228,9 +228,9 @@
         <!-- Option B: Efficacité -->
         <div class="option-card" data-option="efficiency" onclick="selectOption('efficiency')">
             <div class="option-icon">📊</div>
-            <div class="option-title">Efficacité Globale</div>
+            <div class="option-title">{{ __('Efficacité Globale') }}</div>
             <div class="option-description">
-                Départage selon les performances du match
+                {{ __('Départage selon les performances du match') }}
             </div>
             <div class="option-rules">
                 <div class="rule-item">Comparaison de l'efficacité globale</div>
@@ -242,9 +242,9 @@
         <!-- Option C: Sudden Death -->
         <div class="option-card" data-option="sudden_death" onclick="selectOption('sudden_death')">
             <div class="option-icon">💀</div>
-            <div class="option-title">Sudden Death</div>
+            <div class="option-title">{{ __('Sudden Death') }}</div>
             <div class="option-description">
-                Questions jusqu'au premier échec
+                {{ __('Questions jusqu'au premier échec') }}
             </div>
             <div class="option-rules">
                 <div class="rule-item">Pas de course de vitesse</div>
