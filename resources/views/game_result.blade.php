@@ -1072,12 +1072,12 @@ function goToNextQuestion() {
     // Architecture progressive : Bloc 1 = 2 questions (déjà généré au démarrage), blocs suivants = 3 questions chacun
     const blocksNeeded = Math.ceil((questionsPerRound - 2) / 3);
     
-    // CALCUL DYNAMIQUE DES TRIGGERS : Déclencher chaque bloc pour rester en avance
-    // Bloc 2 (3q) à Q2 = 2+3-1 = 4 dans le stock, Bloc 3 à Q4, Bloc 4 à Q7, etc.
-    // Pattern : Bloc n déclenche quand on arrive à Q=(n-1)*3 - 1
+    // CALCUL DYNAMIQUE DES TRIGGERS : Déclencher chaque bloc 1 QUESTION PLUS TÔT pour éviter l'attente
+    // ANCIEN: Bloc 2 à Q2, Bloc 3 à Q5, Bloc 4 à Q8 → TROP TARD, génération pas finie
+    // NOUVEAU: Bloc 2 à Q1, Bloc 3 à Q4, Bloc 4 à Q7 → Génération pendant le gameplay
     for (let blockId = 2; blockId <= blocksNeeded + 1; blockId++) {
-        // Calcul du trigger : Bloc 2 à Q2, puis tous les 3 questions
-        const triggerQuestion = blockId === 2 ? 2 : 2 + (blockId - 2) * 3;
+        // Calcul du trigger : Bloc 2 à Q1, puis tous les 3 questions (décalé de -1)
+        const triggerQuestion = blockId === 2 ? 1 : 1 + (blockId - 2) * 3;
         
         // Ne pas déclencher si le trigger dépasse le nombre total de questions
         if (triggerQuestion > questionsPerRound) {
@@ -1089,6 +1089,7 @@ function goToNextQuestion() {
         if (currentQuestion >= triggerQuestion && !requestedBlocks.includes(blockId)) {
             console.log(`[PROGRESSIVE] Requesting block ${blockId} at Q${currentQuestion} (trigger was Q${triggerQuestion})`);
             
+            const startTime = performance.now();
             fetch("{{ route('solo.generate-block') }}", {
                 method: 'POST',
                 headers: {
@@ -1102,17 +1103,19 @@ function goToNextQuestion() {
                 })
             }).then(response => response.json())
               .then(data => {
+                  const duration = ((performance.now() - startTime) / 1000).toFixed(1);
                   // MARQUER COMME DEMANDÉ SEULEMENT APRÈS SUCCÈS
                   if (data.success) {
                       requestedBlocks.push(blockId);
                       sessionStorage.setItem(storageKey, JSON.stringify(requestedBlocks));
-                      console.log(`[PROGRESSIVE] Block ${blockId} generated successfully:`, data);
+                      console.log(`[PROGRESSIVE] ✅ Block ${blockId} generated in ${duration}s:`, data);
                   } else {
-                      console.error(`[PROGRESSIVE] Block ${blockId} returned success=false:`, data);
+                      console.error(`[PROGRESSIVE] ❌ Block ${blockId} returned success=false after ${duration}s:`, data);
                   }
               })
               .catch(err => {
-                  console.error(`[PROGRESSIVE] Block ${blockId} failed - will retry on next visit:`, err);
+                  const duration = ((performance.now() - startTime) / 1000).toFixed(1);
+                  console.error(`[PROGRESSIVE] ❌ Block ${blockId} failed after ${duration}s - will retry:`, err);
                   // NE PAS marquer comme demandé pour permettre un retry
               });
         } else if (currentQuestion >= triggerQuestion) {
@@ -1120,12 +1123,14 @@ function goToNextQuestion() {
         }
     }
     
-    // Pour Magicienne avatar : générer 1 question bonus à la dernière question
+    // Pour Magicienne avatar : générer 1 question bonus 1 QUESTION PLUS TÔT
     @if(session('avatar') === 'Magicienne')
     const bonusBlockId = 999;
-    if (currentQuestion === questionsPerRound && !requestedBlocks.includes(bonusBlockId)) {
-        console.log(`[PROGRESSIVE] Requesting bonus block at Q${currentQuestion}`);
+    const bonusTrigger = questionsPerRound - 1; // Déclencher à l'avant-dernière question
+    if (currentQuestion >= bonusTrigger && !requestedBlocks.includes(bonusBlockId)) {
+        console.log(`[PROGRESSIVE] Requesting bonus block at Q${currentQuestion} (trigger was Q${bonusTrigger})`);
         
+        const bonusStartTime = performance.now();
         fetch("{{ route('solo.generate-block') }}", {
             method: 'POST',
             headers: {
@@ -1139,17 +1144,19 @@ function goToNextQuestion() {
             })
         }).then(response => response.json())
           .then(data => {
+              const duration = ((performance.now() - bonusStartTime) / 1000).toFixed(1);
               // MARQUER COMME DEMANDÉ SEULEMENT APRÈS SUCCÈS
               if (data.success) {
                   requestedBlocks.push(bonusBlockId);
                   sessionStorage.setItem(storageKey, JSON.stringify(requestedBlocks));
-                  console.log('[PROGRESSIVE] Bonus block generated successfully:', data);
+                  console.log(`[PROGRESSIVE] ✅ Bonus block generated in ${duration}s:`, data);
               } else {
-                  console.error('[PROGRESSIVE] Bonus block returned success=false:', data);
+                  console.error(`[PROGRESSIVE] ❌ Bonus block returned success=false after ${duration}s:`, data);
               }
           })
           .catch(err => {
-              console.error('[PROGRESSIVE] Bonus block failed - will retry on next visit:', err);
+              const duration = ((performance.now() - bonusStartTime) / 1000).toFixed(1);
+              console.error(`[PROGRESSIVE] ❌ Bonus block failed after ${duration}s - will retry:`, err);
           });
     }
     @endif
