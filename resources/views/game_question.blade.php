@@ -1143,6 +1143,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 showSkillMessage('⚠️ ' + (result.message || 'Question non disponible'), 'error');
                 break;
                 
+            case 'fake_score':
+                // Comédien: Score trompeur affiché
+                showSkillMessage('🎭 ' + result.message, 'success');
+                // Optionnel: mettre à jour l'affichage du score visuellement
+                if (result.fake_score !== undefined) {
+                    const playerScoreEl = document.querySelector('.player-score');
+                    if (playerScoreEl) {
+                        playerScoreEl.setAttribute('data-real-score', result.real_score);
+                        playerScoreEl.textContent = result.fake_score;
+                        playerScoreEl.classList.add('fake-score-active');
+                    }
+                }
+                break;
+                
+            case 'replay_answer':
+                // IA Junior: Possibilité de rejouer
+                showSkillMessage('🔁 ' + result.message, 'success');
+                // Activer le bouton de replay si présent
+                const replayBtn = document.querySelector('.replay-button');
+                if (replayBtn) {
+                    replayBtn.style.display = 'block';
+                    replayBtn.classList.add('replay-available');
+                }
+                break;
+                
+            case 'counter_challenger':
+                // Visionnaire: Immunité contre le Challenger
+                showSkillMessage('🏰 ' + result.message, 'success');
+                // Marquer l'immunité active
+                document.body.classList.add('shuffle-immunity-active');
+                break;
+                
             default:
                 console.log('Unknown skill effect:', result.effect);
                 if (result.message) {

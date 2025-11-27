@@ -899,6 +899,36 @@ class SoloController extends Controller
                 $result['redirect_to'] = route('solo.bonus-question');
                 break;
                 
+            // 🎭 COMÉDIEN SKILLS
+            case 'fake_score':
+                // Comédien: Affiche un score inférieur aux autres (mode Maître)
+                $result['effect'] = 'fake_score';
+                // Réduire visuellement le score de 1-3 points aléatoirement
+                $fakeReduction = rand(1, 3);
+                $realScore = session('player_score', 0);
+                $fakeScore = max(0, $realScore - $fakeReduction);
+                session(['fake_score_active' => true, 'fake_score_value' => $fakeScore]);
+                $result['fake_score'] = $fakeScore;
+                $result['real_score'] = $realScore;
+                $result['message'] = 'Score trompeur activé! Les autres voient ' . $fakeScore . ' pts';
+                break;
+                
+            // 🤖 IA JUNIOR - Skill manquant
+            case 'replay_answer':
+                // IA Junior: Rejouer une réponse une fois
+                $result['effect'] = 'replay_answer';
+                session(['replay_available' => true]);
+                $result['message'] = 'Vous pouvez rejouer une mauvaise réponse!';
+                break;
+                
+            // 🌟 VISIONNAIRE - Skill manquant  
+            case 'counter_challenger':
+                // Visionnaire: Contre l'attaque du Challenger (immunité shuffle)
+                $result['effect'] = 'counter_challenger';
+                session(['shuffle_immunity' => true]);
+                $result['message'] = 'Immunité anti-Challenger activée!';
+                break;
+                
             default:
                 $result['effect'] = 'unknown';
         }
