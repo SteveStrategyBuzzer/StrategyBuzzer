@@ -4,6 +4,7 @@
 
 @php
 // Générer des exemples de questions et réponses selon le thème
+if (!function_exists('getThemeExamples')) {
 function getThemeExamples($theme, $questionNumber, $questionType) {
     $themeLower = strtolower($theme ?? 'culture générale');
     
@@ -91,6 +92,7 @@ function getThemeExamples($theme, $questionNumber, $questionType) {
         'answers' => $defaultAnswers[$index],
     ];
 }
+} // end function_exists
 @endphp
 
 <style>
