@@ -9,6 +9,7 @@ use App\Services\QuestService;
 use App\Services\StatisticsService;
 use App\Services\AnswerNormalizationService;
 use App\Services\ProfileStatsService;
+use App\Services\CoinLedgerService;
 use App\Models\QuestionHistory;
 
 class SoloController extends Controller
@@ -1353,6 +1354,36 @@ class SoloController extends Controller
             );
         }
         
+        // RÉCOMPENSE EN PIÈCES D'INTELLIGENCE SUR VICTOIRE
+        $coinsEarned = 0;
+        $coinsBonus = 0;
+        $hasStrategeBonus = false;
+        
+        if ($user) {
+            // Calcul: 10 base + 1 par niveau
+            $baseCoins = 10;
+            $levelBonus = $currentLevel; // +1 pièce par niveau battu
+            $coinsEarned = $baseCoins + $levelBonus;
+            
+            // Bonus Stratège: +20% si l'avatar est "Stratège"
+            $avatar = session('avatar', 'Aucun');
+            if ($avatar === 'Stratège') {
+                $hasStrategeBonus = true;
+                $coinsBonus = (int) ceil($coinsEarned * 0.20);
+                $coinsEarned += $coinsBonus;
+            }
+            
+            // Créditer les pièces via le CoinLedgerService
+            $coinService = new CoinLedgerService();
+            $coinService->credit(
+                $user,
+                $coinsEarned,
+                "Victoire Solo niveau {$currentLevel}" . ($hasStrategeBonus ? " (+20% Stratège)" : ""),
+                'solo_victory',
+                $currentLevel
+            );
+        }
+        
         // Calculer l'efficacité moyenne de la partie
         $roundEfficiencies = session('round_efficiencies', []);
         $partyEfficiency = null;
@@ -1391,6 +1422,10 @@ class SoloController extends Controller
             // Points cumulés de toutes les manches
             'total_points_earned' => $totalPointsEarned,
             'total_points_possible' => $totalPointsPossible,
+            // Pièces d'intelligence gagnées
+            'coins_earned' => $coinsEarned,
+            'coins_bonus' => $coinsBonus,
+            'has_stratege_bonus' => $hasStrategeBonus,
         ];
         
         return view('victory', compact('params'));

@@ -173,6 +173,25 @@
         <strong>{{ __('Niveau') }} {{ $params['new_level'] }} {{ __('débloqué') }} 🎉</strong>
     </p>
     
+    @if(isset($params['coins_earned']) && $params['coins_earned'] > 0)
+    <div style="background: linear-gradient(135deg, #f7b733 0%, #fc4a1a 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 5px 20px rgba(247, 183, 51, 0.4);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+            <span style="font-size: 2.5rem;">🪙</span>
+            <div style="text-align: left;">
+                <div style="color: white; font-size: 0.9rem; opacity: 0.9;">{{ __('Pièces d\'intelligence gagnées') }}</div>
+                <div style="color: white; font-size: 2rem; font-weight: 900;">
+                    +{{ $params['coins_earned'] }}
+                    @if($params['has_stratege_bonus'] ?? false)
+                    <span style="font-size: 1rem; background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 20px; margin-left: 10px;">
+                        {{ __('Stratège') }} +20%
+                    </span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+    
     @if(!empty($params['round_summaries']))
     <div style="background: rgba(46, 204, 113, 0.1); padding: 20px; border-radius: 15px; margin: 25px 0;">
         <div style="font-size: 1.3rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 {{ __('Statistiques par Manche') }}</div>
