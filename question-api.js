@@ -42,6 +42,363 @@ const THEMES_FR = {
   'sciences': 'sciences'
 };
 
+// Catalogue de sous-thèmes pour garantir la diversité des questions
+// Chaque thème a 10+ sous-thèmes pour couvrir tous les aspects
+const SUBTHEME_CATALOG = {
+  // Géographie
+  'géographie': [
+    'les capitales du monde',
+    'les fleuves et rivières célèbres',
+    'les chaînes de montagnes',
+    'les océans et mers',
+    'les pays et leurs frontières',
+    'les drapeaux nationaux',
+    'les monuments célèbres',
+    'les climats et zones climatiques',
+    'les îles et archipels',
+    'les lacs célèbres',
+    'les volcans actifs',
+    'les populations et démographie'
+  ],
+  'geography': [
+    'world capitals',
+    'famous rivers',
+    'mountain ranges',
+    'oceans and seas',
+    'countries and borders',
+    'national flags',
+    'famous landmarks',
+    'climate zones',
+    'islands and archipelagos',
+    'famous lakes',
+    'active volcanoes',
+    'population and demographics'
+  ],
+  
+  // Histoire
+  'histoire': [
+    'les grandes guerres mondiales',
+    'les civilisations anciennes (Égypte, Rome, Grèce)',
+    'les révolutions (française, industrielle, etc.)',
+    'les grands explorateurs',
+    'les inventions qui ont changé le monde',
+    'les rois et reines célèbres',
+    'les empires disparus',
+    'les grandes découvertes scientifiques',
+    'les mouvements sociaux',
+    'les traités et accords historiques',
+    'les personnages historiques célèbres',
+    'les événements du 20e siècle'
+  ],
+  'history': [
+    'world wars',
+    'ancient civilizations (Egypt, Rome, Greece)',
+    'revolutions (French, Industrial, etc.)',
+    'great explorers',
+    'world-changing inventions',
+    'famous kings and queens',
+    'fallen empires',
+    'major scientific discoveries',
+    'social movements',
+    'historical treaties',
+    'famous historical figures',
+    '20th century events'
+  ],
+  
+  // Sport
+  'sport': [
+    'le football (équipes, joueurs, coupes)',
+    'les Jeux Olympiques',
+    'le tennis et ses champions',
+    'le basketball (NBA, équipes)',
+    'les sports automobiles (F1, rallye)',
+    'le cyclisme (Tour de France)',
+    'la natation et sports aquatiques',
+    'les arts martiaux',
+    'le rugby',
+    'les records sportifs',
+    'les sports d\'hiver',
+    'l\'athlétisme'
+  ],
+  'sports': [
+    'football/soccer (teams, players, cups)',
+    'Olympic Games',
+    'tennis champions',
+    'basketball (NBA, teams)',
+    'motorsports (F1, rally)',
+    'cycling (Tour de France)',
+    'swimming and water sports',
+    'martial arts',
+    'rugby',
+    'sports records',
+    'winter sports',
+    'athletics'
+  ],
+  
+  // Sciences
+  'sciences': [
+    'le système solaire et les planètes',
+    'le corps humain (organes, systèmes)',
+    'les éléments chimiques',
+    'les inventeurs et leurs inventions',
+    'la physique (lois, forces)',
+    'la biologie (cellules, ADN)',
+    'les mathématiques (théorèmes, formules)',
+    'l\'écologie et environnement',
+    'la technologie et informatique',
+    'les dinosaures et préhistoire',
+    'l\'espace et astronomie',
+    'les maladies et médecine'
+  ],
+  'science': [
+    'solar system and planets',
+    'human body (organs, systems)',
+    'chemical elements',
+    'inventors and inventions',
+    'physics (laws, forces)',
+    'biology (cells, DNA)',
+    'mathematics (theorems, formulas)',
+    'ecology and environment',
+    'technology and computing',
+    'dinosaurs and prehistory',
+    'space and astronomy',
+    'diseases and medicine'
+  ],
+  
+  // Cinéma
+  'cinéma': [
+    'les films oscarisés',
+    'les réalisateurs célèbres',
+    'les acteurs et actrices légendaires',
+    'les films d\'animation (Disney, Pixar)',
+    'les sagas et franchises (Star Wars, Marvel)',
+    'les films cultes des années 80-90',
+    'les comédies musicales',
+    'les films de science-fiction',
+    'les films d\'horreur classiques',
+    'les répliques célèbres de films',
+    'les bandes originales célèbres',
+    'les films français classiques'
+  ],
+  'cinema': [
+    'Oscar-winning films',
+    'famous directors',
+    'legendary actors and actresses',
+    'animated films (Disney, Pixar)',
+    'franchises (Star Wars, Marvel)',
+    'cult films of the 80s-90s',
+    'musicals',
+    'science fiction films',
+    'classic horror films',
+    'famous movie quotes',
+    'famous soundtracks',
+    'classic French films'
+  ],
+  
+  // Art et Culture
+  'art': [
+    'les peintres célèbres (Picasso, Van Gogh, etc.)',
+    'les œuvres d\'art iconiques',
+    'les mouvements artistiques (Renaissance, Impressionnisme)',
+    'les sculpteurs célèbres',
+    'les musées du monde',
+    'l\'architecture célèbre',
+    'la musique classique et compositeurs',
+    'la littérature et grands auteurs',
+    'le théâtre et dramaturges',
+    'la photographie',
+    'l\'art contemporain',
+    'les instruments de musique'
+  ],
+  'art et culture': [
+    'les peintres célèbres (Picasso, Van Gogh, etc.)',
+    'les œuvres d\'art iconiques',
+    'les mouvements artistiques (Renaissance, Impressionnisme)',
+    'les sculpteurs célèbres',
+    'les musées du monde',
+    'l\'architecture célèbre',
+    'la musique classique et compositeurs',
+    'la littérature et grands auteurs',
+    'le théâtre et dramaturges',
+    'la photographie',
+    'l\'art contemporain',
+    'les instruments de musique'
+  ],
+  
+  // Animaux et Nature
+  'animaux': [
+    'les mammifères (caractéristiques, habitats)',
+    'les oiseaux et leurs migrations',
+    'les animaux marins',
+    'les reptiles et amphibiens',
+    'les insectes',
+    'les animaux en voie de disparition',
+    'les records du monde animal',
+    'les animaux domestiques',
+    'les prédateurs',
+    'les animaux nocturnes',
+    'les écosystèmes',
+    'les plantes et arbres'
+  ],
+  'faune': [
+    'les mammifères (caractéristiques, habitats)',
+    'les oiseaux et leurs migrations',
+    'les animaux marins',
+    'les reptiles et amphibiens',
+    'les insectes',
+    'les animaux en voie de disparition',
+    'les records du monde animal',
+    'les animaux domestiques',
+    'les prédateurs',
+    'les animaux nocturnes',
+    'les écosystèmes',
+    'les plantes et arbres'
+  ],
+  'animaux et nature': [
+    'les mammifères (caractéristiques, habitats)',
+    'les oiseaux et leurs migrations',
+    'les animaux marins',
+    'les reptiles et amphibiens',
+    'les insectes',
+    'les animaux en voie de disparition',
+    'les records du monde animal',
+    'les animaux domestiques',
+    'les prédateurs',
+    'les animaux nocturnes',
+    'les écosystèmes',
+    'les plantes et arbres'
+  ],
+  
+  // Cuisine
+  'cuisine': [
+    'les plats nationaux et régionaux',
+    'les épices et condiments',
+    'les desserts célèbres',
+    'les vins et spiritueux',
+    'les fromages du monde',
+    'les techniques culinaires',
+    'les chefs célèbres',
+    'les fruits et légumes',
+    'les cuisines du monde (asiatique, italienne, etc.)',
+    'les ustensiles de cuisine',
+    'les traditions culinaires',
+    'les boissons célèbres'
+  ],
+  'cuisine et gastronomie': [
+    'les plats nationaux et régionaux',
+    'les épices et condiments',
+    'les desserts célèbres',
+    'les vins et spiritueux',
+    'les fromages du monde',
+    'les techniques culinaires',
+    'les chefs célèbres',
+    'les fruits et légumes',
+    'les cuisines du monde (asiatique, italienne, etc.)',
+    'les ustensiles de cuisine',
+    'les traditions culinaires',
+    'les boissons célèbres'
+  ],
+  
+  // Culture générale
+  'culture générale': [
+    'les capitales et géographie',
+    'les personnages historiques',
+    'les inventions célèbres',
+    'les expressions et proverbes',
+    'les symboles nationaux',
+    'les records du monde',
+    'les fêtes et traditions',
+    'les personnalités contemporaines',
+    'les marques célèbres',
+    'les événements récents',
+    'les mythes et légendes',
+    'les curiosités du monde'
+  ],
+  'general knowledge': [
+    'capitals and geography',
+    'historical figures',
+    'famous inventions',
+    'expressions and proverbs',
+    'national symbols',
+    'world records',
+    'holidays and traditions',
+    'contemporary personalities',
+    'famous brands',
+    'recent events',
+    'myths and legends',
+    'world curiosities'
+  ],
+
+  // Thèmes scolaires
+  'mathématiques': [
+    'les opérations de base',
+    'la géométrie (formes, angles)',
+    'les fractions et pourcentages',
+    'les équations simples',
+    'les mesures et conversions',
+    'les problèmes de logique',
+    'les tables de multiplication',
+    'les nombres premiers',
+    'les statistiques basiques',
+    'les graphiques et diagrammes'
+  ],
+  'français': [
+    'l\'orthographe',
+    'la grammaire',
+    'la conjugaison',
+    'le vocabulaire',
+    'les figures de style',
+    'les auteurs classiques',
+    'les genres littéraires',
+    'l\'étymologie',
+    'les expressions françaises',
+    'la ponctuation'
+  ],
+  'anglais': [
+    'le vocabulaire courant',
+    'la grammaire anglaise',
+    'les verbes irréguliers',
+    'les expressions idiomatiques',
+    'la culture anglo-saxonne',
+    'les faux-amis',
+    'la prononciation',
+    'le vocabulaire des affaires',
+    'les temps verbaux',
+    'les prépositions'
+  ]
+};
+
+// Fonction pour obtenir un sous-thème basé sur le numéro de question
+function getSubthemeForQuestion(theme, questionNumber) {
+  // Normaliser le thème (minuscules, sans accents pour la recherche)
+  const normalizedTheme = theme.toLowerCase().trim();
+  
+  // Chercher les sous-thèmes correspondants
+  let subthemes = null;
+  
+  // Recherche exacte d'abord
+  if (SUBTHEME_CATALOG[normalizedTheme]) {
+    subthemes = SUBTHEME_CATALOG[normalizedTheme];
+  } else {
+    // Recherche par mot-clé
+    for (const [key, values] of Object.entries(SUBTHEME_CATALOG)) {
+      if (normalizedTheme.includes(key) || key.includes(normalizedTheme)) {
+        subthemes = values;
+        break;
+      }
+    }
+  }
+  
+  // Si pas de sous-thèmes trouvés, utiliser culture générale
+  if (!subthemes) {
+    subthemes = SUBTHEME_CATALOG['culture générale'];
+  }
+  
+  // Rotation: utiliser le numéro de question pour choisir le sous-thème
+  const index = (questionNumber - 1) % subthemes.length;
+  return subthemes[index];
+}
+
 // Fonction pour déterminer le niveau de difficulté
 function getDifficultyDescription(niveau) {
   if (niveau <= 10) {
@@ -817,13 +1174,17 @@ function translateElement(element, language) {
 app.post('/generate-master-question', async (req, res) => {
   const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1, previousQuestions = [] } = req.body;
   
+  // Obtenir le sous-thème basé sur la rotation
+  const subtheme = getSubthemeForQuestion(theme, questionNumber);
+  
   console.log(`\n📝 Génération question Master #${questionNumber} (${questionType}, langue: ${language})`);
   console.log(`📋 Thème: ${theme}`);
+  console.log(`🎯 Sous-thème assigné: ${subtheme}`);
   console.log(`🚫 Questions précédentes à éviter: ${previousQuestions.length}`);
   
   try {
     // Construire le prompt selon le type de question
-    let systemPrompt = 'Tu es un expert en création de questions de quiz éducatives et divertissantes. Tu réponds toujours au format JSON demandé, sans texte supplémentaire. Tu DOIS générer des questions UNIQUES et VARIÉES.';
+    let systemPrompt = 'Tu es un expert en création de questions de quiz éducatives et divertissantes. Tu réponds toujours au format JSON demandé, sans texte supplémentaire. Tu DOIS OBLIGATOIREMENT respecter le sous-thème imposé.';
     
     const languageNames = {
       'fr': 'français',
@@ -839,15 +1200,18 @@ app.post('/generate-master-question', async (req, res) => {
     };
     const langName = languageNames[language] || 'français';
     
-    // Construire la liste des questions à éviter
+    // Construire l'instruction de sous-thème (OBLIGATOIRE)
+    const subthemeInstruction = `\n\n🎯 SOUS-THÈME OBLIGATOIRE: Tu DOIS générer une question spécifiquement sur "${subtheme}". Ne parle PAS d'autre chose que ce sous-thème précis.`;
+    
+    // Construire la liste des questions à éviter (en plus du sous-thème)
     let avoidText = '';
     if (previousQuestions.length > 0) {
-      avoidText = `\n\nATTENTION: Tu dois générer une question COMPLÈTEMENT DIFFÉRENTE des questions précédentes. NE PAS répéter ces sujets:\n${previousQuestions.map((q, i) => `${i+1}. ${q}`).join('\n')}\n\nChoisis un AUTRE sujet, une AUTRE facette du thème.`;
+      avoidText = `\n\nQuestions déjà générées (pour éviter les doublons exacts):\n${previousQuestions.slice(-5).map((q, i) => `- ${q}`).join('\n')}`;
     }
     
     let userPrompt;
     if (questionType === 'true_false') {
-      userPrompt = `Génère une question Vrai/Faux sur le thème "${theme}" en ${langName}.${avoidText}
+      userPrompt = `Génère une question Vrai/Faux sur le thème "${theme}" en ${langName}.${subthemeInstruction}${avoidText}
 
 Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 {
@@ -858,7 +1222,7 @@ Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 
 Où correct_index est 0 pour Vrai ou 1 pour Faux.`;
     } else {
-      userPrompt = `Génère une question à choix multiples avec 4 réponses sur le thème "${theme}" en ${langName}.${avoidText}
+      userPrompt = `Génère une question à choix multiples avec 4 réponses sur le thème "${theme}" en ${langName}.${subthemeInstruction}${avoidText}
 
 Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 {
