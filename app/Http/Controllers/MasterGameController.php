@@ -677,12 +677,30 @@ class MasterGameController extends Controller
     // Créer un template vide pour une question image
     private function createEmptyImageQuestionTemplate($game, $questionNumber)
     {
+        $language = strtolower($game->language ?? 'fr');
+        
+        // Texte placeholder selon la langue
+        $placeholderTexts = [
+            'fr' => 'Quel élément était visible dans l\'image ?',
+            'en' => 'Which element was visible in the image?',
+            'es' => '¿Qué elemento era visible en la imagen?',
+            'it' => 'Quale elemento era visibile nell\'immagine?',
+            'de' => 'Welches Element war im Bild sichtbar?',
+            'pt' => 'Qual elemento era visível na imagem?',
+            'ru' => 'Какой элемент был виден на изображении?',
+            'ar' => 'ما العنصر الذي كان مرئيًا في الصورة؟',
+            'zh' => '图片中可见的是什么元素？',
+            'el' => 'Ποιο στοιχείο ήταν ορατό στην εικόνα;'
+        ];
+        
+        $placeholderText = $placeholderTexts[$language] ?? $placeholderTexts['fr'];
+        
         MasterGameQuestion::create([
             'master_game_id' => $game->id,
             'question_number' => $questionNumber,
             'type' => 'image',
-            'text' => null,
-            'choices' => ['', '', '', ''],
+            'text' => $placeholderText,
+            'choices' => ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
             'correct_indexes' => [0],
             'media_url' => null,
         ]);
