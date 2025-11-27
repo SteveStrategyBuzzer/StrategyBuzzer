@@ -27,7 +27,13 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 ### Feature Specifications
 - **Game Modes**: Solo (best-of-3, 90 opponents, 10 boss battles), Duo (division-based, player code invites), League Individual (1v1 career, random matchmaking), League Team (5v5, team management), and Master (real-time hosting for 3-40 players with AI-powered question generation).
-- **Avatar System**: User-specific avatars with themed packs, unlock requirements, and in-game skills.
+- **Avatar System**: User-specific avatars with themed packs, unlock requirements, and in-game skills. **12 avatars across 3 rarity tiers with 25 unique skills**:
+  - **Rare (1 skill each)**: Mathématicien (illuminate numbers), Scientifique (acidify wrong answers), Explorateur (show popular answer), Défenseur (block attacks)
+  - **Épique (2 skills each)**: Magicienne (cancel error + bonus question), Comédien (fake score + invert answers), Challenger (shuffle + reduce timer), Historien (hint + extra time)
+  - **Légendaire (3 skills each)**: IA Junior (80% AI suggestion + eliminate 2 + replay), Stratège (coin bonus + team mode + unlock discount), Sprinteur (buzz rewind + extra reflection + auto-reset), Visionnaire (preview 5 questions + anti-challenger + lock correct)
+  - **Skill Types**: PASSIVE (auto-active), VISUAL (modify display), ACTIVE_PRE (before answer), ACTIVE_POST (after answer/result)
+  - **Skill Triggers**: ON_VICTORY, ON_QUESTION, ON_ANSWER, ON_ERROR, ALWAYS, MATCH_START, RESULT
+  - **Session Tracking**: `used_skills` array persists throughout match to prevent duplicate skill usage
 - **Progression**: Includes a Quest/Achievement System with 35 Standard quests, event-driven detection, and atomic transaction-based reward distribution. Player progression levels are displayed dynamically.
 - **Real-time Features**: Utilizes Firebase Firestore for real-time game state synchronization in multiplayer modes, including microsecond-precision buzz systems and score updates.
 - **Authentication**: Firebase Authentication (with social providers) and Laravel Sanctum for API token management, supporting multi-provider authentication and a unique Player Code System (SB-XXXX).
