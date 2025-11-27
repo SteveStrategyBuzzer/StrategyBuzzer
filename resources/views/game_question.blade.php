@@ -1095,8 +1095,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 showSkillMessage('🛡️ Bouclier activé!', 'success');
                 break;
                 
+            case 'passive_active':
+                // Skills passifs - juste afficher un message
+                showSkillMessage('✨ ' + (result.message || 'Skill passif actif'), 'info');
+                break;
+                
+            case 'team_mode':
+                // Stratège: Afficher le modal de sélection d'avatar rare
+                if (result.available_avatars && result.available_avatars.length > 0) {
+                    let teamHtml = '<div class="skill-team-modal">';
+                    teamHtml += '<h3>🤝 Mode Équipe</h3>';
+                    teamHtml += '<p>Choisissez un Avatar rare comme coéquipier :</p>';
+                    result.available_avatars.forEach(avatar => {
+                        teamHtml += '<div class="team-avatar-option" data-avatar="' + avatar.name + '">';
+                        teamHtml += '<span class="avatar-icon">' + avatar.icon + '</span>';
+                        teamHtml += '<span class="avatar-name">' + avatar.name + '</span>';
+                        if (avatar.skills && avatar.skills.length > 0) {
+                            teamHtml += '<span class="avatar-skill">' + avatar.skills[0].icon + ' ' + avatar.skills[0].name + '</span>';
+                        }
+                        teamHtml += '</div>';
+                    });
+                    teamHtml += '</div>';
+                    showSkillModal(teamHtml);
+                } else {
+                    showSkillMessage('🤝 Aucun avatar rare disponible', 'warning');
+                }
+                break;
+                
+            case 'buzz_rewind':
+                // Sprinteur: Recul du temps de buzz
+                showSkillMessage('⏱️ Temps de buzz recalé à 0.5s du plus rapide!', 'success');
+                break;
+                
+            case 'cancel_error':
+                // Magicienne: Annulation d'erreur activée
+                showSkillMessage('✨ Annulation d\'erreur prête!', 'success');
+                break;
+                
+            case 'redirect':
+                // Skills qui nécessitent une redirection
+                if (result.redirect_to) {
+                    window.location.href = result.redirect_to;
+                }
+                break;
+                
+            case 'no_question':
+                showSkillMessage('⚠️ ' + (result.message || 'Question non disponible'), 'error');
+                break;
+                
             default:
                 console.log('Unknown skill effect:', result.effect);
+                if (result.message) {
+                    showSkillMessage(result.message, 'info');
+                }
         }
     }
     

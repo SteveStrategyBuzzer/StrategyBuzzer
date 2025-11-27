@@ -850,11 +850,86 @@ class SoloController extends Controller
                 }
                 break;
                 
+            // 🟡 STRATÈGE SKILLS
+            case 'coin_bonus':
+                // Stratège: PASSIF - +20% pièces d'intelligence (géré dans CoinLedgerService)
+                $result['effect'] = 'passive_active';
+                $result['message'] = 'Bonus +20% pièces actif sur victoire';
+                break;
+                
+            case 'team_mode':
+                // Stratège: Permet d'ajouter un Avatar rare comme coéquipier
+                $result['effect'] = 'team_mode';
+                $result['available_avatars'] = $this->getAvailableRareAvatars();
+                $result['message'] = 'Sélectionnez un Avatar rare comme coéquipier';
+                break;
+                
+            case 'unlock_discount':
+                // Stratège: PASSIF - -10% coût déblocage avatars (géré dans boutique)
+                $result['effect'] = 'passive_active';
+                $result['discount'] = 10;
+                $result['message'] = 'Réduction -10% sur déblocage avatars';
+                break;
+                
+            // 🟡 SPRINTEUR SKILLS  
+            case 'buzz_rewind':
+                // Sprinteur: Recule le temps de buzz jusqu'à 0.5s du plus rapide
+                $result['effect'] = 'buzz_rewind';
+                $result['max_rewind'] = 0.5; // secondes
+                $result['message'] = 'Buzz recalé à 0.5s du plus rapide';
+                break;
+                
+            case 'auto_reset':
+                // Sprinteur: Auto-reset par niveau (PASSIF)
+                $result['effect'] = 'passive_active';
+                $result['message'] = 'Reset automatique des skills chaque niveau';
+                break;
+                
+            // 🟣 MAGICIENNE SKILLS
+            case 'cancel_error':
+                // Magicienne: Annule une erreur
+                $result['effect'] = 'cancel_error';
+                session(['cancel_error_available' => true]);
+                $result['message'] = 'Erreur annulée! Score préservé';
+                break;
+                
+            case 'bonus_question':
+                // Magicienne: Question bonus (géré par redirection)
+                $result['effect'] = 'redirect';
+                $result['redirect_to'] = route('solo.bonus-question');
+                break;
+                
             default:
                 $result['effect'] = 'unknown';
         }
         
         return $result;
+    }
+    
+    private function getAvailableRareAvatars()
+    {
+        // Liste des avatars rares disponibles pour le mode équipe
+        $allAvatars = $this->getAvatarSkills();
+        $rareAvatars = [];
+        
+        foreach ($allAvatars as $name => $data) {
+            if (($data['rarity'] ?? '') === 'rare') {
+                $rareAvatars[] = [
+                    'name' => $name,
+                    'icon' => $data['icon'] ?? '👤',
+                    'skills' => array_map(function($skill) {
+                        return [
+                            'id' => $skill['id'],
+                            'name' => $skill['name'],
+                            'icon' => $skill['icon'],
+                            'description' => $skill['description']
+                        ];
+                    }, $data['skills'] ?? [])
+                ];
+            }
+        }
+        
+        return $rareAvatars;
     }
     
     private function generateQuestionHint($question, $correctIndex = null)
