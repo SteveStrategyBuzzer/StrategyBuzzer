@@ -1183,8 +1183,17 @@ app.post('/generate-master-question', async (req, res) => {
   console.log(`🚫 Questions précédentes à éviter: ${previousQuestions.length}`);
   
   try {
-    // Construire le prompt selon le type de question
-    let systemPrompt = 'Tu es un expert en création de questions de quiz éducatives et divertissantes. Tu réponds toujours au format JSON demandé, sans texte supplémentaire. Tu DOIS OBLIGATOIREMENT respecter le sous-thème imposé.';
+    // Construire le prompt selon le type de question avec les 5 règles strictes
+    let systemPrompt = `Tu es un expert en création de questions de quiz éducatives et divertissantes.
+
+RÈGLES OBLIGATOIRES:
+1. Sois COHÉRENT avec le niveau de difficulté demandé
+2. Génère des Questions/Réponses INÉDITES et originales (pas les faits les plus connus)
+3. Ne fais AUCUNE répétition dans les questions/réponses
+4. Sois AVANT-GARDISTE - propose des angles surprenants et des faits méconnus
+5. Ne déroge JAMAIS du thème et sous-thème demandés
+
+Tu réponds UNIQUEMENT au format JSON demandé, sans texte supplémentaire.`;
     
     const languageNames = {
       'fr': 'français',
@@ -1240,7 +1249,7 @@ La bonne réponse doit être à l'index 0.`;
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.8,
+      temperature: 0.3,
       max_tokens: 500
     });
     
