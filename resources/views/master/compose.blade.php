@@ -92,7 +92,22 @@ function getThemeExamples($theme, $questionNumber, $questionType) {
         'answers' => $defaultAnswers[$index],
     ];
 }
-} // end function_exists
+} // end function_exists getThemeExamples
+
+// Déterminer le type de question pour un numéro donné
+if (!function_exists('getQuestionTypeForNumber')) {
+function getQuestionTypeForNumber($game, $questionNumber) {
+    $types = $game->question_types ?? ['multiple_choice'];
+    
+    if (empty($types)) {
+        return 'multiple_choice';
+    }
+    
+    // Distribution équilibrée des types
+    $index = ($questionNumber - 1) % count($types);
+    return $types[$index];
+}
+} // end function_exists getQuestionTypeForNumber
 @endphp
 
 <style>
