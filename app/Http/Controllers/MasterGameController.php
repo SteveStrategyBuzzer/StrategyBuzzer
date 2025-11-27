@@ -706,42 +706,84 @@ class MasterGameController extends Controller
         ]);
     }
     
-    // Générer une question texte avec OpenAI
+    // Générer une question texte via l'API Node.js
     private function generateTextQuestionWithAI($game, $questionNumber, $questionType)
     {
         try {
-            // Construire le prompt basé sur les paramètres du quiz
-            $prompt = $this->buildPromptForQuestion($game, $questionType);
+            $language = strtolower($game->language ?? 'fr');
             
-            // Appeler OpenAI
-            $response = OpenAI::chat()->create([
-                'model' => 'gpt-3.5-turbo',
-                'messages' => [
-                    ['role' => 'system', 'content' => 'Tu es un expert en création de questions de quiz éducatives et divertissantes.'],
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'temperature' => 0.8,
-                'max_tokens' => 500
+            // Déterminer le thème ou contexte
+            if ($game->domain_type === 'theme') {
+                $theme = $game->theme ?? 'Culture générale';
+            } else {
+                $theme = ($game->school_subject ?? 'Culture générale') . ' - ' . ($game->school_level ?? 'Général');
+            }
+            
+            // Appeler l'API Node.js pour générer la question
+            $apiUrl = 'http://localhost:3000/generate-master-question';
+            
+            $postData = json_encode([
+                'theme' => $theme,
+                'language' => $language,
+                'questionType' => $questionType,
+                'questionNumber' => $questionNumber
             ]);
             
-            $content = $response->choices[0]->message->content;
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\n",
+                    'content' => $postData,
+                    'timeout' => 30
+                ]
+            ]);
             
-            // Parser la réponse
-            $parsedData = $this->parseAIResponse($content, $questionType);
+            $response = @file_get_contents($apiUrl, false, $context);
             
-            // Créer la question
+            if ($response === false) {
+                Log::warning('Master: API Node.js non accessible', [
+                    'game_id' => $game->id,
+                    'question_number' => $questionNumber
+                ]);
+                $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
+                return;
+            }
+            
+            $data = json_decode($response, true);
+            
+            if (!$data || !isset($data['success']) || !$data['success']) {
+                Log::warning('Master: Réponse API invalide', [
+                    'game_id' => $game->id,
+                    'question_number' => $questionNumber,
+                    'response' => $response
+                ]);
+                $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
+                return;
+            }
+            
+            // Créer la question avec les données générées
             MasterGameQuestion::create([
                 'master_game_id' => $game->id,
                 'question_number' => $questionNumber,
                 'type' => $questionType,
-                'text' => $parsedData['question'],
-                'choices' => $parsedData['answers'],
-                'correct_indexes' => [$parsedData['correct_answer']],
+                'text' => $data['question']['text'] ?? 'Question générée',
+                'choices' => $data['question']['answers'] ?? ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'],
+                'correct_indexes' => [$data['question']['correct_index'] ?? 0],
                 'media_url' => null,
             ]);
             
+            Log::info('Master: Question générée avec succès', [
+                'game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'type' => $questionType
+            ]);
+            
         } catch (\Exception $e) {
-            // En cas d'erreur, créer une question placeholder
+            Log::error('Master: Exception génération question', [
+                'game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'error' => $e->getMessage()
+            ]);
             $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
         }
     }

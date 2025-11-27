@@ -813,6 +813,135 @@ function translateElement(element, language) {
   return element; // Fallback au français
 }
 
+// Endpoint pour générer une question Master (texte uniquement)
+app.post('/generate-master-question', async (req, res) => {
+  const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1 } = req.body;
+  
+  console.log(`\n📝 Génération question Master #${questionNumber} (${questionType}, langue: ${language})`);
+  console.log(`📋 Thème: ${theme}`);
+  
+  try {
+    // Construire le prompt selon le type de question
+    let systemPrompt = 'Tu es un expert en création de questions de quiz éducatives et divertissantes. Tu réponds toujours au format JSON demandé, sans texte supplémentaire.';
+    
+    const languageNames = {
+      'fr': 'français',
+      'en': 'anglais',
+      'es': 'espagnol',
+      'it': 'italien',
+      'de': 'allemand',
+      'pt': 'portugais',
+      'ru': 'russe',
+      'ar': 'arabe',
+      'zh': 'chinois',
+      'el': 'grec'
+    };
+    const langName = languageNames[language] || 'français';
+    
+    let userPrompt;
+    if (questionType === 'true_false') {
+      userPrompt = `Génère une question Vrai/Faux sur le thème "${theme}" en ${langName}.
+
+Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
+{
+  "question": "Ta question ici",
+  "answers": ["Vrai", "Faux"],
+  "correct_index": 0
+}
+
+Où correct_index est 0 pour Vrai ou 1 pour Faux.`;
+    } else {
+      userPrompt = `Génère une question à choix multiples avec 4 réponses sur le thème "${theme}" en ${langName}.
+
+Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
+{
+  "question": "Ta question ici",
+  "answers": ["Réponse correcte", "Mauvaise réponse 1", "Mauvaise réponse 2", "Mauvaise réponse 3"],
+  "correct_index": 0
+}
+
+La bonne réponse doit être à l'index 0.`;
+    }
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.8,
+      max_tokens: 500
+    });
+    
+    const content = completion.choices[0].message.content.trim();
+    console.log('📥 Réponse brute:', content.substring(0, 100) + '...');
+    
+    // Parser le JSON de la réponse
+    let parsedData;
+    try {
+      // Nettoyer le contenu (enlever les backticks markdown si présents)
+      let cleanContent = content;
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.slice(7);
+      }
+      if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.slice(3);
+      }
+      if (cleanContent.endsWith('```')) {
+        cleanContent = cleanContent.slice(0, -3);
+      }
+      cleanContent = cleanContent.trim();
+      
+      parsedData = JSON.parse(cleanContent);
+    } catch (parseError) {
+      console.error('❌ Erreur parsing JSON:', parseError.message);
+      // Fallback : générer une question par défaut
+      parsedData = {
+        question: questionType === 'true_false' 
+          ? (language === 'fr' ? 'Le ciel est bleu.' : 'The sky is blue.')
+          : (language === 'fr' ? 'Quelle est la capitale de la France ?' : 'What is the capital of France?'),
+        answers: questionType === 'true_false' 
+          ? ['Vrai', 'Faux']
+          : ['Paris', 'Lyon', 'Marseille', 'Bordeaux'],
+        correct_index: 0
+      };
+    }
+    
+    // Valider et normaliser les données
+    if (!parsedData.question || typeof parsedData.question !== 'string') {
+      parsedData.question = 'Question générée';
+    }
+    
+    if (!Array.isArray(parsedData.answers)) {
+      parsedData.answers = questionType === 'true_false' 
+        ? ['Vrai', 'Faux']
+        : ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'];
+    }
+    
+    if (typeof parsedData.correct_index !== 'number') {
+      parsedData.correct_index = 0;
+    }
+    
+    console.log(`✅ Question générée: "${parsedData.question.substring(0, 50)}..."`);
+    
+    res.json({
+      success: true,
+      question: {
+        text: parsedData.question,
+        answers: parsedData.answers,
+        correct_index: parsedData.correct_index
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur génération question Master:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Fonction pour générer un scénario aléatoire
 function generateVisualScenario() {
   const scenario = {
