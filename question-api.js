@@ -489,7 +489,10 @@ function getQuestionLengthConstraint(niveau) {
 app.post('/generate-question', async (req, res) => {
   const MAX_RETRIES = 3;
   
-  const { theme, niveau, questionNumber, usedAnswers = [], usedQuestionTexts = [], opponentAge = null, isBoss = false, language = 'fr' } = req.body;
+  const { theme, niveau, questionNumber, opponentAge = null, isBoss = false, language = 'fr' } = req.body;
+  // SAFETY: Ensure usedAnswers and usedQuestionTexts are always arrays (fix "not iterable" error)
+  const usedAnswers = Array.isArray(req.body.usedAnswers) ? req.body.usedAnswers : [];
+  const usedQuestionTexts = Array.isArray(req.body.usedQuestionTexts) ? req.body.usedQuestionTexts : [];
   
   // Récupérer les infos de langue
   const languageInfo = LANGUAGES[language] || LANGUAGES['fr'];
