@@ -25,6 +25,7 @@ class MasterGame extends Model
         'school_level',
         'school_subject',
         'creation_mode',
+        'ai_images_count',
         'status',
         'current_question',
         'quiz_validated',

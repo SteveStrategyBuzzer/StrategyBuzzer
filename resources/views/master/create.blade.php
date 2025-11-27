@@ -323,6 +323,36 @@ body {
                     </label>
                 </div>
             </div>
+            
+            <div id="aiImagesSection" class="form-group" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(255, 215, 0, 0.15); border-radius: 8px; border: 2px solid rgba(255, 215, 0, 0.4);">
+                <label class="form-label" style="text-align: center; color: #FFD700;">
+                    🖼️ {{ __('Images générées par IA') }}
+                </label>
+                <p style="text-align: center; font-size: 0.85rem; margin-bottom: 0.8rem; opacity: 0.9;">
+                    {{ __('Questions mémoire visuelle (environ 0.04$/image)') }}
+                </p>
+                <div class="radio-group" style="justify-content: center;">
+                    <label class="radio-label">
+                        <input type="radio" name="ai_images_count" value="0" class="radio-input" checked>
+                        <span>0</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="ai_images_count" value="1" class="radio-input">
+                        <span>1</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="ai_images_count" value="2" class="radio-input">
+                        <span>2</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="ai_images_count" value="3" class="radio-input">
+                        <span>3</span>
+                    </label>
+                </div>
+                <p id="aiImagesCost" style="text-align: center; font-size: 0.8rem; margin-top: 0.5rem; color: #FFD700; font-weight: 600;">
+                    {{ __('Coût estimé') }}: $0.00
+                </p>
+            </div>
         </div>
         
         <!-- Mode de Jeu -->
@@ -550,18 +580,47 @@ let imageWarningShown = false;
 const imageCheckbox = document.getElementById('imageCheckbox');
 const imageWarningModal = document.getElementById('imageWarningModal');
 const automatiqueBtn = document.getElementById('automatiqueBtn');
+const aiImagesSection = document.getElementById('aiImagesSection');
+const aiImagesCost = document.getElementById('aiImagesCost');
+const aiImagesRadios = document.querySelectorAll('input[name="ai_images_count"]');
 
-if (imageCheckbox && imageWarningModal) {
+// Show/hide AI images section when Image checkbox is toggled
+if (imageCheckbox && aiImagesSection) {
     imageCheckbox.addEventListener('change', function() {
-        if (this.checked && !imageWarningShown) {
-            imageWarningModal.style.display = 'flex';
-            imageWarningShown = true;
+        if (this.checked) {
+            aiImagesSection.style.display = 'block';
+            // Show warning modal only first time
+            if (!imageWarningShown && imageWarningModal) {
+                imageWarningModal.style.display = 'flex';
+                imageWarningShown = true;
+            }
+        } else {
+            aiImagesSection.style.display = 'none';
+            // Reset to 0 when unchecked
+            document.querySelector('input[name="ai_images_count"][value="0"]').checked = true;
+            updateAiImagesCost();
         }
     });
 }
 
+// Update cost estimate when AI images count changes
+function updateAiImagesCost() {
+    const selected = document.querySelector('input[name="ai_images_count"]:checked');
+    if (selected && aiImagesCost) {
+        const count = parseInt(selected.value);
+        const cost = (count * 0.04).toFixed(2);
+        aiImagesCost.textContent = `{{ __('Coût estimé') }}: $${cost}`;
+    }
+}
+
+aiImagesRadios.forEach(radio => {
+    radio.addEventListener('change', updateAiImagesCost);
+});
+
 function closeImageModal() {
-    imageWarningModal.style.display = 'none';
+    if (imageWarningModal) {
+        imageWarningModal.style.display = 'none';
+    }
 }
 
 // Close modal on outside click

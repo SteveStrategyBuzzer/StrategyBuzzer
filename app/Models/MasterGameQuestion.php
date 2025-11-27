@@ -24,6 +24,27 @@ class MasterGameQuestion extends Model
         'correct_indexes' => 'array'
     ];
 
+    // Accesseurs pour compatibilité avec la vue
+    public function getQuestionTextAttribute()
+    {
+        return $this->text;
+    }
+    
+    public function getQuestionImageAttribute()
+    {
+        return $this->media_url;
+    }
+    
+    public function getAnswersAttribute()
+    {
+        return $this->choices ?? [];
+    }
+    
+    public function getCorrectAnswerAttribute()
+    {
+        return $this->correct_indexes[0] ?? 0;
+    }
+
     // Relations
     public function game()
     {

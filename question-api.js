@@ -1,11 +1,16 @@
 const express = require('express');
 const OpenAI = require('openai').default;
 
-// This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own OpenAI API key.
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+// This is using Replit's AI Integrations service for text generation
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+});
+
+// Separate OpenAI client for DALL-E image generation (uses direct API key)
+// DALL-E requires the standard OpenAI API, not the Replit integration
+const openaiDallE = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 const app = express();
@@ -718,6 +723,265 @@ app.post('/generate-queue', async (req, res) => {
     generated: successCount,
     failed: failureCount
   });
+});
+
+// =============================================================================
+// GÉNÉRATION D'IMAGES-MÉMOIRE POUR LE MODE MAÎTRE DU JEU
+// =============================================================================
+
+// Éléments visuels organisés par catégories pour les scénarios
+const VISUAL_ELEMENTS = {
+  nature: {
+    present: ['arbre', 'fleur', 'buisson', 'herbe', 'pierre', 'rocher', 'champignon', 'mousse', 'fougère', 'lierre'],
+    absent: ['cactus', 'palmier', 'bambou', 'baobab', 'séquoia', 'bonsaï', 'lotus', 'nénuphar', 'orchidée', 'tulipe']
+  },
+  animaux: {
+    present: ['corbeau', 'papillon', 'écureuil', 'lapin', 'oiseau', 'chat', 'chien', 'renard', 'hérisson', 'coccinelle'],
+    absent: ['pigeon', 'aigle', 'hibou', 'perroquet', 'canard', 'cygne', 'paon', 'coq', 'poule', 'moineau']
+  },
+  objets: {
+    present: ['clôture', 'banc', 'lanterne', 'pot de fleurs', 'arrosoir', 'brouette', 'échelle', 'tonneau', 'caisse', 'seau'],
+    absent: ['fontaine', 'statue', 'balançoire', 'toboggan', 'parasol', 'hamac', 'barbecue', 'table', 'chaise', 'vélo']
+  },
+  paysage: {
+    present: ['colline', 'sentier', 'prairie', 'clairière', 'bosquet', 'talus', 'fossé', 'haie', 'muret', 'portail'],
+    absent: ['montagne', 'ruisseau', 'cascade', 'lac', 'étang', 'pont', 'moulin', 'grange', 'puits', 'cabane']
+  },
+  météo: {
+    present: ['nuage', 'soleil', 'arc-en-ciel', 'brume légère'],
+    absent: ['pluie', 'neige', 'orage', 'brouillard épais', 'grêle', 'tornade']
+  }
+};
+
+// Traductions des éléments pour multi-langue
+const ELEMENT_TRANSLATIONS = {
+  // Nature
+  'arbre': { en: 'tree', es: 'árbol', it: 'albero', de: 'Baum', pt: 'árvore', ru: 'дерево', ar: 'شجرة', zh: '树', el: 'δέντρο' },
+  'fleur': { en: 'flower', es: 'flor', it: 'fiore', de: 'Blume', pt: 'flor', ru: 'цветок', ar: 'زهرة', zh: '花', el: 'λουλούδι' },
+  'buisson': { en: 'bush', es: 'arbusto', it: 'cespuglio', de: 'Busch', pt: 'arbusto', ru: 'куст', ar: 'شجيرة', zh: '灌木', el: 'θάμνος' },
+  'herbe': { en: 'grass', es: 'hierba', it: 'erba', de: 'Gras', pt: 'grama', ru: 'трава', ar: 'عشب', zh: '草', el: 'γρασίδι' },
+  'pierre': { en: 'stone', es: 'piedra', it: 'pietra', de: 'Stein', pt: 'pedra', ru: 'камень', ar: 'حجر', zh: '石头', el: 'πέτρα' },
+  'rocher': { en: 'rock', es: 'roca', it: 'roccia', de: 'Felsen', pt: 'rocha', ru: 'скала', ar: 'صخرة', zh: '岩石', el: 'βράχος' },
+  'champignon': { en: 'mushroom', es: 'hongo', it: 'fungo', de: 'Pilz', pt: 'cogumelo', ru: 'гриб', ar: 'فطر', zh: '蘑菇', el: 'μανιτάρι' },
+  'mousse': { en: 'moss', es: 'musgo', it: 'muschio', de: 'Moos', pt: 'musgo', ru: 'мох', ar: 'طحلب', zh: '苔藓', el: 'βρύο' },
+  'fougère': { en: 'fern', es: 'helecho', it: 'felce', de: 'Farn', pt: 'samambaia', ru: 'папоротник', ar: 'سرخس', zh: '蕨类', el: 'φτέρη' },
+  'cactus': { en: 'cactus', es: 'cactus', it: 'cactus', de: 'Kaktus', pt: 'cacto', ru: 'кактус', ar: 'صبار', zh: '仙人掌', el: 'κάκτος' },
+  'palmier': { en: 'palm tree', es: 'palmera', it: 'palma', de: 'Palme', pt: 'palmeira', ru: 'пальма', ar: 'نخلة', zh: '棕榈树', el: 'φοίνικας' },
+  // Animaux
+  'corbeau': { en: 'crow', es: 'cuervo', it: 'corvo', de: 'Krähe', pt: 'corvo', ru: 'ворона', ar: 'غراب', zh: '乌鸦', el: 'κοράκι' },
+  'papillon': { en: 'butterfly', es: 'mariposa', it: 'farfalla', de: 'Schmetterling', pt: 'borboleta', ru: 'бабочка', ar: 'فراشة', zh: '蝴蝶', el: 'πεταλούδα' },
+  'écureuil': { en: 'squirrel', es: 'ardilla', it: 'scoiattolo', de: 'Eichhörnchen', pt: 'esquilo', ru: 'белка', ar: 'سنجاب', zh: '松鼠', el: 'σκίουρος' },
+  'lapin': { en: 'rabbit', es: 'conejo', it: 'coniglio', de: 'Kaninchen', pt: 'coelho', ru: 'кролик', ar: 'أرنب', zh: '兔子', el: 'κουνέλι' },
+  'oiseau': { en: 'bird', es: 'pájaro', it: 'uccello', de: 'Vogel', pt: 'pássaro', ru: 'птица', ar: 'طائر', zh: '鸟', el: 'πουλί' },
+  'chat': { en: 'cat', es: 'gato', it: 'gatto', de: 'Katze', pt: 'gato', ru: 'кошка', ar: 'قطة', zh: '猫', el: 'γάτα' },
+  'chien': { en: 'dog', es: 'perro', it: 'cane', de: 'Hund', pt: 'cão', ru: 'собака', ar: 'كلب', zh: '狗', el: 'σκύλος' },
+  'pigeon': { en: 'pigeon', es: 'paloma', it: 'piccione', de: 'Taube', pt: 'pombo', ru: 'голубь', ar: 'حمامة', zh: '鸽子', el: 'περιστέρι' },
+  'aigle': { en: 'eagle', es: 'águila', it: 'aquila', de: 'Adler', pt: 'águia', ru: 'орёл', ar: 'نسر', zh: '鹰', el: 'αετός' },
+  'hibou': { en: 'owl', es: 'búho', it: 'gufo', de: 'Eule', pt: 'coruja', ru: 'сова', ar: 'بومة', zh: '猫头鹰', el: 'κουκουβάγια' },
+  'renard': { en: 'fox', es: 'zorro', it: 'volpe', de: 'Fuchs', pt: 'raposa', ru: 'лиса', ar: 'ثعلب', zh: '狐狸', el: 'αλεπού' },
+  'hérisson': { en: 'hedgehog', es: 'erizo', it: 'riccio', de: 'Igel', pt: 'ouriço', ru: 'ёж', ar: 'قنفذ', zh: '刺猬', el: 'σκαντζόχοιρος' },
+  'coccinelle': { en: 'ladybug', es: 'mariquita', it: 'coccinella', de: 'Marienkäfer', pt: 'joaninha', ru: 'божья коровка', ar: 'دعسوقة', zh: '瓢虫', el: 'πασχαλίτσα' },
+  'canard': { en: 'duck', es: 'pato', it: 'anatra', de: 'Ente', pt: 'pato', ru: 'утка', ar: 'بطة', zh: '鸭子', el: 'πάπια' },
+  // Objets
+  'clôture': { en: 'fence', es: 'cerca', it: 'recinzione', de: 'Zaun', pt: 'cerca', ru: 'забор', ar: 'سياج', zh: '栅栏', el: 'φράχτης' },
+  'banc': { en: 'bench', es: 'banco', it: 'panchina', de: 'Bank', pt: 'banco', ru: 'скамейка', ar: 'مقعد', zh: '长凳', el: 'παγκάκι' },
+  'lanterne': { en: 'lantern', es: 'farol', it: 'lanterna', de: 'Laterne', pt: 'lanterna', ru: 'фонарь', ar: 'فانوس', zh: '灯笼', el: 'φανάρι' },
+  'fontaine': { en: 'fountain', es: 'fuente', it: 'fontana', de: 'Brunnen', pt: 'fonte', ru: 'фонтан', ar: 'نافورة', zh: '喷泉', el: 'σιντριβάνι' },
+  'statue': { en: 'statue', es: 'estatua', it: 'statua', de: 'Statue', pt: 'estátua', ru: 'статуя', ar: 'تمثال', zh: '雕像', el: 'άγαλμα' },
+  // Paysage
+  'colline': { en: 'hill', es: 'colina', it: 'collina', de: 'Hügel', pt: 'colina', ru: 'холм', ar: 'تل', zh: '小山', el: 'λόφος' },
+  'sentier': { en: 'path', es: 'sendero', it: 'sentiero', de: 'Pfad', pt: 'caminho', ru: 'тропа', ar: 'مسار', zh: '小路', el: 'μονοπάτι' },
+  'montagne': { en: 'mountain', es: 'montaña', it: 'montagna', de: 'Berg', pt: 'montanha', ru: 'гора', ar: 'جبل', zh: '山', el: 'βουνό' },
+  'ruisseau': { en: 'stream', es: 'arroyo', it: 'ruscello', de: 'Bach', pt: 'riacho', ru: 'ручей', ar: 'جدول', zh: '小溪', el: 'ρυάκι' },
+  'cascade': { en: 'waterfall', es: 'cascada', it: 'cascata', de: 'Wasserfall', pt: 'cachoeira', ru: 'водопад', ar: 'شلال', zh: '瀑布', el: 'καταρράκτης' },
+  'lac': { en: 'lake', es: 'lago', it: 'lago', de: 'See', pt: 'lago', ru: 'озеро', ar: 'بحيرة', zh: '湖', el: 'λίμνη' },
+  'pont': { en: 'bridge', es: 'puente', it: 'ponte', de: 'Brücke', pt: 'ponte', ru: 'мост', ar: 'جسر', zh: '桥', el: 'γέφυρα' },
+  // Météo
+  'nuage': { en: 'cloud', es: 'nube', it: 'nuvola', de: 'Wolke', pt: 'nuvem', ru: 'облако', ar: 'سحابة', zh: '云', el: 'σύννεφο' },
+  'soleil': { en: 'sun', es: 'sol', it: 'sole', de: 'Sonne', pt: 'sol', ru: 'солнце', ar: 'شمس', zh: '太阳', el: 'ήλιος' },
+  'pluie': { en: 'rain', es: 'lluvia', it: 'pioggia', de: 'Regen', pt: 'chuva', ru: 'дождь', ar: 'مطر', zh: '雨', el: 'βροχή' },
+  'neige': { en: 'snow', es: 'nieve', it: 'neve', de: 'Schnee', pt: 'neve', ru: 'снег', ar: 'ثلج', zh: '雪', el: 'χιόνι' }
+};
+
+// Fonction pour traduire un élément
+function translateElement(element, language) {
+  if (language === 'fr') return element;
+  const translations = ELEMENT_TRANSLATIONS[element];
+  if (translations && translations[language]) {
+    return translations[language];
+  }
+  return element; // Fallback au français
+}
+
+// Fonction pour générer un scénario aléatoire
+function generateVisualScenario() {
+  const scenario = {
+    presentElements: [],
+    absentElements: [],
+    description: ''
+  };
+  
+  // Sélectionner 4-6 éléments présents (parmi différentes catégories)
+  const categories = Object.keys(VISUAL_ELEMENTS);
+  const shuffledCategories = categories.sort(() => Math.random() - 0.5);
+  
+  for (let i = 0; i < 4 && i < shuffledCategories.length; i++) {
+    const category = shuffledCategories[i];
+    const presentOptions = VISUAL_ELEMENTS[category].present;
+    const randomPresent = presentOptions[Math.floor(Math.random() * presentOptions.length)];
+    if (!scenario.presentElements.includes(randomPresent)) {
+      scenario.presentElements.push(randomPresent);
+    }
+    
+    // Ajouter un élément absent de la même catégorie
+    const absentOptions = VISUAL_ELEMENTS[category].absent;
+    const randomAbsent = absentOptions[Math.floor(Math.random() * absentOptions.length)];
+    if (!scenario.absentElements.includes(randomAbsent)) {
+      scenario.absentElements.push(randomAbsent);
+    }
+  }
+  
+  // Construire la description pour DALL-E
+  scenario.description = `A peaceful countryside scene with ${scenario.presentElements.join(', ')}. The style should be realistic and detailed, with good visibility of all elements. Natural lighting, clear day.`;
+  
+  return scenario;
+}
+
+// Endpoint pour générer une question image-mémoire
+app.post('/generate-image-question', async (req, res) => {
+  const { questionNumber = 1, language = 'fr' } = req.body;
+  
+  console.log(`\n🖼️ Génération question image-mémoire #${questionNumber} (langue: ${language})`);
+  
+  try {
+    // 1. Générer le scénario visuel
+    const scenario = generateVisualScenario();
+    console.log(`📋 Scénario: ${scenario.presentElements.join(', ')}`);
+    console.log(`❌ Éléments absents: ${scenario.absentElements.join(', ')}`);
+    
+    // 2. Générer l'image avec DALL-E (utilise le client OpenAI direct, pas l'intégration Replit)
+    console.log('🎨 Génération de l\'image avec DALL-E...');
+    
+    const imageResponse = await openaiDallE.images.generate({
+      model: "dall-e-3",
+      prompt: scenario.description,
+      n: 1,
+      size: "1024x1024",
+      quality: "standard",
+      style: "natural"
+    });
+    
+    const imageUrl = imageResponse.data[0].url;
+    console.log('✅ Image générée avec succès');
+    
+    // 3. Créer la question et les réponses
+    // Choisir un élément présent comme bonne réponse
+    const correctElement = scenario.presentElements[Math.floor(Math.random() * scenario.presentElements.length)];
+    
+    // Choisir 3 éléments absents comme mauvaises réponses
+    const shuffledAbsent = scenario.absentElements.sort(() => Math.random() - 0.5);
+    const wrongElements = shuffledAbsent.slice(0, 3);
+    
+    // Si pas assez d'éléments absents, en prendre d'autres catégories
+    while (wrongElements.length < 3) {
+      const allAbsent = Object.values(VISUAL_ELEMENTS).flatMap(cat => cat.absent);
+      const randomWrong = allAbsent[Math.floor(Math.random() * allAbsent.length)];
+      if (!wrongElements.includes(randomWrong) && randomWrong !== correctElement) {
+        wrongElements.push(randomWrong);
+      }
+    }
+    
+    // Traduire les éléments selon la langue
+    const translatedCorrect = translateElement(correctElement, language);
+    const translatedWrong = wrongElements.map(el => translateElement(el, language));
+    
+    // Mélanger les réponses (la bonne réponse à l'index 0 pour compatibilité)
+    const answers = [translatedCorrect, ...translatedWrong];
+    
+    // Texte de la question selon la langue
+    const questionTexts = {
+      'fr': 'Quel élément était visible dans l\'image ?',
+      'en': 'Which element was visible in the image?',
+      'es': '¿Qué elemento era visible en la imagen?',
+      'it': 'Quale elemento era visibile nell\'immagine?',
+      'de': 'Welches Element war im Bild sichtbar?',
+      'pt': 'Qual elemento era visível na imagem?',
+      'ru': 'Какой элемент был виден на изображении?',
+      'ar': 'ما العنصر الذي كان مرئيًا في الصورة؟',
+      'zh': '图片中可见的是什么元素？',
+      'el': 'Ποιο στοιχείο ήταν ορατό στην εικόνα;'
+    };
+    
+    const questionText = questionTexts[language] || questionTexts['fr'];
+    
+    // Retourner la question complète
+    res.json({
+      success: true,
+      type: 'image_memory',
+      image_url: imageUrl,
+      question: {
+        text: questionText,
+        type: 'image',
+        answers: answers,
+        correct_index: 0,
+        explanation: null,
+        scenario: {
+          present: scenario.presentElements,
+          absent: scenario.absentElements
+        }
+      }
+    });
+    
+    console.log(`✅ Question image-mémoire générée avec succès`);
+    
+  } catch (error) {
+    console.error('❌ Erreur génération image-mémoire:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Endpoint pour télécharger et sauvegarder une image générée
+app.post('/download-image', async (req, res) => {
+  const { imageUrl, filename } = req.body;
+  
+  if (!imageUrl || !filename) {
+    return res.status(400).json({ success: false, error: 'imageUrl and filename required' });
+  }
+  
+  try {
+    const fetch = (await import('node-fetch')).default;
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    // Télécharger l'image
+    const response = await fetch(imageUrl);
+    const buffer = await response.buffer();
+    
+    // Créer le dossier si nécessaire
+    const uploadDir = path.join(process.cwd(), 'storage', 'app', 'public', 'master_images');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    // Sauvegarder l'image
+    const filepath = path.join(uploadDir, filename);
+    fs.writeFileSync(filepath, buffer);
+    
+    res.json({
+      success: true,
+      path: `master_images/${filename}`
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur téléchargement image:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 const PORT = 3000;

@@ -7,9 +7,11 @@ use App\Models\MasterGameCode;
 use App\Models\MasterGameQuestion;
 use App\Models\MasterGamePlayer;
 use App\Services\MasterFirestoreService;
+use App\Services\ImageGenerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
 
 class MasterGameController extends Controller
@@ -48,7 +50,8 @@ class MasterGameController extends Controller
             'school_level' => 'nullable|string',
             'school_grade' => 'nullable|string',
             'school_subject' => 'nullable|string',
-            'creation_mode' => 'required|in:automatique,personnalise'
+            'creation_mode' => 'required|in:automatique,personnalise',
+            'ai_images_count' => 'nullable|integer|min:0|max:3'
         ]);
 
         // Générer un code unique
@@ -70,6 +73,7 @@ class MasterGameController extends Controller
             'school_grade' => $validated['school_grade'] ?? null,
             'school_subject' => $validated['school_subject'] ?? null,
             'creation_mode' => $validated['creation_mode'],
+            'ai_images_count' => $validated['ai_images_count'] ?? 0,
             'status' => 'draft'
         ]);
 
@@ -576,18 +580,97 @@ class MasterGameController extends Controller
     private function generateAllQuestions($game)
     {
         $totalQuestions = $game->total_questions;
+        $aiImagesCount = $game->ai_images_count ?? 0;
+        $aiImagesGenerated = 0;
+        
+        // Identifier les positions des questions image
+        $imagePositions = [];
+        for ($i = 1; $i <= $totalQuestions; $i++) {
+            $questionType = $this->getQuestionTypeForNumber($game, $i);
+            if ($questionType === 'image') {
+                $imagePositions[] = $i;
+            }
+        }
+        
+        // Mélanger les positions pour distribuer aléatoirement les images IA
+        shuffle($imagePositions);
+        $aiImagePositions = array_slice($imagePositions, 0, $aiImagesCount);
         
         // Distribution égale des types de questions avec modulo
         for ($i = 1; $i <= $totalQuestions; $i++) {
             $questionType = $this->getQuestionTypeForNumber($game, $i);
             
             if ($questionType === 'image') {
-                // Pour les questions image : créer un template vide
-                $this->createEmptyImageQuestionTemplate($game, $i);
+                // Vérifier si cette position doit avoir une image IA
+                if (in_array($i, $aiImagePositions) && $aiImagesGenerated < $aiImagesCount) {
+                    // Générer une question image-mémoire avec DALL-E
+                    $success = $this->generateAIImageQuestion($game, $i);
+                    if ($success) {
+                        $aiImagesGenerated++;
+                    } else {
+                        // Fallback : créer un template vide si la génération échoue
+                        $this->createEmptyImageQuestionTemplate($game, $i);
+                    }
+                } else {
+                    // Pour les autres questions image : créer un template vide
+                    $this->createEmptyImageQuestionTemplate($game, $i);
+                }
             } else {
                 // Pour les questions texte (MC ou True/False) : générer avec OpenAI
                 $this->generateTextQuestionWithAI($game, $i, $questionType);
             }
+        }
+    }
+    
+    // Générer une question image-mémoire avec DALL-E
+    private function generateAIImageQuestion($game, $questionNumber)
+    {
+        try {
+            $imageService = new ImageGenerationService();
+            $language = strtolower($game->languages[0] ?? 'fr');
+            
+            Log::info('Master: Génération image IA', [
+                'game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'language' => $language
+            ]);
+            
+            $result = $imageService->generateImageQuestion($questionNumber, $language);
+            
+            if (!$result) {
+                Log::warning('Master: Échec génération image IA', [
+                    'game_id' => $game->id,
+                    'question_number' => $questionNumber
+                ]);
+                return false;
+            }
+            
+            // Créer la question avec l'image générée
+            MasterGameQuestion::create([
+                'master_game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'type' => 'image',
+                'text' => $result['question_text'],
+                'choices' => $result['answers'],
+                'correct_indexes' => [$result['correct_answer']],
+                'media_url' => $result['question_image'],
+            ]);
+            
+            Log::info('Master: Image IA générée avec succès', [
+                'game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'image_path' => $result['question_image']
+            ]);
+            
+            return true;
+            
+        } catch (\Exception $e) {
+            Log::error('Master: Exception génération image IA', [
+                'game_id' => $game->id,
+                'question_number' => $questionNumber,
+                'error' => $e->getMessage()
+            ]);
+            return false;
         }
     }
     
