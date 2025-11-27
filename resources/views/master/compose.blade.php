@@ -318,18 +318,28 @@ body {
                 // Déterminer le type pour ce numéro (distribution équilibrée)
                 $questionType = getQuestionTypeForNumber($game, $i);
                 
+                // Réponses par défaut selon le type
+                $defaultAnswers = $questionType === 'true_false' 
+                    ? ['Vrai', 'Faux'] 
+                    : ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'];
+                
                 // Utiliser la question existante ou un exemple
                 if ($existingQuestion) {
-                    $displayQuestion = $existingQuestion->question_text;
-                    $displayAnswers = $existingQuestion->answers;
+                    $displayQuestion = $existingQuestion->question_text ?? 'Question';
+                    $displayAnswers = $existingQuestion->answers ?? $defaultAnswers;
                     $correctAnswer = $existingQuestion->correct_answer;
                     $displayImage = $existingQuestion->question_image;
                 } else {
                     $example = getThemeExamples($game->theme ?? $game->school_subject, $i, $questionType);
-                    $displayQuestion = $example['question'];
-                    $displayAnswers = $example['answers'];
+                    $displayQuestion = $example['question'] ?? 'Question';
+                    $displayAnswers = $example['answers'] ?? $defaultAnswers;
                     $correctAnswer = null;
                     $displayImage = null;
+                }
+                
+                // S'assurer que $displayAnswers est toujours un tableau
+                if (!is_array($displayAnswers)) {
+                    $displayAnswers = $defaultAnswers;
                 }
             @endphp
             
