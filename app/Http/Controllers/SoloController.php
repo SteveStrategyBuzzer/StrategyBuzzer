@@ -237,11 +237,13 @@ class SoloController extends Controller
             }
         }
 
+        $avatarSkillsData = $this->getAvatarSkills($avatar);
         $params = [
             'theme'           => $theme,
             'theme_icon'      => $themeIcons[$theme] ?? '❓',
             'avatar'          => $avatar,
-            'avatar_skills'   => $this->getAvatarSkills($avatar),
+            'avatar_skills'   => $this->getAvatarSkillsSimple($avatar),
+            'avatar_skills_full' => $avatarSkillsData,
             'nb_questions'    => $nbQuestions,
             'niveau_joueur'   => $niveau,
             'niveau_progression' => session('choix_niveau', 1),
@@ -344,12 +346,14 @@ class SoloController extends Controller
             $strategicAvatarPath = 'images/avatars/' . $strategicAvatarSlug . '.png';
         }
         
+        $avatarSkillsData = $this->getAvatarSkills($avatar);
         $params = [
             'theme'           => $theme,
             'theme_icon'      => $themeIcons[$theme] ?? '❓',
             'avatar'          => $avatar,
             'avatar_image'    => $strategicAvatarPath,
-            'avatar_skills'   => $this->getAvatarSkills($avatar),
+            'avatar_skills'   => $this->getAvatarSkillsSimple($avatar),
+            'avatar_skills_full' => $avatarSkillsData,
             'nb_questions'    => $nbQuestions,
             'niveau_joueur'   => $niveau,
             'niveau_progression' => session('choix_niveau', 1),
@@ -667,7 +671,8 @@ class SoloController extends Controller
             'current_round' => session('current_round', 1),
             'total_rounds' => session('total_rounds', 5),
             'avatar' => $avatar,  // Avatar stratégique pour les skills
-            'avatar_skills' => $this->getAvatarSkills($avatar),  // Skills de l'avatar
+            'avatar_skills' => $this->getAvatarSkillsSimple($avatar),  // Skills de l'avatar (descriptions)
+            'avatar_skills_full' => $this->getAvatarSkills($avatar),  // Structure complète des skills
             'used_skills' => session('used_skills', []),  // Skills déjà utilisés dans la partie
             'correct_index' => $question['correct_index'] ?? -1,  // Index de la bonne réponse pour les sons
         ];
@@ -1633,63 +1638,347 @@ class SoloController extends Controller
     private function getAvatarSkills($avatar)
     {
         $skills = [
-            'Aucun' => [],
+            'Aucun' => [
+                'rarity' => null,
+                'skills' => []
+            ],
             
-            // Rare 🎯
+            // 🔵 RARE - 1 compétence chacun
             'Mathématicien' => [
-                'Peut faire illuminer une bonne réponse si il y a un chiffre dans la réponse'
+                'rarity' => 'rare',
+                'icon' => '🧠',
+                'skills' => [
+                    [
+                        'id' => 'illuminate_number',
+                        'name' => 'Illumination chiffrée',
+                        'icon' => '🔢',
+                        'description' => 'Illumine une bonne réponse si un chiffre figure dans la réponse',
+                        'type' => 'visual',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => true
+                    ]
+                ]
             ],
             'Scientifique' => [
-                'Peut acidifier une mauvaise réponse 1 fois avant de choisir'
+                'rarity' => 'rare',
+                'icon' => '🧪',
+                'skills' => [
+                    [
+                        'id' => 'acidify_answer',
+                        'name' => 'Acidification',
+                        'icon' => '⚗️',
+                        'description' => 'Acidifie une mauvaise réponse une fois avant de choisir',
+                        'type' => 'visual',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ]
+                ]
             ],
             'Explorateur' => [
-                'La réponse s\'illumine du choix du joueur adverse ou la réponse la plus cliqué'
+                'rarity' => 'rare',
+                'icon' => '🧭',
+                'skills' => [
+                    [
+                        'id' => 'show_popular_answer',
+                        'name' => 'Réponse populaire',
+                        'icon' => '🧭',
+                        'description' => 'Fait apparaître la réponse la plus choisie par l\'adversaire ou le groupe',
+                        'type' => 'info',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ]
+                ]
             ],
             'Défenseur' => [
-                'Peut annuler une attaque de n\'importe quel Avatar'
+                'rarity' => 'rare',
+                'icon' => '🛡️',
+                'skills' => [
+                    [
+                        'id' => 'block_attack',
+                        'name' => 'Bouclier',
+                        'icon' => '🛡️',
+                        'description' => 'Annule une attaque provenant de n\'importe quel Avatar',
+                        'type' => 'defensive',
+                        'trigger' => 'passive',
+                        'uses_per_match' => 1,
+                        'auto' => true
+                    ]
+                ]
             ],
             
-            // Épique ⭐
+            // 🟣 ÉPIQUE - 2 compétences chacun
             'Comédien' => [
-                'Peut indiquer un score moins élevé jusqu\'à la fin de la partie (maître du jeu)',
-                'Capacité de tromper les joueurs sur une bonne réponse en mauvaise réponse'
+                'rarity' => 'epic',
+                'icon' => '🎭',
+                'skills' => [
+                    [
+                        'id' => 'fake_score',
+                        'name' => 'Score trompeur',
+                        'icon' => '🎯',
+                        'description' => 'Peut indiquer un score inférieur jusqu\'à la fin de la partie (mode Maître)',
+                        'type' => 'deception',
+                        'trigger' => 'match_start',
+                        'uses_per_match' => 1,
+                        'auto' => false,
+                        'master_only' => true
+                    ],
+                    [
+                        'id' => 'invert_answers',
+                        'name' => 'Inversion',
+                        'icon' => '🌀',
+                        'description' => 'Peut tromper les joueurs en inversant bonne et mauvaise réponse',
+                        'type' => 'deception',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ]
+                ]
             ],
             'Magicien' => [
-                'Peut avoir une question bonus par partie',
-                'Peut annuler une mauvaise en réponse non buzzer 1 fois par partie'
+                'rarity' => 'epic',
+                'icon' => '🧙‍♂️',
+                'skills' => [
+                    [
+                        'id' => 'bonus_question',
+                        'name' => 'Question bonus',
+                        'icon' => '✨',
+                        'description' => 'Obtient une question bonus par partie',
+                        'type' => 'bonus',
+                        'trigger' => 'result',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ],
+                    [
+                        'id' => 'cancel_error',
+                        'name' => 'Annule erreur',
+                        'icon' => '💫',
+                        'description' => 'Annule une mauvaise réponse non-Buzz une fois par partie',
+                        'type' => 'correction',
+                        'trigger' => 'result',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ]
+                ]
             ],
             'Challenger' => [
-                'Fait changer les réponses des participants d\'emplacement au 2 sec',
-                'Diminue aux autres joueurs leur compte à rebours'
+                'rarity' => 'epic',
+                'icon' => '🔥',
+                'skills' => [
+                    [
+                        'id' => 'shuffle_answers',
+                        'name' => 'Mélange',
+                        'icon' => '🔄',
+                        'description' => 'Fait changer la position des réponses toutes les 2 secondes',
+                        'type' => 'attack',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false,
+                        'affects_others' => true
+                    ],
+                    [
+                        'id' => 'reduce_timer',
+                        'name' => 'Chrono réduit',
+                        'icon' => '⏳',
+                        'description' => 'Réduit le compte à rebours des autres joueurs',
+                        'type' => 'attack',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false,
+                        'affects_others' => true
+                    ]
+                ]
             ],
             'Historien' => [
-                'Voit un indice texte avant les autres',
-                '1 fois 2 sec de plus pour répondre'
+                'rarity' => 'epic',
+                'icon' => '📚',
+                'skills' => [
+                    [
+                        'id' => 'show_hint',
+                        'name' => 'Indice historique',
+                        'icon' => '🪶',
+                        'description' => 'Voit un indice texte avant les autres',
+                        'type' => 'info',
+                        'trigger' => 'question',
+                        'uses_per_match' => 3,
+                        'auto' => false
+                    ],
+                    [
+                        'id' => 'extra_time',
+                        'name' => 'Temps bonus',
+                        'icon' => '⏰',
+                        'description' => 'Dispose d\'un bonus de +2 secondes pour répondre une fois par partie',
+                        'type' => 'time',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ]
+                ]
             ],
             
-            // Légendaire 👑
+            // 🟡 LÉGENDAIRE - 3 compétences chacun
             'IA Junior' => [
-                'Voit une suggestion IA qui illumine pour la réponse 1 fois',
-                'Peut éliminer 2 mauvaises réponses sur les 4',
-                'Peut reprendre une réponse 1 fois'
+                'rarity' => 'legendary',
+                'icon' => '🤖',
+                'skills' => [
+                    [
+                        'id' => 'ai_suggestion',
+                        'name' => 'Suggestion IA',
+                        'icon' => '💡',
+                        'description' => 'A 80% de chance que la réponse illuminée soit correcte',
+                        'type' => 'visual',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false,
+                        'success_rate' => 0.8
+                    ],
+                    [
+                        'id' => 'eliminate_two',
+                        'name' => 'Élimination',
+                        'icon' => '❌',
+                        'description' => 'Élimine 2 mauvaises réponses sur 4',
+                        'type' => 'visual',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ],
+                    [
+                        'id' => 'replay_answer',
+                        'name' => 'Rejouer',
+                        'icon' => '🔁',
+                        'description' => 'Peut rejouer une réponse une fois',
+                        'type' => 'correction',
+                        'trigger' => 'result',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ]
+                ]
             ],
             'Stratège' => [
-                'Gagne +20% de pièces d\'intelligence sur une victoire',
-                'Peut créer un team (Ajouter 1 Avatar rare) en mode solo',
-                'Réduit le coût de déblocage des Avatars stratégiques de 10%'
+                'rarity' => 'legendary',
+                'icon' => '🏆',
+                'skills' => [
+                    [
+                        'id' => 'coin_bonus',
+                        'name' => 'Bonus pièces',
+                        'icon' => '🧠',
+                        'description' => 'Gagne +20% de pièces d\'intelligence sur une victoire',
+                        'type' => 'passive',
+                        'trigger' => 'victory',
+                        'uses_per_match' => -1,
+                        'auto' => true
+                    ],
+                    [
+                        'id' => 'team_mode',
+                        'name' => 'Mode équipe',
+                        'icon' => '🤝',
+                        'description' => 'Peut créer un team (ajouter 1 Avatar rare) en mode solo',
+                        'type' => 'team',
+                        'trigger' => 'match_start',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ],
+                    [
+                        'id' => 'unlock_discount',
+                        'name' => 'Réduction déblocage',
+                        'icon' => '💰',
+                        'description' => 'Réduit de 10% le coût de déblocage des Avatars stratégiques',
+                        'type' => 'passive',
+                        'trigger' => 'permanent',
+                        'uses_per_match' => -1,
+                        'auto' => true
+                    ]
+                ]
             ],
             'Sprinteur' => [
-                'Peut reculer son temps de buzzer jusqu\'à 0.5s du plus rapide',
-                'Peut utiliser 3 secondes de réflexion de plus 1 fois',
-                'Après chaque niveau se réactivent automatiquement'
+                'rarity' => 'legendary',
+                'icon' => '⚡',
+                'skills' => [
+                    [
+                        'id' => 'buzz_rewind',
+                        'name' => 'Recul buzz',
+                        'icon' => '⏱️',
+                        'description' => 'Reculer son temps de Buzz jusqu\'à 0,5s du plus rapide',
+                        'type' => 'time',
+                        'trigger' => 'result',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ],
+                    [
+                        'id' => 'extra_reflection',
+                        'name' => 'Réflexion bonus',
+                        'icon' => '🕒',
+                        'description' => 'Bénéficie de 3s supplémentaires de réflexion une fois par partie',
+                        'type' => 'time',
+                        'trigger' => 'question',
+                        'uses_per_match' => 1,
+                        'auto' => false
+                    ],
+                    [
+                        'id' => 'auto_reset',
+                        'name' => 'Auto-réactivation',
+                        'icon' => '🔋',
+                        'description' => 'Ses compétences se réactivent automatiquement après chaque niveau',
+                        'type' => 'passive',
+                        'trigger' => 'level_complete',
+                        'uses_per_match' => -1,
+                        'auto' => true
+                    ]
+                ]
             ],
             'Visionnaire' => [
-                'Peut voir 5 questions "future" (prochaine question révélée en avance 5 fois)',
-                'Peut contrer l\'attaque du Challenger',
-                'Si 2 points dans une manche, seule la bonne réponse est sélectionnable'
+                'rarity' => 'legendary',
+                'icon' => '🌟',
+                'skills' => [
+                    [
+                        'id' => 'preview_questions',
+                        'name' => 'Vision future',
+                        'icon' => '👁️',
+                        'description' => 'Voit 5 questions futures en avant-première',
+                        'type' => 'info',
+                        'trigger' => 'question',
+                        'uses_per_match' => 5,
+                        'auto' => false
+                    ],
+                    [
+                        'id' => 'counter_challenger',
+                        'name' => 'Contre-attaque',
+                        'icon' => '🏰',
+                        'description' => 'Contre l\'attaque du Challenger',
+                        'type' => 'defensive',
+                        'trigger' => 'passive',
+                        'uses_per_match' => -1,
+                        'auto' => true
+                    ],
+                    [
+                        'id' => 'lock_correct',
+                        'name' => 'Verrouillage',
+                        'icon' => '🎯',
+                        'description' => 'Si le joueur est sur 2 points, seule la bonne réponse devient cliquable',
+                        'type' => 'visual',
+                        'trigger' => 'question',
+                        'uses_per_match' => -1,
+                        'auto' => true,
+                        'condition' => 'player_at_2_points'
+                    ]
+                ]
             ],
         ];
-        return $skills[$avatar] ?? [];
+        
+        return $skills[$avatar] ?? ['rarity' => null, 'skills' => []];
+    }
+    
+    private function getAvatarSkillsSimple($avatar)
+    {
+        $fullData = $this->getAvatarSkills($avatar);
+        if (empty($fullData['skills'])) {
+            return [];
+        }
+        return array_map(function($skill) {
+            return $skill['description'];
+        }, $fullData['skills']);
     }
 
     public function getBossForLevel($niveau)
