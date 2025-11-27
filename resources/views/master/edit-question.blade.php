@@ -209,10 +209,10 @@ body {
     <!-- Toggle Mode Texte/Image (uniquement en mode personnalisé) -->
     <div class="mode-toggle">
         <button type="button" class="mode-btn active" id="modeTextBtn" onclick="switchMode('text')">
-            📝 Texte
+            📝 {{ __('Texte') }}
         </button>
         <button type="button" class="mode-btn" id="modeImageBtn" onclick="switchMode('image')">
-            🖼️ Image
+            🖼️ {{ __('Image') }}
         </button>
     </div>
     @endif
@@ -248,10 +248,10 @@ body {
             <!-- Sous-toggle pour Vrai/Faux ou Choix Multiples -->
             <div style="display: flex; gap: 0.5rem; margin-top: 0.8rem; font-size: 0.9rem;">
                 <button type="button" class="mode-btn" id="trueFalseBtn" onclick="setTextQuestionType('true_false')" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                    Vrai/Faux
+                    {{ __('Vrai/Faux') }}
                 </button>
                 <button type="button" class="mode-btn active" id="multipleChoiceBtn" onclick="setTextQuestionType('multiple_choice')" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                    Choix Multiples
+                    {{ __('Choix Multiples') }}
                 </button>
             </div>
             @endif

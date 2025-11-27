@@ -307,19 +307,19 @@ body {
             </div>
             
             <div class="form-group" style="margin-top: 1rem;">
-                <label class="form-label" style="text-align: center;">Types</label>
+                <label class="form-label" style="text-align: center;">{{ __('Types') }}</label>
                 <div class="checkbox-group" style="justify-content: center;">
                     <label class="checkbox-label">
                         <input type="checkbox" name="question_types[]" value="true_false" class="checkbox-input type-checkbox">
-                        <span>Vrai/Faux</span>
+                        <span>{{ __('Vrai/Faux') }}</span>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" name="question_types[]" value="multiple_choice" class="checkbox-input type-checkbox" checked>
-                        <span>QCM</span>
+                        <span>{{ __('QCM') }}</span>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" name="question_types[]" value="image" class="checkbox-input type-checkbox" id="imageCheckbox">
-                        <span>Image</span>
+                        <span>{{ __('Image') }}</span>
                     </label>
                 </div>
             </div>
