@@ -2,46 +2,47 @@
 
 @section('content')
 @php
-// Mapping des skills pour chaque avatar stratégique
-$avatarSkills = [
-    'Mathématicien' => [['icon' => '🔢', 'name' => 'Calcul Rapide']],
-    'Scientifique' => [['icon' => '⚗️', 'name' => 'Analyse']],
-    'Explorateur' => [['icon' => '🧭', 'name' => 'Navigation']],
-    'Défenseur' => [['icon' => '🛡️', 'name' => 'Protection']],
-    'Comédienne' => [['icon' => '🎯', 'name' => 'Précision'], ['icon' => '🌀', 'name' => 'Confusion']],
-    'Magicienne' => [['icon' => '✨', 'name' => 'Magie'], ['icon' => '💫', 'name' => 'Étoile']],
-    'Challenger' => [['icon' => '🔄', 'name' => 'Rotation'], ['icon' => '⏳', 'name' => 'Temps']],
-    'Historien' => [['icon' => '🪶', 'name' => 'Histoire'], ['icon' => '⏰', 'name' => 'Chrono']],
-    'IA Junior' => [['icon' => '💡', 'name' => 'Idée'], ['icon' => '❌', 'name' => 'Annulation'], ['icon' => '🔁', 'name' => 'Répétition']],
-    'Stratège' => [['icon' => '🧠', 'name' => 'Intelligence'], ['icon' => '🤝', 'name' => 'Alliance'], ['icon' => '💰', 'name' => 'Richesse']],
-    'Sprinteur' => [['icon' => '⏱️', 'name' => 'Sprint'], ['icon' => '🕒', 'name' => 'Heure'], ['icon' => '🔋', 'name' => 'Énergie']],
-    'Visionnaire' => [['icon' => '👁️', 'name' => 'Vision'], ['icon' => '🏰', 'name' => 'Château'], ['icon' => '🎯', 'name' => 'Cible']],
-];
+// Récupérer la structure complète des skills depuis le contrôleur
+$avatarSkillsFull = $params['avatar_skills_full'] ?? ['rarity' => null, 'skills' => []];
+$currentAvatar = $params['avatar'] ?? 'Aucun';
+
+// Récupérer les skills utilisés
+$usedSkills = session('used_skills', []);
+
+// Construire le tableau des skills pour l'affichage
+$skills = [];
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skillData) {
+        $skillId = $skillData['id'];
+        $isUsed = in_array($skillId, $usedSkills);
+        
+        // Compter les utilisations pour les skills multi-usage
+        $usesCount = 0;
+        foreach ($usedSkills as $used) {
+            if (strpos($used, $skillId) === 0) {
+                $usesCount++;
+            }
+        }
+        $maxUses = $skillData['uses_per_match'] ?? 1;
+        $isFullyUsed = ($maxUses > 0 && $usesCount >= $maxUses);
+        
+        $skills[] = [
+            'id' => $skillId,
+            'icon' => $isFullyUsed ? '⚪' : $skillData['icon'],
+            'name' => $skillData['name'],
+            'description' => $skillData['description'],
+            'type' => $skillData['type'],
+            'trigger' => $skillData['trigger'],
+            'auto' => $skillData['auto'] ?? false,
+            'used' => $isFullyUsed,
+            'uses_left' => $maxUses > 0 ? max(0, $maxUses - $usesCount) : -1,
+        ];
+    }
+}
 
 // Prénoms pour le joueur
 $playerNames = ['Hugo', 'Léa', 'Lucas', 'Emma', 'Nathan', 'Chloé', 'Louis', 'Jade', 'Arthur', 'Inès', 'Raphaël', 'Camille', 'Gabriel', 'Zoé', 'Thomas', 'Alice'];
 $playerName = $playerNames[array_rand($playerNames)];
-
-// Info avatar stratégique du joueur
-$currentAvatar = $params['avatar'] ?? 'Aucun';
-$skills = $currentAvatar !== 'Aucun' ? ($avatarSkills[$currentAvatar] ?? []) : [];
-
-// Récupérer les skills utilisés pour griser les emojis
-$usedSkills = session('used_skills', []);
-$cancelErrorUsed = in_array('cancel_error', $usedSkills);
-$bonusQuestionUsed = in_array('bonus_question', $usedSkills);
-
-// Pour la Magicienne, remplacer les icônes par des versions grisées si utilisés
-if ($currentAvatar === 'Magicienne' && !empty($skills)) {
-    if ($cancelErrorUsed && isset($skills[0])) {
-        $skills[0]['icon'] = '⚪'; // ✨ devient grisé
-        $skills[0]['used'] = true;
-    }
-    if ($bonusQuestionUsed && isset($skills[1])) {
-        $skills[1]['icon'] = '⚪'; // 💫 devient grisé
-        $skills[1]['used'] = true;
-    }
-}
 
 // Avatar du joueur
 $selectedAvatar = session('selected_avatar', 'default');
@@ -705,16 +706,36 @@ if ($opponentInfo['is_boss'] ?? false) {
                 @for($i = 0; $i < 3; $i++)
                     @if(isset($skills[$i]))
                         @php
-                            // Désactiver le bouton Question Bonus (index 1 pour Magicienne) jusqu'à la question 10
-                            $isBonusSkill = ($currentAvatar === 'Magicienne' && $i === 1);
-                            $isDisabled = ($isBonusSkill && $params['current_question'] < 10);
+                            $skill = $skills[$i];
+                            $skillId = $skill['id'];
+                            $skillTrigger = $skill['trigger'];
+                            $isAuto = $skill['auto'];
+                            $isUsed = $skill['used'];
+                            
+                            // Skills qui s'activent sur la page question
+                            $isQuestionSkill = in_array($skillTrigger, ['question']);
+                            
+                            // Désactiver si déjà utilisé ou si c'est un skill passif/auto
+                            $isDisabled = $isUsed || $isAuto;
+                            
+                            // Cas spécial: bonus_question disponible seulement après Q10
+                            if ($skillId === 'bonus_question' && $params['current_question'] < 10) {
+                                $isDisabled = true;
+                            }
+                            
                             $disabledClass = $isDisabled ? 'disabled' : '';
+                            $usedClass = $isUsed ? 'used' : '';
                         @endphp
-                        <div class="skill-circle active {{ $disabledClass }}" 
+                        <div class="skill-circle active {{ $disabledClass }} {{ $usedClass }}" 
+                             data-skill-id="{{ $skillId }}"
                              data-skill-index="{{ $i }}" 
-                             data-is-bonus="{{ $isBonusSkill ? 'true' : 'false' }}"
-                             data-disabled-until="10">
-                            {{ $skills[$i]['icon'] }}
+                             data-skill-type="{{ $skill['type'] }}"
+                             data-skill-trigger="{{ $skillTrigger }}"
+                             data-skill-auto="{{ $isAuto ? 'true' : 'false' }}"
+                             data-skill-used="{{ $isUsed ? 'true' : 'false' }}"
+                             data-uses-left="{{ $skill['uses_left'] }}"
+                             title="{{ $skill['name'] }}: {{ $skill['description'] }}">
+                            {{ $skill['icon'] }}
                         </div>
                     @else
                         <div class="skill-circle empty"></div>
@@ -916,36 +937,201 @@ document.addEventListener('DOMContentLoaded', function() {
     // Gestion des skills (click sur les cercles actifs)
     document.querySelectorAll('.skill-circle.active').forEach(skill => {
         skill.addEventListener('click', function() {
-            const skillIndex = this.getAttribute('data-skill-index');
-            activateSkill(skillIndex);
+            const skillId = this.getAttribute('data-skill-id');
+            const skillTrigger = this.getAttribute('data-skill-trigger');
+            activateSkill(skillId, skillTrigger, this);
         });
     });
     
-    function activateSkill(skillIndex) {
-        const skillElement = document.querySelector(`.skill-circle[data-skill-index="${skillIndex}"]`);
-        
-        if (!skillElement) {
-            console.log('Skill element not found');
+    function activateSkill(skillId, skillTrigger, skillElement) {
+        if (!skillElement || !skillId) {
+            console.log('Skill element or ID not found');
             return;
         }
         
-        // Vérifier si le skill est désactivé
-        if (skillElement.classList.contains('disabled')) {
-            const disabledUntil = skillElement.getAttribute('data-disabled-until');
-            alert(`✨ Ce skill est utilisable après la question ${disabledUntil}`);
+        // Vérifier si le skill est désactivé ou déjà utilisé
+        if (skillElement.classList.contains('disabled') || skillElement.classList.contains('used')) {
+            const usesLeft = skillElement.getAttribute('data-uses-left');
+            if (usesLeft === '0') {
+                showSkillMessage('⚪ Skill déjà utilisé', 'error');
+            }
             return;
         }
         
-        // Vérifier si c'est la question bonus
-        const isBonus = skillElement.getAttribute('data-is-bonus') === 'true';
-        
-        if (isBonus) {
-            // Rediriger vers la route de question bonus
+        // Skills qui redirigent vers une autre page
+        if (skillId === 'bonus_question') {
             window.location.href = '{{ route('solo.bonus-question') }}';
-        } else {
-            // TODO: Implémenter les autres skills (Annule erreur, etc.)
-            console.log('Skill activé:', skillIndex);
+            return;
         }
+        
+        // Appeler l'API pour activer le skill
+        fetch('{{ route('solo.use-skill') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ skill_id: skillId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                handleSkillEffect(data.result, skillElement);
+                // Griser le skill
+                skillElement.classList.add('used', 'disabled');
+                skillElement.textContent = '⚪';
+            } else {
+                showSkillMessage(data.error || 'Erreur', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Skill error:', error);
+            showSkillMessage('Erreur de connexion', 'error');
+        });
+    }
+    
+    function handleSkillEffect(result, skillElement) {
+        const answers = document.querySelectorAll('.answer-option, .answer-btn');
+        
+        switch(result.effect) {
+            case 'highlight':
+                // Mathématicien: Illuminer la bonne réponse
+                if (result.illuminate_index >= 0 && answers[result.illuminate_index]) {
+                    answers[result.illuminate_index].classList.add('skill-highlight');
+                    answers[result.illuminate_index].style.boxShadow = '0 0 20px #FFD700, 0 0 40px #FFD700';
+                    showSkillMessage('🔢 Réponse avec chiffre illuminée!', 'success');
+                } else {
+                    showSkillMessage('🔢 Aucun chiffre dans la bonne réponse', 'warning');
+                }
+                break;
+                
+            case 'acidify':
+                // Scientifique: Acidifier une mauvaise réponse
+                if (result.acidify_index >= 0 && answers[result.acidify_index]) {
+                    answers[result.acidify_index].classList.add('skill-acidified');
+                    answers[result.acidify_index].style.background = 'linear-gradient(135deg, #8B0000, #FF4500)';
+                    answers[result.acidify_index].style.opacity = '0.7';
+                    showSkillMessage('⚗️ Mauvaise réponse acidifiée!', 'success');
+                }
+                break;
+                
+            case 'popular':
+                // Explorateur: Montrer la réponse populaire
+                if (result.popular_index >= 0 && answers[result.popular_index]) {
+                    answers[result.popular_index].classList.add('skill-popular');
+                    answers[result.popular_index].style.border = '3px solid #00CED1';
+                    showSkillMessage('🧭 Réponse la plus choisie par l\'adversaire', 'info');
+                }
+                break;
+                
+            case 'hint':
+                // Historien: Afficher l'indice
+                showSkillMessage('🪶 ' + result.hint, 'info', 5000);
+                break;
+                
+            case 'time_bonus':
+                // Ajouter du temps au chrono
+                const extraSeconds = result.extra_seconds || 2;
+                timeLeft += extraSeconds;
+                document.getElementById('chronoTimer').textContent = timeLeft;
+                showSkillMessage('⏰ +' + extraSeconds + ' secondes!', 'success');
+                break;
+                
+            case 'ai_suggest':
+                // IA Junior: Suggestion (80% correct)
+                if (result.suggestion_index >= 0 && answers[result.suggestion_index]) {
+                    answers[result.suggestion_index].classList.add('skill-ai-suggest');
+                    answers[result.suggestion_index].style.boxShadow = '0 0 25px #00FF00, 0 0 50px #00FF00';
+                    showSkillMessage('💡 Suggestion IA (80% fiable)', 'info');
+                }
+                break;
+                
+            case 'eliminate':
+                // IA Junior: Éliminer 2 réponses
+                if (result.eliminated_indices && result.eliminated_indices.length > 0) {
+                    result.eliminated_indices.forEach(idx => {
+                        if (answers[idx]) {
+                            answers[idx].classList.add('skill-eliminated');
+                            answers[idx].style.opacity = '0.3';
+                            answers[idx].style.pointerEvents = 'none';
+                            answers[idx].style.textDecoration = 'line-through';
+                        }
+                    });
+                    showSkillMessage('❌ 2 mauvaises réponses éliminées!', 'success');
+                }
+                break;
+                
+            case 'preview':
+                // Visionnaire: Afficher les questions futures
+                if (result.preview && result.preview.length > 0) {
+                    let previewHtml = '<div class="skill-preview-modal">';
+                    previewHtml += '<h3>👁️ Questions à venir</h3>';
+                    result.preview.forEach((q, i) => {
+                        previewHtml += '<div class="preview-item">' + (i+1) + '. ' + q.text.substring(0, 80) + '...</div>';
+                    });
+                    previewHtml += '</div>';
+                    showSkillModal(previewHtml);
+                }
+                break;
+                
+            case 'lock_correct':
+                // Visionnaire: Verrouiller sur la bonne réponse
+                if (result.lock_index >= 0) {
+                    answers.forEach((ans, idx) => {
+                        if (idx !== result.lock_index) {
+                            ans.style.opacity = '0.3';
+                            ans.style.pointerEvents = 'none';
+                        } else {
+                            ans.style.boxShadow = '0 0 30px #00FF00';
+                        }
+                    });
+                    showSkillMessage('🎯 Seule la bonne réponse est cliquable!', 'success');
+                } else {
+                    showSkillMessage('🎯 ' + result.message, 'warning');
+                }
+                break;
+                
+            case 'shield_ready':
+                showSkillMessage('🛡️ Bouclier activé!', 'success');
+                break;
+                
+            default:
+                console.log('Unknown skill effect:', result.effect);
+        }
+    }
+    
+    function showSkillMessage(message, type, duration = 3000) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'skill-message skill-message-' + type;
+        msgDiv.innerHTML = message;
+        msgDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 15px 30px; border-radius: 10px; font-weight: bold; z-index: 9999; animation: fadeInOut ' + (duration/1000) + 's ease-in-out;';
+        
+        if (type === 'success') {
+            msgDiv.style.background = 'linear-gradient(135deg, #2ECC71, #27AE60)';
+        } else if (type === 'error') {
+            msgDiv.style.background = 'linear-gradient(135deg, #E74C3C, #C0392B)';
+        } else if (type === 'warning') {
+            msgDiv.style.background = 'linear-gradient(135deg, #F39C12, #E67E22)';
+        } else {
+            msgDiv.style.background = 'linear-gradient(135deg, #3498DB, #2980B9)';
+        }
+        msgDiv.style.color = 'white';
+        
+        document.body.appendChild(msgDiv);
+        setTimeout(() => msgDiv.remove(), duration);
+    }
+    
+    function showSkillModal(html) {
+        const modal = document.createElement('div');
+        modal.className = 'skill-modal-overlay';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+        
+        const content = document.createElement('div');
+        content.style.cssText = 'background: #1a1a2e; padding: 30px; border-radius: 20px; max-width: 500px; color: white;';
+        content.innerHTML = html + '<button onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px; padding: 10px 30px; border: none; border-radius: 10px; background: #4ECDC4; color: white; cursor: pointer;">Fermer</button>';
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
     }
 });
 </script>

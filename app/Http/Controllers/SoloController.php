@@ -609,16 +609,278 @@ class SoloController extends Controller
     
     public function useSkill(Request $request)
     {
-        $skillName = $request->input('skill_name');
+        $skillId = $request->input('skill_id');
+        $avatar = session('avatar', 'Aucun');
+        $avatarSkills = $this->getAvatarSkills($avatar);
         
-        // Ajouter le skill à la liste des skills utilisés (persistant pour toute la partie)
-        $usedSkills = session('used_skills', []);
-        if (!in_array($skillName, $usedSkills)) {
-            $usedSkills[] = $skillName;
-            session(['used_skills' => $usedSkills]);
+        // Vérifier que le skill existe pour cet avatar
+        $skillData = null;
+        foreach ($avatarSkills['skills'] ?? [] as $skill) {
+            if ($skill['id'] === $skillId) {
+                $skillData = $skill;
+                break;
+            }
         }
         
-        return response()->json(['success' => true, 'used_skills' => $usedSkills]);
+        if (!$skillData) {
+            return response()->json(['success' => false, 'error' => 'Skill non trouvé']);
+        }
+        
+        // Vérifier si le skill est déjà utilisé (pour les skills à usage unique)
+        $usedSkills = session('used_skills', []);
+        $maxUses = $skillData['uses_per_match'] ?? 1;
+        
+        if ($maxUses > 0) {
+            $usesCount = count(array_filter($usedSkills, fn($s) => strpos($s, $skillId) === 0));
+            if ($usesCount >= $maxUses) {
+                return response()->json(['success' => false, 'error' => 'Skill déjà utilisé']);
+            }
+        }
+        
+        // Traiter le skill selon son type
+        $result = $this->processSkillActivation($skillId, $skillData);
+        
+        // Marquer le skill comme utilisé
+        $usedSkills[] = $skillId;
+        session(['used_skills' => $usedSkills]);
+        
+        return response()->json([
+            'success' => true, 
+            'skill_id' => $skillId,
+            'result' => $result,
+            'used_skills' => $usedSkills
+        ]);
+    }
+    
+    private function processSkillActivation($skillId, $skillData)
+    {
+        $question = session('current_question');
+        $result = ['type' => $skillData['type']];
+        
+        // Vérifier que la question existe et a les données nécessaires
+        if (!$question || !isset($question['answers']) || !is_array($question['answers'])) {
+            \Log::warning('[SKILL] No valid question in session for skill activation', ['skill_id' => $skillId]);
+            $result['effect'] = 'no_question';
+            $result['message'] = 'Question non disponible';
+            return $result;
+        }
+        
+        // Récupérer l'index correct de manière sécurisée
+        $correctIndex = $question['correct_index'] ?? 0;
+        $answerCount = count($question['answers']);
+        
+        // Sécurité: s'assurer que correct_index est valide
+        if ($correctIndex < 0 || $correctIndex >= $answerCount) {
+            \Log::warning('[SKILL] Invalid correct_index', [
+                'skill_id' => $skillId,
+                'correct_index' => $correctIndex,
+                'answer_count' => $answerCount
+            ]);
+            $correctIndex = 0;
+        }
+        
+        switch ($skillId) {
+            // 🔵 RARE SKILLS
+            case 'illuminate_number':
+                // Mathématicien: Illumine la bonne réponse si elle contient un chiffre
+                $correctAnswer = $question['answers'][$correctIndex] ?? '';
+                $hasNumber = preg_match('/\d/', $correctAnswer);
+                
+                if ($hasNumber) {
+                    $result['illuminate_index'] = $correctIndex;
+                    $result['effect'] = 'highlight';
+                } else {
+                    $result['illuminate_index'] = -1;
+                    $result['effect'] = 'no_number';
+                    $result['message'] = 'Aucun chiffre dans la bonne réponse';
+                }
+                break;
+                
+            case 'acidify_answer':
+                // Scientifique: Marque une mauvaise réponse en rouge
+                $wrongIndices = [];
+                for ($i = 0; $i < $answerCount; $i++) {
+                    if ($i !== $correctIndex) {
+                        $wrongIndices[] = $i;
+                    }
+                }
+                // Choisir une mauvaise réponse aléatoire à acidifier
+                if (!empty($wrongIndices)) {
+                    $acidifiedIndex = $wrongIndices[array_rand($wrongIndices)];
+                    $result['acidify_index'] = $acidifiedIndex;
+                    $result['effect'] = 'acidify';
+                }
+                break;
+                
+            case 'show_popular_answer':
+                // Explorateur: Montre la réponse la plus choisie par l'adversaire
+                // En mode Solo, on simule avec la bonne réponse 60% du temps
+                $showCorrect = (rand(1, 100) <= 60);
+                
+                if ($showCorrect) {
+                    $result['popular_index'] = $correctIndex;
+                } else {
+                    // Choisir une mauvaise réponse
+                    $wrongIndices = [];
+                    for ($i = 0; $i < $answerCount; $i++) {
+                        if ($i !== $correctIndex) {
+                            $wrongIndices[] = $i;
+                        }
+                    }
+                    $result['popular_index'] = !empty($wrongIndices) ? $wrongIndices[array_rand($wrongIndices)] : 0;
+                }
+                $result['effect'] = 'popular';
+                break;
+                
+            case 'block_attack':
+                // Défenseur: Passif - bloque automatiquement
+                $result['effect'] = 'shield_ready';
+                session(['shield_active' => true]);
+                break;
+                
+            // 🟣 ÉPIQUE SKILLS
+            case 'show_hint':
+                // Historien: Affiche un indice textuel
+                $hint = $this->generateQuestionHint($question, $correctIndex);
+                $result['hint'] = $hint;
+                $result['effect'] = 'hint';
+                break;
+                
+            case 'extra_time':
+                // Historien: +2 secondes de temps
+                $result['extra_seconds'] = 2;
+                $result['effect'] = 'time_bonus';
+                break;
+                
+            case 'invert_answers':
+                // Comédien: Inverse visuellement une bonne et mauvaise réponse (trompeur pour adversaire)
+                $wrongIndices = [];
+                for ($i = 0; $i < $answerCount; $i++) {
+                    if ($i !== $correctIndex) {
+                        $wrongIndices[] = $i;
+                    }
+                }
+                $result['invert_correct'] = $correctIndex;
+                $result['invert_wrong'] = !empty($wrongIndices) ? $wrongIndices[array_rand($wrongIndices)] : 0;
+                $result['effect'] = 'invert';
+                break;
+                
+            case 'shuffle_answers':
+                // Challenger: Les réponses changent de position
+                $result['effect'] = 'shuffle';
+                $result['interval'] = 2000; // 2 secondes
+                break;
+                
+            case 'reduce_timer':
+                // Challenger: Réduit le chrono des adversaires
+                $result['effect'] = 'reduce_timer';
+                $result['reduction'] = 2; // -2 secondes pour les adversaires
+                break;
+                
+            // 🟡 LÉGENDAIRE SKILLS
+            case 'ai_suggestion':
+                // IA Junior: 80% de chance d'illuminer la bonne réponse
+                $isCorrect = (rand(1, 100) <= 80);
+                
+                if ($isCorrect) {
+                    $result['suggestion_index'] = $correctIndex;
+                } else {
+                    // 20% de chance d'illuminer une mauvaise réponse
+                    $wrongIndices = [];
+                    for ($i = 0; $i < $answerCount; $i++) {
+                        if ($i !== $correctIndex) {
+                            $wrongIndices[] = $i;
+                        }
+                    }
+                    $result['suggestion_index'] = !empty($wrongIndices) ? $wrongIndices[array_rand($wrongIndices)] : 0;
+                }
+                $result['effect'] = 'ai_suggest';
+                break;
+                
+            case 'eliminate_two':
+                // IA Junior: Élimine 2 mauvaises réponses
+                $wrongIndices = [];
+                for ($i = 0; $i < $answerCount; $i++) {
+                    if ($i !== $correctIndex) {
+                        $wrongIndices[] = $i;
+                    }
+                }
+                shuffle($wrongIndices);
+                $result['eliminated_indices'] = array_slice($wrongIndices, 0, min(2, count($wrongIndices)));
+                $result['effect'] = 'eliminate';
+                break;
+                
+            case 'extra_reflection':
+                // Sprinteur: +3 secondes de réflexion
+                $result['extra_seconds'] = 3;
+                $result['effect'] = 'time_bonus';
+                break;
+                
+            case 'preview_questions':
+                // Visionnaire: Voir les 5 prochaines questions (depuis le stock progressif)
+                $currentRound = session('current_round', 1);
+                $stockKey = "progressive_question_stock_round_{$currentRound}";
+                $questionStock = session($stockKey, []);
+                $currentQuestionNumber = session('current_question_number', 1);
+                
+                // Extraire les questions suivantes du stock
+                $previewQuestions = array_slice($questionStock, $currentQuestionNumber, 5);
+                
+                $result['preview'] = array_map(function($q) {
+                    return [
+                        'text' => $q['text'] ?? $q['question_text'] ?? '',
+                        'theme' => $q['theme'] ?? ''
+                    ];
+                }, $previewQuestions);
+                $result['effect'] = 'preview';
+                break;
+                
+            case 'lock_correct':
+                // Visionnaire: Si 2 points d'avance, seule la bonne réponse est cliquable
+                $playerScore = session('score', 0);
+                $opponentScore = session('opponent_score', 0);
+                $result['effect'] = 'lock_correct';
+                
+                // Vérifie si le joueur a 2 points D'AVANCE (pas juste 2 points)
+                if (($playerScore - $opponentScore) >= 2) {
+                    $result['lock_index'] = $correctIndex;
+                } else {
+                    $result['lock_index'] = -1;
+                    $result['message'] = 'Nécessite 2 points d\'avance';
+                }
+                break;
+                
+            default:
+                $result['effect'] = 'unknown';
+        }
+        
+        return $result;
+    }
+    
+    private function generateQuestionHint($question, $correctIndex = null)
+    {
+        // Générer un indice basé sur la question
+        if ($correctIndex === null) {
+            $correctIndex = $question['correct_index'] ?? 0;
+        }
+        $correctAnswer = $question['answers'][$correctIndex] ?? '';
+        
+        // Créer un indice simple (première lettre, longueur, etc.)
+        $hints = [];
+        
+        if (strlen($correctAnswer) > 0) {
+            $hints[] = "La réponse commence par \"" . mb_substr($correctAnswer, 0, 1) . "\"";
+        }
+        
+        $wordCount = str_word_count($correctAnswer);
+        if ($wordCount > 1) {
+            $hints[] = "La réponse contient {$wordCount} mots";
+        }
+        
+        $length = mb_strlen($correctAnswer);
+        $hints[] = "La réponse contient {$length} caractères";
+        
+        return $hints[array_rand($hints)];
     }
     
     private function renderAnswerView($playerBuzzed, $buzzTime = null)
