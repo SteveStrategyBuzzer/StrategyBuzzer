@@ -288,10 +288,10 @@ body {
 }
 </style>
 
-<a href="{{ route('master.create') }}" class="header-back">Retour</a>
+<a href="{{ route('master.create') }}" class="header-back">{{ __('Retour') }}</a>
 
 <div class="compose-container">
-    <h1 class="compose-title">{{ ucfirst($game->creation_mode) }}</h1>
+    <h1 class="compose-title">{{ __('Mode ' . ucfirst($game->creation_mode)) }}</h1>
     
     @if($game->creation_mode === 'automatique')
         <!-- Mode Automatique : Questions pré-générées -->
@@ -320,7 +320,7 @@ body {
             
             <div class="question-bubble">
                 <div class="bubble-number">{{ $i }}</div>
-                <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">Créer</a>
+                <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Créer') }}</a>
                 
                 <div class="bubble-content">
                     @if($questionType === 'image')
@@ -329,7 +329,7 @@ body {
                                 <img src="{{ asset('storage/' . $displayImage) }}" alt="Question Image">
                             @else
                                 <div class="image-placeholder">🖼️</div>
-                                <div class="image-label">Question image</div>
+                                <div class="image-label">{{ __('Question image') }}</div>
                             @endif
                         </div>
                         @foreach($displayAnswers as $index => $answer)
@@ -351,7 +351,7 @@ body {
         @endfor
         
         <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
-            Valider
+            {{ __('Valider') }}
         </button>
         
     @else
@@ -364,7 +364,7 @@ body {
             
             <div class="question-bubble">
                 <div class="bubble-number">{{ $i }}</div>
-                <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">Créer</a>
+                <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Créer') }}</a>
                 
                 <div class="bubble-content">
                     @if($existingQuestion)
@@ -387,18 +387,18 @@ body {
                         @endforeach
                     @else
                         <!-- Bulle vide -->
-                        <div class="question-text" style="opacity: 0.4;">Question</div>
-                        <div class="answer-item" style="opacity: 0.4;">1. Réponse</div>
-                        <div class="answer-item" style="opacity: 0.4;">2. Réponse</div>
-                        <div class="answer-item" style="opacity: 0.4;">3. Réponse</div>
-                        <div class="answer-item" style="opacity: 0.4;">4. Réponse</div>
+                        <div class="question-text" style="opacity: 0.4;">{{ __('Question') }}</div>
+                        <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
+                        <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
+                        <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
+                        <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
                     @endif
                 </div>
             </div>
         @endfor
         
         <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
-            Valider
+            {{ __('Valider') }}
         </button>
     @endif
 </div>
