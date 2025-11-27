@@ -16,12 +16,14 @@ class MasterGameQuestion extends Model
         'text',
         'choices',
         'correct_indexes',
-        'media_url'
+        'media_url',
+        'is_tiebreaker'
     ];
 
     protected $casts = [
         'choices' => 'array',
-        'correct_indexes' => 'array'
+        'correct_indexes' => 'array',
+        'is_tiebreaker' => 'boolean'
     ];
 
     // Accesseurs pour compatibilité avec la vue

@@ -310,10 +310,17 @@ body {
     
     @if($game->creation_mode === 'automatique')
         <!-- Mode Automatique : Questions pré-générées -->
+        @php
+            // Récupérer les questions normales (sans départage)
+            $normalQuestions = $game->questions->where('is_tiebreaker', false);
+            // Récupérer la question de départage
+            $tiebreakerQuestion = $game->questions->where('is_tiebreaker', true)->first();
+        @endphp
+        
         @for ($i = 1; $i <= $game->total_questions; $i++)
             @php
                 // Trouver la question existante dans la BDD
-                $existingQuestion = $game->questions->firstWhere('question_number', $i);
+                $existingQuestion = $normalQuestions->firstWhere('question_number', $i);
                 
                 // Déterminer le type pour ce numéro (distribution équilibrée)
                 $questionType = getQuestionTypeForNumber($game, $i);
@@ -374,6 +381,31 @@ body {
                 </div>
             </div>
         @endfor
+        
+        <!-- Question de départage -->
+        @if($tiebreakerQuestion)
+            <div style="margin-top: 2rem; padding-top: 1rem; border-top: 2px dashed rgba(255, 215, 0, 0.5);">
+                <h2 style="text-align: center; color: #FFD700; font-size: 1.3rem; margin-bottom: 1rem;">
+                    {{ __('Question de départage') }}
+                </h2>
+                <div class="question-bubble" style="border: 2px solid #FFD700;">
+                    <div class="bubble-number" style="background: linear-gradient(135deg, #FFD700, #FFA500);">⚡</div>
+                    <a href="{{ route('master.question.edit', [$game->id, $tiebreakerQuestion->question_number]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Modifier') }}</a>
+                    
+                    <div class="bubble-content">
+                        <div class="question-text">{{ $tiebreakerQuestion->question_text ?? __('Question de départage') }}</div>
+                        @foreach($tiebreakerQuestion->answers as $index => $answer)
+                            <div class="answer-item {{ $tiebreakerQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
+                                {{ $index + 1 }}. {{ $answer }}
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <p style="text-align: center; color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; margin-top: 0.5rem;">
+                    {{ __('Utilisée uniquement en cas d\'égalité entre les joueurs') }}
+                </p>
+            </div>
+        @endif
         
         <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
             {{ __('Valider') }}

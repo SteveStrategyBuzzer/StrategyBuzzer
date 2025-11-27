@@ -620,6 +620,148 @@ class MasterGameController extends Controller
                 $this->generateTextQuestionWithAI($game, $i, $questionType);
             }
         }
+        
+        // Générer la question de départage (toujours en dernier)
+        $this->generateTiebreakerQuestion($game, $totalQuestions + 1);
+    }
+    
+    // Générer la question de départage
+    private function generateTiebreakerQuestion($game, $questionNumber)
+    {
+        try {
+            $language = strtolower($game->language ?? 'fr');
+            
+            // Déterminer le thème
+            if ($game->domain_type === 'theme') {
+                $theme = $game->theme ?? 'Culture générale';
+            } else {
+                $theme = ($game->school_subject ?? 'Culture générale') . ' - ' . ($game->school_level ?? 'Général');
+            }
+            
+            // Appeler l'API Node.js pour générer une question difficile
+            $apiUrl = 'http://localhost:3000/generate-master-question';
+            
+            $postData = json_encode([
+                'theme' => $theme . ' (question difficile de départage)',
+                'language' => $language,
+                'questionType' => 'multiple_choice',
+                'questionNumber' => $questionNumber
+            ]);
+            
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\n",
+                    'content' => $postData,
+                    'timeout' => 30
+                ]
+            ]);
+            
+            $response = @file_get_contents($apiUrl, false, $context);
+            
+            if ($response !== false) {
+                $data = json_decode($response, true);
+                
+                if ($data && isset($data['success']) && $data['success']) {
+                    MasterGameQuestion::create([
+                        'master_game_id' => $game->id,
+                        'question_number' => $questionNumber,
+                        'type' => 'multiple_choice',
+                        'text' => $data['question']['text'] ?? 'Question de départage',
+                        'choices' => $data['question']['answers'] ?? ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'],
+                        'correct_indexes' => [$data['question']['correct_index'] ?? 0],
+                        'media_url' => null,
+                        'is_tiebreaker' => true,
+                    ]);
+                    
+                    Log::info('Master: Question de départage générée', [
+                        'game_id' => $game->id,
+                        'question_number' => $questionNumber
+                    ]);
+                    return;
+                }
+            }
+            
+            // Fallback : créer une question de départage par défaut
+            $this->createDefaultTiebreakerQuestion($game, $questionNumber, $language);
+            
+        } catch (\Exception $e) {
+            Log::error('Master: Exception génération question de départage', [
+                'game_id' => $game->id,
+                'error' => $e->getMessage()
+            ]);
+            $this->createDefaultTiebreakerQuestion($game, $questionNumber, strtolower($game->language ?? 'fr'));
+        }
+    }
+    
+    // Créer une question de départage par défaut
+    private function createDefaultTiebreakerQuestion($game, $questionNumber, $language)
+    {
+        $tiebreakerQuestions = [
+            'fr' => [
+                'text' => 'Combien y a-t-il de secondes dans une journée ?',
+                'choices' => ['86 400', '3 600', '24 000', '43 200'],
+                'correct' => 0
+            ],
+            'en' => [
+                'text' => 'How many seconds are there in a day?',
+                'choices' => ['86,400', '3,600', '24,000', '43,200'],
+                'correct' => 0
+            ],
+            'es' => [
+                'text' => '¿Cuántos segundos hay en un día?',
+                'choices' => ['86.400', '3.600', '24.000', '43.200'],
+                'correct' => 0
+            ],
+            'it' => [
+                'text' => 'Quanti secondi ci sono in un giorno?',
+                'choices' => ['86.400', '3.600', '24.000', '43.200'],
+                'correct' => 0
+            ],
+            'de' => [
+                'text' => 'Wie viele Sekunden hat ein Tag?',
+                'choices' => ['86.400', '3.600', '24.000', '43.200'],
+                'correct' => 0
+            ],
+            'pt' => [
+                'text' => 'Quantos segundos existem em um dia?',
+                'choices' => ['86.400', '3.600', '24.000', '43.200'],
+                'correct' => 0
+            ],
+            'ru' => [
+                'text' => 'Сколько секунд в сутках?',
+                'choices' => ['86 400', '3 600', '24 000', '43 200'],
+                'correct' => 0
+            ],
+            'ar' => [
+                'text' => 'كم عدد الثواني في اليوم؟',
+                'choices' => ['86,400', '3,600', '24,000', '43,200'],
+                'correct' => 0
+            ],
+            'zh' => [
+                'text' => '一天有多少秒？',
+                'choices' => ['86,400', '3,600', '24,000', '43,200'],
+                'correct' => 0
+            ],
+            'el' => [
+                'text' => 'Πόσα δευτερόλεπτα υπάρχουν σε μια μέρα;',
+                'choices' => ['86.400', '3.600', '24.000', '43.200'],
+                'correct' => 0
+            ]
+        ];
+        
+        $q = $tiebreakerQuestions[$language] ?? $tiebreakerQuestions['fr'];
+        
+        MasterGameQuestion::create([
+            'master_game_id' => $game->id,
+            'question_number' => $questionNumber,
+            'type' => 'multiple_choice',
+            'text' => $q['text'],
+            'choices' => $q['choices'],
+            'correct_indexes' => [$q['correct']],
+            'media_url' => null,
+            'is_tiebreaker' => true,
+        ]);
     }
     
     // Générer une question image-mémoire avec DALL-E
