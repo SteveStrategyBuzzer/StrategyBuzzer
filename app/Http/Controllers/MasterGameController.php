@@ -652,7 +652,8 @@ class MasterGameController extends Controller
                 'language' => $language,
                 'questionType' => 'multiple_choice',
                 'questionNumber' => $questionNumber,
-                'previousQuestions' => $previousQuestions
+                'previousQuestions' => $previousQuestions,
+                'gameSeed' => $game->id
             ]);
             
             $context = stream_context_create([
@@ -876,7 +877,8 @@ class MasterGameController extends Controller
                 'language' => $language,
                 'questionType' => $questionType,
                 'questionNumber' => $questionNumber,
-                'previousQuestions' => $previousQuestions
+                'previousQuestions' => $previousQuestions,
+                'gameSeed' => $game->id
             ]);
             
             $context = stream_context_create([
