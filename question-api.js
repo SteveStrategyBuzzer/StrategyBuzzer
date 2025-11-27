@@ -815,14 +815,15 @@ function translateElement(element, language) {
 
 // Endpoint pour générer une question Master (texte uniquement)
 app.post('/generate-master-question', async (req, res) => {
-  const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1 } = req.body;
+  const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1, previousQuestions = [] } = req.body;
   
   console.log(`\n📝 Génération question Master #${questionNumber} (${questionType}, langue: ${language})`);
   console.log(`📋 Thème: ${theme}`);
+  console.log(`🚫 Questions précédentes à éviter: ${previousQuestions.length}`);
   
   try {
     // Construire le prompt selon le type de question
-    let systemPrompt = 'Tu es un expert en création de questions de quiz éducatives et divertissantes. Tu réponds toujours au format JSON demandé, sans texte supplémentaire.';
+    let systemPrompt = 'Tu es un expert en création de questions de quiz éducatives et divertissantes. Tu réponds toujours au format JSON demandé, sans texte supplémentaire. Tu DOIS générer des questions UNIQUES et VARIÉES.';
     
     const languageNames = {
       'fr': 'français',
@@ -838,9 +839,15 @@ app.post('/generate-master-question', async (req, res) => {
     };
     const langName = languageNames[language] || 'français';
     
+    // Construire la liste des questions à éviter
+    let avoidText = '';
+    if (previousQuestions.length > 0) {
+      avoidText = `\n\nATTENTION: Tu dois générer une question COMPLÈTEMENT DIFFÉRENTE des questions précédentes. NE PAS répéter ces sujets:\n${previousQuestions.map((q, i) => `${i+1}. ${q}`).join('\n')}\n\nChoisis un AUTRE sujet, une AUTRE facette du thème.`;
+    }
+    
     let userPrompt;
     if (questionType === 'true_false') {
-      userPrompt = `Génère une question Vrai/Faux sur le thème "${theme}" en ${langName}.
+      userPrompt = `Génère une question Vrai/Faux sur le thème "${theme}" en ${langName}.${avoidText}
 
 Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 {
@@ -851,7 +858,7 @@ Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 
 Où correct_index est 0 pour Vrai ou 1 pour Faux.`;
     } else {
-      userPrompt = `Génère une question à choix multiples avec 4 réponses sur le thème "${theme}" en ${langName}.
+      userPrompt = `Génère une question à choix multiples avec 4 réponses sur le thème "${theme}" en ${langName}.${avoidText}
 
 Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 {

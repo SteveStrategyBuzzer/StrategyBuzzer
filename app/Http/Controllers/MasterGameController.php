@@ -583,6 +583,9 @@ class MasterGameController extends Controller
         $aiImagesCount = $game->ai_images_count ?? 0;
         $aiImagesGenerated = 0;
         
+        // Système anti-duplication : suivre les questions déjà générées
+        $generatedQuestions = [];
+        
         // Identifier les positions des questions image
         $imagePositions = [];
         for ($i = 1; $i <= $totalQuestions; $i++) {
@@ -617,16 +620,19 @@ class MasterGameController extends Controller
                 }
             } else {
                 // Pour les questions texte (MC ou True/False) : générer avec OpenAI
-                $this->generateTextQuestionWithAI($game, $i, $questionType);
+                $questionText = $this->generateTextQuestionWithAI($game, $i, $questionType, $generatedQuestions);
+                if ($questionText) {
+                    $generatedQuestions[] = $questionText;
+                }
             }
         }
         
         // Générer la question de départage (toujours en dernier)
-        $this->generateTiebreakerQuestion($game, $totalQuestions + 1);
+        $this->generateTiebreakerQuestion($game, $totalQuestions + 1, $generatedQuestions);
     }
     
     // Générer la question de départage
-    private function generateTiebreakerQuestion($game, $questionNumber)
+    private function generateTiebreakerQuestion($game, $questionNumber, $previousQuestions = [])
     {
         try {
             $language = strtolower($game->language ?? 'fr');
@@ -645,7 +651,8 @@ class MasterGameController extends Controller
                 'theme' => $theme . ' (question difficile de départage)',
                 'language' => $language,
                 'questionType' => 'multiple_choice',
-                'questionNumber' => $questionNumber
+                'questionNumber' => $questionNumber,
+                'previousQuestions' => $previousQuestions
             ]);
             
             $context = stream_context_create([
@@ -849,7 +856,7 @@ class MasterGameController extends Controller
     }
     
     // Générer une question texte via l'API Node.js
-    private function generateTextQuestionWithAI($game, $questionNumber, $questionType)
+    private function generateTextQuestionWithAI($game, $questionNumber, $questionType, $previousQuestions = [])
     {
         try {
             $language = strtolower($game->language ?? 'fr');
@@ -868,7 +875,8 @@ class MasterGameController extends Controller
                 'theme' => $theme,
                 'language' => $language,
                 'questionType' => $questionType,
-                'questionNumber' => $questionNumber
+                'questionNumber' => $questionNumber,
+                'previousQuestions' => $previousQuestions
             ]);
             
             $context = stream_context_create([
@@ -888,7 +896,7 @@ class MasterGameController extends Controller
                     'question_number' => $questionNumber
                 ]);
                 $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
-                return;
+                return null;
             }
             
             $data = json_decode($response, true);
@@ -900,15 +908,17 @@ class MasterGameController extends Controller
                     'response' => $response
                 ]);
                 $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
-                return;
+                return null;
             }
+            
+            $questionText = $data['question']['text'] ?? 'Question générée';
             
             // Créer la question avec les données générées
             MasterGameQuestion::create([
                 'master_game_id' => $game->id,
                 'question_number' => $questionNumber,
                 'type' => $questionType,
-                'text' => $data['question']['text'] ?? 'Question générée',
+                'text' => $questionText,
                 'choices' => $data['question']['answers'] ?? ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'],
                 'correct_indexes' => [$data['question']['correct_index'] ?? 0],
                 'media_url' => null,
@@ -920,6 +930,8 @@ class MasterGameController extends Controller
                 'type' => $questionType
             ]);
             
+            return $questionText;
+            
         } catch (\Exception $e) {
             Log::error('Master: Exception génération question', [
                 'game_id' => $game->id,
@@ -927,6 +939,7 @@ class MasterGameController extends Controller
                 'error' => $e->getMessage()
             ]);
             $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
+            return null;
         }
     }
     
