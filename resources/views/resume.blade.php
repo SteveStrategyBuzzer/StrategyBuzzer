@@ -601,8 +601,9 @@
                     ['icon' => '⏱️', 'name' => 'Réflexion', 'description' => 'Active automatiquement']
                 ],
                 'Visionnaire' => [
-                    ['icon' => '🔮', 'name' => 'Futur', 'description' => 'Active automatiquement'],
-                    ['icon' => '🛡️', 'name' => 'Contre', 'description' => 'Active automatiquement']
+                    ['icon' => '👁️', 'name' => 'Voir Question Suivante', 'description' => 'Cliquez pour voir en avant-première', 'skill_id' => 'preview_questions'],
+                    ['icon' => '🏰', 'name' => 'Anti-Challenger', 'description' => 'Immunité contre le shuffle'],
+                    ['icon' => '🎯', 'name' => 'Verrouillage', 'description' => 'Avec 2pts d\'avance, seule bonne réponse cliquable']
                 ],
             ];
             $currentSkills = $avatarSkillsComplete[$params['avatar']] ?? [];
@@ -611,14 +612,33 @@
           @if(!empty($currentSkills))
             <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 10px;">
               @foreach ($currentSkills as $skill)
-                <div style="background: rgba(255,215,0,0.15); border: 2px solid #FFD700; border-radius: 12px; padding: 12px; text-align: left;">
-                  <div style="font-size: 1.1rem; font-weight: 600; color: #FFD700; margin-bottom: 5px;">
-                    <span style="font-size: 1.3rem;">{{ $skill['icon'] }}</span> {{ $skill['name'] }}
+                @if(isset($skill['skill_id']) && $skill['skill_id'] === 'preview_questions')
+                  {{-- Skill Visionnaire Preview - Cliquable --}}
+                  <div class="visionnaire-preview-skill" 
+                       onclick="showVisionnairePreview()" 
+                       style="background: rgba(138,43,226,0.25); border: 2px solid #8a2be2; border-radius: 12px; padding: 12px; text-align: left; cursor: pointer; transition: all 0.3s ease;"
+                       onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 0 15px rgba(138,43,226,0.5)';"
+                       onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                    <div style="font-size: 1.1rem; font-weight: 600; color: #8a2be2; margin-bottom: 5px;">
+                      <span style="font-size: 1.5rem;">{{ $skill['icon'] }}</span> {{ $skill['name'] }}
+                      <span style="float: right; font-size: 0.8rem; background: #8a2be2; color: white; padding: 2px 8px; border-radius: 10px;">
+                        {{ $params['visionnaire_previews_remaining'] ?? 5 }}/5
+                      </span>
+                    </div>
+                    <div style="font-size: 0.85rem; opacity: 0.9; line-height: 1.3;">
+                      {{ $skill['description'] }}
+                    </div>
                   </div>
-                  <div style="font-size: 0.85rem; opacity: 0.9; line-height: 1.3;">
-                    {{ $skill['description'] }}
+                @else
+                  <div style="background: rgba(255,215,0,0.15); border: 2px solid #FFD700; border-radius: 12px; padding: 12px; text-align: left;">
+                    <div style="font-size: 1.1rem; font-weight: 600; color: #FFD700; margin-bottom: 5px;">
+                      <span style="font-size: 1.3rem;">{{ $skill['icon'] }}</span> {{ $skill['name'] }}
+                    </div>
+                    <div style="font-size: 0.85rem; opacity: 0.9; line-height: 1.3;">
+                      {{ $skill['description'] }}
+                    </div>
                   </div>
-                </div>
+                @endif
               @endforeach
             </div>
           @endif
@@ -727,6 +747,103 @@ const radarChart = new Chart(
   config
 );
 @endif
+</script>
+@endif
+
+{{-- Popup Visionnaire Preview --}}
+@if($params['avatar'] === 'Visionnaire')
+<div id="visionnairePopup" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 3px solid #8a2be2; border-radius: 20px; padding: 30px; max-width: 90%; width: 500px; text-align: center; box-shadow: 0 0 40px rgba(138,43,226,0.5); animation: popupAppear 0.3s ease-out;">
+    <div style="font-size: 3rem; margin-bottom: 15px;">👁️</div>
+    <div style="font-size: 1.3rem; font-weight: 700; color: #8a2be2; margin-bottom: 10px;">Question Suivante</div>
+    
+    <div id="visionnaireQuestionText" style="font-size: 1.1rem; color: #fff; line-height: 1.5; margin: 20px 0; padding: 20px; background: rgba(138,43,226,0.15); border-radius: 12px; border: 1px solid rgba(138,43,226,0.3);">
+      {{-- Le texte de la question sera injecté ici --}}
+      @if($params['visionnaire_next_question'] ?? null)
+        {{ $params['visionnaire_next_question']['text'] ?? 'Question non disponible' }}
+      @else
+        <em style="opacity: 0.7;">Activez le skill pendant la partie pour voir la question suivante</em>
+      @endif
+    </div>
+    
+    @if($params['visionnaire_next_question']['theme'] ?? null)
+    <div style="font-size: 0.9rem; color: #8a2be2; margin-bottom: 15px;">
+      Thème: <strong>{{ $params['visionnaire_next_question']['theme'] }}</strong>
+    </div>
+    @endif
+    
+    <div id="visionnaireTimer" style="font-size: 0.9rem; color: rgba(255,255,255,0.6); margin-top: 15px;">
+      Tapez n'importe où pour fermer
+    </div>
+    
+    <div style="margin-top: 20px; font-size: 0.85rem; color: rgba(138,43,226,0.8);">
+      Previews restantes: <span id="previewsRemainingDisplay">{{ $params['visionnaire_previews_remaining'] ?? 5 }}</span>/5
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes popupAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+#visionnairePopup > div {
+  position: relative;
+}
+</style>
+
+<script>
+let visionnairePreviewsRemaining = {{ $params['visionnaire_previews_remaining'] ?? 5 }};
+let popupTimeout = null;
+
+function showVisionnairePreview() {
+    const popup = document.getElementById('visionnairePopup');
+    
+    if (visionnairePreviewsRemaining <= 0) {
+        alert('Plus de previews disponibles! (0/5)');
+        return;
+    }
+    
+    // Afficher le popup
+    popup.style.display = 'flex';
+    
+    // Fermer au clic
+    popup.onclick = function(e) {
+        closeVisionnairePopup();
+    };
+    
+    // Auto-fermer après un délai basé sur le chrono (simulé à 5 secondes ici, car pas en jeu)
+    // En jeu, ce sera basé sur le temps restant du chronomètre
+    const displayDuration = 5000; // 5 secondes par défaut sur la page resume
+    
+    popupTimeout = setTimeout(function() {
+        closeVisionnairePopup();
+    }, displayDuration);
+}
+
+function closeVisionnairePopup() {
+    const popup = document.getElementById('visionnairePopup');
+    popup.style.display = 'none';
+    
+    if (popupTimeout) {
+        clearTimeout(popupTimeout);
+        popupTimeout = null;
+    }
+}
+
+// Fermer avec Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeVisionnairePopup();
+    }
+});
 </script>
 @endif
 @endsection
