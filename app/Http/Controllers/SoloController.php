@@ -774,7 +774,7 @@ class SoloController extends Controller
             case 'shuffle_answers':
                 // Challenger: Les réponses changent de position
                 $result['effect'] = 'shuffle';
-                $result['interval'] = 2000; // 2 secondes
+                $result['interval'] = 1000; // 1 seconde
                 break;
                 
             case 'reduce_timer':

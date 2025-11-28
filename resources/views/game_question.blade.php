@@ -1168,6 +1168,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 break;
                 
+            case 'shuffle':
+                // Challenger: Les réponses se déplacent toutes les secondes
+                if (document.body.classList.contains('shuffle-immunity-active')) {
+                    showSkillMessage('🏰 {{ __("Immunité anti-shuffle active!") }}', 'info');
+                    break;
+                }
+                showSkillMessage('🔀 {{ __("Réponses en mouvement!") }}', 'warning');
+                startAnswerShuffle(result.interval || 1000);
+                break;
+                
             case 'counter_challenger':
                 // Visionnaire: Immunité contre le Challenger
                 showSkillMessage('🏰 ' + result.message, 'success');
@@ -1215,6 +1225,97 @@ document.addEventListener('DOMContentLoaded', function() {
         
         modal.appendChild(content);
         document.body.appendChild(modal);
+    }
+    
+    // Shuffle des réponses (Challenger skill)
+    let shuffleInterval = null;
+    
+    function startAnswerShuffle(interval) {
+        // Arrêter tout shuffle précédent
+        if (shuffleInterval) {
+            clearInterval(shuffleInterval);
+        }
+        
+        const answersContainer = document.querySelector('.answers-grid, .answers-container, .game-answers');
+        if (!answersContainer) {
+            console.log('No answers container found for shuffle');
+            return;
+        }
+        
+        // Ajouter une classe pour l'effet visuel
+        answersContainer.classList.add('shuffle-active');
+        
+        // Démarrer le shuffle toutes les X ms
+        shuffleInterval = setInterval(() => {
+            if (document.body.classList.contains('shuffle-immunity-active')) {
+                stopAnswerShuffle();
+                return;
+            }
+            shuffleAnswerPositions(answersContainer);
+        }, interval);
+        
+        // Arrêter le shuffle après 8 secondes max (ou quand la question est répondue)
+        setTimeout(() => {
+            stopAnswerShuffle();
+        }, 8000);
+    }
+    
+    function shuffleAnswerPositions(container) {
+        const answers = Array.from(container.querySelectorAll('.answer-btn, .answer-option, [data-answer-index]'));
+        if (answers.length < 2) return;
+        
+        // Choisir 2 réponses aléatoires à échanger
+        const idx1 = Math.floor(Math.random() * answers.length);
+        let idx2 = Math.floor(Math.random() * answers.length);
+        while (idx2 === idx1) {
+            idx2 = Math.floor(Math.random() * answers.length);
+        }
+        
+        const answer1 = answers[idx1];
+        const answer2 = answers[idx2];
+        
+        // Animation de déplacement
+        answer1.style.transition = 'transform 0.3s ease-in-out, opacity 0.15s';
+        answer2.style.transition = 'transform 0.3s ease-in-out, opacity 0.15s';
+        
+        // Flash d'avertissement
+        answer1.style.opacity = '0.5';
+        answer2.style.opacity = '0.5';
+        answer1.style.transform = 'scale(0.95)';
+        answer2.style.transform = 'scale(0.95)';
+        
+        setTimeout(() => {
+            // Échanger les positions dans le DOM
+            const parent = answer1.parentNode;
+            const next1 = answer1.nextSibling;
+            const next2 = answer2.nextSibling;
+            
+            if (next2 === answer1) {
+                parent.insertBefore(answer1, answer2);
+            } else if (next1 === answer2) {
+                parent.insertBefore(answer2, answer1);
+            } else {
+                parent.insertBefore(answer2, next1);
+                parent.insertBefore(answer1, next2);
+            }
+            
+            // Restaurer l'apparence
+            answer1.style.opacity = '1';
+            answer2.style.opacity = '1';
+            answer1.style.transform = 'scale(1)';
+            answer2.style.transform = 'scale(1)';
+        }, 150);
+    }
+    
+    function stopAnswerShuffle() {
+        if (shuffleInterval) {
+            clearInterval(shuffleInterval);
+            shuffleInterval = null;
+        }
+        const container = document.querySelector('.answers-grid, .answers-container, .game-answers');
+        if (container) {
+            container.classList.remove('shuffle-active');
+        }
     }
 });
 </script>
