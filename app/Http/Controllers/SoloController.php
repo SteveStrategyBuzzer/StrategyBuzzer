@@ -259,6 +259,9 @@ class SoloController extends Controller
             'player_pseudonym' => $playerPseudonym,
             'avatar_conflict' => $avatarConflict,
             'has_boss'        => $bossInfo !== null,
+            // Données du Visionnaire pour preview des questions
+            'visionnaire_next_question' => session('visionnaire_next_question'),
+            'visionnaire_previews_remaining' => session('visionnaire_previews_remaining', 5),
         ];
 
         return view('resume', compact('params'));
@@ -365,6 +368,9 @@ class SoloController extends Controller
             'player_pseudonym' => $playerPseudonym,
             'avatar_conflict' => $avatarConflict,
             'has_boss'        => $bossInfo !== null,
+            // Données du Visionnaire pour preview des questions
+            'visionnaire_next_question' => session('visionnaire_next_question'),
+            'visionnaire_previews_remaining' => session('visionnaire_previews_remaining', 5),
         ];
         
         return view('resume', compact('params'));
@@ -823,15 +829,42 @@ class SoloController extends Controller
                 $questionStock = session($stockKey, []);
                 $currentQuestionNumber = session('current_question_number', 1);
                 
-                // Extraire les questions suivantes du stock
-                $previewQuestions = array_slice($questionStock, $currentQuestionNumber, 5);
+                // Récupérer le compteur de previews restantes (5 max par match)
+                $previewsRemaining = session('visionnaire_previews_remaining', 5);
                 
-                $result['preview'] = array_map(function($q) {
-                    return [
-                        'text' => $q['text'] ?? $q['question_text'] ?? '',
-                        'theme' => $q['theme'] ?? ''
-                    ];
-                }, $previewQuestions);
+                if ($previewsRemaining <= 0) {
+                    $result['effect'] = 'no_previews';
+                    $result['message'] = 'Plus de previews disponibles!';
+                    break;
+                }
+                
+                // Extraire LA PROCHAINE question seulement (pas les 5)
+                $nextQuestionIndex = $currentQuestionNumber; // Index de la prochaine question
+                $previewQuestions = array_slice($questionStock, $nextQuestionIndex, 1);
+                
+                if (empty($previewQuestions)) {
+                    $result['effect'] = 'no_question';
+                    $result['message'] = 'Aucune question suivante disponible';
+                    break;
+                }
+                
+                $nextQuestion = $previewQuestions[0];
+                
+                // Stocker en session pour la page resume
+                session([
+                    'visionnaire_next_question' => [
+                        'text' => $nextQuestion['text'] ?? $nextQuestion['question_text'] ?? '',
+                        'theme' => $nextQuestion['theme'] ?? '',
+                        'subtheme' => $nextQuestion['subtheme'] ?? ''
+                    ],
+                    'visionnaire_previews_remaining' => $previewsRemaining - 1
+                ]);
+                
+                $result['preview'] = [
+                    'text' => $nextQuestion['text'] ?? $nextQuestion['question_text'] ?? '',
+                    'theme' => $nextQuestion['theme'] ?? ''
+                ];
+                $result['previews_remaining'] = $previewsRemaining - 1;
                 $result['effect'] = 'preview';
                 break;
                 
