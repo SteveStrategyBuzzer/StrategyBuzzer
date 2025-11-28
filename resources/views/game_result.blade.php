@@ -788,6 +788,33 @@
     </div>
     @endif
     
+    {{-- Skills Visionnaire --}}
+    @if($avatar === 'Visionnaire')
+    @php
+        $previewUsed = in_array('preview_questions', $usedSkills);
+        $previewsRemaining = session('visionnaire_previews_remaining', 5);
+        $nextQuestion = session('visionnaire_next_question');
+    @endphp
+    <div class="skills-container">
+        <div class="skills-title">👁️ {{ __('Compétences Visionnaire') }} 👁️</div>
+        <div class="skills-grid">
+            <!-- Skill: Voir la question suivante -->
+            <div class="skill-item">
+                <div class="skill-icon" style="cursor: pointer;" onclick="showVisionnairePreview()" title="{{ __('Voir la question suivante') }}">👁️</div>
+                <div class="skill-info">
+                    <div class="skill-name">{{ __('Question suivante') }}</div>
+                    <div class="skill-desc" style="font-size: 0.75rem; opacity: 0.7;">{{ $previewsRemaining }}/5 {{ __('restantes') }}</div>
+                </div>
+                @if($previewsRemaining > 0)
+                    <button class="skill-btn" onclick="showVisionnairePreview()" style="background: linear-gradient(135deg, #8a2be2 0%, #6a1cb2 100%);">{{ __('Voir') }}</button>
+                @else
+                    <div class="skill-used-badge">{{ __('ÉPUISÉ') }}</div>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+    
     <!-- Answers -->
     <div class="result-answers">
         @php
