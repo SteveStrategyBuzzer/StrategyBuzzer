@@ -773,6 +773,114 @@ if ($opponentInfo['is_boss'] ?? false) {
     <source src="{{ asset('sounds/gameplay_ambient.mp3') }}" type="audio/mpeg">
 </audio>
 
+<!-- Sons d'épée pour les skills de combat -->
+<audio id="swordShieldSound" preload="auto">
+    <source src="{{ asset('sounds/sword_shield.wav') }}" type="audio/wav">
+</audio>
+<audio id="swordSwishSound" preload="auto">
+    <source src="{{ asset('sounds/sword_swish.wav') }}" type="audio/wav">
+</audio>
+
+<!-- Overlay bouclier pour l'effet défensif -->
+<div id="shieldOverlay" class="shield-overlay" style="display: none;">
+    <div class="shield-effect">
+        <div class="shield-icon">🛡️</div>
+        <div class="shield-glow"></div>
+    </div>
+</div>
+
+<style>
+.shield-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.shield-effect {
+    position: relative;
+    animation: shieldAppear 0.5s ease-out;
+}
+
+.shield-icon {
+    font-size: 120px;
+    filter: drop-shadow(0 0 30px rgba(78, 205, 196, 0.8));
+    animation: shieldPulse 1s ease-in-out infinite;
+}
+
+.shield-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(78, 205, 196, 0.4) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: shieldGlowPulse 1.5s ease-in-out infinite;
+}
+
+/* Bouclier derrière les réponses */
+.answers-shielded {
+    position: relative;
+}
+
+.answers-shielded::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    right: -20px;
+    bottom: -20px;
+    background: radial-gradient(ellipse at center, rgba(78, 205, 196, 0.15) 0%, transparent 70%);
+    border: 3px solid rgba(78, 205, 196, 0.4);
+    border-radius: 20px;
+    animation: shieldBorder 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes shieldAppear {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shieldPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+@keyframes shieldGlowPulse {
+    0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+}
+
+@keyframes shieldBorder {
+    0%, 100% { border-color: rgba(78, 205, 196, 0.4); box-shadow: 0 0 20px rgba(78, 205, 196, 0.2); }
+    50% { border-color: rgba(78, 205, 196, 0.8); box-shadow: 0 0 40px rgba(78, 205, 196, 0.5); }
+}
+
+/* Animation d'attaque bloquée */
+.shield-block-effect {
+    animation: shieldBlock 0.5s ease-out;
+}
+
+@keyframes shieldBlock {
+    0% { transform: scale(1); }
+    25% { transform: scale(1.15) rotate(-5deg); }
+    50% { transform: scale(1.1) rotate(5deg); }
+    75% { transform: scale(1.05) rotate(-2deg); }
+    100% { transform: scale(1) rotate(0deg); }
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const buzzButton = document.getElementById('buzzButton');
@@ -1171,18 +1279,24 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'shuffle':
                 // Challenger: Les réponses se déplacent toutes les secondes
                 if (document.body.classList.contains('shuffle-immunity-active')) {
+                    // Attaque bloquée par le bouclier !
                     showSkillMessage('🏰 {{ __("Immunité anti-shuffle active!") }}', 'info');
+                    playShieldBlockEffect();
                     break;
                 }
+                // Attaque réussie - son d'épée dans le vent
                 showSkillMessage('🔀 {{ __("Réponses en mouvement!") }}', 'warning');
+                playSwordSwishSound();
                 startAnswerShuffle(result.interval || 1000);
                 break;
                 
             case 'counter_challenger':
-                // Visionnaire: Immunité contre le Challenger
+                // Visionnaire: Immunité contre le Challenger - Bouclier activé
                 showSkillMessage('🏰 ' + result.message, 'success');
                 // Marquer l'immunité active
                 document.body.classList.add('shuffle-immunity-active');
+                // Afficher le bouclier derrière les réponses
+                activateShieldBehindAnswers();
                 break;
                 
             default:
@@ -1226,6 +1340,65 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.appendChild(content);
         document.body.appendChild(modal);
     }
+    
+    // ===== FONCTIONS SONS ET EFFETS DE COMBAT =====
+    
+    // Jouer le son d'épée qui frappe le bouclier (attaque bloquée)
+    function playShieldBlockEffect() {
+        const swordShieldSound = document.getElementById('swordShieldSound');
+        if (swordShieldSound) {
+            swordShieldSound.currentTime = 0;
+            swordShieldSound.volume = 0.7;
+            swordShieldSound.play().catch(e => console.log('Shield sound failed:', e));
+        }
+        
+        // Afficher l'overlay du bouclier avec effet de blocage
+        const shieldOverlay = document.getElementById('shieldOverlay');
+        if (shieldOverlay) {
+            shieldOverlay.style.display = 'flex';
+            const shieldEffect = shieldOverlay.querySelector('.shield-effect');
+            if (shieldEffect) {
+                shieldEffect.classList.add('shield-block-effect');
+            }
+            
+            // Masquer après 1.5 secondes
+            setTimeout(() => {
+                shieldOverlay.style.display = 'none';
+                if (shieldEffect) {
+                    shieldEffect.classList.remove('shield-block-effect');
+                }
+            }, 1500);
+        }
+    }
+    
+    // Jouer le son d'épée dans le vent (attaque réussie)
+    function playSwordSwishSound() {
+        const swordSwishSound = document.getElementById('swordSwishSound');
+        if (swordSwishSound) {
+            swordSwishSound.currentTime = 0;
+            swordSwishSound.volume = 0.6;
+            swordSwishSound.play().catch(e => console.log('Swish sound failed:', e));
+        }
+    }
+    
+    // Activer le bouclier visuel derrière les réponses
+    function activateShieldBehindAnswers() {
+        const answersContainer = document.querySelector('.answers-grid, .answers-container, .game-answers');
+        if (answersContainer) {
+            answersContainer.classList.add('answers-shielded');
+        }
+        
+        // Afficher brièvement l'overlay du bouclier
+        const shieldOverlay = document.getElementById('shieldOverlay');
+        if (shieldOverlay) {
+            shieldOverlay.style.display = 'flex';
+            setTimeout(() => {
+                shieldOverlay.style.display = 'none';
+            }, 2000);
+        }
+    }
+    
+    // ===== SHUFFLE DES RÉPONSES =====
     
     // Shuffle des réponses (Challenger skill)
     let shuffleInterval = null;
