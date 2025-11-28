@@ -1189,4 +1189,139 @@ function goToNextQuestion() {
     @endif
 })();
 </script>
+
+{{-- Popup Visionnaire Preview synchronisé avec le countdown --}}
+@if(session('avatar') === 'Visionnaire')
+<div id="visionnairePopup" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 3px solid #8a2be2; border-radius: 20px; padding: 30px; max-width: 90%; width: 500px; text-align: center; box-shadow: 0 0 40px rgba(138,43,226,0.5); animation: popupAppear 0.3s ease-out;">
+    <div style="font-size: 3rem; margin-bottom: 15px;">👁️</div>
+    <div style="font-size: 1.3rem; font-weight: 700; color: #8a2be2; margin-bottom: 10px;">{{ __('Question Suivante') }}</div>
+    
+    <div id="visionnaireQuestionText" style="font-size: 1.1rem; color: #fff; line-height: 1.5; margin: 20px 0; padding: 20px; background: rgba(138,43,226,0.15); border-radius: 12px; border: 1px solid rgba(138,43,226,0.3);">
+      <em style="opacity: 0.7;">{{ __('Chargement...') }}</em>
+    </div>
+    
+    <div id="visionnaireTheme" style="display: none; font-size: 0.9rem; color: #8a2be2; margin-bottom: 15px;"></div>
+    
+    <div style="font-size: 0.9rem; color: rgba(255,255,255,0.6); margin-top: 15px;">
+      {{ __('Tapez n\'importe où pour fermer') }}
+    </div>
+    
+    <div style="margin-top: 20px; font-size: 0.85rem; color: rgba(138,43,226,0.8);">
+      {{ __('Previews restantes') }}: <span id="previewsRemainingDisplay">{{ session('visionnaire_previews_remaining', 5) }}</span>/5
+    </div>
+    
+    <div id="popupCountdown" style="margin-top: 10px; font-size: 0.8rem; color: rgba(255,255,255,0.5);">
+      {{ __('Fermeture automatique dans') }} <span id="popupTimer">--</span>s
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes popupAppear {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+</style>
+
+<script>
+let visionnairePreviewsRemaining = {{ session('visionnaire_previews_remaining', 5) }};
+let popupOpen = false;
+let popupSyncInterval = null;
+
+function showVisionnairePreview() {
+    if (visionnairePreviewsRemaining <= 0) {
+        alert('{{ __("Plus de previews disponibles!") }} (0/5)');
+        return;
+    }
+    
+    const popup = document.getElementById('visionnairePopup');
+    const questionText = document.getElementById('visionnaireQuestionText');
+    const themeDiv = document.getElementById('visionnaireTheme');
+    const previewsDisplay = document.getElementById('previewsRemainingDisplay');
+    
+    // Afficher le popup
+    popup.style.display = 'flex';
+    popupOpen = true;
+    
+    // Fetch la question suivante du serveur
+    fetch("{{ route('solo.use-skill') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ skill: 'preview_questions' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.next_question) {
+            questionText.innerHTML = data.next_question.text || '{{ __("Question non disponible") }}';
+            
+            if (data.next_question.theme) {
+                themeDiv.style.display = 'block';
+                themeDiv.innerHTML = '{{ __("Thème") }}: <strong>' + data.next_question.theme + '</strong>';
+            }
+            
+            // Mettre à jour le compteur
+            visionnairePreviewsRemaining = data.previews_remaining;
+            previewsDisplay.textContent = visionnairePreviewsRemaining;
+            
+            // Mettre à jour le bouton sur la page
+            const skillDesc = document.querySelector('.skills-container .skill-desc');
+            if (skillDesc) {
+                skillDesc.textContent = visionnairePreviewsRemaining + '/5 {{ __("restantes") }}';
+            }
+        } else {
+            questionText.innerHTML = '<em style="opacity: 0.7;">' + (data.message || '{{ __("Erreur lors du chargement") }}') + '</em>';
+        }
+    })
+    .catch(err => {
+        questionText.innerHTML = '<em style="opacity: 0.7;">{{ __("Erreur de connexion") }}</em>';
+    });
+    
+    // Synchroniser avec le countdown existant
+    syncPopupWithCountdown();
+    popupSyncInterval = setInterval(syncPopupWithCountdown, 100);
+    
+    // Fermer au clic
+    popup.onclick = function(e) {
+        closeVisionnairePopup();
+    };
+}
+
+function syncPopupWithCountdown() {
+    const countdownElement = document.getElementById('countdown');
+    const popupTimerElement = document.getElementById('popupTimer');
+    
+    if (countdownElement && popupTimerElement) {
+        const remaining = parseInt(countdownElement.textContent);
+        popupTimerElement.textContent = remaining;
+        
+        // Fermer automatiquement quand le countdown atteint 0
+        if (remaining <= 0) {
+            closeVisionnairePopup();
+        }
+    }
+}
+
+function closeVisionnairePopup() {
+    const popup = document.getElementById('visionnairePopup');
+    popup.style.display = 'none';
+    popupOpen = false;
+    
+    if (popupSyncInterval) {
+        clearInterval(popupSyncInterval);
+        popupSyncInterval = null;
+    }
+}
+
+// Fermer avec Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && popupOpen) {
+        closeVisionnairePopup();
+    }
+});
+</script>
+@endif
 @endsection
