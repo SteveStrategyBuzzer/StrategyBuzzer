@@ -313,6 +313,17 @@
   font-size: 12px;
 }
 
+/* Variante compacte: juste la flèche, pas de label */
+.sb-audio-selector.compact .sb-selector-toggle {
+  min-width: auto;
+  padding: 8px 12px;
+  gap: 0;
+}
+
+.sb-audio-selector.compact .sb-selector-label {
+  display: none;
+}
+
 .sb-selector-dropdown {
   position: absolute;
   top: calc(100% + 5px);
@@ -729,8 +740,8 @@
           <span>{{ __('Activer') }}</span>
         </label>
         
-        {{-- Sélecteur custom dépliable --}}
-        <div class="sb-audio-selector" id="ambiance-selector">
+        {{-- Sélecteur custom dépliable (compact: juste la flèche) --}}
+        <div class="sb-audio-selector compact" id="ambiance-selector">
           <button type="button" class="sb-selector-toggle" data-selector="ambiance" 
                   role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="ambiance-dropdown">
             <span class="sb-selector-label">{{ collect($unlockedMusic)->firstWhere('id', (string)$musicId)['label'] ?? __('Choisir') }}</span>
@@ -761,8 +772,8 @@
           <span>{{ __('Activer') }}</span>
         </label>
         
-        {{-- Sélecteur custom dépliable --}}
-        <div class="sb-audio-selector" id="gameplay-selector">
+        {{-- Sélecteur custom dépliable (compact: juste la flèche) --}}
+        <div class="sb-audio-selector compact" id="gameplay-selector">
           <button type="button" class="sb-selector-toggle" data-selector="gameplay"
                   role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="gameplay-dropdown">
             <span class="sb-selector-label">{{ collect($unlockedMusic)->firstWhere('id', (string)$gameplayMusicId)['label'] ?? __('Choisir') }}</span>
