@@ -1279,8 +1279,7 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'shuffle':
                 // Challenger: Les réponses se déplacent toutes les secondes
                 if (document.body.classList.contains('shuffle-immunity-active')) {
-                    // Attaque bloquée par le bouclier !
-                    showSkillMessage('🏰 {{ __("Immunité anti-shuffle active!") }}', 'info');
+                    // Attaque bloquée par le bouclier - juste l'effet visuel et sonore, pas de message
                     playShieldBlockEffect();
                     break;
                 }
