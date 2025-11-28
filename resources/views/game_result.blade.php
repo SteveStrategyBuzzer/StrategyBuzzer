@@ -269,7 +269,7 @@
         font-size: 1.8rem;
     }
     
-    /* Informations de progression */
+    /* Informations de progression - 2 colonnes */
     .progress-info {
         background: rgba(0,0,0,0.3);
         border: 2px solid rgba(78, 205, 196, 0.3);
@@ -280,10 +280,64 @@
         backdrop-filter: blur(10px);
     }
     
+    .stats-columns {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .stats-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .stats-column.left {
+        border-right: 1px solid rgba(78, 205, 196, 0.3);
+        padding-right: 12px;
+    }
+    
+    .stats-column.right {
+        padding-left: 0;
+    }
+    
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 8px;
+        background: rgba(78, 205, 196, 0.08);
+        border-radius: 6px;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
+    .stat-value {
+        font-size: 0.85rem;
+        color: white;
+        font-weight: bold;
+    }
+    
+    /* Couleurs spécifiques pour les stats de droite */
+    .stat-row.no-answer .stat-value {
+        color: #F39C12;
+    }
+    
+    .stat-row.correct .stat-value {
+        color: #2ECC71;
+    }
+    
+    .stat-row.wrong .stat-value {
+        color: #E74C3C;
+    }
+    
+    /* Ancien grid pour compatibilité (masqué) */
     .info-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
+        display: none;
     }
     
     .info-item {
@@ -677,6 +731,70 @@
             gap: 20px;
         }
     }
+    
+    /* === RESPONSIVE STATS COLUMNS === */
+    
+    /* Mobile très petit - stack vertical si nécessaire */
+    @media (max-width: 360px) {
+        .stats-columns {
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .stats-column.left {
+            border-right: none;
+            border-bottom: 1px solid rgba(78, 205, 196, 0.3);
+            padding-right: 0;
+            padding-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 0.7rem;
+        }
+        
+        .stat-value {
+            font-size: 0.8rem;
+        }
+    }
+    
+    /* Mobile Portrait */
+    @media (min-width: 361px) and (max-width: 480px) and (orientation: portrait) {
+        .stat-row {
+            padding: 5px 6px;
+        }
+        
+        .stat-label {
+            font-size: 0.7rem;
+        }
+        
+        .stat-value {
+            font-size: 0.8rem;
+        }
+    }
+    
+    /* Mobile Paysage - plus compact */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .progress-info {
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-row {
+            padding: 4px 6px;
+        }
+        
+        .stat-label {
+            font-size: 0.65rem;
+        }
+        
+        .stat-value {
+            font-size: 0.75rem;
+        }
+        
+        .stats-column {
+            gap: 4px;
+        }
+    }
 </style>
 
 <div class="result-container">
@@ -851,22 +969,36 @@
     
     <!-- Informations de progression en 2 colonnes -->
     <div class="progress-info">
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">⚔️ {{ __('Score') }}:</span>
-                <span class="info-value">{{ $params['player_rounds_won'] ?? 0 }}-{{ $params['opponent_rounds_won'] ?? 0 }}</span>
+        <div class="stats-columns">
+            <!-- Colonne gauche: Score Match, Vie, Question -->
+            <div class="stats-column left">
+                <div class="stat-row">
+                    <span class="stat-label">⚔️ {{ __('Score Match') }}</span>
+                    <span class="stat-value">{{ $params['player_rounds_won'] ?? 0 }}-{{ $params['opponent_rounds_won'] ?? 0 }}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">❤️ {{ __('Vie') }}</span>
+                    <span class="stat-value">{{ $params['vies_restantes'] ?? config('game.life_max', 3) }}/{{ config('game.life_max', 3) }}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">❓ {{ __('Question') }}</span>
+                    <span class="stat-value">{{ $params['current_question'] ?? 1 }}/{{ $params['total_questions'] ?? 10 }}</span>
+                </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">❤️ {{ __('Vies') }}:</span>
-                <span class="info-value">{{ $params['vies_restantes'] ?? config('game.life_max', 3) }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">📈 {{ __('Progression') }}:</span>
-                <span class="info-value">{{ $params['current_question'] ?? 1 }}/{{ $params['total_questions'] ?? 30 }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">🎯 {{ __('Niveau') }}:</span>
-                <span class="info-value">{{ $params['niveau'] ?? 1 }}</span>
+            <!-- Colonne droite: Sans Réponse, Bonne, Échec -->
+            <div class="stats-column right">
+                <div class="stat-row no-answer">
+                    <span class="stat-label">⏸️ {{ __('Sans Réponse') }}</span>
+                    <span class="stat-value">{{ $params['total_unanswered'] ?? 0 }}</span>
+                </div>
+                <div class="stat-row correct">
+                    <span class="stat-label">✅ {{ __('Bonne') }}</span>
+                    <span class="stat-value">{{ $params['total_correct'] ?? 0 }}</span>
+                </div>
+                <div class="stat-row wrong">
+                    <span class="stat-label">❌ {{ __('Échec') }}</span>
+                    <span class="stat-value">{{ $params['total_incorrect'] ?? 0 }}</span>
+                </div>
             </div>
         </div>
     </div>
