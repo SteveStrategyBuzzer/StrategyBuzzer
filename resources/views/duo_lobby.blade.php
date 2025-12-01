@@ -1207,11 +1207,22 @@ function acceptInvitation(matchId) {
             'X-CSRF-TOKEN': '{{ csrf_token() }}'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             window.location.href = '/duo/game/' + matchId;
+        } else {
+            showToast(data.message || t('Erreur lors de l\'acceptation'), 'error');
         }
+    })
+    .catch(error => {
+        console.error('Accept invitation error:', error);
+        showToast(t('Erreur lors de l\'acceptation'), 'error');
     });
 }
 
