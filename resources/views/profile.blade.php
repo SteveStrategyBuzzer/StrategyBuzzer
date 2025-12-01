@@ -1265,19 +1265,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const gameplaySelectorObj = new AudioSelector('gameplay');
   const buzzerSelectorObj = new AudioSelector('buzzer');
 
-  // Initialisation au chargement
+  // Initialisation au chargement (les sélecteurs restent toujours visibles pour tester)
   updateAmbiance();
   updateGameplay();
-  
-  // Masquer initialement les sélecteurs si les checkboxes ne sont pas cochées
-  const ambianceSelectorEl = byId('ambiance-selector');
-  const gameplaySelectorEl = byId('gameplay-selector');
-  if (ambianceSelectorEl && chkAmb && !chkAmb.checked) {
-    ambianceSelectorEl.style.display = 'none';
-  }
-  if (gameplaySelectorEl && chkGame && !chkGame.checked) {
-    gameplaySelectorEl.style.display = 'none';
-  }
 });
 </script>
 
