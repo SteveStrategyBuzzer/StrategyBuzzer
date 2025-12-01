@@ -18,6 +18,8 @@
 
     <div class="lobby-content">
 
+        @if($duoFullUnlocked ?? false)
+        {{-- Accès COMPLET : Toutes les options disponibles --}}
         <div class="matchmaking-options">
             <div class="option-card">
                 <h3>🎯 {{ __('MATCHMAKING ALÉATOIRE') }}</h3>
@@ -43,6 +45,28 @@
                 </button>
             </div>
         </div>
+        @else
+        {{-- Accès PARTIEL : Seulement être invité --}}
+        <div class="partial-access-notice">
+            <div class="unlock-progress-card">
+                <h3>🔒 {{ __('Accès Partiel au Mode Duo') }}</h3>
+                <p>{{ __('Vous pouvez recevoir des invitations de vos amis !') }}</p>
+                <div class="unlock-requirement">
+                    <span class="unlock-icon">🎯</span>
+                    <div class="unlock-text">
+                        <strong>{{ __('Pour débloquer l\'accès complet :') }}</strong>
+                        <p>{{ __('Battez le Boss du Niveau 10 en Mode Solo') }}</p>
+                        <div class="progress-indicator">
+                            {{ __('Niveau actuel') }} : <strong>{{ ($choixNiveau ?? 1) - 1 }}</strong> / 10
+                        </div>
+                    </div>
+                </div>
+                <a href="{{ route('solo.index') }}" class="btn-solo-link">
+                    🎮 {{ __('Continuer en Mode Solo') }}
+                </a>
+            </div>
+        </div>
+        @endif
 
         <div class="pending-invitations" id="pendingInvitations">
             <h3>📬 {{ __('Invitations reçues') }}</h3>
@@ -891,6 +915,112 @@
     color: #999;
     padding: 40px 20px;
 }
+
+/* Styles pour l'accès partiel */
+.partial-access-notice {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.unlock-progress-card {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border: 2px solid #667eea;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+}
+
+.unlock-progress-card h3 {
+    margin: 0 0 10px 0;
+    color: #667eea;
+    font-size: 1.4em;
+}
+
+.unlock-progress-card > p {
+    margin: 0 0 25px 0;
+    color: #1a1a1a;
+    font-size: 1.1em;
+}
+
+.unlock-requirement {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.unlock-icon {
+    font-size: 2em;
+}
+
+.unlock-text strong {
+    color: #1a1a1a;
+    font-size: 1em;
+}
+
+.unlock-text p {
+    margin: 5px 0 10px 0;
+    color: #666;
+}
+
+.progress-indicator {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: inline-block;
+    font-size: 0.95em;
+}
+
+.progress-indicator strong {
+    color: #fff;
+}
+
+.btn-solo-link {
+    display: inline-block;
+    padding: 15px 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 1.1em;
+    transition: all 0.3s;
+}
+
+.btn-solo-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    color: white;
+}
+
+@media (max-width: 480px) {
+    .unlock-progress-card {
+        padding: 20px;
+    }
+    
+    .unlock-progress-card h3 {
+        font-size: 1.2em;
+    }
+    
+    .unlock-requirement {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .btn-solo-link {
+        padding: 12px 24px;
+        font-size: 1em;
+    }
+}
 </style>
 
 @php
@@ -936,64 +1066,69 @@ document.addEventListener('DOMContentLoaded', function() {
     const inviteBtn = document.getElementById('inviteBtn');
     const inviteInput = document.getElementById('inviteInput');
 
-    randomMatchBtn.addEventListener('click', function() {
-        this.disabled = true;
-        this.textContent = t('RECHERCHE EN COURS...');
-        
-        fetch('{{ route("duo.matchmaking.random") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = '{{ route("duo.matchmaking") }}?match_id=' + data.match_id;
-            } else {
-                alert(data.message || t('Erreur lors de la recherche'));
+    // Ces éléments n'existent que si l'utilisateur a l'accès complet
+    if (randomMatchBtn) {
+        randomMatchBtn.addEventListener('click', function() {
+            this.disabled = true;
+            this.textContent = t('RECHERCHE EN COURS...');
+            
+            fetch('{{ route("duo.matchmaking.random") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '{{ route("duo.matchmaking") }}?match_id=' + data.match_id;
+                } else {
+                    alert(data.message || t('Erreur lors de la recherche'));
+                    this.disabled = false;
+                    this.textContent = t('CHERCHER UN ADVERSAIRE');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(t('Erreur de connexion'));
                 this.disabled = false;
                 this.textContent = t('CHERCHER UN ADVERSAIRE');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(t('Erreur de connexion'));
-            this.disabled = false;
-            this.textContent = t('CHERCHER UN ADVERSAIRE');
+            });
         });
-    });
+    }
 
-    inviteBtn.addEventListener('click', function() {
-        const playerCode = inviteInput.value.trim().toUpperCase();
-        if (!playerCode) {
-            alert(t('Entrez le code du joueur (ex: SB-4X2K)'));
-            return;
-        }
-
-        fetch('{{ route("duo.invite") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ player_code: playerCode })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(t('Invitation envoyée !'));
-                inviteInput.value = '';
-            } else {
-                alert(data.message || t("Erreur lors de l'invitation"));
+    if (inviteBtn && inviteInput) {
+        inviteBtn.addEventListener('click', function() {
+            const playerCode = inviteInput.value.trim().toUpperCase();
+            if (!playerCode) {
+                alert(t('Entrez le code du joueur (ex: SB-4X2K)'));
+                return;
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(t('Erreur de connexion'));
+
+            fetch('{{ route("duo.invite") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ player_code: playerCode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(t('Invitation envoyée !'));
+                    inviteInput.value = '';
+                } else {
+                    alert(data.message || t("Erreur lors de l'invitation"));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(t('Erreur de connexion'));
+            });
         });
-    });
+    }
 
     // Vérifier les invitations reçues
     function checkInvitations() {

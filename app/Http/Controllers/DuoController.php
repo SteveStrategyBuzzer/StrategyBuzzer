@@ -457,10 +457,17 @@ class DuoController extends Controller
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
         $rankings = $this->divisionService->getRankingsForDivision('duo', $division->division, 10);
 
+        // Vérifier le niveau d'accès Duo (partiel vs complet)
+        $profileSettings = $user->profile_settings ?? [];
+        $choixNiveau = is_array($profileSettings) ? ($profileSettings['choix_niveau'] ?? 1) : 1;
+        $duoFullUnlocked = $choixNiveau >= 11; // Accès complet après boss niveau 10
+
         return view('duo_lobby', [
             'stats' => $stats,
             'division' => $division,
             'rankings' => $rankings,
+            'duoFullUnlocked' => $duoFullUnlocked,
+            'choixNiveau' => $choixNiveau,
         ]);
     }
 
