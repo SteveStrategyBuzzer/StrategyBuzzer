@@ -422,7 +422,7 @@ function regenerateQuestion() {
         } else {
             document.body.style.cursor = 'default';
         }
-        alert('Erreur lors de la génération de la question');
+        showToast('{{ __("Erreur lors de la génération de la question") }}', 'error');
     });
 }
 

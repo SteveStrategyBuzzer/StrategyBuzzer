@@ -500,13 +500,13 @@ document.getElementById('findMatchBtn').addEventListener('click', async function
         if (data.success) {
             window.location.href = `/league/individual/game/${data.match_id}`;
         } else {
-            alert(data.message || 'Aucun adversaire disponible pour le moment');
+            showToast(data.message || '{{ __("Aucun adversaire disponible pour le moment") }}', 'warning');
             btn.disabled = false;
             searchingStatus.style.display = 'none';
         }
     } catch (error) {
         console.error('Error finding match:', error);
-        alert('Erreur lors de la recherche d\'adversaire');
+        showToast('{{ __("Erreur lors de la recherche d\'adversaire") }}', 'error');
         btn.disabled = false;
         searchingStatus.style.display = 'none';
     }

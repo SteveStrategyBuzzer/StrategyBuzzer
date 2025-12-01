@@ -295,12 +295,12 @@ document.getElementById('startMatchmakingBtn')?.addEventListener('click', async 
         if (data.success) {
             window.location.href = `/league/team/game/${data.match_id}`;
         } else {
-            alert(data.error || 'Erreur lors du matchmaking');
+            showToast(data.error || '{{ __("Erreur lors du matchmaking") }}', 'error');
             btn.style.display = 'block';
             status.style.display = 'none';
         }
     } catch (error) {
-        alert('Erreur de connexion');
+        showToast('{{ __("Erreur de connexion") }}', 'error');
         btn.style.display = 'block';
         status.style.display = 'none';
     }

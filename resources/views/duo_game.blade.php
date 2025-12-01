@@ -479,7 +479,7 @@ function nextQuestion() {
 }
 
 function nextRound() {
-    alert('Fin du round ! Round suivant...');
+    showToast('{{ __("Fin du round ! Round suivant...") }}', 'info');
     nextQuestion();
 }
 

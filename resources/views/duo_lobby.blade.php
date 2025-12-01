@@ -1084,14 +1084,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     window.location.href = '{{ route("duo.matchmaking") }}?match_id=' + data.match_id;
                 } else {
-                    alert(data.message || t('Erreur lors de la recherche'));
+                    showToast(data.message || t('Erreur lors de la recherche'), 'error');
                     this.disabled = false;
                     this.textContent = t('CHERCHER UN ADVERSAIRE');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert(t('Erreur de connexion'));
+                showToast(t('Erreur de connexion'), 'error');
                 this.disabled = false;
                 this.textContent = t('CHERCHER UN ADVERSAIRE');
             });
@@ -1102,7 +1102,7 @@ document.addEventListener('DOMContentLoaded', function() {
         inviteBtn.addEventListener('click', function() {
             const playerCode = inviteInput.value.trim().toUpperCase();
             if (!playerCode) {
-                alert(t('Entrez le code du joueur (ex: SB-4X2K)'));
+                showToast(t('Entrez le code du joueur (ex: SB-4X2K)'), 'warning');
                 return;
             }
 
@@ -1117,15 +1117,15 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(t('Invitation envoyée !'));
+                    showToast(t('Invitation envoyée !'), 'success');
                     inviteInput.value = '';
                 } else {
-                    alert(data.message || t("Erreur lors de l'invitation"));
+                    showToast(data.message || t("Erreur lors de l'invitation"), 'error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert(t('Erreur de connexion'));
+                showToast(t('Erreur de connexion'), 'error');
             });
         });
     }
@@ -1307,15 +1307,15 @@ function inviteSelectedContact() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(t('Invitation envoyée !'));
+            showToast(t('Invitation envoyée !'), 'success');
             closeContactsModal();
         } else {
-            alert(data.message || t("Erreur lors de l'invitation"));
+            showToast(data.message || t("Erreur lors de l'invitation"), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert(t('Erreur de connexion'));
+        showToast(t('Erreur de connexion'), 'error');
     });
 }
 

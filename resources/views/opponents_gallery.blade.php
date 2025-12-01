@@ -581,7 +581,7 @@
     })
     .catch(error => {
       console.error('Error:', error);
-      alert('Erreur lors de la sélection de l\'adversaire');
+      showToast('{{ __("Erreur lors de la sélection de l\'adversaire") }}', 'error');
     });
   }
   

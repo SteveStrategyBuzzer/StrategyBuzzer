@@ -540,10 +540,10 @@ async function acceptInvitation(invitationId) {
         if (data.success) {
             window.location.reload();
         } else {
-            alert(data.error || 'Erreur lors de l\'acceptation');
+            showToast(data.error || '{{ __("Erreur lors de l\'acceptation") }}', 'error');
         }
     } catch (error) {
-        alert('Erreur de connexion');
+        showToast('{{ __("Erreur de connexion") }}', 'error');
     }
 }
 
@@ -563,7 +563,7 @@ async function declineInvitation(invitationId) {
             window.location.reload();
         }
     } catch (error) {
-        alert('Erreur de connexion');
+        showToast('{{ __("Erreur de connexion") }}', 'error');
     }
 }
 
@@ -586,10 +586,10 @@ async function kickMember(memberId) {
         if (data.success) {
             window.location.reload();
         } else {
-            alert(data.error || 'Erreur lors de l\'expulsion');
+            showToast(data.error || '{{ __("Erreur lors de l\'expulsion") }}', 'error');
         }
     } catch (error) {
-        alert('Erreur de connexion');
+        showToast('{{ __("Erreur de connexion") }}', 'error');
     }
 }
 
@@ -610,10 +610,10 @@ async function leaveTeam() {
         if (data.success) {
             window.location.reload();
         } else {
-            alert(data.error || 'Erreur lors de la sortie');
+            showToast(data.error || '{{ __("Erreur lors de la sortie") }}', 'error');
         }
     } catch (error) {
-        alert('Erreur de connexion');
+        showToast('{{ __("Erreur de connexion") }}', 'error');
     }
 }
 </script>

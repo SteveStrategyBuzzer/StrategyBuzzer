@@ -1363,7 +1363,7 @@ let popupSyncInterval = null;
 
 function showVisionnairePreview() {
     if (visionnairePreviewsRemaining <= 0) {
-        alert('{{ __("Plus de previews disponibles!") }} (0/5)');
+        showToast('{{ __("Plus de previews disponibles!") }} (0/5)', 'warning');
         return;
     }
     
