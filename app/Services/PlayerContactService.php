@@ -52,6 +52,38 @@ class PlayerContactService
         }
     }
 
+    public function ensureContactExists(int $userId, int $contactUserId): void
+    {
+        try {
+            PlayerContact::firstOrCreate(
+                [
+                    'user_id' => $userId,
+                    'contact_user_id' => $contactUserId,
+                ],
+                [
+                    'matches_played_together' => 0,
+                    'matches_won' => 0,
+                    'matches_lost' => 0,
+                    'decisive_rounds_played' => 0,
+                    'decisive_rounds_won' => 0,
+                    'last_played_at' => now(),
+                ]
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to create player contact', [
+                'user_id' => $userId,
+                'contact_user_id' => $contactUserId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function registerMutualContacts(int $player1Id, int $player2Id): void
+    {
+        $this->ensureContactExists($player1Id, $player2Id);
+        $this->ensureContactExists($player2Id, $player1Id);
+    }
+
     public function getContacts(int $userId): Collection
     {
         $contacts = PlayerContact::where('user_id', $userId)

@@ -107,6 +107,8 @@ class DuoController extends Controller
 
         $this->matchmaking->acceptMatch($match);
 
+        $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
+
         $gameState = $this->gameStateService->initializeGame([
             'players' => [
                 ['id' => 'player', 'user_id' => $match->player1_id],
