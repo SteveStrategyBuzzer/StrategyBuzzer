@@ -898,7 +898,7 @@
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Victoires / Défaites') }}</span>
-          <span style="font-weight:700; color:#4CAF50;">{{ $soloVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $soloDefaites }}</span>
+          <span><span style="font-weight:700; color:#4CAF50;">{{ $soloVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $soloDefaites }}</span></span>
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Ratio victoires') }}</span>
@@ -929,7 +929,7 @@
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Victoires / Défaites') }}</span>
-          <span style="font-weight:700; color:#4CAF50;">{{ $duoVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $duoDefaites }}</span>
+          <span><span style="font-weight:700; color:#4CAF50;">{{ $duoVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $duoDefaites }}</span></span>
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Ratio victoires') }}</span>
@@ -960,7 +960,7 @@
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Victoires / Défaites') }}</span>
-          <span style="font-weight:700; color:#4CAF50;">{{ $ligueVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $ligueDefaites }}</span>
+          <span><span style="font-weight:700; color:#4CAF50;">{{ $ligueVictoires }}</span> / <span style="font-weight:700; color:#F44336;">{{ $ligueDefaites }}</span></span>
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Ratio victoires') }}</span>

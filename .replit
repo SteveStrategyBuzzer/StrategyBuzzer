@@ -76,16 +76,16 @@ localPort = 36919
 externalPort = 8000
 
 [[ports]]
+localPort = 37683
+externalPort = 8008
+
+[[ports]]
 localPort = 39359
 externalPort = 5000
 
 [[ports]]
 localPort = 41291
 externalPort = 5173
-
-[[ports]]
-localPort = 41983
-externalPort = 8008
 
 [[ports]]
 localPort = 43897
