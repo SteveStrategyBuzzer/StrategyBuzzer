@@ -920,7 +920,7 @@
           <span style="font-weight:700;">{{ $soloMatchs3 }}</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
-          <span style="opacity:.85;">{{ __('Victoires difficiles') }}</span>
+          <span style="opacity:.85;">{{ __('Manches Décisives') }}</span>
           <span style="font-weight:700; color:#FF9800;">{{ $soloVictoires3 }}</span>
         </div>
         <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:6px; border-top:1px solid rgba(255,255,255,.1);">
@@ -959,7 +959,7 @@
           <span style="font-weight:700;">{{ $duoMatchs3 }}</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
-          <span style="opacity:.85;">{{ __('Victoires difficiles') }}</span>
+          <span style="opacity:.85;">{{ __('Manches Décisives') }}</span>
           <span style="font-weight:700; color:#FF9800;">{{ $duoVictoires3 }}</span>
         </div>
         <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:6px; border-top:1px solid rgba(255,255,255,.1);">
@@ -998,7 +998,7 @@
           <span style="font-weight:700;">{{ $ligueMatchs3 }}</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
-          <span style="opacity:.85;">{{ __('Victoires difficiles') }}</span>
+          <span style="opacity:.85;">{{ __('Manches Décisives') }}</span>
           <span style="font-weight:700; color:#FF9800;">{{ $ligueVictoires3 }}</span>
         </div>
       </div>
