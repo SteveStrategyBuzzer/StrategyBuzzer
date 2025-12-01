@@ -923,6 +923,10 @@
           <span style="opacity:.85;">{{ __('Victoires difficiles') }}</span>
           <span style="font-weight:700; color:#FF9800;">{{ $soloVictoires3 }}</span>
         </div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:6px; border-top:1px solid rgba(255,255,255,.1);">
+          <span style="opacity:.85;">{{ __('Titre Full Mode Duo') }}</span>
+          <span style="font-weight:700; color:#E91E63;">{{ __('Niveau') }} {{ $soloLevel }}/10</span>
+        </div>
       </div>
     </div>
     
@@ -957,6 +961,10 @@
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Victoires difficiles') }}</span>
           <span style="font-weight:700; color:#FF9800;">{{ $duoVictoires3 }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:6px; border-top:1px solid rgba(255,255,255,.1);">
+          <span style="opacity:.85;">{{ __('Titre Mode Ligue') }}</span>
+          <span style="font-weight:700; color:#FFD700;">{{ __('Matchs') }} {{ $duoMatchs }}/25</span>
         </div>
       </div>
     </div>
