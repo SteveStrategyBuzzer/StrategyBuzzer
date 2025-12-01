@@ -109,6 +109,20 @@
 <script>
   const form = document.getElementById('soloForm');
   const validationMsg = document.getElementById('validationMessage');
+  const nbQuestionsSelect = document.getElementById('nb_questions');
+  
+  // Restaurer la valeur sauvegardée au chargement
+  const savedNbQuestions = sessionStorage.getItem('solo_nb_questions');
+  if (savedNbQuestions && nbQuestionsSelect) {
+    nbQuestionsSelect.value = savedNbQuestions;
+  }
+  
+  // Sauvegarder quand l'utilisateur change la valeur
+  if (nbQuestionsSelect) {
+    nbQuestionsSelect.addEventListener('change', () => {
+      sessionStorage.setItem('solo_nb_questions', nbQuestionsSelect.value);
+    });
+  }
   
   document.querySelectorAll('.btn-theme').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -124,6 +138,8 @@
         
         return false;
       }
+      // Nettoyer sessionStorage quand le jeu commence
+      sessionStorage.removeItem('solo_nb_questions');
     });
   });
 </script>
