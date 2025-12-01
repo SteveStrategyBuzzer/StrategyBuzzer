@@ -862,7 +862,8 @@
     $soloRatio = ($soloMatchs > 0) ? round(($soloVictoires / $soloMatchs) * 100, 1) : 0;
     $soloMatchs3 = $stats ? ($stats->solo_matchs_3_manches ?? 0) : 0;
     $soloVictoires3 = $stats ? ($stats->solo_victoires_difficiles ?? 0) : 0;
-    $soloPerf = $stats ? round($stats->solo_performance_moyenne ?? 0, 1) : 0;
+    $soloEfficacite = $stats ? round($stats->solo_performance_moyenne ?? 0, 1) : 0;
+    $soloEfficaciteJoueur = $stats ? round($stats->solo_efficacite_joueur ?? 0, 1) : 0;
     
     // Stats Duo
     $duoMatchs = $stats ? ($stats->duo_matchs_joues ?? 0) : 0;
@@ -871,7 +872,8 @@
     $duoRatio = ($duoMatchs > 0) ? round(($duoVictoires / $duoMatchs) * 100, 1) : 0;
     $duoMatchs3 = $stats ? ($stats->duo_matchs_3_manches ?? 0) : 0;
     $duoVictoires3 = $stats ? ($stats->duo_victoires_difficiles ?? 0) : 0;
-    $duoPerf = $stats ? round($stats->duo_performance_moyenne ?? 0, 1) : 0;
+    $duoEfficacite = $stats ? round($stats->duo_performance_moyenne ?? 0, 1) : 0;
+    $duoEfficaciteJoueur = $stats ? round($stats->duo_efficacite_joueur ?? 0, 1) : 0;
     
     // Stats Ligue
     $ligueMatchs = $stats ? ($stats->league_matchs_joues ?? 0) : 0;
@@ -880,7 +882,8 @@
     $ligueRatio = ($ligueMatchs > 0) ? round(($ligueVictoires / $ligueMatchs) * 100, 1) : 0;
     $ligueMatchs3 = $stats ? ($stats->league_matchs_3_manches ?? 0) : 0;
     $ligueVictoires3 = $stats ? ($stats->league_victoires_difficiles ?? 0) : 0;
-    $liguePerf = $stats ? round($stats->league_performance_moyenne ?? 0, 1) : 0;
+    $ligueEfficacite = $stats ? round($stats->league_performance_moyenne ?? 0, 1) : 0;
+    $ligueEfficaciteJoueur = $stats ? round($stats->league_efficacite_joueur ?? 0, 1) : 0;
 @endphp
 
 <div class="sb-panel" style="margin-top:12px;">
@@ -905,8 +908,12 @@
           <span style="font-weight:700; color:#FFD700;">{{ $soloRatio }}%</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
-          <span style="opacity:.85;">{{ __('Performance moyenne') }}</span>
-          <span style="font-weight:700; color:#9C27B0;">{{ $soloPerf }}%</span>
+          <span style="opacity:.85;">{{ __('Efficacité Solo') }}</span>
+          <span style="font-weight:700; color:#9C27B0;">{{ $soloEfficacite }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">{{ __('Efficacité du Joueur') }}</span>
+          <span style="font-weight:700; color:#00BCD4;">{{ $soloEfficaciteJoueur }}%</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Matchs 3 manches') }}</span>
@@ -936,8 +943,12 @@
           <span style="font-weight:700; color:#FFD700;">{{ $duoRatio }}%</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
-          <span style="opacity:.85;">{{ __('Performance moyenne') }}</span>
-          <span style="font-weight:700; color:#9C27B0;">{{ $duoPerf }}%</span>
+          <span style="opacity:.85;">{{ __('Efficacité Duo') }}</span>
+          <span style="font-weight:700; color:#9C27B0;">{{ $duoEfficacite }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">{{ __('Efficacité du Joueur') }}</span>
+          <span style="font-weight:700; color:#00BCD4;">{{ $duoEfficaciteJoueur }}%</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Matchs 3 manches') }}</span>
@@ -967,8 +978,12 @@
           <span style="font-weight:700; color:#FFD700;">{{ $ligueRatio }}%</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
-          <span style="opacity:.85;">{{ __('Performance moyenne') }}</span>
-          <span style="font-weight:700; color:#9C27B0;">{{ $liguePerf }}%</span>
+          <span style="opacity:.85;">{{ __('Efficacité Ligue') }}</span>
+          <span style="font-weight:700; color:#9C27B0;">{{ $ligueEfficacite }}%</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">{{ __('Efficacité du Joueur') }}</span>
+          <span style="font-weight:700; color:#00BCD4;">{{ $ligueEfficaciteJoueur }}%</span>
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span style="opacity:.85;">{{ __('Matchs 3 manches') }}</span>

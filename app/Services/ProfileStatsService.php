@@ -82,9 +82,13 @@ class ProfileStatsService
         $ratio = $matchsJoues > 0 ? round(($victoires / $matchsJoues) * 100, 2) : 0;
         $profileStat->{$prefix . 'ratio_victoire'} = $ratio;
         
-        // Recalculer performance moyenne des 10 derniers matchs
+        // Recalculer Efficacité Mode (moyenne des 10 derniers matchs)
         $performanceMoyenne = MatchPerformance::getAverageLast10($user->id, $gameMode);
         $profileStat->{$prefix . 'performance_moyenne'} = $performanceMoyenne;
+        
+        // Calculer Efficacité du Joueur = (Efficacité Mode + Ratio Victoires) / 2
+        $efficaciteJoueur = round(($performanceMoyenne + $ratio) / 2, 2);
+        $profileStat->{$prefix . 'efficacite_joueur'} = $efficaciteJoueur;
         
         $profileStat->save();
         
@@ -189,16 +193,19 @@ class ProfileStatsService
             'solo_matchs_3_manches' => 0,
             'solo_victoires_3_manches' => 0,
             'solo_performance_moyenne' => 0,
+            'solo_efficacite_joueur' => 0,
             'duo_matchs_joues' => 0,
             'duo_victoires' => 0,
             'duo_defaites' => 0,
             'duo_ratio_victoire' => 0,
             'duo_performance_moyenne' => 0,
+            'duo_efficacite_joueur' => 0,
             'league_matchs_joues' => 0,
             'league_victoires' => 0,
             'league_defaites' => 0,
             'league_ratio_victoire' => 0,
             'league_performance_moyenne' => 0,
+            'league_efficacite_joueur' => 0,
         ];
     }
 }
