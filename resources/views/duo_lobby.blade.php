@@ -18,9 +18,25 @@
 
     <div class="lobby-content">
 
-        @if($duoFullUnlocked ?? false)
-        {{-- Accès COMPLET : Toutes les options disponibles --}}
+        @if(!($duoFullUnlocked ?? false))
+        {{-- Avertissement : Stats non comptabilisées avant niveau 11 --}}
+        <div class="stats-warning-banner">
+            <div class="warning-content">
+                <span class="warning-icon">⚠️</span>
+                <div class="warning-text">
+                    <strong>{{ __('Mode Duo - Entraînement') }}</strong>
+                    <p>{{ __('Vos statistiques ne seront pas comptabilisées avant d\'avoir battu le Boss du Niveau 10 en Solo.') }}</p>
+                    <div class="progress-indicator">
+                        {{ __('Progression') }} : {{ __('Niveau') }} <strong>{{ max(1, ($choixNiveau ?? 1) - 1) }}</strong> / 10
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <div class="matchmaking-options">
+            @if($duoFullUnlocked ?? false)
+            {{-- Accès COMPLET : Matchmaking disponible --}}
             <div class="option-card">
                 <h3>🎯 {{ __('MATCHMAKING ALÉATOIRE') }}</h3>
                 <p>{{ __('Affrontez un adversaire de votre division') }}</p>
@@ -30,6 +46,7 @@
             </div>
 
             <div class="divider">{{ __('OU') }}</div>
+            @endif
 
             <div class="option-card">
                 <h3>👥 {{ __('INVITER UN AMI') }}</h3>
@@ -45,28 +62,6 @@
                 </button>
             </div>
         </div>
-        @else
-        {{-- Accès PARTIEL : Seulement être invité --}}
-        <div class="partial-access-notice">
-            <div class="unlock-progress-card">
-                <h3>🔒 {{ __('Accès Partiel au Mode Duo') }}</h3>
-                <p>{{ __('Vous pouvez recevoir des invitations de vos amis !') }}</p>
-                <div class="unlock-requirement">
-                    <span class="unlock-icon">🎯</span>
-                    <div class="unlock-text">
-                        <strong>{{ __('Pour débloquer l\'accès complet :') }}</strong>
-                        <p>{{ __('Battez le Boss du Niveau 10 en Mode Solo') }}</p>
-                        <div class="progress-indicator">
-                            {{ __('Niveau actuel') }} : <strong>{{ ($choixNiveau ?? 1) - 1 }}</strong> / 10
-                        </div>
-                    </div>
-                </div>
-                <a href="{{ route('solo.index') }}" class="btn-solo-link">
-                    🎮 {{ __('Continuer en Mode Solo') }}
-                </a>
-            </div>
-        </div>
-        @endif
 
         <div class="pending-invitations" id="pendingInvitations">
             <h3>📬 {{ __('Invitations reçues') }}</h3>
@@ -213,6 +208,49 @@
     display: grid;
     gap: 30px;
     margin-bottom: 40px;
+}
+
+/* Bannière d'avertissement stats non comptabilisées */
+.stats-warning-banner {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+}
+
+.stats-warning-banner .warning-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.stats-warning-banner .warning-icon {
+    font-size: 2em;
+    flex-shrink: 0;
+}
+
+.stats-warning-banner .warning-text {
+    color: white;
+}
+
+.stats-warning-banner .warning-text strong {
+    font-size: 1.1em;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.stats-warning-banner .warning-text p {
+    margin: 0 0 8px 0;
+    opacity: 0.95;
+    font-size: 0.95em;
+}
+
+.stats-warning-banner .progress-indicator {
+    background: rgba(255,255,255,0.2);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    display: inline-block;
 }
 
 .player-card {

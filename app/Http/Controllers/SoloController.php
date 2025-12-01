@@ -1811,6 +1811,9 @@ class SoloController extends Controller
         $opponents = config('opponents');
         $nextOpponentName = $this->getOpponentName($newLevel);
         
+        // Détecter le déblocage du Duo complet (Boss niveau 10 battu = passage au niveau 11)
+        $duoFullUnlocked = ($currentLevel == 10 && $newLevel >= 11);
+        
         $params = [
             'current_level' => $currentLevel,
             'new_level' => $newLevel,
@@ -1831,6 +1834,8 @@ class SoloController extends Controller
             'coins_earned' => $coinsEarned,
             'coins_bonus' => $coinsBonus,
             'has_stratege_bonus' => $hasStrategeBonus,
+            // Flag de déblocage Duo complet
+            'duo_full_unlocked' => $duoFullUnlocked,
         ];
         
         return view('victory', compact('params'));

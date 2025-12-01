@@ -12,14 +12,13 @@
     // Solo : accessible SEULEMENT si profil complet
     $soloUnlocked = $profileComplete;
     
-    // Duo : système de déblocage progressif à 2 niveaux
-    // - Niveau 5 (choix_niveau >= 6) : Accès partiel (peut être invité seulement)
-    // - Niveau 10 (choix_niveau >= 11) : Accès complet (invitation + matchmaking)
+    // Duo : toujours accessible pour les invitations
+    // - Avant niveau 11 : Peut jouer mais stats NON comptabilisées
+    // - À partir niveau 11 (après boss niveau 10) : Accès complet avec stats
     $profileSettings = $user && $user->profile_settings ? $user->profile_settings : [];
     $choixNiveau = is_array($profileSettings) ? ($profileSettings['choix_niveau'] ?? 1) : 1;
-    $duoPartialUnlocked = $choixNiveau >= 6;  // Après boss niveau 5
     $duoFullUnlocked = $choixNiveau >= 11;    // Après boss niveau 10
-    $duoUnlocked = $duoPartialUnlocked;       // Menu débloqué dès l'accès partiel
+    $duoUnlocked = true;                       // Duo toujours accessible pour invitations
     
     // Ligue : 25 matchs Duo joués (victoires + défaites)
     $profileStats = $user ? ProfileStat::where('user_id', $user->id)->first() : null;

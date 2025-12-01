@@ -348,6 +348,81 @@
     @endif
 </div>
 
+@if($params['duo_full_unlocked'] ?? false)
+<div id="duoUnlockPopup" class="duo-unlock-popup">
+    <div class="duo-unlock-content">
+        <div class="duo-unlock-icon">🎉</div>
+        <h2>{{ __('DUO COMPLET DÉBLOQUÉ') }} !</h2>
+        <p>{{ __('Matchmaking et statistiques maintenant disponibles') }}</p>
+    </div>
+</div>
+
+<style>
+.duo-unlock-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.duo-unlock-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px 60px;
+    border-radius: 25px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 25px 70px rgba(102, 126, 234, 0.5);
+    animation: scaleIn 0.4s ease-out;
+}
+
+.duo-unlock-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    animation: bounce 0.6s ease infinite;
+}
+
+.duo-unlock-content h2 {
+    font-size: 2rem;
+    font-weight: 900;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.duo-unlock-content p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+</style>
+
+<script>
+setTimeout(function() {
+    const popup = document.getElementById('duoUnlockPopup');
+    if (popup) {
+        popup.style.animation = 'fadeIn 0.3s ease-out reverse';
+        setTimeout(() => popup.remove(), 300);
+    }
+}, 2000);
+</script>
+@endif
+
 <audio id="gameplayAmbient" preload="auto" loop>
     <source src="{{ asset('sounds/gameplay_ambient.mp3') }}" type="audio/mpeg">
 </audio>
