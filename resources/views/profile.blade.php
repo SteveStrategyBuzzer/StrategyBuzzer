@@ -313,11 +313,14 @@
   font-size: 12px;
 }
 
-/* Variante compacte: juste la flèche, pas de label */
+/* Variante compacte: juste la flèche, même taille que .sb-chooser (30px × 28px) */
 .sb-audio-selector.compact .sb-selector-toggle {
-  min-width: auto;
-  padding: 8px 12px;
+  min-width: 30px;
+  width: 30px;
+  height: 28px;
+  padding: 0;
   gap: 0;
+  justify-content: center;
 }
 
 .sb-audio-selector.compact .sb-selector-label {
@@ -813,8 +816,8 @@
       <div class="sb-k">{{ __('Son du buzzer') }}</div>
       <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
         
-        {{-- Sélecteur custom dépliable --}}
-        <div class="sb-audio-selector" id="buzzer-selector">
+        {{-- Sélecteur custom dépliable (compact: juste la flèche) --}}
+        <div class="sb-audio-selector compact" id="buzzer-selector">
           <button type="button" class="sb-selector-toggle" data-selector="buzzer"
                   role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="buzzer-dropdown">
             <span class="sb-selector-label">{{ collect($unlockedBuzzers)->firstWhere('id', (string)$buzzerId)['label'] ?? __('Choisir') }}</span>
@@ -1013,38 +1016,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Note: L'initialisation localStorage est faite dans le script inline avant DOMContentLoaded
   }
 
-  // Fonctions génériques pour Ambiance & Gameplay (adaptées pour les custom selectors)
+  // Fonctions génériques pour Ambiance & Gameplay (sélecteurs toujours visibles pour tester)
   const updateAmbiance = () => {
-    const ambianceSelector = byId('ambiance-selector');
     if (chkAmb && selAmb) {
       if (chkAmb.checked) {
-        // Afficher le sélecteur et récupérer le label
-        if (ambianceSelector) ambianceSelector.style.display = '';
         const toggleLabel = document.querySelector('#ambiance-selector .sb-selector-label');
         const labelText = toggleLabel ? toggleLabel.textContent : '{{ __("Classique") }}';
         setTxt('apercu-ambiance', labelText);
       } else {
-        // Masquer le sélecteur quand désactivé
-        if (ambianceSelector) ambianceSelector.style.display = 'none';
-        setTxt('apercu-ambiance', 'Désactivé');
+        setTxt('apercu-ambiance', '{{ __("Désactivé") }}');
       }
     }
   };
 
   const updateGameplay = () => {
-    const gameplaySelector = byId('gameplay-selector');
     const selGameplay = byId('sel-gameplay');
     if (chkGame && selGameplay) {
       if (chkGame.checked) {
-        // Afficher le sélecteur et récupérer le label
-        if (gameplaySelector) gameplaySelector.style.display = '';
         const toggleLabel = document.querySelector('#gameplay-selector .sb-selector-label');
         const labelText = toggleLabel ? toggleLabel.textContent : 'StrategyBuzzer';
         setTxt('apercu-gameplay', labelText);
       } else {
-        // Masquer le sélecteur quand désactivé
-        if (gameplaySelector) gameplaySelector.style.display = 'none';
-        setTxt('apercu-gameplay', 'Désactivé');
+        setTxt('apercu-gameplay', '{{ __("Désactivé") }}');
       }
     }
   };
@@ -1079,6 +1072,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const selGameplay = byId('sel-gameplay');
   if (chkGame) chkGame.addEventListener('change', updateGameplay);
   if (selGameplay) selGameplay.addEventListener('change', updateGameplay);
+
+  // Initialiser les aperçus au chargement de la page
+  updateAmbiance();
+  updateGameplay();
 
   // Buzzer - Synchroniser avec localStorage
   if (selBuzzer) {
