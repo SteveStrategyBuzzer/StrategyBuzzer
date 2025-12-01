@@ -549,13 +549,13 @@
       data-target="{{ $target ? \Carbon\Carbon::parse($target)->toIso8601String() : '' }}"
       data-life-max="{{ $lifeMax }}"
       data-regen-mins="{{ (int) config('game.life_regen_minutes', 60) }}"
-      data-wait-text="{{ (string) config('game.life_wait_text', __('en attente')) }} 1h 00m 00s"
+      data-wait-text="{{ (string) config('game.life_wait_text', '—') }}"
       data-lives="{{ $currentLives }}"
     >
       @if($hasInfinite)
         {{ \Carbon\Carbon::parse($user->infinite_lives_until)->diff(now())->format('%Hh %Im %Ss') }}
       @elseif($user && $user->lives >= $lifeMax)
-        {{ config('game.life_wait_text', __('en attente')) }} 1h 00m 00s
+        {{ config('game.life_wait_text', '—') }}
       @else
         {{ $lifeService->timeUntilNextRegen($user) ?? '—' }}
       @endif
@@ -1305,7 +1305,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let targetIso   = el.dataset.target || null;    // ISO date
   const lifeMax   = parseInt(el.dataset.lifeMax || '3', 10);
   const regenMins = parseInt(el.dataset.regenMins || '60', 10);
-  const waitText  = el.dataset.waitText || '{{ __("en attente") }} 1h 00m 00s';
+  const waitText  = el.dataset.waitText || '—';
   let lives       = parseInt(el.dataset.lives || '0', 10);
 
   const fmt = (ms) => {

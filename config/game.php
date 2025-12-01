@@ -8,5 +8,5 @@ return [
     'life_regen_minutes' => 60, // 1 heure
 
     // texte à afficher quand on est à vie max
-  'life_wait_text'     => '1h 00m 00s',
+  'life_wait_text'     => '—',
 ];
