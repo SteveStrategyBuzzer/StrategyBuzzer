@@ -1,0 +1,834 @@
+@extends('layouts.app')
+
+@section('content')
+@php
+$mode = $params['mode'] ?? 'solo';
+$opponentType = $params['opponent_type'] ?? 'ai';
+$opponentInfo = $params['opponent_info'] ?? [];
+$currentQuestion = $params['current'] ?? 1;
+$totalQuestions = $params['nb_questions'] ?? 10;
+$niveau = $params['niveau'] ?? 1;
+$theme = $params['theme'] ?? 'Culture générale';
+$subTheme = $params['sub_theme'] ?? '';
+$playerScore = $params['score'] ?? 0;
+$opponentScore = $params['opponent_score'] ?? 0;
+$currentRound = $params['current_round'] ?? 1;
+$playerRoundsWon = $params['player_rounds_won'] ?? 0;
+$opponentRoundsWon = $params['opponent_rounds_won'] ?? 0;
+$scoring = $params['scoring'] ?? [];
+$avatarName = $params['avatar'] ?? 'Aucun';
+$avatarSkillsFull = $params['avatar_skills_full'] ?? ['rarity' => null, 'skills' => []];
+
+$usedSkills = session('used_skills', []);
+$skills = [];
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skillData) {
+        $skillId = $skillData['id'];
+        $isUsed = in_array($skillId, $usedSkills);
+        $usesCount = 0;
+        foreach ($usedSkills as $used) {
+            if (strpos($used, $skillId) === 0) {
+                $usesCount++;
+            }
+        }
+        $maxUses = $skillData['uses_per_match'] ?? 1;
+        $isFullyUsed = ($maxUses > 0 && $usesCount >= $maxUses);
+        
+        $skills[] = [
+            'id' => $skillId,
+            'icon' => $isFullyUsed ? '⚪' : $skillData['icon'],
+            'name' => $skillData['name'],
+            'description' => $skillData['description'],
+            'type' => $skillData['type'],
+            'trigger' => $skillData['trigger'],
+            'auto' => $skillData['auto'] ?? false,
+            'used' => $isFullyUsed,
+            'uses_left' => $maxUses > 0 ? max(0, $maxUses - $usesCount) : -1,
+        ];
+    }
+}
+
+$selectedAvatar = session('selected_avatar', 'default');
+if (strpos($selectedAvatar, '/') !== false || strpos($selectedAvatar, 'images/') === 0) {
+    $playerAvatarPath = asset($selectedAvatar);
+} else {
+    $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");
+}
+
+$strategicAvatarPath = '';
+if ($avatarName !== 'Aucun') {
+    $strategicAvatarSlug = strtolower($avatarName);
+    $strategicAvatarSlug = str_replace(['é', 'è', 'ê'], 'e', $strategicAvatarSlug);
+    $strategicAvatarSlug = str_replace(['à', 'â'], 'a', $strategicAvatarSlug);
+    $strategicAvatarSlug = str_replace(' ', '-', $strategicAvatarSlug);
+    $strategicAvatarPath = asset("images/avatars/{$strategicAvatarSlug}.png");
+}
+
+$opponentName = $opponentInfo['name'] ?? __('Adversaire');
+$opponentAvatar = '';
+$opponentDescription = '';
+
+if ($opponentType === 'ai') {
+    if ($opponentInfo['is_boss'] ?? false) {
+        $opponentAvatar = asset("images/avatars/bosses/{$opponentInfo['avatar']}.png");
+    } else {
+        $opponentAge = $opponentInfo['age'] ?? 8;
+        $nextBoss = $opponentInfo['next_boss'] ?? 'Le Stratège';
+        $opponentAvatar = asset("images/avatars/students/{$opponentInfo['avatar']}.png");
+        $opponentDescription = __('Votre adversaire') . " {$opponentName} {$opponentAge} " . __('ans élève du') . " {$nextBoss}";
+    }
+} else {
+    $opponentAvatar = asset("images/avatars/standard/{$opponentInfo['avatar']}.png");
+    $opponentDivision = $opponentInfo['division'] ?? 'Bronze';
+    $opponentLevel = $opponentInfo['level'] ?? $opponentInfo['league_level'] ?? 1;
+    $opponentDescription = "{$opponentDivision} - " . __('Niveau') . " {$opponentLevel}";
+}
+
+$isFirebaseMode = in_array($mode, ['duo', 'league_individual', 'master']);
+$matchId = $params['match_id'] ?? null;
+$roomCode = $params['room_code'] ?? null;
+@endphp
+
+<style>
+    body {
+        background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
+        color: #fff;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+        margin: 0;
+        overflow-x: hidden;
+    }
+    
+    .game-container {
+        max-width: 1200px;
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        position: relative;
+        min-height: 100vh;
+        padding-bottom: 180px;
+    }
+    
+    .mode-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .mode-solo { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .mode-duo { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); }
+    .mode-league { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+    .mode-master { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); }
+    
+    .question-header {
+        background: rgba(78, 205, 196, 0.1);
+        padding: 20px;
+        border-radius: 20px;
+        text-align: center;
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        margin-bottom: 10px;
+    }
+    
+    .question-number {
+        font-size: 0.9rem;
+        color: #4ECDC4;
+        margin-bottom: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .question-text {
+        font-size: 1.4rem;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+    
+    .round-indicator {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .round-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: transparent;
+    }
+    
+    .round-dot.player-won { background: #4ECDC4; border-color: #4ECDC4; }
+    .round-dot.opponent-won { background: #FF6B6B; border-color: #FF6B6B; }
+    .round-dot.current { border-color: #FFD700; box-shadow: 0 0 10px #FFD700; }
+    
+    .game-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 30px;
+        align-items: start;
+        justify-items: center;
+        margin: 20px 0;
+    }
+    
+    .left-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        width: 100%;
+    }
+    
+    .player-circle, .opponent-circle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .player-avatar, .opponent-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .player-avatar {
+        border: 3px solid #4ECDC4;
+        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
+    }
+    
+    .opponent-avatar {
+        border: 3px solid #FF6B6B;
+        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
+    }
+    
+    .opponent-avatar.human {
+        border-color: #f39c12;
+        box-shadow: 0 8px 30px rgba(243, 156, 18, 0.5);
+    }
+    
+    .player-name { color: #4ECDC4; font-weight: 600; }
+    .opponent-name { color: #FF6B6B; font-weight: 600; }
+    .opponent-name.human { color: #f39c12; }
+    
+    .player-score, .opponent-score {
+        font-size: 2rem;
+        font-weight: 900;
+    }
+    
+    .player-score { color: #4ECDC4; text-shadow: 0 0 20px rgba(78, 205, 196, 0.8); }
+    .opponent-score { color: #FF6B6B; text-shadow: 0 0 20px rgba(255, 107, 107, 0.8); }
+    .opponent-score.human { color: #f39c12; text-shadow: 0 0 20px rgba(243, 156, 18, 0.8); }
+    
+    .center-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .chrono-circle {
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        box-shadow: 0 15px 50px rgba(102, 126, 234, 0.6);
+        animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 15px 50px rgba(102, 126, 234, 0.6); }
+        50% { box-shadow: 0 15px 70px rgba(102, 126, 234, 0.9); }
+    }
+    
+    .chrono-time {
+        font-size: 5rem;
+        font-weight: 900;
+        position: relative;
+        z-index: 1;
+        background: linear-gradient(180deg, #fff 0%, #4ECDC4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .right-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+    }
+    
+    .strategic-avatar-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid #FFD700;
+        box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 215, 0, 0.1);
+        object-fit: cover;
+    }
+    
+    .strategic-avatar-circle.empty {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: none;
+    }
+    
+    .strategic-avatar-image {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .skills-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    .skill-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .skill-circle.active {
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.2);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+    }
+    
+    .skill-circle.empty { opacity: 0.3; cursor: default; }
+    .skill-circle.used { opacity: 0.5; cursor: default; }
+    
+    .answers-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 0 20px;
+    }
+    
+    .answer-option {
+        background: linear-gradient(135deg, #0074D9 0%, #005fa3 100%);
+        border: none;
+        border-radius: 15px;
+        padding: 20px;
+        color: white;
+        font-size: 1.1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .answer-option:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0, 116, 217, 0.4);
+    }
+    
+    .answer-option.correct {
+        background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+    }
+    
+    .answer-option.incorrect {
+        background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);
+    }
+    
+    .answer-option.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .buzz-container-bottom {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+    }
+    
+    .buzz-button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        padding: 0;
+    }
+    
+    .buzz-button:hover { transform: scale(1.05); }
+    .buzz-button:active { transform: scale(0.95); }
+    
+    .buzz-button img {
+        width: 180px;
+        height: 180px;
+        filter: drop-shadow(0 10px 30px rgba(78, 205, 196, 0.6));
+    }
+    
+    .waiting-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .waiting-overlay.active { display: flex; }
+    
+    .waiting-text {
+        font-size: 1.5rem;
+        color: #4ECDC4;
+    }
+    
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.2);
+        border-top-color: #4ECDC4;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .firebase-status {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .firebase-status.connected { color: #2ECC71; }
+    .firebase-status.disconnected { color: #E74C3C; }
+    
+    @media (max-width: 768px) {
+        .game-layout { gap: 15px; }
+        .player-avatar, .opponent-avatar { width: 70px; height: 70px; }
+        .chrono-circle { width: 140px; height: 140px; }
+        .chrono-time { font-size: 3rem; }
+        .buzz-button img { width: 150px; height: 150px; }
+        .answers-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="game-container">
+    <div class="mode-indicator mode-{{ $mode }}">
+        @if($mode === 'solo')
+            {{ __('Solo') }}
+        @elseif($mode === 'duo')
+            {{ __('Duo') }}
+        @elseif($mode === 'league_individual')
+            {{ __('Ligue') }}
+        @elseif($mode === 'master')
+            {{ __('Maître') }}
+        @endif
+    </div>
+    
+    <div class="question-header">
+        <div class="round-indicator">
+            @for($i = 1; $i <= 3; $i++)
+                @php
+                    $dotClass = '';
+                    if ($i <= $playerRoundsWon) $dotClass = 'player-won';
+                    elseif ($i <= ($playerRoundsWon + $opponentRoundsWon) && $i > $playerRoundsWon) $dotClass = 'opponent-won';
+                    if ($i === $currentRound) $dotClass .= ' current';
+                @endphp
+                <div class="round-dot {{ $dotClass }}"></div>
+            @endfor
+        </div>
+        
+        <div class="question-number">
+            {{ $theme }} @if($subTheme)- {{ $subTheme }}@endif | {{ __('Question') }} {{ $currentQuestion }}/{{ $totalQuestions }}
+        </div>
+        
+        <div class="question-text">
+            {{ $params['question_text'] ?? __('Chargement de la question...') }}
+        </div>
+    </div>
+    
+    <div class="game-layout">
+        <div class="left-column">
+            <div class="player-circle">
+                <img src="{{ $playerAvatarPath }}" alt="Joueur" class="player-avatar">
+                <div class="player-name">{{ auth()->user()->name }}</div>
+                <div class="player-score" id="playerScore">{{ $playerScore }}</div>
+            </div>
+            
+            <div class="opponent-circle">
+                @if($opponentAvatar)
+                    <img src="{{ $opponentAvatar }}" alt="Adversaire" class="opponent-avatar {{ $opponentType === 'human' ? 'human' : '' }}">
+                @else
+                    <div class="opponent-avatar {{ $opponentType === 'human' ? 'human' : '' }}" style="display: flex; align-items: center; justify-content: center; background: rgba(255, 107, 107, 0.2); font-size: 2rem;">
+                        {{ $opponentType === 'human' ? '👤' : '🤖' }}
+                    </div>
+                @endif
+                <div class="opponent-name {{ $opponentType === 'human' ? 'human' : '' }}">{{ $opponentName }}</div>
+                @if($opponentDescription)
+                    <div style="font-size: 0.75rem; opacity: 0.8; text-align: center;">{{ $opponentDescription }}</div>
+                @endif
+                <div class="opponent-score {{ $opponentType === 'human' ? 'human' : '' }}" id="opponentScore">{{ $opponentScore }}</div>
+            </div>
+        </div>
+        
+        <div class="center-column">
+            <div class="chrono-circle">
+                <div class="chrono-time" id="chronoTimer">8</div>
+            </div>
+        </div>
+        
+        <div class="right-column">
+            @if($avatarName !== 'Aucun' && $strategicAvatarPath)
+                <div class="strategic-avatar-circle">
+                    <img src="{{ $strategicAvatarPath }}" alt="Avatar stratégique" class="strategic-avatar-image">
+                </div>
+            @else
+                <div class="strategic-avatar-circle empty"></div>
+            @endif
+            
+            <div class="skills-container">
+                @for($i = 0; $i < 3; $i++)
+                    @if(isset($skills[$i]))
+                        @php
+                            $skill = $skills[$i];
+                            $isUsed = $skill['used'];
+                            $isAuto = $skill['auto'];
+                            $isDisabled = $isUsed || $isAuto;
+                        @endphp
+                        <div class="skill-circle {{ $isUsed ? 'used' : 'active' }}" 
+                             data-skill-id="{{ $skill['id'] }}"
+                             data-skill-trigger="{{ $skill['trigger'] }}"
+                             title="{{ $skill['name'] }}: {{ $skill['description'] }}">
+                            {{ $skill['icon'] }}
+                        </div>
+                    @else
+                        <div class="skill-circle empty"></div>
+                    @endif
+                @endfor
+            </div>
+        </div>
+    </div>
+    
+    <div class="answers-grid" id="answersGrid" style="display: none;">
+        @foreach($params['answers'] ?? [] as $index => $answer)
+            <button class="answer-option" 
+                    data-index="{{ $index }}" 
+                    data-correct="{{ $index === ($params['correct_answer_index'] ?? 0) ? 'true' : 'false' }}">
+                {{ $answer['text'] ?? $answer }}
+            </button>
+        @endforeach
+    </div>
+    
+    <div class="buzz-container-bottom" id="buzzContainer">
+        <button id="buzzButton" class="buzz-button">
+            <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzzer">
+        </button>
+    </div>
+</div>
+
+<div class="waiting-overlay" id="waitingOverlay">
+    <div class="spinner"></div>
+    <div class="waiting-text" id="waitingText">{{ __('En attente de l\'adversaire...') }}</div>
+</div>
+
+@if($isFirebaseMode)
+    <div class="firebase-status disconnected" id="firebaseStatus">
+        {{ __('Connexion...') }}
+    </div>
+@endif
+
+<audio id="buzzerSound" preload="auto">
+    <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
+</audio>
+<audio id="noBuzzSound" preload="auto">
+    <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
+</audio>
+<audio id="correctSound" preload="auto">
+    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
+</audio>
+<audio id="incorrectSound" preload="auto">
+    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
+</audio>
+
+<script>
+const gameConfig = {
+    mode: '{{ $mode }}',
+    opponentType: '{{ $opponentType }}',
+    isFirebaseMode: {{ $isFirebaseMode ? 'true' : 'false' }},
+    matchId: '{{ $matchId ?? '' }}',
+    roomCode: '{{ $roomCode ?? '' }}',
+    currentQuestion: {{ $currentQuestion }},
+    totalQuestions: {{ $totalQuestions }},
+    currentRound: {{ $currentRound }},
+    csrfToken: '{{ csrf_token() }}',
+    routes: {
+        buzz: '/game/{{ $mode }}/buzz',
+        answer: '/game/{{ $mode }}/answer',
+        roundResult: '/game/{{ $mode }}/round-result',
+        matchResult: '/game/{{ $mode }}/match-result',
+        sync: '/game/{{ $mode }}/sync',
+    }
+};
+
+let timeLeft = 8;
+let timerInterval;
+let buzzed = false;
+let answersShown = false;
+let playerBuzzTime = null;
+
+const buzzButton = document.getElementById('buzzButton');
+const buzzContainer = document.getElementById('buzzContainer');
+const answersGrid = document.getElementById('answersGrid');
+const chronoTimer = document.getElementById('chronoTimer');
+const buzzerSound = document.getElementById('buzzerSound');
+const waitingOverlay = document.getElementById('waitingOverlay');
+
+const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default_1';
+document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
+buzzerSound.load();
+
+function startTimer() {
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        chronoTimer.textContent = timeLeft;
+        
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            if (!buzzed) {
+                handleTimeout();
+            }
+        }
+    }, 1000);
+}
+
+buzzButton.addEventListener('click', function() {
+    if (buzzed) return;
+    
+    buzzed = true;
+    playerBuzzTime = 8 - timeLeft;
+    clearInterval(timerInterval);
+    
+    buzzerSound.currentTime = 0;
+    buzzerSound.play();
+    
+    buzzButton.disabled = true;
+    buzzButton.style.opacity = '0.5';
+    
+    if (gameConfig.isFirebaseMode) {
+        sendBuzzToServer();
+    } else {
+        setTimeout(() => {
+            showAnswers();
+        }, 1500);
+    }
+});
+
+function sendBuzzToServer() {
+    fetch(gameConfig.routes.buzz, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': gameConfig.csrfToken
+        },
+        body: JSON.stringify({
+            buzz_time: playerBuzzTime
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.waiting_for_opponent) {
+            showWaitingOverlay('{{ __("En attente de l'adversaire...") }}');
+        } else {
+            showAnswers();
+        }
+    })
+    .catch(error => {
+        console.error('Buzz error:', error);
+        showAnswers();
+    });
+}
+
+function showAnswers() {
+    if (answersShown) return;
+    answersShown = true;
+    
+    buzzContainer.style.display = 'none';
+    answersGrid.style.display = 'grid';
+    
+    const answerButtons = answersGrid.querySelectorAll('.answer-option');
+    answerButtons.forEach((btn, index) => {
+        btn.addEventListener('click', () => handleAnswerClick(btn, index));
+    });
+}
+
+function handleAnswerClick(button, index) {
+    const isCorrect = button.dataset.correct === 'true';
+    
+    answersGrid.querySelectorAll('.answer-option').forEach(btn => {
+        btn.classList.add('disabled');
+        if (btn.dataset.correct === 'true') {
+            btn.classList.add('correct');
+        }
+    });
+    
+    if (!isCorrect) {
+        button.classList.add('incorrect');
+    }
+    
+    const sound = isCorrect ? document.getElementById('correctSound') : document.getElementById('incorrectSound');
+    sound.currentTime = 0;
+    sound.play().catch(e => console.log('Sound error:', e));
+    
+    submitAnswer(index, isCorrect);
+}
+
+function submitAnswer(answerIndex, isCorrect) {
+    if (gameConfig.isFirebaseMode) {
+        showWaitingOverlay('{{ __("En attente du résultat...") }}');
+    }
+    
+    fetch(gameConfig.routes.answer, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': gameConfig.csrfToken
+        },
+        body: JSON.stringify({
+            answer_id: answerIndex,
+            is_correct: isCorrect,
+            buzz_time: playerBuzzTime
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideWaitingOverlay();
+        
+        document.getElementById('playerScore').textContent = data.player_score;
+        
+        if (data.opponent) {
+            document.getElementById('opponentScore').textContent = data.opponent.opponent_score;
+        }
+        
+        setTimeout(() => {
+            if (data.has_next_question) {
+                window.location.reload();
+            } else {
+                window.location.href = gameConfig.routes.roundResult;
+            }
+        }, 2000);
+    })
+    .catch(error => {
+        console.error('Answer error:', error);
+        hideWaitingOverlay();
+    });
+}
+
+function handleTimeout() {
+    document.getElementById('noBuzzSound').play().catch(e => console.log('Sound error:', e));
+    
+    setTimeout(() => {
+        submitAnswer(-1, false);
+    }, 2000);
+}
+
+function showWaitingOverlay(text) {
+    document.getElementById('waitingText').textContent = text;
+    waitingOverlay.classList.add('active');
+}
+
+function hideWaitingOverlay() {
+    waitingOverlay.classList.remove('active');
+}
+
+@if($isFirebaseMode)
+import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js').then(({ initializeApp }) => {
+    import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(({ getFirestore, doc, onSnapshot }) => {
+        const firebaseConfig = {
+            apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bqWp_dHw",
+            authDomain: "strategybuzzergame.firebaseapp.com",
+            projectId: "strategybuzzergame",
+            storageBucket: "strategybuzzergame.appspot.com",
+            messagingSenderId: "68047817391",
+            appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        const statusEl = document.getElementById('firebaseStatus');
+        statusEl.textContent = '{{ __("Connecté") }}';
+        statusEl.classList.remove('disconnected');
+        statusEl.classList.add('connected');
+        
+        if (gameConfig.matchId) {
+            const matchRef = doc(db, 'duoMatches', gameConfig.matchId);
+            
+            onSnapshot(matchRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    handleFirebaseUpdate(data);
+                }
+            });
+        }
+    });
+});
+
+function handleFirebaseUpdate(data) {
+    if (data.opponent_buzzed && !answersShown) {
+        hideWaitingOverlay();
+        showAnswers();
+    }
+    
+    if (data.opponent_score !== undefined) {
+        document.getElementById('opponentScore').textContent = data.opponent_score;
+    }
+}
+@endif
+
+startTimer();
+</script>
+@endsection
