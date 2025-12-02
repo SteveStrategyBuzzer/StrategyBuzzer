@@ -1452,20 +1452,34 @@ function declineInvitation(matchId) {
 
 let selectedContactId = null;
 
+let contactsRefreshInterval = null;
+
 function openContactsModal() {
     document.getElementById('contactsModal').style.display = 'flex';
     loadContacts();
+    // Auto-refresh contacts every 15 seconds while modal is open
+    if (!contactsRefreshInterval) {
+        contactsRefreshInterval = setInterval(loadContacts, 15000);
+    }
 }
 
 function closeContactsModal() {
     document.getElementById('contactsModal').style.display = 'none';
     selectedContactId = null;
     updateInviteButton();
+    // Stop auto-refresh when modal is closed
+    if (contactsRefreshInterval) {
+        clearInterval(contactsRefreshInterval);
+        contactsRefreshInterval = null;
+    }
 }
 
 function loadContacts() {
     const contactsList = document.getElementById('contactsList');
-    contactsList.innerHTML = '<p class="loading-contacts">' + t('Chargement...') + '</p>';
+    // Only show loading if list is empty (first load)
+    if (!contactsList.querySelector('.contact-card')) {
+        contactsList.innerHTML = '<p class="loading-contacts">' + t('Chargement...') + '</p>';
+    }
 
     fetch('/api/duo/contacts', {
         headers: {
@@ -1489,11 +1503,12 @@ function loadContacts() {
 
 function displayContacts(contacts) {
     const contactsList = document.getElementById('contactsList');
+    const previousSelectedId = selectedContactId;
     
     contactsList.innerHTML = contacts.map(contact => `
         <div class="contact-card" data-contact-id="${contact.id}">
             <div class="contact-header" onclick="toggleContactSelection(${contact.id})">
-                <div class="contact-checkbox" id="checkbox-${contact.id}">☐</div>
+                <div class="contact-checkbox ${contact.id === previousSelectedId ? 'selected' : ''}" id="checkbox-${contact.id}">${contact.id === previousSelectedId ? '☑' : '☐'}</div>
                 <div class="contact-info">
                     <div class="contact-name-code">
                         <span class="contact-name">${contact.name}</span>
