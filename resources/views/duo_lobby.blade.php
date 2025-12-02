@@ -985,12 +985,6 @@
 }
 
 /* Chat button on invitations */
-.invitation-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
 .btn-chat {
     background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
     color: white;
@@ -1004,6 +998,68 @@
 
 .btn-chat:hover {
     transform: scale(1.1);
+}
+
+/* Invitation item layout */
+.invitation-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.invitation-item > span {
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+}
+
+.invitation-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.btn-decline {
+    background: white;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex: 1;
+    max-width: 100px;
+}
+
+.btn-decline:hover {
+    background: #f0f0f0;
+    border-color: #ccc;
+}
+
+.btn-accept {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex: 1;
+    max-width: 100px;
+}
+
+.btn-accept:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(243, 156, 18, 0.4);
 }
 
 /* Unread badge */
