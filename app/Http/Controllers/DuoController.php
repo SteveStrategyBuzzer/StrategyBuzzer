@@ -513,6 +513,9 @@ class DuoController extends Controller
         $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
         
+        // Ensure both players are in each other's contact book after match
+        $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
+        
         $accuracy = 0;
         $total = ($gameState['global_stats']['correct'] ?? 0) + ($gameState['global_stats']['incorrect'] ?? 0);
         if ($total > 0) {
