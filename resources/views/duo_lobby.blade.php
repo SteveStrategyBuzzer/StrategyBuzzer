@@ -19,16 +19,14 @@
     <div class="lobby-content">
 
         @if(!($duoFullUnlocked ?? false))
-        {{-- Avertissement : Stats non comptabilisées avant niveau 11 --}}
+        {{-- Avertissement : Fonctionnalités limitées avant niveau 11 --}}
         <div class="stats-warning-banner">
-            <div class="warning-content">
-                <span class="warning-icon">⚠️</span>
-                <div class="warning-text">
-                    <strong>{{ __('Mode Duo - Entraînement') }}</strong>
-                    <p>{{ __('Vos statistiques ne seront pas comptabilisées avant d\'avoir battu le Boss du Niveau 10 en Solo.') }}</p>
-                    <div class="progress-indicator">
-                        {{ __('Progression') }} : {{ __('Niveau') }} <strong>{{ max(1, ($choixNiveau ?? 1) - 1) }}</strong> / 10
-                    </div>
+            <span class="warning-icon-topright">⚠️</span>
+            <div class="warning-text">
+                <strong>{{ __('Mode Duo Complet') }}</strong>
+                <p>{{ __('Vos statistiques, mode Aléatoire et inviter, ne seront pas fonctionnel avant le niveau 10 du mode Solo.') }}</p>
+                <div class="progress-indicator">
+                    {{ __('Progression') }} : {{ __('Niveau') }} <strong>{{ max(1, ($choixNiveau ?? 1) - 1) }}</strong><span class="progress-max"> / 10</span>
                 </div>
             </div>
         </div>
@@ -36,7 +34,7 @@
 
         <div class="matchmaking-options">
             @if($duoFullUnlocked ?? false)
-            {{-- Accès COMPLET : Matchmaking disponible --}}
+            {{-- Accès COMPLET : Matchmaking et Invitations disponibles --}}
             <div class="option-card">
                 <h3>🎯 {{ __('MATCHMAKING ALÉATOIRE') }}</h3>
                 <p>{{ __('Affrontez un adversaire de votre division') }}</p>
@@ -46,7 +44,6 @@
             </div>
 
             <div class="divider">{{ __('OU') }}</div>
-            @endif
 
             <div class="option-card">
                 <h3>👥 {{ __('INVITER UN AMI') }}</h3>
@@ -61,6 +58,16 @@
                     📒 {{ __('Carnet') }}
                 </button>
             </div>
+            @else
+            {{-- Mode Entraînement : Seulement le carnet pour recevoir des invitations --}}
+            <div class="option-card training-mode-card">
+                <h3>📒 {{ __('Carnet de contacts') }}</h3>
+                <p>{{ __('Consultez vos contacts et recevez des invitations') }}</p>
+                <button id="openContactsBtn" class="btn-contacts btn-large">
+                    📒 {{ __('Ouvrir le Carnet') }}
+                </button>
+            </div>
+            @endif
         </div>
 
         <div class="pending-invitations" id="pendingInvitations">
@@ -210,47 +217,70 @@
     margin-bottom: 40px;
 }
 
-/* Bannière d'avertissement stats non comptabilisées */
+/* Bannière d'avertissement Mode Duo Complet */
 .stats-warning-banner {
     background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
     border-radius: 12px;
     padding: 15px 20px;
     margin-bottom: 10px;
+    position: relative;
 }
 
-.stats-warning-banner .warning-content {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.stats-warning-banner .warning-icon {
-    font-size: 2em;
-    flex-shrink: 0;
+.stats-warning-banner .warning-icon-topright {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 1.5em;
 }
 
 .stats-warning-banner .warning-text {
     color: white;
+    text-align: center;
+    padding-right: 30px;
 }
 
 .stats-warning-banner .warning-text strong {
-    font-size: 1.1em;
+    font-size: 1.15em;
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
 }
 
 .stats-warning-banner .warning-text p {
-    margin: 0 0 8px 0;
+    margin: 0 0 12px 0;
     opacity: 0.95;
-    font-size: 0.95em;
+    font-size: 0.9em;
+    line-height: 1.4;
 }
 
 .stats-warning-banner .progress-indicator {
-    background: rgba(255,255,255,0.2);
-    padding: 5px 12px;
+    background: rgba(255,255,255,0.25);
+    padding: 8px 16px;
     border-radius: 20px;
-    font-size: 0.9em;
-    display: inline-block;
+    font-size: 0.95em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.stats-warning-banner .progress-indicator strong {
+    font-size: 1.3em;
+    margin: 0 2px;
+}
+
+.stats-warning-banner .progress-max {
+    opacity: 0.9;
+}
+
+/* Carte mode entraînement */
+.training-mode-card {
+    text-align: center;
+}
+
+.training-mode-card .btn-contacts.btn-large {
+    width: 100%;
+    padding: 15px 20px;
+    font-size: 1.1em;
 }
 
 .player-card {
