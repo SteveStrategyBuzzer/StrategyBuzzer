@@ -202,6 +202,16 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::get('/game/{match}', [App\Http\Controllers\DuoController::class, 'game'])->name('game');
     Route::get('/result/{match}', [App\Http\Controllers\DuoController::class, 'result'])->name('result');
     Route::get('/rankings', [App\Http\Controllers\DuoController::class, 'rankings'])->name('rankings');
+    Route::get('/contacts', [App\Http\Controllers\DuoController::class, 'getContacts'])->name('contacts');
+    Route::post('/contacts/add', [App\Http\Controllers\DuoController::class, 'addContact'])->name('contacts.add');
+    Route::delete('/contacts/{contactId}', [App\Http\Controllers\DuoController::class, 'deleteContact'])->name('contacts.delete');
+    Route::get('/contacts/groups', [App\Http\Controllers\PlayerGroupController::class, 'index'])->name('contacts.groups');
+    Route::post('/contacts/groups', [App\Http\Controllers\PlayerGroupController::class, 'store'])->name('contacts.groups.store');
+    Route::get('/contacts/groups/{groupId}', [App\Http\Controllers\PlayerGroupController::class, 'show'])->name('contacts.groups.show');
+    Route::put('/contacts/groups/{groupId}', [App\Http\Controllers\PlayerGroupController::class, 'update'])->name('contacts.groups.update');
+    Route::delete('/contacts/groups/{groupId}', [App\Http\Controllers\PlayerGroupController::class, 'destroy'])->name('contacts.groups.destroy');
+    Route::post('/contacts/groups/{groupId}/members', [App\Http\Controllers\PlayerGroupController::class, 'addMembers'])->name('contacts.groups.addMembers');
+    Route::delete('/contacts/groups/{groupId}/members', [App\Http\Controllers\PlayerGroupController::class, 'removeMembers'])->name('contacts.groups.removeMembers');
 });
 
 /* ===== CHAT (Messages entre joueurs) ===== */
