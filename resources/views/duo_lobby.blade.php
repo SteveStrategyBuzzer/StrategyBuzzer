@@ -104,11 +104,30 @@
             <h2>📒 {{ __('CARNET DE JOUEURS') }}</h2>
             <button class="modal-close" onclick="closeContactsModal()">&times;</button>
         </div>
+        
+        <div class="contacts-tabs">
+            <button class="contacts-tab active" onclick="switchContactsTab('players')">👤 {{ __('Joueurs') }}</button>
+            <button class="contacts-tab" onclick="switchContactsTab('groups')">👥 {{ __('Groupes') }}</button>
+        </div>
+        
         <button id="inviteSelectedBtn" class="btn-invite-selected" disabled>
             {{ __('INVITER LE JOUEUR SÉLECTIONNÉ') }}
         </button>
-        <div id="contactsList" class="contacts-list">
-            <p class="loading-contacts">{{ __('Chargement...') }}</p>
+        
+        <div id="playersTab" class="contacts-tab-content">
+            <div id="contactsList" class="contacts-list">
+                <p class="loading-contacts">{{ __('Chargement...') }}</p>
+            </div>
+        </div>
+        
+        <div id="groupsTab" class="contacts-tab-content" style="display: none;">
+            <div class="group-create-section">
+                <input type="text" id="newGroupName" class="group-name-input" placeholder="{{ __('Nom du nouveau groupe...') }}">
+                <button class="btn-create-group" onclick="createNewGroup()">{{ __('Créer') }}</button>
+            </div>
+            <div id="groupsList" class="groups-list">
+                <p class="loading-contacts">{{ __('Chargement...') }}</p>
+            </div>
         </div>
     </div>
 </div>
@@ -1119,6 +1138,154 @@
     cursor: not-allowed;
 }
 
+.contacts-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    margin: 0 25px;
+}
+
+.contacts-tab {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+}
+
+.contacts-tab.active {
+    color: #667eea;
+    border-bottom: 2px solid #667eea;
+    font-weight: bold;
+}
+
+.contacts-tab:hover {
+    color: #667eea;
+}
+
+.contacts-tab-content {
+    overflow-y: auto;
+    max-height: 50vh;
+}
+
+.group-create-section {
+    display: flex;
+    gap: 10px;
+    padding: 15px 25px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.group-name-input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #333;
+    font-size: 0.95em;
+}
+
+.group-name-input::placeholder {
+    color: #999;
+}
+
+.btn-create-group {
+    padding: 10px 20px;
+    background: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-create-group:hover {
+    background: #45a049;
+}
+
+.groups-list {
+    padding: 15px 25px;
+}
+
+.group-card {
+    background: #f5f5f5;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.group-card:hover {
+    background: #ececec;
+}
+
+.group-card.selected {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: #667eea;
+}
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.group-name {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #333;
+}
+
+.group-member-count {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.group-members-preview {
+    margin-top: 8px;
+    color: #888;
+    font-size: 0.85em;
+}
+
+.group-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.group-action-btn {
+    padding: 5px 10px;
+    background: #e0e0e0;
+    border: none;
+    border-radius: 5px;
+    color: #333;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.group-action-btn:hover {
+    background: #d0d0d0;
+}
+
+.group-action-btn.delete {
+    background: rgba(244, 67, 54, 0.2);
+    color: #c62828;
+}
+
+.group-action-btn.delete:hover {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+.no-groups {
+    text-align: center;
+    color: #999;
+    padding: 40px 20px;
+}
+
 .contacts-list {
     overflow-y: auto;
     padding: 10px 25px 25px 25px;
@@ -1364,7 +1531,18 @@ $duoTranslations = [
     'CONTRE VOUS' => __('CONTRE VOUS'),
     'Bilan' => __('Bilan'),
     'Parties jouées' => __('Parties jouées'),
-    'Manches Décisives' => __('Manches Décisives')
+    'Manches Décisives' => __('Manches Décisives'),
+    'Aucun groupe' => __('Aucun groupe'),
+    'Créez un groupe pour organiser vos contacts !' => __('Créez un groupe pour organiser vos contacts !'),
+    'Erreur lors du chargement des groupes' => __('Erreur lors du chargement des groupes'),
+    'membre(s)' => __('membre(s)'),
+    'Supprimer' => __('Supprimer'),
+    'Groupe sélectionné' => __('Groupe sélectionné'),
+    'Entrez un nom de groupe' => __('Entrez un nom de groupe'),
+    'Groupe créé' => __('Groupe créé'),
+    'Erreur' => __('Erreur'),
+    'Supprimer ce groupe ?' => __('Supprimer ce groupe ?'),
+    'Groupe supprimé' => __('Groupe supprimé')
 ];
 @endphp
 <script>
@@ -1557,6 +1735,141 @@ function closeContactsModal() {
     }
 }
 
+let allGroups = [];
+
+function switchContactsTab(tab) {
+    document.querySelectorAll('.contacts-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.contacts-tab-content').forEach(c => c.style.display = 'none');
+    
+    if (tab === 'players') {
+        document.querySelector('.contacts-tab:first-child').classList.add('active');
+        document.getElementById('playersTab').style.display = 'block';
+    } else {
+        document.querySelector('.contacts-tab:last-child').classList.add('active');
+        document.getElementById('groupsTab').style.display = 'block';
+        loadGroups();
+    }
+}
+
+function loadGroups() {
+    const groupsList = document.getElementById('groupsList');
+    groupsList.innerHTML = '<p class="loading-contacts">' + t('Chargement...') + '</p>';
+    
+    fetch('/api/contacts/groups', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.groups.length > 0) {
+            allGroups = data.groups;
+            displayGroups(data.groups);
+        } else {
+            groupsList.innerHTML = '<p class="no-groups">' + t('Aucun groupe') + '<br>' + t('Créez un groupe pour organiser vos contacts !') + '</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading groups:', error);
+        groupsList.innerHTML = '<p class="no-groups">' + t('Erreur lors du chargement des groupes') + '</p>';
+    });
+}
+
+function displayGroups(groups) {
+    const groupsList = document.getElementById('groupsList');
+    
+    if (groups.length === 0) {
+        groupsList.innerHTML = '<p class="no-groups">' + t('Aucun groupe') + '<br>' + t('Créez un groupe pour organiser vos contacts !') + '</p>';
+        return;
+    }
+    
+    groupsList.innerHTML = groups.map(group => `
+        <div class="group-card" data-group-id="${group.id}">
+            <div class="group-header" onclick="selectGroupForInvite(${group.id})">
+                <span class="group-name">👥 ${group.name}</span>
+                <span class="group-member-count">${group.member_count} ${t('membre(s)')}</span>
+            </div>
+            <div class="group-members-preview">
+                ${group.members.slice(0, 3).map(m => m.name).join(', ')}${group.member_count > 3 ? '...' : ''}
+            </div>
+            <div class="group-actions" onclick="event.stopPropagation();">
+                <button class="group-action-btn delete" onclick="deleteGroup(${group.id})">🗑️ ${t('Supprimer')}</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function selectGroupForInvite(groupId) {
+    const group = allGroups.find(g => g.id === groupId);
+    if (group && group.members.length > 0) {
+        selectedContactId = group.members[0].id;
+        updateInviteButton();
+        showToast(t('Groupe sélectionné') + ': ' + group.name, 'success');
+    }
+}
+
+function createNewGroup() {
+    const nameInput = document.getElementById('newGroupName');
+    const name = nameInput.value.trim();
+    
+    if (!name) {
+        showToast(t('Entrez un nom de groupe'));
+        return;
+    }
+    
+    const memberIds = selectedContactId ? [selectedContactId] : [];
+    
+    fetch('/api/contacts/groups', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ name: name, member_ids: memberIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            nameInput.value = '';
+            loadGroups();
+            showToast(data.message || t('Groupe créé'), 'success');
+        } else {
+            showToast(data.message || t('Erreur'));
+        }
+    })
+    .catch(error => {
+        console.error('Error creating group:', error);
+        showToast(t('Erreur'));
+    });
+}
+
+function deleteGroup(groupId) {
+    if (!confirm(t('Supprimer ce groupe ?'))) return;
+    
+    fetch(`/api/contacts/groups/${groupId}`, {
+        method: 'DELETE',
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadGroups();
+            showToast(data.message || t('Groupe supprimé'), 'success');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting group:', error);
+    });
+}
+
 function loadContacts() {
     const contactsList = document.getElementById('contactsList');
     // Only show loading if list is empty (first load)
@@ -1564,7 +1877,7 @@ function loadContacts() {
         contactsList.innerHTML = '<p class="loading-contacts">' + t('Chargement...') + '</p>';
     }
 
-    fetch('/api/duo/contacts', {
+    fetch('/api/contacts', {
         headers: {
             'Accept': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
