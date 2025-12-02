@@ -86,7 +86,7 @@ class UnifiedGameController extends Controller
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return redirect()->route("{$mode}.index")->with('error', 'Aucune partie en cours');
+            return redirect()->route("{$mode}.index")->with('error', __('Aucune partie en cours'));
         }
         
         $provider = $this->getProvider($mode);
@@ -145,7 +145,7 @@ class UnifiedGameController extends Controller
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return response()->json(['error' => 'No active game'], 400);
+            return response()->json(['error' => __('Aucune partie en cours')], 400);
         }
         
         $provider = $this->getProvider($mode);
@@ -165,7 +165,7 @@ class UnifiedGameController extends Controller
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return response()->json(['error' => 'No active game'], 400);
+            return response()->json(['error' => __('Aucune partie en cours')], 400);
         }
         
         $provider = $this->getProvider($mode);
@@ -277,7 +277,7 @@ class UnifiedGameController extends Controller
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return response()->json(['error' => 'No active game'], 400);
+            return response()->json(['error' => __('Aucune partie en cours')], 400);
         }
         
         $provider = $this->getProvider($mode);
@@ -294,13 +294,13 @@ class UnifiedGameController extends Controller
     public function syncFromFirebase(Request $request, string $mode)
     {
         if (!in_array($mode, ['duo', 'league_individual', 'master'])) {
-            return response()->json(['error' => 'Mode does not support Firebase sync'], 400);
+            return response()->json(['error' => __('Ce mode ne supporte pas la synchronisation Firebase')], 400);
         }
         
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return response()->json(['error' => 'No active game'], 400);
+            return response()->json(['error' => __('Aucune partie en cours')], 400);
         }
         
         $provider = $this->getProvider($mode);
