@@ -10,6 +10,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SoloController;
 use App\Http\Controllers\ProfileRegenController;
 use App\Http\Controllers\QuestController;
+use App\Http\Controllers\LobbyController;
 
 /*
 |--------------------------------------------------------------------------
@@ -169,6 +170,21 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     Route::get('/tiebreaker-efficiency', [SoloController::class, 'tiebreakerEfficiency'])->name('tiebreaker-efficiency');
     Route::get('/tiebreaker-sudden-death', [SoloController::class, 'tiebreakerSuddenDeath'])->name('tiebreaker-sudden-death');
     Route::post('/tiebreaker-sudden-death-answer', [SoloController::class, 'tiebreakerSuddenDeathAnswer'])->name('tiebreaker-sudden-death-answer');
+});
+
+/* ===== LOBBY (Salon d'attente multijoueur) ===== */
+Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
+    Route::post('/create', [LobbyController::class, 'create'])->name('create');
+    Route::post('/join', [LobbyController::class, 'join'])->name('join');
+    Route::get('/{code}', [LobbyController::class, 'show'])->name('show');
+    Route::get('/{code}/state', [LobbyController::class, 'getState'])->name('state');
+    Route::post('/{code}/ready', [LobbyController::class, 'setReady'])->name('ready');
+    Route::post('/{code}/color', [LobbyController::class, 'setColor'])->name('color');
+    Route::post('/{code}/team', [LobbyController::class, 'setTeam'])->name('team');
+    Route::post('/{code}/create-team', [LobbyController::class, 'createTeam'])->name('create-team');
+    Route::post('/{code}/settings', [LobbyController::class, 'updateSettings'])->name('settings');
+    Route::post('/{code}/start', [LobbyController::class, 'start'])->name('start');
+    Route::post('/{code}/leave', [LobbyController::class, 'leave'])->name('leave');
 });
 
 /* ===== DUO ===== */
