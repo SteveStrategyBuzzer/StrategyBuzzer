@@ -113,6 +113,23 @@
     </div>
 </div>
 
+<div id="chatModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content chat-modal">
+        <div class="modal-header chat-header">
+            <button class="chat-back-btn" onclick="closeChatModal()">←</button>
+            <h2 id="chatContactName">{{ __('Chat') }}</h2>
+            <button class="modal-close" onclick="closeChatModal()">&times;</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <p class="chat-loading">{{ __('Chargement...') }}</p>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="{{ __('Écrivez votre message...') }}" maxlength="500">
+            <button id="sendMessageBtn" onclick="sendMessage()">{{ __('Envoyer') }}</button>
+        </div>
+    </div>
+</div>
+
 <style>
 .duo-lobby-container {
     max-width: 1200px;
@@ -854,6 +871,175 @@
     color: #1a1a1a;
 }
 
+/* Chat Modal Styles */
+.chat-modal {
+    max-width: 500px;
+    height: 70vh;
+    max-height: 600px;
+}
+
+.chat-header {
+    gap: 15px;
+}
+
+.chat-back-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #666;
+    cursor: pointer;
+    padding: 0 10px;
+}
+
+.chat-back-btn:hover {
+    color: #1a1a1a;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    background: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-loading {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+}
+
+.chat-empty {
+    text-align: center;
+    color: #999;
+    padding: 40px 20px;
+    font-style: italic;
+}
+
+.chat-message {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 16px;
+    word-wrap: break-word;
+}
+
+.chat-message.mine {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-message.theirs {
+    align-self: flex-start;
+    background: white;
+    color: #1a1a1a;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.chat-message .message-text {
+    margin-bottom: 5px;
+}
+
+.chat-message .message-time {
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    border-top: 1px solid #e0e0e0;
+    background: white;
+}
+
+.chat-input-area input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 25px;
+    font-size: 1em;
+    outline: none;
+}
+
+.chat-input-area input:focus {
+    border-color: #667eea;
+}
+
+.chat-input-area button {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.chat-input-area button:hover {
+    transform: scale(1.05);
+}
+
+/* Chat button on invitations */
+.invitation-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-chat {
+    background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-chat:hover {
+    transform: scale(1.1);
+}
+
+/* Unread badge */
+.chat-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.7em;
+    font-weight: bold;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+}
+
+.contact-chat-btn {
+    position: relative;
+    background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.contact-chat-btn:hover {
+    transform: scale(1.1);
+}
+
 .btn-invite-selected {
     margin: 15px 25px;
     padding: 12px 24px;
@@ -1218,8 +1404,11 @@ document.addEventListener('DOMContentLoaded', function() {
             list.innerHTML = invitations.map(inv => `
                 <div class="invitation-item">
                     <span>${inv.from_player.name} ${t('vous invite')}</span>
-                    <button onclick="acceptInvitation(${inv.match_id})" class="btn-accept">${t('Accepter')}</button>
-                    <button onclick="declineInvitation(${inv.match_id})" class="btn-decline">${t('Refuser')}</button>
+                    <div class="invitation-actions">
+                        <button onclick="declineInvitation(${inv.match_id})" class="btn-decline">${t('Refuser')}</button>
+                        <button onclick="openChat(${inv.from_player.id}, '${inv.from_player.name}')" class="btn-chat" title="${t('Envoyer un message')}">💬</button>
+                        <button onclick="acceptInvitation(${inv.match_id})" class="btn-accept">${t('Accepter')}</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -1314,6 +1503,7 @@ function displayContacts(contacts) {
                         ⭐ ${t('Niveau')} ${contact.level} | 🏆 ${contact.division} (#${contact.division_rank})
                     </div>
                 </div>
+                <button class="contact-chat-btn" data-contact-id="${contact.id}" onclick="event.stopPropagation(); openChat(${contact.id}, '${contact.name.replace(/'/g, "\\'")}');" title="${t('Envoyer un message')}">💬</button>
             </div>
             <div class="contact-details" id="details-${contact.id}">
                 <h4>👤 ${t('STATS PERSONNELLES DUO')}</h4>
@@ -1329,6 +1519,8 @@ function displayContacts(contacts) {
             </div>
         </div>
     `).join('');
+    
+    setTimeout(updateContactUnreadBadges, 100);
 
     document.querySelectorAll('.contact-card').forEach(card => {
         card.querySelector('.contact-header').addEventListener('dblclick', (e) => {
@@ -1407,6 +1599,173 @@ document.addEventListener('DOMContentLoaded', function() {
             closeContactsModal();
         }
     });
+
+    document.getElementById('chatModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeChatModal();
+        }
+    });
+
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
 });
+
+let currentChatContactId = null;
+let currentChatContactName = '';
+let unreadCountsPerContact = {};
+
+function openChat(contactId, contactName) {
+    currentChatContactId = contactId;
+    currentChatContactName = contactName;
+    document.getElementById('chatContactName').textContent = contactName;
+    document.getElementById('chatModal').style.display = 'flex';
+    document.getElementById('chatInput').value = '';
+    loadConversation();
+}
+
+function closeChatModal() {
+    document.getElementById('chatModal').style.display = 'none';
+    currentChatContactId = null;
+    currentChatContactName = '';
+}
+
+function loadConversation() {
+    const messagesDiv = document.getElementById('chatMessages');
+    messagesDiv.innerHTML = '<p class="chat-loading">' + t('Chargement...') + '</p>';
+
+    fetch(`/chat/conversation/${currentChatContactId}`, {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayMessages(data.messages);
+            unreadCountsPerContact[currentChatContactId] = 0;
+            updateContactUnreadBadges();
+        } else {
+            messagesDiv.innerHTML = '<p class="chat-empty">' + t('Erreur de chargement') + '</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading conversation:', error);
+        messagesDiv.innerHTML = '<p class="chat-empty">' + t('Erreur de connexion') + '</p>';
+    });
+}
+
+function displayMessages(messages) {
+    const messagesDiv = document.getElementById('chatMessages');
+    
+    if (messages.length === 0) {
+        messagesDiv.innerHTML = '<p class="chat-empty">' + t('Aucun message. Commencez la conversation !') + '</p>';
+        return;
+    }
+
+    messagesDiv.innerHTML = messages.map(msg => `
+        <div class="chat-message ${msg.is_mine ? 'mine' : 'theirs'}">
+            <div class="message-text">${escapeHtml(msg.message)}</div>
+            <div class="message-time">${msg.time_ago}</div>
+        </div>
+    `).join('');
+
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message || !currentChatContactId) return;
+    
+    input.disabled = true;
+
+    fetch('/chat/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            receiver_id: currentChatContactId,
+            message: message
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        input.disabled = false;
+        if (data.success) {
+            input.value = '';
+            const messagesDiv = document.getElementById('chatMessages');
+            const emptyMsg = messagesDiv.querySelector('.chat-empty');
+            if (emptyMsg) emptyMsg.remove();
+            
+            messagesDiv.innerHTML += `
+                <div class="chat-message mine">
+                    <div class="message-text">${escapeHtml(data.message.message)}</div>
+                    <div class="message-time">${data.message.time_ago}</div>
+                </div>
+            `;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            input.focus();
+        } else {
+            showToast(t("Erreur lors de l'envoi du message"), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error sending message:', error);
+        input.disabled = false;
+        showToast(t('Erreur de connexion'), 'error');
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function loadUnreadCounts() {
+    fetch('/chat/unread', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            unreadCountsPerContact = data.per_contact || {};
+            updateContactUnreadBadges();
+        }
+    })
+    .catch(error => console.error('Error loading unread counts:', error));
+}
+
+function updateContactUnreadBadges() {
+    document.querySelectorAll('.contact-chat-btn').forEach(btn => {
+        const contactId = btn.dataset.contactId;
+        const badge = btn.querySelector('.chat-badge');
+        const unreadCount = unreadCountsPerContact[contactId] || 0;
+        
+        if (unreadCount > 0) {
+            if (badge) {
+                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            } else {
+                btn.innerHTML = '💬<span class="chat-badge">' + (unreadCount > 99 ? '99+' : unreadCount) + '</span>';
+            }
+        } else if (badge) {
+            badge.remove();
+        }
+    });
+}
+
+setInterval(loadUnreadCounts, 10000);
+setTimeout(loadUnreadCounts, 1000);
 </script>
 @endsection
