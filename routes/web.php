@@ -267,6 +267,19 @@ Route::get('/ligue', function () {
 /* ===== RÈGLEMENTS ===== */
 Route::view('/reglements', 'reglements')->name('reglements');
 
+/* ===== INTERFACE DE JEU UNIFIÉE ===== */
+Route::prefix('game')->name('game.')->middleware('auth')->group(function () {
+    Route::post('/{mode}/start', [App\Http\Controllers\UnifiedGameController::class, 'startGame'])->name('start');
+    Route::get('/{mode}/question', [App\Http\Controllers\UnifiedGameController::class, 'showQuestion'])->name('question');
+    Route::post('/{mode}/buzz', [App\Http\Controllers\UnifiedGameController::class, 'handleBuzz'])->name('buzz');
+    Route::post('/{mode}/answer', [App\Http\Controllers\UnifiedGameController::class, 'submitAnswer'])->name('answer');
+    Route::get('/{mode}/round-result', [App\Http\Controllers\UnifiedGameController::class, 'showRoundResult'])->name('round-result');
+    Route::post('/{mode}/next-round', [App\Http\Controllers\UnifiedGameController::class, 'startNextRound'])->name('next-round');
+    Route::get('/{mode}/match-result', [App\Http\Controllers\UnifiedGameController::class, 'showMatchResult'])->name('match-result');
+    Route::get('/{mode}/state', [App\Http\Controllers\UnifiedGameController::class, 'getGameState'])->name('state');
+    Route::post('/{mode}/sync', [App\Http\Controllers\UnifiedGameController::class, 'syncFromFirebase'])->name('sync');
+});
+
 /* ===== QUÊTES & QUÊTES QUOTIDIENNES ===== */
 Route::get('/quetes', [App\Http\Controllers\QuestesController::class, 'index'])->middleware('auth')->name('quetes');
 Route::post('/quetes/claim/{questId}', [App\Http\Controllers\QuestesController::class, 'claim'])->middleware('auth')->name('quetes.claim');
