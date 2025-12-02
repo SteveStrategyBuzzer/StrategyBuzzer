@@ -99,6 +99,7 @@ Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::cl
 
 /* ===== Menu / Auth ===== */
 Route::view('/menu', 'menu')->name('menu');
+Route::get('/home', fn() => redirect('/menu'))->name('home');
 Route::view('/login', 'login')->name('login');
 Route::get('/connexion', fn() => redirect('/login'))->name('connexion');
 Route::middleware('auth')->group(function () {
