@@ -55,31 +55,6 @@ foreach ($colors as $color) {
         background-clip: text;
     }
     
-    .lobby-code {
-        display: inline-block;
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px dashed rgba(255, 255, 255, 0.3);
-        border-radius: 12px;
-        padding: 15px 30px;
-        font-size: 2.5rem;
-        font-weight: 700;
-        letter-spacing: 8px;
-        font-family: 'Courier New', monospace;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .lobby-code:hover {
-        background: rgba(255, 255, 255, 0.15);
-        transform: scale(1.02);
-    }
-    
-    .lobby-code-hint {
-        font-size: 0.85rem;
-        color: rgba(255, 255, 255, 0.6);
-        margin-top: 10px;
-    }
-    
     .lobby-info {
         display: flex;
         justify-content: center;
@@ -479,12 +454,6 @@ foreach ($colors as $color) {
     }
     
     @media (max-width: 600px) {
-        .lobby-code {
-            font-size: 1.8rem;
-            letter-spacing: 5px;
-            padding: 12px 20px;
-        }
-        
         .player-card {
             padding: 12px 15px;
         }
@@ -509,11 +478,6 @@ foreach ($colors as $color) {
 <div class="lobby-container">
     <div class="lobby-header">
         <h1 class="lobby-title">{{ __('Salon d\'attente') }} - {{ $modeLabel }}</h1>
-        
-        <div class="lobby-code" onclick="copyLobbyCode()" title="{{ __('Cliquer pour copier') }}">
-            {{ $lobbyCode }}
-        </div>
-        <div class="lobby-code-hint">{{ __('Partagez ce code avec vos amis') }}</div>
     </div>
     
     @if($isHost)
@@ -730,14 +694,6 @@ foreach ($colors as $color) {
         toast.textContent = message;
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), duration);
-    }
-    
-    function copyLobbyCode() {
-        navigator.clipboard.writeText(lobbyCode).then(() => {
-            showToast('{{ __("Code copié !") }}');
-        }).catch(() => {
-            showToast('{{ __("Erreur lors de la copie") }}');
-        });
     }
     
     function showPlayerStats(playerId, playerName) {
