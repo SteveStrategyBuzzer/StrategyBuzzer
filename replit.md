@@ -48,6 +48,13 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - **Multi-language Support**: Full integration for 10 languages (French, English, Spanish, Italian, Greek, German, Portuguese, Russian, Arabic, Chinese) with automatic browser detection, manual selection in user profiles, and language preference flowing through the entire question generation and spelling verification system. **413 translation keys per language** with zero hardcoded text tolerance.
 - **Player-to-Player Chat System**: Complete messaging system with `player_messages` PostgreSQL table, `PlayerMessageService` for message handling, `ChatController` with REST API endpoints (/chat/send, /chat/conversation/{userId}, /chat/unread). Chat UI integrated in Duo lobby (invitations and contact book) and match result page with unread message badges. Features include real-time conversation loading, XSS protection via escapeHtml, and auto-refresh of unread counts.
 - **Contact Book (Carnet)**: Automatic bidirectional contact creation via `PlayerContactService->ensureContactExists()` when Duo invitations are accepted. Contacts include player stats, win/loss records against the user, efficiency metrics, and chat button with unread indicator.
+- **Multiplayer Lobby System**: Complete waiting room implementation for Duo/League/Master modes via `LobbyService` and `LobbyController`. Features include:
+  - **12 Team Colors**: Red, blue, green, orange, purple, cyan, pink, yellow, teal, indigo, lime, brown with hex values and light variants
+  - **Host Controls**: Only host can start game, modify settings, create teams; auto-reassignment when host leaves
+  - **Ready States**: All non-host players must mark ready before game start; minimum player requirements enforced (2 for Duo/League, 3-40 for Master)
+  - **Cache Persistence**: Lobby state stored via Laravel Cache with 1-hour TTL, 6-character alphanumeric codes
+  - **Routes**: `/lobby/create`, `/lobby/{code}`, `/lobby/{code}/join`, `/lobby/{code}/ready`, `/lobby/{code}/color`, `/lobby/{code}/leave`, `/lobby/{code}/start`
+  - **Translation Compliance**: All strings use `__()` helper for zero hardcoded text tolerance
 
 ## External Dependencies
 
