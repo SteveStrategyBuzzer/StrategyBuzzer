@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\GameController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Api\PlayController;
 use App\Http\Controllers\DuoController;
+use App\Http\Controllers\PlayerGroupController;
 
 Route::get('/solo/next',  [PlayController::class, 'next']);
 Route::match(['get', 'post'], '/solo/answer', [PlayController::class, 'answer']);
@@ -12,6 +13,17 @@ Route::get('/status', [GameController::class, 'status']);
 Route::get('/quests', [GameController::class, 'quests']);
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::middleware('auth:sanctum')->prefix('contacts')->group(function () {
+    Route::get('/', [DuoController::class, 'getContacts']);
+    Route::get('/groups', [PlayerGroupController::class, 'index']);
+    Route::post('/groups', [PlayerGroupController::class, 'store']);
+    Route::get('/groups/{groupId}', [PlayerGroupController::class, 'show']);
+    Route::put('/groups/{groupId}', [PlayerGroupController::class, 'update']);
+    Route::delete('/groups/{groupId}', [PlayerGroupController::class, 'destroy']);
+    Route::post('/groups/{groupId}/members', [PlayerGroupController::class, 'addMembers']);
+    Route::delete('/groups/{groupId}/members', [PlayerGroupController::class, 'removeMembers']);
 });
 
 Route::middleware('auth:sanctum')->prefix('duo')->group(function () {
