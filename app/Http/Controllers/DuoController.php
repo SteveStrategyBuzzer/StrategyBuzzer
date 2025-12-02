@@ -10,6 +10,7 @@ use App\Services\GameStateService;
 use App\Services\BuzzManagerService;
 use App\Services\DuoFirestoreService;
 use App\Services\PlayerContactService;
+use App\Services\LobbyService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
@@ -22,7 +23,8 @@ class DuoController extends Controller
         private GameStateService $gameStateService,
         private BuzzManagerService $buzzManager,
         private DuoFirestoreService $firestoreService,
-        private PlayerContactService $contactService
+        private PlayerContactService $contactService,
+        private LobbyService $lobbyService
     ) {}
 
     public function index()
@@ -101,7 +103,7 @@ class DuoController extends Controller
         if ($match->player2_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Vous n\'êtes pas autorisé à accepter ce match.',
+                'message' => __('Vous n\'êtes pas autorisé à accepter ce match.'),
             ], 403);
         }
 
@@ -109,21 +111,16 @@ class DuoController extends Controller
 
         $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
 
-        $gameState = $this->gameStateService->initializeGame([
-            'players' => [
-                ['id' => 'player', 'user_id' => $match->player1_id],
-                ['id' => 'opponent', 'user_id' => $match->player2_id],
-            ],
-            'mode' => 'duo',
-            'theme' => $request->input('theme', 'general'),
+        $player1 = User::find($match->player1_id);
+        $lobby = $this->lobbyService->createLobby($player1, 'duo', [
+            'theme' => $request->input('theme', __('Culture générale')),
             'nb_questions' => 10,
-            'niveau' => max($match->player1_level, $match->player2_level),
+            'match_id' => $match->id,
         ]);
 
-        $gameState['buzzes'] = [];
-        $gameState['question_start_time'] = microtime(true);
+        $this->lobbyService->joinLobby($lobby['code'], $user);
 
-        $match->game_state = $gameState;
+        $match->lobby_code = $lobby['code'];
         $match->save();
 
         $this->firestoreService->createMatchSession($match->id, [
@@ -131,13 +128,15 @@ class DuoController extends Controller
             'player2_id' => $match->player2_id,
             'player1_name' => $match->player1->name ?? 'Player 1',
             'player2_name' => $match->player2->name ?? 'Player 2',
-            'questionStartTime' => $gameState['question_start_time'],
+            'lobby_code' => $lobby['code'],
+            'status' => 'lobby',
         ]);
 
         return response()->json([
             'success' => true,
             'match' => $match->load(['player1', 'player2']),
-            'gameState' => $gameState,
+            'lobby_code' => $lobby['code'],
+            'redirect_url' => route('lobby.show', ['code' => $lobby['code']]),
         ]);
     }
 
