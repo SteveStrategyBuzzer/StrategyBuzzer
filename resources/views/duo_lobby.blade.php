@@ -1566,9 +1566,10 @@ function loadContacts() {
 
     fetch('/api/duo/contacts', {
         headers: {
-            'Authorization': 'Bearer ' + document.querySelector('meta[name="auth-token"]')?.content,
-            'Accept': 'application/json'
-        }
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin'
     })
     .then(response => response.json())
     .then(data => {
