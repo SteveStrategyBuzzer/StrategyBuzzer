@@ -9,6 +9,13 @@ use Illuminate\Support\Collection;
 
 class PlayerContactService
 {
+    private FirebaseService $firebase;
+
+    public function __construct()
+    {
+        $this->firebase = FirebaseService::getInstance();
+    }
+
     public function addOrUpdateContact(int $userId, int $contactUserId, ?bool $userWon, bool $wasDecisiveRound): void
     {
         try {
@@ -52,10 +59,10 @@ class PlayerContactService
         }
     }
 
-    public function ensureContactExists(int $userId, int $contactUserId): void
+    public function ensureContactExists(int $userId, int $contactUserId): bool
     {
         try {
-            PlayerContact::firstOrCreate(
+            $contact = PlayerContact::firstOrCreate(
                 [
                     'user_id' => $userId,
                     'contact_user_id' => $contactUserId,
@@ -69,19 +76,77 @@ class PlayerContactService
                     'last_played_at' => now(),
                 ]
             );
+            
+            return $contact->wasRecentlyCreated;
         } catch (\Exception $e) {
             \Log::error('Failed to create player contact', [
                 'user_id' => $userId,
                 'contact_user_id' => $contactUserId,
                 'error' => $e->getMessage(),
             ]);
+            return false;
         }
     }
 
     public function registerMutualContacts(int $player1Id, int $player2Id): void
     {
-        $this->ensureContactExists($player1Id, $player2Id);
-        $this->ensureContactExists($player2Id, $player1Id);
+        $created1 = $this->ensureContactExists($player1Id, $player2Id);
+        $created2 = $this->ensureContactExists($player2Id, $player1Id);
+        
+        // Always notify Firestore to trigger real-time updates for both players
+        // Even if contacts already exist, the version change triggers the listener
+        $this->notifyContactsUpdate($player1Id, $player2Id);
+    }
+    
+    private function notifyContactsUpdate(int $player1Id, int $player2Id): void
+    {
+        try {
+            $player1 = User::find($player1Id);
+            $player2 = User::find($player2Id);
+            
+            if (!$player1 || !$player2) {
+                return;
+            }
+            
+            $timestamp = microtime(true);
+            
+            $this->firebase->createDocument(
+                'duoContacts',
+                "user-{$player1Id}",
+                [
+                    'userId' => $player1Id,
+                    'lastContactAdded' => $player2Id,
+                    'lastContactName' => $player2->name,
+                    'lastContactCode' => $player2->player_code ?? '',
+                    'updatedAt' => $timestamp,
+                    'version' => uniqid(),
+                ]
+            );
+            
+            $this->firebase->createDocument(
+                'duoContacts',
+                "user-{$player2Id}",
+                [
+                    'userId' => $player2Id,
+                    'lastContactAdded' => $player1Id,
+                    'lastContactName' => $player1->name,
+                    'lastContactCode' => $player1->player_code ?? '',
+                    'updatedAt' => $timestamp,
+                    'version' => uniqid(),
+                ]
+            );
+            
+            \Log::info('Firestore contact notification sent', [
+                'player1_id' => $player1Id,
+                'player2_id' => $player2Id,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to notify Firestore about contacts update', [
+                'player1_id' => $player1Id,
+                'player2_id' => $player2Id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function getContacts(int $userId): Collection

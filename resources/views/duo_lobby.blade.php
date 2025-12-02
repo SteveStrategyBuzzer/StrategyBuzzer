@@ -1457,9 +1457,9 @@ let contactsRefreshInterval = null;
 function openContactsModal() {
     document.getElementById('contactsModal').style.display = 'flex';
     loadContacts();
-    // Auto-refresh contacts every 15 seconds while modal is open
+    // Fallback: slow refresh every 60 seconds (Firestore handles real-time updates)
     if (!contactsRefreshInterval) {
-        contactsRefreshInterval = setInterval(loadContacts, 15000);
+        contactsRefreshInterval = setInterval(loadContacts, 60000);
     }
 }
 
@@ -1467,7 +1467,7 @@ function closeContactsModal() {
     document.getElementById('contactsModal').style.display = 'none';
     selectedContactId = null;
     updateInviteButton();
-    // Stop auto-refresh when modal is closed
+    // Stop fallback refresh when modal is closed
     if (contactsRefreshInterval) {
         clearInterval(contactsRefreshInterval);
         contactsRefreshInterval = null;
@@ -1782,5 +1782,70 @@ function updateContactUnreadBadges() {
 
 setInterval(loadUnreadCounts, 10000);
 setTimeout(loadUnreadCounts, 1000);
+</script>
+
+<!-- Firebase SDK pour synchronisation temps réel des contacts -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bqWp_dHw",
+    authDomain: "strategybuzzergame.firebaseapp.com",
+    projectId: "strategybuzzergame",
+    storageBucket: "strategybuzzergame.appspot.com",
+    messagingSenderId: "68047817391",
+    appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const currentUserId = {{ Auth::id() }};
+let contactsUnsubscribe = null;
+let lastVersion = null;
+
+function startContactsListener() {
+    if (contactsUnsubscribe) return;
+    
+    const contactDocRef = doc(db, 'duoContacts', `user-${currentUserId}`);
+    
+    contactsUnsubscribe = onSnapshot(contactDocRef, (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            
+            if (lastVersion && data.version !== lastVersion) {
+                console.log('Nouveau contact détecté via Firestore:', data.lastContactName);
+                
+                const contactsModal = document.getElementById('contactsModal');
+                if (contactsModal && contactsModal.style.display === 'flex') {
+                    window.loadContacts();
+                }
+                
+                if (window.showToast) {
+                    window.showToast(`${data.lastContactName} ajouté à votre carnet !`, 'success');
+                }
+            }
+            
+            lastVersion = data.version;
+        }
+    }, (error) => {
+        console.error('Firestore contacts listener error:', error);
+    });
+    
+    console.log('Firestore contacts listener started for user', currentUserId);
+}
+
+function stopContactsListener() {
+    if (contactsUnsubscribe) {
+        contactsUnsubscribe();
+        contactsUnsubscribe = null;
+        console.log('Firestore contacts listener stopped');
+    }
+}
+
+startContactsListener();
+
+window.addEventListener('beforeunload', stopContactsListener);
 </script>
 @endsection
