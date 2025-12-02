@@ -1429,6 +1429,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     showToast(t('Invitation envoyée !'), 'success');
                     inviteInput.value = '';
+                    window.pendingMatchId = data.match.id;
+                    if (window.startMatchListener) {
+                        window.startMatchListener(data.match.id);
+                    }
                 } else {
                     showToast(data.message || t("Erreur lors de l'invitation"), 'error');
                 }
@@ -1490,7 +1494,7 @@ function acceptInvitation(matchId) {
     })
     .then(data => {
         if (data.success) {
-            window.location.href = '/duo/game/' + matchId;
+            window.location.href = data.redirect_url || '/lobby/' + data.lobby_code;
         } else {
             showToast(data.message || t('Erreur lors de l\'acceptation'), 'error');
         }
@@ -1628,6 +1632,8 @@ function updateInviteButton() {
     inviteBtn.disabled = !selectedContactId;
 }
 
+let pendingMatchId = null;
+
 function inviteSelectedContact() {
     if (!selectedContactId) return;
 
@@ -1651,6 +1657,8 @@ function inviteSelectedContact() {
         if (data.success) {
             showToast(t('Invitation envoyée !'), 'success');
             closeContactsModal();
+            pendingMatchId = data.match.id;
+            window.startMatchListener(pendingMatchId);
         } else {
             showToast(data.message || t("Erreur lors de l'invitation"), 'error');
         }
@@ -1859,6 +1867,7 @@ const db = getFirestore(app);
 
 const currentUserId = {{ Auth::id() }};
 let contactsUnsubscribe = null;
+let matchUnsubscribe = null;
 let lastVersion = null;
 
 function startContactsListener() {
@@ -1892,6 +1901,38 @@ function startContactsListener() {
     console.log('Firestore contacts listener started for user', currentUserId);
 }
 
+function startMatchListener(matchId) {
+    if (matchUnsubscribe) {
+        matchUnsubscribe();
+        matchUnsubscribe = null;
+    }
+    
+    const matchDocRef = doc(db, 'duoMatches', `match-${matchId}`);
+    
+    matchUnsubscribe = onSnapshot(matchDocRef, (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            console.log('Match update received:', data);
+            
+            if (data.status === 'lobby' && data.lobby_code) {
+                console.log('Invitation accepted! Redirecting to lobby:', data.lobby_code);
+                if (window.showToast) {
+                    window.showToast('Invitation acceptée ! Redirection vers le salon...', 'success');
+                }
+                setTimeout(() => {
+                    window.location.href = '/lobby/' + data.lobby_code;
+                }, 500);
+            }
+        }
+    }, (error) => {
+        console.error('Firestore match listener error:', error);
+    });
+    
+    console.log('Firestore match listener started for match', matchId);
+}
+
+window.startMatchListener = startMatchListener;
+
 function stopContactsListener() {
     if (contactsUnsubscribe) {
         contactsUnsubscribe();
@@ -1900,8 +1941,19 @@ function stopContactsListener() {
     }
 }
 
+function stopMatchListener() {
+    if (matchUnsubscribe) {
+        matchUnsubscribe();
+        matchUnsubscribe = null;
+        console.log('Firestore match listener stopped');
+    }
+}
+
 startContactsListener();
 
-window.addEventListener('beforeunload', stopContactsListener);
+window.addEventListener('beforeunload', () => {
+    stopContactsListener();
+    stopMatchListener();
+});
 </script>
 @endsection
