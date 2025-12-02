@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PlayerContact;
+use App\Models\PlayerGroupMember;
 use App\Models\User;
 use App\Models\PlayerDuoStat;
 use Illuminate\Support\Collection;
@@ -146,6 +147,58 @@ class PlayerContactService
                 'player2_id' => $player2Id,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    public function deleteContact(int $userId, int $contactUserId): bool
+    {
+        try {
+            $deleted = PlayerContact::where('user_id', $userId)
+                ->where('contact_user_id', $contactUserId)
+                ->delete();
+            
+            PlayerGroupMember::whereHas('group', function($query) use ($userId) {
+                $query->where('user_id', $userId);
+            })->where('member_user_id', $contactUserId)->delete();
+            
+            return $deleted > 0;
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete player contact', [
+                'user_id' => $userId,
+                'contact_user_id' => $contactUserId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    public function addContactByCode(int $userId, string $playerCode): ?array
+    {
+        try {
+            $contactUser = User::where('player_code', $playerCode)->first();
+            
+            if (!$contactUser) {
+                return null;
+            }
+            
+            if ($contactUser->id === $userId) {
+                return null;
+            }
+            
+            $this->ensureContactExists($userId, $contactUser->id);
+            
+            return [
+                'id' => $contactUser->id,
+                'name' => $contactUser->name,
+                'player_code' => $contactUser->player_code,
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Failed to add contact by code', [
+                'user_id' => $userId,
+                'player_code' => $playerCode,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
         }
     }
 

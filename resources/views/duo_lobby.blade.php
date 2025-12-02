@@ -115,6 +115,18 @@
         </button>
         
         <div id="playersTab" class="contacts-tab-content">
+            <div class="multi-select-toolbar" id="multiSelectToolbar">
+                <span class="multi-select-count" id="multiSelectCount">0 {{ __('contacts sélectionnés') }}</span>
+                <div class="multi-select-actions">
+                    <button class="btn-multi-action" onclick="createGroupFromSelection()">👥 {{ __('Créer groupe avec sélection') }}</button>
+                    <button class="btn-multi-action cancel" onclick="cancelMultiSelect()">✕</button>
+                </div>
+            </div>
+            <div style="padding: 10px 20px; text-align: right;">
+                <button class="btn-create-group" onclick="toggleMultiSelectMode()" style="font-size: 0.85em; padding: 8px 12px;">
+                    ☑ {{ __('Sélection multiple') }}
+                </button>
+            </div>
             <div id="contactsList" class="contacts-list">
                 <p class="loading-contacts">{{ __('Chargement...') }}</p>
             </div>
@@ -1286,6 +1298,213 @@
     padding: 40px 20px;
 }
 
+.group-action-btn.view {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+}
+
+.group-action-btn.view:hover {
+    background: rgba(102, 126, 234, 0.3);
+}
+
+.group-action-btn.invite {
+    background: rgba(243, 156, 18, 0.2);
+    color: #e67e22;
+}
+
+.group-action-btn.invite:hover {
+    background: rgba(243, 156, 18, 0.3);
+}
+
+.group-detail-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+}
+
+.group-detail-content {
+    background: white;
+    border-radius: 16px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.group-detail-header {
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.group-detail-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.group-detail-close {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #999;
+}
+
+.group-members-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px 20px;
+}
+
+.group-member-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.group-member-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.group-member-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.group-member-code {
+    font-size: 0.85em;
+    color: #666;
+}
+
+.group-member-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-remove-member {
+    padding: 6px 12px;
+    background: rgba(244, 67, 54, 0.1);
+    color: #c62828;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: 6px;
+    font-size: 0.8em;
+    cursor: pointer;
+}
+
+.btn-remove-member:hover {
+    background: rgba(244, 67, 54, 0.2);
+}
+
+.btn-remove-everywhere {
+    padding: 6px 12px;
+    background: rgba(244, 67, 54, 0.2);
+    color: #b71c1c;
+    border: 1px solid rgba(244, 67, 54, 0.4);
+    border-radius: 6px;
+    font-size: 0.8em;
+    cursor: pointer;
+}
+
+.btn-remove-everywhere:hover {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+.multi-select-toolbar {
+    display: none;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.multi-select-toolbar.active {
+    display: flex;
+}
+
+.multi-select-count {
+    font-weight: 600;
+}
+
+.multi-select-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-multi-action {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
+    font-size: 0.9em;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-multi-action:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.btn-multi-action.cancel {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.invitation-group-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.btn-add-contact {
+    padding: 6px 12px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.btn-add-contact:hover {
+    background: #43a047;
+}
+
+.btn-create-group-invite {
+    padding: 6px 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.btn-create-group-invite:hover {
+    background: #5a6fd6;
+}
+
 .contacts-list {
     overflow-y: auto;
     padding: 10px 25px 25px 25px;
@@ -1542,7 +1761,26 @@ $duoTranslations = [
     'Groupe créé' => __('Groupe créé'),
     'Erreur' => __('Erreur'),
     'Supprimer ce groupe ?' => __('Supprimer ce groupe ?'),
-    'Groupe supprimé' => __('Groupe supprimé')
+    'Groupe supprimé' => __('Groupe supprimé'),
+    'Voir' => __('Voir'),
+    'Fermer' => __('Fermer'),
+    'Membres du groupe' => __('Membres du groupe'),
+    'Retirer du groupe' => __('Retirer du groupe'),
+    'Supprimer partout' => __('Supprimer partout'),
+    'Membre retiré' => __('Membre retiré'),
+    'Ajouter au groupe' => __('Ajouter au groupe'),
+    'Sélectionnez des contacts' => __('Sélectionnez des contacts'),
+    'contacts sélectionnés' => __('contacts sélectionnés'),
+    'Créer groupe avec sélection' => __('Créer groupe avec sélection'),
+    'Inviter le groupe' => __('Inviter le groupe'),
+    'Invitations envoyées' => __('Invitations envoyées'),
+    'Ajouter au carnet' => __('Ajouter au carnet'),
+    'Créer un groupe' => __('Créer un groupe'),
+    'Contact ajouté' => __('Contact ajouté'),
+    'Aucun membre dans ce groupe' => __('Aucun membre dans ce groupe'),
+    'Code joueur manquant' => __('Code joueur manquant'),
+    'Contact supprimé partout' => __('Contact supprimé partout'),
+    'Supprimer ce contact de tous les groupes et du carnet ?' => __('Supprimer ce contact de tous les groupes et du carnet ?')
 ];
 @endphp
 <script>
@@ -1651,6 +1889,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <button onclick="declineInvitation(${inv.match_id})" class="btn-decline">${t('Refuser')}</button>
                         <button onclick="openChat(${inv.from_player.id}, '${inv.from_player.name}')" class="btn-chat" title="${t('Envoyer un message')}">💬</button>
                         <button onclick="acceptInvitation(${inv.match_id})" class="btn-accept">${t('Accepter')}</button>
+                    </div>
+                    <div class="invitation-group-actions">
+                        <button onclick="addToCarnet('${inv.from_player.player_code || ''}')" class="btn-add-contact">📒 ${t('Ajouter au carnet')}</button>
+                        <button onclick="createGroupFromInvitation(${inv.from_player.id}, '${inv.from_player.name}')" class="btn-create-group-invite">👥 ${t('Créer un groupe')}</button>
                     </div>
                 </div>
             `).join('');
@@ -1787,7 +2029,7 @@ function displayGroups(groups) {
     
     groupsList.innerHTML = groups.map(group => `
         <div class="group-card" data-group-id="${group.id}">
-            <div class="group-header" onclick="selectGroupForInvite(${group.id})">
+            <div class="group-header">
                 <span class="group-name">👥 ${group.name}</span>
                 <span class="group-member-count">${group.member_count} ${t('membre(s)')}</span>
             </div>
@@ -1795,19 +2037,130 @@ function displayGroups(groups) {
                 ${group.members.slice(0, 3).map(m => m.name).join(', ')}${group.member_count > 3 ? '...' : ''}
             </div>
             <div class="group-actions" onclick="event.stopPropagation();">
+                <button class="group-action-btn view" onclick="openGroupDetail(${group.id})">👁️ ${t('Voir')}</button>
+                <button class="group-action-btn invite" onclick="inviteGroup(${group.id})">📨 ${t('Inviter le groupe')}</button>
                 <button class="group-action-btn delete" onclick="deleteGroup(${group.id})">🗑️ ${t('Supprimer')}</button>
             </div>
         </div>
     `).join('');
 }
 
-function selectGroupForInvite(groupId) {
+let currentGroupDetailId = null;
+
+function openGroupDetail(groupId) {
     const group = allGroups.find(g => g.id === groupId);
-    if (group && group.members.length > 0) {
-        selectedContactId = group.members[0].id;
-        updateInviteButton();
-        showToast(t('Groupe sélectionné') + ': ' + group.name, 'success');
+    if (!group) return;
+    
+    currentGroupDetailId = groupId;
+    
+    let modalHtml = `
+        <div class="group-detail-modal" id="groupDetailModal" onclick="if(event.target === this) closeGroupDetail()">
+            <div class="group-detail-content">
+                <div class="group-detail-header">
+                    <h3>👥 ${group.name} - ${t('Membres du groupe')}</h3>
+                    <button class="group-detail-close" onclick="closeGroupDetail()">✕</button>
+                </div>
+                <div class="group-members-list" id="groupMembersList">
+                    ${renderGroupMembers(group.members)}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function renderGroupMembers(members) {
+    if (members.length === 0) {
+        return '<p class="no-groups">' + t('Aucun membre dans ce groupe') + '</p>';
     }
+    
+    return members.map(member => `
+        <div class="group-member-item" data-member-id="${member.id}">
+            <div class="group-member-info">
+                <span class="group-member-name">${member.name}</span>
+                <span class="group-member-code">${member.player_code}</span>
+            </div>
+            <div class="group-member-actions">
+                <button class="btn-remove-member" onclick="removeMemberFromGroup(${currentGroupDetailId}, ${member.id})">${t('Retirer du groupe')}</button>
+                <button class="btn-remove-everywhere" onclick="removeMemberEverywhere(${member.id})">${t('Supprimer partout')}</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function closeGroupDetail() {
+    const modal = document.getElementById('groupDetailModal');
+    if (modal) modal.remove();
+    currentGroupDetailId = null;
+}
+
+function removeMemberFromGroup(groupId, memberId) {
+    fetch(`/api/contacts/groups/${groupId}/members`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ member_ids: [memberId] })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(t('Membre retiré'), 'success');
+            loadGroups();
+            if (currentGroupDetailId) {
+                const group = allGroups.find(g => g.id === currentGroupDetailId);
+                if (group) {
+                    group.members = group.members.filter(m => m.id !== memberId);
+                    document.getElementById('groupMembersList').innerHTML = renderGroupMembers(group.members);
+                }
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function removeMemberEverywhere(memberId) {
+    if (!confirm(t('Supprimer ce contact de tous les groupes et du carnet ?'))) return;
+    
+    fetch(`/api/contacts/${memberId}`, {
+        method: 'DELETE',
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(t('Contact supprimé partout'), 'success');
+            loadContacts();
+            loadGroups();
+            closeGroupDetail();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function inviteGroup(groupId) {
+    const group = allGroups.find(g => g.id === groupId);
+    if (!group || group.members.length === 0) {
+        showToast(t('Aucun membre dans ce groupe'));
+        return;
+    }
+    
+    selectedContactId = group.members[0].id;
+    updateInviteButton();
+    closeContactsModal();
+    showToast(t('Groupe sélectionné') + ': ' + group.name + ' (' + group.member_count + ' ' + t('membre(s)') + ')', 'success');
+}
+
+function selectGroupForInvite(groupId) {
+    inviteGroup(groupId);
 }
 
 function createNewGroup() {
@@ -1870,6 +2223,149 @@ function deleteGroup(groupId) {
     });
 }
 
+function addToCarnet(playerCode) {
+    if (!playerCode) {
+        showToast(t('Code joueur manquant'));
+        return;
+    }
+    
+    fetch('/api/contacts/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ player_code: playerCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(t('Contact ajouté'), 'success');
+            loadContacts();
+        } else {
+            showToast(data.message || t('Erreur'));
+        }
+    })
+    .catch(error => {
+        console.error('Error adding contact:', error);
+        showToast(t('Erreur'));
+    });
+}
+
+function createGroupFromInvitation(playerId, playerName) {
+    const groupName = prompt(t('Entrez un nom de groupe'), playerName);
+    if (!groupName) return;
+    
+    fetch('/api/contacts/groups', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ name: groupName, member_ids: [playerId] })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(t('Groupe créé') + ': ' + groupName, 'success');
+            loadGroups();
+        } else {
+            showToast(data.message || t('Erreur'));
+        }
+    })
+    .catch(error => {
+        console.error('Error creating group:', error);
+        showToast(t('Erreur'));
+    });
+}
+
+let selectedContactIds = [];
+let multiSelectMode = false;
+
+function toggleMultiSelectMode() {
+    multiSelectMode = !multiSelectMode;
+    selectedContactIds = [];
+    updateMultiSelectToolbar();
+    loadContacts();
+}
+
+function updateMultiSelectToolbar() {
+    const toolbar = document.getElementById('multiSelectToolbar');
+    if (toolbar) {
+        if (multiSelectMode && selectedContactIds.length > 0) {
+            toolbar.classList.add('active');
+            document.getElementById('multiSelectCount').textContent = selectedContactIds.length + ' ' + t('contacts sélectionnés');
+        } else {
+            toolbar.classList.remove('active');
+        }
+    }
+}
+
+function toggleMultiContactSelection(contactId) {
+    const idx = selectedContactIds.indexOf(contactId);
+    if (idx > -1) {
+        selectedContactIds.splice(idx, 1);
+    } else {
+        selectedContactIds.push(contactId);
+    }
+    updateMultiSelectToolbar();
+    
+    const checkbox = document.getElementById('checkbox-' + contactId);
+    if (checkbox) {
+        checkbox.classList.toggle('selected', selectedContactIds.includes(contactId));
+        checkbox.textContent = selectedContactIds.includes(contactId) ? '☑' : '☐';
+    }
+}
+
+function createGroupFromSelection() {
+    if (selectedContactIds.length === 0) {
+        showToast(t('Sélectionnez des contacts'));
+        return;
+    }
+    
+    const groupName = prompt(t('Entrez un nom de groupe'));
+    if (!groupName) return;
+    
+    fetch('/api/contacts/groups', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ name: groupName, member_ids: selectedContactIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(t('Groupe créé') + ': ' + groupName, 'success');
+            multiSelectMode = false;
+            selectedContactIds = [];
+            updateMultiSelectToolbar();
+            loadGroups();
+            loadContacts();
+        } else {
+            showToast(data.message || t('Erreur'));
+        }
+    })
+    .catch(error => {
+        console.error('Error creating group:', error);
+        showToast(t('Erreur'));
+    });
+}
+
+function cancelMultiSelect() {
+    multiSelectMode = false;
+    selectedContactIds = [];
+    updateMultiSelectToolbar();
+    loadContacts();
+}
+
 function loadContacts() {
     const contactsList = document.getElementById('contactsList');
     // Only show loading if list is empty (first load)
@@ -1902,10 +2398,14 @@ function displayContacts(contacts) {
     const contactsList = document.getElementById('contactsList');
     const previousSelectedId = selectedContactId;
     
+    const isMultiSelected = (id) => multiSelectMode && selectedContactIds.includes(id);
+    const isSelected = (id) => multiSelectMode ? isMultiSelected(id) : id === previousSelectedId;
+    const clickHandler = (id) => multiSelectMode ? `toggleMultiContactSelection(${id})` : `toggleContactSelection(${id})`;
+    
     contactsList.innerHTML = contacts.map(contact => `
         <div class="contact-card" data-contact-id="${contact.id}">
-            <div class="contact-header" onclick="toggleContactSelection(${contact.id})">
-                <div class="contact-checkbox ${contact.id === previousSelectedId ? 'selected' : ''}" id="checkbox-${contact.id}">${contact.id === previousSelectedId ? '☑' : '☐'}</div>
+            <div class="contact-header" onclick="${clickHandler(contact.id)}">
+                <div class="contact-checkbox ${isSelected(contact.id) ? 'selected' : ''}" id="checkbox-${contact.id}">${isSelected(contact.id) ? '☑' : '☐'}</div>
                 <div class="contact-info">
                     <div class="contact-name-code">
                         <span class="contact-name">${contact.name}</span>

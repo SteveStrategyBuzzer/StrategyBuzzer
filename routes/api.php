@@ -17,6 +17,8 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 
 Route::middleware('auth:sanctum')->prefix('contacts')->group(function () {
     Route::get('/', [DuoController::class, 'getContacts']);
+    Route::delete('/{contactId}', [DuoController::class, 'deleteContact']);
+    Route::post('/add', [DuoController::class, 'addContact']);
     Route::get('/groups', [PlayerGroupController::class, 'index']);
     Route::post('/groups', [PlayerGroupController::class, 'store']);
     Route::get('/groups/{groupId}', [PlayerGroupController::class, 'show']);

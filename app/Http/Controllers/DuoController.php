@@ -628,4 +628,45 @@ class DuoController extends Controller
             'contacts' => $contacts,
         ]);
     }
+
+    public function deleteContact(int $contactId)
+    {
+        $user = Auth::user();
+        $success = $this->contactService->deleteContact($user->id, $contactId);
+
+        if (!$success) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Contact introuvable'),
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Contact supprimé'),
+        ]);
+    }
+
+    public function addContact(Request $request)
+    {
+        $request->validate([
+            'player_code' => 'required|string|max:20',
+        ]);
+
+        $user = Auth::user();
+        $contact = $this->contactService->addContactByCode($user->id, $request->player_code);
+
+        if (!$contact) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Joueur introuvable'),
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'contact' => $contact,
+            'message' => __('Contact ajouté'),
+        ]);
+    }
 }
