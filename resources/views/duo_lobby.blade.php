@@ -1997,7 +1997,7 @@ function loadGroups() {
     const groupsList = document.getElementById('groupsList');
     groupsList.innerHTML = '<p class="loading-contacts">' + t('Chargement...') + '</p>';
     
-    fetch('/api/contacts/groups', {
+    fetch('/duo/contacts/groups', {
         headers: {
             'Accept': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
@@ -2096,7 +2096,7 @@ function closeGroupDetail() {
 }
 
 function removeMemberFromGroup(groupId, memberId) {
-    fetch(`/api/contacts/groups/${groupId}/members`, {
+    fetch(`/duo/contacts/groups/${groupId}/members`, {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
@@ -2126,7 +2126,7 @@ function removeMemberFromGroup(groupId, memberId) {
 function removeMemberEverywhere(memberId) {
     if (!confirm(t('Supprimer ce contact de tous les groupes et du carnet ?'))) return;
     
-    fetch(`/api/contacts/${memberId}`, {
+    fetch(`/duo/contacts/${memberId}`, {
         method: 'DELETE',
         headers: {
             'Accept': 'application/json',
@@ -2174,7 +2174,7 @@ function createNewGroup() {
     
     const memberIds = selectedContactId ? [selectedContactId] : [];
     
-    fetch('/api/contacts/groups', {
+    fetch('/duo/contacts/groups', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2203,7 +2203,7 @@ function createNewGroup() {
 function deleteGroup(groupId) {
     if (!confirm(t('Supprimer ce groupe ?'))) return;
     
-    fetch(`/api/contacts/groups/${groupId}`, {
+    fetch(`/duo/contacts/groups/${groupId}`, {
         method: 'DELETE',
         headers: {
             'Accept': 'application/json',
@@ -2229,7 +2229,7 @@ function addToCarnet(playerCode) {
         return;
     }
     
-    fetch('/api/contacts/add', {
+    fetch('/duo/contacts/add', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2258,7 +2258,7 @@ function createGroupFromInvitation(playerId, playerName) {
     const groupName = prompt(t('Entrez un nom de groupe'), playerName);
     if (!groupName) return;
     
-    fetch('/api/contacts/groups', {
+    fetch('/duo/contacts/groups', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2330,7 +2330,7 @@ function createGroupFromSelection() {
     const groupName = prompt(t('Entrez un nom de groupe'));
     if (!groupName) return;
     
-    fetch('/api/contacts/groups', {
+    fetch('/duo/contacts/groups', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2373,7 +2373,7 @@ function loadContacts() {
         contactsList.innerHTML = '<p class="loading-contacts">' + t('Chargement...') + '</p>';
     }
 
-    fetch('/api/contacts', {
+    fetch('/duo/contacts', {
         headers: {
             'Accept': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
