@@ -187,6 +187,15 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::get('/rankings', [App\Http\Controllers\DuoController::class, 'rankings'])->name('rankings');
 });
 
+/* ===== CHAT (Messages entre joueurs) ===== */
+Route::prefix('chat')->name('chat.')->middleware('auth')->group(function () {
+    Route::post('/send', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('send');
+    Route::get('/conversation/{contactId}', [App\Http\Controllers\ChatController::class, 'getConversation'])->name('conversation');
+    Route::get('/unread', [App\Http\Controllers\ChatController::class, 'getUnreadCount'])->name('unread');
+    Route::post('/mark-read/{contactId}', [App\Http\Controllers\ChatController::class, 'markAsRead'])->name('mark-read');
+    Route::get('/recent', [App\Http\Controllers\ChatController::class, 'getRecentConversations'])->name('recent');
+});
+
 /* ===== LIGUE INDIVIDUEL ===== */
 Route::prefix('league/individual')->name('league.individual.')->middleware('auth')->group(function () {
     Route::get('/', [App\Http\Controllers\LeagueIndividualController::class, 'index'])->name('index');
