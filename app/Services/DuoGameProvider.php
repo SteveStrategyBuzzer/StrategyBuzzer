@@ -71,7 +71,7 @@ class DuoGameProvider extends GameModeProvider
         $matchId = $this->gameState['match_id'] ?? null;
         
         if ($matchId) {
-            $this->firestoreService->recordBuzz($matchId, $this->player->id, $buzzTime);
+            $this->firestoreService->recordBuzz((int)$matchId, (string)$this->player->id, microtime(true));
         }
         
         $this->gameState['player_buzzed'] = true;
@@ -100,7 +100,9 @@ class DuoGameProvider extends GameModeProvider
         $points = $this->calculatePoints($isCorrect, $buzzTime);
         
         if ($matchId) {
-            $this->firestoreService->recordAnswer($matchId, $this->player->id, $answerId, $isCorrect, $points);
+            $player1Score = $this->gameState['player_score'] ?? 0;
+            $player2Score = $this->gameState['opponent_score'] ?? 0;
+            $this->firestoreService->updateScores((int)$matchId, $player1Score + $points, $player2Score);
         }
         
         $this->gameState['player_score'] = ($this->gameState['player_score'] ?? 0) + $points;
@@ -245,12 +247,12 @@ class DuoGameProvider extends GameModeProvider
         
         $matchId = $this->gameState['match_id'] ?? null;
         if ($matchId) {
-            $this->firestoreService->updateRoundResult($matchId, [
-                'round' => $this->gameState['current_round'] ?? 1,
-                'player_score' => $playerScore,
-                'opponent_score' => $opponentScore,
-                'round_winner' => $roundWinner,
-            ]);
+            $this->firestoreService->finishRound(
+                (int)$matchId, 
+                ($this->gameState['current_round'] ?? 1) + 1,
+                $this->gameState['player_rounds_won'] ?? 0,
+                $this->gameState['opponent_rounds_won'] ?? 0
+            );
         }
         
         return [

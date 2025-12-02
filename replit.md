@@ -24,6 +24,14 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
     - **GameStateService**: Manages centralized game state, supporting best-of-3 rounds, dual-track scoring, tiebreakers, and scalability for 1-40 players.
     - **BuzzManagerService**: Ensures fair multi-player buzz management with server-side timestamps, scoring rules, and anti-cheat measures.
     - **RoomService**: Provides abstract session/room management for Solo, Duo, League, and Master game modes with dynamic player limits and robust host management.
+- **Unified Game Interface Architecture**:
+    - **GameModeProvider**: Abstract base class defining the contract for all game modes. Methods: getOpponentType(), handleBuzz(), submitAnswer(), calculatePoints(), getScoring(), getMatchResult(), finishRound().
+    - **SoloGameProvider**: Handles AI opponent simulation with buzz timing based on difficulty level (1-100), answer accuracy scaling for students/bosses, and progression-based scoring (+15/-5 points).
+    - **DuoGameProvider**: Manages real player synchronization via Firebase Firestore, ELO/division calculations, and uses DuoFirestoreService for real-time state updates.
+    - **LeagueGameProvider**: Handles ranked competitive matches with ELO K-factor 32, season points tracking (+50 win/-30 loss), and LeagueIndividualFirestoreService integration.
+    - **MasterGameProvider**: Supports quiz master mode with 1 presenter + 3-40 players, ranking-based scoring (1st=10pts, 2nd=7pts, 3rd=5pts), and MasterFirestoreService for room management.
+    - **UnifiedGameController**: Routes game logic to correct provider based on mode parameter. Routes: /game/{mode}/start, /game/{mode}/question, /game/{mode}/buzz, /game/{mode}/answer, /game/{mode}/round-result.
+    - **game_unified.blade.php**: Universal game interface that adapts visually to any mode. Same UI components (chrono, avatars, answers, skills) with mode-specific opponent source (AI vs Firebase real-time).
 
 ### Feature Specifications
 - **Game Modes**: Solo (best-of-3, 90 opponents, 10 boss battles), Duo (division-based, player code invites), League Individual (1v1 career, random matchmaking), League Team (5v5, team management), and Master (real-time hosting for 3-40 players with AI-powered question generation).
