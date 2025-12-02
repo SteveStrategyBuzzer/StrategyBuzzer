@@ -982,6 +982,8 @@ const isHost = {{ $isHost ? 'true' : 'false' }};
 const matchRef = doc(db, 'duo_matches', String(matchId));
 
 let declineHandled = false;
+const defaultGuestName = @json(__('Invité'));
+const declinedMessage = @json(__('a refusé votre invitation'));
 
 onSnapshot(matchRef, (docSnap) => {
     if (!docSnap.exists()) return;
@@ -990,10 +992,10 @@ onSnapshot(matchRef, (docSnap) => {
     
     if (data.status === 'declined' && isHost && !declineHandled) {
         declineHandled = true;
-        const declinedByName = data.declinedByName || "{{ __('L\\'invité') }}";
+        const declinedByName = data.declinedByName || defaultGuestName;
         
         const toast = document.getElementById('toast');
-        toast.textContent = declinedByName + ' ' + "{{ __('a refusé l\\'invitation') }}";
+        toast.textContent = declinedByName + ' ' + declinedMessage;
         toast.classList.add('show');
         toast.style.background = '#E53935';
         
