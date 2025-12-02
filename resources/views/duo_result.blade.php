@@ -123,15 +123,37 @@
     </div>
 
     <div class="actions">
+        @if($opponent_id)
+        <button onclick="openResultChat({{ $opponent_id }}, '{{ addslashes($opponent_name) }}')" class="btn-chat-result" title="{{ __('Envoyer un message') }}">
+            💬 {{ __('Envoyer un message') }}
+        </button>
+        @endif
         <button onclick="window.location.href='{{ route('duo.lobby') }}'" class="btn-primary">
-            REJOUER
+            {{ __('REJOUER') }}
         </button>
         <button onclick="window.location.href='{{ route('duo.rankings') }}'" class="btn-secondary">
-            CLASSEMENTS
+            {{ __('CLASSEMENTS') }}
         </button>
         <button onclick="window.location.href='{{ route('menu') }}'" class="btn-secondary">
-            MENU PRINCIPAL
+            {{ __('MENU PRINCIPAL') }}
         </button>
+    </div>
+</div>
+
+<div id="chatModal" class="result-chat-modal" style="display: none;">
+    <div class="chat-modal-content">
+        <div class="chat-header">
+            <button class="chat-back-btn" onclick="closeResultChatModal()">←</button>
+            <h3 id="chatContactName">{{ __('Chat') }}</h3>
+            <button class="modal-close" onclick="closeResultChatModal()">×</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <p class="chat-loading">{{ __('Chargement...') }}</p>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="{{ __('Écrivez votre message...') }}" maxlength="500">
+            <button onclick="sendResultMessage()">{{ __('Envoyer') }}</button>
+        </div>
     </div>
 </div>
 
@@ -428,9 +450,311 @@
         flex-direction: column;
     }
     
-    .btn-primary, .btn-secondary {
+    .btn-primary, .btn-secondary, .btn-chat-result {
         width: 100%;
     }
 }
+
+.btn-chat-result {
+    padding: 15px 40px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+    color: white;
+}
+
+.btn-chat-result:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 184, 148, 0.3);
+}
+
+.result-chat-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.chat-modal-content {
+    background: white;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 500px;
+    height: 70vh;
+    max-height: 600px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+    gap: 15px;
+}
+
+.chat-header h3 {
+    flex: 1;
+    margin: 0;
+    font-size: 1.3em;
+    color: #1a1a1a;
+}
+
+.chat-back-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #666;
+    cursor: pointer;
+    padding: 0 10px;
+}
+
+.chat-back-btn:hover {
+    color: #1a1a1a;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #666;
+    cursor: pointer;
+}
+
+.modal-close:hover {
+    color: #1a1a1a;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    background: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-loading {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+}
+
+.chat-empty {
+    text-align: center;
+    color: #999;
+    padding: 40px 20px;
+    font-style: italic;
+}
+
+.chat-message {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 16px;
+    word-wrap: break-word;
+}
+
+.chat-message.mine {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-message.theirs {
+    align-self: flex-start;
+    background: white;
+    color: #1a1a1a;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.chat-message .message-text {
+    margin-bottom: 5px;
+}
+
+.chat-message .message-time {
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    border-top: 1px solid #e0e0e0;
+    background: white;
+}
+
+.chat-input-area input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 25px;
+    font-size: 1em;
+    outline: none;
+}
+
+.chat-input-area input:focus {
+    border-color: #667eea;
+}
+
+.chat-input-area button {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.chat-input-area button:hover {
+    transform: scale(1.05);
+}
 </style>
+
+<script>
+let currentChatContactId = null;
+let currentChatContactName = '';
+
+function openResultChat(contactId, contactName) {
+    currentChatContactId = contactId;
+    currentChatContactName = contactName;
+    document.getElementById('chatContactName').textContent = contactName;
+    document.getElementById('chatModal').style.display = 'flex';
+    document.getElementById('chatInput').value = '';
+    loadResultConversation();
+}
+
+function closeResultChatModal() {
+    document.getElementById('chatModal').style.display = 'none';
+    currentChatContactId = null;
+    currentChatContactName = '';
+}
+
+function loadResultConversation() {
+    const messagesDiv = document.getElementById('chatMessages');
+    messagesDiv.innerHTML = '<p class="chat-loading">{{ __("Chargement...") }}</p>';
+
+    fetch(`/chat/conversation/${currentChatContactId}`, {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayResultMessages(data.messages);
+        } else {
+            messagesDiv.innerHTML = '<p class="chat-empty">{{ __("Erreur de chargement") }}</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading conversation:', error);
+        messagesDiv.innerHTML = '<p class="chat-empty">{{ __("Erreur de connexion") }}</p>';
+    });
+}
+
+function displayResultMessages(messages) {
+    const messagesDiv = document.getElementById('chatMessages');
+    
+    if (messages.length === 0) {
+        messagesDiv.innerHTML = '<p class="chat-empty">{{ __("Aucun message. Commencez la conversation !") }}</p>';
+        return;
+    }
+
+    messagesDiv.innerHTML = messages.map(msg => `
+        <div class="chat-message ${msg.is_mine ? 'mine' : 'theirs'}">
+            <div class="message-text">${escapeHtml(msg.message)}</div>
+            <div class="message-time">${msg.time_ago}</div>
+        </div>
+    `).join('');
+
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendResultMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message || !currentChatContactId) return;
+    
+    input.disabled = true;
+
+    fetch('/chat/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            receiver_id: currentChatContactId,
+            message: message
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        input.disabled = false;
+        if (data.success) {
+            input.value = '';
+            const messagesDiv = document.getElementById('chatMessages');
+            const emptyMsg = messagesDiv.querySelector('.chat-empty');
+            if (emptyMsg) emptyMsg.remove();
+            
+            messagesDiv.innerHTML += `
+                <div class="chat-message mine">
+                    <div class="message-text">${escapeHtml(data.message.message)}</div>
+                    <div class="message-time">${data.message.time_ago}</div>
+                </div>
+            `;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            input.focus();
+        } else {
+            alert(data.message || "{{ __('Erreur lors de l\\'envoi du message') }}");
+        }
+    })
+    .catch(error => {
+        console.error('Error sending message:', error);
+        input.disabled = false;
+        alert("{{ __('Erreur de connexion') }}");
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('chatModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeResultChatModal();
+        }
+    });
+
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendResultMessage();
+        }
+    });
+});
+</script>
 @endsection

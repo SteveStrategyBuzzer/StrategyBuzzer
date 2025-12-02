@@ -524,6 +524,8 @@ class DuoController extends Controller
         return view('duo_result', [
             'match_result' => $matchResult,
             'opponent' => $opponent,
+            'opponent_id' => $opponent->id ?? null,
+            'opponent_name' => $opponent->name ?? 'Adversaire',
             'new_division' => $division,
             'points_earned' => $pointsEarned,
             'global_stats' => $gameState['global_stats'] ?? [],
