@@ -51,28 +51,47 @@ class DuoController extends Controller
 
         $user = Auth::user();
         
-        // Chercher le joueur par code
         $opponent = \App\Services\PlayerCodeService::findByCode($request->player_code);
         
         if (!$opponent) {
             return response()->json([
                 'success' => false,
-                'message' => 'Joueur introuvable avec ce code',
+                'message' => __('Joueur introuvable avec ce code'),
             ], 404);
         }
         
         if ($opponent->id === $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Vous ne pouvez pas vous inviter vous-même',
+                'message' => __('Vous ne pouvez pas vous inviter vous-même'),
             ], 400);
         }
 
         $match = $this->matchmaking->createInvitation($user, $opponent->id);
 
+        $lobby = $this->lobbyService->createLobby($user, 'duo', [
+            'theme' => __('Culture générale'),
+            'nb_questions' => 10,
+            'match_id' => $match->id,
+        ]);
+
+        $match->lobby_code = $lobby['code'];
+        $match->save();
+
+        $this->firestoreService->createMatchSession($match->id, [
+            'player1_id' => $match->player1_id,
+            'player2_id' => $match->player2_id,
+            'player1_name' => $user->name ?? 'Player 1',
+            'player2_name' => $opponent->name ?? 'Player 2',
+            'lobby_code' => $lobby['code'],
+            'status' => 'waiting',
+        ]);
+
         return response()->json([
             'success' => true,
             'match' => $match->load(['player1', 'player2']),
+            'lobby_code' => $lobby['code'],
+            'redirect_url' => route('lobby.show', ['code' => $lobby['code']]),
         ]);
     }
 
@@ -107,36 +126,58 @@ class DuoController extends Controller
             ], 403);
         }
 
+        if (!$match->lobby_code) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Le salon n\'existe plus. L\'invitation a peut-être expiré.'),
+            ], 400);
+        }
+
         $this->matchmaking->acceptMatch($match);
 
         $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
 
-        $player1 = User::find($match->player1_id);
-        $lobby = $this->lobbyService->createLobby($player1, 'duo', [
-            'theme' => $request->input('theme', __('Culture générale')),
-            'nb_questions' => 10,
-            'match_id' => $match->id,
-        ]);
+        $this->lobbyService->joinLobby($match->lobby_code, $user);
 
-        $this->lobbyService->joinLobby($lobby['code'], $user);
-
-        $match->lobby_code = $lobby['code'];
-        $match->save();
-
-        $this->firestoreService->createMatchSession($match->id, [
-            'player1_id' => $match->player1_id,
-            'player2_id' => $match->player2_id,
-            'player1_name' => $match->player1->name ?? 'Player 1',
-            'player2_name' => $match->player2->name ?? 'Player 2',
-            'lobby_code' => $lobby['code'],
+        $this->firestoreService->updateGameState($match->id, [
             'status' => 'lobby',
+            'player2Joined' => true,
         ]);
 
         return response()->json([
             'success' => true,
             'match' => $match->load(['player1', 'player2']),
-            'lobby_code' => $lobby['code'],
-            'redirect_url' => route('lobby.show', ['code' => $lobby['code']]),
+            'lobby_code' => $match->lobby_code,
+            'redirect_url' => route('lobby.show', ['code' => $match->lobby_code]),
+        ]);
+    }
+
+    public function declineMatch(Request $request, DuoMatch $match)
+    {
+        $user = Auth::user();
+
+        if ($match->player2_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous n\'êtes pas autorisé à refuser ce match.'),
+            ], 403);
+        }
+
+        if ($match->lobby_code) {
+            $this->lobbyService->deleteLobby($match->lobby_code);
+        }
+
+        $this->matchmaking->cancelMatch($match);
+
+        $this->firestoreService->updateGameState($match->id, [
+            'status' => 'declined',
+            'declinedBy' => $user->id,
+            'declinedByName' => $user->name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Invitation refusée'),
         ]);
     }
 

@@ -55,6 +55,11 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
   - **Cache Persistence**: Lobby state stored via Laravel Cache with 1-hour TTL, 6-character alphanumeric codes
   - **Routes**: `/lobby/create`, `/lobby/{code}`, `/lobby/{code}/join`, `/lobby/{code}/ready`, `/lobby/{code}/color`, `/lobby/{code}/leave`, `/lobby/{code}/start`
   - **Translation Compliance**: All strings use `__()` helper for zero hardcoded text tolerance
+  - **Duo Invitation Flow (Updated)**: Inviter creates lobby immediately and is redirected to wait for invitee. Invitee accepts and joins existing lobby via `redirect_url`. Decline mechanism updates Firestore with `status=declined` for real-time notification.
+  - **Vertical Player Layout**: Players displayed in vertical list format with clickable cards for statistics
+  - **Communication Buttons**: Chat (💬) and microphone (🎤) buttons on each player card
+  - **Host-Only Settings**: Theme and question count controls visible only to host player
+  - **Firestore Real-time Listener**: Lobby listens for invitation decline and player2 joining via Firebase Firestore
 
 ## External Dependencies
 

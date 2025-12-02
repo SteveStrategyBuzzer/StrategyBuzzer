@@ -1416,6 +1416,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            inviteBtn.disabled = true;
+            inviteBtn.textContent = t('Envoi...');
+
             fetch('{{ route("duo.invite") }}', {
                 method: 'POST',
                 headers: {
@@ -1426,20 +1429,22 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    showToast(t('Invitation envoyée !'), 'success');
-                    inviteInput.value = '';
-                    window.pendingMatchId = data.match.id;
-                    if (window.startMatchListener) {
-                        window.startMatchListener(data.match.id);
-                    }
+                if (data.success && data.redirect_url) {
+                    showToast(t('Invitation envoyée ! Redirection vers le salon...'), 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url;
+                    }, 500);
                 } else {
                     showToast(data.message || t("Erreur lors de l'invitation"), 'error');
+                    inviteBtn.disabled = false;
+                    inviteBtn.textContent = t('INVITER');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 showToast(t('Erreur de connexion'), 'error');
+                inviteBtn.disabled = false;
+                inviteBtn.textContent = t('INVITER');
             });
         });
     }
@@ -1506,8 +1511,26 @@ function acceptInvitation(matchId) {
 }
 
 function declineInvitation(matchId) {
-    // TODO: Implémenter le refus d'invitation
-    location.reload();
+    fetch(`/duo/matches/${matchId}/decline`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(t('Invitation refusée'), 'info');
+            location.reload();
+        } else {
+            showToast(data.message || t('Erreur lors du refus'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Decline invitation error:', error);
+        showToast(t('Erreur lors du refus'), 'error');
+    });
 }
 
 let selectedContactId = null;
@@ -1632,8 +1655,6 @@ function updateInviteButton() {
     inviteBtn.disabled = !selectedContactId;
 }
 
-let pendingMatchId = null;
-
 function inviteSelectedContact() {
     if (!selectedContactId) return;
 
@@ -1643,6 +1664,9 @@ function inviteSelectedContact() {
     if (!contact) return;
 
     const playerCode = contact.querySelector('.contact-code').textContent;
+    const inviteBtn = document.getElementById('inviteSelectedBtn');
+    inviteBtn.disabled = true;
+    inviteBtn.textContent = t('Envoi...');
 
     fetch('{{ route("duo.invite") }}', {
         method: 'POST',
@@ -1654,18 +1678,23 @@ function inviteSelectedContact() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            showToast(t('Invitation envoyée !'), 'success');
+        if (data.success && data.redirect_url) {
+            showToast(t('Invitation envoyée ! Redirection vers le salon...'), 'success');
             closeContactsModal();
-            pendingMatchId = data.match.id;
-            window.startMatchListener(pendingMatchId);
+            setTimeout(() => {
+                window.location.href = data.redirect_url;
+            }, 500);
         } else {
             showToast(data.message || t("Erreur lors de l'invitation"), 'error');
+            inviteBtn.disabled = false;
+            inviteBtn.textContent = t('INVITER LE JOUEUR SÉLECTIONNÉ');
         }
     })
     .catch(error => {
         console.error('Error:', error);
         showToast(t('Erreur de connexion'), 'error');
+        inviteBtn.disabled = false;
+        inviteBtn.textContent = t('INVITER LE JOUEUR SÉLECTIONNÉ');
     });
 }
 

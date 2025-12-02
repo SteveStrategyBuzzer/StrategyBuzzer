@@ -112,12 +112,29 @@ foreach ($colors as $color) {
     }
     
     .players-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
     
     .player-card {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 15px;
+        padding: 15px 20px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 15px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .player-card:hover {
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateX(5px);
+    }
+    
+    .player-card-old {
         background: rgba(255, 255, 255, 0.08);
         border-radius: 15px;
         padding: 15px;
@@ -148,25 +165,64 @@ foreach ($colors as $color) {
     }
     
     .player-color-indicator {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        width: 8px;
+        height: 40px;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+    
+    .player-info {
+        flex: 1;
+        min-width: 0;
     }
     
     .player-name {
         font-weight: 600;
         font-size: 1rem;
-        text-align: center;
+        text-align: left;
     }
     
     .player-code {
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.6);
         font-family: monospace;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-align: left;
+    }
+    
+    .player-actions {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    
+    .player-action-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .player-action-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+    }
+    
+    .player-action-btn.active {
+        background: rgba(76, 175, 80, 0.4);
+        color: #81C784;
+    }
+    
+    .player-action-btn.muted {
+        background: rgba(244, 67, 54, 0.3);
+        color: #EF5350;
     }
     
     .player-status {
@@ -429,17 +485,23 @@ foreach ($colors as $color) {
             padding: 12px 20px;
         }
         
-        .players-grid {
-            grid-template-columns: 1fr 1fr;
-        }
-        
         .player-card {
-            padding: 12px;
+            padding: 12px 15px;
         }
         
         .player-avatar {
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
+        }
+        
+        .player-action-btn {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
+        
+        .player-actions {
+            gap: 5px;
         }
     }
 </style>
@@ -454,11 +516,47 @@ foreach ($colors as $color) {
         <div class="lobby-code-hint">{{ __('Partagez ce code avec vos amis') }}</div>
     </div>
     
+    @if($isHost)
+    <div class="settings-section" style="background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px; margin-bottom: 25px;">
+        <div class="section-title" style="margin-bottom: 15px;">
+            <span>⚙️</span>
+            <span>{{ __('Paramètres de la partie') }}</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 5px;">🎯 {{ __('Thème') }}</label>
+                <select id="theme-select" onchange="updateSettings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;">
+                    <option value="Culture générale" {{ ($settings['theme'] ?? '') == 'Culture générale' ? 'selected' : '' }}>{{ __('Culture générale') }}</option>
+                    <option value="Géographie" {{ ($settings['theme'] ?? '') == 'Géographie' ? 'selected' : '' }}>{{ __('Géographie') }}</option>
+                    <option value="Histoire" {{ ($settings['theme'] ?? '') == 'Histoire' ? 'selected' : '' }}>{{ __('Histoire') }}</option>
+                    <option value="Sports" {{ ($settings['theme'] ?? '') == 'Sports' ? 'selected' : '' }}>{{ __('Sports') }}</option>
+                    <option value="Sciences" {{ ($settings['theme'] ?? '') == 'Sciences' ? 'selected' : '' }}>{{ __('Sciences') }}</option>
+                    <option value="Cinéma" {{ ($settings['theme'] ?? '') == 'Cinéma' ? 'selected' : '' }}>{{ __('Cinéma') }}</option>
+                    <option value="Art" {{ ($settings['theme'] ?? '') == 'Art' ? 'selected' : '' }}>{{ __('Art') }}</option>
+                    <option value="Animaux" {{ ($settings['theme'] ?? '') == 'Animaux' ? 'selected' : '' }}>{{ __('Animaux') }}</option>
+                    <option value="Cuisine" {{ ($settings['theme'] ?? '') == 'Cuisine' ? 'selected' : '' }}>{{ __('Cuisine') }}</option>
+                </select>
+            </div>
+            <div style="min-width: 150px;">
+                <label style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 5px;">❓ {{ __('Questions') }}</label>
+                <select id="questions-select" onchange="updateSettings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;">
+                    @foreach([5, 7, 10, 15, 20] as $num)
+                        <option value="{{ $num }}" {{ ($settings['nb_questions'] ?? 10) == $num ? 'selected' : '' }}>{{ $num }} {{ __('questions') }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="display: flex; align-items: flex-end;">
+                <span class="info-badge" style="margin-left: 10px;">👥 {{ count($players) }}/{{ $maxPlayers }}</span>
+            </div>
+        </div>
+    </div>
+    @else
     <div class="lobby-info">
         <span class="info-badge">🎯 {{ $settings['theme'] ?? 'Culture générale' }}</span>
         <span class="info-badge">❓ {{ $settings['nb_questions'] ?? 10 }} {{ __('questions') }}</span>
         <span class="info-badge">👥 {{ count($players) }}/{{ $maxPlayers }}</span>
     </div>
+    @endif
     
     <div class="players-section">
         <div class="section-title">
@@ -473,39 +571,52 @@ foreach ($colors as $color) {
                     $isCurrentPlayer = $playerId == $currentPlayerId;
                 @endphp
                 <div class="player-card {{ $player['ready'] ? 'is-ready' : '' }} {{ $player['is_host'] ? 'is-host' : '' }}" 
-                     style="color: {{ $playerColor['hex'] }};"
-                     data-player-id="{{ $playerId }}">
+                     style="border-left: 4px solid {{ $playerColor['hex'] }};"
+                     data-player-id="{{ $playerId }}"
+                     onclick="showPlayerStats({{ $playerId }}, '{{ addslashes($player['name']) }}')">
                     
                     <div class="player-color-indicator" style="background: {{ $playerColor['hex'] }};"></div>
                     
                     <img src="{{ asset('images/avatars/standard/' . ($player['avatar'] ?? 'default') . '.png') }}" 
                          alt="{{ $player['name'] }}" 
                          class="player-avatar"
+                         style="width: 50px; height: 50px; border-color: {{ $playerColor['hex'] }};"
                          onerror="this.src='{{ asset('images/avatars/standard/default.png') }}'">
                     
-                    <div class="player-name">
-                        {{ $player['name'] }}
-                        @if($isCurrentPlayer)
-                            <span style="font-size: 0.8rem; opacity: 0.7;">({{ __('vous') }})</span>
-                        @endif
+                    <div class="player-info">
+                        <div class="player-name">
+                            {{ $player['name'] }}
+                            @if($isCurrentPlayer)
+                                <span style="font-size: 0.8rem; opacity: 0.7;">({{ __('vous') }})</span>
+                            @endif
+                        </div>
+                        <div class="player-code">{{ $player['player_code'] ?? 'SB-????' }}</div>
                     </div>
                     
-                    <div class="player-code">{{ $player['player_code'] ?? 'SB-????' }}</div>
-                    
                     @if($player['is_host'])
-                        <div class="player-status status-host">👑 {{ __('Hôte') }}</div>
+                        <div class="player-status status-host">👑</div>
                     @elseif($player['ready'])
-                        <div class="player-status status-ready">✓ {{ __('Prêt') }}</div>
+                        <div class="player-status status-ready">✓</div>
                     @else
-                        <div class="player-status status-waiting">⏳ {{ __('En attente') }}</div>
+                        <div class="player-status status-waiting">⏳</div>
                     @endif
+                    
+                    <div class="player-actions" onclick="event.stopPropagation()">
+                        @if(!$isCurrentPlayer)
+                            <button class="player-action-btn" onclick="openPlayerChat({{ $playerId }}, '{{ addslashes($player['name']) }}')" title="{{ __('Chat') }}">💬</button>
+                        @endif
+                        <button class="player-action-btn {{ $isCurrentPlayer ? 'active' : '' }}" 
+                                id="mic-btn-{{ $playerId }}" 
+                                onclick="toggleMic({{ $playerId }})" 
+                                title="{{ __('Micro') }}">🎤</button>
+                    </div>
                 </div>
             @endforeach
             
             @for($i = count($players); $i < min($maxPlayers, 8); $i++)
-                <div class="empty-slot">
-                    <div class="empty-slot-icon">👤</div>
-                    <div class="empty-slot-text">{{ __('En attente...') }}</div>
+                <div class="empty-slot" style="padding: 15px; display: flex; align-items: center; gap: 15px;">
+                    <div class="empty-slot-icon" style="font-size: 1.5rem; margin: 0;">👤</div>
+                    <div class="empty-slot-text">{{ __('En attente d\'un joueur...') }}</div>
                 </div>
             @endfor
         </div>
@@ -629,6 +740,43 @@ foreach ($colors as $color) {
         });
     }
     
+    function showPlayerStats(playerId, playerName) {
+        showToast('{{ __("Statistiques de") }} ' + playerName);
+    }
+    
+    function openPlayerChat(playerId, playerName) {
+        showToast('{{ __("Chat avec") }} ' + playerName);
+    }
+    
+    let micStates = {};
+    
+    function toggleMic(playerId) {
+        const btn = document.getElementById('mic-btn-' + playerId);
+        if (!btn) return;
+        
+        if (playerId === currentPlayerId) {
+            micStates[playerId] = !micStates[playerId];
+            if (micStates[playerId]) {
+                btn.classList.add('active');
+                btn.classList.remove('muted');
+                showToast('{{ __("Micro activé") }}');
+            } else {
+                btn.classList.remove('active');
+                btn.classList.add('muted');
+                showToast('{{ __("Micro désactivé") }}');
+            }
+        } else {
+            micStates[playerId] = !micStates[playerId];
+            if (micStates[playerId]) {
+                btn.classList.remove('muted');
+                showToast('{{ __("Son activé") }}');
+            } else {
+                btn.classList.add('muted');
+                showToast('{{ __("Son désactivé") }}');
+            }
+        }
+    }
+    
     async function selectColor(colorId) {
         try {
             const response = await fetch(`/lobby/${lobbyCode}/color`, {
@@ -691,6 +839,40 @@ foreach ($colors as $color) {
         } else {
             btn.classList.remove('is-ready');
             text.textContent = '{{ __("Je suis prêt !") }}';
+        }
+    }
+    
+    async function updateSettings() {
+        if (!isHost) return;
+        
+        const themeSelect = document.getElementById('theme-select');
+        const questionsSelect = document.getElementById('questions-select');
+        
+        if (!themeSelect || !questionsSelect) return;
+        
+        try {
+            const response = await fetch(`/lobby/${lobbyCode}/settings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    theme: themeSelect.value,
+                    nb_questions: parseInt(questionsSelect.value)
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('{{ __("Paramètres mis à jour") }}');
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error updating settings:', error);
+            showToast('{{ __("Erreur de connexion") }}');
         }
     }
     
@@ -775,4 +957,56 @@ foreach ($colors as $color) {
         }
     });
 </script>
+
+@if(isset($matchId) && $matchId)
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bqWp_dHw",
+    authDomain: "strategybuzzergame.firebaseapp.com",
+    projectId: "strategybuzzergame",
+    storageBucket: "strategybuzzergame.appspot.com",
+    messagingSenderId: "68047817391",
+    appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const matchId = {{ $matchId }};
+const currentUserId = {{ $currentPlayerId }};
+const isHost = {{ $isHost ? 'true' : 'false' }};
+
+const matchRef = doc(db, 'duo_matches', String(matchId));
+
+let declineHandled = false;
+
+onSnapshot(matchRef, (docSnap) => {
+    if (!docSnap.exists()) return;
+    
+    const data = docSnap.data();
+    
+    if (data.status === 'declined' && isHost && !declineHandled) {
+        declineHandled = true;
+        const declinedByName = data.declinedByName || "{{ __('L\\'invité') }}";
+        
+        const toast = document.getElementById('toast');
+        toast.textContent = declinedByName + ' ' + "{{ __('a refusé l\\'invitation') }}";
+        toast.classList.add('show');
+        toast.style.background = '#E53935';
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            window.location.href = '/duo/lobby';
+        }, 3000);
+    }
+    
+    if (data.player2Joined && isHost) {
+        location.reload();
+    }
+});
+</script>
+@endif
 @endsection

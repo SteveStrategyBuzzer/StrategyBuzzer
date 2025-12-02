@@ -196,6 +196,7 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::post('/invite', [App\Http\Controllers\DuoController::class, 'invitePlayer'])->name('invite');
     Route::get('/invitations', [App\Http\Controllers\DuoController::class, 'getInvitations'])->name('invitations');
     Route::post('/matches/{match}/accept', [App\Http\Controllers\DuoController::class, 'acceptMatch'])->name('matches.accept');
+    Route::post('/matches/{match}/decline', [App\Http\Controllers\DuoController::class, 'declineMatch'])->name('matches.decline');
     Route::post('/matches/{match}/cancel', [App\Http\Controllers\DuoController::class, 'cancelMatch'])->name('matches.cancel');
     Route::get('/matchmaking', [App\Http\Controllers\DuoController::class, 'matchmaking'])->name('matchmaking');
     Route::get('/game/{match}', [App\Http\Controllers\DuoController::class, 'game'])->name('game');

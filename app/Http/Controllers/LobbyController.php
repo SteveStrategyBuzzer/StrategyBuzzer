@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\LobbyService;
+use App\Models\DuoMatch;
 
 class LobbyController extends Controller
 {
@@ -62,6 +63,10 @@ class LobbyController extends Controller
             $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
         }
         
+        $duoMatch = DuoMatch::where('lobby_code', $code)
+            ->whereIn('status', ['pending', 'waiting', 'lobby'])
+            ->first();
+        
         return view('lobby', [
             'lobby' => $lobbyState['lobby'],
             'colors' => $lobbyState['colors'],
@@ -69,6 +74,7 @@ class LobbyController extends Controller
             'currentPlayerId' => $user->id,
             'allReady' => $lobbyState['all_ready'],
             'canStart' => $lobbyState['can_start'],
+            'matchId' => $duoMatch?->id,
         ]);
     }
     
