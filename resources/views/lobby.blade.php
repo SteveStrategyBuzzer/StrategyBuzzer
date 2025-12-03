@@ -893,13 +893,123 @@ foreach ($colors as $color) {
         }
     }
     
+    const colorMap = @json($colorMap);
+    const maxPlayers = {{ $maxPlayers }};
+    const translations = {
+        you: '{{ __("vous") }}',
+        waitingPlayer: '{{ __("En attente d\'un joueur...") }}',
+        chat: '{{ __("Chat") }}',
+        micro: '{{ __("Micro") }}',
+        players: '{{ __("Joueurs") }}',
+        lobbyClosed: '{{ __("Le salon a été fermé") }}',
+        waitingMessage: '{{ __("En attente de joueurs") }}',
+        waitingReady: '{{ __("En attente que tous les joueurs soient prêts") }}',
+        minimum: '{{ __("minimum") }}'
+    };
+    
+    function updatePlayersUI(players) {
+        const playersGrid = document.querySelector('.players-grid');
+        if (!playersGrid) return;
+        
+        const playerEntries = Object.entries(players || {});
+        let html = '';
+        
+        playerEntries.forEach(([playerId, player]) => {
+            const playerColor = colorMap[player.color] || colorMap['blue'];
+            const isCurrentPlayer = parseInt(playerId) === currentPlayerId;
+            const readyClass = player.ready ? 'is-ready' : '';
+            const hostClass = player.is_host ? 'is-host' : '';
+            
+            let statusHtml = '';
+            if (player.is_host) {
+                statusHtml = '<div class="player-status status-host">👑</div>';
+            } else if (player.ready) {
+                statusHtml = '<div class="player-status status-ready">✓</div>';
+            } else {
+                statusHtml = '<div class="player-status status-waiting">⏳</div>';
+            }
+            
+            const avatar = player.avatar || 'default';
+            const youLabel = isCurrentPlayer ? `<span style="font-size: 0.8rem; opacity: 0.7;">(${translations.you})</span>` : '';
+            const chatBtn = !isCurrentPlayer ? `<button class="player-action-btn" onclick="openPlayerChat(${playerId}, '${player.name.replace(/'/g, "\\'")}')" title="${translations.chat}">💬</button>` : '';
+            
+            html += `
+                <div class="player-card ${readyClass} ${hostClass}" 
+                     style="border-left: 4px solid ${playerColor.hex};"
+                     data-player-id="${playerId}"
+                     onclick="showPlayerStats(${playerId}, '${player.name.replace(/'/g, "\\'")}')">
+                    
+                    <div class="player-color-indicator" style="background: ${playerColor.hex};"></div>
+                    
+                    <img src="/images/avatars/standard/${avatar}.png" 
+                         alt="${player.name}" 
+                         class="player-avatar"
+                         style="width: 50px; height: 50px; border-color: ${playerColor.hex};"
+                         onerror="this.src='/images/avatars/standard/default.png'">
+                    
+                    <div class="player-info">
+                        <div class="player-name">
+                            ${player.name}
+                            ${youLabel}
+                        </div>
+                        <div class="player-code">${player.player_code || 'SB-????'}</div>
+                    </div>
+                    
+                    ${statusHtml}
+                    
+                    <div class="player-actions" onclick="event.stopPropagation()">
+                        ${chatBtn}
+                        <button class="player-action-btn ${isCurrentPlayer ? 'active' : ''}" 
+                                id="mic-btn-${playerId}" 
+                                onclick="toggleMic(${playerId})" 
+                                title="${translations.micro}">🎤</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        const emptySlots = Math.min(maxPlayers, 8) - playerEntries.length;
+        for (let i = 0; i < emptySlots; i++) {
+            html += `
+                <div class="empty-slot" style="padding: 15px; display: flex; align-items: center; gap: 15px;">
+                    <div class="empty-slot-icon" style="font-size: 1.5rem; margin: 0;">👤</div>
+                    <div class="empty-slot-text">${translations.waitingPlayer}</div>
+                </div>
+            `;
+        }
+        
+        playersGrid.innerHTML = html;
+        
+        const sectionTitle = document.querySelector('.players-section .section-title span:last-child');
+        if (sectionTitle) {
+            sectionTitle.textContent = `${translations.players} (${playerEntries.length}/${maxPlayers})`;
+        }
+    }
+    
+    function updateWaitingMessage(players, minPlayers, allReady) {
+        const waitingDiv = document.querySelector('.waiting-message');
+        if (!waitingDiv) return;
+        
+        const playerCount = Object.keys(players || {}).length;
+        
+        if (playerCount < minPlayers) {
+            waitingDiv.innerHTML = `${translations.waitingMessage} (${playerCount}/${minPlayers} ${translations.minimum})<span class="waiting-dots"></span>`;
+            waitingDiv.style.display = 'block';
+        } else if (!allReady) {
+            waitingDiv.innerHTML = `${translations.waitingReady}<span class="waiting-dots"></span>`;
+            waitingDiv.style.display = 'block';
+        } else {
+            waitingDiv.style.display = 'none';
+        }
+    }
+    
     async function refreshLobbyState() {
         try {
             const response = await fetch(`/lobby/${lobbyCode}/state`);
             const data = await response.json();
             
             if (!data.exists) {
-                showToast('{{ __("Le salon a été fermé") }}');
+                showToast(translations.lobbyClosed);
                 setTimeout(() => window.location.href = '/', 2000);
                 return;
             }
@@ -910,10 +1020,16 @@ foreach ($colors as $color) {
                 return;
             }
             
-            if (isHost && data.can_start) {
-                document.getElementById('start-btn')?.removeAttribute('disabled');
-            } else if (isHost) {
-                document.getElementById('start-btn')?.setAttribute('disabled', 'disabled');
+            updatePlayersUI(data.lobby?.players);
+            
+            if (isHost) {
+                updateWaitingMessage(data.lobby?.players, {{ $minPlayers }}, data.all_ready);
+                
+                if (data.can_start) {
+                    document.getElementById('start-btn')?.removeAttribute('disabled');
+                } else {
+                    document.getElementById('start-btn')?.setAttribute('disabled', 'disabled');
+                }
             }
             
         } catch (error) {
