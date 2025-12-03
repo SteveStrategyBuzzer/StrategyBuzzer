@@ -216,6 +216,46 @@ foreach ($colors as $color) {
         color: #EF5350;
     }
     
+    .player-action-btn.speaking {
+        animation: speakingPulse 0.8s ease-in-out infinite;
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+    }
+    
+    @keyframes speakingPulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(76, 175, 80, 0.4); }
+        50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(76, 175, 80, 0.8); }
+    }
+    
+    .player-card.speaking {
+        border-color: #4CAF50 !important;
+        box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+    }
+    
+    .voice-indicator {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #4CAF50;
+        animation: voicePulse 1s ease-in-out infinite;
+    }
+    
+    @keyframes voicePulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.2); }
+    }
+    
+    .mic-connecting {
+        animation: micConnecting 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes micConnecting {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+    }
+    
     .player-status {
         display: flex;
         align-items: center;
