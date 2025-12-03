@@ -1732,6 +1732,14 @@ $duoTranslations = [
     'vous invite' => __('vous invite'),
     'Accepter' => __('Accepter'),
     'Refuser' => __('Refuser'),
+    'Annuler' => __('Annuler'),
+    'Invitation envoyée à' => __('Invitation envoyée à'),
+    'Invitations envoyées' => __('Invitations envoyées'),
+    'Invitations reçues' => __('Invitations reçues'),
+    'Voir le salon' => __('Voir le salon'),
+    'Joueur' => __('Joueur'),
+    'Invitation annulée' => __('Invitation annulée'),
+    "Erreur lors de l'annulation" => __("Erreur lors de l'annulation"),
     'Aucun joueur dans votre carnet' => __('Aucun joueur dans votre carnet'),
     'Historique' => __('Historique'),
     'matchs joués' => __('matchs joués'),
@@ -1870,19 +1878,32 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('{{ route("duo.invitations") }}')
             .then(response => response.json())
             .then(data => {
-                if (data.invitations && data.invitations.length > 0) {
-                    displayInvitations(data.invitations);
-                }
+                displayInvitations(data.invitations || [], data.sent_invitations || []);
             });
     }
 
-    function displayInvitations(invitations) {
+    function displayInvitations(receivedInvitations, sentInvitations) {
         const list = document.getElementById('invitationsList');
+        let html = '';
         
-        if (invitations.length === 0) {
-            list.innerHTML = '<p class="no-invitations">' + t('Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement') + '</p>';
-        } else {
-            list.innerHTML = invitations.map(inv => `
+        if (sentInvitations.length > 0) {
+            html += `<div class="invitations-section-title" style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1);">📤 ${t('Invitations envoyées')}</div>`;
+            html += sentInvitations.map(inv => `
+                <div class="invitation-item sent-invitation" style="background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea;">
+                    <span>${t('Invitation envoyée à')} <strong>${inv.to_player?.name || t('Joueur')}</strong></span>
+                    <div class="invitation-actions">
+                        <button onclick="cancelInvitation(${inv.match_id})" class="btn-decline">${t('Annuler')}</button>
+                        ${inv.lobby_code ? `<button onclick="window.location.href='/lobby/${inv.lobby_code}'" class="btn-accept">${t('Voir le salon')}</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        if (receivedInvitations.length > 0) {
+            if (sentInvitations.length > 0) {
+                html += `<div class="invitations-section-title" style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1);">📥 ${t('Invitations reçues')}</div>`;
+            }
+            html += receivedInvitations.map(inv => `
                 <div class="invitation-item">
                     <span>${inv.from_player.name} ${t('vous invite')}</span>
                     <div class="invitation-actions">
@@ -1897,6 +1918,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `).join('');
         }
+        
+        if (receivedInvitations.length === 0 && sentInvitations.length === 0) {
+            html = '<p class="no-invitations">' + t('Aucune invitation pour le moment - Les invitations apparaîtront ici automatiquement') + '</p>';
+        }
+        
+        list.innerHTML = html;
     }
 
     checkInvitations();
@@ -1950,6 +1977,29 @@ function declineInvitation(matchId) {
     .catch(error => {
         console.error('Decline invitation error:', error);
         showToast(t('Erreur lors du refus'), 'error');
+    });
+}
+
+function cancelInvitation(matchId) {
+    fetch(`/duo/matches/${matchId}/cancel`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(t('Invitation annulée'), 'info');
+            location.reload();
+        } else {
+            showToast(data.message || t('Erreur lors de l\'annulation'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Cancel invitation error:', error);
+        showToast(t('Erreur lors de l\'annulation'), 'error');
     });
 }
 

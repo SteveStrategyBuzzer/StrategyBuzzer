@@ -549,6 +549,12 @@ foreach ($colors as $color) {
                 @php
                     $playerColor = $colorMap[$player['color']] ?? $colorMap['blue'];
                     $isCurrentPlayer = $playerId == $currentPlayerId;
+                    $avatarRaw = $player['avatar'] ?? 'default';
+                    if (str_contains($avatarRaw, '/') || str_contains($avatarRaw, '.png')) {
+                        $avatarSrc = '/' . ltrim(preg_replace('/\.png$/', '', $avatarRaw), '/') . '.png';
+                    } else {
+                        $avatarSrc = asset('images/avatars/standard/' . $avatarRaw . '.png');
+                    }
                 @endphp
                 <div class="player-card {{ $player['ready'] ? 'is-ready' : '' }} {{ $player['is_host'] ? 'is-host' : '' }}" 
                      style="border-left: 4px solid {{ $playerColor['hex'] }};"
@@ -557,7 +563,7 @@ foreach ($colors as $color) {
                     
                     <div class="player-color-indicator" style="background: {{ $playerColor['hex'] }};"></div>
                     
-                    <img src="{{ asset('images/avatars/standard/' . ($player['avatar'] ?? 'default') . '.png') }}" 
+                    <img src="{{ $avatarSrc }}" 
                          alt="{{ $player['name'] }}" 
                          class="player-avatar"
                          style="width: 50px; height: 50px; border-color: {{ $playerColor['hex'] }};"
@@ -937,7 +943,13 @@ foreach ($colors as $color) {
                 statusHtml = '<div class="player-status status-waiting">⏳</div>';
             }
             
-            const avatar = player.avatar || 'default';
+            let avatarRaw = player.avatar || 'default';
+            let avatarSrc;
+            if (avatarRaw.includes('/') || avatarRaw.includes('.png')) {
+                avatarSrc = '/' + avatarRaw.replace(/^\//, '').replace(/\.png$/, '') + '.png';
+            } else {
+                avatarSrc = '/images/avatars/standard/' + avatarRaw + '.png';
+            }
             const safeName = escapeHtml(player.name);
             const safeCode = escapeHtml(player.player_code || 'SB-????');
             const youLabel = isCurrentPlayer ? `<span style="font-size: 0.8rem; opacity: 0.7;">(${translations.you})</span>` : '';
@@ -951,7 +963,7 @@ foreach ($colors as $color) {
                     
                     <div class="player-color-indicator" style="background: ${playerColor.hex};"></div>
                     
-                    <img src="/images/avatars/standard/${avatar}.png" 
+                    <img src="${avatarSrc}" 
                          alt="${safeName}" 
                          class="player-avatar"
                          style="width: 50px; height: 50px; border-color: ${playerColor.hex};"

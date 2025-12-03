@@ -601,7 +601,7 @@ class DuoController extends Controller
     {
         $user = Auth::user();
         
-        $invitations = DuoMatch::where('player2_id', $user->id)
+        $receivedInvitations = DuoMatch::where('player2_id', $user->id)
             ->where('status', 'waiting')
             ->with('player1')
             ->get()
@@ -612,9 +612,22 @@ class DuoController extends Controller
                 ];
             });
 
+        $sentInvitations = DuoMatch::where('player1_id', $user->id)
+            ->where('status', 'waiting')
+            ->with('player2')
+            ->get()
+            ->map(function ($match) {
+                return [
+                    'match_id' => $match->id,
+                    'to_player' => $match->player2,
+                    'lobby_code' => $match->lobby_code,
+                ];
+            });
+
         return response()->json([
             'success' => true,
-            'invitations' => $invitations,
+            'invitations' => $receivedInvitations,
+            'sent_invitations' => $sentInvitations,
         ]);
     }
 

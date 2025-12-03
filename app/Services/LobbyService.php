@@ -31,6 +31,20 @@ class LobbyService
         return $this->teamColors;
     }
     
+    protected function normalizeAvatar(?string $avatar): string
+    {
+        if (!$avatar) {
+            return 'default';
+        }
+        
+        if (str_contains($avatar, '/') || str_contains($avatar, '.png')) {
+            $avatar = preg_replace('/\.png$/', '', $avatar);
+            $avatar = basename($avatar);
+        }
+        
+        return $avatar ?: 'default';
+    }
+    
     public function createLobby(User $host, string $mode, array $settings = []): array
     {
         $lobbyCode = $this->generateLobbyCode();
@@ -52,7 +66,7 @@ class LobbyService
                     'id' => $host->id,
                     'name' => $host->name,
                     'player_code' => $host->player_code,
-                    'avatar' => session('selected_avatar', 'default'),
+                    'avatar' => $this->normalizeAvatar(session('selected_avatar', 'default')),
                     'color' => 'blue',
                     'team' => null,
                     'ready' => false,
@@ -98,7 +112,7 @@ class LobbyService
             'id' => $player->id,
             'name' => $player->name,
             'player_code' => $player->player_code,
-            'avatar' => session('selected_avatar', 'default'),
+            'avatar' => $this->normalizeAvatar(session('selected_avatar', 'default')),
             'color' => $assignedColor,
             'team' => null,
             'ready' => false,
