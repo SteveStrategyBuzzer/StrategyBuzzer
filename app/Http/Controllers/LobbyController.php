@@ -5,7 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\LobbyService;
+use App\Services\PlayerContactService;
+use App\Services\DivisionService;
 use App\Models\DuoMatch;
+use App\Models\User;
+use App\Models\PlayerContact;
+use App\Models\PlayerDuoStat;
 
 class LobbyController extends Controller
 {
@@ -213,5 +218,79 @@ class LobbyController extends Controller
         $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
         
         return response()->json($lobbyState);
+    }
+    
+    public function getPlayerStats(int $playerId)
+    {
+        $currentUser = Auth::user();
+        
+        $player = User::find($playerId);
+        if (!$player) {
+            return response()->json([
+                'success' => false,
+                'error' => __('Joueur non trouvé'),
+            ], 404);
+        }
+        
+        $duoStats = PlayerDuoStat::where('user_id', $playerId)->first();
+        
+        $divisionService = app(DivisionService::class);
+        $division = $divisionService->getOrCreateDivision($player, 'duo');
+        
+        $contact = PlayerContact::where('user_id', $currentUser->id)
+            ->where('contact_user_id', $playerId)
+            ->first();
+        
+        $wins = $duoStats->matches_won ?? 0;
+        $losses = $duoStats->matches_lost ?? 0;
+        $totalDuoMatches = $wins + $losses;
+        $duoWinRate = $totalDuoMatches > 0 
+            ? round(($wins / $totalDuoMatches) * 100, 1) 
+            : 0;
+        $correctAnswers = $duoStats->correct_answers ?? 0;
+        $totalAnswers = $duoStats->total_answers ?? 0;
+        $duoEfficiency = $totalAnswers > 0
+            ? round(($correctAnswers / $totalAnswers) * 100, 1)
+            : 0;
+        $playerLevel = $duoStats->level ?? 1;
+        
+        $radarData = [
+            'Victoires' => min($duoWinRate, 100),
+            'Précision' => $duoEfficiency,
+            'Expérience' => min(($totalDuoMatches / 50) * 100, 100),
+            'Niveau' => min(($playerLevel / 50) * 100, 100),
+            'Régularité' => min((($contact->matches_played_together ?? 0) / 20) * 100, 100),
+        ];
+        
+        $playerAvatar = $player->avatar ?? $player->avatar_url ?? 'default';
+        
+        return response()->json([
+            'success' => true,
+            'player' => [
+                'id' => $player->id,
+                'name' => $player->name,
+                'player_code' => $player->player_code,
+                'avatar' => $playerAvatar,
+            ],
+            'stats' => [
+                'level' => $playerLevel,
+                'division' => $division['name'] ?? 'Bronze',
+                'division_rank' => $division['rank'] ?? 0,
+                'total_matches' => $totalDuoMatches,
+                'wins' => $wins,
+                'losses' => $losses,
+                'win_rate' => $duoWinRate,
+                'efficiency' => $duoEfficiency,
+                'correct_answers' => $correctAnswers,
+                'total_answers' => $totalAnswers,
+            ],
+            'history' => [
+                'matches_together' => $contact->matches_played_together ?? 0,
+                'wins_against' => $contact->matches_won ?? 0,
+                'losses_against' => $contact->matches_lost ?? 0,
+                'last_played' => $contact?->last_played_at?->diffForHumans() ?? __('Jamais'),
+            ],
+            'radar_data' => $radarData,
+        ]);
     }
 }

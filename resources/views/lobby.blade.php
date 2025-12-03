@@ -704,6 +704,319 @@ foreach ($colors as $color) {
 
 <div class="toast" id="toast"></div>
 
+<!-- Modal Stats Joueur -->
+<div id="stats-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content stats-modal-content">
+        <button class="modal-close" onclick="closeStatsModal()">&times;</button>
+        <div class="stats-header">
+            <img id="stats-avatar" src="" alt="" class="stats-avatar">
+            <div class="stats-player-info">
+                <h3 id="stats-player-name"></h3>
+                <span id="stats-player-code" class="player-code"></span>
+            </div>
+        </div>
+        <div class="stats-body">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="stat-label">{{ __('Niveau') }}</span>
+                    <span id="stats-level" class="stat-value">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">{{ __('Division') }}</span>
+                    <span id="stats-division" class="stat-value">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">{{ __('Victoires') }}</span>
+                    <span id="stats-wins" class="stat-value">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">{{ __('Défaites') }}</span>
+                    <span id="stats-losses" class="stat-value">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">{{ __('Taux victoire') }}</span>
+                    <span id="stats-winrate" class="stat-value">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">{{ __('Précision') }}</span>
+                    <span id="stats-efficiency" class="stat-value">-</span>
+                </div>
+            </div>
+            <div class="radar-container">
+                <canvas id="stats-radar" width="200" height="200"></canvas>
+            </div>
+            <div class="history-section">
+                <h4>{{ __('Historique contre ce joueur') }}</h4>
+                <div class="history-grid">
+                    <div class="history-item">
+                        <span class="history-label">{{ __('Matchs ensemble') }}</span>
+                        <span id="history-matches" class="history-value">-</span>
+                    </div>
+                    <div class="history-item">
+                        <span class="history-label">{{ __('Vos victoires') }}</span>
+                        <span id="history-wins" class="history-value">-</span>
+                    </div>
+                    <div class="history-item">
+                        <span class="history-label">{{ __('Vos défaites') }}</span>
+                        <span id="history-losses" class="history-value">-</span>
+                    </div>
+                    <div class="history-item">
+                        <span class="history-label">{{ __('Dernière partie') }}</span>
+                        <span id="history-last" class="history-value">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="stats-actions">
+            <button class="btn btn-chat" onclick="openPlayerChatFromStats()">💬 {{ __('Discuter') }}</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chat -->
+<div id="chat-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content chat-modal-content">
+        <button class="modal-close" onclick="closeChatModal()">&times;</button>
+        <div class="chat-header">
+            <img id="chat-avatar" src="" alt="" class="chat-avatar">
+            <div class="chat-player-info">
+                <h3 id="chat-player-name"></h3>
+                <span id="chat-player-code" class="player-code"></span>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-loading">{{ __('Chargement...') }}</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="{{ __('Votre message...') }}" maxlength="500">
+            <button class="btn btn-send" onclick="sendChatMessage()">{{ __('Envoyer') }}</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background: linear-gradient(145deg, #1a1a2e, #16213e);
+        border-radius: 15px;
+        padding: 25px;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+        border: 2px solid #4fc3f7;
+        box-shadow: 0 0 30px rgba(79, 195, 247, 0.3);
+    }
+    .modal-close {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 2rem;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+    .modal-close:hover {
+        opacity: 1;
+    }
+    .stats-modal-content {
+        width: 400px;
+    }
+    .stats-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .stats-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 3px solid #4fc3f7;
+    }
+    .stats-player-info h3 {
+        margin: 0;
+        color: #fff;
+        font-size: 1.3rem;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .stat-box {
+        background: rgba(0,0,0,0.3);
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .stat-label {
+        display: block;
+        color: #aaa;
+        font-size: 0.75rem;
+        margin-bottom: 5px;
+    }
+    .stat-value {
+        display: block;
+        color: #4fc3f7;
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+    .radar-container {
+        display: flex;
+        justify-content: center;
+        margin: 20px 0;
+        background: rgba(0,0,0,0.2);
+        border-radius: 10px;
+        padding: 15px;
+    }
+    .history-section h4 {
+        color: #fff;
+        margin: 15px 0 10px;
+        font-size: 1rem;
+    }
+    .history-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .history-item {
+        background: rgba(0,0,0,0.2);
+        padding: 8px;
+        border-radius: 6px;
+    }
+    .history-label {
+        display: block;
+        color: #888;
+        font-size: 0.7rem;
+    }
+    .history-value {
+        display: block;
+        color: #fff;
+        font-size: 0.9rem;
+    }
+    .stats-actions {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+    }
+    .btn-chat {
+        background: linear-gradient(135deg, #4fc3f7, #0288d1);
+        color: #fff;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+    .chat-modal-content {
+        width: 400px;
+        height: 500px;
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .chat-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid #4fc3f7;
+    }
+    .chat-player-info h3 {
+        margin: 0;
+        color: #fff;
+        font-size: 1rem;
+    }
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .chat-loading {
+        color: #888;
+        text-align: center;
+        padding: 20px;
+    }
+    .chat-message {
+        max-width: 80%;
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+    }
+    .chat-message.mine {
+        align-self: flex-end;
+        background: #4fc3f7;
+        color: #000;
+    }
+    .chat-message.theirs {
+        align-self: flex-start;
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+    .chat-message .time {
+        display: block;
+        font-size: 0.65rem;
+        opacity: 0.7;
+        margin-top: 3px;
+    }
+    .chat-input-area {
+        display: flex;
+        gap: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    #chat-input {
+        flex: 1;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 8px;
+        padding: 10px;
+        color: #fff;
+        font-size: 0.9rem;
+    }
+    .btn-send {
+        background: #4fc3f7;
+        color: #000;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .no-messages {
+        color: #666;
+        text-align: center;
+        padding: 30px;
+        font-style: italic;
+    }
+</style>
+
 <script>
     const lobbyCode = '{{ $lobbyCode }}';
     const currentPlayerId = {{ $currentPlayerId }};
@@ -718,12 +1031,245 @@ foreach ($colors as $color) {
         setTimeout(() => toast.classList.remove('show'), duration);
     }
     
-    function showPlayerStats(playerId, playerName) {
-        showToast('{{ __("Statistiques de") }} ' + playerName);
+    let currentStatsPlayerId = null;
+    let currentChatPlayerId = null;
+    let currentChatPlayerName = null;
+    
+    async function showPlayerStats(playerId, playerName) {
+        if (playerId === currentPlayerId) {
+            showToast('{{ __("Vous ne pouvez pas voir vos propres statistiques ici") }}');
+            return;
+        }
+        
+        currentStatsPlayerId = playerId;
+        document.getElementById('stats-modal').style.display = 'flex';
+        
+        document.getElementById('stats-player-name').textContent = playerName;
+        document.getElementById('stats-level').textContent = '-';
+        document.getElementById('stats-division').textContent = '-';
+        document.getElementById('stats-wins').textContent = '-';
+        document.getElementById('stats-losses').textContent = '-';
+        document.getElementById('stats-winrate').textContent = '-';
+        document.getElementById('stats-efficiency').textContent = '-';
+        
+        try {
+            const response = await fetch(`/lobby/player-stats/${playerId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const avatar = data.player.avatar || 'default';
+                const avatarSrc = avatar.includes('/') || avatar.includes('.png') 
+                    ? `/${avatar.replace(/\.png$/, '')}.png`
+                    : `/images/avatars/standard/${avatar}.png`;
+                document.getElementById('stats-avatar').src = avatarSrc;
+                document.getElementById('stats-player-code').textContent = data.player.player_code;
+                
+                document.getElementById('stats-level').textContent = data.stats.level;
+                document.getElementById('stats-division').textContent = data.stats.division;
+                document.getElementById('stats-wins').textContent = data.stats.wins;
+                document.getElementById('stats-losses').textContent = data.stats.losses;
+                document.getElementById('stats-winrate').textContent = data.stats.win_rate + '%';
+                document.getElementById('stats-efficiency').textContent = data.stats.efficiency + '%';
+                
+                document.getElementById('history-matches').textContent = data.history.matches_together;
+                document.getElementById('history-wins').textContent = data.history.wins_against;
+                document.getElementById('history-losses').textContent = data.history.losses_against;
+                document.getElementById('history-last').textContent = data.history.last_played;
+                
+                drawRadarChart(data.radar_data);
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+            showToast('{{ __("Erreur de chargement") }}');
+        }
     }
     
-    function openPlayerChat(playerId, playerName) {
-        showToast('{{ __("Chat avec") }} ' + playerName);
+    function drawRadarChart(radarData) {
+        const canvas = document.getElementById('stats-radar');
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 80;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const labels = Object.keys(radarData);
+        const values = Object.values(radarData);
+        const numPoints = labels.length;
+        const angleStep = (2 * Math.PI) / numPoints;
+        
+        for (let level = 1; level <= 5; level++) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            for (let i = 0; i <= numPoints; i++) {
+                const angle = (i % numPoints) * angleStep - Math.PI / 2;
+                const r = (level / 5) * radius;
+                const x = centerX + r * Math.cos(angle);
+                const y = centerY + r * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+        
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(79, 195, 247, 0.3)';
+        ctx.strokeStyle = '#4fc3f7';
+        ctx.lineWidth = 2;
+        for (let i = 0; i <= numPoints; i++) {
+            const angle = (i % numPoints) * angleStep - Math.PI / 2;
+            const value = values[i % numPoints] || 0;
+            const r = (value / 100) * radius;
+            const x = centerX + r * Math.cos(angle);
+            const y = centerY + r * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        for (let i = 0; i < numPoints; i++) {
+            const angle = i * angleStep - Math.PI / 2;
+            const x = centerX + (radius + 15) * Math.cos(angle);
+            const y = centerY + (radius + 15) * Math.sin(angle);
+            ctx.fillText(labels[i], x, y + 3);
+        }
+    }
+    
+    function closeStatsModal() {
+        document.getElementById('stats-modal').style.display = 'none';
+        currentStatsPlayerId = null;
+    }
+    
+    function openPlayerChatFromStats() {
+        if (currentStatsPlayerId) {
+            const playerName = document.getElementById('stats-player-name').textContent;
+            closeStatsModal();
+            openPlayerChat(currentStatsPlayerId, playerName);
+        }
+    }
+    
+    async function openPlayerChat(playerId, playerName) {
+        if (playerId === currentPlayerId) {
+            showToast('{{ __("Vous ne pouvez pas vous envoyer de message") }}');
+            return;
+        }
+        
+        currentChatPlayerId = playerId;
+        currentChatPlayerName = playerName;
+        
+        document.getElementById('chat-modal').style.display = 'flex';
+        document.getElementById('chat-player-name').textContent = playerName;
+        document.getElementById('chat-messages').innerHTML = '<div class="chat-loading">{{ __("Chargement...") }}</div>';
+        document.getElementById('chat-input').value = '';
+        
+        try {
+            const response = await fetch(`/chat/conversation/${playerId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                if (data.contact && data.contact.avatar_url) {
+                    const avatar = data.contact.avatar_url;
+                    const avatarSrc = avatar.includes('/') ? `/${avatar}` : `/images/avatars/standard/${avatar}.png`;
+                    document.getElementById('chat-avatar').src = avatarSrc;
+                }
+                document.getElementById('chat-player-code').textContent = data.contact?.player_code || '';
+                
+                displayChatMessages(data.messages || []);
+            } else {
+                document.getElementById('chat-messages').innerHTML = '<div class="no-messages">{{ __("Erreur de chargement") }}</div>';
+            }
+        } catch (error) {
+            console.error('Error loading chat:', error);
+            document.getElementById('chat-messages').innerHTML = '<div class="no-messages">{{ __("Erreur de connexion") }}</div>';
+        }
+        
+        document.getElementById('chat-input').addEventListener('keypress', handleChatKeypress);
+    }
+    
+    function handleChatKeypress(e) {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    }
+    
+    function displayChatMessages(messages) {
+        const container = document.getElementById('chat-messages');
+        
+        if (!messages || messages.length === 0) {
+            container.innerHTML = '<div class="no-messages">{{ __("Aucun message. Dites bonjour !") }}</div>';
+            return;
+        }
+        
+        let html = '';
+        messages.forEach(msg => {
+            const isMine = msg.is_mine;
+            html += `
+                <div class="chat-message ${isMine ? 'mine' : 'theirs'}">
+                    ${escapeHtml(msg.message)}
+                    <span class="time">${msg.time_ago || ''}</span>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    async function sendChatMessage() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        
+        if (!message || !currentChatPlayerId) return;
+        
+        input.value = '';
+        
+        try {
+            const response = await fetch('/chat/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    receiver_id: currentChatPlayerId,
+                    message: message
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const container = document.getElementById('chat-messages');
+                const noMessages = container.querySelector('.no-messages');
+                if (noMessages) noMessages.remove();
+                
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'chat-message mine';
+                msgDiv.innerHTML = `${escapeHtml(message)}<span class="time">{{ __("À l'instant") }}</span>`;
+                container.appendChild(msgDiv);
+                container.scrollTop = container.scrollHeight;
+            } else {
+                showToast(data.message || '{{ __("Erreur d\'envoi") }}');
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            showToast('{{ __("Erreur de connexion") }}');
+        }
+    }
+    
+    function closeChatModal() {
+        document.getElementById('chat-modal').style.display = 'none';
+        document.getElementById('chat-input').removeEventListener('keypress', handleChatKeypress);
+        currentChatPlayerId = null;
+        currentChatPlayerName = null;
     }
     
     let micStates = {};
@@ -1134,6 +1680,14 @@ foreach ($colors as $color) {
         if (pollingInterval) {
             clearInterval(pollingInterval);
         }
+    });
+    
+    document.getElementById('stats-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeStatsModal();
+    });
+    
+    document.getElementById('chat-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeChatModal();
     });
 </script>
 

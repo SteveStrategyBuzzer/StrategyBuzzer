@@ -177,6 +177,7 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
 Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
     Route::post('/create', [LobbyController::class, 'create'])->name('create');
     Route::post('/join', [LobbyController::class, 'join'])->name('join');
+    Route::get('/player-stats/{playerId}', [LobbyController::class, 'getPlayerStats'])->name('player-stats');
     Route::get('/{code}', [LobbyController::class, 'show'])->name('show');
     Route::get('/{code}/state', [LobbyController::class, 'getState'])->name('state');
     Route::post('/{code}/ready', [LobbyController::class, 'setReady'])->name('ready');
