@@ -755,6 +755,46 @@ foreach ($colors as $color) {
         }
     }
     
+    function submitGameStart(mode, settings) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/game/${mode}/start`;
+        form.style.display = 'none';
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+        
+        const themeInput = document.createElement('input');
+        themeInput.type = 'hidden';
+        themeInput.name = 'theme';
+        themeInput.value = settings.theme || '{{ __("Culture générale") }}';
+        form.appendChild(themeInput);
+        
+        const nbQuestionsInput = document.createElement('input');
+        nbQuestionsInput.type = 'hidden';
+        nbQuestionsInput.name = 'nb_questions';
+        nbQuestionsInput.value = settings.nb_questions || 10;
+        form.appendChild(nbQuestionsInput);
+        
+        const lobbyInput = document.createElement('input');
+        lobbyInput.type = 'hidden';
+        lobbyInput.name = 'lobby_code';
+        lobbyInput.value = lobbyCode;
+        form.appendChild(lobbyInput);
+        
+        const niveauInput = document.createElement('input');
+        niveauInput.type = 'hidden';
+        niveauInput.name = 'niveau';
+        niveauInput.value = 1;
+        form.appendChild(niveauInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+    
     async function selectColor(colorId) {
         try {
             const response = await fetch(`/lobby/${lobbyCode}/color`, {
@@ -868,7 +908,8 @@ foreach ($colors as $color) {
             
             if (data.success) {
                 const mode = data.lobby?.mode || 'duo';
-                window.location.href = `/game/${mode}/start?lobby=${lobbyCode}`;
+                const settings = data.lobby?.settings || {};
+                submitGameStart(mode, settings);
             } else {
                 showToast(data.error || '{{ __("Impossible de lancer la partie") }}');
             }
@@ -1065,7 +1106,8 @@ foreach ($colors as $color) {
             
             if (data.lobby?.status === 'starting') {
                 const mode = data.lobby?.mode || 'duo';
-                window.location.href = `/game/${mode}/start?lobby=${lobbyCode}`;
+                const settings = data.lobby?.settings || {};
+                submitGameStart(mode, settings);
                 return;
             }
             
