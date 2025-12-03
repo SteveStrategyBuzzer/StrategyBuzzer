@@ -895,6 +895,14 @@ foreach ($colors as $color) {
     
     const colorMap = @json($colorMap);
     const maxPlayers = {{ $maxPlayers }};
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
     const translations = {
         you: '{{ __("vous") }}',
         waitingPlayer: '{{ __("En attente d\'un joueur...") }}',
@@ -930,29 +938,31 @@ foreach ($colors as $color) {
             }
             
             const avatar = player.avatar || 'default';
+            const safeName = escapeHtml(player.name);
+            const safeCode = escapeHtml(player.player_code || 'SB-????');
             const youLabel = isCurrentPlayer ? `<span style="font-size: 0.8rem; opacity: 0.7;">(${translations.you})</span>` : '';
-            const chatBtn = !isCurrentPlayer ? `<button class="player-action-btn" onclick="openPlayerChat(${playerId}, '${player.name.replace(/'/g, "\\'")}')" title="${translations.chat}">💬</button>` : '';
+            const chatBtn = !isCurrentPlayer ? `<button class="player-action-btn" data-player-id="${playerId}" data-action="chat" title="${translations.chat}">💬</button>` : '';
             
             html += `
                 <div class="player-card ${readyClass} ${hostClass}" 
                      style="border-left: 4px solid ${playerColor.hex};"
                      data-player-id="${playerId}"
-                     onclick="showPlayerStats(${playerId}, '${player.name.replace(/'/g, "\\'")}')">
+                     data-player-name="${safeName}">
                     
                     <div class="player-color-indicator" style="background: ${playerColor.hex};"></div>
                     
                     <img src="/images/avatars/standard/${avatar}.png" 
-                         alt="${player.name}" 
+                         alt="${safeName}" 
                          class="player-avatar"
                          style="width: 50px; height: 50px; border-color: ${playerColor.hex};"
                          onerror="this.src='/images/avatars/standard/default.png'">
                     
                     <div class="player-info">
                         <div class="player-name">
-                            ${player.name}
+                            ${safeName}
                             ${youLabel}
                         </div>
-                        <div class="player-code">${player.player_code || 'SB-????'}</div>
+                        <div class="player-code">${safeCode}</div>
                     </div>
                     
                     ${statusHtml}
@@ -961,7 +971,8 @@ foreach ($colors as $color) {
                         ${chatBtn}
                         <button class="player-action-btn ${isCurrentPlayer ? 'active' : ''}" 
                                 id="mic-btn-${playerId}" 
-                                onclick="toggleMic(${playerId})" 
+                                data-player-id="${playerId}"
+                                data-action="mic"
                                 title="${translations.micro}">🎤</button>
                     </div>
                 </div>
@@ -985,6 +996,32 @@ foreach ($colors as $color) {
             sectionTitle.textContent = `${translations.players} (${playerEntries.length}/${maxPlayers})`;
         }
     }
+    
+    document.addEventListener('click', function(e) {
+        const playerCard = e.target.closest('.player-card');
+        if (playerCard && !e.target.closest('.player-actions')) {
+            const playerId = playerCard.dataset.playerId;
+            const playerName = playerCard.dataset.playerName;
+            if (playerId && playerName) {
+                showPlayerStats(parseInt(playerId), playerName);
+            }
+        }
+        
+        const actionBtn = e.target.closest('[data-action]');
+        if (actionBtn) {
+            e.stopPropagation();
+            const action = actionBtn.dataset.action;
+            const playerId = parseInt(actionBtn.dataset.playerId);
+            const playerCard = actionBtn.closest('.player-card');
+            const playerName = playerCard?.dataset.playerName || '';
+            
+            if (action === 'chat') {
+                openPlayerChat(playerId, playerName);
+            } else if (action === 'mic') {
+                toggleMic(playerId);
+            }
+        }
+    });
     
     function updateWaitingMessage(players, minPlayers, allReady) {
         const waitingDiv = document.querySelector('.waiting-message');
