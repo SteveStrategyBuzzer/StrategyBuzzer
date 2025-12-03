@@ -11,7 +11,13 @@ Preferred communication style: Simple, everyday language.
 ### UI/UX Decisions
 The frontend utilizes React 19 with Vite, employing a component-based architecture. The UI is designed for competitiveness with energetic chronometers, realistic buzz buttons, and score displays. It features a 3-column game question layout optimized for various mobile and tablet orientations, and strategic avatar skills are visually persistent. Recent UI enhancements include a symmetric resume screen layout, simplified boss presentations, dynamic question headers, and mobile responsiveness optimizations. The system integrates a multi-language UI with automatic browser detection and manual selection across 10 languages.
 
-**Boutique System**: Refactored from tab-based interface to menu-style card navigation. The main boutique page displays 7 category cards in a responsive grid (4 columns landscape, 2 columns portrait). Each category (Packs, Musiques, Buzzers, Strategiques, Master, Coins, Vies) has a dedicated detail page accessible via /boutique/{category}. Features include orientation-aware responsive layouts and seamless back-navigation between pages.
+**Boutique System**: Refactored from tab-based interface to menu-style card navigation. The main boutique page displays 7 category cards in a responsive grid (4 columns landscape, 2 columns portrait). Each category (Packs, Musiques, Buzzers, Strategiques, Modes de jeux, Coins, Vies) has a dedicated detail page accessible via /boutique/{category}. Features include orientation-aware responsive layouts and seamless back-navigation between pages.
+  - **Modes de jeux Category**: Renamed from "Maître du Jeu" to "Modes de jeux". Contains 3 purchasable game modes:
+    - **Mode Duo** ($12.50): 1v1 matches with friends, code invitations, ELO ranking, contact book
+    - **Mode Ligue** ($15.75): Automatic matchmaking, world ranking, competitive seasons, exclusive rewards
+    - **Mode Maître du Jeu** ($29.99): Up to 40 players, custom questions, real-time animation, full party control
+  - User flags: `duo_purchased`, `league_purchased`, `master_purchased` boolean columns in users table
+  - Stripe checkout routes: `/modes/checkout/{mode}` for duo/league, `/master/checkout` for master mode
 
 ### Technical Implementations
 The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It uses an API-first, service-oriented design with an event-driven system for real-time game state broadcasting. Key services include:
