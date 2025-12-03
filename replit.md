@@ -66,6 +66,13 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
   - **Communication Buttons**: Chat (💬) and microphone (🎤) buttons on each player card
   - **Host-Only Settings**: Theme and question count controls visible only to host player
   - **Firestore Real-time Listener**: Lobby listens for invitation decline and player2 joining via Firebase Firestore
+  - **WebRTC Voice Chat System**: Real-time voice communication for Duo, League Individual, and League Team modes (not available in Master mode)
+    - **Architecture**: Peer-to-peer WebRTC with Firebase Firestore signaling
+    - **ICE Servers**: STUN (Google) + TURN (relay.metered.ca) for NAT traversal
+    - **Features**: Voice activity detection (Web Audio API), speaking indicators with CSS pulse animations, mute/unmute controls
+    - **Team Scoping**: League Team mode uses team-scoped signaling paths (`lobbies/{code}/teams/{teamId}/webrtc`)
+    - **Presence Tracking**: Firebase presence documents track muted/speaking state per player
+    - **Cleanup**: Automatic cleanup on page unload (peer connections, audio tracks, signaling documents)
 
 ## External Dependencies
 
