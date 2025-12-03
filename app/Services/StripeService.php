@@ -24,6 +24,9 @@ class StripeService
         if ($pack['key'] === 'master_mode') {
             $defaultSuccessUrl = url('/master/success?session_id={CHECKOUT_SESSION_ID}');
             $defaultCancelUrl = url('/master/cancel');
+        } elseif (in_array($pack['key'], ['duo_mode', 'league_mode'])) {
+            $defaultSuccessUrl = url('/modes/success?session_id={CHECKOUT_SESSION_ID}');
+            $defaultCancelUrl = url('/modes/cancel');
         }
 
         return Session::create([
