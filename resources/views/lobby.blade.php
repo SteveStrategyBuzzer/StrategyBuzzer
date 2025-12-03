@@ -631,10 +631,16 @@ foreach ($colors as $color) {
                         @if(!$isCurrentPlayer)
                             <button class="player-action-btn" onclick="openPlayerChat({{ $playerId }}, '{{ addslashes($player['name']) }}')" title="{{ __('Chat') }}">💬</button>
                         @endif
+                        @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
                         <button class="player-action-btn {{ $isCurrentPlayer ? 'active' : '' }}" 
                                 id="mic-btn-{{ $playerId }}" 
                                 onclick="toggleMic({{ $playerId }})" 
                                 title="{{ __('Micro') }}">🎤</button>
+                        @else
+                        <button class="player-action-btn" 
+                                style="opacity: 0.3; cursor: not-allowed;"
+                                title="{{ __('Audio non disponible') }}" disabled>🎤</button>
+                        @endif
                     </div>
                 </div>
             @endforeach
@@ -1313,30 +1319,127 @@ foreach ($colors as $color) {
     }
     
     let micStates = {};
+    let voiceEnabled = false;
+    const lobbyMode = '{{ $mode }}';
+    const voiceEnabledModes = ['duo', 'league_individual', 'league_team'];
+    const isVoiceSupported = voiceEnabledModes.includes(lobbyMode);
     
     function toggleMic(playerId) {
         const btn = document.getElementById('mic-btn-' + playerId);
         if (!btn) return;
         
+        if (!isVoiceSupported) {
+            showToast('{{ __("Audio non disponible pour ce mode") }}');
+            return;
+        }
+        
         if (playerId === currentPlayerId) {
-            micStates[playerId] = !micStates[playerId];
-            if (micStates[playerId]) {
-                btn.classList.add('active');
-                btn.classList.remove('muted');
-                showToast('{{ __("Micro activé") }}');
+            if (!voiceEnabled) {
+                initVoiceChat();
             } else {
-                btn.classList.remove('active');
-                btn.classList.add('muted');
-                showToast('{{ __("Micro désactivé") }}');
+                toggleLocalMic();
             }
         } else {
-            micStates[playerId] = !micStates[playerId];
-            if (micStates[playerId]) {
-                btn.classList.remove('muted');
-                showToast('{{ __("Son activé") }}');
+            toggleRemoteAudio(playerId);
+        }
+    }
+    
+    async function initVoiceChat() {
+        const btn = document.getElementById('mic-btn-' + currentPlayerId);
+        if (!btn) return;
+        
+        btn.classList.add('mic-connecting');
+        
+        try {
+            const hasPermission = await requestMicPermission();
+            if (!hasPermission) {
+                btn.classList.remove('mic-connecting');
+                showToast('{{ __("Permission micro refusée") }}');
+                return;
+            }
+            
+            voiceEnabled = true;
+            micStates[currentPlayerId] = true;
+            btn.classList.remove('mic-connecting');
+            btn.classList.add('active');
+            btn.classList.remove('muted');
+            
+            await window.webrtcManager.startVoiceChat();
+            showToast('{{ __("Micro activé") }}');
+            
+        } catch (error) {
+            console.error('Voice init error:', error);
+            btn.classList.remove('mic-connecting');
+            showToast('{{ __("Erreur d\'initialisation audio") }}');
+        }
+    }
+    
+    async function requestMicPermission() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop());
+            return true;
+        } catch (error) {
+            console.error('Mic permission denied:', error);
+            return false;
+        }
+    }
+    
+    function toggleLocalMic() {
+        const btn = document.getElementById('mic-btn-' + currentPlayerId);
+        if (!btn || !window.webrtcManager) return;
+        
+        micStates[currentPlayerId] = !micStates[currentPlayerId];
+        
+        if (micStates[currentPlayerId]) {
+            window.webrtcManager.unmute();
+            btn.classList.add('active');
+            btn.classList.remove('muted');
+            showToast('{{ __("Micro activé") }}');
+        } else {
+            window.webrtcManager.mute();
+            btn.classList.remove('active');
+            btn.classList.add('muted');
+            showToast('{{ __("Micro désactivé") }}');
+        }
+    }
+    
+    function toggleRemoteAudio(playerId) {
+        const btn = document.getElementById('mic-btn-' + playerId);
+        if (!btn) return;
+        
+        micStates[playerId] = !micStates[playerId];
+        
+        if (window.webrtcManager) {
+            window.webrtcManager.setRemoteAudioEnabled(playerId, !micStates[playerId]);
+        }
+        
+        if (micStates[playerId]) {
+            btn.classList.add('muted');
+            showToast('{{ __("Son désactivé") }}');
+        } else {
+            btn.classList.remove('muted');
+            showToast('{{ __("Son activé") }}');
+        }
+    }
+    
+    function updateSpeakingIndicator(playerId, isSpeaking) {
+        const btn = document.getElementById('mic-btn-' + playerId);
+        const card = document.querySelector(`.player-card[data-player-id="${playerId}"]`);
+        
+        if (btn) {
+            if (isSpeaking) {
+                btn.classList.add('speaking');
             } else {
-                btn.classList.add('muted');
-                showToast('{{ __("Son désactivé") }}');
+                btn.classList.remove('speaking');
+            }
+        }
+        
+        if (card) {
+            if (isSpeaking) {
+                card.classList.add('speaking');
+            } else {
+                card.classList.remove('speaking');
             }
         }
     }
@@ -1545,7 +1648,8 @@ foreach ($colors as $color) {
         lobbyClosed: '{{ __("Le salon a été fermé") }}',
         waitingMessage: '{{ __("En attente de joueurs") }}',
         waitingReady: '{{ __("En attente que tous les joueurs soient prêts") }}',
-        minimum: '{{ __("minimum") }}'
+        minimum: '{{ __("minimum") }}',
+        audioNotAvailable: '{{ __("Audio non disponible") }}'
     };
     
     function updatePlayersUI(players) {
@@ -1608,11 +1712,13 @@ foreach ($colors as $color) {
                     
                     <div class="player-actions" onclick="event.stopPropagation()">
                         ${chatBtn}
-                        <button class="player-action-btn ${isCurrentPlayer ? 'active' : ''}" 
+                        ${isVoiceSupported ? `<button class="player-action-btn ${isCurrentPlayer ? 'active' : ''}" 
                                 id="mic-btn-${playerId}" 
                                 data-player-id="${playerId}"
                                 data-action="mic"
-                                title="${translations.micro}">🎤</button>
+                                title="${translations.micro}">🎤</button>` : `<button class="player-action-btn" 
+                                style="opacity: 0.3; cursor: not-allowed;"
+                                title="${translations.audioNotAvailable}" disabled>🎤</button>`}
                     </div>
                 </div>
             `;
@@ -1730,6 +1836,446 @@ foreach ($colors as $color) {
         if (e.target === this) closeChatModal();
     });
 </script>
+
+@if(in_array($mode, ['duo', 'league_individual', 'league_team']))
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bqWp_dHw",
+    authDomain: "strategybuzzergame.firebaseapp.com",
+    projectId: "strategybuzzergame",
+    storageBucket: "strategybuzzergame.appspot.com",
+    messagingSenderId: "68047817391",
+    appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
+};
+
+const app = initializeApp(firebaseConfig, 'webrtc-app');
+const db = getFirestore(app);
+
+class WebRTCManager {
+    constructor(lobbyCode, currentPlayerId, mode, teamId = null) {
+        this.lobbyCode = lobbyCode;
+        this.currentPlayerId = currentPlayerId;
+        this.mode = mode;
+        this.teamId = teamId;
+        this.peerConnections = {};
+        this.localStream = null;
+        this.remoteAudioElements = {};
+        this.audioContext = null;
+        this.analyser = null;
+        this.isMuted = false;
+        this.unsubscribers = [];
+        
+        this.iceServers = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:stun.relay.metered.ca:80' },
+            { 
+                urls: 'turn:global.relay.metered.ca:80',
+                username: 'free',
+                credential: 'free'
+            },
+            { 
+                urls: 'turn:global.relay.metered.ca:443',
+                username: 'free',
+                credential: 'free'
+            }
+        ];
+        
+        this.sessionId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    getSignalingPath() {
+        if (this.mode === 'league_team' && this.teamId) {
+            return `lobbies/${this.lobbyCode}/teams/${this.teamId}/webrtc`;
+        }
+        return `lobbies/${this.lobbyCode}/webrtc`;
+    }
+    
+    getPresencePath() {
+        if (this.mode === 'league_team' && this.teamId) {
+            return `lobbies/${this.lobbyCode}/teams/${this.teamId}/voice_presence`;
+        }
+        return `lobbies/${this.lobbyCode}/voice_presence`;
+    }
+    
+    async startVoiceChat() {
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                } 
+            });
+            
+            this.setupVoiceActivityDetection();
+            await this.updatePresence(true, false);
+            this.listenForSignaling();
+            this.listenForPresence();
+            
+            console.log('Voice chat started successfully');
+        } catch (error) {
+            console.error('Failed to start voice chat:', error);
+            throw error;
+        }
+    }
+    
+    setupVoiceActivityDetection() {
+        if (!this.localStream) return;
+        
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = this.audioContext.createMediaStreamSource(this.localStream);
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 512;
+        this.analyser.smoothingTimeConstant = 0.4;
+        source.connect(this.analyser);
+        
+        const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+        let speakingState = false;
+        let silenceTimeout = null;
+        
+        const checkLevel = () => {
+            if (!this.analyser || this.isMuted) {
+                if (speakingState) {
+                    speakingState = false;
+                    this.onSpeakingChange(false);
+                }
+                requestAnimationFrame(checkLevel);
+                return;
+            }
+            
+            this.analyser.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+            const isSpeaking = average > 15;
+            
+            if (isSpeaking && !speakingState) {
+                if (silenceTimeout) {
+                    clearTimeout(silenceTimeout);
+                    silenceTimeout = null;
+                }
+                speakingState = true;
+                this.onSpeakingChange(true);
+            } else if (!isSpeaking && speakingState && !silenceTimeout) {
+                silenceTimeout = setTimeout(() => {
+                    speakingState = false;
+                    this.onSpeakingChange(false);
+                    silenceTimeout = null;
+                }, 300);
+            }
+            
+            requestAnimationFrame(checkLevel);
+        };
+        
+        checkLevel();
+    }
+    
+    onSpeakingChange(isSpeaking) {
+        if (typeof updateSpeakingIndicator === 'function') {
+            updateSpeakingIndicator(this.currentPlayerId, isSpeaking);
+        }
+        this.updatePresence(!this.isMuted, isSpeaking);
+    }
+    
+    async updatePresence(micEnabled, speaking) {
+        try {
+            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            await setDoc(presenceRef, {
+                odPlayerId: this.currentPlayerId,
+                muted: !micEnabled,
+                speaking: speaking,
+                teamId: this.teamId,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error('Error updating presence:', error);
+        }
+    }
+    
+    listenForPresence() {
+        const presenceRef = collection(db, this.getPresencePath());
+        
+        const unsubscribe = onSnapshot(presenceRef, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                const data = change.doc.data();
+                const odPlayerId = data.odPlayerId || parseInt(change.doc.id);
+                
+                if (odPlayerId === this.currentPlayerId) return;
+                
+                if (change.type === 'added' || change.type === 'modified') {
+                    if (typeof updateSpeakingIndicator === 'function') {
+                        updateSpeakingIndicator(odPlayerId, data.speaking && !data.muted);
+                    }
+                    
+                    if (!this.peerConnections[odPlayerId] && !data.muted) {
+                        this.createPeerConnection(odPlayerId, true);
+                    }
+                } else if (change.type === 'removed') {
+                    this.closePeerConnection(odPlayerId);
+                    if (typeof updateSpeakingIndicator === 'function') {
+                        updateSpeakingIndicator(odPlayerId, false);
+                    }
+                }
+            });
+        });
+        
+        this.unsubscribers.push(unsubscribe);
+    }
+    
+    listenForSignaling() {
+        const signalingRef = collection(db, this.getSignalingPath());
+        const q = query(signalingRef, where('to', '==', this.currentPlayerId));
+        const startTime = Date.now();
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                if (change.type !== 'added') return;
+                
+                const data = change.doc.data();
+                const fromId = data.from;
+                
+                const docTime = data.createdAt?.toMillis ? data.createdAt.toMillis() : 0;
+                if (docTime && docTime < startTime - 5000) {
+                    await deleteDoc(change.doc.ref);
+                    return;
+                }
+                
+                try {
+                    if (data.type === 'offer') {
+                        await this.handleOffer(fromId, data.sdp);
+                    } else if (data.type === 'answer') {
+                        await this.handleAnswer(fromId, data.sdp);
+                    } else if (data.type === 'candidate') {
+                        await this.handleCandidate(fromId, data.candidate);
+                    }
+                } finally {
+                    await deleteDoc(change.doc.ref);
+                }
+            });
+        });
+        
+        this.unsubscribers.push(unsubscribe);
+    }
+    
+    async createPeerConnection(peerId, initiator = false) {
+        if (this.peerConnections[peerId]) {
+            return this.peerConnections[peerId];
+        }
+        
+        console.log(`Creating peer connection with ${peerId}, initiator: ${initiator}`);
+        
+        const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+        this.peerConnections[peerId] = pc;
+        
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => {
+                pc.addTrack(track, this.localStream);
+            });
+        }
+        
+        pc.ontrack = (event) => {
+            console.log(`Received remote track from ${peerId}`);
+            this.handleRemoteTrack(peerId, event.streams[0]);
+        };
+        
+        pc.onicecandidate = async (event) => {
+            if (event.candidate) {
+                await this.sendSignal(peerId, 'candidate', null, event.candidate.toJSON());
+            }
+        };
+        
+        pc.onconnectionstatechange = () => {
+            console.log(`Connection state with ${peerId}: ${pc.connectionState}`);
+            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                this.closePeerConnection(peerId);
+            }
+        };
+        
+        if (initiator) {
+            try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await this.sendSignal(peerId, 'offer', offer.sdp);
+            } catch (error) {
+                console.error('Error creating offer:', error);
+            }
+        }
+        
+        return pc;
+    }
+    
+    async handleOffer(fromId, sdp) {
+        console.log(`Received offer from ${fromId}`);
+        const pc = await this.createPeerConnection(fromId, false);
+        
+        try {
+            await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await this.sendSignal(fromId, 'answer', answer.sdp);
+        } catch (error) {
+            console.error('Error handling offer:', error);
+        }
+    }
+    
+    async handleAnswer(fromId, sdp) {
+        console.log(`Received answer from ${fromId}`);
+        const pc = this.peerConnections[fromId];
+        if (!pc) return;
+        
+        try {
+            await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
+        } catch (error) {
+            console.error('Error handling answer:', error);
+        }
+    }
+    
+    async handleCandidate(fromId, candidateData) {
+        const pc = this.peerConnections[fromId];
+        if (!pc) return;
+        
+        try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidateData));
+        } catch (error) {
+            console.error('Error adding ICE candidate:', error);
+        }
+    }
+    
+    async sendSignal(toId, type, sdp = null, candidate = null) {
+        try {
+            const signalingRef = collection(db, this.getSignalingPath());
+            await addDoc(signalingRef, {
+                from: this.currentPlayerId,
+                to: toId,
+                type: type,
+                sdp: sdp,
+                candidate: candidate,
+                sessionId: this.sessionId,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error sending signal:', error);
+        }
+    }
+    
+    handleRemoteTrack(peerId, stream) {
+        let audio = this.remoteAudioElements[peerId];
+        
+        if (!audio) {
+            audio = document.createElement('audio');
+            audio.id = `remote-audio-${peerId}`;
+            audio.autoplay = true;
+            audio.style.display = 'none';
+            document.body.appendChild(audio);
+            this.remoteAudioElements[peerId] = audio;
+        }
+        
+        audio.srcObject = stream;
+    }
+    
+    mute() {
+        this.isMuted = true;
+        if (this.localStream) {
+            this.localStream.getAudioTracks().forEach(track => {
+                track.enabled = false;
+            });
+        }
+        this.updatePresence(false, false);
+    }
+    
+    unmute() {
+        this.isMuted = false;
+        if (this.localStream) {
+            this.localStream.getAudioTracks().forEach(track => {
+                track.enabled = true;
+            });
+        }
+        this.updatePresence(true, false);
+    }
+    
+    setRemoteAudioEnabled(peerId, enabled) {
+        const audio = this.remoteAudioElements[peerId];
+        if (audio) {
+            audio.muted = !enabled;
+        }
+    }
+    
+    closePeerConnection(peerId) {
+        const pc = this.peerConnections[peerId];
+        if (pc) {
+            pc.close();
+            delete this.peerConnections[peerId];
+        }
+        
+        const audio = this.remoteAudioElements[peerId];
+        if (audio) {
+            audio.srcObject = null;
+            audio.remove();
+            delete this.remoteAudioElements[peerId];
+        }
+    }
+    
+    async cleanup() {
+        this.unsubscribers.forEach(unsub => unsub());
+        this.unsubscribers = [];
+        
+        Object.keys(this.peerConnections).forEach(peerId => {
+            this.closePeerConnection(peerId);
+        });
+        
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => track.stop());
+            this.localStream = null;
+        }
+        
+        if (this.audioContext) {
+            this.audioContext.close();
+            this.audioContext = null;
+        }
+        
+        try {
+            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            await deleteDoc(presenceRef);
+            
+            const signalingRef = collection(db, this.getSignalingPath());
+            const fromQuery = query(signalingRef, where('from', '==', this.currentPlayerId));
+            const toQuery = query(signalingRef, where('to', '==', this.currentPlayerId));
+            
+            const [fromDocs, toDocs] = await Promise.all([getDocs(fromQuery), getDocs(toQuery)]);
+            
+            const deletePromises = [];
+            fromDocs.forEach(doc => deletePromises.push(deleteDoc(doc.ref)));
+            toDocs.forEach(doc => deletePromises.push(deleteDoc(doc.ref)));
+            await Promise.all(deletePromises);
+        } catch (error) {
+            console.error('Error cleaning up signaling:', error);
+        }
+        
+        console.log('Voice chat cleaned up');
+    }
+}
+
+const lobbyCode = '{{ $lobbyCode }}';
+const currentPlayerId = {{ $currentPlayerId }};
+const mode = '{{ $mode }}';
+const teamId = null;
+
+window.webrtcManager = new WebRTCManager(lobbyCode, currentPlayerId, mode, teamId);
+
+window.addEventListener('beforeunload', () => {
+    if (window.webrtcManager) {
+        window.webrtcManager.cleanup();
+    }
+});
+
+console.log('WebRTC Manager initialized for lobby:', lobbyCode);
+</script>
+@endif
 
 @if(isset($matchId) && $matchId)
 <script type="module">
