@@ -6,6 +6,9 @@
     $user = Auth::user();
     $coins = $user ? ($user->coins ?? 0) : 0;
     $masterPurchased = $user && ($user->master_purchased ?? false);
+    $duoPurchased = $user && ($user->duo_purchased ?? false);
+    $leaguePurchased = $user && ($user->league_purchased ?? false);
+    $allModesPurchased = $masterPurchased && $duoPurchased && $leaguePurchased;
 @endphp
 
 <style>
@@ -360,14 +363,14 @@
             <div class="category-desc">{{ __('Pouvoirs spéciaux en jeu') }}</div>
         </a>
 
-        <!-- Maître du Jeu -->
-        <a href="{{ route('boutique.category', 'master') }}" class="category-card premium {{ $masterPurchased ? 'unlocked' : '' }}">
-            @if($masterPurchased)
-                <div class="category-badge">✓ {{ __('Débloqué') }}</div>
+        <!-- Modes de Jeux -->
+        <a href="{{ route('boutique.category', 'master') }}" class="category-card premium {{ $allModesPurchased ? 'unlocked' : '' }}">
+            @if($allModesPurchased)
+                <div class="category-badge">✓ {{ __('Tous débloqués') }}</div>
             @endif
             <div class="category-icon">🎮</div>
-            <div class="category-name">{{ __('Maître du Jeu') }}</div>
-            <div class="category-desc">{{ __('Créez vos propres parties') }}</div>
+            <div class="category-name">{{ __('Modes de jeux') }}</div>
+            <div class="category-desc">{{ __('Duo, Ligue et Maître du Jeu') }}</div>
         </a>
 
         <!-- Pièces d'Intelligence -->

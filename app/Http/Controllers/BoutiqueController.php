@@ -103,6 +103,8 @@ class BoutiqueController extends Controller
         $settings = (array) ($user?->profile_settings ?? []);
         $unlocked = $settings['unlocked_avatars'] ?? [];
         $masterPurchased = $user && ($user->master_purchased ?? false);
+        $duoPurchased = $user && ($user->duo_purchased ?? false);
+        $leaguePurchased = $user && ($user->league_purchased ?? false);
 
         $context = [
             'category'        => $category,
@@ -111,6 +113,8 @@ class BoutiqueController extends Controller
             'catalog'         => $catalog,
             'coinPacks'       => config('coins.packs', []),
             'masterPurchased' => $masterPurchased,
+            'duoPurchased'    => $duoPurchased,
+            'leaguePurchased' => $leaguePurchased,
             'pricing'         => [
                 'pack'        => [],
                 'buzzer'      => [],
@@ -328,5 +332,107 @@ class BoutiqueController extends Controller
     public function masterCancel()
     {
         return redirect()->route('boutique')->with('error', 'Achat du mode Maître du Jeu annulé.');
+    }
+
+    /**
+     * POST /modes/checkout/{mode}
+     * Unified checkout for game modes (duo, league)
+     */
+    public function modeCheckout(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return back()->with('error', __('Veuillez vous connecter.'));
+        }
+
+        $modeProducts = [
+            'duo' => [
+                'key' => 'duo_mode',
+                'name' => __('Mode Duo'),
+                'amount_cents' => 1250,
+                'currency' => 'usd',
+                'purchased_field' => 'duo_purchased',
+            ],
+            'league' => [
+                'key' => 'league_mode',
+                'name' => __('Mode Ligue'),
+                'amount_cents' => 1575,
+                'currency' => 'usd',
+                'purchased_field' => 'league_purchased',
+            ],
+        ];
+
+        if (!isset($modeProducts[$mode])) {
+            return back()->with('error', __('Mode de jeu invalide.'));
+        }
+
+        $product = $modeProducts[$mode];
+
+        if ($user->{$product['purchased_field']} ?? false) {
+            return back()->with('info', __('Vous avez déjà débloqué ce mode de jeu.'));
+        }
+
+        try {
+            $session = $this->stripeService->createCheckoutSession([
+                'key' => $product['key'],
+                'name' => $product['name'],
+                'amount_cents' => $product['amount_cents'],
+                'currency' => $product['currency'],
+                'coins' => 0,
+            ], $user->id);
+
+            Payment::create([
+                'user_id' => $user->id,
+                'stripe_session_id' => $session->id,
+                'product_key' => $product['key'],
+                'amount_cents' => $product['amount_cents'],
+                'currency' => $product['currency'],
+                'status' => 'pending',
+                'metadata' => [
+                    'product_type' => $product['key'],
+                    'product_name' => $product['name'],
+                ],
+            ]);
+
+            return redirect($session->url);
+        } catch (\Exception $e) {
+            return back()->with('error', __('Erreur lors de la création de la session de paiement: ') . $e->getMessage());
+        }
+    }
+
+    /**
+     * GET /modes/success
+     */
+    public function modeSuccess(Request $request)
+    {
+        $sessionId = $request->query('session_id');
+        
+        if (!$sessionId) {
+            return redirect()->route('boutique.category', 'master')->with('error', __('Session invalide.'));
+        }
+
+        $payment = Payment::where('stripe_session_id', $sessionId)->first();
+
+        if (!$payment) {
+            return redirect()->route('boutique.category', 'master')->with('info', __('Paiement en cours de traitement. Le mode sera débloqué sous peu.'));
+        }
+
+        if ($payment->status === 'completed') {
+            return redirect()->route('boutique.category', 'master')->with('success', __('Mode de jeu débloqué avec succès !'));
+        }
+
+        if ($payment->status === 'failed') {
+            return redirect()->route('boutique.category', 'master')->with('error', __('Le paiement a échoué. Veuillez réessayer.'));
+        }
+
+        return redirect()->route('boutique.category', 'master')->with('info', __('Votre paiement est en cours de traitement. Le mode sera débloqué automatiquement dans quelques instants.'));
+    }
+
+    /**
+     * GET /modes/cancel
+     */
+    public function modeCancel()
+    {
+        return redirect()->route('boutique.category', 'master')->with('error', __('Achat du mode de jeu annulé.'));
     }
 }

@@ -12,7 +12,7 @@
         'musiques' => __("Musiques d'Ambiance"),
         'buzzers' => __('Sons de Buzzers'),
         'strategiques' => __('Avatars Stratégiques'),
-        'master' => __('Maître du Jeu'),
+        'master' => __('Modes de jeux'),
         'coins' => __("Pièces d'Intelligence"),
         'vies' => __('Vies'),
     ];
@@ -444,7 +444,64 @@ audio { width: 100%; }
         </div>
 
     @elseif($category === 'master')
-        <div class="grid cols-1">
+        <div class="grid cols-3">
+            <!-- Mode Duo -->
+            <div class="card master-card">
+                <div style="font-size:3rem;margin-bottom:16px;">👥</div>
+                <h2>{{ __('Mode Duo') }}</h2>
+                <p style="color:var(--muted);margin-bottom:16px;">{{ __('Affrontez vos amis en 1v1 !') }}</p>
+                
+                <div class="master-features">
+                    <strong>✨ {{ __('Fonctionnalités incluses') }} :</strong>
+                    <ul>
+                        <li>{{ __('Matchs 1 contre 1') }}</li>
+                        <li>{{ __('Invitations par code') }}</li>
+                        <li>{{ __('Classement ELO') }}</li>
+                        <li>{{ __('Carnet de contacts') }}</li>
+                    </ul>
+                </div>
+                
+                @if($duoPurchased ?? false)
+                    <button class="btn success" disabled style="width:100%;padding:16px;font-size:1.1rem;">✓ {{ __('Mode débloqué') }}</button>
+                @else
+                    <form method="POST" action="{{ route('modes.checkout', 'duo') }}" style="width:100%;">
+                        @csrf
+                        <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#3b82f6,#1d4ed8);">
+                            💳 {{ __('Acheter') }} - $12.50
+                        </button>
+                    </form>
+                @endif
+            </div>
+
+            <!-- Mode Ligue -->
+            <div class="card master-card">
+                <div style="font-size:3rem;margin-bottom:16px;">🏆</div>
+                <h2>{{ __('Mode Ligue') }}</h2>
+                <p style="color:var(--muted);margin-bottom:16px;">{{ __('Compétition classée entre joueurs !') }}</p>
+                
+                <div class="master-features">
+                    <strong>✨ {{ __('Fonctionnalités incluses') }} :</strong>
+                    <ul>
+                        <li>{{ __('Matchmaking automatique') }}</li>
+                        <li>{{ __('Classement mondial') }}</li>
+                        <li>{{ __('Saisons compétitives') }}</li>
+                        <li>{{ __('Récompenses exclusives') }}</li>
+                    </ul>
+                </div>
+                
+                @if($leaguePurchased ?? false)
+                    <button class="btn success" disabled style="width:100%;padding:16px;font-size:1.1rem;">✓ {{ __('Mode débloqué') }}</button>
+                @else
+                    <form method="POST" action="{{ route('modes.checkout', 'league') }}" style="width:100%;">
+                        @csrf
+                        <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#8b5cf6,#6d28d9);">
+                            💳 {{ __('Acheter') }} - $15.75
+                        </button>
+                    </form>
+                @endif
+            </div>
+
+            <!-- Mode Maître du Jeu -->
             <div class="card master-card">
                 <div style="font-size:3rem;margin-bottom:16px;">🎮</div>
                 <h2>{{ __('Maître du Jeu') }}</h2>
@@ -466,7 +523,7 @@ audio { width: 100%; }
                     <form method="POST" action="{{ route('master.checkout') }}" style="width:100%;">
                         @csrf
                         <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#10b981,#059669);">
-                            💳 {{ __('Acheter') }} - 29,99€
+                            💳 {{ __('Acheter') }} - $29.99
                         </button>
                     </form>
                 @endif

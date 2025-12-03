@@ -69,6 +69,28 @@ class StripeWebhookController extends Controller
                             'user_id' => $payment->user_id,
                             'session_id' => $session->id,
                         ]);
+                    } elseif ($productKey === 'duo_mode') {
+                        $user->duo_purchased = true;
+                        $user->save();
+
+                        $payment->markAsCompleted(0);
+
+                        Log::info('Duo mode unlocked successfully', [
+                            'payment_id' => $payment->id,
+                            'user_id' => $payment->user_id,
+                            'session_id' => $session->id,
+                        ]);
+                    } elseif ($productKey === 'league_mode') {
+                        $user->league_purchased = true;
+                        $user->save();
+
+                        $payment->markAsCompleted(0);
+
+                        Log::info('League mode unlocked successfully', [
+                            'payment_id' => $payment->id,
+                            'user_id' => $payment->user_id,
+                            'session_id' => $session->id,
+                        ]);
                     } elseif ($coinsToAward > 0) {
                         $user->intelligence_pieces = ($user->intelligence_pieces ?? 0) + $coinsToAward;
                         $user->save();

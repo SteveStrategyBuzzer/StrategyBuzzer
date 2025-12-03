@@ -87,8 +87,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/coins/cancel', [App\Http\Controllers\CoinsController::class, 'cancel'])->name('coins.cancel');
 });
 
-/* ===== Mode Maître du Jeu (Stripe) ===== */
+/* ===== Modes de Jeux (Stripe) ===== */
 Route::middleware('auth')->group(function () {
+    Route::post('/modes/checkout/{mode}', [BoutiqueController::class, 'modeCheckout'])->name('modes.checkout');
+    Route::get('/modes/success', [BoutiqueController::class, 'modeSuccess'])->name('modes.success');
+    Route::get('/modes/cancel', [BoutiqueController::class, 'modeCancel'])->name('modes.cancel');
     Route::post('/master/checkout', [BoutiqueController::class, 'masterCheckout'])->name('master.checkout');
     Route::get('/master/success', [BoutiqueController::class, 'masterSuccess'])->name('master.success');
     Route::get('/master/cancel', [BoutiqueController::class, 'masterCancel'])->name('master.cancel');
