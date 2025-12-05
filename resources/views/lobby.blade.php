@@ -529,6 +529,88 @@ foreach ($colors as $color) {
             gap: 5px;
         }
     }
+    
+    .custom-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .custom-modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .custom-modal {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+        transform: scale(0.8);
+        transition: transform 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    
+    .custom-modal-overlay.show .custom-modal {
+        transform: scale(1);
+    }
+    
+    .custom-modal-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #fff;
+    }
+    
+    .custom-modal-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 25px;
+    }
+    
+    .custom-modal-btn {
+        padding: 12px 30px;
+        border-radius: 10px;
+        border: none;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .custom-modal-btn.confirm {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+    }
+    
+    .custom-modal-btn.confirm:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .custom-modal-btn.cancel {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .custom-modal-btn.cancel:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
 </style>
 
 <div class="lobby-container">
@@ -749,6 +831,17 @@ foreach ($colors as $color) {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Modal de confirmation personnalisée -->
+<div class="custom-modal-overlay" id="confirmModal">
+    <div class="custom-modal">
+        <div class="custom-modal-title" id="confirmModalMessage"></div>
+        <div class="custom-modal-buttons">
+            <button class="custom-modal-btn cancel" id="confirmModalCancel">{{ __('Annuler') }}</button>
+            <button class="custom-modal-btn confirm" id="confirmModalConfirm">{{ __('OK') }}</button>
+        </div>
+    </div>
+</div>
 
 <!-- Modal Stats Joueur -->
 <div id="stats-modal" class="modal-overlay" style="display: none;">
@@ -1608,8 +1701,40 @@ foreach ($colors as $color) {
         }
     }
     
+    function showConfirmModal(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirmModal');
+            const messageEl = document.getElementById('confirmModalMessage');
+            const confirmBtn = document.getElementById('confirmModalConfirm');
+            const cancelBtn = document.getElementById('confirmModalCancel');
+            
+            messageEl.textContent = message;
+            modal.classList.add('show');
+            
+            const cleanup = () => {
+                modal.classList.remove('show');
+                confirmBtn.removeEventListener('click', onConfirm);
+                cancelBtn.removeEventListener('click', onCancel);
+            };
+            
+            const onConfirm = () => {
+                cleanup();
+                resolve(true);
+            };
+            
+            const onCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+            
+            confirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', onCancel);
+        });
+    }
+    
     async function leaveLobby() {
-        if (!confirm('{{ __("Voulez-vous vraiment quitter le salon ?") }}')) {
+        const confirmed = await showConfirmModal('{{ __("Voulez-vous vraiment quitter le salon ?") }}');
+        if (!confirmed) {
             return;
         }
         
@@ -1622,10 +1747,10 @@ foreach ($colors as $color) {
                 }
             });
             
-            window.location.href = '/';
+            window.location.href = '/duo';
         } catch (error) {
             console.error('Error leaving lobby:', error);
-            window.location.href = '/';
+            window.location.href = '/duo';
         }
     }
     
@@ -1792,7 +1917,7 @@ foreach ($colors as $color) {
             
             if (!data.exists) {
                 showToast(translations.lobbyClosed);
-                setTimeout(() => window.location.href = '/', 2000);
+                setTimeout(() => window.location.href = '/duo', 2000);
                 return;
             }
             
