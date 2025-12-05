@@ -518,22 +518,49 @@ foreach ($colors as $color) {
     
     @media (max-width: 600px) {
         .player-card {
-            padding: 12px 15px;
+            padding: 10px 12px;
+            flex-wrap: wrap;
+            gap: 8px;
         }
         
         .player-avatar {
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
+            flex-shrink: 0;
+        }
+        
+        .player-info {
+            flex: 1;
+            min-width: 60px;
+            max-width: calc(100% - 180px);
+        }
+        
+        .player-name {
+            font-size: 0.9rem;
+        }
+        
+        .player-code {
+            font-size: 0.7rem;
+        }
+        
+        .player-status {
+            width: 28px;
+            height: 28px;
+            font-size: 0.9rem;
         }
         
         .player-action-btn {
-            width: 35px;
-            height: 35px;
-            font-size: 1rem;
+            width: 32px;
+            height: 32px;
+            font-size: 0.9rem;
         }
         
         .player-actions {
-            gap: 5px;
+            gap: 4px;
+        }
+        
+        .player-color-indicator {
+            display: none;
         }
     }
     
@@ -1544,6 +1571,19 @@ foreach ($colors as $color) {
         }
     }
     
+    function updateRemoteMicState(playerId, isActive) {
+        const btn = document.getElementById('mic-btn-' + playerId);
+        if (btn) {
+            if (isActive) {
+                btn.classList.add('remote-active');
+                btn.style.background = 'rgba(76, 175, 80, 0.3)';
+            } else {
+                btn.classList.remove('remote-active');
+                btn.style.background = '';
+            }
+        }
+    }
+    
     function submitGameStart(mode, settings) {
         const form = document.createElement('form');
         form.method = 'POST';
@@ -2051,10 +2091,49 @@ class WebRTCManager {
             this.listenForSignaling();
             this.listenForPresence();
             
+            await this.addTracksToExistingConnections();
+            
             console.log('Voice chat started successfully');
         } catch (error) {
             console.error('Failed to start voice chat:', error);
             throw error;
+        }
+    }
+    
+    async addTracksToExistingConnections() {
+        if (!this.localStream) return;
+        
+        for (const [peerId, pc] of Object.entries(this.peerConnections)) {
+            if (pc.connectionState === 'closed') continue;
+            
+            const senders = pc.getSenders();
+            const audioSender = senders.find(s => s.track?.kind === 'audio' || !s.track);
+            const localAudioTrack = this.localStream.getAudioTracks()[0];
+            
+            if (!localAudioTrack) continue;
+            
+            let needsRenegotiation = false;
+            
+            if (audioSender && !audioSender.track) {
+                console.log(`Replacing empty audio sender for ${peerId}`);
+                await audioSender.replaceTrack(localAudioTrack);
+                needsRenegotiation = true;
+            } else if (!audioSender) {
+                console.log(`Adding audio track to connection with ${peerId}`);
+                pc.addTrack(localAudioTrack, this.localStream);
+                needsRenegotiation = true;
+            }
+            
+            if (needsRenegotiation && this.currentPlayerId < parseInt(peerId)) {
+                try {
+                    console.log(`Initiating renegotiation with ${peerId}`);
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    await this.sendSignal(peerId, 'offer', offer.sdp);
+                } catch (error) {
+                    console.error(`Error renegotiating with ${peerId}:`, error);
+                }
+            }
         }
     }
     
@@ -2143,6 +2222,9 @@ class WebRTCManager {
                     if (typeof updateSpeakingIndicator === 'function') {
                         updateSpeakingIndicator(odPlayerId, data.speaking && !data.muted);
                     }
+                    if (typeof updateRemoteMicState === 'function') {
+                        updateRemoteMicState(odPlayerId, !data.muted);
+                    }
                     
                     if (!this.peerConnections[odPlayerId] && !data.muted) {
                         this.createPeerConnection(odPlayerId, true);
@@ -2151,6 +2233,9 @@ class WebRTCManager {
                     this.closePeerConnection(odPlayerId);
                     if (typeof updateSpeakingIndicator === 'function') {
                         updateSpeakingIndicator(odPlayerId, false);
+                    }
+                    if (typeof updateRemoteMicState === 'function') {
+                        updateRemoteMicState(odPlayerId, false);
                     }
                 }
             });
