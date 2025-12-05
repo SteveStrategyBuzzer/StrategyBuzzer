@@ -165,12 +165,19 @@ foreach ($colors as $color) {
     .player-info {
         flex: 1;
         min-width: 0;
+        overflow: hidden;
     }
     
     .player-name {
         font-weight: 600;
         font-size: 1rem;
         text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 5px;
     }
     
     .player-code {
@@ -717,11 +724,11 @@ foreach ($colors as $color) {
                         <button class="player-action-btn {{ $isCurrentPlayer ? 'active' : '' }}" 
                                 id="mic-btn-{{ $playerId }}" 
                                 onclick="toggleMic({{ $playerId }})" 
-                                title="{{ __('Micro') }}">🎤</button>
+                                title="{{ __('Micro') }}">🎙️</button>
                         @else
                         <button class="player-action-btn" 
                                 style="opacity: 0.3; cursor: not-allowed;"
-                                title="{{ __('Audio non disponible') }}" disabled>🎤</button>
+                                title="{{ __('Audio non disponible') }}" disabled>🎙️</button>
                         @endif
                     </div>
                 </div>
@@ -1841,9 +1848,9 @@ foreach ($colors as $color) {
                                 id="mic-btn-${playerId}" 
                                 data-player-id="${playerId}"
                                 data-action="mic"
-                                title="${translations.micro}">🎤</button>` : `<button class="player-action-btn" 
+                                title="${translations.micro}">🎙️</button>` : `<button class="player-action-btn" 
                                 style="opacity: 0.3; cursor: not-allowed;"
-                                title="${translations.audioNotAvailable}" disabled>🎤</button>`}
+                                title="${translations.audioNotAvailable}" disabled>🎙️</button>`}
                     </div>
                 </div>
             `;

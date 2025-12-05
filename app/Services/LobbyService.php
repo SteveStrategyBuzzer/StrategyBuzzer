@@ -45,14 +45,28 @@ class LobbyService
         return $avatar ?: 'default';
     }
     
+    protected function getPlayerDisplayName(User $user): string
+    {
+        $settings = (array) ($user->profile_settings ?? []);
+        $pseudonym = trim((string) data_get($settings, 'pseudonym', ''));
+        
+        if ($pseudonym !== '') {
+            return $pseudonym;
+        }
+        
+        return $user->name ?? 'Joueur';
+    }
+    
     public function createLobby(User $host, string $mode, array $settings = []): array
     {
         $lobbyCode = $this->generateLobbyCode();
         
+        $hostDisplayName = $this->getPlayerDisplayName($host);
+        
         $lobby = [
             'code' => $lobbyCode,
             'host_id' => $host->id,
-            'host_name' => $host->name,
+            'host_name' => $hostDisplayName,
             'mode' => $mode,
             'settings' => array_merge([
                 'max_players' => $this->getMaxPlayers($mode),
@@ -64,7 +78,7 @@ class LobbyService
             'players' => [
                 $host->id => [
                     'id' => $host->id,
-                    'name' => $host->name,
+                    'name' => $hostDisplayName,
                     'player_code' => $host->player_code,
                     'avatar' => $this->normalizeAvatar(session('selected_avatar', 'default')),
                     'color' => 'blue',
@@ -108,9 +122,11 @@ class LobbyService
         $availableColors = $this->getAvailableColors($lobby);
         $assignedColor = !empty($availableColors) ? $availableColors[0]['id'] : 'blue';
         
+        $playerDisplayName = $this->getPlayerDisplayName($player);
+        
         $lobby['players'][$player->id] = [
             'id' => $player->id,
-            'name' => $player->name,
+            'name' => $playerDisplayName,
             'player_code' => $player->player_code,
             'avatar' => $this->normalizeAvatar(session('selected_avatar', 'default')),
             'color' => $assignedColor,
