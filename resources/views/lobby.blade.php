@@ -1447,7 +1447,11 @@ foreach ($colors as $color) {
         container.scrollTop = container.scrollHeight;
         
         if (window.lobbyChatManager) {
-            window.lobbyChatManager.sendMessage(message);
+            try {
+                await window.lobbyChatManager.sendMessage(message);
+            } catch (err) {
+                console.warn('[LobbyChat] Firebase send failed, using REST fallback');
+            }
         }
         
         try {
