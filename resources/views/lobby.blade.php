@@ -1477,25 +1477,36 @@ foreach ($colors as $color) {
     }
     
     async function initVoiceChat() {
+        console.log('[Mic] initVoiceChat called');
         const btn = document.getElementById('mic-btn-' + currentPlayerId);
-        if (!btn) return;
+        if (!btn) {
+            console.log('[Mic] Button not found for current player');
+            return;
+        }
+        
+        console.log('[Mic] window.webrtcManager exists:', !!window.webrtcManager);
         
         if (!window.webrtcManager) {
+            console.log('[Mic] WebRTC Manager not ready, waiting...');
             showToast('{{ __("Chargement en cours, réessayez...") }}');
             return;
         }
         
         btn.classList.add('mic-connecting');
+        console.log('[Mic] Requesting microphone permission...');
         
         try {
             const hasPermission = await requestMicPermission();
+            console.log('[Mic] Permission result:', hasPermission);
             if (!hasPermission) {
                 btn.classList.remove('mic-connecting');
                 showToast('{{ __("Permission micro refusée") }}');
                 return;
             }
             
+            console.log('[Mic] Starting voice chat via WebRTC Manager...');
             await window.webrtcManager.startVoiceChat();
+            console.log('[Mic] Voice chat started successfully');
             
             voiceEnabled = true;
             micStates[currentPlayerId] = true;
@@ -1505,7 +1516,7 @@ foreach ($colors as $color) {
             showToast('{{ __("Micro activé") }}');
             
         } catch (error) {
-            console.error('Voice init error:', error);
+            console.error('[Mic] Voice init error:', error);
             voiceEnabled = false;
             micStates[currentPlayerId] = false;
             btn.classList.remove('mic-connecting');
@@ -2091,7 +2102,9 @@ class WebRTCManager {
     }
     
     async startVoiceChat() {
+        console.log('[WebRTC] startVoiceChat called');
         try {
+            console.log('[WebRTC] Requesting media stream...');
             this.localStream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
                     echoCancellation: true,
@@ -2099,17 +2112,26 @@ class WebRTCManager {
                     autoGainControl: true
                 } 
             });
+            console.log('[WebRTC] Media stream obtained:', this.localStream.id);
             
             this.setupVoiceActivityDetection();
+            console.log('[WebRTC] Voice activity detection setup complete');
+            
             await this.updatePresence(true, false);
+            console.log('[WebRTC] Presence updated');
+            
             this.listenForSignaling();
+            console.log('[WebRTC] Signaling listener started');
+            
             this.listenForPresence();
+            console.log('[WebRTC] Presence listener started');
             
             await this.addTracksToExistingConnections();
+            console.log('[WebRTC] Tracks added to existing connections');
             
-            console.log('Voice chat started successfully');
+            console.log('[WebRTC] Voice chat started successfully');
         } catch (error) {
-            console.error('Failed to start voice chat:', error);
+            console.error('[WebRTC] Failed to start voice chat:', error);
             throw error;
         }
     }
@@ -2209,7 +2231,9 @@ class WebRTCManager {
     
     async updatePresence(micEnabled, speaking) {
         try {
-            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            const presencePath = this.getPresencePath();
+            console.log('[WebRTC] updatePresence - path:', presencePath, 'micEnabled:', micEnabled, 'speaking:', speaking);
+            const presenceRef = doc(db, presencePath, String(this.currentPlayerId));
             await setDoc(presenceRef, {
                 odPlayerId: this.currentPlayerId,
                 muted: !micEnabled,
@@ -2217,15 +2241,19 @@ class WebRTCManager {
                 teamId: this.teamId,
                 updatedAt: serverTimestamp()
             }, { merge: true });
+            console.log('[WebRTC] Presence updated successfully');
         } catch (error) {
-            console.error('Error updating presence:', error);
+            console.error('[WebRTC] Error updating presence:', error);
         }
     }
     
     listenForPresence() {
-        const presenceRef = collection(db, this.getPresencePath());
+        const presencePath = this.getPresencePath();
+        console.log('[WebRTC] listenForPresence - path:', presencePath);
+        const presenceRef = collection(db, presencePath);
         
         const unsubscribe = onSnapshot(presenceRef, (snapshot) => {
+            console.log('[WebRTC] Presence snapshot received, changes:', snapshot.docChanges().length);
             snapshot.docChanges().forEach((change) => {
                 const data = change.doc.data();
                 const odPlayerId = data.odPlayerId || parseInt(change.doc.id);
@@ -2259,11 +2287,14 @@ class WebRTCManager {
     }
     
     listenForSignaling() {
-        const signalingRef = collection(db, this.getSignalingPath());
+        const signalingPath = this.getSignalingPath();
+        console.log('[WebRTC] listenForSignaling - path:', signalingPath);
+        const signalingRef = collection(db, signalingPath);
         const q = query(signalingRef, where('to', '==', this.currentPlayerId));
         const startTime = Date.now();
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
+            console.log('[WebRTC] Signaling snapshot received, changes:', snapshot.docChanges().length);
             snapshot.docChanges().forEach(async (change) => {
                 if (change.type !== 'added') return;
                 
@@ -2555,6 +2586,7 @@ const mode = '{{ $mode }}';
 const teamId = null;
 
 window.webrtcManager = new WebRTCManager(lobbyCode, currentPlayerId, mode, teamId);
+console.log('[WebRTC] Manager assigned to window.webrtcManager:', !!window.webrtcManager);
 
 window.addEventListener('beforeunload', () => {
     if (window.webrtcManager) {
@@ -2562,7 +2594,8 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-console.log('WebRTC Manager initialized for lobby:', lobbyCode);
+window.dispatchEvent(new CustomEvent('webrtcReady'));
+console.log('[WebRTC] Manager initialized for lobby:', lobbyCode, '- Player:', currentPlayerId);
 </script>
 @endif
 
