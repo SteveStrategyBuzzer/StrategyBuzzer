@@ -665,6 +665,164 @@ $roomCode = $params['room_code'] ?? null;
     <div class="attack-icon" id="attackIcon">⚔️</div>
 </div>
 
+@if($mode === 'duo')
+<!-- Chat flottant Duo - disponible en permanence -->
+<div id="duoChatFloating" class="duo-chat-floating">
+    <button id="duoChatToggleBtn" class="duo-chat-toggle-btn" onclick="toggleDuoChatPanel()">
+        💬
+        <span id="duoChatUnreadBadge" class="duo-chat-unread" style="display: none;">0</span>
+    </button>
+    <div id="duoChatPanel" class="duo-chat-panel" style="display: none;">
+        <div class="duo-chat-panel-header">
+            <span>💬 {{ __('Chat') }}</span>
+            <button onclick="toggleDuoChatPanel()">&times;</button>
+        </div>
+        <div id="duoChatMessages" class="duo-chat-panel-messages"></div>
+        <div class="duo-chat-panel-input">
+            <input type="text" id="duoChatInput" placeholder="{{ __('Message...') }}" maxlength="200" onkeypress="if(event.key==='Enter')sendDuoChatMessage()">
+            <button onclick="sendDuoChatMessage()">➤</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.duo-chat-floating {
+    position: fixed;
+    bottom: 80px;
+    left: 15px;
+    z-index: 1000;
+}
+
+.duo-chat-toggle-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.duo-chat-toggle-btn:hover {
+    transform: scale(1.1);
+}
+
+.duo-chat-unread {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #E74C3C;
+    color: white;
+    font-size: 0.7rem;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.duo-chat-panel {
+    position: absolute;
+    bottom: 60px;
+    left: 0;
+    width: 280px;
+    max-height: 350px;
+    background: rgba(20, 20, 40, 0.95);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.duo-chat-panel-header {
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    font-weight: 600;
+}
+
+.duo-chat-panel-header button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.3rem;
+    cursor: pointer;
+}
+
+.duo-chat-panel-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    max-height: 220px;
+    min-height: 100px;
+}
+
+.duo-chat-msg {
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    font-size: 0.85em;
+    max-width: 85%;
+    word-wrap: break-word;
+}
+
+.duo-chat-msg.mine {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin-left: auto;
+    text-align: right;
+}
+
+.duo-chat-msg.theirs {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    margin-right: auto;
+}
+
+.duo-chat-panel-input {
+    display: flex;
+    padding: 8px;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.duo-chat-panel-input input {
+    flex: 1;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    font-size: 0.85em;
+}
+
+.duo-chat-panel-input button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .duo-chat-floating { bottom: 70px; left: 10px; }
+    .duo-chat-panel { width: 250px; }
+}
+</style>
+@endif
+
 <audio id="swordAttackSound" preload="auto">
     <source src="{{ asset('sounds/sword_swish.wav') }}" type="audio/wav">
 </audio>
@@ -1145,6 +1303,112 @@ function initPersonalSkills() {
 }
 
 initPersonalSkills();
+
+// ============ DUO CHAT FUNCTIONS ============
+@if($mode === 'duo')
+let duoChatPanelOpen = false;
+let lastMessageCount = 0;
+
+function toggleDuoChatPanel() {
+    const panel = document.getElementById('duoChatPanel');
+    const badge = document.getElementById('duoChatUnreadBadge');
+    if (!panel) return;
+    
+    duoChatPanelOpen = !duoChatPanelOpen;
+    panel.style.display = duoChatPanelOpen ? 'flex' : 'none';
+    
+    if (duoChatPanelOpen) {
+        loadDuoChatMessages();
+        badge.style.display = 'none';
+        badge.textContent = '0';
+    }
+}
+
+function loadDuoChatMessages() {
+    if (!gameConfig.opponentId) return;
+    
+    fetch(`/chat/conversation/${gameConfig.opponentId}`, {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('duoChatMessages');
+        if (!container) return;
+        
+        const messages = data.messages || [];
+        if (messages.length === 0) {
+            container.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px;font-size:0.85em;">{{ __("Aucun message") }}</div>';
+            return;
+        }
+        
+        const currentUserId = parseInt(gameConfig.playerId);
+        container.innerHTML = messages.map(m => {
+            const isMine = m.sender_id === currentUserId;
+            return `<div class="duo-chat-msg ${isMine ? 'mine' : 'theirs'}">${escapeHtmlChat(m.message)}</div>`;
+        }).join('');
+        
+        container.scrollTop = container.scrollHeight;
+        
+        if (!duoChatPanelOpen && messages.length > lastMessageCount) {
+            const newCount = messages.length - lastMessageCount;
+            const badge = document.getElementById('duoChatUnreadBadge');
+            if (badge) {
+                badge.textContent = newCount;
+                badge.style.display = 'flex';
+            }
+        }
+        lastMessageCount = messages.length;
+    })
+    .catch(e => console.log('Chat load error:', e));
+}
+
+function sendDuoChatMessage() {
+    const input = document.getElementById('duoChatInput');
+    const message = input?.value?.trim();
+    
+    if (!message || !gameConfig.opponentId) return;
+    
+    input.disabled = true;
+    
+    fetch('/chat/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': gameConfig.csrfToken
+        },
+        body: JSON.stringify({
+            receiver_id: gameConfig.opponentId,
+            message: message
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        input.disabled = false;
+        if (data.success) {
+            input.value = '';
+            loadDuoChatMessages();
+        }
+    })
+    .catch(e => {
+        input.disabled = false;
+        console.log('Chat send error:', e);
+    });
+}
+
+function escapeHtmlChat(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+setInterval(() => {
+    loadDuoChatMessages();
+}, 5000);
+
+loadDuoChatMessages();
+@endif
+
 startTimer();
 </script>
 @endsection
