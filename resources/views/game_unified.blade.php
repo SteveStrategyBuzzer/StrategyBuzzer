@@ -585,6 +585,9 @@ $roomCode = $params['room_code'] ?? null;
                 @if($opponentType === 'human' && ($params['opponent_has_strategic'] ?? false))
                     <div class="opponent-strategic-indicator" title="{{ __('Adversaire avec avatar stratégique') }}">?</div>
                 @endif
+                @if($mode === 'duo')
+                    <div id="opponentSpeakingIndicator" class="opponent-speaking-indicator">🎤</div>
+                @endif
                 <div class="opponent-name {{ $opponentType === 'human' ? 'human' : '' }}">{{ $opponentName }}</div>
                 @if($opponentDescription)
                     <div style="font-size: 0.75rem; opacity: 0.8; text-align: center;">{{ $opponentDescription }}</div>
@@ -666,8 +669,14 @@ $roomCode = $params['room_code'] ?? null;
 </div>
 
 @if($mode === 'duo')
-<!-- Chat flottant Duo - disponible en permanence -->
-<div id="duoChatFloating" class="duo-chat-floating">
+<!-- Contrôles communication Duo - disponibles en permanence -->
+<div id="duoCommFloating" class="duo-comm-floating">
+    <!-- Bouton Micro -->
+    <button id="duoMicToggleBtn" class="duo-mic-toggle-btn" onclick="toggleDuoMic()">
+        🎤
+        <span id="duoMicStatus" class="duo-mic-status">OFF</span>
+    </button>
+    <!-- Bouton Chat -->
     <button id="duoChatToggleBtn" class="duo-chat-toggle-btn" onclick="toggleDuoChatPanel()">
         💬
         <span id="duoChatUnreadBadge" class="duo-chat-unread" style="display: none;">0</span>
@@ -686,11 +695,52 @@ $roomCode = $params['room_code'] ?? null;
 </div>
 
 <style>
-.duo-chat-floating {
+.duo-comm-floating {
     position: fixed;
     bottom: 80px;
     left: 15px;
     z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.duo-mic-toggle-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    color: white;
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.duo-mic-toggle-btn.active {
+    background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+}
+
+.duo-mic-toggle-btn.speaking {
+    animation: micPulse 0.5s infinite;
+}
+
+@keyframes micPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+    50% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+}
+
+.duo-mic-status {
+    font-size: 0.5rem;
+    font-weight: bold;
+    margin-top: 2px;
 }
 
 .duo-chat-toggle-btn {
@@ -709,6 +759,31 @@ $roomCode = $params['room_code'] ?? null;
 
 .duo-chat-toggle-btn:hover {
     transform: scale(1.1);
+}
+
+/* Indicateur de parole de l'adversaire */
+.opponent-speaking-indicator {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background: #2ECC71;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    animation: speakPulse 0.6s infinite;
+}
+
+.opponent-speaking-indicator.active {
+    display: flex;
+}
+
+@keyframes speakPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
 }
 
 .duo-chat-unread {
@@ -817,10 +892,341 @@ $roomCode = $params['room_code'] ?? null;
 }
 
 @media (max-width: 768px) {
-    .duo-chat-floating { bottom: 70px; left: 10px; }
+    .duo-comm-floating { bottom: 70px; left: 10px; }
     .duo-chat-panel { width: 250px; }
 }
 </style>
+
+<!-- WebRTC Voice Chat pour Duo -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bqWp_dHw",
+    authDomain: "strategybuzzergame.firebaseapp.com",
+    projectId: "strategybuzzergame",
+    storageBucket: "strategybuzzergame.appspot.com",
+    messagingSenderId: "68047817391",
+    appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
+};
+
+const app = initializeApp(firebaseConfig, 'webrtc-game');
+const db = getFirestore(app);
+
+const matchId = '{{ $matchId ?? '' }}';
+const currentPlayerId = {{ auth()->id() }};
+const opponentId = {{ $params['opponent_info']['user_id'] ?? 0 }};
+
+class GameVoiceChat {
+    constructor() {
+        this.peerConnection = null;
+        this.localStream = null;
+        this.remoteAudio = null;
+        this.isMuted = true;
+        this.audioContext = null;
+        this.analyser = null;
+        this.unsubscribers = [];
+        
+        this.iceServers = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'turn:global.relay.metered.ca:80', username: 'free', credential: 'free' },
+            { urls: 'turn:global.relay.metered.ca:443', username: 'free', credential: 'free' }
+        ];
+    }
+    
+    getSignalingPath() {
+        return `duoMatches/${matchId}/webrtc`;
+    }
+    
+    getPresencePath() {
+        return `duoMatches/${matchId}/voice_presence`;
+    }
+    
+    async startVoiceChat() {
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+            });
+            
+            this.localStream.getAudioTracks().forEach(t => t.enabled = false);
+            this.setupVoiceActivityDetection();
+            this.listenForSignaling();
+            this.listenForPresence();
+            
+            if (currentPlayerId < opponentId) {
+                await this.createPeerConnection(true);
+            }
+            
+            console.log('[Voice] Chat initialized');
+            return true;
+        } catch (error) {
+            console.error('[Voice] Failed to start:', error);
+            return false;
+        }
+    }
+    
+    setupVoiceActivityDetection() {
+        if (!this.localStream) return;
+        
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = this.audioContext.createMediaStreamSource(this.localStream);
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 512;
+        source.connect(this.analyser);
+        
+        const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+        let speaking = false;
+        
+        const checkLevel = () => {
+            if (!this.analyser || this.isMuted) {
+                if (speaking) {
+                    speaking = false;
+                    this.updateMicUI(false);
+                }
+                requestAnimationFrame(checkLevel);
+                return;
+            }
+            
+            this.analyser.getByteFrequencyData(dataArray);
+            const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+            const isSpeaking = avg > 15;
+            
+            if (isSpeaking !== speaking) {
+                speaking = isSpeaking;
+                this.updateMicUI(speaking);
+                this.updatePresence(!this.isMuted, speaking);
+            }
+            
+            requestAnimationFrame(checkLevel);
+        };
+        
+        checkLevel();
+    }
+    
+    updateMicUI(speaking) {
+        const btn = document.getElementById('duoMicToggleBtn');
+        if (btn) {
+            btn.classList.toggle('speaking', speaking && !this.isMuted);
+        }
+    }
+    
+    async updatePresence(micEnabled, speaking) {
+        try {
+            const presenceRef = doc(db, this.getPresencePath(), String(currentPlayerId));
+            await setDoc(presenceRef, {
+                odPlayerId: currentPlayerId,
+                muted: !micEnabled,
+                speaking: speaking,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (e) { console.error('[Voice] Presence error:', e); }
+    }
+    
+    listenForPresence() {
+        const presenceRef = collection(db, this.getPresencePath());
+        
+        const unsubscribe = onSnapshot(presenceRef, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                const data = change.doc.data();
+                const odPlayerId = data.odPlayerId || parseInt(change.doc.id);
+                
+                if (odPlayerId === currentPlayerId) return;
+                
+                if (change.type === 'added' || change.type === 'modified') {
+                    const indicator = document.getElementById('opponentSpeakingIndicator');
+                    if (indicator) {
+                        indicator.classList.toggle('active', data.speaking && !data.muted);
+                    }
+                    
+                    if (!this.peerConnection && !data.muted) {
+                        this.createPeerConnection(currentPlayerId < opponentId);
+                    }
+                } else if (change.type === 'removed') {
+                    const indicator = document.getElementById('opponentSpeakingIndicator');
+                    if (indicator) indicator.classList.remove('active');
+                }
+            });
+        });
+        
+        this.unsubscribers.push(unsubscribe);
+    }
+    
+    listenForSignaling() {
+        const signalingRef = collection(db, this.getSignalingPath());
+        const q = query(signalingRef, where('to', '==', currentPlayerId));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                if (change.type !== 'added') return;
+                
+                const data = change.doc.data();
+                
+                try {
+                    if (data.type === 'offer') {
+                        await this.handleOffer(data.sdp);
+                    } else if (data.type === 'answer') {
+                        await this.handleAnswer(data.sdp);
+                    } else if (data.type === 'candidate') {
+                        await this.handleCandidate(data.candidate);
+                    }
+                } finally {
+                    await deleteDoc(change.doc.ref);
+                }
+            });
+        });
+        
+        this.unsubscribers.push(unsubscribe);
+    }
+    
+    async createPeerConnection(initiator) {
+        if (this.peerConnection) return;
+        
+        const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+        this.peerConnection = pc;
+        
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => pc.addTrack(track, this.localStream));
+        }
+        
+        pc.ontrack = (event) => {
+            if (event.streams && event.streams[0]) {
+                this.handleRemoteTrack(event.streams[0]);
+            }
+        };
+        
+        pc.onicecandidate = async (event) => {
+            if (event.candidate) {
+                await this.sendSignal('candidate', null, event.candidate.toJSON());
+            }
+        };
+        
+        pc.onconnectionstatechange = () => {
+            console.log('[Voice] Connection state:', pc.connectionState);
+        };
+        
+        if (initiator) {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await this.sendSignal('offer', offer.sdp);
+        }
+    }
+    
+    async handleOffer(sdp) {
+        if (!this.peerConnection) await this.createPeerConnection(false);
+        
+        await this.peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+        const answer = await this.peerConnection.createAnswer();
+        await this.peerConnection.setLocalDescription(answer);
+        await this.sendSignal('answer', answer.sdp);
+    }
+    
+    async handleAnswer(sdp) {
+        if (!this.peerConnection) return;
+        await this.peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
+    }
+    
+    async handleCandidate(candidateData) {
+        if (!this.peerConnection) return;
+        await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidateData));
+    }
+    
+    async sendSignal(type, sdp = null, candidate = null) {
+        try {
+            await addDoc(collection(db, this.getSignalingPath()), {
+                from: currentPlayerId,
+                to: opponentId,
+                type: type,
+                sdp: sdp,
+                candidate: candidate,
+                createdAt: serverTimestamp()
+            });
+        } catch (e) { console.error('[Voice] Signal error:', e); }
+    }
+    
+    handleRemoteTrack(stream) {
+        if (!this.remoteAudio) {
+            this.remoteAudio = document.createElement('audio');
+            this.remoteAudio.autoplay = true;
+            this.remoteAudio.playsInline = true;
+            this.remoteAudio.style.display = 'none';
+            document.body.appendChild(this.remoteAudio);
+        }
+        
+        this.remoteAudio.srcObject = stream;
+        this.remoteAudio.play().catch(e => {
+            document.addEventListener('click', () => this.remoteAudio.play(), { once: true });
+        });
+    }
+    
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        
+        if (this.localStream) {
+            this.localStream.getAudioTracks().forEach(t => t.enabled = !this.isMuted);
+        }
+        
+        const btn = document.getElementById('duoMicToggleBtn');
+        const status = document.getElementById('duoMicStatus');
+        
+        if (btn) btn.classList.toggle('active', !this.isMuted);
+        if (status) status.textContent = this.isMuted ? 'OFF' : 'ON';
+        
+        this.updatePresence(!this.isMuted, false);
+        
+        return !this.isMuted;
+    }
+    
+    async cleanup() {
+        this.unsubscribers.forEach(u => u());
+        
+        if (this.peerConnection) {
+            this.peerConnection.close();
+            this.peerConnection = null;
+        }
+        
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(t => t.stop());
+            this.localStream = null;
+        }
+        
+        if (this.remoteAudio) {
+            this.remoteAudio.srcObject = null;
+            this.remoteAudio.remove();
+        }
+        
+        if (this.audioContext) {
+            this.audioContext.close();
+        }
+        
+        try {
+            await deleteDoc(doc(db, this.getPresencePath(), String(currentPlayerId)));
+        } catch (e) {}
+    }
+}
+
+const voiceChat = new GameVoiceChat();
+
+window.toggleDuoMic = async function() {
+    if (!voiceChat.localStream) {
+        const started = await voiceChat.startVoiceChat();
+        if (started) {
+            voiceChat.toggleMute();
+        }
+    } else {
+        voiceChat.toggleMute();
+    }
+};
+
+window.addEventListener('beforeunload', () => voiceChat.cleanup());
+
+if (matchId && opponentId) {
+    voiceChat.startVoiceChat().then(() => {
+        console.log('[Voice] Ready - click mic to unmute');
+    });
+}
+</script>
 @endif
 
 <audio id="swordAttackSound" preload="auto">
