@@ -396,18 +396,19 @@ class UnifiedGameController extends Controller
     {
         $avatarName = session('avatar', 'Aucun');
         
-        if ($avatarName === 'Aucun') {
+        if ($avatarName === 'Aucun' || empty($avatarName)) {
             return [
                 'name' => 'Aucun',
                 'skills_full' => ['rarity' => null, 'skills' => []],
             ];
         }
         
-        $catalogAvatars = AvatarCatalog::get();
+        $catalog = AvatarCatalog::get();
+        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
         $avatarInfo = null;
         
-        foreach ($catalogAvatars as $avatar) {
-            if ($avatar['name'] === $avatarName) {
+        foreach ($strategicAvatars as $avatar) {
+            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
                 $avatarInfo = $avatar;
                 break;
             }
@@ -423,7 +424,7 @@ class UnifiedGameController extends Controller
         return [
             'name' => $avatarName,
             'skills_full' => [
-                'rarity' => $avatarInfo['rarity'] ?? 'rare',
+                'rarity' => $avatarInfo['tier'] ?? 'Rare',
                 'skills' => $avatarInfo['skills'] ?? [],
             ],
         ];
