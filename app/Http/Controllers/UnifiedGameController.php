@@ -332,13 +332,40 @@ class UnifiedGameController extends Controller
         $questions = session('current_questions', []);
         
         if (empty($questions) || !isset($questions[$currentQuestionNumber - 1])) {
-            $questions = $this->questionService->getQuestions(
-                $gameState['theme'] ?? 'Culture générale',
-                $totalQuestions,
-                $gameState['niveau'] ?? 1,
-                Auth::user()->preferred_language ?? 'fr'
-            );
+            $usedQuestionIds = session('used_question_ids', []);
+            $usedAnswers = session('used_answers', []);
+            $sessionUsedAnswers = session('session_used_answers', []);
+            $sessionUsedQuestionTexts = session('session_used_question_texts', []);
+            
+            $theme = $gameState['theme'] ?? 'Culture générale';
+            $niveau = $gameState['niveau'] ?? 1;
+            $language = Auth::user()->preferred_language ?? 'fr';
+            
+            $questions = [];
+            for ($i = 0; $i < $totalQuestions; $i++) {
+                $question = $this->questionService->generateQuestion(
+                    $theme,
+                    $niveau,
+                    $i + 1,
+                    $usedQuestionIds,
+                    $usedAnswers,
+                    $sessionUsedAnswers,
+                    $sessionUsedQuestionTexts,
+                    null,
+                    false,
+                    $language
+                );
+                
+                if ($question) {
+                    $questions[] = $question;
+                    $usedQuestionIds[] = $question['id'] ?? count($usedQuestionIds);
+                    $usedAnswers = array_merge($usedAnswers, $question['answers'] ?? []);
+                }
+            }
+            
             session(['current_questions' => $questions]);
+            session(['used_question_ids' => $usedQuestionIds]);
+            session(['used_answers' => $usedAnswers]);
         }
         
         return $questions[$currentQuestionNumber - 1] ?? null;
