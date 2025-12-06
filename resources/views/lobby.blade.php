@@ -1472,6 +1472,11 @@ foreach ($colors as $color) {
         const btn = document.getElementById('mic-btn-' + currentPlayerId);
         if (!btn) return;
         
+        if (!window.webrtcManager) {
+            showToast('{{ __("Chargement en cours, réessayez...") }}');
+            return;
+        }
+        
         btn.classList.add('mic-connecting');
         
         try {
@@ -1498,7 +1503,7 @@ foreach ($colors as $color) {
             btn.classList.remove('mic-connecting');
             btn.classList.remove('active');
             btn.classList.add('muted');
-            showToast('{{ __("Erreur d\'initialisation audio") }}');
+            showToast('{{ __("Erreur d\'initialisation audio: ") }}' + error.message);
         }
     }
     
