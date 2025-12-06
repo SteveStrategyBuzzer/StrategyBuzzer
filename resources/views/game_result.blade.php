@@ -455,6 +455,96 @@
         animation: pulse 1s infinite;
     }
     
+    /* Chat Duo inline */
+    .duo-chat-section {
+        margin-top: 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .duo-chat-header {
+        padding: 12px 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        color: white;
+    }
+    
+    .duo-chat-header:hover {
+        opacity: 0.9;
+    }
+    
+    .duo-chat-body {
+        max-height: 200px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .duo-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        max-height: 140px;
+        background: rgba(0, 0, 0, 0.2);
+    }
+    
+    .duo-chat-msg {
+        padding: 6px 10px;
+        margin-bottom: 6px;
+        border-radius: 8px;
+        font-size: 0.9em;
+        max-width: 85%;
+        word-wrap: break-word;
+    }
+    
+    .duo-chat-msg.mine {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-left: auto;
+        text-align: right;
+    }
+    
+    .duo-chat-msg.theirs {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        margin-right: auto;
+    }
+    
+    .duo-chat-input-area {
+        display: flex;
+        padding: 8px;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.2);
+    }
+    
+    .duo-chat-input-area input {
+        flex: 1;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        font-size: 0.9em;
+    }
+    
+    .duo-chat-input-area button {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .duo-chat-input-area button:hover {
+        opacity: 0.9;
+    }
+    
     /* Skills Magicienne */
     .skills-container {
         background: rgba(102, 126, 234, 0.15);
@@ -1041,6 +1131,23 @@
                 {{ __('Prochaine question dans') }} <span class="timer-count" id="countdown">15</span> {{ __('secondes...') }}
             @endif
         </div>
+        
+        @if($isMultiplayer && $gameMode === 'duo')
+            <!-- Chat inline pour mode Duo (si pas de micro actif) -->
+            <div id="duoChatSection" class="duo-chat-section">
+                <div class="duo-chat-header" onclick="toggleDuoChat()">
+                    💬 {{ __('Chat avec l\'adversaire') }}
+                    <span id="duoChatToggle">▼</span>
+                </div>
+                <div id="duoChatBody" class="duo-chat-body" style="display: none;">
+                    <div id="duoChatMessages" class="duo-chat-messages"></div>
+                    <div class="duo-chat-input-area">
+                        <input type="text" id="duoChatInput" placeholder="{{ __('Écrivez...') }}" maxlength="200" onkeypress="if(event.key==='Enter')sendDuoMessage()">
+                        <button onclick="sendDuoMessage()">➤</button>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 
@@ -1325,6 +1432,103 @@ function goToNextQuestion() {
     }
     @endif
 })();
+
+// ============ DUO CHAT FUNCTIONS ============
+const duoOpponentId = {{ session('opponent_id') ?? 'null' }};
+let duoChatOpen = false;
+
+function toggleDuoChat() {
+    const body = document.getElementById('duoChatBody');
+    const toggle = document.getElementById('duoChatToggle');
+    if (!body) return;
+    
+    duoChatOpen = !duoChatOpen;
+    body.style.display = duoChatOpen ? 'flex' : 'none';
+    toggle.textContent = duoChatOpen ? '▲' : '▼';
+    
+    if (duoChatOpen) {
+        loadDuoChatMessages();
+    }
+}
+
+function loadDuoChatMessages() {
+    if (!duoOpponentId) return;
+    
+    fetch(`/chat/conversation/${duoOpponentId}`, {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('duoChatMessages');
+        if (!container) return;
+        
+        if (!data.messages || data.messages.length === 0) {
+            container.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px;">{{ __("Aucun message") }}</div>';
+            return;
+        }
+        
+        const currentUserId = {{ auth()->id() ?? 'null' }};
+        container.innerHTML = data.messages.map(m => {
+            const isMine = m.sender_id === currentUserId;
+            return `<div class="duo-chat-msg ${isMine ? 'mine' : 'theirs'}">${escapeHtml(m.message)}</div>`;
+        }).join('');
+        
+        container.scrollTop = container.scrollHeight;
+    })
+    .catch(e => console.log('Chat load error:', e));
+}
+
+function sendDuoMessage() {
+    const input = document.getElementById('duoChatInput');
+    const message = input?.value?.trim();
+    
+    if (!message || !duoOpponentId) return;
+    
+    input.disabled = true;
+    
+    fetch('/chat/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            receiver_id: duoOpponentId,
+            message: message
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        input.disabled = false;
+        if (data.success) {
+            input.value = '';
+            const container = document.getElementById('duoChatMessages');
+            const emptyDiv = container.querySelector('[style*="text-align:center"]');
+            if (emptyDiv) emptyDiv.remove();
+            
+            container.innerHTML += `<div class="duo-chat-msg mine">${escapeHtml(message)}</div>`;
+            container.scrollTop = container.scrollHeight;
+        }
+    })
+    .catch(e => {
+        input.disabled = false;
+        console.log('Send error:', e);
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Refresh chat toutes les 5 secondes si ouvert
+if (isMultiplayerMode && duoOpponentId) {
+    setInterval(() => {
+        if (duoChatOpen) loadDuoChatMessages();
+    }, 5000);
+}
 </script>
 
 {{-- Popup Visionnaire Preview synchronisé avec le countdown --}}
