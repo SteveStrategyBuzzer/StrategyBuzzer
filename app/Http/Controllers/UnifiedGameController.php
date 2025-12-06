@@ -403,7 +403,7 @@ class UnifiedGameController extends Controller
             ];
         }
         
-        $catalogAvatars = AvatarCatalog::getStrategicAvatars();
+        $catalogAvatars = AvatarCatalog::get();
         $avatarInfo = null;
         
         foreach ($catalogAvatars as $avatar) {
