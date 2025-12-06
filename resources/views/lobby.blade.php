@@ -697,7 +697,7 @@ foreach ($colors as $color) {
     <div class="players-section">
         <div class="section-title">
             <span>👥</span>
-            <span>{{ __('Joueurs') }} ({{ count($players) }}/{{ $maxPlayers }})</span>
+            <span>{{ __('Joueurs') }} ({{ count($players) }}/{{ $maxPlayers }}) 💬</span>
         </div>
         
         <div class="players-grid">
@@ -745,12 +745,16 @@ foreach ($colors as $color) {
                     
                     <div class="player-actions" onclick="event.stopPropagation()">
                         @if(!$isCurrentPlayer)
-                            <button class="player-action-btn" onclick="openPlayerChat({{ $playerId }}, '{{ addslashes($player['name']) }}')" title="{{ __('Chat') }}">💬</button>
+                            <button class="player-action-btn" 
+                                    data-player-id="{{ $playerId }}" 
+                                    data-action="chat" 
+                                    title="{{ __('Chat') }}">💬</button>
                         @endif
                         @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
                         <button class="player-action-btn" 
                                 id="mic-btn-{{ $playerId }}" 
-                                onclick="toggleMic({{ $playerId }})" 
+                                data-player-id="{{ $playerId }}"
+                                data-action="mic"
                                 title="{{ __('Micro') }}">🎙️</button>
                         @else
                         <button class="player-action-btn" 
@@ -1935,11 +1939,13 @@ foreach ($colors as $color) {
         
         const sectionTitle = document.querySelector('.players-section .section-title span:last-child');
         if (sectionTitle) {
-            sectionTitle.textContent = `${translations.players} (${playerEntries.length}/${maxPlayers})`;
+            sectionTitle.textContent = `${translations.players} (${playerEntries.length}/${maxPlayers}) 💬`;
         }
     }
     
     document.addEventListener('click', function(e) {
+        console.log('[Click] Document click detected, target:', e.target.tagName, e.target.className);
+        
         const playerCard = e.target.closest('.player-card');
         if (playerCard && !e.target.closest('.player-actions')) {
             const playerId = playerCard.dataset.playerId;
@@ -1950,12 +1956,15 @@ foreach ($colors as $color) {
         }
         
         const actionBtn = e.target.closest('[data-action]');
+        console.log('[Click] actionBtn found:', actionBtn, 'data-action:', actionBtn?.dataset?.action);
         if (actionBtn) {
             e.stopPropagation();
             const action = actionBtn.dataset.action;
             const playerId = parseInt(actionBtn.dataset.playerId);
             const playerCard = actionBtn.closest('.player-card');
             const playerName = playerCard?.dataset.playerName || '';
+            
+            console.log('[Click] Action:', action, 'PlayerId:', playerId);
             
             if (action === 'chat') {
                 openPlayerChat(playerId, playerName);
