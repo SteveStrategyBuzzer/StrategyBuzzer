@@ -55,9 +55,9 @@ class DuoFirestoreService
     }
 
     /**
-     * Enregistre un buzz dans Firestore
+     * Enregistre un buzz dans Firestore et met à jour les flags pour la synchro temps réel
      */
-    public function recordBuzz(int $matchId, string $playerId, float $timestamp): bool
+    public function recordBuzz(int $matchId, string $playerId, float $timestamp, ?string $player1Id = null, ?string $player2Id = null): bool
     {
         $gameId = "duo-match-{$matchId}";
         
@@ -65,9 +65,38 @@ class DuoFirestoreService
         
         if ($result) {
             Log::info("Buzz recorded in Firestore for match #{$matchId}, player: {$playerId}");
+            
+            $updates = [
+                'lastBuzzPlayerId' => $playerId,
+                'lastBuzzTime' => $timestamp,
+            ];
+            
+            if ($player1Id && $playerId === $player1Id) {
+                $updates['player1Buzzed'] = true;
+            } elseif ($player2Id && $playerId === $player2Id) {
+                $updates['player2Buzzed'] = true;
+            } else {
+                $updates['buzzedPlayerId'] = $playerId;
+            }
+            
+            $this->updateGameState($matchId, $updates);
         }
         
         return $result;
+    }
+    
+    /**
+     * Réinitialise les flags de buzz pour une nouvelle question
+     */
+    public function resetBuzzFlags(int $matchId): bool
+    {
+        return $this->updateGameState($matchId, [
+            'player1Buzzed' => false,
+            'player2Buzzed' => false,
+            'lastBuzzPlayerId' => null,
+            'lastBuzzTime' => null,
+            'buzzedPlayerId' => null,
+        ]);
     }
 
     /**

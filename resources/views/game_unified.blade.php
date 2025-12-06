@@ -90,16 +90,24 @@ $roomCode = $params['room_code'] ?? null;
 @endphp
 
 <style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100vw;
+    }
+    
     body {
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         padding: 10px;
-        margin: 0;
-        overflow-x: hidden;
+        box-sizing: border-box;
     }
     
     .game-container {
@@ -110,8 +118,10 @@ $roomCode = $params['room_code'] ?? null;
         flex-direction: column;
         gap: 20px;
         position: relative;
-        min-height: 100vh;
-        padding-bottom: 180px;
+        min-height: calc(100vh - 20px);
+        min-height: calc(100dvh - 20px);
+        padding-bottom: 200px;
+        box-sizing: border-box;
     }
     
     .mode-indicator {
@@ -524,10 +534,44 @@ $roomCode = $params['room_code'] ?? null;
     @media (max-width: 768px) {
         .game-layout { gap: 15px; }
         .player-avatar, .opponent-avatar { width: 70px; height: 70px; }
-        .chrono-circle { width: 140px; height: 140px; }
-        .chrono-time { font-size: 3rem; }
-        .buzz-button img { width: 150px; height: 150px; }
-        .answers-grid { grid-template-columns: 1fr; }
+        .chrono-circle { width: 120px; height: 120px; }
+        .chrono-time { font-size: 2.5rem; }
+        .buzz-button img { width: 130px; height: 130px; }
+        .answers-grid { grid-template-columns: 1fr; gap: 10px; padding: 0 10px; }
+        .question-header { padding: 15px 10px; }
+        .question-text { font-size: 1.1rem; }
+        .mode-indicator { top: 5px; right: 5px; padding: 5px 10px; font-size: 0.75rem; }
+        .game-container { gap: 15px; padding-bottom: 160px; }
+        .buzz-container-bottom { bottom: 15px; }
+    }
+    
+    @media (max-width: 480px) {
+        body { padding: 5px; }
+        .game-layout { 
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+        .player-avatar, .opponent-avatar { width: 55px; height: 55px; }
+        .chrono-circle { width: 90px; height: 90px; }
+        .chrono-time { font-size: 2rem; }
+        .buzz-button img { width: 110px; height: 110px; }
+        .question-header { padding: 10px 8px; margin-bottom: 5px; }
+        .question-text { font-size: 1rem; }
+        .question-number { font-size: 0.75rem; margin-bottom: 8px; }
+        .game-container { gap: 10px; padding-bottom: 140px; min-height: calc(100dvh - 10px); }
+        .buzz-container-bottom { bottom: 10px; }
+        .player-name, .opponent-name { font-size: 0.85rem; }
+        .player-score, .opponent-score { font-size: 1.5rem; }
+        .skill-bar { gap: 5px; }
+        .skill-icon { font-size: 1.2rem; }
+    }
+    
+    @media (max-height: 700px) and (orientation: portrait) {
+        .buzz-button img { width: 100px; height: 100px; }
+        .game-container { padding-bottom: 120px; }
+        .buzz-container-bottom { bottom: 8px; }
+        .chrono-circle { width: 80px; height: 80px; }
+        .chrono-time { font-size: 1.8rem; }
     }
 </style>
 
@@ -1337,10 +1381,13 @@ function sendBuzzToServer() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.waiting_for_opponent) {
-            showWaitingOverlay('{{ __("En attente de l'adversaire...") }}');
-        } else {
-            showAnswers();
+        console.log('[Buzz] Server response:', data);
+        if (data.show_answers || !data.waiting_for_opponent) {
+            setTimeout(() => {
+                showAnswers();
+            }, 500);
+        } else if (data.waiting_for_opponent) {
+            showWaitingOverlay('{{ __("En attente de l\'adversaire...") }}');
         }
     })
     .catch(error => {
@@ -1462,26 +1509,47 @@ import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js').then(({ init
         statusEl.classList.add('connected');
         
         if (gameConfig.matchId) {
-            const matchRef = doc(db, 'duoMatches', gameConfig.matchId);
+            const firestoreGameId = 'duo-match-' + gameConfig.matchId;
+            const matchRef = doc(db, 'games', firestoreGameId);
+            
+            console.log('[Firebase] Listening to:', firestoreGameId);
             
             onSnapshot(matchRef, (snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.data();
+                    console.log('[Firebase] Game state update:', data);
                     handleFirebaseUpdate(data);
                 }
+            }, (error) => {
+                console.error('[Firebase] Listener error:', error);
             });
         }
     });
 });
 
 function handleFirebaseUpdate(data) {
-    if (data.opponent_buzzed && !answersShown) {
+    const isPlayer1 = gameConfig.playerId === (data.player1Id || '').toString();
+    const isPlayer2 = gameConfig.playerId === (data.player2Id || '').toString();
+    
+    let opponentBuzzed = false;
+    if (isPlayer1 && data.player2Buzzed) {
+        opponentBuzzed = true;
+    } else if (isPlayer2 && data.player1Buzzed) {
+        opponentBuzzed = true;
+    } else if (data.buzzedPlayerId && data.buzzedPlayerId !== gameConfig.playerId) {
+        opponentBuzzed = true;
+    }
+    
+    if (opponentBuzzed && !answersShown) {
+        console.log('[Firebase] Opponent buzzed - showing answers');
         hideWaitingOverlay();
         showAnswers();
     }
     
-    if (data.opponent_score !== undefined) {
-        document.getElementById('opponentScore').textContent = data.opponent_score;
+    if (isPlayer1 && data.player2Score !== undefined) {
+        document.getElementById('opponentScore').textContent = data.player2Score;
+    } else if (isPlayer2 && data.player1Score !== undefined) {
+        document.getElementById('opponentScore').textContent = data.player1Score;
     }
     
     if (data.incoming_attack && data.incoming_attack.target === gameConfig.playerId && !data.incoming_attack.processed) {

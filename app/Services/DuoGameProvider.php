@@ -93,9 +93,18 @@ class DuoGameProvider extends GameModeProvider
     public function handleBuzz(float $buzzTime): array
     {
         $matchId = $this->gameState['match_id'] ?? null;
+        $playerId = (string)$this->player->id;
+        $player1Id = (string)($this->gameState['player1_id'] ?? $this->player->id);
+        $player2Id = (string)($this->gameState['opponent_id'] ?? '');
         
         if ($matchId) {
-            $this->firestoreService->recordBuzz((int)$matchId, (string)$this->player->id, microtime(true));
+            $this->firestoreService->recordBuzz(
+                (int)$matchId, 
+                $playerId, 
+                microtime(true),
+                $player1Id,
+                $player2Id
+            );
         }
         
         $this->gameState['player_buzzed'] = true;
@@ -105,7 +114,8 @@ class DuoGameProvider extends GameModeProvider
             'success' => true,
             'player_buzzed' => true,
             'buzz_time' => $buzzTime,
-            'waiting_for_opponent' => true,
+            'waiting_for_opponent' => false,
+            'show_answers' => true,
         ];
     }
     
