@@ -519,4 +519,375 @@ class UnifiedGameController extends Controller
             ],
         ];
     }
+    
+    public function tiebreakerChoice(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $isMultiplayer = in_array($mode, ['duo', 'league_individual', 'league_team']);
+        $isHost = $gameState['is_host'] ?? true;
+        
+        return view('unified_tiebreaker_choice', [
+            'mode' => $mode,
+            'gameState' => $gameState,
+            'is_multiplayer' => $isMultiplayer,
+            'is_host' => $isHost,
+            'player_name' => $user->pseudo ?? $user->name,
+            'opponent_name' => $gameState['opponent_name'] ?? __('Adversaire'),
+            'player_score' => $gameState['player_total_score'] ?? 0,
+            'opponent_score' => $gameState['opponent_total_score'] ?? 0,
+            'player_avatar' => $gameState['player_avatar'] ?? null,
+            'opponent_avatar' => $gameState['opponent_avatar'] ?? null,
+            'match_id' => $gameState['match_id'] ?? null,
+        ]);
+    }
+    
+    public function tiebreakerSelect(Request $request, string $mode)
+    {
+        $validated = $request->validate([
+            'choice' => 'required|string|in:bonus,efficiency,sudden_death',
+        ]);
+        
+        $gameState = session('game_state', []);
+        $gameState['tiebreaker_choice'] = $validated['choice'];
+        session(['game_state' => $gameState]);
+        
+        switch ($validated['choice']) {
+            case 'bonus':
+                return redirect()->route('game.tiebreaker-bonus', ['mode' => $mode]);
+            case 'efficiency':
+                return redirect()->route('game.tiebreaker-efficiency', ['mode' => $mode]);
+            case 'sudden_death':
+                return redirect()->route('game.tiebreaker-sudden-death', ['mode' => $mode]);
+            default:
+                return redirect()->route('game.tiebreaker-choice', ['mode' => $mode]);
+        }
+    }
+    
+    public function tiebreakerBonus(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $question = $this->generateTiebreakerQuestion($gameState);
+        
+        $gameState['tiebreaker_question'] = $question;
+        $gameState['tiebreaker_started_at'] = now()->toISOString();
+        session(['game_state' => $gameState]);
+        
+        return view('unified_tiebreaker_bonus', [
+            'mode' => $mode,
+            'question' => $question,
+            'gameState' => $gameState,
+            'player_name' => $user->pseudo ?? $user->name,
+            'opponent_name' => $gameState['opponent_name'] ?? __('Adversaire'),
+            'player_avatar' => $gameState['player_avatar'] ?? null,
+            'opponent_avatar' => $gameState['opponent_avatar'] ?? null,
+            'match_id' => $gameState['match_id'] ?? null,
+            'is_multiplayer' => in_array($mode, ['duo', 'league_individual', 'league_team']),
+        ]);
+    }
+    
+    public function tiebreakerBonusAnswer(Request $request, string $mode)
+    {
+        $validated = $request->validate([
+            'answer_index' => 'required|integer|min:0|max:3',
+            'buzz_time' => 'nullable|numeric',
+        ]);
+        
+        $gameState = session('game_state', []);
+        $question = $gameState['tiebreaker_question'] ?? null;
+        
+        if (!$question) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Question non trouvée'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $isCorrect = ($validated['answer_index'] == $question['correct_index']);
+        $buzzTime = $validated['buzz_time'] ?? 10;
+        
+        $gameState['player_tiebreaker_correct'] = $isCorrect;
+        $gameState['player_tiebreaker_time'] = $buzzTime;
+        
+        $isMultiplayer = in_array($mode, ['duo', 'league_individual', 'league_team']);
+        
+        if ($isMultiplayer) {
+            $opponentCorrect = $gameState['opponent_tiebreaker_correct'] ?? null;
+            $opponentTime = $gameState['opponent_tiebreaker_time'] ?? null;
+            
+            if ($opponentCorrect === null) {
+                session(['game_state' => $gameState]);
+                return view('unified_tiebreaker_waiting', [
+                    'mode' => $mode,
+                    'gameState' => $gameState,
+                    'player_answered' => true,
+                    'player_correct' => $isCorrect,
+                    'match_id' => $gameState['match_id'] ?? null,
+                ]);
+            }
+            
+            $winner = $this->determineTiebreakerWinner($isCorrect, $buzzTime, $opponentCorrect, $opponentTime);
+        } else {
+            $opponentCorrect = rand(0, 100) < 50;
+            $opponentTime = rand(2, 8);
+            $winner = $this->determineTiebreakerWinner($isCorrect, $buzzTime, $opponentCorrect, $opponentTime);
+        }
+        
+        $gameState['tiebreaker_winner'] = $winner;
+        session(['game_state' => $gameState]);
+        
+        return redirect()->route('game.match-result', ['mode' => $mode]);
+    }
+    
+    public function tiebreakerEfficiency(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $globalStats = $gameState['global_stats'] ?? [];
+        $playerEfficiency = $this->calculatePlayerEfficiency($globalStats);
+        
+        $isMultiplayer = in_array($mode, ['duo', 'league_individual', 'league_team']);
+        
+        if ($isMultiplayer) {
+            $opponentEfficiency = $gameState['opponent_efficiency'] ?? $playerEfficiency;
+        } else {
+            $opponentEfficiency = rand(40, 80);
+        }
+        
+        $winner = 'draw';
+        if ($playerEfficiency > $opponentEfficiency) {
+            $winner = 'player';
+        } elseif ($playerEfficiency < $opponentEfficiency) {
+            $winner = 'opponent';
+        } else {
+            $playerTotal = $gameState['player_total_score'] ?? 0;
+            $opponentTotal = $gameState['opponent_total_score'] ?? 0;
+            $winner = $playerTotal >= $opponentTotal ? 'player' : 'opponent';
+        }
+        
+        $gameState['tiebreaker_winner'] = $winner;
+        $gameState['player_efficiency'] = $playerEfficiency;
+        $gameState['opponent_efficiency'] = $opponentEfficiency;
+        session(['game_state' => $gameState]);
+        
+        return view('unified_tiebreaker_efficiency', [
+            'mode' => $mode,
+            'gameState' => $gameState,
+            'player_name' => $user->pseudo ?? $user->name,
+            'opponent_name' => $gameState['opponent_name'] ?? __('Adversaire'),
+            'player_efficiency' => $playerEfficiency,
+            'opponent_efficiency' => $opponentEfficiency,
+            'winner' => $winner,
+            'player_avatar' => $gameState['player_avatar'] ?? null,
+            'opponent_avatar' => $gameState['opponent_avatar'] ?? null,
+        ]);
+    }
+    
+    public function tiebreakerSuddenDeath(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $questionNumber = $gameState['sudden_death_question_number'] ?? 1;
+        $question = $this->generateTiebreakerQuestion($gameState);
+        
+        $gameState['tiebreaker_question'] = $question;
+        $gameState['sudden_death_question_number'] = $questionNumber;
+        $gameState['sudden_death_active'] = true;
+        session(['game_state' => $gameState]);
+        
+        return view('unified_tiebreaker_sudden_death', [
+            'mode' => $mode,
+            'question' => $question,
+            'question_number' => $questionNumber,
+            'gameState' => $gameState,
+            'player_name' => $user->pseudo ?? $user->name,
+            'opponent_name' => $gameState['opponent_name'] ?? __('Adversaire'),
+            'player_avatar' => $gameState['player_avatar'] ?? null,
+            'opponent_avatar' => $gameState['opponent_avatar'] ?? null,
+            'match_id' => $gameState['match_id'] ?? null,
+            'is_multiplayer' => in_array($mode, ['duo', 'league_individual', 'league_team']),
+        ]);
+    }
+    
+    public function tiebreakerSuddenDeathAnswer(Request $request, string $mode)
+    {
+        $validated = $request->validate([
+            'answer_index' => 'required|integer|min:0|max:3',
+            'buzz_time' => 'nullable|numeric',
+        ]);
+        
+        $gameState = session('game_state', []);
+        $question = $gameState['tiebreaker_question'] ?? null;
+        
+        if (!$question) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Question non trouvée'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $isCorrect = ($validated['answer_index'] == $question['correct_index']);
+        $buzzTime = $validated['buzz_time'] ?? 10;
+        
+        $isMultiplayer = in_array($mode, ['duo', 'league_individual', 'league_team']);
+        
+        if ($isMultiplayer) {
+            $opponentCorrect = $gameState['opponent_sudden_death_correct'] ?? null;
+            
+            if ($opponentCorrect === null) {
+                $gameState['player_sudden_death_correct'] = $isCorrect;
+                $gameState['player_sudden_death_time'] = $buzzTime;
+                session(['game_state' => $gameState]);
+                
+                return view('unified_tiebreaker_waiting', [
+                    'mode' => $mode,
+                    'gameState' => $gameState,
+                    'player_answered' => true,
+                    'player_correct' => $isCorrect,
+                    'sudden_death' => true,
+                    'match_id' => $gameState['match_id'] ?? null,
+                ]);
+            }
+        } else {
+            $opponentCorrect = rand(0, 100) < 60;
+        }
+        
+        if (!$isCorrect && $opponentCorrect) {
+            $gameState['tiebreaker_winner'] = 'opponent';
+            session(['game_state' => $gameState]);
+            return redirect()->route('game.match-result', ['mode' => $mode]);
+        }
+        
+        if ($isCorrect && !$opponentCorrect) {
+            $gameState['tiebreaker_winner'] = 'player';
+            session(['game_state' => $gameState]);
+            return redirect()->route('game.match-result', ['mode' => $mode]);
+        }
+        
+        $gameState['sudden_death_question_number'] = ($gameState['sudden_death_question_number'] ?? 1) + 1;
+        unset($gameState['opponent_sudden_death_correct']);
+        session(['game_state' => $gameState]);
+        
+        return redirect()->route('game.tiebreaker-sudden-death', ['mode' => $mode]);
+    }
+    
+    protected function generateTiebreakerQuestion(array $gameState): array
+    {
+        $theme = $gameState['theme'] ?? 'Culture générale';
+        $niveau = $gameState['niveau'] ?? 1;
+        $language = auth()->user()?->preferred_language ?? 'fr';
+        
+        try {
+            $usedQuestionIds = session('used_question_ids', []);
+            $usedAnswers = session('used_answers', []);
+            
+            $generatedQuestion = $this->questionService->generateSingleQuestion(
+                $theme,
+                $niveau,
+                $language,
+                $usedQuestionIds,
+                $usedAnswers
+            );
+            
+            return [
+                'id' => $generatedQuestion['id'] ?? uniqid('tb_'),
+                'text' => $generatedQuestion['question_text'] ?? $generatedQuestion['text'] ?? '',
+                'answers' => $generatedQuestion['answers'] ?? [],
+                'correct_index' => $generatedQuestion['correct_id'] ?? $generatedQuestion['correct_index'] ?? 0,
+                'sub_theme' => $generatedQuestion['sub_theme'] ?? '',
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Erreur génération question tiebreaker: ' . $e->getMessage());
+            
+            return [
+                'id' => uniqid('tb_fallback_'),
+                'text' => __('Question de départage'),
+                'answers' => [
+                    ['id' => 0, 'text' => 'A'],
+                    ['id' => 1, 'text' => 'B'],
+                    ['id' => 2, 'text' => 'C'],
+                    ['id' => 3, 'text' => 'D'],
+                ],
+                'correct_index' => 0,
+                'sub_theme' => '',
+            ];
+        }
+    }
+    
+    protected function determineTiebreakerWinner(bool $playerCorrect, float $playerTime, bool $opponentCorrect, float $opponentTime): string
+    {
+        if ($playerCorrect && !$opponentCorrect) {
+            return 'player';
+        }
+        if (!$playerCorrect && $opponentCorrect) {
+            return 'opponent';
+        }
+        if ($playerCorrect && $opponentCorrect) {
+            return $playerTime <= $opponentTime ? 'player' : 'opponent';
+        }
+        return 'draw';
+    }
+    
+    protected function calculatePlayerEfficiency(array $globalStats): float
+    {
+        if (empty($globalStats)) {
+            return 50.0;
+        }
+        
+        $correctAnswers = 0;
+        $totalQuestions = 0;
+        $totalTime = 0;
+        
+        foreach ($globalStats as $stat) {
+            if (isset($stat['is_bonus']) && $stat['is_bonus']) continue;
+            $totalQuestions++;
+            if (!empty($stat['player_correct'])) {
+                $correctAnswers++;
+            }
+            $totalTime += $stat['player_time'] ?? 10;
+        }
+        
+        if ($totalQuestions === 0) {
+            return 50.0;
+        }
+        
+        $accuracy = ($correctAnswers / $totalQuestions) * 100;
+        $avgTime = $totalTime / $totalQuestions;
+        $speedBonus = max(0, (10 - $avgTime) * 2);
+        
+        return min(100, $accuracy + $speedBonus);
+    }
 }

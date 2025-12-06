@@ -311,6 +311,15 @@ Route::prefix('game')->name('game.')->middleware('auth')->group(function () {
     Route::get('/{mode}/match-result', [App\Http\Controllers\UnifiedGameController::class, 'showMatchResult'])->name('match-result');
     Route::get('/{mode}/state', [App\Http\Controllers\UnifiedGameController::class, 'getGameState'])->name('state');
     Route::post('/{mode}/sync', [App\Http\Controllers\UnifiedGameController::class, 'syncFromFirebase'])->name('sync');
+    
+    // Tiebreaker routes
+    Route::get('/{mode}/tiebreaker-choice', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerChoice'])->name('tiebreaker-choice');
+    Route::post('/{mode}/tiebreaker-select', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerSelect'])->name('tiebreaker-select');
+    Route::get('/{mode}/tiebreaker-bonus', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerBonus'])->name('tiebreaker-bonus');
+    Route::post('/{mode}/tiebreaker-bonus-answer', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerBonusAnswer'])->name('tiebreaker-bonus-answer');
+    Route::get('/{mode}/tiebreaker-efficiency', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerEfficiency'])->name('tiebreaker-efficiency');
+    Route::get('/{mode}/tiebreaker-sudden-death', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerSuddenDeath'])->name('tiebreaker-sudden-death');
+    Route::post('/{mode}/tiebreaker-sudden-death-answer', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerSuddenDeathAnswer'])->name('tiebreaker-sudden-death-answer');
 });
 
 /* ===== QUÊTES & QUÊTES QUOTIDIENNES ===== */
