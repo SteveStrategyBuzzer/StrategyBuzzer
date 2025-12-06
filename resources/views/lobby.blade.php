@@ -1485,18 +1485,22 @@ foreach ($colors as $color) {
                 return;
             }
             
+            await window.webrtcManager.startVoiceChat();
+            
             voiceEnabled = true;
             micStates[currentPlayerId] = true;
             btn.classList.remove('mic-connecting');
             btn.classList.add('active');
             btn.classList.remove('muted');
-            
-            await window.webrtcManager.startVoiceChat();
             showToast('{{ __("Micro activé") }}');
             
         } catch (error) {
             console.error('Voice init error:', error);
+            voiceEnabled = false;
+            micStates[currentPlayerId] = false;
             btn.classList.remove('mic-connecting');
+            btn.classList.remove('active');
+            btn.classList.add('muted');
             showToast('{{ __("Erreur d\'initialisation audio") }}');
         }
     }
