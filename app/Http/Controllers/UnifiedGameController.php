@@ -329,46 +329,67 @@ class UnifiedGameController extends Controller
             return null;
         }
         
-        $questions = session('current_questions', []);
+        $currentQuestion = session('unified_current_question');
+        $storedQuestionNumber = session('unified_question_number', 0);
         
-        if (empty($questions) || !isset($questions[$currentQuestionNumber - 1])) {
-            $usedQuestionIds = session('used_question_ids', []);
-            $usedAnswers = session('used_answers', []);
-            $sessionUsedAnswers = session('session_used_answers', []);
-            $sessionUsedQuestionTexts = session('session_used_question_texts', []);
-            
-            $theme = $gameState['theme'] ?? 'Culture générale';
-            $niveau = $gameState['niveau'] ?? 1;
-            $language = Auth::user()->preferred_language ?? 'fr';
-            
-            $questions = [];
-            for ($i = 0; $i < $totalQuestions; $i++) {
-                $question = $this->questionService->generateQuestion(
-                    $theme,
-                    $niveau,
-                    $i + 1,
-                    $usedQuestionIds,
-                    $usedAnswers,
-                    $sessionUsedAnswers,
-                    $sessionUsedQuestionTexts,
-                    null,
-                    false,
-                    $language
-                );
-                
-                if ($question) {
-                    $questions[] = $question;
-                    $usedQuestionIds[] = $question['id'] ?? count($usedQuestionIds);
-                    $usedAnswers = array_merge($usedAnswers, $question['answers'] ?? []);
-                }
-            }
-            
-            session(['current_questions' => $questions]);
-            session(['used_question_ids' => $usedQuestionIds]);
-            session(['used_answers' => $usedAnswers]);
+        if ($currentQuestion && $storedQuestionNumber === $currentQuestionNumber) {
+            return $currentQuestion;
         }
         
-        return $questions[$currentQuestionNumber - 1] ?? null;
+        $usedQuestionIds = session('used_question_ids', []);
+        $usedAnswers = session('used_answers', []);
+        $sessionUsedAnswers = session('session_used_answers', []);
+        $sessionUsedQuestionTexts = session('session_used_question_texts', []);
+        
+        $theme = $gameState['theme'] ?? 'Culture générale';
+        $niveau = $gameState['niveau'] ?? 1;
+        $language = Auth::user()->preferred_language ?? 'fr';
+        
+        $generatedQuestion = $this->questionService->generateQuestion(
+            $theme,
+            $niveau,
+            $currentQuestionNumber,
+            $usedQuestionIds,
+            $usedAnswers,
+            $sessionUsedAnswers,
+            $sessionUsedQuestionTexts,
+            null,
+            false,
+            $language
+        );
+        
+        if (!$generatedQuestion) {
+            return null;
+        }
+        
+        $question = [
+            'id' => $generatedQuestion['id'] ?? uniqid(),
+            'text' => $generatedQuestion['question_text'] ?? $generatedQuestion['text'] ?? '',
+            'answers' => $generatedQuestion['answers'] ?? [],
+            'correct_index' => $generatedQuestion['correct_id'] ?? $generatedQuestion['correct_index'] ?? 0,
+            'sub_theme' => $generatedQuestion['sub_theme'] ?? '',
+        ];
+        
+        $usedQuestionIds[] = $question['id'];
+        $sessionUsedQuestionTexts[] = $question['text'];
+        foreach ($question['answers'] as $answer) {
+            $answerText = is_array($answer) ? ($answer['text'] ?? '') : $answer;
+            if ($answerText) {
+                $usedAnswers[] = $answerText;
+                $sessionUsedAnswers[] = $answerText;
+            }
+        }
+        
+        session([
+            'unified_current_question' => $question,
+            'unified_question_number' => $currentQuestionNumber,
+            'used_question_ids' => $usedQuestionIds,
+            'used_answers' => $usedAnswers,
+            'session_used_answers' => $sessionUsedAnswers,
+            'session_used_question_texts' => $sessionUsedQuestionTexts,
+        ]);
+        
+        return $question;
     }
     
     protected function getAvatarData($user): array
