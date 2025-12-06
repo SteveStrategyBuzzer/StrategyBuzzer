@@ -316,7 +316,17 @@ class UnifiedGameController extends Controller
             'opponent_info' => $provider->getOpponentInfo(),
         ];
         
-        return view('game_round_result', ['params' => $params]);
+        $params['round_result'] = $roundResult;
+        
+        if ($roundResult['match_complete'] && $roundResult['player_rounds_won'] === $roundResult['opponent_rounds_won']) {
+            return redirect()->route('game.tiebreaker-choice', ['mode' => $mode]);
+        }
+        
+        if (in_array($mode, ['duo', 'league_individual', 'league_team'])) {
+            return view('unified_round_result', ['params' => $params]);
+        }
+        
+        return view('round_result', ['params' => $params]);
     }
     
     public function startNextRound(Request $request, string $mode)
