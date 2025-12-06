@@ -744,7 +744,7 @@ foreach ($colors as $color) {
                         <div class="player-status status-waiting">⏳</div>
                     @endif
                     
-                    <div class="player-actions" onclick="event.stopPropagation()">
+                    <div class="player-actions">
                         @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
                         <button class="player-action-btn" 
                                 id="mic-btn-{{ $playerId }}" 
@@ -1905,7 +1905,7 @@ foreach ($colors as $color) {
                     
                     ${statusHtml}
                     
-                    <div class="player-actions" onclick="event.stopPropagation()">
+                    <div class="player-actions">
                         ${isVoiceSupported ? `<button class="player-action-btn" 
                                 id="mic-btn-${playerId}" 
                                 data-player-id="${playerId}"
@@ -1939,19 +1939,17 @@ foreach ($colors as $color) {
     document.addEventListener('click', function(e) {
         console.log('[Click] Document click detected, target:', e.target.tagName, e.target.className);
         
-        const playerCard = e.target.closest('.player-card');
-        if (playerCard && !e.target.closest('.player-actions')) {
-            const playerId = playerCard.dataset.playerId;
-            const playerName = playerCard.dataset.playerName;
-            if (playerId && playerName) {
-                showPlayerStats(parseInt(playerId), playerName);
-            }
+        // Handle lobby chat button click first
+        if (e.target.id === 'lobby-chat-btn' || e.target.closest('#lobby-chat-btn')) {
+            console.log('[Chat] Lobby chat button clicked');
+            openLobbyChatWithOpponent();
+            return;
         }
         
+        // Handle action buttons (mic, chat)
         const actionBtn = e.target.closest('[data-action]');
-        console.log('[Click] actionBtn found:', actionBtn, 'data-action:', actionBtn?.dataset?.action);
         if (actionBtn) {
-            e.stopPropagation();
+            e.preventDefault();
             const action = actionBtn.dataset.action;
             const playerId = parseInt(actionBtn.dataset.playerId);
             const playerCard = actionBtn.closest('.player-card');
@@ -1964,12 +1962,17 @@ foreach ($colors as $color) {
             } else if (action === 'mic') {
                 toggleMic(playerId);
             }
+            return;
         }
         
-        // Handle lobby chat button click
-        if (e.target.id === 'lobby-chat-btn' || e.target.closest('#lobby-chat-btn')) {
-            console.log('[Chat] Lobby chat button clicked');
-            openLobbyChatWithOpponent();
+        // Handle player card click (show stats) - only if not clicking on actions
+        const playerCard = e.target.closest('.player-card');
+        if (playerCard && !e.target.closest('.player-actions')) {
+            const playerId = playerCard.dataset.playerId;
+            const playerName = playerCard.dataset.playerName;
+            if (playerId && playerName) {
+                showPlayerStats(parseInt(playerId), playerName);
+            }
         }
     });
     
