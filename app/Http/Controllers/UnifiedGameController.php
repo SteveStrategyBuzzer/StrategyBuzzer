@@ -564,13 +564,32 @@ class UnifiedGameController extends Controller
     {
         $validated = $request->validate([
             'choice' => 'required|string|in:bonus,efficiency,sudden_death',
+            'opponent_choice' => 'nullable|string|in:bonus,efficiency,sudden_death',
         ]);
         
         $gameState = session('game_state', []);
-        $gameState['tiebreaker_choice'] = $validated['choice'];
+        $myChoice = $validated['choice'];
+        $opponentChoice = $validated['opponent_choice'] ?? null;
+        
+        $gameState['tiebreaker_my_choice'] = $myChoice;
+        
+        $isMultiplayer = in_array($mode, ['duo', 'league_individual', 'league_team']);
+        
+        if ($isMultiplayer && $opponentChoice) {
+            $finalChoice = $this->determineTiebreakerChoice($myChoice, $opponentChoice);
+            $gameState['tiebreaker_choice'] = $finalChoice;
+            $gameState['tiebreaker_choice_reason'] = ($myChoice === $opponentChoice) 
+                ? 'same_choice' 
+                : 'third_option';
+        } else {
+            $gameState['tiebreaker_choice'] = $myChoice;
+        }
+        
         session(['game_state' => $gameState]);
         
-        switch ($validated['choice']) {
+        $finalChoice = $gameState['tiebreaker_choice'];
+        
+        switch ($finalChoice) {
             case 'bonus':
                 return redirect()->route('game.tiebreaker-bonus', ['mode' => $mode]);
             case 'efficiency':
@@ -580,6 +599,24 @@ class UnifiedGameController extends Controller
             default:
                 return redirect()->route('game.tiebreaker-choice', ['mode' => $mode]);
         }
+    }
+    
+    protected function determineTiebreakerChoice(string $choice1, string $choice2): string
+    {
+        if ($choice1 === $choice2) {
+            return $choice1;
+        }
+        
+        $allOptions = ['bonus', 'efficiency', 'sudden_death'];
+        $chosenOptions = [$choice1, $choice2];
+        
+        foreach ($allOptions as $option) {
+            if (!in_array($option, $chosenOptions)) {
+                return $option;
+            }
+        }
+        
+        return 'bonus';
     }
     
     public function tiebreakerBonus(Request $request, string $mode)

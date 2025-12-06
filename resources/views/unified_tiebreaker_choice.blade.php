@@ -287,11 +287,11 @@
             </div>
         </div>
         
-        @if($is_host)
-        <div class="host-indicator">👑 {{ __('Vous choisissez le mode de départage') }}</div>
-        @else
-        <div class="waiting-indicator">⏳ {{ __('L\'hôte choisit le mode de départage...') }}</div>
-        @endif
+        <div class="host-indicator">⚔️ {{ __('Choisissez votre mode de départage préféré') }}</div>
+        <p style="color: #B0B0B0; font-size: 0.95rem; margin-top: 10px;">
+            {{ __('Si vous choisissez la même option, elle sera utilisée.') }}<br>
+            {{ __('Si vous choisissez différemment, c\'est la 3ème option (non choisie) qui sera utilisée !') }}
+        </p>
         
         <div class="timer-bar">
             <div class="timer-fill" id="timerFill"></div>
@@ -299,7 +299,6 @@
         @endif
     </div>
 
-    @if(!$is_multiplayer || $is_host)
     <div class="options-grid">
         <div class="option-card" data-option="bonus" onclick="selectOption('bonus')">
             <div class="option-icon">❓</div>
@@ -340,7 +339,6 @@
             </div>
         </div>
     </div>
-    @endif
 
     <div class="vote-status" id="voteStatus">
         <div class="vote-info" id="voteInfo"></div>
@@ -350,12 +348,17 @@
 <form id="tiebreakerForm" action="{{ route('game.tiebreaker-select', ['mode' => $mode]) }}" method="POST" style="display: none;">
     @csrf
     <input type="hidden" name="choice" id="choiceInput">
+    <input type="hidden" name="opponent_choice" id="opponentChoiceInput">
 </form>
 
 <script>
 const i18n = {
     selected: "{{ __('SÉLECTIONNÉ') }}",
     yourChoice: "{{ __('Votre choix') }}",
+    waitingOpponent: "{{ __('En attente du choix de l\'adversaire...') }}",
+    sameChoice: "{{ __('Même choix ! Mode sélectionné') }}",
+    differentChoice: "{{ __('Choix différents ! Le mode non choisi sera utilisé') }}",
+    finalMode: "{{ __('Mode final') }}",
     redirecting: "{{ __('Redirection en cours...') }}",
     questionBonus: "{{ __('Question Bonus') }}",
     globalEfficiency: "{{ __('Efficacité Globale') }}",
@@ -363,8 +366,10 @@ const i18n = {
 };
 
 let selectedOption = null;
+let opponentChoice = null;
 const isMultiplayer = {{ $is_multiplayer ? 'true' : 'false' }};
 const isHost = {{ $is_host ? 'true' : 'false' }};
+const playerId = "{{ auth()->id() }}";
 const mode = "{{ $mode }}";
 const matchId = "{{ $match_id ?? '' }}";
 
@@ -390,26 +395,80 @@ function selectOption(option) {
     selectedOption = option;
 
     document.getElementById('voteStatus').classList.add('show');
-    document.getElementById('voteInfo').textContent = `${i18n.yourChoice}: ${getOptionName(option)}. ${i18n.redirecting}`;
-
+    
     if (isMultiplayer && matchId) {
+        document.getElementById('voteInfo').innerHTML = `${i18n.yourChoice}: <strong>${getOptionName(option)}</strong><br><span style="color: #FFC107;">${i18n.waitingOpponent}</span>`;
         syncChoiceToFirebase(option);
+    } else {
+        document.getElementById('voteInfo').textContent = `${i18n.yourChoice}: ${getOptionName(option)}. ${i18n.redirecting}`;
+        submitChoice(option, null);
     }
-
-    setTimeout(() => {
-        document.getElementById('choiceInput').value = option;
-        document.getElementById('tiebreakerForm').submit();
-    }, 800);
 }
 
 function syncChoiceToFirebase(option) {
     if (typeof firebase !== 'undefined' && firebase.firestore) {
         const db = firebase.firestore();
+        const choiceField = isHost ? 'tiebreaker_host_choice' : 'tiebreaker_guest_choice';
+        
         db.collection('matches').doc(matchId).update({
-            tiebreaker_choice: option,
-            tiebreaker_chosen_at: firebase.firestore.FieldValue.serverTimestamp()
+            [choiceField]: option,
+            [`${choiceField}_at`]: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            console.log('[Tiebreaker] My choice synced:', option);
+            checkBothChoices();
         }).catch(err => console.error('Firebase sync error:', err));
     }
+}
+
+function checkBothChoices() {
+    if (typeof firebase !== 'undefined' && firebase.firestore && matchId) {
+        const db = firebase.firestore();
+        db.collection('matches').doc(matchId).get().then(doc => {
+            const data = doc.data();
+            const hostChoice = data?.tiebreaker_host_choice;
+            const guestChoice = data?.tiebreaker_guest_choice;
+            
+            if (hostChoice && guestChoice) {
+                opponentChoice = isHost ? guestChoice : hostChoice;
+                const finalChoice = determineFinalChoice(selectedOption, opponentChoice);
+                
+                if (selectedOption === opponentChoice) {
+                    document.getElementById('voteInfo').innerHTML = 
+                        `<span style="color: #4CAF50;">✓ ${i18n.sameChoice}: <strong>${getOptionName(finalChoice)}</strong></span>`;
+                } else {
+                    document.getElementById('voteInfo').innerHTML = 
+                        `<span style="color: #FF9800;">⚔️ ${i18n.differentChoice}</span><br>` +
+                        `<span style="color: #4ECDC4;">${i18n.finalMode}: <strong>${getOptionName(finalChoice)}</strong></span>`;
+                }
+                
+                setTimeout(() => submitChoice(selectedOption, opponentChoice), 1500);
+            }
+        });
+    }
+}
+
+function determineFinalChoice(choice1, choice2) {
+    if (choice1 === choice2) return choice1;
+    
+    const allOptions = ['bonus', 'efficiency', 'sudden_death'];
+    const chosenOptions = [choice1, choice2];
+    
+    for (const opt of allOptions) {
+        if (!chosenOptions.includes(opt)) {
+            return opt;
+        }
+    }
+    return 'bonus';
+}
+
+function submitChoice(myChoice, oppChoice) {
+    document.getElementById('choiceInput').value = myChoice;
+    if (oppChoice) {
+        document.getElementById('opponentChoiceInput').value = oppChoice;
+    }
+    setTimeout(() => {
+        document.getElementById('tiebreakerForm').submit();
+    }, 500);
 }
 
 function getOptionName(option) {
@@ -421,14 +480,30 @@ function getOptionName(option) {
     return names[option] || option;
 }
 
-@if($is_multiplayer && !$is_host)
+@if($is_multiplayer)
 if (typeof firebase !== 'undefined' && firebase.firestore && matchId) {
     const db = firebase.firestore();
     db.collection('matches').doc(matchId).onSnapshot(doc => {
         const data = doc.data();
-        if (data && data.tiebreaker_choice) {
-            window.location.href = "{{ route('game.tiebreaker-select', ['mode' => $mode]) }}".replace('{{ $mode }}', mode) + 
-                '?choice=' + data.tiebreaker_choice + '&_token={{ csrf_token() }}';
+        if (data && selectedOption) {
+            const hostChoice = data.tiebreaker_host_choice;
+            const guestChoice = data.tiebreaker_guest_choice;
+            
+            if (hostChoice && guestChoice) {
+                opponentChoice = isHost ? guestChoice : hostChoice;
+                const finalChoice = determineFinalChoice(selectedOption, opponentChoice);
+                
+                if (selectedOption === opponentChoice) {
+                    document.getElementById('voteInfo').innerHTML = 
+                        `<span style="color: #4CAF50;">✓ ${i18n.sameChoice}: <strong>${getOptionName(finalChoice)}</strong></span>`;
+                } else {
+                    document.getElementById('voteInfo').innerHTML = 
+                        `<span style="color: #FF9800;">⚔️ ${i18n.differentChoice}</span><br>` +
+                        `<span style="color: #4ECDC4;">${i18n.finalMode}: <strong>${getOptionName(finalChoice)}</strong></span>`;
+                }
+                
+                setTimeout(() => submitChoice(selectedOption, opponentChoice), 1500);
+            }
         }
     });
 }
