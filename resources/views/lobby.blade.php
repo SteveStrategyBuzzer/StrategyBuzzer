@@ -2281,35 +2281,78 @@ class WebRTCManager {
     
     async createPeerConnection(peerId, initiator = false) {
         if (this.peerConnections[peerId]) {
-            return this.peerConnections[peerId];
+            const existingPc = this.peerConnections[peerId];
+            if (existingPc.connectionState === 'connected' || 
+                existingPc.connectionState === 'connecting' ||
+                existingPc.connectionState === 'new') {
+                console.log(`Reusing existing connection with ${peerId}, state: ${existingPc.connectionState}`);
+                return existingPc;
+            }
+            if (existingPc.connectionState === 'closed' || existingPc.connectionState === 'failed') {
+                console.log(`Removing stale connection with ${peerId}, state: ${existingPc.connectionState}`);
+                delete this.peerConnections[peerId];
+            } else {
+                return existingPc;
+            }
         }
         
-        console.log(`Creating peer connection with ${peerId}, initiator: ${initiator}`);
+        console.log(`Creating peer connection with ${peerId}, initiator: ${initiator}, hasLocalStream: ${!!this.localStream}`);
         
         const pc = new RTCPeerConnection({ iceServers: this.iceServers });
         this.peerConnections[peerId] = pc;
         
         if (this.localStream) {
             this.localStream.getTracks().forEach(track => {
+                console.log(`Adding local track to connection with ${peerId}:`, track.kind);
                 pc.addTrack(track, this.localStream);
             });
         }
         
         pc.ontrack = (event) => {
-            console.log(`Received remote track from ${peerId}`);
-            this.handleRemoteTrack(peerId, event.streams[0]);
+            console.log(`Received remote track from ${peerId}:`, event.track.kind);
+            if (event.streams && event.streams[0]) {
+                this.handleRemoteTrack(peerId, event.streams[0]);
+            }
         };
         
         pc.onicecandidate = async (event) => {
             if (event.candidate) {
+                console.log(`Sending ICE candidate to ${peerId}`);
                 await this.sendSignal(peerId, 'candidate', null, event.candidate.toJSON());
             }
         };
         
+        pc.onicegatheringstatechange = () => {
+            console.log(`ICE gathering state with ${peerId}: ${pc.iceGatheringState}`);
+        };
+        
+        pc.oniceconnectionstatechange = () => {
+            console.log(`ICE connection state with ${peerId}: ${pc.iceConnectionState}`);
+        };
+        
+        let disconnectTimeout = null;
         pc.onconnectionstatechange = () => {
             console.log(`Connection state with ${peerId}: ${pc.connectionState}`);
-            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+            if (pc.connectionState === 'failed') {
+                console.log(`Connection failed with ${peerId}`);
+                if (disconnectTimeout) clearTimeout(disconnectTimeout);
                 this.closePeerConnection(peerId);
+            } else if (pc.connectionState === 'disconnected') {
+                console.log(`Connection disconnected with ${peerId}, will attempt recovery in 5s...`);
+                if (disconnectTimeout) clearTimeout(disconnectTimeout);
+                disconnectTimeout = setTimeout(() => {
+                    if (pc.connectionState === 'disconnected' && this.localStream && !this.isMuted) {
+                        console.log(`Attempting to recover connection with ${peerId}`);
+                        this.closePeerConnection(peerId);
+                        this.createPeerConnection(peerId, this.currentPlayerId < parseInt(peerId));
+                    }
+                }, 5000);
+            } else if (pc.connectionState === 'connected') {
+                console.log(`Successfully connected to ${peerId}!`);
+                if (disconnectTimeout) {
+                    clearTimeout(disconnectTimeout);
+                    disconnectTimeout = null;
+                }
             }
         };
         
@@ -2317,6 +2360,7 @@ class WebRTCManager {
             try {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
+                console.log(`Sending offer to ${peerId}`);
                 await this.sendSignal(peerId, 'offer', offer.sdp);
             } catch (error) {
                 console.error('Error creating offer:', error);
@@ -2381,18 +2425,32 @@ class WebRTCManager {
     }
     
     handleRemoteTrack(peerId, stream) {
+        console.log(`Handling remote stream from ${peerId}, tracks:`, stream.getTracks().map(t => t.kind));
+        
         let audio = this.remoteAudioElements[peerId];
         
         if (!audio) {
             audio = document.createElement('audio');
             audio.id = `remote-audio-${peerId}`;
             audio.autoplay = true;
+            audio.playsInline = true;
             audio.style.display = 'none';
             document.body.appendChild(audio);
             this.remoteAudioElements[peerId] = audio;
         }
         
         audio.srcObject = stream;
+        
+        audio.play().then(() => {
+            console.log(`Audio playback started for ${peerId}`);
+        }).catch(error => {
+            console.warn(`Audio playback failed for ${peerId}, will retry on user interaction:`, error);
+            const resumeAudio = () => {
+                audio.play().catch(e => console.error('Retry play failed:', e));
+                document.removeEventListener('click', resumeAudio);
+            };
+            document.addEventListener('click', resumeAudio, { once: true });
+        });
     }
     
     mute() {

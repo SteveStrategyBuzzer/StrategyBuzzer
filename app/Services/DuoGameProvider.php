@@ -33,17 +33,19 @@ class DuoGameProvider extends GameModeProvider
         return 'human';
     }
     
-    public function setOpponent(User $opponent): void
+    public function setOpponent(User $opponent, ?string $lobbyAvatar = null): void
     {
         $duoStats = $opponent->duoStats;
         $division = $this->divisionService->getOrCreateDivision($opponent, 'duo');
+        
+        $avatar = $lobbyAvatar ?? $this->gameState['opponent_avatar'] ?? $opponent->profile_settings['avatar'] ?? 'default';
         
         $this->opponentInfo = [
             'is_human' => true,
             'user_id' => $opponent->id,
             'name' => $opponent->name,
             'player_code' => $opponent->player_code,
-            'avatar' => $opponent->profile_settings['avatar'] ?? 'default',
+            'avatar' => $avatar,
             'level' => $duoStats ? $duoStats->level : 1,
             'division' => $division['name'] ?? 'Bronze',
             'division_rank' => $division['rank'] ?? 0,
@@ -56,11 +58,33 @@ class DuoGameProvider extends GameModeProvider
     
     public function getOpponentInfo(): array
     {
-        return $this->opponentInfo ?? [
+        if ($this->opponentInfo) {
+            return $this->opponentInfo;
+        }
+        
+        if (isset($this->gameState['opponent_info'])) {
+            $this->opponentInfo = $this->gameState['opponent_info'];
+            if (isset($this->gameState['opponent_avatar']) && $this->opponentInfo['avatar'] === 'default') {
+                $this->opponentInfo['avatar'] = $this->gameState['opponent_avatar'];
+            }
+            return $this->opponentInfo;
+        }
+        
+        $opponentId = $this->gameState['opponent_id'] ?? null;
+        if ($opponentId) {
+            $opponent = User::find($opponentId);
+            if ($opponent) {
+                $lobbyAvatar = $this->gameState['opponent_avatar'] ?? null;
+                $this->setOpponent($opponent, $lobbyAvatar);
+                return $this->opponentInfo;
+            }
+        }
+        
+        return [
             'is_human' => true,
-            'user_id' => null,
-            'name' => 'Adversaire',
-            'avatar' => 'default',
+            'user_id' => $this->gameState['opponent_id'] ?? null,
+            'name' => $this->gameState['opponent_name'] ?? 'Adversaire',
+            'avatar' => $this->gameState['opponent_avatar'] ?? 'default',
             'level' => 1,
             'division' => 'Bronze',
         ];

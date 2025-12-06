@@ -12,16 +12,19 @@ use App\Services\MasterGameProvider;
 use App\Services\QuestionService;
 use App\Services\GameStateService;
 use App\Services\AvatarCatalog;
+use App\Services\LobbyService;
 
 class UnifiedGameController extends Controller
 {
     protected QuestionService $questionService;
     protected GameStateService $gameStateService;
+    protected LobbyService $lobbyService;
     
-    public function __construct(QuestionService $questionService, GameStateService $gameStateService)
+    public function __construct(QuestionService $questionService, GameStateService $gameStateService, LobbyService $lobbyService)
     {
         $this->questionService = $questionService;
         $this->gameStateService = $gameStateService;
+        $this->lobbyService = $lobbyService;
     }
     
     protected function getProvider(string $mode): GameModeProvider
@@ -43,6 +46,7 @@ class UnifiedGameController extends Controller
             'opponent_id' => 'nullable|integer',
             'match_id' => 'nullable|string',
             'room_code' => 'nullable|string',
+            'lobby_code' => 'nullable|string',
         ]);
         
         $provider = $this->getProvider($mode);
@@ -63,7 +67,39 @@ class UnifiedGameController extends Controller
             'started_at' => now()->toISOString(),
         ];
         
-        if ($mode === 'duo' && isset($validated['opponent_id'])) {
+        if ($mode === 'duo' && isset($validated['lobby_code'])) {
+            $lobby = $this->lobbyService->getLobby($validated['lobby_code']);
+            
+            if (!$lobby) {
+                return redirect()->route('duo.lobby')->with('error', __('Le salon n\'existe plus'));
+            }
+            
+            if (!empty($lobby['players'])) {
+                $players = $lobby['players'];
+                $opponentId = null;
+                $opponentAvatar = 'default';
+                $opponentName = 'Adversaire';
+                
+                foreach ($players as $playerId => $playerData) {
+                    if ((int)$playerId !== (int)$user->id) {
+                        $opponentId = (int)$playerId;
+                        $opponentAvatar = $playerData['avatar'] ?? 'default';
+                        $opponentName = $playerData['name'] ?? 'Adversaire';
+                        break;
+                    }
+                }
+                
+                if (!$opponentId) {
+                    return redirect()->route('duo.lobby')->with('error', __('Adversaire introuvable dans le salon'));
+                }
+                
+                $gameState['opponent_id'] = $opponentId;
+                $gameState['opponent_avatar'] = $opponentAvatar;
+                $gameState['opponent_name'] = $opponentName;
+                $gameState['lobby_code'] = $validated['lobby_code'];
+                $gameState['match_id'] = $validated['match_id'] ?? $validated['lobby_code'];
+            }
+        } elseif ($mode === 'duo' && isset($validated['opponent_id'])) {
             $gameState['opponent_id'] = $validated['opponent_id'];
             $gameState['match_id'] = $validated['match_id'] ?? null;
         }
@@ -77,7 +113,61 @@ class UnifiedGameController extends Controller
         session(['game_state' => $provider->getGameState()]);
         session(['game_mode' => $mode]);
         
+        if ($mode === 'duo' || $mode === 'league_individual') {
+            return redirect()->route('game.resume', ['mode' => $mode]);
+        }
+        
         return redirect()->route('game.question', ['mode' => $mode]);
+    }
+    
+    protected function getModeIndexRoute(string $mode): string
+    {
+        $routeMap = [
+            'duo' => 'duo.lobby',
+            'league_individual' => 'ligue',
+            'league_team' => 'ligue',
+            'master' => 'master.index',
+            'solo' => 'solo.index',
+        ];
+        return $routeMap[$mode] ?? 'menu';
+    }
+    
+    public function showResume(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $opponentInfo = $provider->getOpponentInfo();
+        
+        $playerName = $user->name ?? 'Joueur';
+        $playerAvatar = session('selected_avatar', 'default');
+        $playerDivision = 'Bronze';
+        
+        if ($user->duoStats) {
+            $playerDivision = app(\App\Services\DivisionService::class)->getOrCreateDivision($user, 'duo')['name'] ?? 'Bronze';
+        }
+        
+        $params = [
+            'mode' => $mode,
+            'theme' => $gameState['theme'] ?? 'Culture générale',
+            'nb_questions' => $gameState['total_questions'] ?? 10,
+            'player_name' => $playerName,
+            'player_avatar' => $playerAvatar,
+            'player_division' => $playerDivision,
+            'opponent_name' => $opponentInfo['name'] ?? 'Adversaire',
+            'opponent_avatar' => $opponentInfo['avatar'] ?? 'default',
+            'opponent_division' => $opponentInfo['division'] ?? 'Bronze',
+            'redirect_url' => route('game.question', ['mode' => $mode]),
+        ];
+        
+        return view('duo_resume', ['params' => $params]);
     }
     
     public function showQuestion(Request $request, string $mode)
@@ -86,7 +176,7 @@ class UnifiedGameController extends Controller
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return redirect()->route("{$mode}.index")->with('error', __('Aucune partie en cours'));
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
         }
         
         $provider = $this->getProvider($mode);
@@ -205,7 +295,7 @@ class UnifiedGameController extends Controller
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return redirect()->route("{$mode}.index");
+            return redirect()->route($this->getModeIndexRoute($mode));
         }
         
         $provider = $this->getProvider($mode);
@@ -234,7 +324,7 @@ class UnifiedGameController extends Controller
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return redirect()->route("{$mode}.index");
+            return redirect()->route($this->getModeIndexRoute($mode));
         }
         
         $gameState['current_round'] = ($gameState['current_round'] ?? 1) + 1;
@@ -253,7 +343,7 @@ class UnifiedGameController extends Controller
         $gameState = session('game_state', []);
         
         if (empty($gameState)) {
-            return redirect()->route("{$mode}.index");
+            return redirect()->route($this->getModeIndexRoute($mode));
         }
         
         $provider = $this->getProvider($mode);
