@@ -1087,20 +1087,25 @@ if (isGameplayMusicEnabled()) {
     });
 }
 
-// Compte à rebours de 15 secondes
+// Compte à rebours de 15 secondes (UNIQUEMENT en mode Solo)
+const isMultiplayerMode = {{ $isMultiplayer ? 'true' : 'false' }};
 let countdown = 15;
 const countdownElement = document.getElementById('countdown');
 
-const interval = setInterval(() => {
-    countdown--;
-    if (countdown > 0) {
-        countdownElement.textContent = countdown;
-    } else {
-        clearInterval(interval);
-        // Rediriger vers la prochaine question
-        goToNextQuestion();
-    }
-}, 1000);
+// Ne pas lancer le chrono en mode multijoueur - les joueurs décident du rythme
+let interval = null;
+if (!isMultiplayerMode && countdownElement) {
+    interval = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+            countdownElement.textContent = countdown;
+        } else {
+            clearInterval(interval);
+            // Rediriger vers la prochaine question
+            goToNextQuestion();
+        }
+    }, 1000);
+}
 
 // Skills Magicienne
 function useCancelError() {
