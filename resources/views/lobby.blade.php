@@ -748,7 +748,7 @@ foreach ($colors as $color) {
                             <button class="player-action-btn" onclick="openPlayerChat({{ $playerId }}, '{{ addslashes($player['name']) }}')" title="{{ __('Chat') }}">💬</button>
                         @endif
                         @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
-                        <button class="player-action-btn {{ $isCurrentPlayer ? 'active' : '' }}" 
+                        <button class="player-action-btn" 
                                 id="mic-btn-{{ $playerId }}" 
                                 onclick="toggleMic({{ $playerId }})" 
                                 title="{{ __('Micro') }}">🎙️</button>
@@ -1209,11 +1209,6 @@ foreach ($colors as $color) {
     let currentChatPlayerName = null;
     
     async function showPlayerStats(playerId, playerName) {
-        if (playerId === currentPlayerId) {
-            showToast('{{ __("Vous ne pouvez pas voir vos propres statistiques ici") }}');
-            return;
-        }
-        
         currentStatsPlayerId = playerId;
         document.getElementById('stats-modal').style.display = 'flex';
         
@@ -1450,6 +1445,8 @@ foreach ($colors as $color) {
     const lobbyMode = '{{ $mode }}';
     const voiceEnabledModes = ['duo', 'league_individual', 'league_team'];
     const isVoiceSupported = voiceEnabledModes.includes(lobbyMode);
+    
+    micStates[currentPlayerId] = false;
     
     function toggleMic(playerId) {
         const btn = document.getElementById('mic-btn-' + playerId);
@@ -1888,7 +1885,7 @@ foreach ($colors as $color) {
                     
                     <div class="player-actions" onclick="event.stopPropagation()">
                         ${chatBtn}
-                        ${isVoiceSupported ? `<button class="player-action-btn ${isCurrentPlayer ? 'active' : ''}" 
+                        ${isVoiceSupported ? `<button class="player-action-btn" 
                                 id="mic-btn-${playerId}" 
                                 data-player-id="${playerId}"
                                 data-action="mic"
