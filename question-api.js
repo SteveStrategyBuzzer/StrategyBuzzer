@@ -1,17 +1,23 @@
 const express = require('express');
-const OpenAI = require('openai').default;
+const { GoogleGenAI } = require('@google/genai');
 
-// This is using Replit's AI Integrations service for text generation
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+// Initialize Google Gemini AI client
+const gemini = new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY 
 });
 
-// Separate OpenAI client for DALL-E image generation (uses direct API key)
-// DALL-E requires the standard OpenAI API, not the Replit integration
-const openaiDallE = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Fallback OpenAI for DALL-E image generation only (if needed)
+let openaiDallE = null;
+try {
+  const OpenAI = require('openai').default;
+  if (process.env.OPENAI_API_KEY) {
+    openaiDallE = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+  }
+} catch (e) {
+  console.log('OpenAI not available for DALL-E, using Gemini only');
+}
 
 const app = express();
 app.use(express.json());
@@ -809,29 +815,51 @@ RÈGLES STRICTES:
 
 NOTE TECHNIQUE: Les réponses restent en français ("Vrai"/"Faux") pour compatibilité avec le frontend/backend actuel. Lors de l'activation future d'autres langues, adapter également le frontend pour afficher les traductions.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Using gpt-4o-mini for reliable JSON generation
-      messages: [
-        {
-          role: "system",
-          content: `Tu es un expert en création de questions de quiz éducatives en ${languageName}. Tu génères des questions uniques, pertinentes et adaptées au niveau de difficulté demandé. Tu réponds UNIQUEMENT en JSON valide.`
-        },
-        {
-          role: "user",
-          content: prompt
-        }
+    const systemPrompt = `Tu es un expert en création de questions de quiz éducatives en ${languageName}. Tu génères des questions uniques, pertinentes et adaptées au niveau de difficulté demandé. Tu réponds UNIQUEMENT en JSON valide, sans markdown ni backticks.`;
+    
+    const fullPrompt = systemPrompt + "\n\n" + prompt;
+    
+    const response = await gemini.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [
+        { role: 'user', parts: [{ text: fullPrompt }] }
       ],
-      response_format: { type: "json_object" },
-      temperature: 1.2,
-      max_completion_tokens: 500
+      config: {
+        temperature: 1.0,
+        maxOutputTokens: 500,
+        responseMimeType: 'application/json'
+      }
     });
 
-    console.log('OpenAI Response:', JSON.stringify(completion, null, 2));
+    console.log('Gemini Response received');
     
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No content in OpenAI response');
+    // Extract text from Gemini response
+    let content = '';
+    if (response.candidates && response.candidates[0]?.content?.parts) {
+      content = response.candidates[0].content.parts.map(p => p.text || '').join('');
+    } else if (response.text) {
+      content = response.text;
+    } else if (typeof response === 'string') {
+      content = response;
     }
+    
+    if (!content) {
+      console.error('Gemini response structure:', JSON.stringify(response, null, 2));
+      throw new Error('No content in Gemini response');
+    }
+    
+    // Clean up the response - remove markdown code blocks if present
+    content = content.trim();
+    if (content.startsWith('```json')) {
+      content = content.slice(7);
+    }
+    if (content.startsWith('```')) {
+      content = content.slice(3);
+    }
+    if (content.endsWith('```')) {
+      content = content.slice(0, -3);
+    }
+    content = content.trim();
     
     const questionData = JSON.parse(content);
     
@@ -1289,17 +1317,30 @@ Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 La bonne réponse doit être à l'index 0.`;
     }
     
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
+    const fullPrompt = systemPrompt + "\n\n" + userPrompt;
+    
+    const geminiResponse = await gemini.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [
+        { role: 'user', parts: [{ text: fullPrompt }] }
       ],
-      temperature: 0.3,
-      max_tokens: 500
+      config: {
+        temperature: 0.3,
+        maxOutputTokens: 500,
+        responseMimeType: 'application/json'
+      }
     });
     
-    const content = completion.choices[0].message.content.trim();
+    // Extract text from Gemini response
+    let content = '';
+    if (geminiResponse.candidates && geminiResponse.candidates[0]?.content?.parts) {
+      content = geminiResponse.candidates[0].content.parts.map(p => p.text || '').join('');
+    } else if (geminiResponse.text) {
+      content = geminiResponse.text;
+    } else if (typeof geminiResponse === 'string') {
+      content = geminiResponse;
+    }
+    content = content?.trim() || '';
     console.log('📥 Réponse brute:', content.substring(0, 100) + '...');
     
     // Parser le JSON de la réponse
