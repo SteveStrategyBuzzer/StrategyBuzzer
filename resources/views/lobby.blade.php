@@ -697,7 +697,8 @@ foreach ($colors as $color) {
     <div class="players-section">
         <div class="section-title">
             <span>👥</span>
-            <span>{{ __('Joueurs') }} ({{ count($players) }}/{{ $maxPlayers }}) 💬</span>
+            <span>{{ __('Joueurs') }} ({{ count($players) }}/{{ $maxPlayers }})</span>
+            <button id="lobby-chat-btn" class="player-action-btn" style="margin-left: 10px; font-size: 1.2rem;" title="{{ __('Chat') }}">💬</button>
         </div>
         
         <div class="players-grid">
@@ -744,12 +745,6 @@ foreach ($colors as $color) {
                     @endif
                     
                     <div class="player-actions" onclick="event.stopPropagation()">
-                        @if(!$isCurrentPlayer)
-                            <button class="player-action-btn" 
-                                    data-player-id="{{ $playerId }}" 
-                                    data-action="chat" 
-                                    title="{{ __('Chat') }}">💬</button>
-                        @endif
                         @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
                         <button class="player-action-btn" 
                                 id="mic-btn-{{ $playerId }}" 
@@ -1885,7 +1880,6 @@ foreach ($colors as $color) {
             const safeName = escapeHtml(player.name);
             const safeCode = escapeHtml(player.player_code || 'SB-????');
             const youLabel = isCurrentPlayer ? `<span style="font-size: 0.8rem; opacity: 0.7;">(${translations.you})</span>` : '';
-            const chatBtn = !isCurrentPlayer ? `<button class="player-action-btn" data-player-id="${playerId}" data-action="chat" title="${translations.chat}">💬</button>` : '';
             
             html += `
                 <div class="player-card ${readyClass} ${hostClass}" 
@@ -1912,7 +1906,6 @@ foreach ($colors as $color) {
                     ${statusHtml}
                     
                     <div class="player-actions" onclick="event.stopPropagation()">
-                        ${chatBtn}
                         ${isVoiceSupported ? `<button class="player-action-btn" 
                                 id="mic-btn-${playerId}" 
                                 data-player-id="${playerId}"
@@ -1939,7 +1932,7 @@ foreach ($colors as $color) {
         
         const sectionTitle = document.querySelector('.players-section .section-title span:last-child');
         if (sectionTitle) {
-            sectionTitle.textContent = `${translations.players} (${playerEntries.length}/${maxPlayers}) 💬`;
+            sectionTitle.textContent = `${translations.players} (${playerEntries.length}/${maxPlayers})`;
         }
     }
     
@@ -1972,7 +1965,28 @@ foreach ($colors as $color) {
                 toggleMic(playerId);
             }
         }
+        
+        // Handle lobby chat button click
+        if (e.target.id === 'lobby-chat-btn' || e.target.closest('#lobby-chat-btn')) {
+            console.log('[Chat] Lobby chat button clicked');
+            openLobbyChatWithOpponent();
+        }
     });
+    
+    // Open chat with the opponent (other player in lobby)
+    function openLobbyChatWithOpponent() {
+        const playerCards = document.querySelectorAll('.player-card');
+        for (const card of playerCards) {
+            const playerId = parseInt(card.dataset.playerId);
+            if (playerId !== currentPlayerId) {
+                const playerName = card.dataset.playerName || 'Adversaire';
+                console.log('[Chat] Opening chat with opponent:', playerId, playerName);
+                openPlayerChat(playerId, playerName);
+                return;
+            }
+        }
+        showToast(translations.noOpponent || 'Aucun adversaire dans le salon');
+    }
     
     function updateWaitingMessage(players, minPlayers, allReady) {
         const waitingDiv = document.querySelector('.waiting-message');
