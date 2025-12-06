@@ -7,7 +7,7 @@ use App\Models\User;
 class DuoGameProvider extends GameModeProvider
 {
     protected string $mode = 'duo';
-    protected array $opponentInfo;
+    protected array $opponentInfo = [];
     protected ?DuoFirestoreService $firestoreService = null;
     protected ?DivisionService $divisionService = null;
     
@@ -58,7 +58,7 @@ class DuoGameProvider extends GameModeProvider
     
     public function getOpponentInfo(): array
     {
-        if ($this->opponentInfo) {
+        if (!empty($this->opponentInfo)) {
             return $this->opponentInfo;
         }
         
