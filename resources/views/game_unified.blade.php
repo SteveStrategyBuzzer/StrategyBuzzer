@@ -332,6 +332,81 @@ $roomCode = $params['room_code'] ?? null;
     .skill-circle.empty { opacity: 0.3; cursor: default; }
     .skill-circle.used { opacity: 0.5; cursor: default; }
     
+    .opponent-strategic-indicator {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #9B59B6, #8E44AD);
+        border: 2px solid #FFD700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: #FFD700;
+        font-weight: 900;
+        box-shadow: 0 4px 15px rgba(155, 89, 182, 0.6);
+        animation: strategic-pulse 2s ease-in-out infinite;
+        z-index: 10;
+    }
+    
+    @keyframes strategic-pulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(155, 89, 182, 0.6); }
+        50% { transform: scale(1.1); box-shadow: 0 6px 25px rgba(155, 89, 182, 0.9); }
+    }
+    
+    .attack-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        display: none;
+    }
+    
+    .attack-overlay.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 0, 0, 0.2);
+        animation: attack-flash 0.5s ease-out;
+    }
+    
+    .attack-overlay.blocked {
+        background: rgba(78, 205, 196, 0.3);
+        animation: block-flash 0.6s ease-out;
+    }
+    
+    @keyframes attack-flash {
+        0% { background: rgba(255, 0, 0, 0.5); }
+        100% { background: rgba(255, 0, 0, 0); }
+    }
+    
+    @keyframes block-flash {
+        0% { background: rgba(78, 205, 196, 0.6); }
+        50% { background: rgba(78, 205, 196, 0.3); }
+        100% { background: rgba(78, 205, 196, 0); }
+    }
+    
+    .attack-icon {
+        font-size: 8rem;
+        animation: attack-icon-anim 0.5s ease-out;
+    }
+    
+    @keyframes attack-icon-anim {
+        0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+        50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+        100% { transform: scale(1) rotate(0deg); opacity: 0; }
+    }
+    
+    .opponent-circle {
+        position: relative;
+    }
+    
     .answers-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -507,6 +582,9 @@ $roomCode = $params['room_code'] ?? null;
                         {{ $opponentType === 'human' ? '👤' : '🤖' }}
                     </div>
                 @endif
+                @if($opponentType === 'human' && ($params['opponent_has_strategic'] ?? false))
+                    <div class="opponent-strategic-indicator" title="{{ __('Adversaire avec avatar stratégique') }}">?</div>
+                @endif
                 <div class="opponent-name {{ $opponentType === 'human' ? 'human' : '' }}">{{ $opponentName }}</div>
                 @if($opponentDescription)
                     <div style="font-size: 0.75rem; opacity: 0.8; text-align: center;">{{ $opponentDescription }}</div>
@@ -539,9 +617,11 @@ $roomCode = $params['room_code'] ?? null;
                             $isAuto = $skill['auto'];
                             $isDisabled = $isUsed || $isAuto;
                         @endphp
-                        <div class="skill-circle {{ $isUsed ? 'used' : 'active' }}" 
+                        <div class="skill-circle {{ $isUsed ? 'used' : 'active' }} {{ $isAuto ? 'auto' : 'clickable' }}" 
                              data-skill-id="{{ $skill['id'] }}"
+                             data-skill-type="{{ $skill['type'] ?? 'personal' }}"
                              data-skill-trigger="{{ $skill['trigger'] }}"
+                             data-affects-opponent="{{ ($skill['affects_opponent'] ?? false) ? 'true' : 'false' }}"
                              title="{{ $skill['name'] }}: {{ $skill['description'] }}">
                             {{ $skill['icon'] }}
                         </div>
@@ -581,6 +661,17 @@ $roomCode = $params['room_code'] ?? null;
     </div>
 @endif
 
+<div class="attack-overlay" id="attackOverlay">
+    <div class="attack-icon" id="attackIcon">⚔️</div>
+</div>
+
+<audio id="swordAttackSound" preload="auto">
+    <source src="{{ asset('sounds/sword_swish.wav') }}" type="audio/wav">
+</audio>
+<audio id="swordBlockSound" preload="auto">
+    <source src="{{ asset('sounds/sword_shield.wav') }}" type="audio/wav">
+</audio>
+
 <audio id="buzzerSound" preload="auto">
     <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
 </audio>
@@ -601,6 +692,8 @@ const gameConfig = {
     isFirebaseMode: {{ $isFirebaseMode ? 'true' : 'false' }},
     matchId: '{{ $matchId ?? '' }}',
     roomCode: '{{ $roomCode ?? '' }}',
+    playerId: '{{ auth()->id() }}',
+    opponentId: '{{ $params['opponent_info']['user_id'] ?? '' }}',
     currentQuestion: {{ $currentQuestion }},
     totalQuestions: {{ $totalQuestions }},
     currentRound: {{ $currentRound }},
@@ -826,9 +919,232 @@ function handleFirebaseUpdate(data) {
     if (data.opponent_score !== undefined) {
         document.getElementById('opponentScore').textContent = data.opponent_score;
     }
+    
+    if (data.incoming_attack && data.incoming_attack.target === gameConfig.playerId && !data.incoming_attack.processed) {
+        handleIncomingAttack(data.incoming_attack);
+    }
 }
+
+function handleIncomingAttack(attack) {
+    const hasDefense = checkDefenseSkill(attack.skill_id);
+    
+    if (hasDefense) {
+        playBlockEffect();
+        showAttackMessage('🛡️ {{ __("Attaque bloquée !") }}', 'blocked');
+    } else {
+        playAttackEffect();
+        applyAttackEffect(attack.skill_id, attack.params);
+    }
+    
+    markAttackProcessed(attack.id);
+}
+
+function checkDefenseSkill(attackSkillId) {
+    const defenseSkills = ['block_attack', 'counter_challenger'];
+    const playerSkills = @json($skills ?? []);
+    
+    for (const skill of playerSkills) {
+        if (defenseSkills.includes(skill.id) && !skill.used) {
+            if (attackSkillId === 'shuffle_answers' && skill.id === 'counter_challenger') {
+                return true;
+            }
+            if (skill.id === 'block_attack') {
+                markSkillUsed(skill.id);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function playAttackEffect() {
+    const overlay = document.getElementById('attackOverlay');
+    const icon = document.getElementById('attackIcon');
+    const sound = document.getElementById('swordAttackSound');
+    
+    icon.textContent = '⚔️';
+    overlay.classList.add('active');
+    
+    if (sound) {
+        sound.currentTime = 0;
+        sound.volume = 0.7;
+        sound.play().catch(e => console.log('Sound error:', e));
+    }
+    
+    setTimeout(() => {
+        overlay.classList.remove('active');
+    }, 600);
+}
+
+function playBlockEffect() {
+    const overlay = document.getElementById('attackOverlay');
+    const icon = document.getElementById('attackIcon');
+    const sound = document.getElementById('swordBlockSound');
+    
+    icon.textContent = '🛡️';
+    overlay.classList.add('active', 'blocked');
+    
+    if (sound) {
+        sound.currentTime = 0;
+        sound.volume = 0.8;
+        sound.play().catch(e => console.log('Sound error:', e));
+    }
+    
+    setTimeout(() => {
+        overlay.classList.remove('active', 'blocked');
+    }, 800);
+}
+
+function applyAttackEffect(skillId, params) {
+    switch (skillId) {
+        case 'reduce_time':
+            const reduction = params?.seconds || 3;
+            timeLeft = Math.max(1, timeLeft - reduction);
+            chronoTimer.textContent = timeLeft;
+            showAttackMessage('⏱️ -' + reduction + 's {{ __("temps réduit !") }}', 'attack');
+            break;
+            
+        case 'shuffle_answers':
+            startAnswerShuffle(params?.interval || 1000);
+            showAttackMessage('🔀 {{ __("Réponses en mouvement !") }}', 'attack');
+            break;
+            
+        case 'invert_answers':
+            invertAnswersVisually();
+            showAttackMessage('🔄 {{ __("Réponses inversées !") }}', 'attack');
+            break;
+    }
+}
+
+function showAttackMessage(message, type) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'attack-message ' + type;
+    msgDiv.innerHTML = message;
+    msgDiv.style.cssText = `
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${type === 'blocked' ? 'rgba(78, 205, 196, 0.9)' : 'rgba(255, 107, 107, 0.9)'};
+        color: white;
+        padding: 15px 30px;
+        border-radius: 15px;
+        font-size: 1.3rem;
+        font-weight: 700;
+        z-index: 10000;
+        animation: fadeInOut 2s ease-in-out forwards;
+    `;
+    document.body.appendChild(msgDiv);
+    
+    setTimeout(() => msgDiv.remove(), 2000);
+}
+
+function startAnswerShuffle(interval) {
+    const answers = answersGrid.querySelectorAll('.answer-option');
+    const shuffleInterval = setInterval(() => {
+        const shuffled = Array.from(answers).sort(() => Math.random() - 0.5);
+        shuffled.forEach((btn, i) => {
+            btn.style.order = i;
+        });
+    }, interval);
+    
+    setTimeout(() => clearInterval(shuffleInterval), 8000);
+}
+
+function invertAnswersVisually() {
+    const answers = answersGrid.querySelectorAll('.answer-option');
+    const reversed = Array.from(answers).reverse();
+    reversed.forEach((btn, i) => {
+        btn.style.order = i;
+    });
+}
+
+function markSkillUsed(skillId) {
+    const skillEl = document.querySelector(`[data-skill-id="${skillId}"]`);
+    if (skillEl) {
+        skillEl.classList.add('used');
+        skillEl.classList.remove('active');
+    }
+}
+
+function markAttackProcessed(attackId) {
+    if (gameConfig.matchId && typeof firebase !== 'undefined') {
+        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(({ getFirestore, doc, updateDoc }) => {
+            const db = getFirestore();
+            updateDoc(doc(db, 'duoMatches', gameConfig.matchId), {
+                'incoming_attack.processed': true
+            });
+        });
+    }
+}
+
+function sendAttackToOpponent(skillId, params = {}) {
+    if (!gameConfig.isFirebaseMode || !gameConfig.matchId) return;
+    
+    playAttackEffect();
+    
+    import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(({ getFirestore, doc, updateDoc }) => {
+        const db = getFirestore();
+        updateDoc(doc(db, 'duoMatches', gameConfig.matchId), {
+            'incoming_attack': {
+                id: Date.now(),
+                skill_id: skillId,
+                attacker: gameConfig.playerId,
+                target: gameConfig.opponentId,
+                params: params,
+                processed: false,
+                timestamp: new Date().toISOString()
+            }
+        });
+    });
+}
+
+window.sendAttackToOpponent = sendAttackToOpponent;
+
+function initAttackSkills() {
+    document.querySelectorAll('.skill-circle.clickable[data-affects-opponent="true"]').forEach(skillEl => {
+        skillEl.addEventListener('click', function() {
+            if (this.classList.contains('used') || this.classList.contains('auto')) return;
+            
+            const skillId = this.dataset.skillId;
+            const skillType = this.dataset.skillType;
+            
+            if (skillType === 'attack' || this.dataset.affectsOpponent === 'true') {
+                let params = {};
+                if (skillId === 'reduce_time') params = { seconds: 3 };
+                if (skillId === 'shuffle_answers') params = { interval: 1000 };
+                
+                sendAttackToOpponent(skillId, params);
+                markSkillUsed(skillId);
+                
+                fetch('/game/{{ $mode }}/use-skill', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': gameConfig.csrfToken
+                    },
+                    body: JSON.stringify({ skill_id: skillId })
+                });
+            }
+        });
+    });
+}
+
+initAttackSkills();
 @endif
 
+function initPersonalSkills() {
+    document.querySelectorAll('.skill-circle.clickable:not([data-affects-opponent="true"])').forEach(skillEl => {
+        skillEl.addEventListener('click', function() {
+            if (this.classList.contains('used') || this.classList.contains('auto')) return;
+            
+            const skillId = this.dataset.skillId;
+            console.log('[Skill] Personal skill clicked:', skillId);
+        });
+    });
+}
+
+initPersonalSkills();
 startTimer();
 </script>
 @endsection

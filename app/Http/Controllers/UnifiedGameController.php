@@ -12,6 +12,7 @@ use App\Services\MasterGameProvider;
 use App\Services\QuestionService;
 use App\Services\GameStateService;
 use App\Services\AvatarCatalog;
+use App\Services\SkillCatalog;
 use App\Services\LobbyService;
 
 class UnifiedGameController extends Controller
@@ -417,6 +418,63 @@ class UnifiedGameController extends Controller
         return response()->json([
             'success' => true,
             'state' => $provider->getGameState(),
+        ]);
+    }
+    
+    public function useSkill(Request $request, string $mode)
+    {
+        $validated = $request->validate([
+            'skill_id' => 'required|string',
+        ]);
+        
+        $skillId = $validated['skill_id'];
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return response()->json(['error' => __('Aucune partie en cours')], 400);
+        }
+        
+        $skill = SkillCatalog::getSkill($skillId);
+        
+        if (!$skill) {
+            return response()->json(['error' => __('Skill inconnu')], 400);
+        }
+        
+        $skillUsageCounts = session('skill_usage_counts', []);
+        $currentUsage = $skillUsageCounts[$skillId] ?? 0;
+        $maxUses = $skill['uses_per_match'] ?? 1;
+        
+        if ($maxUses > 0 && $currentUsage >= $maxUses) {
+            return response()->json([
+                'error' => __('Skill épuisé'),
+                'current_usage' => $currentUsage,
+                'max_uses' => $maxUses,
+            ], 400);
+        }
+        
+        $skillUsageCounts[$skillId] = $currentUsage + 1;
+        session(['skill_usage_counts' => $skillUsageCounts]);
+        
+        $usedSkills = session('used_skills', []);
+        if ($maxUses > 0 && $skillUsageCounts[$skillId] >= $maxUses) {
+            if (!in_array($skillId, $usedSkills)) {
+                $usedSkills[] = $skillId;
+                session(['used_skills' => $usedSkills]);
+            }
+        }
+        
+        $usesLeft = $maxUses > 0 ? max(0, $maxUses - $skillUsageCounts[$skillId]) : -1;
+        $isFullyUsed = $maxUses > 0 && $usesLeft === 0;
+        
+        return response()->json([
+            'success' => true,
+            'skill_id' => $skillId,
+            'is_attack' => SkillCatalog::isAttackSkill($skillId),
+            'affects_opponent' => SkillCatalog::affectsOpponent($skillId),
+            'skill_info' => $skill,
+            'usage_count' => $skillUsageCounts[$skillId],
+            'uses_left' => $usesLeft,
+            'is_fully_used' => $isFullyUsed,
         ]);
     }
     
