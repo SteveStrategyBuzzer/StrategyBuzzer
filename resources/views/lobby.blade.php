@@ -1325,6 +1325,7 @@ foreach ($colors as $color) {
     }
     
     async function openPlayerChat(playerId, playerName) {
+        console.log('[Chat] openPlayerChat called for player:', playerId, playerName);
         if (playerId === currentPlayerId) {
             showToast('{{ __("Vous ne pouvez pas vous envoyer de message") }}');
             return;
@@ -1333,6 +1334,7 @@ foreach ($colors as $color) {
         currentChatPlayerId = playerId;
         currentChatPlayerName = playerName;
         
+        console.log('[Chat] Opening chat modal');
         document.getElementById('chat-modal').style.display = 'flex';
         document.getElementById('chat-player-name').textContent = playerName;
         document.getElementById('chat-messages').innerHTML = '<div class="chat-loading">{{ __("Chargement...") }}</div>';
@@ -1449,8 +1451,14 @@ foreach ($colors as $color) {
     micStates[currentPlayerId] = false;
     
     function toggleMic(playerId) {
+        console.log('[Mic] toggleMic called for player:', playerId);
         const btn = document.getElementById('mic-btn-' + playerId);
-        if (!btn) return;
+        if (!btn) {
+            console.log('[Mic] Button not found');
+            return;
+        }
+        
+        console.log('[Mic] isVoiceSupported:', isVoiceSupported, 'voiceEnabled:', voiceEnabled);
         
         if (!isVoiceSupported) {
             showToast('{{ __("Audio non disponible pour ce mode") }}');
