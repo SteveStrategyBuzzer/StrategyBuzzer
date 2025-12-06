@@ -223,6 +223,21 @@ foreach ($colors as $color) {
         color: #EF5350;
     }
     
+    .player-action-btn.unavailable {
+        background: rgba(100, 100, 100, 0.3);
+        color: #888;
+        cursor: not-allowed;
+        position: relative;
+    }
+    
+    .player-action-btn.unavailable::after {
+        content: '🚫';
+        position: absolute;
+        font-size: 0.6rem;
+        bottom: -2px;
+        right: -2px;
+    }
+    
     .player-action-btn.speaking {
         animation: speakingPulse 0.8s ease-in-out infinite;
         box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
@@ -329,11 +344,16 @@ foreach ($colors as $color) {
     .color-option.taken::after {
         content: '✓';
         position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 18px;
         color: #fff;
+        text-shadow: 0 0 3px rgba(0,0,0,0.5);
     }
     
     .teams-section {
@@ -746,14 +766,20 @@ foreach ($colors as $color) {
                     
                     <div class="player-actions">
                         @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
-                        <button class="player-action-btn" 
-                                id="mic-btn-{{ $playerId }}" 
-                                data-player-id="{{ $playerId }}"
-                                data-action="mic"
-                                title="{{ __('Micro') }}">🎙️</button>
+                            @if($isCurrentPlayer)
+                            <button class="player-action-btn" 
+                                    id="mic-btn-{{ $playerId }}" 
+                                    data-player-id="{{ $playerId }}"
+                                    data-action="mic"
+                                    title="{{ __('Votre micro') }}">🎙️</button>
+                            @else
+                            <button class="player-action-btn unavailable" 
+                                    id="mic-btn-{{ $playerId }}" 
+                                    data-player-id="{{ $playerId }}"
+                                    title="{{ __('Micro de l\'adversaire') }}" disabled>🎙️</button>
+                            @endif
                         @else
-                        <button class="player-action-btn" 
-                                style="opacity: 0.3; cursor: not-allowed;"
+                        <button class="player-action-btn unavailable" 
                                 title="{{ __('Audio non disponible') }}" disabled>🎙️</button>
                         @endif
                     </div>
@@ -1099,8 +1125,10 @@ foreach ($colors as $color) {
         font-size: 1rem;
     }
     .chat-modal-content {
-        width: 400px;
-        height: 500px;
+        width: 90vw;
+        max-width: 400px;
+        height: 70vh;
+        max-height: 500px;
         display: flex;
         flex-direction: column;
     }
@@ -1159,12 +1187,14 @@ foreach ($colors as $color) {
     }
     .chat-input-area {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         padding-top: 10px;
         border-top: 1px solid rgba(255,255,255,0.1);
+        flex-shrink: 0;
     }
     #chat-input {
         flex: 1;
+        min-width: 0;
         background: rgba(0,0,0,0.3);
         border: 1px solid rgba(255,255,255,0.2);
         border-radius: 8px;
@@ -1176,10 +1206,12 @@ foreach ($colors as $color) {
         background: #4fc3f7;
         color: #000;
         border: none;
-        padding: 10px 15px;
+        padding: 10px 12px;
         border-radius: 8px;
         cursor: pointer;
         font-weight: bold;
+        flex-shrink: 0;
+        white-space: nowrap;
     }
     .no-messages {
         color: #666;
@@ -1344,11 +1376,15 @@ foreach ($colors as $color) {
             const data = await response.json();
             
             if (data.success) {
+                const avatarEl = document.getElementById('chat-avatar');
                 if (data.contact && data.contact.avatar_url) {
                     const avatar = data.contact.avatar_url;
                     const avatarSrc = avatar.includes('/') ? `/${avatar}` : `/images/avatars/standard/${avatar}.png`;
-                    document.getElementById('chat-avatar').src = avatarSrc;
+                    avatarEl.src = avatarSrc;
+                } else {
+                    avatarEl.src = '/images/avatars/standard/default.png';
                 }
+                avatarEl.onerror = function() { this.src = '/images/avatars/standard/default.png'; };
                 document.getElementById('chat-player-code').textContent = data.contact?.player_code || '';
                 
                 displayChatMessages(data.messages || []);
@@ -1400,6 +1436,20 @@ foreach ($colors as $color) {
         
         input.value = '';
         
+        const container = document.getElementById('chat-messages');
+        const noMessages = container.querySelector('.no-messages');
+        if (noMessages) noMessages.remove();
+        
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'chat-message mine';
+        msgDiv.innerHTML = `${escapeHtml(message)}<span class="time">{{ __("À l'instant") }}</span>`;
+        container.appendChild(msgDiv);
+        container.scrollTop = container.scrollHeight;
+        
+        if (window.lobbyChatManager) {
+            window.lobbyChatManager.sendMessage(message);
+        }
+        
         try {
             const response = await fetch('/chat/send', {
                 method: 'POST',
@@ -1415,22 +1465,11 @@ foreach ($colors as $color) {
             
             const data = await response.json();
             
-            if (data.success) {
-                const container = document.getElementById('chat-messages');
-                const noMessages = container.querySelector('.no-messages');
-                if (noMessages) noMessages.remove();
-                
-                const msgDiv = document.createElement('div');
-                msgDiv.className = 'chat-message mine';
-                msgDiv.innerHTML = `${escapeHtml(message)}<span class="time">{{ __("À l'instant") }}</span>`;
-                container.appendChild(msgDiv);
-                container.scrollTop = container.scrollHeight;
-            } else {
-                showToast(data.message || '{{ __("Erreur d\'envoi") }}');
+            if (!data.success) {
+                console.warn('REST chat backup failed:', data.message);
             }
         } catch (error) {
-            console.error('Error sending message:', error);
-            showToast('{{ __("Erreur de connexion") }}');
+            console.warn('REST chat backup error:', error);
         }
     }
     
@@ -1840,6 +1879,8 @@ foreach ($colors as $color) {
         waitingPlayer: '{{ __("En attente d\'un joueur...") }}',
         chat: '{{ __("Chat") }}',
         micro: '{{ __("Micro") }}',
+        yourMic: '{{ __("Votre micro") }}',
+        opponentMic: '{{ __("Micro de l\'adversaire") }}',
         players: '{{ __("Joueurs") }}',
         lobbyClosed: '{{ __("Le salon a été fermé") }}',
         waitingMessage: '{{ __("En attente de joueurs") }}',
@@ -1906,12 +1947,17 @@ foreach ($colors as $color) {
                     ${statusHtml}
                     
                     <div class="player-actions">
-                        ${isVoiceSupported ? `<button class="player-action-btn" 
+                        ${isVoiceSupported ? (isCurrentPlayer ? 
+                            `<button class="player-action-btn ${micStates[currentPlayerId] ? 'active' : ''}" 
                                 id="mic-btn-${playerId}" 
                                 data-player-id="${playerId}"
                                 data-action="mic"
-                                title="${translations.micro}">🎙️</button>` : `<button class="player-action-btn" 
-                                style="opacity: 0.3; cursor: not-allowed;"
+                                title="${translations.yourMic}">🎙️</button>` :
+                            `<button class="player-action-btn unavailable" 
+                                id="mic-btn-${playerId}" 
+                                data-player-id="${playerId}"
+                                title="${translations.opponentMic}" disabled>🎙️</button>`
+                        ) : `<button class="player-action-btn unavailable" 
                                 title="${translations.audioNotAvailable}" disabled>🎙️</button>`}
                     </div>
                 </div>
@@ -2076,6 +2122,93 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig, 'webrtc-app');
 const db = getFirestore(app);
+
+class LobbyChatManager {
+    constructor(lobbyCode, currentPlayerId, currentPlayerName) {
+        this.lobbyCode = lobbyCode;
+        this.currentPlayerId = currentPlayerId;
+        this.currentPlayerName = currentPlayerName;
+        this.unsubscriber = null;
+        this.isListening = false;
+    }
+    
+    getChatPath() {
+        return `lobby_chats/${this.lobbyCode}/messages`;
+    }
+    
+    startListening() {
+        if (this.isListening) return;
+        
+        const messagesRef = collection(db, this.getChatPath());
+        const q = query(messagesRef);
+        
+        this.unsubscriber = onSnapshot(q, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'added') {
+                    const data = change.doc.data();
+                    if (data.senderId !== this.currentPlayerId) {
+                        this.displayIncomingMessage(data);
+                    }
+                }
+            });
+        });
+        
+        this.isListening = true;
+        console.log('[LobbyChat] Started listening for messages');
+    }
+    
+    displayIncomingMessage(data) {
+        const chatModal = document.getElementById('chat-modal');
+        if (!chatModal || chatModal.style.display === 'none') {
+            return;
+        }
+        
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+        
+        const noMessages = container.querySelector('.no-messages');
+        if (noMessages) noMessages.remove();
+        
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'chat-message theirs';
+        msgDiv.innerHTML = `<strong>${this.escapeHtml(data.senderName)}</strong><br>${this.escapeHtml(data.message)}<span class="time">{{ __("À l'instant") }}</span>`;
+        container.appendChild(msgDiv);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    async sendMessage(message) {
+        try {
+            const messagesRef = collection(db, this.getChatPath());
+            await addDoc(messagesRef, {
+                senderId: this.currentPlayerId,
+                senderName: this.currentPlayerName,
+                message: message,
+                timestamp: serverTimestamp()
+            });
+            console.log('[LobbyChat] Message sent via Firebase');
+            return true;
+        } catch (error) {
+            console.error('[LobbyChat] Error sending message:', error);
+            return false;
+        }
+    }
+    
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    stopListening() {
+        if (this.unsubscriber) {
+            this.unsubscriber();
+            this.unsubscriber = null;
+        }
+        this.isListening = false;
+        console.log('[LobbyChat] Stopped listening');
+    }
+}
 
 class WebRTCManager {
     constructor(lobbyCode, currentPlayerId, mode, teamId = null) {
@@ -2614,9 +2747,37 @@ const teamId = null;
 window.webrtcManager = new WebRTCManager(lobbyCode, currentPlayerId, mode, teamId);
 console.log('[WebRTC] Manager assigned to window.webrtcManager:', !!window.webrtcManager);
 
+const currentPlayerName = @json($players[$currentPlayerId]['name'] ?? 'Joueur');
+window.lobbyChatManager = new LobbyChatManager(lobbyCode, currentPlayerId, currentPlayerName);
+window.lobbyChatManager.startListening();
+console.log('[LobbyChat] Manager initialized for lobby:', lobbyCode);
+
 window.addEventListener('beforeunload', () => {
     if (window.webrtcManager) {
         window.webrtcManager.cleanup();
+    }
+    if (window.lobbyChatManager) {
+        window.lobbyChatManager.stopListening();
+    }
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        if (window.webrtcManager) {
+            window.webrtcManager.cleanup();
+        }
+        if (window.lobbyChatManager) {
+            window.lobbyChatManager.stopListening();
+        }
+    }
+});
+
+window.addEventListener('pagehide', () => {
+    if (window.webrtcManager) {
+        window.webrtcManager.cleanup();
+    }
+    if (window.lobbyChatManager) {
+        window.lobbyChatManager.stopListening();
     }
 });
 
