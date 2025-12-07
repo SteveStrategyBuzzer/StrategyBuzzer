@@ -464,6 +464,9 @@ $roomCode = $params['room_code'] ?? null;
         left: 50%;
         transform: translateX(-50%);
         z-index: 100;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
     
     .buzz-button {
@@ -472,6 +475,7 @@ $roomCode = $params['room_code'] ?? null;
         cursor: pointer;
         transition: transform 0.2s ease;
         padding: 0;
+        display: block;
     }
     
     .buzz-button:hover { transform: scale(1.05); }
