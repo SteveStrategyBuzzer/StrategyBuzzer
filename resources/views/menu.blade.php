@@ -20,10 +20,11 @@
     $duoFullUnlocked = $choixNiveau >= 11;    // Après boss niveau 10
     $duoUnlocked = true;                       // Duo toujours accessible pour invitations
     
-    // Ligue : 25 matchs Duo joués (victoires + défaites)
+    // Ligue : acheté OU 25 matchs Duo joués (victoires + défaites)
     $profileStats = $user ? ProfileStat::where('user_id', $user->id)->first() : null;
     $duoMatches = $profileStats ? (($profileStats->duo_victoires ?? 0) + ($profileStats->duo_defaites ?? 0)) : 0;
-    $ligueUnlocked = $duoMatches >= 25;
+    $leaguePurchased = $user && ($user->league_purchased ?? false);
+    $ligueUnlocked = $leaguePurchased || $duoMatches >= 25;
     
     // Maître du Jeu : verrouillé SEULEMENT si acheté mais profil incomplet
     $masterPurchased = $user && ($user->master_purchased ?? false);
