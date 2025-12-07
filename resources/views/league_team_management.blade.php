@@ -11,22 +11,35 @@
 
     <div class="team-management-content">
         @if(!$team)
-            <div class="create-team-section">
-                <h2>🛡️ Créer une Équipe</h2>
-                <p>Formez une équipe de 5 joueurs pour participer à la Ligue par Équipe</p>
+            <div class="menu-cards-grid">
+                <a href="{{ route('league.team.search') }}" class="menu-action-card">
+                    <div class="menu-card-icon">🔍</div>
+                    <h3>{{ __('Rechercher une équipe') }}</h3>
+                    <p>{{ __('Trouvez une équipe qui recrute et rejoignez-la') }}</p>
+                </a>
+                <div class="menu-action-card" onclick="toggleCreateForm()">
+                    <div class="menu-card-icon">➕</div>
+                    <h3>{{ __('Créer une équipe') }}</h3>
+                    <p>{{ __('Formez votre propre équipe et invitez des joueurs') }}</p>
+                </div>
+            </div>
+
+            <div class="create-team-section" id="createTeamSection" style="display: none;">
+                <h2>🛡️ {{ __('Créer une Équipe') }}</h2>
+                <p>{{ __('Formez une équipe de 5 joueurs pour participer à la Ligue par Équipe') }}</p>
                 
                 <div class="create-team-form">
                     <div class="form-group">
-                        <label>Nom de l'équipe</label>
-                        <input type="text" id="teamName" placeholder="ex: Les Champions" maxlength="50">
+                        <label>{{ __('Nom de l\'équipe') }}</label>
+                        <input type="text" id="teamName" placeholder="{{ __('ex: Les Champions') }}" maxlength="50">
                     </div>
                     <div class="form-group">
-                        <label>Tag (3-10 caractères majuscules/chiffres)</label>
-                        <input type="text" id="teamTag" placeholder="ex: CHAMP" maxlength="10" style="text-transform: uppercase;">
+                        <label>{{ __('Tag (3-10 caractères majuscules/chiffres)') }}</label>
+                        <input type="text" id="teamTag" placeholder="{{ __('ex: CHAMP') }}" maxlength="10" style="text-transform: uppercase;">
                     </div>
                     <button id="createTeamBtn" class="btn-primary btn-large">
                         <span class="btn-icon">⚔️</span>
-                        CRÉER L'ÉQUIPE
+                        {{ __('CRÉER L\'ÉQUIPE') }}
                     </button>
                 </div>
                 <div id="createError" class="error-message" style="display: none;"></div>
@@ -65,42 +78,50 @@
                 </div>
 
                 <div class="team-members-section">
-                    <h3>👥 Membres ({{ $team->teamMembers->count() }}/5)</h3>
+                    <h3>👥 {{ __('Membres') }} ({{ $team->members->count() }}/5)</h3>
                     <div class="members-list">
-                        @foreach($team->teamMembers as $member)
-                            <div class="member-card">
+                        @foreach($team->members as $member)
+                            <div class="member-card" onclick="window.location.href='{{ route('league.team.details', $team->id) }}'">
                                 <div class="member-info">
                                     <div class="member-avatar">
-                                        @if($member->user->avatar_url)
-                                            <img src="{{ $member->user->avatar_url }}" alt="Avatar">
+                                        @if($member->avatar_url ?? null)
+                                            <img src="{{ $member->avatar_url }}" alt="Avatar">
                                         @else
-                                            <div class="default-avatar">{{ substr($member->user->name, 0, 1) }}</div>
+                                            <div class="default-avatar">{{ strtoupper(substr($member->name, 0, 1)) }}</div>
                                         @endif
                                     </div>
                                     <div>
-                                        <p class="member-name">{{ $member->user->name }}</p>
+                                        <p class="member-name">{{ $member->name }}</p>
                                         <p class="member-role">
-                                            @if($member->role === 'captain')
-                                                👑 Capitaine
+                                            @if($team->captain_id === $member->id)
+                                                👑 {{ __('Capitaine') }}
                                             @else
-                                                Membre
+                                                {{ __('Membre') }}
                                             @endif
                                         </p>
                                     </div>
                                 </div>
-                                @if($team->captain_id === Auth::id() && $member->user_id !== Auth::id())
-                                    <button onclick="kickMember({{ $member->user_id }})" class="btn-kick">
-                                        Expulser
+                                @if($team->captain_id === Auth::id() && $member->id !== Auth::id())
+                                    <button onclick="event.stopPropagation(); kickMember({{ $member->id }})" class="btn-kick">
+                                        {{ __('Expulser') }}
                                     </button>
                                 @endif
                             </div>
                         @endforeach
                     </div>
                 </div>
+                
+                @if($team->captain_id === Auth::id())
+                <div class="captain-actions">
+                    <a href="{{ route('league.team.captain') }}" class="btn-captain">
+                        ⚙️ {{ __('Gérer les demandes d\'accès') }}
+                    </a>
+                </div>
+                @endif
 
-                @if($team->captain_id === Auth::id() && $team->teamMembers->count() < 5)
+                @if($team->captain_id === Auth::id() && $team->members->count() < 5)
                     <div class="invite-section">
-                        <h3>📩 Inviter un Joueur</h3>
+                        <h3>📩 {{ __('Inviter un Joueur') }}</h3>
                         <div class="invite-form">
                             <input type="text" id="playerName" placeholder="Nom du joueur">
                             <button id="inviteBtn" class="btn-primary">Inviter</button>
@@ -111,17 +132,17 @@
                 @endif
 
                 <div class="team-actions">
-                    @if($team->teamMembers->count() >= 5)
+                    @if($team->members->count() >= 5)
                         <button onclick="window.location.href='{{ route('league.team.lobby') }}'" class="btn-primary btn-large">
                             <span class="btn-icon">🎮</span>
-                            ALLER AU LOBBY
+                            {{ __('ALLER AU LOBBY') }}
                         </button>
                     @else
-                        <p class="info-message">⚠️ Votre équipe doit avoir 5 joueurs pour participer aux matchs</p>
+                        <p class="info-message">⚠️ {{ __('Votre équipe doit avoir 5 joueurs pour participer aux matchs') }}</p>
                     @endif
                     
                     <button onclick="leaveTeam()" class="btn-danger">
-                        {{ $team->captain_id === Auth::id() && $team->teamMembers->count() > 1 ? 'Quitter & Transférer Capitanat' : 'Quitter l\'Équipe' }}
+                        {{ $team->captain_id === Auth::id() && $team->members->count() > 1 ? __('Quitter & Transférer Capitanat') : __('Quitter l\'Équipe') }}
                     </button>
                 </div>
             </div>
@@ -134,6 +155,68 @@
     max-width: 900px;
     margin: 0 auto;
     padding: 20px;
+}
+
+.menu-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.menu-action-card {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #0f3460;
+    border-radius: 15px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: white;
+    display: block;
+}
+
+.menu-action-card:hover {
+    transform: translateY(-5px);
+    border-color: #00d4ff;
+    box-shadow: 0 8px 24px rgba(0, 212, 255, 0.2);
+}
+
+.menu-card-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.menu-action-card h3 {
+    color: #00d4ff;
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+}
+
+.menu-action-card p {
+    color: #aaa;
+    font-size: 0.95rem;
+}
+
+.captain-actions {
+    margin: 1.5rem 0;
+}
+
+.btn-captain {
+    display: inline-block;
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #1a1a2e;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.btn-captain:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
 }
 
 .create-team-section, .team-info-section {
@@ -441,25 +524,32 @@
 </style>
 
 <script>
+function toggleCreateForm() {
+    const section = document.getElementById('createTeamSection');
+    if (section) {
+        section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
 document.getElementById('createTeamBtn')?.addEventListener('click', async () => {
     const name = document.getElementById('teamName').value.trim();
     const tag = document.getElementById('teamTag').value.trim().toUpperCase();
     const errorDiv = document.getElementById('createError');
 
     if (!name || !tag) {
-        errorDiv.textContent = 'Veuillez remplir tous les champs';
+        errorDiv.textContent = '{{ __("Veuillez remplir tous les champs") }}';
         errorDiv.style.display = 'block';
         return;
     }
 
     if (!/^[A-Z0-9]+$/.test(tag)) {
-        errorDiv.textContent = 'Le tag doit contenir uniquement des majuscules et des chiffres';
+        errorDiv.textContent = '{{ __("Le tag doit contenir uniquement des majuscules et des chiffres") }}';
         errorDiv.style.display = 'block';
         return;
     }
 
     try {
-        const response = await fetch('/api/league/team/create-team', {
+        const response = await fetch('{{ route("league.team.create") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

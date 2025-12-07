@@ -265,9 +265,23 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
 /* ===== LIGUE ÉQUIPE ===== */
 Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(function () {
     Route::get('/management', [App\Http\Controllers\LeagueTeamController::class, 'showTeamManagement'])->name('management');
+    Route::get('/search', [App\Http\Controllers\LeagueTeamController::class, 'searchTeams'])->name('search');
+    Route::get('/details/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'showTeamDetails'])->name('details');
+    Route::get('/captain', [App\Http\Controllers\LeagueTeamController::class, 'showCaptainPanel'])->name('captain');
+    Route::post('/create', [App\Http\Controllers\LeagueTeamController::class, 'createTeam'])->name('create');
+    Route::post('/invite', [App\Http\Controllers\LeagueTeamController::class, 'invitePlayer'])->name('invite');
+    Route::post('/request/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'requestJoin'])->name('request');
+    Route::delete('/request/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'cancelRequest'])->name('request.cancel');
+    Route::post('/join-request/{requestId}/accept', [App\Http\Controllers\LeagueTeamController::class, 'acceptJoinRequest'])->name('join-request.accept');
+    Route::post('/join-request/{requestId}/reject', [App\Http\Controllers\LeagueTeamController::class, 'rejectJoinRequest'])->name('join-request.reject');
+    Route::post('/toggle-recruiting', [App\Http\Controllers\LeagueTeamController::class, 'toggleRecruiting'])->name('toggle-recruiting');
+    Route::post('/leave', [App\Http\Controllers\LeagueTeamController::class, 'leaveTeam'])->name('leave');
+    Route::post('/kick', [App\Http\Controllers\LeagueTeamController::class, 'kickMember'])->name('kick');
     Route::get('/lobby', [App\Http\Controllers\LeagueTeamController::class, 'showLobby'])->name('lobby');
     Route::get('/game/{match}', [App\Http\Controllers\LeagueTeamController::class, 'showGame'])->name('game');
     Route::get('/results/{match}', [App\Http\Controllers\LeagueTeamController::class, 'showResults'])->name('results');
+    Route::post('/invitation/{invitationId}/accept', [App\Http\Controllers\LeagueTeamController::class, 'acceptInvitation'])->name('invitation.accept');
+    Route::post('/invitation/{invitationId}/decline', [App\Http\Controllers\LeagueTeamController::class, 'declineInvitation'])->name('invitation.decline');
 });
 
 /* ===== MAÎTRE DU JEU ===== */

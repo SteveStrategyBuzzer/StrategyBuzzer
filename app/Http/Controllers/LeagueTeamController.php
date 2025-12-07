@@ -7,10 +7,12 @@ use App\Services\LeagueTeamService;
 use App\Services\LeagueTeamFirestoreService;
 use App\Models\Team;
 use App\Models\TeamInvitation;
+use App\Models\TeamJoinRequest;
 use App\Models\LeagueTeamMatch;
+use App\Models\User;
+use App\Models\ProfileStat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 
 class LeagueTeamController extends Controller
 {
@@ -31,23 +33,279 @@ class LeagueTeamController extends Controller
     public function showTeamManagement()
     {
         $user = Auth::user();
-        $team = $user->teams()->with(['captain', 'teamMembers.user'])->first();
-        $pendingInvitations = $user->teamInvitations()
+        $team = $user->teams()->with(['captain', 'members'])->first();
+        $pendingInvitations = TeamInvitation::where('user_id', $user->id)
             ->with(['team.captain'])
             ->where('status', 'pending')
             ->get();
 
-        return Inertia::render('LeagueTeamManagement', [
-            'user' => $user,
-            'team' => $team,
-            'pendingInvitations' => $pendingInvitations,
+        return view('league_team_management', compact('user', 'team', 'pendingInvitations'));
+    }
+
+    public function searchTeams(Request $request)
+    {
+        $user = Auth::user();
+        $search = $request->get('q', '');
+        
+        $teamsQuery = Team::where('is_recruiting', true)
+            ->withCount('members')
+            ->having('members_count', '<', 5)
+            ->with(['captain', 'members']);
+        
+        if ($search) {
+            $teamsQuery->where(function($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('tag', 'ilike', "%{$search}%");
+            });
+        }
+        
+        $teams = $teamsQuery->orderBy('points', 'desc')->limit(20)->get();
+        
+        $pendingRequests = TeamJoinRequest::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->pluck('team_id')
+            ->toArray();
+
+        return view('league_team_search', compact('user', 'teams', 'search', 'pendingRequests'));
+    }
+
+    public function showTeamDetails($teamId)
+    {
+        $user = Auth::user();
+        $team = Team::with(['captain', 'members.profileStat'])->findOrFail($teamId);
+        
+        $hasPendingRequest = TeamJoinRequest::where('team_id', $teamId)
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->exists();
+        
+        $isMember = $team->isMember($user->id);
+        $isCaptain = $team->isCaptain($user->id);
+        
+        $teamStrengths = $this->calculateTeamStrengths($team);
+        $userContribution = $this->calculateUserContribution($user, $team);
+
+        return view('league_team_details', compact(
+            'user', 'team', 'hasPendingRequest', 'isMember', 'isCaptain', 
+            'teamStrengths', 'userContribution'
+        ));
+    }
+
+    public function showCaptainPanel()
+    {
+        $user = Auth::user();
+        $team = $user->teams()->with(['captain', 'members'])->first();
+        
+        if (!$team || !$team->isCaptain($user->id)) {
+            return redirect()->route('league.team.management')
+                ->with('error', __('Vous devez être capitaine pour accéder à cette page.'));
+        }
+        
+        $joinRequests = TeamJoinRequest::where('team_id', $team->id)
+            ->where('status', 'pending')
+            ->with(['user.profileStat'])
+            ->get();
+        
+        $sentInvitations = TeamInvitation::where('team_id', $team->id)
+            ->where('status', 'pending')
+            ->with('user')
+            ->get();
+
+        return view('league_team_captain', compact('user', 'team', 'joinRequests', 'sentInvitations'));
+    }
+
+    public function requestJoin(Request $request, $teamId)
+    {
+        $user = Auth::user();
+        $team = Team::findOrFail($teamId);
+        
+        if ($user->teams()->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => __('Vous êtes déjà dans une équipe.')
+            ], 400);
+        }
+        
+        if ($team->isFull()) {
+            return response()->json([
+                'success' => false,
+                'error' => __('Cette équipe est complète.')
+            ], 400);
+        }
+        
+        $existingRequest = TeamJoinRequest::where('team_id', $teamId)
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->first();
+        
+        if ($existingRequest) {
+            return response()->json([
+                'success' => false,
+                'error' => __('Vous avez déjà une demande en attente pour cette équipe.')
+            ], 400);
+        }
+        
+        TeamJoinRequest::create([
+            'team_id' => $teamId,
+            'user_id' => $user->id,
+            'message' => $request->get('message', ''),
+            'status' => 'pending',
         ]);
+        
+        return response()->json(['success' => true]);
+    }
+
+    public function cancelRequest($teamId)
+    {
+        $user = Auth::user();
+        
+        TeamJoinRequest::where('team_id', $teamId)
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->delete();
+        
+        return response()->json(['success' => true]);
+    }
+
+    public function acceptJoinRequest($requestId)
+    {
+        $user = Auth::user();
+        $joinRequest = TeamJoinRequest::with('user')->findOrFail($requestId);
+        $team = Team::findOrFail($joinRequest->team_id);
+        
+        if (!$team->isCaptain($user->id)) {
+            return response()->json([
+                'success' => false,
+                'error' => __('Seul le capitaine peut accepter les demandes.')
+            ], 403);
+        }
+        
+        if ($team->isFull()) {
+            return response()->json([
+                'success' => false,
+                'error' => __('L\'équipe est complète.')
+            ], 400);
+        }
+        
+        $this->teamService->addMember($team, $joinRequest->user);
+        $joinRequest->update(['status' => 'accepted']);
+        
+        TeamJoinRequest::where('user_id', $joinRequest->user_id)
+            ->where('status', 'pending')
+            ->where('id', '!=', $requestId)
+            ->update(['status' => 'cancelled']);
+        
+        return response()->json(['success' => true]);
+    }
+
+    public function rejectJoinRequest($requestId)
+    {
+        $user = Auth::user();
+        $joinRequest = TeamJoinRequest::findOrFail($requestId);
+        $team = Team::findOrFail($joinRequest->team_id);
+        
+        if (!$team->isCaptain($user->id)) {
+            return response()->json([
+                'success' => false,
+                'error' => __('Seul le capitaine peut refuser les demandes.')
+            ], 403);
+        }
+        
+        $joinRequest->update(['status' => 'rejected']);
+        
+        return response()->json(['success' => true]);
+    }
+
+    public function toggleRecruiting()
+    {
+        $user = Auth::user();
+        $team = $user->teams()->first();
+        
+        if (!$team || !$team->isCaptain($user->id)) {
+            return response()->json([
+                'success' => false,
+                'error' => __('Seul le capitaine peut modifier ce paramètre.')
+            ], 403);
+        }
+        
+        $team->update(['is_recruiting' => !$team->is_recruiting]);
+        
+        return response()->json([
+            'success' => true,
+            'is_recruiting' => $team->is_recruiting
+        ]);
+    }
+
+    private function calculateTeamStrengths(Team $team): array
+    {
+        $members = $team->members;
+        if ($members->isEmpty()) {
+            return [
+                'geography' => 0,
+                'history' => 0,
+                'sports' => 0,
+                'sciences' => 0,
+                'cinema' => 0,
+                'art' => 0,
+                'animals' => 0,
+                'cuisine' => 0,
+            ];
+        }
+        
+        $themes = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
+        $strengths = [];
+        
+        foreach ($themes as $theme) {
+            $total = 0;
+            foreach ($members as $member) {
+                $stats = $member->profileStat;
+                if ($stats) {
+                    $themeStats = $stats->theme_stats[$theme] ?? ['correct' => 0, 'total' => 0];
+                    $correct = $themeStats['correct'] ?? 0;
+                    $totalQ = $themeStats['total'] ?? 0;
+                    $total += $totalQ > 0 ? ($correct / $totalQ) * 100 : 50;
+                } else {
+                    $total += 50;
+                }
+            }
+            $strengths[$theme] = round($total / $members->count(), 1);
+        }
+        
+        return $strengths;
+    }
+
+    private function calculateUserContribution(User $user, Team $team): array
+    {
+        $stats = $user->profileStat;
+        $themes = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
+        $contribution = [];
+        
+        $teamStrengths = $this->calculateTeamStrengths($team);
+        
+        foreach ($themes as $theme) {
+            $userStrength = 50;
+            if ($stats) {
+                $themeStats = $stats->theme_stats[$theme] ?? ['correct' => 0, 'total' => 0];
+                $correct = $themeStats['correct'] ?? 0;
+                $total = $themeStats['total'] ?? 0;
+                $userStrength = $total > 0 ? ($correct / $total) * 100 : 50;
+            }
+            
+            $diff = $userStrength - ($teamStrengths[$theme] ?? 50);
+            $contribution[$theme] = [
+                'user_strength' => round($userStrength, 1),
+                'team_strength' => $teamStrengths[$theme] ?? 50,
+                'diff' => round($diff, 1),
+            ];
+        }
+        
+        return $contribution;
     }
 
     public function showLobby()
     {
         $user = Auth::user();
-        $team = $user->teams()->with(['captain', 'teamMembers.user'])->first();
+        $team = $user->teams()->with(['captain', 'members'])->first();
 
         if (!$team) {
             return redirect()->route('league.team.management');
@@ -55,11 +313,7 @@ class LeagueTeamController extends Controller
 
         $rankings = $this->leagueTeamService->getTeamRankings($team->division);
 
-        return Inertia::render('LeagueTeamLobby', [
-            'user' => $user,
-            'team' => $team,
-            'rankings' => $rankings,
-        ]);
+        return view('league_team_lobby', compact('user', 'team', 'rankings'));
     }
 
     public function createTeam(Request $request)
@@ -98,7 +352,7 @@ class LeagueTeamController extends Controller
         $team = $user->teams()->first();
 
         if (!$team) {
-            return response()->json(['error' => 'Vous n\'êtes pas dans une équipe.'], 400);
+            return response()->json(['error' => __('Vous n\'êtes pas dans une équipe.')], 400);
         }
 
         try {
@@ -158,7 +412,7 @@ class LeagueTeamController extends Controller
         $team = $user->teams()->first();
 
         if (!$team) {
-            return response()->json(['error' => 'Vous n\'êtes pas dans une équipe.'], 400);
+            return response()->json(['error' => __('Vous n\'êtes pas dans une équipe.')], 400);
         }
 
         try {
@@ -183,7 +437,7 @@ class LeagueTeamController extends Controller
         $team = $user->teams()->first();
 
         if (!$team) {
-            return response()->json(['error' => 'Vous n\'êtes pas dans une équipe.'], 400);
+            return response()->json(['error' => __('Vous n\'êtes pas dans une équipe.')], 400);
         }
 
         try {
@@ -204,7 +458,7 @@ class LeagueTeamController extends Controller
         $team = $user->teams()->first();
 
         if (!$team) {
-            return response()->json(['error' => 'Vous n\'êtes pas dans une équipe.'], 400);
+            return response()->json(['error' => __('Vous n\'êtes pas dans une équipe.')], 400);
         }
 
         try {
@@ -251,13 +505,10 @@ class LeagueTeamController extends Controller
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
-            return redirect()->route('league.team.lobby')->with('error', 'Vous n\'êtes pas dans ce match.');
+            return redirect()->route('league.team.lobby')->with('error', __('Vous n\'êtes pas dans ce match.'));
         }
 
-        return Inertia::render('LeagueTeamGame', [
-            'user' => $user,
-            'match' => $match,
-        ]);
+        return view('league_team_game', compact('user', 'match'));
     }
 
     public function getQuestion($matchId)
@@ -269,7 +520,7 @@ class LeagueTeamController extends Controller
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
-            return response()->json(['error' => 'Non autorisé.'], 403);
+            return response()->json(['error' => __('Non autorisé.')], 403);
         }
 
         try {
@@ -294,7 +545,7 @@ class LeagueTeamController extends Controller
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
-            return response()->json(['error' => 'Non autorisé.'], 403);
+            return response()->json(['error' => __('Non autorisé.')], 403);
         }
 
         try {
@@ -322,7 +573,7 @@ class LeagueTeamController extends Controller
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
-            return response()->json(['error' => 'Non autorisé.'], 403);
+            return response()->json(['error' => __('Non autorisé.')], 403);
         }
 
         try {
@@ -358,15 +609,12 @@ class LeagueTeamController extends Controller
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
-            return redirect()->route('league.team.lobby')->with('error', 'Vous n\'êtes pas dans ce match.');
+            return redirect()->route('league.team.lobby')->with('error', __('Vous n\'êtes pas dans ce match.'));
         }
 
         $this->firestoreService->deleteMatchSession($match->id);
 
-        return Inertia::render('LeagueTeamResults', [
-            'user' => $user,
-            'match' => $match,
-        ]);
+        return view('league_team_results', compact('user', 'match'));
     }
 
     public function getRankings($division)
@@ -376,9 +624,6 @@ class LeagueTeamController extends Controller
         return response()->json($rankings);
     }
 
-    /**
-     * API: Synchronise l'état du jeu pour polling temps réel
-     */
     public function syncGameState($matchId)
     {
         $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
@@ -388,7 +633,7 @@ class LeagueTeamController extends Controller
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
-            return response()->json(['error' => 'Non autorisé.'], 403);
+            return response()->json(['error' => __('Non autorisé.')], 403);
         }
 
         $firestoreState = $this->firestoreService->syncGameState($match->id);
