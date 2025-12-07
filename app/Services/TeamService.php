@@ -11,24 +11,27 @@ use Illuminate\Support\Facades\DB;
 
 class TeamService
 {
-    public function createTeam(User $captain, string $name, string $tag): Team
+    public function createTeam(User $captain, string $name, ?string $emblemCategory = 'animals', ?int $emblemIndex = 1, ?string $customEmblemPath = null): Team
     {
         if ($captain->teams()->exists()) {
             throw new \Exception('Vous êtes déjà dans une équipe.');
         }
 
-        if (Team::where('tag', $tag)->exists()) {
-            throw new \Exception('Ce tag est déjà utilisé.');
+        if (strlen($name) > 10) {
+            throw new \Exception('Le nom ne doit pas dépasser 10 caractères.');
         }
 
-        return DB::transaction(function () use ($captain, $name, $tag) {
+        return DB::transaction(function () use ($captain, $name, $emblemCategory, $emblemIndex, $customEmblemPath) {
             $team = Team::create([
                 'name' => $name,
-                'tag' => $tag,
+                'tag' => strtoupper(substr($name, 0, 4)),
                 'captain_id' => $captain->id,
                 'division' => 'bronze',
                 'points' => 0,
                 'level' => 1,
+                'emblem_category' => $emblemCategory ?: 'animals',
+                'emblem_index' => $emblemIndex ?: 1,
+                'custom_emblem_path' => $customEmblemPath,
             ]);
 
             TeamMember::create([

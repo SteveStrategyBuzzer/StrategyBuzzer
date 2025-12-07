@@ -30,13 +30,71 @@
                 
                 <div class="create-team-form">
                     <div class="form-group">
-                        <label>{{ __('Nom de l\'équipe') }}</label>
-                        <input type="text" id="teamName" placeholder="{{ __('ex: Les Champions') }}" maxlength="50">
+                        <label>{{ __('Nom de l\'équipe') }} <span class="char-limit">({{ __('max 10 caractères') }})</span></label>
+                        <input type="text" id="teamName" placeholder="{{ __('ex: CHAMPIONS') }}" maxlength="10">
+                        <div class="char-counter"><span id="nameCharCount">0</span>/10</div>
                     </div>
+                    
                     <div class="form-group">
-                        <label>{{ __('Tag (3-10 caractères majuscules/chiffres)') }}</label>
-                        <input type="text" id="teamTag" placeholder="{{ __('ex: CHAMP') }}" maxlength="10" style="text-transform: uppercase;">
+                        <label>{{ __('Emblème de l\'équipe') }}</label>
+                        
+                        <div class="emblem-selector">
+                            <div class="emblem-preview" id="emblemPreview">
+                                <div class="emblem-placeholder">🛡️</div>
+                            </div>
+                            
+                            <div class="emblem-tabs">
+                                <button type="button" class="emblem-tab active" data-tab="categories">{{ __('Choisir') }}</button>
+                                <button type="button" class="emblem-tab" data-tab="upload">{{ __('Importer') }}</button>
+                            </div>
+                            
+                            <div class="emblem-tab-content" id="categoriesTab">
+                                <div class="emblem-categories">
+                                    @php
+                                    $categories = [
+                                        'animals' => ['name' => 'Animaux', 'icon' => '🦁'],
+                                        'warriors' => ['name' => 'Guerriers', 'icon' => '⚔️'],
+                                        'sports' => ['name' => 'Sport', 'icon' => '🏆'],
+                                        'symbols' => ['name' => 'Symboles', 'icon' => '🌟'],
+                                        'elements' => ['name' => 'Éléments', 'icon' => '🔥'],
+                                        'gaming' => ['name' => 'Gaming', 'icon' => '🎮'],
+                                        'royalty' => ['name' => 'Royauté', 'icon' => '👑'],
+                                        'flags' => ['name' => 'Drapeaux', 'icon' => '🌍'],
+                                        'masks' => ['name' => 'Masques', 'icon' => '🎭'],
+                                        'gems' => ['name' => 'Gemmes', 'icon' => '💎'],
+                                    ];
+                                    @endphp
+                                    @foreach($categories as $key => $cat)
+                                        <button type="button" class="category-btn" data-category="{{ $key }}">
+                                            <span class="cat-icon">{{ $cat['icon'] }}</span>
+                                            <span class="cat-name">{{ __($cat['name']) }}</span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                
+                                <div class="emblem-grid" id="emblemGrid" style="display: none;">
+                                    <button type="button" class="back-to-categories" id="backToCategories">← {{ __('Retour') }}</button>
+                                    <div class="emblems-container" id="emblemsContainer"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="emblem-tab-content" id="uploadTab" style="display: none;">
+                                <div class="upload-zone" id="uploadZone">
+                                    <input type="file" id="emblemUpload" accept="image/png,image/jpeg,image/gif,image/webp" style="display: none;">
+                                    <div class="upload-placeholder">
+                                        <span class="upload-icon">📁</span>
+                                        <p>{{ __('Cliquez ou déposez une image') }}</p>
+                                        <small>PNG, JPG, GIF, WEBP (max 2MB)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="emblemCategory" value="animals">
+                        <input type="hidden" id="emblemIndex" value="1">
+                        <input type="hidden" id="customEmblem" value="">
                     </div>
+                    
                     <button id="createTeamBtn" class="btn-primary btn-large">
                         <span class="btn-icon">⚔️</span>
                         {{ __('CRÉER L\'ÉQUIPE') }}
@@ -65,9 +123,37 @@
         @else
             <div class="team-info-section">
                 <div class="team-header-card">
-                    <h2>{{ $team->name }} <span class="team-tag">[{{ $team->tag }}]</span></h2>
-                    <div class="team-division {{ $team->division }}">
-                        {{ ucfirst($team->division) }} - {{ $team->points }} pts
+                    <div class="team-header-with-emblem">
+                        <div class="team-emblem">
+                            @if($team->custom_emblem_path)
+                                <img src="{{ asset('storage/' . $team->custom_emblem_path) }}" alt="Emblem">
+                            @else
+                                @php
+                                    $emblems = [
+                                        'animals' => ['🦁', '🐯', '🐻', '🦊', '🐺', '🦅', '🦈', '🐍', '🦎', '🐊', '🦂', '🦀', '🐙', '🦑', '🐋', '🐬', '🦭', '🐘', '🦏', '🦛', '🐪', '🦒', '🦘', '🦬', '🐃', '🦌', '🦙', '🐎', '🦓', '🐗', '🐺', '🦇', '🐀', '🐉', '🦎', '🦖', '🦕', '🐢', '🐸', '🐊', '🦜', '🦩', '🦚', '🦢', '🦤', '🕊️', '🐝', '🦋', '🐞', '🦗'],
+                                        'warriors' => ['⚔️', '🗡️', '🛡️', '🏹', '🪓', '🔱', '⚒️', '🪃', '💣', '🧨', '💥', '🎯', '🥷', '👺', '👹', '💀', '☠️', '👻', '🤖', '👾', '🦾', '🦿', '🧠', '👁️', '🫀', '🪖', '🎖️', '🏅', '🥇', '⭐', '🌟', '✨', '💫', '🔥', '❄️', '⚡', '💨', '🌪️', '🌊', '🌋', '☄️', '🌙', '☀️', '🌈', '🎭', '👑', '💎', '🔮', '🧿', '⚱️'],
+                                        'sports' => ['🏆', '🥇', '🥈', '🥉', '🏅', '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥊', '🥋', '⛳', '⛸️', '🎿', '🛷', '🏂', '🏋️', '🤸', '🚴', '🏊', '🤽', '🚣', '🧗', '🤺', '🏄', '🎳', '♟️', '🎯', '🏹', '🥏', '🪀', '🛹', '🛼', '⛹️', '🤾', '🤿', '🪂', '🏇', '🚵', '🧘', '🎽', '🥅', '🪁', '🎣'],
+                                        'symbols' => ['🌟', '⭐', '✨', '💫', '🔥', '💧', '💎', '❤️', '💜', '💙', '💚', '💛', '🧡', '🖤', '🤍', '❤️‍🔥', '💝', '💖', '💗', '💓', '💕', '💞', '💘', '💌', '🎀', '🎁', '🎊', '🎉', '🎈', '🎆', '🎇', '✳️', '❇️', '💠', '🔷', '🔶', '🔹', '🔸', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤', '⚫', '⚪', '🔴', '🟥', '🟧', '🟨'],
+                                        'elements' => ['🔥', '💧', '🌊', '💨', '🌪️', '⚡', '❄️', '☃️', '🌙', '☀️', '🌈', '⭐', '🌟', '✨', '💫', '☄️', '🌋', '🏔️', '⛰️', '🌍', '🌎', '🌏', '🪐', '💎', '🔮', '🧊', '🌡️', '🌀', '🌁', '🌫️', '🌤️', '⛅', '🌥️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '☔', '💦', '💥', '🏝️', '🏜️', '🌵', '🌴', '🌲', '🌳', '🌾', '🍀', '🍁'],
+                                        'gaming' => ['🎮', '🕹️', '👾', '🤖', '🎯', '🎲', '♟️', '🃏', '🀄', '🎰', '🎪', '🎭', '🎬', '🎥', '📺', '📱', '💻', '🖥️', '⌨️', '🖱️', '💾', '💿', '📀', '🔌', '🔋', '💡', '🔦', '🏮', '📡', '🛸', '🚀', '🛰️', '✈️', '🚁', '🎪', '🎢', '🎡', '🎠', '⚙️', '🔧', '🔩', '⛓️', '🔗', '📌', '📍', '🗺️', '🧭', '🎴', '🎨', '🖼️'],
+                                        'royalty' => ['👑', '💎', '💍', '🏰', '🏯', '👸', '🤴', '🦁', '🦅', '🐉', '🗡️', '⚔️', '🛡️', '🔱', '⚜️', '🎖️', '🏅', '🥇', '🏆', '✨', '🌟', '⭐', '💫', '👼', '😇', '🙏', '🪔', '🕯️', '🔮', '🧿', '📿', '📜', '🖋️', '✒️', '🪶', '📖', '📚', '🎓', '🧙', '🧝', '🧚', '🧞', '🧜', '🧛', '🦸', '🦹', '🥷', '🤺', '♔', '♕'],
+                                        'flags' => ['🏴', '🏳️', '🚩', '🎌', '🏁', '🇫🇷', '🇬🇧', '🇺🇸', '🇩🇪', '🇮🇹', '🇪🇸', '🇵🇹', '🇧🇷', '🇯🇵', '🇰🇷', '🇨🇳', '🇮🇳', '🇷🇺', '🇦🇺', '🇨🇦', '🇲🇽', '🇦🇷', '🇨🇱', '🇨🇴', '🇵🇪', '🇻🇪', '🇪🇨', '🇧🇴', '🇵🇾', '🇺🇾', '🇳🇱', '🇧🇪', '🇨🇭', '🇦🇹', '🇵🇱', '🇬🇷', '🇹🇷', '🇪🇬', '🇿🇦', '🇳🇬', '🇰🇪', '🇲🇦', '🇹🇳', '🇩🇿', '🇸🇦', '🇦🇪', '🇮🇱', '🇮🇪', '🇸🇪', '🇳🇴'],
+                                        'masks' => ['🎭', '👺', '👹', '👻', '💀', '☠️', '👽', '👾', '🤖', '🤡', '😈', '👿', '🙀', '😱', '😰', '🥶', '🥵', '🤯', '😎', '🥸', '🤓', '🧐', '🤠', '😷', '🤒', '🤕', '🤑', '🤥', '🤫', '🤭', '🥳', '🥴', '😵', '🤐', '😮', '😯', '😲', '😳', '🤪', '😜', '😝', '😛', '🤑', '😏', '😒', '🙄', '😬', '😮‍💨', '🥱', '😴'],
+                                        'gems' => ['💎', '💍', '👑', '🔮', '🧿', '📿', '💠', '🔷', '🔶', '🔹', '🔸', '❄️', '💧', '🩵', '🩷', '🩶', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💝', '💖', '💗', '💓', '💕', '⭐', '🌟', '✨', '💫', '🪙', '💰', '💳', '🏆', '🎖️', '🏅', '🥇', '🥈', '🥉', '✳️', '❇️', '🔆', '🔅', '💡', '🌸', '🌺'],
+                                    ];
+                                    $category = $team->emblem_category ?? 'animals';
+                                    $index = ($team->emblem_index ?? 1) - 1;
+                                    $emoji = $emblems[$category][$index] ?? '🛡️';
+                                @endphp
+                                {{ $emoji }}
+                            @endif
+                        </div>
+                        <div>
+                            <h2>{{ $team->name }}</h2>
+                            <div class="team-division {{ $team->division }}">
+                                {{ ucfirst($team->division) }} - {{ $team->points }} pts
+                            </div>
+                        </div>
                     </div>
                     <div class="team-stats">
                         <span>{{ $team->matches_won }}V - {{ $team->matches_lost }}D</span>
@@ -521,9 +607,262 @@
     border-radius: 5px;
     margin-top: 10px;
 }
+
+.char-limit {
+    color: #888;
+    font-weight: normal;
+    font-size: 0.85em;
+}
+
+.char-counter {
+    text-align: right;
+    color: #888;
+    font-size: 0.85em;
+    margin-top: 5px;
+}
+
+.emblem-selector {
+    background: #16213e;
+    border: 2px solid #0f3460;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 10px;
+}
+
+.emblem-preview {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+    border: 3px solid #00d4ff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.emblem-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.emblem-placeholder {
+    font-size: 3rem;
+}
+
+.emblem-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    justify-content: center;
+}
+
+.emblem-tab {
+    padding: 10px 25px;
+    background: #1a1a2e;
+    border: 2px solid #0f3460;
+    color: #aaa;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.emblem-tab:hover {
+    border-color: #00d4ff;
+    color: #fff;
+}
+
+.emblem-tab.active {
+    background: linear-gradient(135deg, #00d4ff 0%, #0f3460 100%);
+    border-color: #00d4ff;
+    color: #fff;
+}
+
+.emblem-categories {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 768px) {
+    .emblem-categories {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.category-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 10px;
+    background: #1a1a2e;
+    border: 2px solid #0f3460;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.category-btn:hover {
+    border-color: #00d4ff;
+    transform: translateY(-3px);
+}
+
+.category-btn .cat-icon {
+    font-size: 1.8rem;
+    margin-bottom: 5px;
+}
+
+.category-btn .cat-name {
+    font-size: 0.75rem;
+    color: #aaa;
+}
+
+.emblem-grid {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.back-to-categories {
+    background: none;
+    border: none;
+    color: #00d4ff;
+    cursor: pointer;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    padding: 5px 10px;
+}
+
+.back-to-categories:hover {
+    text-decoration: underline;
+}
+
+.emblems-container {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 8px;
+}
+
+@media (max-width: 768px) {
+    .emblems-container {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+.emblem-item {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #0f3460;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: #1a1a2e;
+    transition: all 0.2s ease;
+}
+
+.emblem-item:hover {
+    border-color: #00d4ff;
+    transform: scale(1.1);
+}
+
+.emblem-item.selected {
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.2);
+}
+
+.upload-zone {
+    border: 2px dashed #0f3460;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-zone:hover {
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.05);
+}
+
+.upload-zone.dragover {
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.upload-placeholder .upload-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.upload-placeholder p {
+    color: #fff;
+    margin: 0 0 5px 0;
+}
+
+.upload-placeholder small {
+    color: #888;
+}
+
+.team-emblem {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+    border: 2px solid #00d4ff;
+    overflow: hidden;
+}
+
+.team-emblem img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.team-header-with-emblem {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.team-header-with-emblem .team-emblem {
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+}
+
+.team-header-with-emblem h2 {
+    color: #00d4ff;
+    margin: 0 0 10px 0;
+}
 </style>
 
 <script>
+const emblems = {
+    animals: ['🦁', '🐯', '🐻', '🦊', '🐺', '🦅', '🦈', '🐍', '🦎', '🐊', '🦂', '🦀', '🐙', '🦑', '🐋', '🐬', '🦭', '🐘', '🦏', '🦛', '🐪', '🦒', '🦘', '🦬', '🐃', '🦌', '🦙', '🐎', '🦓', '🐗', '🐺', '🦇', '🐀', '🐉', '🦎', '🦖', '🦕', '🐢', '🐸', '🐊', '🦜', '🦩', '🦚', '🦢', '🦤', '🕊️', '🐝', '🦋', '🐞', '🦗'],
+    warriors: ['⚔️', '🗡️', '🛡️', '🏹', '🪓', '🔱', '⚒️', '🪃', '💣', '🧨', '💥', '🎯', '🥷', '👺', '👹', '💀', '☠️', '👻', '🤖', '👾', '🦾', '🦿', '🧠', '👁️', '🫀', '🪖', '🎖️', '🏅', '🥇', '⭐', '🌟', '✨', '💫', '🔥', '❄️', '⚡', '💨', '🌪️', '🌊', '🌋', '☄️', '🌙', '☀️', '🌈', '🎭', '👑', '💎', '🔮', '🧿', '⚱️'],
+    sports: ['🏆', '🥇', '🥈', '🥉', '🏅', '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥊', '🥋', '⛳', '⛸️', '🎿', '🛷', '🏂', '🏋️', '🤸', '🚴', '🏊', '🤽', '🚣', '🧗', '🤺', '🏄', '🎳', '♟️', '🎯', '🏹', '🥏', '🪀', '🛹', '🛼', '⛹️', '🤾', '🤿', '🪂', '🏇', '🚵', '🧘', '🎽', '🥅', '🪁', '🎣'],
+    symbols: ['🌟', '⭐', '✨', '💫', '🔥', '💧', '💎', '❤️', '💜', '💙', '💚', '💛', '🧡', '🖤', '🤍', '❤️‍🔥', '💝', '💖', '💗', '💓', '💕', '💞', '💘', '💌', '🎀', '🎁', '🎊', '🎉', '🎈', '🎆', '🎇', '✳️', '❇️', '💠', '🔷', '🔶', '🔹', '🔸', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤', '⚫', '⚪', '🔴', '🟥', '🟧', '🟨'],
+    elements: ['🔥', '💧', '🌊', '💨', '🌪️', '⚡', '❄️', '☃️', '🌙', '☀️', '🌈', '⭐', '🌟', '✨', '💫', '☄️', '🌋', '🏔️', '⛰️', '🌍', '🌎', '🌏', '🪐', '💎', '🔮', '🧊', '🌡️', '🌀', '🌁', '🌫️', '🌤️', '⛅', '🌥️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '☔', '💦', '💥', '🏝️', '🏜️', '🌵', '🌴', '🌲', '🌳', '🌾', '🍀', '🍁'],
+    gaming: ['🎮', '🕹️', '👾', '🤖', '🎯', '🎲', '♟️', '🃏', '🀄', '🎰', '🎪', '🎭', '🎬', '🎥', '📺', '📱', '💻', '🖥️', '⌨️', '🖱️', '💾', '💿', '📀', '🔌', '🔋', '💡', '🔦', '🏮', '📡', '🛸', '🚀', '🛰️', '✈️', '🚁', '🎪', '🎢', '🎡', '🎠', '⚙️', '🔧', '🔩', '⛓️', '🔗', '📌', '📍', '🗺️', '🧭', '🎴', '🎨', '🖼️'],
+    royalty: ['👑', '💎', '💍', '🏰', '🏯', '👸', '🤴', '🦁', '🦅', '🐉', '🗡️', '⚔️', '🛡️', '🔱', '⚜️', '🎖️', '🏅', '🥇', '🏆', '✨', '🌟', '⭐', '💫', '👼', '😇', '🙏', '🪔', '🕯️', '🔮', '🧿', '📿', '📜', '🖋️', '✒️', '🪶', '📖', '📚', '🎓', '🧙', '🧝', '🧚', '🧞', '🧜', '🧛', '🦸', '🦹', '🥷', '🤺', '♔', '♕'],
+    flags: ['🏴', '🏳️', '🚩', '🎌', '🏁', '🇫🇷', '🇬🇧', '🇺🇸', '🇩🇪', '🇮🇹', '🇪🇸', '🇵🇹', '🇧🇷', '🇯🇵', '🇰🇷', '🇨🇳', '🇮🇳', '🇷🇺', '🇦🇺', '🇨🇦', '🇲🇽', '🇦🇷', '🇨🇱', '🇨🇴', '🇵🇪', '🇻🇪', '🇪🇨', '🇧🇴', '🇵🇾', '🇺🇾', '🇳🇱', '🇧🇪', '🇨🇭', '🇦🇹', '🇵🇱', '🇬🇷', '🇹🇷', '🇪🇬', '🇿🇦', '🇳🇬', '🇰🇪', '🇲🇦', '🇹🇳', '🇩🇿', '🇸🇦', '🇦🇪', '🇮🇱', '🇮🇪', '🇸🇪', '🇳🇴'],
+    masks: ['🎭', '👺', '👹', '👻', '💀', '☠️', '👽', '👾', '🤖', '🤡', '😈', '👿', '🙀', '😱', '😰', '🥶', '🥵', '🤯', '😎', '🥸', '🤓', '🧐', '🤠', '😷', '🤒', '🤕', '🤑', '🤥', '🤫', '🤭', '🥳', '🥴', '😵', '🤐', '😮', '😯', '😲', '😳', '🤪', '😜', '😝', '😛', '🤑', '😏', '😒', '🙄', '😬', '😮‍💨', '🥱', '😴'],
+    gems: ['💎', '💍', '👑', '🔮', '🧿', '📿', '💠', '🔷', '🔶', '🔹', '🔸', '❄️', '💧', '🩵', '🩷', '🩶', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💝', '💖', '💗', '💓', '💕', '⭐', '🌟', '✨', '💫', '🪙', '💰', '💳', '🏆', '🎖️', '🏅', '🥇', '🥈', '🥉', '✳️', '❇️', '🔆', '🔅', '💡', '🌸', '🌺']
+};
+
 function toggleCreateForm() {
     const section = document.getElementById('createTeamSection');
     if (section) {
@@ -531,19 +870,107 @@ function toggleCreateForm() {
     }
 }
 
+document.getElementById('teamName')?.addEventListener('input', function() {
+    document.getElementById('nameCharCount').textContent = this.value.length;
+});
+
+document.querySelectorAll('.emblem-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.emblem-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        const tabName = this.dataset.tab;
+        document.getElementById('categoriesTab').style.display = tabName === 'categories' ? 'block' : 'none';
+        document.getElementById('uploadTab').style.display = tabName === 'upload' ? 'block' : 'none';
+    });
+});
+
+document.querySelectorAll('.category-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const category = this.dataset.category;
+        const container = document.getElementById('emblemsContainer');
+        const categoryEmblems = emblems[category] || [];
+        
+        container.innerHTML = categoryEmblems.map((emb, idx) => 
+            `<div class="emblem-item" data-category="${category}" data-index="${idx + 1}">${emb}</div>`
+        ).join('');
+        
+        document.querySelector('.emblem-categories').style.display = 'none';
+        document.getElementById('emblemGrid').style.display = 'block';
+        
+        container.querySelectorAll('.emblem-item').forEach(item => {
+            item.addEventListener('click', function() {
+                selectEmblem(this.dataset.category, this.dataset.index, this.textContent);
+            });
+        });
+    });
+});
+
+document.getElementById('backToCategories')?.addEventListener('click', function() {
+    document.querySelector('.emblem-categories').style.display = 'grid';
+    document.getElementById('emblemGrid').style.display = 'none';
+});
+
+function selectEmblem(category, index, emoji) {
+    document.getElementById('emblemCategory').value = category;
+    document.getElementById('emblemIndex').value = index;
+    document.getElementById('customEmblem').value = '';
+    document.getElementById('emblemPreview').innerHTML = `<span style="font-size: 3rem;">${emoji}</span>`;
+    
+    document.querySelectorAll('.emblem-item').forEach(item => item.classList.remove('selected'));
+    document.querySelector(`.emblem-item[data-category="${category}"][data-index="${index}"]`)?.classList.add('selected');
+    
+    document.querySelector('.emblem-categories').style.display = 'grid';
+    document.getElementById('emblemGrid').style.display = 'none';
+}
+
+const uploadZone = document.getElementById('uploadZone');
+const emblemUpload = document.getElementById('emblemUpload');
+
+uploadZone?.addEventListener('click', () => emblemUpload.click());
+uploadZone?.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone?.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]);
+});
+
+emblemUpload?.addEventListener('change', function() {
+    if (this.files.length) handleFileUpload(this.files[0]);
+});
+
+function handleFileUpload(file) {
+    if (file.size > 2 * 1024 * 1024) {
+        alert('{{ __("Le fichier est trop volumineux (max 2MB)") }}');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('customEmblem').value = e.target.result;
+        document.getElementById('emblemCategory').value = '';
+        document.getElementById('emblemIndex').value = '';
+        document.getElementById('emblemPreview').innerHTML = `<img src="${e.target.result}" alt="Emblem">`;
+    };
+    reader.readAsDataURL(file);
+}
+
 document.getElementById('createTeamBtn')?.addEventListener('click', async () => {
     const name = document.getElementById('teamName').value.trim();
-    const tag = document.getElementById('teamTag').value.trim().toUpperCase();
+    const emblemCategory = document.getElementById('emblemCategory').value;
+    const emblemIndex = document.getElementById('emblemIndex').value;
+    const customEmblem = document.getElementById('customEmblem').value;
     const errorDiv = document.getElementById('createError');
 
-    if (!name || !tag) {
-        errorDiv.textContent = '{{ __("Veuillez remplir tous les champs") }}';
+    if (!name) {
+        errorDiv.textContent = '{{ __("Veuillez entrer un nom d\'équipe") }}';
         errorDiv.style.display = 'block';
         return;
     }
 
-    if (!/^[A-Z0-9]+$/.test(tag)) {
-        errorDiv.textContent = '{{ __("Le tag doit contenir uniquement des majuscules et des chiffres") }}';
+    if (name.length > 10) {
+        errorDiv.textContent = '{{ __("Le nom ne doit pas dépasser 10 caractères") }}';
         errorDiv.style.display = 'block';
         return;
     }
@@ -556,7 +983,12 @@ document.getElementById('createTeamBtn')?.addEventListener('click', async () => 
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Authorization': 'Bearer ' + localStorage.getItem('api_token')
             },
-            body: JSON.stringify({ name, tag })
+            body: JSON.stringify({ 
+                name, 
+                emblem_category: emblemCategory,
+                emblem_index: emblemIndex,
+                custom_emblem: customEmblem
+            })
         });
 
         const data = await response.json();
@@ -564,11 +996,11 @@ document.getElementById('createTeamBtn')?.addEventListener('click', async () => 
         if (data.success) {
             window.location.reload();
         } else {
-            errorDiv.textContent = data.error || 'Erreur lors de la création de l\'équipe';
+            errorDiv.textContent = data.error || '{{ __("Erreur lors de la création de l\'équipe") }}';
             errorDiv.style.display = 'block';
         }
     } catch (error) {
-        errorDiv.textContent = 'Erreur de connexion';
+        errorDiv.textContent = '{{ __("Erreur de connexion") }}';
         errorDiv.style.display = 'block';
     }
 });

@@ -20,6 +20,9 @@ class Team extends Model
         'matches_won',
         'matches_lost',
         'is_recruiting',
+        'emblem_category',
+        'emblem_index',
+        'custom_emblem_path',
     ];
 
     protected $casts = [
@@ -29,7 +32,29 @@ class Team extends Model
         'matches_played' => 'integer',
         'matches_won' => 'integer',
         'matches_lost' => 'integer',
+        'emblem_index' => 'integer',
     ];
+
+    public static array $emblemCategories = [
+        'animals' => ['name' => 'Animaux', 'icon' => '🦁', 'count' => 50],
+        'warriors' => ['name' => 'Guerriers', 'icon' => '⚔️', 'count' => 50],
+        'sports' => ['name' => 'Sport', 'icon' => '🏆', 'count' => 50],
+        'symbols' => ['name' => 'Symboles', 'icon' => '🌟', 'count' => 50],
+        'elements' => ['name' => 'Éléments', 'icon' => '🔥', 'count' => 50],
+        'gaming' => ['name' => 'Gaming', 'icon' => '🎮', 'count' => 50],
+        'royalty' => ['name' => 'Royauté', 'icon' => '👑', 'count' => 50],
+        'flags' => ['name' => 'Drapeaux', 'icon' => '🌍', 'count' => 50],
+        'masks' => ['name' => 'Masques', 'icon' => '🎭', 'count' => 50],
+        'gems' => ['name' => 'Gemmes', 'icon' => '💎', 'count' => 50],
+    ];
+
+    public function getEmblemUrl(): string
+    {
+        if ($this->custom_emblem_path) {
+            return asset('storage/' . $this->custom_emblem_path);
+        }
+        return asset("emblems/{$this->emblem_category}/{$this->emblem_index}.svg");
+    }
 
     public function captain(): BelongsTo
     {

@@ -391,15 +391,37 @@ class LeagueTeamController extends Controller
     public function createTeam(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:50',
-            'tag' => 'required|string|max:10|regex:/^[A-Z0-9]+$/',
+            'name' => 'required|string|max:10',
+            'emblem_category' => 'nullable|string|max:50',
+            'emblem_index' => 'nullable|integer|min:1|max:50',
+            'custom_emblem' => 'nullable|string',
         ]);
 
         try {
+            $customEmblemPath = null;
+            
+            if ($request->custom_emblem && str_starts_with($request->custom_emblem, 'data:image/')) {
+                $imageData = $request->custom_emblem;
+                $imageData = preg_replace('/^data:image\/\w+;base64,/', '', $imageData);
+                $imageData = base64_decode($imageData);
+                
+                $fileName = 'team_emblems/' . uniqid() . '_' . time() . '.png';
+                $storagePath = storage_path('app/public/' . $fileName);
+                
+                if (!is_dir(dirname($storagePath))) {
+                    mkdir(dirname($storagePath), 0755, true);
+                }
+                
+                file_put_contents($storagePath, $imageData);
+                $customEmblemPath = $fileName;
+            }
+            
             $team = $this->teamService->createTeam(
                 Auth::user(),
                 $request->name,
-                $request->tag
+                $request->emblem_category ?: 'animals',
+                (int)($request->emblem_index ?: 1),
+                $customEmblemPath
             );
 
             return response()->json([
