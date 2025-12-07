@@ -59,36 +59,108 @@ class LeagueTeamController extends Controller
             });
         }
         
-        $teams = $teamsQuery->orderBy('points', 'desc')->limit(20)->get();
+        $teams = $teamsQuery->orderBy('elo', 'desc')->limit(20)->get();
         
-        $pendingRequests = TeamJoinRequest::where('user_id', $user->id)
-            ->where('status', 'pending')
-            ->pluck('team_id')
-            ->toArray();
+        foreach ($teams as $team) {
+            $team->member_count = $team->members_count;
+        }
 
-        return view('league_team_search', compact('user', 'teams', 'search', 'pendingRequests'));
+        return view('league_team_search', compact('user', 'teams'));
+    }
+
+    public function searchTeamsApi(Request $request)
+    {
+        $search = $request->get('q', '');
+        $recruiting = $request->has('recruiting') && $request->get('recruiting') !== '0';
+        
+        $teamsQuery = Team::withCount('members')->having('members_count', '<', 5);
+        
+        if ($recruiting) {
+            $teamsQuery->where('is_recruiting', true);
+        }
+        
+        if ($search) {
+            $teamsQuery->where(function($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('tag', 'ilike', "%{$search}%");
+            });
+        }
+        
+        $teams = $teamsQuery->orderBy('elo', 'desc')->limit(20)->get();
+        
+        $teamsData = $teams->map(fn($team) => [
+            'id' => $team->id,
+            'name' => $team->name,
+            'tag' => $team->tag,
+            'elo' => $team->elo ?? 1000,
+            'division' => $team->division ?? 'Bronze',
+            'total_wins' => $team->total_wins ?? 0,
+            'total_losses' => $team->total_losses ?? 0,
+            'member_count' => $team->members_count,
+            'is_recruiting' => $team->is_recruiting,
+        ]);
+        
+        return response()->json(['teams' => $teamsData]);
     }
 
     public function showTeamDetails($teamId)
     {
         $user = Auth::user();
         $team = Team::with(['captain', 'members.profileStat'])->findOrFail($teamId);
+        $userTeam = $user->teams()->first();
         
         $hasPendingRequest = TeamJoinRequest::where('team_id', $teamId)
             ->where('user_id', $user->id)
             ->where('status', 'pending')
             ->exists();
         
+        $isOwnTeam = $userTeam && $userTeam->id === $team->id;
         $isMember = $team->isMember($user->id);
-        $isCaptain = $team->isCaptain($user->id);
         
         $teamStrengths = $this->calculateTeamStrengths($team);
-        $userContribution = $this->calculateUserContribution($user, $team);
+        
+        $themeLabels = [
+            __('Géographie'), __('Histoire'), __('Sports'), __('Sciences'),
+            __('Cinéma'), __('Art'), __('Animaux'), __('Cuisine')
+        ];
+        $themeKeys = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
+        
+        $formattedStrengths = [];
+        foreach ($themeKeys as $i => $key) {
+            $formattedStrengths[$themeLabels[$i]] = $teamStrengths[$key] ?? 50;
+        }
+        
+        $memberStats = [];
+        $memberContributions = [];
+        
+        foreach ($team->members as $member) {
+            $stats = $member->profileStat;
+            $memberStrengths = [];
+            $contributions = [];
+            
+            foreach ($themeKeys as $i => $theme) {
+                $strength = 50;
+                if ($stats && isset($stats->theme_stats[$theme])) {
+                    $themeStats = $stats->theme_stats[$theme];
+                    $correct = $themeStats['correct'] ?? 0;
+                    $total = $themeStats['total'] ?? 0;
+                    $strength = $total > 0 ? round(($correct / $total) * 100, 1) : 50;
+                }
+                $memberStrengths[$themeLabels[$i]] = $strength;
+                
+                if ($strength > ($formattedStrengths[$themeLabels[$i]] ?? 50)) {
+                    $contributions[] = $themeLabels[$i];
+                }
+            }
+            
+            $memberStats[$member->id] = $memberStrengths;
+            $memberContributions[$member->id] = array_slice($contributions, 0, 3);
+        }
 
         return view('league_team_details', compact(
-            'user', 'team', 'hasPendingRequest', 'isMember', 'isCaptain', 
-            'teamStrengths', 'userContribution'
-        ));
+            'user', 'team', 'userTeam', 'hasPendingRequest', 'isOwnTeam', 'isMember',
+            'memberStats', 'memberContributions'
+        ))->with('teamStrengths', $formattedStrengths);
     }
 
     public function showCaptainPanel()
@@ -101,7 +173,7 @@ class LeagueTeamController extends Controller
                 ->with('error', __('Vous devez être capitaine pour accéder à cette page.'));
         }
         
-        $joinRequests = TeamJoinRequest::where('team_id', $team->id)
+        $pendingRequests = TeamJoinRequest::where('team_id', $team->id)
             ->where('status', 'pending')
             ->with(['user.profileStat'])
             ->get();
@@ -111,7 +183,7 @@ class LeagueTeamController extends Controller
             ->with('user')
             ->get();
 
-        return view('league_team_captain', compact('user', 'team', 'joinRequests', 'sentInvitations'));
+        return view('league_team_captain', compact('user', 'team', 'pendingRequests', 'sentInvitations'));
     }
 
     public function requestJoin(Request $request, $teamId)

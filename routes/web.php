@@ -266,6 +266,7 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
 Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(function () {
     Route::get('/management', [App\Http\Controllers\LeagueTeamController::class, 'showTeamManagement'])->name('management');
     Route::get('/search', [App\Http\Controllers\LeagueTeamController::class, 'searchTeams'])->name('search');
+    Route::get('/search/api', [App\Http\Controllers\LeagueTeamController::class, 'searchTeamsApi'])->name('search.api');
     Route::get('/details/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'showTeamDetails'])->name('details');
     Route::get('/captain', [App\Http\Controllers\LeagueTeamController::class, 'showCaptainPanel'])->name('captain');
     Route::post('/create', [App\Http\Controllers\LeagueTeamController::class, 'createTeam'])->name('create');
