@@ -51,9 +51,7 @@ class LeagueTeamController extends Controller
     {
         $user = Auth::user();
         $contacts = \App\Models\PlayerContact::where('user_id', $user->id)
-            ->with(['contact' => function($q) {
-                $q->with('profileStat');
-            }])
+            ->with(['contact'])
             ->get()
             ->map(function($pc) {
                 $contact = $pc->contact;
@@ -75,7 +73,7 @@ class LeagueTeamController extends Controller
     {
         $user = Auth::user();
         
-        $eagerLoad = ['captain', 'captain.profileStat', 'members', 'members.profileStat'];
+        $eagerLoad = ['captain', 'members'];
         
         if ($teamId) {
             $team = $user->teams()->with($eagerLoad)->where('teams.id', $teamId)->first();
