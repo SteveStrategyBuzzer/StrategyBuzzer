@@ -30,6 +30,47 @@ class LeagueTeamController extends Controller
         $this->firestoreService = $firestoreService;
     }
 
+    public function showLeagueEntry()
+    {
+        $user = Auth::user();
+        $userTeams = $user->teams()->with(['captain', 'members'])->get();
+        $pendingInvitations = TeamInvitation::where('user_id', $user->id)
+            ->with(['team.captain'])
+            ->where('status', 'pending')
+            ->get();
+
+        return view('league_entry', compact('user', 'userTeams', 'pendingInvitations'));
+    }
+
+    public function showCreateTeam()
+    {
+        return view('league_team_create');
+    }
+
+    public function getContacts()
+    {
+        $user = Auth::user();
+        $contacts = \App\Models\PlayerContact::where('user_id', $user->id)
+            ->with(['contact' => function($q) {
+                $q->with('profileStat');
+            }])
+            ->get()
+            ->map(function($pc) {
+                $contact = $pc->contact;
+                return [
+                    'id' => $contact->id,
+                    'name' => $contact->name,
+                    'player_code' => $contact->player_code ?? 'SB-XXXX',
+                    'avatar_url' => $contact->avatar_url,
+                    'elo' => $contact->league_elo ?? 1000,
+                    'wins' => $contact->league_wins ?? 0,
+                    'losses' => $contact->league_losses ?? 0,
+                ];
+            });
+
+        return response()->json(['contacts' => $contacts]);
+    }
+
     public function showTeamManagement()
     {
         $user = Auth::user();
@@ -38,8 +79,15 @@ class LeagueTeamController extends Controller
             ->with(['team.captain'])
             ->where('status', 'pending')
             ->get();
+        
+        $pendingRequestsCount = 0;
+        if ($team && $team->captain_id === $user->id) {
+            $pendingRequestsCount = TeamJoinRequest::where('team_id', $team->id)
+                ->where('status', 'pending')
+                ->count();
+        }
 
-        return view('league_team_management', compact('user', 'team', 'pendingInvitations'));
+        return view('league_team_management', compact('user', 'team', 'pendingInvitations', 'pendingRequestsCount'));
     }
 
     public function searchTeams(Request $request)

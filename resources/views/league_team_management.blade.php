@@ -201,6 +201,9 @@
                 <div class="captain-actions">
                     <a href="{{ route('league.team.captain') }}" class="btn-captain">
                         ⚙️ {{ __('Gérer les demandes d\'accès') }}
+                        @if($pendingRequestsCount > 0)
+                            <span class="request-badge">{{ $pendingRequestsCount }}</span>
+                        @endif
                     </a>
                 </div>
                 @endif
@@ -209,11 +212,26 @@
                     <div class="invite-section">
                         <h3>📩 {{ __('Inviter un Joueur') }}</h3>
                         <div class="invite-form">
-                            <input type="text" id="playerName" placeholder="Nom du joueur">
-                            <button id="inviteBtn" class="btn-primary">Inviter</button>
+                            <input type="text" id="playerName" placeholder="{{ __('Nom du joueur') }}">
+                            <button id="inviteBtn" class="btn-primary">{{ __('Inviter') }}</button>
                         </div>
                         <div id="inviteError" class="error-message" style="display: none;"></div>
                         <div id="inviteSuccess" class="success-message" style="display: none;"></div>
+                        
+                        <div class="carnet-section">
+                            <button type="button" class="btn-carnet" onclick="toggleCarnet()">
+                                📖 {{ __('Carnet de contacts') }}
+                            </button>
+                            <div id="carnetModal" class="carnet-modal" style="display: none;">
+                                <div class="carnet-header">
+                                    <h4>📖 {{ __('Sélectionner un contact') }}</h4>
+                                    <button type="button" class="close-carnet" onclick="toggleCarnet()">×</button>
+                                </div>
+                                <div class="carnet-list" id="carnetList">
+                                    <p class="loading">{{ __('Chargement...') }}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 @endif
 
@@ -303,6 +321,166 @@
 .btn-captain:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+}
+
+.btn-captain {
+    position: relative;
+}
+
+.request-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff4444;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 12px;
+    min-width: 20px;
+    text-align: center;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.carnet-section {
+    margin-top: 20px;
+}
+
+.btn-carnet {
+    width: 100%;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #6b5b95 0%, #4a4063 100%);
+    border: 2px solid #8b7bb5;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-carnet:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(107, 91, 149, 0.4);
+}
+
+.carnet-modal {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #6b5b95;
+    border-radius: 15px;
+    margin-top: 15px;
+    max-height: 400px;
+    overflow: hidden;
+}
+
+.carnet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #0f3460;
+}
+
+.carnet-header h4 {
+    color: #00d4ff;
+    margin: 0;
+}
+
+.close-carnet {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.close-carnet:hover {
+    color: #fff;
+}
+
+.carnet-list {
+    max-height: 350px;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.carnet-list .loading {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+}
+
+.contact-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0a0a15;
+    border: 1px solid #0f3460;
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.contact-card:hover {
+    border-color: #00d4ff;
+    background: #16213e;
+}
+
+.contact-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.contact-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+    border: 2px solid #00d4ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #00d4ff;
+    overflow: hidden;
+}
+
+.contact-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.contact-details .contact-name {
+    color: #fff;
+    font-weight: bold;
+    margin: 0;
+}
+
+.contact-details .contact-code {
+    color: #888;
+    font-size: 0.85rem;
+    margin: 2px 0 0 0;
+}
+
+.contact-stats {
+    display: flex;
+    gap: 15px;
+    color: #aaa;
+    font-size: 0.85rem;
+}
+
+.no-contacts {
+    text-align: center;
+    color: #888;
+    padding: 30px;
 }
 
 .create-team-section, .team-info-section {
@@ -1137,6 +1315,76 @@ async function leaveTeam() {
     } catch (error) {
         showToast('{{ __("Erreur de connexion") }}', 'error');
     }
+}
+
+let carnetLoaded = false;
+
+function toggleCarnet() {
+    const modal = document.getElementById('carnetModal');
+    if (!modal) return;
+    
+    const isVisible = modal.style.display !== 'none';
+    modal.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible && !carnetLoaded) {
+        loadContacts();
+    }
+}
+
+async function loadContacts() {
+    const listDiv = document.getElementById('carnetList');
+    if (!listDiv) return;
+    
+    try {
+        const response = await fetch('{{ route("league.team.contacts.api") }}', {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+            }
+        });
+        
+        const data = await response.json();
+        carnetLoaded = true;
+        
+        if (!data.contacts || data.contacts.length === 0) {
+            listDiv.innerHTML = '<p class="no-contacts">{{ __("Aucun contact dans votre carnet") }}</p>';
+            return;
+        }
+        
+        listDiv.innerHTML = data.contacts.map(contact => `
+            <div class="contact-card" onclick="selectContact('${escapeHtml(contact.name)}')">
+                <div class="contact-info">
+                    <div class="contact-avatar">
+                        ${contact.avatar_url 
+                            ? `<img src="${contact.avatar_url}" alt="Avatar">` 
+                            : contact.name.charAt(0).toUpperCase()
+                        }
+                    </div>
+                    <div class="contact-details">
+                        <p class="contact-name">${escapeHtml(contact.name)}</p>
+                        <p class="contact-code">${contact.player_code}</p>
+                    </div>
+                </div>
+                <div class="contact-stats">
+                    <span>ELO: ${contact.elo}</span>
+                    <span>${contact.wins}V/${contact.losses}D</span>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        listDiv.innerHTML = '<p class="no-contacts">{{ __("Erreur de chargement") }}</p>';
+    }
+}
+
+function selectContact(name) {
+    document.getElementById('playerName').value = name;
+    toggleCarnet();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 </script>
 @endsection

@@ -263,13 +263,17 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
 });
 
 /* ===== LIGUE ÉQUIPE ===== */
+Route::get('/league/entry', [App\Http\Controllers\LeagueTeamController::class, 'showLeagueEntry'])->middleware('auth')->name('league.entry');
+
 Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(function () {
     Route::get('/management', [App\Http\Controllers\LeagueTeamController::class, 'showTeamManagement'])->name('management');
+    Route::get('/create', [App\Http\Controllers\LeagueTeamController::class, 'showCreateTeam'])->name('create');
+    Route::post('/create', [App\Http\Controllers\LeagueTeamController::class, 'createTeam'])->name('create.submit');
     Route::get('/search', [App\Http\Controllers\LeagueTeamController::class, 'searchTeams'])->name('search');
     Route::get('/search/api', [App\Http\Controllers\LeagueTeamController::class, 'searchTeamsApi'])->name('search.api');
+    Route::get('/contacts/api', [App\Http\Controllers\LeagueTeamController::class, 'getContacts'])->name('contacts.api');
     Route::get('/details/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'showTeamDetails'])->name('details');
     Route::get('/captain', [App\Http\Controllers\LeagueTeamController::class, 'showCaptainPanel'])->name('captain');
-    Route::post('/create', [App\Http\Controllers\LeagueTeamController::class, 'createTeam'])->name('create');
     Route::post('/invite', [App\Http\Controllers\LeagueTeamController::class, 'invitePlayer'])->name('invite');
     Route::post('/request/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'requestJoin'])->name('request');
     Route::delete('/request/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'cancelRequest'])->name('request.cancel');
