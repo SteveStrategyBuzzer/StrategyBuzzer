@@ -140,4 +140,18 @@ class User extends Authenticatable
         
         return $url;
     }
+
+    public function getDisplayNameAttribute()
+    {
+        if (!empty($this->name) && $this->name !== $this->email) {
+            return $this->name;
+        }
+        
+        if (!empty($this->player_code)) {
+            return $this->player_code;
+        }
+        
+        $emailParts = explode('@', $this->email ?? '');
+        return $emailParts[0] ?? 'Joueur';
+    }
 }
