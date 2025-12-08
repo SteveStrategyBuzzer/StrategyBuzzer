@@ -1271,15 +1271,15 @@ async function declineInvitation(invitationId) {
 }
 
 async function kickMember(memberId) {
-    if (!confirm('Êtes-vous sûr de vouloir expulser ce membre ?')) return;
+    if (!confirm('{{ __("Êtes-vous sûr de vouloir expulser ce membre ?") }}')) return;
 
     try {
-        const response = await fetch('/api/league/team/kick-member', {
+        const response = await fetch('/league/team/kick', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Authorization': 'Bearer ' + localStorage.getItem('api_token')
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify({ member_id: memberId })
         });
@@ -1297,21 +1297,21 @@ async function kickMember(memberId) {
 }
 
 async function leaveTeam() {
-    if (!confirm('Êtes-vous sûr de vouloir quitter l\'équipe ?')) return;
+    if (!confirm('{{ __("Êtes-vous sûr de vouloir quitter l\'équipe ?") }}')) return;
 
     try {
-        const response = await fetch('/api/league/team/leave-team', {
+        const response = await fetch('/league/team/leave', {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Authorization': 'Bearer ' + localStorage.getItem('api_token')
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
             }
         });
 
         const data = await response.json();
 
         if (data.success) {
-            window.location.reload();
+            window.location.href = '{{ route("ligue") }}';
         } else {
             showToast(data.error || '{{ __("Erreur lors de la sortie") }}', 'error');
         }
