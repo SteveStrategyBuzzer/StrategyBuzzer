@@ -527,35 +527,52 @@ class LeagueTeamController extends Controller
         }
     }
 
-    public function acceptInvitation($invitationId)
+    public function acceptInvitation(Request $request, $invitationId)
     {
         $invitation = TeamInvitation::findOrFail($invitationId);
 
         try {
             $this->teamService->acceptInvitation($invitation, Auth::user());
 
-            return response()->json(['success' => true]);
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true]);
+            }
+            
+            return redirect()->route('league.team.management', $invitation->team_id)
+                ->with('success', __('Vous avez rejoint l\'équipe avec succès !'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 400);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                ], 400);
+            }
+            
+            return redirect()->route('ligue')->with('error', $e->getMessage());
         }
     }
 
-    public function declineInvitation($invitationId)
+    public function declineInvitation(Request $request, $invitationId)
     {
         $invitation = TeamInvitation::findOrFail($invitationId);
 
         try {
             $this->teamService->declineInvitation($invitation, Auth::user());
 
-            return response()->json(['success' => true]);
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true]);
+            }
+            
+            return redirect()->route('ligue')->with('success', __('Invitation refusée.'));
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 400);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                ], 400);
+            }
+            
+            return redirect()->route('ligue')->with('error', $e->getMessage());
         }
     }
 
