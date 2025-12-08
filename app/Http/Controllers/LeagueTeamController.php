@@ -71,10 +71,21 @@ class LeagueTeamController extends Controller
         return response()->json(['contacts' => $contacts]);
     }
 
-    public function showTeamManagement()
+    public function showTeamManagement($teamId = null)
     {
         $user = Auth::user();
-        $team = $user->teams()->with(['captain', 'members'])->first();
+        
+        $eagerLoad = ['captain', 'captain.profileStat', 'members', 'members.profileStat'];
+        
+        if ($teamId) {
+            $team = $user->teams()->with($eagerLoad)->where('teams.id', $teamId)->first();
+            if (!$team) {
+                return redirect()->route('league.entry')->with('error', __('Équipe non trouvée ou accès non autorisé'));
+            }
+        } else {
+            $team = $user->teams()->with($eagerLoad)->first();
+        }
+        
         $pendingInvitations = TeamInvitation::where('user_id', $user->id)
             ->with(['team.captain'])
             ->where('status', 'pending')
@@ -86,8 +97,10 @@ class LeagueTeamController extends Controller
                 ->where('status', 'pending')
                 ->count();
         }
+        
+        $selectedTeamId = $team ? $team->id : null;
 
-        return view('league_team_management', compact('user', 'team', 'pendingInvitations', 'pendingRequestsCount'));
+        return view('league_team_management', compact('user', 'team', 'pendingInvitations', 'pendingRequestsCount', 'selectedTeamId'));
     }
 
     public function searchTeams(Request $request)
@@ -211,10 +224,15 @@ class LeagueTeamController extends Controller
         ))->with('teamStrengths', $formattedStrengths);
     }
 
-    public function showCaptainPanel()
+    public function showCaptainPanel($teamId = null)
     {
         $user = Auth::user();
-        $team = $user->teams()->with(['captain', 'members'])->first();
+        
+        if ($teamId) {
+            $team = $user->teams()->with(['captain', 'members'])->where('teams.id', $teamId)->first();
+        } else {
+            $team = $user->teams()->with(['captain', 'members'])->first();
+        }
         
         if (!$team || !$team->isCaptain($user->id)) {
             return redirect()->route('league.team.management')
@@ -230,8 +248,10 @@ class LeagueTeamController extends Controller
             ->where('status', 'pending')
             ->with('user')
             ->get();
+        
+        $selectedTeamId = $team->id;
 
-        return view('league_team_captain', compact('user', 'team', 'pendingRequests', 'sentInvitations'));
+        return view('league_team_captain', compact('user', 'team', 'pendingRequests', 'sentInvitations', 'selectedTeamId'));
     }
 
     public function requestJoin(Request $request, $teamId)
@@ -422,18 +442,24 @@ class LeagueTeamController extends Controller
         return $contribution;
     }
 
-    public function showLobby()
+    public function showLobby($teamId = null)
     {
         $user = Auth::user();
-        $team = $user->teams()->with(['captain', 'members'])->first();
+        
+        if ($teamId) {
+            $team = $user->teams()->with(['captain', 'members'])->where('teams.id', $teamId)->first();
+        } else {
+            $team = $user->teams()->with(['captain', 'members'])->first();
+        }
 
         if (!$team) {
             return redirect()->route('league.team.management');
         }
 
         $rankings = $this->leagueTeamService->getTeamRankings($team->division);
+        $selectedTeamId = $team->id;
 
-        return view('league_team_lobby', compact('user', 'team', 'rankings'));
+        return view('league_team_lobby', compact('user', 'team', 'rankings', 'selectedTeamId'));
     }
 
     public function createTeam(Request $request)

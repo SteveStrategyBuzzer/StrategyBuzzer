@@ -199,7 +199,7 @@
                 
                 @if($team->captain_id === Auth::id())
                 <div class="captain-actions">
-                    <a href="{{ route('league.team.captain') }}" class="btn-captain">
+                    <a href="{{ route('league.team.captain', $selectedTeamId ?? $team->id) }}" class="btn-captain">
                         ⚙️ {{ __('Gérer les demandes d\'accès') }}
                         @if($pendingRequestsCount > 0)
                             <span class="request-badge">{{ $pendingRequestsCount }}</span>
@@ -237,7 +237,7 @@
 
                 <div class="team-actions">
                     @if($team->members->count() >= 5)
-                        <button onclick="window.location.href='{{ route('league.team.lobby') }}'" class="btn-primary btn-large">
+                        <button onclick="window.location.href='{{ route('league.team.lobby', $selectedTeamId ?? $team->id) }}'" class="btn-primary btn-large">
                             <span class="btn-icon">🎮</span>
                             {{ __('ALLER AU LOBBY') }}
                         </button>

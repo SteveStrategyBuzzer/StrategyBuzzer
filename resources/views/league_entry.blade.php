@@ -345,7 +345,7 @@
 
 <script>
 function selectTeam(teamId) {
-    window.location.href = '/league/team/management?team=' + teamId;
+    window.location.href = '/league/team/management/' + teamId;
 }
 
 async function acceptInvitation(invitationId) {
