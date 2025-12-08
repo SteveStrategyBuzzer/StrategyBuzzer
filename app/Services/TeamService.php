@@ -11,6 +11,23 @@ use Illuminate\Support\Facades\DB;
 
 class TeamService
 {
+    protected PlayerContactService $contactService;
+
+    public function __construct(PlayerContactService $contactService)
+    {
+        $this->contactService = $contactService;
+    }
+
+    protected function addTeamMemberContacts(User $newMember, Team $team): void
+    {
+        foreach ($team->members as $existingMember) {
+            if ($existingMember->id !== $newMember->id) {
+                $this->contactService->ensureContactExists($newMember->id, $existingMember->id);
+                $this->contactService->ensureContactExists($existingMember->id, $newMember->id);
+            }
+        }
+    }
+
     public function createTeam(User $captain, string $name, ?string $emblemCategory = 'animals', ?int $emblemIndex = 1, ?string $customEmblemPath = null): Team
     {
         if ($captain->teams()->exists()) {
@@ -118,6 +135,9 @@ class TeamService
 
             $invitation->update(['status' => 'accepted']);
         });
+
+        $team->load('members');
+        $this->addTeamMemberContacts($user, $team);
     }
 
     public function declineInvitation(TeamInvitation $invitation, User $user): void
@@ -127,6 +147,27 @@ class TeamService
         }
 
         $invitation->update(['status' => 'declined']);
+    }
+
+    public function addMember(Team $team, User $user): void
+    {
+        if ($team->teamMembers()->count() >= 5) {
+            throw new \Exception('L\'équipe est complète.');
+        }
+
+        if ($user->teams()->exists()) {
+            throw new \Exception('Ce joueur est déjà dans une équipe.');
+        }
+
+        TeamMember::create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'role' => 'member',
+            'joined_at' => now(),
+        ]);
+
+        $team->load('members');
+        $this->addTeamMemberContacts($user, $team);
     }
 
     public function leaveTeam(Team $team, User $user): void
