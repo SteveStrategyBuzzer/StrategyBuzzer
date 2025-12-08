@@ -161,6 +161,16 @@
   @media (max-width:900px){ .sb-three{ grid-template-columns:1fr 1fr; } .sb-b3{ grid-column:1 / -1; } }
   @media (max-width:560px){ .sb-three{ grid-template-columns:1fr; } .sb-b3{ grid-column:auto; } }
   
+  /* ===== Fix clavier mobile - empêche le chevauchement ===== */
+  .keyboard-open .sb-three {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .keyboard-open .sb-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
   /* Mode paysage - Pleine largeur */
   @media (orientation: landscape) and (max-height: 500px) {
     .sb-wrap { 
@@ -1020,6 +1030,21 @@
 document.addEventListener('DOMContentLoaded', () => {
   const byId = id => document.getElementById(id);
   const setTxt = (id, v) => { const n = byId(id); if(n) n.textContent = v; };
+
+  // ===== Fix clavier mobile - détection focus =====
+  const inputs = document.querySelectorAll('input, textarea, select');
+  inputs.forEach(input => {
+    input.addEventListener('focus', () => {
+      document.body.classList.add('keyboard-open');
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (!document.activeElement || !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+          document.body.classList.remove('keyboard-open');
+        }
+      }, 100);
+    });
+  });
 
   const selLang  = byId('sel-lang');
   const selPays  = byId('sel-pays');
