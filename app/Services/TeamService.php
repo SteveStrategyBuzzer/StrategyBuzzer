@@ -45,7 +45,7 @@ class TeamService
         });
     }
 
-    public function invitePlayer(Team $team, User $inviter, string $playerName): TeamInvitation
+    public function invitePlayer(Team $team, User $inviter, string $playerIdentifier): TeamInvitation
     {
         if ($team->captain_id !== $inviter->id) {
             throw new \Exception('Seul le capitaine peut inviter des joueurs.');
@@ -55,7 +55,9 @@ class TeamService
             throw new \Exception('L\'équipe est complète (5 joueurs maximum).');
         }
 
-        $player = User::where('name', $playerName)->first();
+        $player = User::where('player_code', $playerIdentifier)
+            ->orWhere('name', $playerIdentifier)
+            ->first();
         if (!$player) {
             throw new \Exception('Joueur non trouvé.');
         }

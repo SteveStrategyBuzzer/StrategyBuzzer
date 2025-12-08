@@ -1196,30 +1196,33 @@ document.getElementById('inviteBtn')?.addEventListener('click', async () => {
     }
 
     try {
-        const response = await fetch('/api/league/team/invite-player', {
+        const response = await fetch('{{ route("league.team.invite") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Authorization': 'Bearer ' + localStorage.getItem('api_token')
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({ player_name: playerName })
+            body: JSON.stringify({ 
+                player_code: playerName,
+                team_id: {{ $team->id }}
+            })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            successDiv.textContent = 'Invitation envoyée avec succès !';
+            successDiv.textContent = '{{ __("Invitation envoyée avec succès !") }}';
             successDiv.style.display = 'block';
             errorDiv.style.display = 'none';
             document.getElementById('playerName').value = '';
         } else {
-            errorDiv.textContent = data.error || 'Erreur lors de l\'invitation';
+            errorDiv.textContent = data.error || '{{ __("Erreur lors de l\'invitation") }}';
             errorDiv.style.display = 'block';
             successDiv.style.display = 'none';
         }
     } catch (error) {
-        errorDiv.textContent = 'Erreur de connexion';
+        errorDiv.textContent = '{{ __("Erreur de connexion") }}';
         errorDiv.style.display = 'block';
         successDiv.style.display = 'none';
     }

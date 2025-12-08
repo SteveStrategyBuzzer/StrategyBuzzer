@@ -492,21 +492,27 @@ class LeagueTeamController extends Controller
     public function invitePlayer(Request $request)
     {
         $request->validate([
-            'player_name' => 'required|string',
+            'team_id' => 'required|integer|exists:teams,id',
         ]);
 
         $user = Auth::user();
-        $team = $user->teams()->first();
+        $team = Team::findOrFail($request->team_id);
 
-        if (!$team) {
-            return response()->json(['error' => __('Vous n\'êtes pas dans une équipe.')], 400);
+        if ($team->captain_id !== $user->id) {
+            return response()->json(['success' => false, 'error' => __('Seul le capitaine peut inviter des joueurs.')], 403);
+        }
+
+        $playerIdentifier = $request->player_code ?? $request->player_name;
+        
+        if (!$playerIdentifier) {
+            return response()->json(['success' => false, 'error' => __('Veuillez entrer un code ou nom de joueur.')], 400);
         }
 
         try {
             $invitation = $this->teamService->invitePlayer(
                 $team,
                 $user,
-                $request->player_name
+                $playerIdentifier
             );
 
             return response()->json([
