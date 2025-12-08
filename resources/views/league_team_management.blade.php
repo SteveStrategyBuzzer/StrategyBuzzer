@@ -1352,7 +1352,7 @@ async function loadContacts() {
         }
         
         listDiv.innerHTML = data.contacts.map(contact => `
-            <div class="contact-card" onclick="selectContact('${escapeHtml(contact.name)}')">
+            <div class="contact-card" onclick="selectContact('${escapeHtml(contact.player_code)}')">
                 <div class="contact-info">
                     <div class="contact-avatar">
                         ${contact.avatar_url 
@@ -1376,8 +1376,8 @@ async function loadContacts() {
     }
 }
 
-function selectContact(name) {
-    document.getElementById('playerName').value = name;
+function selectContact(playerCode) {
+    document.getElementById('playerName').value = playerCode;
     toggleCarnet();
 }
 
