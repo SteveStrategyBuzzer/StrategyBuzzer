@@ -132,6 +132,12 @@ class User extends Authenticatable
             ? json_decode($this->profile_settings, true) 
             : $this->profile_settings;
 
-        return $settings['avatar']['url'] ?? null;
+        $url = $settings['avatar']['url'] ?? null;
+        
+        if ($url && !str_starts_with($url, '/') && !str_starts_with($url, 'http')) {
+            $url = '/' . $url;
+        }
+        
+        return $url;
     }
 }
