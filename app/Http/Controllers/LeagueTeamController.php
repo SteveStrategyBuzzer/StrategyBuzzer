@@ -30,6 +30,18 @@ class LeagueTeamController extends Controller
         $this->firestoreService = $firestoreService;
     }
 
+    public function showLigue()
+    {
+        $user = Auth::user();
+        $userTeams = $user->teams()->with(['captain', 'members'])->get();
+        $pendingInvitations = TeamInvitation::where('user_id', $user->id)
+            ->with(['team.captain'])
+            ->where('status', 'pending')
+            ->get();
+
+        return view('ligue', compact('user', 'userTeams', 'pendingInvitations'));
+    }
+
     public function showLeagueEntry()
     {
         $user = Auth::user();

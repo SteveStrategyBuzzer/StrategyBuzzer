@@ -311,9 +311,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
 });
 
 /* ===== LIGUE (page de sélection) ===== */
-Route::get('/ligue', function () {
-    return view('ligue');
-})->middleware('auth')->name('ligue');
+Route::get('/ligue', [App\Http\Controllers\LeagueTeamController::class, 'showLigue'])->middleware('auth')->name('ligue');
 
 /* ===== RÈGLEMENTS ===== */
 Route::view('/reglements', 'reglements')->name('reglements');
