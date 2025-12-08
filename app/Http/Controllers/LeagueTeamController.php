@@ -120,7 +120,6 @@ class LeagueTeamController extends Controller
         
         $teamsQuery = Team::where('is_recruiting', true)
             ->withCount('members')
-            ->having('members_count', '<', 5)
             ->with(['captain', 'members']);
         
         if ($search) {
@@ -130,7 +129,9 @@ class LeagueTeamController extends Controller
             });
         }
         
-        $teams = $teamsQuery->orderBy('elo', 'desc')->limit(20)->get();
+        $teams = $teamsQuery->orderBy('points', 'desc')->limit(50)->get()
+            ->filter(fn($team) => $team->members_count < 5)
+            ->take(20);
         
         foreach ($teams as $team) {
             $team->member_count = $team->members_count;
@@ -144,7 +145,7 @@ class LeagueTeamController extends Controller
         $search = $request->get('q', '');
         $recruiting = $request->has('recruiting') && $request->get('recruiting') !== '0';
         
-        $teamsQuery = Team::withCount('members')->having('members_count', '<', 5);
+        $teamsQuery = Team::withCount('members');
         
         if ($recruiting) {
             $teamsQuery->where('is_recruiting', true);
@@ -157,7 +158,9 @@ class LeagueTeamController extends Controller
             });
         }
         
-        $teams = $teamsQuery->orderBy('elo', 'desc')->limit(20)->get();
+        $teams = $teamsQuery->orderBy('points', 'desc')->limit(50)->get()
+            ->filter(fn($team) => $team->members_count < 5)
+            ->take(20);
         
         $teamsData = $teams->map(fn($team) => [
             'id' => $team->id,
