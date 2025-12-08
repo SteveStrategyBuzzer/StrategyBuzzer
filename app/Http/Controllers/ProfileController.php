@@ -125,7 +125,7 @@ class ProfileController extends Controller
         $supportedLangCodes = array_keys(config('languages.supported', ['fr' => []]));
         
         $data = $request->validate([
-            'pseudonym' => 'nullable|string|max:24',
+            'pseudonym' => 'nullable|string|max:10',
             'show_in_league' => 'nullable|in:Oui,Non',
             'show_online' => 'nullable|boolean',
             'language' => 'nullable|in:' . implode(',', $supportedLangCodes),
@@ -162,6 +162,11 @@ class ProfileController extends Controller
             // Sauvegarder la langue dans le champ dédié preferred_language
             if (isset($data['language'])) {
                 $user->preferred_language = $data['language'];
+            }
+            
+            // Synchroniser le champ name avec le pseudonyme (limité à 10 caractères)
+            if (isset($data['pseudonym']) && !empty(trim($data['pseudonym']))) {
+                $user->name = mb_substr(trim($data['pseudonym']), 0, 10);
             }
             
             $user->profile_settings = $settings;
