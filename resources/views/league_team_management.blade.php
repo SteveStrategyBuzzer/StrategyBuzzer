@@ -123,7 +123,7 @@
         @else
             <div class="team-info-section">
                 <div class="team-header-card">
-                    <div class="team-header-with-emblem">
+                    <div class="team-header-row">
                         <div class="team-emblem">
                             @if($team->custom_emblem_path)
                                 <img src="{{ asset('storage/' . $team->custom_emblem_path) }}" alt="Emblem">
@@ -148,18 +148,13 @@
                                 {{ $emoji }}
                             @endif
                         </div>
-                        <div>
-                            <h2>{{ $team->name }}</h2>
-                            <div class="team-division {{ $team->division }}">
-                                {{ ucfirst($team->division) }} - {{ $team->points }} pts
-                            </div>
+                        <h2 class="team-name-title">{{ $team->name }}</h2>
+                        <div class="team-stats-inline">
+                            {{ $team->matches_won }}V - {{ $team->matches_lost }}D
                         </div>
                     </div>
-                    <div class="team-stats">
-                        <span>{{ $team->matches_won }}V - {{ $team->matches_lost }}D</span>
-                        @if($team->matches_played > 0)
-                            <span>({{ number_format(($team->matches_won / $team->matches_played) * 100, 1) }}%)</span>
-                        @endif
+                    <div class="team-division {{ $team->division }}">
+                        {{ ucfirst($team->division) }} - {{ $team->points }} pts
                     </div>
                 </div>
 
@@ -528,15 +523,30 @@
 
 .team-header-card {
     text-align: center;
-    margin-bottom: 30px;
-    padding: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
     background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
     border-radius: 10px;
 }
 
-.team-header-card h2 {
+.team-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.team-name-title {
     color: #00d4ff;
-    margin-bottom: 10px;
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.team-stats-inline {
+    color: #aaa;
+    font-size: 0.9rem;
+    white-space: nowrap;
 }
 
 .team-tag {
@@ -546,10 +556,11 @@
 
 .team-division {
     display: inline-block;
-    padding: 8px 20px;
+    padding: 6px 16px;
     border-radius: 20px;
-    margin: 10px 0;
+    margin-top: 10px;
     font-weight: bold;
+    font-size: 0.85rem;
 }
 
 .team-division.bronze { background: linear-gradient(135deg, #CD7F32, #8B4513); }
@@ -558,11 +569,6 @@
 .team-division.platine { background: linear-gradient(135deg, #E5E4E2, #B0B0B0); }
 .team-division.diamant { background: linear-gradient(135deg, #B9F2FF, #00CED1); }
 .team-division.legende { background: linear-gradient(135deg, #FF00FF, #8B008B); }
-
-.team-stats {
-    color: #aaa;
-    margin-top: 10px;
-}
 
 .team-members-section {
     margin: 30px 0;
@@ -648,7 +654,7 @@
 }
 
 .invite-section {
-    margin: 30px 0;
+    margin: 20px 0;
 }
 
 .invite-section h3 {
@@ -659,15 +665,24 @@
 .invite-form {
     display: flex;
     gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .invite-form input {
     flex: 1;
+    min-width: 0;
     padding: 12px;
     border: 2px solid #0f3460;
     border-radius: 8px;
     background: #16213e;
     color: #fff;
+    box-sizing: border-box;
+}
+
+.invite-form button {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .team-actions {
@@ -988,17 +1003,17 @@
 }
 
 .team-emblem {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
-    margin-right: 15px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
+    font-size: 1.8rem;
     background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
     border: 2px solid #00d4ff;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .team-emblem img {
@@ -1007,23 +1022,118 @@
     object-fit: cover;
 }
 
-.team-header-with-emblem {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    margin-bottom: 15px;
-}
-
-.team-header-with-emblem .team-emblem {
-    width: 80px;
-    height: 80px;
-    flex-shrink: 0;
-}
-
-.team-header-with-emblem h2 {
-    color: #00d4ff;
-    margin: 0 0 10px 0;
+@media (max-width: 480px) {
+    .create-team-section, .team-info-section {
+        padding: 15px;
+        border-width: 1px;
+        margin: 0 -5px 15px -5px;
+        border-radius: 10px;
+    }
+    
+    .team-header-card {
+        padding: 10px;
+    }
+    
+    .team-header-row {
+        gap: 8px;
+    }
+    
+    .team-name-title {
+        font-size: 1.1rem;
+    }
+    
+    .team-emblem {
+        width: 40px;
+        height: 40px;
+        font-size: 1.5rem;
+        border-width: 1px;
+    }
+    
+    .team-division {
+        padding: 5px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .team-members-section {
+        margin: 15px 0;
+    }
+    
+    .member-card {
+        padding: 10px;
+        gap: 8px;
+    }
+    
+    .member-info {
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .member-avatar {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .default-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+    
+    .member-name {
+        font-size: 0.9rem;
+        word-break: break-word;
+    }
+    
+    .btn-kick {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+    
+    .invite-section {
+        margin: 15px 0;
+    }
+    
+    .invite-form {
+        flex-wrap: nowrap;
+    }
+    
+    .invite-form input {
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    .invite-form button {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .btn-requests, .btn-carnet {
+        padding: 10px 15px;
+        font-size: 0.85rem;
+    }
+    
+    .carnet-panel {
+        width: calc(100% - 20px);
+        max-width: none;
+        left: 10px;
+        right: 10px;
+    }
+    
+    .team-actions {
+        margin-top: 20px;
+    }
+    
+    .btn-danger {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+    
+    .info-message {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
 }
 </style>
 
@@ -1297,7 +1407,11 @@ async function kickMember(memberId) {
 }
 
 async function leaveTeam() {
-    if (!confirm('{{ __("Êtes-vous sûr de vouloir quitter l\'équipe ?") }}')) return;
+    @if($team && $team->captain_id === Auth::id())
+    if (!confirm('{{ __("ATTENTION: Vous êtes le capitaine! Si vous quittez, un autre membre deviendra capitaine. Êtes-vous sûr?") }}')) return;
+    @endif
+    
+    if (!confirm('{{ __("Confirmer: Voulez-vous vraiment quitter l\'équipe?") }}')) return;
 
     try {
         const response = await fetch('/league/team/leave', {
