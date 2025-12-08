@@ -364,6 +364,9 @@ body {
                     <a href="{{ route('league.team.search') }}" class="btn-join-team">{{ __('Rejoindre') }}</a>
                 </div>
             </div>
+            <p style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 1rem; text-align: left;">
+                {{ __('Choisissez l\'équipe avec laquelle vous souhaitez participer aux matchs 5v5.') }}
+            </p>
 
             @if($userTeams->count() > 0)
                 <div class="team-list">
@@ -385,10 +388,7 @@ body {
                                 </div>
                             </div>
                             <div class="team-actions">
-                                @if($team->members->count() >= 5)
-                                    <a href="{{ route('league.team.lobby', ['teamId' => $team->id]) }}" class="btn-team-action btn-select">{{ __('Jouer') }}</a>
-                                @endif
-                                <a href="{{ route('league.team.management', ['teamId' => $team->id]) }}" class="btn-team-action btn-manage">{{ __('Gérer') }}</a>
+                                <a href="{{ route('league.team.management', ['teamId' => $team->id]) }}" class="btn-team-action btn-select">{{ __('Choisir') }}</a>
                             </div>
                         </div>
                     @endforeach

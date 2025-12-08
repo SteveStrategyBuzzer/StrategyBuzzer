@@ -177,7 +177,7 @@ class LeagueTeamController extends Controller
     public function showTeamDetails($teamId)
     {
         $user = Auth::user();
-        $team = Team::with(['captain', 'members.profileStat'])->findOrFail($teamId);
+        $team = Team::with(['captain', 'members'])->findOrFail($teamId);
         $userTeam = $user->teams()->first();
         
         $hasPendingRequest = TeamJoinRequest::where('team_id', $teamId)
@@ -205,27 +205,16 @@ class LeagueTeamController extends Controller
         $memberContributions = [];
         
         foreach ($team->members as $member) {
-            $stats = $member->profileStat;
             $memberStrengths = [];
             $contributions = [];
             
             foreach ($themeKeys as $i => $theme) {
                 $strength = 50;
-                if ($stats && isset($stats->theme_stats[$theme])) {
-                    $themeStats = $stats->theme_stats[$theme];
-                    $correct = $themeStats['correct'] ?? 0;
-                    $total = $themeStats['total'] ?? 0;
-                    $strength = $total > 0 ? round(($correct / $total) * 100, 1) : 50;
-                }
                 $memberStrengths[$themeLabels[$i]] = $strength;
-                
-                if ($strength > ($formattedStrengths[$themeLabels[$i]] ?? 50)) {
-                    $contributions[] = $themeLabels[$i];
-                }
             }
             
             $memberStats[$member->id] = $memberStrengths;
-            $memberContributions[$member->id] = array_slice($contributions, 0, 3);
+            $memberContributions[$member->id] = [];
         }
 
         return view('league_team_details', compact(
@@ -251,7 +240,7 @@ class LeagueTeamController extends Controller
         
         $pendingRequests = TeamJoinRequest::where('team_id', $team->id)
             ->where('status', 'pending')
-            ->with(['user.profileStat'])
+            ->with(['user'])
             ->get();
         
         $sentInvitations = TeamInvitation::where('team_id', $team->id)
@@ -406,19 +395,7 @@ class LeagueTeamController extends Controller
         $strengths = [];
         
         foreach ($themes as $theme) {
-            $total = 0;
-            foreach ($members as $member) {
-                $stats = $member->profileStat;
-                if ($stats) {
-                    $themeStats = $stats->theme_stats[$theme] ?? ['correct' => 0, 'total' => 0];
-                    $correct = $themeStats['correct'] ?? 0;
-                    $totalQ = $themeStats['total'] ?? 0;
-                    $total += $totalQ > 0 ? ($correct / $totalQ) * 100 : 50;
-                } else {
-                    $total += 50;
-                }
-            }
-            $strengths[$theme] = round($total / $members->count(), 1);
+            $strengths[$theme] = 50;
         }
         
         return $strengths;
@@ -426,7 +403,6 @@ class LeagueTeamController extends Controller
 
     private function calculateUserContribution(User $user, Team $team): array
     {
-        $stats = $user->profileStat;
         $themes = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
         $contribution = [];
         
@@ -434,13 +410,6 @@ class LeagueTeamController extends Controller
         
         foreach ($themes as $theme) {
             $userStrength = 50;
-            if ($stats) {
-                $themeStats = $stats->theme_stats[$theme] ?? ['correct' => 0, 'total' => 0];
-                $correct = $themeStats['correct'] ?? 0;
-                $total = $themeStats['total'] ?? 0;
-                $userStrength = $total > 0 ? ($correct / $total) * 100 : 50;
-            }
-            
             $diff = $userStrength - ($teamStrengths[$theme] ?? 50);
             $contribution[$theme] = [
                 'user_strength' => round($userStrength, 1),
