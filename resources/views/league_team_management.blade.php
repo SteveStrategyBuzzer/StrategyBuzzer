@@ -156,6 +156,10 @@
                     <div class="team-division {{ $team->division }}">
                         {{ ucfirst($team->division) }} - {{ $team->points }} pts
                     </div>
+                    <div class="team-code-display">
+                        🏷️ {{ __('Code') }}: <span class="code-value" onclick="copyTeamCode('{{ $team->team_code }}')">{{ $team->team_code }}</span>
+                        <span class="copy-hint">{{ __('(cliquer pour copier)') }}</span>
+                    </div>
                 </div>
 
                 <div class="team-members-section">
@@ -574,6 +578,29 @@
 .team-division.platine { background: linear-gradient(135deg, #E5E4E2, #B0B0B0); }
 .team-division.diamant { background: linear-gradient(135deg, #B9F2FF, #00CED1); }
 .team-division.legende { background: linear-gradient(135deg, #FF00FF, #8B008B); }
+
+.team-code-display {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.9);
+}
+.team-code-display .code-value {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.team-code-display .code-value:hover {
+    background: rgba(255,255,255,0.35);
+}
+.team-code-display .copy-hint {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-left: 5px;
+}
 
 .team-members-section {
     margin: 30px 0;
@@ -1495,6 +1522,20 @@ async function leaveTeam() {
     } catch (error) {
         showToast('{{ __("Erreur de connexion") }}', 'error');
     }
+}
+
+function copyTeamCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        showToast('{{ __("Code copié!") }}', 'success');
+    }).catch(() => {
+        const tempInput = document.createElement('input');
+        tempInput.value = code;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        showToast('{{ __("Code copié!") }}', 'success');
+    });
 }
 
 let carnetLoaded = false;

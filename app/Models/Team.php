@@ -25,6 +25,7 @@ class Team extends Model
     protected $fillable = [
         'name',
         'tag',
+        'team_code',
         'captain_id',
         'division',
         'points',
@@ -122,5 +123,25 @@ class Team extends Model
             return 0.0;
         }
         return ($this->matches_won / $this->matches_played) * 100;
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($team) {
+            if (empty($team->team_code)) {
+                $team->team_code = self::generateUniqueCode();
+            }
+        });
+    }
+
+    public static function generateUniqueCode(): string
+    {
+        do {
+            $code = 'EQ-' . strtoupper(substr(md5(uniqid()), 0, 5));
+        } while (self::where('team_code', $code)->exists());
+        
+        return $code;
     }
 }
