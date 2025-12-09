@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face à Face - StrategyBuzzer</title>
+    <title>{{ __('Face à Face') }} - StrategyBuzzer</title>
     <style>
         * {
             margin: 0;
@@ -80,8 +80,8 @@
 </head>
 <body>
     <div class="splash-container" id="splashContainer">
-        <img src="{{ asset('images/league_splash_portrait.png') }}" alt="Face à Face" class="splash-image portrait">
-        <img src="{{ asset('images/league_splash_landscape.png') }}" alt="Face à Face" class="splash-image landscape">
+        <img src="{{ asset('images/league_splash_portrait.png') }}" alt="{{ __('Face à Face') }}" class="splash-image portrait">
+        <img src="{{ asset('images/league_splash_landscape.png') }}" alt="{{ __('Face à Face') }}" class="splash-image landscape">
     </div>
 
     <script>
