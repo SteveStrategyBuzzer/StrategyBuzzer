@@ -14,7 +14,7 @@
             <div class="menu-cards-grid">
                 <a href="{{ route('league.team.search') }}" class="menu-action-card">
                     <div class="menu-card-icon">🔍</div>
-                    <h3>{{ __('Rechercher une équipe') }}</h3>
+                    <h3>{{ __('Chercher Équipe') }}</h3>
                     <p>{{ __('Trouvez une équipe qui recrute et rejoignez-la') }}</p>
                 </a>
                 <div class="menu-action-card" onclick="toggleCreateForm()">

@@ -42,6 +42,12 @@ class LeagueTeamController extends Controller
         return view('ligue', compact('user', 'userTeams', 'pendingInvitations'));
     }
 
+    public function showSplash()
+    {
+        $redirectUrl = route('league.team.management');
+        return view('league_splash', compact('redirectUrl'));
+    }
+
     public function showLeagueEntry()
     {
         $user = Auth::user();

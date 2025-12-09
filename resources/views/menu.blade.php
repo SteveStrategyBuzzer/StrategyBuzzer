@@ -418,7 +418,7 @@
         </a>
 
         <a class="menu-link {{ $ligueUnlocked ? '' : 'disabled' }}"
-           href="{{ $ligueUnlocked ? (\Illuminate\Support\Facades\Route::has('ligue') ? route('ligue') : url('/ligue')) : 'javascript:void(0)' }}">
+           href="{{ $ligueUnlocked ? route('league.splash') : 'javascript:void(0)' }}">
             {{ __('LIGUE') }} {{ !$ligueUnlocked ? '🔒' : '' }}
             @if($ligueNotifications > 0)
                 <span class="notification-badge">{{ $ligueNotifications }}</span>
