@@ -861,4 +861,154 @@ class LeagueTeamController extends Controller
             'status' => $match->status,
         ]);
     }
+
+    public function toggleRecruitingById($teamId)
+    {
+        $user = Auth::user();
+        $team = Team::findOrFail($teamId);
+
+        if ($team->captain_id !== $user->id) {
+            return response()->json(['success' => false, 'error' => __('Seul le capitaine peut modifier ce paramètre.')], 403);
+        }
+
+        $team->update(['is_recruiting' => !$team->is_recruiting]);
+
+        return response()->json([
+            'success' => true,
+            'is_recruiting' => $team->is_recruiting
+        ]);
+    }
+
+    public function findOpponents(Request $request)
+    {
+        $user = Auth::user();
+        $teamId = $request->team_id;
+        $level = $request->level ?? 'normal';
+
+        $team = Team::withCount('members')->findOrFail($teamId);
+
+        if (!$team->isMember($user->id)) {
+            return response()->json(['success' => false, 'error' => __('Vous n\'êtes pas membre de cette équipe.')], 403);
+        }
+
+        if ($team->members_count < 5) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Votre équipe doit avoir 5 joueurs pour participer.')
+            ]);
+        }
+
+        $opponents = Team::where('id', '!=', $team->id)
+            ->where('division', $team->division)
+            ->withCount('members')
+            ->get()
+            ->filter(fn($t) => $t->members_count >= 5)
+            ->sortBy(fn($t) => abs($t->points - $team->points))
+            ->take(3);
+
+        if ($opponents->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Aucune équipe disponible dans votre division.')
+            ]);
+        }
+
+        $opponentData = $opponents->map(function ($opp) {
+            $winRate = $opp->matches_played > 0 
+                ? round(($opp->matches_won / $opp->matches_played) * 100, 1) 
+                : 0;
+            
+            $emblems = Team::EMBLEM_CATEGORIES;
+            $category = $opp->emblem_category ?? 'animals';
+            $index = ($opp->emblem_index ?? 1) - 1;
+            $emblem = $emblems[$category][$index] ?? '🛡️';
+
+            return [
+                'id' => $opp->id,
+                'name' => $opp->name,
+                'tag' => $opp->tag,
+                'emblem' => $emblem,
+                'points' => $opp->points,
+                'wins' => $opp->matches_won,
+                'losses' => $opp->matches_lost,
+                'win_rate' => $winRate,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'opponents' => $opponentData
+        ]);
+    }
+
+    public function startMatch(Request $request)
+    {
+        $user = Auth::user();
+        $teamId = $request->team_id;
+        $opponentId = $request->opponent_id;
+        $level = $request->level ?? 'normal';
+
+        $team = Team::withCount('members')->findOrFail($teamId);
+        $opponent = Team::withCount('members')->findOrFail($opponentId);
+
+        if ($team->captain_id !== $user->id) {
+            return response()->json(['success' => false, 'error' => __('Seul le capitaine peut lancer un match.')], 403);
+        }
+
+        if ($team->members_count < 5) {
+            return response()->json(['success' => false, 'error' => __('Votre équipe doit avoir 5 joueurs.')], 400);
+        }
+
+        if ($opponent->members_count < 5) {
+            return response()->json(['success' => false, 'error' => __('L\'équipe adverse n\'a pas 5 joueurs.')], 400);
+        }
+
+        if ($team->division !== $opponent->division) {
+            return response()->json(['success' => false, 'error' => __('Les équipes doivent être dans la même division.')], 400);
+        }
+
+        $levelCosts = [
+            'normal' => 0,
+            'premium' => 500,
+            'elite' => 1000
+        ];
+
+        $cost = $levelCosts[$level] ?? 0;
+
+        if ($cost > 0 && ($user->coins ?? 0) < $cost) {
+            return response()->json(['success' => false, 'error' => __('Vous n\'avez pas assez de diamants.')], 400);
+        }
+
+        try {
+            \DB::beginTransaction();
+
+            if ($cost > 0) {
+                $user->decrement('coins', $cost);
+            }
+
+            $match = LeagueTeamMatch::create([
+                'team1_id' => $team->id,
+                'team2_id' => $opponent->id,
+                'division' => $team->division,
+                'status' => 'pending',
+                'level' => $level,
+                'game_state' => [
+                    'round' => 1,
+                    'question_number' => 0,
+                    'team1_score' => 0,
+                    'team2_score' => 0,
+                ]
+            ]);
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'match_id' => $match->id
+            ]);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
 }

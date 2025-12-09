@@ -43,15 +43,54 @@
             </div>
 
             <div class="matchmaking-card">
-                <h3>⚔️ MATCHMAKING</h3>
-                <p>Affrontez une autre équipe de votre division</p>
-                <button id="startMatchmakingBtn" class="btn-primary btn-large">
+                <h3>⚔️ {{ __('MATCHMAKING') }}</h3>
+                <p>{{ __('Affrontez une autre équipe de votre division') }}</p>
+                
+                @if($team->captain_id === Auth::id())
+                <div class="level-selection">
+                    <h4>🎖️ {{ __('Niveau de compétition') }}</h4>
+                    <div class="level-options">
+                        <label class="level-option selected" data-level="normal">
+                            <input type="radio" name="matchLevel" value="normal" checked>
+                            <div class="level-card">
+                                <span class="level-name">{{ __('Normal') }}</span>
+                                <span class="level-reward">+50 pts</span>
+                                <span class="level-cost">{{ __('Gratuit') }}</span>
+                            </div>
+                        </label>
+                        <label class="level-option" data-level="premium">
+                            <input type="radio" name="matchLevel" value="premium">
+                            <div class="level-card premium">
+                                <span class="level-name">⭐ {{ __('Premium') }}</span>
+                                <span class="level-reward">+100 pts</span>
+                                <span class="level-cost">💎 500</span>
+                            </div>
+                        </label>
+                        <label class="level-option" data-level="elite">
+                            <input type="radio" name="matchLevel" value="elite">
+                            <div class="level-card elite">
+                                <span class="level-name">👑 {{ __('Élite') }}</span>
+                                <span class="level-reward">+200 pts</span>
+                                <span class="level-cost">💎 1000</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                @endif
+
+                <button id="startMatchmakingBtn" class="btn-primary btn-large" onclick="findOpponents()">
                     <span class="btn-icon">🎯</span>
-                    TROUVER UN ADVERSAIRE
+                    {{ __('TROUVER UN ADVERSAIRE') }}
                 </button>
+                
+                <div id="opponentChoices" class="opponent-choices" style="display: none;">
+                    <h4>🎯 {{ __('Choisissez votre adversaire') }}</h4>
+                    <div class="opponents-list" id="opponentsList"></div>
+                </div>
+                
                 <div id="searchingStatus" class="searching-status" style="display: none;">
                     <div class="spinner"></div>
-                    <p>Recherche d'une équipe adverse...</p>
+                    <p>{{ __('Recherche d\'une équipe adverse...') }}</p>
                 </div>
             </div>
 
@@ -257,6 +296,139 @@
     border: 2px solid #00d4ff !important;
 }
 
+.level-selection {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+}
+.level-selection h4 {
+    color: #ffd700;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+.level-options {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.level-option {
+    cursor: pointer;
+}
+.level-option input {
+    display: none;
+}
+.level-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #333 0%, #222 100%);
+    border: 2px solid #444;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    min-width: 100px;
+}
+.level-option.selected .level-card,
+.level-option:has(input:checked) .level-card {
+    border-color: #00d4ff;
+    background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+}
+.level-card.premium {
+    border-color: #9b59b6;
+}
+.level-option:has(input[value="premium"]:checked) .level-card.premium {
+    border-color: #9b59b6;
+    box-shadow: 0 0 15px rgba(155, 89, 182, 0.4);
+}
+.level-card.elite {
+    border-color: #ffd700;
+}
+.level-option:has(input[value="elite"]:checked) .level-card.elite {
+    border-color: #ffd700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+}
+.level-name {
+    font-weight: bold;
+    color: #fff;
+}
+.level-reward {
+    color: #4CAF50;
+    font-size: 0.85rem;
+}
+.level-cost {
+    color: #aaa;
+    font-size: 0.8rem;
+}
+
+.opponent-choices {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(0,0,0,0.3);
+    border-radius: 12px;
+}
+.opponent-choices h4 {
+    color: #00d4ff;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+.opponents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+.opponent-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #0f3460;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.opponent-card:hover {
+    border-color: #00d4ff;
+    transform: translateX(5px);
+}
+.opponent-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.opponent-emblem {
+    font-size: 2rem;
+}
+.opponent-details {
+    display: flex;
+    flex-direction: column;
+}
+.opponent-name {
+    font-weight: bold;
+    color: #fff;
+}
+.opponent-record {
+    color: #aaa;
+    font-size: 0.85rem;
+}
+.opponent-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+.opponent-points {
+    color: #00d4ff;
+    font-weight: bold;
+}
+.opponent-winrate {
+    color: #4CAF50;
+    font-size: 0.85rem;
+}
+
 @media (max-width: 768px) {
     .lobby-content {
         flex-direction: column;
@@ -273,21 +445,86 @@
 </style>
 
 <script>
-document.getElementById('startMatchmakingBtn')?.addEventListener('click', async () => {
+document.querySelectorAll('.level-option').forEach(option => {
+    option.addEventListener('click', function() {
+        document.querySelectorAll('.level-option').forEach(o => o.classList.remove('selected'));
+        this.classList.add('selected');
+    });
+});
+
+async function findOpponents() {
     const btn = document.getElementById('startMatchmakingBtn');
     const status = document.getElementById('searchingStatus');
+    const choices = document.getElementById('opponentChoices');
+    const list = document.getElementById('opponentsList');
+    const levelInput = document.querySelector('input[name="matchLevel"]:checked');
+    const level = levelInput ? levelInput.value : 'normal';
     
     btn.style.display = 'none';
     status.style.display = 'block';
+    choices.style.display = 'none';
 
     try {
-        const response = await fetch('/api/league/team/start-matchmaking', {
+        const response = await fetch('/api/league/team/find-opponents', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Authorization': 'Bearer ' + localStorage.getItem('api_token')
-            }
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ level: level, team_id: {{ $team->id }} })
+        });
+
+        const data = await response.json();
+        status.style.display = 'none';
+
+        if (data.success && data.opponents && data.opponents.length > 0) {
+            list.innerHTML = data.opponents.map(opp => `
+                <div class="opponent-card" onclick="selectOpponent(${opp.id}, '${level}')">
+                    <div class="opponent-info">
+                        <div class="opponent-emblem">${opp.emblem || '🛡️'}</div>
+                        <div class="opponent-details">
+                            <span class="opponent-name">${opp.name} [${opp.tag}]</span>
+                            <span class="opponent-record">${opp.wins}V - ${opp.losses}D</span>
+                        </div>
+                    </div>
+                    <div class="opponent-stats">
+                        <span class="opponent-points">${opp.points} pts</span>
+                        <span class="opponent-winrate">${opp.win_rate}%</span>
+                    </div>
+                </div>
+            `).join('');
+            choices.style.display = 'block';
+        } else {
+            showToast(data.message || '{{ __("Aucune équipe disponible") }}', 'info');
+            btn.style.display = 'block';
+        }
+    } catch (error) {
+        showToast('{{ __("Erreur de connexion") }}', 'error');
+        btn.style.display = 'block';
+        status.style.display = 'none';
+    }
+}
+
+async function selectOpponent(opponentId, level) {
+    const status = document.getElementById('searchingStatus');
+    const choices = document.getElementById('opponentChoices');
+    
+    choices.style.display = 'none';
+    status.style.display = 'block';
+    status.querySelector('p').textContent = '{{ __("Lancement du match...") }}';
+
+    try {
+        const response = await fetch('/api/league/team/start-match', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ 
+                team_id: {{ $team->id }},
+                opponent_id: opponentId,
+                level: level
+            })
         });
 
         const data = await response.json();
@@ -295,15 +532,25 @@ document.getElementById('startMatchmakingBtn')?.addEventListener('click', async 
         if (data.success) {
             window.location.href = `/league/team/game/${data.match_id}`;
         } else {
-            showToast(data.error || '{{ __("Erreur lors du matchmaking") }}', 'error');
-            btn.style.display = 'block';
+            showToast(data.error || '{{ __("Erreur lors du lancement") }}', 'error');
+            document.getElementById('startMatchmakingBtn').style.display = 'block';
             status.style.display = 'none';
         }
     } catch (error) {
         showToast('{{ __("Erreur de connexion") }}', 'error');
-        btn.style.display = 'block';
+        document.getElementById('startMatchmakingBtn').style.display = 'block';
         status.style.display = 'none';
     }
-});
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:#fff;font-weight:600;z-index:9999;';
+    toast.style.background = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#17a2b8';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
 </script>
 @endsection

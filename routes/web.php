@@ -288,6 +288,12 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
     Route::get('/results/{match}', [App\Http\Controllers\LeagueTeamController::class, 'showResults'])->name('results');
     Route::post('/invitation/{invitationId}/accept', [App\Http\Controllers\LeagueTeamController::class, 'acceptInvitation'])->name('invitation.accept');
     Route::post('/invitation/{invitationId}/decline', [App\Http\Controllers\LeagueTeamController::class, 'declineInvitation'])->name('invitation.decline');
+    Route::post('/{teamId}/toggle-recruiting', [App\Http\Controllers\LeagueTeamController::class, 'toggleRecruitingById'])->name('toggle-recruiting-by-id');
+});
+
+Route::prefix('api/league/team')->middleware('auth')->group(function () {
+    Route::post('/find-opponents', [App\Http\Controllers\LeagueTeamController::class, 'findOpponents']);
+    Route::post('/start-match', [App\Http\Controllers\LeagueTeamController::class, 'startMatch']);
 });
 
 /* ===== MAÎTRE DU JEU ===== */
