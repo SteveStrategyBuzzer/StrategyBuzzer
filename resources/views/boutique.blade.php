@@ -375,7 +375,7 @@
 
         <!-- Pièces d'Intelligence -->
         <a href="{{ route('boutique.category', 'coins') }}" class="category-card">
-            <div class="category-icon">💰</div>
+            <div class="category-icon"><img src="{{ asset('images/skill_coin.png') }}" alt="{{ __("Pièce d'Intelligence") }}" style="width:48px;height:48px;object-fit:contain;"></div>
             <div class="category-name">{{ __("Pièces d'Intelligence") }}</div>
             <div class="category-desc">{{ __('Achetez des pièces') }}</div>
         </a>

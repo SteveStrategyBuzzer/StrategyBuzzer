@@ -23,7 +23,7 @@
         'buzzers' => '🔊',
         'strategiques' => '🛡️',
         'master' => '🎮',
-        'coins' => '💰',
+        'coins' => '<img src="' . asset('images/skill_coin.png') . '" alt="' . __("Pièce d'Intelligence") . '" style="width:32px;height:32px;vertical-align:middle;">',
         'vies' => '❤️',
     ];
     
