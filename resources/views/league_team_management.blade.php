@@ -203,6 +203,10 @@
                 
                 @if($team->captain_id === Auth::id())
                 <div class="captain-actions">
+                    <button type="button" class="btn-recruit {{ $team->is_recruiting ? 'active' : '' }}" onclick="toggleRecruiting()">
+                        🔍 {{ __('Cherche membre') }}
+                        <span class="recruit-status">{{ $team->is_recruiting ? __('Activé') : __('Désactivé') }}</span>
+                    </button>
                     <a href="{{ route('league.team.captain', $selectedTeamId ?? $team->id) }}" class="btn-captain">
                         ⚙️ {{ __('Gérer les demandes d\'accès') }}
                         @if($pendingRequestsCount > 0)
@@ -309,6 +313,38 @@
 
 .captain-actions {
     margin: 1.5rem 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+.btn-recruit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #444 0%, #333 100%);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: 2px solid #555;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.btn-recruit.active {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    border-color: #28a745;
+}
+.btn-recruit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.btn-recruit .recruit-status {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.2);
 }
 
 .btn-captain {
@@ -1536,6 +1572,39 @@ function copyTeamCode(code) {
         document.body.removeChild(tempInput);
         showToast('{{ __("Code copié!") }}', 'success');
     });
+}
+
+async function toggleRecruiting() {
+    try {
+        const response = await fetch('/league/team/{{ $team->id ?? 0 }}/toggle-recruiting', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const btn = document.querySelector('.btn-recruit');
+            const status = btn.querySelector('.recruit-status');
+            if (data.is_recruiting) {
+                btn.classList.add('active');
+                status.textContent = '{{ __("Activé") }}';
+                showToast('{{ __("Votre équipe apparaît maintenant dans la recherche") }}', 'success');
+            } else {
+                btn.classList.remove('active');
+                status.textContent = '{{ __("Désactivé") }}';
+                showToast('{{ __("Votre équipe est maintenant masquée") }}', 'info');
+            }
+        } else {
+            showToast(data.error || '{{ __("Erreur") }}', 'error');
+        }
+    } catch (error) {
+        showToast('{{ __("Erreur de connexion") }}', 'error');
+    }
 }
 
 let carnetLoaded = false;
