@@ -168,11 +168,11 @@
                                         @if($member->avatar_url ?? null)
                                             <img src="{{ $member->avatar_url }}" alt="Avatar">
                                         @else
-                                            <div class="default-avatar">{{ strtoupper(substr($member->display_name, 0, 1)) }}</div>
+                                            <div class="default-avatar">{{ strtoupper(substr($member->name, 0, 1)) }}</div>
                                         @endif
                                     </div>
                                     <div>
-                                        <p class="member-name">{{ $member->display_name }}</p>
+                                        <p class="member-name">{{ $member->name }}</p>
                                         <p class="member-role">
                                             @if($team->captain_id === $member->id)
                                                 👑 {{ __('Capitaine') }}
