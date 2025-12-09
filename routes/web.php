@@ -282,6 +282,7 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
     Route::post('/toggle-recruiting', [App\Http\Controllers\LeagueTeamController::class, 'toggleRecruiting'])->name('toggle-recruiting');
     Route::post('/leave', [App\Http\Controllers\LeagueTeamController::class, 'leaveTeam'])->name('leave');
     Route::post('/kick', [App\Http\Controllers\LeagueTeamController::class, 'kickMember'])->name('kick');
+    Route::post('/transfer-captain', [App\Http\Controllers\LeagueTeamController::class, 'transferCaptain'])->name('transfer-captain');
     Route::get('/lobby/{teamId?}', [App\Http\Controllers\LeagueTeamController::class, 'showLobby'])->name('lobby');
     Route::get('/game/{match}', [App\Http\Controllers\LeagueTeamController::class, 'showGame'])->name('game');
     Route::get('/results/{match}', [App\Http\Controllers\LeagueTeamController::class, 'showResults'])->name('results');

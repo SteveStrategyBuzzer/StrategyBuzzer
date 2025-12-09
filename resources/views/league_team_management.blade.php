@@ -183,9 +183,14 @@
                                     </div>
                                 </div>
                                 @if($team->captain_id === Auth::id() && $member->id !== Auth::id())
-                                    <button onclick="event.stopPropagation(); kickMember({{ $member->id }})" class="btn-kick">
-                                        {{ __('Expulser') }}
-                                    </button>
+                                    <div class="member-actions">
+                                        <button onclick="event.stopPropagation(); transferCaptain({{ $member->id }}, '{{ addslashes($member->name) }}')" class="btn-captain" title="{{ __('Nommer capitaine') }}">
+                                            👑
+                                        </button>
+                                        <button onclick="event.stopPropagation(); kickMember({{ $member->id }})" class="btn-kick">
+                                            {{ __('Expulser') }}
+                                        </button>
+                                    </div>
                                 @endif
                             </div>
                         @endforeach
@@ -639,6 +644,27 @@
     margin: 5px 0 0 0;
 }
 
+.member-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-captain {
+    padding: 8px 12px;
+    background: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-size: 16px;
+}
+
+.btn-captain:hover {
+    background: #218838;
+}
+
 .btn-kick {
     padding: 8px 16px;
     background: #dc3545;
@@ -1085,6 +1111,15 @@
         word-break: break-word;
     }
     
+    .member-actions {
+        gap: 5px;
+    }
+    
+    .btn-captain {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+    
     .btn-kick {
         padding: 6px 10px;
         font-size: 0.8rem;
@@ -1400,6 +1435,34 @@ async function kickMember(memberId) {
             window.location.reload();
         } else {
             showToast(data.error || '{{ __("Erreur lors de l\'expulsion") }}', 'error');
+        }
+    } catch (error) {
+        showToast('{{ __("Erreur de connexion") }}', 'error');
+    }
+}
+
+async function transferCaptain(memberId, memberName) {
+    if (!confirm(`{{ __("Voulez-vous nommer") }} ${memberName} {{ __("comme nouveau capitaine ?") }}`)) return;
+    if (!confirm('{{ __("Confirmer: Vous perdrez vos droits de capitaine. Continuer ?") }}')) return;
+
+    try {
+        const response = await fetch('/league/team/transfer-captain', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ member_id: memberId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showToast(data.message || '{{ __("Capitaine transféré !") }}', 'success');
+            window.location.reload();
+        } else {
+            showToast(data.error || '{{ __("Erreur lors du transfert") }}', 'error');
         }
     } catch (error) {
         showToast('{{ __("Erreur de connexion") }}', 'error');

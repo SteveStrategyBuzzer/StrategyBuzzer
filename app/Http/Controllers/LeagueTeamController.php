@@ -625,6 +625,50 @@ class LeagueTeamController extends Controller
         }
     }
 
+    public function transferCaptain(Request $request)
+    {
+        $request->validate([
+            'member_id' => 'required|integer',
+        ]);
+
+        $user = Auth::user();
+        $newCaptainId = (int) $request->member_id;
+
+        $team = $user->teams()
+            ->where('captain_id', $user->id)
+            ->first();
+
+        if (!$team) {
+            return response()->json(['error' => __('Vous n\'êtes pas capitaine d\'une équipe.')], 403);
+        }
+
+        if ($newCaptainId === $user->id) {
+            return response()->json(['error' => __('Vous êtes déjà le capitaine.')], 400);
+        }
+
+        $isMember = $team->teamMembers()->where('user_id', $newCaptainId)->exists();
+        if (!$isMember) {
+            return response()->json(['error' => __('Ce joueur n\'est pas membre de l\'équipe.')], 400);
+        }
+
+        try {
+            \DB::transaction(function () use ($team, $user, $newCaptainId) {
+                $team->captain_id = $newCaptainId;
+                $team->save();
+
+                $team->teamMembers()->where('user_id', $user->id)->update(['role' => 'member']);
+                $team->teamMembers()->where('user_id', $newCaptainId)->update(['role' => 'captain']);
+            });
+
+            return response()->json(['success' => true, 'message' => __('Capitaine transféré avec succès.')]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
     public function startMatchmaking()
     {
         $user = Auth::user();
