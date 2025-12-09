@@ -410,7 +410,7 @@
         </a>
 
         <a class="menu-link {{ $duoUnlocked ? '' : 'disabled' }}"
-           href="{{ $duoUnlocked ? (\Illuminate\Support\Facades\Route::has('duo') ? route('duo') : url('/duo')) : 'javascript:void(0)' }}">
+           href="{{ $duoUnlocked ? route('duo.splash') : 'javascript:void(0)' }}">
             {{ __('DUO') }} {{ !$duoUnlocked ? '🔒' : '' }}
             @if($duoNotifications > 0)
                 <span class="notification-badge">{{ $duoNotifications }}</span>
@@ -418,7 +418,7 @@
         </a>
 
         <a class="menu-link {{ $ligueUnlocked ? '' : 'disabled' }}"
-           href="{{ $ligueUnlocked ? route('league.splash') : 'javascript:void(0)' }}">
+           href="{{ $ligueUnlocked ? route('ligue') : 'javascript:void(0)' }}">
             {{ __('LIGUE') }} {{ !$ligueUnlocked ? '🔒' : '' }}
             @if($ligueNotifications > 0)
                 <span class="notification-badge">{{ $ligueNotifications }}</span>

@@ -27,6 +27,12 @@ class DuoController extends Controller
         private LobbyService $lobbyService
     ) {}
 
+    public function showSplash()
+    {
+        $redirectUrl = route('duo.lobby');
+        return view('duo_splash', compact('redirectUrl'));
+    }
+
     public function index()
     {
         $user = Auth::user();

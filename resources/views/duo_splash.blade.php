@@ -80,12 +80,12 @@
 </head>
 <body>
     <div class="splash-container" id="splashContainer">
-        <img src="{{ asset('images/league_splash_portrait.png') }}" alt="{{ __('Face à Face') }}" class="splash-image portrait">
-        <img src="{{ asset('images/league_splash_landscape.png') }}" alt="{{ __('Face à Face') }}" class="splash-image landscape">
+        <img src="{{ asset('images/duo_splash_portrait.png') }}" alt="{{ __('Face à Face') }}" class="splash-image portrait">
+        <img src="{{ asset('images/duo_splash_landscape.png') }}" alt="{{ __('Face à Face') }}" class="splash-image landscape">
     </div>
 
     <script>
-        const redirectUrl = '{{ $redirectUrl ?? route("league.team.management") }}';
+        const redirectUrl = '{{ $redirectUrl ?? route("duo.lobby") }}';
         
         setTimeout(function() {
             document.getElementById('splashContainer').classList.add('fade-out');

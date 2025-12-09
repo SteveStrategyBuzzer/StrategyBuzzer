@@ -193,6 +193,7 @@ Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
 });
 
 /* ===== DUO ===== */
+Route::get('/duo/splash', [App\Http\Controllers\DuoController::class, 'showSplash'])->middleware('auth')->name('duo.splash');
 Route::get('/duo', fn() => redirect()->route('duo.lobby'))->name('duo');
 
 Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
@@ -263,7 +264,6 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
 });
 
 /* ===== LIGUE ÉQUIPE ===== */
-Route::get('/league/splash', [App\Http\Controllers\LeagueTeamController::class, 'showSplash'])->middleware('auth')->name('league.splash');
 Route::get('/league/entry', [App\Http\Controllers\LeagueTeamController::class, 'showLeagueEntry'])->middleware('auth')->name('league.entry');
 
 Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(function () {
