@@ -4,7 +4,51 @@
 @php
     use Illuminate\Support\Facades\Auth;
     use App\Models\ProfileStat;
+    use App\Models\TeamInvitation;
+    use App\Models\UserQuestProgress;
+    use App\Models\Quest;
+    use App\Models\PlayerMessage;
+    
     $user = Auth::user();
+    
+    // Compteurs de notifications
+    $duoNotifications = 0;
+    $ligueNotifications = 0;
+    $questsNotifications = 0;
+    $dailyQuestsNotifications = 0;
+    
+    if ($user) {
+        // Duo: Messages non lus
+        $duoNotifications = PlayerMessage::where('receiver_id', $user->id)
+            ->where('is_read', false)
+            ->count();
+        
+        // Ligue: Invitations d'équipe en attente
+        $ligueNotifications = TeamInvitation::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where(function($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->count();
+        
+        // Quêtes: Complétées mais non réclamées (hors quotidiennes)
+        $questsNotifications = UserQuestProgress::where('user_id', $user->id)
+            ->whereNotNull('completed_at')
+            ->where('rewarded', false)
+            ->whereHas('quest', function($q) {
+                $q->where('rarity', '!=', 'Quotidiennes');
+            })
+            ->count();
+        
+        // Quêtes quotidiennes: Complétées mais non réclamées
+        $dailyQuestsNotifications = UserQuestProgress::where('user_id', $user->id)
+            ->whereNotNull('completed_at')
+            ->where('rewarded', false)
+            ->whereHas('quest', function($q) {
+                $q->where('rarity', 'Quotidiennes');
+            })
+            ->count();
+    }
     
     // Vérifier si le profil a été complété (enregistré au moins une fois)
     $profileComplete = $user && ($user->profile_completed ?? false);
@@ -108,6 +152,33 @@
     }
     .menu-link:hover{ background-color: var(--btn-hover); transform: translateY(-1px); }
     .menu-link:active{ transform: translateY(0); }
+    
+    /* Badge de notification */
+    .menu-link {
+        position: relative;
+    }
+    .notification-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #dc3545;
+        color: #fff;
+        font-size: 12px;
+        font-weight: bold;
+        min-width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        animation: pulse-badge 2s infinite;
+    }
+    @keyframes pulse-badge {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
     
     /* Onglets désactivés (verrouillés) */
     .menu-link.disabled{
@@ -341,11 +412,17 @@
         <a class="menu-link {{ $duoUnlocked ? '' : 'disabled' }}"
            href="{{ $duoUnlocked ? (\Illuminate\Support\Facades\Route::has('duo') ? route('duo') : url('/duo')) : 'javascript:void(0)' }}">
             {{ __('DUO') }} {{ !$duoUnlocked ? '🔒' : '' }}
+            @if($duoNotifications > 0)
+                <span class="notification-badge">{{ $duoNotifications }}</span>
+            @endif
         </a>
 
         <a class="menu-link {{ $ligueUnlocked ? '' : 'disabled' }}"
            href="{{ $ligueUnlocked ? (\Illuminate\Support\Facades\Route::has('ligue') ? route('ligue') : url('/ligue')) : 'javascript:void(0)' }}">
             {{ __('LIGUE') }} {{ !$ligueUnlocked ? '🔒' : '' }}
+            @if($ligueNotifications > 0)
+                <span class="notification-badge">{{ $ligueNotifications }}</span>
+            @endif
         </a>
 
         <a class="menu-link {{ $masterUnlocked ? '' : 'disabled' }}"
@@ -361,6 +438,9 @@
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('quests.index') ? route('quests.index') : url('/quests') }}">
             {{ __('QUÊTES') }}
+            @if($questsNotifications > 0)
+                <span class="notification-badge">{{ $questsNotifications }}</span>
+            @endif
         </a>
 
         <a class="menu-link"
@@ -376,6 +456,9 @@
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('quetes-quotidiennes') ? route('quetes-quotidiennes') : url('/quetes-quotidiennes') }}">
             {{ __('QUÊTES QUOTIDIENNES') }}
+            @if($dailyQuestsNotifications > 0)
+                <span class="notification-badge">{{ $dailyQuestsNotifications }}</span>
+            @endif
         </a>
     </div>
 </div>
