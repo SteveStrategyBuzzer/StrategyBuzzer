@@ -57,6 +57,17 @@ class LobbyService
         return $user->name ?? 'Joueur';
     }
     
+    protected function getUserAvatar(User $user): string
+    {
+        $settings = is_string($user->profile_settings) 
+            ? json_decode($user->profile_settings, true) 
+            : (array) $user->profile_settings;
+        
+        $avatar = $settings['avatar']['url'] ?? $settings['avatar'] ?? session('selected_avatar', 'default');
+        
+        return $this->normalizeAvatar($avatar);
+    }
+    
     public function createLobby(User $host, string $mode, array $settings = []): array
     {
         $lobbyCode = $this->generateLobbyCode();
@@ -80,7 +91,7 @@ class LobbyService
                     'id' => $host->id,
                     'name' => $hostDisplayName,
                     'player_code' => $host->player_code,
-                    'avatar' => $this->normalizeAvatar(session('selected_avatar', 'default')),
+                    'avatar' => $this->getUserAvatar($host),
                     'color' => 'blue',
                     'team' => null,
                     'ready' => false,
@@ -128,7 +139,7 @@ class LobbyService
             'id' => $player->id,
             'name' => $playerDisplayName,
             'player_code' => $player->player_code,
-            'avatar' => $this->normalizeAvatar(session('selected_avatar', 'default')),
+            'avatar' => $this->getUserAvatar($player),
             'color' => $assignedColor,
             'team' => null,
             'ready' => false,

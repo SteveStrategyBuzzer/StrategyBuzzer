@@ -948,6 +948,7 @@ $roomCode = $params['room_code'] ?? null;
 <!-- WebRTC Voice Chat pour Duo -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -960,11 +961,38 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig, 'webrtc-game');
+const auth = getAuth(app);
 const db = getFirestore(app);
 
 const matchId = '{{ $matchId ?? '' }}';
 const currentPlayerId = {{ auth()->id() }};
 const opponentId = {{ $params['opponent_info']['user_id'] ?? 0 }};
+
+let voiceChat = null;
+let firebaseAuthReady = false;
+
+function initVoiceChat() {
+    if (!firebaseAuthReady || voiceChat) return;
+    
+    voiceChat = new GameVoiceChat();
+    window.duoVoiceChat = voiceChat;
+    
+    if (matchId && opponentId) {
+        voiceChat.startVoiceChat().then(() => {
+            console.log('[Voice] Ready - click mic to unmute');
+        });
+    }
+}
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        console.log('[Firebase] Authenticated for WebRTC');
+        firebaseAuthReady = true;
+        initVoiceChat();
+    }
+});
+
+signInAnonymously(auth).catch(e => console.error('[Firebase] Auth error:', e));
 
 class GameVoiceChat {
     constructor() {
@@ -1254,9 +1282,8 @@ class GameVoiceChat {
     }
 }
 
-const voiceChat = new GameVoiceChat();
-
 window.toggleDuoMic = async function() {
+    if (!voiceChat) return;
     if (!voiceChat.localStream) {
         const started = await voiceChat.startVoiceChat();
         if (started) {
@@ -1267,13 +1294,9 @@ window.toggleDuoMic = async function() {
     }
 };
 
-window.addEventListener('beforeunload', () => voiceChat.cleanup());
-
-if (matchId && opponentId) {
-    voiceChat.startVoiceChat().then(() => {
-        console.log('[Voice] Ready - click mic to unmute');
-    });
-}
+window.addEventListener('beforeunload', () => {
+    if (voiceChat) voiceChat.cleanup();
+});
 </script>
 @endif
 
@@ -1494,7 +1517,10 @@ function hideWaitingOverlay() {
 
 @if($isFirebaseMode)
 import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js').then(({ initializeApp }) => {
-    import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(({ getFirestore, doc, onSnapshot }) => {
+    Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'),
+        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js')
+    ]).then(([{ getAuth, signInAnonymously }, { getFirestore, doc, onSnapshot }]) => {
         const firebaseConfig = {
             apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bqWp_dHw",
             authDomain: "strategybuzzergame.firebaseapp.com",
@@ -1505,29 +1531,34 @@ import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js').then(({ init
         };
         
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
         
-        const statusEl = document.getElementById('firebaseStatus');
-        statusEl.textContent = '{{ __("Connecté") }}';
-        statusEl.classList.remove('disconnected');
-        statusEl.classList.add('connected');
-        
-        if (gameConfig.matchId) {
-            const firestoreGameId = 'duo-match-' + gameConfig.matchId;
-            const matchRef = doc(db, 'games', firestoreGameId);
+        signInAnonymously(auth).then(() => {
+            console.log('[Firebase] Anonymous auth successful');
             
-            console.log('[Firebase] Listening to:', firestoreGameId);
+            const statusEl = document.getElementById('firebaseStatus');
+            statusEl.textContent = '{{ __("Connecté") }}';
+            statusEl.classList.remove('disconnected');
+            statusEl.classList.add('connected');
             
-            onSnapshot(matchRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
-                    console.log('[Firebase] Game state update:', data);
-                    handleFirebaseUpdate(data);
-                }
-            }, (error) => {
-                console.error('[Firebase] Listener error:', error);
-            });
-        }
+            if (gameConfig.matchId) {
+                const firestoreGameId = 'duo-match-' + gameConfig.matchId;
+                const matchRef = doc(db, 'games', firestoreGameId);
+                
+                console.log('[Firebase] Listening to:', firestoreGameId);
+                
+                onSnapshot(matchRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        console.log('[Firebase] Game state update:', data);
+                        handleFirebaseUpdate(data);
+                    }
+                }, (error) => {
+                    console.error('[Firebase] Listener error:', error);
+                });
+            }
+        }).catch(e => console.error('[Firebase] Auth error:', e));
     });
 });
 

@@ -2744,6 +2744,7 @@ setTimeout(loadUnreadCounts, 1000);
 <!-- Firebase SDK pour synchronisation temps réel des contacts -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -2756,12 +2757,24 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
 
 const currentUserId = {{ Auth::id() }};
 let contactsUnsubscribe = null;
 let matchUnsubscribe = null;
 let lastVersion = null;
+let firebaseInitialized = false;
+
+onAuthStateChanged(auth, (user) => {
+    if (user && !firebaseInitialized) {
+        firebaseInitialized = true;
+        console.log('[Firebase] Duo lobby authenticated');
+        startContactsListener();
+    }
+});
+
+signInAnonymously(auth).catch(e => console.error('[Firebase] Auth error:', e));
 
 function startContactsListener() {
     if (contactsUnsubscribe) return;

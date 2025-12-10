@@ -702,7 +702,7 @@ foreach ($colors as $color) {
                 </select>
             </div>
             <div style="display: flex; align-items: flex-end;">
-                <span class="info-badge" style="margin-left: 10px;">👥 {{ count($players) }}/{{ $maxPlayers }}</span>
+                <span class="info-badge player-count-badge" style="margin-left: 10px;">👥 <span id="player-count-host">{{ count($players) }}</span>/{{ $maxPlayers }}</span>
             </div>
         </div>
     </div>
@@ -710,7 +710,7 @@ foreach ($colors as $color) {
     <div class="lobby-info">
         <span class="info-badge">🎯 {{ $settings['theme'] ?? 'Culture générale' }}</span>
         <span class="info-badge">❓ {{ $settings['nb_questions'] ?? 10 }} {{ __('questions') }}</span>
-        <span class="info-badge">👥 {{ count($players) }}/{{ $maxPlayers }}</span>
+        <span class="info-badge player-count-badge">👥 <span id="player-count-guest">{{ count($players) }}</span>/{{ $maxPlayers }}</span>
     </div>
     @endif
     
@@ -1984,6 +1984,12 @@ foreach ($colors as $color) {
         if (sectionTitle) {
             sectionTitle.textContent = `${translations.players} (${playerEntries.length}/${maxPlayers})`;
         }
+        
+        const hostCountEl = document.getElementById('player-count-host');
+        if (hostCountEl) hostCountEl.textContent = playerEntries.length;
+        
+        const guestCountEl = document.getElementById('player-count-guest');
+        if (guestCountEl) guestCountEl.textContent = playerEntries.length;
     }
     
     document.addEventListener('click', function(e) {
@@ -2113,6 +2119,7 @@ foreach ($colors as $color) {
 @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -2125,7 +2132,64 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig, 'webrtc-app');
+const auth = getAuth(app);
 const db = getFirestore(app);
+
+let firebaseReady = false;
+let initPromise = null;
+
+function initFirebase() {
+    if (initPromise) return initPromise;
+    
+    initPromise = new Promise((resolve, reject) => {
+        let authStateResolved = false;
+        let signInResolved = false;
+        let authUser = null;
+        let signInSuccess = false;
+        
+        function checkComplete() {
+            if (authStateResolved && signInResolved) {
+                if (authUser && signInSuccess) {
+                    firebaseReady = true;
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            }
+        }
+        
+        onAuthStateChanged(auth, (user) => {
+            authUser = user;
+            authStateResolved = true;
+            if (user) {
+                console.log('[Firebase] User authenticated:', user.uid);
+            }
+            checkComplete();
+        });
+        
+        signInAnonymously(auth)
+            .then(() => {
+                console.log('[Firebase] Anonymous auth successful');
+                signInSuccess = true;
+                signInResolved = true;
+                checkComplete();
+            })
+            .catch((error) => {
+                console.error('[Firebase] Auth error:', error);
+                signInResolved = true;
+                checkComplete();
+            });
+        
+        setTimeout(() => {
+            if (!authStateResolved || !signInResolved) {
+                console.error('[Firebase] Auth timeout');
+                resolve(false);
+            }
+        }, 10000);
+    });
+    
+    return initPromise;
+}
 
 class LobbyChatManager {
     constructor(lobbyCode, currentPlayerId, currentPlayerName) {
@@ -2747,14 +2811,24 @@ const lobbyCode = '{{ $lobbyCode }}';
 const currentPlayerId = {{ $currentPlayerId }};
 const mode = '{{ $mode }}';
 const teamId = null;
-
-window.webrtcManager = new WebRTCManager(lobbyCode, currentPlayerId, mode, teamId);
-console.log('[WebRTC] Manager assigned to window.webrtcManager:', !!window.webrtcManager);
-
 const currentPlayerName = @json($players[$currentPlayerId]['name'] ?? 'Joueur');
-window.lobbyChatManager = new LobbyChatManager(lobbyCode, currentPlayerId, currentPlayerName);
-window.lobbyChatManager.startListening();
-console.log('[LobbyChat] Manager initialized for lobby:', lobbyCode);
+
+initFirebase().then((authenticated) => {
+    if (!authenticated) {
+        console.error('[Firebase] Authentication failed - real-time features disabled');
+        return;
+    }
+    
+    window.webrtcManager = new WebRTCManager(lobbyCode, currentPlayerId, mode, teamId);
+    console.log('[WebRTC] Manager assigned to window.webrtcManager:', !!window.webrtcManager);
+
+    window.lobbyChatManager = new LobbyChatManager(lobbyCode, currentPlayerId, currentPlayerName);
+    window.lobbyChatManager.startListening();
+    console.log('[LobbyChat] Manager initialized for lobby:', lobbyCode);
+
+    window.dispatchEvent(new CustomEvent('webrtcReady'));
+    console.log('[WebRTC] Manager initialized for lobby:', lobbyCode, '- Player:', currentPlayerId);
+});
 
 window.addEventListener('beforeunload', () => {
     if (window.webrtcManager) {
@@ -2784,15 +2858,13 @@ window.addEventListener('pagehide', () => {
         window.lobbyChatManager.stopListening();
     }
 });
-
-window.dispatchEvent(new CustomEvent('webrtcReady'));
-console.log('[WebRTC] Manager initialized for lobby:', lobbyCode, '- Player:', currentPlayerId);
 </script>
 @endif
 
 @if(isset($matchId) && $matchId)
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -2804,43 +2876,56 @@ const firebaseConfig = {
     appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
 };
 
-const app = initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig, 'match-watcher');
+const auth = getAuth(app);
 const db = getFirestore(app);
 
 const matchId = {{ $matchId }};
 const currentUserId = {{ $currentPlayerId }};
 const isHost = {{ $isHost ? 'true' : 'false' }};
-
-const matchRef = doc(db, 'duo_matches', String(matchId));
-
-let declineHandled = false;
 const defaultGuestName = @json(__('Invité'));
 const declinedMessage = @json(__('a refusé votre invitation'));
 
-onSnapshot(matchRef, (docSnap) => {
-    if (!docSnap.exists()) return;
-    
-    const data = docSnap.data();
-    
-    if (data.status === 'declined' && isHost && !declineHandled) {
-        declineHandled = true;
-        const declinedByName = data.declinedByName || defaultGuestName;
+function startMatchListener() {
+    const matchRef = doc(db, 'duo_matches', String(matchId));
+    let declineHandled = false;
+
+    onSnapshot(matchRef, (docSnap) => {
+        if (!docSnap.exists()) return;
         
-        const toast = document.getElementById('toast');
-        toast.textContent = declinedByName + ' ' + declinedMessage;
-        toast.classList.add('show');
-        toast.style.background = '#E53935';
+        const data = docSnap.data();
         
-        setTimeout(() => {
-            toast.classList.remove('show');
-            window.location.href = '/duo/lobby';
-        }, 3000);
-    }
-    
-    if (data.player2Joined && isHost) {
-        location.reload();
+        if (data.status === 'declined' && isHost && !declineHandled) {
+            declineHandled = true;
+            const declinedByName = data.declinedByName || defaultGuestName;
+            
+            const toast = document.getElementById('toast');
+            toast.textContent = declinedByName + ' ' + declinedMessage;
+            toast.classList.add('show');
+            toast.style.background = '#E53935';
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                window.location.href = '/duo/lobby';
+            }, 3000);
+        }
+        
+        if (data.player2Joined && isHost) {
+            location.reload();
+        }
+    }, (error) => {
+        console.error('[Firebase] Match listener error:', error);
+    });
+}
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        console.log('[Firebase] Match watcher authenticated');
+        startMatchListener();
     }
 });
+
+signInAnonymously(auth).catch(e => console.error('[Firebase] Auth error:', e));
 </script>
 @endif
 @endsection
