@@ -8,6 +8,7 @@
     use App\Models\UserQuestProgress;
     use App\Models\Quest;
     use App\Models\PlayerMessage;
+    use App\Models\DuoMatch;
     
     $user = Auth::user();
     
@@ -18,10 +19,18 @@
     $dailyQuestsNotifications = 0;
     
     if ($user) {
+        // Duo: Invitations en attente (user est player2 et status 'waiting')
+        $duoInvitations = DuoMatch::where('player2_id', $user->id)
+            ->where('status', 'waiting')
+            ->count();
+        
         // Duo: Messages non lus
-        $duoNotifications = PlayerMessage::where('receiver_id', $user->id)
+        $duoMessages = PlayerMessage::where('receiver_id', $user->id)
             ->where('is_read', false)
             ->count();
+        
+        // Total notifications Duo = invitations + messages non lus
+        $duoNotifications = $duoInvitations + $duoMessages;
         
         // Ligue: Invitations d'équipe en attente
         $ligueNotifications = TeamInvitation::where('user_id', $user->id)
