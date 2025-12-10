@@ -529,6 +529,12 @@ class UnifiedGameController extends Controller
             'unified_question_number',
         ]);
         
+        if ($mode === 'solo') {
+            session(['current_question_number' => $gameState['current_question']]);
+            session()->forget('current_question');
+            return redirect()->route('solo.game');
+        }
+        
         return redirect()->route('game.question', ['mode' => $mode]);
     }
     
