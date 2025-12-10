@@ -600,6 +600,22 @@ class SoloController extends Controller
             'opponent_info' => $opponentInfo,
         ];
         
+        session(['game_state' => [
+            'mode' => 'solo',
+            'theme' => $theme,
+            'total_questions' => $nbQuestions,
+            'niveau' => $niveau,
+            'current_question' => $currentQuestion,
+            'current_round' => session('current_round', 1),
+            'player_score' => session('score', 0),
+            'opponent_score' => session('opponent_score', 0),
+            'player_rounds_won' => session('player_rounds_won', 0),
+            'opponent_rounds_won' => session('opponent_rounds_won', 0),
+            'opponent_info' => $opponentInfo,
+        ]]);
+        session(['unified_current_question' => $question]);
+        session(['unified_question_number' => $currentQuestion]);
+        
         return view('game_question', compact('params'));
     }
 
