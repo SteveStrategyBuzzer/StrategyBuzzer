@@ -1098,6 +1098,13 @@ class SoloController extends Controller
 
     public function answer(Request $request)
     {
+        // Si c'est un GET, afficher la page de réponse
+        if ($request->isMethod('get')) {
+            $buzzTime = $request->query('buzz_time', session('buzz_time', 0));
+            $playerBuzzed = session('buzzed', false) || $request->query('buzz_winner') === 'player';
+            return $this->renderAnswerView($playerBuzzed, $buzzTime);
+        }
+        
         $questionService = new \App\Services\QuestionService();
         
         $answerIndex = $request->input('answer_index', -1);
