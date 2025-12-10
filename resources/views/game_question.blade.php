@@ -2,6 +2,12 @@
 
 @section('content')
 @php
+// Mode de jeu (solo, duo, league_individual, master)
+$mode = $params['mode'] ?? 'solo';
+$isFirebaseMode = in_array($mode, ['duo', 'league_individual', 'master']);
+$matchId = $params['match_id'] ?? null;
+$roomCode = $params['room_code'] ?? null;
+
 // Récupérer la structure complète des skills depuis le contrôleur
 $avatarSkillsFull = $params['avatar_skills_full'] ?? ['rarity' => null, 'skills' => []];
 $currentAvatar = $params['avatar'] ?? 'Aucun';
@@ -1009,24 +1015,33 @@ document.addEventListener('DOMContentLoaded', function() {
         buzzButton.disabled = true;
         buzzButton.style.opacity = '0.5';
         
-        // Envoyer requête POST à /solo/buzz après le son
-        setTimeout(() => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '{{ route('solo.buzz') }}';
-            
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = '{{ csrf_token() }}';
-            form.appendChild(csrfInput);
-            
-            document.body.appendChild(form);
-            form.submit();
+        // Envoyer requête POST à /game/{mode}/buzz après le son
+        setTimeout(async () => {
+            const buzzTime = 8 - timeLeft;
+            try {
+                const response = await fetch('{{ route("game.buzz", ["mode" => $mode]) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ buzz_time: buzzTime })
+                });
+                
+                const data = await response.json();
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    window.location.href = '{{ route("game.answers", ["mode" => $mode]) }}?buzz_time=' + buzzTime + '&buzz_winner=player';
+                }
+            } catch (error) {
+                console.error('Buzz error:', error);
+                window.location.href = '{{ route("game.answers", ["mode" => $mode]) }}?buzz_time=' + buzzTime + '&buzz_winner=player';
+            }
         }, buzzerDuration);
     });
     
-    // Pas de buzz - redirection vers /solo/timeout
+    // Pas de buzz - redirection vers /game/{mode}/transition
     function handleNoBuzz() {
         // Jouer le son "sans buzzer"
         const noBuzzSound = document.getElementById('noBuzzSound');
@@ -1035,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Rediriger après que le son se soit joué complètement
         setTimeout(() => {
-            window.location.href = '{{ route('solo.timeout') }}';
+            window.location.href = '{{ route("game.transition", ["mode" => $mode]) }}?no_buzz=1';
         }, noBuzzDuration);
     }
     
@@ -1068,12 +1083,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Skills qui redirigent vers une autre page
         if (skillId === 'bonus_question') {
-            window.location.href = '{{ route('solo.bonus-question') }}';
+            window.location.href = '{{ route("game.question", ["mode" => $mode]) }}?bonus=1';
             return;
         }
         
         // Appeler l'API pour activer le skill
-        fetch('{{ route('solo.use-skill') }}', {
+        fetch('{{ route("game.use-skill", ["mode" => $mode]) }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

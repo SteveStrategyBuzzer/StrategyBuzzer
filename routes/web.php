@@ -330,7 +330,10 @@ Route::prefix('game')->name('game.')->middleware('auth')->group(function () {
     Route::get('/{mode}/resume', [App\Http\Controllers\UnifiedGameController::class, 'showResume'])->name('resume');
     Route::get('/{mode}/question', [App\Http\Controllers\UnifiedGameController::class, 'showQuestion'])->name('question');
     Route::post('/{mode}/buzz', [App\Http\Controllers\UnifiedGameController::class, 'handleBuzz'])->name('buzz');
+    Route::get('/{mode}/answers', [App\Http\Controllers\UnifiedGameController::class, 'showAnswers'])->name('answers');
     Route::post('/{mode}/answer', [App\Http\Controllers\UnifiedGameController::class, 'submitAnswer'])->name('answer');
+    Route::get('/{mode}/transition', [App\Http\Controllers\UnifiedGameController::class, 'showTransition'])->name('transition');
+    Route::get('/{mode}/next-question', [App\Http\Controllers\UnifiedGameController::class, 'advanceToNextQuestion'])->name('next-question');
     Route::get('/{mode}/round-result', [App\Http\Controllers\UnifiedGameController::class, 'showRoundResult'])->name('round-result');
     Route::post('/{mode}/next-round', [App\Http\Controllers\UnifiedGameController::class, 'startNextRound'])->name('next-round');
     Route::get('/{mode}/match-result', [App\Http\Controllers\UnifiedGameController::class, 'showMatchResult'])->name('match-result');

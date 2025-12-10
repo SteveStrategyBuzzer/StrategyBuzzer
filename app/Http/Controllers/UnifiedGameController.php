@@ -308,10 +308,12 @@ class UnifiedGameController extends Controller
             'mode' => $mode,
             'opponent_type' => $provider->getOpponentType(),
             'opponent_info' => $opponentInfo,
+            'question' => $question,
             'question_text' => $question['text'],
             'answers' => $question['answers'],
             'correct_answer_index' => $question['correct_index'],
             'current' => $gameState['current_question'],
+            'current_question' => $gameState['current_question'],
             'nb_questions' => $gameState['total_questions'],
             'niveau' => $gameState['niveau'] ?? 1,
             'theme' => $gameState['theme'] ?? 'Culture générale',
@@ -337,7 +339,7 @@ class UnifiedGameController extends Controller
             $params['players'] = $gameState['players'] ?? [];
         }
         
-        return view('game_unified', ['params' => $params]);
+        return view('game_question', ['params' => $params]);
     }
     
     public function handleBuzz(Request $request, string $mode)
@@ -356,8 +358,177 @@ class UnifiedGameController extends Controller
         $result = $provider->handleBuzz((float)$buzzTime);
         
         session(['game_state' => $provider->getGameState()]);
+        session(['last_buzz_time' => $buzzTime]);
+        session(['last_buzz_winner' => 'player']);
+        
+        $result['redirect'] = route('game.answers', ['mode' => $mode]) . 
+            '?buzz_time=' . urlencode($buzzTime) . 
+            '&buzz_winner=player';
         
         return response()->json($result);
+    }
+    
+    public function showAnswers(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $question = $this->getCurrentQuestion($gameState);
+        
+        if (!$question) {
+            return redirect()->route('game.round-result', ['mode' => $mode]);
+        }
+        
+        $opponentInfo = $provider->getOpponentInfo();
+        $avatarData = $this->getAvatarData($user);
+        
+        $buzzTime = $request->query('buzz_time', session('last_buzz_time', 0));
+        $buzzWinner = $request->query('buzz_winner', session('last_buzz_winner', 'player'));
+        
+        $params = [
+            'mode' => $mode,
+            'opponent_type' => $provider->getOpponentType(),
+            'opponent_info' => $opponentInfo,
+            'question' => $question,
+            'answers' => $question['answers'],
+            'correct_answer_index' => $question['correct_index'],
+            'current' => $gameState['current_question'],
+            'nb_questions' => $gameState['total_questions'],
+            'theme' => $gameState['theme'] ?? 'Culture générale',
+            'sub_theme' => $question['sub_theme'] ?? '',
+            'score' => $gameState['player_score'] ?? 0,
+            'opponent_score' => $gameState['opponent_score'] ?? 0,
+            'current_round' => $gameState['current_round'] ?? 1,
+            'player_rounds_won' => $gameState['player_rounds_won'] ?? 0,
+            'opponent_rounds_won' => $gameState['opponent_rounds_won'] ?? 0,
+            'avatar' => $avatarData['name'],
+            'avatar_skills_full' => $avatarData['skills_full'],
+            'buzz_time' => (float)$buzzTime,
+            'buzz_winner' => $buzzWinner,
+        ];
+        
+        if (in_array($mode, ['duo', 'league_individual', 'master'])) {
+            $params['match_id'] = $gameState['match_id'] ?? null;
+        }
+        
+        return view('game_answers', ['params' => $params]);
+    }
+    
+    public function showTransition(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        $provider = $this->getProvider($mode);
+        $provider->setGameState($gameState);
+        
+        $opponentInfo = $provider->getOpponentInfo();
+        
+        $lastResult = session('last_answer_result', []);
+        
+        $wasCorrect = $request->query('correct', '0') === '1';
+        $pointsEarned = (int)$request->query('points', $lastResult['points_earned'] ?? ($wasCorrect ? 10 : 0));
+        $noBuzz = $request->query('no_buzz', '0') === '1';
+        $timeout = $request->query('timeout', '0') === '1';
+        $opponentAnswered = $request->query('opponent_answered', '0') === '1';
+        
+        $buzzWinner = session('last_buzz_winner', 'player');
+        $buzzTime = session('last_buzz_time', 0);
+        
+        $opponentPointsEarned = $lastResult['opponent_points_earned'] ?? 0;
+        $opponentWasCorrect = $lastResult['opponent_was_correct'] ?? false;
+        $correctAnswer = $lastResult['correct_answer'] ?? '';
+        
+        $playerScore = $lastResult['player_score'] ?? ($gameState['player_score'] ?? 0);
+        $opponentScore = $lastResult['opponent_score'] ?? ($gameState['opponent_score'] ?? 0);
+        
+        if ($noBuzz || $timeout) {
+            if ($provider->getOpponentType() === 'ai') {
+                $opponentWasCorrect = rand(0, 100) < 70;
+                if ($opponentWasCorrect) {
+                    $opponentPointsEarned = 10;
+                }
+            }
+        } elseif ($opponentAnswered && $buzzWinner !== 'player') {
+            $opponentWasCorrect = $wasCorrect;
+            if ($opponentWasCorrect) {
+                $opponentPointsEarned = 10;
+            }
+        }
+        
+        if (empty($correctAnswer)) {
+            $question = $this->getCurrentQuestion($gameState);
+            if ($question && isset($question['answers'][$question['correct_index']])) {
+                $answer = $question['answers'][$question['correct_index']];
+                $correctAnswer = is_array($answer) ? ($answer['text'] ?? '') : $answer;
+            }
+        }
+        
+        $currentQuestion = $gameState['current_question'] ?? 1;
+        $totalQuestions = $gameState['total_questions'] ?? 10;
+        $isLastQuestion = $currentQuestion >= $totalQuestions;
+        
+        $params = [
+            'mode' => $mode,
+            'opponent_type' => $provider->getOpponentType(),
+            'opponent_info' => $opponentInfo,
+            'current' => $currentQuestion,
+            'nb_questions' => $totalQuestions,
+            'theme' => $gameState['theme'] ?? 'Culture générale',
+            'score' => $playerScore,
+            'opponent_score' => $opponentScore,
+            'current_round' => $gameState['current_round'] ?? 1,
+            'player_rounds_won' => $gameState['player_rounds_won'] ?? 0,
+            'opponent_rounds_won' => $gameState['opponent_rounds_won'] ?? 0,
+            'was_correct' => $wasCorrect,
+            'points_earned' => $pointsEarned,
+            'opponent_points_earned' => $opponentPointsEarned,
+            'buzz_winner' => $buzzWinner,
+            'buzz_time' => $buzzTime,
+            'opponent_was_correct' => $opponentWasCorrect,
+            'no_buzz' => $noBuzz,
+            'timeout' => $timeout,
+            'correct_answer' => $correctAnswer,
+            'is_last_question' => $isLastQuestion,
+        ];
+        
+        session()->forget('last_answer_result');
+        
+        return view('game_transition', ['params' => $params]);
+    }
+    
+    public function advanceToNextQuestion(Request $request, string $mode)
+    {
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        $gameState['current_question'] = ($gameState['current_question'] ?? 1) + 1;
+        
+        session(['game_state' => $gameState]);
+        
+        session()->forget([
+            'last_buzz_time', 
+            'last_buzz_winner',
+            'last_answer_result',
+            'unified_current_question',
+            'unified_question_number',
+        ]);
+        
+        return redirect()->route('game.question', ['mode' => $mode]);
     }
     
     public function submitAnswer(Request $request, string $mode)
@@ -378,24 +549,51 @@ class UnifiedGameController extends Controller
             'buzz_time' => 'numeric',
         ]);
         
+        $isCorrect = $validated['is_correct'];
+        
         $result = $provider->submitAnswer(
             $validated['answer_id'],
-            $validated['is_correct']
+            $isCorrect
         );
+        
+        $opponentWasCorrect = false;
+        $opponentPointsEarned = 0;
         
         if ($provider->getOpponentType() === 'ai') {
             $opponentResult = $provider->handleOpponentAnswer();
             $result['opponent'] = $opponentResult;
+            $opponentWasCorrect = $opponentResult['correct'] ?? false;
+            $opponentPointsEarned = $opponentResult['points'] ?? 0;
         }
         
         $updatedState = $provider->getGameState();
-        $updatedState['current_question'] = ($updatedState['current_question'] ?? 1) + 1;
+        
+        $question = $this->getCurrentQuestion($gameState);
+        $correctAnswer = '';
+        if ($question && isset($question['answers'][$question['correct_index']])) {
+            $answer = $question['answers'][$question['correct_index']];
+            $correctAnswer = is_array($answer) ? ($answer['text'] ?? '') : $answer;
+        }
+        
+        session(['last_answer_result' => [
+            'was_correct' => $isCorrect,
+            'points_earned' => $result['points'] ?? ($isCorrect ? 10 : 0),
+            'opponent_was_correct' => $opponentWasCorrect,
+            'opponent_points_earned' => $opponentPointsEarned,
+            'correct_answer' => $correctAnswer,
+            'player_score' => $updatedState['player_score'] ?? 0,
+            'opponent_score' => $updatedState['opponent_score'] ?? 0,
+        ]]);
         
         session(['game_state' => $updatedState]);
         
-        $nextQuestion = $provider->getNextQuestion();
-        $result['has_next_question'] = $nextQuestion !== null;
-        $result['current_question'] = $updatedState['current_question'];
+        $isLastQuestion = ($gameState['current_question'] ?? 1) >= ($gameState['total_questions'] ?? 10);
+        
+        $result['redirect'] = route('game.transition', ['mode' => $mode]) . 
+            '?correct=' . ($isCorrect ? '1' : '0') .
+            '&points=' . ($result['points'] ?? ($isCorrect ? 10 : 0));
+        $result['has_next_question'] = !$isLastQuestion;
+        $result['current_question'] = $gameState['current_question'];
         
         return response()->json($result);
     }
