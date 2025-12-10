@@ -360,11 +360,20 @@ class UnifiedGameController extends Controller
         session(['game_state' => $provider->getGameState()]);
         session(['last_buzz_time' => $buzzTime]);
         session(['last_buzz_winner' => 'player']);
+        session(['buzz_time' => $buzzTime]);
+        session(['buzzed' => true]);
         
         $result['success'] = true;
-        $result['redirect'] = route('game.answers', ['mode' => $mode]) . 
-            '?buzz_time=' . urlencode($buzzTime) . 
-            '&buzz_winner=player';
+        
+        if ($mode === 'solo') {
+            $result['redirect'] = route('solo.answer') . 
+                '?buzz_time=' . urlencode($buzzTime) . 
+                '&buzz_winner=player';
+        } else {
+            $result['redirect'] = route('game.answers', ['mode' => $mode]) . 
+                '?buzz_time=' . urlencode($buzzTime) . 
+                '&buzz_winner=player';
+        }
         
         return response()->json($result);
     }
@@ -424,6 +433,15 @@ class UnifiedGameController extends Controller
     
     public function showTransition(Request $request, string $mode)
     {
+        if ($mode === 'solo') {
+            $queryString = $request->getQueryString();
+            $url = route('solo.timeout');
+            if ($queryString) {
+                $url .= '?' . $queryString;
+            }
+            return redirect($url);
+        }
+        
         $user = Auth::user();
         $gameState = session('game_state', []);
         
