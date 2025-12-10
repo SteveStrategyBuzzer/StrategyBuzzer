@@ -1,0 +1,71 @@
+// Firebase Firestore Security Rules for StrategyBuzzer
+// Copy these rules to Firebase Console > Firestore > Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Duo Match invitations and game state
+    match /duoMatches/{matchId} {
+      allow read, write: if request.auth != null;
+      
+      // WebRTC signaling for voice chat
+      match /webrtc/{signalId} {
+        allow read, write: if request.auth != null;
+      }
+      
+      // Voice presence tracking
+      match /voice_presence/{playerId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // Game state documents
+    match /games/{gameId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Lobby documents
+    match /lobbies/{lobbyCode} {
+      allow read, write: if request.auth != null;
+      
+      // Voice presence in lobby
+      match /voice_presence/{playerId} {
+        allow read, write: if request.auth != null;
+      }
+      
+      // WebRTC signaling in lobby
+      match /webrtc/{signalId} {
+        allow read, write: if request.auth != null;
+      }
+      
+      // Team-scoped WebRTC for League Team mode
+      match /teams/{teamId}/webrtc/{signalId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // League Individual matches
+    match /leagueMatches/{matchId} {
+      allow read, write: if request.auth != null;
+      
+      match /webrtc/{signalId} {
+        allow read, write: if request.auth != null;
+      }
+      
+      match /voice_presence/{playerId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // Master mode rooms
+    match /masterRooms/{roomCode} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // User presence/online status
+    match /presence/{odPlayerId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -104,3 +104,23 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 ### Databases
 - PostgreSQL (Replit Neon)
 - Firebase Firestore
+
+## Firebase Configuration
+
+### Security Rules
+Firebase Firestore requires security rules to be configured in the Firebase Console for multiplayer modes (Duo, League, Master) to work properly. The required rules are documented in `firebase-rules.txt`. Without these rules, you will see "permission-denied" errors in the browser console.
+
+Key paths that require read/write permissions:
+- `duoMatches/{matchId}` - Duo match game state
+- `duoMatches/{matchId}/webrtc/*` - Voice chat signaling
+- `duoMatches/{matchId}/voice_presence/*` - Voice presence tracking
+- `games/{gameId}` - General game state documents
+- `lobbies/{lobbyCode}` - Lobby state and voice features
+- `leagueMatches/{matchId}` - League match state
+- `masterRooms/{roomCode}` - Master mode rooms
+
+### Troubleshooting Firebase
+If you see "Missing or insufficient permissions" errors:
+1. Go to Firebase Console > Firestore Database > Rules
+2. Copy the rules from `firebase-rules.txt`
+3. Publish the new rules
