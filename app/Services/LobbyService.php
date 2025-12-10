@@ -63,9 +63,26 @@ class LobbyService
             ? json_decode($user->profile_settings, true) 
             : (array) $user->profile_settings;
         
-        $avatar = $settings['avatar']['url'] ?? $settings['avatar'] ?? session('selected_avatar', 'default');
+        $avatarUrl = $settings['avatar']['url'] ?? null;
         
-        return $this->normalizeAvatar($avatar);
+        if ($avatarUrl && is_string($avatarUrl) && strlen($avatarUrl) > 0) {
+            $avatarUrl = ltrim($avatarUrl, '/');
+            if (!str_starts_with($avatarUrl, 'images/')) {
+                $avatarUrl = 'images/avatars/standard/' . $avatarUrl;
+            }
+            if (!str_ends_with($avatarUrl, '.png')) {
+                $avatarUrl .= '.png';
+            }
+            return $avatarUrl;
+        }
+        
+        $avatarId = $settings['avatar']['id'] ?? $settings['avatar'] ?? null;
+        if ($avatarId && is_string($avatarId)) {
+            $avatarId = preg_replace('/\.png$/', '', $avatarId);
+            return 'images/avatars/standard/' . $avatarId . '.png';
+        }
+        
+        return 'images/avatars/standard/default.png';
     }
     
     public function createLobby(User $host, string $mode, array $settings = []): array
