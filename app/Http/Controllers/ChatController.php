@@ -72,7 +72,7 @@ class ChatController extends Controller
 
         $messages = $this->messageService->getConversation($userId, $contactId);
 
-        $contact = User::select('id', 'name', 'player_code', 'avatar_url')->find($contactId);
+        $contact = User::select('id', 'name', 'player_code', 'profile_settings')->find($contactId);
 
         return response()->json([
             'success' => true,
@@ -80,7 +80,7 @@ class ChatController extends Controller
                 'id' => $contact->id,
                 'name' => $contact->name,
                 'player_code' => $contact->player_code,
-                'avatar_url' => $contact->avatar_url,
+                'avatar_url' => $contact->avatar_url ?? '/images/avatars/standard/default.png',
             ],
             'messages' => $messages,
         ]);

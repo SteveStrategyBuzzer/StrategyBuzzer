@@ -23,7 +23,7 @@ class PlayerMessageService
     public function getConversation(int $userId, int $contactId, int $limit = 50): Collection
     {
         return PlayerMessage::conversation($userId, $contactId)
-            ->with(['sender:id,name,player_code,avatar_url', 'receiver:id,name,player_code,avatar_url'])
+            ->with(['sender:id,name,player_code,profile_settings', 'receiver:id,name,player_code,profile_settings'])
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get()
@@ -34,7 +34,7 @@ class PlayerMessageService
                     'id' => $message->id,
                     'sender_id' => $message->sender_id,
                     'sender_name' => $message->sender->name,
-                    'sender_avatar' => $message->sender->avatar_url,
+                    'sender_avatar' => $message->sender->avatar_url ?? '/images/avatars/standard/default.png',
                     'message' => $message->message,
                     'is_mine' => $message->sender_id === $userId,
                     'is_read' => $message->is_read,
@@ -72,7 +72,7 @@ class PlayerMessageService
     {
         $latestMessages = PlayerMessage::where('sender_id', $userId)
             ->orWhere('receiver_id', $userId)
-            ->with(['sender:id,name,player_code,avatar_url', 'receiver:id,name,player_code,avatar_url'])
+            ->with(['sender:id,name,player_code,profile_settings', 'receiver:id,name,player_code,profile_settings'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->unique(function ($message) use ($userId) {
@@ -96,7 +96,7 @@ class PlayerMessageService
                 'contact_id' => $contactId,
                 'contact_name' => $contact->name,
                 'contact_player_code' => $contact->player_code,
-                'contact_avatar' => $contact->avatar_url,
+                'contact_avatar' => $contact->avatar_url ?? '/images/avatars/standard/default.png',
                 'last_message' => $this->truncateMessage($message->message, 50),
                 'last_message_time' => $message->created_at->diffForHumans(),
                 'unread_count' => $unreadCounts->get($contactId, 0),
