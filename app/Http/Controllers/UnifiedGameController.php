@@ -14,18 +14,35 @@ use App\Services\GameStateService;
 use App\Services\AvatarCatalog;
 use App\Services\SkillCatalog;
 use App\Services\LobbyService;
+use App\Services\DuoFirestoreService;
+use App\Services\LeagueIndividualFirestoreService;
+use App\Services\LeagueTeamFirestoreService;
+use Illuminate\Support\Facades\Log;
 
 class UnifiedGameController extends Controller
 {
     protected QuestionService $questionService;
     protected GameStateService $gameStateService;
     protected LobbyService $lobbyService;
+    protected DuoFirestoreService $duoFirestoreService;
+    protected LeagueIndividualFirestoreService $leagueIndividualFirestoreService;
+    protected LeagueTeamFirestoreService $leagueTeamFirestoreService;
     
-    public function __construct(QuestionService $questionService, GameStateService $gameStateService, LobbyService $lobbyService)
+    public function __construct(
+        QuestionService $questionService, 
+        GameStateService $gameStateService, 
+        LobbyService $lobbyService, 
+        DuoFirestoreService $duoFirestoreService,
+        LeagueIndividualFirestoreService $leagueIndividualFirestoreService,
+        LeagueTeamFirestoreService $leagueTeamFirestoreService
+    )
     {
         $this->questionService = $questionService;
         $this->gameStateService = $gameStateService;
         $this->lobbyService = $lobbyService;
+        $this->duoFirestoreService = $duoFirestoreService;
+        $this->leagueIndividualFirestoreService = $leagueIndividualFirestoreService;
+        $this->leagueTeamFirestoreService = $leagueTeamFirestoreService;
     }
     
     protected function getProvider(string $mode): GameModeProvider
@@ -111,14 +128,107 @@ class UnifiedGameController extends Controller
         
         $provider->setGameState($gameState);
         
+        if (in_array($mode, ['duo', 'league_individual', 'league_team'])) {
+            $this->generateAndStoreQuestionsForMatch($gameState, $user);
+        }
+        
         session(['game_state' => $provider->getGameState()]);
         session(['game_mode' => $mode]);
         
-        if ($mode === 'duo' || $mode === 'league_individual') {
+        if (in_array($mode, ['duo', 'league_individual', 'league_team'])) {
             return redirect()->route('game.resume', ['mode' => $mode]);
         }
         
         return redirect()->route('game.question', ['mode' => $mode]);
+    }
+    
+    protected function generateAndStoreQuestionsForMatch(array $gameState, $user): void
+    {
+        $matchId = $gameState['match_id'] ?? $gameState['lobby_code'] ?? null;
+        $mode = $gameState['mode'] ?? 'duo';
+        
+        if (!$matchId) {
+            Log::warning('No match_id found for question generation');
+            return;
+        }
+        
+        $firestoreService = $this->getFirestoreServiceForMode($mode);
+        
+        if ($firestoreService->hasQuestions($matchId)) {
+            Log::info("Questions already generated for {$mode} match {$matchId}");
+            return;
+        }
+        
+        $theme = $gameState['theme'] ?? 'Culture générale';
+        $totalQuestions = $gameState['total_questions'] ?? 10;
+        $niveau = $gameState['niveau'] ?? 1;
+        $language = $user->preferred_language ?? 'fr';
+        
+        $questions = [];
+        $usedQuestionIds = [];
+        $usedAnswers = [];
+        $sessionUsedAnswers = [];
+        $sessionUsedQuestionTexts = [];
+        
+        for ($i = 1; $i <= $totalQuestions; $i++) {
+            $generatedQuestion = $this->questionService->generateQuestion(
+                $theme,
+                $niveau,
+                $i,
+                $usedQuestionIds,
+                $usedAnswers,
+                $sessionUsedAnswers,
+                $sessionUsedQuestionTexts,
+                null,
+                false,
+                $language
+            );
+            
+            if ($generatedQuestion) {
+                $question = [
+                    'id' => $generatedQuestion['id'] ?? uniqid(),
+                    'text' => $generatedQuestion['question_text'] ?? $generatedQuestion['text'] ?? '',
+                    'answers' => $generatedQuestion['answers'] ?? [],
+                    'correct_index' => $generatedQuestion['correct_id'] ?? $generatedQuestion['correct_index'] ?? 0,
+                    'sub_theme' => $generatedQuestion['sub_theme'] ?? '',
+                ];
+                
+                $questions[] = $question;
+                
+                $usedQuestionIds[] = $question['id'];
+                $sessionUsedQuestionTexts[] = $question['text'];
+                foreach ($question['answers'] as $answer) {
+                    $answerText = is_array($answer) ? ($answer['text'] ?? '') : $answer;
+                    if ($answerText) {
+                        $usedAnswers[] = $answerText;
+                        $sessionUsedAnswers[] = $answerText;
+                    }
+                }
+            }
+        }
+        
+        if (!empty($questions)) {
+            $firestoreService->storeMatchQuestions($matchId, $questions);
+            
+            session(['match_questions' => $questions]);
+            session(['match_questions_id' => $matchId]);
+            session(['match_questions_mode' => $mode]);
+            
+            Log::info("Generated and stored " . count($questions) . " questions for {$mode} match {$matchId}");
+        }
+    }
+    
+    protected function getFirestoreServiceForMode(string $mode)
+    {
+        switch ($mode) {
+            case 'league_individual':
+                return $this->leagueIndividualFirestoreService;
+            case 'league_team':
+                return $this->leagueTeamFirestoreService;
+            case 'duo':
+            default:
+                return $this->duoFirestoreService;
+        }
     }
     
     protected function getModeIndexRoute(string $mode): string
@@ -482,6 +592,7 @@ class UnifiedGameController extends Controller
     {
         $currentQuestionNumber = $gameState['current_question'] ?? 1;
         $totalQuestions = $gameState['total_questions'] ?? 10;
+        $mode = $gameState['mode'] ?? 'solo';
         
         if ($currentQuestionNumber > $totalQuestions) {
             return null;
@@ -492,6 +603,17 @@ class UnifiedGameController extends Controller
         
         if ($currentQuestion && $storedQuestionNumber === $currentQuestionNumber) {
             return $currentQuestion;
+        }
+        
+        if (in_array($mode, ['duo', 'league_individual', 'league_team'])) {
+            $question = $this->getSharedQuestion($gameState, $currentQuestionNumber);
+            if ($question) {
+                session([
+                    'unified_current_question' => $question,
+                    'unified_question_number' => $currentQuestionNumber,
+                ]);
+                return $question;
+            }
         }
         
         $usedQuestionIds = session('used_question_ids', []);
@@ -548,6 +670,43 @@ class UnifiedGameController extends Controller
         ]);
         
         return $question;
+    }
+    
+    protected function getSharedQuestion(array $gameState, int $questionNumber): ?array
+    {
+        $matchQuestions = session('match_questions');
+        $storedMatchId = session('match_questions_id');
+        $storedMode = session('match_questions_mode');
+        $currentMatchId = $gameState['match_id'] ?? $gameState['lobby_code'] ?? null;
+        $mode = $gameState['mode'] ?? 'duo';
+        
+        if ($matchQuestions && $storedMatchId === $currentMatchId && $storedMode === $mode) {
+            $index = $questionNumber - 1;
+            if (isset($matchQuestions[$index])) {
+                Log::info("Using cached question {$questionNumber} from session for {$mode} match {$currentMatchId}");
+                return $matchQuestions[$index];
+            }
+        }
+        
+        if ($currentMatchId) {
+            $firestoreService = $this->getFirestoreServiceForMode($mode);
+            $firestoreQuestions = $firestoreService->getMatchQuestions($currentMatchId);
+            
+            if ($firestoreQuestions) {
+                session(['match_questions' => $firestoreQuestions]);
+                session(['match_questions_id' => $currentMatchId]);
+                session(['match_questions_mode' => $mode]);
+                
+                $index = $questionNumber - 1;
+                if (isset($firestoreQuestions[$index])) {
+                    Log::info("Retrieved question {$questionNumber} from Firestore for {$mode} match {$currentMatchId}");
+                    return $firestoreQuestions[$index];
+                }
+            }
+        }
+        
+        Log::warning("Could not get shared question {$questionNumber} for {$mode} match {$currentMatchId}");
+        return null;
     }
     
     protected function getAvatarData($user): array
