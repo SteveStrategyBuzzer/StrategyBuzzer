@@ -361,6 +361,7 @@ class UnifiedGameController extends Controller
         session(['last_buzz_time' => $buzzTime]);
         session(['last_buzz_winner' => 'player']);
         
+        $result['success'] = true;
         $result['redirect'] = route('game.answers', ['mode' => $mode]) . 
             '?buzz_time=' . urlencode($buzzTime) . 
             '&buzz_winner=player';

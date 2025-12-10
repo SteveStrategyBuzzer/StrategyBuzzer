@@ -555,6 +555,11 @@ async function submitAnswer(index) {
         
         const data = await response.json();
         
+        // Sync Firebase APRÈS confirmation serveur
+        if (typeof window.firebaseSyncAnswerAfterServer === 'function') {
+            await window.firebaseSyncAnswerAfterServer(index, isCorrect, data);
+        }
+        
         setTimeout(() => {
             if (data.redirect) {
                 window.location.href = data.redirect;
@@ -598,5 +603,57 @@ answerButtons.forEach((btn, index) => {
 
 startAnswerTimer();
 </script>
+
+@if($isFirebaseMode)
+<script src="/js/firebase-game-sync.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const isFirebaseMode = {{ $isFirebaseMode ? 'true' : 'false' }};
+    const matchId = '{{ $matchId ?? "" }}';
+    const mode = '{{ $mode }}';
+    const laravelUserId = '{{ auth()->id() }}';
+    const isHost = {{ ($params['is_host'] ?? false) ? 'true' : 'false' }};
+    
+    if (!isFirebaseMode || !matchId) return;
+    
+    try {
+        await FirebaseGameSync.init({
+            matchId: matchId,
+            mode: mode,
+            laravelUserId: laravelUserId,
+            isHost: isHost,
+            callbacks: {
+                onReady: () => {
+                    console.log('[AnswersPage] Firebase ready');
+                },
+                onAnswerSubmit: (answer, data, isOpponentAnswer) => {
+                    console.log('[AnswersPage] Answer submitted:', answer);
+                    if (isOpponentAnswer) {
+                        window.location.href = '{{ route("game.transition", ["mode" => $mode]) }}';
+                    }
+                },
+                onPhaseChange: (phase, data) => {
+                    console.log('[AnswersPage] Phase changed to:', phase);
+                    if (phase === 'transition') {
+                        window.location.href = '{{ route("game.transition", ["mode" => $mode]) }}';
+                    }
+                }
+            }
+        });
+        
+        window.firebaseSyncAnswerAfterServer = async function(answerIndex, isCorrect, serverResult) {
+            if (FirebaseGameSync.isReady) {
+                await FirebaseGameSync.sendAnswerAfterServerConfirm(
+                    { answerIndex, isCorrect }, 
+                    serverResult
+                );
+            }
+        };
+    } catch (error) {
+        console.error('[AnswersPage] Firebase init error:', error);
+    }
+});
+</script>
+@endif
 
 @endsection

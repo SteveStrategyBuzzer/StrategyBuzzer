@@ -1018,6 +1018,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Envoyer requête POST à /game/{mode}/buzz après le son
         setTimeout(async () => {
             const buzzTime = 8 - timeLeft;
+            
             try {
                 const response = await fetch('{{ route("game.buzz", ["mode" => $mode]) }}', {
                     method: 'POST',
@@ -1029,6 +1030,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 
                 const data = await response.json();
+                
+                // Sync Firebase APRÈS confirmation serveur
+                @if($isFirebaseMode)
+                if (data.success && typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
+                    await FirebaseGameSync.sendBuzz(buzzTime);
+                }
+                @endif
+                
                 if (data.redirect) {
                     window.location.href = data.redirect;
                 } else {
@@ -1036,7 +1045,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error('Buzz error:', error);
-                window.location.href = '{{ route("game.answers", ["mode" => $mode]) }}?buzz_time=' + buzzTime + '&buzz_winner=player';
+                alert('{{ __("Erreur lors du buzz. Veuillez réessayer.") }}');
+                buzzed = false;
+                buzzButton.disabled = false;
+                buzzButton.style.opacity = '1';
             }
         }, buzzerDuration);
     });
@@ -1506,5 +1518,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+@if($isFirebaseMode)
+<script src="/js/firebase-game-sync.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const isFirebaseMode = {{ $isFirebaseMode ? 'true' : 'false' }};
+    const matchId = '{{ $matchId ?? $roomCode ?? "" }}';
+    const mode = '{{ $mode }}';
+    const laravelUserId = '{{ auth()->id() }}';
+    const isHost = {{ ($params['is_host'] ?? false) ? 'true' : 'false' }};
+    
+    if (!isFirebaseMode || !matchId) return;
+    
+    try {
+        await FirebaseGameSync.init({
+            matchId: matchId,
+            mode: mode,
+            laravelUserId: laravelUserId,
+            isHost: isHost,
+            callbacks: {
+                onReady: () => {
+                    console.log('[QuestionPage] Firebase ready');
+                    const statusEl = document.getElementById('firebaseStatus');
+                    if (statusEl) {
+                        statusEl.classList.remove('disconnected');
+                        statusEl.classList.add('connected');
+                        statusEl.textContent = 'En ligne';
+                    }
+                },
+                onBuzz: (buzzWinnerRole, buzzTime, data, isOpponentBuzz) => {
+                    console.log('[QuestionPage] Buzz detected:', buzzWinnerRole, buzzTime);
+                    if (isOpponentBuzz) {
+                        window.location.href = '{{ route("game.answers", ["mode" => $mode]) }}?buzz_time=' + buzzTime + '&buzz_winner=opponent';
+                    }
+                },
+                onPhaseChange: (phase, data) => {
+                    console.log('[QuestionPage] Phase changed to:', phase);
+                    if (phase === 'answering' && data.buzzWinnerLaravelId !== laravelUserId) {
+                        window.location.href = '{{ route("game.answers", ["mode" => $mode]) }}';
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('[QuestionPage] Firebase init error:', error);
+    }
+});
+</script>
+@endif
 
 @endsection

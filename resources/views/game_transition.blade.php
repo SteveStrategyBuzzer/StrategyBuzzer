@@ -387,7 +387,11 @@ function startCountdown() {
         
         if (countdown <= 0) {
             clearInterval(countdownInterval);
-            goToNext();
+            if (typeof window.goToNextWithFirebase === 'function') {
+                window.goToNextWithFirebase();
+            } else {
+                goToNext();
+            }
         }
     }, 1000);
 }
@@ -402,9 +406,80 @@ function goToNext() {
     }
 }
 
-nextButton.addEventListener('click', goToNext);
+nextButton.addEventListener('click', function() {
+    if (typeof window.goToNextWithFirebase === 'function') {
+        window.goToNextWithFirebase();
+    } else {
+        goToNext();
+    }
+});
 
 startCountdown();
 </script>
+
+@if($isFirebaseMode)
+@php
+$matchId = $params['match_id'] ?? null;
+$isHost = $params['is_host'] ?? false;
+@endphp
+<script src="/js/firebase-game-sync.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const isFirebaseMode = {{ $isFirebaseMode ? 'true' : 'false' }};
+    const matchId = '{{ $matchId ?? "" }}';
+    const mode = '{{ $mode }}';
+    const laravelUserId = '{{ auth()->id() }}';
+    const isHost = {{ $isHost ? 'true' : 'false' }};
+    
+    if (!isFirebaseMode || !matchId) return;
+    
+    try {
+        await FirebaseGameSync.init({
+            matchId: matchId,
+            mode: mode,
+            laravelUserId: laravelUserId,
+            isHost: isHost,
+            callbacks: {
+                onReady: () => {
+                    console.log('[TransitionPage] Firebase ready, isHost:', isHost);
+                },
+                onPhaseChange: (phase, data) => {
+                    console.log('[TransitionPage] Phase changed to:', phase);
+                    if (phase === 'question') {
+                        clearInterval(countdownInterval);
+                        window.location.href = transitionConfig.routes.nextQuestion;
+                    } else if (phase === 'round_result') {
+                        clearInterval(countdownInterval);
+                        window.location.href = transitionConfig.routes.roundResult;
+                    }
+                },
+                onQuestionChange: (questionNum, data) => {
+                    console.log('[TransitionPage] Question changed to:', questionNum);
+                    if (questionNum > transitionConfig.currentQuestion) {
+                        clearInterval(countdownInterval);
+                        window.location.href = transitionConfig.routes.nextQuestion;
+                    }
+                }
+            }
+        });
+        
+        if (isHost) {
+            window.goToNextWithFirebase = async function() {
+                clearInterval(countdownInterval);
+                
+                if (transitionConfig.isLastQuestion) {
+                    window.location.href = transitionConfig.routes.roundResult;
+                    return;
+                }
+                
+                window.location.href = transitionConfig.routes.nextQuestion;
+            };
+        }
+    } catch (error) {
+        console.error('[TransitionPage] Firebase init error:', error);
+    }
+});
+</script>
+@endif
 
 @endsection
