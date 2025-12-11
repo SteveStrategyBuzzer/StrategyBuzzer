@@ -12,17 +12,17 @@ class AvatarCatalog
         // ---- Packs
         $packs = [
             'standards'  => ['label' => 'Standards',   'quest' => 'Par défaut',      'price' => 0],
-            'portraits'  => ['label' => 'Portraits',   'quest' => 'Portraits variés','price' => 300],
-            'cartoon'    => ['label' => 'Cartoon',     'quest' => 'Style cartoon',  'price' => 300],
-            'animal'     => ['label' => 'Animal',      'quest' => 'Animaux',        'price' => 300],
+            'portraits'  => ['label' => 'Portraits',   'quest' => 'Portraits variés','price' => 800],
+            'cartoon'    => ['label' => 'Cartoon',     'quest' => 'Style cartoon',  'price' => 800],
+            'animal'     => ['label' => 'Animal',      'quest' => 'Animaux',        'price' => 800],
             'mythique'   => ['label' => 'Mythique',    'quest' => 'Héros épiques',  'price' => 800],
-            'paysage'    => ['label' => 'Paysage',     'quest' => 'Arrière-plans',  'price' => 250],
-            'objet'      => ['label' => 'Objet',       'quest' => 'Objets divers',  'price' => 250],
-            'clown'      => ['label' => 'Clown',       'quest' => 'Cirque',         'price' => 1000],
-            'musicien'   => ['label' => 'Musicien',    'quest' => 'Musique',        'price' => 300],
-            'automobile' => ['label' => 'Automobile',  'quest' => 'Voitures',       'price' => 350],
-            'metier'     => ['label' => 'Métier',      'quest' => 'Professions',    'price' => 350],
-            'nation'     => ['label' => 'Nation',      'quest' => 'Monde',          'price' => 400],
+            'paysage'    => ['label' => 'Paysage',     'quest' => 'Arrière-plans',  'price' => 800],
+            'objet'      => ['label' => 'Objet',       'quest' => 'Objets divers',  'price' => 800],
+            'clown'      => ['label' => 'Clown',       'quest' => 'Cirque',         'price' => 800],
+            'musicien'   => ['label' => 'Musicien',    'quest' => 'Musique',        'price' => 800],
+            'automobile' => ['label' => 'Automobile',  'quest' => 'Voitures',       'price' => 800],
+            'metier'     => ['label' => 'Métier',      'quest' => 'Professions',    'price' => 800],
+            'nation'     => ['label' => 'Nation',      'quest' => 'Monde',          'price' => 800],
         ];
 
         foreach ($packs as $slug => $p) {
