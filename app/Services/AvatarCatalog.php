@@ -18,7 +18,7 @@ class AvatarCatalog
             'mythique'   => ['label' => 'Mythique',    'quest' => 'Héros épiques',  'price' => 400],
             'paysage'    => ['label' => 'Paysage',     'quest' => 'Arrière-plans',  'price' => 250],
             'objet'      => ['label' => 'Objet',       'quest' => 'Objets divers',  'price' => 250],
-            'clown'      => ['label' => 'Clown',       'quest' => 'Cirque',         'price' => 200],
+            'clown'      => ['label' => 'Clown',       'quest' => 'Cirque',         'price' => 1000],
             'musicien'   => ['label' => 'Musicien',    'quest' => 'Musique',        'price' => 300],
             'automobile' => ['label' => 'Automobile',  'quest' => 'Voitures',       'price' => 350],
         ];
