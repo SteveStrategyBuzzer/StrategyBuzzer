@@ -556,10 +556,11 @@ class DuoController extends Controller
         $gameState = $match->game_state;
         $matchResult = $this->gameStateService->getMatchResult($gameState);
         
-        $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
+        $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'duo');
         
-        // Ensure both players are in each other's contact book after match
         $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
         
         $accuracy = 0;
@@ -568,7 +569,20 @@ class DuoController extends Controller
             $accuracy = round(($gameState['global_stats']['correct'] ?? 0) / $total * 100);
         }
 
-        $pointsEarned = $matchResult['points_earned'] ?? 0;
+        $pointsEarned = $isPlayer1 ? ($match->player1_points_earned ?? 0) : ($match->player2_points_earned ?? 0);
+        $coinsEarned = $isPlayer1 ? ($match->player1_coins_earned ?? 0) : ($match->player2_coins_earned ?? 0);
+        
+        $myEfficiency = $division->initial_efficiency ?? 0;
+        $oppEfficiency = $opponentDivision->initial_efficiency ?? 0;
+        $opponentStrength = $this->divisionService->determineOpponentStrength(
+            $division->division,
+            $opponentDivision->division,
+            $myEfficiency,
+            $oppEfficiency
+        );
+        
+        $baseCoins = $this->divisionService->getVictoryCoins($division->division);
+        $coinsBonus = $coinsEarned - $baseCoins;
 
         return view('duo_result', [
             'match_result' => $matchResult,
@@ -577,6 +591,9 @@ class DuoController extends Controller
             'opponent_name' => $opponent->name ?? 'Adversaire',
             'new_division' => $division,
             'points_earned' => $pointsEarned,
+            'coins_earned' => $coinsEarned,
+            'coins_bonus' => $coinsBonus,
+            'opponent_strength' => $opponentStrength,
             'global_stats' => $gameState['global_stats'] ?? [],
             'accuracy' => $accuracy,
             'round_details' => $gameState['answered_questions'] ?? [],

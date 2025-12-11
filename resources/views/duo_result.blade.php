@@ -52,6 +52,24 @@
             </div>
         </div>
 
+        @if(($coins_earned ?? 0) > 0)
+        <div class="stat-card coins-card">
+            <div class="stat-label">Pièces de compétence gagnées</div>
+            <div class="stat-value coins">
+                +{{ $coins_earned }} 🪙
+            </div>
+            @if($coins_bonus ?? 0)
+            <div class="stat-detail {{ $coins_bonus > 0 ? 'bonus-positive' : 'bonus-negative' }}">
+                @if($opponent_strength === 'stronger')
+                    Bonus adversaire plus fort (+50%)
+                @elseif($opponent_strength === 'weaker')
+                    Malus adversaire plus faible (-50%)
+                @endif
+            </div>
+            @endif
+        </div>
+        @endif
+
         <div class="stat-card">
             <div class="stat-label">Nouvelle division</div>
             <div class="stat-value division">
@@ -65,7 +83,7 @@
         @if($division_changed ?? false)
         <div class="division-change">
             <div class="change-message">
-                🎉 Vous êtes passé en {{ $new_division['name'] }} !
+                Vous êtes passé en {{ $new_division['name'] }} !
             </div>
         </div>
         @endif

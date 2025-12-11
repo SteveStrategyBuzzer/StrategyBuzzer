@@ -147,16 +147,52 @@ class DuoMatchmakingService
         $player1Won = $winnerId === $match->player1_id;
         $player2Won = $winnerId === $match->player2_id;
 
-        $player1Points = $this->divisionService->calculatePoints(
-            $match->player1_level,
-            $match->player2_level,
-            $player1Won
+        $player1 = $match->player1;
+        $player2 = $match->player2;
+        
+        $player1Division = $this->divisionService->getOrCreateDivision($player1, 'duo');
+        $player2Division = $this->divisionService->getOrCreateDivision($player2, 'duo');
+        
+        $player1Efficiency = $player1Division->initial_efficiency ?? 0;
+        $player2Efficiency = $player2Division->initial_efficiency ?? 0;
+        
+        $player1TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player1, $player2Division->division);
+        $player2TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player2, $player1Division->division);
+        
+        $player1Strength = $this->divisionService->determineOpponentStrength(
+            $player1Division->division,
+            $player2Division->division,
+            $player1Efficiency,
+            $player2Efficiency,
+            $player1TempAccess
+        );
+        
+        $player2Strength = $this->divisionService->determineOpponentStrength(
+            $player2Division->division,
+            $player1Division->division,
+            $player2Efficiency,
+            $player1Efficiency,
+            $player2TempAccess
         );
 
-        $player2Points = $this->divisionService->calculatePoints(
-            $match->player2_level,
-            $match->player1_level,
-            $player2Won
+        $player1Points = $this->divisionService->calculatePoints($player1Strength, $player1Won);
+        $player2Points = $this->divisionService->calculatePoints($player2Strength, $player2Won);
+        
+        $playingDivision1 = $player1TempAccess ? $player1->temp_access_division : $player1Division->division;
+        $playingDivision2 = $player2TempAccess ? $player2->temp_access_division : $player2Division->division;
+        
+        $player1Reward = $this->divisionService->calculateVictoryReward(
+            $playingDivision1,
+            $player1Strength,
+            $player1Won,
+            $player1TempAccess
+        );
+        
+        $player2Reward = $this->divisionService->calculateVictoryReward(
+            $playingDivision2,
+            $player2Strength,
+            $player2Won,
+            $player2TempAccess
         );
 
         $match->update([
@@ -166,6 +202,8 @@ class DuoMatchmakingService
             'winner_id' => $winnerId,
             'player1_points_earned' => $player1Points,
             'player2_points_earned' => $player2Points,
+            'player1_coins_earned' => $player1Reward['coins'],
+            'player2_coins_earned' => $player2Reward['coins'],
             'game_state' => $gameState,
             'finished_at' => now(),
         ]);
@@ -182,19 +220,26 @@ class DuoMatchmakingService
         );
         $player2Stats->updateAfterMatch($player2Won);
 
-        $this->divisionService->updateDivisionAfterMatch(
-            $match->player1,
-            'duo',
-            $player1Points,
-            $player1Stats->level
-        );
-
-        $this->divisionService->updateDivisionAfterMatch(
-            $match->player2,
-            'duo',
-            $player2Points,
-            $player2Stats->level
-        );
+        $this->divisionService->updateDivisionPointsWithFloor($player1Division, $player1Points);
+        $player1Division->level = $player1Stats->level;
+        $player1Division->save();
+        
+        $this->divisionService->updateDivisionPointsWithFloor($player2Division, $player2Points);
+        $player2Division->level = $player2Stats->level;
+        $player2Division->save();
+        
+        if ($player1Reward['coins'] > 0) {
+            $player1->coins = ($player1->coins ?? 0) + $player1Reward['coins'];
+            $player1->save();
+        }
+        
+        if ($player2Reward['coins'] > 0) {
+            $player2->coins = ($player2->coins ?? 0) + $player2Reward['coins'];
+            $player2->save();
+        }
+        
+        $this->divisionService->clearCurrentMatch($player1);
+        $this->divisionService->clearCurrentMatch($player2);
 
         return $match;
     }
