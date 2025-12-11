@@ -3,67 +3,49 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Coin Packs Configuration
+    | Packs de Pièces de Compétence
     |--------------------------------------------------------------------------
     |
-    | Configure the available coin packs for purchase with real money.
-    | Each pack includes a key, number of coins, and price in cents.
-    | 
-    | Pricing structure with progressive discounts:
-    | - Base rate: $0.021429/coin (calculated from 10,000 coins @ $150 with 30% discount)
-    | - 100 coins: No discount (base rate)
-    | - 500 coins: 10% discount
-    | - 1200 coins: 20% discount
-    | - 2500+ coins: 30% discount (maximum)
+    | Packs de pièces disponibles à l'achat avec Stripe.
+    | Prix progressifs avec économies sur les gros packs.
+    |
+    | - 50 pièces : $10.00 ($0.20/pièce)
+    | - 100 pièces : $18.00 ($0.18/pièce - 10% économie)
+    | - 200 pièces : $32.00 ($0.16/pièce - 20% économie)
+    | - 500 pièces : $65.00 ($0.13/pièce - 35% économie)
     |
     */
 
     'packs' => [
         [
             'key' => 'starter',
-            'name' => 'Pack Débutant',
-            'coins' => 100,
-            'amount_cents' => 214,  // $2.14 (base rate: $0.021429/coin)
+            'name' => 'Pack Starter',
+            'coins' => 50,
+            'amount_cents' => 1000,  // $10.00
             'currency' => 'usd',
             'popular' => false,
         ],
         [
             'key' => 'standard',
             'name' => 'Pack Standard',
-            'coins' => 500,
-            'amount_cents' => 964,  // $9.64 (10% discount: $0.019286/coin)
+            'coins' => 100,
+            'amount_cents' => 1800,  // $18.00 (10% économie)
             'currency' => 'usd',
             'popular' => false,
         ],
         [
             'key' => 'pro',
             'name' => 'Pack Pro',
-            'coins' => 1200,
-            'amount_cents' => 2057,  // $20.57 (20% discount: $0.017143/coin)
-            'currency' => 'usd',
-            'popular' => false,
-        ],
-        [
-            'key' => 'mega',
-            'name' => 'Pack Mega',
-            'coins' => 2500,
-            'amount_cents' => 3750,  // $37.50 (30% discount: $0.015/coin)
+            'coins' => 200,
+            'amount_cents' => 3200,  // $32.00 (20% économie)
             'currency' => 'usd',
             'popular' => true,
         ],
         [
-            'key' => 'ultimate',
-            'name' => 'Pack Ultimate',
-            'coins' => 5000,
-            'amount_cents' => 7500,  // $75.00 (30% discount: $0.015/coin)
-            'currency' => 'usd',
-            'popular' => false,
-        ],
-        [
-            'key' => 'supreme',
-            'name' => 'Pack Suprême',
-            'coins' => 10000,
-            'amount_cents' => 15000,  // $150.00 (30% discount: $0.015/coin)
+            'key' => 'mega',
+            'name' => 'Pack Mega',
+            'coins' => 500,
+            'amount_cents' => 6500,  // $65.00 (35% économie)
             'currency' => 'usd',
             'popular' => false,
         ],

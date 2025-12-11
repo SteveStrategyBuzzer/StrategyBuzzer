@@ -13,7 +13,7 @@
         'buzzers' => __('Sons de Buzzers'),
         'strategiques' => __('Avatars Stratégiques'),
         'master' => __('Modes de jeux'),
-        'coins' => __("Pièces d'Intelligence"),
+        'coins' => __('Pièces de Compétence'),
         'vies' => __('Vies'),
     ];
     
@@ -23,7 +23,7 @@
         'buzzers' => '🔊',
         'strategiques' => '🛡️',
         'master' => '🎮',
-        'coins' => '<img src="' . asset('images/skill_coin.png') . '" alt="' . __("Pièce d'Intelligence") . '" style="width:32px;height:32px;vertical-align:middle;">',
+        'coins' => '<img src="' . asset('images/skill_coin.png') . '" alt="' . __('Pièce de Compétence') . '" style="width:32px;height:32px;vertical-align:middle;">',
         'vies' => '❤️',
     ];
     
@@ -535,7 +535,7 @@ audio { width: 100%; }
             @foreach($coinPacks ?? [] as $pack)
                 <div class="card coin-pack">
                     <div class="coin-amount">{{ number_format($pack['coins'] ?? 0) }}</div>
-                    <div style="color:var(--muted);margin-top:8px;">{{ __("pièces d'intelligence") }}</div>
+                    <div style="color:var(--muted);margin-top:8px;">{{ __("pièces de compétence") }}</div>
                     <div class="coin-price">{{ number_format(($pack['amount_cents'] ?? 0) / 100, 2) }}€</div>
                     <form method="POST" action="{{ route('coins.checkout') }}" style="margin-top:16px;">
                         @csrf

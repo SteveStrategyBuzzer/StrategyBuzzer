@@ -373,10 +373,10 @@
             <div class="category-desc">{{ __('Duo, Ligue et Maître du Jeu') }}</div>
         </a>
 
-        <!-- Pièces d'Intelligence -->
+        <!-- Pièces de Compétence -->
         <a href="{{ route('boutique.category', 'coins') }}" class="category-card">
-            <div class="category-icon"><img src="{{ asset('images/skill_coin.png') }}" alt="{{ __("Pièce d'Intelligence") }}" style="width:48px;height:48px;object-fit:contain;"></div>
-            <div class="category-name">{{ __("Pièces d'Intelligence") }}</div>
+            <div class="category-icon"><img src="{{ asset('images/skill_coin.png') }}" alt="{{ __('Pièce de Compétence') }}" style="width:48px;height:48px;object-fit:contain;"></div>
+            <div class="category-name">{{ __('Pièces de Compétence') }}</div>
             <div class="category-desc">{{ __('Achetez des pièces') }}</div>
         </a>
 
