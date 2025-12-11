@@ -103,6 +103,10 @@
         color: #667eea;
         font-weight: 900;
         margin: 15px 0;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+        padding: 0 10px;
     }
     
     .action-buttons {
@@ -159,6 +163,10 @@
         
         .btn {
             width: 100%;
+        }
+        
+        .opponent-name {
+            font-size: 1.8rem;
         }
     }
 </style>

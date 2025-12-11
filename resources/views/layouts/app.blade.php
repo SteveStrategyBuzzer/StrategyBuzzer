@@ -40,6 +40,7 @@
             '/solo/prepare',
             '/solo/game',
             '/solo/answer',
+            '/solo/timeout',
             '/solo/next',
             '/solo/victory',
             '/solo/defeat',
