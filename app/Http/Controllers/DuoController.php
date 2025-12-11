@@ -73,6 +73,13 @@ class DuoController extends Controller
             ], 400);
         }
 
+        if ($this->matchmaking->hasPendingInvitation($user->id, $opponent->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous avez déjà une invitation en attente pour ce joueur'),
+            ], 400);
+        }
+
         $match = $this->matchmaking->createInvitation($user, $opponent->id);
 
         $lobby = $this->lobbyService->createLobby($user, 'duo', [
@@ -651,6 +658,10 @@ class DuoController extends Controller
             'success' => true,
             'invitations' => $receivedInvitations,
             'sent_invitations' => $sentInvitations,
+            'counts' => [
+                'received' => $receivedInvitations->count(),
+                'sent' => $sentInvitations->count(),
+            ],
         ]);
     }
 

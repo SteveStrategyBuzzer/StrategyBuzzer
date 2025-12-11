@@ -14,6 +14,30 @@ class DuoMatchmakingService
         private DivisionService $divisionService
     ) {}
 
+    public function hasPendingInvitation(int $inviterId, int $invitedId): bool
+    {
+        return DuoMatch::where('player1_id', $inviterId)
+            ->where('player2_id', $invitedId)
+            ->where('status', 'waiting')
+            ->where('match_type', 'invitation')
+            ->exists();
+    }
+
+    public function getPendingInvitationCounts(int $userId): array
+    {
+        $sent = DuoMatch::where('player1_id', $userId)
+            ->where('status', 'waiting')
+            ->where('match_type', 'invitation')
+            ->count();
+        
+        $received = DuoMatch::where('player2_id', $userId)
+            ->where('status', 'waiting')
+            ->where('match_type', 'invitation')
+            ->count();
+
+        return ['sent' => $sent, 'received' => $received];
+    }
+
     public function createInvitation(User $inviter, int $invitedUserId): DuoMatch
     {
         $invited = User::findOrFail($invitedUserId);
