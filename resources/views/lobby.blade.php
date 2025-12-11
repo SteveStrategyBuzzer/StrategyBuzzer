@@ -2545,16 +2545,23 @@ class WebRTCManager {
         const presenceRef = collection(db, presencePath);
         
         const unsubscribe = onSnapshot(presenceRef, (snapshot) => {
-            console.log('[WebRTC] Presence snapshot received, changes:', snapshot.docChanges().length);
+            console.log('[WebRTC] Presence snapshot received, changes:', snapshot.docChanges().length, 'total docs:', snapshot.size);
             snapshot.docChanges().forEach((change) => {
                 const data = change.doc.data();
                 const odPlayerId = data.odPlayerId || parseInt(change.doc.id);
                 
-                if (odPlayerId === this.currentPlayerId) return;
+                console.log('[WebRTC] Presence change:', change.type, 'for player:', odPlayerId, 'currentPlayer:', this.currentPlayerId, 'muted:', data.muted, 'speaking:', data.speaking);
+                
+                if (parseInt(odPlayerId) === parseInt(this.currentPlayerId)) {
+                    console.log('[WebRTC] Skipping own presence update');
+                    return;
+                }
                 
                 if (change.type === 'added' || change.type === 'modified') {
                     const micEnabled = !data.muted;
                     const speaking = data.speaking && micEnabled;
+                    
+                    console.log('[WebRTC] Remote player', odPlayerId, 'micEnabled:', micEnabled, 'speaking:', speaking, 'hasConnection:', !!this.peerConnections[odPlayerId], 'hasLocalStream:', !!this.localStream);
                     
                     if (typeof updateVoicePresence === 'function') {
                         updateVoicePresence(odPlayerId, { micEnabled, speaking });
@@ -2566,7 +2573,8 @@ class WebRTCManager {
                         updateRemoteMicState(odPlayerId, micEnabled);
                     }
                     
-                    if (!this.peerConnections[odPlayerId] && micEnabled) {
+                    if (!this.peerConnections[odPlayerId] && micEnabled && this.localStream) {
+                        console.log('[WebRTC] Creating peer connection with remote player:', odPlayerId);
                         this.createPeerConnection(odPlayerId, true);
                     }
                 } else if (change.type === 'removed') {
