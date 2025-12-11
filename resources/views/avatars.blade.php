@@ -40,14 +40,14 @@
 .alert-ko{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35)}
 
 /* Standards mini-carousel */
-.std-card{padding:12px}
-.std-viewport{overflow-x:auto;overflow-y:hidden;max-width:1100px;margin:0 auto;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
-.std-track{display:flex;gap:10px;will-change:transform;padding:4px 0}
+.std-card{padding:12px;overflow:hidden;position:relative}
+.std-viewport{overflow:hidden;max-width:100%;margin:0 auto;position:relative}
+.std-track{display:flex;gap:10px;will-change:transform;padding:4px 0;transition:transform 0.3s ease}
 .std-thumb{width:90px;height:90px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#0f1530;flex:0 0 90px;cursor:pointer;position:relative;transition:transform .2s,box-shadow .2s}
 .std-thumb:hover{transform:scale(1.05);box-shadow:0 4px 12px rgba(255,255,255,.15)}
 .std-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.std-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2);width:34px;height:34px;border-radius:999px;display:grid;place-items:center;cursor:pointer;z-index:5}
-.std-left{left:6px} .std-right{right:6px}
+.std-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.3);width:36px;height:36px;border-radius:999px;display:grid;place-items:center;cursor:pointer;z-index:10;color:#fff;font-size:20px}
+.std-left{left:8px} .std-right{right:8px}
 
 /* Packs carousel (3 desktop / 1 mobile) */
 .carousel{position:relative;margin:6px 0 10px}
@@ -422,16 +422,31 @@
 
   function assetPath(p){ return (ASSET_BASE + p).replace(/\/+$/, '').replace(/([^:]\/)\/+/g, '$1'); }
 
-  /* ===== Standards (mini-carousel) ===== */
+  /* ===== Standards (mini-carousel avec transform) ===== */
   const STANDARDS = [
     'images/avatars/standard/standard1.png','images/avatars/standard/standard2.png','images/avatars/standard/standard3.png','images/avatars/standard/standard4.png',
     'images/avatars/standard/standard5.png','images/avatars/standard/standard6.png','images/avatars/standard/standard7.png','images/avatars/standard/standard8.png',
   ];
   const stdViewport = document.querySelector('.std-viewport');
   const stdTrack = document.getElementById('stdTrack');
-  function stdNext(){ stdViewport.scrollBy({left: 220, behavior:'smooth'}); }
-  function stdPrev(){ stdViewport.scrollBy({left:-220, behavior:'smooth'}); }
+  let stdIndex = 0;
+  const stdThumbWidth = 100; // 90px + 10px gap
+  const stdVisibleCount = Math.floor(stdViewport.offsetWidth / stdThumbWidth) || 3;
+  const stdMaxIndex = Math.max(0, STANDARDS.length - stdVisibleCount);
+  
+  function stdUpdatePosition() {
+    stdTrack.style.transform = `translateX(-${stdIndex * stdThumbWidth}px)`;
+  }
+  function stdNext(){ 
+    stdIndex = stdIndex >= stdMaxIndex ? 0 : stdIndex + 1;
+    stdUpdatePosition();
+  }
+  function stdPrev(){ 
+    stdIndex = stdIndex <= 0 ? stdMaxIndex : stdIndex - 1;
+    stdUpdatePosition();
+  }
   let stdTimer = setInterval(stdNext, 3500);
+  stdUpdatePosition();
 
   /* ===== Packs (modale + carrousel) ===== */
   function openPack(slug, label){
