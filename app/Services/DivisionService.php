@@ -8,13 +8,16 @@ use App\Models\PlayerDivision;
 class DivisionService
 {
     const DIVISIONS = [
-        'bronze' => ['min' => 0, 'max' => 99, 'name' => 'Bronze'],
-        'argent' => ['min' => 100, 'max' => 199, 'name' => 'Argent'],
-        'or' => ['min' => 200, 'max' => 299, 'name' => 'Or'],
-        'platine' => ['min' => 300, 'max' => 399, 'name' => 'Platine'],
-        'diamant' => ['min' => 400, 'max' => 499, 'name' => 'Diamant'],
-        'legende' => ['min' => 500, 'max' => PHP_INT_MAX, 'name' => 'Légende'],
+        'bronze' => ['min' => 0, 'max' => 99, 'name' => 'Bronze', 'coins' => 10],
+        'argent' => ['min' => 100, 'max' => 199, 'name' => 'Argent', 'coins' => 30],
+        'or' => ['min' => 200, 'max' => 299, 'name' => 'Or', 'coins' => 70],
+        'platine' => ['min' => 300, 'max' => 399, 'name' => 'Platine', 'coins' => 150],
+        'diamant' => ['min' => 400, 'max' => 499, 'name' => 'Diamant', 'coins' => 310],
+        'legende' => ['min' => 500, 'max' => PHP_INT_MAX, 'name' => 'Légende', 'coins' => 630],
     ];
+    
+    const TEMP_ACCESS_MULTIPLIER = 2;
+    const TEMP_ACCESS_DURATION_HOURS = 6;
 
     public function getOrCreateDivision(User $user, string $mode, ?float $initialEfficiency = null): PlayerDivision
     {
@@ -123,5 +126,66 @@ class DivisionService
             ->count();
 
         return $rank + 1;
+    }
+    
+    public function getVictoryCoins(string $division): int
+    {
+        return self::DIVISIONS[$division]['coins'] ?? 10;
+    }
+    
+    public function getTemporaryAccessCost(string $targetDivision): int
+    {
+        $coins = self::DIVISIONS[$targetDivision]['coins'] ?? 10;
+        return $coins * self::TEMP_ACCESS_MULTIPLIER;
+    }
+    
+    public function calculateVictoryReward(string $myDivision, string $opponentDivision, bool $won): array
+    {
+        if (!$won) {
+            return ['coins' => 0, 'bonus' => 0, 'multiplier' => 0];
+        }
+        
+        $baseCoins = $this->getVictoryCoins($myDivision);
+        $divisionOrder = array_keys(self::DIVISIONS);
+        $myIndex = array_search($myDivision, $divisionOrder);
+        $oppIndex = array_search($opponentDivision, $divisionOrder);
+        
+        $multiplier = 1.0;
+        $bonus = 0;
+        
+        if ($oppIndex > $myIndex) {
+            $multiplier = 1.5;
+            $bonus = (int) ceil($baseCoins * 0.5);
+        } elseif ($oppIndex < $myIndex) {
+            $multiplier = 0.5;
+            $bonus = -(int) ceil($baseCoins * 0.5);
+        }
+        
+        $totalCoins = (int) ceil($baseCoins * $multiplier);
+        
+        return [
+            'coins' => $totalCoins,
+            'base' => $baseCoins,
+            'bonus' => $bonus,
+            'multiplier' => $multiplier,
+        ];
+    }
+    
+    public function getNextDivision(string $currentDivision): ?string
+    {
+        $divisions = array_keys(self::DIVISIONS);
+        $currentIndex = array_search($currentDivision, $divisions);
+        
+        if ($currentIndex === false || $currentIndex >= count($divisions) - 1) {
+            return null;
+        }
+        
+        return $divisions[$currentIndex + 1];
+    }
+    
+    public function canPurchaseTemporaryAccess(User $user, string $targetDivision): bool
+    {
+        $cost = $this->getTemporaryAccessCost($targetDivision);
+        return ($user->coins ?? 0) >= $cost;
     }
 }
