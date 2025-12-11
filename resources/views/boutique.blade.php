@@ -373,11 +373,18 @@
             <div class="category-desc">{{ __('Duo, Ligue et Maître du Jeu') }}</div>
         </a>
 
+        <!-- Pièces d'Intelligence -->
+        <a href="{{ route('boutique.category', 'coins_intelligence') }}" class="category-card">
+            <div class="category-icon"><img src="{{ asset('images/coin-intelligence.png') }}" alt="{{ __("Pièce d'Intelligence") }}" style="width:48px;height:48px;object-fit:contain;"></div>
+            <div class="category-name">{{ __("Pièces d'Intelligence") }}</div>
+            <div class="category-desc">{{ __('Pour le Solo et les Quêtes') }}</div>
+        </a>
+
         <!-- Pièces de Compétence -->
-        <a href="{{ route('boutique.category', 'coins') }}" class="category-card">
+        <a href="{{ route('boutique.category', 'coins_competence') }}" class="category-card">
             <div class="category-icon"><img src="{{ asset('images/skill_coin.png') }}" alt="{{ __('Pièce de Compétence') }}" style="width:48px;height:48px;object-fit:contain;"></div>
             <div class="category-name">{{ __('Pièces de Compétence') }}</div>
-            <div class="category-desc">{{ __('Achetez des pièces') }}</div>
+            <div class="category-desc">{{ __('Pour le Duo et la Ligue') }}</div>
         </a>
 
         <!-- Vies -->

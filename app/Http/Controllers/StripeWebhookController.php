@@ -92,26 +92,43 @@ class StripeWebhookController extends Controller
                             'session_id' => $session->id,
                         ]);
                     } elseif ($coinsToAward > 0) {
-                        $user->intelligence_pieces = ($user->intelligence_pieces ?? 0) + $coinsToAward;
-                        $user->save();
+                        $coinType = $session->metadata->coin_type ?? 'intelligence';
+                        
+                        if ($coinType === 'competence') {
+                            $user->competence_coins = ($user->competence_coins ?? 0) + $coinsToAward;
+                            $user->save();
+                            
+                            $payment->markAsCompleted($coinsToAward);
+                            
+                            Log::info('Competence coins credited successfully', [
+                                'payment_id' => $payment->id,
+                                'user_id' => $payment->user_id,
+                                'coins' => $coinsToAward,
+                                'competence_coins' => $user->competence_coins,
+                                'session_id' => $session->id,
+                            ]);
+                        } else {
+                            $user->coins = ($user->coins ?? 0) + $coinsToAward;
+                            $user->save();
 
-                        $this->coinLedgerService->credit(
-                            $payment->user,
-                            $coinsToAward,
-                            'stripe_purchase',
-                            'Payment',
-                            $payment->id
-                        );
+                            $this->coinLedgerService->credit(
+                                $payment->user,
+                                $coinsToAward,
+                                'stripe_purchase',
+                                'Payment',
+                                $payment->id
+                            );
 
-                        $payment->markAsCompleted($coinsToAward);
+                            $payment->markAsCompleted($coinsToAward);
 
-                        Log::info('Coins credited successfully', [
-                            'payment_id' => $payment->id,
-                            'user_id' => $payment->user_id,
-                            'coins' => $coinsToAward,
-                            'intelligence_pieces' => $user->intelligence_pieces,
-                            'session_id' => $session->id,
-                        ]);
+                            Log::info('Intelligence coins credited successfully', [
+                                'payment_id' => $payment->id,
+                                'user_id' => $payment->user_id,
+                                'coins' => $coinsToAward,
+                                'intelligence_coins' => $user->coins,
+                                'session_id' => $session->id,
+                            ]);
+                        }
                     } else {
                         Log::error('Invalid payment type or coins amount from Stripe metadata', [
                             'payment_id' => $payment->id,

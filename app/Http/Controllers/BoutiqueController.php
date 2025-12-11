@@ -91,7 +91,7 @@ class BoutiqueController extends Controller
      */
     public function category(Request $request, string $category)
     {
-        $validCategories = ['packs', 'musiques', 'buzzers', 'strategiques', 'master', 'coins', 'vies'];
+        $validCategories = ['packs', 'musiques', 'buzzers', 'strategiques', 'master', 'coins_intelligence', 'coins_competence', 'vies'];
         
         if (!in_array($category, $validCategories)) {
             return redirect()->route('boutique');
@@ -100,6 +100,7 @@ class BoutiqueController extends Controller
         $catalog  = AvatarCatalog::get();
         $user     = Auth::user();
         $coins    = $user?->coins ?? 0;
+        $competenceCoins = $user?->competence_coins ?? 0;
         $settings = (array) ($user?->profile_settings ?? []);
         $unlocked = $settings['unlocked_avatars'] ?? [];
         $masterPurchased = $user && ($user->master_purchased ?? false);
@@ -107,15 +108,17 @@ class BoutiqueController extends Controller
         $leaguePurchased = $user && ($user->league_purchased ?? false);
 
         $context = [
-            'category'        => $category,
-            'coins'           => $coins,
-            'unlocked'        => $unlocked,
-            'catalog'         => $catalog,
-            'coinPacks'       => config('coins.packs', []),
-            'masterPurchased' => $masterPurchased,
-            'duoPurchased'    => $duoPurchased,
-            'leaguePurchased' => $leaguePurchased,
-            'pricing'         => [
+            'category'         => $category,
+            'coins'            => $coins,
+            'competenceCoins'  => $competenceCoins,
+            'unlocked'         => $unlocked,
+            'catalog'          => $catalog,
+            'intelligencePacks' => config('coins.intelligence_packs', []),
+            'competencePacks'   => config('coins.competence_packs', []),
+            'masterPurchased'  => $masterPurchased,
+            'duoPurchased'     => $duoPurchased,
+            'leaguePurchased'  => $leaguePurchased,
+            'pricing'          => [
                 'pack'        => [],
                 'buzzer'      => [],
                 'stratégique' => [],

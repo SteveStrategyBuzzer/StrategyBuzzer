@@ -17,6 +17,7 @@ class CoinsController extends Controller
     {
         $request->validate([
             'product_key' => 'required|string',
+            'coin_type' => 'required|string|in:intelligence,competence',
         ]);
 
         $user = Auth::user();
@@ -25,7 +26,12 @@ class CoinsController extends Controller
         }
 
         $productKey = $request->input('product_key');
-        $packs = config('coins.packs');
+        $coinType = $request->input('coin_type');
+        
+        $packs = $coinType === 'intelligence' 
+            ? config('coins.intelligence_packs') 
+            : config('coins.competence_packs');
+        
         $pack = collect($packs)->firstWhere('key', $productKey);
 
         if (!$pack) {
@@ -33,7 +39,7 @@ class CoinsController extends Controller
         }
 
         try {
-            $session = $this->stripeService->createCheckoutSession($pack, $user->id);
+            $session = $this->stripeService->createCheckoutSession($pack, $user->id, null, null, $coinType);
 
             Payment::create([
                 'user_id' => $user->id,
@@ -45,6 +51,7 @@ class CoinsController extends Controller
                 'metadata' => [
                     'coins' => $pack['coins'],
                     'pack_name' => $pack['name'],
+                    'coin_type' => $coinType,
                 ],
             ]);
 
@@ -69,7 +76,9 @@ class CoinsController extends Controller
         }
 
         if ($payment->status === 'completed') {
-            return redirect()->route('boutique')->with('success', "Paiement réussi ! {$payment->coins_awarded} pièces d'intelligence ont été ajoutées à votre compte.");
+            $coinType = $payment->metadata['coin_type'] ?? 'intelligence';
+            $coinName = $coinType === 'competence' ? 'pièces de compétence' : "pièces d'intelligence";
+            return redirect()->route('boutique')->with('success', "Paiement réussi ! {$payment->coins_awarded} {$coinName} ont été ajoutées à votre compte.");
         }
 
         if ($payment->status === 'failed') {

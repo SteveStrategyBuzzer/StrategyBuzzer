@@ -12,10 +12,11 @@ class StripeService
         Stripe::setApiKey(config('coins.stripe.secret'));
     }
 
-    public function createCheckoutSession(array $pack, int $userId, ?string $successUrl = null, ?string $cancelUrl = null): Session
+    public function createCheckoutSession(array $pack, int $userId, ?string $successUrl = null, ?string $cancelUrl = null, ?string $coinType = null): Session
     {
+        $coinTypeLabel = $coinType === 'competence' ? 'pièces de compétence' : "pièces d'intelligence";
         $description = $pack['coins'] > 0 
-            ? $pack['coins'] . ' pièces d\'intelligence'
+            ? $pack['coins'] . ' ' . $coinTypeLabel
             : ($pack['name'] ?? 'Achat');
 
         $defaultSuccessUrl = config('coins.urls.success');
@@ -49,6 +50,7 @@ class StripeService
                 'user_id' => $userId,
                 'product_key' => $pack['key'],
                 'coins' => $pack['coins'] ?? 0,
+                'coin_type' => $coinType ?? 'intelligence',
             ],
         ]);
     }

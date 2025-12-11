@@ -3,22 +3,69 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Packs de Pièces de Compétence
+    | Packs de Pièces d'Intelligence
     |--------------------------------------------------------------------------
     |
-    | Packs de pièces disponibles à l'achat avec Stripe.
-    | Prix progressifs avec économies sur les gros packs.
-    |
-    | - 50 pièces : $10.00 ($0.20/pièce)
-    | - 100 pièces : $18.00 ($0.18/pièce - 10% économie)
-    | - 200 pièces : $32.00 ($0.16/pièce - 20% économie)
-    | - 500 pièces : $65.00 ($0.13/pièce - 35% économie)
+    | Pièces gagnées en Solo et Quêtes, aussi achetables avec Stripe.
     |
     */
 
-    'packs' => [
+    'intelligence_packs' => [
         [
-            'key' => 'starter',
+            'key' => 'intelligence_starter',
+            'name' => 'Pack Débutant',
+            'coins' => 100,
+            'amount_cents' => 99,  // $0.99
+            'currency' => 'usd',
+            'popular' => false,
+        ],
+        [
+            'key' => 'intelligence_popular',
+            'name' => 'Pack Populaire',
+            'coins' => 500,
+            'amount_cents' => 399,  // $3.99
+            'currency' => 'usd',
+            'popular' => true,
+        ],
+        [
+            'key' => 'intelligence_pro',
+            'name' => 'Pack Pro',
+            'coins' => 1200,
+            'amount_cents' => 899,  // $8.99
+            'currency' => 'usd',
+            'popular' => false,
+        ],
+        [
+            'key' => 'intelligence_mega',
+            'name' => 'Pack Mega',
+            'coins' => 2500,
+            'amount_cents' => 1699,  // $16.99
+            'currency' => 'usd',
+            'popular' => false,
+        ],
+        [
+            'key' => 'intelligence_ultimate',
+            'name' => 'Pack Ultimate',
+            'coins' => 5000,
+            'amount_cents' => 2999,  // $29.99
+            'currency' => 'usd',
+            'popular' => false,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Packs de Pièces de Compétence
+    |--------------------------------------------------------------------------
+    |
+    | Pièces gagnées en Duo et Ligue, aussi achetables avec Stripe.
+    | Prix progressifs avec économies sur les gros packs.
+    |
+    */
+
+    'competence_packs' => [
+        [
+            'key' => 'competence_starter',
             'name' => 'Pack Starter',
             'coins' => 50,
             'amount_cents' => 1000,  // $10.00
@@ -26,7 +73,7 @@ return [
             'popular' => false,
         ],
         [
-            'key' => 'standard',
+            'key' => 'competence_standard',
             'name' => 'Pack Standard',
             'coins' => 100,
             'amount_cents' => 1800,  // $18.00 (10% économie)
@@ -34,7 +81,7 @@ return [
             'popular' => false,
         ],
         [
-            'key' => 'pro',
+            'key' => 'competence_pro',
             'name' => 'Pack Pro',
             'coins' => 200,
             'amount_cents' => 3200,  // $32.00 (20% économie)
@@ -42,7 +89,7 @@ return [
             'popular' => true,
         ],
         [
-            'key' => 'mega',
+            'key' => 'competence_mega',
             'name' => 'Pack Mega',
             'coins' => 500,
             'amount_cents' => 6500,  // $65.00 (35% économie)
@@ -55,9 +102,6 @@ return [
     |--------------------------------------------------------------------------
     | Stripe Configuration
     |--------------------------------------------------------------------------
-    |
-    | Your Stripe API keys will be loaded from environment variables.
-    |
     */
 
     'stripe' => [
@@ -69,9 +113,6 @@ return [
     |--------------------------------------------------------------------------
     | Checkout URLs
     |--------------------------------------------------------------------------
-    |
-    | URLs for Stripe Checkout success and cancel redirects.
-    |
     */
 
     'urls' => [

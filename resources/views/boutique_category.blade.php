@@ -13,7 +13,8 @@
         'buzzers' => __('Sons de Buzzers'),
         'strategiques' => __('Avatars Stratégiques'),
         'master' => __('Modes de jeux'),
-        'coins' => __('Pièces de Compétence'),
+        'coins_intelligence' => __("Pièces d'Intelligence"),
+        'coins_competence' => __('Pièces de Compétence'),
         'vies' => __('Vies'),
     ];
     
@@ -23,7 +24,8 @@
         'buzzers' => '🔊',
         'strategiques' => '🛡️',
         'master' => '🎮',
-        'coins' => '<img src="' . asset('images/skill_coin.png') . '" alt="' . __('Pièce de Compétence') . '" style="width:32px;height:32px;vertical-align:middle;">',
+        'coins_intelligence' => '<img src="' . asset('images/coin-intelligence.png') . '" alt="' . __("Pièce d'Intelligence") . '" style="width:32px;height:32px;vertical-align:middle;">',
+        'coins_competence' => '<img src="' . asset('images/skill_coin.png') . '" alt="' . __('Pièce de Compétence') . '" style="width:32px;height:32px;vertical-align:middle;">',
         'vies' => '❤️',
     ];
     
@@ -530,24 +532,61 @@ audio { width: 100%; }
             </div>
         </div>
 
-    @elseif($category === 'coins')
+    @elseif($category === 'coins_intelligence')
         <div class="coins-grid">
-            @foreach($coinPacks ?? [] as $pack)
-                <div class="card coin-pack">
+            @foreach($intelligencePacks ?? [] as $pack)
+                <div class="card coin-pack {{ ($pack['popular'] ?? false) ? 'popular' : '' }}">
+                    @if($pack['popular'] ?? false)
+                        <div class="popular-badge">⭐ {{ __('Populaire') }}</div>
+                    @endif
+                    <div class="coin-icon-display">
+                        <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:64px;height:64px;">
+                    </div>
                     <div class="coin-amount">{{ number_format($pack['coins'] ?? 0) }}</div>
-                    <div style="color:var(--muted);margin-top:8px;">{{ __("pièces de compétence") }}</div>
-                    <div class="coin-price">{{ number_format(($pack['amount_cents'] ?? 0) / 100, 2) }}€</div>
+                    <div style="color:var(--muted);margin-top:8px;">{{ __("pièces d'intelligence") }}</div>
+                    <div class="coin-price">${{ number_format(($pack['amount_cents'] ?? 0) / 100, 2) }}</div>
                     <form method="POST" action="{{ route('coins.checkout') }}" style="margin-top:16px;">
                         @csrf
                         <input type="hidden" name="product_key" value="{{ $pack['key'] ?? '' }}">
-                        <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+                        <input type="hidden" name="coin_type" value="intelligence">
+                        <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);">
                             💳 {{ __('Acheter') }}
                         </button>
                     </form>
                 </div>
             @endforeach
         </div>
-        @if(empty($coinPacks))
+        @if(empty($intelligencePacks))
+            <div class="card" style="padding:24px;text-align:center;">
+                <p style="color:var(--muted);">{{ __('Les packs de pièces seront bientôt disponibles.') }}</p>
+            </div>
+        @endif
+
+    @elseif($category === 'coins_competence')
+        <div class="coins-grid">
+            @foreach($competencePacks ?? [] as $pack)
+                <div class="card coin-pack {{ ($pack['popular'] ?? false) ? 'popular' : '' }}">
+                    @if($pack['popular'] ?? false)
+                        <div class="popular-badge">⭐ {{ __('Populaire') }}</div>
+                    @endif
+                    <div class="coin-icon-display">
+                        <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:64px;height:64px;">
+                    </div>
+                    <div class="coin-amount">{{ number_format($pack['coins'] ?? 0) }}</div>
+                    <div style="color:var(--muted);margin-top:8px;">{{ __("pièces de compétence") }}</div>
+                    <div class="coin-price">${{ number_format(($pack['amount_cents'] ?? 0) / 100, 2) }}</div>
+                    <form method="POST" action="{{ route('coins.checkout') }}" style="margin-top:16px;">
+                        @csrf
+                        <input type="hidden" name="product_key" value="{{ $pack['key'] ?? '' }}">
+                        <input type="hidden" name="coin_type" value="competence">
+                        <button class="btn" type="submit" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706);">
+                            💳 {{ __('Acheter') }}
+                        </button>
+                    </form>
+                </div>
+            @endforeach
+        </div>
+        @if(empty($competencePacks))
             <div class="card" style="padding:24px;text-align:center;">
                 <p style="color:var(--muted);">{{ __('Les packs de pièces seront bientôt disponibles.') }}</p>
             </div>
