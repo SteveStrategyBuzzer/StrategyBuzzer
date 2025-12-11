@@ -7,12 +7,15 @@
             {{ __('Retour') }}
         </button>
         <h1>{{ __('MODE DUO') }}</h1>
-        <div class="header-avatar">
-            @if(Auth::user()->avatar_url)
-                <img src="/{{ Auth::user()->avatar_url }}" alt="Avatar">
-            @else
-                <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
-            @endif
+        <div class="header-right">
+            <button id="playerInfoBtn" class="player-info-btn" title="{{ __('Mon profil') }}">?</button>
+            <div class="header-avatar">
+                @if(Auth::user()->avatar_url)
+                    <img src="/{{ Auth::user()->avatar_url }}" alt="Avatar">
+                @else
+                    <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -161,6 +164,60 @@
     </div>
 </div>
 
+<div id="playerCardModal" class="modal-backdrop" style="display: none;">
+    <div class="player-card-modal">
+        <div class="player-card-header">
+            <button class="close-btn" onclick="closePlayerCardModal()">&times;</button>
+            <div class="player-card-avatar">
+                @if(Auth::user()->avatar_url)
+                    <img src="/{{ Auth::user()->avatar_url }}" alt="Avatar">
+                @else
+                    <div class="default-avatar" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); font-size: 2rem;">
+                        {{ substr(Auth::user()->name, 0, 1) }}
+                    </div>
+                @endif
+            </div>
+            <div class="player-card-name">{{ Auth::user()->name }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.9;">{{ Auth::user()->player_code ?? 'SB-XXXX' }}</div>
+        </div>
+        <div class="player-card-body">
+            <div class="player-card-item" onclick="window.location.href='{{ route('boutique') }}?section=coins&return_to=duo_lobby'">
+                <span class="player-card-item-icon">🪙</span>
+                <span class="player-card-item-label">{{ __('Pièces de compétence') }}</span>
+                <span class="player-card-item-value">{{ number_format(Auth::user()->coins ?? 0) }}</span>
+                <span class="player-card-item-arrow">→</span>
+            </div>
+            
+            <div class="player-card-item" onclick="window.location.href='{{ route('avatars.index') }}?tab=strategic&return_to=duo_lobby'">
+                <span class="player-card-item-icon">✨</span>
+                <span class="player-card-item-label">{{ __('Avatar Stratégique') }}</span>
+                <span class="player-card-item-value">{{ session('avatar', 'Aucun') }}</span>
+                <span class="player-card-item-arrow">→</span>
+            </div>
+            
+            <div class="player-card-item" onclick="window.location.href='{{ route('boutique') }}?section=lives&return_to=duo_lobby'">
+                <span class="player-card-item-icon">❤️</span>
+                <span class="player-card-item-label">{{ __('Vies') }}</span>
+                <span class="player-card-item-value">{{ Auth::user()->lives ?? 0 }} / {{ config('game.life_max', 3) }}</span>
+                <span class="player-card-item-arrow">→</span>
+            </div>
+            
+            <div class="player-card-item" onclick="window.location.href='{{ route('avatars.index') }}?tab=player&return_to=duo_lobby'">
+                <span class="player-card-item-icon">👤</span>
+                <span class="player-card-item-label">{{ __('Avatar Joueur') }}</span>
+                <span class="player-card-item-value">{{ __('Modifier') }}</span>
+                <span class="player-card-item-arrow">→</span>
+            </div>
+            
+            <div class="player-card-item no-click">
+                <span class="player-card-item-icon">📊</span>
+                <span class="player-card-item-label">{{ __('Cote') }}</span>
+                <span class="player-card-item-value" id="playerOddsValue">--</span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .duo-lobby-container {
     max-width: 1200px;
@@ -213,6 +270,132 @@
     color: white;
     font-size: 2em;
     font-weight: bold;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-self: end;
+}
+
+.player-info-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 2px solid white;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-info-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+}
+
+.player-card-modal {
+    max-width: 400px;
+    width: 90%;
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.player-card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+}
+
+.player-card-header .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.player-card-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid white;
+    margin: 0 auto 10px;
+    overflow: hidden;
+}
+
+.player-card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.player-card-name {
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin: 5px 0;
+}
+
+.player-card-body {
+    padding: 20px;
+}
+
+.player-card-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.player-card-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.player-card-item.no-click {
+    cursor: default;
+}
+
+.player-card-item.no-click:hover {
+    transform: none;
+}
+
+.player-card-item-icon {
+    font-size: 1.5rem;
+    margin-right: 10px;
+}
+
+.player-card-item-label {
+    flex: 1;
+    font-weight: 600;
+    color: #333;
+}
+
+.player-card-item-value {
+    font-weight: bold;
+    color: #667eea;
+}
+
+.player-card-item-arrow {
+    color: #aaa;
+    margin-left: 10px;
 }
 
 .division-badge {
@@ -1795,7 +1978,42 @@ $duoTranslations = [
 const duoTranslations = @json($duoTranslations);
 function t(key) { return duoTranslations[key] || key; }
 
+function openPlayerCardModal() {
+    document.getElementById('playerCardModal').style.display = 'flex';
+    document.getElementById('playerCardModal').style.alignItems = 'center';
+    document.getElementById('playerCardModal').style.justifyContent = 'center';
+    
+    fetch('/api/player/stats', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.odds !== undefined) {
+            document.getElementById('playerOddsValue').textContent = data.odds.toFixed(2) + 'x';
+        }
+    })
+    .catch(() => {});
+}
+
+function closePlayerCardModal() {
+    document.getElementById('playerCardModal').style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    const playerInfoBtn = document.getElementById('playerInfoBtn');
+    if (playerInfoBtn) {
+        playerInfoBtn.addEventListener('click', openPlayerCardModal);
+    }
+    
+    document.getElementById('playerCardModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closePlayerCardModal();
+        }
+    });
+
     const randomMatchBtn = document.getElementById('randomMatchBtn');
     const inviteBtn = document.getElementById('inviteBtn');
     const inviteInput = document.getElementById('inviteInput');

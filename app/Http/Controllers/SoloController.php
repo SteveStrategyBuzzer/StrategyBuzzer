@@ -1837,6 +1837,25 @@ class SoloController extends Controller
         // Détecter le déblocage du Duo complet (Boss niveau 10 battu = passage au niveau 11)
         $duoFullUnlocked = ($currentLevel == 10 && $newLevel >= 11);
         
+        // Récupérer les stats des 10 dernières parties Solo
+        $last10Stats = [];
+        if ($user) {
+            $last10Stats = \App\Models\MatchPerformance::getLast10Stats($user->id, 'solo');
+            
+            // Si Duo débloqué, inscrire le joueur en Bronze Duo avec son efficacité Solo
+            if ($duoFullUnlocked) {
+                $soloEfficiency = $last10Stats['global_efficiency'] ?? 0;
+                $divisionService = new \App\Services\DivisionService();
+                $duoDivision = $divisionService->getOrCreateDivision($user, 'duo', $soloEfficiency);
+                
+                \Log::info("Joueur inscrit en Bronze Duo", [
+                    'user_id' => $user->id,
+                    'solo_efficiency' => $soloEfficiency,
+                    'division_id' => $duoDivision->id,
+                ]);
+            }
+        }
+        
         $params = [
             'current_level' => $currentLevel,
             'new_level' => $newLevel,
@@ -1859,6 +1878,8 @@ class SoloController extends Controller
             'has_stratege_bonus' => $hasStrategeBonus,
             // Flag de déblocage Duo complet
             'duo_full_unlocked' => $duoFullUnlocked,
+            // Stats des 10 dernières parties (efficacité moyenne + ratio V/D)
+            'last_10_stats' => $last10Stats,
         ];
         
         return view('victory', compact('params'));
@@ -1983,6 +2004,12 @@ class SoloController extends Controller
             }
         }
         
+        // Récupérer les stats des 10 dernières parties Solo
+        $last10Stats = [];
+        if ($user) {
+            $last10Stats = \App\Models\MatchPerformance::getLast10Stats($user->id, 'solo');
+        }
+        
         $params = [
             'current_level' => $currentLevel,
             'theme' => $theme,
@@ -1999,6 +2026,8 @@ class SoloController extends Controller
             'stats_metrics' => $statsMetrics,
             // Stats par manche (toutes les manches de la partie)
             'round_summaries' => $roundSummaries,
+            // Stats des 10 dernières parties (efficacité moyenne + ratio V/D)
+            'last_10_stats' => $last10Stats,
         ];
         
         return view('defeat', compact('params'));

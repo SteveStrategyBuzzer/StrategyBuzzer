@@ -53,4 +53,36 @@ class MatchPerformance extends Model
         
         return round($matches->avg('performance'), 2);
     }
+    
+    public static function getLast10Stats(int $userId, string $gameMode): array
+    {
+        $matches = self::getLast10Matches($userId, $gameMode);
+        
+        if ($matches->isEmpty()) {
+            return [
+                'count' => 0,
+                'avg_efficiency' => 0,
+                'wins' => 0,
+                'losses' => 0,
+                'win_ratio' => 0,
+                'global_efficiency' => 0,
+            ];
+        }
+        
+        $wins = $matches->where('is_victory', true)->count();
+        $losses = $matches->where('is_victory', false)->count();
+        $avgEfficiency = round($matches->avg('performance'), 2);
+        $winRatio = $matches->count() > 0 ? round(($wins / $matches->count()) * 100, 2) : 0;
+        
+        $globalEfficiency = round(($avgEfficiency + $winRatio) / 2, 2);
+        
+        return [
+            'count' => $matches->count(),
+            'avg_efficiency' => $avgEfficiency,
+            'wins' => $wins,
+            'losses' => $losses,
+            'win_ratio' => $winRatio,
+            'global_efficiency' => $globalEfficiency,
+        ];
+    }
 }

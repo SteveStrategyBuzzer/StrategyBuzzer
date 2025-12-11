@@ -73,6 +73,41 @@ Route::middleware('auth:sanctum')->prefix('league/team')->group(function () {
     Route::get('/rankings/{division}', [App\Http\Controllers\LeagueTeamController::class, 'getRankings']);
 });
 
+Route::middleware('auth:sanctum')->get('/player/stats', function (Request $request) {
+    $user = $request->user();
+    $duoStats = \App\Models\MatchPerformance::getLast10Stats($user->id, 'duo');
+    $soloStats = \App\Models\MatchPerformance::getLast10Stats($user->id, 'solo');
+    
+    $duoDivision = \App\Models\PlayerDivision::where('user_id', $user->id)
+        ->where('mode', 'duo')
+        ->first();
+    
+    $efficiency = $duoStats['global_efficiency'] ?? 0;
+    $wins = $duoStats['wins'] ?? 0;
+    $losses = $duoStats['losses'] ?? 0;
+    
+    if (($duoStats['count'] ?? 0) == 0) {
+        if ($duoDivision && $duoDivision->initial_efficiency > 0) {
+            $efficiency = $duoDivision->initial_efficiency;
+        } else {
+            $efficiency = $soloStats['global_efficiency'] ?? 0;
+        }
+        $wins = $soloStats['wins'] ?? 0;
+        $losses = $soloStats['losses'] ?? 0;
+    }
+    
+    $odds = 1.0 + ($efficiency / 100);
+    
+    return response()->json([
+        'global_efficiency' => round($efficiency, 1),
+        'wins' => $wins,
+        'losses' => $losses,
+        'count' => ($duoStats['count'] ?? 0) + ($soloStats['count'] ?? 0),
+        'odds' => round($odds, 2),
+        'division' => $duoDivision ? $duoDivision->division : null,
+    ]);
+});
+
 Route::middleware('auth:sanctum')->prefix('master')->group(function () {
     Route::post('/game/{gameId}/validate-quiz', [App\Http\Controllers\MasterGameController::class, 'validateQuiz']);
     Route::post('/game/{gameId}/join', [App\Http\Controllers\MasterGameController::class, 'joinGame']);

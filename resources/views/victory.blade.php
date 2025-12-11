@@ -262,6 +262,31 @@
         </div>
     </div>
     
+    @if(isset($params['last_10_stats']) && $params['last_10_stats']['count'] > 0)
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 15px; margin: 20px 0; color: white;">
+        <h3 style="font-size: 1.2rem; margin-bottom: 15px; text-align: center;">
+            📊 {{ __('Stats des 10 dernières parties') }}
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
+            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px;">
+                <div style="font-size: 0.85rem; opacity: 0.9;">{{ __('Efficacité Matchs') }}</div>
+                <div style="font-size: 1.8rem; font-weight: 900;">{{ number_format($params['last_10_stats']['avg_efficiency'], 1) }}%</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px;">
+                <div style="font-size: 0.85rem; opacity: 0.9;">{{ __('Ratio V/D') }}</div>
+                <div style="font-size: 1.8rem; font-weight: 900;">{{ $params['last_10_stats']['wins'] }}/{{ $params['last_10_stats']['losses'] }}</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px;">
+                <div style="font-size: 0.85rem; opacity: 0.9;">{{ __('Efficacité Globale') }}</div>
+                <div style="font-size: 1.8rem; font-weight: 900;">{{ number_format($params['last_10_stats']['global_efficiency'], 1) }}%</div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 10px; font-size: 0.8rem; opacity: 0.8;">
+            {{ __('Basé sur') }} {{ $params['last_10_stats']['count'] }} {{ __('partie(s)') }}
+        </div>
+    </div>
+    @endif
+    
     @php
         $avatar = session('avatar', 'Aucun');
         $bonusResult = session('bonus_question_result', null);

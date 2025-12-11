@@ -17,6 +17,9 @@ class PlayerDivision extends Model
         'points',
         'level',
         'rank',
+        'initial_efficiency',
+        'matches_won',
+        'matches_lost',
     ];
 
     public function user(): BelongsTo

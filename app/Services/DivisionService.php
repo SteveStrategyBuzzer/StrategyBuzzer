@@ -16,12 +16,24 @@ class DivisionService
         'legende' => ['min' => 500, 'max' => PHP_INT_MAX, 'name' => 'Légende'],
     ];
 
-    public function getOrCreateDivision(User $user, string $mode): PlayerDivision
+    public function getOrCreateDivision(User $user, string $mode, ?float $initialEfficiency = null): PlayerDivision
     {
-        return PlayerDivision::firstOrCreate(
-            ['user_id' => $user->id, 'mode' => $mode],
-            ['division' => 'bronze', 'points' => 0, 'level' => 1]
-        );
+        $existing = PlayerDivision::where('user_id', $user->id)
+            ->where('mode', $mode)
+            ->first();
+            
+        if ($existing) {
+            return $existing;
+        }
+        
+        return PlayerDivision::create([
+            'user_id' => $user->id,
+            'mode' => $mode,
+            'division' => 'bronze',
+            'points' => 0,
+            'level' => 1,
+            'initial_efficiency' => $initialEfficiency ?? 0,
+        ]);
     }
 
     public function calculatePoints(int $myLevel, int $opponentLevel, bool $won): int
