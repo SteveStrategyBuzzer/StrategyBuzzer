@@ -80,6 +80,7 @@ class LobbyController extends Controller
             'allReady' => $lobbyState['all_ready'],
             'canStart' => $lobbyState['can_start'],
             'matchId' => $duoMatch?->id,
+            'userCompetenceCoins' => $user->competence_coins ?? 0,
         ]);
     }
     
@@ -191,7 +192,17 @@ class LobbyController extends Controller
             'theme' => 'nullable|string',
             'nb_questions' => 'nullable|integer|min:5|max:20',
             'teams_enabled' => 'nullable|boolean',
+            'bet_amount' => 'nullable|integer|min:0|max:100',
         ]);
+        
+        if (isset($validated['bet_amount']) && $validated['bet_amount'] > 0) {
+            if ($user->competence_coins < $validated['bet_amount']) {
+                return response()->json([
+                    'success' => false,
+                    'error' => __('Vous n\'avez pas assez de pièces de Compétence pour cette mise')
+                ], 400);
+            }
+        }
         
         $result = $this->lobbyService->updateLobbySettings($code, $user, $validated);
         

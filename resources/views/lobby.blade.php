@@ -701,6 +701,15 @@ foreach ($colors as $color) {
                     @endforeach
                 </select>
             </div>
+            <div style="min-width: 150px;">
+                <label style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 5px;">🎲 {{ __('Mise') }} <span style="font-size: 0.75rem; opacity: 0.8;">({{ __('Compétence') }}: {{ $userCompetenceCoins ?? 0 }})</span></label>
+                <select id="bet-select" onchange="updateSettings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,193,7,0.2); color: #ffc107; font-size: 1rem; font-weight: bold;">
+                    <option value="0" {{ ($settings['bet_amount'] ?? 0) == 0 ? 'selected' : '' }}>{{ __('Sans mise') }}</option>
+                    @foreach([5, 10, 25, 50, 100] as $bet)
+                        <option value="{{ $bet }}" {{ ($settings['bet_amount'] ?? 0) == $bet ? 'selected' : '' }} {{ ($userCompetenceCoins ?? 0) < $bet ? 'disabled' : '' }}>{{ $bet }} 🪙</option>
+                    @endforeach
+                </select>
+            </div>
             <div style="display: flex; align-items: flex-end;">
                 <span class="info-badge player-count-badge" style="margin-left: 10px;">👥 <span id="player-count-host">{{ count($players) }}</span>/{{ $maxPlayers }}</span>
             </div>
@@ -710,6 +719,11 @@ foreach ($colors as $color) {
     <div class="lobby-info">
         <span class="info-badge">🎯 {{ $settings['theme'] ?? 'Culture générale' }}</span>
         <span class="info-badge">❓ {{ $settings['nb_questions'] ?? 10 }} {{ __('questions') }}</span>
+        @if(($settings['bet_amount'] ?? 0) > 0)
+            <span class="info-badge" style="background: rgba(255,193,7,0.3); color: #ffc107;">🎲 {{ __('Mise') }}: {{ $settings['bet_amount'] }} 🪙</span>
+        @else
+            <span class="info-badge" style="opacity: 0.7;">🎲 {{ __('Sans mise') }}</span>
+        @endif
         <span class="info-badge player-count-badge">👥 <span id="player-count-guest">{{ count($players) }}</span>/{{ $maxPlayers }}</span>
     </div>
     @endif
@@ -719,6 +733,7 @@ foreach ($colors as $color) {
             <span>👥</span>
             <span>{{ __('Joueurs') }} ({{ count($players) }}/{{ $maxPlayers }})</span>
             <button id="lobby-chat-btn" class="player-action-btn" style="margin-left: 10px; font-size: 1.2rem;" title="{{ __('Chat') }}">💬</button>
+            <button id="lobby-help-btn" class="player-action-btn" style="margin-left: 5px; font-size: 1.2rem;" title="{{ __('Aide') }}" onclick="showHelpModal()">❓</button>
         </div>
         
         <div class="players-grid">
@@ -1800,6 +1815,7 @@ foreach ($colors as $color) {
         
         const themeSelect = document.getElementById('theme-select');
         const questionsSelect = document.getElementById('questions-select');
+        const betSelect = document.getElementById('bet-select');
         
         if (!themeSelect || !questionsSelect) return;
         
@@ -1812,7 +1828,8 @@ foreach ($colors as $color) {
                 },
                 body: JSON.stringify({
                     theme: themeSelect.value,
-                    nb_questions: parseInt(questionsSelect.value)
+                    nb_questions: parseInt(questionsSelect.value),
+                    bet_amount: betSelect ? parseInt(betSelect.value) : 0
                 })
             });
             
@@ -1827,6 +1844,34 @@ foreach ($colors as $color) {
             console.error('Error updating settings:', error);
             showToast('{{ __("Erreur de connexion") }}');
         }
+    }
+    
+    function showHelpModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'help-modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <button class="modal-close" onclick="closeHelpModal()">&times;</button>
+                <h2 style="margin-bottom: 20px;">{{ __('Aide - Salon d\'attente') }}</h2>
+                <div style="text-align: left; line-height: 1.8;">
+                    <p><strong>💬 Chat</strong> - {{ __('Discutez avec les autres joueurs') }}</p>
+                    <p><strong>🎤 Micro</strong> - {{ __('Activez votre micro pour parler en temps réel') }}</p>
+                    <p><strong>✓ Prêt</strong> - {{ __('Indiquez que vous êtes prêt à jouer') }}</p>
+                    <p><strong>🎨 Couleur</strong> - {{ __('Choisissez votre couleur d\'équipe') }}</p>
+                    <p><strong>🎲 Mise</strong> - {{ __('Pariez des pièces de Compétence comme enjeu. Le gagnant remporte la mise de tous les joueurs!') }}</p>
+                    <hr style="margin: 15px 0; opacity: 0.3;">
+                    <p style="opacity: 0.8; font-size: 0.9rem;">{{ __('Le créateur du salon peut démarrer la partie quand tous les joueurs sont prêts.') }}</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+    }
+    
+    function closeHelpModal() {
+        const modal = document.getElementById('help-modal');
+        if (modal) modal.remove();
     }
     
     async function startGame() {
