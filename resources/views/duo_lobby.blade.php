@@ -188,7 +188,7 @@
                 <span class="player-card-item-arrow">→</span>
             </div>
             
-            <div class="player-card-item" onclick="window.location.href='{{ route('avatars.index') }}?tab=strategic&return_to=duo_lobby'">
+            <div class="player-card-item" onclick="window.location.href='{{ route('avatars') }}?tab=strategic&return_to=duo_lobby'">
                 <span class="player-card-item-icon">✨</span>
                 <span class="player-card-item-label">{{ __('Avatar Stratégique') }}</span>
                 <span class="player-card-item-value">{{ session('avatar', 'Aucun') }}</span>
@@ -202,7 +202,7 @@
                 <span class="player-card-item-arrow">→</span>
             </div>
             
-            <div class="player-card-item" onclick="window.location.href='{{ route('avatars.index') }}?tab=player&return_to=duo_lobby'">
+            <div class="player-card-item" onclick="window.location.href='{{ route('avatars') }}?tab=player&return_to=duo_lobby'">
                 <span class="player-card-item-icon">👤</span>
                 <span class="player-card-item-label">{{ __('Avatar Joueur') }}</span>
                 <span class="player-card-item-value">{{ __('Modifier') }}</span>
