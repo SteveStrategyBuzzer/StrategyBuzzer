@@ -41,6 +41,10 @@ class User extends Authenticatable
         'lives',
         'infinite_lives_until',
         'rank',
+        'temp_access_division',
+        'temp_access_expires_at',
+        'current_match_id',
+        'match_started_at',
     ];
 
     /**
@@ -59,10 +63,12 @@ class User extends Authenticatable
      * @var array<string, string>
      */
     protected $casts = [
-        'email_verified_at'    => 'datetime',
-        'password'             => 'hashed',
-        'profile_settings'     => 'array',
-        'infinite_lives_until' => 'datetime',
+        'email_verified_at'       => 'datetime',
+        'password'                => 'hashed',
+        'profile_settings'        => 'array',
+        'infinite_lives_until'    => 'datetime',
+        'temp_access_expires_at'  => 'datetime',
+        'match_started_at'        => 'datetime',
     ];
 
     public function playerDuoStat()

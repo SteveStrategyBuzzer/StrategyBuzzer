@@ -18,6 +18,7 @@ class DivisionService
     
     const TEMP_ACCESS_MULTIPLIER = 2;
     const TEMP_ACCESS_DURATION_HOURS = 6;
+    const EFFICIENCY_THRESHOLD_PERCENT = 15;
 
     public function getOrCreateDivision(User $user, string $mode, ?float $initialEfficiency = null): PlayerDivision
     {
@@ -39,21 +40,55 @@ class DivisionService
         ]);
     }
 
-    public function calculatePoints(int $myLevel, int $opponentLevel, bool $won): int
+    public function calculatePoints(string $strength, bool $won): int
     {
         if (!$won) {
-            return -2; // Pénalité défaite
+            return -5;
         }
 
-        $levelDiff = $opponentLevel - $myLevel;
-
-        if ($levelDiff >= 1) {
-            return 5; // Victoire vs supérieur (n'importe quel niveau plus élevé)
-        } elseif ($levelDiff <= -1) {
-            return 1; // Victoire vs inférieur (n'importe quel niveau plus bas)
-        } else {
-            return 2; // Victoire vs même niveau (±0)
+        switch ($strength) {
+            case 'stronger':
+                return 10;
+            case 'same':
+                return 5;
+            case 'weaker':
+                return 2;
+            default:
+                return 5;
         }
+    }
+    
+    public function determineOpponentStrength(
+        string $myDivision, 
+        string $opponentDivision, 
+        float $myEfficiency, 
+        float $opponentEfficiency,
+        bool $isTemporaryAccess = false
+    ): string {
+        if ($isTemporaryAccess) {
+            return 'stronger';
+        }
+        
+        $divisionOrder = array_keys(self::DIVISIONS);
+        $myIndex = array_search($myDivision, $divisionOrder);
+        $oppIndex = array_search($opponentDivision, $divisionOrder);
+        
+        if ($oppIndex > $myIndex) {
+            return 'stronger';
+        } elseif ($oppIndex < $myIndex) {
+            return 'weaker';
+        }
+        
+        $threshold = self::EFFICIENCY_THRESHOLD_PERCENT / 100;
+        $efficiencyDiff = $opponentEfficiency - $myEfficiency;
+        
+        if ($efficiencyDiff > $threshold) {
+            return 'stronger';
+        } elseif ($efficiencyDiff < -$threshold) {
+            return 'weaker';
+        }
+        
+        return 'same';
     }
 
     public function updateDivisionAfterMatch(
@@ -139,24 +174,25 @@ class DivisionService
         return $coins * self::TEMP_ACCESS_MULTIPLIER;
     }
     
-    public function calculateVictoryReward(string $myDivision, string $opponentDivision, bool $won): array
-    {
+    public function calculateVictoryReward(
+        string $playingDivision, 
+        string $strength, 
+        bool $won,
+        bool $isTemporaryAccess = false
+    ): array {
         if (!$won) {
-            return ['coins' => 0, 'bonus' => 0, 'multiplier' => 0];
+            return ['coins' => 0, 'base' => 0, 'bonus' => 0, 'multiplier' => 0, 'strength' => $strength];
         }
         
-        $baseCoins = $this->getVictoryCoins($myDivision);
-        $divisionOrder = array_keys(self::DIVISIONS);
-        $myIndex = array_search($myDivision, $divisionOrder);
-        $oppIndex = array_search($opponentDivision, $divisionOrder);
+        $baseCoins = $this->getVictoryCoins($playingDivision);
         
         $multiplier = 1.0;
         $bonus = 0;
         
-        if ($oppIndex > $myIndex) {
+        if ($isTemporaryAccess || $strength === 'stronger') {
             $multiplier = 1.5;
             $bonus = (int) ceil($baseCoins * 0.5);
-        } elseif ($oppIndex < $myIndex) {
+        } elseif ($strength === 'weaker') {
             $multiplier = 0.5;
             $bonus = -(int) ceil($baseCoins * 0.5);
         }
@@ -168,6 +204,7 @@ class DivisionService
             'base' => $baseCoins,
             'bonus' => $bonus,
             'multiplier' => $multiplier,
+            'strength' => $strength,
         ];
     }
     
@@ -187,5 +224,100 @@ class DivisionService
     {
         $cost = $this->getTemporaryAccessCost($targetDivision);
         return ($user->coins ?? 0) >= $cost;
+    }
+    
+    public function purchaseTemporaryAccess(User $user, string $targetDivision): array
+    {
+        $cost = $this->getTemporaryAccessCost($targetDivision);
+        
+        if (($user->coins ?? 0) < $cost) {
+            return ['success' => false, 'error' => 'Pas assez de pièces'];
+        }
+        
+        $user->coins = ($user->coins ?? 0) - $cost;
+        $user->temp_access_division = $targetDivision;
+        $user->temp_access_expires_at = now()->addHours(self::TEMP_ACCESS_DURATION_HOURS);
+        $user->save();
+        
+        return [
+            'success' => true,
+            'division' => $targetDivision,
+            'expires_at' => $user->temp_access_expires_at,
+            'cost' => $cost,
+            'remaining_coins' => $user->coins,
+        ];
+    }
+    
+    public function hasActiveTemporaryAccess(User $user, string $division): bool
+    {
+        if (!$user->temp_access_division || !$user->temp_access_expires_at) {
+            return false;
+        }
+        
+        return $user->temp_access_division === $division && 
+               $user->temp_access_expires_at->isFuture();
+    }
+    
+    public function canStartMatchInDivision(User $user, string $targetDivision, string $userDivision): bool
+    {
+        if ($targetDivision === $userDivision) {
+            return true;
+        }
+        
+        return $this->hasActiveTemporaryAccess($user, $targetDivision);
+    }
+    
+    public function startMatchWithTemporaryAccess(User $user, string $matchId): void
+    {
+        $user->current_match_id = $matchId;
+        $user->match_started_at = now();
+        $user->save();
+    }
+    
+    public function canFinishCurrentMatch(User $user): bool
+    {
+        return $user->current_match_id !== null;
+    }
+    
+    public function clearCurrentMatch(User $user): void
+    {
+        $user->current_match_id = null;
+        $user->match_started_at = null;
+        $user->save();
+    }
+    
+    public function getTemporaryAccessInfo(User $user): ?array
+    {
+        if (!$user->temp_access_division || !$user->temp_access_expires_at) {
+            return null;
+        }
+        
+        $isActive = $user->temp_access_expires_at->isFuture();
+        $remainingMinutes = $isActive ? now()->diffInMinutes($user->temp_access_expires_at) : 0;
+        
+        return [
+            'division' => $user->temp_access_division,
+            'division_name' => $this->getDivisionName($user->temp_access_division),
+            'expires_at' => $user->temp_access_expires_at,
+            'is_active' => $isActive,
+            'remaining_minutes' => $remainingMinutes,
+            'remaining_hours' => round($remainingMinutes / 60, 1),
+        ];
+    }
+    
+    public function getMinPointsForDivision(string $division): int
+    {
+        return self::DIVISIONS[$division]['min'] ?? 0;
+    }
+    
+    public function updateDivisionPointsWithFloor(PlayerDivision $playerDivision, int $pointsChange): PlayerDivision
+    {
+        $minPoints = $this->getMinPointsForDivision($playerDivision->division);
+        $newPoints = $playerDivision->points + $pointsChange;
+        $playerDivision->points = max($minPoints, $newPoints);
+        $playerDivision->division = $this->calculateDivisionFromPoints($playerDivision->points);
+        $playerDivision->save();
+        
+        return $playerDivision;
     }
 }
