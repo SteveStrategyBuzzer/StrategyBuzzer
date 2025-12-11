@@ -229,12 +229,12 @@ class DuoMatchmakingService
         $player2Division->save();
         
         if ($player1Reward['coins'] > 0) {
-            $player1->coins = ($player1->coins ?? 0) + $player1Reward['coins'];
+            $player1->competence_coins = ($player1->competence_coins ?? 0) + $player1Reward['coins'];
             $player1->save();
         }
         
         if ($player2Reward['coins'] > 0) {
-            $player2->coins = ($player2->coins ?? 0) + $player2Reward['coins'];
+            $player2->competence_coins = ($player2->competence_coins ?? 0) + $player2Reward['coins'];
             $player2->save();
         }
         

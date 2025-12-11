@@ -22,22 +22,25 @@ class BoutiqueController extends Controller
         $catalog  = AvatarCatalog::get();
         $user     = Auth::user();
 
-        $coins    = $user?->coins ?? 0;
-        $settings = (array) ($user?->profile_settings ?? []);
-        $unlocked = $settings['unlocked_avatars'] ?? []; // ✅ corrigé : anciennement 'unlocked'
+        $coins           = $user?->coins ?? 0;
+        $competenceCoins = $user?->competence_coins ?? 0;
+        $settings        = (array) ($user?->profile_settings ?? []);
+        $unlocked        = $settings['unlocked_avatars'] ?? [];
 
         $itemSlug        = $request->query('item');
         $strategiqueSlug = $request->query('stratégique');
 
         $context = [
-            'coins'     => $coins,
-            'unlocked'  => $unlocked,
-            'catalog'   => $catalog,
-            'mode'      => null,
-            'entity'    => null,
-            'slug'      => null,
-            'coinPacks' => config('coins.packs', []),
-            'pricing'   => [
+            'coins'            => $coins,
+            'competenceCoins'  => $competenceCoins,
+            'unlocked'         => $unlocked,
+            'catalog'          => $catalog,
+            'mode'             => null,
+            'entity'           => null,
+            'slug'             => null,
+            'intelligencePacks' => config('coins.intelligence_packs', []),
+            'competencePacks'   => config('coins.competence_packs', []),
+            'pricing'          => [
                 'pack'        => [],
                 'buzzer'      => [],
                 'stratégique' => [],

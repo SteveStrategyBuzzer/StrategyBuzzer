@@ -37,6 +37,7 @@ class User extends Authenticatable
         'player_code',
         'preferred_language',
         'coins',
+        'competence_coins',
         'intelligence_pieces',
         'lives',
         'infinite_lives_until',

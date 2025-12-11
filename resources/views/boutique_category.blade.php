@@ -256,10 +256,13 @@ audio { width: 100%; }
 .master-features ul { margin: 8px 0 0; padding-left: 20px; }
 .master-features li { margin: 6px 0; color: var(--muted); }
 
-.coins-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.coin-pack { text-align: center; padding: 24px; }
-.coin-amount { font-size: 3rem; font-weight: 900; color: #fbbf24; text-shadow: 0 2px 8px rgba(251,191,36,0.3); }
-.coin-price { font-size: 1.8rem; font-weight: 800; margin-top: 16px; }
+.coins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.coin-pack { text-align: center; padding: 24px; position: relative; }
+.coin-pack.popular { border: 2px solid #fbbf24; box-shadow: 0 0 20px rgba(251,191,36,0.3); }
+.coin-amount { font-size: 2.5rem; font-weight: 900; color: #fbbf24; text-shadow: 0 2px 8px rgba(251,191,36,0.3); }
+.coin-price { font-size: 1.5rem; font-weight: 800; margin-top: 12px; }
+.coin-icon-display { margin-bottom: 12px; }
+.popular-badge { position: absolute; top: -10px; right: -10px; background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
 
 .lives-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .life-pack { text-align: center; padding: 24px; }
@@ -276,8 +279,12 @@ audio { width: 100%; }
 <div class="wrap">
     <div class="topbar">
         <div class="pill">
-            <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce" class="coin-icon">
-            {{ __('Pièces') }} : <b>{{ number_format($coins) }}</b>
+            <img src="{{ asset('images/coin-intelligence.png') }}" alt="Intelligence" class="coin-icon">
+            <b>{{ number_format($coins) }}</b>
+        </div>
+        <div class="pill">
+            <img src="{{ asset('images/skill_coin.png') }}" alt="Compétence" class="coin-icon">
+            <b>{{ number_format($competenceCoins ?? 0) }}</b>
         </div>
         <div class="nav-buttons">
             <a href="{{ route('boutique') }}" class="nav-btn secondary">← {{ __('Boutique') }}</a>

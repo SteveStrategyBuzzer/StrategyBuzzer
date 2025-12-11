@@ -186,7 +186,7 @@ class LeagueIndividualService
         $this->divisionService->updateDivisionPointsWithFloor($division, $pointsEarned);
 
         if ($coinsEarned > 0) {
-            $user->coins = ($user->coins ?? 0) + $coinsEarned;
+            $user->competence_coins = ($user->competence_coins ?? 0) + $coinsEarned;
             $user->save();
         }
     }

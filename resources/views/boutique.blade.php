@@ -326,8 +326,12 @@
 <div class="boutique-scene">
     <div class="boutique-header">
         <div class="coins-pill">
-            <img src="{{ asset('images/coin-intelligence.png') }}" alt="Pièce">
-            {{ __('Pièces') }} : <b>{{ number_format($coins) }}</b>
+            <img src="{{ asset('images/coin-intelligence.png') }}" alt="Intelligence">
+            <b>{{ number_format($coins) }}</b>
+        </div>
+        <div class="coins-pill">
+            <img src="{{ asset('images/skill_coin.png') }}" alt="Compétence">
+            <b>{{ number_format($competenceCoins ?? 0) }}</b>
         </div>
         <a href="{{ route('menu') }}" class="menu-btn">{{ __('Menu') }}</a>
     </div>
