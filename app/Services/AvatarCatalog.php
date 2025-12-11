@@ -21,6 +21,7 @@ class AvatarCatalog
             'clown'      => ['label' => 'Clown',       'quest' => 'Cirque',         'price' => 1000],
             'musicien'   => ['label' => 'Musicien',    'quest' => 'Musique',        'price' => 300],
             'automobile' => ['label' => 'Automobile',  'quest' => 'Voitures',       'price' => 350],
+            'metier'     => ['label' => 'Métier',      'quest' => 'Professions',    'price' => 350],
         ];
 
         foreach ($packs as $slug => $p) {
