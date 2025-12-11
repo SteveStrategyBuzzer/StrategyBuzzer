@@ -15,7 +15,7 @@ class AvatarCatalog
             'portraits'  => ['label' => 'Portraits',   'quest' => 'Portraits variés','price' => 300],
             'cartoon'    => ['label' => 'Cartoon',     'quest' => 'Style cartoon',  'price' => 300],
             'animal'     => ['label' => 'Animal',      'quest' => 'Animaux',        'price' => 300],
-            'mythique'   => ['label' => 'Mythique',    'quest' => 'Héros épiques',  'price' => 400],
+            'mythique'   => ['label' => 'Mythique',    'quest' => 'Héros épiques',  'price' => 800],
             'paysage'    => ['label' => 'Paysage',     'quest' => 'Arrière-plans',  'price' => 250],
             'objet'      => ['label' => 'Objet',       'quest' => 'Objets divers',  'price' => 250],
             'clown'      => ['label' => 'Clown',       'quest' => 'Cirque',         'price' => 1000],
