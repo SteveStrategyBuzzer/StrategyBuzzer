@@ -161,6 +161,8 @@
                 ['slug'=>'clown','label'=>'Clown'],
                 ['slug'=>'musicien','label'=>'Musicien'],
                 ['slug'=>'automobile','label'=>'Automobile'],
+                ['slug'=>'metier','label'=>'Métier'],
+                ['slug'=>'nation','label'=>'Nation'],
               ];
               foreach ($packs as $k => $p) {
                 $imgs = __sb_pack_images($p['slug'], 32);
