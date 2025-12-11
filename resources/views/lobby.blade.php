@@ -1485,12 +1485,51 @@ foreach ($colors as $color) {
     }
     
     let micStates = {};
+    let voicePresence = {};
     let voiceEnabled = false;
     const lobbyMode = '{{ $mode }}';
     const voiceEnabledModes = ['duo', 'league_individual', 'league_team'];
     const isVoiceSupported = voiceEnabledModes.includes(lobbyMode);
     
     micStates[currentPlayerId] = false;
+    
+    function updateMicStatesOnly(playerEntries) {
+        playerEntries.forEach(([playerId, player]) => {
+            const micBtn = document.getElementById('mic-btn-' + playerId);
+            if (!micBtn) return;
+            
+            const isCurrentPlayer = parseInt(playerId) === currentPlayerId;
+            if (isCurrentPlayer) {
+                micBtn.classList.toggle('active', micStates[currentPlayerId]);
+            } else {
+                const presence = voicePresence[playerId] || {};
+                const micEnabled = presence.micEnabled ?? false;
+                const speaking = presence.speaking ?? false;
+                
+                micBtn.classList.remove('active', 'muted', 'speaking', 'unavailable');
+                if (micEnabled) {
+                    micBtn.classList.add('active');
+                    if (speaking) micBtn.classList.add('speaking');
+                } else {
+                    micBtn.classList.add('muted');
+                }
+            }
+        });
+    }
+    
+    function updateVoicePresence(playerId, data) {
+        voicePresence[playerId] = data;
+        const micBtn = document.getElementById('mic-btn-' + playerId);
+        if (micBtn && parseInt(playerId) !== currentPlayerId) {
+            micBtn.classList.remove('active', 'muted', 'speaking', 'unavailable');
+            if (data.micEnabled) {
+                micBtn.classList.add('active');
+                if (data.speaking) micBtn.classList.add('speaking');
+            } else {
+                micBtn.classList.add('muted');
+            }
+        }
+    }
     
     function toggleMic(playerId) {
         console.log('[Mic] toggleMic called for player:', playerId);
@@ -1893,11 +1932,24 @@ foreach ($colors as $color) {
         audioNotAvailable: '{{ __("Audio non disponible") }}'
     };
     
+    let lastPlayersHash = '';
+    
     function updatePlayersUI(players) {
         const playersGrid = document.querySelector('.players-grid');
         if (!playersGrid) return;
         
         const playerEntries = Object.entries(players || {});
+        
+        const currentHash = JSON.stringify(playerEntries.map(([id, p]) => ({
+            id, name: p.name, avatar: p.avatar, ready: p.ready, is_host: p.is_host, color: p.color
+        })));
+        
+        if (currentHash === lastPlayersHash) {
+            updateMicStatesOnly(playerEntries);
+            return;
+        }
+        lastPlayersHash = currentHash;
+        
         let html = '';
         
         playerEntries.forEach(([playerId, player]) => {
@@ -1926,6 +1978,29 @@ foreach ($colors as $color) {
             const safeCode = escapeHtml(player.player_code || 'SB-????');
             const youLabel = isCurrentPlayer ? `<span style="font-size: 0.8rem; opacity: 0.7;">(${translations.you})</span>` : '';
             
+            const otherMicEnabled = voicePresence[playerId]?.micEnabled ?? false;
+            const otherSpeaking = voicePresence[playerId]?.speaking ?? false;
+            
+            let micBtnHtml = '';
+            if (isVoiceSupported) {
+                if (isCurrentPlayer) {
+                    micBtnHtml = `<button class="player-action-btn ${micStates[currentPlayerId] ? 'active' : ''}" 
+                        id="mic-btn-${playerId}" 
+                        data-player-id="${playerId}"
+                        data-action="mic"
+                        title="${translations.yourMic}">🎙️</button>`;
+                } else {
+                    const micClass = otherMicEnabled ? (otherSpeaking ? 'active speaking' : 'active') : 'muted';
+                    micBtnHtml = `<button class="player-action-btn ${micClass}" 
+                        id="mic-btn-${playerId}" 
+                        data-player-id="${playerId}"
+                        title="${translations.opponentMic}">🎙️</button>`;
+                }
+            } else {
+                micBtnHtml = `<button class="player-action-btn unavailable" 
+                    title="${translations.audioNotAvailable}" disabled>🎙️</button>`;
+            }
+            
             html += `
                 <div class="player-card ${readyClass} ${hostClass}" 
                      style="border-left: 4px solid ${playerColor.hex};"
@@ -1938,6 +2013,7 @@ foreach ($colors as $color) {
                          alt="${safeName}" 
                          class="player-avatar"
                          style="width: 50px; height: 50px; border-color: ${playerColor.hex};"
+                         loading="lazy"
                          onerror="this.src='/images/avatars/standard/default.png'">
                     
                     <div class="player-info">
@@ -1951,18 +2027,7 @@ foreach ($colors as $color) {
                     ${statusHtml}
                     
                     <div class="player-actions">
-                        ${isVoiceSupported ? (isCurrentPlayer ? 
-                            `<button class="player-action-btn ${micStates[currentPlayerId] ? 'active' : ''}" 
-                                id="mic-btn-${playerId}" 
-                                data-player-id="${playerId}"
-                                data-action="mic"
-                                title="${translations.yourMic}">🎙️</button>` :
-                            `<button class="player-action-btn unavailable" 
-                                id="mic-btn-${playerId}" 
-                                data-player-id="${playerId}"
-                                title="${translations.opponentMic}" disabled>🎙️</button>`
-                        ) : `<button class="player-action-btn unavailable" 
-                                title="${translations.audioNotAvailable}" disabled>🎙️</button>`}
+                        ${micBtnHtml}
                     </div>
                 </div>
             `;
@@ -2488,18 +2553,27 @@ class WebRTCManager {
                 if (odPlayerId === this.currentPlayerId) return;
                 
                 if (change.type === 'added' || change.type === 'modified') {
+                    const micEnabled = !data.muted;
+                    const speaking = data.speaking && micEnabled;
+                    
+                    if (typeof updateVoicePresence === 'function') {
+                        updateVoicePresence(odPlayerId, { micEnabled, speaking });
+                    }
                     if (typeof updateSpeakingIndicator === 'function') {
-                        updateSpeakingIndicator(odPlayerId, data.speaking && !data.muted);
+                        updateSpeakingIndicator(odPlayerId, speaking);
                     }
                     if (typeof updateRemoteMicState === 'function') {
-                        updateRemoteMicState(odPlayerId, !data.muted);
+                        updateRemoteMicState(odPlayerId, micEnabled);
                     }
                     
-                    if (!this.peerConnections[odPlayerId] && !data.muted) {
+                    if (!this.peerConnections[odPlayerId] && micEnabled) {
                         this.createPeerConnection(odPlayerId, true);
                     }
                 } else if (change.type === 'removed') {
                     this.closePeerConnection(odPlayerId);
+                    if (typeof updateVoicePresence === 'function') {
+                        updateVoicePresence(odPlayerId, { micEnabled: false, speaking: false });
+                    }
                     if (typeof updateSpeakingIndicator === 'function') {
                         updateSpeakingIndicator(odPlayerId, false);
                     }
