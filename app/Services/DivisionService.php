@@ -79,12 +79,12 @@ class DivisionService
             return 'weaker';
         }
         
-        $threshold = self::EFFICIENCY_THRESHOLD_PERCENT / 100;
-        $efficiencyDiff = $opponentEfficiency - $myEfficiency;
+        $thresholdPercent = self::EFFICIENCY_THRESHOLD_PERCENT / 100;
+        $threshold = $myEfficiency * $thresholdPercent;
         
-        if ($efficiencyDiff > $threshold) {
+        if ($opponentEfficiency > $myEfficiency + $threshold) {
             return 'stronger';
-        } elseif ($efficiencyDiff < -$threshold) {
+        } elseif ($opponentEfficiency < $myEfficiency - $threshold) {
             return 'weaker';
         }
         
@@ -258,6 +258,19 @@ class DivisionService
                $user->temp_access_expires_at->isFuture();
     }
     
+    public function hasTemporaryAccessOrOngoingMatch(User $user, string $division): bool
+    {
+        if ($this->hasActiveTemporaryAccess($user, $division)) {
+            return true;
+        }
+        
+        if ($user->current_match_id && $user->temp_access_division === $division) {
+            return true;
+        }
+        
+        return false;
+    }
+    
     public function canStartMatchInDivision(User $user, string $targetDivision, string $userDivision): bool
     {
         if ($targetDivision === $userDivision) {
@@ -312,10 +325,33 @@ class DivisionService
     
     public function updateDivisionPointsWithFloor(PlayerDivision $playerDivision, int $pointsChange): PlayerDivision
     {
-        $minPoints = $this->getMinPointsForDivision($playerDivision->division);
+        $currentDivisionMin = $this->getMinPointsForDivision($playerDivision->division);
         $newPoints = $playerDivision->points + $pointsChange;
-        $playerDivision->points = max($minPoints, $newPoints);
+        
+        if ($pointsChange < 0) {
+            $playerDivision->points = max($currentDivisionMin, $newPoints);
+        } else {
+            $playerDivision->points = max(0, $newPoints);
+        }
+        
         $playerDivision->division = $this->calculateDivisionFromPoints($playerDivision->points);
+        $playerDivision->save();
+        
+        return $playerDivision;
+    }
+    
+    public function demotePlayer(PlayerDivision $playerDivision): PlayerDivision
+    {
+        $divisionOrder = array_keys(self::DIVISIONS);
+        $currentIndex = array_search($playerDivision->division, $divisionOrder);
+        
+        if ($currentIndex === false || $currentIndex <= 0) {
+            return $playerDivision;
+        }
+        
+        $newDivision = $divisionOrder[$currentIndex - 1];
+        $playerDivision->division = $newDivision;
+        $playerDivision->points = self::DIVISIONS[$newDivision]['max'];
         $playerDivision->save();
         
         return $playerDivision;
