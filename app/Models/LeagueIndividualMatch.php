@@ -17,6 +17,8 @@ class LeagueIndividualMatch extends Model
         'game_state',
         'player1_points_earned',
         'player2_points_earned',
+        'player1_coins_earned',
+        'player2_coins_earned',
     ];
 
     protected $casts = [

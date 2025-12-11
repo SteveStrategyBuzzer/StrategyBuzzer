@@ -111,16 +111,43 @@ class LeagueIndividualService
         $player1Won = $matchResult['player_won'] ?? false;
         $winnerId = $player1Won ? $player1->id : $player2->id;
 
-        $player1PointsEarned = $this->divisionService->calculatePoints(
-            $match->player1_level,
-            $match->player2_level,
-            $player1Won
+        $div1 = $this->divisionService->getOrCreateDivision($player1, 'league_individual');
+        $div2 = $this->divisionService->getOrCreateDivision($player2, 'league_individual');
+
+        $p1IsTemp = $this->divisionService->hasActiveTemporaryAccess($player1, $div1->division);
+        $p2IsTemp = $this->divisionService->hasActiveTemporaryAccess($player2, $div2->division);
+
+        $p1Strength = $this->divisionService->determineOpponentStrength(
+            $div1->division,
+            $div2->division,
+            $div1->initial_efficiency ?? 0,
+            $div2->initial_efficiency ?? 0,
+            $p1IsTemp
         );
 
-        $player2PointsEarned = $this->divisionService->calculatePoints(
-            $match->player2_level,
-            $match->player1_level,
-            !$player1Won
+        $p2Strength = $this->divisionService->determineOpponentStrength(
+            $div2->division,
+            $div1->division,
+            $div2->initial_efficiency ?? 0,
+            $div1->initial_efficiency ?? 0,
+            $p2IsTemp
+        );
+
+        $player1PointsEarned = $this->divisionService->calculatePoints($p1Strength, $player1Won);
+        $player2PointsEarned = $this->divisionService->calculatePoints($p2Strength, !$player1Won);
+
+        $p1CoinReward = $this->divisionService->calculateVictoryReward(
+            $div1->division,
+            $p1Strength,
+            $player1Won,
+            $p1IsTemp
+        );
+
+        $p2CoinReward = $this->divisionService->calculateVictoryReward(
+            $div2->division,
+            $p2Strength,
+            !$player1Won,
+            $p2IsTemp
         );
 
         $match->update([
@@ -128,16 +155,21 @@ class LeagueIndividualService
             'winner_id' => $winnerId,
             'player1_points_earned' => $player1PointsEarned,
             'player2_points_earned' => $player2PointsEarned,
+            'player1_coins_earned' => $p1CoinReward['coins'],
+            'player2_coins_earned' => $p2CoinReward['coins'],
         ]);
 
-        $this->updatePlayerStats($player1, $player1Won, $player1PointsEarned, $match->player1_level);
-        $this->updatePlayerStats($player2, !$player1Won, $player2PointsEarned, $match->player2_level);
+        $this->updatePlayerStats($player1, $player1Won, $player1PointsEarned, $match->player1_level, $p1CoinReward['coins']);
+        $this->updatePlayerStats($player2, !$player1Won, $player2PointsEarned, $match->player2_level, $p2CoinReward['coins']);
+
+        $this->divisionService->clearCurrentMatch($player1);
+        $this->divisionService->clearCurrentMatch($player2);
     }
 
     /**
      * Met à jour les statistiques d'un joueur après un match
      */
-    private function updatePlayerStats(User $user, bool $won, int $pointsEarned, int $currentLevel): void
+    private function updatePlayerStats(User $user, bool $won, int $pointsEarned, int $currentLevel, int $coinsEarned = 0): void
     {
         $stats = $this->getOrCreateStats($user);
         
@@ -147,15 +179,16 @@ class LeagueIndividualService
         } else {
             $stats->matches_lost++;
         }
-        $stats->total_points += $pointsEarned;
+        $stats->total_points += max(0, $pointsEarned);
         $stats->save();
 
-        $this->divisionService->updateDivisionAfterMatch(
-            $user,
-            'league_individual',
-            $pointsEarned,
-            $currentLevel
-        );
+        $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
+        $this->divisionService->updateDivisionPointsWithFloor($division, $pointsEarned);
+
+        if ($coinsEarned > 0) {
+            $user->coins = ($user->coins ?? 0) + $coinsEarned;
+            $user->save();
+        }
     }
 
     /**

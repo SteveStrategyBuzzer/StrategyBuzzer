@@ -343,4 +343,129 @@ class LeagueIndividualController extends Controller
             'rank' => $rank,
         ]);
     }
+
+    /**
+     * Page de résultat du match
+     */
+    public function result(LeagueIndividualMatch $match)
+    {
+        $user = Auth::user();
+        
+        if (!$match->isPlayerInMatch($user->id)) {
+            abort(403, 'Unauthorized');
+        }
+
+        $match->load(['player1', 'player2']);
+        $gameState = $match->game_state;
+        $matchResult = $this->gameStateService->getMatchResult($gameState);
+        
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
+        $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'league_individual');
+        $stats = $this->leagueService->getOrCreateStats($user);
+        
+        $accuracy = 0;
+        $total = ($gameState['global_stats']['correct'] ?? 0) + ($gameState['global_stats']['incorrect'] ?? 0);
+        if ($total > 0) {
+            $accuracy = round(($gameState['global_stats']['correct'] ?? 0) / $total * 100);
+        }
+
+        $pointsEarned = $isPlayer1 ? ($match->player1_points_earned ?? 0) : ($match->player2_points_earned ?? 0);
+        $coinsEarned = $isPlayer1 ? ($match->player1_coins_earned ?? 0) : ($match->player2_coins_earned ?? 0);
+        
+        $myEfficiency = $division->initial_efficiency ?? 0;
+        $oppEfficiency = $opponentDivision->initial_efficiency ?? 0;
+        $opponentStrength = $this->divisionService->determineOpponentStrength(
+            $division->division,
+            $opponentDivision->division,
+            $myEfficiency,
+            $oppEfficiency
+        );
+        
+        $baseCoins = $this->divisionService->getVictoryCoins($division->division);
+        $coinsBonus = $coinsEarned > 0 ? $coinsEarned - $baseCoins : 0;
+
+        return view('league_individual_results', [
+            'match' => $match,
+            'gameState' => $gameState,
+            'stats' => $stats,
+            'division' => $division,
+            'match_result' => $matchResult,
+            'opponent' => $opponent,
+            'opponent_id' => $opponent->id ?? null,
+            'opponent_name' => $opponent->name ?? 'Adversaire',
+            'points_earned' => $pointsEarned,
+            'coins_earned' => $coinsEarned,
+            'coins_bonus' => $coinsBonus,
+            'opponent_strength' => $opponentStrength,
+            'global_stats' => $gameState['global_stats'] ?? [],
+            'accuracy' => $accuracy,
+            'round_details' => $gameState['answered_questions'] ?? [],
+        ]);
+    }
+
+    /**
+     * API: Obtenir les infos d'accès temporaire
+     */
+    public function getTemporaryAccessInfo()
+    {
+        $user = Auth::user();
+        $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
+        $tempInfo = $this->divisionService->getTemporaryAccessInfo($user);
+        $nextDivision = $this->divisionService->getNextDivision($division->division);
+        
+        $accessCost = null;
+        $canPurchase = false;
+        
+        if ($nextDivision) {
+            $accessCost = $this->divisionService->getTemporaryAccessCost($nextDivision);
+            $canPurchase = $this->divisionService->canPurchaseTemporaryAccess($user, $nextDivision);
+        }
+
+        return response()->json([
+            'success' => true,
+            'current_division' => $division->division,
+            'next_division' => $nextDivision,
+            'next_division_name' => $nextDivision ? $this->divisionService->getDivisionName($nextDivision) : null,
+            'access_cost' => $accessCost,
+            'can_purchase' => $canPurchase,
+            'user_coins' => $user->coins ?? 0,
+            'temporary_access' => $tempInfo,
+        ]);
+    }
+
+    /**
+     * API: Acheter un accès temporaire
+     */
+    public function purchaseTemporaryAccess(Request $request)
+    {
+        $user = Auth::user();
+        $targetDivision = $request->input('division');
+        
+        if (!$targetDivision || !isset(DivisionService::DIVISIONS[$targetDivision])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Division invalide',
+            ], 400);
+        }
+        
+        $result = $this->divisionService->purchaseTemporaryAccess($user, $targetDivision);
+        
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Erreur lors de l\'achat',
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'division' => $result['division'],
+            'division_name' => $this->divisionService->getDivisionName($result['division']),
+            'expires_at' => $result['expires_at'],
+            'cost' => $result['cost'],
+            'remaining_coins' => $result['remaining_coins'],
+        ]);
+    }
 }

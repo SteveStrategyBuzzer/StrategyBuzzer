@@ -54,25 +54,44 @@
         <div class="points-earned-section">
             <h3>POINTS DE DIVISION</h3>
             <div class="points-display">
-                <span class="points-value {{ $pointsEarned >= 0 ? 'positive' : 'negative' }}">
-                    {{ $pointsEarned >= 0 ? '+' : '' }}{{ $pointsEarned }}
+                <span class="points-value {{ $points_earned >= 0 ? 'positive' : 'negative' }}">
+                    {{ $points_earned >= 0 ? '+' : '' }}{{ $points_earned }}
                 </span>
                 <span class="points-label">points</span>
             </div>
             <p class="points-explanation">
-                @if($pointsEarned > 0)
-                    @if($pointsEarned == 5)
+                @if($points_earned > 0)
+                    @if($points_earned == 10)
                         Victoire contre un adversaire plus fort !
-                    @elseif($pointsEarned == 2)
+                    @elseif($points_earned == 5)
                         Victoire contre un adversaire de niveau égal
                     @else
                         Victoire contre un adversaire plus faible
                     @endif
                 @else
-                    Défaite : -2 points
+                    Défaite : -5 points
                 @endif
             </p>
         </div>
+
+        @if(($coins_earned ?? 0) > 0)
+        <div class="coins-earned-section">
+            <h3>PIECES DE COMPETENCE GAGNEES</h3>
+            <div class="coins-display">
+                <span class="coins-value">+{{ $coins_earned }}</span>
+                <span class="coins-icon">🪙</span>
+            </div>
+            @if(($coins_bonus ?? 0) != 0)
+            <p class="coins-explanation {{ $coins_bonus > 0 ? 'bonus-positive' : 'bonus-negative' }}">
+                @if($opponent_strength === 'stronger')
+                    Bonus adversaire plus fort (+50%)
+                @elseif($opponent_strength === 'weaker')
+                    Malus adversaire plus faible (-50%)
+                @endif
+            </p>
+            @endif
+        </div>
+        @endif
 
         <div class="stats-section">
             <h3>STATISTIQUES DU MATCH</h3>
@@ -325,6 +344,50 @@
 .points-explanation {
     opacity: 0.9;
     font-size: 1.1em;
+}
+
+.coins-earned-section {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 30px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #1a1a1a;
+    border-radius: 15px;
+}
+
+.coins-earned-section h3 {
+    font-size: 1.3em;
+    margin-bottom: 15px;
+}
+
+.coins-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.coins-value {
+    font-size: 3.5em;
+    font-weight: bold;
+    color: #1a1a1a;
+}
+
+.coins-icon {
+    font-size: 3em;
+}
+
+.coins-explanation {
+    font-size: 1.1em;
+}
+
+.coins-explanation.bonus-positive {
+    color: #2E7D32;
+}
+
+.coins-explanation.bonus-negative {
+    color: #C62828;
 }
 
 .stats-section {

@@ -240,20 +240,9 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
         }
         return view('league_individual_game', compact('match'));
     })->name('game');
-    Route::get('/results/{match}', function (App\Models\LeagueIndividualMatch $match) {
-        $userId = Auth::id();
-        if ($match->player1_id !== $userId && $match->player2_id !== $userId) {
-            abort(403, 'Unauthorized access to this match');
-        }
-        $match->load(['player1', 'player2']);
-        $gameState = $match->game_state;
-        /** @var App\Models\User $user */
-        $user = Auth::user();
-        $pointsEarned = $match->player1_id == $user->id ? $match->player1_points_earned : $match->player2_points_earned;
-        $stats = $user->leagueIndividualStat;
-        $division = $user->playerDivisions()->where('mode', 'league_individual')->first();
-        return view('league_individual_results', compact('match', 'gameState', 'pointsEarned', 'stats', 'division'));
-    })->name('results');
+    Route::get('/results/{match}', [App\Http\Controllers\LeagueIndividualController::class, 'result'])->name('results');
+    Route::get('/temporary-access', [App\Http\Controllers\LeagueIndividualController::class, 'getTemporaryAccessInfo'])->name('temporary-access');
+    Route::post('/purchase-access', [App\Http\Controllers\LeagueIndividualController::class, 'purchaseTemporaryAccess'])->name('purchase-access');
     Route::get('/rankings', function () {
         /** @var App\Models\User $user */
         $user = Auth::user();
