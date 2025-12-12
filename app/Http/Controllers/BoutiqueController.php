@@ -261,7 +261,7 @@ class BoutiqueController extends Controller
 
     /**
      * POST /master/checkout
-     * Créer une session Stripe pour acheter le mode Maître du Jeu (29.99$)
+     * Créer une session Stripe pour acheter le mode Maître du Jeu (29.99)
      */
     public function masterCheckout(Request $request)
     {
@@ -274,12 +274,17 @@ class BoutiqueController extends Controller
             return back()->with('info', 'Vous avez déjà débloqué le mode Maître du Jeu.');
         }
 
+        // Détection de devise basée sur la localisation
+        $detectedCurrency = strtolower($request->input('detected_currency', 'usd'));
+        $supportedCurrencies = ['usd', 'cad', 'eur', 'gbp', 'aud', 'nzd', 'chf', 'jpy', 'sek', 'nok', 'dkk', 'pln', 'czk', 'huf', 'inr', 'brl', 'mxn', 'zar', 'sgd', 'hkd'];
+        $currency = in_array($detectedCurrency, $supportedCurrencies) ? $detectedCurrency : 'usd';
+
         try {
             $masterProduct = [
                 'key' => 'master_mode',
                 'name' => 'Mode Maître du Jeu',
-                'amount_cents' => 2999, // $29.99
-                'currency' => 'usd',
+                'amount_cents' => 2999, // 29.99 dans la devise détectée
+                'currency' => $currency,
                 'coins' => 0,
             ];
 
@@ -290,7 +295,7 @@ class BoutiqueController extends Controller
                 'stripe_session_id' => $session->id,
                 'product_key' => 'master_mode',
                 'amount_cents' => 2999,
-                'currency' => 'usd',
+                'currency' => $currency,
                 'status' => 'pending',
                 'metadata' => [
                     'product_type' => 'master_mode',
@@ -351,19 +356,22 @@ class BoutiqueController extends Controller
             return back()->with('error', __('Veuillez vous connecter.'));
         }
 
+        // Détection de devise basée sur la localisation
+        $detectedCurrency = strtolower($request->input('detected_currency', 'usd'));
+        $supportedCurrencies = ['usd', 'cad', 'eur', 'gbp', 'aud', 'nzd', 'chf', 'jpy', 'sek', 'nok', 'dkk', 'pln', 'czk', 'huf', 'inr', 'brl', 'mxn', 'zar', 'sgd', 'hkd'];
+        $currency = in_array($detectedCurrency, $supportedCurrencies) ? $detectedCurrency : 'usd';
+
         $modeProducts = [
             'duo' => [
                 'key' => 'duo_mode',
                 'name' => __('Mode Duo'),
-                'amount_cents' => 1250,
-                'currency' => 'usd',
+                'amount_cents' => 1250, // 12.50 dans la devise détectée
                 'purchased_field' => 'duo_purchased',
             ],
             'league' => [
                 'key' => 'league_mode',
                 'name' => __('Mode Ligue'),
-                'amount_cents' => 1575,
-                'currency' => 'usd',
+                'amount_cents' => 1575, // 15.75 dans la devise détectée
                 'purchased_field' => 'league_purchased',
             ],
         ];
@@ -383,7 +391,7 @@ class BoutiqueController extends Controller
                 'key' => $product['key'],
                 'name' => $product['name'],
                 'amount_cents' => $product['amount_cents'],
-                'currency' => $product['currency'],
+                'currency' => $currency,
                 'coins' => 0,
             ], $user->id);
 
@@ -392,7 +400,7 @@ class BoutiqueController extends Controller
                 'stripe_session_id' => $session->id,
                 'product_key' => $product['key'],
                 'amount_cents' => $product['amount_cents'],
-                'currency' => $product['currency'],
+                'currency' => $currency,
                 'status' => 'pending',
                 'metadata' => [
                     'product_type' => $product['key'],

@@ -18,6 +18,7 @@ class CoinsController extends Controller
         $request->validate([
             'product_key' => 'required|string',
             'coin_type' => 'required|string|in:intelligence,competence',
+            'detected_currency' => 'nullable|string|size:3',
         ]);
 
         $user = Auth::user();
@@ -27,6 +28,17 @@ class CoinsController extends Controller
 
         $productKey = $request->input('product_key');
         $coinType = $request->input('coin_type');
+        $detectedCurrency = strtolower($request->input('detected_currency', 'usd'));
+        
+        // Liste des devises supportées par Stripe
+        $supportedCurrencies = [
+            'usd', 'cad', 'eur', 'gbp', 'aud', 'nzd', 'chf', 'jpy', 'cny',
+            'sek', 'nok', 'dkk', 'pln', 'czk', 'huf', 'ron', 'inr', 'krw',
+            'sgd', 'hkd', 'twd', 'brl', 'mxn', 'zar'
+        ];
+        
+        // Utiliser USD par défaut si la devise n'est pas supportée
+        $currency = in_array($detectedCurrency, $supportedCurrencies) ? $detectedCurrency : 'usd';
         
         $packs = $coinType === 'intelligence' 
             ? config('coins.intelligence_packs') 
@@ -38,6 +50,9 @@ class CoinsController extends Controller
             return back()->with('error', 'Pack invalide.');
         }
 
+        // Utiliser la devise détectée au lieu de celle du pack (même montant numérique)
+        $pack['currency'] = $currency;
+
         try {
             $session = $this->stripeService->createCheckoutSession($pack, $user->id, null, null, $coinType);
 
@@ -46,7 +61,7 @@ class CoinsController extends Controller
                 'stripe_session_id' => $session->id,
                 'product_key' => $pack['key'],
                 'amount_cents' => $pack['amount_cents'],
-                'currency' => $pack['currency'],
+                'currency' => $currency,
                 'status' => 'pending',
                 'metadata' => [
                     'coins' => $pack['coins'],
