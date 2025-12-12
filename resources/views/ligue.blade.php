@@ -432,7 +432,6 @@ body {
                                 <div class="team-details">
                                     <div class="team-name">
                                         {{ $team->name }}
-                                        <span class="team-tag">[{{ $team->tag }}]</span>
                                         @if($team->captain_id === $user->id)
                                             <span class="captain-badge">{{ __('Capitaine') }}</span>
                                         @endif
