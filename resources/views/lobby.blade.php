@@ -958,17 +958,22 @@ foreach ($colors as $color) {
                 </div>
             </div>
             
-            <div class="strategic-avatar-section" id="strategic-avatar-section" style="margin: 15px 0; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; display: none;">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                    <img id="strategic-avatar-img" src="" alt="" style="width: 48px; height: 48px; border-radius: 8px; border: 2px solid rgba(255,193,7,0.5);">
-                    <div>
-                        <div id="strategic-avatar-name" style="font-weight: bold; color: #ffc107;"></div>
-                        <div id="strategic-avatar-skill" style="font-size: 0.8rem; color: rgba(255,255,255,0.7);"></div>
+            <div class="strategic-avatar-section" id="strategic-avatar-section" style="margin: 15px 0; padding: 0; border-radius: 12px; display: none; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.4) 50%, rgba(30, 60, 114, 0.5) 100%); padding: 15px; position: relative;">
+                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><circle cx=\"20\" cy=\"20\" r=\"2\" fill=\"rgba(255,255,255,0.1)\"/><circle cx=\"80\" cy=\"30\" r=\"1.5\" fill=\"rgba(255,255,255,0.08)\"/><circle cx=\"40\" cy=\"70\" r=\"1\" fill=\"rgba(255,255,255,0.1)\"/><circle cx=\"90\" cy=\"80\" r=\"2\" fill=\"rgba(255,255,255,0.05)\"/></svg>'); pointer-events: none;"></div>
+                    <div style="display: flex; align-items: flex-start; gap: 15px; position: relative; z-index: 1;">
+                        <div style="flex-shrink: 0; background: linear-gradient(135deg, rgba(255,193,7,0.3), rgba(255,152,0,0.2)); padding: 4px; border-radius: 12px; box-shadow: 0 4px 15px rgba(255,193,7,0.2);">
+                            <img id="strategic-avatar-img" src="" alt="" style="width: 60px; height: 60px; border-radius: 10px; display: block;">
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div id="strategic-avatar-name" style="font-weight: bold; font-size: 1.1rem; color: #ffc107; text-shadow: 0 1px 3px rgba(0,0,0,0.3); margin-bottom: 8px;"></div>
+                            <div id="strategic-avatar-skills" style="display: flex; flex-direction: column; gap: 4px;"></div>
+                        </div>
                     </div>
+                    <select id="strategic-avatar-select" onchange="changeStrategicAvatar(this.value)" style="width: 100%; margin-top: 12px; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,193,7,0.4); background: rgba(0,0,0,0.3); color: #fff; font-size: 0.9rem; cursor: pointer; position: relative; z-index: 1;">
+                        <option value="">{{ __('Changer d\'avatar stratégique...') }}</option>
+                    </select>
                 </div>
-                <select id="strategic-avatar-select" onchange="changeStrategicAvatar(this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 0.9rem;">
-                    <option value="">{{ __('Changer d\'avatar stratégique...') }}</option>
-                </select>
             </div>
             
             <div class="radar-container">
@@ -1289,7 +1294,9 @@ foreach ($colors as $color) {
         const strategicSection = document.getElementById('strategic-avatar-section');
         const avatarLink = document.getElementById('stats-avatar-link');
         
-        if (isCurrentPlayer && Object.keys(unlockedStrategicAvatars).length > 0) {
+        const hasStrategicAvatars = Object.keys(unlockedStrategicAvatars).length > 0;
+        
+        if (isCurrentPlayer && hasStrategicAvatars) {
             strategicSection.style.display = 'block';
             avatarLink.style.pointerEvents = 'auto';
             
@@ -1299,22 +1306,39 @@ foreach ($colors as $color) {
             for (const [slug, avatar] of Object.entries(unlockedStrategicAvatars)) {
                 const option = document.createElement('option');
                 option.value = slug;
-                option.textContent = avatar.name + ' - ' + (avatar.skills ? avatar.skills.join(', ') : '');
+                option.textContent = avatar.name;
                 if (slug === activeStrategicAvatar) {
                     option.selected = true;
                 }
                 select.appendChild(option);
             }
             
+            const skillsContainer = document.getElementById('strategic-avatar-skills');
+            skillsContainer.innerHTML = '';
+            
             if (activeStrategicAvatar && unlockedStrategicAvatars[activeStrategicAvatar]) {
                 const active = unlockedStrategicAvatars[activeStrategicAvatar];
                 document.getElementById('strategic-avatar-img').src = '/' + active.path;
                 document.getElementById('strategic-avatar-name').textContent = active.name;
-                document.getElementById('strategic-avatar-skill').textContent = active.skills ? active.skills.join(', ') : '';
+                
+                if (active.skills && active.skills.length > 0) {
+                    active.skills.forEach(skill => {
+                        const skillEl = document.createElement('div');
+                        skillEl.style.cssText = 'font-size: 0.85rem; color: rgba(255,255,255,0.85); padding: 3px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; border-left: 2px solid #ffc107;';
+                        skillEl.textContent = '✨ ' + skill;
+                        skillsContainer.appendChild(skillEl);
+                    });
+                }
             } else {
-                document.getElementById('strategic-avatar-img').src = '/images/avatars/standard/default.png';
-                document.getElementById('strategic-avatar-name').textContent = '{{ __("Aucun avatar stratégique") }}';
-                document.getElementById('strategic-avatar-skill').textContent = '';
+                const firstSlug = Object.keys(unlockedStrategicAvatars)[0];
+                const firstAvatar = unlockedStrategicAvatars[firstSlug];
+                document.getElementById('strategic-avatar-img').src = '/' + firstAvatar.path;
+                document.getElementById('strategic-avatar-name').textContent = '{{ __("Sélectionnez un avatar") }}';
+                
+                const hint = document.createElement('div');
+                hint.style.cssText = 'font-size: 0.8rem; color: rgba(255,255,255,0.6); font-style: italic;';
+                hint.textContent = '{{ __("Utilisez le menu ci-dessous") }}';
+                skillsContainer.appendChild(hint);
             }
         } else {
             strategicSection.style.display = 'none';
@@ -1377,7 +1401,18 @@ foreach ($colors as $color) {
                     const active = unlockedStrategicAvatars[slug];
                     document.getElementById('strategic-avatar-img').src = '/' + active.path;
                     document.getElementById('strategic-avatar-name').textContent = active.name;
-                    document.getElementById('strategic-avatar-skill').textContent = active.skills ? active.skills.join(', ') : '';
+                    
+                    const skillsContainer = document.getElementById('strategic-avatar-skills');
+                    skillsContainer.innerHTML = '';
+                    
+                    if (active.skills && active.skills.length > 0) {
+                        active.skills.forEach(skill => {
+                            const skillEl = document.createElement('div');
+                            skillEl.style.cssText = 'font-size: 0.85rem; color: rgba(255,255,255,0.85); padding: 3px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; border-left: 2px solid #ffc107;';
+                            skillEl.textContent = '✨ ' + skill;
+                            skillsContainer.appendChild(skillEl);
+                        });
+                    }
                 }
             } else {
                 showToast(data.error || '{{ __("Erreur") }}');
