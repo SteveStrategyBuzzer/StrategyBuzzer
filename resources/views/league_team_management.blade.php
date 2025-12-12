@@ -619,6 +619,11 @@
     margin-top: 12px;
     font-size: 0.9rem;
     color: rgba(255,255,255,0.9);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
 .team-code-display .code-value {
     background: rgba(255,255,255,0.2);
