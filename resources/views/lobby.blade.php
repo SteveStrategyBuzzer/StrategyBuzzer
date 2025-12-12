@@ -1350,11 +1350,26 @@ foreach ($colors as $color) {
             const data = await response.json();
             
             if (data.success) {
-                const avatar = data.player.avatar || 'default';
-                const avatarSrc = avatar.includes('/') || avatar.includes('.png') 
-                    ? `/${avatar.replace(/\.png$/, '')}.png`
-                    : `/images/avatars/standard/${avatar}.png`;
-                document.getElementById('stats-avatar').src = avatarSrc;
+                let avatar = data.player.avatar || 'default';
+                let avatarSrc;
+                
+                if (avatar === 'default' || avatar === null) {
+                    avatarSrc = '/images/avatars/standard/default.png';
+                } else if (avatar.startsWith('http')) {
+                    avatarSrc = avatar;
+                } else if (avatar.startsWith('/')) {
+                    avatarSrc = avatar;
+                } else if (avatar.includes('/') || avatar.includes('.png')) {
+                    avatarSrc = '/' + avatar.replace(/^\/+/, '');
+                } else {
+                    avatarSrc = '/images/avatars/standard/' + avatar + '.png';
+                }
+                
+                const statsAvatarImg = document.getElementById('stats-avatar');
+                statsAvatarImg.onerror = function() {
+                    this.src = '/images/avatars/standard/default.png';
+                };
+                statsAvatarImg.src = avatarSrc;
                 document.getElementById('stats-player-code').textContent = data.player.player_code;
                 
                 document.getElementById('stats-level').textContent = data.stats.level;

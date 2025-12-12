@@ -289,7 +289,10 @@ class LobbyController extends Controller
             'Régularité' => min((($contact->matches_played_together ?? 0) / 20) * 100, 100),
         ];
         
-        $playerAvatar = $player->avatar ?? $player->avatar_url ?? 'default';
+        $playerAvatar = $player->avatar_url ?? 'default';
+        if ($playerAvatar && $playerAvatar !== 'default' && !str_starts_with($playerAvatar, '/') && !str_starts_with($playerAvatar, 'http')) {
+            $playerAvatar = '/' . $playerAvatar;
+        }
         
         return response()->json([
             'success' => true,
