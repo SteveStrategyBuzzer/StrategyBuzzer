@@ -959,9 +959,8 @@ foreach ($colors as $color) {
             </div>
             
             <div class="strategic-avatar-section" id="strategic-avatar-section" style="margin: 15px 0; padding: 0; border-radius: 12px; display: none; overflow: hidden;">
-                <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.4) 50%, rgba(30, 60, 114, 0.5) 100%); padding: 15px; position: relative;">
-                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><circle cx=\"20\" cy=\"20\" r=\"2\" fill=\"rgba(255,255,255,0.1)\"/><circle cx=\"80\" cy=\"30\" r=\"1.5\" fill=\"rgba(255,255,255,0.08)\"/><circle cx=\"40\" cy=\"70\" r=\"1\" fill=\"rgba(255,255,255,0.1)\"/><circle cx=\"90\" cy=\"80\" r=\"2\" fill=\"rgba(255,255,255,0.05)\"/></svg>'); pointer-events: none;"></div>
-                    <div style="display: flex; align-items: flex-start; gap: 15px; position: relative; z-index: 1;">
+                <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.4) 0%, rgba(118, 75, 162, 0.5) 50%, rgba(30, 60, 114, 0.6) 100%); padding: 15px; border: 1px solid rgba(255,193,7,0.3);">
+                    <div style="display: flex; align-items: flex-start; gap: 15px;">
                         <div style="flex-shrink: 0; background: linear-gradient(135deg, rgba(255,193,7,0.3), rgba(255,152,0,0.2)); padding: 4px; border-radius: 12px; box-shadow: 0 4px 15px rgba(255,193,7,0.2);">
                             <img id="strategic-avatar-img" src="" alt="" style="width: 60px; height: 60px; border-radius: 10px; display: block;">
                         </div>
@@ -970,7 +969,7 @@ foreach ($colors as $color) {
                             <div id="strategic-avatar-skills" style="display: flex; flex-direction: column; gap: 4px;"></div>
                         </div>
                     </div>
-                    <select id="strategic-avatar-select" onchange="changeStrategicAvatar(this.value)" style="width: 100%; margin-top: 12px; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,193,7,0.4); background: rgba(0,0,0,0.3); color: #fff; font-size: 0.9rem; cursor: pointer; position: relative; z-index: 1;">
+                    <select id="strategic-avatar-select" onchange="changeStrategicAvatar(this.value)" style="width: 100%; margin-top: 12px; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,193,7,0.4); background: rgba(0,0,0,0.3); color: #fff; font-size: 0.9rem; cursor: pointer;">
                         <option value="">{{ __('Changer d\'avatar stratégique...') }}</option>
                     </select>
                 </div>
