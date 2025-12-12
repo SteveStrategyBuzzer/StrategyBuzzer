@@ -192,6 +192,8 @@ Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
     Route::post('/{code}/leave', [LobbyController::class, 'leave'])->name('leave');
 });
 
+Route::post('/api/strategic-avatar', [LobbyController::class, 'setStrategicAvatar'])->middleware('auth')->name('api.strategic-avatar');
+
 /* ===== DUO ===== */
 Route::get('/duo/splash', [App\Http\Controllers\DuoController::class, 'showSplash'])->middleware('auth')->name('duo.splash');
 Route::get('/duo', fn() => redirect()->route('duo.lobby'))->name('duo');

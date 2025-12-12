@@ -922,7 +922,9 @@ foreach ($colors as $color) {
     <div class="modal-content stats-modal-content">
         <button class="modal-close" onclick="closeStatsModal()">&times;</button>
         <div class="stats-header">
-            <img id="stats-avatar" src="" alt="" class="stats-avatar">
+            <a id="stats-avatar-link" href="{{ route('avatars') }}" title="{{ __('Changer d\'avatar') }}">
+                <img id="stats-avatar" src="" alt="" class="stats-avatar" style="cursor: pointer;">
+            </a>
             <div class="stats-player-info">
                 <h3 id="stats-player-name"></h3>
                 <span id="stats-player-code" class="player-code"></span>
@@ -955,6 +957,20 @@ foreach ($colors as $color) {
                     <span id="stats-efficiency" class="stat-value">-</span>
                 </div>
             </div>
+            
+            <div class="strategic-avatar-section" id="strategic-avatar-section" style="margin: 15px 0; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; display: none;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                    <img id="strategic-avatar-img" src="" alt="" style="width: 48px; height: 48px; border-radius: 8px; border: 2px solid rgba(255,193,7,0.5);">
+                    <div>
+                        <div id="strategic-avatar-name" style="font-weight: bold; color: #ffc107;"></div>
+                        <div id="strategic-avatar-skill" style="font-size: 0.8rem; color: rgba(255,255,255,0.7);"></div>
+                    </div>
+                </div>
+                <select id="strategic-avatar-select" onchange="changeStrategicAvatar(this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 0.9rem;">
+                    <option value="">{{ __('Changer d\'avatar stratégique...') }}</option>
+                </select>
+            </div>
+            
             <div class="radar-container">
                 <canvas id="stats-radar" width="200" height="200"></canvas>
             </div>
@@ -1254,6 +1270,9 @@ foreach ($colors as $color) {
     let currentChatPlayerId = null;
     let currentChatPlayerName = null;
     
+    const unlockedStrategicAvatars = @json($unlockedStrategicAvatars ?? []);
+    const activeStrategicAvatar = @json($activeStrategicAvatar ?? null);
+    
     async function showPlayerStats(playerId, playerName) {
         currentStatsPlayerId = playerId;
         document.getElementById('stats-modal').style.display = 'flex';
@@ -1265,6 +1284,42 @@ foreach ($colors as $color) {
         document.getElementById('stats-losses').textContent = '-';
         document.getElementById('stats-winrate').textContent = '-';
         document.getElementById('stats-efficiency').textContent = '-';
+        
+        const isCurrentPlayer = playerId == currentPlayerId;
+        const strategicSection = document.getElementById('strategic-avatar-section');
+        const avatarLink = document.getElementById('stats-avatar-link');
+        
+        if (isCurrentPlayer && Object.keys(unlockedStrategicAvatars).length > 0) {
+            strategicSection.style.display = 'block';
+            avatarLink.style.pointerEvents = 'auto';
+            
+            const select = document.getElementById('strategic-avatar-select');
+            select.innerHTML = '<option value="">{{ __("Changer d\'avatar stratégique...") }}</option>';
+            
+            for (const [slug, avatar] of Object.entries(unlockedStrategicAvatars)) {
+                const option = document.createElement('option');
+                option.value = slug;
+                option.textContent = avatar.name + ' - ' + (avatar.skills ? avatar.skills.join(', ') : '');
+                if (slug === activeStrategicAvatar) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+            
+            if (activeStrategicAvatar && unlockedStrategicAvatars[activeStrategicAvatar]) {
+                const active = unlockedStrategicAvatars[activeStrategicAvatar];
+                document.getElementById('strategic-avatar-img').src = '/' + active.path;
+                document.getElementById('strategic-avatar-name').textContent = active.name;
+                document.getElementById('strategic-avatar-skill').textContent = active.skills ? active.skills.join(', ') : '';
+            } else {
+                document.getElementById('strategic-avatar-img').src = '/images/avatars/standard/default.png';
+                document.getElementById('strategic-avatar-name').textContent = '{{ __("Aucun avatar stratégique") }}';
+                document.getElementById('strategic-avatar-skill').textContent = '';
+            }
+        } else {
+            strategicSection.style.display = 'none';
+            avatarLink.style.pointerEvents = isCurrentPlayer ? 'auto' : 'none';
+        }
         
         try {
             const response = await fetch(`/lobby/player-stats/${playerId}`);
@@ -1297,6 +1352,39 @@ foreach ($colors as $color) {
         } catch (error) {
             console.error('Error loading stats:', error);
             showToast('{{ __("Erreur de chargement") }}');
+        }
+    }
+    
+    async function changeStrategicAvatar(slug) {
+        if (!slug) return;
+        
+        try {
+            const response = await fetch('/api/strategic-avatar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ avatar_slug: slug })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('{{ __("Avatar stratégique changé!") }}');
+                
+                if (unlockedStrategicAvatars[slug]) {
+                    const active = unlockedStrategicAvatars[slug];
+                    document.getElementById('strategic-avatar-img').src = '/' + active.path;
+                    document.getElementById('strategic-avatar-name').textContent = active.name;
+                    document.getElementById('strategic-avatar-skill').textContent = active.skills ? active.skills.join(', ') : '';
+                }
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error changing strategic avatar:', error);
+            showToast('{{ __("Erreur de connexion") }}');
         }
     }
     

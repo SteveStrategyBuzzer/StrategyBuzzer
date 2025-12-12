@@ -72,6 +72,20 @@ class LobbyController extends Controller
             ->whereIn('status', ['pending', 'waiting', 'lobby'])
             ->first();
         
+        $settings = (array) ($user->profile_settings ?? []);
+        $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+        $activeStrategicAvatar = $settings['active_strategic_avatar'] ?? null;
+        
+        $catalog = \App\Services\AvatarCatalog::get();
+        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+        
+        $unlockedStrategic = [];
+        foreach ($strategicAvatars as $slug => $avatar) {
+            if (in_array($slug, $unlockedAvatars)) {
+                $unlockedStrategic[$slug] = $avatar;
+            }
+        }
+        
         return view('lobby', [
             'lobby' => $lobbyState['lobby'],
             'colors' => $lobbyState['colors'],
@@ -81,6 +95,8 @@ class LobbyController extends Controller
             'canStart' => $lobbyState['can_start'],
             'matchId' => $duoMatch?->id,
             'userCompetenceCoins' => $user->competence_coins ?? 0,
+            'unlockedStrategicAvatars' => $unlockedStrategic,
+            'activeStrategicAvatar' => $activeStrategicAvatar,
         ]);
     }
     
@@ -302,6 +318,36 @@ class LobbyController extends Controller
                 'last_played' => $contact?->last_played_at?->diffForHumans() ?? __('Jamais'),
             ],
             'radar_data' => $radarData,
+        ]);
+    }
+    
+    public function setStrategicAvatar(Request $request)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'avatar_slug' => 'required|string|max:50',
+        ]);
+        
+        $slug = $validated['avatar_slug'];
+        
+        $settings = (array) ($user->profile_settings ?? []);
+        $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+        
+        if (!in_array($slug, $unlockedAvatars)) {
+            return response()->json([
+                'success' => false,
+                'error' => __('Cet avatar n\'est pas débloqué')
+            ], 400);
+        }
+        
+        $settings['active_strategic_avatar'] = $slug;
+        $user->profile_settings = $settings;
+        $user->save();
+        
+        return response()->json([
+            'success' => true,
+            'message' => __('Avatar stratégique mis à jour')
         ]);
     }
 }

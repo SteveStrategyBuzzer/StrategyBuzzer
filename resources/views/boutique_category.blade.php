@@ -296,7 +296,7 @@ audio { width: 100%; }
     @if(session('error')) <div class="warn">{{ session('error') }}</div> @endif
 
     <div class="hero">
-        <div class="hero-title">{{ $categoryIcons[$category] ?? '' }} {{ $categoryTitles[$category] ?? ucfirst($category) }}</div>
+        <div class="hero-title">{!! $categoryIcons[$category] ?? '' !!} {{ $categoryTitles[$category] ?? ucfirst($category) }}</div>
     </div>
 
     @if($category === 'packs')
