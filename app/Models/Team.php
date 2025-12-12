@@ -70,6 +70,18 @@ class Team extends Model
         return asset("emblems/{$this->emblem_category}/{$this->emblem_index}.svg");
     }
 
+    public function getEmblemAttribute(): string
+    {
+        if ($this->emblem_category && isset(self::EMBLEM_CATEGORIES[$this->emblem_category])) {
+            $emojis = self::EMBLEM_CATEGORIES[$this->emblem_category];
+            $index = $this->emblem_index ?? 0;
+            if (isset($emojis[$index])) {
+                return $emojis[$index];
+            }
+        }
+        return '🛡️';
+    }
+
     public function captain(): BelongsTo
     {
         return $this->belongsTo(User::class, 'captain_id');
