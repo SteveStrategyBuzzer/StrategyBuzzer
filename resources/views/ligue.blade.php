@@ -381,7 +381,7 @@ body {
 }
 </style>
 
-<a href="{{ route('menu') }}" class="header-menu" style="
+<a href="javascript:history.back()" class="header-menu" style="
   background: white;
   color: #003DA5;
   padding: 10px 20px;
@@ -394,7 +394,7 @@ body {
   align-items: center;
   gap: 6px;
 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-  ← {{ __('Menu') }}
+  ← {{ __('Retour') }}
 </a>
 
 <div class="ligue-container">
