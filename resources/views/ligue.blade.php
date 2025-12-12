@@ -41,51 +41,106 @@ body {
     margin-top: 1rem;
 }
 
-@media (max-width: 480px) and (orientation: portrait) {
-    body {
+@media (max-width: 768px) {
+    html, body {
         overflow-x: hidden;
-        padding: 0;
+        max-width: 100vw;
+    }
+    body {
+        padding: 10px;
     }
     .ligue-container {
-        padding: 1rem;
+        padding: 0.5rem;
         max-width: 100%;
+        width: 100%;
         margin-top: 50px;
+        box-sizing: border-box;
     }
     .ligue-title {
-        font-size: 2rem;
+        font-size: 1.8rem;
         margin-bottom: 0.5rem;
     }
     .ligue-subtitle {
-        font-size: 1rem;
+        font-size: 0.95rem;
         margin-bottom: 1rem;
     }
     .ligue-modes {
         grid-template-columns: 1fr;
         gap: 1rem;
         margin-top: 1rem;
+        width: 100%;
     }
     .ligue-mode-card {
-        padding: 1.5rem;
+        padding: 1.2rem;
+        width: 100%;
+        box-sizing: border-box;
     }
     .mode-icon {
-        font-size: 3rem;
+        font-size: 2.5rem;
     }
     .mode-title {
-        font-size: 1.5rem;
+        font-size: 1.3rem;
     }
     .mode-description {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
     .header-menu {
-        padding: 8px 16px !important;
-        font-size: 0.9rem !important;
+        padding: 8px 14px !important;
+        font-size: 0.85rem !important;
+        right: 10px !important;
+        top: 10px !important;
+    }
+    .team-section {
+        padding: 1rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .team-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    .team-section-title {
+        font-size: 1.2rem;
+    }
+    .team-action-buttons {
+        width: 100%;
+        justify-content: flex-start;
     }
     .team-card {
-        padding: 0.8rem !important;
+        padding: 0.8rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    .team-info {
+        width: 100%;
+    }
+    .team-emblem {
+        font-size: 2rem;
+        width: 40px;
+        height: 40px;
+    }
+    .team-name {
+        font-size: 1rem;
+        flex-wrap: wrap;
     }
     .team-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .pending-invitation-card {
         flex-direction: column;
-        gap: 0.5rem !important;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    .invitation-info {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .invitation-actions {
+        width: 100%;
+        justify-content: flex-end;
     }
 }
 .ligue-mode-card {
