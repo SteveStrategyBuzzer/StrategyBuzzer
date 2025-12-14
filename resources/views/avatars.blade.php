@@ -278,6 +278,7 @@
                 ['slug'=>'animal','label'=>'Animaux 1'],
                 ['slug'=>'mythique','label'=>'Mythique'],
                 ['slug'=>'paysage','label'=>'Paysage'],
+                ['slug'=>'instrument','label'=>'Instrument'],
                 ['slug'=>'objet','label'=>'Objet'],
                 ['slug'=>'clown','label'=>'Clown'],
                 ['slug'=>'musicien','label'=>'Musicien'],
