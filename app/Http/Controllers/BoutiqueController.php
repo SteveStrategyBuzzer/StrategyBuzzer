@@ -104,7 +104,7 @@ class BoutiqueController extends Controller
         $buzzerItems = [];
         $subcategoryLabel = '';
 
-        $validSubcategories = ['punchy', 'vintage', 'premium', 'absurde', 'stade', 'discret', 'fun', 'electro', 'laser', 'fart'];
+        $validSubcategories = ['punchy', 'vintage', 'premium', 'absurde', 'stade', 'discret', 'fun', 'electro', 'laser', 'fart', 'correct', 'incorrect'];
         
         if (!in_array($subcategory, $validSubcategories)) {
             return redirect()->route('boutique.category', 'buzzers');
@@ -234,7 +234,7 @@ class BoutiqueController extends Controller
                     break;
                 case 'buzzer':
                     $bz = null;
-                    $buzzerCats = ['punchy', 'vintage', 'premium', 'absurde', 'stade', 'discret', 'fun', 'electro', 'laser', 'fart'];
+                    $buzzerCats = ['punchy', 'vintage', 'premium', 'absurde', 'stade', 'discret', 'fun', 'electro', 'laser', 'fart', 'correct', 'incorrect'];
                     foreach ($buzzerCats as $cat) {
                         if (isset($catalog["buzzers_{$cat}"]['items'][$target])) {
                             $bz = $catalog["buzzers_{$cat}"]['items'][$target];

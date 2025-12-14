@@ -10,7 +10,7 @@
     $categoryTitles = [
         'packs' => __("Packs d'avatars"),
         'musiques' => __("Musiques d'Ambiance"),
-        'buzzers' => __('Sons de Buzzers'),
+        'buzzers' => __('Sons GamePlay'),
         'strategiques' => __('Avatars Stratégiques'),
         'master' => __('Modes de jeux'),
         'coins_intelligence' => __("Pièces d'Intelligence"),
@@ -21,7 +21,7 @@
     $categoryIcons = [
         'packs' => '🎨',
         'musiques' => '🎵',
-        'buzzers' => '🔊',
+        'buzzers' => '🎮',
         'strategiques' => '🛡️',
         'master' => '🎮',
         'coins_intelligence' => '<img src="' . asset('images/coin-intelligence.png') . '" alt="' . __("Pièce d'Intelligence") . '" style="width:32px;height:32px;vertical-align:middle;">',
@@ -208,6 +208,54 @@ audio { width: 100%; }
 .view-btn { padding: 12px; text-align: center; }
 
 .avatar-row .thumb img { height: 200px; }
+
+/* GamePlay Sounds - Compact Horizontal Bars */
+.gameplay-sounds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gameplay-sound-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #15224c, #0f1836);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.gameplay-sound-row:hover {
+    background: linear-gradient(135deg, #1a2b5c, #142040);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateX(4px);
+}
+
+.gameplay-sound-icon {
+    font-size: 1.4rem;
+    min-width: 32px;
+    text-align: center;
+}
+
+.gameplay-sound-label {
+    flex: 1;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--ink);
+}
+
+.gameplay-sound-count {
+    font-size: 0.85rem;
+    color: var(--muted);
+    background: rgba(255,255,255,0.08);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
 
 .details { display: none; padding: 12px; background: rgba(0,0,0,.3); }
 .details.open { display: block; }
@@ -414,34 +462,29 @@ audio { width: 100%; }
     @elseif($category === 'buzzers')
         @php
             $buzzerCategories = [
-                'punchy'  => ['label' => 'Punchy', 'icon' => '👊'],
-                'vintage' => ['label' => 'Vintage', 'icon' => '📻'],
-                'premium' => ['label' => 'Premium', 'icon' => '⭐'],
-                'absurde' => ['label' => 'Absurde', 'icon' => '🤪'],
-                'stade'   => ['label' => 'Stade', 'icon' => '🏟️'],
-                'discret' => ['label' => 'Discret', 'icon' => '🤫'],
-                'fun'     => ['label' => 'Fun', 'icon' => '🎉'],
-                'electro' => ['label' => 'Électro', 'icon' => '⚡'],
-                'laser'   => ['label' => 'Laser', 'icon' => '🔫'],
-                'fart'    => ['label' => 'Fart', 'icon' => '💨'],
+                'punchy'    => ['label' => 'Punchy', 'icon' => '👊'],
+                'vintage'   => ['label' => 'Vintage', 'icon' => '📻'],
+                'premium'   => ['label' => 'Premium', 'icon' => '⭐'],
+                'absurde'   => ['label' => 'Absurde', 'icon' => '🤪'],
+                'stade'     => ['label' => 'Stade', 'icon' => '🏟️'],
+                'discret'   => ['label' => 'Discret', 'icon' => '🤫'],
+                'fun'       => ['label' => 'Fun', 'icon' => '🎉'],
+                'electro'   => ['label' => 'Électro', 'icon' => '⚡'],
+                'laser'     => ['label' => 'Laser', 'icon' => '🔫'],
+                'fart'      => ['label' => 'Fart', 'icon' => '💨'],
+                'correct'   => ['label' => 'Bonne réponse', 'icon' => '✅'],
+                'incorrect' => ['label' => 'Mauvaise réponse', 'icon' => '❌'],
             ];
         @endphp
-        <div class="grid cols-3">
+        <div class="gameplay-sounds-list">
             @foreach($buzzerCategories as $catSlug => $catInfo)
                 @php
                     $catCount = count($catalog["buzzers_{$catSlug}"]['items'] ?? []);
                 @endphp
-                <a href="{{ route('boutique.buzzer.subcategory', $catSlug) }}" class="card pack-clickable" style="cursor:pointer;text-decoration:none;color:inherit;">
-                    <div class="head">
-                        <div class="title">{{ __($catInfo['label']) }}</div>
-                        <div class="badge">{{ $catCount }} {{ __('sons') }}</div>
-                    </div>
-                    <div style="padding:30px 20px;text-align:center;font-size:3rem;">
-                        {{ $catInfo['icon'] }}
-                    </div>
-                    <div class="actions">
-                        <span class="btn ghost">{{ __('Voir les sons') }} →</span>
-                    </div>
+                <a href="{{ route('boutique.buzzer.subcategory', $catSlug) }}" class="gameplay-sound-row">
+                    <span class="gameplay-sound-icon">{{ $catInfo['icon'] }}</span>
+                    <span class="gameplay-sound-label">{{ __($catInfo['label']) }}</span>
+                    <span class="gameplay-sound-count">{{ $catCount }} {{ __('sons') }}</span>
                 </a>
             @endforeach
         </div>
