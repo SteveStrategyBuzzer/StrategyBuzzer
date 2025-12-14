@@ -65,6 +65,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto; background: var(--bg); color: var(--ink); }
 
+img { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+
 .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 80px; }
 
 .topbar {
@@ -285,7 +287,7 @@ audio { width: 100%; }
 .pack-modal-close { background: rgba(255,255,255,.1); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; transition: all 0.2s; }
 .pack-modal-close:hover { background: rgba(255,255,255,.2); transform: scale(1.1); }
 .pack-modal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px; overflow-y: auto; flex: 1; }
-.pack-modal-grid img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; border: 2px solid var(--line); transition: all 0.2s; }
+.pack-modal-grid img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; border: 2px solid var(--line); transition: all 0.2s; image-rendering: high-quality; -webkit-backface-visibility: hidden; }
 .pack-modal-grid img:hover { transform: scale(1.05); border-color: var(--blue); }
 .pack-modal-footer { padding: 16px 20px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; background: linear-gradient(135deg, #15224c, #0f1836); }
 .pack-modal-footer .price-tag { display: flex; align-items: center; gap: 8px; font-size: 1.2rem; font-weight: 700; }
@@ -343,7 +345,7 @@ audio { width: 100%; }
                         <div class="thumb" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px;">
                             <span class="tier t-rare" style="position:absolute;top:8px;left:8px;">{{ $p['count'] ?? count($p['images'] ?? []) }} {{ __('images') }}</span>
                             @forelse($previewImages as $img)
-                                <img src="{{ asset($img) }}" alt="{{ $p['label'] ?? '' }}" loading="lazy" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
+                                <img src="{{ asset($img) }}" alt="{{ $p['label'] ?? '' }}" loading="lazy" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);image-rendering:high-quality;-webkit-backface-visibility:hidden;">
                             @empty
                                 <div style="padding:40px 14px;color:#cbd5e1;text-align:center;font-size:12px;grid-column:span 2;">{{ __('Aucune image') }}</div>
                             @endforelse
