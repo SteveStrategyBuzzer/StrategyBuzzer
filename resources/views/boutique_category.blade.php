@@ -274,6 +274,29 @@ audio { width: 100%; }
 @media (max-width: 480px) {
     .coins-grid, .lives-grid { grid-template-columns: 1fr; }
 }
+
+.pack-clickable:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.3); transition: all 0.2s ease; }
+
+.pack-modal { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+.pack-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.75); }
+.pack-modal-content { position: relative; background: var(--card); border-radius: 20px; max-width: 90vw; max-height: 85vh; width: 700px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.5); display: flex; flex-direction: column; }
+.pack-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); background: linear-gradient(135deg, #1a2344, #15224c); }
+.pack-modal-header h2 { margin: 0; font-size: 1.3rem; color: #fff; }
+.pack-modal-close { background: rgba(255,255,255,.1); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; transition: all 0.2s; }
+.pack-modal-close:hover { background: rgba(255,255,255,.2); transform: scale(1.1); }
+.pack-modal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px; overflow-y: auto; flex: 1; }
+.pack-modal-grid img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; border: 2px solid var(--line); transition: all 0.2s; }
+.pack-modal-grid img:hover { transform: scale(1.05); border-color: var(--blue); }
+.pack-modal-footer { padding: 16px 20px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; background: linear-gradient(135deg, #15224c, #0f1836); }
+.pack-modal-footer .price-tag { display: flex; align-items: center; gap: 8px; font-size: 1.2rem; font-weight: 700; }
+.pack-modal-footer .btn { padding: 12px 24px; font-size: 1rem; }
+
+@media (max-width: 600px) {
+    .pack-modal-content { width: 95vw; max-height: 90vh; }
+    .pack-modal-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; }
+    .pack-modal-header { padding: 12px 16px; }
+    .pack-modal-footer { flex-direction: column; }
+}
 </style>
 
 <div class="wrap">
@@ -305,8 +328,11 @@ audio { width: 100%; }
                 @php 
                     $isUnlockedPack = in_array($p['slug'], $unlocked, true);
                     $previewImages = array_slice($p['images'] ?? [], 0, 4);
+                    $allImages = $p['images'] ?? [];
                 @endphp
-                <div class="card" id="pack-{{ $p['slug'] }}">
+                <div class="card pack-clickable" id="pack-{{ $p['slug'] }}" 
+                     onclick="openPackModal('{{ $p['slug'] }}', '{{ $p['label'] ?? ucfirst($p['slug']) }}', {{ $p['price'] ?? 300 }}, {{ $isUnlockedPack ? 'true' : 'false' }})"
+                     style="cursor:pointer;">
                     <div class="head">
                         <div class="title">{{ $p['label'] ?? $p['name'] ?? ucfirst($p['slug']) }}</div>
                         @unless($isUnlockedPack)
@@ -321,7 +347,7 @@ audio { width: 100%; }
                             @empty
                                 <div style="padding:40px 14px;color:#cbd5e1;text-align:center;font-size:12px;grid-column:span 2;">{{ __('Aucune image') }}</div>
                             @endforelse
-                            <div class="avatar-actions">
+                            <div class="avatar-actions" onclick="event.stopPropagation();">
                                 @if($isUnlockedPack)
                                     <button class="btn success lock-btn" type="button" disabled>🔓</button>
                                 @else
@@ -335,8 +361,21 @@ audio { width: 100%; }
                             </div>
                         </div>
                     </div>
+                    <template id="images-{{ $p['slug'] }}">{!! json_encode(array_map(fn($img) => asset($img), $allImages)) !!}</template>
                 </div>
             @endforeach
+        </div>
+        
+        <div id="packModal" class="pack-modal" style="display:none;">
+            <div class="pack-modal-backdrop" onclick="closePackModal()"></div>
+            <div class="pack-modal-content">
+                <div class="pack-modal-header">
+                    <h2 id="packModalTitle"></h2>
+                    <button class="pack-modal-close" onclick="closePackModal()">✕</button>
+                </div>
+                <div class="pack-modal-grid" id="packModalGrid"></div>
+                <div class="pack-modal-footer" id="packModalFooter"></div>
+            </div>
         </div>
 
     @elseif($category === 'musiques')
@@ -727,6 +766,66 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.innerHTML = btn.innerHTML.replace(/\$[\d.,]+/, currencySymbol + amount);
         }
     });
+});
+
+let currentPackSlug = null;
+
+function openPackModal(slug, label, price, isUnlocked) {
+    const modal = document.getElementById('packModal');
+    const title = document.getElementById('packModalTitle');
+    const grid = document.getElementById('packModalGrid');
+    const footer = document.getElementById('packModalFooter');
+    
+    currentPackSlug = slug;
+    
+    const template = document.getElementById('images-' + slug);
+    if (!template) return;
+    
+    const images = JSON.parse(template.innerHTML);
+    
+    title.textContent = label + ' (' + images.length + ' images)';
+    
+    grid.innerHTML = '';
+    images.forEach(src => {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = label;
+        img.loading = 'lazy';
+        grid.appendChild(img);
+    });
+    
+    if (isUnlocked) {
+        footer.innerHTML = '<span style="color:#22c55e;font-weight:700;">✓ {{ __("Pack débloqué") }}</span><button class="btn success" onclick="closePackModal()">{{ __("Fermer") }}</button>';
+    } else {
+        footer.innerHTML = `
+            <div class="price-tag">
+                <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:28px;height:28px;">
+                <span>${price}</span>
+            </div>
+            <form method="POST" action="{{ $purchaseUrl }}" style="margin:0;">
+                @csrf
+                <input type="hidden" name="kind" value="pack">
+                <input type="hidden" name="target" value="${slug}">
+                <button class="btn danger" type="submit">🔒 {{ __("Acheter ce pack") }}</button>
+            </form>
+        `;
+    }
+    
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closePackModal() {
+    const modal = document.getElementById('packModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    currentPackSlug = null;
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && currentPackSlug) {
+        closePackModal();
+    }
 });
 </script>
 @endsection
