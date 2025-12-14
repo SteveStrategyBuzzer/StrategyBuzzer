@@ -112,16 +112,16 @@ class AvatarCatalog
 
         // ---- Buzzer categories configuration
         $buzzerCategories = [
-            'punchy'   => ['label' => 'Punchy', 'icon' => '👊', 'price' => 180],
-            'vintage'  => ['label' => 'Vintage', 'icon' => '📻', 'price' => 180],
-            'premium'  => ['label' => 'Premium', 'icon' => '⭐', 'price' => 180],
-            'absurde'  => ['label' => 'Absurde', 'icon' => '🤪', 'price' => 180],
-            'stade'    => ['label' => 'Stade', 'icon' => '🏟️', 'price' => 180],
-            'discret'  => ['label' => 'Discret', 'icon' => '🤫', 'price' => 180],
-            'fun'      => ['label' => 'Fun', 'icon' => '🎉', 'price' => 180],
-            'electro'  => ['label' => 'Électro', 'icon' => '⚡', 'price' => 180],
-            'lazer'    => ['label' => 'Lazer', 'icon' => '🔫', 'price' => 180],
-            'fart'     => ['label' => 'Fart', 'icon' => '💨', 'price' => 180],
+            'punchy'   => ['label' => 'Punchy', 'icon' => '👊'],
+            'vintage'  => ['label' => 'Vintage', 'icon' => '📻'],
+            'premium'  => ['label' => 'Premium', 'icon' => '⭐'],
+            'absurde'  => ['label' => 'Absurde', 'icon' => '🤪'],
+            'stade'    => ['label' => 'Stade', 'icon' => '🏟️'],
+            'discret'  => ['label' => 'Discret', 'icon' => '🤫'],
+            'fun'      => ['label' => 'Fun', 'icon' => '🎉'],
+            'electro'  => ['label' => 'Électro', 'icon' => '⚡'],
+            'lazer'    => ['label' => 'Lazer', 'icon' => '🔫'],
+            'fart'     => ['label' => 'Fart', 'icon' => '💨'],
         ];
 
         $allBuzzerCategories = [];
@@ -130,11 +130,14 @@ class AvatarCatalog
             foreach (glob(public_path("buzzers/{$catSlug}/*.{mp3,ogg,wav,MP3}"), GLOB_BRACE) ?: [] as $file) {
                 $basename = basename($file);
                 $slug = "{$catSlug}-" . pathinfo($basename, PATHINFO_FILENAME);
+                $duration = self::getAudioDuration($file);
+                $price = self::calculateBuzzerPrice($duration);
                 $items[$slug] = [
-                    'slug'  => $slug,
-                    'label' => ucfirst(str_replace(['-', '_'], ' ', pathinfo($basename, PATHINFO_FILENAME))),
-                    'path'  => "buzzers/{$catSlug}/{$basename}",
-                    'price' => $catInfo['price'],
+                    'slug'     => $slug,
+                    'label'    => ucfirst(str_replace(['-', '_'], ' ', pathinfo($basename, PATHINFO_FILENAME))),
+                    'path'     => "buzzers/{$catSlug}/{$basename}",
+                    'price'    => $price,
+                    'duration' => $duration,
                     'category' => $catInfo['label'],
                 ];
             }
@@ -168,5 +171,25 @@ class AvatarCatalog
             $out[] = $relativeDir . '/' . basename($f);
         }
         return $out;
+    }
+
+    private static function getAudioDuration(string $filePath): float
+    {
+        try {
+            $getID3 = new \getID3();
+            $fileInfo = $getID3->analyze($filePath);
+            return $fileInfo['playtime_seconds'] ?? 0;
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    private static function calculateBuzzerPrice(float $duration): int
+    {
+        if ($duration < 1) {
+            return 180;
+        }
+        $extraHalfSeconds = floor(($duration - 1) / 0.5);
+        return 180 + ((int) $extraHalfSeconds * 40);
     }
 }
