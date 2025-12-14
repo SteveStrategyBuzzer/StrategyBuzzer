@@ -90,7 +90,7 @@ img { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; 
 }
 
 .pill b { color: #fff; }
-.pill img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+.pill img { width: 32px; height: 32px; aspect-ratio: 1/1; object-fit: contain; flex-shrink: 0; }
 
 .nav-buttons {
     display: flex;
