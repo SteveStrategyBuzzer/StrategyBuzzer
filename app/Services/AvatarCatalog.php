@@ -110,7 +110,7 @@ class AvatarCatalog
             $a['quest'] = 'Débloquer via boutique';
         }
 
-        // ---- Buzzers
+        // ---- Buzzers (root level)
         $buzzers = [];
         foreach (glob(public_path('buzzers/*.{mp3,ogg,wav}'), GLOB_BRACE) ?: [] as $file) {
             $basename = basename($file);
@@ -120,6 +120,20 @@ class AvatarCatalog
                 'label' => ucfirst(str_replace(['-', '_'], ' ', $slug)),
                 'path'  => "buzzers/{$basename}",
                 'price' => 120,
+            ];
+        }
+
+        // ---- Buzzers Fart category
+        $buzzersFart = [];
+        foreach (glob(public_path('buzzers/fart/*.{mp3,ogg,wav,MP3}'), GLOB_BRACE) ?: [] as $file) {
+            $basename = basename($file);
+            $slug = 'fart-' . pathinfo($basename, PATHINFO_FILENAME);
+            $buzzersFart[$slug] = [
+                'slug'  => $slug,
+                'label' => ucfirst(str_replace(['-', '_'], ' ', pathinfo($basename, PATHINFO_FILENAME))),
+                'path'  => "buzzers/fart/{$basename}",
+                'price' => 150,
+                'category' => 'Fart',
             ];
         }
 
@@ -133,6 +147,10 @@ class AvatarCatalog
                 'buzzers' => [
                     'label' => 'Buzzers & musiques',
                     'items' => $buzzers,
+                ],
+                'buzzers_fart' => [
+                    'label' => 'Buzzers Fart 💨',
+                    'items' => $buzzersFart,
                 ],
             ]
         );
