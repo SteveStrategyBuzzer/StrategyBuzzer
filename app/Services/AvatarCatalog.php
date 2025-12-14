@@ -120,7 +120,7 @@ class AvatarCatalog
             'discret'  => ['label' => 'Discret', 'icon' => '🤫'],
             'fun'      => ['label' => 'Fun', 'icon' => '🎉'],
             'electro'  => ['label' => 'Électro', 'icon' => '⚡'],
-            'lazer'    => ['label' => 'Lazer', 'icon' => '🔫'],
+            'laser'    => ['label' => 'Laser', 'icon' => '🔫'],
             'fart'     => ['label' => 'Fart', 'icon' => '💨'],
         ];
 
