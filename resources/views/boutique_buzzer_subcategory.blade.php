@@ -112,9 +112,9 @@ body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto; backg
     border-bottom: 1px solid var(--line);
 }
 
-.card .title { font-weight: 800; }
-.badge { font-size: .85rem; background: rgba(255,255,255,.08); padding: 6px 10px; border-radius: 999px; }
-.price { font-weight: 800; display: flex; align-items: center; gap: 4px; }
+.card .title { font-weight: 800; color: #fff; font-size: 1.1rem; }
+.badge { font-size: .85rem; background: rgba(255,255,255,.15); padding: 6px 10px; border-radius: 999px; color: #fff; }
+.price { font-weight: 800; display: flex; align-items: center; gap: 6px; color: #fbbf24; font-size: 1.1rem; }
 
 .actions {
     display: flex;
