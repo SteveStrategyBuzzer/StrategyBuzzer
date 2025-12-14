@@ -194,8 +194,8 @@ audio { width: 100%; }
 .note { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.35); }
 .warn { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35); }
 
-.coin-icon { width: 24px; height: 24px; vertical-align: middle; }
-.coin-icon--price { width: 20px; height: 20px; }
+.coin-icon { width: 24px; height: 24px; vertical-align: middle; object-fit: contain; }
+.coin-icon--price { width: 24px; height: 24px; object-fit: contain; }
 
 .tier { position: absolute; top: 8px; left: 8px; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
 .t-rare { background: #3b82f6; color: white; }

@@ -127,9 +127,10 @@ a.clean{ color:var(--muted); text-decoration:none; }
 }
 
 .coin-icon{
-  width:20px;
-  height:20px;
+  width:24px;
+  height:24px;
   display:inline-block;
+  object-fit:contain;
 }
 
 .stats{
