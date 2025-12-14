@@ -48,7 +48,7 @@ body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto; backg
 }
 
 .pill b { color: #fff; }
-.pill img { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+.pill img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
 
 .nav-buttons {
     display: flex;
@@ -149,7 +149,7 @@ audio { width: 100%; }
 .warn { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35); }
 
 .coin-icon { width: 24px; height: 24px; vertical-align: middle; object-fit: contain; }
-.coin-icon--price { width: 24px; height: 24px; object-fit: contain; }
+.coin-icon--price { width: 32px; height: 32px; object-fit: contain; }
 
 @media (max-width: 960px) { .cols-3 { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) and (orientation: portrait) {
