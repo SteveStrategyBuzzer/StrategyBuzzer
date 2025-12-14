@@ -48,6 +48,7 @@ body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto; backg
 }
 
 .pill b { color: #fff; }
+.pill img { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
 
 .nav-buttons {
     display: flex;
@@ -192,7 +193,7 @@ audio { width: 100%; }
                     <div class="badge">Audio</div>
                 </div>
                 <div class="audio">
-                    <audio controls preload="none">
+                    <audio controls preload="metadata">
                         <source src="{{ asset($bz['path'] ?? '') }}" type="audio/{{ pathinfo($bz['path'] ?? '', PATHINFO_EXTENSION) }}">
                     </audio>
                 </div>
