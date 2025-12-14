@@ -110,18 +110,20 @@ class AvatarCatalog
             $a['quest'] = 'Débloquer via boutique';
         }
 
-        // ---- Buzzer categories configuration
+        // ---- GamePlay sounds categories configuration
         $buzzerCategories = [
-            'punchy'   => ['label' => 'Punchy', 'icon' => '👊'],
-            'vintage'  => ['label' => 'Vintage', 'icon' => '📻'],
-            'premium'  => ['label' => 'Premium', 'icon' => '⭐'],
-            'absurde'  => ['label' => 'Absurde', 'icon' => '🤪'],
-            'stade'    => ['label' => 'Stade', 'icon' => '🏟️'],
-            'discret'  => ['label' => 'Discret', 'icon' => '🤫'],
-            'fun'      => ['label' => 'Fun', 'icon' => '🎉'],
-            'electro'  => ['label' => 'Électro', 'icon' => '⚡'],
-            'laser'    => ['label' => 'Laser', 'icon' => '🔫'],
-            'fart'     => ['label' => 'Fart', 'icon' => '💨'],
+            'punchy'    => ['label' => 'Punchy', 'icon' => '👊'],
+            'vintage'   => ['label' => 'Vintage', 'icon' => '📻'],
+            'premium'   => ['label' => 'Premium', 'icon' => '⭐'],
+            'absurde'   => ['label' => 'Absurde', 'icon' => '🤪'],
+            'stade'     => ['label' => 'Stade', 'icon' => '🏟️'],
+            'discret'   => ['label' => 'Discret', 'icon' => '🤫'],
+            'fun'       => ['label' => 'Fun', 'icon' => '🎉'],
+            'electro'   => ['label' => 'Électro', 'icon' => '⚡'],
+            'laser'     => ['label' => 'Laser', 'icon' => '🔫'],
+            'fart'      => ['label' => 'Fart', 'icon' => '💨'],
+            'correct'   => ['label' => 'Bonne réponse', 'icon' => '✅'],
+            'incorrect' => ['label' => 'Mauvaise réponse', 'icon' => '❌'],
         ];
 
         $allBuzzerCategories = [];
