@@ -413,35 +413,37 @@ audio { width: 100%; }
 
     @elseif($category === 'buzzers')
         @php
-            $classiquesCount = count($catalog['buzzers']['items'] ?? []);
-            $fartCount = count($catalog['buzzers_fart']['items'] ?? []);
+            $buzzerCategories = [
+                'punchy'  => ['label' => 'Punchy', 'icon' => '👊'],
+                'vintage' => ['label' => 'Vintage', 'icon' => '📻'],
+                'premium' => ['label' => 'Premium', 'icon' => '⭐'],
+                'absurde' => ['label' => 'Absurde', 'icon' => '🤪'],
+                'stade'   => ['label' => 'Stade', 'icon' => '🏟️'],
+                'discret' => ['label' => 'Discret', 'icon' => '🤫'],
+                'fun'     => ['label' => 'Fun', 'icon' => '🎉'],
+                'electro' => ['label' => 'Électro', 'icon' => '⚡'],
+                'lazer'   => ['label' => 'Lazer', 'icon' => '🔫'],
+                'fart'    => ['label' => 'Fart', 'icon' => '💨'],
+            ];
         @endphp
-        <div class="grid cols-2">
-            <a href="{{ route('boutique.buzzer.subcategory', 'classiques') }}" class="card pack-clickable" style="cursor:pointer;text-decoration:none;color:inherit;">
-                <div class="head">
-                    <div class="title">{{ __('Buzzers Classiques') }}</div>
-                    <div class="badge">{{ $classiquesCount }} {{ __('sons') }}</div>
-                </div>
-                <div style="padding:40px 20px;text-align:center;font-size:4rem;">
-                    🔔
-                </div>
-                <div class="actions">
-                    <span class="btn ghost">{{ __('Voir les sons') }} →</span>
-                </div>
-            </a>
-            
-            <a href="{{ route('boutique.buzzer.subcategory', 'fart') }}" class="card pack-clickable" style="cursor:pointer;text-decoration:none;color:inherit;">
-                <div class="head">
-                    <div class="title">{{ __('Buzzers Fart') }}</div>
-                    <div class="badge">{{ $fartCount }} {{ __('sons') }}</div>
-                </div>
-                <div style="padding:40px 20px;text-align:center;font-size:4rem;">
-                    💨
-                </div>
-                <div class="actions">
-                    <span class="btn ghost">{{ __('Voir les sons') }} →</span>
-                </div>
-            </a>
+        <div class="grid cols-3">
+            @foreach($buzzerCategories as $catSlug => $catInfo)
+                @php
+                    $catCount = count($catalog["buzzers_{$catSlug}"]['items'] ?? []);
+                @endphp
+                <a href="{{ route('boutique.buzzer.subcategory', $catSlug) }}" class="card pack-clickable" style="cursor:pointer;text-decoration:none;color:inherit;">
+                    <div class="head">
+                        <div class="title">{{ __($catInfo['label']) }}</div>
+                        <div class="badge">{{ $catCount }} {{ __('sons') }}</div>
+                    </div>
+                    <div style="padding:30px 20px;text-align:center;font-size:3rem;">
+                        {{ $catInfo['icon'] }}
+                    </div>
+                    <div class="actions">
+                        <span class="btn ghost">{{ __('Voir les sons') }} →</span>
+                    </div>
+                </a>
+            @endforeach
         </div>
 
     @elseif($category === 'strategiques')

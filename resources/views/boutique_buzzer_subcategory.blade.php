@@ -180,7 +180,7 @@ audio { width: 100%; }
     @if(session('error')) <div class="warn">{{ session('error') }}</div> @endif
 
     <div class="hero">
-        <div class="hero-title">{{ $subcategory === 'fart' ? '💨' : '🔔' }} {{ $subcategoryLabel }}</div>
+        <div class="hero-title">{{ $subcategoryIcon ?? '🔊' }} {{ $subcategoryLabel }}</div>
     </div>
 
     <div class="grid cols-3">

@@ -104,19 +104,21 @@ class BoutiqueController extends Controller
         $buzzerItems = [];
         $subcategoryLabel = '';
 
-        if ($subcategory === 'classiques') {
-            $buzzerItems = $catalog['buzzers']['items'] ?? [];
-            $subcategoryLabel = 'Buzzers Classiques';
-        } elseif ($subcategory === 'fart') {
-            $buzzerItems = $catalog['buzzers_fart']['items'] ?? [];
-            $subcategoryLabel = 'Buzzers Fart';
-        } else {
+        $validSubcategories = ['punchy', 'vintage', 'premium', 'absurde', 'stade', 'discret', 'fun', 'electro', 'lazer', 'fart'];
+        
+        if (!in_array($subcategory, $validSubcategories)) {
             return redirect()->route('boutique.category', 'buzzers');
         }
+
+        $catalogKey = "buzzers_{$subcategory}";
+        $buzzerItems = $catalog[$catalogKey]['items'] ?? [];
+        $subcategoryLabel = $catalog[$catalogKey]['label'] ?? ucfirst($subcategory);
+        $subcategoryIcon = $catalog[$catalogKey]['icon'] ?? '🔊';
 
         $context = [
             'subcategory'      => $subcategory,
             'subcategoryLabel' => $subcategoryLabel,
+            'subcategoryIcon'  => $subcategoryIcon,
             'coins'            => $coins,
             'competenceCoins'  => $competenceCoins,
             'unlocked'         => $unlocked,
@@ -231,7 +233,14 @@ class BoutiqueController extends Controller
                     $unitPrice = $catalog[$target]['price'] ?? 300;
                     break;
                 case 'buzzer':
-                    $bz = $catalog['buzzers']['items'][$target] ?? $catalog['buzzers_fart']['items'][$target] ?? null;
+                    $bz = null;
+                    $buzzerCats = ['punchy', 'vintage', 'premium', 'absurde', 'stade', 'discret', 'fun', 'electro', 'lazer', 'fart'];
+                    foreach ($buzzerCats as $cat) {
+                        if (isset($catalog["buzzers_{$cat}"]['items'][$target])) {
+                            $bz = $catalog["buzzers_{$cat}"]['items'][$target];
+                            break;
+                        }
+                    }
                     if (!$bz) {
                         return back()->with('error', "Buzzer invalide.");
                     }
