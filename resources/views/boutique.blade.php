@@ -58,11 +58,18 @@
         align-items: center;
         gap: 10px;
         font-weight: 700;
+        color: #fbbf24;
     }
 
     .coins-pill img {
         width: 28px;
         height: 28px;
+        min-width: 28px;
+        min-height: 28px;
+        object-fit: cover;
+        object-position: center;
+        clip-path: circle(50%);
+        flex-shrink: 0;
     }
 
     .menu-btn {
