@@ -143,7 +143,67 @@ body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto; backg
 .btn.danger { background: var(--danger); color: #fff; }
 
 .audio { padding: 12px; display: grid; gap: 10px; }
-audio { width: 100%; }
+audio { display: none; }
+
+.custom-player {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(0,0,0,.3);
+    border-radius: 10px;
+}
+
+.play-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--blue);
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.play-btn:hover { background: #4466ff; }
+
+.player-time {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--muted);
+    min-width: 90px;
+}
+
+.player-progress {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,.15);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+}
+
+.player-progress-bar {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.player-vol {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+}
 
 .note { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.35); }
 .warn { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35); }
@@ -193,9 +253,17 @@ audio { width: 100%; }
                     <div class="badge">Audio</div>
                 </div>
                 <div class="audio">
-                    <audio controls preload="metadata">
+                    <audio data-player preload="metadata">
                         <source src="{{ asset($bz['path'] ?? '') }}" type="audio/{{ pathinfo($bz['path'] ?? '', PATHINFO_EXTENSION) }}">
                     </audio>
+                    <div class="custom-player">
+                        <button class="play-btn" data-play>▶</button>
+                        <div class="player-progress" data-progress>
+                            <div class="player-progress-bar" data-bar></div>
+                        </div>
+                        <span class="player-time" data-time>0.00 / 0.00</span>
+                        <button class="player-vol" data-vol>🔊</button>
+                    </div>
                 </div>
                 @if($isUnlockedBz)
                     <div class="actions"><button class="btn success" disabled>{{ __('Disponible') }}</button></div>
@@ -214,4 +282,75 @@ audio { width: 100%; }
         @endforelse
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formatTime = (sec) => {
+        if (isNaN(sec) || sec === Infinity) return '0.00';
+        return sec.toFixed(2);
+    };
+
+    document.querySelectorAll('.audio').forEach(container => {
+        const audio = container.querySelector('audio');
+        const playBtn = container.querySelector('[data-play]');
+        const progress = container.querySelector('[data-progress]');
+        const bar = container.querySelector('[data-bar]');
+        const timeDisplay = container.querySelector('[data-time]');
+        const volBtn = container.querySelector('[data-vol]');
+
+        if (!audio || !playBtn) return;
+
+        let currentlyPlaying = null;
+
+        audio.addEventListener('loadedmetadata', () => {
+            timeDisplay.textContent = `0.00 / ${formatTime(audio.duration)}`;
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            const pct = (audio.currentTime / audio.duration) * 100;
+            bar.style.width = pct + '%';
+            timeDisplay.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+        });
+
+        audio.addEventListener('ended', () => {
+            audio.currentTime = 0;
+            playBtn.textContent = '▶';
+            bar.style.width = '0%';
+            timeDisplay.textContent = `0.00 / ${formatTime(audio.duration)}`;
+        });
+
+        playBtn.addEventListener('click', () => {
+            document.querySelectorAll('audio').forEach(a => {
+                if (a !== audio && !a.paused) {
+                    a.pause();
+                    a.currentTime = 0;
+                    const otherContainer = a.closest('.audio');
+                    otherContainer.querySelector('[data-play]').textContent = '▶';
+                    otherContainer.querySelector('[data-bar]').style.width = '0%';
+                    otherContainer.querySelector('[data-time]').textContent = `0.00 / ${formatTime(a.duration)}`;
+                }
+            });
+
+            if (audio.paused) {
+                audio.play();
+                playBtn.textContent = '⏸';
+            } else {
+                audio.pause();
+                playBtn.textContent = '▶';
+            }
+        });
+
+        progress.addEventListener('click', (e) => {
+            const rect = progress.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            audio.currentTime = pct * audio.duration;
+        });
+
+        volBtn.addEventListener('click', () => {
+            audio.muted = !audio.muted;
+            volBtn.textContent = audio.muted ? '🔇' : '🔊';
+        });
+    });
+});
+</script>
 @endsection
