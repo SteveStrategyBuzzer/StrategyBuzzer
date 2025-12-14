@@ -112,16 +112,16 @@ class AvatarCatalog
 
         // ---- Buzzer categories configuration
         $buzzerCategories = [
-            'punchy'   => ['label' => 'Punchy', 'icon' => '👊', 'price' => 120],
-            'vintage'  => ['label' => 'Vintage', 'icon' => '📻', 'price' => 130],
+            'punchy'   => ['label' => 'Punchy', 'icon' => '👊', 'price' => 180],
+            'vintage'  => ['label' => 'Vintage', 'icon' => '📻', 'price' => 180],
             'premium'  => ['label' => 'Premium', 'icon' => '⭐', 'price' => 180],
-            'absurde'  => ['label' => 'Absurde', 'icon' => '🤪', 'price' => 140],
-            'stade'    => ['label' => 'Stade', 'icon' => '🏟️', 'price' => 130],
-            'discret'  => ['label' => 'Discret', 'icon' => '🤫', 'price' => 120],
-            'fun'      => ['label' => 'Fun', 'icon' => '🎉', 'price' => 130],
-            'electro'  => ['label' => 'Électro', 'icon' => '⚡', 'price' => 140],
-            'lazer'    => ['label' => 'Lazer', 'icon' => '🔫', 'price' => 150],
-            'fart'     => ['label' => 'Fart', 'icon' => '💨', 'price' => 150],
+            'absurde'  => ['label' => 'Absurde', 'icon' => '🤪', 'price' => 180],
+            'stade'    => ['label' => 'Stade', 'icon' => '🏟️', 'price' => 180],
+            'discret'  => ['label' => 'Discret', 'icon' => '🤫', 'price' => 180],
+            'fun'      => ['label' => 'Fun', 'icon' => '🎉', 'price' => 180],
+            'electro'  => ['label' => 'Électro', 'icon' => '⚡', 'price' => 180],
+            'lazer'    => ['label' => 'Lazer', 'icon' => '🔫', 'price' => 180],
+            'fart'     => ['label' => 'Fart', 'icon' => '💨', 'price' => 180],
         ];
 
         $allBuzzerCategories = [];
