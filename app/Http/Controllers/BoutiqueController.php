@@ -90,6 +90,47 @@ class BoutiqueController extends Controller
     }
 
     /**
+     * GET /boutique/buzzers/{subcategory}
+     */
+    public function buzzerSubcategory(Request $request, string $subcategory)
+    {
+        $catalog  = AvatarCatalog::get();
+        $user     = Auth::user();
+        $coins    = $user?->coins ?? 0;
+        $competenceCoins = $user?->competence_coins ?? 0;
+        $settings = (array) ($user?->profile_settings ?? []);
+        $unlocked = $settings['unlocked_avatars'] ?? [];
+
+        $buzzerItems = [];
+        $subcategoryLabel = '';
+
+        if ($subcategory === 'classiques') {
+            $buzzerItems = $catalog['buzzers']['items'] ?? [];
+            $subcategoryLabel = 'Buzzers Classiques';
+        } elseif ($subcategory === 'fart') {
+            $buzzerItems = $catalog['buzzers_fart']['items'] ?? [];
+            $subcategoryLabel = 'Buzzers Fart';
+        } else {
+            return redirect()->route('boutique.category', 'buzzers');
+        }
+
+        $context = [
+            'subcategory'      => $subcategory,
+            'subcategoryLabel' => $subcategoryLabel,
+            'coins'            => $coins,
+            'competenceCoins'  => $competenceCoins,
+            'unlocked'         => $unlocked,
+            'buzzerItems'      => $buzzerItems,
+        ];
+
+        return response()
+            ->view('boutique_buzzer_subcategory', $context)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
+
+    /**
      * GET /boutique/{category}
      */
     public function category(Request $request, string $category)
@@ -190,11 +231,11 @@ class BoutiqueController extends Controller
                     $unitPrice = $catalog[$target]['price'] ?? 300;
                     break;
                 case 'buzzer':
-                    $bz = $catalog['buzzers']['items'][$target] ?? null;
+                    $bz = $catalog['buzzers']['items'][$target] ?? $catalog['buzzers_fart']['items'][$target] ?? null;
                     if (!$bz) {
                         return back()->with('error', "Buzzer invalide.");
                     }
-                    $unitPrice = $bz['price'] ?? 80;
+                    $unitPrice = $bz['price'] ?? 120;
                     break;
                 case 'stratégique':
                     $strategique = $catalog['stratégiques']['items'][$target] ?? null;

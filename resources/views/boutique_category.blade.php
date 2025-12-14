@@ -412,34 +412,36 @@ audio { width: 100%; }
         </div>
 
     @elseif($category === 'buzzers')
-        <div class="grid cols-3">
-            @forelse($buzzers as $bz)
-                @php $isUnlockedBz = in_array($bz['slug'], $unlocked, true); @endphp
-                <div class="card">
-                    <div class="head">
-                        <div class="title">{{ $bz['label'] ?? $bz['name'] ?? ucfirst($bz['slug']) }}</div>
-                        <div class="badge">Audio</div>
-                    </div>
-                    <div class="audio">
-                        <audio controls preload="none">
-                            <source src="{{ asset($bz['path'] ?? '') }}" type="audio/{{ pathinfo($bz['path'] ?? '', PATHINFO_EXTENSION) }}">
-                        </audio>
-                    </div>
-                    @if($isUnlockedBz)
-                        <div class="actions"><button class="btn success" disabled>{{ __('Disponible') }}</button></div>
-                    @else
-                        <form method="POST" action="{{ $purchaseUrl }}" class="actions">
-                            @csrf
-                            <input type="hidden" name="kind" value="buzzer">
-                            <input type="hidden" name="target" value="{{ $bz['slug'] }}">
-                            <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">{{ $bz['price'] ?? 80 }}</span>
-                            <button class="btn danger" type="submit">{{ __('Acheter') }}</button>
-                        </form>
-                    @endif
+        @php
+            $classiquesCount = count($catalog['buzzers']['items'] ?? []);
+            $fartCount = count($catalog['buzzers_fart']['items'] ?? []);
+        @endphp
+        <div class="grid cols-2">
+            <a href="{{ route('boutique.buzzer.subcategory', 'classiques') }}" class="card pack-clickable" style="cursor:pointer;text-decoration:none;color:inherit;">
+                <div class="head">
+                    <div class="title">{{ __('Buzzers Classiques') }}</div>
+                    <div class="badge">{{ $classiquesCount }} {{ __('sons') }}</div>
                 </div>
-            @empty
-                <div class="card"><div class="head"><div class="title">{{ __('Aucun buzzer trouvé') }}</div></div></div>
-            @endforelse
+                <div style="padding:40px 20px;text-align:center;font-size:4rem;">
+                    🔔
+                </div>
+                <div class="actions">
+                    <span class="btn ghost">{{ __('Voir les sons') }} →</span>
+                </div>
+            </a>
+            
+            <a href="{{ route('boutique.buzzer.subcategory', 'fart') }}" class="card pack-clickable" style="cursor:pointer;text-decoration:none;color:inherit;">
+                <div class="head">
+                    <div class="title">{{ __('Buzzers Fart') }}</div>
+                    <div class="badge">{{ $fartCount }} {{ __('sons') }}</div>
+                </div>
+                <div style="padding:40px 20px;text-align:center;font-size:4rem;">
+                    💨
+                </div>
+                <div class="actions">
+                    <span class="btn ghost">{{ __('Voir les sons') }} →</span>
+                </div>
+            </a>
         </div>
 
     @elseif($category === 'strategiques')
