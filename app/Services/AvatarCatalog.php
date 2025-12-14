@@ -17,6 +17,7 @@ class AvatarCatalog
             'animal'     => ['label' => 'Animal',      'quest' => 'Animaux',        'price' => 800],
             'mythique'   => ['label' => 'Mythique',    'quest' => 'Héros épiques',  'price' => 800],
             'paysage'    => ['label' => 'Paysage',     'quest' => 'Arrière-plans',  'price' => 850],
+            'instrument' => ['label' => 'Instrument',  'quest' => 'Instruments',    'price' => 850],
             'objet'      => ['label' => 'Objet',       'quest' => 'Objets divers',  'price' => 800],
             'clown'      => ['label' => 'Clown',       'quest' => 'Cirque',         'price' => 800],
             'musicien'   => ['label' => 'Musicien',    'quest' => 'Musique',        'price' => 800],
