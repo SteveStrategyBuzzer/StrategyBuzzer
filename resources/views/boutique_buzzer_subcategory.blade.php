@@ -148,7 +148,7 @@ audio { width: 100%; }
 .warn { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35); }
 
 .coin-icon { width: 24px; height: 24px; vertical-align: middle; }
-.coin-icon--price { width: 20px; height: 20px; }
+.coin-icon--price { width: 24px; height: 24px; object-fit: contain; }
 
 @media (max-width: 960px) { .cols-3 { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) and (orientation: portrait) {
