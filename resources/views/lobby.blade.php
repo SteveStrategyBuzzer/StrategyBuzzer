@@ -758,6 +758,33 @@ foreach ($colors as $color) {
                 </div>
             </div>
             
+            <div id="host-bet-response-ui" style="display: none; text-align: center; padding: 20px; background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.3); border-radius: 10px;">
+                <div style="margin-bottom: 15px;">
+                    <span id="host-proposer-name" style="color: #fff; font-weight: bold;"></span>
+                    <span style="color: rgba(255,255,255,0.7);"> {{ __('propose une mise de') }} </span>
+                    <div style="display: inline-flex; align-items: center; gap: 6px; margin-left: 5px;">
+                        <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 22px; height: 22px;">
+                        <span id="host-bet-amount" style="color: #ffc107; font-size: 1.4rem; font-weight: bold;">0</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                    <button onclick="acceptBet()" id="host-accept-btn" style="background: linear-gradient(135deg, #4CAF50, #45a049); border: none; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                        ✓ {{ __('Accepter') }}
+                    </button>
+                    <button onclick="showRaiseModal()" id="host-raise-btn" style="background: linear-gradient(135deg, #667eea, #764ba2); border: none; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                        ↑ {{ __('Relancer') }}
+                    </button>
+                    <button onclick="refuseBet()" id="host-refuse-btn" style="background: rgba(244,67,54,0.2); border: 1px solid rgba(244,67,54,0.4); color: #f44336; padding: 12px 24px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                        ✗ {{ __('Refuser') }}
+                    </button>
+                </div>
+                
+                <div id="host-insufficient-coins" style="display: none; margin-top: 10px; color: #f44336; font-size: 0.9rem;">
+                    {{ __('Vous n\'avez pas assez de pièces pour cette mise') }}
+                </div>
+            </div>
+            
             <input type="hidden" id="bet-select" value="{{ $settings['bet_amount'] ?? 0 }}">
         </div>
     </div>
@@ -2282,12 +2309,14 @@ foreach ($colors as $color) {
             const proposalUI = document.getElementById('bet-proposal-ui');
             const pendingUI = document.getElementById('bet-pending-ui');
             const acceptedUI = document.getElementById('bet-accepted-ui');
+            const responseUI = document.getElementById('host-bet-response-ui');
             
-            if (!proposalUI || !pendingUI || !acceptedUI) return;
+            if (!proposalUI || !pendingUI || !acceptedUI || !responseUI) return;
             
             proposalUI.style.display = 'none';
             pendingUI.style.display = 'none';
             acceptedUI.style.display = 'none';
+            responseUI.style.display = 'none';
             
             if (!negotiation) {
                 proposalUI.style.display = 'block';
@@ -2296,7 +2325,23 @@ foreach ($colors as $color) {
                     pendingUI.style.display = 'block';
                     document.getElementById('bet-pending-amount').textContent = negotiation.proposed_amount;
                 } else {
-                    proposalUI.style.display = 'block';
+                    responseUI.style.display = 'block';
+                    document.getElementById('host-proposer-name').textContent = negotiation.proposer_name;
+                    document.getElementById('host-bet-amount').textContent = negotiation.proposed_amount;
+                    
+                    const insufficientEl = document.getElementById('host-insufficient-coins');
+                    const acceptBtn = document.getElementById('host-accept-btn');
+                    if (userCompetenceCoins < negotiation.proposed_amount) {
+                        insufficientEl.style.display = 'block';
+                        acceptBtn.disabled = true;
+                        acceptBtn.style.opacity = '0.5';
+                        acceptBtn.style.cursor = 'not-allowed';
+                    } else {
+                        insufficientEl.style.display = 'none';
+                        acceptBtn.disabled = false;
+                        acceptBtn.style.opacity = '1';
+                        acceptBtn.style.cursor = 'pointer';
+                    }
                 }
             } else if (negotiation.status === 'accepted') {
                 acceptedUI.style.display = 'block';
