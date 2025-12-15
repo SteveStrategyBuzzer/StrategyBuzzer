@@ -707,10 +707,6 @@ foreach ($colors as $color) {
         
         <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px;">
             <span class="info-badge player-count-badge">👥 <span id="player-count-host">{{ count($players) }}</span>/{{ $maxPlayers }}</span>
-            <span style="display: flex; align-items: center; gap: 6px; background: rgba(255,193,7,0.15); padding: 8px 12px; border-radius: 20px;">
-                <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 20px; height: 20px;">
-                <span id="host-competence-coins" style="color: #ffc107; font-weight: bold;">{{ $userCompetenceCoins ?? 0 }}</span>
-            </span>
         </div>
         
         <div id="bet-negotiation-section" style="text-align: center; margin-top: 15px;">
@@ -2432,7 +2428,21 @@ foreach ($colors as $color) {
         if (modal) modal.remove();
     }
     
+    let isStartingGame = false;
+    
     async function startGame() {
+        if (isStartingGame) {
+            console.log('Game start already in progress, ignoring duplicate click');
+            return;
+        }
+        
+        isStartingGame = true;
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.disabled = true;
+            startBtn.style.opacity = '0.5';
+        }
+        
         try {
             const response = await fetch(`/lobby/${lobbyCode}/start`, {
                 method: 'POST',
@@ -2450,10 +2460,20 @@ foreach ($colors as $color) {
                 submitGameStart(mode, settings);
             } else {
                 showToast(data.error || '{{ __("Impossible de lancer la partie") }}');
+                isStartingGame = false;
+                if (startBtn) {
+                    startBtn.disabled = false;
+                    startBtn.style.opacity = '1';
+                }
             }
         } catch (error) {
             console.error('Error starting game:', error);
             showToast('{{ __("Erreur de connexion") }}');
+            isStartingGame = false;
+            if (startBtn) {
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+            }
         }
     }
     

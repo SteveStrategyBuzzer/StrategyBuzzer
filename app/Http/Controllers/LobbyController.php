@@ -278,6 +278,30 @@ class LobbyController extends Controller
         return response()->json($result);
     }
     
+    public function refundBets(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $lobby = $this->lobbyService->getLobby($code);
+        
+        if (!$lobby) {
+            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
+        }
+        
+        if ($lobby['host_id'] !== $user->id) {
+            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut demander un remboursement')], 403);
+        }
+        
+        $reason = $request->input('reason', 'match_cancelled');
+        $result = $this->lobbyService->refundBets($code, $reason);
+        
+        if (!$result['success']) {
+            return response()->json($result, 400);
+        }
+        
+        return response()->json($result);
+    }
+    
     public function start(Request $request, string $code)
     {
         $user = Auth::user();

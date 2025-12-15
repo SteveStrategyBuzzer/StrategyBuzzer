@@ -455,6 +455,10 @@ class LobbyService
             return ['success' => false, 'error' => __('Seul l\'hôte peut lancer la partie')];
         }
         
+        if (in_array($lobby['status'] ?? 'waiting', ['starting', 'started'])) {
+            return ['success' => true, 'lobby' => $lobby, 'already_starting' => true];
+        }
+        
         $minPlayers = $lobby['settings']['min_players'] ?? 2;
         if (count($lobby['players']) < $minPlayers) {
             return ['success' => false, 'error' => __('Pas assez de joueurs (minimum :min)', ['min' => $minPlayers])];
@@ -508,6 +512,58 @@ class LobbyService
         $this->saveLobby($code, $lobby);
         
         return ['success' => true, 'lobby' => $lobby];
+    }
+    
+    public function refundBets(string $code, ?string $reason = null): array
+    {
+        $lobby = $this->getLobby($code);
+        
+        if (!$lobby) {
+            return ['success' => false, 'error' => __('Salon introuvable')];
+        }
+        
+        $betInfo = $lobby['bet_info'] ?? null;
+        
+        if (!$betInfo || empty($betInfo['player_bets'])) {
+            return ['success' => true, 'refunded' => false, 'message' => __('Aucune mise à rembourser')];
+        }
+        
+        if (isset($betInfo['refunded_at'])) {
+            return ['success' => true, 'refunded' => false, 'message' => __('Mises déjà remboursées')];
+        }
+        
+        if (isset($betInfo['winner_id'])) {
+            return ['success' => false, 'error' => __('Le match est terminé, les gains ont été attribués')];
+        }
+        
+        $refundedPlayers = [];
+        
+        try {
+            DB::transaction(function () use ($betInfo, &$refundedPlayers) {
+                foreach ($betInfo['player_bets'] as $playerId => $amount) {
+                    User::where('id', $playerId)->increment('competence_coins', $amount);
+                    $refundedPlayers[$playerId] = $amount;
+                }
+            });
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => __('Erreur lors du remboursement: :error', ['error' => $e->getMessage()])
+            ];
+        }
+        
+        $lobby['bet_info']['refunded_at'] = now()->toISOString();
+        $lobby['bet_info']['refund_reason'] = $reason ?? 'match_cancelled';
+        $lobby['bet_info']['refunded_players'] = $refundedPlayers;
+        
+        $this->saveLobby($code, $lobby);
+        
+        return [
+            'success' => true,
+            'refunded' => true,
+            'refunded_players' => $refundedPlayers,
+            'total_refunded' => array_sum($refundedPlayers),
+        ];
     }
     
     public function getLobby(string $code): ?array
