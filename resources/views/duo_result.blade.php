@@ -175,6 +175,10 @@
     </div>
 </div>
 
+<audio id="messageNotificationSound" preload="auto">
+    <source src="{{ asset('sounds/message_notification.mp3') }}" type="audio/mpeg">
+</audio>
+
 <style>
 .duo-result-container {
     min-height: 100vh;

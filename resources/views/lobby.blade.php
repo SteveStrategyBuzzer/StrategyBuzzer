@@ -1027,6 +1027,10 @@ foreach ($colors as $color) {
     </div>
 </div>
 
+<audio id="messageNotificationSound" preload="auto">
+    <source src="{{ asset('sounds/message_notification.mp3') }}" type="audio/mpeg">
+</audio>
+
 <style>
     .modal-overlay {
         position: fixed;

@@ -154,6 +154,10 @@
     </div>
 </div>
 
+<audio id="messageNotificationSound" preload="auto">
+    <source src="{{ asset('sounds/message_notification.mp3') }}" type="audio/mpeg">
+</audio>
+
 <div id="playerCardModal" class="modal-backdrop" style="display: none;">
     <div class="player-card-modal">
         <div class="player-card-header">
@@ -2910,6 +2914,17 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+let previousTotalUnread = 0;
+let isFirstUnreadCheck = true;
+
+function playMessageNotification() {
+    const audio = document.getElementById('messageNotificationSound');
+    if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log('Notification sound blocked:', e));
+    }
+}
+
 function loadUnreadCounts() {
     fetch('/chat/unread', {
         headers: {
@@ -2920,7 +2935,16 @@ function loadUnreadCounts() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            unreadCountsPerContact = data.per_contact || {};
+            const newCounts = data.per_contact || {};
+            const newTotal = Object.values(newCounts).reduce((sum, c) => sum + c, 0);
+            
+            if (!isFirstUnreadCheck && newTotal > previousTotalUnread) {
+                playMessageNotification();
+            }
+            
+            previousTotalUnread = newTotal;
+            isFirstUnreadCheck = false;
+            unreadCountsPerContact = newCounts;
             updateContactUnreadBadges();
         }
     })
