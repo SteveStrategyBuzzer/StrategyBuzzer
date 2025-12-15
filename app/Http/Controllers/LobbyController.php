@@ -147,6 +147,29 @@ class LobbyController extends Controller
         return redirect()->route('home');
     }
     
+    public function removePlayer(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'player_id' => 'required|integer',
+        ]);
+        
+        $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
+        
+        if (!$lobbyState['exists']) {
+            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
+        }
+        
+        if (!$lobbyState['is_host']) {
+            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut retirer des joueurs')], 403);
+        }
+        
+        $result = $this->lobbyService->removePlayerFromLobby($code, $validated['player_id']);
+        
+        return response()->json($result);
+    }
+    
     public function setReady(Request $request, string $code)
     {
         $user = Auth::user();

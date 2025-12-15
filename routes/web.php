@@ -195,6 +195,7 @@ Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
     Route::post('/{code}/bet/refund', [LobbyController::class, 'refundBets'])->name('bet.refund');
     Route::post('/{code}/start', [LobbyController::class, 'start'])->name('start');
     Route::post('/{code}/leave', [LobbyController::class, 'leave'])->name('leave');
+    Route::post('/{code}/remove-player', [LobbyController::class, 'removePlayer'])->name('remove-player');
 });
 
 Route::post('/api/strategic-avatar', [LobbyController::class, 'setStrategicAvatar'])->middleware('auth')->name('api.strategic-avatar');

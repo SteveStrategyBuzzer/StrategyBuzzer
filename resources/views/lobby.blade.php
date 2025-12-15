@@ -2061,7 +2061,10 @@ foreach ($colors as $color) {
             if (data.success) {
                 isReady = newReadyState;
                 updateReadyButton();
-                refreshLobbyState();
+                
+                if (window.lobbyPresenceManager) {
+                    await window.lobbyPresenceManager.updateReady(newReadyState);
+                }
             } else {
                 showToast(data.error || '{{ __("Erreur") }}');
             }
@@ -2794,7 +2797,7 @@ foreach ($colors as $color) {
         }
     }
     
-    pollingInterval = setInterval(refreshLobbyState, 2000);
+    pollingInterval = setInterval(refreshLobbyState, 10000);
     
     window.addEventListener('beforeunload', () => {
         if (pollingInterval) {
@@ -2970,6 +2973,224 @@ class LobbyChatManager {
         }
         this.isListening = false;
         console.log('[LobbyChat] Stopped listening');
+    }
+}
+
+class LobbyPresenceManager {
+    constructor(lobbyCode, currentPlayerId, currentPlayerData, isHost) {
+        this.lobbyCode = lobbyCode;
+        this.currentPlayerId = currentPlayerId;
+        this.currentPlayerData = currentPlayerData;
+        this.isHost = isHost;
+        this.heartbeatInterval = null;
+        this.cleanupInterval = null;
+        this.unsubscriber = null;
+        this.presenceData = {};
+        this.onPlayersChange = null;
+        this.HEARTBEAT_INTERVAL = 10000;
+        this.OFFLINE_THRESHOLD = 30000;
+    }
+    
+    getPresencePath() {
+        return `lobbies/${this.lobbyCode}/presence`;
+    }
+    
+    async joinLobby() {
+        try {
+            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            await setDoc(presenceRef, {
+                odPlayerId: this.currentPlayerId,
+                name: this.currentPlayerData.name,
+                player_code: this.currentPlayerData.player_code || '',
+                avatar: this.currentPlayerData.avatar || null,
+                color: this.currentPlayerData.color || 'blue',
+                team: this.currentPlayerData.team || null,
+                ready: this.currentPlayerData.ready || false,
+                is_host: this.isHost,
+                online: true,
+                lastSeen: serverTimestamp(),
+                joinedAt: serverTimestamp()
+            });
+            console.log('[Presence] Joined lobby:', this.lobbyCode);
+            
+            this.startHeartbeat();
+            this.startListening();
+            this.startCleanupCheck();
+            
+            return true;
+        } catch (error) {
+            console.error('[Presence] Error joining lobby:', error);
+            return false;
+        }
+    }
+    
+    startHeartbeat() {
+        if (this.heartbeatInterval) return;
+        
+        this.heartbeatInterval = setInterval(async () => {
+            try {
+                const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+                await setDoc(presenceRef, {
+                    lastSeen: serverTimestamp(),
+                    online: true
+                }, { merge: true });
+            } catch (error) {
+                console.error('[Presence] Heartbeat error:', error);
+            }
+        }, this.HEARTBEAT_INTERVAL);
+        
+        console.log('[Presence] Heartbeat started');
+    }
+    
+    startListening() {
+        if (this.unsubscriber) return;
+        
+        const presenceRef = collection(db, this.getPresencePath());
+        
+        this.unsubscriber = onSnapshot(presenceRef, (snapshot) => {
+            const now = Date.now();
+            const players = {};
+            
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const playerId = data.odPlayerId || parseInt(docSnap.id);
+                const lastSeen = data.lastSeen?.toMillis ? data.lastSeen.toMillis() : now;
+                const isOnline = data.online && (now - lastSeen < this.OFFLINE_THRESHOLD);
+                
+                if (isOnline) {
+                    players[playerId] = {
+                        id: playerId,
+                        name: data.name,
+                        player_code: data.player_code,
+                        avatar: data.avatar,
+                        color: data.color,
+                        team: data.team,
+                        ready: data.ready,
+                        is_host: data.is_host,
+                        online: true
+                    };
+                }
+                
+                this.presenceData[playerId] = { ...data, lastSeen, isOnline };
+            });
+            
+            console.log('[Presence] Players online:', Object.keys(players).length);
+            
+            if (this.onPlayersChange) {
+                this.onPlayersChange(players);
+            }
+        }, (error) => {
+            console.error('[Presence] Listener error:', error);
+        });
+        
+        console.log('[Presence] Started listening');
+    }
+    
+    startCleanupCheck() {
+        if (this.cleanupInterval) return;
+        
+        this.cleanupInterval = setInterval(async () => {
+            if (!this.isHost) return;
+            
+            const now = Date.now();
+            for (const [playerId, data] of Object.entries(this.presenceData)) {
+                if (parseInt(playerId) === this.currentPlayerId) continue;
+                
+                const lastSeen = data.lastSeen || 0;
+                if (now - lastSeen > this.OFFLINE_THRESHOLD && data.online) {
+                    try {
+                        const presenceRef = doc(db, this.getPresencePath(), String(playerId));
+                        await setDoc(presenceRef, { online: false }, { merge: true });
+                        console.log('[Presence] Marked player offline:', playerId);
+                        
+                        await fetch(`/lobby/${this.lobbyCode}/remove-player`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            },
+                            body: JSON.stringify({ player_id: parseInt(playerId) })
+                        });
+                        console.log('[Presence] Removed offline player from backend:', playerId);
+                    } catch (error) {
+                        console.error('[Presence] Error marking offline:', error);
+                    }
+                }
+            }
+        }, 15000);
+        
+        console.log('[Presence] Cleanup check started');
+    }
+    
+    async updateReady(ready) {
+        try {
+            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            await setDoc(presenceRef, { ready, lastSeen: serverTimestamp() }, { merge: true });
+            console.log('[Presence] Ready updated:', ready);
+            return true;
+        } catch (error) {
+            console.error('[Presence] Error updating ready:', error);
+            return false;
+        }
+    }
+    
+    async updateColor(color) {
+        try {
+            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            await setDoc(presenceRef, { color, lastSeen: serverTimestamp() }, { merge: true });
+            console.log('[Presence] Color updated:', color);
+            return true;
+        } catch (error) {
+            console.error('[Presence] Error updating color:', error);
+            return false;
+        }
+    }
+    
+    async leaveLobby() {
+        try {
+            if (this.heartbeatInterval) {
+                clearInterval(this.heartbeatInterval);
+                this.heartbeatInterval = null;
+            }
+            if (this.cleanupInterval) {
+                clearInterval(this.cleanupInterval);
+                this.cleanupInterval = null;
+            }
+            if (this.unsubscriber) {
+                this.unsubscriber();
+                this.unsubscriber = null;
+            }
+            
+            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            await deleteDoc(presenceRef);
+            console.log('[Presence] Left lobby');
+        } catch (error) {
+            console.error('[Presence] Error leaving lobby:', error);
+        }
+    }
+    
+    cleanup() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
+        }
+        if (this.unsubscriber) {
+            this.unsubscriber();
+            this.unsubscriber = null;
+        }
+        
+        try {
+            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            deleteDoc(presenceRef);
+        } catch (error) {
+            console.error('[Presence] Cleanup error:', error);
+        }
+        
+        console.log('[Presence] Cleaned up');
     }
 }
 
@@ -3524,12 +3745,46 @@ const currentPlayerId = {{ $currentPlayerId }};
 const mode = '{{ $mode }}';
 const teamId = null;
 const currentPlayerName = @json($players[$currentPlayerId]['name'] ?? 'Joueur');
+const isHostFirebase = {{ $isHost ? 'true' : 'false' }};
+const currentPlayerData = @json($players[$currentPlayerId] ?? ['name' => 'Joueur', 'ready' => false, 'color' => 'blue']);
+const minPlayersFirebase = {{ $minPlayers }};
 
-initFirebase().then((authenticated) => {
+initFirebase().then(async (authenticated) => {
     if (!authenticated) {
         console.error('[Firebase] Authentication failed - real-time features disabled');
         return;
     }
+    
+    window.lobbyPresenceManager = new LobbyPresenceManager(lobbyCode, currentPlayerId, currentPlayerData, isHostFirebase);
+    
+    window.lobbyPresenceManager.onPlayersChange = (players) => {
+        if (typeof updatePlayersUI === 'function') {
+            updatePlayersUI(players);
+        }
+        
+        const playerCount = Object.keys(players).length;
+        const allReady = Object.values(players).every(p => p.ready);
+        
+        if (isHostFirebase) {
+            if (typeof updateWaitingMessage === 'function') {
+                updateWaitingMessage(players, minPlayersFirebase, allReady);
+            }
+            
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                if (playerCount >= minPlayersFirebase && allReady) {
+                    startBtn.removeAttribute('disabled');
+                } else {
+                    startBtn.setAttribute('disabled', 'disabled');
+                }
+            }
+        }
+        
+        window.dispatchEvent(new CustomEvent('lobbyPlayersUpdated', { detail: { players, allReady } }));
+    };
+    
+    await window.lobbyPresenceManager.joinLobby();
+    console.log('[Presence] Manager initialized for lobby:', lobbyCode);
     
     window.webrtcManager = new WebRTCManager(lobbyCode, currentPlayerId, mode, teamId);
     console.log('[WebRTC] Manager assigned to window.webrtcManager:', !!window.webrtcManager);
@@ -3543,6 +3798,9 @@ initFirebase().then((authenticated) => {
 });
 
 window.addEventListener('beforeunload', () => {
+    if (window.lobbyPresenceManager) {
+        window.lobbyPresenceManager.cleanup();
+    }
     if (window.webrtcManager) {
         window.webrtcManager.cleanup();
     }
@@ -3553,6 +3811,9 @@ window.addEventListener('beforeunload', () => {
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
+        if (window.lobbyPresenceManager) {
+            window.lobbyPresenceManager.cleanup();
+        }
         if (window.webrtcManager) {
             window.webrtcManager.cleanup();
         }
@@ -3563,6 +3824,9 @@ document.addEventListener('visibilitychange', () => {
 });
 
 window.addEventListener('pagehide', () => {
+    if (window.lobbyPresenceManager) {
+        window.lobbyPresenceManager.cleanup();
+    }
     if (window.webrtcManager) {
         window.webrtcManager.cleanup();
     }

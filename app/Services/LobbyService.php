@@ -205,6 +205,39 @@ class LobbyService
         return ['success' => true, 'lobby' => $lobby, 'new_host' => $wasHost ? $lobby['host_id'] : null];
     }
     
+    public function removePlayerFromLobby(string $code, int $playerId): array
+    {
+        $lobby = $this->getLobby($code);
+        
+        if (!$lobby) {
+            return ['success' => false, 'error' => __('Salon introuvable')];
+        }
+        
+        if (!isset($lobby['players'][$playerId])) {
+            return ['success' => true, 'already_removed' => true];
+        }
+        
+        $wasHost = $lobby['players'][$playerId]['is_host'] ?? false;
+        
+        unset($lobby['players'][$playerId]);
+        
+        if (empty($lobby['players'])) {
+            $this->deleteLobby($code);
+            return ['success' => true, 'lobby_closed' => true];
+        }
+        
+        if ($wasHost) {
+            $newHostId = array_key_first($lobby['players']);
+            $lobby['players'][$newHostId]['is_host'] = true;
+            $lobby['host_id'] = $newHostId;
+            $lobby['host_name'] = $lobby['players'][$newHostId]['name'];
+        }
+        
+        $this->saveLobby($code, $lobby);
+        
+        return ['success' => true, 'lobby' => $lobby];
+    }
+    
     public function setPlayerReady(string $code, User $player, bool $ready): array
     {
         $lobby = $this->getLobby($code);
