@@ -189,6 +189,9 @@ Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
     Route::post('/{code}/team', [LobbyController::class, 'setTeam'])->name('team');
     Route::post('/{code}/create-team', [LobbyController::class, 'createTeam'])->name('create-team');
     Route::post('/{code}/settings', [LobbyController::class, 'updateSettings'])->name('settings');
+    Route::post('/{code}/bet/propose', [LobbyController::class, 'proposeBet'])->name('bet.propose');
+    Route::post('/{code}/bet/respond', [LobbyController::class, 'respondToBet'])->name('bet.respond');
+    Route::post('/{code}/bet/cancel', [LobbyController::class, 'cancelBet'])->name('bet.cancel');
     Route::post('/{code}/start', [LobbyController::class, 'start'])->name('start');
     Route::post('/{code}/leave', [LobbyController::class, 'leave'])->name('leave');
 });

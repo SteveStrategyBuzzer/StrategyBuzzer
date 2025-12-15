@@ -225,6 +225,59 @@ class LobbyController extends Controller
         return response()->json($result);
     }
     
+    public function proposeBet(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'amount' => 'required|integer|min:1|max:100',
+        ]);
+        
+        $result = $this->lobbyService->proposeBet($code, $user, $validated['amount']);
+        
+        if (!$result['success']) {
+            return response()->json($result, 400);
+        }
+        
+        return response()->json($result);
+    }
+    
+    public function respondToBet(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'action' => 'required|string|in:accept,raise,refuse',
+            'amount' => 'nullable|integer|min:1|max:100',
+        ]);
+        
+        $result = $this->lobbyService->respondToBet(
+            $code, 
+            $user, 
+            $validated['action'], 
+            $validated['amount'] ?? null
+        );
+        
+        if (!$result['success']) {
+            return response()->json($result, 400);
+        }
+        
+        return response()->json($result);
+    }
+    
+    public function cancelBet(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $result = $this->lobbyService->cancelBet($code, $user);
+        
+        if (!$result['success']) {
+            return response()->json($result, 400);
+        }
+        
+        return response()->json($result);
+    }
+    
     public function start(Request $request, string $code)
     {
         $user = Auth::user();

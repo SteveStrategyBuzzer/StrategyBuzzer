@@ -308,6 +308,141 @@ class LobbyService
         return ['success' => true, 'lobby' => $lobby];
     }
     
+    public function proposeBet(string $code, User $player, int $amount): array
+    {
+        $lobby = $this->getLobby($code);
+        
+        if (!$lobby) {
+            return ['success' => false, 'error' => __('Salon introuvable')];
+        }
+        
+        if (!isset($lobby['players'][$player->id])) {
+            return ['success' => false, 'error' => __('Joueur non trouvé dans le salon')];
+        }
+        
+        if ($player->competence_coins < $amount) {
+            return ['success' => false, 'error' => __('Vous n\'avez pas assez de pièces pour cette mise')];
+        }
+        
+        $lobby['bet_negotiation'] = [
+            'status' => 'proposed',
+            'proposer_id' => $player->id,
+            'proposer_name' => $lobby['players'][$player->id]['name'],
+            'proposed_amount' => $amount,
+            'responses' => [],
+            'proposed_at' => now()->toISOString(),
+        ];
+        
+        $this->saveLobby($code, $lobby);
+        
+        return ['success' => true, 'lobby' => $lobby];
+    }
+    
+    public function respondToBet(string $code, User $player, string $action, ?int $counterAmount = null): array
+    {
+        $lobby = $this->getLobby($code);
+        
+        if (!$lobby) {
+            return ['success' => false, 'error' => __('Salon introuvable')];
+        }
+        
+        if (!isset($lobby['players'][$player->id])) {
+            return ['success' => false, 'error' => __('Joueur non trouvé dans le salon')];
+        }
+        
+        if (!isset($lobby['bet_negotiation']) || $lobby['bet_negotiation']['status'] !== 'proposed') {
+            return ['success' => false, 'error' => __('Aucune proposition de pari en cours')];
+        }
+        
+        $negotiation = $lobby['bet_negotiation'];
+        
+        if ($negotiation['proposer_id'] === $player->id && $action !== 'accept') {
+            return ['success' => false, 'error' => __('Vous ne pouvez pas répondre à votre propre proposition')];
+        }
+        
+        switch ($action) {
+            case 'accept':
+                $betAmount = $negotiation['proposed_amount'];
+                if ($player->competence_coins < $betAmount) {
+                    return ['success' => false, 'error' => __('Vous n\'avez pas assez de pièces pour accepter cette mise')];
+                }
+                
+                $lobby['bet_negotiation']['status'] = 'accepted';
+                $lobby['bet_negotiation']['responses'][$player->id] = [
+                    'action' => 'accept',
+                    'amount' => $betAmount,
+                    'responded_at' => now()->toISOString(),
+                ];
+                
+                $lobby['settings']['bet_amount'] = $betAmount;
+                $lobby['settings']['bet_accepted'] = true;
+                break;
+                
+            case 'raise':
+                if ($counterAmount === null || $counterAmount <= $negotiation['proposed_amount']) {
+                    return ['success' => false, 'error' => __('La relance doit être supérieure à la mise actuelle')];
+                }
+                
+                if ($player->competence_coins < $counterAmount) {
+                    return ['success' => false, 'error' => __('Vous n\'avez pas assez de pièces pour cette relance')];
+                }
+                
+                $lobby['bet_negotiation'] = [
+                    'status' => 'proposed',
+                    'proposer_id' => $player->id,
+                    'proposer_name' => $lobby['players'][$player->id]['name'],
+                    'proposed_amount' => $counterAmount,
+                    'previous_amount' => $negotiation['proposed_amount'],
+                    'responses' => [],
+                    'proposed_at' => now()->toISOString(),
+                ];
+                break;
+                
+            case 'refuse':
+                $lobby['bet_negotiation']['status'] = 'refused';
+                $lobby['bet_negotiation']['responses'][$player->id] = [
+                    'action' => 'refuse',
+                    'responded_at' => now()->toISOString(),
+                ];
+                
+                $lobby['settings']['bet_amount'] = 0;
+                $lobby['settings']['bet_accepted'] = false;
+                break;
+                
+            default:
+                return ['success' => false, 'error' => __('Action invalide')];
+        }
+        
+        $this->saveLobby($code, $lobby);
+        
+        return ['success' => true, 'lobby' => $lobby, 'action' => $action];
+    }
+    
+    public function cancelBet(string $code, User $player): array
+    {
+        $lobby = $this->getLobby($code);
+        
+        if (!$lobby) {
+            return ['success' => false, 'error' => __('Salon introuvable')];
+        }
+        
+        if (!isset($lobby['bet_negotiation'])) {
+            return ['success' => true, 'lobby' => $lobby];
+        }
+        
+        if ($lobby['bet_negotiation']['proposer_id'] !== $player->id) {
+            return ['success' => false, 'error' => __('Seul le proposeur peut annuler la mise')];
+        }
+        
+        unset($lobby['bet_negotiation']);
+        $lobby['settings']['bet_amount'] = 0;
+        $lobby['settings']['bet_accepted'] = false;
+        
+        $this->saveLobby($code, $lobby);
+        
+        return ['success' => true, 'lobby' => $lobby];
+    }
+    
     public function startGame(string $code, User $host): array
     {
         $lobby = $this->getLobby($code);
