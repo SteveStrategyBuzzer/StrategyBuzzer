@@ -445,125 +445,200 @@ class LobbyService
     
     public function startGame(string $code, User $host): array
     {
-        $lobby = $this->getLobby($code);
+        $lockKey = 'lobby_start_lock:' . strtoupper($code);
+        $lock = Cache::lock($lockKey, 10);
         
-        if (!$lobby) {
-            return ['success' => false, 'error' => __('Salon introuvable')];
+        if (!$lock->get()) {
+            return ['success' => true, 'already_starting' => true, 'message' => __('Lancement en cours...')];
         }
         
-        if ($lobby['host_id'] !== $host->id) {
-            return ['success' => false, 'error' => __('Seul l\'hôte peut lancer la partie')];
-        }
-        
-        if (in_array($lobby['status'] ?? 'waiting', ['starting', 'started'])) {
-            return ['success' => true, 'lobby' => $lobby, 'already_starting' => true];
-        }
-        
-        $minPlayers = $lobby['settings']['min_players'] ?? 2;
-        if (count($lobby['players']) < $minPlayers) {
-            return ['success' => false, 'error' => __('Pas assez de joueurs (minimum :min)', ['min' => $minPlayers])];
-        }
-        
-        if (!$this->areAllPlayersReady($lobby)) {
-            return ['success' => false, 'error' => __('Tous les joueurs ne sont pas prêts')];
-        }
-        
-        $betAmount = $lobby['settings']['bet_amount'] ?? 0;
-        $playerBets = [];
-        
-        if ($betAmount > 0) {
-            $playerIds = array_keys($lobby['players']);
+        try {
+            $lobby = $this->getLobby($code);
             
-            try {
-                DB::transaction(function () use ($playerIds, $betAmount, &$playerBets, $lobby) {
-                    $players = User::whereIn('id', $playerIds)->lockForUpdate()->get()->keyBy('id');
-                    
-                    foreach ($playerIds as $playerId) {
-                        $player = $players->get($playerId);
-                        if (!$player || $player->competence_coins < $betAmount) {
-                            $playerName = $lobby['players'][$playerId]['name'] ?? 'Joueur';
-                            throw new \Exception(__(':name n\'a pas assez de pièces pour la mise', ['name' => $playerName]));
+            if (!$lobby) {
+                return ['success' => false, 'error' => __('Salon introuvable')];
+            }
+            
+            if ($lobby['host_id'] !== $host->id) {
+                return ['success' => false, 'error' => __('Seul l\'hôte peut lancer la partie')];
+            }
+            
+            if (in_array($lobby['status'] ?? 'waiting', ['starting', 'started'])) {
+                return ['success' => true, 'lobby' => $lobby, 'already_starting' => true];
+            }
+            
+            $minPlayers = $lobby['settings']['min_players'] ?? 2;
+            if (count($lobby['players']) < $minPlayers) {
+                return ['success' => false, 'error' => __('Pas assez de joueurs (minimum :min)', ['min' => $minPlayers])];
+            }
+            
+            if (!$this->areAllPlayersReady($lobby)) {
+                return ['success' => false, 'error' => __('Tous les joueurs ne sont pas prêts')];
+            }
+            
+            $betAmount = $lobby['settings']['bet_amount'] ?? 0;
+            $playerBets = [];
+            
+            if ($betAmount > 0) {
+                $playerIds = array_keys($lobby['players']);
+                $gameStartId = Str::uuid()->toString();
+                
+                try {
+                    DB::transaction(function () use ($playerIds, $betAmount, &$playerBets, $lobby, $code, $gameStartId) {
+                        $existingStart = DB::table('lobby_game_starts')
+                            ->where('lobby_code', strtoupper($code))
+                            ->where('created_at', '>', now()->subMinutes(5))
+                            ->first();
+                        
+                        if ($existingStart) {
+                            throw new \Exception('ALREADY_STARTED');
                         }
+                        
+                        DB::table('lobby_game_starts')->insert([
+                            'id' => $gameStartId,
+                            'lobby_code' => strtoupper($code),
+                            'bet_amount' => $betAmount,
+                            'created_at' => now(),
+                        ]);
+                        
+                        $players = User::whereIn('id', $playerIds)->lockForUpdate()->get()->keyBy('id');
+                        
+                        foreach ($playerIds as $playerId) {
+                            $player = $players->get($playerId);
+                            if (!$player || $player->competence_coins < $betAmount) {
+                                $playerName = $lobby['players'][$playerId]['name'] ?? 'Joueur';
+                                throw new \Exception(__(':name n\'a pas assez de pièces pour la mise', ['name' => $playerName]));
+                            }
+                        }
+                        
+                        foreach ($playerIds as $playerId) {
+                            User::where('id', $playerId)->decrement('competence_coins', $betAmount);
+                            $playerBets[$playerId] = $betAmount;
+                        }
+                    });
+                } catch (\Exception $e) {
+                    if ($e->getMessage() === 'ALREADY_STARTED') {
+                        return ['success' => true, 'already_starting' => true];
                     }
-                    
-                    foreach ($playerIds as $playerId) {
-                        User::where('id', $playerId)->decrement('competence_coins', $betAmount);
-                        $playerBets[$playerId] = $betAmount;
-                    }
-                });
-            } catch (\Exception $e) {
-                return [
-                    'success' => false,
-                    'error' => $e->getMessage()
+                    return [
+                        'success' => false,
+                        'error' => $e->getMessage()
+                    ];
+                }
+                
+                $lobby['bet_info'] = [
+                    'bet_amount' => $betAmount,
+                    'total_pot' => $betAmount * count($playerIds),
+                    'player_bets' => $playerBets,
+                    'deducted_at' => now()->toISOString(),
+                    'game_start_id' => $gameStartId,
                 ];
             }
             
-            $lobby['bet_info'] = [
-                'bet_amount' => $betAmount,
-                'total_pot' => $betAmount * count($playerIds),
-                'player_bets' => $playerBets,
-                'deducted_at' => now()->toISOString(),
-            ];
+            $lobby['status'] = 'starting';
+            $lobby['started_at'] = now()->toISOString();
+            
+            $this->saveLobby($code, $lobby);
+            
+            return ['success' => true, 'lobby' => $lobby];
+        } finally {
+            $lock->release();
         }
-        
-        $lobby['status'] = 'starting';
-        $lobby['started_at'] = now()->toISOString();
-        
-        $this->saveLobby($code, $lobby);
-        
-        return ['success' => true, 'lobby' => $lobby];
     }
     
     public function refundBets(string $code, ?string $reason = null): array
     {
-        $lobby = $this->getLobby($code);
+        $lockKey = 'lobby_refund_lock:' . strtoupper($code);
+        $lock = Cache::lock($lockKey, 10);
         
-        if (!$lobby) {
-            return ['success' => false, 'error' => __('Salon introuvable')];
+        if (!$lock->get()) {
+            return ['success' => true, 'refunded' => false, 'message' => __('Remboursement en cours...')];
         }
-        
-        $betInfo = $lobby['bet_info'] ?? null;
-        
-        if (!$betInfo || empty($betInfo['player_bets'])) {
-            return ['success' => true, 'refunded' => false, 'message' => __('Aucune mise à rembourser')];
-        }
-        
-        if (isset($betInfo['refunded_at'])) {
-            return ['success' => true, 'refunded' => false, 'message' => __('Mises déjà remboursées')];
-        }
-        
-        if (isset($betInfo['winner_id'])) {
-            return ['success' => false, 'error' => __('Le match est terminé, les gains ont été attribués')];
-        }
-        
-        $refundedPlayers = [];
         
         try {
-            DB::transaction(function () use ($betInfo, &$refundedPlayers) {
-                foreach ($betInfo['player_bets'] as $playerId => $amount) {
-                    User::where('id', $playerId)->increment('competence_coins', $amount);
-                    $refundedPlayers[$playerId] = $amount;
+            $lobby = $this->getLobby($code);
+            
+            if (!$lobby) {
+                return ['success' => false, 'error' => __('Salon introuvable')];
+            }
+            
+            $betInfo = $lobby['bet_info'] ?? null;
+            
+            if (!$betInfo || empty($betInfo['player_bets'])) {
+                return ['success' => true, 'refunded' => false, 'message' => __('Aucune mise à rembourser')];
+            }
+            
+            if (isset($betInfo['refunded_at'])) {
+                return ['success' => true, 'refunded' => false, 'message' => __('Mises déjà remboursées')];
+            }
+            
+            if (isset($betInfo['winner_id'])) {
+                return ['success' => false, 'error' => __('Le match est terminé, les gains ont été attribués')];
+            }
+            
+            $gameStartId = $betInfo['game_start_id'] ?? null;
+            
+            $refundedPlayers = [];
+            
+            try {
+                DB::transaction(function () use ($betInfo, &$refundedPlayers, $code, $gameStartId, $reason) {
+                    if ($gameStartId) {
+                        $gameStart = DB::table('lobby_game_starts')
+                            ->where('id', $gameStartId)
+                            ->lockForUpdate()
+                            ->first();
+                        
+                        if (!$gameStart) {
+                            throw new \Exception('NO_BET_RECORD');
+                        }
+                        
+                        if ($gameStart->refunded_at) {
+                            throw new \Exception('ALREADY_REFUNDED');
+                        }
+                        
+                        DB::table('lobby_game_starts')
+                            ->where('id', $gameStartId)
+                            ->update([
+                                'refunded_at' => now(),
+                                'refund_reason' => $reason ?? 'match_cancelled',
+                            ]);
+                    }
+                    
+                    foreach ($betInfo['player_bets'] as $playerId => $amount) {
+                        User::where('id', $playerId)->increment('competence_coins', $amount);
+                        $refundedPlayers[$playerId] = $amount;
+                    }
+                });
+            } catch (\Exception $e) {
+                if ($e->getMessage() === 'ALREADY_REFUNDED') {
+                    $lobby['bet_info']['refunded_at'] = now()->toISOString();
+                    $this->saveLobby($code, $lobby);
+                    return ['success' => true, 'refunded' => false, 'message' => __('Mises déjà remboursées')];
                 }
-            });
-        } catch (\Exception $e) {
+                if ($e->getMessage() === 'NO_BET_RECORD') {
+                    return ['success' => false, 'error' => __('Aucun enregistrement de mise trouvé')];
+                }
+                return [
+                    'success' => false,
+                    'error' => __('Erreur lors du remboursement: :error', ['error' => $e->getMessage()])
+                ];
+            }
+            
+            $lobby['bet_info']['refunded_at'] = now()->toISOString();
+            $lobby['bet_info']['refund_reason'] = $reason ?? 'match_cancelled';
+            $lobby['bet_info']['refunded_players'] = $refundedPlayers;
+            
+            $this->saveLobby($code, $lobby);
+            
             return [
-                'success' => false,
-                'error' => __('Erreur lors du remboursement: :error', ['error' => $e->getMessage()])
+                'success' => true,
+                'refunded' => true,
+                'refunded_players' => $refundedPlayers,
+                'total_refunded' => array_sum($refundedPlayers),
             ];
+        } finally {
+            $lock->release();
         }
-        
-        $lobby['bet_info']['refunded_at'] = now()->toISOString();
-        $lobby['bet_info']['refund_reason'] = $reason ?? 'match_cancelled';
-        $lobby['bet_info']['refunded_players'] = $refundedPlayers;
-        
-        $this->saveLobby($code, $lobby);
-        
-        return [
-            'success' => true,
-            'refunded' => true,
-            'refunded_players' => $refundedPlayers,
-            'total_refunded' => array_sum($refundedPlayers),
-        ];
     }
     
     public function getLobby(string $code): ?array
