@@ -713,21 +713,51 @@ foreach ($colors as $color) {
             </span>
         </div>
         
-        <div style="text-align: center; margin-top: 15px; position: relative;">
-            <button id="bet-toggle-btn" onclick="toggleBetDropdown()" style="background: rgba(255,193,7,0.2); border: 1px solid rgba(255,193,7,0.4); color: #ffc107; padding: 12px 24px; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
-                <span id="bet-label">{{ ($settings['bet_amount'] ?? 0) > 0 ? ($settings['bet_amount'] . ' 🪙') : __('Capacité de mise') }}</span>
-            </button>
-            <div id="bet-dropdown" style="display: none; position: absolute; left: 50%; transform: translateX(-50%); background: rgba(20,20,40,0.98); border: 1px solid rgba(255,193,7,0.3); border-radius: 10px; margin-top: 8px; overflow: hidden; z-index: 100; min-width: 150px; box-shadow: 0 8px 25px rgba(0,0,0,0.5);">
-                <div class="bet-option" data-bet="0" onclick="selectBet(0)" style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
-                    <span style="color: #fff;">{{ __('Sans mise') }}</span>
+        <div id="bet-negotiation-section" style="text-align: center; margin-top: 15px;">
+            <div id="bet-proposal-ui">
+                <button id="bet-toggle-btn" onclick="toggleBetDropdown()" style="background: rgba(255,193,7,0.2); border: 1px solid rgba(255,193,7,0.4); color: #ffc107; padding: 12px 24px; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                    <span id="bet-label">{{ __('Proposer une mise') }}</span>
+                </button>
+                <div id="bet-dropdown" style="display: none; position: absolute; left: 50%; transform: translateX(-50%); background: rgba(20,20,40,0.98); border: 1px solid rgba(255,193,7,0.3); border-radius: 10px; margin-top: 8px; overflow: hidden; z-index: 100; min-width: 150px; box-shadow: 0 8px 25px rgba(0,0,0,0.5);">
+                    <div class="bet-option" data-bet="0" onclick="proposeBet(0)" style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
+                        <span style="color: #fff;">{{ __('Sans mise') }}</span>
+                    </div>
+                    @foreach([5, 10, 25, 50, 100] as $bet)
+                    <div class="bet-option {{ ($userCompetenceCoins ?? 0) < $bet ? 'disabled' : '' }}" data-bet="{{ $bet }}" onclick="{{ ($userCompetenceCoins ?? 0) >= $bet ? 'proposeBet('.$bet.')' : '' }}" style="padding: 12px 20px; cursor: {{ ($userCompetenceCoins ?? 0) >= $bet ? 'pointer' : 'not-allowed' }}; display: flex; align-items: center; gap: 8px; opacity: {{ ($userCompetenceCoins ?? 0) >= $bet ? '1' : '0.4' }}; transition: background 0.2s;">
+                        <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 18px; height: 18px;">
+                        <span style="color: #ffc107; font-weight: bold;">{{ $bet }}</span>
+                    </div>
+                    @endforeach
                 </div>
-                @foreach([5, 10, 25, 50, 100] as $bet)
-                <div class="bet-option {{ ($userCompetenceCoins ?? 0) < $bet ? 'disabled' : '' }}" data-bet="{{ $bet }}" onclick="{{ ($userCompetenceCoins ?? 0) >= $bet ? 'selectBet('.$bet.')' : '' }}" style="padding: 12px 20px; cursor: {{ ($userCompetenceCoins ?? 0) >= $bet ? 'pointer' : 'not-allowed' }}; display: flex; align-items: center; gap: 8px; opacity: {{ ($userCompetenceCoins ?? 0) >= $bet ? '1' : '0.4' }}; transition: background 0.2s;">
-                    <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 18px; height: 18px;">
-                    <span style="color: #ffc107; font-weight: bold;">{{ $bet }}</span>
-                </div>
-                @endforeach
             </div>
+            
+            <div id="bet-pending-ui" style="display: none;">
+                <div style="background: rgba(255,193,7,0.15); border: 1px solid rgba(255,193,7,0.3); border-radius: 10px; padding: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px;">
+                        <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 24px; height: 24px;">
+                        <span id="bet-pending-amount" style="color: #ffc107; font-size: 1.3rem; font-weight: bold;">0</span>
+                        <span style="color: rgba(255,255,255,0.7);">{{ __('proposé') }}</span>
+                    </div>
+                    <div id="bet-pending-status" style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">
+                        {{ __('En attente de réponse...') }}
+                    </div>
+                    <button onclick="cancelBet()" style="margin-top: 10px; background: rgba(244,67,54,0.2); border: 1px solid rgba(244,67,54,0.4); color: #f44336; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; cursor: pointer;">
+                        {{ __('Annuler') }}
+                    </button>
+                </div>
+            </div>
+            
+            <div id="bet-accepted-ui" style="display: none;">
+                <div style="background: rgba(76,175,80,0.15); border: 1px solid rgba(76,175,80,0.3); border-radius: 10px; padding: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span style="color: #4CAF50; font-size: 1.2rem;">✓</span>
+                        <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 24px; height: 24px;">
+                        <span id="bet-accepted-amount" style="color: #ffc107; font-size: 1.3rem; font-weight: bold;">0</span>
+                        <span style="color: #4CAF50;">{{ __('accepté') }}</span>
+                    </div>
+                </div>
+            </div>
+            
             <input type="hidden" id="bet-select" value="{{ $settings['bet_amount'] ?? 0 }}">
         </div>
     </div>
@@ -735,14 +765,73 @@ foreach ($colors as $color) {
     <div class="lobby-info">
         <span class="info-badge">🎯 {{ $settings['theme'] ?? 'Culture générale' }}</span>
         <span class="info-badge">❓ {{ $settings['nb_questions'] ?? 10 }} {{ __('questions') }}</span>
-        @if(($settings['bet_amount'] ?? 0) > 0)
-            <span class="info-badge" style="background: rgba(255,193,7,0.3); color: #ffc107;">🎲 {{ __('Mise') }}: {{ $settings['bet_amount'] }} 🪙</span>
-        @else
-            <span class="info-badge" style="opacity: 0.7;">🎲 {{ __('Sans mise') }}</span>
-        @endif
         <span class="info-badge player-count-badge">👥 <span id="player-count-guest">{{ count($players) }}</span>/{{ $maxPlayers }}</span>
     </div>
+    
+    <div id="guest-bet-negotiation" style="margin-bottom: 25px;">
+        <div id="guest-no-bet" style="text-align: center; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+            <span style="color: rgba(255,255,255,0.6);">🎲 {{ __('Aucune mise proposée') }}</span>
+        </div>
+        
+        <div id="guest-bet-proposal" style="display: none; text-align: center; padding: 20px; background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.3); border-radius: 10px;">
+            <div style="margin-bottom: 15px;">
+                <span id="guest-proposer-name" style="color: #fff; font-weight: bold;"></span>
+                <span style="color: rgba(255,255,255,0.7);"> {{ __('propose une mise de') }} </span>
+                <div style="display: inline-flex; align-items: center; gap: 6px; margin-left: 5px;">
+                    <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 22px; height: 22px;">
+                    <span id="guest-bet-amount" style="color: #ffc107; font-size: 1.4rem; font-weight: bold;">0</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <button onclick="acceptBet()" id="guest-accept-btn" style="background: linear-gradient(135deg, #4CAF50, #45a049); border: none; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                    ✓ {{ __('Accepter') }}
+                </button>
+                <button onclick="showRaiseModal()" id="guest-raise-btn" style="background: linear-gradient(135deg, #667eea, #764ba2); border: none; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                    ↑ {{ __('Relancer') }}
+                </button>
+                <button onclick="refuseBet()" id="guest-refuse-btn" style="background: rgba(244,67,54,0.2); border: 1px solid rgba(244,67,54,0.4); color: #f44336; padding: 12px 24px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                    ✗ {{ __('Refuser') }}
+                </button>
+            </div>
+            
+            <div id="guest-insufficient-coins" style="display: none; margin-top: 10px; color: #f44336; font-size: 0.9rem;">
+                {{ __('Vous n\'avez pas assez de pièces pour cette mise') }}
+            </div>
+        </div>
+        
+        <div id="guest-bet-accepted" style="display: none; text-align: center; padding: 15px; background: rgba(76,175,80,0.15); border: 1px solid rgba(76,175,80,0.3); border-radius: 10px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span style="color: #4CAF50; font-size: 1.2rem;">✓</span>
+                <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 24px; height: 24px;">
+                <span id="guest-accepted-amount" style="color: #ffc107; font-size: 1.3rem; font-weight: bold;">0</span>
+                <span style="color: #4CAF50;">{{ __('mise acceptée') }}</span>
+            </div>
+        </div>
+        
+        <div id="guest-bet-refused" style="display: none; text-align: center; padding: 15px; background: rgba(244,67,54,0.1); border: 1px solid rgba(244,67,54,0.3); border-radius: 10px;">
+            <span style="color: #f44336;">{{ __('Mise refusée - Partie sans mise') }}</span>
+        </div>
+    </div>
     @endif
+    
+    <div id="raise-modal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <div class="custom-modal-title">{{ __('Relancer la mise') }}</div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; color: rgba(255,255,255,0.7);">{{ __('Nouveau montant (supérieur à') }} <span id="raise-min-amount">0</span>):</label>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 24px; height: 24px;">
+                    <input type="number" id="raise-amount-input" min="1" style="width: 100px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #ffc107; font-size: 1.2rem; font-weight: bold; text-align: center;">
+                </div>
+                <div id="raise-error" style="display: none; margin-top: 10px; color: #f44336; font-size: 0.9rem;"></div>
+            </div>
+            <div class="custom-modal-buttons">
+                <button class="custom-modal-btn cancel" onclick="closeRaiseModal()">{{ __('Annuler') }}</button>
+                <button class="custom-modal-btn confirm" onclick="submitRaise()">{{ __('Relancer') }}</button>
+            </div>
+        </div>
+    </div>
     
     <div class="players-section">
         <div class="section-title">
@@ -2015,18 +2104,251 @@ foreach ($colors as $color) {
         }
     }
     
-    function selectBet(amount) {
-        const betSelect = document.getElementById('bet-select');
-        const betLabel = document.getElementById('bet-label');
+    let currentBetNegotiation = null;
+    const userCompetenceCoins = {{ $userCompetenceCoins ?? 0 }};
+    
+    async function proposeBet(amount) {
         const dropdown = document.getElementById('bet-dropdown');
-        
-        if (betSelect) betSelect.value = amount;
-        if (betLabel) {
-            betLabel.textContent = amount > 0 ? amount + ' 🪙' : '{{ __("Capacité de mise") }}';
-        }
         if (dropdown) dropdown.style.display = 'none';
         
-        updateSettings();
+        try {
+            const response = await fetch(`/lobby/${lobbyCode}/bet/propose`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ amount: amount })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('{{ __("Proposition de mise envoyée") }}');
+                updateBetNegotiationUI(data.lobby?.bet_negotiation, data.lobby?.settings);
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error proposing bet:', error);
+            showToast('{{ __("Erreur de connexion") }}');
+        }
+    }
+    
+    async function acceptBet() {
+        try {
+            const response = await fetch(`/lobby/${lobbyCode}/bet/respond`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ action: 'accept' })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('{{ __("Mise acceptée !") }}');
+                updateBetNegotiationUI(data.lobby?.bet_negotiation, data.lobby?.settings);
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error accepting bet:', error);
+            showToast('{{ __("Erreur de connexion") }}');
+        }
+    }
+    
+    async function refuseBet() {
+        try {
+            const response = await fetch(`/lobby/${lobbyCode}/bet/respond`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ action: 'refuse' })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('{{ __("Mise refusée") }}');
+                updateBetNegotiationUI(data.lobby?.bet_negotiation, data.lobby?.settings);
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error refusing bet:', error);
+            showToast('{{ __("Erreur de connexion") }}');
+        }
+    }
+    
+    function showRaiseModal() {
+        const modal = document.getElementById('raise-modal');
+        const minAmountEl = document.getElementById('raise-min-amount');
+        const inputEl = document.getElementById('raise-amount-input');
+        const errorEl = document.getElementById('raise-error');
+        
+        if (currentBetNegotiation) {
+            const minAmount = currentBetNegotiation.proposed_amount || 0;
+            minAmountEl.textContent = minAmount;
+            inputEl.min = minAmount + 1;
+            inputEl.value = minAmount + 5;
+        }
+        
+        errorEl.style.display = 'none';
+        modal.classList.add('show');
+    }
+    
+    function closeRaiseModal() {
+        const modal = document.getElementById('raise-modal');
+        modal.classList.remove('show');
+    }
+    
+    async function submitRaise() {
+        const inputEl = document.getElementById('raise-amount-input');
+        const errorEl = document.getElementById('raise-error');
+        const amount = parseInt(inputEl.value);
+        const minAmount = currentBetNegotiation?.proposed_amount || 0;
+        
+        if (amount <= minAmount) {
+            errorEl.textContent = '{{ __("Le montant doit être supérieur à") }} ' + minAmount;
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        if (amount > userCompetenceCoins) {
+            errorEl.textContent = '{{ __("Vous n\'avez pas assez de pièces") }}';
+            errorEl.style.display = 'block';
+            return;
+        }
+        
+        closeRaiseModal();
+        
+        try {
+            const response = await fetch(`/lobby/${lobbyCode}/bet/respond`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ action: 'raise', counter_amount: amount })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('{{ __("Relance envoyée !") }}');
+                updateBetNegotiationUI(data.lobby?.bet_negotiation, data.lobby?.settings);
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error raising bet:', error);
+            showToast('{{ __("Erreur de connexion") }}');
+        }
+    }
+    
+    async function cancelBet() {
+        try {
+            const response = await fetch(`/lobby/${lobbyCode}/bet/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('{{ __("Proposition annulée") }}');
+                updateBetNegotiationUI(null, data.lobby?.settings);
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error canceling bet:', error);
+            showToast('{{ __("Erreur de connexion") }}');
+        }
+    }
+    
+    function updateBetNegotiationUI(negotiation, settings) {
+        currentBetNegotiation = negotiation;
+        
+        if (isHost) {
+            const proposalUI = document.getElementById('bet-proposal-ui');
+            const pendingUI = document.getElementById('bet-pending-ui');
+            const acceptedUI = document.getElementById('bet-accepted-ui');
+            
+            if (!proposalUI || !pendingUI || !acceptedUI) return;
+            
+            proposalUI.style.display = 'none';
+            pendingUI.style.display = 'none';
+            acceptedUI.style.display = 'none';
+            
+            if (!negotiation) {
+                proposalUI.style.display = 'block';
+            } else if (negotiation.status === 'proposed') {
+                if (negotiation.proposer_id === currentPlayerId) {
+                    pendingUI.style.display = 'block';
+                    document.getElementById('bet-pending-amount').textContent = negotiation.proposed_amount;
+                } else {
+                    proposalUI.style.display = 'block';
+                }
+            } else if (negotiation.status === 'accepted') {
+                acceptedUI.style.display = 'block';
+                document.getElementById('bet-accepted-amount').textContent = settings?.bet_amount || negotiation.proposed_amount;
+            } else if (negotiation.status === 'refused') {
+                proposalUI.style.display = 'block';
+            }
+        } else {
+            const noBetUI = document.getElementById('guest-no-bet');
+            const proposalUI = document.getElementById('guest-bet-proposal');
+            const acceptedUI = document.getElementById('guest-bet-accepted');
+            const refusedUI = document.getElementById('guest-bet-refused');
+            
+            if (!noBetUI || !proposalUI || !acceptedUI || !refusedUI) return;
+            
+            noBetUI.style.display = 'none';
+            proposalUI.style.display = 'none';
+            acceptedUI.style.display = 'none';
+            refusedUI.style.display = 'none';
+            
+            if (!negotiation) {
+                noBetUI.style.display = 'block';
+            } else if (negotiation.status === 'proposed') {
+                if (negotiation.proposer_id !== currentPlayerId) {
+                    proposalUI.style.display = 'block';
+                    document.getElementById('guest-proposer-name').textContent = negotiation.proposer_name;
+                    document.getElementById('guest-bet-amount').textContent = negotiation.proposed_amount;
+                    
+                    const insufficientEl = document.getElementById('guest-insufficient-coins');
+                    const acceptBtn = document.getElementById('guest-accept-btn');
+                    if (userCompetenceCoins < negotiation.proposed_amount) {
+                        insufficientEl.style.display = 'block';
+                        acceptBtn.disabled = true;
+                        acceptBtn.style.opacity = '0.5';
+                        acceptBtn.style.cursor = 'not-allowed';
+                    } else {
+                        insufficientEl.style.display = 'none';
+                        acceptBtn.disabled = false;
+                        acceptBtn.style.opacity = '1';
+                        acceptBtn.style.cursor = 'pointer';
+                    }
+                } else {
+                    noBetUI.innerHTML = '<span style="color: rgba(255,255,255,0.8);">🎲 {{ __("Votre proposition de") }} ' + negotiation.proposed_amount + ' 🪙 {{ __("en attente...") }}</span>';
+                    noBetUI.style.display = 'block';
+                }
+            } else if (negotiation.status === 'accepted') {
+                acceptedUI.style.display = 'block';
+                document.getElementById('guest-accepted-amount').textContent = settings?.bet_amount || negotiation.proposed_amount;
+            } else if (negotiation.status === 'refused') {
+                refusedUI.style.display = 'block';
+            }
+        }
     }
     
     document.addEventListener('click', function(e) {
@@ -2389,6 +2711,8 @@ foreach ($colors as $color) {
             }
             
             updatePlayersUI(data.lobby?.players);
+            
+            updateBetNegotiationUI(data.lobby?.bet_negotiation, data.lobby?.settings);
             
             if (isHost) {
                 updateWaitingMessage(data.lobby?.players, {{ $minPlayers }}, data.all_ready);
