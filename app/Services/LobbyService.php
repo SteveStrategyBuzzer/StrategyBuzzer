@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class LobbyService
@@ -324,6 +325,44 @@ class LobbyService
         
         if (!$this->areAllPlayersReady($lobby)) {
             return ['success' => false, 'error' => __('Tous les joueurs ne sont pas prêts')];
+        }
+        
+        $betAmount = $lobby['settings']['bet_amount'] ?? 0;
+        $playerBets = [];
+        
+        if ($betAmount > 0) {
+            $playerIds = array_keys($lobby['players']);
+            
+            try {
+                DB::transaction(function () use ($playerIds, $betAmount, &$playerBets, $lobby) {
+                    $players = User::whereIn('id', $playerIds)->lockForUpdate()->get()->keyBy('id');
+                    
+                    foreach ($playerIds as $playerId) {
+                        $player = $players->get($playerId);
+                        if (!$player || $player->competence_coins < $betAmount) {
+                            $playerName = $lobby['players'][$playerId]['name'] ?? 'Joueur';
+                            throw new \Exception(__(':name n\'a pas assez de pièces pour la mise', ['name' => $playerName]));
+                        }
+                    }
+                    
+                    foreach ($playerIds as $playerId) {
+                        User::where('id', $playerId)->decrement('competence_coins', $betAmount);
+                        $playerBets[$playerId] = $betAmount;
+                    }
+                });
+            } catch (\Exception $e) {
+                return [
+                    'success' => false,
+                    'error' => $e->getMessage()
+                ];
+            }
+            
+            $lobby['bet_info'] = [
+                'bet_amount' => $betAmount,
+                'total_pot' => $betAmount * count($playerIds),
+                'player_bets' => $playerBets,
+                'deducted_at' => now()->toISOString(),
+            ];
         }
         
         $lobby['status'] = 'starting';

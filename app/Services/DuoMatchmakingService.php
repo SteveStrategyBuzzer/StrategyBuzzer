@@ -219,6 +219,17 @@ class DuoMatchmakingService
             $player2TempAccess
         );
 
+        $betInfo = $gameState['bet_info'] ?? null;
+        if ($betInfo && ($betInfo['total_pot'] ?? 0) > 0) {
+            $totalPot = $betInfo['total_pot'];
+            $winner = $winnerId === $match->player1_id ? $player1 : $player2;
+            $winner->competence_coins = ($winner->competence_coins ?? 0) + $totalPot;
+            $winner->save();
+            
+            $gameState['bet_info']['winner_id'] = $winnerId;
+            $gameState['bet_info']['awarded_at'] = now()->toISOString();
+        }
+
         $match->update([
             'status' => 'finished',
             'player1_score' => $player1Score,

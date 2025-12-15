@@ -591,6 +591,13 @@ class DuoController extends Controller
         $baseCoins = $this->divisionService->getVictoryCoins($division->division);
         $coinsBonus = $coinsEarned - $baseCoins;
 
+        $betInfo = $gameState['bet_info'] ?? null;
+        $betWinnings = 0;
+        if ($betInfo && ($betInfo['total_pot'] ?? 0) > 0) {
+            $playerWon = $matchResult['player_won'] ?? false;
+            $betWinnings = $playerWon ? $betInfo['total_pot'] : 0;
+        }
+
         return view('duo_result', [
             'match_result' => $matchResult,
             'opponent' => $opponent,
@@ -604,6 +611,8 @@ class DuoController extends Controller
             'global_stats' => $gameState['global_stats'] ?? [],
             'accuracy' => $accuracy,
             'round_details' => $gameState['answered_questions'] ?? [],
+            'bet_info' => $betInfo,
+            'bet_winnings' => $betWinnings,
         ]);
     }
 

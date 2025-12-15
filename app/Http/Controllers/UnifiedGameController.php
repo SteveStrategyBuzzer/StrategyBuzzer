@@ -116,6 +116,10 @@ class UnifiedGameController extends Controller
                 $gameState['opponent_name'] = $opponentName;
                 $gameState['lobby_code'] = $validated['lobby_code'];
                 $gameState['match_id'] = $validated['match_id'] ?? $validated['lobby_code'];
+                
+                if (!empty($lobby['bet_info'])) {
+                    $gameState['bet_info'] = $lobby['bet_info'];
+                }
             }
         } elseif ($mode === 'duo' && isset($validated['opponent_id'])) {
             $gameState['opponent_id'] = $validated['opponent_id'];

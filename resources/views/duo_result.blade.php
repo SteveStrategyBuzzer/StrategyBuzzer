@@ -70,6 +70,21 @@
         </div>
         @endif
 
+        @if($bet_info ?? null)
+        <div class="stat-card bet-card" id="bet-result-card">
+            <div class="stat-label">
+                <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 20px; height: 20px; vertical-align: middle;">
+                {{ __('Résultat du pari') }}
+            </div>
+            <div class="stat-value bet-counter" id="bet-counter" data-target="{{ $bet_winnings ?? 0 }}">
+                0
+            </div>
+            <div class="stat-detail">
+                {{ __('Mise totale') }}: {{ $bet_info['total_pot'] ?? 0 }} 🪙
+            </div>
+        </div>
+        @endif
+
         <div class="stat-card">
             <div class="stat-label">Nouvelle division</div>
             <div class="stat-value division">
@@ -177,6 +192,10 @@
 
 <audio id="messageNotificationSound" preload="auto">
     <source src="{{ asset('sounds/message_notification.mp3') }}" type="audio/mpeg">
+</audio>
+
+<audio id="cashCounterSound" preload="auto">
+    <source src="{{ asset('sounds/cash_counter_bet_winner.mp3') }}" type="audio/mpeg">
 </audio>
 
 <style>
@@ -648,6 +667,35 @@
 .chat-input-area button:hover {
     transform: scale(1.05);
 }
+
+.bet-card {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.3), rgba(255, 152, 0, 0.2)) !important;
+    border: 2px solid rgba(255, 193, 7, 0.5);
+}
+
+.stat-value.bet-counter {
+    color: #ffc107;
+    font-size: 3em;
+    transition: all 0.1s ease;
+}
+
+.bet-counter.counting {
+    animation: betPulse 0.15s ease-in-out infinite;
+}
+
+@keyframes betPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.bet-counter.winner {
+    color: #4caf50;
+    text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+}
+
+.bet-counter.loser {
+    color: #f44336;
+}
 </style>
 
 <script>
@@ -777,6 +825,50 @@ document.addEventListener('DOMContentLoaded', function() {
             sendResultMessage();
         }
     });
+
+    const betCounter = document.getElementById('bet-counter');
+    if (betCounter) {
+        const targetValue = parseInt(betCounter.dataset.target) || 0;
+        const cashSound = document.getElementById('cashCounterSound');
+        
+        setTimeout(function() {
+            if (targetValue > 0 && cashSound) {
+                cashSound.play().catch(e => console.log('Audio play failed:', e));
+            }
+            
+            betCounter.classList.add('counting');
+            
+            let currentValue = 0;
+            const duration = 2000;
+            const steps = 40;
+            const increment = targetValue / steps;
+            const stepDuration = duration / steps;
+            
+            const counterInterval = setInterval(function() {
+                currentValue += increment;
+                if (currentValue >= targetValue) {
+                    currentValue = targetValue;
+                    clearInterval(counterInterval);
+                    betCounter.classList.remove('counting');
+                    
+                    if (targetValue > 0) {
+                        betCounter.classList.add('winner');
+                        betCounter.textContent = '+' + targetValue + ' 🪙';
+                    } else {
+                        betCounter.classList.add('loser');
+                        betCounter.textContent = '0 🪙';
+                    }
+                    
+                    if (cashSound) {
+                        cashSound.pause();
+                        cashSound.currentTime = 0;
+                    }
+                } else {
+                    betCounter.textContent = Math.floor(currentValue);
+                }
+            }, stepDuration);
+        }, 1000);
+    }
 });
 </script>
 @endsection
