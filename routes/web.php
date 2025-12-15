@@ -337,6 +337,7 @@ Route::prefix('game')->name('game.')->middleware('auth')->group(function () {
     Route::get('/{mode}/state', [App\Http\Controllers\UnifiedGameController::class, 'getGameState'])->name('state');
     Route::post('/{mode}/sync', [App\Http\Controllers\UnifiedGameController::class, 'syncFromFirebase'])->name('sync');
     Route::post('/{mode}/use-skill', [App\Http\Controllers\UnifiedGameController::class, 'useSkill'])->name('use-skill');
+    Route::post('/{mode}/fetch-question', [App\Http\Controllers\UnifiedGameController::class, 'fetchQuestionJson'])->name('fetch-question');
     
     // Tiebreaker routes
     Route::get('/{mode}/tiebreaker-choice', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerChoice'])->name('tiebreaker-choice');

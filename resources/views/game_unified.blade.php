@@ -605,11 +605,11 @@ $roomCode = $params['room_code'] ?? null;
             @endfor
         </div>
         
-        <div class="question-number">
+        <div class="question-number" id="questionNumber">
             {{ $theme }} @if($subTheme)- {{ $subTheme }}@endif | {{ __('Question') }} {{ $currentQuestion }}/{{ $totalQuestions }}
         </div>
         
-        <div class="question-text">
+        <div class="question-text" id="questionText">
             {{ $params['question_text'] ?? __('Chargement de la question...') }}
         </div>
     </div>
@@ -1486,7 +1486,11 @@ function submitAnswer(answerIndex, isCorrect) {
         
         setTimeout(() => {
             if (data.has_next_question) {
-                window.location.reload();
+                if (gameConfig.isFirebaseMode && window.GameFlowController) {
+                    GameFlowController.advanceToNextQuestion();
+                } else {
+                    window.location.reload();
+                }
             } else {
                 window.location.href = gameConfig.routes.roundResult;
             }
@@ -1497,6 +1501,207 @@ function submitAnswer(answerIndex, isCorrect) {
         hideWaitingOverlay();
     });
 }
+
+const GameFlowController = {
+    isHost: {{ ($params['is_host'] ?? false) ? 'true' : 'false' }},
+    lastQuestionNumber: {{ $currentQuestion }},
+    
+    async advanceToNextQuestion() {
+        const nextQ = this.lastQuestionNumber + 1;
+        console.log('[GameFlow] Advancing to question', nextQ, 'isHost:', this.isHost);
+        
+        if (this.isHost) {
+            showWaitingOverlay('{{ __("Chargement de la question...") }}');
+            
+            await this.waitForFirebaseReady();
+            
+            const questionData = await this.fetchQuestion(nextQ);
+            if (questionData && questionData.success) {
+                await this.publishQuestionToFirestore(nextQ, questionData);
+                this.lastQuestionNumber = nextQ;
+            } else {
+                console.error('[GameFlow] Failed to fetch question');
+                window.location.reload();
+            }
+        } else {
+            showWaitingOverlay('{{ __("En attente de la question...") }}');
+        }
+    },
+    
+    async waitForFirebaseReady(maxWait = 5000) {
+        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
+            return true;
+        }
+        
+        const startTime = Date.now();
+        while (Date.now() - startTime < maxWait) {
+            if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
+                return true;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        console.warn('[GameFlow] Firebase not ready after', maxWait, 'ms');
+        return false;
+    },
+    
+    async fetchQuestion(questionNumber) {
+        try {
+            const response = await fetch('/game/{{ $mode }}/fetch-question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': gameConfig.csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    question_number: questionNumber
+                })
+            });
+            
+            if (!response.ok) throw new Error('Fetch failed');
+            return await response.json();
+        } catch (error) {
+            console.error('[GameFlow] fetchQuestion error:', error);
+            return null;
+        }
+    },
+    
+    async publishQuestionToFirestore(questionNumber, questionData) {
+        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
+            await FirebaseGameSync.publishQuestion(questionNumber, questionData);
+            console.log('[GameFlow] Question published to Firestore');
+            this.displayQuestion(questionData);
+        } else {
+            console.error('[GameFlow] FirebaseGameSync not ready');
+            window.location.reload();
+        }
+    },
+    
+    displayQuestion(questionData) {
+        hideWaitingOverlay();
+        
+        this.resetGameState();
+        
+        gameConfig.currentQuestion = questionData.question_number;
+        this.lastQuestionNumber = questionData.question_number;
+        
+        document.getElementById('questionText').textContent = questionData.question_text;
+        document.getElementById('questionNumber').textContent = 
+            `${questionData.theme}${questionData.sub_theme ? ' - ' + questionData.sub_theme : ''} | {{ __("Question") }} ${questionData.question_number}/${questionData.total_questions}`;
+        
+        const grid = document.getElementById('answersGrid');
+        grid.innerHTML = '';
+        grid.style.display = 'none';
+        
+        questionData.answers.forEach((answer, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'answer-option';
+            btn.dataset.index = idx;
+            btn.textContent = answer.text;
+            btn.addEventListener('click', function() {
+                if (btn.classList.contains('disabled')) return;
+                
+                grid.querySelectorAll('.answer-option').forEach(b => b.classList.add('disabled'));
+                
+                fetch(gameConfig.routes.answer, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': gameConfig.csrfToken
+                    },
+                    body: JSON.stringify({
+                        answer_id: idx,
+                        is_correct: false,
+                        buzz_time: playerBuzzTime || 0
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    const isCorrect = data.is_correct || data.was_correct;
+                    
+                    if (isCorrect) {
+                        btn.classList.add('correct');
+                        document.getElementById('correctSound')?.play().catch(() => {});
+                    } else {
+                        btn.classList.add('incorrect');
+                        document.getElementById('incorrectSound')?.play().catch(() => {});
+                        grid.querySelectorAll('.answer-option').forEach((b, i) => {
+                            if (i === data.correct_index) b.classList.add('correct');
+                        });
+                    }
+                    
+                    document.getElementById('playerScore').textContent = data.player_score;
+                    if (data.opponent) {
+                        document.getElementById('opponentScore').textContent = data.opponent.opponent_score;
+                    }
+                    
+                    setTimeout(() => {
+                        if (data.has_next_question) {
+                            GameFlowController.advanceToNextQuestion();
+                        } else {
+                            window.location.href = gameConfig.routes.roundResult;
+                        }
+                    }, 2000);
+                })
+                .catch(e => console.error('Answer error:', e));
+            });
+            grid.appendChild(btn);
+        });
+        
+        startTimer();
+    },
+    
+    resetGameState() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        
+        buzzed = false;
+        answersShown = false;
+        playerBuzzTime = null;
+        timeLeft = 8;
+        
+        const buzzContainer = document.getElementById('buzzContainer');
+        const buzzButton = document.getElementById('buzzButton');
+        const chronoTimer = document.getElementById('chronoTimer');
+        const grid = document.getElementById('answersGrid');
+        
+        if (buzzContainer) buzzContainer.style.display = 'flex';
+        if (buzzButton) {
+            buzzButton.disabled = false;
+            buzzButton.style.opacity = '1';
+        }
+        if (chronoTimer) chronoTimer.textContent = '8';
+        if (grid) {
+            grid.style.display = 'none';
+            grid.querySelectorAll('.answer-option').forEach(btn => {
+                btn.classList.remove('correct', 'incorrect', 'disabled');
+            });
+        }
+    },
+    
+    onQuestionDataReceived(questionData, questionNumber) {
+        console.log('[GameFlow] Question received from Firestore:', questionNumber);
+        if (questionNumber > this.lastQuestionNumber) {
+            this.lastQuestionNumber = questionNumber;
+            this.displayQuestion({
+                question_number: questionNumber,
+                question_text: questionData.question_text,
+                answers: questionData.answers.map((a, i) => ({
+                    text: a.text || a,
+                    is_correct: i === questionData.correct_index
+                })),
+                theme: questionData.theme || '{{ $theme }}',
+                sub_theme: questionData.sub_theme || '',
+                total_questions: gameConfig.totalQuestions
+            });
+        }
+    }
+};
+
+window.GameFlowController = GameFlowController;
 
 function handleTimeout() {
     document.getElementById('noBuzzSound').play().catch(e => console.log('Sound error:', e));
@@ -1562,9 +1767,22 @@ import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js').then(({ init
     });
 });
 
+let lastQuestionPublishedAt = 0;
+
 function handleFirebaseUpdate(data) {
     const isPlayer1 = gameConfig.playerId === (data.player1Id || '').toString();
     const isPlayer2 = gameConfig.playerId === (data.player2Id || '').toString();
+    
+    const questionPublishedAt = data.questionPublishedAt || 0;
+    if (data.currentQuestionData && questionPublishedAt > lastQuestionPublishedAt) {
+        lastQuestionPublishedAt = questionPublishedAt;
+        const qNum = data.currentQuestion || 1;
+        console.log('[Firebase] New question detected via timestamp:', qNum, 'at', questionPublishedAt);
+        if (qNum >= GameFlowController.lastQuestionNumber) {
+            GameFlowController.onQuestionDataReceived(data.currentQuestionData, qNum);
+            return;
+        }
+    }
     
     let opponentBuzzed = false;
     if (isPlayer1 && data.player2Buzzed) {

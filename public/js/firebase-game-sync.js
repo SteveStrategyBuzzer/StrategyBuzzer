@@ -12,6 +12,8 @@ const FirebaseGameSync = {
     isHost: false,
     callbacks: {},
     docExists: false,
+    currentQuestionData: null,
+    lastQuestionNumber: 0,
 
     firebaseConfig: {
         apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
@@ -144,8 +146,19 @@ const FirebaseGameSync = {
             this.callbacks.onBuzz(buzzWinnerRole, data.buzzTime, data, isOpponentBuzz);
         }
 
-        if (data.currentQuestion !== undefined && this.callbacks.onQuestionChange) {
-            this.callbacks.onQuestionChange(data.currentQuestion, data);
+        if (data.currentQuestion !== undefined && data.currentQuestion !== this.lastQuestionNumber) {
+            this.lastQuestionNumber = data.currentQuestion;
+            
+            if (data.currentQuestionData) {
+                this.currentQuestionData = data.currentQuestionData;
+                if (this.callbacks.onQuestionDataReceived) {
+                    this.callbacks.onQuestionDataReceived(data.currentQuestionData, data.currentQuestion, data);
+                }
+            }
+            
+            if (this.callbacks.onQuestionChange) {
+                this.callbacks.onQuestionChange(data.currentQuestion, data);
+            }
         }
 
         if (data.scores && this.callbacks.onScoreUpdate) {
@@ -269,6 +282,70 @@ const FirebaseGameSync = {
         return this.updateState({
             [readyKey]: { ready: false, question: 0 }
         });
+    },
+
+    async publishQuestion(questionNumber, questionData) {
+        if (!this.isHost) {
+            console.log('[FirebaseGameSync] Not host, skipping question publish');
+            return false;
+        }
+        
+        const safeAnswers = questionData.answers.map(a => ({
+            index: a.index,
+            text: a.text
+        }));
+        
+        return this.updateState({
+            currentQuestion: questionNumber,
+            currentQuestionData: {
+                question_text: questionData.question_text,
+                answers: safeAnswers,
+                theme: questionData.theme || '',
+                sub_theme: questionData.sub_theme || '',
+                niveau: questionData.niveau || 1,
+                total_questions: questionData.total_questions || 10
+            },
+            phase: 'question',
+            buzzWinnerLaravelId: null,
+            buzzWinnerFirebaseId: null,
+            buzzTime: null,
+            lastAnswerSubmit: null,
+            readyForNext: {},
+            questionPublishedAt: Date.now()
+        });
+    },
+
+    async publishTransition(transitionData) {
+        return this.updateState({
+            phase: 'transition',
+            transitionData: transitionData
+        });
+    },
+
+    async fetchNextQuestion(apiUrl, csrfToken) {
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    match_id: this.matchId,
+                    mode: this.mode
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch question');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('[FirebaseGameSync] fetchNextQuestion error:', error);
+            return null;
+        }
     },
 
     isPlayerReadyForQuestion(readyState, playerId, currentQuestion) {

@@ -577,16 +577,22 @@ class UnifiedGameController extends Controller
         
         $validated = $request->validate([
             'answer_id' => 'required|integer',
-            'is_correct' => 'required|boolean',
+            'is_correct' => 'boolean',
             'buzz_time' => 'numeric',
         ]);
         
-        $isCorrect = $validated['is_correct'];
+        $question = $this->getCurrentQuestion($gameState);
+        $correctIndex = $question['correct_index'] ?? 0;
+        $isCorrect = $validated['answer_id'] === $correctIndex;
         
         $result = $provider->submitAnswer(
             $validated['answer_id'],
             $isCorrect
         );
+        
+        $result['is_correct'] = $isCorrect;
+        $result['was_correct'] = $isCorrect;
+        $result['correct_index'] = $correctIndex;
         
         $opponentWasCorrect = false;
         $opponentPointsEarned = 0;
@@ -758,6 +764,66 @@ class UnifiedGameController extends Controller
         return response()->json([
             'success' => true,
             'state' => $provider->getGameState(),
+        ]);
+    }
+    
+    public function fetchQuestionJson(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return response()->json(['error' => __('Aucune partie en cours')], 400);
+        }
+        
+        $isHost = ($gameState['host_id'] ?? null) === $user->id;
+        if (!$isHost) {
+            return response()->json(['error' => __('Seul l\'hôte peut récupérer les questions')], 403);
+        }
+        
+        $questionNumber = $request->input('question_number', $gameState['current_question'] ?? 1);
+        
+        $tempState = $gameState;
+        $tempState['current_question'] = $questionNumber;
+        
+        $cachedQuestion = session("prefetched_question_{$questionNumber}");
+        if ($cachedQuestion) {
+            session()->forget("prefetched_question_{$questionNumber}");
+            $question = $cachedQuestion;
+        } else {
+            session()->forget(['unified_current_question', 'unified_question_number']);
+            $question = $this->getCurrentQuestion($tempState);
+            
+            if ($question) {
+                $gameState['current_question'] = $questionNumber;
+                session(['game_state' => $gameState]);
+            }
+        }
+        
+        if (!$question) {
+            return response()->json(['error' => __('Impossible de générer la question')], 500);
+        }
+        
+        $answers = [];
+        foreach ($question['answers'] as $index => $answer) {
+            $answerText = is_array($answer) ? ($answer['text'] ?? $answer) : $answer;
+            $answers[] = [
+                'index' => $index,
+                'text' => $answerText,
+            ];
+        }
+        
+        return response()->json([
+            'success' => true,
+            'question_number' => $questionNumber,
+            'total_questions' => $gameState['total_questions'] ?? 10,
+            'question_text' => $question['text'] ?? '',
+            'answers' => $answers,
+            'theme' => $gameState['theme'] ?? 'Culture générale',
+            'sub_theme' => $question['sub_theme'] ?? '',
+            'niveau' => $gameState['niveau'] ?? 1,
+            'player_score' => $gameState['player_score'] ?? 0,
+            'opponent_score' => $gameState['opponent_score'] ?? 0,
         ]);
     }
     
