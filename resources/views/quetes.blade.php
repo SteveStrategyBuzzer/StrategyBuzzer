@@ -202,10 +202,22 @@
         </div>
     </div>
 
-    @if(session('success'))
+    <audio id="questCompleteSound" preload="auto">
+    <source src="{{ asset('sounds/quest_complete.mp3') }}" type="audio/mpeg">
+</audio>
+
+@if(session('success'))
         <div style="background-color: rgba(0,255,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
             {{ session('success') }}
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const audio = document.getElementById('questCompleteSound');
+                if (audio) {
+                    audio.play().catch(e => console.log('Audio blocked:', e));
+                }
+            });
+        </script>
     @endif
 
     <div class="section">
