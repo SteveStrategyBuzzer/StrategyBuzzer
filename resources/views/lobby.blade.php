@@ -678,41 +678,57 @@ foreach ($colors as $color) {
             <span>⚙️</span>
             <span>{{ __('Paramètres de la partie') }}</span>
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
-            <div style="flex: 1; min-width: 200px;">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
+            <div style="text-align: center;">
                 <label style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 5px;">🎯 {{ __('Thème') }}</label>
-                <select id="theme-select" onchange="updateSettings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;">
-                    <option value="Culture générale" {{ ($settings['theme'] ?? '') == 'Culture générale' ? 'selected' : '' }}>{{ __('Culture générale') }}</option>
-                    <option value="Géographie" {{ ($settings['theme'] ?? '') == 'Géographie' ? 'selected' : '' }}>{{ __('Géographie') }}</option>
-                    <option value="Histoire" {{ ($settings['theme'] ?? '') == 'Histoire' ? 'selected' : '' }}>{{ __('Histoire') }}</option>
-                    <option value="Sports" {{ ($settings['theme'] ?? '') == 'Sports' ? 'selected' : '' }}>{{ __('Sports') }}</option>
-                    <option value="Sciences" {{ ($settings['theme'] ?? '') == 'Sciences' ? 'selected' : '' }}>{{ __('Sciences') }}</option>
-                    <option value="Cinéma" {{ ($settings['theme'] ?? '') == 'Cinéma' ? 'selected' : '' }}>{{ __('Cinéma') }}</option>
-                    <option value="Art" {{ ($settings['theme'] ?? '') == 'Art' ? 'selected' : '' }}>{{ __('Art') }}</option>
-                    <option value="Animaux" {{ ($settings['theme'] ?? '') == 'Animaux' ? 'selected' : '' }}>{{ __('Animaux') }}</option>
-                    <option value="Cuisine" {{ ($settings['theme'] ?? '') == 'Cuisine' ? 'selected' : '' }}>{{ __('Cuisine') }}</option>
-                </select>
             </div>
-            <div style="min-width: 150px;">
+            <div style="text-align: center;">
                 <label style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 5px;">❓ {{ __('Questions') }}</label>
-                <select id="questions-select" onchange="updateSettings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;">
-                    @foreach([5, 7, 10, 15, 20] as $num)
-                        <option value="{{ $num }}" {{ ($settings['nb_questions'] ?? 10) == $num ? 'selected' : '' }}>{{ $num }} {{ __('questions') }}</option>
-                    @endforeach
-                </select>
             </div>
-            <div style="min-width: 150px;">
-                <label style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 5px;">🎲 {{ __('Mise') }} <span style="font-size: 0.75rem; opacity: 0.8;">({{ __('Compétence') }}: {{ $userCompetenceCoins ?? 0 }})</span></label>
-                <select id="bet-select" onchange="updateSettings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,193,7,0.2); color: #ffc107; font-size: 1rem; font-weight: bold;">
-                    <option value="0" {{ ($settings['bet_amount'] ?? 0) == 0 ? 'selected' : '' }}>{{ __('Sans mise') }}</option>
-                    @foreach([5, 10, 25, 50, 100] as $bet)
-                        <option value="{{ $bet }}" {{ ($settings['bet_amount'] ?? 0) == $bet ? 'selected' : '' }} {{ ($userCompetenceCoins ?? 0) < $bet ? 'disabled' : '' }}>{{ $bet }} 🪙</option>
-                    @endforeach
-                </select>
+            
+            <select id="theme-select" onchange="updateSettings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;">
+                <option value="Culture générale" {{ ($settings['theme'] ?? '') == 'Culture générale' ? 'selected' : '' }}>{{ __('Culture générale') }}</option>
+                <option value="Géographie" {{ ($settings['theme'] ?? '') == 'Géographie' ? 'selected' : '' }}>{{ __('Géographie') }}</option>
+                <option value="Histoire" {{ ($settings['theme'] ?? '') == 'Histoire' ? 'selected' : '' }}>{{ __('Histoire') }}</option>
+                <option value="Sports" {{ ($settings['theme'] ?? '') == 'Sports' ? 'selected' : '' }}>{{ __('Sports') }}</option>
+                <option value="Sciences" {{ ($settings['theme'] ?? '') == 'Sciences' ? 'selected' : '' }}>{{ __('Sciences') }}</option>
+                <option value="Cinéma" {{ ($settings['theme'] ?? '') == 'Cinéma' ? 'selected' : '' }}>{{ __('Cinéma') }}</option>
+                <option value="Art" {{ ($settings['theme'] ?? '') == 'Art' ? 'selected' : '' }}>{{ __('Art') }}</option>
+                <option value="Animaux" {{ ($settings['theme'] ?? '') == 'Animaux' ? 'selected' : '' }}>{{ __('Animaux') }}</option>
+                <option value="Cuisine" {{ ($settings['theme'] ?? '') == 'Cuisine' ? 'selected' : '' }}>{{ __('Cuisine') }}</option>
+            </select>
+            <select id="questions-select" onchange="updateSettings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;">
+                @foreach([5, 7, 10, 15, 20] as $num)
+                    <option value="{{ $num }}" {{ ($settings['nb_questions'] ?? 10) == $num ? 'selected' : '' }}>{{ $num }} {{ __('questions') }}</option>
+                @endforeach
+            </select>
+        </div>
+        
+        <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px;">
+            <span class="info-badge player-count-badge">👥 <span id="player-count-host">{{ count($players) }}</span>/{{ $maxPlayers }}</span>
+            <span style="display: flex; align-items: center; gap: 6px; background: rgba(255,193,7,0.15); padding: 8px 12px; border-radius: 20px;">
+                <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 20px; height: 20px;">
+                <span id="host-competence-coins" style="color: #ffc107; font-weight: bold;">{{ $userCompetenceCoins ?? 0 }}</span>
+            </span>
+        </div>
+        
+        <div style="text-align: center; margin-top: 15px; position: relative;">
+            <button id="bet-toggle-btn" onclick="toggleBetDropdown()" style="background: rgba(255,193,7,0.2); border: 1px solid rgba(255,193,7,0.4); color: #ffc107; padding: 12px 24px; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">
+                <span id="bet-label">{{ ($settings['bet_amount'] ?? 0) > 0 ? ($settings['bet_amount'] . ' 🪙') : __('Capacité de mise') }}</span>
+            </button>
+            <div id="bet-dropdown" style="display: none; position: absolute; left: 50%; transform: translateX(-50%); background: rgba(20,20,40,0.98); border: 1px solid rgba(255,193,7,0.3); border-radius: 10px; margin-top: 8px; overflow: hidden; z-index: 100; min-width: 150px; box-shadow: 0 8px 25px rgba(0,0,0,0.5);">
+                <div class="bet-option" data-bet="0" onclick="selectBet(0)" style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
+                    <span style="color: #fff;">{{ __('Sans mise') }}</span>
+                </div>
+                @foreach([5, 10, 25, 50, 100] as $bet)
+                <div class="bet-option {{ ($userCompetenceCoins ?? 0) < $bet ? 'disabled' : '' }}" data-bet="{{ $bet }}" onclick="{{ ($userCompetenceCoins ?? 0) >= $bet ? 'selectBet('.$bet.')' : '' }}" style="padding: 12px 20px; cursor: {{ ($userCompetenceCoins ?? 0) >= $bet ? 'pointer' : 'not-allowed' }}; display: flex; align-items: center; gap: 8px; opacity: {{ ($userCompetenceCoins ?? 0) >= $bet ? '1' : '0.4' }}; transition: background 0.2s;">
+                    <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 18px; height: 18px;">
+                    <span style="color: #ffc107; font-weight: bold;">{{ $bet }}</span>
+                </div>
+                @endforeach
             </div>
-            <div style="display: flex; align-items: flex-end;">
-                <span class="info-badge player-count-badge" style="margin-left: 10px;">👥 <span id="player-count-host">{{ count($players) }}</span>/{{ $maxPlayers }}</span>
-            </div>
+            <input type="hidden" id="bet-select" value="{{ $settings['bet_amount'] ?? 0 }}">
         </div>
     </div>
     @else
@@ -1986,6 +2002,35 @@ foreach ($colors as $color) {
             showToast('{{ __("Erreur de connexion") }}');
         }
     }
+    
+    function toggleBetDropdown() {
+        const dropdown = document.getElementById('bet-dropdown');
+        if (dropdown) {
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+    
+    function selectBet(amount) {
+        const betSelect = document.getElementById('bet-select');
+        const betLabel = document.getElementById('bet-label');
+        const dropdown = document.getElementById('bet-dropdown');
+        
+        if (betSelect) betSelect.value = amount;
+        if (betLabel) {
+            betLabel.textContent = amount > 0 ? amount + ' 🪙' : '{{ __("Capacité de mise") }}';
+        }
+        if (dropdown) dropdown.style.display = 'none';
+        
+        updateSettings();
+    }
+    
+    document.addEventListener('click', function(e) {
+        const betBtn = document.getElementById('bet-toggle-btn');
+        const dropdown = document.getElementById('bet-dropdown');
+        if (betBtn && dropdown && !betBtn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
     
     function showHelpModal() {
         const modal = document.createElement('div');
