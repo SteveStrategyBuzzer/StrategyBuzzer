@@ -787,6 +787,11 @@ foreach ($colors as $color) {
                         <div class="player-code">{{ $player['player_code'] ?? 'SB-????' }}</div>
                     </div>
                     
+                    <div class="player-coins" style="display: flex; align-items: center; gap: 4px; margin-right: 8px;">
+                        <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 16px; height: 16px;">
+                        <span style="color: #ffc107; font-weight: bold; font-size: 0.85rem;">{{ $player['competence_coins'] ?? 0 }}</span>
+                    </div>
+                    
                     @if($player['is_host'])
                         <div class="player-status status-host">👑</div>
                     @elseif($player['ready'])

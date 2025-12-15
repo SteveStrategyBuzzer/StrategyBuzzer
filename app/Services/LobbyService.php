@@ -115,6 +115,7 @@ class LobbyService
                     'ready' => false,
                     'is_host' => true,
                     'joined_at' => now()->toISOString(),
+                    'competence_coins' => $host->competence_coins ?? 0,
                 ],
             ],
             'teams' => [],
@@ -163,6 +164,7 @@ class LobbyService
             'ready' => false,
             'is_host' => false,
             'joined_at' => now()->toISOString(),
+            'competence_coins' => $player->competence_coins ?? 0,
         ];
         
         $this->saveLobby($code, $lobby);
