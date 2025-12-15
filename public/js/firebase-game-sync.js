@@ -157,6 +157,10 @@ const FirebaseGameSync = {
             this.callbacks.onAnswerSubmit(data.lastAnswerSubmit, data, isOpponentAnswer);
         }
 
+        if (data.readyForNext && this.callbacks.onReadyStateChange) {
+            this.callbacks.onReadyStateChange(data.readyForNext, data);
+        }
+
         if (this.callbacks.onStateUpdate) {
             this.callbacks.onStateUpdate(data);
         }
@@ -245,6 +249,40 @@ const FirebaseGameSync = {
 
     async setPhase(phase) {
         return this.updateState({ phase });
+    },
+
+    async setPlayerReady(currentQuestion) {
+        const readyKey = `readyForNext.${this.laravelUserId}`;
+        return this.updateState({
+            [readyKey]: { ready: true, question: currentQuestion }
+        });
+    },
+
+    async resetReadyState() {
+        return this.updateState({
+            readyForNext: {}
+        });
+    },
+
+    async resetPlayerReady() {
+        const readyKey = `readyForNext.${this.laravelUserId}`;
+        return this.updateState({
+            [readyKey]: { ready: false, question: 0 }
+        });
+    },
+
+    isPlayerReadyForQuestion(readyState, playerId, currentQuestion) {
+        const playerReady = readyState[playerId];
+        if (!playerReady) return false;
+        if (typeof playerReady === 'boolean') return false;
+        return playerReady.ready === true && playerReady.question === currentQuestion;
+    },
+
+    checkBothPlayersReady(data, player1Id, player2Id) {
+        const readyState = data.readyForNext || {};
+        const player1Ready = readyState[player1Id] === true;
+        const player2Ready = readyState[player2Id] === true;
+        return player1Ready && player2Ready;
     },
 
     cleanup() {

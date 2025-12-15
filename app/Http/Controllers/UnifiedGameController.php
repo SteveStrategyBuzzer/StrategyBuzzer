@@ -506,6 +506,8 @@ class UnifiedGameController extends Controller
             'mode' => $mode,
             'opponent_type' => $provider->getOpponentType(),
             'opponent_info' => $opponentInfo,
+            'opponent_id' => $gameState['opponent_id'] ?? null,
+            'match_id' => $gameState['match_id'] ?? null,
             'current' => $currentQuestion,
             'nb_questions' => $totalQuestions,
             'theme' => $gameState['theme'] ?? 'Culture générale',
@@ -524,6 +526,7 @@ class UnifiedGameController extends Controller
             'timeout' => $timeout,
             'correct_answer' => $correctAnswer,
             'is_last_question' => $isLastQuestion,
+            'is_host' => ($gameState['host_id'] ?? null) === $user->id,
         ];
         
         session()->forget('last_answer_result');
