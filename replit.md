@@ -12,7 +12,18 @@ Preferred communication style: Simple, everyday language.
 The frontend uses React 19 with Vite, employing a component-based architecture designed for competitiveness with energetic chronometers and realistic buzz buttons. It features a 3-column game question layout, visually persistent strategic avatar skills, and mobile responsiveness. A multi-language UI with automatic browser detection and manual selection across 10 languages is integrated. The boutique system has been refactored to a menu-style card navigation, displaying 7 categories with dedicated detail pages and orientation-aware responsive layouts. This includes purchasable game modes: Duo, League, and Master, with corresponding user flags for ownership.
 
 ### Technical Implementations
-The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It utilizes an API-first, service-oriented design with an event-driven system for real-time game state broadcasting. Key services include:
+The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It utilizes an API-first, service-oriented design with an event-driven system for real-time game state broadcasting.
+
+**Real-Time Multiplayer Synchronization (Implemented Dec 2025)**
+- Multiplayer modes (Duo, League, Master) now use SPA-style client-driven question transitions without page reloads
+- Host fetches questions via secured `/game/{mode}/fetch-question` API endpoint (host-only access enforced)
+- Questions are published to Firebase Firestore with `currentQuestionData` and `questionPublishedAt` timestamp
+- Non-host clients receive questions via Firestore snapshot listeners, triggering instant UI updates
+- Server-side answer validation: `correct_index` never exposed to clients, validated from session data
+- `GameFlowController` JavaScript class manages all question transitions, UI resets, and state management
+- Timer, buzz state, and answer buttons reset atomically on each new question
+
+Key services include:
 -   **QuestionService**: Manages AI-ready, theme-based question generation with adaptive difficulty, a 3-layer anti-duplication system, progressive block-based generation, and language-specific strict spelling verification. It leverages Google Gemini 2.0 Flash.
 -   **SubthemeRotationSystem**: Implements deterministic sub-theme rotation across 8 main themes and 120 sub-themes, with dynamic pulling for "Culture générale".
 -   **Progressive Block Generation**: Questions are pre-generated in blocks during gameplay to eliminate wait times, with optimized trigger timings.
