@@ -1147,12 +1147,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Skills qui redirigent vers une autre page
         if (skillId === 'bonus_question') {
-            window.location.href = '{{ route("game.question", ["mode" => $mode]) }}?bonus=1';
+            const bonusRoute = '{{ $mode }}' === 'solo' 
+                ? '/solo/bonus-question' 
+                : '/game/{{ $mode }}/question?bonus=1';
+            window.location.href = bonusRoute;
             return;
         }
         
         // Appeler l'API pour activer le skill
-        fetch('{{ route("game.use-skill", ["mode" => $mode]) }}', {
+        const skillRoute = '{{ $mode }}' === 'solo' 
+            ? '/solo/use-skill' 
+            : '/game/{{ $mode }}/use-skill';
+        
+        fetch(skillRoute, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

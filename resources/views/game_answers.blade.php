@@ -70,6 +70,16 @@ if ($opponentType === 'ai') {
 
 $isFirebaseMode = in_array($mode, ['duo', 'league_individual', 'master']);
 $matchId = $params['match_id'] ?? null;
+
+// Avatar stratégique - les avatars sont dans public/images/avatars/
+$strategicAvatarPath = '';
+if ($avatarName !== 'Aucun') {
+    $strategicAvatarSlug = strtolower($avatarName);
+    $strategicAvatarSlug = str_replace(['é', 'è', 'ê'], 'e', $strategicAvatarSlug);
+    $strategicAvatarSlug = str_replace(['à', 'â'], 'a', $strategicAvatarSlug);
+    $strategicAvatarSlug = str_replace(' ', '-', $strategicAvatarSlug);
+    $strategicAvatarPath = asset("images/avatars/{$strategicAvatarSlug}.png");
+}
 @endphp
 
 <style>
@@ -283,8 +293,37 @@ $matchId = $params['match_id'] ?? null;
     .skills-row {
         display: flex;
         justify-content: center;
+        align-items: center;
         gap: 15px;
         margin-top: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .strategic-avatar-mini {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 3px solid #FFD700;
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        flex-shrink: 0;
+    }
+    
+    .strategic-avatar-mini img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .strategic-avatar-mini.empty {
+        opacity: 0.3;
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: none;
+    }
+    
+    .skills-container-inline {
+        display: flex;
+        gap: 10px;
     }
     
     .skill-circle {
@@ -301,9 +340,18 @@ $matchId = $params['match_id'] ?? null;
         transition: all 0.3s;
     }
     
-    .skill-circle.active { border-color: #9b59b6; background: rgba(155, 89, 182, 0.2); }
+    .skill-circle.active { 
+        border-color: #FFD700; 
+        background: rgba(255, 215, 0, 0.2);
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
     .skill-circle.used { opacity: 0.5; cursor: not-allowed; }
     .skill-circle.auto { border-color: #3498db; background: rgba(52, 152, 219, 0.2); }
+    .skill-circle.empty { opacity: 0.3; cursor: default; }
+    .skill-circle.clickable:hover:not(.used) {
+        transform: scale(1.1);
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+    }
     
     .waiting-overlay {
         display: none;
@@ -348,6 +396,22 @@ $matchId = $params['match_id'] ?? null;
         .score-avatar {
             width: 40px;
             height: 40px;
+        }
+        .skills-row {
+            margin-top: 15px;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        }
+        .strategic-avatar-mini {
+            width: 45px;
+            height: 45px;
+        }
+        .skill-circle {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+        }
+        .skills-container-inline {
+            gap: 8px;
         }
     }
 </style>
@@ -414,15 +478,39 @@ $matchId = $params['match_id'] ?? null;
     </div>
     
     <div class="skills-row">
-        @foreach($skills as $skill)
-            @if(in_array($skill['trigger'], ['answer', 'pre_answer']))
-                <div class="skill-circle {{ $skill['used'] ? 'used' : 'active' }} {{ $skill['auto'] ? 'auto' : '' }}" 
-                     data-skill-id="{{ $skill['id'] }}"
-                     title="{{ $skill['name'] }}: {{ $skill['description'] }}">
-                    {{ $skill['icon'] }}
-                </div>
-            @endif
-        @endforeach
+        @if($avatarName !== 'Aucun' && $strategicAvatarPath)
+            <div class="strategic-avatar-mini">
+                <img src="{{ $strategicAvatarPath }}" alt="Avatar stratégique">
+            </div>
+        @else
+            <div class="strategic-avatar-mini empty"></div>
+        @endif
+        
+        <div class="skills-container-inline">
+            @for($i = 0; $i < 3; $i++)
+                @if(isset($skills[$i]))
+                    @php
+                        $skill = $skills[$i];
+                        $isUsed = $skill['used'];
+                        $isAuto = $skill['auto'];
+                        $skillTrigger = $skill['trigger'];
+                        $isAnswerSkill = in_array($skillTrigger, ['answer', 'pre_answer']);
+                        $isClickable = !$isUsed && !$isAuto && $isAnswerSkill;
+                    @endphp
+                    <div class="skill-circle {{ $isUsed ? 'used' : 'active' }} {{ $isAuto ? 'auto' : '' }} {{ $isClickable ? 'clickable' : '' }}" 
+                         data-skill-id="{{ $skill['id'] }}"
+                         data-skill-type="{{ $skill['type'] }}"
+                         data-skill-trigger="{{ $skillTrigger }}"
+                         data-skill-auto="{{ $isAuto ? 'true' : 'false' }}"
+                         data-skill-used="{{ $isUsed ? 'true' : 'false' }}"
+                         title="{{ $skill['name'] }}: {{ $skill['description'] }}">
+                        {{ $skill['icon'] }}
+                    </div>
+                @else
+                    <div class="skill-circle empty"></div>
+                @endif
+            @endfor
+        </div>
     </div>
 </div>
 
@@ -601,8 +689,149 @@ answerButtons.forEach((btn, index) => {
     btn.addEventListener('click', () => submitAnswer(index));
 });
 
+// Skill activation for answer page
+document.querySelectorAll('.skill-circle.clickable').forEach(skillEl => {
+    skillEl.addEventListener('click', function() {
+        if (answered) return;
+        const skillId = this.dataset.skillId;
+        const skillTrigger = this.dataset.skillTrigger;
+        const isUsed = this.dataset.skillUsed === 'true';
+        const isAuto = this.dataset.skillAuto === 'true';
+        
+        if (isUsed || isAuto) {
+            alert(isUsed ? 'Ce skill a déjà été utilisé !' : 'Ce skill est automatique et s\'active tout seul.');
+            return;
+        }
+        
+        activateAnswerSkill(skillId, skillTrigger, this);
+    });
+});
+
+async function activateAnswerSkill(skillId, skillTrigger, skillElement) {
+    if (!skillId || !skillElement) return;
+    
+    skillElement.style.pointerEvents = 'none';
+    skillElement.classList.add('activating');
+    
+    try {
+        const skillRoute = answerConfig.mode === 'solo' 
+            ? '/solo/use-skill' 
+            : '/game/' + answerConfig.mode + '/use-skill';
+        
+        const response = await fetch(skillRoute, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': answerConfig.csrfToken
+            },
+            body: JSON.stringify({
+                skill_id: skillId,
+                trigger: skillTrigger,
+                current_question: answerConfig.currentQuestion
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const skillInfo = data.skill_info || {};
+            const skillName = skillInfo.name || skillId;
+            
+            if (data.is_fully_used) {
+                skillElement.classList.remove('active', 'clickable');
+                skillElement.classList.add('used');
+                skillElement.dataset.skillUsed = 'true';
+                skillElement.textContent = '⚪';
+            }
+            
+            if (skillInfo.effect) {
+                applySkillEffect(skillInfo.effect);
+            }
+            
+            showSkillActivationFeedback(skillName, skillInfo.description || 'Skill activé !');
+        } else if (data.error) {
+            alert(data.error);
+            skillElement.style.pointerEvents = 'auto';
+        } else {
+            alert('Impossible d\'activer ce skill.');
+            skillElement.style.pointerEvents = 'auto';
+        }
+    } catch (error) {
+        console.error('Skill activation error:', error);
+        skillElement.style.pointerEvents = 'auto';
+    }
+    
+    skillElement.classList.remove('activating');
+}
+
+function applySkillEffect(effect) {
+    if (effect.type === 'eliminate_wrong') {
+        const wrongButtons = [...answerButtons].filter(btn => btn.dataset.correct !== 'true');
+        const toHide = wrongButtons.slice(0, effect.count || 1);
+        toHide.forEach(btn => {
+            btn.style.opacity = '0.3';
+            btn.disabled = true;
+        });
+    } else if (effect.type === 'extra_time') {
+        timeLeft += effect.seconds || 5;
+        answerTimer.textContent = timeLeft;
+    } else if (effect.type === 'show_hint') {
+        // Show hint near answer buttons
+        const hint = document.createElement('div');
+        hint.className = 'skill-hint';
+        hint.textContent = effect.hint;
+        hint.style.cssText = 'text-align: center; color: #FFD700; margin: 10px 0; font-weight: bold;';
+        document.querySelector('.answers-grid').before(hint);
+    }
+}
+
+function showSkillActivationFeedback(skillName, message) {
+    const feedback = document.createElement('div');
+    feedback.className = 'skill-feedback';
+    feedback.innerHTML = `<strong>✨ ${skillName}</strong><br>${message || 'Skill activé !'}`;
+    feedback.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid #FFD700;
+        border-radius: 15px;
+        padding: 20px 30px;
+        color: #FFD700;
+        font-size: 1.2rem;
+        z-index: 9999;
+        text-align: center;
+        animation: skillFadeIn 0.3s ease;
+    `;
+    document.body.appendChild(feedback);
+    
+    setTimeout(() => {
+        feedback.style.animation = 'skillFadeOut 0.3s ease forwards';
+        setTimeout(() => feedback.remove(), 300);
+    }, 1500);
+}
+
 startAnswerTimer();
 </script>
+
+<style>
+@keyframes skillFadeIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes skillFadeOut {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    to { opacity: 0; transform: translate(-50%, -50%) scale(1.1); }
+}
+.skill-circle.activating {
+    animation: skillPulse 0.5s ease infinite;
+}
+@keyframes skillPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+</style>
 
 @if($isFirebaseMode)
 <script src="/js/firebase-game-sync.js"></script>
