@@ -30,7 +30,19 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Environment Variables for Migration**
 - `QUESTION_API_URL` : URL of Question API service (default: http://localhost:3000)
+- `QUEUE_CONNECTION` : Laravel queue driver (database for async, sync for immediate)
 - All external URLs use env() - no hardcoded localhost values
+
+**Question Cache System (Dec 2025)**
+- QuestionCacheService: File-based cache for pre-generated questions
+- Cache key format: `questions:{theme}:{niveau}:{language}`
+- GenerateQuestionsJob: Async job for background question generation
+- Queue Worker workflow runs `php artisan queue:work` for async processing
+
+**Unified Firestore Structure (Dec 2025)**
+- All game modes now use `/gameSessions/{sessionId}` collection
+- Legacy collections (duoMatches, leagueMatches, masterRooms) deprecated
+- Security rules enforce member-only access with host privileges for global state
 
 Key services include:
 -   **QuestionService**: Manages AI-ready, theme-based question generation with adaptive difficulty, a 3-layer anti-duplication system, progressive block-based generation, and language-specific strict spelling verification. It leverages Google Gemini 2.0 Flash.

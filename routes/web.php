@@ -161,6 +161,8 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     Route::get('/bonus-question', [SoloController::class, 'bonusQuestion'])->name('bonus-question');
     Route::post('/answer-bonus', [SoloController::class, 'answerBonus'])->name('answer-bonus');
     Route::get('/next',    [SoloController::class, 'nextQuestion'])->name('next');
+    Route::post('/fetch-question', [SoloController::class, 'fetchQuestionApi'])->name('fetch-question');
+    Route::post('/submit-answer', [SoloController::class, 'submitAnswerApi'])->name('submit-answer');
     Route::post('/generate-batch', [SoloController::class, 'generateBatch'])->name('generate-batch');
     Route::post('/generate-block', [SoloController::class, 'generateBlock'])->name('generate-block'); // NOUVEAU: génération progressive
     Route::post('/generate-queue', [SoloController::class, 'generateQueue'])->name('generate-queue');

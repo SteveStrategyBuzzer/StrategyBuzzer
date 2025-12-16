@@ -3584,4 +3584,194 @@ class SoloController extends Controller
         
         return redirect()->route('solo.tiebreaker-sudden-death');
     }
+
+    /**
+     * API: Fetch question for SPA mode (GameplayEngine LocalProvider)
+     * Returns question data as JSON without correct_index
+     */
+    public function fetchQuestionApi(Request $request)
+    {
+        $questionService = new \App\Services\QuestionService();
+        $user = auth()->user();
+        
+        $theme = session('theme', 'general');
+        $nbQuestions = session('nb_questions', 30);
+        $niveau = session('niveau_selectionne', 1);
+        $currentQuestion = session('current_question_number', 1);
+        $usedQuestionIds = session('used_question_ids', []);
+        $sessionUsedAllAnswers = session('session_used_all_answers', []);
+        $sessionUsedQuestionTexts = session('session_used_question_texts', []);
+        
+        $opponentInfo = $this->getOpponentInfo($niveau);
+        $opponentAge = $opponentInfo['age'] ?? null;
+        $isBoss = $opponentInfo['is_boss'] ?? false;
+        
+        $currentRound = session('current_round', 1);
+        $stockKey = "question_stock_round_{$currentRound}";
+        $questionStock = session($stockKey, []);
+        
+        $questionIndex = $currentQuestion - 1;
+        if (!empty($questionStock) && isset($questionStock[$questionIndex])) {
+            $question = $questionStock[$questionIndex];
+        } else {
+            $language = $this->getUserLanguage();
+            $question = $questionService->generateQuestion(
+                $theme, $niveau, $currentQuestion, $usedQuestionIds, [], 
+                $sessionUsedAllAnswers, $sessionUsedQuestionTexts, 
+                $opponentAge, $isBoss, $language
+            );
+            
+            $questionStock[$questionIndex] = $question;
+            session([$stockKey => $questionStock]);
+        }
+        
+        session(['current_question' => $question]);
+        session(['question_start_time' => time()]);
+        
+        $usedQuestionIds[] = $question['id'];
+        session(['used_question_ids' => $usedQuestionIds]);
+        
+        $baseTime = max(4, 8 - floor($niveau / 10));
+        
+        $safeAnswers = array_map(function($answer, $index) {
+            return ['index' => $index, 'text' => $answer];
+        }, $question['answers'], array_keys($question['answers']));
+        
+        return response()->json([
+            'success' => true,
+            'question' => [
+                'id' => $question['id'],
+                'question_text' => $question['text'],
+                'answers' => $safeAnswers,
+                'theme' => $question['theme'] ?? $theme,
+                'sub_theme' => $question['sub_theme'] ?? '',
+                'niveau' => $niveau,
+            ],
+            'question_number' => $currentQuestion,
+            'total_questions' => $nbQuestions,
+            'chrono_time' => $baseTime,
+            'current_round' => $currentRound,
+            'player_score' => session('score', 0),
+            'opponent_score' => session('opponent_score', 0),
+        ]);
+    }
+
+    /**
+     * API: Submit answer for SPA mode (GameplayEngine LocalProvider)
+     * Validates answer and returns result as JSON
+     */
+    public function submitAnswerApi(Request $request)
+    {
+        $validated = $request->validate([
+            'answer_index' => 'required|integer|min:0|max:3',
+            'buzz_time' => 'nullable|numeric',
+        ]);
+        
+        $answerIndex = $validated['answer_index'];
+        $buzzTime = $validated['buzz_time'] ?? 0;
+        
+        $question = session('current_question');
+        if (!$question) {
+            return response()->json(['success' => false, 'error' => 'No active question'], 400);
+        }
+        
+        $correctIndex = $question['correct_index'];
+        $isCorrect = ($answerIndex == $correctIndex);
+        
+        $niveau = session('niveau_selectionne', 1);
+        $points = 0;
+        
+        if ($isCorrect) {
+            $basePoints = 10;
+            $levelBonus = floor($niveau / 10);
+            $speedBonus = max(0, floor((8 - $buzzTime) * 2));
+            $points = $basePoints + $levelBonus + $speedBonus;
+            
+            $currentScore = session('score', 0);
+            session(['score' => $currentScore + $points]);
+        }
+        
+        $opponentAnswered = $this->simulateOpponentAnswer($niveau, $isCorrect);
+        if ($opponentAnswered['is_correct']) {
+            $opponentScore = session('opponent_score', 0);
+            session(['opponent_score' => $opponentScore + $opponentAnswered['points']]);
+        }
+        
+        $currentQuestion = session('current_question_number', 1);
+        $nbQuestions = session('nb_questions', 30);
+        $isRoundComplete = ($currentQuestion >= $nbQuestions);
+        
+        session(['current_question_number' => $currentQuestion + 1]);
+        session(['current_question' => null]);
+        
+        $playerRoundsWon = session('player_rounds_won', 0);
+        $opponentRoundsWon = session('opponent_rounds_won', 0);
+        $gameOver = false;
+        $matchResult = null;
+        
+        if ($isRoundComplete) {
+            $playerScore = session('score', 0);
+            $opponentScoreFinal = session('opponent_score', 0);
+            
+            if ($playerScore > $opponentScoreFinal) {
+                $playerRoundsWon++;
+                session(['player_rounds_won' => $playerRoundsWon]);
+            } else {
+                $opponentRoundsWon++;
+                session(['opponent_rounds_won' => $opponentRoundsWon]);
+            }
+            
+            if ($playerRoundsWon >= 2 || $opponentRoundsWon >= 2) {
+                $gameOver = true;
+                $matchResult = $playerRoundsWon >= 2 ? 'victory' : 'defeat';
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'is_correct' => $isCorrect,
+            'correct_index' => $correctIndex,
+            'selected_index' => $answerIndex,
+            'correct_answer' => $question['answers'][$correctIndex],
+            'points' => $points,
+            'player_score' => session('score', 0),
+            'opponent_score' => session('opponent_score', 0),
+            'opponent_answered' => $opponentAnswered,
+            'question_number' => $currentQuestion,
+            'next_question_number' => $currentQuestion + 1,
+            'is_round_complete' => $isRoundComplete,
+            'game_over' => $gameOver,
+            'match_result' => $matchResult,
+            'player_rounds_won' => $playerRoundsWon,
+            'opponent_rounds_won' => $opponentRoundsWon,
+            'redirect_url' => $gameOver 
+                ? ($matchResult === 'victory' ? route('solo.victory') : route('solo.defeat'))
+                : ($isRoundComplete ? route('solo.round-result') : null),
+        ]);
+    }
+
+    /**
+     * Simulate opponent answer for Solo mode
+     */
+    private function simulateOpponentAnswer(int $niveau, bool $playerCorrect): array
+    {
+        $opponentInfo = $this->getOpponentInfo($niveau);
+        $successRate = $opponentInfo['success_rate'] ?? 0.5;
+        
+        $opponentCorrect = (mt_rand(1, 100) / 100) <= $successRate;
+        
+        $points = 0;
+        if ($opponentCorrect) {
+            $basePoints = 10;
+            $levelBonus = floor($niveau / 10);
+            $speedBonus = mt_rand(0, 6);
+            $points = $basePoints + $levelBonus + $speedBonus;
+        }
+        
+        return [
+            'is_correct' => $opponentCorrect,
+            'points' => $points,
+            'buzz_time' => mt_rand(15, 70) / 10,
+        ];
+    }
 }

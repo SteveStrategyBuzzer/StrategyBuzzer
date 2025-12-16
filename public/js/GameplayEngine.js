@@ -355,7 +355,7 @@ const GameplayEngine = {
     /**
      * Soumet une réponse
      */
-    submitAnswer(answerIndex) {
+    async submitAnswer(answerIndex) {
         if (this.state.phase === 'result') return;
 
         const buttons = this.elements.answersGrid?.querySelectorAll('.answer-option');
@@ -363,19 +363,28 @@ const GameplayEngine = {
 
         this.state.phase = 'result';
 
-        fetch(this.config.routes.answer, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': this.config.csrfToken
-            },
-            body: JSON.stringify({
-                answer_id: answerIndex,
-                buzz_time: this.state.playerBuzzTime
-            })
-        }).then(response => response.json())
-          .then(data => this.handleAnswerResult(data))
-          .catch(err => console.error('[GameplayEngine] Submit answer error:', err));
+        let result;
+        if (this.state.mode === 'solo' && this.provider && this.provider.submitAnswer) {
+            const buzzTime = (Date.now() - (this.state.questionStartTime || Date.now())) / 1000;
+            result = await this.provider.submitAnswer(answerIndex, buzzTime);
+        } else {
+            const response = await fetch(this.config.routes.answer, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.config.csrfToken
+                },
+                body: JSON.stringify({
+                    answer_id: answerIndex,
+                    buzz_time: this.state.playerBuzzTime
+                })
+            });
+            result = await response.json();
+        }
+
+        if (result) {
+            this.handleAnswerResult(result);
+        }
     },
 
     /**
@@ -408,8 +417,16 @@ const GameplayEngine = {
             this.triggerPassiveSkills('incorrect_answer');
         }
 
-        if (data.game_over) {
+        if (data.is_round_complete && data.redirect_url) {
+            setTimeout(() => {
+                window.location.href = data.redirect_url;
+            }, 1500);
+        } else if (data.game_over) {
             this.onGameOver(data);
+        } else if (this.state.mode === 'solo') {
+            setTimeout(() => {
+                this.nextQuestion();
+            }, 1500);
         }
     },
 
@@ -496,10 +513,26 @@ const GameplayEngine = {
     /**
      * Passe à la question suivante
      */
-    nextQuestion() {
-        if (this.state.isHost && this.provider && this.provider.fetchAndPublishQuestion) {
-            this.provider.fetchAndPublishQuestion(this.state.currentQuestion + 1);
-        } else if (this.state.mode === 'solo') {
+    async nextQuestion() {
+        this.resetState();
+        
+        if (this.provider && this.provider.fetchAndPublishQuestion) {
+            const data = await this.provider.fetchAndPublishQuestion(this.state.currentQuestion + 1);
+            if (data && data.success && this.state.mode === 'solo') {
+                this.startQuestion({
+                    question_number: data.question_number,
+                    question_text: data.question.question_text,
+                    answers: data.question.answers,
+                    theme: data.question.theme,
+                    sub_theme: data.question.sub_theme,
+                    total_questions: data.total_questions,
+                    chrono_time: data.chrono_time
+                });
+                this.updateScores(data.player_score, data.opponent_score);
+            } else if (data && data.redirect_url) {
+                window.location.href = data.redirect_url;
+            }
+        } else if (this.config.routes.nextQuestion) {
             window.location.href = this.config.routes.nextQuestion;
         }
     },
@@ -548,20 +581,83 @@ const GameplayEngine = {
 
 /**
  * LocalProvider - Pour le mode Solo
- * Gère les données localement via session Laravel
+ * Gère les données localement via API Laravel (SPA mode)
  */
 const LocalProvider = {
     onQuestionReceived: null,
+    csrfToken: '',
+    routes: {
+        fetchQuestion: '/solo/fetch-question',
+        submitAnswer: '/solo/submit-answer'
+    },
 
-    fetchAndPublishQuestion(questionNumber) {
-        // En mode Solo, on fait un redirect vers la prochaine question
-        // Le serveur gère tout
-        console.log('[LocalProvider] Solo mode - server handles next question');
+    init(config = {}) {
+        this.csrfToken = config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+        if (config.routes) {
+            this.routes = { ...this.routes, ...config.routes };
+        }
+        console.log('[LocalProvider] Initialized for Solo SPA mode');
+    },
+
+    async fetchAndPublishQuestion(questionNumber) {
+        try {
+            const response = await fetch(this.routes.fetchQuestion, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ question_number: questionNumber })
+            });
+
+            const data = await response.json();
+
+            if (data.success && this.onQuestionReceived) {
+                this.onQuestionReceived({
+                    question_number: data.question_number,
+                    question_text: data.question.question_text,
+                    answers: data.question.answers,
+                    theme: data.question.theme,
+                    sub_theme: data.question.sub_theme,
+                    total_questions: data.total_questions,
+                    chrono_time: data.chrono_time,
+                    player_score: data.player_score,
+                    opponent_score: data.opponent_score
+                });
+            }
+
+            return data;
+        } catch (err) {
+            console.error('[LocalProvider] Fetch question error:', err);
+            return null;
+        }
+    },
+
+    async submitAnswer(answerIndex, buzzTime) {
+        try {
+            const response = await fetch(this.routes.submitAnswer, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    answer_index: answerIndex,
+                    buzz_time: buzzTime
+                })
+            });
+
+            return await response.json();
+        } catch (err) {
+            console.error('[LocalProvider] Submit answer error:', err);
+            return { success: false, error: err.message };
+        }
     },
 
     publishBuzz(playerId, buzzTime) {
-        // En Solo, pas besoin de publier - tout est local
-        console.log('[LocalProvider] Solo buzz - local only');
+        console.log('[LocalProvider] Solo buzz recorded locally:', buzzTime);
     }
 };
 

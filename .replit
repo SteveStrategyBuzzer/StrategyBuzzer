@@ -23,6 +23,10 @@ args = "Backend"
 task = "workflow.run"
 args = "Question API"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Queue Worker"
+
 [[workflows.workflow]]
 name = "Backend"
 author = "agent"
@@ -43,6 +47,17 @@ author = "agent"
 task = "shell.exec"
 args = "node question-api.js"
 waitForPort = 3000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Queue Worker"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "php artisan queue:work --tries=3 --timeout=120"
 
 [workflows.workflow.metadata]
 outputType = "console"
@@ -71,3 +86,4 @@ SESSION_DOMAIN = ""
 SESSION_SECURE_COOKIE = "false"
 SESSION_SAME_SITE = "lax"
 QUESTION_API_URL = "http://localhost:3000"
+QUEUE_CONNECTION = "database"

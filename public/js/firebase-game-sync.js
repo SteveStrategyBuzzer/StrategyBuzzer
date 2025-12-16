@@ -73,16 +73,8 @@ const FirebaseGameSync = {
     },
 
     getMatchDocPath() {
-        if (this.mode === 'duo') {
-            return `duoMatches/${this.matchId}`;
-        } else if (this.mode === 'league_individual') {
-            return `leagueMatches/${this.matchId}`;
-        } else if (this.mode === 'league_team') {
-            return `leagueTeamMatches/${this.matchId}`;
-        } else if (this.mode === 'master') {
-            return `masterRooms/${this.matchId}`;
-        }
-        return `games/${this.matchId}`;
+        // Structure unifiée : tous les modes utilisent /gameSessions/{sessionId}
+        return `gameSessions/${this.matchId}`;
     },
 
     async ensureDocExists() {

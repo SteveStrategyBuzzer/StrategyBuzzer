@@ -1013,11 +1013,11 @@ class GameVoiceChat {
     }
     
     getSignalingPath() {
-        return `duoMatches/${matchId}/webrtc`;
+        return `gameSessions/${matchId}/webrtc`;
     }
     
     getPresencePath() {
-        return `duoMatches/${matchId}/voice_presence`;
+        return `gameSessions/${matchId}/voice_presence`;
     }
     
     async startVoiceChat() {
@@ -1956,7 +1956,7 @@ function markAttackProcessed(attackId) {
     if (gameConfig.matchId && typeof firebase !== 'undefined') {
         import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(({ getFirestore, doc, updateDoc }) => {
             const db = getFirestore();
-            updateDoc(doc(db, 'duoMatches', gameConfig.matchId), {
+            updateDoc(doc(db, 'gameSessions', gameConfig.matchId), {
                 'incoming_attack.processed': true
             });
         });
@@ -1970,7 +1970,7 @@ function sendAttackToOpponent(skillId, params = {}) {
     
     import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(({ getFirestore, doc, updateDoc }) => {
         const db = getFirestore();
-        updateDoc(doc(db, 'duoMatches', gameConfig.matchId), {
+        updateDoc(doc(db, 'gameSessions', gameConfig.matchId), {
             'incoming_attack': {
                 id: Date.now(),
                 skill_id: skillId,

@@ -3045,7 +3045,7 @@ function startMatchListener(matchId) {
         matchUnsubscribe = null;
     }
     
-    const matchDocRef = doc(db, 'duoMatches', `match-${matchId}`);
+    const matchDocRef = doc(db, 'gameSessions', `match-${matchId}`);
     
     matchUnsubscribe = onSnapshot(matchDocRef, (docSnapshot) => {
         if (docSnapshot.exists()) {
