@@ -923,7 +923,7 @@
     </div>
 
     {{-- Boutons Enregistrer et Déconnexion côte à côte --}}
-    <div style="margin-top:15px; text-align:center; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; position:relative; z-index:1;">
+    <div style="margin-top:15px; text-align:center; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
       <button type="submit" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;">{{ __('Sauvegarder') }}</button>
       <button type="button" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;" onclick="document.getElementById('logout-form').submit();">{{ __('Déconnexion') }}</button>
     </div>
@@ -969,7 +969,7 @@
     $ligueEfficaciteJoueur = $stats ? round($stats->league_efficacite_joueur ?? 0, 1) : 0;
 @endphp
 
-<div class="sb-panel" style="margin-top:12px; position:relative; z-index:1;">
+<div class="sb-panel" style="margin-top:12px;">
   <div class="sb-title" style="text-align:center; margin-bottom:16px;">📊 {{ __('Statistiques du Joueur') }}</div>
   
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
