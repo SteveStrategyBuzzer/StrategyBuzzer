@@ -376,6 +376,7 @@
   cursor: pointer;
   transition: background 0.15s ease;
   margin-bottom: 4px;
+  background: rgb(10, 44, 102);
 }
 
 .sb-selector-option:last-child {
@@ -383,11 +384,11 @@
 }
 
 .sb-selector-option:hover {
-  background: rgba(255,255,255,.1);
+  background: rgb(20, 60, 120);
 }
 
 .sb-selector-option:focus-within {
-  background: rgba(255,255,255,.15);
+  background: rgb(25, 65, 125);
   outline: 2px solid rgba(255,255,255,.5);
   outline-offset: -2px;
 }
