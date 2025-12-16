@@ -873,14 +873,14 @@
       <div class="sb-k">{{ __('Son bonne réponse') }}</div>
       <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
         
-        <div class="sb-audio-selector compact" id="correct-sound-selector">
+        <div class="sb-audio-selector compact" id="correct_sound-selector">
           <button type="button" class="sb-selector-toggle" data-selector="correct_sound"
-                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="correct-sound-dropdown">
+                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="correct_sound-dropdown">
             <span class="sb-selector-label">{{ collect($unlockedCorrectSounds)->firstWhere('id', (string)$correctSoundId)['label'] ?? __('Choisir') }}</span>
             <span class="sb-selector-arrow">▼</span>
           </button>
           
-          <div class="sb-selector-dropdown" id="correct-sound-dropdown" data-dropdown="correct_sound"
+          <div class="sb-selector-dropdown" id="correct_sound-dropdown" data-dropdown="correct_sound"
                role="listbox" style="display:none;">
             <input type="hidden" name="sound[correct_sound_id]" id="sel-correct_sound" value="{{ $correctSoundId }}">
             @foreach($unlockedCorrectSounds as $cs)
@@ -900,14 +900,14 @@
       <div class="sb-k">{{ __('Son mauvaise réponse') }}</div>
       <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
         
-        <div class="sb-audio-selector compact" id="wrong-sound-selector">
+        <div class="sb-audio-selector compact" id="wrong_sound-selector">
           <button type="button" class="sb-selector-toggle" data-selector="wrong_sound"
-                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="wrong-sound-dropdown">
+                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="wrong_sound-dropdown">
             <span class="sb-selector-label">{{ collect($unlockedWrongSounds)->firstWhere('id', (string)$wrongSoundId)['label'] ?? __('Choisir') }}</span>
             <span class="sb-selector-arrow">▼</span>
           </button>
           
-          <div class="sb-selector-dropdown" id="wrong-sound-dropdown" data-dropdown="wrong_sound"
+          <div class="sb-selector-dropdown" id="wrong_sound-dropdown" data-dropdown="wrong_sound"
                role="listbox" style="display:none;">
             <input type="hidden" name="sound[wrong_sound_id]" id="sel-wrong_sound" value="{{ $wrongSoundId }}">
             @foreach($unlockedWrongSounds as $ws)
