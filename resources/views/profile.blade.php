@@ -294,6 +294,10 @@
   z-index: 10;
 }
 
+.sb-audio-selector.is-open {
+  z-index: 9999;
+}
+
 .sb-selector-toggle {
   display: flex;
   align-items: center;
@@ -1367,12 +1371,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       this.dropdown.style.display = 'block';
       this.toggle.setAttribute('aria-expanded', 'true');
+      this.container.classList.add('is-open');
       currentOpenDropdown = this;
     }
 
     closeDropdown() {
       this.dropdown.style.display = 'none';
       this.toggle.setAttribute('aria-expanded', 'false');
+      this.container.classList.remove('is-open');
       if (currentOpenDropdown === this) {
         currentOpenDropdown = null;
       }
