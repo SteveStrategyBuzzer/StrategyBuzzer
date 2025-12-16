@@ -871,54 +871,32 @@
     {{-- Son Bonne réponse --}}
     <div class="sb-row" style="text-align:left;">
       <div class="sb-k">{{ __('Son bonne réponse') }}</div>
-      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-        
-        <div class="sb-audio-selector compact" id="correct_sound-selector">
-          <button type="button" class="sb-selector-toggle" data-selector="correct_sound"
-                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="correct_sound-dropdown">
-            <span class="sb-selector-label">{{ collect($unlockedCorrectSounds)->firstWhere('id', (string)$correctSoundId)['label'] ?? __('Choisir') }}</span>
-            <span class="sb-selector-arrow">▼</span>
-          </button>
-          
-          <div class="sb-selector-dropdown" id="correct_sound-dropdown" data-dropdown="correct_sound"
-               role="listbox" style="display:none;">
-            <input type="hidden" name="sound[correct_sound_id]" id="sel-correct_sound" value="{{ $correctSoundId }}">
+      <div class="sb-v" style="text-align:right;">
+        <span class="sb-chooser" title="{{ __('Choisir') }}">▼
+          <select name="sound[correct_sound_id]" id="sel-correct_sound">
             @foreach($unlockedCorrectSounds as $cs)
-              <label class="sb-selector-option" data-value="{{ $cs['id'] }}" data-label="{{ $cs['label'] }}" role="option">
-                <input type="radio" name="correct_sound_choice" value="{{ $cs['id'] }}" {{ (string)$correctSoundId === (string)$cs['id'] ? 'checked' : '' }}>
-                <span class="sb-option-text">{{ $cs['label'] }}</span>
-                <button type="button" class="sb-option-speaker" data-audio="{{ $cs['id'] }}" data-duration="2000" title="{{ __('Tester') }}">🔊</button>
-              </label>
+              <option value="{{ $cs['id'] }}" @selected((string)$correctSoundId === (string)$cs['id'])>
+                {{ $cs['label'] }}
+              </option>
             @endforeach
-          </div>
-        </div>
+          </select>
+        </span>
       </div>
     </div>
 
     {{-- Son Mauvaise réponse --}}
     <div class="sb-row" style="text-align:left;">
       <div class="sb-k">{{ __('Son mauvaise réponse') }}</div>
-      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-        
-        <div class="sb-audio-selector compact" id="wrong_sound-selector">
-          <button type="button" class="sb-selector-toggle" data-selector="wrong_sound"
-                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="wrong_sound-dropdown">
-            <span class="sb-selector-label">{{ collect($unlockedWrongSounds)->firstWhere('id', (string)$wrongSoundId)['label'] ?? __('Choisir') }}</span>
-            <span class="sb-selector-arrow">▼</span>
-          </button>
-          
-          <div class="sb-selector-dropdown" id="wrong_sound-dropdown" data-dropdown="wrong_sound"
-               role="listbox" style="display:none;">
-            <input type="hidden" name="sound[wrong_sound_id]" id="sel-wrong_sound" value="{{ $wrongSoundId }}">
+      <div class="sb-v" style="text-align:right;">
+        <span class="sb-chooser" title="{{ __('Choisir') }}">▼
+          <select name="sound[wrong_sound_id]" id="sel-wrong_sound">
             @foreach($unlockedWrongSounds as $ws)
-              <label class="sb-selector-option" data-value="{{ $ws['id'] }}" data-label="{{ $ws['label'] }}" role="option">
-                <input type="radio" name="wrong_sound_choice" value="{{ $ws['id'] }}" {{ (string)$wrongSoundId === (string)$ws['id'] ? 'checked' : '' }}>
-                <span class="sb-option-text">{{ $ws['label'] }}</span>
-                <button type="button" class="sb-option-speaker" data-audio="{{ $ws['id'] }}" data-duration="2000" title="{{ __('Tester') }}">🔊</button>
-              </label>
+              <option value="{{ $ws['id'] }}" @selected((string)$wrongSoundId === (string)$ws['id'])>
+                {{ $ws['label'] }}
+              </option>
             @endforeach
-          </div>
-        </div>
+          </select>
+        </span>
       </div>
     </div>
 
@@ -1389,12 +1367,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Initialiser les cinq sélecteurs
+  // Initialiser les trois sélecteurs audio custom
   const ambianceSelectorObj = new AudioSelector('ambiance');
   const gameplaySelectorObj = new AudioSelector('gameplay');
   const buzzerSelectorObj = new AudioSelector('buzzer');
-  const correctSoundSelectorObj = new AudioSelector('correct_sound');
-  const wrongSoundSelectorObj = new AudioSelector('wrong_sound');
+  
+  // Synchroniser les selects natifs avec localStorage
+  const selCorrectSound = document.getElementById('sel-correct_sound');
+  const selWrongSound = document.getElementById('sel-wrong_sound');
+  
+  if (selCorrectSound) {
+    selCorrectSound.addEventListener('change', () => {
+      localStorage.setItem('selectedCorrectSound', selCorrectSound.value);
+      console.log('✅ Son bonne réponse changé:', selCorrectSound.value);
+    });
+  }
+  
+  if (selWrongSound) {
+    selWrongSound.addEventListener('change', () => {
+      localStorage.setItem('selectedWrongSound', selWrongSound.value);
+      console.log('✅ Son mauvaise réponse changé:', selWrongSound.value);
+    });
+  }
 
   // Initialisation au chargement (les sélecteurs restent toujours visibles pour tester)
   updateAmbiance();
