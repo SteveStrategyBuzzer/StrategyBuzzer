@@ -139,6 +139,10 @@ class UnifiedGameController extends Controller
         session(['game_state' => $provider->getGameState()]);
         session(['game_mode' => $mode]);
         
+        // Réinitialiser les skills pour la nouvelle partie
+        session(['used_skills' => []]);
+        session(['skill_usage_counts' => []]);
+        
         if (in_array($mode, ['duo', 'league_individual', 'league_team'])) {
             return redirect()->route('game.resume', ['mode' => $mode]);
         }
@@ -708,7 +712,8 @@ class UnifiedGameController extends Controller
         
         $matchResult = $provider->getMatchResult();
         
-        session()->forget(['game_state', 'game_mode']);
+        // Nettoyer toutes les sessions de jeu incluant les skills
+        session()->forget(['game_state', 'game_mode', 'used_skills', 'skill_usage_counts']);
         
         $params = [
             'mode' => $mode,
@@ -1670,7 +1675,8 @@ class UnifiedGameController extends Controller
             ]
         ];
         
-        session()->forget(['game_state', 'game_mode']);
+        // Nettoyer toutes les sessions de jeu incluant les skills
+        session()->forget(['game_state', 'game_mode', 'used_skills', 'skill_usage_counts']);
         
         return view('game_match_result', ['params' => $params]);
     }

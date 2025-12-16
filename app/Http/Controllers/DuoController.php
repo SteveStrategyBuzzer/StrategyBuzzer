@@ -210,6 +210,9 @@ class DuoController extends Controller
         if ($this->firestoreService->sessionExists($match->id)) {
             $this->firestoreService->deleteMatchSession($match->id);
         }
+        
+        // Nettoyer les sessions de jeu incluant les skills
+        session()->forget(['game_state', 'game_mode', 'used_skills', 'skill_usage_counts']);
 
         return response()->json([
             'success' => true,
