@@ -68,6 +68,8 @@
 
     // BUG FIX #8: Valeurs par défaut pour les nouveaux comptes
     $buzzerId = data_get($s, 'sound.buzzer_id', 'buzzer_default_1'); // Par défaut: Buzzer 1
+    $correctSoundId = data_get($s, 'sound.correct_sound_id', 'correct_default'); // Par défaut: Son correct
+    $wrongSoundId = data_get($s, 'sound.wrong_sound_id', 'wrong_default'); // Par défaut: Son incorrect
     $musicId  = data_get($s, 'sound.music_id', 'strategybuzzer');     // Par défaut: StrategyBuzzer
     $gameplayMusicId = data_get($s, 'gameplay.music_id', $musicId ?: 'strategybuzzer'); // Par défaut = ambiance ou StrategyBuzzer
     $theme    = data_get($s, 'theme.style', 'Classique');
@@ -78,6 +80,18 @@
         ['id'=>'classic_beep','label'=>__('Classique')],
         ['id'=>'retro','label'=>__('Rétro')],
         ['id'=>'laser','label'=>__('Laser')],
+    ];
+    $unlockedCorrectSounds = data_get($s, 'unlocked.correct_sounds', []) ?: [
+        ['id'=>'correct_default','label'=>__('Par défaut')],
+        ['id'=>'correct_chime','label'=>__('Carillon')],
+        ['id'=>'correct_success','label'=>__('Succès')],
+        ['id'=>'correct_coin','label'=>__('Pièce')],
+    ];
+    $unlockedWrongSounds = data_get($s, 'unlocked.wrong_sounds', []) ?: [
+        ['id'=>'wrong_default','label'=>__('Par défaut')],
+        ['id'=>'wrong_buzzer','label'=>__('Buzzer erreur')],
+        ['id'=>'wrong_fail','label'=>__('Échec')],
+        ['id'=>'wrong_bonk','label'=>__('Bonk')],
     ];
     $unlockedMusic = data_get($s, 'unlocked.music', []) ?: [
         ['id'=>'strategybuzzer', 'label'=>__('StrategyBuzzer')],
@@ -849,6 +863,60 @@
       </div>
     </div>
 
+    {{-- Son Bonne réponse --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">{{ __('Son bonne réponse') }}</div>
+      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+        
+        <div class="sb-audio-selector compact" id="correct-sound-selector">
+          <button type="button" class="sb-selector-toggle" data-selector="correct_sound"
+                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="correct-sound-dropdown">
+            <span class="sb-selector-label">{{ collect($unlockedCorrectSounds)->firstWhere('id', (string)$correctSoundId)['label'] ?? __('Choisir') }}</span>
+            <span class="sb-selector-arrow">▼</span>
+          </button>
+          
+          <div class="sb-selector-dropdown" id="correct-sound-dropdown" data-dropdown="correct_sound"
+               role="listbox" style="display:none;">
+            <input type="hidden" name="sound[correct_sound_id]" id="sel-correct_sound" value="{{ $correctSoundId }}">
+            @foreach($unlockedCorrectSounds as $cs)
+              <label class="sb-selector-option" data-value="{{ $cs['id'] }}" data-label="{{ $cs['label'] }}" role="option">
+                <input type="radio" name="correct_sound_choice" value="{{ $cs['id'] }}" {{ (string)$correctSoundId === (string)$cs['id'] ? 'checked' : '' }}>
+                <span class="sb-option-text">{{ $cs['label'] }}</span>
+                <button type="button" class="sb-option-speaker" data-audio="{{ $cs['id'] }}" data-duration="2000" title="{{ __('Tester') }}">🔊</button>
+              </label>
+            @endforeach
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{-- Son Mauvaise réponse --}}
+    <div class="sb-row" style="text-align:left;">
+      <div class="sb-k">{{ __('Son mauvaise réponse') }}</div>
+      <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+        
+        <div class="sb-audio-selector compact" id="wrong-sound-selector">
+          <button type="button" class="sb-selector-toggle" data-selector="wrong_sound"
+                  role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="wrong-sound-dropdown">
+            <span class="sb-selector-label">{{ collect($unlockedWrongSounds)->firstWhere('id', (string)$wrongSoundId)['label'] ?? __('Choisir') }}</span>
+            <span class="sb-selector-arrow">▼</span>
+          </button>
+          
+          <div class="sb-selector-dropdown" id="wrong-sound-dropdown" data-dropdown="wrong_sound"
+               role="listbox" style="display:none;">
+            <input type="hidden" name="sound[wrong_sound_id]" id="sel-wrong_sound" value="{{ $wrongSoundId }}">
+            @foreach($unlockedWrongSounds as $ws)
+              <label class="sb-selector-option" data-value="{{ $ws['id'] }}" data-label="{{ $ws['label'] }}" role="option">
+                <input type="radio" name="wrong_sound_choice" value="{{ $ws['id'] }}" {{ (string)$wrongSoundId === (string)$ws['id'] ? 'checked' : '' }}>
+                <span class="sb-option-text">{{ $ws['label'] }}</span>
+                <button type="button" class="sb-option-speaker" data-audio="{{ $ws['id'] }}" data-duration="2000" title="{{ __('Tester') }}">🔊</button>
+              </label>
+            @endforeach
+          </div>
+        </div>
+      </div>
+    </div>
+
     {{-- Boutons Enregistrer et Déconnexion côte à côte --}}
     <div style="margin-top:15px; text-align:center; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
       <button type="submit" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;">{{ __('Sauvegarder') }}</button>
@@ -1273,6 +1341,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (this.name === 'buzzer') {
         localStorage.setItem('selectedBuzzer', value);
         console.log('✅ Buzzer changé:', value);
+      } else if (this.name === 'correct_sound') {
+        localStorage.setItem('selectedCorrectSound', value);
+        console.log('✅ Son bonne réponse changé:', value);
+      } else if (this.name === 'wrong_sound') {
+        localStorage.setItem('selectedWrongSound', value);
+        console.log('✅ Son mauvaise réponse changé:', value);
       }
     }
 
@@ -1308,10 +1382,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Initialiser les trois sélecteurs
+  // Initialiser les cinq sélecteurs
   const ambianceSelectorObj = new AudioSelector('ambiance');
   const gameplaySelectorObj = new AudioSelector('gameplay');
   const buzzerSelectorObj = new AudioSelector('buzzer');
+  const correctSoundSelectorObj = new AudioSelector('correct_sound');
+  const wrongSoundSelectorObj = new AudioSelector('wrong_sound');
 
   // Initialisation au chargement (les sélecteurs restent toujours visibles pour tester)
   updateAmbiance();
