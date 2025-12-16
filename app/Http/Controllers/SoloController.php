@@ -3169,7 +3169,7 @@ class SoloController extends Controller
             ]);
             
             // Appeler l'API Node.js pour générer les questions progressivement
-            $response = Http::post('http://localhost:3000/generate-queue', [
+            $response = Http::post(env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-queue', [
                 'theme' => $theme,
                 'niveau' => $niveau,
                 'avatar' => $avatar,

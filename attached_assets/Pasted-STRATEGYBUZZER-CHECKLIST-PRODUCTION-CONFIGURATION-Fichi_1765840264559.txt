@@ -1,0 +1,208 @@
+STRATEGYBUZZER — CHECKLIST PRODUCTION & CONFIGURATION
+(Fichier 04 – FINAL)
+
+Ce fichier garantit que l’environnement
+respecte STRICTEMENT les fichiers :
+
+01_ARCHITECTURE_FINALE.txt
+02_FIRESTORE_STRUCTURE_CANONIQUE_v2.txt
+03_FLUX_SYSTEME.txt
+
+==================================================
+1. OBJECTIF DE CE FICHIER
+==================================================
+
+- Éviter toute mauvaise configuration serveur
+- Éviter les modes “dev” en production
+- Garantir que :
+  - le gameplay reste fluide
+  - l’IA ne bloque jamais
+  - le temps réel est fiable
+- Permettre à un tiers de déployer sans interprétation
+
+==================================================
+2. TYPE DE SERVEUR (REPLIT)
+==================================================
+
+OBLIGATOIRE :
+- Serveur Linux personnalisé / scalable
+- Accès NGINX + PHP-FPM
+- Processus multiples autorisés
+
+INTERDIT :
+- PHP Dev Server
+- Serveur unique mono-process
+- Mode “Run PHP only”
+
+==================================================
+3. PROCESSUS OBLIGATOIRES
+==================================================
+
+Les processus suivants DOIVENT tourner :
+
+1) NGINX
+2) PHP-FPM
+3) Laravel (app)
+4) Redis
+5) Workers Laravel (queues)
+
+SI UN PROCESSUS EST ARRÊTÉ :
+- le jeu est considéré INSTABLE
+
+==================================================
+4. VARIABLES D’ENVIRONNEMENT (.env)
+==================================================
+
+Valeurs NON NÉGOCIABLES :
+
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://strategybuzzer.com
+
+CACHE_DRIVER=redis
+QUEUE_CONNECTION=redis
+SESSION_DRIVER=redis
+
+REDIS_CLIENT=phpredis
+
+FIREBASE_PROJECT_ID=xxxxx
+FIREBASE_CLIENT_EMAIL=xxxxx
+FIREBASE_PRIVATE_KEY=xxxxx
+
+GEMINI_API_KEY=xxxxx
+
+SANCTUM_STATEFUL_DOMAINS=strategybuzzer.com
+
+==================================================
+5. REDIS
+==================================================
+
+Redis DOIT être actif pour :
+- Cache questions
+- Sessions
+- Queues
+
+Clés critiques :
+- questions:{theme}:{niveau}:{langue}
+- sessions:{playerId}
+
+TTL questions : 1 heure minimum
+
+==================================================
+6. WORKERS LARAVEL (OBLIGATOIRES)
+==================================================
+
+Commande de base :
+
+php artisan queue:work redis --sleep=1 --tries=3
+
+Règles :
+- Minimum 1 worker actif
+- Recommandé : 2+ en prod
+- Aucun gameplay ne dépend d’un worker en direct
+
+==================================================
+7. FIREBASE / FIRESTORE
+==================================================
+
+OBLIGATOIRE :
+- Firestore en mode production
+- Règles restrictives activées
+- Pas de write public
+- Accès limité aux membres de session
+
+INTERDIT :
+- allow read, write: if true;
+- Utiliser Firestore comme base métier
+
+==================================================
+8. WEBRTC / VOIX
+==================================================
+
+- Signalisation UNIQUEMENT via Firestore
+- Flux audio P2P
+- Aucun enregistrement serveur
+- Aucun fallback serveur audio
+
+==================================================
+9. IA (GEMINI)
+==================================================
+
+Règles absolues :
+- Gemini JAMAIS appelé depuis le client
+- Gemini JAMAIS appelé en synchrone
+- Gemini = workers uniquement
+- Timeout et retry obligatoires
+
+==================================================
+10. GAMEPLAY ENGINE (CLIENT)
+==================================================
+
+OBLIGATOIRE :
+- GameplayEngine.js unique
+- Aucune logique gameplay par mode
+- Providers uniquement :
+  - LocalProvider
+  - FirestoreProvider
+
+INTERDIT :
+- Dupliquer startTimer(), handleBuzz(), submitAnswer()
+- Logique spécifique par page
+
+==================================================
+11. LOGS & SURVEILLANCE
+==================================================
+
+À activer :
+- Logs Laravel (errors only)
+- Logs workers
+- Logs Redis
+
+À éviter :
+- Debug client en prod
+- console.log gameplay critiques
+
+==================================================
+12. SÉCURITÉ
+==================================================
+
+- HTTPS obligatoire
+- Cookies sécurisés
+- Sanctum configuré
+- XSS filtré côté Laravel
+- Aucun secret exposé client
+
+==================================================
+13. DÉPLOIEMENT
+==================================================
+
+Règles :
+- Déploiement = redémarrage contrôlé
+- Workers redémarrés après deploy
+- Cache clear uniquement via artisan
+
+==================================================
+14. CHECK FINAL AVANT PROD
+==================================================
+
+☐ NGINX actif
+☐ PHP-FPM actif
+☐ Redis actif
+☐ Workers actifs
+☐ Firestore rules sécurisées
+☐ Gemini async uniquement
+☐ GameplayEngine unifié
+☐ APP_DEBUG=false
+
+SI TOUT EST COCHÉ :
+→ StrategyBuzzer est prêt production mondiale
+
+==================================================
+15. STATUT
+==================================================
+
+Cette checklist est FINALE.
+Elle ne doit pas être modifiée sans revoir
+les fichiers 01, 02 et 03.
+
+FIN.

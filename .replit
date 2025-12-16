@@ -70,3 +70,4 @@ build = ["cd", "frontend", "&&", "npm", "run", "build"]
 SESSION_DOMAIN = ""
 SESSION_SECURE_COOKIE = "false"
 SESSION_SAME_SITE = "lax"
+QUESTION_API_URL = "http://localhost:3000"

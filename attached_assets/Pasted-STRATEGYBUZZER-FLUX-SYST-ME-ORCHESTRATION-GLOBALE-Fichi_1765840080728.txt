@@ -1,0 +1,210 @@
+STRATEGYBUZZER — FLUX SYSTÈME & ORCHESTRATION GLOBALE
+(Fichier 03 – OBLIGATOIRE)
+
+Ce document définit :
+- QUI agit
+- QUAND
+- OÙ
+- POURQUOI
+
+Il empêche toute ambiguïté entre :
+Laravel • Firestore • Client • Gemini • Redis
+
+Ce fichier complète strictement :
+01_ARCHITECTURE_FINALE.txt
+02_FIRESTORE_STRUCTURE_CANONIQUE_v2.txt
+
+==================================================
+1. PRINCIPES DE FLUX (NON NÉGOCIABLES)
+==================================================
+
+- Le CLIENT déclenche les actions utilisateur
+- Firestore synchronise instantanément
+- Laravel valide et tranche
+- Gemini n’est JAMAIS bloquant
+- Redis sert d’intermédiaire silencieux
+- AUCUNE action critique n’est synchrone IA
+
+==================================================
+2. ACTEURS DU SYSTÈME
+==================================================
+
+CLIENT (GameplayEngine.js)
+- UI
+- Timers
+- Buzz
+- Skills
+- Sons & animations
+
+FIRESTORE
+- Ordonnancement temps réel
+- Buzzers
+- Chronos
+- Présence
+- Voix / Chat
+
+LARAVEL
+- Règles de jeu
+- Scores finaux
+- Anti-triche
+- Historique
+- Quêtes
+- Avatars & skills
+
+REDIS
+- Queues
+- Cache questions
+- Sessions
+
+GEMINI
+- Génération questions
+- Résumés pédagogiques
+- Aucune logique temps réel
+
+==================================================
+3. FLUX STANDARD — QUESTION
+==================================================
+
+1. (Host ou système) demande une question à Laravel
+2. Laravel :
+   - vérifie contexte
+   - récupère cache Redis
+   - OU déclenche job Gemini (async)
+3. Laravel renvoie question au Host
+4. Host publie dans Firestore :
+   - currentQuestionData
+   - questionPublishedAt = Date.now()
+5. Tous les clients détectent changement
+6. GameplayEngine.startQuestion()
+7. Timer démarre localement
+
+➡️ Firestore = déclencheur
+➡️ Client = affichage
+➡️ Laravel = vérité métier
+
+==================================================
+4. FLUX BUZZ (CRITIQUE)
+==================================================
+
+1. Joueur appuie sur Buzz
+2. Client écrit dans Firestore :
+   /buzzers/{playerId}.buzzedAt
+3. Firestore ordonne par timestamp
+4. Tous les clients voient le premier buzz
+5. GameplayEngine.handleBuzz()
+6. Firestore verrouille le buzzer
+7. Laravel est notifié (lecture)
+8. Laravel calcule points / pénalités
+9. Scores mis à jour (Firestore + SQL)
+
+➡️ Firestore décide QUI buzz
+➡️ Laravel décide QUOI faire
+
+==================================================
+5. FLUX RÉPONSE
+==================================================
+
+1. Joueur sélectionne réponse
+2. Client écrit :
+   /answers/{playerId}
+3. Laravel valide réponse
+4. Laravel applique :
+   - points
+   - skills ACTIVE_POST
+   - pénalités
+5. Résultat publié (Firestore)
+6. GameplayEngine affiche feedback
+
+==================================================
+6. FLUX SKILLS AVATAR
+==================================================
+
+PASSIVE :
+- Appliqué automatiquement par Laravel
+
+VISUAL :
+- Déclenché client uniquement
+
+ACTIVE_PRE :
+1. Joueur active skill
+2. Client notifie Laravel
+3. Laravel valide disponibilité
+4. Effet publié dans Firestore
+
+ACTIVE_POST :
+- Déclenché après validation réponse
+- Calcul Laravel uniquement
+
+==================================================
+7. FLUX IA (GEMINI)
+==================================================
+
+1. Laravel détecte besoin de génération
+2. Job envoyé en queue Redis
+3. Worker appelle Gemini
+4. Résultat validé / nettoyé
+5. Stockage SQL + Redis
+6. Résumé instructif généré async
+7. JAMAIS bloquant gameplay
+
+==================================================
+8. FLUX CHAT & VOIX
+==================================================
+
+CHAT LOBBY :
+- Client → Firestore → Clients
+
+CHAT PRIVÉ :
+- Client → Laravel → PostgreSQL
+
+VOIX :
+- Signalisation WebRTC via Firestore
+- Flux audio P2P (hors serveur)
+
+==================================================
+9. FLUX LIGUE 5v5
+==================================================
+
+- 10 joueurs connectés
+- 2 équipes isolées
+- Buzzers individuels
+- Scores par équipe calculés Laravel
+- Voix scindée par team
+- Firestore = synchronisation
+- Laravel = arbitrage final
+
+==================================================
+10. FLUX FIN DE PARTIE
+==================================================
+
+1. Dernière question terminée
+2. Laravel :
+   - calcule scores finaux
+   - valide quêtes
+   - met à jour divisions
+3. Firestore :
+   - status = finished
+   - verrouille écriture
+4. Contact Book mis à jour
+5. Historique enregistré
+
+==================================================
+11. INTERDICTIONS ABSOLUES
+==================================================
+
+- Client ne décide JAMAIS des points
+- Firestore ne décide JAMAIS des règles
+- Gemini n’est JAMAIS synchrone
+- Laravel ne gère PAS le temps réel brut
+
+==================================================
+12. RÈGLE D’OR FINALE
+==================================================
+
+Déclenchement → Client  
+Ordonnancement → Firestore  
+Décision → Laravel  
+Calcul lourd → Queue / Gemini  
+
+Ce flux est FINAL.
+Toute feature future DOIT s’y conformer.

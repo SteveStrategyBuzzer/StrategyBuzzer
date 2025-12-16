@@ -1096,7 +1096,7 @@ app.post('/generate-queue', async (req, res) => {
     try {
       console.log(`  📝 Génération question ${questionNumber}/${totalQuestions}...`);
       
-      const response = await fetch('http://localhost:3000/generate-question', {
+      const response = await fetch((process.env.QUESTION_API_URL || 'http://localhost:3000') + '/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

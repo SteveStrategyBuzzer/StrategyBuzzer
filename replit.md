@@ -20,8 +20,17 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - Questions are published to Firebase Firestore with `currentQuestionData` and `questionPublishedAt` timestamp
 - Non-host clients receive questions via Firestore snapshot listeners, triggering instant UI updates
 - Server-side answer validation: `correct_index` never exposed to clients, validated from session data
-- `GameFlowController` JavaScript class manages all question transitions, UI resets, and state management
 - Timer, buzz state, and answer buttons reset atomically on each new question
+
+**GameplayEngine.js - Unified Client Module (Dec 2025)**
+- Single module for ALL game modes (Solo, Duo, League, Master)
+- Guarantees identical gameplay behavior across modes
+- Providers: LocalProvider (Solo) and FirestoreProvider (multiplayer)
+- Manages: startQuestion(), startTimer(), handleBuzz(), submitAnswer(), activateSkill(), updateScores()
+
+**Environment Variables for Migration**
+- `QUESTION_API_URL` : URL of Question API service (default: http://localhost:3000)
+- All external URLs use env() - no hardcoded localhost values
 
 Key services include:
 -   **QuestionService**: Manages AI-ready, theme-based question generation with adaptive difficulty, a 3-layer anti-duplication system, progressive block-based generation, and language-specific strict spelling verification. It leverages Google Gemini 2.0 Flash.

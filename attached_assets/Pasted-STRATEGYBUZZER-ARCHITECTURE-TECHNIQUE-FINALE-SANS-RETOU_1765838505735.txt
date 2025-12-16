@@ -1,0 +1,154 @@
+STRATEGYBUZZER — ARCHITECTURE TECHNIQUE FINALE (SANS RETOUR)
+
+Objectif :
+Implanter StrategyBuzzer avec une architecture définitive, scalable mondialement,
+sans migration future, sans refonte serveur, et sans dette technique.
+
+==================================================
+1. PRINCIPES NON NÉGOCIABLES
+==================================================
+
+- Aucune refonte serveur ultérieure
+- Une seule base de code
+- Séparation stricte :
+  - gameplay temps réel
+  - logique métier
+  - IA
+- Le jeu doit supporter :
+  - multijoueur mondial
+  - ligues 10 joueurs (5v5)
+  - buzzers synchronisés
+  - chat + micro en lobby
+  - IA générative (questions + résumés)
+
+==================================================
+2. STACK TECHNIQUE OFFICIELLE (DÉFINITIVE)
+==================================================
+
+Serveur HTTP :
+- NGINX (reverse proxy)
+
+Backend :
+- PHP-FPM
+- Laravel (framework principal)
+
+Temps réel :
+- Firebase / Firestore
+  - buzzers
+  - chronos
+  - états de partie
+  - lobby multijoueur
+  - chat
+  - micro / présence
+
+IA :
+- Gemini (Google)
+- Appelé UNIQUEMENT via workers asynchrones
+
+Queue / Cache :
+- Redis
+- Laravel Queues
+
+==================================================
+3. RÔLE DE CHAQUE TECHNOLOGIE
+==================================================
+
+NGINX :
+- Point d’entrée unique
+- Load balancing futur
+- Sécurité et performance
+- Ne sera JAMAIS remplacé
+
+PHP-FPM :
+- Exécution de Laravel
+- Stable, scalable, standard industrie
+
+Laravel :
+- Authentification
+- Profils joueurs
+- Avatars
+- Quêtes
+- Boutique
+- Règles de jeu
+- Sécurité
+- API REST
+
+Redis :
+- Files de tâches (queues)
+- Cache
+- Sessions
+- Support haute charge
+
+Gemini :
+- Génération de questions
+- Génération de réponses
+- Résumé instructif post-question
+- JAMAIS en temps réel bloquant
+
+Firebase / Firestore :
+- Synchronisation buzzers
+- Synchronisation chronos
+- Gameplay multijoueur
+- Lobby
+- Chat
+- Micro (signaling / présence)
+- Ligues (10 joueurs, 5v5)
+
+==================================================
+4. RÈGLES D’ARCHITECTURE ABSOLUES
+==================================================
+
+INTERDIT :
+- WebSocket maison côté serveur
+- Node.js comme serveur principal
+- IA synchrone bloquant une partie
+- Logique temps réel dans Laravel
+
+OBLIGATOIRE :
+- Temps réel = Firestore uniquement
+- IA = queues asynchrones
+- Laravel = logique métier seulement
+
+==================================================
+5. FLUX GLOBAL DU JEU
+==================================================
+
+1. Le joueur agit (buzz, réponse, micro)
+2. Firestore synchronise instantanément
+3. Laravel valide règles et résultats
+4. Si besoin :
+   - une tâche IA est envoyée en queue
+5. Gemini répond via worker
+6. Résultat stocké / affiché
+7. Le gameplay n’est JAMAIS bloqué
+
+==================================================
+6. SCALABILITÉ (SANS MODIFICATION FUTURE)
+==================================================
+
+- Ajout d’instances serveur possible
+- NGINX répartit la charge
+- Firebase synchronise les joueurs
+- Redis partage l’état
+- AUCUN changement de code requis
+
+==================================================
+7. ENVIRONNEMENT
+==================================================
+
+Même en développement :
+- Configuration type production
+- Pas de serveur PHP "dev"
+- Pas de mode simplifié
+
+==================================================
+8. OBJECTIF FINAL
+==================================================
+
+StrategyBuzzer doit pouvoir :
+- passer de 10 à 1 000 000 joueurs
+- sans changer d’architecture
+- sans réécrire le backend
+- sans migration serveur
+
+Cette architecture est FINALE et VALIDÉE.

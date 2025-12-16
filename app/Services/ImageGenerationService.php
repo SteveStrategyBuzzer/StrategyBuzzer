@@ -25,7 +25,7 @@ class ImageGenerationService
             ]);
             
             // Appel à l'API Node.js pour générer l'image
-            $response = Http::timeout(60)->post('http://localhost:3000/generate-image-question', [
+            $response = Http::timeout(60)->post(env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-image-question', [
                 'questionNumber' => $questionNumber,
                 'language' => $language
             ]);

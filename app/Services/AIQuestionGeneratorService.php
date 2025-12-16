@@ -33,7 +33,7 @@ class AIQuestionGeneratorService
         while ($attempt < $maxRetries) {
             try {
                 // Appel à l'API OpenAI via Node.js avec tentative d'unicité
-                $response = Http::timeout(20)->post('http://localhost:3000/generate-question', [
+                $response = Http::timeout(20)->post(env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-question', [
                     'theme' => $theme,
                     'niveau' => $niveau,
                     'questionNumber' => $questionNumber,

@@ -1,0 +1,162 @@
+STRATEGYBUZZER — STRUCTURE FIRESTORE & TEMPS RÉEL
+(Fichier complémentaire à 01_ARCHITECTURE_FINALE.txt)
+
+Objectif :
+Définir précisément la structure Firestore utilisée pour :
+- le temps réel
+- la synchronisation multijoueur
+- les buzzers
+- les chronos
+- le lobby
+- le chat
+- le micro
+- les ligues (5v5)
+
+Ce fichier NE MODIFIE PAS l’architecture.
+Il applique strictement les règles du fichier 01.
+
+==================================================
+1. PRINCIPES FIRESTORE
+==================================================
+
+- Firestore est la SOURCE DE VÉRITÉ temps réel
+- Firestore gère UNIQUEMENT :
+  - état instantané
+  - synchronisation
+  - présence
+  - interactions live
+- Aucune logique métier complexe dans Firestore
+- Laravel reste responsable des règles finales et validations
+
+==================================================
+2. COLLECTIONS PRINCIPALES
+==================================================
+
+/lobbies/{lobbyId}
+- type: solo | duo | ligue | master
+- status: waiting | playing | finished
+- createdAt
+- currentQuestionIndex
+- settings (nbQuestions, mode, timers)
+- createdBy
+
+--------------------------------------------------
+
+/lobbies/{lobbyId}/players/{playerId}
+- username
+- avatarId
+- team: A | B (ligue seulement)
+- score
+- isReady
+- isConnected
+- lastPing
+- micEnabled
+
+--------------------------------------------------
+
+/lobbies/{lobbyId}/game_state/current
+- phase: question | buzz | answer | result | pause
+- countdown
+- buzzerLocked: true | false
+- buzzedBy: playerId | null
+- updatedAt
+
+==================================================
+3. BUZZERS (TEMPS RÉEL CRITIQUE)
+==================================================
+
+/lobbies/{lobbyId}/buzzers/{playerId}
+- buzzedAt (timestamp Firestore)
+- reactionTimeMs
+- valid: true | false
+
+Règles :
+- Le PREMIER timestamp valide gagne le buzz
+- Firestore gère l’ordre
+- Laravel valide les conséquences (points, pénalités)
+
+==================================================
+4. QUESTIONS & RÉPONSES LIVE
+==================================================
+
+/lobbies/{lobbyId}/questions/{questionIndex}
+- questionText
+- questionImage (optionnel)
+- answers [A, B, C, D]
+- correctAnswer (hash ou index)
+- type: qcm | vrai_faux | image
+
+--------------------------------------------------
+
+/lobbies/{lobbyId}/answers/{playerId}
+- selectedAnswer
+- answeredAt
+- isCorrect
+
+==================================================
+5. CHAT LOBBY
+==================================================
+
+/lobbies/{lobbyId}/chat/{messageId}
+- senderId
+- message
+- createdAt
+- system: true | false
+
+Règles :
+- Chat UNIQUEMENT en lobby
+- Aucun chat pendant le buzz critique (optionnel)
+- Firestore = diffusion
+- Pas de modération lourde ici
+
+==================================================
+6. MICRO & PRÉSENCE
+==================================================
+
+/lobbies/{lobbyId}/voice_presence/{playerId}
+- joinedAt
+- micActive: true | false
+- muted: true | false
+- lastSignal
+
+Rôle :
+- Signaling WebRTC
+- Présence vocale
+- PAS de flux audio stocké
+
+==================================================
+7. LIGUE 5v5 (10 JOUEURS)
+==================================================
+
+/ligues/{ligueId}
+- season
+- status
+- createdAt
+
+--------------------------------------------------
+
+/ligues/{ligueId}/matchs/{matchId}
+- lobbyId
+- teamA [playerIds]
+- teamB [playerIds]
+- scoreA
+- scoreB
+- status
+
+==================================================
+8. SÉCURITÉ & RÈGLES
+==================================================
+
+- Firestore Rules :
+  - un joueur ne peut écrire QUE son propre état
+  - lecture autorisée aux membres du lobby
+  - écriture verrouillée après fin de partie
+
+- AUCUNE règle métier complexe ici
+- AUCUNE logique de points finale ici
+
+==================================================
+9. INTERACTIONS AVEC LARAVEL
+==================================================
+
+Laravel

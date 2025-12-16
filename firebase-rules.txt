@@ -1,66 +1,215 @@
 // Firebase Firestore Security Rules for StrategyBuzzer
+// STRUCTURE CANONIQUE v2 - gameSessions unifiées
+// SÉCURITÉ : Accès restreint aux membres de session uniquement
 // Copy these rules to Firebase Console > Firestore > Rules
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Duo Match invitations and game state
-    match /duoMatches/{matchId} {
-      allow read, write: if request.auth != null;
+    // ==========================================
+    // HELPER FUNCTIONS
+    // ==========================================
+    
+    // Vérifie si l'utilisateur est membre de la session
+    function isSessionMember(sessionId) {
+      let session = get(/databases/$(database)/documents/gameSessions/$(sessionId));
+      return request.auth != null && (
+        session.data.hostId == request.auth.uid ||
+        exists(/databases/$(database)/documents/gameSessions/$(sessionId)/players/$(request.auth.uid))
+      );
+    }
+    
+    // Vérifie si l'utilisateur est l'hôte de la session
+    function isSessionHost(sessionId) {
+      let session = get(/databases/$(database)/documents/gameSessions/$(sessionId));
+      return request.auth != null && session.data.hostId == request.auth.uid;
+    }
+    
+    // Vérifie si la session est encore active (pas finished)
+    function isSessionActive(sessionId) {
+      let session = get(/databases/$(database)/documents/gameSessions/$(sessionId));
+      return session.data.status != 'finished';
+    }
+    
+    // ==========================================
+    // GAMESESSIONS - Structure unifiée pour tous les modes
+    // ==========================================
+    match /gameSessions/{sessionId} {
+      // Lecture : membres de la session uniquement
+      allow read: if isSessionMember(sessionId) || 
+                     (request.auth != null && resource.data.status == 'waiting');
       
-      // WebRTC signaling for voice chat
+      // Création : tout utilisateur authentifié peut créer une session
+      allow create: if request.auth != null && 
+                       request.resource.data.hostId == request.auth.uid;
+      
+      // Mise à jour : host uniquement pour les champs globaux, session active
+      allow update: if isSessionHost(sessionId) && isSessionActive(sessionId);
+      
+      // Suppression : host uniquement
+      allow delete: if isSessionHost(sessionId);
+      
+      // Players dans la session
+      match /players/{playerId} {
+        // Lecture : membres de la session
+        allow read: if isSessionMember(sessionId);
+        
+        // Création : joueur peut rejoindre si session en attente
+        allow create: if request.auth != null && 
+                         request.auth.uid == playerId &&
+                         get(/databases/$(database)/documents/gameSessions/$(sessionId)).data.status == 'waiting';
+        
+        // Mise à jour : joueur peut modifier son propre document
+        allow update: if request.auth != null && 
+                         request.auth.uid == playerId &&
+                         isSessionActive(sessionId);
+        
+        // Suppression : joueur peut quitter ou host peut expulser
+        allow delete: if request.auth != null && 
+                         (request.auth.uid == playerId || isSessionHost(sessionId));
+      }
+      
+      // Questions synchronisées
+      match /questions/{questionIndex} {
+        // Lecture : membres uniquement
+        allow read: if isSessionMember(sessionId);
+        
+        // Écriture : host uniquement
+        allow write: if isSessionHost(sessionId) && isSessionActive(sessionId);
+      }
+      
+      // Réponses des joueurs
+      match /answers/{playerId} {
+        // Lecture : membres de la session
+        allow read: if isSessionMember(sessionId);
+        
+        // Écriture : joueur peut soumettre sa propre réponse
+        allow write: if request.auth != null && 
+                        request.auth.uid == playerId &&
+                        isSessionMember(sessionId) &&
+                        isSessionActive(sessionId);
+      }
+      
+      // Buzzers temps réel critique
+      match /buzzers/{playerId} {
+        // Lecture : membres de la session
+        allow read: if isSessionMember(sessionId);
+        
+        // Écriture : joueur peut buzzer pour lui-même
+        allow write: if request.auth != null && 
+                        request.auth.uid == playerId &&
+                        isSessionMember(sessionId) &&
+                        isSessionActive(sessionId);
+      }
+      
+      // État global du jeu
+      match /game_state/{stateId} {
+        // Lecture : membres de la session
+        allow read: if isSessionMember(sessionId);
+        
+        // Écriture : host uniquement
+        allow write: if isSessionHost(sessionId) && isSessionActive(sessionId);
+      }
+      
+      // Voix WebRTC - membres uniquement
+      match /voice_presence/{odPlayerId} {
+        allow read: if isSessionMember(sessionId);
+        allow write: if request.auth != null && 
+                        request.auth.uid == odPlayerId &&
+                        isSessionMember(sessionId);
+      }
+      
+      match /webrtc/{signalId} {
+        allow read, write: if isSessionMember(sessionId);
+      }
+      
+      // League Team : voix par équipe
+      match /teams/{teamId}/voice_presence/{odPlayerId} {
+        allow read: if isSessionMember(sessionId);
+        allow write: if request.auth != null && 
+                        request.auth.uid == odPlayerId &&
+                        isSessionMember(sessionId);
+      }
+      
+      match /teams/{teamId}/webrtc/{signalId} {
+        allow read, write: if isSessionMember(sessionId);
+      }
+    }
+    
+    // ==========================================
+    // LEGACY - Collections existantes (rétrocompatibilité)
+    // Accès permissif temporaire pendant migration
+    // ==========================================
+    
+    // Duo Match - vérification membre via player1Id/player2Id
+    match /duoMatches/{matchId} {
+      function isDuoMember() {
+        return request.auth != null && (
+          resource.data.player1Id == request.auth.uid ||
+          resource.data.player2Id == request.auth.uid
+        );
+      }
+      
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if isDuoMember();
+      
       match /webrtc/{signalId} {
         allow read, write: if request.auth != null;
       }
       
-      // Voice presence tracking
-      match /voice_presence/{playerId} {
+      match /voice_presence/{odPlayerId} {
         allow read, write: if request.auth != null;
       }
     }
     
-    // Game state documents
+    // Game state documents (legacy)
     match /games/{gameId} {
       allow read, write: if request.auth != null;
     }
     
-    // Lobby documents
+    // Lobby documents (legacy)
     match /lobbies/{lobbyCode} {
       allow read, write: if request.auth != null;
       
-      // Player presence tracking (for real-time sync)
-      match /presence/{playerId} {
+      match /presence/{odPlayerId} {
         allow read, write: if request.auth != null;
       }
       
-      // Voice presence in lobby
-      match /voice_presence/{playerId} {
+      match /voice_presence/{odPlayerId} {
         allow read, write: if request.auth != null;
       }
       
-      // WebRTC signaling in lobby
       match /webrtc/{signalId} {
         allow read, write: if request.auth != null;
       }
       
-      // Team-scoped WebRTC for League Team mode
       match /teams/{teamId}/webrtc/{signalId} {
         allow read, write: if request.auth != null;
       }
       
-      // Team-scoped voice presence for League Team mode
-      match /teams/{teamId}/voice_presence/{playerId} {
+      match /teams/{teamId}/voice_presence/{odPlayerId} {
         allow read, write: if request.auth != null;
       }
     }
     
-    // Lobby chat messages
+    // ==========================================
+    // CHAT
+    // ==========================================
+    
+    // Lobby chat messages - membres du lobby
     match /lobby_chats/{lobbyCode}/messages/{messageId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+                       request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if false;
     }
     
-    // League Individual matches
+    // ==========================================
+    // LEAGUE (legacy)
+    // ==========================================
+    
     match /leagueMatches/{matchId} {
       allow read, write: if request.auth != null;
       
@@ -68,19 +217,26 @@ service cloud.firestore {
         allow read, write: if request.auth != null;
       }
       
-      match /voice_presence/{playerId} {
+      match /voice_presence/{odPlayerId} {
         allow read, write: if request.auth != null;
       }
     }
     
-    // Master mode rooms
+    // ==========================================
+    // MASTER (legacy)
+    // ==========================================
+    
     match /masterRooms/{roomCode} {
       allow read, write: if request.auth != null;
     }
     
-    // User presence/online status
+    // ==========================================
+    // PRÉSENCE GLOBALE
+    // ==========================================
+    
     match /presence/{odPlayerId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == odPlayerId;
     }
   }
 }

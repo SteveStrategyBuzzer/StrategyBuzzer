@@ -645,7 +645,7 @@ class MasterGameController extends Controller
             }
             
             // Appeler l'API Node.js pour générer une question difficile
-            $apiUrl = 'http://localhost:3000/generate-master-question';
+            $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
             
             $postData = json_encode([
                 'theme' => $theme . ' (question difficile de départage)',
@@ -870,7 +870,7 @@ class MasterGameController extends Controller
             }
             
             // Appeler l'API Node.js pour générer la question
-            $apiUrl = 'http://localhost:3000/generate-master-question';
+            $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
             
             $postData = json_encode([
                 'theme' => $theme,

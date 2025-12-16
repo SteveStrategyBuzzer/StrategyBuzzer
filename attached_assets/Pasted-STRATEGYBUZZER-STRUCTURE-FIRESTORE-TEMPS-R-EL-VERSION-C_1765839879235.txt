@@ -1,0 +1,262 @@
+STRATEGYBUZZER — STRUCTURE FIRESTORE & TEMPS RÉEL
+VERSION CANONIQUE v2 (COMPLÈTE)
+
+Complément strict et obligatoire de :
+01_ARCHITECTURE_FINALE.txt
+
+==================================================
+1. RAPPEL DES PRINCIPES NON NÉGOCIABLES
+==================================================
+
+- Firestore = temps réel uniquement
+- Laravel = logique métier, persistance, sécurité
+- IA (Gemini) = asynchrone via queues
+- Aucun comportement gameplay divergent entre modes
+
+==================================================
+2. GAMESESSION (CONCEPT CENTRAL)
+==================================================
+
+Toute partie temps réel est une GameSession.
+
+Modes supportés :
+- duo
+- league_individual
+- league_team (5v5)
+- master
+(Solo isolé mais compatible futur SPA)
+
+==================================================
+3. COLLECTION PRINCIPALE
+==================================================
+
+/gameSessions/{sessionId}
+- mode
+- status
+- hostId
+- divisionId
+- createdAt
+- settings { nbQuestions, theme, niveau, timers }
+- currentQuestionIndex
+- questionPublishedAt
+
+--------------------------------------------------
+/gameSessions/{sessionId}/players/{playerId}
+- username
+- avatarId
+- score
+- buzzed
+- buzzTime
+- isReady
+- isConnected
+- lastPing
+- team
+- teamColor
+- micEnabled
+
+==================================================
+4. QUESTIONS & RÉPONSES JOUEURS
+==================================================
+
+/gameSessions/{sessionId}/questions/{questionIndex}
+- question_number
+- question_text
+- answers [{index, text}]
+- type
+- theme
+- sub_theme
+- total_questions
+- language (ISO code ex: fr, en, es)
+
+/gameSessions/{sessionId}/answers/{playerId}
+- questionIndex
+- selectedAnswer
+- answeredAt
+- reactionTimeMs
+
+Règles :
+- Firestore stocke l’action
+- Laravel valide exactitude et points
+
+==================================================
+5. BUZZERS
+==================================================
+
+/gameSessions/{sessionId}/buzzers/{playerId}
+- buzzedAt
+- reactionTimeMs
+- valid
+
+==================================================
+6. ÉTAT GLOBAL DE JEU
+==================================================
+
+/gameSessions/{sessionId}/game_state/current
+- phase
+- countdown
+- buzzerLocked
+- buzzedBy
+- updatedAt
+
+==================================================
+7. VOIX & WEBRTC
+==================================================
+
+/gameSessions/{sessionId}/voice_presence/{playerId}
+- joinedAt
+- micActive
+- muted
+- speaking
+
+/gameSessions/{sessionId}/webrtc/{signalId}
+- type
+- senderId
+- data
+- createdAt
+
+League Team :
+/gameSessions/{sessionId}/teams/{teamId}/voice_presence/{playerId}
+/gameSessions/{sessionId}/teams/{teamId}/webrtc/{signalId}
+
+==================================================
+8. CHAT TEMPS RÉEL (LOBBY)
+==================================================
+
+/lobby_chats/{sessionId}/messages/{messageId}
+- senderId
+- senderUsername
+- message
+- createdAt
+- system
+
+==================================================
+9. PRÉSENCE GLOBALE
+==================================================
+
+/presence/{playerId}
+- online
+- lastSeen
+
+==================================================
+10. CHAT PRIVÉ JOUEUR À JOUEUR (HORS FIRESTORE)
+==================================================
+
+Géré par Laravel + PostgreSQL :
+
+Table : player_messages
+- id
+- sender_id
+- receiver_id
+- message
+- created_at
+- read_at
+
+Usage :
+- Conversations privées
+- Historique persistant
+- Protection XSS
+- Différent du chat lobby
+
+==================================================
+11. CONTACT BOOK (CARNET)
+==================================================
+
+Géré par Laravel :
+
+Table : player_contacts
+- player_id
+- contact_id
+- matches_played
+- wins
+- losses
+- last_match_at
+
+Création automatique après match terminé.
+
+==================================================
+12. AVATAR SKILLS (STRUCTURE OFFICIELLE)
+==================================================
+
+4 TYPES DE SKILLS (OBLIGATOIRES) :
+
+PASSIVE :
+- Effet automatique permanent
+- Ex : bonus temps, protection
+
+VISUAL :
+- Effet cosmétique
+- Animations, auras
+
+ACTIVE_PRE :
+- Activation AVANT buzz adverse
+- Ex : shield, freeze
+
+ACTIVE_POST :
+- Activation APRÈS réponse
+- Ex : double points, vol
+
+Stockage :
+- avatar_id persistant (profil)
+- skills consommés trackés en session Laravel
+
+==================================================
+13. MULTI-LANGUE (10 LANGUES)
+==================================================
+
+- language stockée dans question
+- UI localisée côté client
+- Gemini génère par langue
+- Laravel contrôle fallback
+
+==================================================
+14. CLIENT-SIDE GAMEPLAY ENGINE (CRITIQUE)
+==================================================
+
+GameplayEngine.js UNIFIÉ (obligatoire)
+
+Responsabilités :
+- startQuestion()
+- startTimer()
+- handleBuzz()
+- submitAnswer()
+- activateSkill()
+- updateScores()
+- nextQuestion()
+
+Providers :
+- LocalProvider (Solo)
+- FirestoreProvider (Duo / League / Master)
+
+Règle :
+- Aucun mode n’implémente sa logique séparément
+- ZÉRO divergence comportementale
+
+==================================================
+15. BOSS BATTLES (SOLO)
+==================================================
+
+- 10 Boss IA
+- Radar compétences
+- Skills IA visibles
+- Gérés par Laravel
+- Compatible GameplayEngine
+
+==================================================
+16. SÉCURITÉ FIRESTORE
+==================================================
+
+- Lecture : membres session
+- Écriture : joueur → son doc
+- Champs globaux : host only
+- Lock après finished
+
+==================================================
+17. RÈGLE D’OR FINALE
+==================================================
+
+Instantané → Firestore  
+Métier → Laravel + SQL  
+IA → Queue + Gemini  
+
+Cette structure est CANONIQUE v2.
+Toute évolution DOIT s’y conformer.

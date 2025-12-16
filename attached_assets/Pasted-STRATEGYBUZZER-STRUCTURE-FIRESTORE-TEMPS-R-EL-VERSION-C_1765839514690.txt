@@ -1,0 +1,198 @@
+STRATEGYBUZZER — STRUCTURE FIRESTORE & TEMPS RÉEL (VERSION CANONIQUE)
+Complément strict du fichier :
+01_ARCHITECTURE_FINALE.txt
+
+Objectif :
+Définir UNE structure Firestore cohérente, unifiée et évolutive,
+intégrant TOUS les modes de jeu existants et futurs,
+sans refonte, sans duplication, sans dette technique.
+
+==================================================
+1. PRINCIPES FONDATEURS
+==================================================
+
+- Firestore = TEMPS RÉEL UNIQUEMENT
+- Firestore = source de vérité instantanée
+- Laravel = logique métier, persistance, sécurité finale
+- Aucun calcul lourd ou IA dans Firestore
+- Tous les modes partagent la MÊME logique de synchronisation
+
+==================================================
+2. CONCEPT CENTRAL : SESSION DE JEU
+==================================================
+
+TOUT gameplay temps réel est une "GameSession".
+
+Une GameSession peut représenter :
+- Duo
+- League Individual
+- League Team (5v5)
+- Master
+- (Solo reste hors Firestore sauf future SPA)
+
+==================================================
+3. COLLECTION CANONIQUE
+==================================================
+
+/gameSessions/{sessionId}
+- mode: duo | league_individual | league_team | master
+- status: waiting | playing | finished
+- hostId
+- divisionId (league)
+- createdAt
+- settings:
+  - nbQuestions
+  - theme
+  - niveau
+  - timers
+- currentQuestionIndex
+- questionPublishedAt (timestamp discriminant)
+
+--------------------------------------------------
+/gameSessions/{sessionId}/players/{playerId}
+- username
+- avatarId
+- score
+- buzzed: true | false
+- buzzTime (timestamp)
+- isReady
+- isConnected
+- lastPing
+- team: A | B | null
+- teamColor
+- micEnabled
+
+==================================================
+4. QUESTIONS & SYNCHRONISATION
+==================================================
+
+/gameSessions/{sessionId}/questions/{questionIndex}
+- question_number
+- question_text
+- answers [{index, text}]
+- type: qcm | vrai_faux | image
+- theme
+- sub_theme
+- total_questions
+
+Règles :
+- La bonne réponse N’EST JAMAIS stockée ici
+- Laravel conserve la vérité métier
+- questionPublishedAt est utilisé comme déclencheur SPA
+
+==================================================
+5. BUZZERS (TEMPS RÉEL CRITIQUE)
+==================================================
+
+/gameSessions/{sessionId}/buzzers/{playerId}
+- buzzedAt (timestamp Firestore)
+- reactionTimeMs
+- valid: true | false
+
+Règle absolue :
+- Le premier timestamp valide gagne
+- Laravel applique points/pénalités
+
+==================================================
+6. ÉTAT GLOBAL DE JEU
+==================================================
+
+/gameSessions/{sessionId}/game_state/current
+- phase: question | buzz | answer | result | pause
+- countdown
+- buzzerLocked
+- buzzedBy
+- updatedAt
+
+==================================================
+7. VOIX & PRÉSENCE (WEBRTC)
+==================================================
+
+/gameSessions/{sessionId}/voice_presence/{playerId}
+- joinedAt
+- micActive
+- muted
+- speaking
+
+/gameSessions/{sessionId}/webrtc/{signalId}
+- type: offer | answer | ice-candidate
+- senderId
+- data
+- createdAt
+
+Spécifique League Team :
+/gameSessions/{sessionId}/teams/{teamId}/voice_presence/{playerId}
+/gameSessions/{sessionId}/teams/{teamId}/webrtc/{signalId}
+
+==================================================
+8. CHAT TEMPS RÉEL (LOBBY / SESSION)
+==================================================
+
+/lobby_chats/{sessionId}/messages/{messageId}
+- senderId
+- senderUsername
+- message
+- createdAt
+- system
+
+==================================================
+9. PRÉSENCE GLOBALE
+==================================================
+
+/presence/{playerId}
+- online
+- lastSeen
+
+==================================================
+10. RÔLE DE LARAVEL (RAPPEL)
+==================================================
+
+Laravel GÈRE :
+- Auth (Firebase Auth + Sanctum)
+- Profils
+- Avatars stratégiques & skills
+- Quêtes / achievements
+- Match history
+- Scores finaux
+- Anti-triche
+- Génération IA (Gemini via queues)
+
+Laravel NE GÈRE PAS :
+- Buzz live
+- Chronos live
+- Sync voix
+- Ordre temps réel
+
+==================================================
+11. IA & QUESTIONS (HORS FIRESTORE)
+==================================================
+
+- Gemini appelé via workers uniquement
+- Progressive Block Generation
+- Cache Redis :
+  questions:{theme}:{niveau}:{langue}
+- Anti-duplication multi-couches
+- Résumés instructifs générés async
+
+==================================================
+12. SÉCURITÉ FIRESTORE (PRODUCTION)
+==================================================
+
+- Lecture : membres de la session uniquement
+- Écriture :
+  - joueur → son propre document
+  - host → champs globaux
+- Session verrouillée après status=finished
+- Aucun accès public
+
+==================================================
+13. RÈGLE D’OR FINALE
+==================================================
+
+Si une donnée est :
+- Instantanée → Firestore
+- Persistante / stratégique → Laravel + SQL
+- Lourde / IA → Queue + Gemini
+
+Cette structure est CANONIQUE.
+Toute nouvelle feature DOIT s’y conformer.
