@@ -57,6 +57,7 @@ class GenerateQuestionsJob implements ShouldQueue
 
         for ($i = 0; $i < $this->count; $i++) {
             try {
+                // skipCache=true pour éviter boucle infinie de jobs
                 $question = $questionService->generateQuestion(
                     $this->theme,
                     $this->niveau,
@@ -67,7 +68,8 @@ class GenerateQuestionsJob implements ShouldQueue
                     [],
                     null,
                     false,
-                    $this->language
+                    $this->language,
+                    true // skipCache - génère via IA directement sans déclencher d'autres jobs
                 );
 
                 if ($question && isset($question['id'])) {

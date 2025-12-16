@@ -2,15 +2,20 @@
 
 namespace App\Services;
 
+use App\Jobs\GenerateQuestionsJob;
 use Illuminate\Support\Facades\Log;
 
 class QuestionService
 {
     private $aiGenerator;
+    private $cacheService;
+    private const CACHE_REFILL_THRESHOLD = 5;
+    private const CACHE_REFILL_COUNT = 10;
 
     public function __construct()
     {
         $this->aiGenerator = new AIQuestionGeneratorService();
+        $this->cacheService = new QuestionCacheService();
     }
 
     /**
@@ -28,12 +33,40 @@ class QuestionService
      * @param string $language Code langue ISO (fr, en, es, it, el, etc.) - défaut 'fr'
      * @return array La question générée avec réponses randomisées
      */
-    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $sessionUsedAnswers = [], $sessionUsedQuestionTexts = [], $opponentAge = null, $isBoss = false, $language = 'fr')
+    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $sessionUsedAnswers = [], $sessionUsedQuestionTexts = [], $opponentAge = null, $isBoss = false, $language = 'fr', $skipCache = false)
     {
         // Combiner les réponses permanentes et de session pour éviter tous les doublons
         $allUsedAnswers = array_unique(array_merge($usedAnswers, $sessionUsedAnswers));
         
-        // Générer la question via l'IA avec info adversaire et langue
+        // Essayer d'abord le cache (sauf pour les Boss ou si skipCache est true)
+        $question = null;
+        if (!$isBoss && !$skipCache) {
+            $question = $this->cacheService->getQuestion($theme, $niveau, $language);
+            
+            if ($question) {
+                Log::info('[QuestionService] Using cached question', [
+                    'theme' => $theme,
+                    'niveau' => $niveau,
+                    'language' => $language,
+                    'question_id' => $question['id'] ?? 'unknown'
+                ]);
+                
+                // Vérifier si on doit déclencher un refill en arrière-plan
+                $this->triggerRefillIfNeeded($theme, $niveau, $language, $usedQuestionIds, $allUsedAnswers);
+                
+                return $question;
+            }
+        }
+        
+        // Fallback: Générer la question via l'IA avec info adversaire et langue
+        Log::info('[QuestionService] Generating via AI', [
+            'theme' => $theme,
+            'niveau' => $niveau,
+            'language' => $language,
+            'is_boss' => $isBoss,
+            'skip_cache' => $skipCache
+        ]);
+        
         $question = $this->aiGenerator->generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
         
         // Randomiser les réponses pour questions à choix multiples
@@ -48,7 +81,53 @@ class QuestionService
             $question['correct_index'] = array_search($correctAnswer, $question['answers'], true);
         }
         
+        // Déclencher refill après génération directe si pas un Boss et pas depuis un job
+        if (!$isBoss && !$skipCache) {
+            $this->triggerRefillIfNeeded($theme, $niveau, $language, $usedQuestionIds, $allUsedAnswers);
+        }
+        
         return $question;
+    }
+    
+    /**
+     * Déclenche un job de pré-génération si le cache est bas
+     */
+    private function triggerRefillIfNeeded(string $theme, int $niveau, string $language, array $usedQuestionIds = [], array $usedAnswers = []): void
+    {
+        if ($this->cacheService->needsRefill($theme, $niveau, $language, self::CACHE_REFILL_THRESHOLD)) {
+            Log::info('[QuestionService] Dispatching refill job', [
+                'theme' => $theme,
+                'niveau' => $niveau,
+                'language' => $language,
+                'current_count' => $this->cacheService->getAvailableCount($theme, $niveau, $language)
+            ]);
+            
+            GenerateQuestionsJob::dispatch(
+                $theme,
+                $niveau,
+                $language,
+                self::CACHE_REFILL_COUNT,
+                $usedQuestionIds,
+                $usedAnswers
+            );
+        }
+    }
+    
+    /**
+     * Pré-remplit le cache pour un thème/niveau/langue donné
+     * Utile pour le warmup initial
+     */
+    public function warmupCache(string $theme, int $niveau, string $language, int $count = 10): void
+    {
+        GenerateQuestionsJob::dispatch($theme, $niveau, $language, $count, [], []);
+    }
+    
+    /**
+     * Retourne les statistiques du cache
+     */
+    public function getCacheStats(): array
+    {
+        return $this->cacheService->getCacheStats();
     }
 
     /**
