@@ -78,6 +78,9 @@ const GameplayEngine = {
         this.cacheElements();
         this.bindEvents();
         
+        // Set buzzer to waiting state immediately (visible but inactive)
+        this.setBuzzerWaiting();
+        
         if (options.provider) {
             this.setProvider(options.provider);
         }
@@ -269,24 +272,40 @@ const GameplayEngine = {
     // ==========================================
 
     /**
-     * Affiche le buzzer
+     * Affiche le buzzer (active state with animation)
      */
     showBuzzer() {
         if (this.elements.buzzContainer) {
-            this.elements.buzzContainer.style.display = 'flex';
+            this.elements.buzzContainer.classList.remove('buzzer-waiting', 'buzzer-hidden');
+            this.elements.buzzContainer.classList.add('buzzer-ready');
         }
         if (this.elements.buzzButton) {
             this.elements.buzzButton.disabled = false;
-            this.elements.buzzButton.style.opacity = '1';
+            // Clear any inline opacity from previous buzz states
+            this.elements.buzzButton.style.opacity = '';
         }
     },
 
     /**
-     * Cache le buzzer
+     * Cache le buzzer (hidden state after buzz/answer)
      */
     hideBuzzer() {
         if (this.elements.buzzContainer) {
-            this.elements.buzzContainer.style.display = 'none';
+            this.elements.buzzContainer.classList.remove('buzzer-ready', 'buzzer-waiting');
+            this.elements.buzzContainer.classList.add('buzzer-hidden');
+        }
+    },
+    
+    /**
+     * Met le buzzer en attente (visible mais inactif)
+     */
+    setBuzzerWaiting() {
+        if (this.elements.buzzContainer) {
+            this.elements.buzzContainer.classList.remove('buzzer-ready', 'buzzer-hidden');
+            this.elements.buzzContainer.classList.add('buzzer-waiting');
+        }
+        if (this.elements.buzzButton) {
+            this.elements.buzzButton.disabled = true;
         }
     },
 
@@ -302,7 +321,6 @@ const GameplayEngine = {
 
         if (this.elements.buzzButton) {
             this.elements.buzzButton.disabled = true;
-            this.elements.buzzButton.style.opacity = '0.5';
         }
 
         if (this.config.sounds.buzz) {
@@ -330,7 +348,6 @@ const GameplayEngine = {
 
         if (this.elements.buzzButton) {
             this.elements.buzzButton.disabled = true;
-            this.elements.buzzButton.style.opacity = '0.5';
         }
 
         this.triggerPassiveSkills('opponent_buzz');
@@ -553,10 +570,8 @@ const GameplayEngine = {
             this.elements.chronoTimer.textContent = this.config.timerDuration;
         }
 
-        if (this.elements.buzzButton) {
-            this.elements.buzzButton.disabled = false;
-            this.elements.buzzButton.style.opacity = '1';
-        }
+        // Set buzzer to waiting state (visible but inactive) until question starts
+        this.setBuzzerWaiting();
 
         if (this.elements.answersGrid) {
             this.elements.answersGrid.style.display = 'none';
