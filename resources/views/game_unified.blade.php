@@ -1397,6 +1397,17 @@ document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
 buzzerSound.load();
 
 function startTimer() {
+    // Activer le buzzer quand le timer démarre
+    const buzzContainer = document.getElementById('buzzContainer');
+    const buzzButton = document.getElementById('buzzButton');
+    if (buzzContainer) {
+        buzzContainer.classList.remove('buzzer-waiting', 'buzzer-hidden');
+        buzzContainer.classList.add('buzzer-ready');
+    }
+    if (buzzButton) {
+        buzzButton.disabled = false;
+    }
+    
     timerInterval = setInterval(() => {
         timeLeft--;
         chronoTimer.textContent = timeLeft;
@@ -1706,13 +1717,13 @@ const GameFlowController = {
         const chronoTimer = document.getElementById('chronoTimer');
         const grid = document.getElementById('answersGrid');
         
-        // Use classes for buzzer visibility
+        // Use classes for buzzer visibility - set to waiting first, will be activated by timer start
         if (buzzContainer) {
-            buzzContainer.classList.remove('buzzer-hidden', 'buzzer-waiting');
-            buzzContainer.classList.add('buzzer-ready');
+            buzzContainer.classList.remove('buzzer-hidden', 'buzzer-ready');
+            buzzContainer.classList.add('buzzer-waiting');
         }
         if (buzzButton) {
-            buzzButton.disabled = false;
+            buzzButton.disabled = true; // Keep disabled until timer starts
         }
         if (chronoTimer) chronoTimer.textContent = '8';
         if (grid) {

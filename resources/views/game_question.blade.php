@@ -415,6 +415,39 @@ if ($opponentInfo['is_boss'] ?? false) {
         filter: drop-shadow(0 15px 40px rgba(78, 205, 196, 0.8));
     }
     
+    /* Buzzer States */
+    .buzz-container-bottom.buzzer-waiting .buzz-button {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .buzz-container-bottom.buzzer-waiting .buzz-button img {
+        filter: drop-shadow(0 5px 15px rgba(128, 128, 128, 0.4)) grayscale(0.5);
+    }
+    
+    .buzz-container-bottom.buzzer-ready .buzz-button {
+        opacity: 1;
+        cursor: pointer;
+        pointer-events: auto;
+        animation: buzzer-pulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes buzzer-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.03); }
+    }
+    
+    .buzz-container-bottom.buzzer-ready .buzz-button img {
+        filter: drop-shadow(0 10px 30px rgba(78, 205, 196, 0.8));
+    }
+    
+    .buzz-container-bottom.buzzer-hidden {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    
     /* Messages et résultats */
     .result-overlay {
         position: fixed;
@@ -752,8 +785,8 @@ if ($opponentInfo['is_boss'] ?? false) {
     </div>
     
     <!-- Bouton Buzzer centré en bas -->
-    <div class="buzz-container-bottom">
-        <button id="buzzButton" class="buzz-button">
+    <div class="buzz-container-bottom buzzer-waiting" id="buzzContainer">
+        <button id="buzzButton" class="buzz-button" disabled>
             <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzzer">
         </button>
     </div>
@@ -972,6 +1005,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Démarrer le chronomètre
     function startTimer() {
+        // Activer le buzzer (le rendre cliquable)
+        const buzzContainer = document.getElementById('buzzContainer');
+        const buzzButton = document.getElementById('buzzButton');
+        if (buzzContainer) {
+            buzzContainer.classList.remove('buzzer-waiting', 'buzzer-hidden');
+            buzzContainer.classList.add('buzzer-ready');
+        }
+        if (buzzButton) {
+            buzzButton.disabled = false;
+        }
+        
         // Démarrer le son grenouille avec un délai pour qu'il se termine à la fin du chrono
         setTimeout(() => {
             if (!buzzed) { // Ne jouer que si pas déjà buzzé
@@ -1011,9 +1055,13 @@ document.addEventListener('DOMContentLoaded', function() {
         buzzerSound.currentTime = 0;
         buzzerSound.play();
         
-        // Désactiver le bouton
+        // Désactiver le bouton et cacher le buzzer
         buzzButton.disabled = true;
-        buzzButton.style.opacity = '0.5';
+        const buzzContainer = document.getElementById('buzzContainer');
+        if (buzzContainer) {
+            buzzContainer.classList.remove('buzzer-ready', 'buzzer-waiting');
+            buzzContainer.classList.add('buzzer-hidden');
+        }
         
         // Envoyer requête POST à /game/{mode}/buzz après le son
         setTimeout(async () => {
@@ -1048,7 +1096,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('{{ __("Erreur lors du buzz. Veuillez réessayer.") }}');
                 buzzed = false;
                 buzzButton.disabled = false;
-                buzzButton.style.opacity = '1';
+                const buzzContainer = document.getElementById('buzzContainer');
+                if (buzzContainer) {
+                    buzzContainer.classList.remove('buzzer-hidden', 'buzzer-waiting');
+                    buzzContainer.classList.add('buzzer-ready');
+                }
             }
         }, buzzerDuration);
     });

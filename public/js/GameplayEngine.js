@@ -114,6 +114,46 @@ const GameplayEngine = {
     },
 
     /**
+     * Rafraîchit les références DOM (à appeler après chaque re-rendu de la question)
+     * Résout le problème des références périmées quand le HTML est reconstruit
+     */
+    refreshElements() {
+        this.elements.chronoTimer = document.getElementById('chronoTimer');
+        this.elements.buzzButton = document.getElementById('buzzButton');
+        this.elements.buzzContainer = document.getElementById('buzzContainer');
+        this.elements.answersGrid = document.getElementById('answersGrid');
+        this.elements.questionText = document.getElementById('questionText');
+        this.elements.questionNumber = document.getElementById('questionNumber');
+        this.elements.playerScore = document.getElementById('playerScore');
+        this.elements.opponentScore = document.getElementById('opponentScore');
+        // Don't re-bind skill buttons as they have event listeners
+    },
+
+    /**
+     * Vérifie si un élément est toujours attaché au DOM
+     */
+    isElementAttached(element) {
+        return element && document.body.contains(element);
+    },
+
+    /**
+     * Récupère un élément DOM, le recache si nécessaire
+     */
+    getElement(name) {
+        if (!this.isElementAttached(this.elements[name])) {
+            this.elements[name] = document.getElementById(name === 'buzzButton' ? 'buzzButton' : 
+                                  name === 'buzzContainer' ? 'buzzContainer' :
+                                  name === 'chronoTimer' ? 'chronoTimer' :
+                                  name === 'answersGrid' ? 'answersGrid' :
+                                  name === 'questionText' ? 'questionText' :
+                                  name === 'questionNumber' ? 'questionNumber' :
+                                  name === 'playerScore' ? 'playerScore' :
+                                  name === 'opponentScore' ? 'opponentScore' : name);
+        }
+        return this.elements[name];
+    },
+
+    /**
      * Lie les événements
      */
     bindEvents() {
@@ -129,6 +169,24 @@ const GameplayEngine = {
         });
     },
 
+    /**
+     * Réattache l'événement click du buzzer après re-rendu du DOM
+     * Doit être appelé AVANT refreshElements() pour détecter le changement
+     */
+    rebindBuzzerEvent() {
+        const buzzButton = document.getElementById('buzzButton');
+        if (buzzButton) {
+            // Toujours rattacher le handler pour garantir qu'il est présent
+            // Utiliser une référence pour éviter les doublons
+            if (!buzzButton._gameplayBound) {
+                buzzButton.addEventListener('click', () => this.handleBuzz());
+                buzzButton._gameplayBound = true;
+                console.log('[GameplayEngine] Buzzer event bound');
+            }
+            this.elements.buzzButton = buzzButton;
+        }
+    },
+
     // ==========================================
     // GESTION DES QUESTIONS
     // ==========================================
@@ -139,6 +197,11 @@ const GameplayEngine = {
      */
     startQuestion(questionData) {
         console.log('[GameplayEngine] Starting question', questionData.question_number);
+
+        // Rebind buzzer FIRST (before refresh to detect new elements)
+        this.rebindBuzzerEvent();
+        // Then refresh all DOM references
+        this.refreshElements();
 
         this.resetState();
         

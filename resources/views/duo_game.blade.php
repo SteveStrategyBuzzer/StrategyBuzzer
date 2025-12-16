@@ -56,8 +56,8 @@
             Chargement de la question...
         </div>
 
-        <div class="buzz-button-container">
-            <button id="buzzButton" class="buzz-button">
+        <div class="buzz-button-container buzzer-waiting" id="buzzContainer">
+            <button id="buzzButton" class="buzz-button" disabled>
                 <span class="buzz-text">BUZZ</span>
             </button>
         </div>
@@ -244,6 +244,32 @@
 .buzz-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Buzzer States */
+.buzz-button-container.buzzer-waiting .buzz-button {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(0.5);
+}
+
+.buzz-button-container.buzzer-ready .buzz-button {
+    opacity: 1;
+    cursor: pointer;
+    pointer-events: auto;
+    animation: buzzer-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes buzzer-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+
+.buzz-button-container.buzzer-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
 }
 
 .answers-grid {
