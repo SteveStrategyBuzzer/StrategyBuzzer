@@ -383,10 +383,10 @@ if ($opponentInfo['is_boss'] ?? false) {
     /* BOUTON BUZZER CENTRÉ EN BAS */
     .buzz-container-bottom {
         position: fixed;
-        bottom: 30px;
+        bottom: calc(30px + env(safe-area-inset-bottom, 0px));
         left: 50%;
         transform: translateX(-50%);
-        z-index: 100;
+        z-index: 9999;
     }
     
     .buzz-button {
@@ -684,7 +684,7 @@ if ($opponentInfo['is_boss'] ?? false) {
         }
         
         .buzz-container-bottom {
-            bottom: 20px;
+            bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         }
     }
 </style>

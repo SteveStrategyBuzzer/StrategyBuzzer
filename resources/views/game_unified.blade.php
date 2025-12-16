@@ -460,10 +460,10 @@ $roomCode = $params['room_code'] ?? null;
     
     .buzz-container-bottom {
         position: fixed;
-        bottom: 30px;
+        bottom: calc(30px + env(safe-area-inset-bottom, 0px));
         left: 50%;
         transform: translateX(-50%);
-        z-index: 100;
+        z-index: 9999;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -583,7 +583,7 @@ $roomCode = $params['room_code'] ?? null;
         .question-text { font-size: 1.1rem; }
         .mode-indicator { top: 5px; right: 5px; padding: 5px 10px; font-size: 0.75rem; }
         .game-container { gap: 15px; padding-bottom: 160px; }
-        .buzz-container-bottom { bottom: 15px; }
+        .buzz-container-bottom { bottom: calc(15px + env(safe-area-inset-bottom, 0px)); }
     }
     
     @media (max-width: 480px) {
@@ -599,8 +599,8 @@ $roomCode = $params['room_code'] ?? null;
         .question-header { padding: 10px 8px; margin-bottom: 5px; }
         .question-text { font-size: 1rem; }
         .question-number { font-size: 0.75rem; margin-bottom: 8px; }
-        .game-container { gap: 10px; padding-bottom: 140px; min-height: calc(100dvh - 10px); }
-        .buzz-container-bottom { bottom: 10px; }
+        .game-container { gap: 10px; padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); min-height: calc(100dvh - 10px); }
+        .buzz-container-bottom { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
         .player-name, .opponent-name { font-size: 0.85rem; }
         .player-score, .opponent-score { font-size: 1.5rem; }
         .skill-bar { gap: 5px; }
@@ -609,8 +609,8 @@ $roomCode = $params['room_code'] ?? null;
     
     @media (max-height: 700px) and (orientation: portrait) {
         .buzz-button img { width: 100px; height: 100px; }
-        .game-container { padding-bottom: 120px; }
-        .buzz-container-bottom { bottom: 8px; }
+        .game-container { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+        .buzz-container-bottom { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
         .chrono-circle { width: 80px; height: 80px; }
         .chrono-time { font-size: 1.8rem; }
     }
