@@ -2484,10 +2484,18 @@ class SoloController extends Controller
                 
                 if ($stat['is_correct']) {
                     $correctAnswers++;
-                    $pointsEarned += 2;
                 } else {
                     $wrongAnswers++;
-                    $pointsEarned -= 2;
+                }
+            }
+            
+            // Utiliser les points RÉELS stockés (+2, +1, 0, -2)
+            if (isset($stat['player_points'])) {
+                $pointsEarned += $stat['player_points'];
+            } else {
+                // Fallback pour compatibilité anciennes données
+                if ($stat['player_buzzed']) {
+                    $pointsEarned += $stat['is_correct'] ? 2 : -2;
                 }
             }
         }
