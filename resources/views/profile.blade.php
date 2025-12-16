@@ -355,16 +355,16 @@
   position: absolute;
   top: calc(100% + 5px);
   right: 0;
-  background: rgba(10, 44, 102, 0.98);
+  background: rgb(10, 44, 102);
   border: 1px solid rgba(255,255,255,.35);
   border-radius: 10px;
   padding: 6px;
   min-width: 220px;
   max-width: 280px;
   max-height: 300px;
+  z-index: 100;
   overflow-y: auto;
   box-shadow: 0 4px 20px rgba(0,0,0,.5);
-  z-index: 100;
 }
 
 .sb-selector-option {
