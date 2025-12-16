@@ -24,6 +24,8 @@ const FirebaseGameSync = {
         appId: "1:776091953448:web:af3f6c8f3c8f3c8f3c8f3c"
     },
 
+    csrfToken: null,
+    
     async init(config) {
         if (this.isReady) return true;
         
@@ -32,6 +34,7 @@ const FirebaseGameSync = {
         this.laravelUserId = config.laravelUserId;
         this.isHost = config.isHost || false;
         this.callbacks = config.callbacks || {};
+        this.csrfToken = config.csrfToken || null;
 
         try {
             const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
@@ -53,6 +56,11 @@ const FirebaseGameSync = {
                         
                         await this.ensureDocExists();
                         await this.setupMatchListener();
+                        
+                        // Setup presence detection for multiplayer modes
+                        if (this.mode !== 'solo') {
+                            await this.setupPresence();
+                        }
                         
                         if (this.callbacks.onReady) {
                             this.callbacks.onReady();
@@ -355,6 +363,7 @@ const FirebaseGameSync = {
     },
 
     cleanup() {
+        this.cleanupPresence();
         this.unsubscribers.forEach(unsub => {
             try { unsub(); } catch (e) {}
         });
@@ -362,8 +371,216 @@ const FirebaseGameSync = {
         this.isReady = false;
         this.matchRef = null;
         this.docExists = false;
+        this.presenceRef = null;
         console.log('[FirebaseGameSync] Cleaned up');
+    },
+
+    // ==========================================
+    // PRESENCE & DISCONNECT DETECTION
+    // ==========================================
+
+    presenceRef: null,
+    presenceUnsubscriber: null,
+    disconnectGracePeriod: 30000, // 30 seconds grace period
+
+    async setupPresence() {
+        if (!this.matchRef || !this.isReady) return;
+
+        const { setDoc, onSnapshot } = this.firestoreMethods;
+
+        try {
+            // Only write the players map - never spread full document to avoid overwriting game state
+            const playerData = {
+                online: true,
+                lastSeen: Date.now(),
+                firebaseId: this.userId,
+                joinedAt: Date.now()
+            };
+            
+            await setDoc(this.matchRef, {
+                players: {
+                    [this.laravelUserId]: playerData
+                }
+            }, { merge: true });
+
+            // Start heartbeat
+            this.startHeartbeat();
+
+            // Listen for opponent disconnect
+            this.presenceUnsubscriber = onSnapshot(this.matchRef, (snapshot) => {
+                if (!snapshot.exists()) return;
+                const data = snapshot.data();
+                this.checkOpponentPresence(data);
+            });
+
+            console.log('[FirebaseGameSync] Presence setup complete for player:', this.laravelUserId);
+        } catch (error) {
+            console.error('[FirebaseGameSync] Presence setup error:', error);
+            // Ensure heartbeat doesn't leak on failure
+            this.cleanupPresence();
+        }
+    },
+
+    heartbeatInterval: null,
+
+    startHeartbeat() {
+        // Clear any existing heartbeat first
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+
+        this.heartbeatInterval = setInterval(async () => {
+            if (!this.matchRef || !this.isReady) return;
+
+            try {
+                const { updateDoc } = this.firestoreMethods;
+                
+                // Use dot-notation with updateDoc to preserve other player fields
+                await updateDoc(this.matchRef, {
+                    [`players.${this.laravelUserId}.online`]: true,
+                    [`players.${this.laravelUserId}.lastSeen`]: Date.now()
+                });
+            } catch (error) {
+                console.error('[FirebaseGameSync] Heartbeat error:', error);
+            }
+        }, 10000); // Every 10 seconds
+    },
+
+    disconnectedOpponents: new Set(), // Track already-processed disconnects
+    
+    checkOpponentPresence(data) {
+        if (!data.players || this.mode === 'solo') return;
+
+        const now = Date.now();
+        const players = data.players;
+
+        for (const playerId in players) {
+            if (playerId === String(this.laravelUserId)) continue;
+
+            const playerData = players[playerId];
+            const lastSeen = playerData.lastSeen?.toMillis ? playerData.lastSeen.toMillis() : playerData.lastSeen;
+
+            if (!playerData.online || (lastSeen && (now - lastSeen) > this.disconnectGracePeriod)) {
+                // Prevent duplicate forfeit processing
+                if (this.disconnectedOpponents.has(playerId)) continue;
+                this.disconnectedOpponents.add(playerId);
+                
+                console.log('[FirebaseGameSync] Opponent disconnected:', playerId);
+                
+                // If custom callback provided, use it
+                if (this.callbacks.onOpponentDisconnect) {
+                    this.callbacks.onOpponentDisconnect(playerId, {
+                        lastSeen: lastSeen,
+                        gracePeriodMs: this.disconnectGracePeriod
+                    });
+                } else {
+                    // Default behavior: auto-declare forfeit
+                    console.log('[FirebaseGameSync] Auto-declaring forfeit for opponent:', playerId);
+                    this.declareForfeit(playerId, 'disconnect');
+                }
+            }
+        }
+    },
+
+    async markDisconnected() {
+        if (!this.matchRef || !this.isReady) return;
+
+        try {
+            const { updateDoc, serverTimestamp } = this.firestoreMethods;
+            await updateDoc(this.matchRef, {
+                [`players.${this.laravelUserId}.online`]: false,
+                [`players.${this.laravelUserId}.disconnectedAt`]: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('[FirebaseGameSync] Mark disconnected error:', error);
+        }
+    },
+
+    async declareForfeit(opponentId, reason = 'disconnect') {
+        if (!this.matchRef || !this.isReady) return false;
+
+        try {
+            const { updateDoc, serverTimestamp } = this.firestoreMethods;
+            
+            // Update Firestore state
+            await updateDoc(this.matchRef, {
+                phase: 'forfeit',
+                forfeit: {
+                    forfeitedPlayerId: opponentId,
+                    winnerId: this.laravelUserId,
+                    reason: reason,
+                    declaredAt: serverTimestamp()
+                }
+            });
+
+            console.log('[FirebaseGameSync] Forfeit declared for opponent:', opponentId);
+
+            // Call backend to process forfeit (stats, bet refunds, etc)
+            // Try multiple sources for CSRF token
+            const csrfToken = this.csrfToken 
+                || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                || window.Laravel?.csrfToken
+                || '';
+            
+            if (!csrfToken) {
+                console.warn('[FirebaseGameSync] No CSRF token found, backend call may fail');
+            }
+            
+            const response = await fetch(`/game/${this.mode}/forfeit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    opponent_id: opponentId,
+                    reason: reason,
+                    match_id: this.matchId
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('[FirebaseGameSync] Backend forfeit processed:', data);
+                
+                // Redirect to forfeit result page
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                }
+                return true;
+            } else {
+                const errorText = await response.text();
+                console.error('[FirebaseGameSync] Backend forfeit failed:', response.status, errorText);
+                // Still return true since Firestore was updated - game ended even if backend call failed
+                return true;
+            }
+        } catch (error) {
+            console.error('[FirebaseGameSync] Declare forfeit error:', error);
+            return false;
+        }
+    },
+
+    cleanupPresence() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+        if (this.presenceUnsubscriber) {
+            try { this.presenceUnsubscriber(); } catch (e) {}
+            this.presenceUnsubscriber = null;
+        }
     }
 };
+
+// Handle page unload to mark as disconnected
+window.addEventListener('beforeunload', () => {
+    if (FirebaseGameSync.isReady) {
+        FirebaseGameSync.markDisconnected();
+        FirebaseGameSync.cleanupPresence();
+    }
+});
 
 window.FirebaseGameSync = FirebaseGameSync;

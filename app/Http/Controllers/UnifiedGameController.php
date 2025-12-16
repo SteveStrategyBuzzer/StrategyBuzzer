@@ -1450,4 +1450,228 @@ class UnifiedGameController extends Controller
         
         return min(100, $accuracy + $speedBonus);
     }
+    
+    /**
+     * Handle opponent forfeit/disconnect
+     * Called when opponent abandons the match
+     */
+    public function handleForfeit(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return response()->json(['error' => __('Aucune partie en cours')], 400);
+        }
+        
+        $validated = $request->validate([
+            'opponent_id' => 'required',
+            'reason' => 'nullable|string|in:disconnect,abandon,timeout',
+            'match_id' => 'nullable|string'
+        ]);
+        
+        $opponentId = $validated['opponent_id'];
+        $reason = $validated['reason'] ?? 'disconnect';
+        $requestMatchId = $validated['match_id'] ?? null;
+        
+        // Verify match_id matches session if provided (security check)
+        $sessionMatchId = $gameState['match_id'] ?? $gameState['session_id'] ?? null;
+        if ($requestMatchId && $sessionMatchId && $requestMatchId !== $sessionMatchId) {
+            Log::warning('[Forfeit] Match ID mismatch - possible security issue', [
+                'request_match_id' => $requestMatchId,
+                'session_match_id' => $sessionMatchId,
+                'user_id' => $user->id
+            ]);
+            return response()->json(['error' => __('ID de match invalide')], 403);
+        }
+        
+        // Collect all valid opponent identifiers from session
+        $validOpponentIds = [];
+        
+        // Standard opponent_id
+        if (!empty($gameState['opponent_id'])) {
+            $validOpponentIds[] = (string) $gameState['opponent_id'];
+        }
+        
+        // Team opponent ID
+        if (!empty($gameState['opponent_team_id'])) {
+            $validOpponentIds[] = (string) $gameState['opponent_team_id'];
+        }
+        
+        // Team members (for League Team mode)
+        if (!empty($gameState['opponent_team_members'])) {
+            foreach ($gameState['opponent_team_members'] as $member) {
+                if (!empty($member['id'])) {
+                    $validOpponentIds[] = (string) $member['id'];
+                }
+            }
+        }
+        
+        // Player list (for Master mode)
+        if (!empty($gameState['players'])) {
+            foreach ($gameState['players'] as $playerId => $playerData) {
+                if ((string) $playerId !== (string) $user->id) {
+                    $validOpponentIds[] = (string) $playerId;
+                }
+            }
+        }
+        
+        // Validate opponent_id against known valid IDs
+        $opponentIdStr = (string) $opponentId;
+        if (!empty($validOpponentIds) && !in_array($opponentIdStr, $validOpponentIds)) {
+            Log::warning('[Forfeit] Invalid opponent ID - not in game session', [
+                'received' => $opponentId,
+                'valid_ids' => $validOpponentIds,
+                'mode' => $mode,
+                'user_id' => $user->id
+            ]);
+            return response()->json(['error' => __('Adversaire non reconnu')], 403);
+        }
+        
+        Log::info('[Forfeit] Opponent forfeited', [
+            'mode' => $mode,
+            'winner_id' => $user->id,
+            'forfeited_id' => $opponentId,
+            'reason' => $reason,
+            'match_id' => $gameState['match_id'] ?? null
+        ]);
+        
+        // Update game state for forfeit win
+        $gameState['forfeit'] = true;
+        $gameState['forfeit_reason'] = $reason;
+        $gameState['forfeit_opponent_id'] = $opponentId;
+        $gameState['player_rounds_won'] = 2; // Auto-win
+        $gameState['opponent_rounds_won'] = 0;
+        $gameState['tiebreaker_winner'] = 'player';
+        
+        session(['game_state' => $gameState]);
+        
+        // Update player stats
+        $this->updateForfeitStats($user, $opponentId, $mode, $gameState);
+        
+        // Handle bet refund if applicable
+        $this->handleForfeitBetReward($user, $gameState);
+        
+        return response()->json([
+            'success' => true,
+            'redirect_url' => route('game.match-result', ['mode' => $mode]),
+            'forfeit' => true,
+            'reason' => $reason
+        ]);
+    }
+    
+    /**
+     * Update stats after forfeit victory
+     */
+    protected function updateForfeitStats($user, $opponentId, string $mode, array $gameState): void
+    {
+        try {
+            // Update user match history
+            $matchHistory = $user->recent_matches ?? [];
+            
+            // Add forfeit win to history
+            $matchHistory[] = [
+                'mode' => $mode,
+                'opponent_id' => $opponentId,
+                'result' => 'victory',
+                'forfeit' => true,
+                'date' => now()->toISOString()
+            ];
+            
+            // Keep only last 10 matches
+            $matchHistory = array_slice($matchHistory, -10);
+            
+            $user->recent_matches = $matchHistory;
+            $user->wins = ($user->wins ?? 0) + 1;
+            $user->save();
+            
+            Log::info('[Forfeit] Stats updated', [
+                'user_id' => $user->id,
+                'new_wins' => $user->wins
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[Forfeit] Stats update failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id
+            ]);
+        }
+    }
+    
+    /**
+     * Handle bet reward after forfeit
+     */
+    protected function handleForfeitBetReward($user, array $gameState): void
+    {
+        if (empty($gameState['bet_info'])) {
+            return;
+        }
+        
+        try {
+            $betInfo = $gameState['bet_info'];
+            $betAmount = $betInfo['amount'] ?? 0;
+            
+            if ($betAmount <= 0) {
+                return;
+            }
+            
+            // Full bet winnings (own bet + opponent's bet)
+            $totalWinnings = $betAmount * 2;
+            
+            $user->coins = ($user->coins ?? 0) + $totalWinnings;
+            $user->save();
+            
+            Log::info('[Forfeit] Bet reward credited', [
+                'user_id' => $user->id,
+                'bet_amount' => $betAmount,
+                'total_winnings' => $totalWinnings
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[Forfeit] Bet reward failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id
+            ]);
+        }
+    }
+    
+    /**
+     * Show forfeit result page
+     */
+    public function showForfeitResult(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState) || empty($gameState['forfeit'])) {
+            return redirect()->route($this->getModeIndexRoute($mode));
+        }
+        
+        $reasonLabels = [
+            'disconnect' => __('Déconnexion de l\'adversaire'),
+            'abandon' => __('Abandon du joueur adverse'),
+            'timeout' => __('Temps d\'attente dépassé')
+        ];
+        
+        $params = [
+            'mode' => $mode,
+            'match_result' => [
+                'winner' => 'player',
+                'victory' => true,
+                'forfeit' => true,
+                'forfeit_reason' => $gameState['forfeit_reason'] ?? 'disconnect',
+                'forfeit_label' => $reasonLabels[$gameState['forfeit_reason'] ?? 'disconnect'] ?? __('Forfait'),
+                'player_rounds_won' => 2,
+                'opponent_rounds_won' => 0,
+                'bet_info' => $gameState['bet_info'] ?? null
+            ],
+            'opponent_info' => [
+                'id' => $gameState['forfeit_opponent_id'] ?? null,
+                'name' => $gameState['opponent_name'] ?? __('Adversaire'),
+                'avatar' => $gameState['opponent_avatar'] ?? 'default'
+            ]
+        ];
+        
+        session()->forget(['game_state', 'game_mode']);
+        
+        return view('game_match_result', ['params' => $params]);
+    }
 }

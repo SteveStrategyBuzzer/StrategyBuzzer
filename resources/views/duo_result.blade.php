@@ -3,7 +3,11 @@
 @section('content')
 <div class="duo-result-container">
     <div class="result-header">
-        @if($match_result['player_won'])
+        @if($match_result['forfeit'] ?? false)
+            <div class="result-title victory forfeit">VICTOIRE PAR FORFAIT !</div>
+            <div class="result-icon">🏆</div>
+            <div class="forfeit-reason">{{ $match_result['forfeit_label'] ?? __('Abandon du joueur adverse') }}</div>
+        @elseif($match_result['player_won'])
             <div class="result-title victory">VICTOIRE !</div>
             <div class="result-icon">🏆</div>
         @else
@@ -224,6 +228,25 @@
 
 .result-title.defeat {
     color: #ffcdd2;
+}
+
+.result-title.forfeit {
+    animation: forfeitPulse 2s ease-in-out infinite;
+}
+
+@keyframes forfeitPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.forfeit-reason {
+    font-size: 1.2em;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 10px 20px;
+    border-radius: 20px;
+    margin-top: 15px;
+    display: inline-block;
 }
 
 .result-icon {

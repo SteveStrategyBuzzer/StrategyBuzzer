@@ -349,6 +349,10 @@ Route::prefix('game')->name('game.')->middleware('auth')->group(function () {
     Route::get('/{mode}/tiebreaker-efficiency', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerEfficiency'])->name('tiebreaker-efficiency');
     Route::get('/{mode}/tiebreaker-sudden-death', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerSuddenDeath'])->name('tiebreaker-sudden-death');
     Route::post('/{mode}/tiebreaker-sudden-death-answer', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerSuddenDeathAnswer'])->name('tiebreaker-sudden-death-answer');
+    
+    // Forfeit/Disconnect handling
+    Route::post('/{mode}/forfeit', [App\Http\Controllers\UnifiedGameController::class, 'handleForfeit'])->name('forfeit');
+    Route::get('/{mode}/forfeit-result', [App\Http\Controllers\UnifiedGameController::class, 'showForfeitResult'])->name('forfeit-result');
 });
 
 /* ===== QUÊTES & QUÊTES QUOTIDIENNES ===== */
