@@ -2,11 +2,23 @@
 
 @section('content')
 @php
+// Mode de jeu (solo, duo, league_individual, league_team, master)
+$mode = $params['mode'] ?? 'solo';
+
 // Index de la bonne réponse
 $correctIndex = $params['question']['correct_index'] ?? -1;
 
 // Toutes les réponses pour vérification JavaScript
 $allAnswers = $params['question']['answers'] ?? [];
+
+// Route dynamique selon le mode
+$answerRoute = match($mode) {
+    'duo' => route('game.answer', ['mode' => 'duo']),
+    'league_individual' => route('game.answer', ['mode' => 'league_individual']),
+    'league_team' => route('game.answer', ['mode' => 'league_team']),
+    'master' => route('game.answer', ['mode' => 'master']),
+    default => route('solo.answer'),
+};
 @endphp
 
 <style>
@@ -364,7 +376,7 @@ $allAnswers = $params['question']['answers'] ?? [];
     </div>
     
     <!-- Choix de réponses -->
-    <form id="answerForm" method="POST" action="{{ route('solo.answer') }}">
+    <form id="answerForm" method="POST" action="{{ $answerRoute }}">
         @csrf
         <input type="hidden" name="answer_index" id="answerIndex">
         
