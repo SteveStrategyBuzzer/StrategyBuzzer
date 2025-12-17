@@ -327,6 +327,7 @@ Route::view('/reglements', 'reglements')->name('reglements');
 Route::prefix('game')->name('game.')->middleware('auth')->group(function () {
     Route::post('/{mode}/start', [App\Http\Controllers\UnifiedGameController::class, 'startGame'])->name('start');
     Route::get('/{mode}/resume', [App\Http\Controllers\UnifiedGameController::class, 'showResume'])->name('resume');
+    Route::get('/{mode}/preparation', [App\Http\Controllers\UnifiedGameController::class, 'showPreparation'])->name('preparation');
     Route::get('/{mode}/question', [App\Http\Controllers\UnifiedGameController::class, 'showQuestion'])->name('question');
     Route::post('/{mode}/buzz', [App\Http\Controllers\UnifiedGameController::class, 'handleBuzz'])->name('buzz');
     Route::get('/{mode}/answers', [App\Http\Controllers\UnifiedGameController::class, 'showAnswers'])->name('answers');

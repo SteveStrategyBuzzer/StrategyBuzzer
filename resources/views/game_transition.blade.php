@@ -277,72 +277,6 @@ $opponentId = $params['opponent_id'] ?? null;
         .score-value { font-size: 2rem; }
     }
     
-    .sync-container {
-        margin: 25px auto;
-        padding: 20px;
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        max-width: 400px;
-    }
-    
-    .sync-title {
-        font-size: 1rem;
-        opacity: 0.9;
-        margin-bottom: 15px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .sync-players {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 30px;
-    }
-    
-    .sync-player {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .sync-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 3px solid #555;
-        transition: border-color 0.3s, box-shadow 0.3s;
-    }
-    
-    .sync-avatar.ready {
-        border-color: #2ecc71;
-        box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
-    }
-    
-    .sync-name {
-        font-size: 0.85rem;
-        opacity: 0.9;
-    }
-    
-    .sync-status {
-        font-size: 0.8rem;
-        padding: 4px 12px;
-        border-radius: 15px;
-        background: rgba(255, 255, 255, 0.1);
-        transition: background 0.3s, color 0.3s;
-    }
-    
-    .sync-status.waiting {
-        color: #f39c12;
-    }
-    
-    .sync-status.ready {
-        background: rgba(46, 204, 113, 0.3);
-        color: #2ecc71;
-    }
-    
     .go-button {
         margin-top: 20px;
         padding: 18px 50px;
@@ -465,40 +399,26 @@ $opponentId = $params['opponent_id'] ?? null;
         </div>
     </div>
     
-    @if($isSyncMode && !$isLastQuestion)
-        <div class="sync-container" id="syncContainer">
-            <div class="sync-title">{{ __('Synchronisation') }}</div>
-            <div class="sync-players">
-                <div class="sync-player">
-                    <img src="{{ $playerAvatarPath }}" alt="Joueur" class="sync-avatar" id="playerSyncAvatar">
-                    <div class="sync-name">{{ auth()->user()->name }}</div>
-                    <div class="sync-status waiting" id="playerSyncStatus">{{ __('En attente...') }}</div>
-                </div>
-                <div class="sync-player">
-                    <img src="{{ $opponentAvatar }}" alt="Adversaire" class="sync-avatar" id="opponentSyncAvatar">
-                    <div class="sync-name">{{ $opponentName }}</div>
-                    <div class="sync-status waiting" id="opponentSyncStatus">{{ __('En attente...') }}</div>
-                </div>
-            </div>
-            <button class="go-button" id="goButton">GO !</button>
-            <div class="waiting-message" id="waitingMessage" style="display: none;">
-                {{ __('En attente de votre adversaire...') }}
-            </div>
-        </div>
-    @elseif($isMasterMode && !$isLastQuestion)
-        @if($params['is_host'] ?? false)
-            <button class="go-button" id="nextButton">{{ __('Question suivante') }}</button>
-        @else
-            <div class="waiting-message">{{ __('En attente du maître de jeu...') }}</div>
-        @endif
-    @elseif($isLastQuestion)
+    @if($isLastQuestion)
         <button class="next-button round-end" id="nextButton">
             {{ __('Voir le résultat de la manche') }}
         </button>
         <div class="countdown-text" id="countdownText">
             {{ __('Suite automatique dans') }} <span id="countdown">5</span>s
         </div>
+    @elseif($isMasterMode)
+        @if($params['is_host'] ?? false)
+            <button class="go-button" id="nextButton">{{ __('Question suivante') }}</button>
+            <div class="countdown-text" id="countdownText">
+                {{ __('Suite automatique dans') }} <span id="countdown">5</span>s
+            </div>
+        @else
+            <button class="next-button" id="nextButton" disabled style="opacity: 0.6;">
+                {{ __('En attente du maître de jeu...') }}
+            </button>
+        @endif
     @else
+        {{-- Même interface pour Solo, Duo, League - bouton GO + countdown --}}
         <button class="next-button" id="nextButton">
             {{ __('Question suivante') }}
         </button>
@@ -550,91 +470,42 @@ async function goToNext() {
     }
 }
 
-if (!transitionConfig.isSyncMode || transitionConfig.isLastQuestion) {
-    function startCountdown() {
-        if (!countdownSpan) return;
-        countdownInterval = setInterval(() => {
-            countdown--;
-            countdownSpan.textContent = countdown;
-            
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-                goToNext();
-            }
-        }, 1000);
-    }
-    
-    if (nextButton) {
-        nextButton.addEventListener('click', function() {
+// Countdown unifié pour tous les modes (Solo, Duo, League)
+// Pour Master non-host, pas de countdown
+const isMasterNonHost = transitionConfig.isMasterMode && !nextButton?.disabled === false;
+
+function startCountdown() {
+    if (!countdownSpan) return;
+    countdownInterval = setInterval(() => {
+        countdown--;
+        countdownSpan.textContent = countdown;
+        
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
             goToNext();
-        });
-    }
-    
-    startCountdown();
+        }
+    }, 1000);
 }
 
-if (transitionConfig.isSyncMode && !transitionConfig.isLastQuestion && goButton) {
-    goButton.addEventListener('click', async function() {
-        if (playerIsReady) return;
-        
-        playerIsReady = true;
-        goButton.classList.add('clicked');
-        goButton.textContent = '{{ __("PRÊT !") }}';
-        goButton.disabled = true;
-        
-        const playerSyncAvatar = document.getElementById('playerSyncAvatar');
-        const playerSyncStatus = document.getElementById('playerSyncStatus');
-        const waitingMessage = document.getElementById('waitingMessage');
-        
-        if (playerSyncAvatar) playerSyncAvatar.classList.add('ready');
-        if (playerSyncStatus) {
-            playerSyncStatus.textContent = '{{ __("Prêt !") }}';
-            playerSyncStatus.classList.remove('waiting');
-            playerSyncStatus.classList.add('ready');
-        }
-        
-        if (!opponentIsReady && waitingMessage) {
-            waitingMessage.style.display = 'block';
-        }
-        
-        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
-            await FirebaseGameSync.setPlayerReady(currentQuestionNum);
-        }
+if (nextButton && !nextButton.disabled) {
+    nextButton.addEventListener('click', function() {
+        goToNext();
     });
 }
 
-function checkBothReady() {
-    if (playerIsReady && opponentIsReady) {
-        const waitingMessage = document.getElementById('waitingMessage');
-        if (waitingMessage) {
-            waitingMessage.textContent = '{{ __("C\'est parti !") }}';
-        }
-        
-        setTimeout(() => {
-            goToNext();
-        }, 500);
-    }
+// Démarrer le countdown pour tous les modes sauf Master non-host
+if (countdownSpan) {
+    startCountdown();
 }
 
-function updateOpponentReadyUI(isReady) {
-    const opponentSyncAvatar = document.getElementById('opponentSyncAvatar');
-    const opponentSyncStatus = document.getElementById('opponentSyncStatus');
-    
-    if (isReady) {
-        if (opponentSyncAvatar) opponentSyncAvatar.classList.add('ready');
-        if (opponentSyncStatus) {
-            opponentSyncStatus.textContent = '{{ __("Prêt !") }}';
-            opponentSyncStatus.classList.remove('waiting');
-            opponentSyncStatus.classList.add('ready');
+// Pour les modes Firebase, signaler qu'on est prêt en arrière-plan (invisible)
+if (transitionConfig.isFirebaseMode && !transitionConfig.isLastQuestion) {
+    // Signaler automatiquement qu'on est prêt quand on arrive sur cette page
+    setTimeout(async () => {
+        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
+            await FirebaseGameSync.setPlayerReady(currentQuestionNum);
         }
-    } else {
-        if (opponentSyncAvatar) opponentSyncAvatar.classList.remove('ready');
-        if (opponentSyncStatus) {
-            opponentSyncStatus.textContent = '{{ __("En attente...") }}';
-            opponentSyncStatus.classList.remove('ready');
-            opponentSyncStatus.classList.add('waiting');
-        }
-    }
+    }, 500);
 }
 </script>
 
@@ -651,8 +522,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const mode = '{{ $mode }}';
     const laravelUserId = '{{ auth()->id() }}';
     const isHost = {{ $isHost ? 'true' : 'false' }};
-    const opponentId = transitionConfig.opponentId;
-    const isSyncMode = transitionConfig.isSyncMode;
     
     if (!isFirebaseMode || !matchId) return;
     
@@ -664,17 +533,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             isHost: isHost,
             callbacks: {
                 onReady: async () => {
-                    console.log('[TransitionPage] Firebase ready, isHost:', isHost, 'isSyncMode:', isSyncMode);
-                    if (isSyncMode && !transitionConfig.isLastQuestion) {
-                        await FirebaseGameSync.resetPlayerReady();
-                        console.log('[TransitionPage] Cleared own ready flag');
-                    }
+                    console.log('[TransitionPage] Firebase ready, isHost:', isHost);
                 },
                 onPhaseChange: (phase, data) => {
                     console.log('[TransitionPage] Phase changed to:', phase);
-                    if (phase === 'question') {
-                        goToNext();
-                    } else if (phase === 'round_result') {
+                    if (phase === 'question' || phase === 'round_result') {
                         goToNext();
                     }
                 },
@@ -682,33 +545,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     console.log('[TransitionPage] Question changed to:', questionNum);
                     if (questionNum > transitionConfig.currentQuestion) {
                         goToNext();
-                    }
-                },
-                onReadyStateChange: (readyState, data) => {
-                    console.log('[TransitionPage] Ready state changed:', readyState, 'currentQ:', currentQuestionNum);
-                    
-                    if (isSyncMode && !transitionConfig.isLastQuestion) {
-                        const oppReadyForThisQ = opponentId && FirebaseGameSync.isPlayerReadyForQuestion(readyState, opponentId, currentQuestionNum);
-                        
-                        if (oppReadyForThisQ && !opponentIsReady) {
-                            opponentIsReady = true;
-                            updateOpponentReadyUI(true);
-                            
-                            const waitingMessage = document.getElementById('waitingMessage');
-                            if (waitingMessage && playerIsReady) {
-                                waitingMessage.textContent = '{{ __("C\'est parti !") }}';
-                            }
-                        } else if (!oppReadyForThisQ && opponentIsReady) {
-                            opponentIsReady = false;
-                            updateOpponentReadyUI(false);
-                        }
-                        
-                        if (playerIsReady && opponentIsReady) {
-                            console.log('[TransitionPage] Both players ready for Q' + currentQuestionNum + ', advancing...');
-                            setTimeout(() => {
-                                goToNext();
-                            }, 500);
-                        }
                     }
                 }
             }

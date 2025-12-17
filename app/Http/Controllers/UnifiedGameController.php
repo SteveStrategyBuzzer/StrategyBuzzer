@@ -283,10 +283,24 @@ class UnifiedGameController extends Controller
             'opponent_name' => $opponentInfo['name'] ?? 'Adversaire',
             'opponent_avatar' => $opponentInfo['avatar'] ?? 'default',
             'opponent_division' => $opponentInfo['division'] ?? 'Bronze',
-            'redirect_url' => route('game.question', ['mode' => $mode]),
+            'redirect_url' => route('game.preparation', ['mode' => $mode]),
         ];
         
         return view('duo_resume', ['params' => $params]);
+    }
+    
+    public function showPreparation(Request $request, string $mode)
+    {
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return redirect()->route($this->getModeIndexRoute($mode))->with('error', __('Aucune partie en cours'));
+        }
+        
+        return view('game_preparation', [
+            'mode' => $mode,
+            'redirect_url' => route('game.question', ['mode' => $mode]),
+        ]);
     }
     
     public function showQuestion(Request $request, string $mode)

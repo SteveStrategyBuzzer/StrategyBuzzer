@@ -460,10 +460,10 @@ $roomCode = $params['room_code'] ?? null;
     
     .buzz-container-bottom {
         position: fixed;
-        bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+        bottom: 30px;
         left: 50%;
         transform: translateX(-50%);
-        z-index: 9999;
+        z-index: 100;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -473,34 +473,9 @@ $roomCode = $params['room_code'] ?? null;
         background: none;
         border: none;
         cursor: pointer;
-        transition: transform 0.2s ease, opacity 0.3s ease, filter 0.3s ease;
+        transition: transform 0.2s ease;
         padding: 0;
         display: block;
-    }
-    
-    /* Default state: buzzer visible but inactive (waiting for question) */
-    .buzz-container-bottom.buzzer-waiting .buzz-button {
-        opacity: 0.4;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
-    
-    .buzz-container-bottom.buzzer-waiting .buzz-button img {
-        filter: drop-shadow(0 5px 15px rgba(128, 128, 128, 0.4)) grayscale(0.5);
-    }
-    
-    /* Active state: buzzer ready to press */
-    .buzz-container-bottom.buzzer-ready .buzz-button {
-        opacity: 1;
-        cursor: pointer;
-        pointer-events: auto;
-        animation: buzzerPulse 0.4s ease-out;
-    }
-    
-    @keyframes buzzerPulse {
-        0% { transform: scale(0.9); opacity: 0.7; }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); opacity: 1; }
     }
     
     .buzz-button:hover { transform: scale(1.05); }
@@ -510,18 +485,6 @@ $roomCode = $params['room_code'] ?? null;
         width: 180px;
         height: 180px;
         filter: drop-shadow(0 10px 30px rgba(78, 205, 196, 0.6));
-        transition: filter 0.3s ease;
-    }
-    
-    .buzz-container-bottom.buzzer-ready .buzz-button img {
-        filter: drop-shadow(0 10px 30px rgba(78, 205, 196, 0.8));
-    }
-    
-    /* Hidden state: after buzz/answer shown */
-    .buzz-container-bottom.buzzer-hidden {
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease;
     }
     
     .waiting-overlay {
@@ -560,17 +523,8 @@ $roomCode = $params['room_code'] ?? null;
     }
     
     .firebase-status {
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        padding: 5px 10px;
-        border-radius: 10px;
-        font-size: 0.75rem;
-        background: rgba(0, 0, 0, 0.5);
+        display: none; /* Caché pour uniformité avec Solo - sync invisible en arrière-plan */
     }
-    
-    .firebase-status.connected { color: #2ECC71; }
-    .firebase-status.disconnected { color: #E74C3C; }
     
     @media (max-width: 768px) {
         .game-layout { gap: 15px; }
@@ -583,7 +537,7 @@ $roomCode = $params['room_code'] ?? null;
         .question-text { font-size: 1.1rem; }
         .mode-indicator { top: 5px; right: 5px; padding: 5px 10px; font-size: 0.75rem; }
         .game-container { gap: 15px; padding-bottom: 160px; }
-        .buzz-container-bottom { bottom: calc(15px + env(safe-area-inset-bottom, 0px)); }
+        .buzz-container-bottom { bottom: 15px; }
     }
     
     @media (max-width: 480px) {
@@ -599,8 +553,8 @@ $roomCode = $params['room_code'] ?? null;
         .question-header { padding: 10px 8px; margin-bottom: 5px; }
         .question-text { font-size: 1rem; }
         .question-number { font-size: 0.75rem; margin-bottom: 8px; }
-        .game-container { gap: 10px; padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); min-height: calc(100dvh - 10px); }
-        .buzz-container-bottom { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+        .game-container { gap: 10px; padding-bottom: 140px; min-height: calc(100dvh - 10px); }
+        .buzz-container-bottom { bottom: 10px; }
         .player-name, .opponent-name { font-size: 0.85rem; }
         .player-score, .opponent-score { font-size: 1.5rem; }
         .skill-bar { gap: 5px; }
@@ -609,8 +563,8 @@ $roomCode = $params['room_code'] ?? null;
     
     @media (max-height: 700px) and (orientation: portrait) {
         .buzz-button img { width: 100px; height: 100px; }
-        .game-container { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
-        .buzz-container-bottom { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+        .game-container { padding-bottom: 120px; }
+        .buzz-container-bottom { bottom: 8px; }
         .chrono-circle { width: 80px; height: 80px; }
         .chrono-time { font-size: 1.8rem; }
     }
@@ -731,8 +685,8 @@ $roomCode = $params['room_code'] ?? null;
         @endforeach
     </div>
     
-    <div class="buzz-container-bottom buzzer-waiting" id="buzzContainer">
-        <button id="buzzButton" class="buzz-button" disabled>
+    <div class="buzz-container-bottom" id="buzzContainer">
+        <button id="buzzButton" class="buzz-button">
             <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzzer">
         </button>
     </div>
@@ -1397,17 +1351,6 @@ document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
 buzzerSound.load();
 
 function startTimer() {
-    // Activer le buzzer quand le timer démarre
-    const buzzContainer = document.getElementById('buzzContainer');
-    const buzzButton = document.getElementById('buzzButton');
-    if (buzzContainer) {
-        buzzContainer.classList.remove('buzzer-waiting', 'buzzer-hidden');
-        buzzContainer.classList.add('buzzer-ready');
-    }
-    if (buzzButton) {
-        buzzButton.disabled = false;
-    }
-    
     timerInterval = setInterval(() => {
         timeLeft--;
         chronoTimer.textContent = timeLeft;
@@ -1432,6 +1375,7 @@ buzzButton.addEventListener('click', function() {
     buzzerSound.play();
     
     buzzButton.disabled = true;
+    buzzButton.style.opacity = '0.5';
     
     if (gameConfig.isFirebaseMode) {
         sendBuzzToServer();
@@ -1474,9 +1418,7 @@ function showAnswers() {
     if (answersShown) return;
     answersShown = true;
     
-    // Use classes for buzzer visibility instead of display:none
-    buzzContainer.classList.remove('buzzer-ready', 'buzzer-waiting');
-    buzzContainer.classList.add('buzzer-hidden');
+    buzzContainer.style.display = 'none';
     answersGrid.style.display = 'grid';
     
     const answerButtons = answersGrid.querySelectorAll('.answer-option');
@@ -1717,13 +1659,10 @@ const GameFlowController = {
         const chronoTimer = document.getElementById('chronoTimer');
         const grid = document.getElementById('answersGrid');
         
-        // Use classes for buzzer visibility - set to waiting first, will be activated by timer start
-        if (buzzContainer) {
-            buzzContainer.classList.remove('buzzer-hidden', 'buzzer-ready');
-            buzzContainer.classList.add('buzzer-waiting');
-        }
+        if (buzzContainer) buzzContainer.style.display = 'flex';
         if (buzzButton) {
-            buzzButton.disabled = true; // Keep disabled until timer starts
+            buzzButton.disabled = false;
+            buzzButton.style.opacity = '1';
         }
         if (chronoTimer) chronoTimer.textContent = '8';
         if (grid) {

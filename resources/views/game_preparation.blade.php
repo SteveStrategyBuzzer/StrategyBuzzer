@@ -146,17 +146,49 @@
   <source src="{{ asset('sounds/ready_announcement.mp3') }}" type="audio/mpeg">
 </audio>
 
+@php
+$currentMode = $mode ?? 'solo';
+$isSoloMode = $currentMode === 'solo';
+$redirectUrl = $redirect_url ?? ($isSoloMode ? route('solo.game') : route('game.question', ['mode' => $currentMode]));
+@endphp
+
 <script>
 // Nettoyer le localStorage de la musique de gameplay au début d'une nouvelle partie
 localStorage.removeItem('gameplayMusicTime');
 
 const audio = document.getElementById('readyAudio');
 const countdownDisplay = document.getElementById('countdown');
+const redirectUrl = @json($redirectUrl);
+const isSoloMode = {{ $isSoloMode ? 'true' : 'false' }};
 let audioDuration = 0;
 let updateInterval = null;
 let hasStarted = false;
 let hasRedirected = false;
 let fallbackTimeout = null;
+
+// Fonction pour générer le bloc de questions (Solo uniquement)
+function generateQuestionBlock() {
+    if (!isSoloMode) return; // Les autres modes ont déjà les questions pré-générées
+    
+    fetch("{{ route('solo.generate-block') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            count: 2,
+            round: {{ session('current_round', 1) }},
+            block_id: 1
+        })
+    }).then(response => response.json())
+      .then(data => {
+          console.log('[PROGRESSIVE] Block 1 generated:', data);
+      })
+      .catch(err => {
+          console.error('[PROGRESSIVE] Block 1 generation failed:', err);
+      });
+}
 
 // Définir le volume au maximum pour être entendu sur mobile
 audio.volume = 1.0;
@@ -172,29 +204,8 @@ audio.addEventListener('loadedmetadata', function() {
     audio.play().then(() => {
         hasStarted = true;
         startCountdownSync();
-        if (fallbackTimeout) clearTimeout(fallbackTimeout); // Annuler le fallback
-        
-        // NOUVEAU SYSTÈME PROGRESSIF : Générer le BLOC 1 (2 questions) pendant le countdown
-        // Les blocs 2-3-4 (3 questions chacun) seront générés pendant le gameplay
-        fetch("{{ route('solo.generate-block') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                count: 2,  // Bloc 1 : 2 questions seulement
-                round: {{ session('current_round', 1) }},
-                block_id: 1
-            })
-        }).then(response => response.json())
-          .then(data => {
-              console.log('[PROGRESSIVE] Block 1 generated:', data);
-              // Le jeu peut démarrer immédiatement avec ces 2 premières questions !
-          })
-          .catch(err => {
-              console.error('[PROGRESSIVE] Block 1 generation failed:', err);
-          });
+        if (fallbackTimeout) clearTimeout(fallbackTimeout);
+        generateQuestionBlock();
     }).catch(e => {
         console.log('Audio play failed, trying on user interaction:', e);
         // Sur mobile, jouer au premier clic
@@ -202,27 +213,8 @@ audio.addEventListener('loadedmetadata', function() {
             audio.play().then(() => {
                 hasStarted = true;
                 startCountdownSync();
-                if (fallbackTimeout) clearTimeout(fallbackTimeout); // Annuler le fallback
-                
-                // NOUVEAU SYSTÈME PROGRESSIF : Générer le BLOC 1 (même code que ci-dessus)
-                fetch("{{ route('solo.generate-block') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        count: 2,  // Bloc 1 : 2 questions
-                        round: {{ session('current_round', 1) }},
-                        block_id: 1
-                    })
-                }).then(response => response.json())
-                  .then(data => {
-                      console.log('[PROGRESSIVE] Block 1 generated (after click):', data);
-                  })
-                  .catch(err => {
-                      console.error('[PROGRESSIVE] Block 1 generation failed (after click):', err);
-                  });
+                if (fallbackTimeout) clearTimeout(fallbackTimeout);
+                generateQuestionBlock();
             }).catch(err => console.log('Audio still failed:', err));
             document.removeEventListener('click', playOnClick);
         }, { once: true });
@@ -231,7 +223,7 @@ audio.addEventListener('loadedmetadata', function() {
         fallbackTimeout = setTimeout(() => {
             if (!hasStarted && !hasRedirected) {
                 hasRedirected = true;
-                window.location.href = "{{ route('solo.game') }}";
+                window.location.href = redirectUrl;
             }
         }, 6000);
     });
@@ -242,7 +234,7 @@ audio.addEventListener('ended', function() {
     if (!hasRedirected) {
         hasRedirected = true;
         clearInterval(updateInterval);
-        window.location.href = "{{ route('solo.game') }}";
+        window.location.href = redirectUrl;
     }
 });
 
@@ -252,12 +244,11 @@ function startCountdownSync() {
         const remaining = audioDuration - audio.currentTime;
         
         if (remaining > 0) {
-            // Arrondir à l'unité supérieure pour un compte à rebours propre
             countdownDisplay.textContent = Math.ceil(remaining);
         } else {
             countdownDisplay.textContent = '0';
         }
-    }, 100); // Mise à jour toutes les 100ms pour une synchronisation fluide
+    }, 100);
 }
 
 // Fallback sécurisé : si l'audio ne démarre jamais, rediriger après 10 secondes
@@ -265,7 +256,7 @@ setTimeout(() => {
     if (!hasStarted && !hasRedirected) {
         console.log('Fallback: audio never started, redirecting');
         hasRedirected = true;
-        window.location.href = "{{ route('solo.game') }}";
+        window.location.href = redirectUrl;
     }
 }, 10000);
 </script>
