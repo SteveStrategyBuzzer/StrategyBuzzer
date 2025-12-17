@@ -14,6 +14,10 @@ class LeagueTeamMatch extends Model
         'team2_level',
         'winner_team_id',
         'status',
+        'game_mode',
+        'player_order',
+        'duel_pairings',
+        'current_player_index',
         'game_state',
         'team1_points_earned',
         'team2_points_earned',
@@ -21,11 +25,18 @@ class LeagueTeamMatch extends Model
 
     protected $casts = [
         'game_state' => 'array',
+        'player_order' => 'array',
+        'duel_pairings' => 'array',
         'team1_level' => 'integer',
         'team2_level' => 'integer',
         'team1_points_earned' => 'integer',
         'team2_points_earned' => 'integer',
+        'current_player_index' => 'integer',
     ];
+
+    const MODE_CLASSIQUE = 'classique';
+    const MODE_BATAILLE = 'bataille';
+    const MODE_RELAIS = 'relais';
 
     public function team1(): BelongsTo
     {
