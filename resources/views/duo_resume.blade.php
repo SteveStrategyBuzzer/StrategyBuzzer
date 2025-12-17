@@ -623,6 +623,11 @@ body {
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 @endif
 
+<!-- WebRTC Voice Chat Module -->
+@if($needsMic)
+<script src="{{ asset('js/VoiceChat.js') }}"></script>
+@endif
+
 <script>
 (function() {
     const redirectUrl = @json($redirectUrl);
@@ -913,45 +918,84 @@ body {
         });
     }
     
-    // Mic toggle with basic state sync
+    // WebRTC Voice Chat integration
+    let voiceChat = null;
+    
+    async function initVoiceChat() {
+        if (!needsMic || !hasValidSession || voiceChat) return;
+        if (!await initFirebase()) return;
+        
+        try {
+            voiceChat = new VoiceChat({
+                sessionId: sessionId,
+                localUserId: playerId,
+                remoteUserIds: opponentId ? [opponentId] : [],
+                isHost: isHost,
+                mode: mode,
+                db: db,
+                onSpeakingChange: (speaking) => {
+                    const indicator = document.getElementById('speakingIndicator');
+                    if (indicator) {
+                        indicator.classList.toggle('active', speaking);
+                    }
+                },
+                onConnectionChange: (state) => {
+                    console.log('Voice connection state:', state);
+                },
+                onError: (error) => {
+                    console.warn('Voice chat error:', error);
+                }
+            });
+            
+            await voiceChat.initialize();
+            console.log('VoiceChat initialized for session:', sessionId);
+        } catch (error) {
+            console.warn('VoiceChat init failed:', error);
+        }
+    }
+    
     window.toggleMic = async function() {
-        micEnabled = !micEnabled;
         const micButton = document.getElementById('micButton');
         const micIcon = document.getElementById('micIcon');
         
         if (!micButton || !micIcon) return;
         
-        if (micEnabled) {
-            micButton.classList.remove('muted');
-            micButton.classList.add('active');
-            micIcon.textContent = '🎤';
+        if (!voiceChat) {
+            await initVoiceChat();
+        }
+        
+        if (voiceChat) {
+            const enabled = await voiceChat.toggleMicrophone();
+            micEnabled = enabled;
             
-            // Sync mic state to Firebase
-            if (hasValidSession && await initFirebase()) {
-                try {
-                    await db.collection('gameSessions').doc(sessionId).set({
-                        micStatus: { [playerId]: true }
-                    }, { merge: true });
-                } catch (err) {
-                    console.warn('Mic sync failed:', err.message);
-                }
+            if (enabled) {
+                micButton.classList.remove('muted');
+                micButton.classList.add('active');
+                micIcon.textContent = '🎤';
+            } else {
+                micButton.classList.remove('active');
+                micButton.classList.add('muted');
+                micIcon.textContent = '🔇';
             }
         } else {
-            micButton.classList.remove('active');
-            micButton.classList.add('muted');
-            micIcon.textContent = '🔇';
-            
-            if (hasValidSession && db) {
-                try {
-                    await db.collection('gameSessions').doc(sessionId).set({
-                        micStatus: { [playerId]: false }
-                    }, { merge: true });
-                } catch (err) {
-                    console.warn('Mic sync failed:', err.message);
-                }
+            micEnabled = !micEnabled;
+            if (micEnabled) {
+                micButton.classList.remove('muted');
+                micButton.classList.add('active');
+                micIcon.textContent = '🎤';
+            } else {
+                micButton.classList.remove('active');
+                micButton.classList.add('muted');
+                micIcon.textContent = '🔇';
             }
         }
     };
+    
+    window.addEventListener('beforeunload', () => {
+        if (voiceChat) {
+            voiceChat.destroy();
+        }
+    });
     
     // Disable GO button if no valid session
     if (needsSyncGo && !hasValidSession) {

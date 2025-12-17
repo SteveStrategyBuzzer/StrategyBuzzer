@@ -86,7 +86,13 @@ Key services include:
 -   **Contact Book (Carnet)**: Automatic bidirectional contact creation via `PlayerContactService`, displaying player stats, win/loss records, and chat integration.
 -   **Multiplayer Lobby System**: Complete waiting room implementation for Duo/League/Master modes via `LobbyService` and `LobbyController`. Features include 12 team colors, host controls, ready states, cache persistence, and a revised Duo invitation flow.
 -   **League Team Gathering System (Dec 2025)**: Pre-match team assembly page with "Rassembler" button on team management page. Features include real-time connection status with avatar border glow effects, players sorted by skill level (60% efficiency + 40% last 10 matches win rate), integrated voice chat toggle and team chat, and captain-controlled lobby transition.
--   **WebRTC Voice Chat System**: Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling, including voice activity detection, speaking indicators, and mute/unmute controls.
+-   **WebRTC Voice Chat System (Dec 2025)**: Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling. Key components:
+    -   `public/js/VoiceChat.js`: Shared module with RTCPeerConnection, SDP offer/answer exchange, ICE candidate handling
+    -   Participants register as listeners even when muted, enabling audio reception
+    -   Dynamic renegotiation when users enable/disable microphone mid-session
+    -   Voice activity detection with speaking indicators
+    -   STUN servers for NAT traversal (stun.l.google.com)
+    -   Signaling via Firebase Firestore collections: voiceSessions/{sessionId}/participants, offers, answers, iceCandidates
 
 ## External Dependencies
 

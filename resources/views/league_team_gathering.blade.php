@@ -789,15 +789,20 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 
+<!-- WebRTC Voice Chat Module -->
+<script src="{{ asset('js/VoiceChat.js') }}"></script>
+
 <script>
 const sessionId = '{{ $sessionId }}';
 const teamId = {{ $team->id }};
 const currentUserId = {{ Auth::id() }};
 const isCaptain = {{ $isCaptain ? 'true' : 'false' }};
+const teamMemberIds = @json($membersWithStats->pluck('id')->filter(fn($id) => $id !== Auth::id())->values());
 let db = null;
 let unsubscribe = null;
 let micEnabled = false;
 let localStream = null;
+let voiceChat = null;
 
 const firebaseConfig = {
     apiKey: "{{ config('services.firebase.api_key') }}",
@@ -982,68 +987,86 @@ document.getElementById('chatInput')?.addEventListener('keypress', function(e) {
     }
 });
 
+async function initVoiceChat() {
+    if (voiceChat || !db) return;
+    
+    try {
+        voiceChat = new VoiceChat({
+            sessionId: 'team_gathering_' + sessionId,
+            localUserId: currentUserId,
+            remoteUserIds: teamMemberIds,
+            isHost: isCaptain,
+            mode: 'league_team',
+            db: db,
+            onSpeakingChange: (speaking) => {
+                const indicator = document.getElementById('speakingIndicator');
+                if (indicator) {
+                    indicator.classList.toggle('active', speaking);
+                }
+            },
+            onConnectionChange: (state) => {
+                console.log('Voice connection state:', state);
+            },
+            onError: (error) => {
+                console.warn('Voice chat error:', error);
+            }
+        });
+        
+        await voiceChat.initialize();
+        console.log('VoiceChat initialized for team gathering:', sessionId);
+    } catch (error) {
+        console.warn('VoiceChat init failed:', error);
+    }
+}
+
 async function toggleMicrophone() {
     const btn = document.getElementById('micButton');
     const icon = document.getElementById('micIcon');
     const speakingIndicator = document.getElementById('speakingIndicator');
     
-    if (!micEnabled) {
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            micEnabled = true;
+    if (!btn || !icon) return;
+    
+    if (!voiceChat) {
+        await initVoiceChat();
+    }
+    
+    if (voiceChat) {
+        const enabled = await voiceChat.toggleMicrophone();
+        micEnabled = enabled;
+        
+        if (enabled) {
             btn.classList.remove('muted');
             btn.classList.add('active');
             icon.textContent = '🎤';
-            
-            // Setup speaking detection
-            setupSpeakingDetection(localStream, speakingIndicator);
-            
-        } catch (error) {
-            console.error('Microphone error:', error);
-            alert('{{ __("Impossible d\'accéder au microphone") }}');
+        } else {
+            btn.classList.remove('active');
+            btn.classList.add('muted');
+            icon.textContent = '🔇';
+            speakingIndicator.classList.remove('active');
         }
     } else {
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
-        }
-        micEnabled = false;
-        btn.classList.remove('active');
-        btn.classList.add('muted');
-        icon.textContent = '🔇';
-        speakingIndicator.classList.remove('active');
-    }
-}
-
-function setupSpeakingDetection(stream, indicator) {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const analyser = audioContext.createAnalyser();
-        const microphone = audioContext.createMediaStreamSource(stream);
-        
-        microphone.connect(analyser);
-        analyser.fftSize = 512;
-        
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-        function checkVolume() {
-            if (!micEnabled) return;
-            
-            analyser.getByteFrequencyData(dataArray);
-            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-            
-            if (average > 30) {
-                indicator.classList.add('active');
-            } else {
-                indicator.classList.remove('active');
+        if (!micEnabled) {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                micEnabled = true;
+                btn.classList.remove('muted');
+                btn.classList.add('active');
+                icon.textContent = '🎤';
+            } catch (error) {
+                console.error('Microphone error:', error);
+                alert('{{ __("Impossible d\'accéder au microphone") }}');
             }
-            
-            requestAnimationFrame(checkVolume);
+        } else {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            micEnabled = false;
+            btn.classList.remove('active');
+            btn.classList.add('muted');
+            icon.textContent = '🔇';
+            speakingIndicator.classList.remove('active');
         }
-        
-        checkVolume();
-    } catch (error) {
-        console.error('Speaking detection error:', error);
     }
 }
 
@@ -1078,6 +1101,9 @@ function goToLobby() {
 window.addEventListener('beforeunload', () => {
     if (unsubscribe) {
         unsubscribe();
+    }
+    if (voiceChat) {
+        voiceChat.destroy();
     }
     if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
