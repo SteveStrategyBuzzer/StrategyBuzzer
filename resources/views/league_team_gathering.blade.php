@@ -58,36 +58,7 @@
             @endforeach
         </div>
 
-        <div class="communication-panel">
-            <div class="voice-chat-section">
-                <h3>🎤 {{ __('Communication Vocale') }}</h3>
-                <div class="voice-controls">
-                    <button class="voice-btn mic-btn" id="micToggle" onclick="toggleMicrophone()">
-                        <span class="btn-icon">🎤</span>
-                        <span class="btn-text">{{ __('Activer Micro') }}</span>
-                    </button>
-                    <div class="voice-status" id="voiceStatus">
-                        <span class="status-dot offline"></span>
-                        <span>{{ __('Micro désactivé') }}</span>
-                    </div>
-                </div>
-                <div class="speaking-indicators" id="speakingIndicators"></div>
-            </div>
-
-            <div class="text-chat-section">
-                <h3>💬 {{ __('Chat Équipe') }}</h3>
-                <div class="chat-messages" id="chatMessages">
-                    <p class="chat-placeholder">{{ __('Aucun message pour le moment...') }}</p>
-                </div>
-                <div class="chat-input-wrapper">
-                    <input type="text" id="chatInput" placeholder="{{ __('Écrire un message...') }}" maxlength="200">
-                    <button class="send-btn" onclick="sendMessage()">
-                        ➤
-                    </button>
-                </div>
-            </div>
-        </div>
-
+        
         @if($isCaptain)
         <div class="captain-actions">
             <button class="btn-lobby" id="goToLobbyBtn" onclick="goToLobby()" disabled>
@@ -102,6 +73,29 @@
         </div>
         @endif
     </div>
+</div>
+
+<!-- Chat Section - Duo Style (bottom-left) -->
+<div class="chat-section" id="chatSection">
+    <div class="chat-header">
+        <span>💬</span>
+        <span>{{ __('Chat Équipe') }}</span>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <!-- Messages will be added here -->
+    </div>
+    <div class="chat-input-container">
+        <input type="text" class="chat-input" id="chatInput" placeholder="{{ __('Écrivez un message...') }}" maxlength="200">
+        <button class="chat-send-btn" onclick="sendMessage()">➤</button>
+    </div>
+</div>
+
+<!-- Mic Section - Duo Style (bottom-right) -->
+<div class="mic-section">
+    <button class="mic-btn muted" id="micButton" onclick="toggleMicrophone()">
+        <span id="micIcon">🔇</span>
+        <div class="speaking-indicator" id="speakingIndicator"></div>
+    </button>
 </div>
 
 <style>
@@ -571,6 +565,224 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
 }
+
+/* Chat Section - Duo Style */
+.chat-section {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 320px;
+    max-height: 280px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(15px);
+    border-radius: 16px;
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    overflow: hidden;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.chat-header {
+    padding: 12px 15px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(0, 150, 200, 0.2) 100%);
+    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #00d4ff;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    max-height: 180px;
+    min-height: 100px;
+}
+
+.chat-message {
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    max-width: 90%;
+    animation: fadeIn 0.3s ease;
+}
+
+.chat-message.mine {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.3) 0%, rgba(0, 150, 200, 0.3) 100%);
+    margin-left: auto;
+    text-align: right;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-message.theirs {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 140, 0, 0.2) 100%);
+    margin-right: auto;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-message .sender {
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+    color: #00d4ff;
+}
+
+.chat-message.theirs .sender {
+    color: #ffd700;
+}
+
+.chat-message .text {
+    color: #fff;
+    word-wrap: break-word;
+}
+
+.chat-placeholder {
+    color: #666;
+    text-align: center;
+    font-style: italic;
+    padding: 30px 10px;
+}
+
+.chat-input-container {
+    padding: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.chat-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 20px;
+    padding: 10px 16px;
+    color: #fff;
+    font-size: 0.9rem;
+    transition: border-color 0.3s ease;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: #00d4ff;
+}
+
+.chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-send-btn {
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: #fff;
+    transition: all 0.3s ease;
+}
+
+.chat-send-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+}
+
+/* Mic Section - Duo Style */
+.mic-section {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+}
+
+.mic-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    transition: all 0.3s ease;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mic-btn:hover {
+    transform: scale(1.05);
+}
+
+.mic-btn.active {
+    background: rgba(46, 204, 113, 0.6);
+    border-color: #2ecc71;
+    animation: mic-pulse 1.5s infinite;
+}
+
+.mic-btn.muted {
+    background: rgba(231, 76, 60, 0.5);
+    border-color: #e74c3c;
+}
+
+@keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
+    50% { box-shadow: 0 0 40px rgba(46, 204, 113, 0.7); }
+}
+
+.speaking-indicator {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 22px;
+    height: 22px;
+    background: #2ecc71;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    animation: speaking-pulse 0.5s infinite;
+    display: none;
+}
+
+.speaking-indicator.active {
+    display: block;
+}
+
+@keyframes speaking-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+@media (max-width: 768px) {
+    .chat-section {
+        width: calc(100% - 100px);
+        left: 10px;
+        bottom: 10px;
+        max-height: 220px;
+    }
+    
+    .mic-section {
+        right: 10px;
+        bottom: 10px;
+    }
+    
+    .mic-btn {
+        width: 55px;
+        height: 55px;
+        font-size: 1.4rem;
+    }
+}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -721,8 +933,9 @@ function updateChat(messages) {
     }
     
     chatDiv.innerHTML = messages.slice(-50).map(msg => {
+        const isMine = msg.senderId === currentUserId;
         const div = document.createElement('div');
-        div.className = 'chat-message';
+        div.className = 'chat-message ' + (isMine ? 'mine' : 'theirs');
         
         const sender = document.createElement('div');
         sender.className = 'sender';
@@ -770,16 +983,21 @@ document.getElementById('chatInput')?.addEventListener('keypress', function(e) {
 });
 
 async function toggleMicrophone() {
-    const btn = document.getElementById('micToggle');
-    const statusDiv = document.getElementById('voiceStatus');
+    const btn = document.getElementById('micButton');
+    const icon = document.getElementById('micIcon');
+    const speakingIndicator = document.getElementById('speakingIndicator');
     
     if (!micEnabled) {
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             micEnabled = true;
+            btn.classList.remove('muted');
             btn.classList.add('active');
-            btn.querySelector('.btn-text').textContent = '{{ __("Micro Activé") }}';
-            statusDiv.innerHTML = '<span class="status-dot online"></span><span>{{ __("Micro activé") }}</span>';
+            icon.textContent = '🎤';
+            
+            // Setup speaking detection
+            setupSpeakingDetection(localStream, speakingIndicator);
+            
         } catch (error) {
             console.error('Microphone error:', error);
             alert('{{ __("Impossible d\'accéder au microphone") }}');
@@ -791,8 +1009,41 @@ async function toggleMicrophone() {
         }
         micEnabled = false;
         btn.classList.remove('active');
-        btn.querySelector('.btn-text').textContent = '{{ __("Activer Micro") }}';
-        statusDiv.innerHTML = '<span class="status-dot offline"></span><span>{{ __("Micro désactivé") }}</span>';
+        btn.classList.add('muted');
+        icon.textContent = '🔇';
+        speakingIndicator.classList.remove('active');
+    }
+}
+
+function setupSpeakingDetection(stream, indicator) {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        const microphone = audioContext.createMediaStreamSource(stream);
+        
+        microphone.connect(analyser);
+        analyser.fftSize = 512;
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        function checkVolume() {
+            if (!micEnabled) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            
+            if (average > 30) {
+                indicator.classList.add('active');
+            } else {
+                indicator.classList.remove('active');
+            }
+            
+            requestAnimationFrame(checkVolume);
+        }
+        
+        checkVolume();
+    } catch (error) {
+        console.error('Speaking detection error:', error);
     }
 }
 
