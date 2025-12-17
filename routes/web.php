@@ -198,6 +198,9 @@ Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
     Route::post('/{code}/start', [LobbyController::class, 'start'])->name('start');
     Route::post('/{code}/leave', [LobbyController::class, 'leave'])->name('leave');
     Route::post('/{code}/remove-player', [LobbyController::class, 'removePlayer'])->name('remove-player');
+    Route::post('/{code}/game-mode', [LobbyController::class, 'setGameMode'])->name('game-mode');
+    Route::post('/{code}/match-players', [LobbyController::class, 'matchPlayersByLevel'])->name('match-players');
+    Route::post('/{code}/player-order', [LobbyController::class, 'setPlayerOrder'])->name('player-order');
 });
 
 Route::post('/api/strategic-avatar', [LobbyController::class, 'setStrategicAvatar'])->middleware('auth')->name('api.strategic-avatar');

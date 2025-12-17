@@ -1001,6 +1001,69 @@ foreach ($colors as $color) {
         </div>
     @endif
     
+    @if($mode === 'league_team')
+    <div class="game-mode-section" style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 25px; margin-bottom: 25px;">
+        <div class="section-title">
+            <span>🎮</span>
+            <span>{{ __('Mode de jeu') }}</span>
+        </div>
+        
+        <div class="game-modes-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div class="game-mode-card {{ ($settings['game_mode'] ?? 'classique') === 'classique' ? 'selected' : '' }}" 
+                 data-mode="classique"
+                 onclick="@if($isHost) selectGameMode('classique') @endif"
+                 style="background: rgba(102, 126, 234, 0.2); border: 2px solid {{ ($settings['game_mode'] ?? 'classique') === 'classique' ? '#667eea' : 'transparent' }}; border-radius: 15px; padding: 15px; cursor: {{ $isHost ? 'pointer' : 'default' }}; transition: all 0.3s ease; text-align: center;">
+                <div style="font-size: 2rem; margin-bottom: 8px;">🏆</div>
+                <div style="font-weight: 700; font-size: 1rem; margin-bottom: 5px;">{{ __('Classique') }}</div>
+                <div style="font-size: 0.75rem; opacity: 0.8; line-height: 1.3;">{{ __('Tous sur la même question. Premier buzz répond. Skills libres.') }}</div>
+            </div>
+            
+            <div class="game-mode-card {{ ($settings['game_mode'] ?? 'classique') === 'bataille' ? 'selected' : '' }}" 
+                 data-mode="bataille"
+                 onclick="@if($isHost) selectGameMode('bataille') @endif"
+                 style="background: rgba(244, 67, 54, 0.2); border: 2px solid {{ ($settings['game_mode'] ?? 'classique') === 'bataille' ? '#f44336' : 'transparent' }}; border-radius: 15px; padding: 15px; cursor: {{ $isHost ? 'pointer' : 'default' }}; transition: all 0.3s ease; text-align: center;">
+                <div style="font-size: 2rem; margin-bottom: 8px;">⚔️</div>
+                <div style="font-weight: 700; font-size: 1rem; margin-bottom: 5px;">{{ __('Bataille de Niveaux') }}</div>
+                <div style="font-size: 0.75rem; opacity: 0.8; line-height: 1.3;">{{ __('5 duels par rang. 1er vs 1er, 2e vs 2e... Micro équipe + chat adversaire.') }}</div>
+            </div>
+            
+            <div class="game-mode-card {{ ($settings['game_mode'] ?? 'classique') === 'relais' ? 'selected' : '' }}" 
+                 data-mode="relais"
+                 onclick="@if($isHost) selectGameMode('relais') @endif"
+                 style="background: rgba(76, 175, 80, 0.2); border: 2px solid {{ ($settings['game_mode'] ?? 'classique') === 'relais' ? '#4caf50' : 'transparent' }}; border-radius: 15px; padding: 15px; cursor: {{ $isHost ? 'pointer' : 'default' }}; transition: all 0.3s ease; text-align: center;">
+                <div style="font-size: 2rem; margin-bottom: 8px;">🔄</div>
+                <div style="font-weight: 700; font-size: 1rem; margin-bottom: 5px;">{{ __('Queue Leu Leu') }}</div>
+                <div style="font-size: 0.75rem; opacity: 0.8; line-height: 1.3;">{{ __('Chacun son tour. Définissez l\'ordre. Skills du joueur actif seulement.') }}</div>
+            </div>
+        </div>
+        
+        @if($isHost && ($settings['game_mode'] ?? 'classique') === 'bataille')
+        <div id="matcher-section" style="margin-top: 20px; padding: 15px; background: rgba(244, 67, 54, 0.1); border-radius: 12px; border: 1px solid rgba(244, 67, 54, 0.3);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 0.9rem; opacity: 0.9;">
+                    <strong>{{ __('Matcher les joueurs par niveau') }}</strong><br>
+                    <span style="font-size: 0.8rem; opacity: 0.7;">{{ __('Associe automatiquement les joueurs par rang de niveau') }}</span>
+                </div>
+                <button class="btn" onclick="matchPlayersByLevel()" style="background: linear-gradient(135deg, #f44336, #d32f2f); padding: 10px 20px; border-radius: 25px; font-weight: bold;">
+                    ⚔️ {{ __('Matcher') }}
+                </button>
+            </div>
+            <div id="duel-pairings" style="margin-top: 15px; display: none;"></div>
+        </div>
+        @endif
+        
+        @if($isHost && ($settings['game_mode'] ?? 'classique') === 'relais')
+        <div id="order-section" style="margin-top: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 12px; border: 1px solid rgba(76, 175, 80, 0.3);">
+            <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 15px;">
+                <strong>{{ __('Ordre de passage de votre équipe') }}</strong><br>
+                <span style="font-size: 0.8rem; opacity: 0.7;">{{ __('Glissez les joueurs pour définir l\'ordre') }}</span>
+            </div>
+            <div id="player-order-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+        @endif
+    </div>
+    @endif
+    
     <div class="actions-section">
         @if(!$isHost)
             <button class="btn btn-ready {{ ($players[$currentPlayerId]['ready'] ?? false) ? 'is-ready' : '' }}" 
@@ -2015,6 +2078,30 @@ foreach ($colors as $color) {
         niveauInput.value = 1;
         form.appendChild(niveauInput);
         
+        if (settings.game_mode) {
+            const gameModeInput = document.createElement('input');
+            gameModeInput.type = 'hidden';
+            gameModeInput.name = 'game_mode';
+            gameModeInput.value = settings.game_mode;
+            form.appendChild(gameModeInput);
+        }
+        
+        if (settings.player_order) {
+            const playerOrderInput = document.createElement('input');
+            playerOrderInput.type = 'hidden';
+            playerOrderInput.name = 'player_order';
+            playerOrderInput.value = JSON.stringify(settings.player_order);
+            form.appendChild(playerOrderInput);
+        }
+        
+        if (settings.duel_pairings) {
+            const duelPairingsInput = document.createElement('input');
+            duelPairingsInput.type = 'hidden';
+            duelPairingsInput.name = 'duel_pairings';
+            duelPairingsInput.value = JSON.stringify(settings.duel_pairings);
+            form.appendChild(duelPairingsInput);
+        }
+        
         document.body.appendChild(form);
         form.submit();
     }
@@ -2042,6 +2129,171 @@ foreach ($colors as $color) {
             showToast('{{ __("Erreur de connexion") }}');
         }
     }
+    
+    let selectedGameMode = '{{ $settings['game_mode'] ?? 'classique' }}';
+    let playerOrder = [];
+    let duelPairings = [];
+    
+    async function selectGameMode(mode) {
+        if (selectedGameMode === mode) return;
+        
+        try {
+            const response = await fetch(`/lobby/${lobbyCode}/game-mode`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ game_mode: mode })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                location.reload();
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error selecting game mode:', error);
+            showToast('{{ __("Erreur de connexion") }}');
+        }
+    }
+    
+    async function matchPlayersByLevel() {
+        try {
+            const response = await fetch(`/lobby/${lobbyCode}/match-players`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                duelPairings = data.pairings || [];
+                displayDuelPairings(duelPairings);
+                showToast('{{ __("Joueurs matchés par niveau !") }}');
+            } else {
+                showToast(data.error || '{{ __("Erreur") }}');
+            }
+        } catch (error) {
+            console.error('Error matching players:', error);
+            showToast('{{ __("Erreur de connexion") }}');
+        }
+    }
+    
+    function displayDuelPairings(pairings) {
+        const container = document.getElementById('duel-pairings');
+        if (!container || !pairings.length) return;
+        
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 10px; font-size: 0.9rem;">{{ __('Duels configurés :') }}</div>
+            ${pairings.map((duel, idx) => `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 6px;">
+                    <span style="flex: 1; text-align: center; font-size: 0.85rem;">${escapeHtml(duel.player1.name)} (Nv.${duel.player1.level})</span>
+                    <span style="padding: 0 10px; color: #f44336; font-weight: bold;">VS</span>
+                    <span style="flex: 1; text-align: center; font-size: 0.85rem;">${escapeHtml(duel.player2.name)} (Nv.${duel.player2.level})</span>
+                </div>
+            `).join('')}
+        `;
+    }
+    
+    function initPlayerOrderList() {
+        const container = document.getElementById('player-order-list');
+        if (!container) return;
+        
+        const myTeamPlayers = @json(collect($players)->filter(fn($p) => ($p['team'] ?? null) === ($players[$currentPlayerId]['team'] ?? null))->values()->toArray());
+        
+        if (!myTeamPlayers.length) return;
+        
+        playerOrder = myTeamPlayers.map(p => p.id || p.user_id);
+        
+        container.innerHTML = myTeamPlayers.map((player, idx) => `
+            <div class="order-item" draggable="true" data-player-id="${player.id || player.user_id}" 
+                 style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: rgba(255,255,255,0.1); border-radius: 10px; cursor: grab;">
+                <span style="font-weight: bold; color: #4caf50; min-width: 25px;">${idx + 1}.</span>
+                <span style="flex: 1;">${escapeHtml(player.name)}</span>
+                <span style="cursor: grab; opacity: 0.5;">⠿</span>
+            </div>
+        `).join('');
+        
+        initDragAndDrop();
+    }
+    
+    function initDragAndDrop() {
+        const container = document.getElementById('player-order-list');
+        if (!container) return;
+        
+        let draggedItem = null;
+        
+        container.querySelectorAll('.order-item').forEach(item => {
+            item.addEventListener('dragstart', function(e) {
+                draggedItem = this;
+                this.style.opacity = '0.5';
+            });
+            
+            item.addEventListener('dragend', function(e) {
+                this.style.opacity = '1';
+                draggedItem = null;
+                updatePlayerOrder();
+            });
+            
+            item.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            item.addEventListener('drop', function(e) {
+                e.preventDefault();
+                if (draggedItem !== this) {
+                    const allItems = [...container.querySelectorAll('.order-item')];
+                    const draggedIdx = allItems.indexOf(draggedItem);
+                    const targetIdx = allItems.indexOf(this);
+                    
+                    if (draggedIdx < targetIdx) {
+                        this.parentNode.insertBefore(draggedItem, this.nextSibling);
+                    } else {
+                        this.parentNode.insertBefore(draggedItem, this);
+                    }
+                }
+            });
+        });
+    }
+    
+    async function updatePlayerOrder() {
+        const container = document.getElementById('player-order-list');
+        if (!container) return;
+        
+        const items = container.querySelectorAll('.order-item');
+        playerOrder = [...items].map(item => parseInt(item.dataset.playerId));
+        
+        items.forEach((item, idx) => {
+            const numSpan = item.querySelector('span:first-child');
+            if (numSpan) numSpan.textContent = `${idx + 1}.`;
+        });
+        
+        try {
+            await fetch(`/lobby/${lobbyCode}/player-order`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ player_order: playerOrder })
+            });
+        } catch (error) {
+            console.error('Error updating player order:', error);
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        if (selectedGameMode === 'relais') {
+            initPlayerOrderList();
+        }
+    });
     
     async function toggleReady() {
         try {

@@ -453,4 +453,128 @@ class LobbyController extends Controller
             'message' => __('Avatar stratégique mis à jour')
         ]);
     }
+    
+    public function setGameMode(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'game_mode' => 'required|string|in:classique,bataille,relais',
+        ]);
+        
+        $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
+        
+        if (!$lobbyState['exists']) {
+            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
+        }
+        
+        if (!$lobbyState['is_host']) {
+            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut changer le mode de jeu')], 403);
+        }
+        
+        $result = $this->lobbyService->updateLobbySettings($code, $user, [
+            'game_mode' => $validated['game_mode']
+        ]);
+        
+        return response()->json($result);
+    }
+    
+    public function matchPlayersByLevel(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
+        
+        if (!$lobbyState['exists']) {
+            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
+        }
+        
+        if (!$lobbyState['is_host']) {
+            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut matcher les joueurs')], 403);
+        }
+        
+        $lobby = $lobbyState['lobby'];
+        $players = $lobby['players'] ?? [];
+        $teams = $lobby['teams'] ?? [];
+        
+        if (count($teams) < 2) {
+            return response()->json(['success' => false, 'error' => __('Il faut 2 équipes pour le mode Bataille')], 400);
+        }
+        
+        $team1Id = array_key_first($teams);
+        $team2Id = array_key_last($teams);
+        
+        $team1Players = collect($players)->filter(fn($p) => ($p['team'] ?? null) === $team1Id)->values();
+        $team2Players = collect($players)->filter(fn($p) => ($p['team'] ?? null) === $team2Id)->values();
+        
+        $team1Sorted = $team1Players->sortByDesc(fn($p) => $p['level'] ?? 1)->values();
+        $team2Sorted = $team2Players->sortByDesc(fn($p) => $p['level'] ?? 1)->values();
+        
+        $pairings = [];
+        $minCount = min($team1Sorted->count(), $team2Sorted->count());
+        
+        for ($i = 0; $i < $minCount; $i++) {
+            $p1 = $team1Sorted[$i];
+            $p2 = $team2Sorted[$i];
+            $pairings[] = [
+                'rank' => $i + 1,
+                'player1' => [
+                    'id' => $p1['user_id'] ?? $p1['id'] ?? 0,
+                    'name' => $p1['name'] ?? 'Joueur',
+                    'level' => $p1['level'] ?? 1,
+                ],
+                'player2' => [
+                    'id' => $p2['user_id'] ?? $p2['id'] ?? 0,
+                    'name' => $p2['name'] ?? 'Joueur',
+                    'level' => $p2['level'] ?? 1,
+                ],
+            ];
+        }
+        
+        $this->lobbyService->updateLobbySettings($code, $user, [
+            'duel_pairings' => $pairings
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'pairings' => $pairings
+        ]);
+    }
+    
+    public function setPlayerOrder(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'player_order' => 'required|array',
+            'player_order.team1' => 'sometimes|array',
+            'player_order.team1.*' => 'integer',
+            'player_order.team2' => 'sometimes|array',
+            'player_order.team2.*' => 'integer',
+        ]);
+        
+        $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
+        
+        if (!$lobbyState['exists']) {
+            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
+        }
+        
+        if (!$lobbyState['is_host']) {
+            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut définir l\'ordre des joueurs')], 403);
+        }
+        
+        $playerOrder = $validated['player_order'];
+        if (isset($playerOrder['team1']) && isset($playerOrder['team2'])) {
+            $playerOrder = [
+                'team1' => array_values(array_map('intval', $playerOrder['team1'])),
+                'team2' => array_values(array_map('intval', $playerOrder['team2'])),
+            ];
+        }
+        
+        $result = $this->lobbyService->updateLobbySettings($code, $user, [
+            'player_order' => $playerOrder
+        ]);
+        
+        return response()->json($result);
+    }
 }

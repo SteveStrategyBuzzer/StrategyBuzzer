@@ -19,6 +19,14 @@ $scoring = $params['scoring'] ?? [];
 $avatarName = $params['avatar'] ?? 'Aucun';
 $avatarSkillsFull = $params['avatar_skills_full'] ?? ['rarity' => null, 'skills' => []];
 
+$leagueTeamMode = $params['league_team_mode'] ?? 'classique';
+$skillsFreeForAll = $params['skills_free_for_all'] ?? true;
+$canUseSkills = $params['can_use_skills'] ?? true;
+$isActivePlayer = $params['is_active_player'] ?? true;
+$duelInfo = $params['duel_info'] ?? null;
+$relayOrder = $params['relay_order'] ?? [];
+$currentRelayIndex = $params['current_relay_index'] ?? 0;
+
 $usedSkills = session('used_skills', []);
 $skills = [];
 if (!empty($avatarSkillsFull['skills'])) {
@@ -341,6 +349,13 @@ $roomCode = $params['room_code'] ?? null;
     
     .skill-circle.empty { opacity: 0.3; cursor: default; }
     .skill-circle.used { opacity: 0.5; cursor: default; }
+    .skill-circle.locked { 
+        opacity: 0.4; 
+        cursor: not-allowed; 
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(100, 100, 100, 0.3);
+        box-shadow: none;
+    }
     
     .opponent-strategic-indicator {
         position: absolute;
@@ -657,15 +672,17 @@ $roomCode = $params['room_code'] ?? null;
                             $skill = $skills[$i];
                             $isUsed = $skill['used'];
                             $isAuto = $skill['auto'];
-                            $isDisabled = $isUsed || $isAuto;
+                            $skillLocked = ($mode === 'league_team' && $leagueTeamMode === 'relais' && !$isActivePlayer);
+                            $isDisabled = $isUsed || $isAuto || $skillLocked;
                         @endphp
-                        <div class="skill-circle {{ $isUsed ? 'used' : 'active' }} {{ $isAuto ? 'auto' : 'clickable' }}" 
+                        <div class="skill-circle {{ $isUsed ? 'used' : 'active' }} {{ $isAuto ? 'auto' : 'clickable' }} {{ $skillLocked ? 'locked' : '' }}" 
                              data-skill-id="{{ $skill['id'] }}"
                              data-skill-type="{{ $skill['type'] ?? 'personal' }}"
                              data-skill-trigger="{{ $skill['trigger'] }}"
                              data-affects-opponent="{{ ($skill['affects_opponent'] ?? false) ? 'true' : 'false' }}"
-                             title="{{ $skill['name'] }}: {{ $skill['description'] }}">
-                            {{ $skill['icon'] }}
+                             data-locked="{{ $skillLocked ? 'true' : 'false' }}"
+                             title="{{ $skillLocked ? __('Ce n\'est pas votre tour') : $skill['name'] . ': ' . $skill['description'] }}">
+                            {{ $skillLocked ? '🔒' : $skill['icon'] }}
                         </div>
                     @else
                         <div class="skill-circle empty"></div>
@@ -706,6 +723,91 @@ $roomCode = $params['room_code'] ?? null;
 <div class="attack-overlay" id="attackOverlay">
     <div class="attack-icon" id="attackIcon">⚔️</div>
 </div>
+
+@if($mode === 'league_team')
+<div class="league-team-mode-banner" id="leagueTeamBanner">
+    @if($leagueTeamMode === 'classique')
+        <div class="mode-indicator classique">
+            <span class="mode-icon">🏆</span>
+            <span class="mode-text">{{ __('Mode Classique - Skills libres pour tous') }}</span>
+        </div>
+    @elseif($leagueTeamMode === 'bataille')
+        <div class="mode-indicator bataille">
+            <span class="mode-icon">⚔️</span>
+            @if($duelInfo)
+                <span class="mode-text">{{ __('Duel #') }}{{ $duelInfo['rank'] ?? 1 }} : {{ __('Vous vs') }} {{ $duelInfo['opponent_name'] ?? __('Adversaire') }}</span>
+            @else
+                <span class="mode-text">{{ __('Mode Bataille de Niveaux') }}</span>
+            @endif
+        </div>
+    @elseif($leagueTeamMode === 'relais')
+        <div class="mode-indicator relais {{ $isActivePlayer ? 'your-turn' : 'waiting' }}">
+            <span class="mode-icon">{{ $isActivePlayer ? '🎯' : '⏳' }}</span>
+            @if($isActivePlayer)
+                <span class="mode-text">{{ __('C\'est votre tour !') }}</span>
+            @else
+                <span class="mode-text">{{ __('En attente de votre tour...') }} ({{ $currentRelayIndex + 1 }}/{{ count($relayOrder) }})</span>
+            @endif
+        </div>
+    @endif
+</div>
+
+<style>
+.league-team-mode-banner {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    padding: 8px 20px;
+    border-radius: 25px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+}
+
+.mode-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mode-indicator.classique {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.8), rgba(118, 75, 162, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.mode-indicator.bataille {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.8), rgba(211, 47, 47, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.mode-indicator.relais {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.8), rgba(56, 142, 60, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.mode-indicator.relais.your-turn {
+    animation: turn-pulse 1.5s ease-in-out infinite;
+}
+
+.mode-indicator.relais.waiting {
+    opacity: 0.7;
+}
+
+@keyframes turn-pulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+    50% { box-shadow: 0 0 25px rgba(76, 175, 80, 0.9); }
+}
+
+.mode-icon {
+    font-size: 1.1rem;
+}
+</style>
+@endif
 
 @if($mode === 'duo')
 <!-- Contrôles communication Duo - disponibles en permanence -->
@@ -1981,6 +2083,10 @@ function initAttackSkills() {
     document.querySelectorAll('.skill-circle.clickable[data-affects-opponent="true"]').forEach(skillEl => {
         skillEl.addEventListener('click', function() {
             if (this.classList.contains('used') || this.classList.contains('auto')) return;
+            if (this.classList.contains('locked') || this.dataset.locked === 'true') {
+                console.log('[Skill] Skill locked - not your turn');
+                return;
+            }
             
             const skillId = this.dataset.skillId;
             const skillType = this.dataset.skillType;
@@ -2013,6 +2119,10 @@ function initPersonalSkills() {
     document.querySelectorAll('.skill-circle.clickable:not([data-affects-opponent="true"])').forEach(skillEl => {
         skillEl.addEventListener('click', function() {
             if (this.classList.contains('used') || this.classList.contains('auto')) return;
+            if (this.classList.contains('locked') || this.dataset.locked === 'true') {
+                console.log('[Skill] Skill locked - not your turn');
+                return;
+            }
             
             const skillId = this.dataset.skillId;
             console.log('[Skill] Personal skill clicked:', skillId);

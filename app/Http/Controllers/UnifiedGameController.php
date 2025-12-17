@@ -65,6 +65,9 @@ class UnifiedGameController extends Controller
             'match_id' => 'nullable|string',
             'room_code' => 'nullable|string',
             'lobby_code' => 'nullable|string',
+            'game_mode' => 'nullable|string|in:classique,bataille,relais',
+            'player_order' => 'nullable|string',
+            'duel_pairings' => 'nullable|string',
         ]);
         
         $provider = $this->getProvider($mode);
@@ -128,6 +131,33 @@ class UnifiedGameController extends Controller
         
         if ($mode === 'master' && isset($validated['room_code'])) {
             $gameState['room_code'] = $validated['room_code'];
+        }
+        
+        if ($mode === 'league_team') {
+            $subGameMode = $validated['game_mode'] ?? 'classique';
+            $gameState['game_mode'] = $subGameMode;
+            $gameState['skills_free_for_all'] = ($subGameMode === 'classique');
+            
+            if (!empty($validated['player_order'])) {
+                $playerOrder = json_decode($validated['player_order'], true);
+                if (is_array($playerOrder) && isset($playerOrder['team1']) && isset($playerOrder['team2'])) {
+                    $gameState['player_order'] = $playerOrder;
+                    if ($subGameMode === 'relais') {
+                        $gameState['relay_indices'] = ['team1' => 0, 'team2' => 0];
+                        $gameState['active_player'] = [
+                            'team1' => $playerOrder['team1'][0] ?? null,
+                            'team2' => $playerOrder['team2'][0] ?? null,
+                        ];
+                    }
+                }
+            }
+            
+            if (!empty($validated['duel_pairings'])) {
+                $duelPairings = json_decode($validated['duel_pairings'], true);
+                if (is_array($duelPairings)) {
+                    $gameState['duel_pairings'] = $duelPairings;
+                }
+            }
         }
         
         $provider->setGameState($gameState);

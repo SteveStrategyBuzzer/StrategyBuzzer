@@ -17,7 +17,7 @@ class LeagueTeamMatch extends Model
         'game_mode',
         'player_order',
         'duel_pairings',
-        'current_player_index',
+        'relay_indices',
         'game_state',
         'team1_points_earned',
         'team2_points_earned',
@@ -27,11 +27,11 @@ class LeagueTeamMatch extends Model
         'game_state' => 'array',
         'player_order' => 'array',
         'duel_pairings' => 'array',
+        'relay_indices' => 'array',
         'team1_level' => 'integer',
         'team2_level' => 'integer',
         'team1_points_earned' => 'integer',
         'team2_points_earned' => 'integer',
-        'current_player_index' => 'integer',
     ];
 
     const MODE_CLASSIQUE = 'classique';

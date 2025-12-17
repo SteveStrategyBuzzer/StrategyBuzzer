@@ -947,9 +947,29 @@ class LeagueTeamController extends Controller
         $teamId = $request->team_id;
         $opponentId = $request->opponent_id;
         $level = $request->level ?? 'normal';
+        $gameMode = $request->game_mode ?? 'classique';
+        $rawPlayerOrder = $request->player_order ?? null;
+        $duelPairings = $request->duel_pairings ?? null;
 
         $team = Team::withCount('members')->findOrFail($teamId);
         $opponent = Team::withCount('members')->findOrFail($opponentId);
+
+        $playerOrder = null;
+        if ($gameMode === 'relais') {
+            if ($rawPlayerOrder && isset($rawPlayerOrder['team1']) && isset($rawPlayerOrder['team2'])) {
+                $playerOrder = [
+                    'team1' => array_values(array_map('intval', $rawPlayerOrder['team1'])),
+                    'team2' => array_values(array_map('intval', $rawPlayerOrder['team2'])),
+                ];
+            } else {
+                $team1Members = $team->teamMembers()->pluck('user_id')->toArray();
+                $team2Members = $opponent->teamMembers()->pluck('user_id')->toArray();
+                $playerOrder = [
+                    'team1' => $team1Members,
+                    'team2' => $team2Members,
+                ];
+            }
+        }
 
         if ($team->captain_id !== $user->id) {
             return response()->json(['success' => false, 'error' => __('Seul le capitaine peut lancer un match.')], 403);
@@ -986,18 +1006,35 @@ class LeagueTeamController extends Controller
                 $user->decrement('coins', $cost);
             }
 
+            $relayIndices = null;
+            $gameState = [
+                'round' => 1,
+                'question_number' => 0,
+                'team1_score' => 0,
+                'team2_score' => 0,
+                'game_mode' => $gameMode,
+                'skills_free_for_all' => ($gameMode === 'classique'),
+            ];
+
+            if ($gameMode === 'relais' && $playerOrder) {
+                $relayIndices = ['team1' => 0, 'team2' => 0];
+                $gameState['active_player'] = [
+                    'team1' => $playerOrder['team1'][0] ?? null,
+                    'team2' => $playerOrder['team2'][0] ?? null,
+                ];
+            }
+
             $match = LeagueTeamMatch::create([
                 'team1_id' => $team->id,
                 'team2_id' => $opponent->id,
                 'division' => $team->division,
                 'status' => 'pending',
                 'level' => $level,
-                'game_state' => [
-                    'round' => 1,
-                    'question_number' => 0,
-                    'team1_score' => 0,
-                    'team2_score' => 0,
-                ]
+                'game_mode' => $gameMode,
+                'player_order' => $playerOrder,
+                'duel_pairings' => $duelPairings,
+                'relay_indices' => $relayIndices,
+                'game_state' => $gameState,
             ]);
 
             \DB::commit();

@@ -65,7 +65,18 @@ Key services include:
 -   **Unified Game Interface Architecture**: Uses `GameModeProvider` as an abstract base class for different game modes (Solo, Duo, League, Master), routing game logic through a `UnifiedGameController`. Multiplayer question synchronization ensures all players in a match see identical questions, generated and stored by the host in mode-specific Firestore documents. A universal `game_unified.blade.php` adapts visually to any game mode.
 
 ### Feature Specifications
--   **Game Modes**: Solo (90 opponents, 10 boss battles), Duo (division-based, player code invites), League Individual (1v1 career), League Team (5v5), and Master (real-time hosting for 3-40 players).
+-   **Game Modes**: Solo (90 opponents, 10 boss battles), Duo (division-based, player code invites), League Individual (1v1 career), League Team (5v5 with 3 sub-modes), and Master (real-time hosting for 3-40 players).
+-   **League Team Sub-Modes (Dec 2025)**:
+    -   **Classique**: All 10 players see the same question. First buzz answers. All players can use skills freely at any time.
+    -   **Bataille de Niveaux**: Matcher button pairs players by rank (1st vs 1st, 2nd vs 2nd, etc). 5 parallel duels. Team mic stays open, player-to-player chat with opponent.
+    -   **Queue Leu Leu (Relay)**: Captain sets player order. Each player takes turns answering. Only the active player can use their skills.
+    -   **Technical Implementation**:
+        -   Database schema: `league_team_matches` table has `game_mode`, `player_order` (JSON), `duel_pairings` (JSON), `relay_indices` (JSON for dual-team tracking)
+        -   Lobby UI: Host can select mode, configure player order (drag-drop), trigger matcher for Bataille mode
+        -   LobbyController endpoints: `setGameMode`, `setPlayerOrder` (accepts team-keyed arrays), `matchPlayersByLevel`
+        -   UnifiedGameController: Handles game_mode, player_order, duel_pairings from lobby settings
+        -   LeagueTeamService: `advanceRelayPlayer()` rotates active player using relay_indices
+        -   Skill locking: `game_unified.blade.php` checks `dataset.locked` before skill activation in Relais mode
 -   **Avatar System**: User-specific avatars with 12 avatars across 3 rarity tiers, offering 25 unique skills (Passive, Visual, Active_Pre, Active_Post) triggered by various game events.
 -   **Progression**: Includes a Quest/Achievement System with 35 Standard quests, event-driven detection, and atomic transaction-based reward distribution.
 -   **Real-time Features**: Utilizes Firebase Firestore for real-time game state synchronization, including microsecond-precision buzz systems and score updates.

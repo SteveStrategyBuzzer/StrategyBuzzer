@@ -26,7 +26,7 @@ class LeagueTeamService
         $this->questionService = $questionService;
     }
 
-    public function initializeTeamMatch(Team $team): LeagueTeamMatch
+    public function initializeTeamMatch(Team $team, string $gameMode = 'classique', array $options = []): LeagueTeamMatch
     {
         if ($team->teamMembers()->count() < 5) {
             throw new \Exception('Votre équipe doit avoir 5 joueurs pour jouer.');
@@ -50,10 +50,41 @@ class LeagueTeamService
                 'name' => $user->name,
                 'avatar' => $user->strategic_avatar ?? null,
                 'team_index' => $index < 5 ? 1 : 2,
+                'level' => $user->duoStats?->level ?? 1,
             ];
         })->toArray();
 
         $gameState = $this->gameStateService->initializeGame($allPlayers, 'league_team');
+        $gameState['game_mode'] = $gameMode;
+        $gameState['skills_free_for_all'] = ($gameMode === 'classique');
+        
+        $duelPairings = null;
+        $playerOrder = null;
+        
+        if ($gameMode === 'bataille') {
+            $duelPairings = $options['duel_pairings'] ?? $this->createDuelPairings($team1Members, $team2Members);
+            $gameState['duel_pairings'] = $duelPairings;
+            $gameState['active_duels'] = array_map(fn($d) => [
+                'player1_id' => $d['player1']['id'],
+                'player2_id' => $d['player2']['id'],
+                'player1_score' => 0,
+                'player2_score' => 0,
+                'current_question' => 0,
+            ], $duelPairings);
+        }
+        
+        $relayIndices = null;
+        if ($gameMode === 'relais') {
+            $playerOrder = [
+                'team1' => $options['player_order']['team1'] ?? $team1Members->pluck('id')->toArray(),
+                'team2' => $options['player_order']['team2'] ?? $team2Members->pluck('id')->toArray(),
+            ];
+            $relayIndices = ['team1' => 0, 'team2' => 0];
+            $gameState['active_player'] = [
+                'team1' => $playerOrder['team1'][0] ?? null,
+                'team2' => $playerOrder['team2'][0] ?? null,
+            ];
+        }
 
         return LeagueTeamMatch::create([
             'team1_id' => $team->id,
@@ -61,8 +92,100 @@ class LeagueTeamService
             'team1_level' => $team->level,
             'team2_level' => $opponent->level,
             'status' => 'playing',
+            'game_mode' => $gameMode,
+            'duel_pairings' => $duelPairings,
+            'player_order' => $playerOrder,
+            'relay_indices' => $relayIndices,
             'game_state' => $gameState,
         ]);
+    }
+    
+    private function createDuelPairings($team1Members, $team2Members): array
+    {
+        $team1Sorted = $team1Members->sortByDesc(fn($u) => $u->duoStats?->level ?? 1)->values();
+        $team2Sorted = $team2Members->sortByDesc(fn($u) => $u->duoStats?->level ?? 1)->values();
+        
+        $pairings = [];
+        $minCount = min($team1Sorted->count(), $team2Sorted->count());
+        
+        for ($i = 0; $i < $minCount; $i++) {
+            $p1 = $team1Sorted[$i];
+            $p2 = $team2Sorted[$i];
+            $pairings[] = [
+                'rank' => $i + 1,
+                'player1' => [
+                    'id' => $p1->id,
+                    'name' => $p1->name,
+                    'level' => $p1->duoStats?->level ?? 1,
+                ],
+                'player2' => [
+                    'id' => $p2->id,
+                    'name' => $p2->name,
+                    'level' => $p2->duoStats?->level ?? 1,
+                ],
+            ];
+        }
+        
+        return $pairings;
+    }
+    
+    public function canPlayerUseSkill(LeagueTeamMatch $match, int $userId): bool
+    {
+        $gameMode = $match->game_mode;
+        
+        if ($gameMode === 'classique') {
+            return true;
+        }
+        
+        if ($gameMode === 'bataille') {
+            return true;
+        }
+        
+        if ($gameMode === 'relais') {
+            $gameState = $match->game_state;
+            $activePlayer = $gameState['active_player'] ?? [];
+            return in_array($userId, $activePlayer);
+        }
+        
+        return false;
+    }
+    
+    public function advanceRelayPlayer(LeagueTeamMatch $match, int $teamIndex): void
+    {
+        if ($match->game_mode !== 'relais') return;
+        
+        $gameState = $match->game_state;
+        $relayIndices = $match->relay_indices ?? ['team1' => 0, 'team2' => 0];
+        $teamKey = "team{$teamIndex}";
+        $currentIndex = $relayIndices[$teamKey] ?? 0;
+        $playerOrder = $match->player_order[$teamKey] ?? [];
+        
+        if (empty($playerOrder)) return;
+        
+        $nextIndex = ($currentIndex + 1) % count($playerOrder);
+        $relayIndices[$teamKey] = $nextIndex;
+        
+        $gameState['active_player'][$teamKey] = $playerOrder[$nextIndex] ?? null;
+        
+        $match->update([
+            'game_state' => $gameState,
+            'relay_indices' => $relayIndices,
+        ]);
+    }
+    
+    public function getDuelForPlayer(LeagueTeamMatch $match, int $userId): ?array
+    {
+        if ($match->game_mode !== 'bataille') return null;
+        
+        $pairings = $match->duel_pairings ?? [];
+        
+        foreach ($pairings as $duel) {
+            if (($duel['player1']['id'] ?? 0) === $userId || ($duel['player2']['id'] ?? 0) === $userId) {
+                return $duel;
+            }
+        }
+        
+        return null;
     }
 
     private function findOpponent(Team $team): ?Team
