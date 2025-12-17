@@ -616,6 +616,13 @@ body {
 </div>
 @endif
 
+<!-- Firebase SDK - loaded first -->
+@if($needsSyncGo || $needsChat || $needsMic)
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+@endif
+
 <script>
 (function() {
     const redirectUrl = @json($redirectUrl);
@@ -625,13 +632,70 @@ body {
     const sessionId = @json($sessionId);
     const playerId = @json($playerId);
     const opponentId = @json($opponentId);
+    const mode = @json($mode);
+    const isHost = @json($isHost);
     
     let playerReady = false;
     let opponentReady = false;
     let redirected = false;
     let micEnabled = false;
+    let firebaseInitialized = false;
+    let unsubscribeReady = null;
+    let unsubscribeChat = null;
+    let db = null;
     
-    // Simple countdown for non-sync modes
+    const isLeagueMode = mode.startsWith('league');
+    const hasValidSession = sessionId && sessionId !== null && sessionId !== 'null';
+    
+    // Initialize Firebase once
+    async function initFirebase() {
+        if (firebaseInitialized || typeof firebase === 'undefined') return false;
+        
+        try {
+            const firebaseConfig = {
+                projectId: @json(config('services.firebase.project_id')),
+                apiKey: "{{ config('services.firebase.api_key', '') }}"
+            };
+            
+            if (!firebaseConfig.projectId) {
+                console.warn('Firebase project ID not configured');
+                return false;
+            }
+            
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            
+            // Reuse existing auth or sign in
+            if (!firebase.auth().currentUser) {
+                await firebase.auth().signInAnonymously();
+            }
+            
+            db = firebase.firestore();
+            firebaseInitialized = true;
+            return true;
+        } catch (err) {
+            console.warn('Firebase init failed:', err.message);
+            return false;
+        }
+    }
+    
+    // Cleanup listeners on page unload
+    function cleanup() {
+        if (unsubscribeReady) {
+            unsubscribeReady();
+            unsubscribeReady = null;
+        }
+        if (unsubscribeChat) {
+            unsubscribeChat();
+            unsubscribeChat = null;
+        }
+    }
+    
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+    
+    // Simple countdown for non-sync modes (Solo, etc)
     if (!needsSyncGo) {
         let count = 5;
         const countdownEl = document.getElementById('countdown');
@@ -654,33 +718,36 @@ body {
                 }
             }, 1000);
             
-            window.addEventListener('beforeunload', () => {
-                clearInterval(interval);
-            });
+            window.addEventListener('beforeunload', () => clearInterval(interval));
         }
     }
     
     // Synchronized GO for Duo/League
-    window.clickGo = function() {
-        if (playerReady) return;
+    window.clickGo = async function() {
+        if (playerReady || !hasValidSession) return;
         
         playerReady = true;
         const goButton = document.getElementById('goButton');
         const playerDot = document.getElementById('playerDot');
         const waitingMessage = document.getElementById('waitingMessage');
         
-        goButton.classList.add('clicked');
-        goButton.disabled = true;
-        goButton.innerHTML = '✓ {{ __("Prêt!") }}';
-        playerDot.classList.add('ready');
-        waitingMessage.style.display = 'block';
+        if (goButton) {
+            goButton.classList.add('clicked');
+            goButton.disabled = true;
+            goButton.innerHTML = '✓ {{ __("Prêt!") }}';
+        }
+        if (playerDot) playerDot.classList.add('ready');
+        if (waitingMessage) waitingMessage.style.display = 'block';
         
         // Sync with Firebase
-        if (typeof firebase !== 'undefined' && sessionId) {
-            const db = firebase.firestore();
-            db.collection('gameSessions').doc(sessionId).update({
-                [`readyStatus.${playerId}`]: true
-            }).catch(err => console.log('Firebase sync error:', err));
+        if (hasValidSession && await initFirebase()) {
+            try {
+                await db.collection('gameSessions').doc(sessionId).set({
+                    readyStatus: { [playerId]: true }
+                }, { merge: true });
+            } catch (err) {
+                console.warn('Ready sync failed:', err.message);
+            }
         }
         
         checkBothReady();
@@ -693,14 +760,17 @@ body {
     }
     
     function startCountdown() {
-        const goSection = document.querySelector('.go-section');
+        cleanup(); // Stop listening once both ready
+        
         const countdownSection = document.getElementById('countdownSection');
         const waitingMessage = document.getElementById('waitingMessage');
         const goButton = document.getElementById('goButton');
+        const goStatus = document.querySelector('.go-status');
         
-        waitingMessage.style.display = 'none';
-        goButton.style.display = 'none';
-        countdownSection.style.display = 'block';
+        if (waitingMessage) waitingMessage.style.display = 'none';
+        if (goButton) goButton.style.display = 'none';
+        if (goStatus) goStatus.style.display = 'none';
+        if (countdownSection) countdownSection.style.display = 'block';
         
         let count = 3;
         const countdownEl = document.getElementById('countdown');
@@ -708,9 +778,9 @@ body {
         const interval = setInterval(() => {
             count--;
             if (count > 0) {
-                countdownEl.textContent = count;
+                if (countdownEl) countdownEl.textContent = count;
             } else {
-                countdownEl.textContent = '🚀';
+                if (countdownEl) countdownEl.textContent = '🚀';
                 clearInterval(interval);
                 
                 if (!redirected) {
@@ -724,44 +794,74 @@ body {
     }
     
     // Listen for opponent ready status via Firebase
-    if (needsSyncGo && typeof firebase !== 'undefined' && sessionId) {
-        firebase.auth().signInAnonymously().then(() => {
-            const db = firebase.firestore();
-            db.collection('gameSessions').doc(sessionId).onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    const readyStatus = data.readyStatus || {};
-                    
-                    if (opponentId && readyStatus[opponentId]) {
-                        opponentReady = true;
-                        const opponentDot = document.getElementById('opponentDot');
-                        if (opponentDot) opponentDot.classList.add('ready');
-                        checkBothReady();
-                    }
+    async function startReadyListener() {
+        if (!needsSyncGo || !hasValidSession) return;
+        
+        if (!await initFirebase()) {
+            // Fallback: auto-proceed after 10s if no Firebase
+            setTimeout(() => {
+                if (!opponentReady) {
+                    opponentReady = true;
+                    const opponentDot = document.getElementById('opponentDot');
+                    if (opponentDot) opponentDot.classList.add('ready');
+                    checkBothReady();
                 }
+            }, 10000);
+            return;
+        }
+        
+        try {
+            unsubscribeReady = db.collection('gameSessions').doc(sessionId).onSnapshot((doc) => {
+                if (!doc.exists) return;
+                
+                const data = doc.data();
+                const readyStatus = data.readyStatus || {};
+                
+                // Check all other players in readyStatus
+                Object.keys(readyStatus).forEach(pid => {
+                    if (pid !== String(playerId) && readyStatus[pid] === true) {
+                        if (!opponentReady) {
+                            opponentReady = true;
+                            const opponentDot = document.getElementById('opponentDot');
+                            if (opponentDot) opponentDot.classList.add('ready');
+                            checkBothReady();
+                        }
+                    }
+                });
+            }, (err) => {
+                console.warn('Ready listener error:', err.message);
             });
-        }).catch(err => console.log('Firebase auth error:', err));
+        } catch (err) {
+            console.warn('Failed to start ready listener:', err.message);
+        }
     }
     
     // Chat functionality
-    window.sendChatMessage = function() {
+    window.sendChatMessage = async function() {
         const input = document.getElementById('chatInput');
+        if (!input) return;
+        
         const message = input.value.trim();
+        if (!message || !hasValidSession) return;
         
-        if (!message) return;
+        // Sanitize message (XSS protection)
+        const sanitizedMessage = message.replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 200);
         
-        // Add message to local chat
-        addChatMessage(message, true);
+        // Add message to local chat immediately
+        addChatMessage(sanitizedMessage, true);
         input.value = '';
         
         // Send via Firebase
-        if (typeof firebase !== 'undefined' && sessionId) {
-            const db = firebase.firestore();
-            db.collection('gameSessions').doc(sessionId).collection('chat').add({
-                senderId: playerId,
-                message: message,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(err => console.log('Chat send error:', err));
+        if (await initFirebase()) {
+            try {
+                await db.collection('gameSessions').doc(sessionId).collection('chat').add({
+                    senderId: String(playerId),
+                    message: sanitizedMessage,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (err) {
+                console.warn('Chat send failed:', err.message);
+            }
         }
     };
     
@@ -771,28 +871,35 @@ body {
         
         const msgDiv = document.createElement('div');
         msgDiv.className = 'chat-message ' + (isMine ? 'mine' : 'theirs');
-        msgDiv.textContent = message;
+        msgDiv.textContent = message; // Safe: textContent prevents XSS
         messagesEl.appendChild(msgDiv);
         messagesEl.scrollTop = messagesEl.scrollHeight;
     }
     
     // Listen for chat messages
-    if (needsChat && typeof firebase !== 'undefined' && sessionId) {
-        firebase.auth().signInAnonymously().then(() => {
-            const db = firebase.firestore();
-            db.collection('gameSessions').doc(sessionId).collection('chat')
+    async function startChatListener() {
+        if (!needsChat || !hasValidSession) return;
+        if (!await initFirebase()) return;
+        
+        try {
+            unsubscribeChat = db.collection('gameSessions').doc(sessionId)
+                .collection('chat')
                 .orderBy('timestamp', 'asc')
                 .onSnapshot((snapshot) => {
                     snapshot.docChanges().forEach((change) => {
                         if (change.type === 'added') {
                             const data = change.doc.data();
-                            if (data.senderId !== playerId) {
+                            if (data.senderId !== String(playerId) && data.message) {
                                 addChatMessage(data.message, false);
                             }
                         }
                     });
+                }, (err) => {
+                    console.warn('Chat listener error:', err.message);
                 });
-        }).catch(err => console.log('Chat listen error:', err));
+        } catch (err) {
+            console.warn('Failed to start chat listener:', err.message);
+        }
     }
     
     // Enter key for chat
@@ -800,44 +907,69 @@ body {
     if (chatInput) {
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 sendChatMessage();
             }
         });
     }
     
-    // Mic toggle
-    window.toggleMic = function() {
+    // Mic toggle with basic state sync
+    window.toggleMic = async function() {
         micEnabled = !micEnabled;
         const micButton = document.getElementById('micButton');
         const micIcon = document.getElementById('micIcon');
+        
+        if (!micButton || !micIcon) return;
         
         if (micEnabled) {
             micButton.classList.remove('muted');
             micButton.classList.add('active');
             micIcon.textContent = '🎤';
-            // WebRTC mic activation would go here
+            
+            // Sync mic state to Firebase
+            if (hasValidSession && await initFirebase()) {
+                try {
+                    await db.collection('gameSessions').doc(sessionId).set({
+                        micStatus: { [playerId]: true }
+                    }, { merge: true });
+                } catch (err) {
+                    console.warn('Mic sync failed:', err.message);
+                }
+            }
         } else {
             micButton.classList.remove('active');
             micButton.classList.add('muted');
             micIcon.textContent = '🔇';
+            
+            if (hasValidSession && db) {
+                try {
+                    await db.collection('gameSessions').doc(sessionId).set({
+                        micStatus: { [playerId]: false }
+                    }, { merge: true });
+                } catch (err) {
+                    console.warn('Mic sync failed:', err.message);
+                }
+            }
         }
     };
+    
+    // Disable GO button if no valid session
+    if (needsSyncGo && !hasValidSession) {
+        const goButton = document.getElementById('goButton');
+        const waitingMessage = document.getElementById('waitingMessage');
+        if (goButton) {
+            goButton.disabled = true;
+            goButton.textContent = '{{ __("Session invalide") }}';
+        }
+        if (waitingMessage) {
+            waitingMessage.textContent = '{{ __("Veuillez retourner au lobby") }}';
+            waitingMessage.style.display = 'block';
+        }
+    }
+    
+    // Start listeners
+    startReadyListener();
+    startChatListener();
 })();
 </script>
-
-<!-- Firebase SDK -->
-@if($needsSyncGo || $needsChat || $needsMic)
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script>
-    const firebaseConfig = {
-        projectId: @json(config('services.firebase.project_id')),
-        apiKey: "{{ config('services.firebase.api_key', 'AIzaSyDummyKey') }}"
-    };
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-</script>
-@endif
 @endsection
