@@ -121,6 +121,15 @@
                 </div>
             @endif
         @else
+            @if($team->members->count() >= 5)
+            <div class="gather-section">
+                <button onclick="gatherTeam()" class="btn-gather" id="gatherBtn">
+                    <span class="gather-icon">📢</span>
+                    <span class="gather-text">{{ __('Rassembler') }}</span>
+                </button>
+            </div>
+            @endif
+            
             <div class="team-info-section">
                 <div class="team-header-card">
                     <div class="team-header-row">
@@ -263,6 +272,69 @@
 </div>
 
 <style>
+.gather-section {
+    max-width: 900px;
+    margin: 0 auto 20px;
+    padding: 0 20px;
+}
+
+.btn-gather {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ff6b35 100%);
+    background-size: 200% 200%;
+    border: 3px solid #ffd700;
+    border-radius: 15px;
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    animation: gatherPulse 2s ease-in-out infinite;
+}
+
+@keyframes gatherPulse {
+    0%, 100% { background-position: 0% 50%; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4); }
+    50% { background-position: 100% 50%; box-shadow: 0 6px 25px rgba(255, 107, 53, 0.6); }
+}
+
+.btn-gather:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 30px rgba(255, 107, 53, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.btn-gather:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.btn-gather .gather-icon {
+    font-size: 1.6rem;
+    animation: shake 0.5s ease-in-out infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+}
+
+.btn-gather:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    animation: none;
+}
+
+.btn-gather:disabled .gather-icon {
+    animation: none;
+}
+
 .team-management-content {
     max-width: 900px;
     margin: 0 auto;
@@ -1680,6 +1752,42 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+async function gatherTeam() {
+    const btn = document.getElementById('gatherBtn');
+    const originalText = btn.querySelector('.gather-text').textContent;
+    
+    btn.disabled = true;
+    btn.querySelector('.gather-text').textContent = '{{ __("Envoi...") }}';
+    
+    try {
+        const response = await fetch('/league/team/{{ $team->id ?? 0 }}/gather', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('{{ __("Invitations envoyées ! Redirection...") }}', 'success');
+            setTimeout(() => {
+                window.location.href = data.redirect_url;
+            }, 500);
+        } else {
+            showToast(data.error || '{{ __("Erreur lors du rassemblement") }}', 'error');
+            btn.disabled = false;
+            btn.querySelector('.gather-text').textContent = originalText;
+        }
+    } catch (error) {
+        showToast('{{ __("Erreur de connexion") }}', 'error');
+        btn.disabled = false;
+        btn.querySelector('.gather-text').textContent = originalText;
+    }
 }
 </script>
 @endsection

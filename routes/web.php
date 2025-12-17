@@ -292,6 +292,9 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
     Route::post('/invitation/{invitationId}/accept', [App\Http\Controllers\LeagueTeamController::class, 'acceptInvitation'])->name('invitation.accept');
     Route::post('/invitation/{invitationId}/decline', [App\Http\Controllers\LeagueTeamController::class, 'declineInvitation'])->name('invitation.decline');
     Route::post('/{teamId}/toggle-recruiting', [App\Http\Controllers\LeagueTeamController::class, 'toggleRecruitingById'])->name('toggle-recruiting-by-id');
+    Route::post('/{teamId}/gather', [App\Http\Controllers\LeagueTeamController::class, 'gatherTeam'])->name('gather');
+    Route::get('/{teamId}/gathering/{sessionId}', [App\Http\Controllers\LeagueTeamController::class, 'showGathering'])->name('gathering');
+    Route::get('/gathering/{sessionId}/members', [App\Http\Controllers\LeagueTeamController::class, 'getGatheringMembers'])->name('gathering.members');
 });
 
 Route::prefix('api/league/team')->middleware('auth')->group(function () {

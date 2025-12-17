@@ -85,6 +85,7 @@ Key services include:
 -   **Player-to-Player Chat System**: Complete messaging system with PostgreSQL table, `PlayerMessageService`, `ChatController`, and UI integration in Duo lobby and match result pages, featuring real-time conversation loading and XSS protection.
 -   **Contact Book (Carnet)**: Automatic bidirectional contact creation via `PlayerContactService`, displaying player stats, win/loss records, and chat integration.
 -   **Multiplayer Lobby System**: Complete waiting room implementation for Duo/League/Master modes via `LobbyService` and `LobbyController`. Features include 12 team colors, host controls, ready states, cache persistence, and a revised Duo invitation flow.
+-   **League Team Gathering System (Dec 2025)**: Pre-match team assembly page with "Rassembler" button on team management page. Features include real-time connection status with avatar border glow effects, players sorted by skill level (60% efficiency + 40% last 10 matches win rate), integrated voice chat toggle and team chat, and captain-controlled lobby transition.
 -   **WebRTC Voice Chat System**: Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling, including voice activity detection, speaking indicators, and mute/unmute controls.
 
 ## External Dependencies

@@ -1048,4 +1048,173 @@ class LeagueTeamController extends Controller
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
+
+    public function gatherTeam(int $teamId)
+    {
+        $user = Auth::user();
+        $team = Team::with('members')->find($teamId);
+
+        if (!$team) {
+            return response()->json(['success' => false, 'error' => __('Équipe introuvable')], 404);
+        }
+
+        if ($team->captain_id !== $user->id) {
+            return response()->json(['success' => false, 'error' => __('Seul le capitaine peut rassembler l\'équipe')], 403);
+        }
+
+        if ($team->members->count() < 5) {
+            return response()->json(['success' => false, 'error' => __('L\'équipe doit avoir 5 joueurs')], 400);
+        }
+
+        $sessionId = 'gather_' . $teamId . '_' . time();
+
+        \Illuminate\Support\Facades\Cache::put('team_gathering:' . $sessionId, [
+            'team_id' => $teamId,
+            'captain_id' => $user->id,
+            'created_at' => now()->toISOString(),
+            'members' => $team->members->pluck('id')->toArray(),
+            'connected' => [$user->id],
+        ], now()->addHours(2));
+
+        return response()->json([
+            'success' => true,
+            'redirect_url' => route('league.team.gathering', ['teamId' => $teamId, 'sessionId' => $sessionId]),
+        ]);
+    }
+
+    public function showGathering(int $teamId, string $sessionId)
+    {
+        $user = Auth::user();
+        $team = Team::with(['members', 'captain'])->find($teamId);
+
+        if (!$team) {
+            return redirect()->route('league.team.management')->with('error', __('Équipe introuvable'));
+        }
+
+        $isMember = $team->members->contains('id', $user->id);
+        if (!$isMember) {
+            return redirect()->route('league.team.management')->with('error', __('Vous n\'êtes pas membre de cette équipe'));
+        }
+
+        $gatheringData = \Illuminate\Support\Facades\Cache::get('team_gathering:' . $sessionId);
+        if (!$gatheringData) {
+            return redirect()->route('league.team.management', $teamId)->with('error', __('Session de rassemblement expirée'));
+        }
+
+        if (!in_array($user->id, $gatheringData['connected'])) {
+            $gatheringData['connected'][] = $user->id;
+            \Illuminate\Support\Facades\Cache::put('team_gathering:' . $sessionId, $gatheringData, now()->addHours(2));
+        }
+
+        $membersWithStats = $team->members->map(function ($member) use ($team) {
+            $stats = \App\Models\PlayerDuoStat::where('user_id', $member->id)->first();
+
+            $last10Matches = \DB::table('league_team_match_participants')
+                ->join('league_team_matches', 'league_team_matches.id', '=', 'league_team_match_participants.match_id')
+                ->where('league_team_match_participants.user_id', $member->id)
+                ->where('league_team_matches.status', 'completed')
+                ->orderByDesc('league_team_matches.completed_at')
+                ->limit(10)
+                ->select([
+                    'league_team_match_participants.team_id',
+                    'league_team_matches.winner_team_id'
+                ])
+                ->get();
+
+            $wins = $last10Matches->filter(fn($m) => $m->team_id === $m->winner_team_id)->count();
+            $losses = $last10Matches->count() - $wins;
+            $last10WinRate = $last10Matches->count() > 0 ? ($wins / $last10Matches->count()) : 0;
+
+            $efficiency = 0;
+            if ($stats) {
+                $totalAnswers = $stats->total_answers ?? 0;
+                $correctAnswers = $stats->correct_answers ?? 0;
+                $efficiency = $totalAnswers > 0 ? ($correctAnswers / $totalAnswers) : 0;
+            }
+
+            $skillScore = ($efficiency * 0.6) + ($last10WinRate * 0.4);
+
+            return [
+                'id' => $member->id,
+                'name' => $member->name,
+                'avatar_url' => $member->avatar_url,
+                'is_captain' => $member->id === $team->captain_id,
+                'efficiency' => round($efficiency * 100, 1),
+                'last_10_wins' => $wins,
+                'last_10_losses' => $losses,
+                'skill_score' => $skillScore,
+            ];
+        })->sortByDesc('skill_score')->values();
+
+        $isCaptain = $team->captain_id === $user->id;
+
+        return view('league_team_gathering', compact('team', 'sessionId', 'membersWithStats', 'isCaptain', 'gatheringData'));
+    }
+
+    public function getGatheringMembers(string $sessionId)
+    {
+        $user = Auth::user();
+        $gatheringData = \Illuminate\Support\Facades\Cache::get('team_gathering:' . $sessionId);
+
+        if (!$gatheringData) {
+            return response()->json(['success' => false, 'error' => __('Session expirée')], 404);
+        }
+
+        if (!in_array($user->id, $gatheringData['members'])) {
+            return response()->json(['success' => false, 'error' => __('Non autorisé')], 403);
+        }
+
+        if (!in_array($user->id, $gatheringData['connected'])) {
+            $gatheringData['connected'][] = $user->id;
+            \Illuminate\Support\Facades\Cache::put('team_gathering:' . $sessionId, $gatheringData, now()->addHours(2));
+        }
+
+        $team = Team::with('members')->find($gatheringData['team_id']);
+        
+        $membersWithStats = $team->members->map(function ($member) use ($gatheringData) {
+            $stats = \App\Models\PlayerDuoStat::where('user_id', $member->id)->first();
+
+            $last10Matches = \DB::table('league_team_match_participants')
+                ->join('league_team_matches', 'league_team_matches.id', '=', 'league_team_match_participants.match_id')
+                ->where('league_team_match_participants.user_id', $member->id)
+                ->where('league_team_matches.status', 'completed')
+                ->orderByDesc('league_team_matches.completed_at')
+                ->limit(10)
+                ->select([
+                    'league_team_match_participants.team_id',
+                    'league_team_matches.winner_team_id'
+                ])
+                ->get();
+
+            $wins = $last10Matches->filter(fn($m) => $m->team_id === $m->winner_team_id)->count();
+            $losses = $last10Matches->count() - $wins;
+            $last10WinRate = $last10Matches->count() > 0 ? ($wins / $last10Matches->count()) : 0;
+
+            $efficiency = 0;
+            if ($stats) {
+                $totalAnswers = $stats->total_answers ?? 0;
+                $correctAnswers = $stats->correct_answers ?? 0;
+                $efficiency = $totalAnswers > 0 ? ($correctAnswers / $totalAnswers) : 0;
+            }
+
+            $skillScore = ($efficiency * 0.6) + ($last10WinRate * 0.4);
+
+            return [
+                'id' => $member->id,
+                'name' => $member->name,
+                'avatar_url' => $member->avatar_url,
+                'is_connected' => in_array($member->id, $gatheringData['connected']),
+                'efficiency' => round($efficiency * 100, 1),
+                'last_10_wins' => $wins,
+                'last_10_losses' => $losses,
+                'skill_score' => $skillScore,
+            ];
+        })->sortByDesc('skill_score')->values();
+
+        return response()->json([
+            'success' => true,
+            'members' => $membersWithStats,
+            'all_connected' => count($gatheringData['connected']) >= count($gatheringData['members']),
+        ]);
+    }
 }
