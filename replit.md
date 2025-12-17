@@ -44,6 +44,14 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - Legacy collections (duoMatches, leagueMatches, masterRooms) deprecated
 - Security rules enforce member-only access with host privileges for global state
 
+**Multiplayer Resume Page Features (Dec 2025)**
+- `duo_resume.blade.php` now includes Chat, Mic toggle, and synchronized GO button for Duo/League modes
+- Firebase auth reuse pattern: single initialization with `firebaseInitialized` guard and `currentUser` check
+- Proper cleanup: unsubscribe handles for onSnapshot listeners on page unload/pagehide
+- Null-safe session handling: disables GO button and shows error when sessionId missing
+- XSS protection: chat messages rendered via textContent, not innerHTML
+- Graceful Firebase fallback: auto-proceeds after 10s timeout if Firebase unavailable
+
 Key services include:
 -   **QuestionService**: Manages AI-ready, theme-based question generation with adaptive difficulty, a 3-layer anti-duplication system, progressive block-based generation, and language-specific strict spelling verification. It leverages Google Gemini 2.0 Flash.
 -   **SubthemeRotationSystem**: Implements deterministic sub-theme rotation across 8 main themes and 120 sub-themes, with dynamic pulling for "Culture générale".
