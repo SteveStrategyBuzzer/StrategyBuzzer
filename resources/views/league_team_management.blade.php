@@ -267,6 +267,33 @@
                     </button>
                 </div>
             </div>
+            
+            <!-- Floating Chat Button - Bottom Left -->
+            <div class="floating-chat-btn" id="floatingChatBtn" onclick="toggleTeamChat()">
+                💬
+                <span class="chat-badge" id="chatBadge" style="display: none;">0</span>
+            </div>
+            
+            <!-- Floating Mic Button - Bottom Right -->
+            <div class="floating-mic-btn muted" id="floatingMicBtn" onclick="toggleMicrophone()">
+                <span id="micIcon">🔇</span>
+                <div class="speaking-indicator" id="speakingIndicator"></div>
+            </div>
+            
+            <!-- Chat Modal -->
+            <div class="team-chat-modal" id="teamChatModal" style="display: none;">
+                <div class="chat-modal-header">
+                    <span>💬 {{ __('Chat Équipe') }}</span>
+                    <button class="chat-close-btn" onclick="toggleTeamChat()">✕</button>
+                </div>
+                <div class="chat-messages-container" id="teamChatMessages">
+                    <!-- Messages will be loaded here -->
+                </div>
+                <div class="chat-input-row">
+                    <input type="text" class="chat-text-input" id="teamChatInput" placeholder="{{ __('Écrivez un message...') }}" maxlength="200" onkeypress="if(event.key === 'Enter') sendTeamMessage()">
+                    <button class="chat-send-btn" onclick="sendTeamMessage()">➤</button>
+                </div>
+            </div>
         @endif
     </div>
 </div>
@@ -1310,6 +1337,248 @@
         font-size: 0.85rem;
     }
 }
+
+.floating-chat-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+    transition: all 0.3s ease;
+}
+
+.floating-chat-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 30px rgba(0, 212, 255, 0.6);
+}
+
+.chat-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.7rem;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.floating-mic-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    transition: all 0.3s ease;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.floating-mic-btn:hover {
+    transform: scale(1.05);
+}
+
+.floating-mic-btn.active {
+    background: rgba(46, 204, 113, 0.6);
+    border-color: #2ecc71;
+    animation: mic-pulse 1.5s infinite;
+}
+
+.floating-mic-btn.muted {
+    background: rgba(231, 76, 60, 0.5);
+    border-color: #e74c3c;
+}
+
+@keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
+    50% { box-shadow: 0 0 40px rgba(46, 204, 113, 0.7); }
+}
+
+.speaking-indicator {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #2ecc71;
+    display: none;
+    animation: speaking-pulse 0.5s infinite;
+}
+
+.speaking-indicator.active {
+    display: block;
+}
+
+@keyframes speaking-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+.team-chat-modal {
+    position: fixed;
+    bottom: 90px;
+    left: 20px;
+    width: 320px;
+    max-height: 350px;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(15px);
+    border-radius: 16px;
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    overflow: hidden;
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.chat-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    color: #fff;
+    font-weight: bold;
+}
+
+.chat-close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.chat-messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    max-height: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-message {
+    padding: 8px 12px;
+    border-radius: 12px;
+    max-width: 85%;
+}
+
+.chat-message.sent {
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-message.received {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-message .sender {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-bottom: 3px;
+}
+
+.chat-message .text {
+    font-size: 0.9rem;
+}
+
+.chat-input-row {
+    display: flex;
+    padding: 10px;
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-text-input {
+    flex: 1;
+    padding: 10px 15px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.chat-text-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    border: none;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.chat-send-btn:hover {
+    transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+    .floating-chat-btn,
+    .floating-mic-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.3rem;
+    }
+    
+    .floating-chat-btn {
+        left: 15px;
+        bottom: 15px;
+    }
+    
+    .floating-mic-btn {
+        right: 15px;
+        bottom: 15px;
+    }
+    
+    .team-chat-modal {
+        width: calc(100% - 90px);
+        left: 10px;
+        bottom: 75px;
+        max-height: 280px;
+    }
+}
 </style>
 
 <script>
@@ -1789,5 +2058,159 @@ async function gatherTeam() {
         btn.querySelector('.gather-text').textContent = originalText;
     }
 }
+
+let voiceChat = null;
+let teamChatOpen = false;
+const teamId = {{ $team->id ?? 0 }};
+const currentUserId = {{ Auth::id() }};
+const currentUserName = '{{ Auth::user()->name ?? "Joueur" }}';
+
+function toggleTeamChat() {
+    const modal = document.getElementById('teamChatModal');
+    teamChatOpen = !teamChatOpen;
+    modal.style.display = teamChatOpen ? 'flex' : 'none';
+    
+    if (teamChatOpen) {
+        loadTeamMessages();
+        document.getElementById('chatBadge').style.display = 'none';
+        document.getElementById('teamChatInput').focus();
+    }
+}
+
+async function loadTeamMessages() {
+    if (!teamId) return;
+    
+    const container = document.getElementById('teamChatMessages');
+    container.innerHTML = '<p style="color: #888; text-align: center;">{{ __("Chargement...") }}</p>';
+    
+    try {
+        const response = await fetch(`/api/team/${teamId}/messages`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('api_token')
+            }
+        });
+        
+        if (!response.ok) {
+            container.innerHTML = '<p style="color: #888; text-align: center;">{{ __("Aucun message") }}</p>';
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.messages && data.messages.length > 0) {
+            container.innerHTML = data.messages.map(msg => `
+                <div class="chat-message ${msg.sender_id === currentUserId ? 'sent' : 'received'}">
+                    ${msg.sender_id !== currentUserId ? `<div class="sender">${escapeHtml(msg.sender_name)}</div>` : ''}
+                    <div class="text">${escapeHtml(msg.content)}</div>
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        } else {
+            container.innerHTML = '<p style="color: #888; text-align: center;">{{ __("Aucun message. Commencez la conversation !") }}</p>';
+        }
+    } catch (error) {
+        container.innerHTML = '<p style="color: #888; text-align: center;">{{ __("Erreur de chargement") }}</p>';
+    }
+}
+
+async function sendTeamMessage() {
+    if (!teamId) return;
+    
+    const input = document.getElementById('teamChatInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    try {
+        const response = await fetch(`/api/team/${teamId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Authorization': 'Bearer ' + localStorage.getItem('api_token')
+            },
+            body: JSON.stringify({ content: message })
+        });
+        
+        if (response.ok) {
+            input.value = '';
+            loadTeamMessages();
+        }
+    } catch (error) {
+        showToast('{{ __("Erreur d\'envoi") }}', 'error');
+    }
+}
+
+async function toggleMicrophone() {
+    const micBtn = document.getElementById('floatingMicBtn');
+    const micIcon = document.getElementById('micIcon');
+    
+    if (!voiceChat) {
+        await initVoiceChat();
+    }
+    
+    if (voiceChat) {
+        const enabled = await voiceChat.toggleMicrophone();
+        micBtn.classList.toggle('active', enabled);
+        micBtn.classList.toggle('muted', !enabled);
+        micIcon.textContent = enabled ? '🎙️' : '🔇';
+    } else {
+        showToast('{{ __("Impossible d\'activer le microphone") }}', 'error');
+    }
+}
+
+async function initVoiceChat() {
+    if (voiceChat || !teamId) return;
+    
+    try {
+        if (typeof firebase === 'undefined') {
+            console.warn('Firebase not loaded for voice chat');
+            return;
+        }
+        
+        const db = firebase.firestore();
+        
+        voiceChat = new VoiceChat({
+            db: db,
+            sessionId: `team_${teamId}`,
+            localUserId: currentUserId,
+            localUserName: currentUserName,
+            onSpeakingChange: (isSpeaking) => {
+                const indicator = document.getElementById('speakingIndicator');
+                if (indicator) {
+                    indicator.classList.toggle('active', isSpeaking);
+                }
+            }
+        });
+        
+        await voiceChat.initialize();
+        console.log('VoiceChat initialized for team management');
+    } catch (error) {
+        console.error('VoiceChat init error:', error);
+    }
+}
+
+window.addEventListener('pagehide', () => {
+    if (voiceChat) {
+        voiceChat.destroy();
+        voiceChat = null;
+    }
+});
 </script>
+
+@if($team)
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+<script src="{{ asset('js/VoiceChat.js') }}"></script>
+<script>
+if (typeof firebase === 'undefined' || !firebase.apps.length) {
+    firebase.initializeApp({
+        apiKey: "{{ config('services.firebase.api_key') }}",
+        authDomain: "{{ config('services.firebase.project_id') }}.firebaseapp.com",
+        projectId: "{{ config('services.firebase.project_id') }}"
+    });
+}
+</script>
+@endif
 @endsection
