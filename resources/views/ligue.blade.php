@@ -232,9 +232,31 @@ body {
     background: rgba(255,255,255,0.2);
     color: white;
     border: 1px solid rgba(255,255,255,0.5);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 .btn-join-team:hover {
     background: rgba(255,255,255,0.3);
+}
+.invitation-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: #ff4444;
+    border-radius: 9px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    animation: badgePulse 2s infinite;
+}
+@keyframes badgePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
 }
 .team-list {
     display: flex;
@@ -451,7 +473,12 @@ body {
                 </div>
                 <div class="team-action-buttons">
                     <a href="{{ route('league.team.create') }}" class="btn-create-team">+ {{ __('Créer') }}</a>
-                    <a href="{{ route('league.team.search') }}" class="btn-join-team">{{ __('Rejoindre') }}</a>
+                    <a href="{{ route('league.team.search') }}" class="btn-join-team">
+                        {{ __('Rejoindre') }}
+                        @if($pendingInvitations->count() > 0)
+                            <span class="invitation-badge">{{ $pendingInvitations->count() }}</span>
+                        @endif
+                    </a>
                 </div>
             </div>
             <p style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 1rem; text-align: left;">
