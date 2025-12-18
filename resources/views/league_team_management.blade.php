@@ -307,6 +307,61 @@
 </div>
 
 <style>
+.league-lobby-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0a15 0%, #1a1a2e 50%, #16213e 100%);
+    padding-bottom: 100px;
+}
+
+.league-header {
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    padding: 20px;
+    text-align: center;
+    position: relative;
+}
+
+.league-header h1 {
+    color: #00d4ff;
+    font-size: 1.8rem;
+    margin: 10px 0;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+.back-button {
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.back-button:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+@media (max-width: 768px) {
+    .league-header {
+        padding: 15px 10px;
+    }
+    
+    .league-header h1 {
+        font-size: 1.3rem;
+        margin-top: 35px;
+    }
+    
+    .back-button {
+        left: 10px;
+        top: 10px;
+        padding: 6px 10px;
+        font-size: 0.85rem;
+    }
+}
+
 .gather-section {
     max-width: 900px;
     margin: 0 auto 20px;
