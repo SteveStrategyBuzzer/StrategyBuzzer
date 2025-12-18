@@ -50,30 +50,40 @@
                 <div class="level-selection">
                     <h4>🎖️ {{ __('Niveau de compétition') }}</h4>
                     <div class="level-options">
-                        <label class="level-option selected" data-level="normal">
-                            <input type="radio" name="matchLevel" value="normal" checked>
-                            <div class="level-card">
-                                <span class="level-name">{{ __('Normal') }}</span>
-                                <span class="level-reward">+50 pts</span>
-                                <span class="level-cost">{{ __('Gratuit') }}</span>
-                            </div>
-                        </label>
-                        <label class="level-option" data-level="premium">
-                            <input type="radio" name="matchLevel" value="premium">
-                            <div class="level-card premium">
-                                <span class="level-name">⭐ {{ __('Premium') }}</span>
-                                <span class="level-reward">+100 pts</span>
-                                <span class="level-cost">💎 500</span>
-                            </div>
-                        </label>
-                        <label class="level-option" data-level="elite">
-                            <input type="radio" name="matchLevel" value="elite">
-                            <div class="level-card elite">
-                                <span class="level-name">👑 {{ __('Élite') }}</span>
-                                <span class="level-reward">+200 pts</span>
-                                <span class="level-cost">💎 1000</span>
-                            </div>
-                        </label>
+                        @php
+                            $divisions = [
+                                'bronze' => ['icon' => '🥉', 'reward' => 50, 'cost' => 0, 'label' => 'Bronze'],
+                                'argent' => ['icon' => '🥈', 'reward' => 75, 'cost' => 250, 'label' => 'Argent'],
+                                'or' => ['icon' => '🥇', 'reward' => 100, 'cost' => 500, 'label' => 'Or'],
+                                'platine' => ['icon' => '💎', 'reward' => 150, 'cost' => 750, 'label' => 'Platine'],
+                                'diamant' => ['icon' => '👑', 'reward' => 200, 'cost' => 1000, 'label' => 'Diamant'],
+                            ];
+                            $divisionMapping = [
+                                'silver' => 'argent',
+                                'gold' => 'or',
+                                'platinum' => 'platine',
+                                'diamond' => 'diamant',
+                            ];
+                            $rawDivision = strtolower($team->division ?? 'bronze');
+                            $teamDivision = $divisionMapping[$rawDivision] ?? $rawDivision;
+                            if (!isset($divisions[$teamDivision])) {
+                                $teamDivision = 'bronze';
+                            }
+                            $divisionKeys = array_keys($divisions);
+                            $currentIndex = array_search($teamDivision, $divisionKeys);
+                            $availableDivisions = array_slice($divisionKeys, 0, $currentIndex + 1);
+                        @endphp
+                        @foreach($availableDivisions as $index => $divKey)
+                            @php $div = $divisions[$divKey]; @endphp
+                            <label class="level-option {{ $divKey === $teamDivision ? 'selected' : '' }}" data-level="{{ $divKey }}">
+                                <input type="radio" name="matchLevel" value="{{ $divKey }}" {{ $divKey === $teamDivision ? 'checked' : '' }}>
+                                <div class="level-card {{ $divKey }}">
+                                    <span class="level-name">{{ $div['icon'] }} {{ $div['label'] }}</span>
+                                    <span class="level-reward">+{{ $div['reward'] }} pts</span>
+                                    <span class="level-cost">{{ $div['cost'] > 0 ? '💎 ' . $div['cost'] : __('Gratuit') }}</span>
+                                </div>
+                            </label>
+                        @endforeach
                     </div>
                 </div>
                 @endif
@@ -336,19 +346,40 @@
     border-color: #00d4ff;
     background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
 }
-.level-card.premium {
-    border-color: #9b59b6;
+.level-card.bronze {
+    border-color: #cd7f32;
 }
-.level-option:has(input[value="premium"]:checked) .level-card.premium {
-    border-color: #9b59b6;
-    box-shadow: 0 0 15px rgba(155, 89, 182, 0.4);
+.level-option:has(input[value="bronze"]:checked) .level-card.bronze {
+    border-color: #cd7f32;
+    box-shadow: 0 0 15px rgba(205, 127, 50, 0.4);
 }
-.level-card.elite {
+.level-card.argent {
+    border-color: #c0c0c0;
+}
+.level-option:has(input[value="argent"]:checked) .level-card.argent {
+    border-color: #c0c0c0;
+    box-shadow: 0 0 15px rgba(192, 192, 192, 0.4);
+}
+.level-card.or {
     border-color: #ffd700;
 }
-.level-option:has(input[value="elite"]:checked) .level-card.elite {
+.level-option:has(input[value="or"]:checked) .level-card.or {
     border-color: #ffd700;
     box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+}
+.level-card.platine {
+    border-color: #e5e4e2;
+}
+.level-option:has(input[value="platine"]:checked) .level-card.platine {
+    border-color: #e5e4e2;
+    box-shadow: 0 0 15px rgba(229, 228, 226, 0.4);
+}
+.level-card.diamant {
+    border-color: #00d4ff;
+}
+.level-option:has(input[value="diamant"]:checked) .level-card.diamant {
+    border-color: #00d4ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
 }
 .level-name {
     font-weight: bold;

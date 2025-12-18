@@ -6,7 +6,7 @@
         <button onclick="window.location.href='{{ route('league.entry') }}'" class="back-button">
             ← {{ __('Retour') }}
         </button>
-        <h1>{{ __('GESTION D\'ÉQUIPE') }}</h1>
+        <h1>{{ __('SALON D\'ÉQUIPES') }}</h1>
     </div>
 
     <div class="team-management-content">
@@ -183,7 +183,7 @@
                     <h3>👥 {{ __('Membres') }} ({{ $team->members->count() }}/5)</h3>
                     <div class="members-list">
                         @foreach($team->members as $member)
-                            <div class="member-card" onclick="window.location.href='{{ route('league.team.details', $team->id) }}'">
+                            <div class="member-card {{ $member->id === Auth::id() ? 'is-me' : '' }}" onclick="window.location.href='{{ route('league.team.details', $team->id) }}'">
                                 <div class="member-info">
                                     <div class="member-avatar">
                                         @if($member->avatar_url ?? null)
@@ -840,6 +840,18 @@
     background: #1a1a2e;
     border: 1px solid #0f3460;
     border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.member-card.is-me {
+    border: 2px solid #00d4ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.5), inset 0 0 10px rgba(0, 212, 255, 0.1);
+    animation: memberGlow 2s ease-in-out infinite;
+}
+
+@keyframes memberGlow {
+    0%, 100% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.5), inset 0 0 10px rgba(0, 212, 255, 0.1); }
+    50% { box-shadow: 0 0 25px rgba(0, 212, 255, 0.8), inset 0 0 15px rgba(0, 212, 255, 0.2); }
 }
 
 .member-info {

@@ -401,12 +401,11 @@ body {
     border: none;
     cursor: pointer;
 }
-.team-stats-row {
+.team-actions-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
     margin-left: auto;
-    margin-right: 1rem;
 }
 .team-efficiency {
     font-size: 0.85rem;
@@ -430,10 +429,11 @@ body {
 .team-level.diamond { background: linear-gradient(135deg, #b9f2ff 0%, #00d4ff 100%); color: #333; }
 .team-level.diamant { background: linear-gradient(135deg, #b9f2ff 0%, #00d4ff 100%); color: #333; }
 @media (max-width: 768px) {
-    .team-stats-row {
+    .team-actions-row {
         margin-left: 0;
-        margin-right: 0;
         margin-top: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-start;
     }
 }
 </style>
@@ -515,11 +515,9 @@ body {
                                     </div>
                                 </div>
                             </div>
-                            <div class="team-stats-row">
+                            <div class="team-actions-row">
                                 <span class="team-efficiency" title="{{ __('Efficacité moyenne') }}">🎯 {{ $avgEfficiency }}%</span>
                                 <span class="team-level {{ strtolower($team->division ?? 'bronze') }}">{{ $teamLevel }}</span>
-                            </div>
-                            <div class="team-actions">
                                 <a href="{{ route('league.team.management', ['teamId' => $team->id]) }}" class="btn-team-action btn-select">{{ __('Choisir') }}</a>
                             </div>
                         </div>
