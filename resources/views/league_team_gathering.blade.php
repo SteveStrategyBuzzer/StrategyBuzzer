@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+<div class="screen-edge-glow" id="screenEdgeGlow"></div>
 <div class="gathering-container">
     <div class="gathering-header">
         <button onclick="window.location.href='{{ route('league.team.management', $team->id) }}'" class="back-button">
@@ -783,6 +784,41 @@
         font-size: 1.4rem;
     }
 }
+
+.screen-edge-glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.screen-edge-glow.active {
+    opacity: 1;
+    animation: edgeGlowPulse 1.5s ease-out;
+}
+
+@keyframes edgeGlowPulse {
+    0% {
+        box-shadow: inset 0 0 100px rgba(0, 255, 136, 0.8),
+                    inset 0 0 200px rgba(0, 212, 255, 0.5);
+        opacity: 1;
+    }
+    50% {
+        box-shadow: inset 0 0 150px rgba(0, 255, 136, 0.6),
+                    inset 0 0 250px rgba(0, 212, 255, 0.4);
+        opacity: 0.8;
+    }
+    100% {
+        box-shadow: inset 0 0 50px rgba(0, 255, 136, 0),
+                    inset 0 0 100px rgba(0, 212, 255, 0);
+        opacity: 0;
+    }
+}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -803,6 +839,7 @@ let unsubscribe = null;
 let micEnabled = false;
 let localStream = null;
 let voiceChat = null;
+let previouslyConnectedIds = [];
 
 const firebaseConfig = {
     apiKey: "{{ config('services.firebase.api_key') }}",
@@ -873,6 +910,12 @@ function updatePlayersList(connectedIds) {
     const playerCards = document.querySelectorAll('.player-card');
     let connectedCount = 0;
     
+    const newlyConnectedIds = connectedIds.filter(id => !previouslyConnectedIds.includes(id) && id !== currentUserId);
+    if (newlyConnectedIds.length > 0 && previouslyConnectedIds.length > 0) {
+        triggerScreenEdgeGlow();
+    }
+    previouslyConnectedIds = [...connectedIds];
+    
     playerCards.forEach(card => {
         const playerId = parseInt(card.dataset.playerId);
         const isConnected = connectedIds.includes(playerId);
@@ -926,6 +969,18 @@ function updatePlayersList(connectedIds) {
             document.getElementById('goToLobbyBtn').disabled = true;
             document.getElementById('lobbyHint').textContent = '{{ __("Attendez que tous les joueurs soient connectés") }}';
         }
+    }
+}
+
+function triggerScreenEdgeGlow() {
+    const glowElement = document.getElementById('screenEdgeGlow');
+    if (glowElement) {
+        glowElement.classList.remove('active');
+        void glowElement.offsetWidth;
+        glowElement.classList.add('active');
+        setTimeout(() => {
+            glowElement.classList.remove('active');
+        }, 1500);
     }
 }
 
