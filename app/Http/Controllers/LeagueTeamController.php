@@ -50,8 +50,14 @@ class LeagueTeamController extends Controller
             ->with(['team.captain'])
             ->where('status', 'pending')
             ->get();
+        
+        $duoMatchesPlayed = \App\Models\DuoMatch::where(function($q) use ($user) {
+            $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id);
+        })->where('status', 'completed')->count();
+        
+        $canCreateTeam = $duoMatchesPlayed >= 25;
 
-        return view('league_entry', compact('user', 'userTeams', 'pendingInvitations'));
+        return view('league_entry', compact('user', 'userTeams', 'pendingInvitations', 'duoMatchesPlayed', 'canCreateTeam'));
     }
 
     public function showCreateTeam()
@@ -109,8 +115,14 @@ class LeagueTeamController extends Controller
         }
         
         $selectedTeamId = $team ? $team->id : null;
+        
+        $duoMatchesPlayed = \App\Models\DuoMatch::where(function($q) use ($user) {
+            $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id);
+        })->where('status', 'completed')->count();
+        
+        $canCreateTeam = $duoMatchesPlayed >= 25;
 
-        return view('league_team_management', compact('user', 'team', 'pendingInvitations', 'pendingRequestsCount', 'selectedTeamId'));
+        return view('league_team_management', compact('user', 'team', 'pendingInvitations', 'pendingRequestsCount', 'selectedTeamId', 'duoMatchesPlayed', 'canCreateTeam'));
     }
 
     public function searchTeams(Request $request)

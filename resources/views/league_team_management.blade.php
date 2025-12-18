@@ -3,10 +3,10 @@
 @section('content')
 <div class="league-lobby-container">
     <div class="league-header">
-        <button onclick="window.location.href='{{ route('menu') }}'" class="back-button">
-            ← Retour
+        <button onclick="window.location.href='{{ route('league.entry') }}'" class="back-button">
+            ← {{ __('Retour') }}
         </button>
-        <h1>GESTION D'ÉQUIPE</h1>
+        <h1>{{ __('GESTION D\'ÉQUIPE') }}</h1>
     </div>
 
     <div class="team-management-content">
@@ -17,11 +17,19 @@
                     <h3>{{ __('Chercher Équipe') }}</h3>
                     <p>{{ __('Trouvez une équipe qui recrute et rejoignez-la') }}</p>
                 </a>
+                @if($canCreateTeam ?? false)
                 <div class="menu-action-card" onclick="toggleCreateForm()">
                     <div class="menu-card-icon">➕</div>
                     <h3>{{ __('Créer une équipe') }}</h3>
                     <p>{{ __('Formez votre propre équipe et invitez des joueurs') }}</p>
                 </div>
+                @else
+                <div class="menu-action-card disabled" title="{{ __('Complétez 25 matchs Duo pour débloquer') }}">
+                    <div class="menu-card-icon">🔒</div>
+                    <h3>{{ __('Créer une équipe') }}</h3>
+                    <p>{{ $duoMatchesPlayed ?? 0 }}/25 {{ __('matchs Duo') }}</p>
+                </div>
+                @endif
             </div>
 
             <div class="create-team-section" id="createTeamSection" style="display: none;">
@@ -392,6 +400,18 @@
     transform: translateY(-5px);
     border-color: #00d4ff;
     box-shadow: 0 8px 24px rgba(0, 212, 255, 0.2);
+}
+
+.menu-action-card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    border-color: #555;
+}
+
+.menu-action-card.disabled:hover {
+    transform: none;
+    border-color: #555;
+    box-shadow: none;
 }
 
 .menu-card-icon {

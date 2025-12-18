@@ -68,11 +68,19 @@
         @endif
 
         <div class="menu-cards-grid">
+            @if($canCreateTeam ?? false)
             <a href="{{ route('league.team.create') }}" class="menu-action-card">
                 <div class="menu-card-icon">➕</div>
                 <h3>{{ __('Créer une équipe') }}</h3>
                 <p>{{ __('Formez votre propre équipe et invitez des joueurs') }}</p>
             </a>
+            @else
+            <div class="menu-action-card disabled" title="{{ __('Complétez 25 matchs Duo pour débloquer') }}">
+                <div class="menu-card-icon">🔒</div>
+                <h3>{{ __('Créer une équipe') }}</h3>
+                <p>{{ $duoMatchesPlayed ?? 0 }}/25 {{ __('matchs Duo') }}</p>
+            </div>
+            @endif
             <a href="{{ route('league.team.search') }}" class="menu-action-card">
                 <div class="menu-card-icon">🔍</div>
                 <h3>{{ __('Chercher Équipe') }}</h3>
@@ -242,6 +250,18 @@
     border-color: #00d4ff;
     transform: translateY(-5px);
     box-shadow: 0 15px 40px rgba(0, 212, 255, 0.2);
+}
+
+.menu-action-card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    border-color: #555;
+}
+
+.menu-action-card.disabled:hover {
+    transform: none;
+    border-color: #555;
+    box-shadow: none;
 }
 
 .menu-card-icon {

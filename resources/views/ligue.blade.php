@@ -379,6 +379,41 @@ body {
     border: none;
     cursor: pointer;
 }
+.team-stats-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    margin-right: 1rem;
+}
+.team-efficiency {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+}
+.team-level {
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.team-level.bronze { background: #cd7f32; color: #fff; }
+.team-level.silver { background: #c0c0c0; color: #333; }
+.team-level.argent { background: #c0c0c0; color: #333; }
+.team-level.gold { background: #ffd700; color: #333; }
+.team-level.or { background: #ffd700; color: #333; }
+.team-level.platinum { background: #e5e4e2; color: #333; }
+.team-level.platine { background: #e5e4e2; color: #333; }
+.team-level.diamond { background: linear-gradient(135deg, #b9f2ff 0%, #00d4ff 100%); color: #333; }
+.team-level.diamant { background: linear-gradient(135deg, #b9f2ff 0%, #00d4ff 100%); color: #333; }
+@media (max-width: 768px) {
+    .team-stats-row {
+        margin-left: 0;
+        margin-right: 0;
+        margin-top: 0.5rem;
+    }
+}
 </style>
 
 <a href="javascript:history.back()" class="header-menu" style="
@@ -426,6 +461,18 @@ body {
             @if($userTeams->count() > 0)
                 <div class="team-list">
                     @foreach($userTeams as $team)
+                        @php
+                            $totalEfficiency = 0;
+                            $memberCount = $team->members->count();
+                            foreach($team->members as $member) {
+                                $stats = \App\Models\PlayerDuoStat::where('user_id', $member->id)->first();
+                                if ($stats && ($stats->total_correct + $stats->total_wrong) > 0) {
+                                    $totalEfficiency += ($stats->total_correct / ($stats->total_correct + $stats->total_wrong)) * 100;
+                                }
+                            }
+                            $avgEfficiency = $memberCount > 0 ? round($totalEfficiency / $memberCount) : 0;
+                            $teamLevel = ucfirst($team->division ?? 'bronze');
+                        @endphp
                         <div class="team-card">
                             <div class="team-info">
                                 <div class="team-emblem">{{ $team->emblem ?? '🛡️' }}</div>
@@ -437,9 +484,13 @@ body {
                                         @endif
                                     </div>
                                     <div class="team-meta">
-                                        {{ $team->members->count() }}/5 {{ __('joueurs') }} • {{ __('ELO') }}: {{ $team->elo ?? 1000 }}
+                                        {{ $team->members->count() }}/5 {{ __('joueurs') }}
                                     </div>
                                 </div>
+                            </div>
+                            <div class="team-stats-row">
+                                <span class="team-efficiency" title="{{ __('Efficacité moyenne') }}">🎯 {{ $avgEfficiency }}%</span>
+                                <span class="team-level {{ strtolower($team->division ?? 'bronze') }}">{{ $teamLevel }}</span>
                             </div>
                             <div class="team-actions">
                                 <a href="{{ route('league.team.management', ['teamId' => $team->id]) }}" class="btn-team-action btn-select">{{ __('Choisir') }}</a>
