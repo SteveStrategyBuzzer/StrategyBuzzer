@@ -2022,7 +2022,6 @@ async function loadContacts() {
                     </div>
                 </div>
                 <div class="contact-stats">
-                    <span>ELO: ${contact.elo}</span>
                     <span>${contact.wins}V/${contact.losses}D</span>
                 </div>
             </div>
