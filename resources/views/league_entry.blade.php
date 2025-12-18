@@ -34,7 +34,7 @@
                                 <span class="team-id">#{{ str_pad($team->id, 6, '0', STR_PAD_LEFT) }}</span>
                                 <div class="team-stats">
                                     <span class="division {{ strtolower($team->division ?? 'bronze') }}">{{ ucfirst($team->division ?? 'Bronze') }}</span>
-                                    <span class="members">{{ $team->members->count() }}/5</span>
+                                    <span class="members">{{ $team->members->count() }} / 5</span>
                                 </div>
                                 @if($team->captain_id === Auth::id())
                                     <span class="captain-badge">👑 {{ __('Capitaine') }}</span>

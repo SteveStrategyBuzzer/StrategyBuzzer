@@ -511,7 +511,7 @@ body {
                                         @endif
                                     </div>
                                     <div class="team-meta">
-                                        {{ $team->members->count() }}/5 {{ __('joueurs') }}
+                                        {{ $team->members->count() }} / 5 {{ __('joueurs') }}
                                     </div>
                                 </div>
                             </div>
