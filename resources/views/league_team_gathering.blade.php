@@ -64,7 +64,7 @@
         <div class="captain-actions">
             <button class="btn-lobby" id="goToLobbyBtn" onclick="goToLobby()" disabled>
                 <span class="btn-icon">🎮</span>
-                <span class="btn-text">{{ __('ALLER AU LOBBY') }}</span>
+                <span class="btn-text">{{ __('SALON D\'ÉQUIPES') }}</span>
             </button>
             <p class="hint-text" id="lobbyHint">{{ __('Attendez que tous les joueurs soient connectés') }}</p>
         </div>
@@ -1150,6 +1150,8 @@ function startPolling() {
 }
 
 function goToLobby() {
+    localStorage.setItem('team_gathering_complete_{{ $team->id }}', 'true');
+    localStorage.setItem('team_gathering_time_{{ $team->id }}', Date.now().toString());
     window.location.href = '{{ route("league.team.lobby", $team->id) }}';
 }
 

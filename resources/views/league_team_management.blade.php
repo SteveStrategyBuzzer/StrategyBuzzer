@@ -426,6 +426,24 @@
     animation: none;
 }
 
+.btn-primary.btn-large:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(50%);
+}
+
+.btn-hint {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: normal;
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
+.btn-primary.btn-large:not(:disabled) .btn-hint {
+    display: none;
+}
+
 .team-management-content {
     max-width: 900px;
     margin: 0 auto;
@@ -2281,6 +2299,30 @@ window.addEventListener('pagehide', () => {
     if (voiceChat) {
         voiceChat.destroy();
         voiceChat = null;
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const salonBtn = document.getElementById('salonBtn');
+    const salonBtnHint = document.getElementById('salonBtnHint');
+    
+    if (salonBtn) {
+        const gatheringComplete = localStorage.getItem('team_gathering_complete_{{ $team->id ?? 0 }}');
+        const gatheringTime = localStorage.getItem('team_gathering_time_{{ $team->id ?? 0 }}');
+        
+        if (gatheringComplete === 'true' && gatheringTime) {
+            const gatherTime = parseInt(gatheringTime);
+            const now = Date.now();
+            const hoursSinceGather = (now - gatherTime) / (1000 * 60 * 60);
+            
+            if (hoursSinceGather < 2) {
+                salonBtn.disabled = false;
+                if (salonBtnHint) salonBtnHint.style.display = 'none';
+            } else {
+                localStorage.removeItem('team_gathering_complete_{{ $team->id ?? 0 }}');
+                localStorage.removeItem('team_gathering_time_{{ $team->id ?? 0 }}');
+            }
+        }
     }
 });
 </script>
