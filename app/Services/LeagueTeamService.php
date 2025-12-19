@@ -40,6 +40,11 @@ class LeagueTeamService
         if ($opponent->teamMembers()->count() < 5) {
             throw new \Exception('L\'équipe adverse n\'a pas assez de joueurs.');
         }
+        
+        $matchDivision = $options['match_division'] ?? strtolower($team->division ?? 'bronze');
+        $divisionIndexes = ['bronze' => 0, 'argent' => 1, 'silver' => 1, 'or' => 2, 'gold' => 2, 'platine' => 3, 'platinum' => 3, 'diamant' => 4, 'diamond' => 4];
+        $team1Level = $divisionIndexes[strtolower($team->division ?? 'bronze')] ?? 0;
+        $team2Level = $divisionIndexes[strtolower($opponent->division ?? 'bronze')] ?? 0;
 
         $team1Members = $team->teamMembers()->with('user')->get()->pluck('user');
         $team2Members = $opponent->teamMembers()->with('user')->get()->pluck('user');
@@ -89,10 +94,11 @@ class LeagueTeamService
         return LeagueTeamMatch::create([
             'team1_id' => $team->id,
             'team2_id' => $opponent->id,
-            'team1_level' => $team->level,
-            'team2_level' => $opponent->level,
+            'team1_level' => $team1Level,
+            'team2_level' => $team2Level,
             'status' => 'playing',
             'game_mode' => $gameMode,
+            'match_division' => $matchDivision,
             'duel_pairings' => $duelPairings,
             'player_order' => $playerOrder,
             'relay_indices' => $relayIndices,
@@ -316,14 +322,18 @@ class LeagueTeamService
         $team1Points = 0;
         $team2Points = 0;
 
+        $matchDivision = $match->match_division ?? 'bronze';
+        
         if ($team1Score > $team2Score) {
             $winnerTeamId = $match->team1_id;
             $team1Points = $this->calculatePointsEarned($match->team1_level, $match->team2_level, true);
-            $team2Points = -2;
+            $team2Points = -3;
+            $this->awardCoinsToTeam($match->team1_id, $matchDivision);
         } elseif ($team2Score > $team1Score) {
             $winnerTeamId = $match->team2_id;
             $team2Points = $this->calculatePointsEarned($match->team2_level, $match->team1_level, true);
-            $team1Points = -2;
+            $team1Points = -3;
+            $this->awardCoinsToTeam($match->team2_id, $matchDivision);
         }
 
         $match->update([
@@ -339,11 +349,64 @@ class LeagueTeamService
 
     private function calculatePointsEarned(int $myLevel, int $opponentLevel, bool $won): int
     {
-        if (!$won) return -2;
+        if (!$won) return -3;
 
-        if ($opponentLevel > $myLevel) return 5;
-        if ($opponentLevel === $myLevel) return 2;
-        return 1;
+        $levelDiff = $opponentLevel - $myLevel;
+        
+        if ($levelDiff >= 2) return 20;
+        if ($levelDiff === 1) return 15;
+        if ($levelDiff === 0) return 10;
+        if ($levelDiff === -1) return 5;
+        return 3;
+    }
+    
+    public function calculateCoinsEarned(string $matchDivision, bool $won): int
+    {
+        if (!$won) return 0;
+        
+        $divisionCoins = [
+            'bronze' => 10,
+            'argent' => 20, 'silver' => 20,
+            'or' => 40, 'gold' => 40,
+            'platine' => 80, 'platinum' => 80,
+            'diamant' => 160, 'diamond' => 160,
+        ];
+        
+        return $divisionCoins[strtolower($matchDivision)] ?? 10;
+    }
+    
+    private function awardCoinsToTeam(int $teamId, string $matchDivision): void
+    {
+        $coinsEarned = $this->calculateCoinsEarned($matchDivision, true);
+        $team = Team::with('members')->find($teamId);
+        
+        if ($team) {
+            foreach ($team->members as $member) {
+                $member->increment('competence_coins', $coinsEarned);
+            }
+        }
+    }
+    
+    public function deductAccessCost(User $user, string $targetDivision, string $teamDivision): bool
+    {
+        $divisions = ['bronze' => 0, 'argent' => 1, 'silver' => 1, 'or' => 2, 'gold' => 2, 'platine' => 3, 'platinum' => 3, 'diamant' => 4, 'diamond' => 4];
+        $divisionCoins = ['bronze' => 10, 'argent' => 20, 'silver' => 20, 'or' => 40, 'gold' => 40, 'platine' => 80, 'platinum' => 80, 'diamant' => 160, 'diamond' => 160];
+        
+        $teamIndex = $divisions[strtolower($teamDivision)] ?? 0;
+        $targetIndex = $divisions[strtolower($targetDivision)] ?? 0;
+        
+        if ($targetIndex <= $teamIndex) {
+            return true;
+        }
+        
+        $accessCost = ($divisionCoins[strtolower($targetDivision)] ?? 10) * 2;
+        
+        if ($user->competence_coins >= $accessCost) {
+            $user->decrement('competence_coins', $accessCost);
+            return true;
+        }
+        
+        return false;
     }
 
     private function updateTeamStats(int $teamId, bool $won, int $pointsEarned): void

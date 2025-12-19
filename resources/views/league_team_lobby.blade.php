@@ -52,11 +52,11 @@
                     <div class="level-options">
                         @php
                             $divisions = [
-                                'bronze' => ['icon' => '🥉', 'reward' => 50, 'cost' => 0, 'label' => 'Bronze'],
-                                'argent' => ['icon' => '🥈', 'reward' => 75, 'cost' => 250, 'label' => 'Argent'],
-                                'or' => ['icon' => '🥇', 'reward' => 100, 'cost' => 500, 'label' => 'Or'],
-                                'platine' => ['icon' => '💎', 'reward' => 150, 'cost' => 750, 'label' => 'Platine'],
-                                'diamant' => ['icon' => '👑', 'reward' => 200, 'cost' => 1000, 'label' => 'Diamant'],
+                                'bronze' => ['icon' => '🥉', 'coins' => 10, 'label' => 'Bronze', 'index' => 0],
+                                'argent' => ['icon' => '🥈', 'coins' => 20, 'label' => 'Argent', 'index' => 1],
+                                'or' => ['icon' => '🥇', 'coins' => 40, 'label' => 'Or', 'index' => 2],
+                                'platine' => ['icon' => '💎', 'coins' => 80, 'label' => 'Platine', 'index' => 3],
+                                'diamant' => ['icon' => '👑', 'coins' => 160, 'label' => 'Diamant', 'index' => 4],
                             ];
                             $divisionMapping = [
                                 'silver' => 'argent',
@@ -69,22 +69,44 @@
                             if (!isset($divisions[$teamDivision])) {
                                 $teamDivision = 'bronze';
                             }
-                            $divisionKeys = array_keys($divisions);
-                            $currentIndex = array_search($teamDivision, $divisionKeys);
-                            $availableDivisions = array_slice($divisionKeys, 0, $currentIndex + 1);
+                            $teamIndex = $divisions[$teamDivision]['index'];
+                            $userCoins = Auth::user()->competence_coins ?? 0;
+                            
+                            $availableOptions = [];
+                            foreach ($divisions as $divKey => $div) {
+                                $levelDiff = $div['index'] - $teamIndex;
+                                if ($levelDiff <= 2) {
+                                    $isFree = $levelDiff <= 0;
+                                    $accessCost = $isFree ? 0 : $div['coins'] * 2;
+                                    $canAfford = $isFree || $userCoins >= $accessCost;
+                                    $availableOptions[$divKey] = [
+                                        'icon' => $div['icon'],
+                                        'label' => $div['label'],
+                                        'coins' => $div['coins'],
+                                        'isFree' => $isFree,
+                                        'accessCost' => $accessCost,
+                                        'canAfford' => $canAfford,
+                                        'isTeamLevel' => $divKey === $teamDivision,
+                                    ];
+                                }
+                            }
                         @endphp
-                        @foreach($availableDivisions as $index => $divKey)
-                            @php $div = $divisions[$divKey]; @endphp
-                            <label class="level-option {{ $divKey === $teamDivision ? 'selected' : '' }}" data-level="{{ $divKey }}">
-                                <input type="radio" name="matchLevel" value="{{ $divKey }}" {{ $divKey === $teamDivision ? 'checked' : '' }}>
+                        @foreach($availableOptions as $divKey => $opt)
+                            <label class="level-option {{ $opt['isTeamLevel'] ? 'selected' : '' }} {{ !$opt['canAfford'] ? 'disabled' : '' }}" data-level="{{ $divKey }}" data-cost="{{ $opt['accessCost'] }}">
+                                <input type="radio" name="matchLevel" value="{{ $divKey }}" {{ $opt['isTeamLevel'] ? 'checked' : '' }} {{ !$opt['canAfford'] ? 'disabled' : '' }}>
                                 <div class="level-card {{ $divKey }}">
-                                    <span class="level-name">{{ $div['icon'] }} {{ $div['label'] }}</span>
-                                    <span class="level-reward">+{{ $div['reward'] }} pts</span>
-                                    <span class="level-cost">{{ $div['cost'] > 0 ? '💎 ' . $div['cost'] : __('Gratuit') }}</span>
+                                    <span class="level-name">{{ $opt['icon'] }} {{ $opt['label'] }}</span>
+                                    <span class="level-reward">🪙 +{{ $opt['coins'] }}</span>
+                                    @if($opt['isFree'])
+                                        <span class="level-cost free">{{ __('Gratuit') }}</span>
+                                    @else
+                                        <span class="level-cost paid {{ !$opt['canAfford'] ? 'insufficient' : '' }}">🪙 {{ $opt['accessCost'] }} (6h)</span>
+                                    @endif
                                 </div>
                             </label>
                         @endforeach
                     </div>
+                    <p class="coins-balance">{{ __('Vos pièces') }}: 🪙 {{ $userCoins }}</p>
                 </div>
                 @endif
 
@@ -390,8 +412,31 @@
     font-size: 0.85rem;
 }
 .level-cost {
-    color: #aaa;
     font-size: 0.8rem;
+}
+.level-cost.free {
+    color: #4CAF50;
+    font-weight: bold;
+}
+.level-cost.paid {
+    color: #ffd700;
+}
+.level-cost.insufficient {
+    color: #ff6b6b;
+    text-decoration: line-through;
+}
+.level-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.level-option.disabled .level-card {
+    pointer-events: none;
+}
+.coins-balance {
+    text-align: center;
+    color: #ffd700;
+    font-size: 0.9rem;
+    margin-top: 10px;
 }
 
 .opponent-choices {

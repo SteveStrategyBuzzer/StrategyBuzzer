@@ -15,6 +15,7 @@ class LeagueTeamMatch extends Model
         'winner_team_id',
         'status',
         'game_mode',
+        'match_division',
         'player_order',
         'duel_pairings',
         'relay_indices',

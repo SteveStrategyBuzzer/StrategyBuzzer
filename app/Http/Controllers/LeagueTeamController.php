@@ -999,23 +999,33 @@ class LeagueTeamController extends Controller
             return response()->json(['success' => false, 'error' => __('Les équipes doivent être dans la même division.')], 400);
         }
 
-        $levelCosts = [
-            'normal' => 0,
-            'premium' => 500,
-            'elite' => 1000
-        ];
+        $divisions = ['bronze' => 0, 'argent' => 1, 'silver' => 1, 'or' => 2, 'gold' => 2, 'platine' => 3, 'platinum' => 3, 'diamant' => 4, 'diamond' => 4];
+        $divisionCoins = ['bronze' => 10, 'argent' => 20, 'silver' => 20, 'or' => 40, 'gold' => 40, 'platine' => 80, 'platinum' => 80, 'diamant' => 160, 'diamond' => 160];
+        
+        $teamDivision = strtolower($team->division ?? 'bronze');
+        $matchDivision = strtolower($level);
+        
+        $teamIndex = $divisions[$teamDivision] ?? 0;
+        $matchIndex = $divisions[$matchDivision] ?? 0;
+        
+        if ($matchIndex > $teamIndex + 2) {
+            return response()->json(['success' => false, 'error' => __('Vous ne pouvez jouer que jusqu\'à 2 niveaux au-dessus de votre division.')], 400);
+        }
+        
+        $accessCost = 0;
+        if ($matchIndex > $teamIndex) {
+            $accessCost = ($divisionCoins[$matchDivision] ?? 10) * 2;
+        }
 
-        $cost = $levelCosts[$level] ?? 0;
-
-        if ($cost > 0 && ($user->coins ?? 0) < $cost) {
-            return response()->json(['success' => false, 'error' => __('Vous n\'avez pas assez de diamants.')], 400);
+        if ($accessCost > 0 && ($user->competence_coins ?? 0) < $accessCost) {
+            return response()->json(['success' => false, 'error' => __('Vous n\'avez pas assez de pièces de compétence. Coût: ') . $accessCost], 400);
         }
 
         try {
             \DB::beginTransaction();
 
-            if ($cost > 0) {
-                $user->decrement('coins', $cost);
+            if ($accessCost > 0) {
+                $user->decrement('competence_coins', $accessCost);
             }
 
             $relayIndices = null;
@@ -1039,10 +1049,11 @@ class LeagueTeamController extends Controller
             $match = LeagueTeamMatch::create([
                 'team1_id' => $team->id,
                 'team2_id' => $opponent->id,
-                'division' => $team->division,
+                'team1_level' => $teamIndex,
+                'team2_level' => $divisions[strtolower($opponent->division ?? 'bronze')] ?? 0,
                 'status' => 'pending',
-                'level' => $level,
                 'game_mode' => $gameMode,
+                'match_division' => $matchDivision,
                 'player_order' => $playerOrder,
                 'duel_pairings' => $duelPairings,
                 'relay_indices' => $relayIndices,
