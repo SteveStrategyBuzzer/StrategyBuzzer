@@ -421,6 +421,15 @@
 .level-cost.paid {
     color: #ffd700;
 }
+.level-cost.active-access {
+    color: #00ff88;
+    font-weight: bold;
+    animation: pulse-glow 2s infinite;
+}
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
 .level-cost.insufficient {
     color: #ff6b6b;
     text-decoration: line-through;
@@ -527,6 +536,35 @@ document.querySelectorAll('.level-option').forEach(option => {
         this.classList.add('selected');
     });
 });
+
+async function loadTimedAccess() {
+    try {
+        const response = await fetch('/api/league/team/timed-access');
+        const data = await response.json();
+        
+        if (data.success && data.timed_access) {
+            Object.keys(data.timed_access).forEach(division => {
+                const access = data.timed_access[division];
+                const option = document.querySelector(`.level-option[data-level="${division}"]`);
+                if (option) {
+                    const costSpan = option.querySelector('.level-cost.paid');
+                    if (costSpan) {
+                        costSpan.textContent = `⏱️ ${access.remaining}`;
+                        costSpan.classList.remove('paid', 'insufficient');
+                        costSpan.classList.add('active-access');
+                        option.classList.remove('disabled');
+                        const input = option.querySelector('input');
+                        if (input) input.disabled = false;
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading timed access:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadTimedAccess);
 
 async function findOpponents() {
     const btn = document.getElementById('startMatchmakingBtn');

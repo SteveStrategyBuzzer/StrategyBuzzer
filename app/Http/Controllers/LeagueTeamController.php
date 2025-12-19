@@ -1013,8 +1013,16 @@ class LeagueTeamController extends Controller
         }
         
         $accessCost = 0;
+        $hasTimedAccess = false;
+        $accessCacheKey = "league_team_access:{$user->id}:{$matchDivision}";
+        
         if ($matchIndex > $teamIndex) {
-            $accessCost = ($divisionCoins[$matchDivision] ?? 10) * 2;
+            $existingAccess = \Illuminate\Support\Facades\Cache::get($accessCacheKey);
+            if ($existingAccess && now()->lt($existingAccess)) {
+                $hasTimedAccess = true;
+            } else {
+                $accessCost = ($divisionCoins[$matchDivision] ?? 10) * 2;
+            }
         }
 
         if ($accessCost > 0 && ($user->competence_coins ?? 0) < $accessCost) {
@@ -1026,6 +1034,7 @@ class LeagueTeamController extends Controller
 
             if ($accessCost > 0) {
                 $user->decrement('competence_coins', $accessCost);
+                \Illuminate\Support\Facades\Cache::put($accessCacheKey, now()->addHours(6), now()->addHours(6));
             }
 
             $relayIndices = null;
@@ -1238,6 +1247,35 @@ class LeagueTeamController extends Controller
             'success' => true,
             'members' => $membersWithStats,
             'all_connected' => count($gatheringData['connected']) >= count($gatheringData['members']),
+        ]);
+    }
+
+    public function getTimedAccess()
+    {
+        $user = Auth::user();
+        $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant'];
+        $timedAccess = [];
+
+        foreach ($divisions as $division) {
+            $cacheKey = "league_team_access:{$user->id}:{$division}";
+            $expiresAt = \Illuminate\Support\Facades\Cache::get($cacheKey);
+            
+            if ($expiresAt && now()->lt($expiresAt)) {
+                $remainingMinutes = now()->diffInMinutes($expiresAt, false);
+                $hours = floor($remainingMinutes / 60);
+                $minutes = $remainingMinutes % 60;
+                $timedAccess[$division] = [
+                    'expires_at' => $expiresAt->toISOString(),
+                    'remaining' => $hours > 0 ? "{$hours}h {$minutes}min" : "{$minutes}min",
+                    'remaining_minutes' => $remainingMinutes,
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'timed_access' => $timedAccess,
+            'competence_coins' => $user->competence_coins ?? 0,
         ]);
     }
 }

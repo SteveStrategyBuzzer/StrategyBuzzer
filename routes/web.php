@@ -300,6 +300,7 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
 Route::prefix('api/league/team')->middleware('auth')->group(function () {
     Route::post('/find-opponents', [App\Http\Controllers\LeagueTeamController::class, 'findOpponents']);
     Route::post('/start-match', [App\Http\Controllers\LeagueTeamController::class, 'startMatch']);
+    Route::get('/timed-access', [App\Http\Controllers\LeagueTeamController::class, 'getTimedAccess']);
 });
 
 /* ===== MAÎTRE DU JEU ===== */
