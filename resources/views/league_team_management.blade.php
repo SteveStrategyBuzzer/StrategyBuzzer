@@ -6,7 +6,7 @@
         <button onclick="window.location.href='{{ route('league.entry') }}'" class="back-button">
             ← {{ __('Retour') }}
         </button>
-        <h1>{{ __('SALON D\'ÉQUIPES') }}</h1>
+        <h1>{{ __('GESTION D\'ÉQUIPE') }}</h1>
     </div>
 
     <div class="team-management-content">
@@ -262,9 +262,10 @@
 
                 <div class="team-actions">
                     @if($team->members->count() >= 5)
-                        <button onclick="window.location.href='{{ route('league.team.lobby', $selectedTeamId ?? $team->id) }}'" class="btn-primary btn-large">
+                        <button id="salonBtn" onclick="window.location.href='{{ route('league.team.lobby', $selectedTeamId ?? $team->id) }}'" class="btn-primary btn-large" disabled>
                             <span class="btn-icon">🎮</span>
-                            {{ __('ALLER AU LOBBY') }}
+                            {{ __('SALON D\'ÉQUIPES') }}
+                            <span class="btn-hint" id="salonBtnHint">({{ __('Rassemblez l\'équipe') }})</span>
                         </button>
                     @else
                         <p class="info-message">⚠️ {{ __('Votre équipe doit avoir 5 joueurs pour participer aux matchs') }}</p>

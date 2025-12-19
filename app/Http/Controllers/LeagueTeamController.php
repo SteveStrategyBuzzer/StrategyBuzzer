@@ -44,20 +44,7 @@ class LeagueTeamController extends Controller
 
     public function showLeagueEntry()
     {
-        $user = Auth::user();
-        $userTeams = $user->teams()->with(['captain', 'members'])->get();
-        $pendingInvitations = TeamInvitation::where('user_id', $user->id)
-            ->with(['team.captain'])
-            ->where('status', 'pending')
-            ->get();
-        
-        $duoMatchesPlayed = \App\Models\DuoMatch::where(function($q) use ($user) {
-            $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id);
-        })->where('status', 'completed')->count();
-        
-        $canCreateTeam = $duoMatchesPlayed >= 25;
-
-        return view('league_entry', compact('user', 'userTeams', 'pendingInvitations', 'duoMatchesPlayed', 'canCreateTeam'));
+        return redirect()->route('league.team.management');
     }
 
     public function showCreateTeam()

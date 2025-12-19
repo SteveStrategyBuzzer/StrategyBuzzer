@@ -6,7 +6,7 @@
         <button onclick="window.location.href='{{ route('league.team.management') }}'" class="back-button">
             ← Gestion
         </button>
-        <h1>LIGUE PAR ÉQUIPE</h1>
+        <h1>{{ __('SALON D\'ÉQUIPES') }}</h1>
         <div class="team-badge">
             <span class="team-name">{{ $team->name }}</span>
             <span class="team-tag">[{{ $team->tag }}]</span>

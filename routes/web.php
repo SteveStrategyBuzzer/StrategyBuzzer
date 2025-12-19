@@ -266,7 +266,9 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
 });
 
 /* ===== LIGUE ÉQUIPE ===== */
-Route::get('/league/entry', [App\Http\Controllers\LeagueTeamController::class, 'showLeagueEntry'])->middleware('auth')->name('league.entry');
+Route::get('/league/entry', function() {
+    return redirect()->route('league.team.management');
+})->middleware('auth')->name('league.entry');
 
 Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(function () {
     Route::get('/management/{teamId?}', [App\Http\Controllers\LeagueTeamController::class, 'showTeamManagement'])->name('management');
