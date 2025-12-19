@@ -361,9 +361,7 @@
 }
 
 .sb-selector-dropdown {
-  position: absolute;
-  top: calc(100% + 5px);
-  right: 0;
+  position: fixed;
   background: rgb(10, 44, 102);
   border: 1px solid rgba(255,255,255,.35);
   border-radius: 10px;
@@ -371,9 +369,9 @@
   min-width: 220px;
   max-width: 280px;
   max-height: 300px;
-  z-index: 100;
+  z-index: 99999;
   overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  box-shadow: 0 8px 30px rgba(0,0,0,.7);
 }
 
 .sb-selector-option {
@@ -466,39 +464,63 @@
   <div class="sb-wrap">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
       <h1 style="margin:0;">{{ __('Profile du Joueur') }}</h1>
-      @if($hasAvatar && !empty(trim($pseudonym ?? '')))
-        <a href="{{ route('menu') }}" style="
+      <button type="button" id="menuBtn" onclick="checkProfileAndGoMenu()" style="
+        background: white;
+        color: #0A2C66;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+        {{ __('Menu') }}
+      </button>
+    </div>
+    
+    <!-- Popup d'avertissement profil incomplet -->
+    <div id="profileWarningPopup" style="
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+    ">
+      <div style="
+        background: linear-gradient(135deg, #1e3a8a 0%, #0A2C66 100%);
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 16px;
+        padding: 30px;
+        max-width: 400px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      ">
+        <div style="font-size: 48px; margin-bottom: 15px;">⚠️</div>
+        <h2 style="margin: 0 0 15px 0; font-size: 1.4rem;">{{ __('Profil incomplet') }}</h2>
+        <p id="warningMessage" style="margin: 0 0 20px 0; opacity: 0.9; line-height: 1.5;"></p>
+        <button onclick="closeProfileWarning()" style="
           background: white;
           color: #0A2C66;
-          padding: 10px 20px;
-          border-radius: 8px;
-          text-decoration: none;
-          font-weight: 700;
-          font-size: 1rem;
-          transition: all 0.3s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-          {{ __('Menu') }}
-        </a>
-      @else
-        <div style="
-          background: #94a3b8;
-          color: #475569;
-          padding: 10px 20px;
+          border: none;
+          padding: 12px 30px;
           border-radius: 8px;
           font-weight: 700;
           font-size: 1rem;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          cursor: not-allowed;
-          opacity: 0.6;
-        " title="{{ __('Complétez votre profil (avatar + pseudonym) pour accéder au menu') }}">
-          🔒 {{ __('Menu') }}
-        </div>
-      @endif
+          cursor: pointer;
+          transition: transform 0.2s;
+        " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+          {{ __('Compris') }}
+        </button>
+      </div>
     </div>
 
     <div class="sb-three">
@@ -905,9 +927,8 @@
       </div>
     </div>
 
-    {{-- Boutons Enregistrer et Déconnexion côte à côte --}}
-    <div style="margin-top:15px; text-align:center; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
-      <button type="submit" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;">{{ __('Sauvegarder') }}</button>
+    {{-- Bouton Déconnexion (sauvegarde automatique activée) --}}
+    <div style="margin-top:15px; text-align:center;">
       <button type="button" class="sb-btn" style="display:inline-block; width:auto; min-width:120px;" onclick="document.getElementById('logout-form').submit();">{{ __('Déconnexion') }}</button>
     </div>
 
@@ -1082,6 +1103,50 @@
 </form>
 
 <script>
+// === Fonctions globales pour le popup Menu ===
+const hasAvatar = {{ $hasAvatar ? 'true' : 'false' }};
+const hasCountry = {{ !empty($currentCountry) ? 'true' : 'false' }};
+const menuUrl = '{{ route("menu") }}';
+
+function checkProfileAndGoMenu() {
+  const missingItems = [];
+  
+  // Vérifier si l'avatar est sélectionné
+  if (!hasAvatar) {
+    missingItems.push('{{ __("Choisir un avatar") }}');
+  }
+  
+  // Vérifier si le pays est sélectionné
+  const paysSelect = document.getElementById('sel-pays');
+  const currentPays = paysSelect ? paysSelect.value : '';
+  if (!currentPays || currentPays === '') {
+    missingItems.push('{{ __("Sélectionner votre pays") }}');
+  }
+  
+  if (missingItems.length > 0) {
+    showProfileWarning(missingItems);
+  } else {
+    window.location.href = menuUrl;
+  }
+}
+
+function showProfileWarning(missingItems) {
+  const popup = document.getElementById('profileWarningPopup');
+  const messageEl = document.getElementById('warningMessage');
+  
+  let message = '{{ __("Veuillez compléter les éléments suivants :") }}<br><br>';
+  missingItems.forEach(item => {
+    message += '• ' + item + '<br>';
+  });
+  
+  messageEl.innerHTML = message;
+  popup.style.display = 'flex';
+}
+
+function closeProfileWarning() {
+  document.getElementById('profileWarningPopup').style.display = 'none';
+}
+
 // Script 1 : Mise à jour immédiate des aperçus
 document.addEventListener('DOMContentLoaded', () => {
   const byId = id => document.getElementById(id);
@@ -1352,7 +1417,33 @@ document.addEventListener('DOMContentLoaded', () => {
         currentOpenDropdown.closeDropdown();
       }
 
+      // Calculer la position avec position:fixed
+      const rect = this.toggle.getBoundingClientRect();
+      const dropdownHeight = 300; // max-height approximatif
+      const viewportHeight = window.innerHeight;
+      
+      // Afficher le dropdown d'abord pour avoir ses dimensions
       this.dropdown.style.display = 'block';
+      this.dropdown.style.visibility = 'hidden';
+      
+      const dropdownRect = this.dropdown.getBoundingClientRect();
+      const spaceBelow = viewportHeight - rect.bottom - 10;
+      const spaceAbove = rect.top - 10;
+      
+      // Positionner en dessous ou au-dessus selon l'espace disponible
+      if (spaceBelow >= dropdownRect.height || spaceBelow >= spaceAbove) {
+        // En dessous
+        this.dropdown.style.top = (rect.bottom + 5) + 'px';
+      } else {
+        // Au-dessus
+        this.dropdown.style.top = (rect.top - dropdownRect.height - 5) + 'px';
+      }
+      
+      // Aligner à droite du bouton
+      this.dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+      this.dropdown.style.left = 'auto';
+      
+      this.dropdown.style.visibility = 'visible';
       this.toggle.setAttribute('aria-expanded', 'true');
       this.container.classList.add('is-open');
       currentOpenDropdown = this;
@@ -1627,17 +1718,5 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('beforeunload', saveNow);
 })();
 
-// === Validation du bouton Enregistrer ===
-(function() {
-  const saveBtn = document.querySelector('button[type="submit"].sb-btn');
-  const hasAvatar = {{ $hasAvatar ? 'true' : 'false' }};
-  
-  if (saveBtn && !hasAvatar) {
-    saveBtn.disabled = true;
-    saveBtn.style.opacity = '0.5';
-    saveBtn.style.cursor = 'not-allowed';
-    saveBtn.title = 'Veuillez sélectionner un avatar avant d\'enregistrer';
-  }
-})();
 </script>
 @endsection
