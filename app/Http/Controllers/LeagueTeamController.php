@@ -1032,9 +1032,9 @@ class LeagueTeamController extends Controller
         try {
             \DB::beginTransaction();
 
+            $shouldGrantTimedAccess = $accessCost > 0;
             if ($accessCost > 0) {
                 $user->decrement('competence_coins', $accessCost);
-                \Illuminate\Support\Facades\Cache::put($accessCacheKey, now()->addHours(6), now()->addHours(6));
             }
 
             $relayIndices = null;
@@ -1070,6 +1070,10 @@ class LeagueTeamController extends Controller
             ]);
 
             \DB::commit();
+
+            if ($shouldGrantTimedAccess) {
+                \Illuminate\Support\Facades\Cache::put($accessCacheKey, now()->addHours(6), now()->addHours(6));
+            }
 
             return response()->json([
                 'success' => true,
