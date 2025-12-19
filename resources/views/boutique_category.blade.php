@@ -430,34 +430,45 @@ audio { width: 100%; }
         </div>
 
     @elseif($category === 'musiques')
+        @php
+            $musicTracks = [
+                ['id'=>'strategybuzzer', 'label'=>__('StrategyBuzzer'), 'price'=>0, 'free'=>true, 'path'=>'sounds/strategybuzzer_ambient.mp3'],
+                ['id'=>'fun_01','label'=>__('Fun 01'), 'price'=>200, 'path'=>'sounds/fun_01.mp3'],
+                ['id'=>'chill','label'=>__('Chill'), 'price'=>200, 'path'=>'sounds/chill.mp3'],
+                ['id'=>'punchy','label'=>__('Punchy'), 'price'=>200, 'path'=>'sounds/punchy.mp3'],
+            ];
+            $userSettings = (array) ($user?->profile_settings ?? []);
+            $unlockedMusicIds = collect(data_get($userSettings, 'unlocked.music', []))->pluck('id')->toArray();
+            if (empty($unlockedMusicIds)) {
+                $unlockedMusicIds = ['strategybuzzer']; // Par défaut
+            }
+        @endphp
         <div class="grid cols-3">
-            @forelse($buzzers as $bz)
-                @php $isUnlockedBz = in_array($bz['slug'], $unlocked, true); @endphp
+            @foreach($musicTracks as $track)
+                @php $isUnlockedMusic = in_array($track['id'], $unlockedMusicIds, true) || ($track['free'] ?? false); @endphp
                 <div class="card">
                     <div class="head">
-                        <div class="title">{{ $bz['label'] ?? $bz['name'] ?? ucfirst($bz['slug']) }}</div>
-                        <div class="badge">Audio</div>
+                        <div class="title">{{ $track['label'] }}</div>
+                        <div class="badge">{{ ($track['free'] ?? false) ? __('Gratuit') : __('Premium') }}</div>
                     </div>
                     <div class="audio">
                         <audio controls preload="none">
-                            <source src="{{ asset($bz['path'] ?? '') }}" type="audio/{{ pathinfo($bz['path'] ?? '', PATHINFO_EXTENSION) }}">
+                            <source src="{{ asset($track['path']) }}" type="audio/mpeg">
                         </audio>
                     </div>
-                    @if($isUnlockedBz)
+                    @if($isUnlockedMusic)
                         <div class="actions"><button class="btn success" disabled>{{ __('Disponible') }}</button></div>
                     @else
                         <form method="POST" action="{{ $purchaseUrl }}" class="actions">
                             @csrf
-                            <input type="hidden" name="kind" value="buzzer">
-                            <input type="hidden" name="target" value="{{ $bz['slug'] }}">
-                            <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">{{ $bz['price'] ?? 80 }}</span>
+                            <input type="hidden" name="kind" value="music">
+                            <input type="hidden" name="target" value="{{ $track['id'] }}">
+                            <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">{{ $track['price'] }}</span>
                             <button class="btn danger" type="submit">{{ __('Acheter') }}</button>
                         </form>
                     @endif
                 </div>
-            @empty
-                <div class="card"><div class="head"><div class="title">{{ __('Aucune musique trouvée') }}</div></div></div>
-            @endforelse
+            @endforeach
         </div>
 
     @elseif($category === 'buzzers')

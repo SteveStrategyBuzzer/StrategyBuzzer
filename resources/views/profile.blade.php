@@ -95,9 +95,14 @@
     ];
     $unlockedMusic = data_get($s, 'unlocked.music', []) ?: [
         ['id'=>'strategybuzzer', 'label'=>__('StrategyBuzzer')],
-        ['id'=>'fun_01','label'=>__('Fun 01')],
-        ['id'=>'chill','label'=>__('Chill')],
-        ['id'=>'punchy','label'=>__('Punchy')],
+    ];
+    
+    // Toutes les musiques disponibles (pour affichage dans boutique)
+    $allMusicTracks = [
+        ['id'=>'strategybuzzer', 'label'=>__('StrategyBuzzer'), 'price'=>0, 'free'=>true],
+        ['id'=>'fun_01','label'=>__('Fun 01'), 'price'=>200],
+        ['id'=>'chill','label'=>__('Chill'), 'price'=>200],
+        ['id'=>'punchy','label'=>__('Punchy'), 'price'=>200],
     ];
     // Thèmes : identifiants canoniques (stockés en DB)
     $themeOptions = [

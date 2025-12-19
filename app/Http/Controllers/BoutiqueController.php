@@ -201,7 +201,7 @@ class BoutiqueController extends Controller
     public function purchase(Request $request)
     {
         $request->validate([
-            'kind'     => 'required|string|in:pack,buzzer,stratégique,life',
+            'kind'     => 'required|string|in:pack,buzzer,stratégique,life,music',
             'target'   => 'nullable|string',
             'quantity' => 'nullable|integer|min:1',
         ]);
@@ -262,6 +262,22 @@ class BoutiqueController extends Controller
                 case 'life':
                     $unitPrice = 120;
                     break;
+                case 'music':
+                    $musicCatalog = [
+                        'strategybuzzer' => ['label' => 'StrategyBuzzer', 'price' => 0, 'free' => true],
+                        'fun_01' => ['label' => 'Fun 01', 'price' => 200],
+                        'chill' => ['label' => 'Chill', 'price' => 200],
+                        'punchy' => ['label' => 'Punchy', 'price' => 200],
+                    ];
+                    if (!isset($musicCatalog[$target])) {
+                        return back()->with('error', "Musique invalide.");
+                    }
+                    $music = $musicCatalog[$target];
+                    if ($music['free'] ?? false) {
+                        return back()->with('error', "Cette musique est gratuite.");
+                    }
+                    $unitPrice = $music['price'] ?? 200;
+                    break;
             }
 
             $total = $unitPrice * $qty;
@@ -286,6 +302,35 @@ class BoutiqueController extends Controller
                 ]);
                 
                 return back()->with('success', "Achat réussi : +{$qty} vie(s) !");
+            }
+
+            if ($kind === 'music') {
+                $musicCatalog = [
+                    'strategybuzzer' => ['label' => 'StrategyBuzzer', 'price' => 0],
+                    'fun_01' => ['label' => 'Fun 01', 'price' => 200],
+                    'chill' => ['label' => 'Chill', 'price' => 200],
+                    'punchy' => ['label' => 'Punchy', 'price' => 200],
+                ];
+                $unlockedMusic = $settings['unlocked']['music'] ?? [['id' => 'strategybuzzer', 'label' => 'StrategyBuzzer']];
+                $alreadyOwned = collect($unlockedMusic)->contains('id', $target);
+                if (!$alreadyOwned && isset($musicCatalog[$target])) {
+                    $unlockedMusic[] = ['id' => $target, 'label' => $musicCatalog[$target]['label']];
+                    $settings['unlocked']['music'] = $unlockedMusic;
+                }
+                
+                $user->profile_settings = $settings;
+                $user->save();
+                
+                \App\Models\CoinLedger::create([
+                    'user_id' => $user->id,
+                    'delta' => -$total,
+                    'reason' => 'music_purchase',
+                    'ref_type' => null,
+                    'ref_id' => null,
+                    'balance_after' => $user->coins,
+                ]);
+                
+                return back()->with('success', "Musique débloquée !");
             }
 
             if ($target && !in_array($target, $unlocked, true)) {
