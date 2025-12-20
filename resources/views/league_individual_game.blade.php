@@ -464,17 +464,164 @@
 }
 </style>
 
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
 <script>
+// Firebase config
+const firebaseConfig = {
+    projectId: "{{ config('services.firebase.project_id') }}",
+    apiKey: "{{ config('services.firebase.api_key') }}",
+};
+
+// Initialize Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
+
 const matchId = {{ $match->id }};
+const currentUserId = {{ Auth::id() }};
 let gameState = null;
+let firestoreState = null;
 let opponent = null;
 let buzzed = false;
 let questionStartTime = null;
+let firestoreUnsubscribe = null;
+let timerInterval = null;
+let timeRemaining = 10;
+
+// Listen to Firestore for real-time game state
+function listenToFirestoreMatch() {
+    // Match the document ID format from LeagueIndividualFirestoreService
+    const gameId = `league-individual-${matchId}`;
+    const sessionRef = db.collection('games').doc(gameId);
+    
+    console.log('Listening to Firestore document:', gameId);
+    
+    firestoreUnsubscribe = sessionRef.onSnapshot(snapshot => {
+        if (snapshot.exists) {
+            firestoreState = snapshot.data();
+            console.log('Firestore data received:', firestoreState);
+            updateUIFromFirestore();
+        } else {
+            console.log('Firestore document does not exist:', gameId);
+        }
+    }, error => {
+        console.error('Firestore listen error:', error);
+    });
+}
+
+function updateUIFromFirestore() {
+    if (!firestoreState) return;
+    
+    // Update opponent info
+    if (firestoreState.player1_id === currentUserId) {
+        opponent = {
+            id: firestoreState.player2_id,
+            name: firestoreState.player2_name
+        };
+    } else {
+        opponent = {
+            id: firestoreState.player1_id,
+            name: firestoreState.player1_name
+        };
+    }
+    
+    document.getElementById('opponentName').textContent = opponent.name;
+    document.getElementById('opponentAvatarLetter').textContent = opponent.name.charAt(0).toUpperCase();
+    document.getElementById('opponentNameResult').textContent = opponent.name;
+    
+    // Update scores
+    const playerScore = firestoreState.player1_id === currentUserId 
+        ? (firestoreState.player1_score || 0) 
+        : (firestoreState.player2_score || 0);
+    const opponentScore = firestoreState.player1_id === currentUserId 
+        ? (firestoreState.player2_score || 0) 
+        : (firestoreState.player1_score || 0);
+    
+    document.getElementById('playerScore').textContent = playerScore;
+    document.getElementById('opponentScore').textContent = opponentScore;
+    
+    // Update question counter
+    document.getElementById('currentQuestion').textContent = firestoreState.currentQuestionNumber || 1;
+    
+    // Display question from Firestore
+    if (firestoreState.currentQuestionData) {
+        displayQuestionFromFirestore(firestoreState.currentQuestionData);
+    }
+    
+    // Check if buzz happened
+    if (firestoreState.buzzer) {
+        if (firestoreState.buzzer.player_id === currentUserId) {
+            document.getElementById('playerBuzzIndicator').classList.add('active');
+        } else {
+            document.getElementById('opponentBuzzIndicator').classList.add('active');
+        }
+    }
+}
+
+function displayQuestionFromFirestore(question) {
+    if (!question) {
+        document.getElementById('questionText').textContent = 'Chargement de la question...';
+        return;
+    }
+    
+    document.getElementById('questionText').textContent = question.question || question.text || 'Question non disponible';
+    buzzed = false;
+    
+    // Start timer
+    startTimer();
+    
+    document.getElementById('buzzButton').disabled = false;
+    document.getElementById('buzzButton').style.display = 'block';
+    document.getElementById('answersGrid').style.display = 'none';
+    document.getElementById('answerResult').style.display = 'none';
+    
+    document.getElementById('playerBuzzIndicator').classList.remove('active');
+    document.getElementById('opponentBuzzIndicator').classList.remove('active');
+    
+    // Prepare answer options
+    const answers = question.answers || question.options || [];
+    ['A', 'B', 'C', 'D'].forEach((letter, index) => {
+        const btn = document.getElementById(`answer${letter}`);
+        if (btn && answers[index]) {
+            btn.textContent = `${letter}. ${answers[index]}`;
+            // Send the actual answer text, not the index
+            btn.onclick = () => submitAnswer(answers[index]);
+            btn.disabled = false;
+            btn.className = 'answer-btn';
+        }
+    });
+}
+
+function startTimer() {
+    clearInterval(timerInterval);
+    timeRemaining = 10;
+    questionStartTime = Date.now();
+    
+    // Update question counter display to show timer
+    const counterDisplay = document.getElementById('currentQuestion');
+    const baseText = counterDisplay.textContent;
+    
+    timerInterval = setInterval(() => {
+        timeRemaining--;
+        // Could update a timer UI element here
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            // Time's up - disable buzz
+            document.getElementById('buzzButton').disabled = true;
+        }
+    }, 1000);
+}
 
 async function loadGameState() {
     try {
         const response = await fetch(`/api/league/individual/match/${matchId}/game-state`, {
+            credentials: 'include',
             headers: {
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             }
         });
@@ -483,7 +630,9 @@ async function loadGameState() {
         
         if (data.success) {
             gameState = data.game_state;
-            opponent = data.opponent;
+            if (data.opponent) {
+                opponent = data.opponent;
+            }
             updateUI();
         }
     } catch (error) {
@@ -689,8 +838,19 @@ document.getElementById('nextRoundBtn').addEventListener('click', async function
     }
 });
 
+// Start listening to Firestore for real-time updates
+listenToFirestoreMatch();
+
+// Also load initial game state from API
 loadGameState();
-setInterval(loadGameState, 2000);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (firestoreUnsubscribe) {
+        firestoreUnsubscribe();
+    }
+    clearInterval(timerInterval);
+});
 </script>
 
 <!-- Audio pour les réponses -->

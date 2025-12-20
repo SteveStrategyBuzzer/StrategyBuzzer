@@ -43,12 +43,31 @@ class LeagueIndividualController extends Controller
         $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
         $rankings = $this->leagueService->getRankingsByDivision($division->division, 10);
         $rank = $this->leagueService->getPlayerRank($user);
+        
+        // Calculate efficiency
+        $efficiency = 0;
+        if ($stats && $stats->matches_played > 0) {
+            $efficiency = ($stats->matches_won / $stats->matches_played) * 100;
+        }
+        
+        // Division emoji mapping
+        $divisionEmojis = [
+            'bronze' => '🥉',
+            'argent' => '🥈',
+            'or' => '🥇',
+            'platine' => '💎',
+            'diamant' => '💠',
+            'legende' => '👑',
+        ];
+        $divisionEmoji = $divisionEmojis[$division->division ?? 'bronze'] ?? '🥉';
 
         return view('league_individual_lobby', [
             'stats' => $stats,
             'division' => $division,
             'rankings' => $rankings,
             'rank' => $rank,
+            'efficiency' => $efficiency,
+            'divisionEmoji' => $divisionEmoji,
         ]);
     }
 
@@ -83,9 +102,9 @@ class LeagueIndividualController extends Controller
     }
 
     /**
-     * API: Crée un match avec matchmaking aléatoire
+     * API: Crée un match avec un adversaire sélectionné
      */
-    public function createMatch()
+    public function createMatch(Request $request)
     {
         $user = Auth::user();
 
@@ -96,16 +115,45 @@ class LeagueIndividualController extends Controller
             ], 400);
         }
 
-        $opponent = $this->leagueService->findRandomOpponent($user);
+        $opponentId = $request->input('opponent_id');
+        $selectedDivision = $request->input('division', null);
+        
+        // If opponent_id provided, use that opponent
+        if ($opponentId) {
+            $opponent = \App\Models\User::find($opponentId);
+            
+            if (!$opponent) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Adversaire non trouvé',
+                ], 404);
+            }
+        } else {
+            // Fallback to random opponent (legacy behavior)
+            $opponent = $this->leagueService->findRandomOpponent($user);
 
-        if (!$opponent) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucun adversaire disponible dans votre division',
-            ], 404);
+            if (!$opponent) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucun adversaire disponible dans votre division',
+                ], 404);
+            }
         }
 
         $match = $this->leagueService->createMatch($user, $opponent);
+
+        // Generate first question and create Firestore session with question data
+        $questionService = app(\App\Services\QuestionService::class);
+        $userDivision = $this->divisionService->getOrCreateDivision($user, 'league_individual');
+        $theme = 'Culture générale'; // Default theme
+        $niveau = $this->mapDivisionToLevel($userDivision->division);
+        $language = app()->getLocale();
+        
+        try {
+            $question = $questionService->generateQuestion($theme, $niveau, $language);
+        } catch (\Exception $e) {
+            $question = null;
+        }
 
         $this->firestoreService->createMatchSession($match->id, [
             'player1_id' => $match->player1_id,
@@ -113,6 +161,13 @@ class LeagueIndividualController extends Controller
             'player1_name' => $user->name,
             'player2_name' => $opponent->name,
             'questionStartTime' => microtime(true),
+            'currentQuestionData' => $question,
+            'currentQuestionNumber' => 1,
+            'totalQuestions' => 10,
+            'status' => 'playing',
+            'buzzer' => null,
+            'player1_score' => 0,
+            'player2_score' => 0,
         ]);
 
         return response()->json([
@@ -120,6 +175,23 @@ class LeagueIndividualController extends Controller
             'match_id' => $match->id,
             'opponent' => $opponent->only(['id', 'name', 'avatar_url']),
         ]);
+    }
+    
+    /**
+     * Map division name to difficulty level
+     */
+    private function mapDivisionToLevel(string $division): string
+    {
+        $mapping = [
+            'bronze' => 'Facile',
+            'argent' => 'Facile',
+            'or' => 'Moyen',
+            'platine' => 'Moyen',
+            'diamant' => 'Difficile',
+            'legende' => 'Difficile',
+        ];
+        
+        return $mapping[$division] ?? 'Facile';
     }
 
     /**

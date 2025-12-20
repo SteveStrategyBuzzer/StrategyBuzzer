@@ -31,19 +31,22 @@ class LeagueIndividualFirestoreService
         $sessionData = [
             'matchId' => $matchId,
             'mode' => 'league_individual',
-            'player1Id' => $matchData['player1_id'],
-            'player2Id' => $matchData['player2_id'],
-            'player1Name' => $matchData['player1_name'] ?? 'Player 1',
-            'player2Name' => $matchData['player2_name'] ?? 'Player 2',
-            'status' => 'active',
+            'player1_id' => $matchData['player1_id'],
+            'player2_id' => $matchData['player2_id'],
+            'player1_name' => $matchData['player1_name'] ?? 'Player 1',
+            'player2_name' => $matchData['player2_name'] ?? 'Player 2',
+            'status' => $matchData['status'] ?? 'active',
             'currentRound' => 1,
-            'currentQuestion' => 1,
+            'currentQuestionNumber' => $matchData['currentQuestionNumber'] ?? 1,
+            'totalQuestions' => $matchData['totalQuestions'] ?? 10,
             'questionStartTime' => $matchData['questionStartTime'] ?? microtime(true),
-            'player1Score' => 0,
-            'player2Score' => 0,
-            'player1RoundsWon' => 0,
-            'player2RoundsWon' => 0,
-            'lastActivity' => microtime(true),
+            'currentQuestionData' => $matchData['currentQuestionData'] ?? null,
+            'player1_score' => 0,
+            'player2_score' => 0,
+            'player1_rounds_won' => 0,
+            'player2_rounds_won' => 0,
+            'buzzer' => null,
+            'last_activity' => microtime(true),
         ];
 
         $result = $this->firebase->createGameSession($gameId, $sessionData);
@@ -95,7 +98,7 @@ class LeagueIndividualFirestoreService
         $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
         $gameId = "league-individual-{$normalizedId}";
         
-        $updates['lastActivity'] = microtime(true);
+        $updates['last_activity'] = microtime(true);
         
         $result = $this->firebase->updateGameState($gameId, $updates);
         
@@ -113,8 +116,8 @@ class LeagueIndividualFirestoreService
     public function updateScores($matchId, int $player1Score, int $player2Score): bool
     {
         return $this->updateGameState($matchId, [
-            'player1Score' => $player1Score,
-            'player2Score' => $player2Score,
+            'player1_score' => $player1Score,
+            'player2_score' => $player2Score,
         ]);
     }
 
@@ -125,7 +128,7 @@ class LeagueIndividualFirestoreService
     public function nextQuestion($matchId, int $questionNumber, float $timestamp): bool
     {
         return $this->updateGameState($matchId, [
-            'currentQuestion' => $questionNumber,
+            'currentQuestionNumber' => $questionNumber,
             'questionStartTime' => $timestamp,
         ]);
     }
@@ -138,8 +141,8 @@ class LeagueIndividualFirestoreService
     {
         return $this->updateGameState($matchId, [
             'currentRound' => $currentRound,
-            'player1RoundsWon' => $player1RoundsWon,
-            'player2RoundsWon' => $player2RoundsWon,
+            'player1_rounds_won' => $player1RoundsWon,
+            'player2_rounds_won' => $player2RoundsWon,
         ]);
     }
 
@@ -194,8 +197,8 @@ class LeagueIndividualFirestoreService
     {
         $result = $this->updateGameState($matchId, [
             'questions' => $questions,
-            'questionsGenerated' => true,
-            'questionsCount' => count($questions),
+            'questions_generated' => true,
+            'questions_count' => count($questions),
         ]);
         
         if ($result) {
@@ -245,7 +248,7 @@ class LeagueIndividualFirestoreService
     {
         $state = $this->syncGameState($matchId);
         
-        return $state && ($state['questionsGenerated'] ?? false);
+        return $state && ($state['questions_generated'] ?? false);
     }
 
     /**
@@ -255,8 +258,8 @@ class LeagueIndividualFirestoreService
     public function syncCurrentQuestion($matchId, int $questionNumber): bool
     {
         return $this->updateGameState($matchId, [
-            'currentQuestion' => $questionNumber,
-            'questionSyncTime' => microtime(true),
+            'currentQuestionNumber' => $questionNumber,
+            'question_sync_time' => microtime(true),
         ]);
     }
 }
