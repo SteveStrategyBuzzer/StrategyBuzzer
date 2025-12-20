@@ -224,28 +224,114 @@ body {
     100% { transform: scale(1); opacity: 1; }
 }
 
-@media (max-width: 768px) {
+/* Mobile portrait - keep players side by side */
+@media (max-width: 768px) and (orientation: portrait) {
+    .resume-container {
+        padding: 15px 10px;
+        justify-content: flex-start;
+        padding-top: 30px;
+    }
+    
+    .title-section {
+        margin-bottom: 15px;
+    }
+    
+    .title-section h1 {
+        font-size: 1.5rem;
+    }
+    
+    .theme-badge {
+        font-size: 0.9rem;
+        padding: 6px 16px;
+    }
+    
     .versus-section {
-        flex-direction: column;
+        flex-direction: row;
+        gap: 15px;
+        margin: 15px 0;
+        flex-wrap: nowrap;
+    }
+    
+    .versus-text {
+        font-size: 1.5rem;
+        margin: 0 5px;
+    }
+    
+    .player-card {
+        min-width: 120px;
+        max-width: 140px;
+        padding: 15px 10px;
+        flex: 1;
+    }
+    
+    .player-avatar {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .player-name {
+        font-size: 0.95rem;
+    }
+    
+    .player-division {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+    }
+    
+    .countdown-section {
+        margin-top: 20px;
+    }
+    
+    .countdown-number {
+        font-size: 5rem;
+    }
+    
+    .info-row {
+        margin-top: 15px;
+        gap: 10px;
+    }
+    
+    .info-badge {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
+    
+    .chat-section {
+        width: 200px;
+        max-height: 180px;
+        bottom: 10px;
+        left: 10px;
+    }
+    
+    .go-button {
+        padding: 14px 40px;
+        font-size: 1.2rem;
+    }
+}
+
+/* Mobile landscape */
+@media (max-width: 768px) and (orientation: landscape) {
+    .versus-section {
+        flex-direction: row;
         gap: 20px;
     }
     
     .versus-text {
-        font-size: 2rem;
+        font-size: 1.8rem;
     }
     
     .player-card {
-        min-width: 160px;
-        padding: 20px;
+        min-width: 140px;
+        padding: 15px;
     }
     
     .player-avatar {
-        width: 90px;
-        height: 90px;
+        width: 60px;
+        height: 60px;
     }
     
     .player-name {
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
     
     .countdown-number {
@@ -253,7 +339,7 @@ body {
     }
     
     .title-section h1 {
-        font-size: 1.8rem;
+        font-size: 1.5rem;
     }
 }
 
@@ -616,6 +702,11 @@ body {
 </div>
 @endif
 
+<!-- Audio pour le countdown "Ladies and Gentlemen" -->
+<audio id="readyAudio" preload="auto">
+    <source src="{{ asset('sounds/ready_announcement.mp3') }}" type="audio/mpeg">
+</audio>
+
 <!-- Firebase SDK - loaded first -->
 @if($needsSyncGo || $needsChat || $needsMic)
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -771,31 +862,88 @@ body {
         const waitingMessage = document.getElementById('waitingMessage');
         const goButton = document.getElementById('goButton');
         const goStatus = document.querySelector('.go-status');
+        const countdownEl = document.getElementById('countdown');
+        const audio = document.getElementById('readyAudio');
         
         if (waitingMessage) waitingMessage.style.display = 'none';
         if (goButton) goButton.style.display = 'none';
         if (goStatus) goStatus.style.display = 'none';
         if (countdownSection) countdownSection.style.display = 'block';
         
-        let count = 3;
-        const countdownEl = document.getElementById('countdown');
-        
-        const interval = setInterval(() => {
-            count--;
-            if (count > 0) {
-                if (countdownEl) countdownEl.textContent = count;
-            } else {
-                if (countdownEl) countdownEl.textContent = '🚀';
-                clearInterval(interval);
+        // Play audio and sync countdown to audio duration (like Solo mode)
+        if (audio) {
+            audio.volume = 1.0;
+            
+            let audioDuration = 0;
+            let updateInterval = null;
+            
+            // When audio metadata is loaded, start countdown synced to audio
+            const startAudioCountdown = () => {
+                audioDuration = audio.duration || 5;
+                if (countdownEl) countdownEl.textContent = Math.ceil(audioDuration);
                 
+                audio.play().then(() => {
+                    // Sync countdown to audio.currentTime
+                    updateInterval = setInterval(() => {
+                        const remaining = audioDuration - audio.currentTime;
+                        if (remaining > 0) {
+                            if (countdownEl) countdownEl.textContent = Math.ceil(remaining);
+                        } else {
+                            if (countdownEl) countdownEl.textContent = '🚀';
+                        }
+                    }, 100);
+                }).catch(e => {
+                    console.warn('Audio play failed:', e);
+                    // Fallback to simple countdown if audio fails
+                    fallbackCountdown();
+                });
+            };
+            
+            // When audio ends, redirect
+            audio.addEventListener('ended', function() {
+                if (updateInterval) clearInterval(updateInterval);
                 if (!redirected) {
                     redirected = true;
-                    setTimeout(() => {
-                        window.location.href = redirectUrl;
-                    }, 500);
+                    window.location.href = redirectUrl;
                 }
+            }, { once: true });
+            
+            // Start when metadata ready or immediately if already loaded
+            if (audio.readyState >= 1) {
+                startAudioCountdown();
+            } else {
+                audio.addEventListener('loadedmetadata', startAudioCountdown, { once: true });
+                // Fallback if metadata never loads
+                setTimeout(() => {
+                    if (!audio.duration) fallbackCountdown();
+                }, 3000);
             }
-        }, 1000);
+        } else {
+            fallbackCountdown();
+        }
+        
+        // Fallback countdown without audio
+        function fallbackCountdown() {
+            let count = 5;
+            if (countdownEl) countdownEl.textContent = count;
+            
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    if (countdownEl) countdownEl.textContent = count;
+                } else {
+                    if (countdownEl) countdownEl.textContent = '🚀';
+                    clearInterval(interval);
+                    
+                    if (!redirected) {
+                        redirected = true;
+                        setTimeout(() => {
+                            window.location.href = redirectUrl;
+                        }, 500);
+                    }
+                }
+            }, 1000);
+        }
     }
     
     // Listen for opponent ready status via Firebase
