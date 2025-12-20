@@ -3,9 +3,9 @@
 @section('content')
 <div class="league-lobby-container">
     <div class="league-header">
-        <button onclick="window.location.href='{{ route('league.entry') }}'" class="back-button">
+        <a href="{{ route('league.entry') }}" class="back-button">
             ← {{ __('Retour') }}
-        </button>
+        </a>
         <h1>{{ __('GESTION D\'ÉQUIPE') }}</h1>
     </div>
 
@@ -305,6 +305,19 @@
             </div>
         @endif
     </div>
+    
+    <!-- Confirmation Modal -->
+    <div class="confirm-modal-overlay" id="confirmModalOverlay" style="display: none;">
+        <div class="confirm-modal">
+            <div class="confirm-modal-content">
+                <p id="confirmModalMessage"></p>
+            </div>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn cancel" id="confirmModalCancel">{{ __('Annuler') }}</button>
+                <button class="confirm-modal-btn ok" id="confirmModalOk">{{ __('OK') }}</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -339,10 +352,98 @@
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    z-index: 100;
 }
 
 .back-button:hover {
     background: rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+/* Confirmation Modal */
+.confirm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 20px;
+}
+
+.confirm-modal {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #00d4ff;
+    border-radius: 16px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0, 212, 255, 0.3);
+    animation: modalAppear 0.3s ease;
+}
+
+@keyframes modalAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.confirm-modal-content {
+    padding: 30px 25px 20px;
+    text-align: center;
+}
+
+.confirm-modal-content p {
+    color: #fff;
+    font-size: 1.1rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.confirm-modal-buttons {
+    display: flex;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.confirm-modal-btn {
+    flex: 1;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.confirm-modal-btn.cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: #aaa;
+    border-radius: 0 0 0 14px;
+}
+
+.confirm-modal-btn.cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.confirm-modal-btn.ok {
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    color: #000;
+    border-radius: 0 0 14px 0;
+}
+
+.confirm-modal-btn.ok:hover {
+    background: linear-gradient(135deg, #33e0ff 0%, #00b3e6 100%);
 }
 
 @media (max-width: 768px) {
@@ -1688,6 +1789,41 @@
 </style>
 
 <script>
+// Custom Confirmation Modal
+let confirmModalResolve = null;
+
+function showConfirmModal(message) {
+    return new Promise((resolve) => {
+        confirmModalResolve = resolve;
+        const overlay = document.getElementById('confirmModalOverlay');
+        const messageEl = document.getElementById('confirmModalMessage');
+        
+        if (overlay && messageEl) {
+            messageEl.textContent = message;
+            overlay.style.display = 'flex';
+        } else {
+            resolve(confirm(message));
+        }
+    });
+}
+
+function closeConfirmModal(result) {
+    const overlay = document.getElementById('confirmModalOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    if (confirmModalResolve) {
+        confirmModalResolve(result);
+        confirmModalResolve = null;
+    }
+}
+
+document.getElementById('confirmModalCancel')?.addEventListener('click', () => closeConfirmModal(false));
+document.getElementById('confirmModalOk')?.addEventListener('click', () => closeConfirmModal(true));
+document.getElementById('confirmModalOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'confirmModalOverlay') closeConfirmModal(false);
+});
+
 const emblems = {
     animals: ['🦁', '🐯', '🐻', '🦊', '🐺', '🦅', '🦈', '🐍', '🦎', '🐊', '🦂', '🦀', '🐙', '🦑', '🐋', '🐬', '🦭', '🐘', '🦏', '🦛', '🐪', '🦒', '🦘', '🦬', '🐃', '🦌', '🦙', '🐎', '🦓', '🐗', '🐺', '🦇', '🐀', '🐉', '🦎', '🦖', '🦕', '🐢', '🐸', '🐊', '🦜', '🦩', '🦚', '🦢', '🦤', '🕊️', '🐝', '🦋', '🐞', '🦗'],
     warriors: ['⚔️', '🗡️', '🛡️', '🏹', '🪓', '🔱', '⚒️', '🪃', '💣', '🧨', '💥', '🎯', '🥷', '👺', '👹', '💀', '☠️', '👻', '🤖', '👾', '🦾', '🦿', '🧠', '👁️', '🫀', '🪖', '🎖️', '🏅', '🥇', '⭐', '🌟', '✨', '💫', '🔥', '❄️', '⚡', '💨', '🌪️', '🌊', '🌋', '☄️', '🌙', '☀️', '🌈', '🎭', '👑', '💎', '🔮', '🧿', '⚱️'],
@@ -1931,7 +2067,8 @@ async function declineInvitation(invitationId) {
 }
 
 async function kickMember(memberId) {
-    if (!confirm('{{ __("Êtes-vous sûr de vouloir expulser ce membre ?") }}')) return;
+    const confirmed = await showConfirmModal('{{ __("Êtes-vous sûr de vouloir expulser ce membre ?") }}');
+    if (!confirmed) return;
 
     try {
         const response = await fetch('/league/team/kick', {
@@ -1957,8 +2094,10 @@ async function kickMember(memberId) {
 }
 
 async function transferCaptain(memberId, memberName) {
-    if (!confirm(`{{ __("Voulez-vous nommer") }} ${memberName} {{ __("comme nouveau capitaine ?") }}`)) return;
-    if (!confirm('{{ __("Confirmer: Vous perdrez vos droits de capitaine. Continuer ?") }}')) return;
+    const confirmed1 = await showConfirmModal(`{{ __("Voulez-vous nommer") }} ${memberName} {{ __("comme nouveau capitaine ?") }}`);
+    if (!confirmed1) return;
+    const confirmed2 = await showConfirmModal('{{ __("Confirmer: Vous perdrez vos droits de capitaine. Continuer ?") }}');
+    if (!confirmed2) return;
 
     try {
         const response = await fetch('/league/team/transfer-captain', {
@@ -1986,10 +2125,12 @@ async function transferCaptain(memberId, memberName) {
 
 async function leaveTeam() {
     @if($team && $team->captain_id === Auth::id())
-    if (!confirm('{{ __("ATTENTION: Vous êtes le capitaine! Si vous quittez, un autre membre deviendra capitaine. Êtes-vous sûr?") }}')) return;
+    const confirmedCaptain = await showConfirmModal('{{ __("ATTENTION: Vous êtes le capitaine! Si vous quittez, un autre membre deviendra capitaine. Êtes-vous sûr?") }}');
+    if (!confirmedCaptain) return;
     @endif
     
-    if (!confirm('{{ __("Confirmer: Voulez-vous vraiment quitter l\'équipe?") }}')) return;
+    const confirmedLeave = await showConfirmModal('{{ __("Confirmer: Voulez-vous vraiment quitter l\'équipe?") }}');
+    if (!confirmedLeave) return;
 
     try {
         const response = await fetch('/league/team/leave', {
