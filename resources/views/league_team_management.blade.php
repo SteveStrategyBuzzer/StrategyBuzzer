@@ -173,9 +173,19 @@
                     <div class="team-division {{ $team->division }}">
                         {{ ucfirst($team->division) }} - {{ $team->points }} pts
                     </div>
-                    <div class="team-code-display">
-                        🏷️ {{ __('Code') }}: <span class="code-value" onclick="copyTeamCode('{{ $team->team_code }}')">{{ $team->team_code }}</span>
-                        <span class="copy-hint">{{ __('(cliquer pour copier)') }}</span>
+                    <div class="team-code-row">
+                        <div class="inline-chat-btn" id="floatingChatBtn" onclick="toggleTeamChat()">
+                            💬
+                            <span class="chat-badge" id="chatBadge" style="display: none;">0</span>
+                        </div>
+                        <div class="team-code-display">
+                            🏷️ {{ __('Code') }}: <span class="code-value" onclick="copyTeamCode('{{ $team->team_code }}')">{{ $team->team_code }}</span>
+                            <span class="copy-hint">{{ __('(cliquer pour copier)') }}</span>
+                        </div>
+                        <div class="inline-mic-btn muted" id="floatingMicBtn" onclick="toggleMicrophone()">
+                            <span id="micIcon">🔇</span>
+                            <div class="speaking-indicator" id="speakingIndicator"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -275,18 +285,6 @@
                         {{ $team->captain_id === Auth::id() && $team->members->count() > 1 ? __('Quitter & Transférer Capitanat') : __('Quitter l\'Équipe') }}
                     </button>
                 </div>
-            </div>
-            
-            <!-- Floating Chat Button - Bottom Left -->
-            <div class="floating-chat-btn" id="floatingChatBtn" onclick="toggleTeamChat()">
-                💬
-                <span class="chat-badge" id="chatBadge" style="display: none;">0</span>
-            </div>
-            
-            <!-- Floating Mic Button - Bottom Right -->
-            <div class="floating-mic-btn muted" id="floatingMicBtn" onclick="toggleMicrophone()">
-                <span id="micIcon">🔇</span>
-                <div class="speaking-indicator" id="speakingIndicator"></div>
             </div>
             
             <!-- Chat Modal -->
@@ -608,14 +606,15 @@
 .captain-actions {
     margin: 1.5rem 0;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 1rem;
-    align-items: center;
+    align-items: stretch;
 }
 
 .btn-recruit {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     background: linear-gradient(135deg, #444 0%, #333 100%);
     color: #fff;
@@ -624,6 +623,8 @@
     font-weight: 600;
     border: 2px solid #555;
     cursor: pointer;
+    flex: 1;
+    text-align: center;
     transition: all 0.3s ease;
 }
 .btn-recruit.active {
@@ -641,8 +642,10 @@
     background: rgba(255,255,255,0.2);
 }
 
-.btn-captain {
-    display: inline-block;
+.captain-actions .btn-captain {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
     color: #1a1a2e;
     padding: 12px 24px;
@@ -650,15 +653,14 @@
     text-decoration: none;
     font-weight: 700;
     transition: all 0.3s ease;
+    flex: 1;
+    text-align: center;
+    position: relative;
 }
 
-.btn-captain:hover {
+.captain-actions .btn-captain:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
-}
-
-.btn-captain {
-    position: relative;
 }
 
 .request-badge {
@@ -909,8 +911,63 @@
 .team-division.diamant { background: linear-gradient(135deg, #B9F2FF, #00CED1); }
 .team-division.legende { background: linear-gradient(135deg, #FF00FF, #8B008B); }
 
-.team-code-display {
+.team-code-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-top: 12px;
+    gap: 10px;
+}
+
+.inline-chat-btn,
+.inline-mic-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.inline-chat-btn {
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 3px 12px rgba(0, 212, 255, 0.4);
+}
+
+.inline-chat-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 18px rgba(0, 212, 255, 0.6);
+}
+
+.inline-mic-btn {
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+}
+
+.inline-mic-btn:hover {
+    transform: scale(1.05);
+}
+
+.inline-mic-btn.active {
+    background: rgba(46, 204, 113, 0.6);
+    border-color: #2ecc71;
+    animation: mic-pulse 1.5s infinite;
+}
+
+.inline-mic-btn.muted {
+    background: rgba(231, 76, 60, 0.5);
+    border-color: #e74c3c;
+}
+
+.team-code-display {
+    flex: 1;
     font-size: 0.9rem;
     color: rgba(255,255,255,0.9);
     display: flex;
@@ -1545,39 +1602,15 @@
     }
 }
 
-.floating-chat-btn {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6rem;
-    cursor: pointer;
-    z-index: 100;
-    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
-    transition: all 0.3s ease;
-}
-
-.floating-chat-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 30px rgba(0, 212, 255, 0.6);
-}
-
 .chat-badge {
     position: absolute;
     top: -5px;
     right: -5px;
     background: #e74c3c;
     color: white;
-    font-size: 0.7rem;
-    min-width: 20px;
-    height: 20px;
+    font-size: 0.6rem;
+    min-width: 16px;
+    height: 16px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1585,52 +1618,12 @@
     font-weight: bold;
 }
 
-.floating-mic-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(10px);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6rem;
-    transition: all 0.3s ease;
-    z-index: 100;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-
-.floating-mic-btn:hover {
-    transform: scale(1.05);
-}
-
-.floating-mic-btn.active {
-    background: rgba(46, 204, 113, 0.6);
-    border-color: #2ecc71;
-    animation: mic-pulse 1.5s infinite;
-}
-
-.floating-mic-btn.muted {
-    background: rgba(231, 76, 60, 0.5);
-    border-color: #e74c3c;
-}
-
-@keyframes mic-pulse {
-    0%, 100% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
-    50% { box-shadow: 0 0 40px rgba(46, 204, 113, 0.7); }
-}
-
 .speaking-indicator {
     position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 18px;
-    height: 18px;
+    top: -3px;
+    right: -3px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: #2ecc71;
     display: none;
@@ -1648,16 +1641,18 @@
 
 .team-chat-modal {
     position: fixed;
-    bottom: 90px;
-    left: 20px;
-    width: 320px;
-    max-height: 350px;
-    background: rgba(0, 0, 0, 0.9);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 360px;
+    max-height: 400px;
+    background: rgba(0, 0, 0, 0.95);
     backdrop-filter: blur(15px);
     border-radius: 16px;
     border: 2px solid rgba(0, 212, 255, 0.3);
     overflow: hidden;
-    z-index: 101;
+    z-index: 200;
     display: flex;
     flex-direction: column;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -1762,28 +1757,26 @@
 }
 
 @media (max-width: 768px) {
-    .floating-chat-btn,
-    .floating-mic-btn {
-        width: 50px;
-        height: 50px;
-        font-size: 1.3rem;
-    }
-    
-    .floating-chat-btn {
-        left: 15px;
-        bottom: 15px;
-    }
-    
-    .floating-mic-btn {
-        right: 15px;
-        bottom: 15px;
+    .inline-chat-btn,
+    .inline-mic-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 1.1rem;
     }
     
     .team-chat-modal {
-        width: calc(100% - 90px);
-        left: 10px;
-        bottom: 75px;
-        max-height: 280px;
+        width: 95%;
+        max-width: none;
+        max-height: 320px;
+    }
+    
+    .captain-actions {
+        flex-direction: column;
+    }
+    
+    .captain-actions .btn-recruit,
+    .captain-actions .btn-captain {
+        width: 100%;
     }
 }
 </style>
