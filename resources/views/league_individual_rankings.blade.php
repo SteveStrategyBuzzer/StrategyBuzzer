@@ -2,10 +2,11 @@
 
 @section('content')
 <div class="rankings-container">
+    <a href="{{ route('league.individual.lobby') }}" class="back-button-fixed">
+        ← Retour
+    </a>
+    
     <div class="rankings-header">
-        <button onclick="window.location.href='{{ route('league.individual.lobby') }}'" class="back-button">
-            ← Retour
-        </button>
         <h1>🏆 CLASSEMENTS LIGUE INDIVIDUEL</h1>
     </div>
 
@@ -65,36 +66,58 @@
     background: #f5f5f5;
 }
 
+.back-button-fixed {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    padding: 8px 14px;
+    background: rgba(26, 26, 46, 0.9);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    z-index: 100;
+    backdrop-filter: blur(5px);
+}
+
+.back-button-fixed:hover {
+    background: rgba(26, 26, 46, 1);
+    color: #fff;
+}
+
 .rankings-header {
     display: flex;
     align-items: center;
-    gap: 20px;
+    justify-content: center;
     margin-bottom: 30px;
+    margin-top: 10px;
     background: white;
     padding: 20px;
     border-radius: 15px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-.back-button {
-    padding: 10px 20px;
-    background: #e0e0e0;
-    border: none;
-    border-radius: 8px;
-    font-size: 1em;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.back-button:hover {
-    background: #d0d0d0;
-}
-
 .rankings-header h1 {
-    flex: 1;
-    font-size: 2.5em;
+    font-size: 2em;
     color: #1a1a1a;
     text-align: center;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .back-button-fixed {
+        top: 8px;
+        left: 8px;
+        padding: 6px 12px;
+        font-size: 0.85em;
+    }
+    
+    .rankings-header h1 {
+        font-size: 1.4em;
+    }
 }
 
 .division-tabs {
