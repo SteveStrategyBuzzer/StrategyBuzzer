@@ -213,7 +213,15 @@
                                         </p>
                                     </div>
                                 </div>
-                                @if($team->captain_id === Auth::id() && $member->id !== Auth::id())
+                                @if($member->id === Auth::id())
+                                    {{-- Current user's own card - show Quitter button --}}
+                                    <div class="member-actions">
+                                        <button onclick="event.stopPropagation(); leaveTeam()" class="btn-kick">
+                                            {{ __('Quitter') }}
+                                        </button>
+                                    </div>
+                                @elseif($team->captain_id === Auth::id())
+                                    {{-- Captain viewing other members - show captain/kick buttons --}}
                                     <div class="member-actions">
                                         <button onclick="event.stopPropagation(); transferCaptain({{ $member->id }}, '{{ addslashes($member->name) }}')" class="btn-captain" title="{{ __('Nommer capitaine') }}">
                                             👑
@@ -281,9 +289,11 @@
                         <p class="info-message">⚠️ {{ __('Votre équipe doit avoir 5 joueurs pour participer aux matchs') }}</p>
                     @endif
                     
-                    <button onclick="leaveTeam()" class="btn-danger">
-                        {{ $team->captain_id === Auth::id() && $team->members->count() > 1 ? __('Quitter & Transférer Capitanat') : __('Quitter l\'Équipe') }}
-                    </button>
+                    @if($team->captain_id === Auth::id() && $team->members->count() > 1)
+                        <button onclick="openTransferCaptainModal()" class="btn-transfer-captain">
+                            👑 {{ __('Transférer Capitanat') }}
+                        </button>
+                    @endif
                 </div>
             </div>
             
@@ -316,6 +326,35 @@
             </div>
         </div>
     </div>
+    
+    <!-- Transfer Captain Modal -->
+    @if(isset($team) && $team->captain_id === Auth::id() && $team->members->count() > 1)
+    <div class="transfer-modal-overlay" id="transferModalOverlay" style="display: none;">
+        <div class="transfer-modal">
+            <h3>👑 {{ __('Transférer le Capitanat') }}</h3>
+            <p style="color: rgba(255,255,255,0.7); text-align: center; margin-bottom: 15px; font-size: 0.9rem;">
+                {{ __('Choisissez le nouveau capitaine') }}
+            </p>
+            <div class="transfer-member-list">
+                @foreach($team->members as $member)
+                    @if($member->id !== Auth::id())
+                        <div class="transfer-member-item" onclick="selectTransferCaptain({{ $member->id }}, '{{ addslashes($member->name) }}')">
+                            <div class="transfer-member-avatar">
+                                @if($member->avatar_url ?? null)
+                                    <img src="{{ $member->avatar_url }}" alt="Avatar">
+                                @else
+                                    {{ strtoupper(substr($member->name, 0, 1)) }}
+                                @endif
+                            </div>
+                            <span class="transfer-member-name">{{ $member->name }}</span>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+            <button class="transfer-modal-close" onclick="closeTransferModal()">{{ __('Annuler') }}</button>
+        </div>
+    </div>
+    @endif
 </div>
 
 <style>
@@ -1164,6 +1203,120 @@
 
 .btn-danger:hover {
     background: #c82333;
+}
+
+.btn-transfer-captain {
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.btn-transfer-captain:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+}
+
+/* Transfer Captain Modal */
+.transfer-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+}
+
+.transfer-modal {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.transfer-modal h3 {
+    color: #ffd700;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.transfer-member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.transfer-member-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.transfer-member-item:hover {
+    background: rgba(255, 215, 0, 0.1);
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+.transfer-member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #fff;
+    overflow: hidden;
+}
+
+.transfer-member-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.transfer-member-name {
+    flex: 1;
+    color: #fff;
+    font-weight: 500;
+}
+
+.transfer-modal-close {
+    width: 100%;
+    margin-top: 15px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.transfer-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .info-message {
@@ -2084,6 +2237,25 @@ async function kickMember(memberId) {
     } catch (error) {
         showToast('{{ __("Erreur de connexion") }}', 'error');
     }
+}
+
+function openTransferCaptainModal() {
+    const overlay = document.getElementById('transferModalOverlay');
+    if (overlay) {
+        overlay.style.display = 'flex';
+    }
+}
+
+function closeTransferModal() {
+    const overlay = document.getElementById('transferModalOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+}
+
+async function selectTransferCaptain(memberId, memberName) {
+    closeTransferModal();
+    await transferCaptain(memberId, memberName);
 }
 
 async function transferCaptain(memberId, memberName) {
