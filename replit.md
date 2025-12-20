@@ -44,6 +44,15 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - Legacy collections (duoMatches, leagueMatches, masterRooms) deprecated
 - Security rules enforce member-only access with host privileges for global state
 
+**League Individual Matchmaking System (Dec 2025)**
+- Firebase-based queue system in `leagueIndividualQueue` collection for real-time opponent discovery
+- Lobby displays up to 3 available opponents with avatar, efficiency %, and division emoji
+- Player stats modal with Chart.js radar diagram showing per-category efficiency
+- Division selector allowing play up to 2 divisions above current level with entry fee
+- Game sessions stored in `games/league-individual-{matchId}` with consistent snake_case field naming
+- Real-time Firestore listeners sync question data, scores, and buzz events between players
+- LeagueIndividualFirestoreService uses consistent schema: player1_id, player1_score, currentQuestionNumber, currentQuestionData
+
 **Multiplayer Resume Page Features (Dec 2025)**
 - `duo_resume.blade.php` now includes Chat, Mic toggle, and synchronized GO button for Duo/League modes
 - Firebase auth reuse pattern: single initialization with `firebaseInitialized` guard and `currentUser` check
