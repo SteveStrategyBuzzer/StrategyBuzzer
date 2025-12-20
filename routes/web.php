@@ -265,6 +265,21 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
     })->name('rankings');
 });
 
+/* ===== LIGUE INDIVIDUEL API (web middleware for session auth) ===== */
+Route::prefix('api/league/individual')->middleware('auth')->group(function () {
+    Route::get('/', [App\Http\Controllers\LeagueIndividualController::class, 'index']);
+    Route::post('/initialize', [App\Http\Controllers\LeagueIndividualController::class, 'initialize']);
+    Route::get('/check-initialized', [App\Http\Controllers\LeagueIndividualController::class, 'checkInitialized']);
+    Route::post('/create-match', [App\Http\Controllers\LeagueIndividualController::class, 'createMatch']);
+    Route::get('/rankings', [App\Http\Controllers\LeagueIndividualController::class, 'getRankings']);
+    Route::get('/match/{match}/game-state', [App\Http\Controllers\LeagueIndividualController::class, 'getGameState']);
+    Route::post('/match/{match}/buzz', [App\Http\Controllers\LeagueIndividualController::class, 'buzz']);
+    Route::post('/match/{match}/submit-answer', [App\Http\Controllers\LeagueIndividualController::class, 'submitAnswer']);
+    Route::post('/match/{match}/finish', [App\Http\Controllers\LeagueIndividualController::class, 'finishMatch']);
+    Route::get('/match/{match}/sync', [App\Http\Controllers\LeagueIndividualController::class, 'syncGameState']);
+    Route::get('/my-stats', [App\Http\Controllers\LeagueIndividualController::class, 'getMyStats']);
+});
+
 /* ===== LIGUE ÉQUIPE ===== */
 Route::get('/league/entry', function() {
     return redirect()->route('league.team.management');

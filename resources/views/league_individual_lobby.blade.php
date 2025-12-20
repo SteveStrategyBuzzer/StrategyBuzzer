@@ -489,8 +489,10 @@ document.getElementById('findMatchBtn').addEventListener('click', async function
     try {
         const response = await fetch('/api/league/individual/create-match', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             }
         });

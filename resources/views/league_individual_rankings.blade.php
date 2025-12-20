@@ -395,7 +395,9 @@ async function loadRankings(division) {
 
     try {
         const response = await fetch(`/api/league/individual/rankings?division=${division}`, {
+            credentials: 'include',
             headers: {
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             }
         });
