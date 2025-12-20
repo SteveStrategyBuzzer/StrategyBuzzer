@@ -119,6 +119,7 @@ class UnifiedGameController extends Controller
                 $gameState['opponent_name'] = $opponentName;
                 $gameState['lobby_code'] = $validated['lobby_code'];
                 $gameState['match_id'] = $validated['match_id'] ?? $validated['lobby_code'];
+                $gameState['host_id'] = $lobby['host_id'] ?? null;
                 
                 if (!empty($lobby['bet_info'])) {
                     $gameState['bet_info'] = $lobby['bet_info'];
@@ -303,6 +304,11 @@ class UnifiedGameController extends Controller
             $playerDivision = app(\App\Services\DivisionService::class)->getOrCreateDivision($user, 'duo')['name'] ?? 'Bronze';
         }
         
+        $matchId = $gameState['match_id'] ?? $gameState['lobby_code'] ?? null;
+        $opponentId = $gameState['opponent_id'] ?? null;
+        $hostId = $gameState['host_id'] ?? null;
+        $isHost = $hostId !== null ? ((int)$hostId === (int)$user->id) : true;
+        
         $params = [
             'mode' => $mode,
             'theme' => $gameState['theme'] ?? 'Culture générale',
@@ -314,6 +320,10 @@ class UnifiedGameController extends Controller
             'opponent_avatar' => $opponentInfo['avatar'] ?? 'default',
             'opponent_division' => $opponentInfo['division'] ?? 'Bronze',
             'redirect_url' => route('game.preparation', ['mode' => $mode]),
+            'match_id' => $matchId,
+            'session_id' => $matchId,
+            'opponent_id' => $opponentId,
+            'is_host' => $isHost,
         ];
         
         return view('duo_resume', ['params' => $params]);
