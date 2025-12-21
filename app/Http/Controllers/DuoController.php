@@ -520,12 +520,27 @@ class DuoController extends Controller
         $choixNiveau = is_array($profileSettings) ? ($profileSettings['choix_niveau'] ?? 1) : 1;
         $duoFullUnlocked = $choixNiveau >= 11; // Accès complet après boss niveau 10
 
+        $activeLobbyCode = null;
+        $activeLobby = null;
+        $currentLobbyCode = session('current_lobby_code');
+        if ($currentLobbyCode) {
+            $lobby = $this->lobbyService->getLobby($currentLobbyCode);
+            if ($lobby && isset($lobby['players'][$user->id]) && ($lobby['mode'] ?? '') === 'duo') {
+                $activeLobbyCode = $currentLobbyCode;
+                $activeLobby = $lobby;
+            } else {
+                session()->forget('current_lobby_code');
+            }
+        }
+
         return view('duo_lobby', [
             'stats' => $stats,
             'division' => $division,
             'rankings' => $rankings,
             'duoFullUnlocked' => $duoFullUnlocked,
             'choixNiveau' => $choixNiveau,
+            'activeLobbyCode' => $activeLobbyCode,
+            'activeLobby' => $activeLobby,
         ]);
     }
 

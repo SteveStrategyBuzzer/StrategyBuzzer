@@ -223,6 +223,11 @@ foreach ($colors as $color) {
         color: #EF5350;
     }
     
+    .player-action-btn.muted-locally {
+        background: rgba(255, 193, 7, 0.4);
+        color: #FFC107;
+    }
+    
     .player-action-btn.unavailable {
         background: rgba(100, 100, 100, 0.3);
         color: #888;
@@ -1839,6 +1844,7 @@ foreach ($colors as $color) {
     let micStates = {};
     let voicePresence = {};
     let voiceEnabled = false;
+    const locallyMutedPlayers = new Set();
     const lobbyMode = '{{ $mode }}';
     const voiceEnabledModes = ['duo', 'league_individual', 'league_team'];
     const isVoiceSupported = voiceEnabledModes.includes(lobbyMode);
@@ -1871,15 +1877,52 @@ foreach ($colors as $color) {
     
     function updateVoicePresence(playerId, data) {
         voicePresence[playerId] = data;
+        updateOpponentMicUI(playerId);
+    }
+    
+    function updateOpponentMicUI(playerId) {
         const micBtn = document.getElementById('mic-btn-' + playerId);
-        if (micBtn && parseInt(playerId) !== currentPlayerId) {
-            micBtn.classList.remove('active', 'muted', 'speaking', 'unavailable');
-            if (data.micEnabled) {
-                micBtn.classList.add('active');
-                if (data.speaking) micBtn.classList.add('speaking');
-            } else {
-                micBtn.classList.add('muted');
-            }
+        if (!micBtn || parseInt(playerId) === currentPlayerId) return;
+        
+        const presence = voicePresence[playerId] || {};
+        const micEnabled = presence.micEnabled ?? false;
+        const speaking = presence.speaking ?? false;
+        const isLocallyMuted = locallyMutedPlayers.has(String(playerId));
+        
+        micBtn.classList.remove('active', 'muted', 'speaking', 'muted-locally', 'unavailable');
+        
+        if (!micEnabled) {
+            micBtn.classList.add('muted');
+            micBtn.textContent = '🔇';
+            micBtn.title = '{{ __("Micro adversaire désactivé") }}';
+        } else if (isLocallyMuted) {
+            micBtn.classList.add('muted-locally');
+            micBtn.textContent = '🔕';
+            micBtn.title = '{{ __("Cliquez pour rétablir le son") }}';
+        } else {
+            micBtn.classList.add('active');
+            if (speaking) micBtn.classList.add('speaking');
+            micBtn.textContent = '🔊';
+            micBtn.title = '{{ __("Cliquez pour couper le son") }}';
+        }
+    }
+    
+    function toggleOpponentMute(playerId) {
+        console.log('[Mic] toggleOpponentMute called for:', playerId);
+        const playerIdStr = String(playerId);
+        
+        if (locallyMutedPlayers.has(playerIdStr)) {
+            locallyMutedPlayers.delete(playerIdStr);
+            console.log('[Mic] Unmuted player:', playerId);
+        } else {
+            locallyMutedPlayers.add(playerIdStr);
+            console.log('[Mic] Muted player:', playerId);
+        }
+        
+        updateOpponentMicUI(playerId);
+        
+        if (window.webrtcManager) {
+            window.webrtcManager.setRemoteAudioMuted(playerId, locallyMutedPlayers.has(playerIdStr));
         }
     }
     
@@ -2868,11 +2911,28 @@ foreach ($colors as $color) {
                         data-action="mic"
                         title="${translations.yourMic}">🎙️</button>`;
                 } else {
-                    const micClass = otherMicEnabled ? (otherSpeaking ? 'active speaking' : 'active') : 'muted';
+                    const isLocallyMuted = locallyMutedPlayers.has(playerId);
+                    let micClass, micIcon, micTitle;
+                    
+                    if (!otherMicEnabled) {
+                        micClass = 'muted';
+                        micIcon = '🔇';
+                        micTitle = translations.opponentMicOff || "Micro adversaire désactivé";
+                    } else if (isLocallyMuted) {
+                        micClass = 'muted-locally';
+                        micIcon = '🔕';
+                        micTitle = translations.opponentMutedLocally || "Cliquez pour rétablir le son";
+                    } else {
+                        micClass = otherSpeaking ? 'active speaking' : 'active';
+                        micIcon = '🔊';
+                        micTitle = translations.opponentMicActive || "Cliquez pour couper le son";
+                    }
+                    
                     micBtnHtml = `<button class="player-action-btn ${micClass}" 
                         id="mic-btn-${playerId}" 
                         data-player-id="${playerId}"
-                        title="${translations.opponentMic}">🎙️</button>`;
+                        data-action="opponent-mic"
+                        title="${micTitle}">${micIcon}</button>`;
                 }
             } else {
                 micBtnHtml = `<button class="player-action-btn unavailable" 
@@ -2965,6 +3025,8 @@ foreach ($colors as $color) {
                 openPlayerChat(playerId, playerName);
             } else if (action === 'mic') {
                 toggleMic(playerId);
+            } else if (action === 'opponent-mic') {
+                toggleOpponentMute(playerId);
             }
             return;
         }
@@ -3949,6 +4011,25 @@ class WebRTCManager {
             audio.srcObject = null;
             audio.remove();
             delete this.remoteAudioElements[peerId];
+        }
+    }
+    
+    setRemoteAudioMuted(playerId, muted) {
+        console.log('[WebRTC] setRemoteAudioMuted called for:', playerId, 'muted:', muted);
+        const audioKey = `audio-${playerId}`;
+        const audioElements = document.querySelectorAll(`audio[data-peer-id="${playerId}"]`);
+        
+        audioElements.forEach(audio => {
+            audio.muted = muted;
+            console.log('[WebRTC] Audio element muted:', muted);
+        });
+        
+        if (this.remoteStreams && this.remoteStreams[playerId]) {
+            const tracks = this.remoteStreams[playerId].getAudioTracks();
+            tracks.forEach(track => {
+                track.enabled = !muted;
+                console.log('[WebRTC] Remote track enabled:', !muted);
+            });
         }
     }
     

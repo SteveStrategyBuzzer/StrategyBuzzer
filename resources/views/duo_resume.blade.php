@@ -1175,10 +1175,20 @@ body {
     }
     
     window.toggleOpponentMute = function() {
-        if (!voiceChat || !opponentId) return;
+        if (!opponentId) {
+            console.warn('[toggleOpponentMute] No opponentId');
+            return;
+        }
         
+        if (!voiceChat) {
+            console.warn('[toggleOpponentMute] VoiceChat not initialized yet');
+            return;
+        }
+        
+        console.log('[toggleOpponentMute] Toggling local mute for:', opponentId);
         const isNowMuted = voiceChat.toggleLocalMuteForUser(opponentId);
         const micOn = voiceChat.getRemoteMicState(opponentId);
+        console.log('[toggleOpponentMute] Result - micOn:', micOn, 'isNowMuted:', isNowMuted);
         updateOpponentMicUI(micOn, isNowMuted);
     };
     

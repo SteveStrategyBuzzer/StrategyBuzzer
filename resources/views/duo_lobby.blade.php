@@ -25,6 +25,27 @@
         </div>
         @endif
 
+        @if($activeLobbyCode ?? false)
+        <div class="active-lobby-banner" style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); border-radius: 15px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); animation: pulse-glow 2s infinite;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                <span style="font-size: 2rem;">🎮</span>
+                <div style="text-align: left;">
+                    <div style="font-weight: bold; font-size: 1.1rem; color: #fff;">{{ __('Salon ouvert') }}</div>
+                    <div style="font-size: 0.9rem; color: rgba(255,255,255,0.8);">{{ count($activeLobby['players'] ?? []) }}/2 {{ __('joueurs') }} - {{ $activeLobby['settings']['theme'] ?? 'Général' }}</div>
+                </div>
+                <button onclick="window.location.href='{{ route('lobby.show', $activeLobbyCode) }}'" style="background: #fff; color: #2E7D32; border: none; border-radius: 25px; padding: 12px 30px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: transform 0.2s; margin-left: 10px;">
+                    {{ __('REJOINDRE') }} →
+                </button>
+            </div>
+        </div>
+        <style>
+            @keyframes pulse-glow {
+                0%, 100% { box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); }
+                50% { box-shadow: 0 4px 25px rgba(76, 175, 80, 0.7); }
+            }
+        </style>
+        @endif
+
         <div class="matchmaking-options">
             @if($duoFullUnlocked ?? false)
             {{-- Accès COMPLET : Matchmaking et Invitations disponibles --}}
