@@ -2,6 +2,29 @@
 
 @section('content')
 <div class="league-lobby-container">
+    @if($activeGathering ?? false)
+    <div class="active-gathering-banner" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: 15px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4); animation: pulse-glow-purple 2s infinite;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
+            <span style="font-size: 2rem;">👥</span>
+            <div style="text-align: left;">
+                <div style="font-weight: bold; font-size: 1.1rem; color: #fff;">{{ __('Rassemblement en cours') }}</div>
+                <div style="font-size: 0.9rem; color: rgba(255,255,255,0.8);">
+                    {{ $activeGathering['connected'] }}/{{ $activeGathering['total'] }} {{ __('joueurs connectés') }}
+                </div>
+            </div>
+            <button onclick="window.location.href='{{ route('league.team.gathering', ['teamId' => $activeGathering['teamId'], 'sessionId' => $activeGathering['sessionId']]) }}'" style="background: #fff; color: #7B1FA2; border: none; border-radius: 25px; padding: 12px 30px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: transform 0.2s; margin-left: 10px;">
+                {{ __('REJOINDRE') }} →
+            </button>
+        </div>
+    </div>
+    <style>
+        @keyframes pulse-glow-purple {
+            0%, 100% { box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4); }
+            50% { box-shadow: 0 4px 25px rgba(156, 39, 176, 0.7); }
+        }
+    </style>
+    @endif
+
     <div class="league-header">
         <button onclick="window.location.href='{{ route('league.team.management') }}'" class="back-button">
             ← Gestion

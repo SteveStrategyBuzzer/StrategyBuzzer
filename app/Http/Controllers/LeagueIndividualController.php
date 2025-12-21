@@ -61,6 +61,15 @@ class LeagueIndividualController extends Controller
         ];
         $divisionEmoji = $divisionEmojis[$division->division ?? 'bronze'] ?? '🥉';
 
+        // Check for active match in progress
+        $activeMatch = LeagueIndividualMatch::where(function ($query) use ($user) {
+                $query->where('player1_id', $user->id)
+                      ->orWhere('player2_id', $user->id);
+            })
+            ->where('status', 'in_progress')
+            ->with(['player1', 'player2'])
+            ->first();
+
         return view('league_individual_lobby', [
             'stats' => $stats,
             'division' => $division,
@@ -68,6 +77,7 @@ class LeagueIndividualController extends Controller
             'rank' => $rank,
             'efficiency' => $efficiency,
             'divisionEmoji' => $divisionEmoji,
+            'activeMatch' => $activeMatch,
         ]);
     }
 

@@ -4,6 +4,33 @@
 <div class="league-lobby-container">
     <a href="{{ route('menu') }}" class="back-button-fixed">← Retour</a>
     
+    @if($activeMatch ?? false)
+    @php
+        $opponent = $activeMatch->player1_id == Auth::id() ? $activeMatch->player2 : $activeMatch->player1;
+        $opponentName = $opponent ? $opponent->name : __('Adversaire');
+    @endphp
+    <div class="active-match-banner" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: 15px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); animation: pulse-glow-orange 2s infinite;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
+            <span style="font-size: 2rem;">⚔️</span>
+            <div style="text-align: left;">
+                <div style="font-weight: bold; font-size: 1.1rem; color: #fff;">{{ __('Match en cours') }}</div>
+                <div style="font-size: 0.9rem; color: rgba(255,255,255,0.8);">
+                    {{ __('Contre') }} {{ $opponentName }}
+                </div>
+            </div>
+            <button onclick="window.location.href='{{ route('league.individual.game', $activeMatch->id) }}'" style="background: #fff; color: #F57C00; border: none; border-radius: 25px; padding: 12px 30px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: transform 0.2s; margin-left: 10px;">
+                {{ __('REPRENDRE') }} →
+            </button>
+        </div>
+    </div>
+    <style>
+        @keyframes pulse-glow-orange {
+            0%, 100% { box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); }
+            50% { box-shadow: 0 4px 25px rgba(255, 152, 0, 0.7); }
+        }
+    </style>
+    @endif
+    
     <div class="league-header">
         <h1>⚔️ LIGUE INDIVIDUEL</h1>
         <div class="current-division">

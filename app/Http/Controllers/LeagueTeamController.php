@@ -440,7 +440,25 @@ class LeagueTeamController extends Controller
         $rankings = $this->leagueTeamService->getTeamRankings($team->division);
         $selectedTeamId = $team->id;
 
-        return view('league_team_lobby', compact('user', 'team', 'rankings', 'selectedTeamId'));
+        // Check for active gathering session
+        $activeGathering = null;
+        $activeSessionId = \Illuminate\Support\Facades\Cache::get('team_active_gathering:' . $team->id);
+        if ($activeSessionId) {
+            $gatheringData = \Illuminate\Support\Facades\Cache::get('team_gathering:' . $activeSessionId);
+            if ($gatheringData && $gatheringData['team_id'] == $team->id) {
+                $activeGathering = [
+                    'sessionId' => $activeSessionId,
+                    'teamId' => $team->id,
+                    'connected' => count($gatheringData['connected'] ?? []),
+                    'total' => count($gatheringData['members'] ?? []),
+                ];
+            } else {
+                // Session expired, clean up
+                \Illuminate\Support\Facades\Cache::forget('team_active_gathering:' . $team->id);
+            }
+        }
+
+        return view('league_team_lobby', compact('user', 'team', 'rankings', 'selectedTeamId', 'activeGathering'));
     }
 
     public function createTeam(Request $request)
@@ -1058,6 +1076,9 @@ class LeagueTeamController extends Controller
 
             \DB::commit();
 
+            // Clear active gathering cache since match is starting
+            \Illuminate\Support\Facades\Cache::forget('team_active_gathering:' . $team->id);
+
             if ($shouldGrantTimedAccess) {
                 \Illuminate\Support\Facades\Cache::put($accessCacheKey, now()->addHours(6), now()->addHours(6));
             }
@@ -1098,6 +1119,9 @@ class LeagueTeamController extends Controller
             'members' => $team->members->pluck('id')->toArray(),
             'connected' => [$user->id],
         ], now()->addHours(2));
+
+        // Store active gathering session ID for this team (for return-to-lobby feature)
+        \Illuminate\Support\Facades\Cache::put('team_active_gathering:' . $teamId, $sessionId, now()->addHours(2));
 
         return response()->json([
             'success' => true,
