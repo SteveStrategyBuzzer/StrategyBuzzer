@@ -421,17 +421,13 @@
         <a class="menu-link {{ $duoUnlocked ? '' : 'disabled' }}"
            href="{{ $duoUnlocked ? route('duo.splash') : 'javascript:void(0)' }}">
             {{ __('DUO') }} {{ !$duoUnlocked ? '🔒' : '' }}
-            @if($duoNotifications > 0)
-                <span class="notification-badge">{{ $duoNotifications }}</span>
-            @endif
+            <span class="notification-badge" id="duo-badge" style="{{ $duoNotifications > 0 ? '' : 'display:none;' }}">{{ $duoNotifications }}</span>
         </a>
 
         <a class="menu-link {{ $ligueUnlocked ? '' : 'disabled' }}"
            href="{{ $ligueUnlocked ? route('ligue') : 'javascript:void(0)' }}">
             {{ __('LIGUE') }} {{ !$ligueUnlocked ? '🔒' : '' }}
-            @if($ligueNotifications > 0)
-                <span class="notification-badge">{{ $ligueNotifications }}</span>
-            @endif
+            <span class="notification-badge" id="ligue-badge" style="{{ $ligueNotifications > 0 ? '' : 'display:none;' }}">{{ $ligueNotifications }}</span>
         </a>
 
         <a class="menu-link {{ $masterUnlocked ? '' : 'disabled' }}"
@@ -447,9 +443,7 @@
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('quests.index') ? route('quests.index') : url('/quests') }}">
             {{ __('QUÊTES') }}
-            @if($questsNotifications > 0)
-                <span class="notification-badge">{{ $questsNotifications }}</span>
-            @endif
+            <span class="notification-badge" id="quests-badge" style="{{ $questsNotifications > 0 ? '' : 'display:none;' }}">{{ $questsNotifications }}</span>
         </a>
 
         <a class="menu-link"
@@ -465,9 +459,7 @@
         <a class="menu-link"
            href="{{ \Illuminate\Support\Facades\Route::has('quetes-quotidiennes') ? route('quetes-quotidiennes') : url('/quetes-quotidiennes') }}">
             {{ __('QUÊTES QUOTIDIENNES') }}
-            @if($dailyQuestsNotifications > 0)
-                <span class="notification-badge">{{ $dailyQuestsNotifications }}</span>
-            @endif
+            <span class="notification-badge" id="daily-badge" style="{{ $dailyQuestsNotifications > 0 ? '' : 'display:none;' }}">{{ $dailyQuestsNotifications }}</span>
         </a>
     </div>
 </div>
@@ -611,22 +603,59 @@
 
 // === Démarrage automatique de la musique d'ambiance dès l'arrivée au menu ===
 (function() {
-  // Attendre que la fonction globale soit définie dans layouts/app.blade.php
   function tryStartMusic() {
     if (window.startAmbientMusicSession) {
       window.startAmbientMusicSession();
     } else {
-      // Réessayer après un court délai si la fonction n'est pas encore définie
       setTimeout(tryStartMusic, 100);
     }
   }
   
-  // Démarrer après le chargement complet du DOM
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', tryStartMusic);
   } else {
     tryStartMusic();
   }
+})();
+
+// === Polling des notifications en temps réel ===
+(function() {
+    const POLL_INTERVAL = 10000;
+    
+    function updateBadge(id, count) {
+        const badge = document.getElementById(id);
+        if (!badge) return;
+        
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = '';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    
+    async function pollNotifications() {
+        try {
+            const response = await fetch('/api/notifications', {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            if (!response.ok) return;
+            
+            const data = await response.json();
+            
+            updateBadge('duo-badge', data.duo || 0);
+            updateBadge('ligue-badge', data.ligue || 0);
+            updateBadge('quests-badge', data.quests || 0);
+            updateBadge('daily-badge', data.daily || 0);
+        } catch (e) {
+            console.log('Notification poll error:', e);
+        }
+    }
+    
+    setInterval(pollNotifications, POLL_INTERVAL);
+    setTimeout(pollNotifications, 2000);
 })();
 </script>
 @endsection

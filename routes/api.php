@@ -95,6 +95,8 @@ Route::middleware('auth:sanctum')->get('/player/stats', function (Request $reque
     ]);
 });
 
+Route::middleware('auth:sanctum')->get('/notifications', [\App\Http\Controllers\MenuController::class, 'notifications']);
+
 Route::middleware('auth:sanctum')->prefix('master')->group(function () {
     Route::post('/game/{gameId}/validate-quiz', [App\Http\Controllers\MasterGameController::class, 'validateQuiz']);
     Route::post('/game/{gameId}/join', [App\Http\Controllers\MasterGameController::class, 'joinGame']);

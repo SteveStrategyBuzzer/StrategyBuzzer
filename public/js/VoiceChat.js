@@ -25,12 +25,16 @@ class VoiceChat {
         this.onSpeakingChange = options.onSpeakingChange || null;
         this.onConnectionChange = options.onConnectionChange || null;
         this.onRemoteSpeaking = options.onRemoteSpeaking || null;
+        this.onRemoteMicStateChange = options.onRemoteMicStateChange || null;
         this.onError = options.onError || null;
         
         this.unsubscribers = [];
         this.audioContext = null;
         this.analyser = null;
         this.speakingCheckInterval = null;
+        
+        this.remoteMicStates = {};
+        this.locallyMutedUsers = {};
         
         this.iceServers = [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -187,6 +191,15 @@ class VoiceChat {
                 console.log(`[VoiceChat] Participant ${change.type}:`, participantId, data);
                 
                 if (change.type === 'added' || change.type === 'modified') {
+                    const prevMicState = this.remoteMicStates[participantId];
+                    const newMicState = data.micEnabled === true;
+                    this.remoteMicStates[participantId] = newMicState;
+                    
+                    if ((prevMicState !== newMicState || change.type === 'added') && this.onRemoteMicStateChange) {
+                        const isLocallyMuted = this.locallyMutedUsers[participantId] === true;
+                        this.onRemoteMicStateChange(participantId, newMicState, isLocallyMuted);
+                    }
+                    
                     if ((data.micEnabled || data.listening) && !this.peerConnections[participantId]) {
                         const myId = parseInt(this.localUserId);
                         const theirId = parseInt(participantId);
@@ -198,7 +211,11 @@ class VoiceChat {
                 
                 if (change.type === 'removed') {
                     console.log(`[VoiceChat] Participant left: ${participantId}`);
+                    delete this.remoteMicStates[participantId];
                     this.closePeerConnection(participantId);
+                    if (this.onRemoteMicStateChange) {
+                        this.onRemoteMicStateChange(participantId, false, false);
+                    }
                 }
             });
         });
@@ -467,6 +484,13 @@ class VoiceChat {
         
         audioEl.srcObject = stream;
         
+        if (this.locallyMutedUsers[remoteUserId]) {
+            audioEl.muted = true;
+            console.log(`[VoiceChat] Audio muted for ${remoteUserId} (locally muted)`);
+        } else {
+            audioEl.muted = false;
+        }
+        
         const playPromise = audioEl.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
@@ -655,6 +679,42 @@ class VoiceChat {
             };
         }
         return status;
+    }
+    
+    toggleLocalMuteForUser(remoteUserId) {
+        const userId = String(remoteUserId);
+        const audioEl = this.remoteAudioElements[userId];
+        
+        if (this.locallyMutedUsers[userId]) {
+            this.locallyMutedUsers[userId] = false;
+            if (audioEl) {
+                audioEl.muted = false;
+            }
+            console.log(`[VoiceChat] Unmuted remote user ${userId} locally`);
+        } else {
+            this.locallyMutedUsers[userId] = true;
+            if (audioEl) {
+                audioEl.muted = true;
+            }
+            console.log(`[VoiceChat] Muted remote user ${userId} locally`);
+        }
+        
+        const remoteMicOn = this.remoteMicStates[userId] === true;
+        const isLocallyMuted = this.locallyMutedUsers[userId] === true;
+        
+        if (this.onRemoteMicStateChange) {
+            this.onRemoteMicStateChange(userId, remoteMicOn, isLocallyMuted);
+        }
+        
+        return isLocallyMuted;
+    }
+    
+    isUserLocallyMuted(remoteUserId) {
+        return this.locallyMutedUsers[String(remoteUserId)] === true;
+    }
+    
+    getRemoteMicState(remoteUserId) {
+        return this.remoteMicStates[String(remoteUserId)] === true;
     }
     
     async destroy() {

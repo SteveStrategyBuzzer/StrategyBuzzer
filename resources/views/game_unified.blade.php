@@ -9,6 +9,7 @@ $currentQuestion = $params['current'] ?? 1;
 $totalQuestions = $params['nb_questions'] ?? 10;
 $niveau = $params['niveau'] ?? 1;
 $theme = $params['theme'] ?? 'Culture générale';
+$themeDisplay = $theme === 'Culture générale' ? __('Général') : __($theme);
 $subTheme = $params['sub_theme'] ?? '';
 $playerScore = $params['score'] ?? 0;
 $opponentScore = $params['opponent_score'] ?? 0;
@@ -612,7 +613,7 @@ $roomCode = $params['room_code'] ?? null;
         </div>
         
         <div class="question-number" id="questionNumber">
-            {{ $theme }} @if($subTheme)- {{ $subTheme }}@endif | {{ __('Question') }} {{ $currentQuestion }}/{{ $totalQuestions }}
+            {{ $themeDisplay }} @if($subTheme)- {{ $subTheme }}@endif | {{ __('Question') }} {{ $currentQuestion }}/{{ $totalQuestions }}
         </div>
         
         <div class="question-text" id="questionText">
@@ -1679,9 +1680,11 @@ const GameFlowController = {
         gameConfig.currentQuestion = questionData.question_number;
         this.lastQuestionNumber = questionData.question_number;
         
+        const themeDisplay = questionData.theme === 'Culture générale' ? '{{ __("Général") }}' : questionData.theme;
+        
         document.getElementById('questionText').textContent = questionData.question_text;
         document.getElementById('questionNumber').textContent = 
-            `${questionData.theme}${questionData.sub_theme ? ' - ' + questionData.sub_theme : ''} | {{ __("Question") }} ${questionData.question_number}/${questionData.total_questions}`;
+            `${themeDisplay}${questionData.sub_theme ? ' - ' + questionData.sub_theme : ''} | {{ __("Question") }} ${questionData.question_number}/${questionData.total_questions}`;
         
         const grid = document.getElementById('answersGrid');
         grid.innerHTML = '';

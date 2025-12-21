@@ -31,6 +31,7 @@ $themeIcons = [
     'Sciences' => '🔬',
 ];
 $themeIcon = $themeIcons[$theme] ?? '❓';
+$themeDisplay = $theme === 'Culture générale' ? __('Général') : __($theme);
 
 $isDuo = $mode === 'duo';
 $isLeague = str_starts_with($mode, 'league');
@@ -465,6 +466,38 @@ body {
     border-color: #e74c3c;
 }
 
+.opponent-mic-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid #e74c3c;
+    background: rgba(231, 76, 60, 0.6);
+    color: #fff;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.opponent-mic-btn.off {
+    background: rgba(231, 76, 60, 0.6);
+    border-color: #e74c3c;
+}
+
+.opponent-mic-btn.muted-locally {
+    background: rgba(241, 196, 15, 0.6);
+    border-color: #f1c40f;
+}
+
+.opponent-mic-btn.active {
+    background: rgba(46, 204, 113, 0.6);
+    border-color: #2ecc71;
+    animation: mic-pulse 1.5s infinite;
+}
+
 @keyframes mic-pulse {
     0%, 100% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
     50% { box-shadow: 0 0 35px rgba(46, 204, 113, 0.7); }
@@ -600,7 +633,7 @@ body {
     <div class="title-section">
         <h1>🎮 {{ __('Ladies and Gentlemen') }} 🎮</h1>
         <div class="theme-badge">
-            <span>{{ $themeIcon }}</span> {{ $theme }}
+            <span>{{ $themeIcon }}</span> {{ $themeDisplay }}
         </div>
     </div>
     
@@ -631,7 +664,7 @@ body {
     <div class="info-row">
         <div class="info-badge">
             <span class="icon">📝</span>
-            <span class="text">{{ $nbQuestions }} {{ __('questions') }}</span>
+            <span class="text">{{ $nbQuestions }}</span>
         </div>
         <div class="info-badge">
             <span class="icon">🏆</span>
@@ -694,10 +727,13 @@ body {
 
 @if($needsMic)
 <!-- Mic Section -->
-<div class="mic-section">
+<div class="mic-section" style="display: flex; align-items: center; gap: 15px;">
     <button class="mic-btn muted" id="micButton" onclick="toggleMic()">
         <span id="micIcon">🔇</span>
         <div class="speaking-indicator" id="speakingIndicator"></div>
+    </button>
+    <button class="opponent-mic-btn off" id="opponentMicBtn" onclick="toggleOpponentMute()" title="{{ __('Cliquez pour couper/rétablir le son de l\'adversaire') }}">
+        <span id="opponentMicIcon">🔇</span>
     </button>
 </div>
 @endif
@@ -1098,6 +1134,9 @@ body {
                 onConnectionChange: (state) => {
                     console.log('Voice connection state:', state);
                 },
+                onRemoteMicStateChange: (userId, micOn, isLocallyMuted) => {
+                    updateOpponentMicUI(micOn, isLocallyMuted);
+                },
                 onError: (error) => {
                     console.warn('Voice chat error:', error);
                 }
@@ -1112,6 +1151,36 @@ body {
             voiceChatInitializing = false;
         }
     }
+    
+    function updateOpponentMicUI(micOn, isLocallyMuted) {
+        const btn = document.getElementById('opponentMicBtn');
+        const icon = document.getElementById('opponentMicIcon');
+        if (!btn || !icon) return;
+        
+        btn.classList.remove('off', 'muted-locally', 'active');
+        
+        if (!micOn) {
+            btn.classList.add('off');
+            icon.textContent = '🔇';
+            btn.title = '{{ __("Adversaire: micro désactivé") }}';
+        } else if (isLocallyMuted) {
+            btn.classList.add('muted-locally');
+            icon.textContent = '🔕';
+            btn.title = '{{ __("Cliquez pour rétablir le son de l\'adversaire") }}';
+        } else {
+            btn.classList.add('active');
+            icon.textContent = '🔊';
+            btn.title = '{{ __("Cliquez pour couper le son de l\'adversaire") }}';
+        }
+    }
+    
+    window.toggleOpponentMute = function() {
+        if (!voiceChat || !opponentId) return;
+        
+        const isNowMuted = voiceChat.toggleLocalMuteForUser(opponentId);
+        const micOn = voiceChat.getRemoteMicState(opponentId);
+        updateOpponentMicUI(micOn, isNowMuted);
+    };
     
     window.toggleMic = async function() {
         const micButton = document.getElementById('micButton');
