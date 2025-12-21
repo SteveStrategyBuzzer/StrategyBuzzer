@@ -1068,10 +1068,18 @@ body {
     
     // WebRTC Voice Chat integration
     let voiceChat = null;
+    let voiceChatInitializing = false;
     
     async function initVoiceChat() {
-        if (!needsMic || !hasValidSession || voiceChat) return;
-        if (!await initFirebase()) return;
+        if (!needsMic || !hasValidSession) return;
+        if (voiceChat || voiceChatInitializing) return;
+        
+        voiceChatInitializing = true;
+        
+        if (!await initFirebase()) {
+            voiceChatInitializing = false;
+            return;
+        }
         
         try {
             voiceChat = new VoiceChat({
@@ -1099,6 +1107,9 @@ body {
             console.log('VoiceChat initialized for session:', sessionId);
         } catch (error) {
             console.warn('VoiceChat init failed:', error);
+            voiceChat = null;
+        } finally {
+            voiceChatInitializing = false;
         }
     }
     
@@ -1162,6 +1173,13 @@ body {
     // Start listeners
     startReadyListener();
     startChatListener();
+    
+    // Pre-initialize VoiceChat (listen mode only) so we can receive audio
+    if (needsMic && hasValidSession) {
+        setTimeout(() => {
+            initVoiceChat();
+        }, 1500);
+    }
 })();
 </script>
 @endsection

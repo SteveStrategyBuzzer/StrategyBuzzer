@@ -16,7 +16,7 @@
         @yield('content')
     </main>
 
-    <!-- Musique d'ambiance StrategyBuzzer (joue partout sauf en gameplay) -->
+    <!-- Musique d'ambiance StrategyBuzzer -->
     <audio id="ambientMusic" preload="auto" loop></audio>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -27,7 +27,6 @@
         const ambientMusic = document.getElementById('ambientMusic');
         if (!ambientMusic) return;
         
-        // Mapping des IDs de musique vers les fichiers
         const musicFiles = {
             'strategybuzzer': '/sounds/strategybuzzer_ambient.mp3',
             'fun_01': '/sounds/fun_01.mp3',
@@ -35,198 +34,125 @@
             'punchy': '/sounds/punchy.mp3'
         };
         
-        // Pages de jeu où la musique d'ambiance NE doit PAS jouer
         const gameplayPages = [
-            '/solo/prepare',
-            '/solo/game',
-            '/solo/answer',
-            '/solo/timeout',
-            '/solo/next',
-            '/solo/victory',
-            '/solo/defeat',
-            '/duo/game',
-            '/duo/answer',
-            '/league-individual/game',
-            '/league-individual/answer',
-            '/league-team/game',
-            '/league-team/answer',
-            '/game_preparation',
-            '/game_question',
-            '/game_answer',
-            '/game_result',
-            '/victory',
-            '/defeat'
+            '/solo/prepare', '/solo/game', '/solo/answer', '/solo/timeout', '/solo/next', '/solo/victory', '/solo/defeat',
+            '/duo/game', '/duo/answer',
+            '/league-individual/game', '/league-individual/answer',
+            '/league-team/game', '/league-team/answer',
+            '/game_preparation', '/game_question', '/game_answer', '/game_result', '/victory', '/defeat'
         ];
         
-        // Vérifier si on est sur une page de gameplay
         function isGameplayPage() {
             const currentPath = window.location.pathname;
             return gameplayPages.some(page => currentPath.includes(page));
         }
         
-        // Variable pour indiquer si c'est la page de résultat (game_result)
         const isResultPage = @json(isset($params) && isset($params['is_correct']));
         
-        // Vérifier si la musique est activée dans les paramètres du profil
         function isMusicEnabled() {
-            const enabled = localStorage.getItem('ambient_music_enabled');
-            return enabled === null || enabled === 'true'; // Par défaut activé
+            return localStorage.getItem('ambient_music_enabled') !== 'false';
         }
         
-        // Obtenir la musique choisie (par défaut strategybuzzer)
-        function getSelectedMusic() {
-            return localStorage.getItem('ambient_music_id') || 'strategybuzzer';
-        }
-        
-        // Charger la source audio selon le choix
-        function loadMusicSource() {
-            const musicId = getSelectedMusic();
-            const musicFile = musicFiles[musicId] || musicFiles['strategybuzzer'];
-            
-            // Ne recharger que si la source a changé
-            if (ambientMusic.src !== window.location.origin + musicFile) {
-                const wasPlaying = !ambientMusic.paused;
-                const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + musicId) || '0');
-                
-                ambientMusic.src = musicFile;
-                ambientMusic.load();
-                
-                ambientMusic.addEventListener('loadedmetadata', function onLoaded() {
-                    if (savedTime > 0 && savedTime < ambientMusic.duration) {
-                        ambientMusic.currentTime = savedTime;
-                    }
-                    if (wasPlaying && isMusicEnabled() && !isGameplayPage() && !isResultPage) {
-                        ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
-                    }
-                    ambientMusic.removeEventListener('loadedmetadata', onLoaded);
-                }, { once: true });
-            }
-        }
-        
-        // Charger la source initiale
-        loadMusicSource();
-        
-        // Écouter les changements de musique ou d'activation
-        window.addEventListener('storage', function(e) {
-            if (e.key === 'ambient_music_id') {
-                loadMusicSource();
-            } else if (e.key === 'ambient_music_enabled') {
-                if (e.newValue === 'true' && !isGameplayPage() && !isResultPage) {
-                    ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
-                } else {
-                    ambientMusic.pause();
-                }
-            }
-        });
-        
-        // Vérifier si la session musicale a été démarrée (flag défini sur la page profil)
         function isMusicSessionStarted() {
             return localStorage.getItem('music_session_started') === 'true';
         }
         
-        // Si on est sur une page de gameplay, arrêter la musique
-        if (isGameplayPage() || isResultPage) {
-            ambientMusic.pause();
-        } else {
-            // Pages non-gameplay : jouer la musique d'ambiance SI activée ET session démarrée
-            const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + getSelectedMusic()) || '0');
+        function getSelectedMusic() {
+            return localStorage.getItem('ambient_music_id') || 'strategybuzzer';
+        }
+        
+        function savePosition() {
+            if (ambientMusic.currentTime > 0) {
+                localStorage.setItem('ambientMusicTime_' + getSelectedMusic(), ambientMusic.currentTime.toString());
+            }
+        }
+        
+        function loadAndPlay(musicId, savedTime, shouldPlay) {
+            const musicFile = musicFiles[musicId] || musicFiles['strategybuzzer'];
+            ambientMusic.src = musicFile;
             
-            // Utiliser canplay au lieu de loadedmetadata pour s'assurer que l'audio est prêt
             ambientMusic.addEventListener('canplay', function onCanPlay() {
-                // Restaurer la position sauvegardée
-                if (savedTime > 0) {
-                    // Vérifier que savedTime est valide (pas après la fin de la piste)
-                    if (!isNaN(ambientMusic.duration) && savedTime < ambientMusic.duration) {
-                        ambientMusic.currentTime = savedTime;
-                        console.log('Musique restaurée à:', savedTime + 's');
-                    } else if (isNaN(ambientMusic.duration) || ambientMusic.duration === Infinity) {
-                        // Si duration pas encore connue, forcer quand même
-                        ambientMusic.currentTime = savedTime;
-                        console.log('Musique restaurée à:', savedTime + 's (duration inconnue)');
-                    }
+                if (savedTime > 0 && savedTime < ambientMusic.duration) {
+                    ambientMusic.currentTime = savedTime;
                 }
-                
-                // Jouer la musique SEULEMENT si activée ET session démarrée après connexion
-                if (isMusicEnabled() && isMusicSessionStarted()) {
-                    ambientMusic.play().catch(err => {
-                        console.log('Lecture automatique bloquée. Attente interaction utilisateur.');
-                        
-                        // Si le navigateur bloque la lecture auto, jouer au premier clic
+                if (shouldPlay) {
+                    ambientMusic.play().catch(e => {
                         document.addEventListener('click', function playOnClick() {
                             if (isMusicEnabled() && isMusicSessionStarted()) {
-                                ambientMusic.play().catch(e => console.log('Erreur lecture:', e));
+                                ambientMusic.play().catch(() => {});
                             }
                             document.removeEventListener('click', playOnClick);
                         }, { once: true });
                     });
                 }
-                // Retirer l'événement après la première exécution
                 ambientMusic.removeEventListener('canplay', onCanPlay);
-            });
+            }, { once: true });
             
-            // Sauvegarder la position de lecture toutes les 250ms pour plus de précision
-            setInterval(() => {
-                if (!ambientMusic.paused) {
-                    const musicId = getSelectedMusic();
-                    localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
-                }
-            }, 250);
-            
-            // Sauvegarder la position avant de quitter la page (plusieurs événements pour compatibilité)
-            const savePosition = () => {
-                const musicId = getSelectedMusic();
-                localStorage.setItem('ambientMusicTime_' + musicId, ambientMusic.currentTime.toString());
-            };
-            
-            window.addEventListener('beforeunload', savePosition);
-            window.addEventListener('pagehide', savePosition);
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden) {
-                    savePosition();
-                }
-            });
+            ambientMusic.load();
         }
         
-        // Exposer une fonction globale pour contrôler la musique depuis le profil
+        // Initialize
+        const musicId = getSelectedMusic();
+        const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + musicId) || '0');
+        const shouldPlay = !isGameplayPage() && !isResultPage && isMusicEnabled() && isMusicSessionStarted();
+        
+        loadAndPlay(musicId, savedTime, shouldPlay);
+        
+        // Save position frequently
+        setInterval(savePosition, 200);
+        window.addEventListener('beforeunload', savePosition);
+        window.addEventListener('pagehide', savePosition);
+        
+        // Listen for changes from other tabs
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'ambient_music_id') {
+                savePosition();
+                const newMusicId = e.newValue || 'strategybuzzer';
+                const newSavedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + newMusicId) || '0');
+                loadAndPlay(newMusicId, newSavedTime, !ambientMusic.paused);
+            } else if (e.key === 'ambient_music_enabled') {
+                if (e.newValue === 'true' && !isGameplayPage() && !isResultPage && isMusicSessionStarted()) {
+                    ambientMusic.play().catch(() => {});
+                } else if (e.newValue === 'false') {
+                    ambientMusic.pause();
+                }
+            }
+        });
+        
         window.toggleAmbientMusic = function(enabled) {
             localStorage.setItem('ambient_music_enabled', enabled.toString());
             if (enabled && isMusicSessionStarted() && !isGameplayPage() && !isResultPage) {
-                ambientMusic.play().catch(err => console.log('Erreur lecture:', err));
+                ambientMusic.play().catch(() => {});
             } else {
                 ambientMusic.pause();
             }
         };
         
-        // Exposer une fonction pour démarrer la musique (appelée depuis le menu)
         window.startAmbientMusicSession = function() {
-            // Si la session est déjà démarrée, ne rien faire (la musique continue déjà)
-            if (isMusicSessionStarted()) {
-                console.log('Session musicale déjà active, musique continue normalement');
-                return;
-            }
-            
-            // Sinon, démarrer la session pour la première fois
+            if (isMusicSessionStarted()) return;
             localStorage.setItem('music_session_started', 'true');
-            console.log('Démarrage de la session musicale');
-            
             if (isMusicEnabled() && !isGameplayPage() && !isResultPage) {
-                ambientMusic.play().catch(err => {
-                    console.log('Lecture automatique bloquée, attente interaction utilisateur');
-                    // Fallback : jouer au prochain clic
-                    document.addEventListener('click', function playOnClick() {
-                        if (isMusicEnabled()) {
-                            ambientMusic.play().catch(e => console.log('Erreur lecture:', e));
-                        }
-                        document.removeEventListener('click', playOnClick);
-                    }, { once: true });
-                });
+                ambientMusic.play().catch(() => {});
             }
         };
         
-        // Exposer une fonction pour changer la musique
         window.changeAmbientMusic = function(musicId) {
+            savePosition();
             localStorage.setItem('ambient_music_id', musicId);
-            loadMusicSource();
+            const wasPlaying = !ambientMusic.paused;
+            const newSavedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + musicId) || '0');
+            loadAndPlay(musicId, newSavedTime, wasPlaying);
+        };
+        
+        window.pauseAmbientMusic = function() {
+            savePosition();
+            ambientMusic.pause();
+        };
+        
+        window.resumeAmbientMusic = function() {
+            if (!isGameplayPage() && !isResultPage && isMusicEnabled() && isMusicSessionStarted()) {
+                ambientMusic.play().catch(() => {});
+            }
         };
     })();
     </script>

@@ -859,7 +859,7 @@ foreach ($colors as $color) {
     <div class="players-section">
         <div class="section-title">
             <span>👥</span>
-            <span>{{ __('Joueurs') }} ({{ count($players) }}/{{ $maxPlayers }})</span>
+            <span>{{ __('Joueurs') }}</span>
             <button id="lobby-chat-btn" class="player-action-btn" style="margin-left: 10px; font-size: 1.2rem;" title="{{ __('Chat') }}">💬</button>
             <button id="lobby-help-btn" class="player-action-btn" style="margin-left: 5px; font-size: 1.2rem;" title="{{ __('Aide') }}" onclick="showHelpModal()">❓</button>
         </div>

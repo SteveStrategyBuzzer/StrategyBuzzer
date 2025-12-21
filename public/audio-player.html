@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>StrategyBuzzer Audio Player</title>
+</head>
+<body>
+<audio id="player" preload="auto" loop></audio>
+<script>
+const player = document.getElementById('player');
+
+const musicFiles = {
+    'strategybuzzer': '/sounds/strategybuzzer_ambient.mp3',
+    'fun_01': '/sounds/fun_01.mp3',
+    'chill': '/sounds/chill.mp3',
+    'punchy': '/sounds/punchy.mp3'
+};
+
+let currentMusicId = 'strategybuzzer';
+let isEnabled = true;
+let sessionStarted = false;
+let wasPlayingBeforeMessage = false;
+
+function loadFromStorage() {
+    try {
+        currentMusicId = localStorage.getItem('ambient_music_id') || 'strategybuzzer';
+        isEnabled = localStorage.getItem('ambient_music_enabled') !== 'false';
+        sessionStarted = localStorage.getItem('music_session_started') === 'true';
+        const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + currentMusicId) || '0');
+        return savedTime;
+    } catch (e) {
+        return 0;
+    }
+}
+
+function savePosition() {
+    try {
+        if (player.currentTime > 0) {
+            localStorage.setItem('ambientMusicTime_' + currentMusicId, player.currentTime.toString());
+        }
+    } catch (e) {}
+}
+
+function loadMusic(musicId, startTime = 0, shouldPlay = false) {
+    currentMusicId = musicId || currentMusicId;
+    const musicFile = musicFiles[currentMusicId] || musicFiles['strategybuzzer'];
+    
+    const currentSrc = player.src ? new URL(player.src, window.location.origin).pathname : '';
+    
+    if (currentSrc !== musicFile) {
+        wasPlayingBeforeMessage = !player.paused;
+        player.src = musicFile;
+        player.load();
+        
+        player.addEventListener('canplaythrough', function onCanPlay() {
+            if (startTime > 0 && startTime < player.duration) {
+                player.currentTime = startTime;
+            }
+            if (shouldPlay && isEnabled && sessionStarted) {
+                player.play().catch(e => console.log('Autoplay blocked:', e));
+            }
+            player.removeEventListener('canplaythrough', onCanPlay);
+        }, { once: true });
+    } else {
+        if (shouldPlay && isEnabled && sessionStarted) {
+            if (startTime > 0 && player.duration && startTime < player.duration) {
+                player.currentTime = startTime;
+            }
+            player.play().catch(e => console.log('Autoplay blocked:', e));
+        }
+    }
+}
+
+function play() {
+    if (isEnabled && sessionStarted) {
+        player.play().catch(e => console.log('Autoplay blocked:', e));
+    }
+}
+
+function pause() {
+    savePosition();
+    player.pause();
+}
+
+function setEnabled(enabled) {
+    isEnabled = enabled;
+    localStorage.setItem('ambient_music_enabled', enabled.toString());
+    if (!enabled) {
+        savePosition();
+        player.pause();
+    } else if (sessionStarted) {
+        player.play().catch(e => console.log('Autoplay blocked:', e));
+    }
+}
+
+function startSession() {
+    sessionStarted = true;
+    localStorage.setItem('music_session_started', 'true');
+    if (isEnabled) {
+        player.play().catch(e => console.log('Autoplay blocked:', e));
+    }
+}
+
+function changeMusic(newMusicId) {
+    if (newMusicId === currentMusicId) return;
+    
+    savePosition();
+    const wasPlaying = !player.paused;
+    currentMusicId = newMusicId;
+    localStorage.setItem('ambient_music_id', newMusicId);
+    
+    const savedTimeForNew = parseFloat(localStorage.getItem('ambientMusicTime_' + newMusicId) || '0');
+    loadMusic(newMusicId, savedTimeForNew, wasPlaying);
+}
+
+window.addEventListener('message', function(event) {
+    const data = event.data;
+    if (!data || !data.type) return;
+    
+    switch (data.type) {
+        case 'init':
+            const savedTime = loadFromStorage();
+            loadMusic(currentMusicId, savedTime, data.shouldPlay);
+            break;
+            
+        case 'play':
+            play();
+            break;
+            
+        case 'pause':
+            pause();
+            break;
+            
+        case 'toggle':
+            setEnabled(data.enabled);
+            break;
+            
+        case 'changeMusic':
+            changeMusic(data.musicId);
+            break;
+            
+        case 'startSession':
+            startSession();
+            break;
+            
+        case 'getStatus':
+            parent.postMessage({
+                type: 'status',
+                isPlaying: !player.paused,
+                currentTime: player.currentTime,
+                musicId: currentMusicId,
+                isEnabled: isEnabled,
+                sessionStarted: sessionStarted
+            }, '*');
+            break;
+            
+        case 'syncTime':
+            if (data.time && data.time > 0 && player.duration && data.time < player.duration) {
+                player.currentTime = data.time;
+            }
+            break;
+    }
+});
+
+setInterval(savePosition, 200);
+
+window.addEventListener('beforeunload', savePosition);
+window.addEventListener('pagehide', savePosition);
+
+const savedTime = loadFromStorage();
+loadMusic(currentMusicId, savedTime, sessionStarted && isEnabled);
+
+parent.postMessage({ type: 'ready' }, '*');
+</script>
+</body>
+</html>
