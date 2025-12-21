@@ -6,6 +6,11 @@ StrategyBuzzer is a real-time quiz buzzer game application designed for an immer
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+**Multi-language Requirement (CRITICAL):**
+- ALL user-facing text MUST be wrapped with `{{ __('text') }}` in Blade templates
+- ALL new text MUST be translated in all 10 language files: `resources/lang/{ar,de,el,en,es,fr,it,pt,ru,zh}.json`
+- Never add French-only text - always add translations for all languages
+
 ## System Architecture
 
 ### UI/UX Decisions

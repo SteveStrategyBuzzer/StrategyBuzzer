@@ -785,9 +785,9 @@
       </div>
     </div>
 
-    {{-- 🎵 Musique --}}
+    {{-- 🎵 Musiques / Sons --}}
     <div style="text-align:center; font-weight:bold; margin:10px 0; opacity:.9;">
-      {{ __('🎵 Musique') }}
+      {{ __('🎵 Musiques / Sons') }}
     </div>
 
     {{-- Ambiance --}}
@@ -869,7 +869,7 @@
 
     {{-- Buzzer --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">{{ __('Son du buzzer') }}</div>
+      <div class="sb-k">{{ __('Buzzer') }}</div>
       <div class="sb-v" style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
         
         {{-- Sélecteur custom dépliable (compact: juste la flèche) --}}
@@ -895,9 +895,9 @@
       </div>
     </div>
 
-    {{-- Son Bonne réponse --}}
+    {{-- Bonne réponse --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">{{ __('Son bonne réponse') }}</div>
+      <div class="sb-k">{{ __('Bonne réponse') }}</div>
       <div class="sb-v" style="text-align:right;">
         <span class="sb-chooser" title="{{ __('Choisir') }}">▼
           <select name="sound[correct_sound_id]" id="sel-correct_sound">
@@ -911,9 +911,9 @@
       </div>
     </div>
 
-    {{-- Son Mauvaise réponse --}}
+    {{-- Mauvaise réponse --}}
     <div class="sb-row" style="text-align:left;">
-      <div class="sb-k">{{ __('Son mauvaise réponse') }}</div>
+      <div class="sb-k">{{ __('Mauvaise réponse') }}</div>
       <div class="sb-v" style="text-align:right;">
         <span class="sb-chooser" title="{{ __('Choisir') }}">▼
           <select name="sound[wrong_sound_id]" id="sel-wrong_sound">
