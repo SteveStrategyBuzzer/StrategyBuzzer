@@ -67,7 +67,7 @@
     right: 0;
     bottom: 0;
     pointer-events: none;
-    z-index: 0;
+    z-index: 1;
     overflow: hidden;
 }
 
@@ -125,7 +125,7 @@
     margin-bottom: 10px;
     text-shadow: 0 4px 15px rgba(0,0,0,0.3);
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 .guide-subtitle {
@@ -134,7 +134,7 @@
     font-size: 1.1rem;
     margin-bottom: 40px;
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 .modes-grid {
@@ -144,7 +144,7 @@
     max-width: 800px;
     margin: 0 auto;
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 .mode-card {

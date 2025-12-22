@@ -61,7 +61,7 @@
     right: 0;
     bottom: 0;
     pointer-events: none;
-    z-index: 0;
+    z-index: 1;
     overflow: hidden;
 }
 
@@ -109,14 +109,14 @@
     margin-bottom: 30px;
     text-shadow: 0 4px 15px rgba(0,0,0,0.3);
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 .tabs-container {
     max-width: 900px;
     margin: 0 auto;
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 .tabs-nav {
@@ -204,7 +204,7 @@
     margin-top: 40px;
     text-align: center;
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 .other-modes-title {
