@@ -103,7 +103,7 @@ body {
 </a>
 
 <div class="reglements-container">
-    <h1 class="reglements-title">📜 {{ __('RÈGLEMENTS') }}</h1>
+    <h1 class="reglements-title">📜 {{ __('GUIDE DU JOUEUR') }}</h1>
     
     <div class="reglements-content">
         <h2>🎮 {{ __('Règles du Jeu') }}</h2>
