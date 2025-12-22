@@ -346,8 +346,10 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
 /* ===== LIGUE (page de sélection) ===== */
 Route::get('/ligue', [App\Http\Controllers\LeagueTeamController::class, 'showLigue'])->middleware('auth')->name('ligue');
 
-/* ===== RÈGLEMENTS ===== */
-Route::view('/reglements', 'reglements')->name('reglements');
+/* ===== GUIDE DU JOUEUR ===== */
+Route::get('/guide', [App\Http\Controllers\GuideController::class, 'index'])->name('guide.index');
+Route::get('/guide/{mode}', [App\Http\Controllers\GuideController::class, 'show'])->name('guide.show');
+Route::get('/reglements', fn() => redirect()->route('guide.index'))->name('reglements');
 
 /* ===== INTERFACE DE JEU UNIFIÉE ===== */
 Route::prefix('game')->name('game.')->middleware('auth')->group(function () {

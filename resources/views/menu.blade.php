@@ -452,7 +452,7 @@
         </a>
 
         <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('reglements') ? route('reglements') : url('/reglements') }}">
+           href="{{ route('guide.index') }}">
             {{ __('GUIDE DU JOUEUR') }}
         </a>
 
