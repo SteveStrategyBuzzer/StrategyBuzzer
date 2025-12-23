@@ -319,14 +319,14 @@ class UnifiedGameController extends Controller
             'opponent_name' => $opponentInfo['name'] ?? 'Adversaire',
             'opponent_avatar' => $opponentInfo['avatar'] ?? 'default',
             'opponent_division' => $opponentInfo['division'] ?? 'Bronze',
-            'redirect_url' => route('game.preparation', ['mode' => $mode]),
+            'redirect_url' => route('game.question', ['mode' => $mode]),
             'match_id' => $matchId,
             'session_id' => $matchId,
             'opponent_id' => $opponentId,
             'is_host' => $isHost,
         ];
         
-        return view('duo_resume', ['params' => $params]);
+        return view('game_intro', ['params' => $params]);
     }
     
     public function showPreparation(Request $request, string $mode)
