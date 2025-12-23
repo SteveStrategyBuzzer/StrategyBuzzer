@@ -1421,8 +1421,10 @@ const gameConfig = {
     isFirebaseMode: {{ $isFirebaseMode ? 'true' : 'false' }},
     matchId: '{{ $matchId ?? '' }}',
     roomCode: '{{ $roomCode ?? '' }}',
+    sessionId: '{{ $params['session_id'] ?? $matchId ?? $roomCode ?? '' }}',
+    isHost: {{ ($params['is_host'] ?? false) ? 'true' : 'false' }},
     playerId: '{{ auth()->id() }}',
-    opponentId: '{{ $params['opponent_info']['user_id'] ?? '' }}',
+    opponentId: '{{ $params['opponent_info']['user_id'] ?? $params['opponent_id'] ?? '' }}',
     currentQuestion: {{ $currentQuestion }},
     totalQuestions: {{ $totalQuestions }},
     currentRound: {{ $currentRound }},
@@ -1433,6 +1435,7 @@ const gameConfig = {
         roundResult: '/game/{{ $mode }}/round-result',
         matchResult: '/game/{{ $mode }}/match-result',
         sync: '/game/{{ $mode }}/sync',
+        fetchQuestion: '/game/{{ $mode }}/fetch-question',
     }
 };
 

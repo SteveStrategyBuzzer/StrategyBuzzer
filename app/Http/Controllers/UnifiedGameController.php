@@ -390,18 +390,23 @@ class UnifiedGameController extends Controller
             'avatar_skills_full' => $avatarData['skills_full'],
         ];
         
-        if ($mode === 'duo' || $mode === 'league_individual') {
+        if ($mode === 'duo' || $mode === 'league_individual' || $mode === 'league_team') {
             $params['match_id'] = $gameState['match_id'] ?? null;
+            $params['session_id'] = $gameState['match_id'] ?? $gameState['lobby_code'] ?? null;
             $params['firebase_sync'] = true;
+            $params['is_host'] = ($gameState['host_id'] ?? null) === $user->id;
+            $params['opponent_id'] = $gameState['opponent_id'] ?? null;
         }
         
         if ($mode === 'master') {
             $params['room_code'] = $gameState['room_code'] ?? null;
+            $params['session_id'] = $gameState['room_code'] ?? null;
             $params['is_host'] = ($gameState['host_id'] ?? null) === $user->id;
             $params['players'] = $gameState['players'] ?? [];
+            $params['firebase_sync'] = true;
         }
         
-        return view('game_question', ['params' => $params]);
+        return view('game_unified', ['params' => $params]);
     }
     
     public function handleBuzz(Request $request, string $mode)
