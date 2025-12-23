@@ -1,6 +1,6 @@
 /**
  * STRATEGYBUZZER - MultiplayerFirestoreProvider.js
- * Provider Firebase pour la synchronisation multijoueur
+ * Provider Firebase (Modular SDK v10) pour la synchronisation multijoueur
  * 
  * Utilisé par: Duo, Ligue Individuelle, Ligue Équipe, Maître du Jeu
  * 
@@ -16,9 +16,15 @@ const MultiplayerFirestoreProvider = {
     playerId: null,
     isHost: false,
     mode: 'duo',
+    firestoreDoc: null,
+    firestoreOnSnapshot: null,
+    firestoreUpdateDoc: null,
+    firestoreServerTimestamp: null,
+    firestoreArrayUnion: null,
     unsubscribeQuestion: null,
     unsubscribeBuzz: null,
     unsubscribeReady: null,
+    lastQuestionPublishedAt: 0,
     
     onQuestionReceived: null,
     onBuzzReceived: null,
@@ -31,14 +37,29 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
-     * Initialise le provider Firestore
+     * Initialise le provider avec instances Firebase modulaires
+     * @param {Object} config - Configuration
+     * @param {Object} config.db - Firestore instance (from getFirestore)
+     * @param {Function} config.doc - doc function from firebase/firestore
+     * @param {Function} config.onSnapshot - onSnapshot function
+     * @param {Function} config.updateDoc - updateDoc function
+     * @param {Function} config.serverTimestamp - serverTimestamp function
+     * @param {Function} config.arrayUnion - arrayUnion function
      */
     async init(config = {}) {
         this.sessionId = config.sessionId;
-        this.playerId = config.playerId;
+        this.playerId = String(config.playerId);
         this.isHost = config.isHost || false;
         this.mode = config.mode || 'duo';
         this.csrfToken = config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+        
+        this.db = config.db;
+        this.firestoreDoc = config.doc;
+        this.firestoreOnSnapshot = config.onSnapshot;
+        this.firestoreUpdateDoc = config.updateDoc;
+        this.firestoreServerTimestamp = config.serverTimestamp;
+        this.firestoreArrayUnion = config.arrayUnion;
+        this.firestoreGetDoc = config.getDoc;
         
         if (config.routes) {
             this.routes = { ...this.routes, ...config.routes };
@@ -49,33 +70,27 @@ const MultiplayerFirestoreProvider = {
             return false;
         }
 
-        try {
-            if (typeof firebase === 'undefined') {
-                console.error('[MultiplayerFirestoreProvider] Firebase not loaded');
-                return false;
-            }
-
-            if (!firebase.apps.length) {
-                console.error('[MultiplayerFirestoreProvider] Firebase not initialized');
-                return false;
-            }
-
-            if (!firebase.auth().currentUser) {
-                await firebase.auth().signInAnonymously();
-            }
-
-            this.db = firebase.firestore();
-            console.log('[MultiplayerFirestoreProvider] Initialized', { 
-                sessionId: this.sessionId, 
-                isHost: this.isHost,
-                mode: this.mode 
-            });
-            
-            return true;
-        } catch (err) {
-            console.error('[MultiplayerFirestoreProvider] Init failed:', err);
+        if (!this.db || !this.firestoreDoc || !this.firestoreOnSnapshot) {
+            console.error('[MultiplayerFirestoreProvider] Firebase instances not provided');
             return false;
         }
+
+        console.log('[MultiplayerFirestoreProvider] Initialized', { 
+            sessionId: this.sessionId, 
+            isHost: this.isHost,
+            mode: this.mode,
+            playerId: this.playerId
+        });
+        
+        return true;
+    },
+
+    /**
+     * Obtient la référence du document de session
+     */
+    getSessionRef() {
+        const firestoreGameId = `${this.mode}-match-${this.sessionId}`;
+        return this.firestoreDoc(this.db, 'games', firestoreGameId);
     },
 
     /**
@@ -85,49 +100,56 @@ const MultiplayerFirestoreProvider = {
         if (!this.db || !this.sessionId) return;
 
         this.onQuestionReceived = callback;
-        const sessionRef = this.db.collection('gameSessions').doc(this.sessionId);
+        const sessionRef = this.getSessionRef();
 
-        this.unsubscribeQuestion = sessionRef.onSnapshot((doc) => {
-            if (!doc.exists) return;
+        this.unsubscribeQuestion = this.firestoreOnSnapshot(sessionRef, (snapshot) => {
+            if (!snapshot.exists()) return;
             
-            const data = doc.data();
-            if (data.currentQuestionData && data.questionPublishedAt) {
+            const data = snapshot.data();
+            
+            const questionPublishedAt = data.questionPublishedAt?.toMillis?.() || data.questionPublishedAt || 0;
+            if (data.currentQuestionData && questionPublishedAt > this.lastQuestionPublishedAt) {
+                this.lastQuestionPublishedAt = questionPublishedAt;
                 const questionData = data.currentQuestionData;
-                console.log('[MultiplayerFirestoreProvider] Question received:', questionData.question_number);
+                const questionNumber = data.currentQuestion || questionData.question_number || 1;
+                
+                console.log('[MultiplayerFirestoreProvider] Question received:', questionNumber, 'at', questionPublishedAt);
                 
                 if (this.onQuestionReceived) {
-                    this.onQuestionReceived(questionData);
+                    this.onQuestionReceived(questionData, questionNumber);
                 }
             }
         }, (error) => {
             console.error('[MultiplayerFirestoreProvider] Question listener error:', error);
         });
 
-        console.log('[MultiplayerFirestoreProvider] Listening for questions');
+        console.log('[MultiplayerFirestoreProvider] Listening for questions on:', this.getSessionRef().path);
     },
 
     /**
      * Publie une question (hôte uniquement)
      */
-    async publishQuestion(questionData) {
+    async publishQuestion(questionData, questionNumber) {
         if (!this.isHost || !this.db || !this.sessionId) {
             console.warn('[MultiplayerFirestoreProvider] Not host or not initialized');
             return false;
         }
 
         try {
-            const sessionRef = this.db.collection('gameSessions').doc(this.sessionId);
-            await sessionRef.update({
+            const sessionRef = this.getSessionRef();
+            await this.firestoreUpdateDoc(sessionRef, {
                 currentQuestionData: questionData,
-                questionPublishedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                currentQuestionNumber: questionData.question_number,
+                questionPublishedAt: this.firestoreServerTimestamp(),
+                currentQuestion: questionNumber,
                 phase: 'question',
-                buzzedBy: null,
+                buzzedPlayerId: null,
+                player1Buzzed: false,
+                player2Buzzed: false,
                 buzzTime: null,
                 playersReady: []
             });
 
-            console.log('[MultiplayerFirestoreProvider] Question published:', questionData.question_number);
+            console.log('[MultiplayerFirestoreProvider] Question published:', questionNumber);
             return true;
         } catch (err) {
             console.error('[MultiplayerFirestoreProvider] Publish question error:', err);
@@ -146,6 +168,8 @@ const MultiplayerFirestoreProvider = {
 
         try {
             const route = this.routes.fetchQuestion.replace('{mode}', this.mode);
+            console.log('[MultiplayerFirestoreProvider] Fetching question', questionNumber, 'from', route);
+            
             const response = await fetch(route, {
                 method: 'POST',
                 headers: {
@@ -158,22 +182,29 @@ const MultiplayerFirestoreProvider = {
             const data = await response.json();
             
             if (data.success && data.question) {
+                const correctIndex = data.question.answers.findIndex(a => a.is_correct === true);
+                
                 const questionData = {
                     question_number: data.question_number,
                     total_questions: data.total_questions,
                     question_text: data.question.question_text,
-                    answers: data.question.answers,
+                    answers: data.question.answers.map(a => ({
+                        text: a.text || a,
+                        is_correct: a.is_correct || false
+                    })),
+                    correct_index: correctIndex,
                     theme: data.question.theme,
                     sub_theme: data.question.sub_theme,
                     chrono_time: data.chrono_time || 8
                 };
 
-                await this.publishQuestion(questionData);
-                return data;
+                await this.publishQuestion(questionData, data.question_number);
+                return { success: true, question: data.question, questionData };
             } else if (data.redirect_url) {
                 return data;
             }
 
+            console.error('[MultiplayerFirestoreProvider] Fetch failed:', data);
             return null;
         } catch (err) {
             console.error('[MultiplayerFirestoreProvider] Fetch question error:', err);
@@ -184,29 +215,33 @@ const MultiplayerFirestoreProvider = {
     /**
      * Publie un buzz
      */
-    async publishBuzz(playerId, buzzTime) {
+    async publishBuzz(buzzTime) {
         if (!this.db || !this.sessionId) return false;
 
         try {
-            const sessionRef = this.db.collection('gameSessions').doc(this.sessionId);
-            const doc = await sessionRef.get();
+            const sessionRef = this.getSessionRef();
             
-            if (!doc.exists) return false;
+            const snapshot = await this.firestoreGetDoc(sessionRef);
+            if (!snapshot.exists()) return false;
             
-            const data = doc.data();
+            const data = snapshot.data();
             
-            if (data.buzzedBy) {
+            if (data.buzzedPlayerId || data.player1Buzzed || data.player2Buzzed) {
                 console.log('[MultiplayerFirestoreProvider] Someone already buzzed');
                 return false;
             }
 
-            await sessionRef.update({
-                buzzedBy: playerId,
+            const isPlayer1 = this.playerId === String(data.player1Id);
+            const buzzField = isPlayer1 ? 'player1Buzzed' : 'player2Buzzed';
+
+            await this.firestoreUpdateDoc(sessionRef, {
+                buzzedPlayerId: this.playerId,
+                [buzzField]: true,
                 buzzTime: buzzTime,
                 phase: 'buzz'
             });
 
-            console.log('[MultiplayerFirestoreProvider] Buzz published:', playerId);
+            console.log('[MultiplayerFirestoreProvider] Buzz published:', this.playerId);
             return true;
         } catch (err) {
             console.error('[MultiplayerFirestoreProvider] Publish buzz error:', err);
@@ -221,17 +256,26 @@ const MultiplayerFirestoreProvider = {
         if (!this.db || !this.sessionId) return;
 
         this.onBuzzReceived = callback;
-        const sessionRef = this.db.collection('gameSessions').doc(this.sessionId);
+        const sessionRef = this.getSessionRef();
 
-        this.unsubscribeBuzz = sessionRef.onSnapshot((doc) => {
-            if (!doc.exists) return;
+        this.unsubscribeBuzz = this.firestoreOnSnapshot(sessionRef, (snapshot) => {
+            if (!snapshot.exists()) return;
             
-            const data = doc.data();
-            if (data.buzzedBy && data.buzzedBy !== this.playerId) {
-                console.log('[MultiplayerFirestoreProvider] Opponent buzzed:', data.buzzedBy);
-                if (this.onBuzzReceived) {
-                    this.onBuzzReceived(data.buzzedBy, data.buzzTime);
-                }
+            const data = snapshot.data();
+            const isPlayer1 = this.playerId === String(data.player1Id);
+            
+            let opponentBuzzed = false;
+            if (isPlayer1 && data.player2Buzzed) {
+                opponentBuzzed = true;
+            } else if (!isPlayer1 && data.player1Buzzed) {
+                opponentBuzzed = true;
+            } else if (data.buzzedPlayerId && data.buzzedPlayerId !== this.playerId) {
+                opponentBuzzed = true;
+            }
+            
+            if (opponentBuzzed && this.onBuzzReceived) {
+                console.log('[MultiplayerFirestoreProvider] Opponent buzzed');
+                this.onBuzzReceived(data.buzzedPlayerId, data.buzzTime);
             }
         }, (error) => {
             console.error('[MultiplayerFirestoreProvider] Buzz listener error:', error);
@@ -245,9 +289,9 @@ const MultiplayerFirestoreProvider = {
         if (!this.db || !this.sessionId) return false;
 
         try {
-            const sessionRef = this.db.collection('gameSessions').doc(this.sessionId);
-            await sessionRef.update({
-                playersReady: firebase.firestore.FieldValue.arrayUnion(this.playerId)
+            const sessionRef = this.getSessionRef();
+            await this.firestoreUpdateDoc(sessionRef, {
+                playersReady: this.firestoreArrayUnion(this.playerId)
             });
 
             console.log('[MultiplayerFirestoreProvider] Player marked ready:', this.playerId);
@@ -260,41 +304,65 @@ const MultiplayerFirestoreProvider = {
 
     /**
      * Écoute quand tous les joueurs sont prêts
+     * @returns {Function} Unsubscribe function
      */
     listenForAllReady(expectedPlayers, callback) {
-        if (!this.db || !this.sessionId) return;
+        if (!this.db || !this.sessionId) {
+            callback();
+            return () => {};
+        }
 
-        this.onAllPlayersReady = callback;
-        const sessionRef = this.db.collection('gameSessions').doc(this.sessionId);
+        const sessionRef = this.getSessionRef();
+        let hasResolved = false;
 
-        this.unsubscribeReady = sessionRef.onSnapshot((doc) => {
-            if (!doc.exists) return;
+        const unsubscribe = this.firestoreOnSnapshot(sessionRef, (snapshot) => {
+            if (!snapshot.exists() || hasResolved) return;
             
-            const data = doc.data();
+            const data = snapshot.data();
             const playersReady = data.playersReady || [];
             
-            if (playersReady.length >= expectedPlayers) {
-                console.log('[MultiplayerFirestoreProvider] All players ready');
-                if (this.onAllPlayersReady) {
-                    this.onAllPlayersReady();
-                }
+            let actualExpectedPlayers = expectedPlayers;
+            if (data.player1Id && data.player2Id) {
+                actualExpectedPlayers = 2;
+            } else if (data.roster && Array.isArray(data.roster)) {
+                actualExpectedPlayers = data.roster.length;
+            }
+            
+            console.log('[MultiplayerFirestoreProvider] Players ready:', playersReady.length, '/', actualExpectedPlayers);
+            
+            if (playersReady.length >= actualExpectedPlayers) {
+                hasResolved = true;
+                console.log('[MultiplayerFirestoreProvider] All players ready, unsubscribing');
+                unsubscribe();
+                callback();
             }
         }, (error) => {
             console.error('[MultiplayerFirestoreProvider] Ready listener error:', error);
+            if (!hasResolved) {
+                hasResolved = true;
+                callback();
+            }
         });
+        
+        return unsubscribe;
     },
 
     /**
      * Met à jour le score d'un joueur
      */
-    async updateScore(playerId, score) {
+    async updateScore(score) {
         if (!this.db || !this.sessionId) return false;
 
         try {
-            const sessionRef = this.db.collection('gameSessions').doc(this.sessionId);
-            const scoreField = playerId === this.playerId ? 'player1_score' : 'player2_score';
+            const sessionRef = this.getSessionRef();
+            const snapshot = await this.firestoreGetDoc(sessionRef);
+            if (!snapshot.exists()) return false;
             
-            await sessionRef.update({
+            const data = snapshot.data();
+            const isPlayer1 = this.playerId === String(data.player1Id);
+            const scoreField = isPlayer1 ? 'player1Score' : 'player2Score';
+            
+            await this.firestoreUpdateDoc(sessionRef, {
                 [scoreField]: score
             });
 
@@ -306,19 +374,24 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
-     * Met à jour la phase du jeu
+     * Écoute les scores adverses
      */
-    async setPhase(phase) {
-        if (!this.db || !this.sessionId) return false;
+    listenForScores(callback) {
+        if (!this.db || !this.sessionId) return;
+        
+        const sessionRef = this.getSessionRef();
 
-        try {
-            const sessionRef = this.db.collection('gameSessions').doc(this.sessionId);
-            await sessionRef.update({ phase });
-            return true;
-        } catch (err) {
-            console.error('[MultiplayerFirestoreProvider] Set phase error:', err);
-            return false;
-        }
+        this.firestoreOnSnapshot(sessionRef, (snapshot) => {
+            if (!snapshot.exists()) return;
+            
+            const data = snapshot.data();
+            const isPlayer1 = this.playerId === String(data.player1Id);
+            const opponentScore = isPlayer1 ? data.player2Score : data.player1Score;
+            
+            if (opponentScore !== undefined && callback) {
+                callback(opponentScore);
+            }
+        });
     },
 
     /**

@@ -1470,7 +1470,7 @@ function startTimer() {
     }, 1000);
 }
 
-buzzButton.addEventListener('click', function() {
+buzzButton.addEventListener('click', async function() {
     if (buzzed) return;
     
     buzzed = true;
@@ -1484,7 +1484,7 @@ buzzButton.addEventListener('click', function() {
     buzzButton.style.opacity = '0.5';
     
     if (gameConfig.isFirebaseMode) {
-        sendBuzzToServer();
+        await sendBuzzToServer();
     } else {
         setTimeout(() => {
             showAnswers();
@@ -1492,7 +1492,17 @@ buzzButton.addEventListener('click', function() {
     }
 });
 
-function sendBuzzToServer() {
+async function sendBuzzToServer() {
+    if (window.handleFirebaseBuzz) {
+        const buzzSuccess = await window.handleFirebaseBuzz(playerBuzzTime);
+        if (!buzzSuccess) {
+            console.log('[Buzz] Someone else buzzed first, showing answers');
+            buzzed = true;
+            showAnswers();
+            return;
+        }
+    }
+    
     fetch(gameConfig.routes.buzz, {
         method: 'POST',
         headers: {
@@ -1554,7 +1564,7 @@ function handleAnswerClick(button, index) {
     submitAnswer(index, isCorrect);
 }
 
-function submitAnswer(answerIndex, isCorrect) {
+async function submitAnswer(answerIndex, isCorrect) {
     if (gameConfig.isFirebaseMode) {
         showWaitingOverlay('{{ __("En attente du résultat...") }}');
     }
@@ -1571,14 +1581,22 @@ function submitAnswer(answerIndex, isCorrect) {
             buzz_time: playerBuzzTime
         })
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(async response => response.json())
+    .then(async data => {
         hideWaitingOverlay();
         
         document.getElementById('playerScore').textContent = data.player_score;
         
+        if (window.handleFirebaseScore) {
+            await window.handleFirebaseScore(data.player_score);
+        }
+        
         if (data.opponent) {
             document.getElementById('opponentScore').textContent = data.opponent.opponent_score;
+        }
+        
+        if (window.handleFirebaseReady) {
+            await window.handleFirebaseReady();
         }
         
         setTimeout(() => {
@@ -1608,17 +1626,62 @@ const GameFlowController = {
         console.log('[GameFlow] Advancing to question', nextQ, 'isHost:', this.isHost);
         
         if (this.isHost) {
-            showWaitingOverlay('{{ __("Chargement de la question...") }}');
+            showWaitingOverlay('{{ __("En attente des joueurs...") }}');
             
             await this.waitForFirebaseReady();
             
-            const questionData = await this.fetchQuestion(nextQ);
-            if (questionData && questionData.success) {
-                await this.publishQuestionToFirestore(nextQ, questionData);
-                this.lastQuestionNumber = nextQ;
+            const expectedPlayers = gameConfig.mode === 'master' ? 3 : 2;
+            await this.waitForAllPlayersReady(expectedPlayers, 10000);
+            
+            showWaitingOverlay('{{ __("Chargement de la question...") }}');
+            
+            if (window.handleFirebaseFetchQuestion) {
+                const result = await window.handleFirebaseFetchQuestion(nextQ);
+                if (result && result.success && result.questionData) {
+                    this.lastQuestionNumber = nextQ;
+                    this.displayQuestion({
+                        question_number: result.questionData.question_number,
+                        total_questions: result.questionData.total_questions || gameConfig.totalQuestions,
+                        question_text: result.questionData.question_text,
+                        answers: result.questionData.answers.map((a, i) => ({
+                            text: a.text || a,
+                            is_correct: a.is_correct !== undefined ? a.is_correct : (i === result.questionData.correct_index)
+                        })),
+                        theme: result.questionData.theme,
+                        sub_theme: result.questionData.sub_theme
+                    });
+                } else if (result?.redirect_url) {
+                    window.location.href = result.redirect_url;
+                } else {
+                    console.error('[GameFlow] Failed to fetch question via provider:', result);
+                    const fallbackData = await this.fetchQuestion(nextQ);
+                    if (fallbackData && fallbackData.success) {
+                        this.lastQuestionNumber = nextQ;
+                        const correctIdx = fallbackData.question.answers.findIndex(a => a.is_correct);
+                        this.displayQuestion({
+                            question_number: fallbackData.question_number,
+                            total_questions: fallbackData.total_questions,
+                            question_text: fallbackData.question.question_text,
+                            answers: fallbackData.question.answers.map((a, i) => ({
+                                text: a.text || a,
+                                is_correct: a.is_correct || (i === correctIdx)
+                            })),
+                            theme: fallbackData.question.theme,
+                            sub_theme: fallbackData.question.sub_theme
+                        });
+                    } else {
+                        window.location.reload();
+                    }
+                }
             } else {
-                console.error('[GameFlow] Failed to fetch question');
-                window.location.reload();
+                const questionData = await this.fetchQuestion(nextQ);
+                if (questionData && questionData.success) {
+                    await this.publishQuestionToFirestore(nextQ, questionData);
+                    this.lastQuestionNumber = nextQ;
+                } else {
+                    console.error('[GameFlow] Failed to fetch question');
+                    window.location.reload();
+                }
             }
         } else {
             showWaitingOverlay('{{ __("En attente de la question...") }}');
@@ -1626,12 +1689,18 @@ const GameFlowController = {
     },
     
     async waitForFirebaseReady(maxWait = 5000) {
+        if (window.MultiplayerFirestoreProvider && window.MultiplayerFirestoreProvider.db) {
+            return true;
+        }
         if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
             return true;
         }
         
         const startTime = Date.now();
         while (Date.now() - startTime < maxWait) {
+            if (window.MultiplayerFirestoreProvider && window.MultiplayerFirestoreProvider.db) {
+                return true;
+            }
             if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
                 return true;
             }
@@ -1640,6 +1709,37 @@ const GameFlowController = {
         
         console.warn('[GameFlow] Firebase not ready after', maxWait, 'ms');
         return false;
+    },
+    
+    async waitForAllPlayersReady(expectedPlayers, maxWait = 30000) {
+        return new Promise((resolve) => {
+            if (!window.MultiplayerFirestoreProvider || !window.MultiplayerFirestoreProvider.db) {
+                console.warn('[GameFlow] No provider, skipping RE-SYNC wait');
+                resolve(true);
+                return;
+            }
+            
+            let resolved = false;
+            let unsubscribe = null;
+            
+            const timeout = setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    console.warn('[GameFlow] Timeout waiting for all players ready');
+                    if (unsubscribe) unsubscribe();
+                    resolve(true);
+                }
+            }, maxWait);
+            
+            unsubscribe = window.MultiplayerFirestoreProvider.listenForAllReady(expectedPlayers, () => {
+                if (!resolved) {
+                    resolved = true;
+                    clearTimeout(timeout);
+                    console.log('[GameFlow] All players ready, proceeding');
+                    resolve(true);
+                }
+            });
+        });
     },
     
     async fetchQuestion(questionNumber) {
@@ -1665,12 +1765,16 @@ const GameFlowController = {
     },
     
     async publishQuestionToFirestore(questionNumber, questionData) {
-        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
+        if (window.MultiplayerFirestoreProvider && window.MultiplayerFirestoreProvider.db) {
+            await window.MultiplayerFirestoreProvider.publishQuestion(questionData, questionNumber);
+            console.log('[GameFlow] Question published via provider');
+            this.displayQuestion(questionData);
+        } else if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
             await FirebaseGameSync.publishQuestion(questionNumber, questionData);
             console.log('[GameFlow] Question published to Firestore');
             this.displayQuestion(questionData);
         } else {
-            console.error('[GameFlow] FirebaseGameSync not ready');
+            console.error('[GameFlow] No Firebase sync available');
             window.location.reload();
         }
     },
@@ -1782,7 +1886,7 @@ const GameFlowController = {
     },
     
     onQuestionDataReceived(questionData, questionNumber) {
-        console.log('[GameFlow] Question received from Firestore:', questionNumber);
+        console.log('[GameFlow] Question received from Firestore:', questionNumber, questionData);
         if (questionNumber > this.lastQuestionNumber) {
             this.lastQuestionNumber = questionNumber;
             this.displayQuestion({
@@ -1790,11 +1894,11 @@ const GameFlowController = {
                 question_text: questionData.question_text,
                 answers: questionData.answers.map((a, i) => ({
                     text: a.text || a,
-                    is_correct: i === questionData.correct_index
+                    is_correct: a.is_correct !== undefined ? a.is_correct : (i === questionData.correct_index)
                 })),
                 theme: questionData.theme || '{{ $theme }}',
                 sub_theme: questionData.sub_theme || '',
-                total_questions: gameConfig.totalQuestions
+                total_questions: questionData.total_questions || gameConfig.totalQuestions
             });
         }
     }
@@ -1820,51 +1924,120 @@ function hideWaitingOverlay() {
 }
 
 @if($isFirebaseMode)
-import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js').then(({ initializeApp }) => {
-    Promise.all([
+(async function() {
+    const script = document.createElement('script');
+    script.src = '/js/MultiplayerFirestoreProvider.js';
+    document.head.appendChild(script);
+    await new Promise(r => script.onload = r);
+    
+    const [{ initializeApp }, { getAuth, signInAnonymously }, firestoreModule] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),
         import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'),
         import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js')
-    ]).then(([{ getAuth, signInAnonymously }, { getFirestore, doc, onSnapshot }]) => {
-        const firebaseConfig = {
-            apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
-            authDomain: "strategybuzzergame.firebaseapp.com",
-            projectId: "strategybuzzergame",
-            storageBucket: "strategybuzzergame.appspot.com",
-            messagingSenderId: "68047817391",
-            appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
-        };
+    ]);
+    
+    const { getFirestore, doc, onSnapshot, updateDoc, serverTimestamp, arrayUnion, getDoc } = firestoreModule;
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
+        authDomain: "strategybuzzergame.firebaseapp.com",
+        projectId: "strategybuzzergame",
+        storageBucket: "strategybuzzergame.appspot.com",
+        messagingSenderId: "68047817391",
+        appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    try {
+        await signInAnonymously(auth);
+        console.log('[Firebase] Anonymous auth successful');
         
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        const statusEl = document.getElementById('firebaseStatus');
+        statusEl.textContent = '{{ __("Connecté") }}';
+        statusEl.classList.remove('disconnected');
+        statusEl.classList.add('connected');
         
-        signInAnonymously(auth).then(() => {
-            console.log('[Firebase] Anonymous auth successful');
+        const sessionId = gameConfig.sessionId || gameConfig.matchId || gameConfig.roomCode;
+        
+        if (sessionId && window.MultiplayerFirestoreProvider) {
+            const providerInit = await window.MultiplayerFirestoreProvider.init({
+                sessionId: sessionId,
+                playerId: gameConfig.playerId,
+                isHost: gameConfig.isHost,
+                mode: gameConfig.mode,
+                csrfToken: gameConfig.csrfToken,
+                routes: gameConfig.routes,
+                db: db,
+                doc: doc,
+                onSnapshot: onSnapshot,
+                updateDoc: updateDoc,
+                serverTimestamp: serverTimestamp,
+                arrayUnion: arrayUnion,
+                getDoc: getDoc
+            });
             
-            const statusEl = document.getElementById('firebaseStatus');
-            statusEl.textContent = '{{ __("Connecté") }}';
-            statusEl.classList.remove('disconnected');
-            statusEl.classList.add('connected');
-            
-            if (gameConfig.matchId) {
-                const firestoreGameId = 'duo-match-' + gameConfig.matchId;
-                const matchRef = doc(db, 'games', firestoreGameId);
+            if (providerInit) {
+                console.log('[Firebase] MultiplayerFirestoreProvider initialized');
                 
-                console.log('[Firebase] Listening to:', firestoreGameId);
-                
-                onSnapshot(matchRef, (snapshot) => {
-                    if (snapshot.exists()) {
-                        const data = snapshot.data();
-                        console.log('[Firebase] Game state update:', data);
-                        handleFirebaseUpdate(data);
+                window.MultiplayerFirestoreProvider.listenForQuestions((questionData, questionNumber) => {
+                    console.log('[Firebase] Question from provider:', questionNumber);
+                    if (questionNumber > GameFlowController.lastQuestionNumber) {
+                        GameFlowController.onQuestionDataReceived(questionData, questionNumber);
                     }
-                }, (error) => {
-                    console.error('[Firebase] Listener error:', error);
                 });
+                
+                window.MultiplayerFirestoreProvider.listenForBuzz((buzzedPlayerId, buzzTime) => {
+                    console.log('[Firebase] Opponent buzzed via provider');
+                    if (!answersShown) {
+                        hideWaitingOverlay();
+                        showAnswers();
+                    }
+                });
+                
+                window.MultiplayerFirestoreProvider.listenForScores((opponentScore) => {
+                    document.getElementById('opponentScore').textContent = opponentScore;
+                });
+                
+                window.handleFirebaseBuzz = async function(buzzTime) {
+                    return await window.MultiplayerFirestoreProvider.publishBuzz(buzzTime);
+                };
+                
+                window.handleFirebaseScore = async function(score) {
+                    return await window.MultiplayerFirestoreProvider.updateScore(score);
+                };
+                
+                window.handleFirebaseReady = async function() {
+                    return await window.MultiplayerFirestoreProvider.markPlayerReady();
+                };
+                
+                window.handleFirebaseFetchQuestion = async function(questionNumber) {
+                    return await window.MultiplayerFirestoreProvider.fetchAndPublishQuestion(questionNumber);
+                };
             }
-        }).catch(e => console.error('[Firebase] Auth error:', e));
-    });
-});
+        }
+        
+        if (gameConfig.matchId && !window.MultiplayerFirestoreProvider) {
+            const firestoreGameId = gameConfig.mode + '-match-' + gameConfig.matchId;
+            const matchRef = doc(db, 'games', firestoreGameId);
+            
+            console.log('[Firebase] Legacy listener for:', firestoreGameId);
+            
+            onSnapshot(matchRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    handleFirebaseUpdate(data);
+                }
+            }, (error) => {
+                console.error('[Firebase] Listener error:', error);
+            });
+        }
+    } catch (e) {
+        console.error('[Firebase] Auth error:', e);
+    }
+})();
 
 let lastQuestionPublishedAt = 0;
 
@@ -1872,7 +2045,7 @@ function handleFirebaseUpdate(data) {
     const isPlayer1 = gameConfig.playerId === (data.player1Id || '').toString();
     const isPlayer2 = gameConfig.playerId === (data.player2Id || '').toString();
     
-    const questionPublishedAt = data.questionPublishedAt || 0;
+    const questionPublishedAt = data.questionPublishedAt?.toMillis?.() || data.questionPublishedAt || 0;
     if (data.currentQuestionData && questionPublishedAt > lastQuestionPublishedAt) {
         lastQuestionPublishedAt = questionPublishedAt;
         const qNum = data.currentQuestion || 1;
