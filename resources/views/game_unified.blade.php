@@ -2,23 +2,37 @@
 
 @section('content')
 @php
+// Validation défensive: s'assurer que $params est un tableau
+if (!isset($params) || !is_array($params)) {
+    $params = [];
+}
+
 $mode = $params['mode'] ?? 'solo';
 $opponentType = $params['opponent_type'] ?? 'ai';
 $opponentInfo = $params['opponent_info'] ?? [];
+if (!is_array($opponentInfo)) {
+    $opponentInfo = [];
+}
 $currentQuestion = $params['current'] ?? 1;
 $totalQuestions = $params['nb_questions'] ?? 10;
 $niveau = $params['niveau'] ?? 1;
 $theme = $params['theme'] ?? 'Culture générale';
 $themeDisplay = $theme === 'Culture générale' ? __('Général') : __($theme);
 $subTheme = $params['sub_theme'] ?? '';
-$playerScore = $params['score'] ?? 0;
-$opponentScore = $params['opponent_score'] ?? 0;
+$playerScore = (int)($params['score'] ?? 0);
+$opponentScore = (int)($params['opponent_score'] ?? 0);
 $currentRound = $params['current_round'] ?? 1;
 $playerRoundsWon = $params['player_rounds_won'] ?? 0;
 $opponentRoundsWon = $params['opponent_rounds_won'] ?? 0;
 $scoring = $params['scoring'] ?? [];
+if (!is_array($scoring)) {
+    $scoring = [];
+}
 $avatarName = $params['avatar'] ?? 'Aucun';
 $avatarSkillsFull = $params['avatar_skills_full'] ?? ['rarity' => null, 'skills' => []];
+if (!is_array($avatarSkillsFull)) {
+    $avatarSkillsFull = ['rarity' => null, 'skills' => []];
+}
 
 $leagueTeamMode = $params['league_team_mode'] ?? 'classique';
 $skillsFreeForAll = $params['skills_free_for_all'] ?? true;
@@ -87,7 +101,15 @@ if ($opponentType === 'ai') {
         $opponentDescription = __('Votre adversaire') . " {$opponentName} {$opponentAge} " . __('ans élève du') . " {$nextBoss}";
     }
 } else {
-    $opponentAvatar = asset("images/avatars/standard/{$opponentInfo['avatar']}.png");
+    // Pour les adversaires humains, vérifier si l'avatar est déjà un chemin complet
+    $rawOpponentAvatar = $opponentInfo['avatar'] ?? 'default';
+    if (strpos($rawOpponentAvatar, '/') !== false || strpos($rawOpponentAvatar, 'images/') === 0) {
+        // L'avatar est déjà un chemin complet (ex: images/avatars/portraits/2.png)
+        $opponentAvatar = asset($rawOpponentAvatar);
+    } else {
+        // L'avatar est juste un nom (ex: "default")
+        $opponentAvatar = asset("images/avatars/standard/{$rawOpponentAvatar}.png");
+    }
     $opponentDivision = $opponentInfo['division'] ?? 'Bronze';
     $opponentLevel = $opponentInfo['level'] ?? $opponentInfo['league_level'] ?? 1;
     $opponentDescription = "{$opponentDivision} - " . __('Niveau') . " {$opponentLevel}";
