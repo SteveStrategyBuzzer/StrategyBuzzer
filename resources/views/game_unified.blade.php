@@ -44,8 +44,9 @@ $currentRelayIndex = $params['current_relay_index'] ?? 0;
 
 $usedSkills = session('used_skills', []);
 $skills = [];
-if (!empty($avatarSkillsFull['skills'])) {
+if (!empty($avatarSkillsFull['skills']) && is_array($avatarSkillsFull['skills'])) {
     foreach ($avatarSkillsFull['skills'] as $skillData) {
+        if (!is_array($skillData)) continue;
         $skillId = $skillData['id'];
         $isUsed = in_array($skillId, $usedSkills);
         $usesCount = 0;
@@ -101,10 +102,13 @@ if ($opponentType === 'ai') {
         $opponentDescription = __('Votre adversaire') . " {$opponentName} {$opponentAge} " . __('ans élève du') . " {$nextBoss}";
     }
 } else {
-    // Pour les adversaires humains, vérifier si l'avatar est déjà un chemin complet
+    // Pour les adversaires humains, vérifier si l'avatar est déjà un chemin complet ou une URL
     $rawOpponentAvatar = $opponentInfo['avatar'] ?? 'default';
-    if (strpos($rawOpponentAvatar, '/') !== false || strpos($rawOpponentAvatar, 'images/') === 0) {
-        // L'avatar est déjà un chemin complet (ex: images/avatars/portraits/2.png)
+    if (str_starts_with($rawOpponentAvatar, 'http://') || str_starts_with($rawOpponentAvatar, 'https://')) {
+        // C'est une URL complète, l'utiliser directement
+        $opponentAvatar = $rawOpponentAvatar;
+    } elseif (strpos($rawOpponentAvatar, '/') !== false || strpos($rawOpponentAvatar, 'images/') === 0) {
+        // L'avatar est déjà un chemin relatif complet (ex: images/avatars/portraits/2.png)
         $opponentAvatar = asset($rawOpponentAvatar);
     } else {
         // L'avatar est juste un nom (ex: "default")

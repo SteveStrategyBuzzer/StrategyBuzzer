@@ -57,14 +57,6 @@ class UnifiedGameController extends Controller
     {
         $user = Auth::user();
         
-        // Nettoyer les anciennes données de session pour éviter la contamination
-        session()->forget('game_state');
-        session()->forget('used_skills');
-        session()->forget('skill_usage_counts');
-        session()->forget('match_questions');
-        session()->forget('match_questions_id');
-        session()->forget('match_questions_mode');
-        
         $validated = $request->validate([
             'theme' => 'required|string',
             'nb_questions' => 'required|integer|min:1|max:20',
@@ -77,6 +69,15 @@ class UnifiedGameController extends Controller
             'player_order' => 'nullable|string',
             'duel_pairings' => 'nullable|string',
         ]);
+        
+        // Nettoyer les anciennes données de session pour éviter la contamination
+        // (après validation réussie pour ne pas perdre les données si validation échoue)
+        session()->forget('game_state');
+        session()->forget('used_skills');
+        session()->forget('skill_usage_counts');
+        session()->forget('match_questions');
+        session()->forget('match_questions_id');
+        session()->forget('match_questions_mode');
         
         $provider = $this->getProvider($mode);
         
