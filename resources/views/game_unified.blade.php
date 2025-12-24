@@ -2008,8 +2008,9 @@ function hideWaitingOverlay() {
     const db = getFirestore(app);
     
     try {
-        await signInAnonymously(auth);
-        console.log('[Firebase] Anonymous auth successful');
+        const userCredential = await signInAnonymously(auth);
+        const firebaseUid = userCredential.user.uid;
+        console.log('[Firebase] Anonymous auth successful, UID:', firebaseUid);
         
         const statusEl = document.getElementById('firebaseStatus');
         statusEl.textContent = '{{ __("Connecté") }}';
@@ -2021,7 +2022,8 @@ function hideWaitingOverlay() {
         if (sessionId && window.MultiplayerFirestoreProvider) {
             const providerInit = await window.MultiplayerFirestoreProvider.init({
                 sessionId: sessionId,
-                playerId: gameConfig.playerId,
+                playerId: firebaseUid,
+                laravelUserId: gameConfig.playerId,
                 isHost: gameConfig.isHost,
                 mode: gameConfig.mode,
                 csrfToken: gameConfig.csrfToken,
@@ -2050,7 +2052,8 @@ function hideWaitingOverlay() {
                         arrayUnion: arrayUnion,
                         getDoc: getDoc,
                         sessionId: sessionId,
-                        playerId: gameConfig.playerId,
+                        playerId: firebaseUid,
+                        laravelUserId: gameConfig.playerId,
                         isHost: gameConfig.isHost,
                         csrfToken: gameConfig.csrfToken,
                         routes: gameConfig.routes

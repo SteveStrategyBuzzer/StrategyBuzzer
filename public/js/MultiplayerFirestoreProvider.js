@@ -14,6 +14,7 @@ const MultiplayerFirestoreProvider = {
     db: null,
     sessionId: null,
     playerId: null,
+    laravelUserId: null,
     isHost: false,
     mode: 'duo',
     firestoreDoc: null,
@@ -50,6 +51,7 @@ const MultiplayerFirestoreProvider = {
     async init(config = {}) {
         this.sessionId = config.sessionId;
         this.playerId = String(config.playerId);
+        this.laravelUserId = config.laravelUserId || config.playerId;
         this.isHost = config.isHost || false;
         this.mode = config.mode || 'duo';
         this.csrfToken = config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
