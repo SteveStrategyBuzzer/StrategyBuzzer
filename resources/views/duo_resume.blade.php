@@ -1227,6 +1227,10 @@ body {
                 micIcon.textContent = '🔇';
             }
         }
+        
+        // Sauvegarder l'état du micro dans localStorage pour persistance entre pages
+        localStorage.setItem('duo_mic_enabled', micEnabled ? 'true' : 'false');
+        console.log('[VoiceChat] Mic state saved to localStorage:', micEnabled);
     };
     
     window.addEventListener('beforeunload', () => {

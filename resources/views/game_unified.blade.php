@@ -811,8 +811,10 @@ $roomCode = $params['room_code'] ?? null;
 @endif
 
 @if($mode === 'duo')
-<!-- Contrôles communication Duo - disponibles en permanence -->
-<div id="duoCommFloating" class="duo-comm-floating">
+<!-- Contrôles communication Duo - CACHÉS pendant le gameplay (question/réponse)
+     Les boutons sont uniquement visibles sur la page de transition (game_result)
+     Le VoiceChat reste actif en arrière-plan pour permettre la communication -->
+<div id="duoCommFloating" class="duo-comm-floating" style="display: none !important;">
     <!-- Bouton Micro -->
     <button id="duoMicToggleBtn" class="duo-mic-toggle-btn" onclick="toggleDuoMic()">
         🎤

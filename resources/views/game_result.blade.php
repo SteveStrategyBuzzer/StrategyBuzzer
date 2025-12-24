@@ -455,9 +455,59 @@
         animation: pulse 1s infinite;
     }
     
+    /* Contrôles communication Duo */
+    .duo-comm-controls {
+        margin-top: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .duo-mic-section {
+        display: flex;
+        justify-content: center;
+    }
+    
+    .duo-mic-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 30px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .duo-mic-btn:hover {
+        transform: scale(1.05);
+    }
+    
+    .duo-mic-btn.active {
+        background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+    }
+    
+    .duo-mic-btn.active.speaking {
+        animation: micPulsing 0.8s infinite;
+    }
+    
+    @keyframes micPulsing {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+        50% { box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
+    }
+    
+    #duoMicIcon {
+        font-size: 1.3rem;
+    }
+    
     /* Chat Duo inline */
     .duo-chat-section {
-        margin-top: 15px;
         background: rgba(0, 0, 0, 0.3);
         border-radius: 12px;
         overflow: hidden;
@@ -1133,17 +1183,28 @@
         </div>
         
         @if($isMultiplayer && $gameMode === 'duo')
-            <!-- Chat inline pour mode Duo (si pas de micro actif) -->
-            <div id="duoChatSection" class="duo-chat-section">
-                <div class="duo-chat-header" onclick="toggleDuoChat()">
-                    💬 {{ __('Chat avec l\'adversaire') }}
-                    <span id="duoChatToggle">▼</span>
+            <!-- Contrôles communication Duo (micro + chat) -->
+            <div class="duo-comm-controls">
+                <!-- Section Micro -->
+                <div class="duo-mic-section">
+                    <button class="duo-mic-btn" id="duoMicBtn" onclick="toggleDuoMic()">
+                        <span id="duoMicIcon">🔇</span>
+                        <span id="duoMicLabel">{{ __('Micro OFF') }}</span>
+                    </button>
                 </div>
-                <div id="duoChatBody" class="duo-chat-body" style="display: none;">
-                    <div id="duoChatMessages" class="duo-chat-messages"></div>
-                    <div class="duo-chat-input-area">
-                        <input type="text" id="duoChatInput" placeholder="{{ __('Écrivez...') }}" maxlength="200" onkeypress="if(event.key==='Enter')sendDuoMessage()">
-                        <button onclick="sendDuoMessage()">➤</button>
+                
+                <!-- Section Chat -->
+                <div id="duoChatSection" class="duo-chat-section">
+                    <div class="duo-chat-header" onclick="toggleDuoChat()">
+                        💬 {{ __('Chat avec l\'adversaire') }}
+                        <span id="duoChatToggle">▼</span>
+                    </div>
+                    <div id="duoChatBody" class="duo-chat-body" style="display: none;">
+                        <div id="duoChatMessages" class="duo-chat-messages"></div>
+                        <div class="duo-chat-input-area">
+                            <input type="text" id="duoChatInput" placeholder="{{ __('Écrivez...') }}" maxlength="200" onkeypress="if(event.key==='Enter')sendDuoMessage()">
+                            <button onclick="sendDuoMessage()">➤</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1529,6 +1590,142 @@ if (isMultiplayerMode && duoOpponentId) {
         if (duoChatOpen) loadDuoChatMessages();
     }, 5000);
 }
+
+// ============ DUO MIC FUNCTIONS ============
+let duoMicEnabled = false;
+let duoVoiceChat = null;
+
+// Restaurer l'état du micro depuis localStorage
+function restoreMicState() {
+    const savedMicState = localStorage.getItem('duo_mic_enabled');
+    if (savedMicState === 'true' && isMultiplayerMode) {
+        // Auto-activer le micro si était actif dans le lobby ou la page précédente
+        console.log('[VoiceChat] Restoring mic state from previous page');
+        initVoiceChat().then(() => {
+            if (duoVoiceChat) {
+                toggleDuoMic();
+            }
+        });
+    }
+}
+
+async function initVoiceChat() {
+    if (duoVoiceChat || !isMultiplayerMode) return;
+    
+    try {
+        // Charger Firebase dynamiquement
+        const [firebaseApp, firestoreModule] = await Promise.all([
+            import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'),
+            import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js')
+        ]);
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
+            authDomain: "strategybuzzergame.firebaseapp.com",
+            projectId: "strategybuzzergame",
+            storageBucket: "strategybuzzergame.firebasestorage.app",
+            messagingSenderId: "1095451912691",
+            appId: "1:1095451912691:web:e82dc7c50a9e08a7ec0632"
+        };
+        
+        let app;
+        try {
+            app = firebaseApp.getApp();
+        } catch {
+            app = firebaseApp.initializeApp(firebaseConfig);
+        }
+        
+        const db = firestoreModule.getFirestore(app);
+        const sessionId = '{{ session("match_id") ?? session("session_id") ?? "" }}';
+        const userId = {{ auth()->id() ?? 'null' }};
+        
+        if (!sessionId || !userId) {
+            console.warn('[VoiceChat] Missing session or user ID');
+            return;
+        }
+        
+        // Vérifier si VoiceChat.js est chargé
+        if (typeof VoiceChat === 'undefined') {
+            console.warn('[VoiceChat] VoiceChat.js not loaded');
+            return;
+        }
+        
+        duoVoiceChat = new VoiceChat({
+            sessionId: sessionId,
+            localUserId: userId,
+            remoteUserIds: duoOpponentId ? [duoOpponentId] : [],
+            mode: 'duo',
+            db: db
+        });
+        
+        await duoVoiceChat.initialize();
+        console.log('[VoiceChat] Initialized in game_result');
+        
+    } catch (error) {
+        console.warn('[VoiceChat] Init error:', error);
+    }
+}
+
+async function toggleDuoMic() {
+    const btn = document.getElementById('duoMicBtn');
+    const icon = document.getElementById('duoMicIcon');
+    const label = document.getElementById('duoMicLabel');
+    if (!btn || !icon || !label) return;
+    
+    // Initialiser VoiceChat si pas encore fait
+    if (!duoVoiceChat) {
+        await initVoiceChat();
+    }
+    
+    if (!duoVoiceChat) {
+        console.warn('[VoiceChat] Could not initialize');
+        return;
+    }
+    
+    duoMicEnabled = !duoMicEnabled;
+    
+    if (duoMicEnabled) {
+        try {
+            await duoVoiceChat.enableMicrophone();
+            await duoVoiceChat.setMuted(false);
+            btn.classList.add('active');
+            icon.textContent = '🎤';
+            label.textContent = '{{ __("Micro ON") }}';
+            localStorage.setItem('duo_mic_enabled', 'true');
+            console.log('[VoiceChat] Mic enabled');
+        } catch (error) {
+            console.error('[VoiceChat] Enable mic error:', error);
+            duoMicEnabled = false;
+        }
+    } else {
+        if (duoVoiceChat.localStream) {
+            await duoVoiceChat.setMuted(true);
+        }
+        btn.classList.remove('active');
+        icon.textContent = '🔇';
+        label.textContent = '{{ __("Micro OFF") }}';
+        localStorage.setItem('duo_mic_enabled', 'false');
+        console.log('[VoiceChat] Mic disabled');
+    }
+}
+
+// Charger VoiceChat.js si mode multijoueur
+if (isMultiplayerMode && duoOpponentId) {
+    const script = document.createElement('script');
+    script.src = '{{ asset("js/VoiceChat.js") }}';
+    script.onload = () => {
+        console.log('[VoiceChat] VoiceChat.js loaded');
+        restoreMicState();
+    };
+    document.head.appendChild(script);
+}
+
+// Nettoyer avant de quitter la page
+window.addEventListener('beforeunload', () => {
+    if (duoVoiceChat) {
+        duoVoiceChat.cleanup();
+    }
+});
 </script>
 
 {{-- Popup Visionnaire Preview synchronisé avec le countdown --}}

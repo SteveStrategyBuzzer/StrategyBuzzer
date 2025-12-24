@@ -127,6 +127,7 @@ class SoloController extends Controller
         
         // Persistance session - initialiser TOUTES les variables de jeu
         session([
+            'game_mode'          => 'solo',  // IMPORTANT: Définir le mode de jeu Solo
             'niveau_selectionne' => $niveau,
             'nb_questions'       => $nbQuestions,
             'theme'              => $theme,
@@ -269,6 +270,9 @@ class SoloController extends Controller
 
     public function resume()
     {
+        // IMPORTANT : Définir le mode de jeu comme Solo pour éviter les éléments multijoueur
+        session(['game_mode' => 'solo']);
+        
         // Synchroniser l'avatar stratégique depuis profile_settings si absent ou 'Aucun'
         $user = \Illuminate\Support\Facades\Auth::user();
         if ($user && (!session()->has('avatar') || session('avatar') === 'Aucun')) {
@@ -394,6 +398,9 @@ class SoloController extends Controller
 
     public function game()
     {
+        // IMPORTANT : Définir le mode de jeu comme Solo pour éviter les éléments multijoueur
+        session(['game_mode' => 'solo']);
+        
         // IMPORTANT : Désactiver le flag de génération dès le début de game()
         // pour éviter qu'il reste bloqué en cas d'erreur ou de flux alternatif
         session(['question_generation_pending' => false]);
