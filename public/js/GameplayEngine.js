@@ -26,7 +26,8 @@ const GameplayEngine = {
         isHost: false,
         playerId: null,
         sessionId: null,
-        mode: 'solo' // solo | duo | league_individual | league_team | master
+        mode: 'solo', // solo | duo | league_individual | league_team | master
+        questionStartTime: null
     },
 
     // Configuration
@@ -67,6 +68,9 @@ const GameplayEngine = {
     // Provider (LocalProvider ou FirestoreProvider)
     provider: null,
 
+    // Current question data (for answer validation)
+    currentQuestionData: null,
+
     /**
      * Initialise le moteur de gameplay
      * @param {Object} options Configuration initiale
@@ -93,8 +97,8 @@ const GameplayEngine = {
      */
     setProvider(provider) {
         this.provider = provider;
-        if (provider.onQuestionReceived) {
-            provider.onQuestionReceived = (questionData) => this.startQuestion(questionData);
+        if (provider.setEngine) {
+            provider.setEngine(this);
         }
     },
 
@@ -205,13 +209,39 @@ const GameplayEngine = {
 
         this.resetState();
         
+        // Store question data for answer validation
+        this.currentQuestionData = questionData;
+        
         this.state.currentQuestion = questionData.question_number;
         this.state.totalQuestions = questionData.total_questions || this.state.totalQuestions;
         this.state.phase = 'question';
+        this.state.questionStartTime = Date.now();
 
         this.displayQuestion(questionData);
         this.startTimer();
         this.triggerPassiveSkills('question_start');
+    },
+
+    /**
+     * Called by non-host clients when they receive a question from the provider
+     * @param {Object} questionData The question data received
+     */
+    receiveQuestion(questionData) {
+        console.log('[GameplayEngine] Received question from provider:', questionData.question_number);
+        this.startQuestion(questionData);
+    },
+
+    /**
+     * Called when a buzz notification is received from multiplayer
+     * @param {string} playerId The ID of the player who buzzed
+     * @param {number} buzzTime The time when they buzzed
+     */
+    receiveBuzz(playerId, buzzTime) {
+        if (this.state.buzzed) return;
+        if (playerId === this.state.playerId) return;
+
+        console.log('[GameplayEngine] Received buzz from opponent:', playerId);
+        this.onOpponentBuzz(playerId, buzzTime);
     },
 
     /**
@@ -314,20 +344,32 @@ const GameplayEngine = {
     /**
      * Notifie le serveur que le temps a expiré
      */
-    notifyTimeExpired() {
-        fetch(this.config.routes.answer, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': this.config.csrfToken
-            },
-            body: JSON.stringify({
-                answer_id: -1,
-                timed_out: true
-            })
-        }).then(response => response.json())
-          .then(data => this.handleAnswerResult(data))
-          .catch(err => console.error('[GameplayEngine] Time expired error:', err));
+    async notifyTimeExpired() {
+        try {
+            if (this.provider && this.provider.onAnswerSubmitted) {
+                await this.provider.onAnswerSubmitted({
+                    answer_id: -1,
+                    timed_out: true,
+                    question_number: this.state.currentQuestion
+                });
+            }
+            
+            const response = await fetch(this.config.routes.answer, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.config.csrfToken
+                },
+                body: JSON.stringify({
+                    answer_id: -1,
+                    timed_out: true
+                })
+            });
+            const data = await response.json();
+            this.handleAnswerResult(data);
+        } catch (err) {
+            console.error('[GameplayEngine] Time expired error:', err);
+        }
     },
 
     // ==========================================
@@ -375,27 +417,43 @@ const GameplayEngine = {
     /**
      * Gère le clic sur le buzzer
      */
-    handleBuzz() {
+    async handleBuzz() {
         if (this.state.buzzed || this.state.phase !== 'question') return;
 
+        const buzzTime = Date.now();
+        
+        // Play buzz sound immediately for feedback
+        if (this.config.sounds.buzz) {
+            this.config.sounds.buzz.play().catch(() => {});
+        }
+
+        // Check with provider if buzz is accepted (for multiplayer race condition)
+        if (this.provider && this.provider.onPlayerBuzz) {
+            const buzzAccepted = await this.provider.onPlayerBuzz(buzzTime);
+            
+            if (!buzzAccepted) {
+                // Someone else buzzed first - don't show answers
+                console.log('[GameplayEngine] Buzz rejected - opponent was faster');
+                if (this.elements.buzzButton) {
+                    this.elements.buzzButton.disabled = true;
+                }
+                this.state.phase = 'answer';
+                this.triggerPassiveSkills('opponent_buzz');
+                return;
+            }
+        }
+
+        // Buzz accepted - proceed
         this.state.buzzed = true;
-        this.state.playerBuzzTime = Date.now();
+        this.state.playerBuzzTime = buzzTime;
         this.state.phase = 'buzz';
 
         if (this.elements.buzzButton) {
             this.elements.buzzButton.disabled = true;
         }
 
-        if (this.config.sounds.buzz) {
-            this.config.sounds.buzz.play().catch(() => {});
-        }
-
         this.stopTimer();
         this.showAnswers();
-
-        if (this.provider && this.provider.publishBuzz) {
-            this.provider.publishBuzz(this.state.playerId, this.state.playerBuzzTime);
-        }
 
         this.triggerPassiveSkills('player_buzz');
     },
@@ -413,6 +471,7 @@ const GameplayEngine = {
             this.elements.buzzButton.disabled = true;
         }
 
+        this.stopTimer();
         this.triggerPassiveSkills('opponent_buzz');
     },
 
@@ -443,11 +502,29 @@ const GameplayEngine = {
 
         this.state.phase = 'result';
 
+        const buzzTime = this.state.playerBuzzTime 
+            ? (this.state.playerBuzzTime - (this.state.questionStartTime || this.state.playerBuzzTime)) / 1000
+            : 0;
+
         let result;
-        if (this.state.mode === 'solo' && this.provider && this.provider.submitAnswer) {
-            const buzzTime = (Date.now() - (this.state.questionStartTime || Date.now())) / 1000;
-            result = await this.provider.submitAnswer(answerIndex, buzzTime);
-        } else {
+        
+        // For Solo mode, get AI opponent behavior first
+        if (this.state.mode === 'solo' && this.provider && this.provider.handleOpponentBehavior) {
+            try {
+                const opponentBehavior = await this.provider.handleOpponentBehavior(
+                    this.state.buzzed, 
+                    buzzTime
+                );
+                if (opponentBehavior) {
+                    console.log('[GameplayEngine] AI opponent behavior:', opponentBehavior);
+                }
+            } catch (err) {
+                console.error('[GameplayEngine] Error getting opponent behavior:', err);
+            }
+        }
+
+        // Submit answer to server
+        try {
             const response = await fetch(this.config.routes.answer, {
                 method: 'POST',
                 headers: {
@@ -456,10 +533,28 @@ const GameplayEngine = {
                 },
                 body: JSON.stringify({
                     answer_id: answerIndex,
-                    buzz_time: this.state.playerBuzzTime
+                    buzz_time: this.state.playerBuzzTime,
+                    question_number: this.state.currentQuestion
                 })
             });
             result = await response.json();
+        } catch (err) {
+            console.error('[GameplayEngine] Submit answer error:', err);
+            return;
+        }
+
+        // Notify provider of answer submission
+        if (this.provider && this.provider.onAnswerSubmitted) {
+            try {
+                await this.provider.onAnswerSubmitted({
+                    answer_id: answerIndex,
+                    is_correct: result.is_correct,
+                    player_score: result.player_score,
+                    question_number: this.state.currentQuestion
+                });
+            } catch (err) {
+                console.error('[GameplayEngine] Provider onAnswerSubmitted error:', err);
+            }
         }
 
         if (result) {
@@ -596,21 +691,37 @@ const GameplayEngine = {
     async nextQuestion() {
         this.resetState();
         
-        if (this.provider && this.provider.fetchAndPublishQuestion) {
-            const data = await this.provider.fetchAndPublishQuestion(this.state.currentQuestion + 1);
-            if (data && data.success && this.state.mode === 'solo') {
-                this.startQuestion({
-                    question_number: data.question_number,
-                    question_text: data.question.question_text,
-                    answers: data.question.answers,
-                    theme: data.question.theme,
-                    sub_theme: data.question.sub_theme,
-                    total_questions: data.total_questions,
-                    chrono_time: data.chrono_time
-                });
-                this.updateScores(data.player_score, data.opponent_score);
-            } else if (data && data.redirect_url) {
-                window.location.href = data.redirect_url;
+        const nextQuestionNumber = this.state.currentQuestion + 1;
+
+        if (this.provider && this.provider.fetchQuestion) {
+            try {
+                const questionData = await this.provider.fetchQuestion(nextQuestionNumber);
+                
+                if (!questionData) {
+                    console.error('[GameplayEngine] No question data returned');
+                    return;
+                }
+
+                // Handle redirect (game complete)
+                if (questionData.redirect_url) {
+                    window.location.href = questionData.redirect_url;
+                    return;
+                }
+
+                // For multiplayer host, publish the question
+                if (this.state.isHost && this.provider.onQuestionStart) {
+                    await this.provider.onQuestionStart(questionData);
+                }
+
+                // Start the question locally
+                this.startQuestion(questionData);
+                
+                // Update scores if provided
+                if (questionData.player_score !== undefined || questionData.opponent_score !== undefined) {
+                    this.updateScores(questionData.player_score, questionData.opponent_score);
+                }
+            } catch (err) {
+                console.error('[GameplayEngine] Next question error:', err);
             }
         } else if (this.config.routes.nextQuestion) {
             window.location.href = this.config.routes.nextQuestion;
@@ -628,6 +739,8 @@ const GameplayEngine = {
         this.state.playerBuzzTime = null;
         this.state.timeLeft = this.config.timerDuration;
         this.state.phase = 'waiting';
+        this.state.questionStartTime = null;
+        this.currentQuestionData = null;
 
         if (this.elements.chronoTimer) {
             this.elements.chronoTimer.textContent = this.config.timerDuration;
@@ -653,201 +766,5 @@ const GameplayEngine = {
     }
 };
 
-// ==========================================
-// PROVIDERS
-// ==========================================
-
-/**
- * LocalProvider - Pour le mode Solo
- * Gère les données localement via API Laravel (SPA mode)
- */
-const LocalProvider = {
-    onQuestionReceived: null,
-    csrfToken: '',
-    routes: {
-        fetchQuestion: '/solo/fetch-question',
-        submitAnswer: '/solo/submit-answer'
-    },
-
-    init(config = {}) {
-        this.csrfToken = config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
-        if (config.routes) {
-            this.routes = { ...this.routes, ...config.routes };
-        }
-        console.log('[LocalProvider] Initialized for Solo SPA mode');
-    },
-
-    async fetchAndPublishQuestion(questionNumber) {
-        try {
-            const response = await fetch(this.routes.fetchQuestion, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ question_number: questionNumber })
-            });
-
-            const data = await response.json();
-
-            if (data.success && this.onQuestionReceived) {
-                this.onQuestionReceived({
-                    question_number: data.question_number,
-                    question_text: data.question.question_text,
-                    answers: data.question.answers,
-                    theme: data.question.theme,
-                    sub_theme: data.question.sub_theme,
-                    total_questions: data.total_questions,
-                    chrono_time: data.chrono_time,
-                    player_score: data.player_score,
-                    opponent_score: data.opponent_score
-                });
-            }
-
-            return data;
-        } catch (err) {
-            console.error('[LocalProvider] Fetch question error:', err);
-            return null;
-        }
-    },
-
-    async submitAnswer(answerIndex, buzzTime) {
-        try {
-            const response = await fetch(this.routes.submitAnswer, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    answer_index: answerIndex,
-                    buzz_time: buzzTime
-                })
-            });
-
-            return await response.json();
-        } catch (err) {
-            console.error('[LocalProvider] Submit answer error:', err);
-            return { success: false, error: err.message };
-        }
-    },
-
-    publishBuzz(playerId, buzzTime) {
-        console.log('[LocalProvider] Solo buzz recorded locally:', buzzTime);
-    }
-};
-
-/**
- * FirestoreProvider - Pour les modes multijoueur
- * Synchronise via Firebase Firestore
- */
-const FirestoreProvider = {
-    db: null,
-    sessionRef: null,
-    sessionId: null,
-    unsubscribe: null,
-    onQuestionReceived: null,
-    lastQuestionPublishedAt: 0,
-
-    init(db, sessionId) {
-        this.db = db;
-        this.sessionId = sessionId;
-        this.sessionRef = db.collection('gameSessions').doc(sessionId);
-        this.startListening();
-    },
-
-    startListening() {
-        if (this.unsubscribe) this.unsubscribe();
-
-        this.unsubscribe = this.sessionRef.onSnapshot((doc) => {
-            if (!doc.exists) return;
-            
-            const data = doc.data();
-            this.handleUpdate(data);
-        });
-    },
-
-    handleUpdate(data) {
-        const questionPublishedAt = data.questionPublishedAt || 0;
-
-        if (data.currentQuestionData && questionPublishedAt > this.lastQuestionPublishedAt) {
-            this.lastQuestionPublishedAt = questionPublishedAt;
-            
-            if (this.onQuestionReceived) {
-                this.onQuestionReceived(data.currentQuestionData);
-            }
-        }
-    },
-
-    async fetchAndPublishQuestion(questionNumber) {
-        try {
-            const response = await fetch(`/game/${GameplayEngine.state.mode}/fetch-question`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': GameplayEngine.config.csrfToken
-                },
-                body: JSON.stringify({ question_number: questionNumber })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                await this.publishQuestion(data);
-            }
-        } catch (err) {
-            console.error('[FirestoreProvider] Fetch question error:', err);
-        }
-    },
-
-    async publishQuestion(questionData) {
-        try {
-            await this.sessionRef.update({
-                currentQuestionData: {
-                    question_number: questionData.question_number,
-                    question_text: questionData.question_text,
-                    answers: questionData.answers,
-                    theme: questionData.theme,
-                    sub_theme: questionData.sub_theme,
-                    total_questions: questionData.total_questions
-                },
-                currentQuestionIndex: questionData.question_number,
-                questionPublishedAt: Date.now()
-            });
-            console.log('[FirestoreProvider] Question published:', questionData.question_number);
-        } catch (err) {
-            console.error('[FirestoreProvider] Publish question error:', err);
-        }
-    },
-
-    async publishBuzz(playerId, buzzTime) {
-        try {
-            await this.sessionRef.collection('buzzers').doc(playerId).set({
-                buzzedAt: buzzTime,
-                reactionTimeMs: buzzTime - this.lastQuestionPublishedAt,
-                valid: true
-            });
-            
-            await this.sessionRef.collection('players').doc(playerId).update({
-                buzzed: true,
-                buzzTime: buzzTime
-            });
-        } catch (err) {
-            console.error('[FirestoreProvider] Publish buzz error:', err);
-        }
-    },
-
-    destroy() {
-        if (this.unsubscribe) {
-            this.unsubscribe();
-            this.unsubscribe = null;
-        }
-    }
-};
-
 // Export pour utilisation globale
 window.GameplayEngine = GameplayEngine;
-window.LocalProvider = LocalProvider;
-window.FirestoreProvider = FirestoreProvider;

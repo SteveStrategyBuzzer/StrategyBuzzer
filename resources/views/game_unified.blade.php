@@ -1414,6 +1414,13 @@ window.addEventListener('beforeunload', () => {
     <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
 </audio>
 
+<script src="{{ asset('js/GameplayEngine.js') }}"></script>
+@if(!$isFirebaseMode)
+<script src="{{ asset('js/LocalProvider.js') }}"></script>
+@else
+<script src="{{ asset('js/FirestoreProvider.js') }}"></script>
+@endif
+
 <script>
 const gameConfig = {
     mode: '{{ $mode }}',
@@ -1445,21 +1452,65 @@ let buzzed = false;
 let answersShown = false;
 let playerBuzzTime = null;
 
-const buzzButton = document.getElementById('buzzButton');
-const buzzContainer = document.getElementById('buzzContainer');
-const answersGrid = document.getElementById('answersGrid');
-const chronoTimer = document.getElementById('chronoTimer');
 const buzzerSound = document.getElementById('buzzerSound');
 const waitingOverlay = document.getElementById('waitingOverlay');
+const answersGrid = document.getElementById('answersGrid');
 
 const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default_1';
 document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
 buzzerSound.load();
 
+document.addEventListener('DOMContentLoaded', function() {
+    let provider;
+    if (gameConfig.isFirebaseMode) {
+        provider = null;
+    } else {
+        LocalProvider.init({
+            csrfToken: gameConfig.csrfToken,
+            routes: {
+                fetchQuestion: gameConfig.routes.fetchQuestion,
+                buzz: gameConfig.routes.buzz,
+                answer: gameConfig.routes.answer
+            },
+            niveau: {{ $niveau }}
+        });
+        provider = LocalProvider;
+    }
+    
+    GameplayEngine.init({
+        config: {
+            timerDuration: 8,
+            csrfToken: gameConfig.csrfToken,
+            routes: gameConfig.routes,
+            sounds: {
+                buzz: document.getElementById('buzzerSound'),
+                correct: document.getElementById('correctSound'),
+                incorrect: document.getElementById('incorrectSound')
+            }
+        },
+        state: {
+            mode: gameConfig.mode,
+            isHost: gameConfig.isHost,
+            playerId: gameConfig.playerId,
+            sessionId: gameConfig.sessionId,
+            currentQuestion: gameConfig.currentQuestion,
+            totalQuestions: gameConfig.totalQuestions
+        },
+        provider: provider
+    });
+    
+    GameplayEngine.startTimer();
+});
+
 function startTimer() {
+    if (typeof GameplayEngine !== 'undefined' && GameplayEngine.startTimer) {
+        GameplayEngine.startTimer();
+        return;
+    }
     timerInterval = setInterval(() => {
         timeLeft--;
-        chronoTimer.textContent = timeLeft;
+        const chronoTimer = document.getElementById('chronoTimer');
+        if (chronoTimer) chronoTimer.textContent = timeLeft;
         
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
@@ -1470,74 +1521,17 @@ function startTimer() {
     }, 1000);
 }
 
-buzzButton.addEventListener('click', async function() {
-    if (buzzed) return;
-    
-    buzzed = true;
-    playerBuzzTime = 8 - timeLeft;
-    clearInterval(timerInterval);
-    
-    buzzerSound.currentTime = 0;
-    buzzerSound.play();
-    
-    buzzButton.disabled = true;
-    buzzButton.style.opacity = '0.5';
-    
-    if (gameConfig.isFirebaseMode) {
-        await sendBuzzToServer();
-    } else {
-        setTimeout(() => {
-            showAnswers();
-        }, 1500);
-    }
-});
-
-async function sendBuzzToServer() {
-    if (window.handleFirebaseBuzz) {
-        const buzzSuccess = await window.handleFirebaseBuzz(playerBuzzTime);
-        if (!buzzSuccess) {
-            console.log('[Buzz] Someone else buzzed first, showing answers');
-            buzzed = true;
-            showAnswers();
-            return;
-        }
-    }
-    
-    fetch(gameConfig.routes.buzz, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': gameConfig.csrfToken
-        },
-        body: JSON.stringify({
-            buzz_time: playerBuzzTime
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('[Buzz] Server response:', data);
-        if (data.show_answers || !data.waiting_for_opponent) {
-            setTimeout(() => {
-                showAnswers();
-            }, 500);
-        } else if (data.waiting_for_opponent) {
-            showWaitingOverlay('{{ __("En attente de l\'adversaire...") }}');
-        }
-    })
-    .catch(error => {
-        console.error('Buzz error:', error);
-        showAnswers();
-    });
-}
-
 function showAnswers() {
     if (answersShown) return;
     answersShown = true;
     
-    buzzContainer.style.display = 'none';
-    answersGrid.style.display = 'grid';
+    const buzzContainer = document.getElementById('buzzContainer');
+    const grid = document.getElementById('answersGrid');
     
-    const answerButtons = answersGrid.querySelectorAll('.answer-option');
+    if (buzzContainer) buzzContainer.style.display = 'none';
+    if (grid) grid.style.display = 'grid';
+    
+    const answerButtons = grid?.querySelectorAll('.answer-option') || [];
     answerButtons.forEach((btn, index) => {
         btn.addEventListener('click', () => handleAnswerClick(btn, index));
     });
@@ -1545,8 +1539,9 @@ function showAnswers() {
 
 function handleAnswerClick(button, index) {
     const isCorrect = button.dataset.correct === 'true';
+    const grid = document.getElementById('answersGrid');
     
-    answersGrid.querySelectorAll('.answer-option').forEach(btn => {
+    grid?.querySelectorAll('.answer-option').forEach(btn => {
         btn.classList.add('disabled');
         if (btn.dataset.correct === 'true') {
             btn.classList.add('correct');
@@ -1558,8 +1553,10 @@ function handleAnswerClick(button, index) {
     }
     
     const sound = isCorrect ? document.getElementById('correctSound') : document.getElementById('incorrectSound');
-    sound.currentTime = 0;
-    sound.play().catch(e => console.log('Sound error:', e));
+    if (sound) {
+        sound.currentTime = 0;
+        sound.play().catch(e => console.log('Sound error:', e));
+    }
     
     submitAnswer(index, isCorrect);
 }
@@ -1586,6 +1583,10 @@ async function submitAnswer(answerIndex, isCorrect) {
         hideWaitingOverlay();
         
         document.getElementById('playerScore').textContent = data.player_score;
+        
+        if (typeof GameplayEngine !== 'undefined') {
+            GameplayEngine.updateScores(data.player_score, data.opponent?.opponent_score);
+        }
         
         if (window.handleFirebaseScore) {
             await window.handleFirebaseScore(data.player_score);
@@ -1787,6 +1788,11 @@ const GameFlowController = {
         gameConfig.currentQuestion = questionData.question_number;
         this.lastQuestionNumber = questionData.question_number;
         
+        if (typeof GameplayEngine !== 'undefined' && GameplayEngine.startQuestion) {
+            GameplayEngine.startQuestion(questionData);
+            return;
+        }
+        
         const themeDisplay = questionData.theme === 'Culture générale' ? '{{ __("Général") }}' : questionData.theme;
         
         document.getElementById('questionText').textContent = questionData.question_text;
@@ -1837,6 +1843,10 @@ const GameFlowController = {
                     document.getElementById('playerScore').textContent = data.player_score;
                     if (data.opponent) {
                         document.getElementById('opponentScore').textContent = data.opponent.opponent_score;
+                    }
+                    
+                    if (typeof GameplayEngine !== 'undefined') {
+                        GameplayEngine.updateScores(data.player_score, data.opponent?.opponent_score);
                     }
                     
                     setTimeout(() => {
@@ -1982,15 +1992,43 @@ function hideWaitingOverlay() {
             if (providerInit) {
                 console.log('[Firebase] MultiplayerFirestoreProvider initialized');
                 
+                if (typeof FirestoreProvider !== 'undefined') {
+                    FirestoreProvider.init({
+                        db: db,
+                        doc: doc,
+                        onSnapshot: onSnapshot,
+                        updateDoc: updateDoc,
+                        serverTimestamp: serverTimestamp,
+                        arrayUnion: arrayUnion,
+                        getDoc: getDoc,
+                        sessionId: sessionId,
+                        playerId: gameConfig.playerId,
+                        isHost: gameConfig.isHost,
+                        csrfToken: gameConfig.csrfToken,
+                        routes: gameConfig.routes
+                    });
+                    
+                    if (typeof GameplayEngine !== 'undefined') {
+                        GameplayEngine.setProvider(FirestoreProvider);
+                        console.log('[Firebase] FirestoreProvider set for GameplayEngine');
+                    }
+                }
+                
                 window.MultiplayerFirestoreProvider.listenForQuestions((questionData, questionNumber) => {
                     console.log('[Firebase] Question from provider:', questionNumber);
                     if (questionNumber > GameFlowController.lastQuestionNumber) {
+                        if (typeof GameplayEngine !== 'undefined' && GameplayEngine.receiveQuestion) {
+                            GameplayEngine.receiveQuestion(questionData);
+                        }
                         GameFlowController.onQuestionDataReceived(questionData, questionNumber);
                     }
                 });
                 
                 window.MultiplayerFirestoreProvider.listenForBuzz((buzzedPlayerId, buzzTime) => {
                     console.log('[Firebase] Opponent buzzed via provider');
+                    if (typeof GameplayEngine !== 'undefined' && GameplayEngine.receiveBuzz) {
+                        GameplayEngine.receiveBuzz(buzzedPlayerId, buzzTime);
+                    }
                     if (!answersShown) {
                         hideWaitingOverlay();
                         showAnswers();
@@ -1999,6 +2037,9 @@ function hideWaitingOverlay() {
                 
                 window.MultiplayerFirestoreProvider.listenForScores((opponentScore) => {
                     document.getElementById('opponentScore').textContent = opponentScore;
+                    if (typeof GameplayEngine !== 'undefined') {
+                        GameplayEngine.updateScores(null, opponentScore);
+                    }
                 });
                 
                 window.handleFirebaseBuzz = async function(buzzTime) {
