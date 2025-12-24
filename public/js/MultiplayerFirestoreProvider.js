@@ -19,6 +19,7 @@ const MultiplayerFirestoreProvider = {
     firestoreDoc: null,
     firestoreOnSnapshot: null,
     firestoreUpdateDoc: null,
+    firestoreSetDoc: null,
     firestoreServerTimestamp: null,
     firestoreArrayUnion: null,
     unsubscribeQuestion: null,
@@ -57,6 +58,7 @@ const MultiplayerFirestoreProvider = {
         this.firestoreDoc = config.doc;
         this.firestoreOnSnapshot = config.onSnapshot;
         this.firestoreUpdateDoc = config.updateDoc;
+        this.firestoreSetDoc = config.setDoc;
         this.firestoreServerTimestamp = config.serverTimestamp;
         this.firestoreArrayUnion = config.arrayUnion;
         this.firestoreGetDoc = config.getDoc;
@@ -128,6 +130,7 @@ const MultiplayerFirestoreProvider = {
 
     /**
      * Publie une question (hôte uniquement)
+     * Utilise setDoc avec merge:true pour créer le document s'il n'existe pas
      */
     async publishQuestion(questionData, questionNumber) {
         if (!this.isHost || !this.db || !this.sessionId) {
@@ -137,7 +140,7 @@ const MultiplayerFirestoreProvider = {
 
         try {
             const sessionRef = this.getSessionRef();
-            await this.firestoreUpdateDoc(sessionRef, {
+            const updateData = {
                 currentQuestionData: questionData,
                 questionPublishedAt: this.firestoreServerTimestamp(),
                 currentQuestion: questionNumber,
@@ -146,8 +149,18 @@ const MultiplayerFirestoreProvider = {
                 player1Buzzed: false,
                 player2Buzzed: false,
                 buzzTime: null,
-                playersReady: []
-            });
+                playersReady: [],
+                player1Id: this.playerId,
+                hostId: this.playerId,
+                mode: this.mode,
+                sessionId: this.sessionId
+            };
+            
+            if (this.firestoreSetDoc) {
+                await this.firestoreSetDoc(sessionRef, updateData, { merge: true });
+            } else {
+                await this.firestoreUpdateDoc(sessionRef, updateData);
+            }
 
             console.log('[MultiplayerFirestoreProvider] Question published:', questionNumber);
             return true;
@@ -290,9 +303,15 @@ const MultiplayerFirestoreProvider = {
 
         try {
             const sessionRef = this.getSessionRef();
-            await this.firestoreUpdateDoc(sessionRef, {
+            const updateData = {
                 playersReady: this.firestoreArrayUnion(this.playerId)
-            });
+            };
+            
+            if (this.firestoreSetDoc) {
+                await this.firestoreSetDoc(sessionRef, updateData, { merge: true });
+            } else {
+                await this.firestoreUpdateDoc(sessionRef, updateData);
+            }
 
             console.log('[MultiplayerFirestoreProvider] Player marked ready:', this.playerId);
             return true;

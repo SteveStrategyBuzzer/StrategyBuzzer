@@ -1461,9 +1461,28 @@ document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
 buzzerSound.load();
 
 document.addEventListener('DOMContentLoaded', function() {
-    let provider;
     if (gameConfig.isFirebaseMode) {
-        provider = null;
+        GameplayEngine.init({
+            config: {
+                timerDuration: 8,
+                csrfToken: gameConfig.csrfToken,
+                routes: gameConfig.routes,
+                sounds: {
+                    buzz: document.getElementById('buzzerSound'),
+                    correct: document.getElementById('correctSound'),
+                    incorrect: document.getElementById('incorrectSound')
+                }
+            },
+            state: {
+                mode: gameConfig.mode,
+                isHost: gameConfig.isHost,
+                playerId: gameConfig.playerId,
+                sessionId: gameConfig.sessionId,
+                currentQuestion: gameConfig.currentQuestion,
+                totalQuestions: gameConfig.totalQuestions
+            },
+            provider: null
+        });
     } else {
         LocalProvider.init({
             csrfToken: gameConfig.csrfToken,
@@ -1474,32 +1493,31 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             niveau: {{ $niveau }}
         });
-        provider = LocalProvider;
+        
+        GameplayEngine.init({
+            config: {
+                timerDuration: 8,
+                csrfToken: gameConfig.csrfToken,
+                routes: gameConfig.routes,
+                sounds: {
+                    buzz: document.getElementById('buzzerSound'),
+                    correct: document.getElementById('correctSound'),
+                    incorrect: document.getElementById('incorrectSound')
+                }
+            },
+            state: {
+                mode: gameConfig.mode,
+                isHost: gameConfig.isHost,
+                playerId: gameConfig.playerId,
+                sessionId: gameConfig.sessionId,
+                currentQuestion: gameConfig.currentQuestion,
+                totalQuestions: gameConfig.totalQuestions
+            },
+            provider: LocalProvider
+        });
+        
+        GameplayEngine.startTimer();
     }
-    
-    GameplayEngine.init({
-        config: {
-            timerDuration: 8,
-            csrfToken: gameConfig.csrfToken,
-            routes: gameConfig.routes,
-            sounds: {
-                buzz: document.getElementById('buzzerSound'),
-                correct: document.getElementById('correctSound'),
-                incorrect: document.getElementById('incorrectSound')
-            }
-        },
-        state: {
-            mode: gameConfig.mode,
-            isHost: gameConfig.isHost,
-            playerId: gameConfig.playerId,
-            sessionId: gameConfig.sessionId,
-            currentQuestion: gameConfig.currentQuestion,
-            totalQuestions: gameConfig.totalQuestions
-        },
-        provider: provider
-    });
-    
-    GameplayEngine.startTimer();
 });
 
 function startTimer() {
@@ -1946,7 +1964,7 @@ function hideWaitingOverlay() {
         import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js')
     ]);
     
-    const { getFirestore, doc, onSnapshot, updateDoc, serverTimestamp, arrayUnion, getDoc } = firestoreModule;
+    const { getFirestore, doc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, getDoc } = firestoreModule;
     
     const firebaseConfig = {
         apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
@@ -1984,6 +2002,7 @@ function hideWaitingOverlay() {
                 doc: doc,
                 onSnapshot: onSnapshot,
                 updateDoc: updateDoc,
+                setDoc: setDoc,
                 serverTimestamp: serverTimestamp,
                 arrayUnion: arrayUnion,
                 getDoc: getDoc
@@ -1998,6 +2017,7 @@ function hideWaitingOverlay() {
                         doc: doc,
                         onSnapshot: onSnapshot,
                         updateDoc: updateDoc,
+                        setDoc: setDoc,
                         serverTimestamp: serverTimestamp,
                         arrayUnion: arrayUnion,
                         getDoc: getDoc,
@@ -2011,6 +2031,8 @@ function hideWaitingOverlay() {
                     if (typeof GameplayEngine !== 'undefined') {
                         GameplayEngine.setProvider(FirestoreProvider);
                         console.log('[Firebase] FirestoreProvider set for GameplayEngine');
+                        GameplayEngine.startTimer();
+                        console.log('[Firebase] Timer started after provider set');
                     }
                 }
                 

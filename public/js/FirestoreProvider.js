@@ -16,6 +16,7 @@ const FirestoreProvider = {
     firestoreDoc: null,
     firestoreOnSnapshot: null,
     firestoreUpdateDoc: null,
+    firestoreSetDoc: null,
     firestoreServerTimestamp: null,
     firestoreArrayUnion: null,
     firestoreGetDoc: null,
@@ -49,6 +50,7 @@ const FirestoreProvider = {
         this.firestoreDoc = config.doc;
         this.firestoreOnSnapshot = config.onSnapshot;
         this.firestoreUpdateDoc = config.updateDoc;
+        this.firestoreSetDoc = config.setDoc;
         this.firestoreServerTimestamp = config.serverTimestamp;
         this.firestoreArrayUnion = config.arrayUnion;
         this.firestoreGetDoc = config.getDoc;
@@ -185,6 +187,7 @@ const FirestoreProvider = {
 
     /**
      * HOST ONLY: Publish question to Firebase with correct_index
+     * Uses setDoc with merge:true to create document if it doesn't exist
      * @param {Object} questionData - Question data including correct_index
      * @returns {Promise<boolean>} Success status
      */
@@ -196,13 +199,21 @@ const FirestoreProvider = {
 
         try {
             const sessionRef = this.getSessionRef();
-            await this.firestoreUpdateDoc(sessionRef, {
+            const updateData = {
                 currentQuestionData: questionData,
                 currentQuestionNumber: questionData.question_number,
                 buzzedBy: null,
                 buzzedAt: null,
-                playersReady: []
-            });
+                playersReady: [],
+                hostId: this.playerId,
+                sessionId: this.sessionId
+            };
+
+            if (this.firestoreSetDoc) {
+                await this.firestoreSetDoc(sessionRef, updateData, { merge: true });
+            } else {
+                await this.firestoreUpdateDoc(sessionRef, updateData);
+            }
 
             this.lastQuestionNumber = questionData.question_number;
             console.log('[FirestoreProvider] Question published:', questionData.question_number);
@@ -349,9 +360,15 @@ const FirestoreProvider = {
 
         try {
             const sessionRef = this.getSessionRef();
-            await this.firestoreUpdateDoc(sessionRef, {
+            const updateData = {
                 playersReady: this.firestoreArrayUnion(this.playerId)
-            });
+            };
+
+            if (this.firestoreSetDoc) {
+                await this.firestoreSetDoc(sessionRef, updateData, { merge: true });
+            } else {
+                await this.firestoreUpdateDoc(sessionRef, updateData);
+            }
 
             console.log('[FirestoreProvider] Player marked ready:', this.playerId);
             return true;
