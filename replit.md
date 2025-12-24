@@ -66,6 +66,13 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - XSS protection: chat messages rendered via textContent, not innerHTML
 - Graceful Firebase fallback: auto-proceeds after 10s timeout if Firebase unavailable
 
+**Duo Mode Bug Fixes (Dec 2025)**
+- Session cleanup in `startGame()` now happens AFTER validation to prevent wiping active sessions on validation failure
+- Avatar path handling: detects full URLs (http/https), relative paths, and simple names to avoid double-wrapping with asset()
+- Defensive validation for `$params`, `$opponentInfo`, `$scoring`, and `$avatarSkillsFull` arrays prevents crashes for invited players
+- Skills array iteration guarded with `is_array()` checks including per-skillData validation
+- Score initialization explicitly cast to (int) and reset to 0 at game start
+
 Key services include:
 -   **QuestionService**: Manages AI-ready, theme-based question generation with adaptive difficulty, a 3-layer anti-duplication system, progressive block-based generation, and language-specific strict spelling verification. It leverages Google Gemini 2.0 Flash.
 -   **SubthemeRotationSystem**: Implements deterministic sub-theme rotation across 8 main themes and 120 sub-themes, with dynamic pulling for "Culture générale".
