@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Chat du lobby
+    match /lobby_chats/{lobbyCode}/messages/{messageId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Voice presence (état micro on/off, speaking)
+    match /lobbies/{lobbyCode}/voice_presence/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // WebRTC signaling (pour connexion audio peer-to-peer)
+    match /lobbies/{lobbyCode}/webrtc/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Pour le mode League Team
+    match /lobbies/{lobbyCode}/teams/{teamId}/voice_presence/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /lobbies/{lobbyCode}/teams/{teamId}/webrtc/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Sessions de jeu générales
+    match /games/{gameId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /games/{gameId}/{subcollection=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Duo Match - invitations, état de jeu et questions synchronisées
+    match /duoMatches/{matchId} {
+      allow read, write: if request.auth != null;
+      
+      match /webrtc/{signalId} {
+        allow read, write: if request.auth != null;
+      }
+      
+      match /voice_presence/{playerId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // League Individual matches et questions synchronisées
+    match /leagueMatches/{matchId} {
+      allow read, write: if request.auth != null;
+      
+      match /webrtc/{signalId} {
+        allow read, write: if request.auth != null;
+      }
+      
+      match /voice_presence/{playerId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // League Team matches et questions synchronisées
+    match /leagueTeamMatches/{matchId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Master mode rooms
+    match /masterRooms/{roomCode} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // User presence/online status
+    match /presence/{odPlayerId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
