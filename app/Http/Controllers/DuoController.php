@@ -743,4 +743,215 @@ class DuoController extends Controller
             'message' => __('Contact ajouté'),
         ]);
     }
+
+    /**
+     * Join the matchmaking queue (validate entry fee for higher divisions)
+     */
+    public function joinQueue(Request $request)
+    {
+        $request->validate([
+            'target_division' => 'required|string|in:bronze,argent,or,platine,diamant,legende',
+        ]);
+
+        $user = Auth::user();
+        $targetDivision = $request->target_division;
+        
+        // Get user's current division
+        $division = $this->divisionService->getOrCreateDivision($user, 'duo');
+        $currentDivision = $division->division ?? 'bronze';
+        
+        // Division hierarchy and fees
+        $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+        $divisionFees = [
+            'bronze' => 0,
+            'argent' => 0,
+            'or' => 50,
+            'platine' => 100,
+            'diamant' => 200,
+            'legende' => 500
+        ];
+        
+        $currentIndex = array_search($currentDivision, $divisions);
+        $targetIndex = array_search($targetDivision, $divisions);
+        
+        // Validate target division is within 2 divisions above current
+        if ($targetIndex < $currentIndex) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous ne pouvez pas jouer dans une division inférieure'),
+            ], 400);
+        }
+        
+        if ($targetIndex > $currentIndex + 2) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous ne pouvez pas jouer plus de 2 divisions au-dessus de la vôtre'),
+            ], 400);
+        }
+        
+        // Calculate entry fee (only if playing in higher division)
+        $entryFee = 0;
+        if ($targetIndex > $currentIndex) {
+            $entryFee = $divisionFees[$targetDivision];
+        }
+        
+        // Check if user has enough coins
+        if ($entryFee > 0 && $user->coins < $entryFee) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous n\'avez pas assez de pièces pour cette division. Il vous faut :amount pièces.', ['amount' => $entryFee]),
+            ], 400);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => __('Prêt à rejoindre la file'),
+            'entry_fee' => $entryFee,
+        ]);
+    }
+
+    /**
+     * Create a match from queue selection
+     */
+    public function createQueueMatch(Request $request)
+    {
+        $request->validate([
+            'opponent_id' => 'required|integer|exists:users,id',
+            'target_division' => 'required|string|in:bronze,argent,or,platine,diamant,legende',
+        ]);
+
+        $user = Auth::user();
+        $opponentId = $request->opponent_id;
+        $targetDivision = $request->target_division;
+        
+        // Validate opponent exists
+        $opponent = User::find($opponentId);
+        if (!$opponent) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Adversaire introuvable'),
+            ], 404);
+        }
+        
+        if ($opponentId === $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous ne pouvez pas jouer contre vous-même'),
+            ], 400);
+        }
+        
+        // Load both players' DuoStats for level validation
+        $userStats = PlayerDuoStat::firstOrCreate(
+            ['user_id' => $user->id],
+            ['level' => 0]
+        );
+        $opponentStats = PlayerDuoStat::firstOrCreate(
+            ['user_id' => $opponentId],
+            ['level' => 0]
+        );
+        
+        // Validate level difference is within ±10
+        $levelDiff = abs($userStats->level - $opponentStats->level);
+        if ($levelDiff > 10) {
+            return response()->json([
+                'success' => false,
+                'message' => __('La différence de niveau est trop grande (max ±10). Votre niveau: :user, Adversaire: :opponent', [
+                    'user' => $userStats->level,
+                    'opponent' => $opponentStats->level
+                ]),
+            ], 400);
+        }
+        
+        // Get user's current division
+        $division = $this->divisionService->getOrCreateDivision($user, 'duo');
+        $currentDivision = $division->division ?? 'bronze';
+        
+        // Division hierarchy and fees
+        $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+        $divisionFees = [
+            'bronze' => 0,
+            'argent' => 0,
+            'or' => 50,
+            'platine' => 100,
+            'diamant' => 200,
+            'legende' => 500
+        ];
+        
+        $currentIndex = array_search($currentDivision, $divisions);
+        $targetIndex = array_search($targetDivision, $divisions);
+        
+        // Validate target division is within allowed range (current to current+2)
+        if ($targetIndex < $currentIndex) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous ne pouvez pas jouer dans une division inférieure à la vôtre.'),
+            ], 400);
+        }
+        
+        if ($targetIndex > $currentIndex + 2) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous ne pouvez jouer que jusqu\'à 2 divisions au-dessus de la vôtre.'),
+            ], 400);
+        }
+        
+        // Calculate entry fee (only if playing in higher division)
+        $entryFee = 0;
+        if ($targetIndex > $currentIndex) {
+            $entryFee = $divisionFees[$targetDivision];
+        }
+        
+        // Deduct entry fee if applicable
+        if ($entryFee > 0) {
+            if ($user->coins < $entryFee) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('Vous n\'avez pas assez de pièces. Il vous faut :amount pièces.', ['amount' => $entryFee]),
+                ], 400);
+            }
+            $user->coins -= $entryFee;
+            $user->save();
+        }
+        
+        // Create the match with target division info
+        $match = DuoMatch::create([
+            'player1_id' => $user->id,
+            'player2_id' => $opponentId,
+            'status' => 'accepted',
+            'is_random_match' => true,
+            'division' => $targetDivision,
+        ]);
+        
+        // Create lobby for the match
+        $lobby = $this->lobbyService->createLobby($user, 'duo', [
+            'theme' => __('Culture générale'),
+            'nb_questions' => 10,
+            'match_id' => $match->id,
+        ]);
+        
+        $match->lobby_code = $lobby['code'];
+        $match->save();
+        
+        // Register mutual contacts
+        $this->contactService->registerMutualContacts($user->id, $opponentId);
+        
+        // Create Firestore match session
+        $this->firestoreService->createMatchSession($match->id, [
+            'player1_id' => $match->player1_id,
+            'player2_id' => $match->player2_id,
+            'player1_name' => $user->name ?? 'Player 1',
+            'player2_name' => $opponent->name ?? 'Player 2',
+            'lobby_code' => $lobby['code'],
+            'status' => 'lobby',
+            'division' => $targetDivision,
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'match' => $match->load(['player1', 'player2']),
+            'lobby_code' => $lobby['code'],
+            'redirect_url' => route('lobby.show', ['code' => $lobby['code']]),
+            'entry_fee_deducted' => $entryFee,
+        ]);
+    }
 }

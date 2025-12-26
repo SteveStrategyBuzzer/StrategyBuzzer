@@ -233,6 +233,8 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::delete('/contacts/groups/{groupId}', [App\Http\Controllers\PlayerGroupController::class, 'destroy'])->name('contacts.groups.destroy');
     Route::post('/contacts/groups/{groupId}/members', [App\Http\Controllers\PlayerGroupController::class, 'addMembers'])->name('contacts.groups.addMembers');
     Route::delete('/contacts/groups/{groupId}/members', [App\Http\Controllers\PlayerGroupController::class, 'removeMembers'])->name('contacts.groups.removeMembers');
+    Route::post('/queue/join', [App\Http\Controllers\DuoController::class, 'joinQueue'])->name('queue.join');
+    Route::post('/queue/create-match', [App\Http\Controllers\DuoController::class, 'createQueueMatch'])->name('queue.createMatch');
 });
 
 /* ===== CHAT (Messages entre joueurs) ===== */

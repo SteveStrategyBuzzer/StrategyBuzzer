@@ -46,22 +46,68 @@
         </style>
         @endif
 
+        @if($duoFullUnlocked ?? false)
+        <!-- Division Selector -->
+        <div class="division-selector-section">
+            <h3>🎯 {{ __('Sélectionner une division') }}</h3>
+            <p class="hint-text">{{ __('Vous pouvez jouer jusqu\'à 2 divisions au-dessus de la vôtre') }}</p>
+            <div class="division-selector" id="divisionSelector">
+                @php
+                    $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+                    $currentDivision = $division->division ?? 'bronze';
+                    $currentDivIndex = array_search($currentDivision, $divisions);
+                    $maxDivIndex = min($currentDivIndex + 2, count($divisions) - 1);
+                    $divisionEmojis = ['🥉', '🥈', '🥇', '💎', '💠', '👑'];
+                    $divisionFees = [0, 0, 50, 100, 200, 500];
+                @endphp
+                @for($i = $currentDivIndex; $i <= $maxDivIndex; $i++)
+                    <button class="division-option {{ $i == $currentDivIndex ? 'selected current' : '' }}" 
+                            data-division="{{ $divisions[$i] }}"
+                            data-fee="{{ $i > $currentDivIndex ? $divisionFees[$i] : 0 }}">
+                        <span class="div-emoji">{{ $divisionEmojis[$i] }}</span>
+                        <span class="div-name">{{ ucfirst($divisions[$i]) }}</span>
+                        @if($i > $currentDivIndex)
+                            <span class="div-fee">{{ $divisionFees[$i] }} 💰</span>
+                        @endif
+                    </button>
+                @endfor
+            </div>
+        </div>
+        @endif
+
         <div class="matchmaking-options">
             @if($duoFullUnlocked ?? false)
             {{-- Accès COMPLET : Matchmaking et Invitations disponibles --}}
-            <div class="option-card">
-                <h3>🎯 {{ __('MATCHMAKING ALÉATOIRE') }}</h3>
-                <p>{{ __('Affrontez un adversaire de votre division') }}</p>
-                <button id="randomMatchBtn" class="btn-primary btn-large">
-                    {{ __('CHERCHER UN ADVERSAIRE') }}
-                </button>
+            
+            <!-- Available Opponents Section -->
+            <div class="option-card opponents-section">
+                <h3>🎮 {{ __('Adversaires disponibles') }}</h3>
+                <div class="opponents-list" id="opponentsList">
+                    <div class="empty-message">{{ __('Rejoignez la file pour voir les adversaires disponibles') }}</div>
+                </div>
             </div>
 
-            <div class="divider">{{ __('OU') }}</div>
+            <div class="divider">{{ __('VS') }}</div>
 
-            <div class="option-card">
-                <h3>👥 {{ __('INVITER UN AMI') }}</h3>
-                <p>{{ __('Défiez un joueur spécifique') }}</p>
+            <!-- Queue Actions Section -->
+            <div class="option-card queue-section">
+                <h3>🎯 {{ __('MATCHMAKING') }}</h3>
+                <p>{{ __('Affrontez un adversaire de votre division') }}</p>
+                
+                <button id="randomMatchBtn" class="btn-primary btn-large">
+                    {{ __('REJOINDRE LA FILE D\'ATTENTE') }}
+                </button>
+                <button id="leaveQueueBtn" class="btn-secondary btn-large" style="display: none;">
+                    {{ __('QUITTER LA FILE') }}
+                </button>
+                <div id="queueStatus" class="queue-status" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>{{ __('En attente d\'adversaires...') }}</p>
+                </div>
+                
+                <div class="divider-small">{{ __('OU') }}</div>
+                
+                <h4>👥 {{ __('INVITER UN AMI') }}</h4>
                 <div class="invite-section">
                     <input type="text" id="inviteInput" placeholder="{{ __('Code du joueur (ex: SB-4X2K)...') }}" class="invite-input">
                     <button id="inviteBtn" class="btn-secondary btn-large">
@@ -178,6 +224,21 @@
 <audio id="messageNotificationSound" preload="auto">
     <source src="{{ asset('sounds/message_notification.mp3') }}" type="audio/mpeg">
 </audio>
+
+<!-- Confirm Match Modal for Queue -->
+<div id="confirmMatchModal" class="modal-backdrop" style="display: none;">
+    <div class="confirm-match-content">
+        <h3>⚔️ {{ __('Confirmer le match') }}</h3>
+        <p id="confirmMatchText">{{ __('Voulez-vous affronter ce joueur ?') }}</p>
+        <div id="feeWarning" class="fee-warning" style="display: none;">
+            ⚠️ {{ __('Frais d\'entrée') }}: <span id="feeAmount">0</span> 💰
+        </div>
+        <div class="modal-buttons">
+            <button onclick="closeConfirmModal()" class="btn-secondary">{{ __('Annuler') }}</button>
+            <button id="confirmMatchBtn" onclick="confirmMatch()" class="btn-primary">{{ __('Confirmer') }}</button>
+        </div>
+    </div>
+</div>
 
 <div id="playerCardModal" class="modal-backdrop" style="display: none;">
     <div class="player-card-modal">
@@ -461,6 +522,255 @@
     display: grid;
     gap: 30px;
     margin-bottom: 40px;
+}
+
+/* Division Selector Styles */
+.division-selector-section {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.division-selector-section h3 {
+    margin: 0 0 10px 0;
+    color: #1a1a1a;
+    text-align: center;
+}
+
+.division-selector-section .hint-text {
+    color: #666;
+    text-align: center;
+    margin: 0 0 15px 0;
+    font-size: 0.9em;
+}
+
+.division-selector {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.division-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 25px;
+    border: 3px solid #e0e0e0;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 100px;
+}
+
+.division-option:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+}
+
+.division-option.selected {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+}
+
+.division-option.current {
+    position: relative;
+}
+
+.division-option.current::after {
+    content: 'Actuelle';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #4CAF50;
+    color: white;
+    font-size: 0.7em;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.division-option .div-emoji {
+    font-size: 2em;
+    margin-bottom: 5px;
+}
+
+.division-option .div-name {
+    font-weight: bold;
+    color: #1a1a1a;
+}
+
+.division-option .div-fee {
+    font-size: 0.85em;
+    color: #f57c00;
+    margin-top: 5px;
+}
+
+/* Queue Status Styles */
+.queue-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-radius: 12px;
+    margin-top: 15px;
+}
+
+.queue-status .spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.queue-status p {
+    margin: 0;
+    color: #667eea;
+    font-weight: bold;
+}
+
+/* Opponents List Styles */
+.opponents-section {
+    min-height: 200px;
+}
+
+.opponents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.opponents-list .empty-message {
+    color: #666;
+    text-align: center;
+    padding: 40px 20px;
+    font-style: italic;
+}
+
+.opponent-card {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+
+.opponent-card:hover {
+    background: #e9ecef;
+    border-color: #667eea;
+    transform: translateX(5px);
+}
+
+.opponent-card .player-avatar {
+    width: 50px;
+    height: 50px;
+    margin-right: 15px;
+}
+
+.opponent-card .player-info {
+    flex: 1;
+}
+
+.opponent-card .player-info h4 {
+    margin: 0 0 5px 0;
+    font-size: 1em;
+    color: #1a1a1a;
+}
+
+.opponent-card .player-stats-row {
+    display: flex;
+    gap: 10px;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.opponent-card .player-record {
+    font-size: 0.8em;
+    color: #999;
+}
+
+.opponent-card .select-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.opponent-card .select-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Queue Section Styles */
+.queue-section h4 {
+    margin: 15px 0 10px 0;
+    color: #1a1a1a;
+}
+
+.divider-small {
+    color: #999;
+    font-size: 0.9em;
+    margin: 15px 0;
+}
+
+/* Confirm Match Modal */
+.confirm-match-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.confirm-match-content {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+}
+
+.confirm-match-content h3 {
+    margin: 0 0 15px 0;
+}
+
+.confirm-match-content .fee-warning {
+    background: #fff3e0;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    color: #f57c00;
+}
+
+.confirm-match-content .modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
 }
 
 /* Bannière d'avertissement Mode Duo Complet */
@@ -2994,11 +3304,11 @@ setInterval(loadUnreadCounts, 10000);
 setTimeout(loadUnreadCounts, 1000);
 </script>
 
-<!-- Firebase SDK pour synchronisation temps réel des contacts -->
+<!-- Firebase SDK pour synchronisation temps réel des contacts et file d'attente -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, doc, collection, setDoc, deleteDoc, onSnapshot, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
@@ -3016,19 +3326,317 @@ const db = getFirestore(app);
 const currentUserId = {{ Auth::id() }};
 let contactsUnsubscribe = null;
 let matchUnsubscribe = null;
+let queueUnsubscribe = null;
 let lastVersion = null;
 let firebaseInitialized = false;
+let inQueue = false;
+let selectedOpponent = null;
+let firebaseUid = null;
+
+// Current user data for queue
+const currentUser = {
+    id: {{ Auth::id() }},
+    name: "{{ Auth::user()->name }}",
+    avatar_url: "{{ Auth::user()->avatar_url ?? '' }}",
+    division: "{{ $division->division ?? 'bronze' }}",
+    level: {{ $division->level ?? 1 }},
+    efficiency: {{ $division->initial_efficiency ?? 0 }},
+    matches_won: {{ $stats->matches_won ?? 0 }},
+    matches_lost: {{ $stats->matches_lost ?? 0 }}
+};
+
+let selectedDivision = currentUser.division;
 
 onAuthStateChanged(auth, (user) => {
     if (user && !firebaseInitialized) {
         firebaseInitialized = true;
-        console.log('[Firebase] Duo lobby authenticated');
+        firebaseUid = user.uid;
+        console.log('[Firebase] Duo lobby authenticated with UID:', firebaseUid);
         startContactsListener();
+        initQueueButtons();
     }
 });
 
 signInAnonymously(auth).catch(e => console.error('[Firebase] Auth error:', e));
 
+// Initialize queue button event listeners
+function initQueueButtons() {
+    const joinBtn = document.getElementById('randomMatchBtn');
+    const leaveBtn = document.getElementById('leaveQueueBtn');
+    
+    if (joinBtn) {
+        joinBtn.addEventListener('click', joinQueue);
+    }
+    if (leaveBtn) {
+        leaveBtn.addEventListener('click', leaveQueue);
+    }
+    
+    // Division selector
+    document.querySelectorAll('.division-option').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.division-option').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedDivision = this.dataset.division;
+            
+            // Refresh queue if in queue
+            if (inQueue) {
+                leaveQueue().then(() => joinQueue());
+            }
+        });
+    });
+}
+
+// Join the matchmaking queue
+async function joinQueue() {
+    const joinBtn = document.getElementById('randomMatchBtn');
+    const leaveBtn = document.getElementById('leaveQueueBtn');
+    const queueStatus = document.getElementById('queueStatus');
+    
+    // Ensure Firebase is authenticated before queue operations
+    if (!firebaseUid) {
+        console.error('Firebase not authenticated yet');
+        window.showToast('Connexion en cours, veuillez réessayer', 'warning');
+        return;
+    }
+    
+    // Validate entry fee via backend first
+    const fee = document.querySelector('.division-option.selected')?.dataset.fee || 0;
+    
+    try {
+        const response = await fetch('/duo/queue/join', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                target_division: selectedDivision
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            window.showToast(data.message || 'Erreur lors de la connexion à la file', 'error');
+            return;
+        }
+        
+        // Add to Firebase queue using Firebase UID as document ID
+        // The 'id' field stores Laravel user ID for backend matching
+        const queueRef = doc(db, 'duoQueue', firebaseUid);
+        await setDoc(queueRef, {
+            id: currentUser.id,
+            name: currentUser.name,
+            avatar_url: currentUser.avatar_url,
+            division: currentUser.division,
+            target_division: selectedDivision,
+            level: currentUser.level,
+            efficiency: currentUser.efficiency,
+            matches_won: currentUser.matches_won,
+            matches_lost: currentUser.matches_lost,
+            joined_at: serverTimestamp(),
+            ready: true
+        });
+        
+        joinBtn.style.display = 'none';
+        leaveBtn.style.display = 'inline-block';
+        queueStatus.style.display = 'flex';
+        inQueue = true;
+        
+        // Start listening for opponents
+        listenForOpponents();
+        
+    } catch (error) {
+        console.error('Error joining queue:', error);
+        window.showToast('Erreur lors de la connexion à la file', 'error');
+    }
+}
+
+// Leave the matchmaking queue
+async function leaveQueue() {
+    const joinBtn = document.getElementById('randomMatchBtn');
+    const leaveBtn = document.getElementById('leaveQueueBtn');
+    const queueStatus = document.getElementById('queueStatus');
+    
+    joinBtn.style.display = 'inline-block';
+    leaveBtn.style.display = 'none';
+    queueStatus.style.display = 'none';
+    inQueue = false;
+    
+    // Remove from Firebase queue using Firebase UID
+    try {
+        if (firebaseUid) {
+            await deleteDoc(doc(db, 'duoQueue', firebaseUid));
+        }
+    } catch (error) {
+        console.error('Error leaving queue:', error);
+    }
+    
+    // Stop listening
+    if (queueUnsubscribe) {
+        queueUnsubscribe();
+        queueUnsubscribe = null;
+    }
+    
+    // Clear opponents list
+    const opponentsList = document.getElementById('opponentsList');
+    if (opponentsList) {
+        opponentsList.innerHTML = '<div class="empty-message">{{ __("Rejoignez la file pour voir les adversaires disponibles") }}</div>';
+    }
+}
+
+// Listen for opponents in the queue
+function listenForOpponents() {
+    const opponentsList = document.getElementById('opponentsList');
+    
+    // Query for players in the same target division
+    const queueQuery = query(
+        collection(db, 'duoQueue'),
+        where('target_division', '==', selectedDivision),
+        where('ready', '==', true)
+    );
+    
+    queueUnsubscribe = onSnapshot(queueQuery, (snapshot) => {
+        const opponents = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            // Exclude self and check level range (±10)
+            if (data.id !== currentUser.id) {
+                const levelDiff = Math.abs(data.level - currentUser.level);
+                if (levelDiff <= 10) {
+                    opponents.push(data);
+                }
+            }
+        });
+        
+        renderOpponents(opponents);
+    });
+}
+
+// Render opponents list
+function renderOpponents(opponents) {
+    const opponentsList = document.getElementById('opponentsList');
+    
+    if (opponents.length === 0) {
+        opponentsList.innerHTML = '<div class="empty-message">{{ __("Aucun adversaire disponible. En attente...") }}</div>';
+        return;
+    }
+    
+    // Show max 3 opponents
+    const displayOpponents = opponents.slice(0, 3);
+    
+    opponentsList.innerHTML = displayOpponents.map(opp => `
+        <div class="opponent-card" onclick="window.selectOpponent(${JSON.stringify(opp).replace(/"/g, '&quot;')})">
+            <div class="player-avatar">
+                ${opp.avatar_url ? 
+                    `<img src="${opp.avatar_url}" alt="Avatar">` : 
+                    `<div class="default-avatar">${opp.name.charAt(0).toUpperCase()}</div>`
+                }
+            </div>
+            <div class="player-info">
+                <h4>${opp.name}</h4>
+                <div class="player-stats-row">
+                    <span class="efficiency">🎯 ${(opp.efficiency || 0).toFixed(1)}%</span>
+                    <span class="division-badge-small">${getDivisionEmoji(opp.division)}</span>
+                </div>
+                <div class="player-record">${opp.matches_won || 0}V - ${opp.matches_lost || 0}D</div>
+            </div>
+            <button class="select-btn" onclick="event.stopPropagation(); window.selectOpponent(${JSON.stringify(opp).replace(/"/g, '&quot;')})">
+                ⚔️
+            </button>
+        </div>
+    `).join('');
+}
+
+function getDivisionEmoji(division) {
+    const emojis = {
+        'bronze': '🥉',
+        'argent': '🥈',
+        'or': '🥇',
+        'platine': '💎',
+        'diamant': '💠',
+        'legende': '👑'
+    };
+    return emojis[division] || '🥉';
+}
+
+// Select opponent and show confirmation
+window.selectOpponent = function(opponentData) {
+    selectedOpponent = opponentData;
+    showConfirmModal();
+};
+
+function showConfirmModal() {
+    const modal = document.getElementById('confirmMatchModal');
+    const fee = document.querySelector('.division-option.selected')?.dataset.fee || 0;
+    
+    document.getElementById('confirmMatchText').textContent = 
+        `{{ __('Voulez-vous affronter') }} ${selectedOpponent.name} ?`;
+    
+    if (parseInt(fee) > 0) {
+        document.getElementById('feeWarning').style.display = 'block';
+        document.getElementById('feeAmount').textContent = fee;
+    } else {
+        document.getElementById('feeWarning').style.display = 'none';
+    }
+    
+    modal.style.display = 'flex';
+}
+
+window.closeConfirmModal = function() {
+    document.getElementById('confirmMatchModal').style.display = 'none';
+};
+
+window.confirmMatch = async function() {
+    if (!selectedOpponent) return;
+    
+    const confirmBtn = document.getElementById('confirmMatchBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '{{ __("Création du match...") }}';
+    
+    try {
+        const response = await fetch('/duo/queue/create-match', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                opponent_id: selectedOpponent.id,
+                target_division: selectedDivision
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Remove self from queue (using Firebase UID)
+            // Note: We can only delete our own document due to security rules
+            // The opponent's document will be cleaned up by their own client
+            if (firebaseUid) {
+                await deleteDoc(doc(db, 'duoQueue', firebaseUid));
+            }
+            
+            // Redirect to lobby
+            window.location.href = data.redirect_url;
+        } else {
+            window.showToast(data.message || '{{ __("Erreur lors de la création du match") }}', 'error');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = '{{ __("Confirmer") }}';
+        }
+    } catch (error) {
+        console.error('Error creating match:', error);
+        window.showToast('{{ __("Erreur lors de la création du match") }}', 'error');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '{{ __("Confirmer") }}';
+    }
+    
+    window.closeConfirmModal();
+};
+
+// Contacts listener
 function startContactsListener() {
     if (contactsUnsubscribe) return;
     
@@ -3108,11 +3716,26 @@ function stopMatchListener() {
     }
 }
 
+async function cleanupQueue() {
+    if (inQueue && firebaseUid) {
+        try {
+            await deleteDoc(doc(db, 'duoQueue', firebaseUid));
+            console.log('Removed from queue on page unload');
+        } catch (error) {
+            console.error('Error removing from queue:', error);
+        }
+    }
+}
+
 startContactsListener();
 
-window.addEventListener('beforeunload', () => {
+window.addEventListener('beforeunload', async (event) => {
+    await cleanupQueue();
     stopContactsListener();
     stopMatchListener();
+    if (queueUnsubscribe) {
+        queueUnsubscribe();
+    }
 });
 </script>
 @endsection
