@@ -894,6 +894,9 @@ body {
     function startCountdown() {
         cleanup(); // Stop listening once both ready
         
+        // PRE-LOAD QUESTIONS IN BACKGROUND (bloc 1 = questions 1-4)
+        preloadQuestions();
+        
         const countdownSection = document.getElementById('countdownSection');
         const waitingMessage = document.getElementById('waitingMessage');
         const goButton = document.getElementById('goButton');
@@ -1250,6 +1253,49 @@ body {
         if (waitingMessage) {
             waitingMessage.textContent = '{{ __("Veuillez retourner au lobby") }}';
             waitingMessage.style.display = 'block';
+        }
+    }
+    
+    // Pre-load questions function - called during countdown
+    async function preloadQuestions() {
+        if (!isHost) {
+            console.log('[Preload] Non-host player, skipping preload');
+            return;
+        }
+        
+        console.log('[Preload] Starting question preload for bloc 1 (questions 1-4)');
+        
+        try {
+            // Pre-fetch first block of questions (1-4) during countdown
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            
+            const response = await fetch('/game/{{ $mode }}/preload-questions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    block: 1,
+                    questions_per_block: 4
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('[Preload] Questions preloaded successfully:', data.count || 'unknown');
+                
+                // Store in sessionStorage for quick access on game page
+                if (data.questions && data.questions.length > 0) {
+                    sessionStorage.setItem('preloadedQuestions', JSON.stringify(data.questions));
+                    sessionStorage.setItem('preloadedBlock', '1');
+                }
+            } else {
+                console.warn('[Preload] Preload request failed, questions will load on demand');
+            }
+        } catch (error) {
+            console.warn('[Preload] Preload error (non-blocking):', error.message);
         }
     }
     

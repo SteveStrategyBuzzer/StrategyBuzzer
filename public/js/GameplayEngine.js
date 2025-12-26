@@ -157,36 +157,47 @@ const GameplayEngine = {
         return this.elements[name];
     },
 
+    // Flag to prevent multiple event listener registrations
+    _eventsBound: false,
+    
     /**
-     * Lie les événements
+     * Lie les événements avec délégation pour résister aux changements DOM
+     * Les listeners sont enregistrés une seule fois (singleton pattern)
      */
     bindEvents() {
-        if (this.elements.buzzButton) {
-            this.elements.buzzButton.addEventListener('click', () => this.handleBuzz());
+        // Guard against multiple bindings
+        if (this._eventsBound) {
+            return;
         }
-
-        this.elements.skillButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const skillId = e.target.dataset.skillId;
-                if (skillId) this.activateSkill(skillId);
-            });
+        this._eventsBound = true;
+        
+        // Délégation d'événements pour le buzzer - fonctionne même si le DOM change
+        document.addEventListener('click', (e) => {
+            const buzzButton = e.target.closest('#buzzButton');
+            if (buzzButton && !buzzButton.classList.contains('disabled') && !buzzButton.classList.contains('waiting')) {
+                this.handleBuzz();
+            }
         });
+
+        // Délégation pour les skills
+        document.addEventListener('click', (e) => {
+            const skillBtn = e.target.closest('.skill-circle.clickable');
+            if (skillBtn) {
+                const skillId = skillBtn.dataset.skillId;
+                if (skillId) this.activateSkill(skillId);
+            }
+        });
+        
+        console.log('[GameplayEngine] Event delegation bound (singleton)');
     },
 
     /**
-     * Réattache l'événement click du buzzer après re-rendu du DOM
-     * Doit être appelé AVANT refreshElements() pour détecter le changement
+     * Met à jour la référence du buzzer après re-rendu du DOM
+     * Les événements utilisent la délégation donc pas besoin de re-bind
      */
     rebindBuzzerEvent() {
         const buzzButton = document.getElementById('buzzButton');
         if (buzzButton) {
-            // Toujours rattacher le handler pour garantir qu'il est présent
-            // Utiliser une référence pour éviter les doublons
-            if (!buzzButton._gameplayBound) {
-                buzzButton.addEventListener('click', () => this.handleBuzz());
-                buzzButton._gameplayBound = true;
-                console.log('[GameplayEngine] Buzzer event bound');
-            }
             this.elements.buzzButton = buzzButton;
         }
     },

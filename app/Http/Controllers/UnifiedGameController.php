@@ -900,6 +900,69 @@ class UnifiedGameController extends Controller
         ]);
     }
     
+    /**
+     * Pre-load questions for a block (called during countdown to speed up game start)
+     * This caches questions 1-4 (bloc 1) in session before game starts
+     */
+    public function preloadQuestions(Request $request, string $mode)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state', []);
+        
+        if (empty($gameState)) {
+            return response()->json(['error' => __('Aucune partie en cours'), 'count' => 0], 200);
+        }
+        
+        $isHost = ($gameState['host_id'] ?? null) === $user->id;
+        if (!$isHost) {
+            return response()->json(['message' => 'Non-host skipped', 'count' => 0], 200);
+        }
+        
+        $block = $request->input('block', 1);
+        $questionsPerBlock = $request->input('questions_per_block', 4);
+        
+        $startQuestion = (($block - 1) * $questionsPerBlock) + 1;
+        $endQuestion = min($startQuestion + $questionsPerBlock - 1, $gameState['total_questions'] ?? 10);
+        
+        $preloadedQuestions = [];
+        $tempState = $gameState;
+        
+        for ($q = $startQuestion; $q <= $endQuestion; $q++) {
+            $tempState['current_question'] = $q;
+            $question = $this->getCurrentQuestion($tempState);
+            
+            if ($question) {
+                session(["prefetched_question_{$q}" => $question]);
+                
+                $answers = [];
+                foreach ($question['answers'] as $index => $answer) {
+                    $answerText = is_array($answer) ? ($answer['text'] ?? $answer) : $answer;
+                    $answers[] = [
+                        'index' => $index,
+                        'text' => $answerText,
+                    ];
+                }
+                
+                $preloadedQuestions[] = [
+                    'question_number' => $q,
+                    'question_text' => $question['text'] ?? '',
+                    'answers' => $answers,
+                    'theme' => $gameState['theme'] ?? 'Culture générale',
+                    'sub_theme' => $question['sub_theme'] ?? '',
+                ];
+            }
+        }
+        
+        \Log::info("[Preload] Pre-cached questions {$startQuestion}-{$endQuestion} for user {$user->id}");
+        
+        return response()->json([
+            'success' => true,
+            'count' => count($preloadedQuestions),
+            'block' => $block,
+            'questions' => $preloadedQuestions,
+        ]);
+    }
+    
     public function useSkill(Request $request, string $mode)
     {
         $validated = $request->validate([

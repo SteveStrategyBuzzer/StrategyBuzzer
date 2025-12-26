@@ -164,9 +164,15 @@ service cloud.firestore {
       }
     }
     
-    // Game state documents (legacy)
+    // Game state documents (ALL multiplayer modes)
+    // Path: games/duo-match-{lobbyCode}, games/league-individual-{id}, etc.
     match /games/{gameId} {
       allow read, write: if request.auth != null;
+      
+      // Sub-collections for game state
+      match /{subcollection}/{docId} {
+        allow read, write: if request.auth != null;
+      }
     }
     
     // Lobby documents (legacy)

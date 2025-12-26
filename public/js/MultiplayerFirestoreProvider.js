@@ -423,29 +423,53 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
-     * Met à jour le score d'un joueur
+     * Met à jour le score d'un joueur avec retry
      */
-    async updateScore(score) {
+    async updateScore(score, retries = 3) {
         if (!this.db || !this.sessionId) return false;
 
-        try {
-            const sessionRef = this.getSessionRef();
-            const snapshot = await this.firestoreGetDoc(sessionRef);
-            if (!snapshot.exists()) return false;
-            
-            const data = snapshot.data();
-            const isPlayer1 = this.playerId === String(data.player1Id);
-            const scoreField = isPlayer1 ? 'player1Score' : 'player2Score';
-            
-            await this.firestoreUpdateDoc(sessionRef, {
-                [scoreField]: score
-            });
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const sessionRef = this.getSessionRef();
+                
+                // Essayer d'abord de déterminer si on est player1 ou player2
+                let isPlayer1 = this.isHost;
+                
+                // Vérifier dans Firestore si possible
+                if (this.firestoreGetDoc) {
+                    const snapshot = await this.firestoreGetDoc(sessionRef);
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        // Comparer avec l'ID Firebase OU l'ID Laravel
+                        isPlayer1 = this.playerId === String(data.player1Id) || 
+                                    this.playerId === String(data.hostId) ||
+                                    this.laravelUserId === String(data.player1LaravelId);
+                    }
+                }
+                
+                const scoreField = isPlayer1 ? 'player1Score' : 'player2Score';
+                
+                // Utiliser setDoc avec merge pour créer le doc si nécessaire
+                if (this.firestoreSetDoc) {
+                    await this.firestoreSetDoc(sessionRef, {
+                        [scoreField]: score
+                    }, { merge: true });
+                } else {
+                    await this.firestoreUpdateDoc(sessionRef, {
+                        [scoreField]: score
+                    });
+                }
 
-            return true;
-        } catch (err) {
-            console.error('[MultiplayerFirestoreProvider] Update score error:', err);
-            return false;
+                console.log('[MultiplayerFirestoreProvider] Score updated:', scoreField, '=', score);
+                return true;
+            } catch (err) {
+                console.error(`[MultiplayerFirestoreProvider] Update score error (attempt ${attempt}/${retries}):`, err);
+                if (attempt < retries) {
+                    await new Promise(r => setTimeout(r, 500 * attempt));
+                }
+            }
         }
+        return false;
     },
 
     /**

@@ -24,6 +24,8 @@ Multiplayer modes (Duo, League, Master) use SPA-style client-driven question tra
 
 **GameplayEngine.js:**
 A unified client-side module manages all game modes (Solo, Duo, League, Master), ensuring consistent gameplay behavior. It supports both local (Solo) and Firestore (multiplayer) providers for managing game state actions.
+-   **Event Delegation Pattern:** Uses document-level event delegation with singleton guard (`_eventsBound` flag) to prevent duplicate listener registrations when `init()` runs multiple times during SPA-style navigation.
+-   **Score Update Resilience:** MultiplayerFirestoreProvider includes retry logic with `setDoc(merge: true)` fallback for robust score synchronization.
 
 **Question Management:**
 -   **Question Cache System:** Utilizes a file-based cache for pre-generated questions, keyed by theme, level, and language. An asynchronous `GenerateQuestionsJob` handles background question generation.
