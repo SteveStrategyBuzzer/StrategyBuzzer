@@ -86,7 +86,37 @@ const MultiplayerFirestoreProvider = {
             playerId: this.playerId
         });
         
+        // Si ce n'est pas l'hôte, s'enregistrer comme player2 dans Firestore
+        if (!this.isHost) {
+            await this.registerAsPlayer2();
+        }
+        
         return true;
+    },
+    
+    /**
+     * Enregistre le joueur invité comme player2 dans Firestore
+     */
+    async registerAsPlayer2() {
+        if (!this.db || !this.sessionId) return;
+        
+        try {
+            const sessionRef = this.getSessionRef();
+            const snapshot = await this.firestoreGetDoc(sessionRef);
+            
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                // Ne pas écraser si déjà défini avec un UID Firebase valide
+                if (!data.player2Id || data.player2Id === this.laravelUserId) {
+                    await this.firestoreUpdateDoc(sessionRef, {
+                        player2Id: this.playerId
+                    });
+                    console.log('[MultiplayerFirestoreProvider] Registered as player2:', this.playerId);
+                }
+            }
+        } catch (err) {
+            console.error('[MultiplayerFirestoreProvider] Error registering as player2:', err);
+        }
     },
 
     /**
@@ -157,6 +187,13 @@ const MultiplayerFirestoreProvider = {
                 mode: this.mode,
                 sessionId: this.sessionId
             };
+            
+            // Réinitialiser les scores à 0 pour la première question
+            if (questionNumber === 1) {
+                updateData.player1Score = 0;
+                updateData.player2Score = 0;
+                console.log('[MultiplayerFirestoreProvider] Scores reset to 0 for new game');
+            }
             
             if (this.firestoreSetDoc) {
                 await this.firestoreSetDoc(sessionRef, updateData, { merge: true });
