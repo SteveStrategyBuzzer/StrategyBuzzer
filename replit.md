@@ -73,6 +73,16 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - Skills array iteration guarded with `is_array()` checks including per-skillData validation
 - Score initialization explicitly cast to (int) and reset to 0 at game start
 
+**Firebase Authentication Pattern (Dec 2025 - CRITICAL)**
+- **IMPORTANT**: Firebase Firestore security rules validate against `request.auth.uid` (Firebase anonymous UID), NOT Laravel user IDs
+- All Firestore operations must use Firebase UID for: `playerId`, `hostId`, `player1Id`, `player2Id`
+- Laravel user IDs stored separately as `player1LaravelId`, `player2LaravelId` for display purposes
+- `game_unified.blade.php`: Captures Firebase UID from `signInAnonymously()` and passes it to providers
+- `MultiplayerFirestoreProvider.js`: Stores `playerId` (Firebase UID) and `laravelUserId` separately
+- Guest players register their Firebase UID via `registerAsPlayer2()` on initialization
+- Scores reset to 0 when host publishes question 1 with `gameStartedAt` timestamp
+- Firebase rules must be deployed to Firebase Console matching `firebase-rules.txt`
+
 Key services include:
 -   **QuestionService**: Manages AI-ready, theme-based question generation with adaptive difficulty, a 3-layer anti-duplication system, progressive block-based generation, and language-specific strict spelling verification. It leverages Google Gemini 2.0 Flash.
 -   **SubthemeRotationSystem**: Implements deterministic sub-theme rotation across 8 main themes and 120 sub-themes, with dynamic pulling for "Culture générale".

@@ -96,6 +96,7 @@ const MultiplayerFirestoreProvider = {
     
     /**
      * Enregistre le joueur invité comme player2 dans Firestore
+     * Force l'écriture de l'UID Firebase pour éviter les problèmes d'ID legacy
      */
     async registerAsPlayer2() {
         if (!this.db || !this.sessionId) return;
@@ -106,12 +107,26 @@ const MultiplayerFirestoreProvider = {
             
             if (snapshot.exists()) {
                 const data = snapshot.data();
-                // Ne pas écraser si déjà défini avec un UID Firebase valide
-                if (!data.player2Id || data.player2Id === this.laravelUserId) {
+                // Toujours mettre à jour player2Id avec l'UID Firebase
+                // même si un ancien ID Laravel existe
+                const currentPlayer2Id = data.player2Id;
+                if (currentPlayer2Id !== this.playerId) {
                     await this.firestoreUpdateDoc(sessionRef, {
-                        player2Id: this.playerId
+                        player2Id: this.playerId,
+                        player2LaravelId: this.laravelUserId
                     });
-                    console.log('[MultiplayerFirestoreProvider] Registered as player2:', this.playerId);
+                    console.log('[MultiplayerFirestoreProvider] Registered as player2:', this.playerId, 'Laravel ID:', this.laravelUserId);
+                }
+            } else {
+                // Si le document n'existe pas encore, le créer avec player2Id
+                if (this.firestoreSetDoc) {
+                    await this.firestoreSetDoc(sessionRef, {
+                        player2Id: this.playerId,
+                        player2LaravelId: this.laravelUserId,
+                        player1Score: 0,
+                        player2Score: 0
+                    }, { merge: true });
+                    console.log('[MultiplayerFirestoreProvider] Created session with player2:', this.playerId);
                 }
             }
         } catch (err) {
@@ -183,15 +198,17 @@ const MultiplayerFirestoreProvider = {
                 buzzTime: null,
                 playersReady: [],
                 player1Id: this.playerId,
+                player1LaravelId: this.laravelUserId,
                 hostId: this.playerId,
                 mode: this.mode,
                 sessionId: this.sessionId
             };
             
-            // Réinitialiser les scores à 0 pour la première question
+            // Réinitialiser les scores à 0 pour la première question d'un nouveau jeu
             if (questionNumber === 1) {
                 updateData.player1Score = 0;
                 updateData.player2Score = 0;
+                updateData.gameStartedAt = this.firestoreServerTimestamp();
                 console.log('[MultiplayerFirestoreProvider] Scores reset to 0 for new game');
             }
             
