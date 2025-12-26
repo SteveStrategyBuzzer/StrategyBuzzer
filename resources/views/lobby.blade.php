@@ -125,6 +125,27 @@ foreach ($colors as $color) {
         transform: translateX(5px);
     }
     
+    .player-card.player-offline {
+        opacity: 0.5;
+        position: relative;
+    }
+    
+    .player-card.player-offline::after {
+        content: '{{ __("Reconnexion...") }}';
+        position: absolute;
+        bottom: 5px;
+        right: 10px;
+        font-size: 0.7rem;
+        color: #ff9800;
+        background: rgba(0,0,0,0.5);
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    
+    .player-card.player-online {
+        opacity: 1;
+    }
+    
     .player-card-old {
         background: rgba(255, 255, 255, 0.08);
         border-radius: 15px;
@@ -3301,8 +3322,8 @@ class LobbyPresenceManager {
         this.unsubscriber = null;
         this.presenceData = {};
         this.onPlayersChange = null;
-        this.HEARTBEAT_INTERVAL = 10000;
-        this.OFFLINE_THRESHOLD = 30000;
+        this.HEARTBEAT_INTERVAL = 15000; // 15 seconds
+        this.OFFLINE_THRESHOLD = 60000; // 60 seconds - more tolerant of brief disconnections
     }
     
     getPresencePath() {
@@ -3341,7 +3362,9 @@ class LobbyPresenceManager {
     startHeartbeat() {
         if (this.heartbeatInterval) return;
         
+        this.heartbeatPaused = false;
         this.heartbeatInterval = setInterval(async () => {
+            if (this.heartbeatPaused) return; // Skip if paused
             try {
                 const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
                 await setDoc(presenceRef, {
@@ -3354,6 +3377,25 @@ class LobbyPresenceManager {
         }, this.HEARTBEAT_INTERVAL);
         
         console.log('[Presence] Heartbeat started');
+    }
+    
+    pauseHeartbeat() {
+        this.heartbeatPaused = true;
+        console.log('[Presence] Heartbeat paused');
+    }
+    
+    resumeHeartbeat() {
+        this.heartbeatPaused = false;
+        // Send immediate heartbeat to show we're back online
+        const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+        setDoc(presenceRef, {
+            lastSeen: serverTimestamp(),
+            online: true
+        }, { merge: true }).then(() => {
+            console.log('[Presence] Heartbeat resumed - immediate update sent');
+        }).catch(err => {
+            console.error('[Presence] Resume heartbeat error:', err);
+        });
     }
     
     startListening() {
@@ -3403,6 +3445,10 @@ class LobbyPresenceManager {
     startCleanupCheck() {
         if (this.cleanupInterval) return;
         
+        // Track missed heartbeat counts before removal
+        this.offlineCounts = {};
+        const REMOVAL_THRESHOLD = 3; // Player must be offline 3 checks before removal
+        
         this.cleanupInterval = setInterval(async () => {
             if (!this.isHost) return;
             
@@ -3412,26 +3458,37 @@ class LobbyPresenceManager {
                 
                 const lastSeen = data.lastSeen || 0;
                 if (now - lastSeen > this.OFFLINE_THRESHOLD && data.online) {
-                    try {
-                        const presenceRef = doc(db, this.getPresencePath(), String(playerId));
-                        await setDoc(presenceRef, { online: false }, { merge: true });
-                        console.log('[Presence] Marked player offline:', playerId);
-                        
-                        await fetch(`/lobby/${this.lobbyCode}/remove-player`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                            },
-                            body: JSON.stringify({ player_id: parseInt(playerId) })
-                        });
-                        console.log('[Presence] Removed offline player from backend:', playerId);
-                    } catch (error) {
-                        console.error('[Presence] Error marking offline:', error);
+                    // Increment offline count
+                    this.offlineCounts[playerId] = (this.offlineCounts[playerId] || 0) + 1;
+                    console.log(`[Presence] Player ${playerId} offline check ${this.offlineCounts[playerId]}/${REMOVAL_THRESHOLD}`);
+                    
+                    // Only remove after multiple consecutive offline checks
+                    if (this.offlineCounts[playerId] >= REMOVAL_THRESHOLD) {
+                        try {
+                            const presenceRef = doc(db, this.getPresencePath(), String(playerId));
+                            await setDoc(presenceRef, { online: false }, { merge: true });
+                            console.log('[Presence] Marked player offline:', playerId);
+                            
+                            await fetch(`/lobby/${this.lobbyCode}/remove-player`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                                },
+                                body: JSON.stringify({ player_id: parseInt(playerId) })
+                            });
+                            console.log('[Presence] Removed offline player from backend:', playerId);
+                            delete this.offlineCounts[playerId];
+                        } catch (error) {
+                            console.error('[Presence] Error marking offline:', error);
+                        }
                     }
+                } else {
+                    // Reset offline count if player is online
+                    delete this.offlineCounts[playerId];
                 }
             }
-        }, 15000);
+        }, 20000); // Check every 20 seconds
         
         console.log('[Presence] Cleanup check started');
     }
@@ -4090,17 +4147,41 @@ initFirebase().then(async (authenticated) => {
     
     window.lobbyPresenceManager = new LobbyPresenceManager(lobbyCode, currentPlayerId, currentPlayerData, isHostFirebase);
     
-    window.lobbyPresenceManager.onPlayersChange = (players) => {
-        if (typeof updatePlayersUI === 'function') {
-            updatePlayersUI(players);
-        }
+    window.lobbyPresenceManager.onPlayersChange = (presencePlayers) => {
+        // Don't replace the full player list from Firebase presence
+        // The authoritative player list comes from Laravel polling
+        // Only update online status indicators for existing players
         
-        const playerCount = Object.keys(players).length;
-        const allReady = Object.values(players).every(p => p.ready);
+        // Update online/ready status indicators for each player card
+        document.querySelectorAll('.player-card').forEach(card => {
+            const playerId = parseInt(card.dataset.playerId);
+            const presenceData = presencePlayers[playerId];
+            
+            if (presenceData) {
+                // Player is online in Firebase
+                card.classList.remove('player-offline');
+                card.classList.add('player-online');
+                
+                // Update ready status if changed
+                if (presenceData.ready) {
+                    card.classList.add('is-ready');
+                } else {
+                    card.classList.remove('is-ready');
+                }
+            } else {
+                // Player not in presence data - may be temporarily disconnected
+                // Don't remove them from UI, just show offline indicator
+                card.classList.add('player-offline');
+                card.classList.remove('player-online');
+            }
+        });
+        
+        const playerCount = Object.keys(presencePlayers).length;
+        const allReady = Object.values(presencePlayers).every(p => p.ready);
         
         if (isHostFirebase) {
             if (typeof updateWaitingMessage === 'function') {
-                updateWaitingMessage(players, minPlayersFirebase, allReady);
+                updateWaitingMessage(presencePlayers, minPlayersFirebase, allReady);
             }
             
             const startBtn = document.getElementById('start-btn');
@@ -4113,7 +4194,7 @@ initFirebase().then(async (authenticated) => {
             }
         }
         
-        window.dispatchEvent(new CustomEvent('lobbyPlayersUpdated', { detail: { players, allReady } }));
+        window.dispatchEvent(new CustomEvent('lobbyPlayersUpdated', { detail: { players: presencePlayers, allReady } }));
     };
     
     await window.lobbyPresenceManager.joinLobby();
@@ -4144,15 +4225,18 @@ window.addEventListener('beforeunload', () => {
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-        if (window.lobbyPresenceManager) {
-            window.lobbyPresenceManager.cleanup();
+        // Don't cleanup on visibility change - just pause heartbeats
+        // Full cleanup only on beforeunload/pagehide (actual page close)
+        if (window.lobbyPresenceManager && window.lobbyPresenceManager.pauseHeartbeat) {
+            window.lobbyPresenceManager.pauseHeartbeat();
         }
-        if (window.webrtcManager) {
-            window.webrtcManager.cleanup();
+        console.log('[Visibility] Page hidden - heartbeat paused (not cleaned up)');
+    } else if (document.visibilityState === 'visible') {
+        // Resume heartbeat when page becomes visible again
+        if (window.lobbyPresenceManager && window.lobbyPresenceManager.resumeHeartbeat) {
+            window.lobbyPresenceManager.resumeHeartbeat();
         }
-        if (window.lobbyChatManager) {
-            window.lobbyChatManager.stopListening();
-        }
+        console.log('[Visibility] Page visible - heartbeat resumed');
     }
 });
 
