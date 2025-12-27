@@ -38,7 +38,35 @@ class DuoGameProvider extends GameModeProvider
         $duoStats = $opponent->duoStats;
         $division = $this->divisionService->getOrCreateDivision($opponent, 'duo');
         
-        $avatar = $lobbyAvatar ?? $this->gameState['opponent_avatar'] ?? $opponent->profile_settings['avatar'] ?? 'default';
+        // Get avatar - prioritize lobby avatar, then stored avatar, then extract from profile_settings
+        $avatar = $lobbyAvatar ?? $this->gameState['opponent_avatar'] ?? null;
+        
+        if (!$avatar) {
+            // Extract avatar URL from profile_settings properly
+            // Handle all storage formats: JSON string, stdClass, or array
+            $profileSettings = $opponent->profile_settings;
+            if (is_string($profileSettings)) {
+                $profileSettings = json_decode($profileSettings, true) ?? [];
+            } elseif (is_object($profileSettings)) {
+                $profileSettings = (array) $profileSettings;
+            }
+            
+            if (is_array($profileSettings) && isset($profileSettings['avatar'])) {
+                $avatarData = $profileSettings['avatar'];
+                if (is_object($avatarData)) {
+                    $avatarData = (array) $avatarData;
+                }
+                if (is_array($avatarData)) {
+                    $avatar = $avatarData['url'] ?? $avatarData['id'] ?? 'default';
+                } elseif (is_string($avatarData)) {
+                    $avatar = $avatarData;
+                } else {
+                    $avatar = 'default';
+                }
+            } else {
+                $avatar = 'default';
+            }
+        }
         
         $this->opponentInfo = [
             'is_human' => true,
