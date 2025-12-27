@@ -428,13 +428,44 @@ $roomCode = $params['room_code'] ?? null;
     }
     
     .skill-circle.empty { opacity: 0.3; cursor: default; }
-    .skill-circle.used { opacity: 0.5; cursor: default; }
+    .skill-circle.used { 
+        opacity: 0.5; 
+        cursor: default;
+        border-color: rgba(128, 128, 128, 0.5);
+        background: rgba(128, 128, 128, 0.2);
+        box-shadow: none;
+    }
     .skill-circle.locked { 
         opacity: 0.4; 
         cursor: not-allowed; 
         border-color: rgba(255, 255, 255, 0.2);
         background: rgba(100, 100, 100, 0.3);
         box-shadow: none;
+    }
+    
+    /* Skill utilisable maintenant - scintillement doré */
+    .skill-circle.usable-now:not(.used):not(.locked) {
+        animation: skill-shimmer 1.5s ease-in-out infinite;
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.25);
+    }
+    
+    @keyframes skill-shimmer {
+        0%, 100% { 
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.3);
+            transform: scale(1);
+        }
+        50% { 
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.9), 0 0 50px rgba(255, 215, 0, 0.5);
+            transform: scale(1.08);
+        }
+    }
+    
+    /* Skill disponible mais pas pour cette phase - doré sans scintillement */
+    .skill-circle.available:not(.used):not(.locked):not(.usable-now) {
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.15);
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
     }
     
     .opponent-strategic-indicator {
