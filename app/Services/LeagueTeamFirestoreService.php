@@ -273,4 +273,56 @@ class LeagueTeamFirestoreService
             'questionSyncTime' => microtime(true),
         ]);
     }
+
+    /**
+     * Publie une question directement sur Firebase pour synchronisation
+     * Tous les joueurs reçoivent la même question au même moment
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     * @param array $questionData Les données de la question
+     * @param int $questionNumber Le numéro de la question
+     */
+    public function publishQuestion($matchId, array $questionData, int $questionNumber): bool
+    {
+        $publishTime = microtime(true);
+        
+        // Sanitize answers - NEVER include is_correct to protect answer integrity
+        $sanitizedAnswers = [];
+        foreach ($questionData['answers'] ?? [] as $answer) {
+            if (is_array($answer)) {
+                $sanitizedAnswers[] = [
+                    'text' => $answer['text'] ?? $answer[0] ?? '',
+                ];
+            } else {
+                $sanitizedAnswers[] = [
+                    'text' => (string)$answer,
+                ];
+            }
+        }
+        
+        $questionPayload = [
+            'currentQuestion' => $questionNumber,
+            'questionVersion' => $questionNumber,
+            'questionPublishedAt' => $publishTime,
+            'currentQuestionData' => [
+                'question_number' => $questionNumber,
+                'total_questions' => $questionData['total_questions'] ?? 10,
+                'question_text' => $questionData['question_text'] ?? $questionData['text'] ?? '',
+                'answers' => $sanitizedAnswers,
+                'theme' => $questionData['theme'] ?? 'Général',
+                'sub_theme' => $questionData['sub_theme'] ?? '',
+                'chrono_time' => $questionData['chrono_time'] ?? 8,
+            ],
+            'buzzedPlayerId' => null,
+        ];
+        
+        $result = $this->updateGameState($matchId, $questionPayload);
+        
+        if ($result) {
+            Log::info("Question #{$questionNumber} published for League Team match #{$matchId}");
+        } else {
+            Log::error("Failed to publish question #{$questionNumber} for League Team match #{$matchId}");
+        }
+        
+        return $result;
+    }
 }

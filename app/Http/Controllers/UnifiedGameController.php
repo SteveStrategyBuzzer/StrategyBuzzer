@@ -893,8 +893,7 @@ class UnifiedGameController extends Controller
             ];
         }
         
-        return response()->json([
-            'success' => true,
+        $questionData = [
             'question_number' => $questionNumber,
             'total_questions' => $gameState['total_questions'] ?? 10,
             'question_text' => $question['text'] ?? '',
@@ -904,7 +903,41 @@ class UnifiedGameController extends Controller
             'niveau' => $gameState['niveau'] ?? 1,
             'player_score' => $gameState['player_score'] ?? 0,
             'opponent_score' => $gameState['opponent_score'] ?? 0,
-        ]);
+            'correct_index' => $question['correct_index'] ?? 0,
+        ];
+        
+        // Publier la question sur Firebase pour les modes multiplayer
+        if (in_array($mode, ['duo', 'league-individual', 'league-team'])) {
+            $lobbyCode = $gameState['lobby_code'] ?? $gameState['room_code'] ?? null;
+            if ($lobbyCode) {
+                try {
+                    // Préparer les données pour Firebase (sans correct_index pour la sécurité)
+                    $firebaseQuestionData = $questionData;
+                    unset($firebaseQuestionData['correct_index']);
+                    
+                    // Utiliser DuoFirestoreService pour tous les modes multiplayer
+                    // Cela assure la cohérence avec LobbyService qui utilise aussi DuoFirestoreService
+                    $this->duoFirestoreService->publishQuestion($lobbyCode, $firebaseQuestionData, $questionNumber);
+                    
+                    Log::info("Question published to Firebase", [
+                        'mode' => $mode,
+                        'lobby_code' => $lobbyCode,
+                        'question_number' => $questionNumber
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error("Failed to publish question to Firebase", [
+                        'error' => $e->getMessage(),
+                        'mode' => $mode,
+                        'lobby_code' => $lobbyCode
+                    ]);
+                }
+            }
+        }
+        
+        // Retourner sans correct_index pour la sécurité client
+        unset($questionData['correct_index']);
+        
+        return response()->json(array_merge(['success' => true], $questionData));
     }
     
     /**

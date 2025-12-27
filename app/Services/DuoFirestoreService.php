@@ -356,4 +356,119 @@ class DuoFirestoreService
             'questionSyncTime' => microtime(true),
         ]);
     }
+
+    /**
+     * Envoie un signal de démarrage synchronisé sur Firebase
+     * Les deux joueurs reçoivent ce signal et démarrent en même temps
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     */
+    public function sendGameStartSignal($matchId, array $gameData = []): bool
+    {
+        $startTime = microtime(true);
+        
+        $signalData = [
+            'gameStarted' => true,
+            'gameStartTime' => $startTime,
+            'status' => 'playing',
+            'currentQuestion' => 1,
+            'currentRound' => $gameData['current_round'] ?? 1,
+            'totalQuestions' => $gameData['total_questions'] ?? 10,
+            'chronoTime' => $gameData['chrono_time'] ?? 8,
+        ];
+        
+        $result = $this->updateGameState($matchId, $signalData);
+        
+        if ($result) {
+            Log::info("Game start signal sent for match #{$matchId} at {$startTime}");
+        } else {
+            Log::error("Failed to send game start signal for match #{$matchId}");
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Publie une question directement sur Firebase pour synchronisation
+     * Les deux joueurs reçoivent la même question au même moment
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     * @param array $questionData Les données de la question
+     * @param int $questionNumber Le numéro de la question
+     */
+    public function publishQuestion($matchId, array $questionData, int $questionNumber): bool
+    {
+        $publishTime = microtime(true);
+        
+        // Sanitize answers - NEVER include is_correct to protect answer integrity
+        $sanitizedAnswers = [];
+        foreach ($questionData['answers'] ?? [] as $answer) {
+            if (is_array($answer)) {
+                $sanitizedAnswers[] = [
+                    'text' => $answer['text'] ?? $answer[0] ?? '',
+                ];
+            } else {
+                $sanitizedAnswers[] = [
+                    'text' => (string)$answer,
+                ];
+            }
+        }
+        
+        // Note: correct_index is intentionally NOT included to protect answer integrity
+        // Answer validation must be done server-side only
+        $questionPayload = [
+            'currentQuestion' => $questionNumber,
+            'questionVersion' => $questionNumber,
+            'questionPublishedAt' => $publishTime,
+            'currentQuestionData' => [
+                'question_number' => $questionNumber,
+                'total_questions' => $questionData['total_questions'] ?? 10,
+                'question_text' => $questionData['question_text'] ?? $questionData['text'] ?? '',
+                'answers' => $sanitizedAnswers,
+                'theme' => $questionData['theme'] ?? 'Général',
+                'sub_theme' => $questionData['sub_theme'] ?? '',
+                'chrono_time' => $questionData['chrono_time'] ?? 8,
+            ],
+            'player1Buzzed' => false,
+            'player2Buzzed' => false,
+            'buzzedPlayerId' => null,
+        ];
+        
+        $result = $this->updateGameState($matchId, $questionPayload);
+        
+        if ($result) {
+            Log::info("Question #{$questionNumber} published for match #{$matchId}");
+        } else {
+            Log::error("Failed to publish question #{$questionNumber} for match #{$matchId}");
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Prépare et crée la session Firebase avant le démarrage du jeu
+     * Appelé quand les joueurs sont dans le lobby
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     */
+    public function prepareGameSession($matchId, array $matchData): bool
+    {
+        if ($this->sessionExists($matchId)) {
+            Log::info("Firebase session already exists for match #{$matchId}");
+            return true;
+        }
+        
+        return $this->createMatchSession($matchId, $matchData);
+    }
+
+    /**
+     * Notifie les joueurs que le jeu est prêt à démarrer
+     * Les joueurs attendent ce signal avant de charger la page de jeu
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     */
+    public function notifyGameReady($matchId, string $redirectUrl): bool
+    {
+        return $this->updateGameState($matchId, [
+            'gameReady' => true,
+            'redirectUrl' => $redirectUrl,
+            'readyTime' => microtime(true),
+        ]);
+    }
 }

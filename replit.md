@@ -19,8 +19,18 @@ The frontend uses React 19 with Vite, employing a component-based architecture d
 ### Technical Implementations
 The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It utilizes an API-first, service-oriented design with an event-driven system for real-time game state broadcasting.
 
-**Real-Time Multiplayer Synchronization:**
-Multiplayer modes (Duo, League, Master) use SPA-style client-driven question transitions without page reloads. The host fetches questions via a secured API, which are then published to Firebase Firestore. Non-host clients receive questions via Firestore snapshot listeners, triggering instant UI updates. Server-side answer validation ensures `correct_index` is never exposed to clients.
+**Real-Time Multiplayer Synchronization (Updated Dec 2025):**
+All multiplayer modes now use a **server-side Firebase publishing architecture** for synchronized gameplay:
+
+1. **Game Start Flow**: When host clicks "Start" in lobby, `LobbyService` sends a `gameStarted` signal via Firebase. Both players' lobby pages listen for this signal and navigate to the game page simultaneously.
+
+2. **Question Synchronization**: Host calls `fetchQuestionJson` API → backend generates question → `DuoFirestoreService.publishQuestion()` publishes to Firebase → all clients receive identical question data via Firestore listeners.
+
+3. **Firestore Document Structure**: All multiplayer modes use unified `games/duo-match-{normalizedId}` documents where `normalizedId` is computed using CRC32 normalization (matching PHP and JS implementations).
+
+4. **Security**: `correct_index` and `is_correct` are **never** transmitted to clients via Firebase. Answer validation is strictly server-side.
+
+**Note**: League modes currently use `DuoFirestoreService` for question publishing but may have other operations still using mode-specific services. Full migration to unified Firestore namespace pending for league modes.
 
 **GameplayEngine.js:**
 A unified client-side module manages all game modes (Solo, Duo, League, Master), ensuring consistent gameplay behavior. It supports both local (Solo) and Firestore (multiplayer) providers for managing game state actions.

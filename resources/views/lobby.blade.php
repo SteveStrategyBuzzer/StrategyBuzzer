@@ -4209,6 +4209,56 @@ initFirebase().then(async (authenticated) => {
 
     window.dispatchEvent(new CustomEvent('webrtcReady'));
     console.log('[WebRTC] Manager initialized for lobby:', lobbyCode, '- Player:', currentPlayerId);
+    
+    // Listener Firebase pour le signal de démarrage synchronisé
+    function normalizeMatchIdJs(matchId) {
+        if (typeof matchId === 'number' && matchId > 0) {
+            return matchId;
+        }
+        const matchIdStr = String(matchId);
+        const numericId = parseInt(matchIdStr.replace(/[^0-9]/g, ''), 10) || 0;
+        if (numericId === 0) {
+            // Utiliser CRC32 pour les codes purement alphabétiques
+            let crc = 0xFFFFFFFF;
+            for (let i = 0; i < matchIdStr.length; i++) {
+                crc ^= matchIdStr.charCodeAt(i);
+                for (let j = 0; j < 8; j++) {
+                    crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+                }
+            }
+            return (crc ^ 0xFFFFFFFF) >>> 1;
+        }
+        return numericId;
+    }
+    
+    const normalizedId = normalizeMatchIdJs(lobbyCode);
+    // Note: Backend always uses DuoFirestoreService which uses 'duo-match-' prefix for all multiplayer modes
+    const gameDocRef = doc(db, 'games', `duo-match-${normalizedId}`);
+    let gameStartHandled = false;
+    
+    console.log('[Firebase] Listening for game start signal on:', `games/duo-match-${normalizedId}`);
+    
+    onSnapshot(gameDocRef, (docSnap) => {
+        if (!docSnap.exists() || gameStartHandled) return;
+        
+        const data = docSnap.data();
+        
+        if (data.gameStarted === true) {
+            gameStartHandled = true;
+            console.log('[Firebase] Game start signal received! Navigating to game...');
+            
+            // Arrêter le polling et les managers
+            if (pollingInterval) clearInterval(pollingInterval);
+            if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
+            if (window.webrtcManager) window.webrtcManager.cleanup();
+            
+            // Naviguer vers la page de jeu avec les paramètres
+            const settings = @json($settings ?? []);
+            submitGameStart(mode, settings);
+        }
+    }, (error) => {
+        console.error('[Firebase] Game start listener error:', error);
+    });
 });
 
 window.addEventListener('beforeunload', () => {

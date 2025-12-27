@@ -3,12 +3,24 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\DuoFirestoreService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class LobbyService
 {
+    protected ?DuoFirestoreService $duoFirestoreService = null;
+    
+    protected function getDuoFirestoreService(): DuoFirestoreService
+    {
+        if ($this->duoFirestoreService === null) {
+            $this->duoFirestoreService = new DuoFirestoreService();
+        }
+        return $this->duoFirestoreService;
+    }
+
     protected const LOBBY_PREFIX = 'lobby:';
     protected const LOBBY_TTL = 3600;
     
@@ -604,6 +616,42 @@ class LobbyService
             $lobby['started_at'] = now()->toISOString();
             
             $this->saveLobby($code, $lobby);
+            
+            // Envoyer le signal de démarrage synchronisé via Firebase
+            $mode = $lobby['mode'] ?? 'duo';
+            if (in_array($mode, ['duo', 'league_individual', 'league_team'])) {
+                try {
+                    $playerIds = array_keys($lobby['players']);
+                    $player1Id = $playerIds[0] ?? null;
+                    $player2Id = $playerIds[1] ?? null;
+                    
+                    $matchData = [
+                        'player1_id' => $player1Id,
+                        'player2_id' => $player2Id,
+                        'player1_name' => $lobby['players'][$player1Id]['name'] ?? 'Player 1',
+                        'player2_name' => $lobby['players'][$player2Id]['name'] ?? 'Player 2',
+                    ];
+                    
+                    $firestore = $this->getDuoFirestoreService();
+                    
+                    // Préparer la session Firebase si elle n'existe pas
+                    $firestore->prepareGameSession($code, $matchData);
+                    
+                    // Envoyer le signal de démarrage avec les paramètres de jeu
+                    $gameData = [
+                        'total_questions' => $lobby['settings']['nb_questions'] ?? 10,
+                        'chrono_time' => $lobby['settings']['chrono_time'] ?? 8,
+                        'current_round' => 1,
+                    ];
+                    
+                    $firestore->sendGameStartSignal($code, $gameData);
+                    
+                    Log::info("Firebase game start signal sent for lobby {$code}");
+                } catch (\Exception $e) {
+                    Log::error("Failed to send Firebase game start signal: " . $e->getMessage());
+                    // Continue même si Firebase échoue - le jeu peut fonctionner sans
+                }
+            }
             
             return ['success' => true, 'lobby' => $lobby];
         } finally {
