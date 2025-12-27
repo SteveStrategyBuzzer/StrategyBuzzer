@@ -1148,7 +1148,28 @@ class UnifiedGameController extends Controller
     
     protected function getAvatarData($user): array
     {
-        $avatarName = session('avatar', 'Aucun');
+        $avatarName = 'Aucun';
+        
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        } elseif (is_object($profileSettings)) {
+            $profileSettings = (array) $profileSettings;
+        }
+        
+        if (is_array($profileSettings) && isset($profileSettings['strategic_avatar'])) {
+            $strategicData = $profileSettings['strategic_avatar'];
+            if (is_object($strategicData)) {
+                $strategicData = (array) $strategicData;
+            }
+            if (is_array($strategicData) && !empty($strategicData['name'])) {
+                $avatarName = $strategicData['name'];
+            }
+        }
+        
+        if (empty($avatarName) || $avatarName === 'Aucun' || $avatarName === null) {
+            $avatarName = session('avatar', 'Aucun');
+        }
         
         if ($avatarName === 'Aucun' || empty($avatarName)) {
             return [
