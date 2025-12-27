@@ -56,7 +56,8 @@ class PlayerCodeService
         $cleanCode = strtoupper(trim($code));
         
         // Ajouter le préfixe SB- s'il n'est pas présent
-        if (!str_starts_with($cleanCode, 'SB-')) {
+        // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
+        if (strpos($cleanCode, 'SB-') !== 0) {
             $cleanCode = 'SB-' . $cleanCode;
         }
         

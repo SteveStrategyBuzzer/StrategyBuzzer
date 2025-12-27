@@ -116,12 +116,19 @@ if ($opponentType === 'ai') {
     }
 } else {
     // Pour les adversaires humains, vérifier si l'avatar est déjà un chemin complet ou une URL
+    // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
     $rawOpponentAvatar = $opponentInfo['avatar'] ?? 'default';
-    if (str_starts_with($rawOpponentAvatar, 'http://') || str_starts_with($rawOpponentAvatar, 'https://')) {
-        // C'est une URL complète, l'utiliser directement
+    if (strpos($rawOpponentAvatar, 'http://') === 0 || strpos($rawOpponentAvatar, 'https://') === 0 || strpos($rawOpponentAvatar, '//') === 0) {
+        // C'est une URL complète ou protocol-relative, l'utiliser directement
         $opponentAvatar = $rawOpponentAvatar;
-    } elseif (strpos($rawOpponentAvatar, '/') !== false || strpos($rawOpponentAvatar, 'images/') === 0) {
+    } elseif (strpos($rawOpponentAvatar, 'images/') === 0) {
         // L'avatar est déjà un chemin relatif complet (ex: images/avatars/portraits/2.png)
+        $opponentAvatar = asset($rawOpponentAvatar);
+    } elseif (strpos($rawOpponentAvatar, '/') !== false && strpos($rawOpponentAvatar, '.png') === false) {
+        // Category/slug format like "animal/lynx" - needs images/avatars/ prefix and .png suffix
+        $opponentAvatar = asset("images/avatars/{$rawOpponentAvatar}.png");
+    } elseif (strpos($rawOpponentAvatar, '/') !== false) {
+        // Already has a slash and extension - use as relative path
         $opponentAvatar = asset($rawOpponentAvatar);
     } else {
         // L'avatar est juste un nom (ex: "default")

@@ -141,7 +141,8 @@ class User extends Authenticatable
 
         $url = $settings['avatar']['url'] ?? null;
         
-        if ($url && !str_starts_with($url, '/') && !str_starts_with($url, 'http')) {
+        // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
+        if ($url && strpos($url, '/') !== 0 && strpos($url, 'http') !== 0) {
             $url = '/' . $url;
         }
         

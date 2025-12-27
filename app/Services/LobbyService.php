@@ -38,7 +38,14 @@ class LobbyService
             return 'default';
         }
         
-        if (str_contains($avatar, '/') || str_contains($avatar, '.png')) {
+        // Use strpos for PHP 7.x compatibility
+        // Skip normalization for full URLs and protocol-relative URLs - return as-is
+        if (strpos($avatar, 'http://') === 0 || strpos($avatar, 'https://') === 0 || strpos($avatar, '//') === 0) {
+            return $avatar;
+        }
+        
+        // For relative paths, normalize to just the base name
+        if (strpos($avatar, '/') !== false || strpos($avatar, '.png') !== false) {
             $avatar = preg_replace('/\.png$/', '', $avatar);
             $avatar = basename($avatar);
         }
@@ -67,18 +74,43 @@ class LobbyService
         $avatarUrl = $settings['avatar']['url'] ?? null;
         
         if ($avatarUrl && is_string($avatarUrl) && strlen($avatarUrl) > 0) {
+            // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
+            // Handle full URLs and protocol-relative URLs - return as-is
+            if (strpos($avatarUrl, 'http://') === 0 || strpos($avatarUrl, 'https://') === 0 || strpos($avatarUrl, '//') === 0) {
+                return $avatarUrl;
+            }
+            
             $avatarUrl = ltrim($avatarUrl, '/');
-            if (!str_starts_with($avatarUrl, 'images/')) {
-                $avatarUrl = 'images/avatars/standard/' . $avatarUrl;
+            
+            // Already has images/ prefix - use as-is
+            if (strpos($avatarUrl, 'images/') === 0) {
+                if (substr($avatarUrl, -4) !== '.png') {
+                    $avatarUrl .= '.png';
+                }
+                return $avatarUrl;
             }
-            if (!str_ends_with($avatarUrl, '.png')) {
-                $avatarUrl .= '.png';
+            
+            // Category/slug format like "animal/lynx" - needs prefix and suffix
+            if (strpos($avatarUrl, '/') !== false && substr($avatarUrl, -4) !== '.png') {
+                return 'images/avatars/' . $avatarUrl . '.png';
             }
-            return $avatarUrl;
+            
+            // Already has extension - use as relative path
+            if (strpos($avatarUrl, '/') !== false) {
+                return $avatarUrl;
+            }
+            
+            // Simple name - add standard folder and extension
+            $avatarUrl = preg_replace('/\.png$/', '', $avatarUrl);
+            return 'images/avatars/standard/' . $avatarUrl . '.png';
         }
         
         $avatarId = $settings['avatar']['id'] ?? $settings['avatar'] ?? null;
         if ($avatarId && is_string($avatarId)) {
+            // Handle full URLs in avatar id too
+            if (strpos($avatarId, 'http://') === 0 || strpos($avatarId, 'https://') === 0 || strpos($avatarId, '//') === 0) {
+                return $avatarId;
+            }
             $avatarId = preg_replace('/\.png$/', '', $avatarId);
             return 'images/avatars/standard/' . $avatarId . '.png';
         }

@@ -473,7 +473,8 @@ class LeagueTeamController extends Controller
         try {
             $customEmblemPath = null;
             
-            if ($request->custom_emblem && str_starts_with($request->custom_emblem, 'data:image/')) {
+            // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
+            if ($request->custom_emblem && strpos($request->custom_emblem, 'data:image/') === 0) {
                 $imageData = $request->custom_emblem;
                 $imageData = preg_replace('/^data:image\/\w+;base64,/', '', $imageData);
                 $imageData = base64_decode($imageData);

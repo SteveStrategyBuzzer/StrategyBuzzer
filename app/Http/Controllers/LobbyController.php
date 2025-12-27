@@ -390,7 +390,8 @@ class LobbyController extends Controller
         ];
         
         $playerAvatar = $player->avatar_url ?? 'default';
-        if ($playerAvatar && $playerAvatar !== 'default' && !str_starts_with($playerAvatar, '/') && !str_starts_with($playerAvatar, 'http')) {
+        // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
+        if ($playerAvatar && $playerAvatar !== 'default' && strpos($playerAvatar, '/') !== 0 && strpos($playerAvatar, 'http') !== 0) {
             $playerAvatar = '/' . $playerAvatar;
         }
         

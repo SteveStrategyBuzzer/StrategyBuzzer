@@ -380,7 +380,8 @@ class MasterFirestoreService
         
         $filtered = [];
         foreach ($allAnswers as $answerId => $answerData) {
-            if (str_starts_with($answerId, $pattern)) {
+            // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
+            if (strpos($answerId, $pattern) === 0) {
                 $filtered[] = $answerData;
             }
         }
