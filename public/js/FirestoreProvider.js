@@ -12,6 +12,7 @@ const FirestoreProvider = {
     playerId: null,
     isHost: false,
     engine: null,
+    mode: 'duo',
     
     firestoreDoc: null,
     firestoreOnSnapshot: null,
@@ -59,6 +60,7 @@ const FirestoreProvider = {
         this.playerId = String(config.playerId);
         this.isHost = config.isHost || false;
         this.engine = config.engine || null;
+        this.mode = config.mode || 'duo';
         
         this.csrfToken = config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
         
@@ -91,36 +93,43 @@ const FirestoreProvider = {
 
     /**
      * Get session document reference
-     * Path: gameSessions/{sessionId}
+     * Path: games/{mode}-match-{sessionId} (aligned with MultiplayerFirestoreProvider)
      */
     getSessionRef() {
-        return this.firestoreDoc(this.db, 'gameSessions', this.sessionId);
+        const firestoreGameId = `${this.mode}-match-${this.sessionId}`;
+        return this.firestoreDoc(this.db, 'games', firestoreGameId);
     },
 
     /**
      * Set up listeners for non-host clients
+     * Fields aligned with MultiplayerFirestoreProvider:
+     * - currentQuestionData, questionVersion, currentQuestion
+     * - buzzedPlayerId, buzzTime
      */
     setupListeners() {
         const sessionRef = this.getSessionRef();
+        console.log('[FirestoreProvider] Setting up listeners on:', sessionRef.path);
 
         this.unsubscribeQuestion = this.firestoreOnSnapshot(sessionRef, (snapshot) => {
             if (!snapshot.exists()) return;
 
             const data = snapshot.data();
+            const questionVersion = data.questionVersion || data.currentQuestion || 0;
 
-            if (data.currentQuestionData && data.currentQuestionNumber > this.lastQuestionNumber) {
-                this.lastQuestionNumber = data.currentQuestionNumber;
-                console.log('[FirestoreProvider] Question received:', data.currentQuestionNumber);
+            if (data.currentQuestionData && questionVersion > this.lastQuestionNumber) {
+                this.lastQuestionNumber = questionVersion;
+                console.log('[FirestoreProvider] Question received:', questionVersion, data.currentQuestionData);
                 
                 if (this.engine && this.engine.receiveQuestion) {
                     this.engine.receiveQuestion(data.currentQuestionData);
                 }
             }
 
-            if (data.buzzedBy && data.buzzedBy !== this.playerId) {
-                console.log('[FirestoreProvider] Opponent buzzed:', data.buzzedBy);
+            const buzzedPlayerId = data.buzzedPlayerId || data.buzzedBy;
+            if (buzzedPlayerId && buzzedPlayerId !== this.playerId) {
+                console.log('[FirestoreProvider] Opponent buzzed:', buzzedPlayerId);
                 if (this.engine && this.engine.receiveBuzz) {
-                    this.engine.receiveBuzz(data.buzzedBy, data.buzzedAt);
+                    this.engine.receiveBuzz(buzzedPlayerId, data.buzzTime || data.buzzedAt);
                 }
             }
         }, (error) => {
@@ -188,6 +197,7 @@ const FirestoreProvider = {
     /**
      * HOST ONLY: Publish question to Firebase with correct_index
      * Uses setDoc with merge:true to create document if it doesn't exist
+     * Fields aligned with MultiplayerFirestoreProvider for cross-compatibility
      * @param {Object} questionData - Question data including correct_index
      * @returns {Promise<boolean>} Success status
      */
@@ -199,14 +209,21 @@ const FirestoreProvider = {
 
         try {
             const sessionRef = this.getSessionRef();
+            const questionNumber = questionData.question_number;
             const updateData = {
                 currentQuestionData: questionData,
-                currentQuestionNumber: questionData.question_number,
-                buzzedBy: null,
-                buzzedAt: null,
+                currentQuestion: questionNumber,
+                questionVersion: questionNumber,
+                questionPublishedAt: this.firestoreServerTimestamp ? this.firestoreServerTimestamp() : Date.now(),
+                phase: 'question',
+                buzzedPlayerId: null,
+                player1Buzzed: false,
+                player2Buzzed: false,
+                buzzTime: null,
                 playersReady: [],
                 hostId: this.playerId,
-                sessionId: this.sessionId
+                sessionId: this.sessionId,
+                mode: this.mode
             };
 
             if (this.firestoreSetDoc) {
@@ -215,8 +232,8 @@ const FirestoreProvider = {
                 await this.firestoreUpdateDoc(sessionRef, updateData);
             }
 
-            this.lastQuestionNumber = questionData.question_number;
-            console.log('[FirestoreProvider] Question published:', questionData.question_number);
+            this.lastQuestionNumber = questionNumber;
+            console.log('[FirestoreProvider] Question published:', questionNumber, 'to', sessionRef.path);
             return true;
         } catch (err) {
             console.error('[FirestoreProvider] Publish question error:', err);

@@ -301,6 +301,97 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
+     * Méthode appelée par GameplayEngine pour obtenir la prochaine question
+     * - Host: Fetch depuis l'API (sans publier - la publication se fait via onQuestionStart)
+     * - Non-host: Retourne null, attend la question via listenForQuestions()
+     */
+    async fetchQuestion(questionNumber) {
+        if (!this.isHost) {
+            console.log('[MultiplayerFirestoreProvider] Non-host waiting for question via Firebase listener');
+            return null;
+        }
+        
+        console.log('[MultiplayerFirestoreProvider] Host fetching question', questionNumber);
+        
+        try {
+            let route = this.routes.fetchQuestion;
+            if (route && route.includes('{mode}')) {
+                route = route.replace('{mode}', this.mode);
+            }
+            console.log('[MultiplayerFirestoreProvider] Fetching from route:', route);
+            const response = await fetch(route, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken
+                },
+                body: JSON.stringify({ question_number: questionNumber })
+            });
+
+            const data = await response.json();
+            
+            if (data.redirect_url) {
+                console.log('[MultiplayerFirestoreProvider] Game complete, redirecting');
+                return { redirect_url: data.redirect_url };
+            }
+            
+            if (data.success && data.question) {
+                const correctIndex = data.question.answers.findIndex(a => a.is_correct === true);
+                
+                const questionData = {
+                    question_number: data.question_number,
+                    total_questions: data.total_questions,
+                    question_text: data.question.question_text,
+                    answers: data.question.answers.map(a => ({
+                        text: a.text || a,
+                        is_correct: a.is_correct || false
+                    })),
+                    correct_index: correctIndex,
+                    theme: data.question.theme,
+                    sub_theme: data.question.sub_theme,
+                    chrono_time: data.chrono_time || 8,
+                    player_score: data.player_score,
+                    opponent_score: data.opponent_score
+                };
+
+                return questionData;
+            }
+
+            console.error('[MultiplayerFirestoreProvider] Fetch failed:', data);
+            return null;
+        } catch (err) {
+            console.error('[MultiplayerFirestoreProvider] Fetch question error:', err);
+            return null;
+        }
+    },
+    
+    /**
+     * HOST ONLY: Publie la question sur Firebase après fetch
+     * Appelée par GameplayEngine après fetchQuestion()
+     * Note: On ne publie pas les scores (player_score, opponent_score) car ils sont spécifiques à chaque joueur
+     */
+    async onQuestionStart(questionData) {
+        if (!this.isHost) {
+            console.warn('[MultiplayerFirestoreProvider] Not host, cannot publish question');
+            return false;
+        }
+        
+        const sanitizedQuestion = {
+            question_number: questionData.question_number,
+            total_questions: questionData.total_questions,
+            question_text: questionData.question_text,
+            answers: questionData.answers,
+            correct_index: questionData.correct_index,
+            theme: questionData.theme,
+            sub_theme: questionData.sub_theme,
+            chrono_time: questionData.chrono_time
+        };
+        
+        console.log('[MultiplayerFirestoreProvider] Publishing question via onQuestionStart:', sanitizedQuestion.question_number);
+        return await this.publishQuestion(sanitizedQuestion, sanitizedQuestion.question_number);
+    },
+
+    /**
      * Publie un buzz
      */
     async publishBuzz(buzzTime) {

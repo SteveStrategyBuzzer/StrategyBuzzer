@@ -2094,30 +2094,11 @@ function hideWaitingOverlay() {
             if (providerInit) {
                 console.log('[Firebase] MultiplayerFirestoreProvider initialized');
                 
-                if (typeof FirestoreProvider !== 'undefined') {
-                    FirestoreProvider.init({
-                        db: db,
-                        doc: doc,
-                        onSnapshot: onSnapshot,
-                        updateDoc: updateDoc,
-                        setDoc: setDoc,
-                        serverTimestamp: serverTimestamp,
-                        arrayUnion: arrayUnion,
-                        getDoc: getDoc,
-                        sessionId: sessionId,
-                        playerId: firebaseUid,
-                        laravelUserId: gameConfig.playerId,
-                        isHost: gameConfig.isHost,
-                        csrfToken: gameConfig.csrfToken,
-                        routes: gameConfig.routes
-                    });
-                    
-                    if (typeof GameplayEngine !== 'undefined') {
-                        GameplayEngine.setProvider(FirestoreProvider);
-                        console.log('[Firebase] FirestoreProvider set for GameplayEngine');
-                        GameplayEngine.startTimer();
-                        console.log('[Firebase] Timer started after provider set');
-                    }
+                if (typeof GameplayEngine !== 'undefined') {
+                    GameplayEngine.setProvider(window.MultiplayerFirestoreProvider);
+                    console.log('[Firebase] MultiplayerFirestoreProvider set for GameplayEngine');
+                    GameplayEngine.startTimer();
+                    console.log('[Firebase] Timer started after provider set');
                 }
                 
                 window.MultiplayerFirestoreProvider.listenForQuestions((questionData, questionNumber) => {
