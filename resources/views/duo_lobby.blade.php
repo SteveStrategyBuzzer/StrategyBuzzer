@@ -78,18 +78,8 @@
 
             <div class="panel-divider"></div>
 
-            <!-- Matchmaking Grid: Opponents + Queue Side by Side -->
+            <!-- Matchmaking Section -->
             <div class="matchmaking-grid">
-                <!-- Available Opponents Section -->
-                <div class="panel-section opponents-section">
-                    <h3>🎮 {{ __('Adversaires disponibles') }}</h3>
-                    <div class="opponents-list" id="opponentsList">
-                        <div class="empty-message">{{ __('Rejoignez la file pour voir les adversaires disponibles') }}</div>
-                    </div>
-                </div>
-
-                <div class="grid-divider">{{ __('VS') }}</div>
-
                 <!-- Queue Actions Section -->
                 <div class="panel-section queue-section">
                     <h3>🎯 {{ __('MATCHMAKING') }}</h3>
@@ -105,9 +95,19 @@
                         <div class="spinner"></div>
                         <p>{{ __('En attente d\'adversaires...') }}</p>
                     </div>
-                    
+                </div>
+
+                <!-- Available Opponents Section (Result of joining queue) -->
+                <div class="panel-section opponents-section">
+                    <h3>🎮 {{ __('Adversaires disponibles') }}</h3>
+                    <div class="opponents-list" id="opponentsList">
+                        <div class="empty-message">{{ __('Rejoignez la file pour voir les adversaires disponibles') }}</div>
+                    </div>
+                </div>
+
+                <!-- Invite a Friend Section -->
+                <div class="panel-section invite-friend-section">
                     <div class="divider-small">{{ __('OU') }}</div>
-                    
                     <h4>👥 {{ __('INVITER UN AMI') }}</h4>
                     <div class="invite-section">
                         <input type="text" id="inviteInput" placeholder="{{ __('Code du joueur (ex: SB-4X2K)...') }}" class="invite-input">
@@ -635,19 +635,9 @@
 }
 
 .matchmaking-unified-panel .matchmaking-grid {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 25px;
-    align-items: stretch;
-}
-
-.matchmaking-unified-panel .grid-divider {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #999;
-    font-weight: bold;
-    font-size: 1.2em;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .matchmaking-unified-panel .opponents-section {
@@ -663,6 +653,10 @@
     color: #666;
 }
 
+.matchmaking-unified-panel .invite-friend-section {
+    text-align: center;
+}
+
 /* Mobile responsive for unified panel */
 @media (max-width: 768px) {
     .matchmaking-unified-panel {
@@ -670,12 +664,7 @@
     }
     
     .matchmaking-unified-panel .matchmaking-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    
-    .matchmaking-unified-panel .grid-divider {
-        padding: 10px 0;
+        gap: 15px;
     }
 }
 
