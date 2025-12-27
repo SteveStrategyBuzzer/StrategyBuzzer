@@ -1114,7 +1114,7 @@ foreach ($colors as $color) {
                     @if(count($players) < $minPlayers)
                         {{ __('En attente de joueurs') }} ({{ count($players) }}/{{ $minPlayers }} {{ __('minimum') }})<span class="waiting-dots"></span>
                     @else
-                        {{ __('En attente que tous les joueurs soient prêts') }}<span class="waiting-dots"></span>
+                        {{ __('En attente de synchronisation') }}<span class="waiting-dots"></span>
                     @endif
                 </div>
             @endif
@@ -2869,7 +2869,7 @@ foreach ($colors as $color) {
         players: '{{ __("Joueurs") }}',
         lobbyClosed: '{{ __("Le salon a été fermé") }}',
         waitingMessage: '{{ __("En attente de joueurs") }}',
-        waitingReady: '{{ __("En attente que tous les joueurs soient prêts") }}',
+        waitingReady: '{{ __("En attente de synchronisation") }}',
         minimum: '{{ __("minimum") }}',
         audioNotAvailable: '{{ __("Audio non disponible") }}'
     };
