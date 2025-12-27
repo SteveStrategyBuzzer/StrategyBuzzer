@@ -639,11 +639,12 @@ body {
     
     <div class="versus-section">
         <div class="player-card left">
-            @if(str_contains($playerAvatar, '/'))
-                <img src="{{ asset($playerAvatar) }}" alt="{{ $playerName }}" class="player-avatar">
-            @else
-                <img src="{{ asset("images/avatars/standard/{$playerAvatar}.png") }}" alt="{{ $playerName }}" class="player-avatar">
-            @endif
+            @php
+                $playerAvatarSrc = (strpos($playerAvatar, 'http://') === 0 || strpos($playerAvatar, 'https://') === 0 || strpos($playerAvatar, '//') === 0) 
+                    ? $playerAvatar 
+                    : asset($playerAvatar);
+            @endphp
+            <img src="{{ $playerAvatarSrc }}" alt="{{ $playerName }}" class="player-avatar">
             <div class="player-name">{{ $playerName }}</div>
             <div class="player-division">{{ $playerDivision }}</div>
         </div>
@@ -651,11 +652,12 @@ body {
         <div class="versus-text">VS</div>
         
         <div class="player-card right">
-            @if(str_contains($opponentAvatar, '/'))
-                <img src="{{ asset($opponentAvatar) }}" alt="{{ $opponentName }}" class="player-avatar">
-            @else
-                <img src="{{ asset("images/avatars/standard/{$opponentAvatar}.png") }}" alt="{{ $opponentName }}" class="player-avatar">
-            @endif
+            @php
+                $opponentAvatarSrc = (strpos($opponentAvatar, 'http://') === 0 || strpos($opponentAvatar, 'https://') === 0 || strpos($opponentAvatar, '//') === 0) 
+                    ? $opponentAvatar 
+                    : asset($opponentAvatar);
+            @endphp
+            <img src="{{ $opponentAvatarSrc }}" alt="{{ $opponentName }}" class="player-avatar">
             <div class="player-name">{{ $opponentName }}</div>
             <div class="player-division">{{ $opponentDivision }}</div>
         </div>

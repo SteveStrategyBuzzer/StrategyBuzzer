@@ -306,7 +306,7 @@ class UnifiedGameController extends Controller
         $opponentInfo = $provider->getOpponentInfo();
         
         $playerName = $user->name ?? 'Joueur';
-        $playerAvatar = session('selected_avatar', 'default');
+        $playerAvatar = $this->getPlayerAvatarPath($user);
         $playerDivision = 'Bronze';
         
         if ($user->duoStats) {
@@ -318,6 +318,8 @@ class UnifiedGameController extends Controller
         $hostId = $gameState['host_id'] ?? null;
         $isHost = $hostId !== null ? ((int)$hostId === (int)$user->id) : true;
         
+        $opponentAvatar = $this->normalizeAvatarPath($opponentInfo['avatar'] ?? 'default');
+        
         $params = [
             'mode' => $mode,
             'theme' => $gameState['theme'] ?? 'Culture générale',
@@ -326,7 +328,7 @@ class UnifiedGameController extends Controller
             'player_avatar' => $playerAvatar,
             'player_division' => $playerDivision,
             'opponent_name' => $opponentInfo['name'] ?? 'Adversaire',
-            'opponent_avatar' => $opponentInfo['avatar'] ?? 'default',
+            'opponent_avatar' => $opponentAvatar,
             'opponent_division' => $opponentInfo['division'] ?? 'Bronze',
             'redirect_url' => route('game.question', ['mode' => $mode]),
             'match_id' => $matchId,
@@ -1255,6 +1257,37 @@ class UnifiedGameController extends Controller
         }
         
         return 'images/avatars/standard/default.png';
+    }
+    
+    protected function normalizeAvatarPath(?string $avatarValue): string
+    {
+        if (!$avatarValue || $avatarValue === 'default') {
+            return 'images/avatars/standard/default.png';
+        }
+        
+        if (strpos($avatarValue, 'http://') === 0 || strpos($avatarValue, 'https://') === 0 || strpos($avatarValue, '//') === 0) {
+            return $avatarValue;
+        }
+        
+        $avatarValue = ltrim($avatarValue, '/');
+        
+        if (strpos($avatarValue, 'images/') === 0) {
+            if (substr($avatarValue, -4) !== '.png') {
+                $avatarValue .= '.png';
+            }
+            return $avatarValue;
+        }
+        
+        if (strpos($avatarValue, '/') !== false && substr($avatarValue, -4) !== '.png') {
+            return 'images/avatars/' . $avatarValue . '.png';
+        }
+        
+        if (strpos($avatarValue, '/') !== false) {
+            return $avatarValue;
+        }
+        
+        $avatarValue = preg_replace('/\.png$/', '', $avatarValue);
+        return 'images/avatars/standard/' . $avatarValue . '.png';
     }
     
     public function tiebreakerChoice(Request $request, string $mode)
