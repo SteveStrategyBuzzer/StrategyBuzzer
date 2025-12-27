@@ -348,6 +348,7 @@ const GameplayEngine = {
 
         if (!this.state.buzzed) {
             this.state.phase = 'result';
+            this.triggerPassiveSkills('timeout');
             this.notifyTimeExpired();
         }
     },
@@ -670,8 +671,78 @@ const GameplayEngine = {
      * Déclenche les skills passifs
      */
     triggerPassiveSkills(event) {
-        // Implémenter selon les skills définis
         console.log('[GameplayEngine] Trigger passive skills for event:', event);
+        
+        // Map events to game phases for visual updates
+        const eventToPhase = {
+            'question_start': 'question',
+            'player_buzz': 'answers',
+            'opponent_buzz': 'answers',
+            'correct_answer': 'waiting',
+            'incorrect_answer': 'waiting',
+            'timeout': 'waiting'
+        };
+        
+        const phase = eventToPhase[event];
+        if (phase) {
+            this.updateSkillVisuals(phase);
+        }
+    },
+    
+    /**
+     * Met à jour l'apparence visuelle des skills selon la phase de jeu
+     * @param {string} phase - 'question' | 'answers' | 'waiting'
+     */
+    updateSkillVisuals(phase) {
+        console.log('[GameplayEngine] Updating skill visuals for phase:', phase);
+        
+        // Get all skill circles
+        const skillCircles = document.querySelectorAll('.skill-circle[data-skill-trigger]');
+        
+        skillCircles.forEach(skillEl => {
+            const trigger = skillEl.getAttribute('data-skill-trigger');
+            const isUsed = skillEl.classList.contains('used');
+            const isLocked = skillEl.getAttribute('data-locked') === 'true';
+            
+            // Skip used or locked skills
+            if (isUsed || isLocked) {
+                skillEl.classList.remove('usable-now', 'available');
+                return;
+            }
+            
+            // Determine if skill is usable NOW based on phase and trigger type
+            let isUsableNow = false;
+            let isAvailable = false;
+            
+            switch (trigger) {
+                case 'Active_Pre':
+                    // Active_Pre skills are usable during question phase (before buzzing)
+                    isUsableNow = (phase === 'question');
+                    isAvailable = !isUsableNow && (phase !== 'waiting');
+                    break;
+                    
+                case 'Active_Post':
+                    // Active_Post skills are usable during answers phase (after buzzing)
+                    isUsableNow = (phase === 'answers');
+                    isAvailable = !isUsableNow && (phase !== 'waiting');
+                    break;
+                    
+                case 'Passive':
+                    // Passive skills are never manually usable, show as available if not used
+                    isUsableNow = false;
+                    isAvailable = true;
+                    break;
+                    
+                default:
+                    // Unknown trigger type
+                    isAvailable = true;
+                    break;
+            }
+            
+            // Update classes
+            skillEl.classList.toggle('usable-now', isUsableNow);
+            skillEl.classList.toggle('available', isAvailable && !isUsableNow);
+        });
     },
 
     /**
