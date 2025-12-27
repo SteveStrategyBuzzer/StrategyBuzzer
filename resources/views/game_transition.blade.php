@@ -25,7 +25,14 @@ $timeout = $params['timeout'] ?? false;
 $correctAnswer = $params['correct_answer'] ?? '';
 
 $selectedAvatar = session('selected_avatar', 'default');
-if (strpos($selectedAvatar, '/') !== false || strpos($selectedAvatar, 'images/') === 0) {
+// Normalize avatar path: handle full paths, category/slug format, and simple names (PHP 7.x compatible)
+if (strpos($selectedAvatar, 'http://') === 0 || strpos($selectedAvatar, 'https://') === 0 || strpos($selectedAvatar, '//') === 0) {
+    $playerAvatarPath = $selectedAvatar;
+} elseif (strpos($selectedAvatar, 'images/') === 0) {
+    $playerAvatarPath = asset($selectedAvatar);
+} elseif (strpos($selectedAvatar, '/') !== false && strpos($selectedAvatar, '.png') === false) {
+    $playerAvatarPath = asset("images/avatars/{$selectedAvatar}.png");
+} elseif (strpos($selectedAvatar, '/') !== false) {
     $playerAvatarPath = asset($selectedAvatar);
 } else {
     $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");

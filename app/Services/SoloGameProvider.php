@@ -153,10 +153,11 @@ class SoloGameProvider extends GameModeProvider
         ];
     }
     
-    public function submitAnswer(int $answerId, bool $isCorrect): array
+    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false): array
     {
         $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
-        $points = $this->calculatePoints($isCorrect, $buzzTime);
+        // Timeout = 0 points (no penalty for not buzzing), wrong answer = -5
+        $points = $timedOut ? 0 : $this->calculatePoints($isCorrect, $buzzTime);
         
         $this->gameState['player_score'] = ($this->gameState['player_score'] ?? 0) + $points;
         
@@ -165,6 +166,7 @@ class SoloGameProvider extends GameModeProvider
             'is_correct' => $isCorrect,
             'points' => $points,
             'player_score' => $this->gameState['player_score'],
+            'timed_out' => $timedOut,
         ];
     }
     

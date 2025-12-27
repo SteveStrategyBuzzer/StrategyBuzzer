@@ -27,6 +27,7 @@ const MultiplayerFirestoreProvider = {
     unsubscribeBuzz: null,
     unsubscribeReady: null,
     lastQuestionPublishedAt: 0,
+    lastQuestionVersion: 0,
     
     onQuestionReceived: null,
     onBuzzReceived: null,
@@ -55,6 +56,10 @@ const MultiplayerFirestoreProvider = {
         this.isHost = config.isHost || false;
         this.mode = config.mode || 'duo';
         this.csrfToken = config.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+        
+        // Reset sync state for new session - prevents stale timestamps from blocking question delivery
+        this.lastQuestionPublishedAt = 0;
+        this.lastQuestionVersion = 0;
         
         this.db = config.db;
         this.firestoreDoc = config.doc;
@@ -156,13 +161,21 @@ const MultiplayerFirestoreProvider = {
             
             const data = snapshot.data();
             
+            // Use both timestamp and version for robust sync detection
             const questionPublishedAt = data.questionPublishedAt?.toMillis?.() || data.questionPublishedAt || 0;
-            if (data.currentQuestionData && questionPublishedAt > this.lastQuestionPublishedAt) {
+            const questionVersion = data.questionVersion || 0;
+            
+            // Check if this is a new question using either version OR timestamp
+            const isNewByVersion = questionVersion > 0 && questionVersion > this.lastQuestionVersion;
+            const isNewByTimestamp = questionPublishedAt > this.lastQuestionPublishedAt;
+            
+            if (data.currentQuestionData && (isNewByVersion || isNewByTimestamp)) {
                 this.lastQuestionPublishedAt = questionPublishedAt;
+                this.lastQuestionVersion = questionVersion;
                 const questionData = data.currentQuestionData;
                 const questionNumber = data.currentQuestion || questionData.question_number || 1;
                 
-                console.log('[MultiplayerFirestoreProvider] Question received:', questionNumber, 'at', questionPublishedAt);
+                console.log('[MultiplayerFirestoreProvider] Question received:', questionNumber, 'version:', questionVersion, 'at:', questionPublishedAt);
                 
                 if (this.onQuestionReceived) {
                     this.onQuestionReceived(questionData, questionNumber);
@@ -187,9 +200,14 @@ const MultiplayerFirestoreProvider = {
 
         try {
             const sessionRef = this.getSessionRef();
+            
+            // Increment local questionVersion for publishing
+            this.lastQuestionVersion = questionNumber;
+            
             const updateData = {
                 currentQuestionData: questionData,
                 questionPublishedAt: this.firestoreServerTimestamp(),
+                questionVersion: questionNumber,
                 currentQuestion: questionNumber,
                 phase: 'question',
                 buzzedPlayerId: null,
@@ -208,6 +226,7 @@ const MultiplayerFirestoreProvider = {
             if (questionNumber === 1) {
                 updateData.player1Score = 0;
                 updateData.player2Score = 0;
+                updateData.questionVersion = 1;
                 updateData.gameStartedAt = this.firestoreServerTimestamp();
                 console.log('[MultiplayerFirestoreProvider] Scores reset to 0 for new game');
             }

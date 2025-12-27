@@ -47,78 +47,84 @@
         @endif
 
         @if($duoFullUnlocked ?? false)
-        <!-- Division Selector -->
-        <div class="division-selector-section">
-            <h3>🎯 {{ __('Sélectionner une division') }}</h3>
-            <p class="hint-text">{{ __('Vous pouvez jouer jusqu\'à 2 divisions au-dessus de la vôtre') }}</p>
-            <div class="division-selector" id="divisionSelector">
-                @php
-                    $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
-                    $currentDivision = $division->division ?? 'bronze';
-                    $currentDivIndex = array_search($currentDivision, $divisions);
-                    $maxDivIndex = min($currentDivIndex + 2, count($divisions) - 1);
-                    $divisionEmojis = ['🥉', '🥈', '🥇', '💎', '💠', '👑'];
-                    $divisionFees = [0, 0, 50, 100, 200, 500];
-                @endphp
-                @for($i = $currentDivIndex; $i <= $maxDivIndex; $i++)
-                    <button class="division-option {{ $i == $currentDivIndex ? 'selected current' : '' }}" 
-                            data-division="{{ $divisions[$i] }}"
-                            data-fee="{{ $i > $currentDivIndex ? $divisionFees[$i] : 0 }}">
-                        <span class="div-emoji">{{ $divisionEmojis[$i] }}</span>
-                        <span class="div-name">{{ ucfirst($divisions[$i]) }}</span>
-                        @if($i > $currentDivIndex)
-                            <span class="div-fee">{{ $divisionFees[$i] }} 💰</span>
-                        @endif
+        <!-- Unified Matchmaking Panel - Groups Division, Opponents, and Queue in single card -->
+        <div class="matchmaking-unified-panel">
+            <!-- Division Selector Section -->
+            <div class="panel-section division-section">
+                <h3>🎯 {{ __('Sélectionner une division') }}</h3>
+                <p class="hint-text">{{ __('Vous pouvez jouer jusqu\'à 2 divisions au-dessus de la vôtre') }}</p>
+                <div class="division-selector" id="divisionSelector">
+                    @php
+                        $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+                        $currentDivision = $division->division ?? 'bronze';
+                        $currentDivIndex = array_search($currentDivision, $divisions);
+                        $maxDivIndex = min($currentDivIndex + 2, count($divisions) - 1);
+                        $divisionEmojis = ['🥉', '🥈', '🥇', '💎', '💠', '👑'];
+                        $divisionFees = [0, 0, 50, 100, 200, 500];
+                    @endphp
+                    @for($i = $currentDivIndex; $i <= $maxDivIndex; $i++)
+                        <button class="division-option {{ $i == $currentDivIndex ? 'selected current' : '' }}" 
+                                data-division="{{ $divisions[$i] }}"
+                                data-fee="{{ $i > $currentDivIndex ? $divisionFees[$i] : 0 }}">
+                            <span class="div-emoji">{{ $divisionEmojis[$i] }}</span>
+                            <span class="div-name">{{ ucfirst($divisions[$i]) }}</span>
+                            @if($i > $currentDivIndex)
+                                <span class="div-fee">{{ $divisionFees[$i] }} 💰</span>
+                            @endif
+                        </button>
+                    @endfor
+                </div>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <!-- Matchmaking Grid: Opponents + Queue Side by Side -->
+            <div class="matchmaking-grid">
+                <!-- Available Opponents Section -->
+                <div class="panel-section opponents-section">
+                    <h3>🎮 {{ __('Adversaires disponibles') }}</h3>
+                    <div class="opponents-list" id="opponentsList">
+                        <div class="empty-message">{{ __('Rejoignez la file pour voir les adversaires disponibles') }}</div>
+                    </div>
+                </div>
+
+                <div class="grid-divider">{{ __('VS') }}</div>
+
+                <!-- Queue Actions Section -->
+                <div class="panel-section queue-section">
+                    <h3>🎯 {{ __('MATCHMAKING') }}</h3>
+                    <p>{{ __('Affrontez un adversaire de votre division') }}</p>
+                    
+                    <button id="randomMatchBtn" class="btn-primary btn-large">
+                        {{ __('REJOINDRE LA FILE D\'ATTENTE') }}
                     </button>
-                @endfor
+                    <button id="leaveQueueBtn" class="btn-secondary btn-large" style="display: none;">
+                        {{ __('QUITTER LA FILE') }}
+                    </button>
+                    <div id="queueStatus" class="queue-status" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>{{ __('En attente d\'adversaires...') }}</p>
+                    </div>
+                    
+                    <div class="divider-small">{{ __('OU') }}</div>
+                    
+                    <h4>👥 {{ __('INVITER UN AMI') }}</h4>
+                    <div class="invite-section">
+                        <input type="text" id="inviteInput" placeholder="{{ __('Code du joueur (ex: SB-4X2K)...') }}" class="invite-input">
+                        <button id="inviteBtn" class="btn-secondary btn-large">
+                            {{ __('INVITER') }}
+                        </button>
+                    </div>
+                    <button id="openContactsBtn" class="btn-contacts">
+                        📒 {{ __('Carnet') }}
+                    </button>
+                </div>
             </div>
         </div>
         @endif
 
         <div class="matchmaking-options">
-            @if($duoFullUnlocked ?? false)
-            {{-- Accès COMPLET : Matchmaking et Invitations disponibles --}}
-            
-            <!-- Available Opponents Section -->
-            <div class="option-card opponents-section">
-                <h3>🎮 {{ __('Adversaires disponibles') }}</h3>
-                <div class="opponents-list" id="opponentsList">
-                    <div class="empty-message">{{ __('Rejoignez la file pour voir les adversaires disponibles') }}</div>
-                </div>
-            </div>
-
-            <div class="divider">{{ __('VS') }}</div>
-
-            <!-- Queue Actions Section -->
-            <div class="option-card queue-section">
-                <h3>🎯 {{ __('MATCHMAKING') }}</h3>
-                <p>{{ __('Affrontez un adversaire de votre division') }}</p>
-                
-                <button id="randomMatchBtn" class="btn-primary btn-large">
-                    {{ __('REJOINDRE LA FILE D\'ATTENTE') }}
-                </button>
-                <button id="leaveQueueBtn" class="btn-secondary btn-large" style="display: none;">
-                    {{ __('QUITTER LA FILE') }}
-                </button>
-                <div id="queueStatus" class="queue-status" style="display: none;">
-                    <div class="spinner"></div>
-                    <p>{{ __('En attente d\'adversaires...') }}</p>
-                </div>
-                
-                <div class="divider-small">{{ __('OU') }}</div>
-                
-                <h4>👥 {{ __('INVITER UN AMI') }}</h4>
-                <div class="invite-section">
-                    <input type="text" id="inviteInput" placeholder="{{ __('Code du joueur (ex: SB-4X2K)...') }}" class="invite-input">
-                    <button id="inviteBtn" class="btn-secondary btn-large">
-                        {{ __('INVITER') }}
-                    </button>
-                </div>
-                <button id="openContactsBtn" class="btn-contacts">
-                    📒 {{ __('Carnet') }}
-                </button>
-            </div>
-            @else
+            @if(!($duoFullUnlocked ?? false))
             {{-- Mode Entraînement : Seulement le carnet pour recevoir des invitations --}}
             <div class="option-card training-mode-card">
                 <h3>📒 {{ __('Carnet de contacts') }}</h3>
@@ -590,6 +596,87 @@
     font-size: 0.7em;
     padding: 2px 8px;
     border-radius: 10px;
+}
+
+/* Unified Matchmaking Panel - Groups all sections in single card */
+.matchmaking-unified-panel {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    margin-bottom: 20px;
+}
+
+.matchmaking-unified-panel .panel-section {
+    padding: 20px 0;
+}
+
+.matchmaking-unified-panel .panel-section:first-child {
+    padding-top: 0;
+}
+
+.matchmaking-unified-panel .panel-section h3 {
+    margin: 0 0 10px 0;
+    color: #1a1a1a;
+    text-align: center;
+}
+
+.matchmaking-unified-panel .hint-text {
+    color: #666;
+    text-align: center;
+    margin: 0 0 15px 0;
+    font-size: 0.9em;
+}
+
+.matchmaking-unified-panel .panel-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
+    margin: 10px 0;
+}
+
+.matchmaking-unified-panel .matchmaking-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 25px;
+    align-items: stretch;
+}
+
+.matchmaking-unified-panel .grid-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.matchmaking-unified-panel .opponents-section {
+    min-height: 180px;
+}
+
+.matchmaking-unified-panel .queue-section {
+    text-align: center;
+}
+
+.matchmaking-unified-panel .queue-section p {
+    margin: 0 0 20px 0;
+    color: #666;
+}
+
+/* Mobile responsive for unified panel */
+@media (max-width: 768px) {
+    .matchmaking-unified-panel {
+        padding: 20px;
+    }
+    
+    .matchmaking-unified-panel .matchmaking-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .matchmaking-unified-panel .grid-divider {
+        padding: 10px 0;
+    }
 }
 
 .division-option .div-emoji {

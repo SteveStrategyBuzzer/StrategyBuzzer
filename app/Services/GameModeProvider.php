@@ -26,7 +26,7 @@ abstract class GameModeProvider
 
     abstract public function handleOpponentBuzz(): array;
 
-    abstract public function submitAnswer(int $answerId, bool $isCorrect): array;
+    abstract public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false): array;
 
     abstract public function handleOpponentAnswer(): array;
 

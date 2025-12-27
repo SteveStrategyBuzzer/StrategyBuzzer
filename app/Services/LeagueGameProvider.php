@@ -98,11 +98,12 @@ class LeagueGameProvider extends GameModeProvider
         ];
     }
     
-    public function submitAnswer(int $answerId, bool $isCorrect): array
+    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false): array
     {
         $matchId = $this->gameState['match_id'] ?? null;
         $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
-        $points = $this->calculatePoints($isCorrect, $buzzTime);
+        // Timeout = 0 points (no penalty for not buzzing), wrong answer = -5
+        $points = $timedOut ? 0 : $this->calculatePoints($isCorrect, $buzzTime);
         
         if ($matchId) {
             $this->firestoreService->recordAnswer($matchId, $this->player->id, $answerId, $isCorrect, $points);
@@ -116,6 +117,7 @@ class LeagueGameProvider extends GameModeProvider
             'points' => $points,
             'player_score' => $this->gameState['player_score'],
             'waiting_for_opponent' => true,
+            'timed_out' => $timedOut,
         ];
     }
     

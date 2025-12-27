@@ -73,9 +73,22 @@ if (!empty($avatarSkillsFull['skills']) && is_array($avatarSkillsFull['skills'])
 }
 
 $selectedAvatar = session('selected_avatar', 'default');
-if (strpos($selectedAvatar, '/') !== false || strpos($selectedAvatar, 'images/') === 0) {
+// Normalize avatar path: handle full paths, category/slug format, and simple names
+// Use strpos for PHP 7.x compatibility
+if (strpos($selectedAvatar, 'http://') === 0 || strpos($selectedAvatar, 'https://') === 0 || strpos($selectedAvatar, '//') === 0) {
+    // Full URL or protocol-relative URL - use directly
+    $playerAvatarPath = $selectedAvatar;
+} elseif (strpos($selectedAvatar, 'images/') === 0) {
+    // Already a proper relative path (e.g., images/avatars/standard/standard1.png)
+    $playerAvatarPath = asset($selectedAvatar);
+} elseif (strpos($selectedAvatar, '/') !== false && strpos($selectedAvatar, '.png') === false) {
+    // Category/slug format like "animal/lynx" - needs images/avatars/ prefix and .png suffix
+    $playerAvatarPath = asset("images/avatars/{$selectedAvatar}.png");
+} elseif (strpos($selectedAvatar, '/') !== false) {
+    // Already has a slash and extension - use as relative path
     $playerAvatarPath = asset($selectedAvatar);
 } else {
+    // Simple name like "default" - use standard folder
     $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");
 }
 

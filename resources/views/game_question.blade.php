@@ -50,9 +50,15 @@ if (!empty($avatarSkillsFull['skills'])) {
 $playerNames = ['Hugo', 'Léa', 'Lucas', 'Emma', 'Nathan', 'Chloé', 'Louis', 'Jade', 'Arthur', 'Inès', 'Raphaël', 'Camille', 'Gabriel', 'Zoé', 'Thomas', 'Alice'];
 $playerName = $playerNames[array_rand($playerNames)];
 
-// Avatar du joueur
+// Avatar du joueur - normalize path handling for all formats (PHP 7.x compatible)
 $selectedAvatar = session('selected_avatar', 'default');
-if (strpos($selectedAvatar, '/') !== false || strpos($selectedAvatar, 'images/') === 0) {
+if (strpos($selectedAvatar, 'http://') === 0 || strpos($selectedAvatar, 'https://') === 0 || strpos($selectedAvatar, '//') === 0) {
+    $playerAvatarPath = $selectedAvatar;
+} elseif (strpos($selectedAvatar, 'images/') === 0) {
+    $playerAvatarPath = asset($selectedAvatar);
+} elseif (strpos($selectedAvatar, '/') !== false && strpos($selectedAvatar, '.png') === false) {
+    $playerAvatarPath = asset("images/avatars/{$selectedAvatar}.png");
+} elseif (strpos($selectedAvatar, '/') !== false) {
     $playerAvatarPath = asset($selectedAvatar);
 } else {
     $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");

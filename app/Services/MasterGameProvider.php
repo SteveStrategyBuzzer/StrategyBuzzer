@@ -125,12 +125,13 @@ class MasterGameProvider extends GameModeProvider
         ];
     }
     
-    public function submitAnswer(int $answerId, bool $isCorrect): array
+    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false): array
     {
         $roomCode = $this->gameState['room_code'] ?? null;
         $playerId = $this->player->id;
         $buzzTime = $this->gameState['buzz_times'][$playerId] ?? 5.0;
-        $points = $this->calculatePoints($isCorrect, $buzzTime);
+        // Timeout = 0 points, MasterGameProvider already returns 0 for incorrect
+        $points = $timedOut ? 0 : $this->calculatePoints($isCorrect, $buzzTime);
         
         if ($roomCode) {
             $this->firestoreService->recordAnswer($roomCode, $playerId, $answerId, $isCorrect, $points);
@@ -145,6 +146,7 @@ class MasterGameProvider extends GameModeProvider
             'is_correct' => $isCorrect,
             'points' => $points,
             'player_score' => $this->gameState['player_scores'][$playerId],
+            'timed_out' => $timedOut,
         ];
     }
     
