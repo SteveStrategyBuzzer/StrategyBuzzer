@@ -375,8 +375,8 @@ $roomCode = $params['room_code'] ?? null;
     }
     
     .strategic-avatar-circle {
-        width: 80px;
-        height: 80px;
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
         border: 3px solid #FFD700;
         box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
@@ -577,8 +577,8 @@ $roomCode = $params['room_code'] ?? null;
     .buzz-button:active { transform: scale(0.95); }
     
     .buzz-button img {
-        width: 140px;
-        height: 140px;
+        width: 180px;
+        height: 180px;
         filter: drop-shadow(0 10px 30px rgba(78, 205, 196, 0.6));
     }
     
@@ -626,7 +626,7 @@ $roomCode = $params['room_code'] ?? null;
         .player-avatar, .opponent-avatar { width: 70px; height: 70px; }
         .chrono-circle { width: 120px; height: 120px; }
         .chrono-time { font-size: 2.5rem; }
-        .buzz-button img { width: 120px; height: 120px; }
+        .buzz-button img { width: 150px; height: 150px; }
         .answers-grid { grid-template-columns: 1fr; gap: 10px; padding: 0 10px; }
         .question-header { padding: 15px 10px; }
         .question-text { font-size: 1.1rem; }
@@ -644,7 +644,7 @@ $roomCode = $params['room_code'] ?? null;
         .player-avatar, .opponent-avatar { width: 55px; height: 55px; }
         .chrono-circle { width: 90px; height: 90px; }
         .chrono-time { font-size: 2rem; }
-        .buzz-button img { width: 100px; height: 100px; }
+        .buzz-button img { width: 130px; height: 130px; }
         .question-header { padding: 10px 8px; margin-bottom: 5px; }
         .question-text { font-size: 1rem; }
         .question-number { font-size: 0.75rem; margin-bottom: 8px; }
@@ -657,7 +657,7 @@ $roomCode = $params['room_code'] ?? null;
     }
     
     @media (max-height: 700px) and (orientation: portrait) {
-        .buzz-button img { width: 90px; height: 90px; }
+        .buzz-button img { width: 110px; height: 110px; }
         .game-container { padding-bottom: 120px; }
         .buzz-container-bottom { bottom: 8px; }
         .chrono-circle { width: 80px; height: 80px; }
