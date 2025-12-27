@@ -72,21 +72,54 @@ if (!empty($avatarSkillsFull['skills']) && is_array($avatarSkillsFull['skills'])
     }
 }
 
-$selectedAvatar = session('selected_avatar', 'default');
+// Get player avatar from authenticated user's profile_settings (not session)
+$currentUser = auth()->user();
+$selectedAvatar = 'default';
+
+if ($currentUser) {
+    $profileSettings = $currentUser->profile_settings;
+    if (is_string($profileSettings)) {
+        $profileSettings = json_decode($profileSettings, true) ?? [];
+    } elseif (is_object($profileSettings)) {
+        $profileSettings = (array) $profileSettings;
+    }
+    
+    if (is_array($profileSettings) && isset($profileSettings['avatar'])) {
+        $avatarData = $profileSettings['avatar'];
+        if (is_object($avatarData)) {
+            $avatarData = (array) $avatarData;
+        }
+        if (is_array($avatarData)) {
+            // Prefer url over id, as url is the full path
+            $selectedAvatar = $avatarData['url'] ?? $avatarData['id'] ?? 'default';
+        } elseif (is_string($avatarData)) {
+            $selectedAvatar = $avatarData;
+        }
+    }
+}
+
 // Normalize avatar path: handle full paths, category/slug format, and simple names
 // Use strpos for PHP 7.x compatibility
 if (strpos($selectedAvatar, 'http://') === 0 || strpos($selectedAvatar, 'https://') === 0 || strpos($selectedAvatar, '//') === 0) {
     // Full URL or protocol-relative URL - use directly
     $playerAvatarPath = $selectedAvatar;
 } elseif (strpos($selectedAvatar, 'images/') === 0) {
-    // Already a proper relative path (e.g., images/avatars/standard/standard1.png)
+    // Already a proper relative path (e.g., images/avatars/portraits/1.png)
+    // Ensure it has .png extension (avoid double extension)
+    if (substr($selectedAvatar, -4) !== '.png') {
+        $selectedAvatar .= '.png';
+    }
     $playerAvatarPath = asset($selectedAvatar);
-} elseif (strpos($selectedAvatar, '/') !== false && strpos($selectedAvatar, '.png') === false) {
-    // Category/slug format like "animal/lynx" - needs images/avatars/ prefix and .png suffix
+} elseif (strpos($selectedAvatar, '/') !== false && substr($selectedAvatar, -4) !== '.png') {
+    // Category/slug format like "animal/lynx" without extension - needs images/avatars/ prefix and .png suffix
     $playerAvatarPath = asset("images/avatars/{$selectedAvatar}.png");
 } elseif (strpos($selectedAvatar, '/') !== false) {
     // Already has a slash and extension - use as relative path
     $playerAvatarPath = asset($selectedAvatar);
+} elseif (substr($selectedAvatar, -4) === '.png') {
+    // Simple name with .png extension (like "1.png") - strip extension and add folder
+    $baseName = preg_replace('/\.png$/', '', $selectedAvatar);
+    $playerAvatarPath = asset("images/avatars/standard/{$baseName}.png");
 } else {
     // Simple name like "default" - use standard folder
     $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");

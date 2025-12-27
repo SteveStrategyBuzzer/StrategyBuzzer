@@ -1184,6 +1184,58 @@ class UnifiedGameController extends Controller
         ];
     }
     
+    protected function getPlayerAvatarPath($user): string
+    {
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        } elseif (is_object($profileSettings)) {
+            $profileSettings = (array) $profileSettings;
+        }
+        
+        if (is_array($profileSettings) && isset($profileSettings['avatar'])) {
+            $avatarData = $profileSettings['avatar'];
+            if (is_object($avatarData)) {
+                $avatarData = (array) $avatarData;
+            }
+            if (is_array($avatarData)) {
+                $avatarUrl = $avatarData['url'] ?? $avatarData['id'] ?? null;
+            } elseif (is_string($avatarData)) {
+                $avatarUrl = $avatarData;
+            } else {
+                $avatarUrl = null;
+            }
+            
+            if ($avatarUrl && is_string($avatarUrl) && strlen($avatarUrl) > 0) {
+                if (strpos($avatarUrl, 'http://') === 0 || strpos($avatarUrl, 'https://') === 0 || strpos($avatarUrl, '//') === 0) {
+                    return $avatarUrl;
+                }
+                
+                $avatarUrl = ltrim($avatarUrl, '/');
+                
+                if (strpos($avatarUrl, 'images/') === 0) {
+                    if (substr($avatarUrl, -4) !== '.png') {
+                        $avatarUrl .= '.png';
+                    }
+                    return $avatarUrl;
+                }
+                
+                if (strpos($avatarUrl, '/') !== false && substr($avatarUrl, -4) !== '.png') {
+                    return 'images/avatars/' . $avatarUrl . '.png';
+                }
+                
+                if (strpos($avatarUrl, '/') !== false) {
+                    return $avatarUrl;
+                }
+                
+                $avatarUrl = preg_replace('/\.png$/', '', $avatarUrl);
+                return 'images/avatars/standard/' . $avatarUrl . '.png';
+            }
+        }
+        
+        return 'images/avatars/standard/default.png';
+    }
+    
     public function tiebreakerChoice(Request $request, string $mode)
     {
         $user = Auth::user();
