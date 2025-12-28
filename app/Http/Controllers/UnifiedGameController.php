@@ -172,8 +172,15 @@ class UnifiedGameController extends Controller
         
         $provider->setGameState($gameState);
         
+        // Seul l'host génère les questions pour éviter les doublons
+        // Le guest récupère les questions via Firebase (MultiplayerFirestoreProvider)
         if (in_array($mode, ['duo', 'league_individual', 'league_team'])) {
-            $this->generateAndStoreQuestionsForMatch($gameState, $user);
+            $hostId = $gameState['host_id'] ?? null;
+            $isHost = $hostId !== null ? ((int)$hostId === (int)$user->id) : true;
+            
+            if ($isHost) {
+                $this->generateAndStoreQuestionsForMatch($gameState, $user);
+            }
         }
         
         session(['game_state' => $provider->getGameState()]);
@@ -192,7 +199,9 @@ class UnifiedGameController extends Controller
     
     protected function generateAndStoreQuestionsForMatch(array $gameState, $user): void
     {
-        $matchId = $gameState['match_id'] ?? $gameState['lobby_code'] ?? null;
+        // IMPORTANT: Utiliser lobby_code en priorité pour cohérence avec DuoFirestoreService
+        // qui publie sur games/duo-match-{normalize(lobby_code)}
+        $matchId = $gameState['lobby_code'] ?? $gameState['match_id'] ?? null;
         $mode = $gameState['mode'] ?? 'duo';
         
         if (!$matchId) {

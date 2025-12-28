@@ -26,6 +26,8 @@ All multiplayer modes now use a **server-side Firebase publishing architecture**
 
 2. **Question Synchronization**: Host calls `fetchQuestionJson` API → backend generates question → `DuoFirestoreService.publishQuestion()` publishes to Firebase → all clients receive identical question data via Firestore listeners.
 
+   **CRITICAL - Host-Only Question Generation (Dec 2025):** Only the host generates questions in `UnifiedGameController::startGame()`. The guest does NOT generate questions; it listens for them via `MultiplayerFirestoreProvider.listenForQuestions()`. This prevents each player from having different questions. The `host_id` from `LobbyService` is required to determine who is the host.
+
 3. **Firestore Document Structure**: All multiplayer modes use unified `games/duo-match-{normalizedId}` documents where `normalizedId` is computed using CRC32 normalization (matching PHP and JS implementations).
 
    **CRITICAL - Path Consistency (Dec 2025):** The `normalizedId` MUST always be derived from `lobby_code` (the 6-character code like "ABC123"), NOT from the numeric `match_id` (database ID like 123). This ensures:
