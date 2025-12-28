@@ -4256,11 +4256,14 @@ initFirebase().then(async (authenticated) => {
         return numericId;
     }
     
-    const normalizedId = firebaseMatchId ? normalizeMatchIdJs(firebaseMatchId) : normalizeMatchIdJs(lobbyCode);
+    // IMPORTANT: Toujours utiliser lobbyCode pour le chemin Firebase
+    // Le backend (DuoFirestoreService) publie avec lobbyCode, pas matchId
+    // Cela assure la cohérence entre lobby et gameplay
+    const normalizedId = normalizeMatchIdJs(lobbyCode);
     const gameDocRef = doc(db, 'games', `duo-match-${normalizedId}`);
     let gameStartHandled = false;
     
-    console.log('[Firebase] Listening for game start signal on:', `games/duo-match-${normalizedId}`, '(matchId:', firebaseMatchId, ')');
+    console.log('[Firebase] Listening for game start signal on:', `games/duo-match-${normalizedId}`, '(lobbyCode:', lobbyCode, ')');
     
     onSnapshot(gameDocRef, (docSnap) => {
         if (!docSnap.exists() || gameStartHandled) return;

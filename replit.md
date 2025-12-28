@@ -28,6 +28,11 @@ All multiplayer modes now use a **server-side Firebase publishing architecture**
 
 3. **Firestore Document Structure**: All multiplayer modes use unified `games/duo-match-{normalizedId}` documents where `normalizedId` is computed using CRC32 normalization (matching PHP and JS implementations).
 
+   **CRITICAL - Path Consistency (Dec 2025):** The `normalizedId` MUST always be derived from `lobby_code` (the 6-character code like "ABC123"), NOT from the numeric `match_id` (database ID like 123). This ensures:
+   - Lobby listener uses `normalizeMatchId(lobbyCode)`
+   - Gameplay `sessionId` prioritizes `lobby_code` over `match_id`
+   - Backend `DuoFirestoreService.publishQuestion()` uses `lobbyCode`
+
 4. **Security**: `correct_index` and `is_correct` are **never** transmitted to clients via Firebase. Answer validation is strictly server-side.
 
 **Note**: League modes currently use `DuoFirestoreService` for question publishing but may have other operations still using mode-specific services. Full migration to unified Firestore namespace pending for league modes.

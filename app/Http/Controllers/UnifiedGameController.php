@@ -403,7 +403,9 @@ class UnifiedGameController extends Controller
         
         if ($mode === 'duo' || $mode === 'league_individual' || $mode === 'league_team') {
             $params['match_id'] = $gameState['match_id'] ?? null;
-            $params['session_id'] = $gameState['match_id'] ?? $gameState['lobby_code'] ?? null;
+            // IMPORTANT: session_id doit utiliser lobby_code car DuoFirestoreService publie avec lobby_code
+            // Cela assure la cohérence des chemins Firebase entre lobby et gameplay
+            $params['session_id'] = $gameState['lobby_code'] ?? $gameState['match_id'] ?? null;
             $params['firebase_sync'] = true;
             $params['is_host'] = ($gameState['host_id'] ?? null) === $user->id;
             $params['opponent_id'] = $gameState['opponent_id'] ?? null;
