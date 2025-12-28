@@ -1091,6 +1091,10 @@ foreach ($colors as $color) {
     @endif
     
     <div class="actions-section">
+        <div id="sync-status" class="sync-status" style="display: none; margin-bottom: 15px; padding: 10px 15px; border-radius: 8px; text-align: center; font-weight: 600;">
+            <span id="sync-status-text"></span>
+        </div>
+        
         @if(!$isHost)
             <button class="btn btn-ready {{ ($players[$currentPlayerId]['ready'] ?? false) ? 'is-ready' : '' }}" 
                     onclick="toggleReady()"
@@ -1109,15 +1113,13 @@ foreach ($colors as $color) {
                 {{ __('Lancer la partie') }}
             </button>
             
-            @if(!$canStart)
-                <div class="waiting-message">
-                    @if(count($players) < $minPlayers)
-                        {{ __('En attente de joueurs') }} ({{ count($players) }}/{{ $minPlayers }} {{ __('minimum') }})<span class="waiting-dots"></span>
-                    @else
-                        {{ __('En attente de synchronisation') }}<span class="waiting-dots"></span>
-                    @endif
-                </div>
-            @endif
+            <div class="waiting-message" style="{{ $canStart ? 'display: none;' : '' }}">
+                @if(count($players) < $minPlayers)
+                    {{ __('En attente de joueurs') }} ({{ count($players) }}/{{ $minPlayers }} {{ __('minimum') }})<span class="waiting-dots"></span>
+                @else
+                    {{ __('En attente que tous soient prêts') }}<span class="waiting-dots"></span>
+                @endif
+            </div>
         @endif
         
         <button class="btn btn-leave" onclick="leaveLobby()">
@@ -2877,7 +2879,9 @@ foreach ($colors as $color) {
         players: '{{ __("Joueurs") }}',
         lobbyClosed: '{{ __("Le salon a été fermé") }}',
         waitingMessage: '{{ __("En attente de joueurs") }}',
-        waitingReady: '{{ __("En attente de synchronisation") }}',
+        waitingReady: '{{ __("En attente que tous soient prêts") }}',
+        waitingConnection: '{{ __("Connexion en cours...") }}',
+        synchronized: '{{ __("Synchronisé") }}',
         minimum: '{{ __("minimum") }}',
         audioNotAvailable: '{{ __("Audio non disponible") }}'
     };
@@ -4187,23 +4191,35 @@ initFirebase().then(async (authenticated) => {
         
         const playerCount = Object.keys(presencePlayers).length;
         const allReady = Object.values(presencePlayers).every(p => p.ready);
+        const allConnected = playerCount >= minPlayersFirebase;
         
-        if (isHostFirebase) {
-            if (typeof updateWaitingMessage === 'function') {
-                updateWaitingMessage(presencePlayers, minPlayersFirebase, allReady);
-            }
-            
-            const startBtn = document.getElementById('start-btn');
-            if (startBtn) {
-                if (playerCount >= minPlayersFirebase && allReady) {
-                    startBtn.removeAttribute('disabled');
-                } else {
-                    startBtn.setAttribute('disabled', 'disabled');
-                }
+        // Update sync status indicator
+        const syncStatus = document.getElementById('sync-status');
+        const syncStatusText = document.getElementById('sync-status-text');
+        if (syncStatus && syncStatusText) {
+            if (allConnected) {
+                syncStatus.style.display = 'block';
+                syncStatus.style.background = 'rgba(76, 175, 80, 0.2)';
+                syncStatus.style.border = '1px solid rgba(76, 175, 80, 0.5)';
+                syncStatus.style.color = '#4CAF50';
+                syncStatusText.textContent = '✓ ' + translations.synchronized;
+            } else {
+                syncStatus.style.display = 'block';
+                syncStatus.style.background = 'rgba(255, 193, 7, 0.2)';
+                syncStatus.style.border = '1px solid rgba(255, 193, 7, 0.5)';
+                syncStatus.style.color = '#FFC107';
+                syncStatusText.textContent = translations.waitingConnection;
             }
         }
         
-        window.dispatchEvent(new CustomEvent('lobbyPlayersUpdated', { detail: { players: presencePlayers, allReady } }));
+        // Note: Ready button is always enabled - Firebase presence is just a visual indicator
+        // Backend remains the authoritative source for game start eligibility
+        
+        // Note: Start button and waiting message are controlled by backend polling (refreshLobbyState)
+        // Firebase presence only updates the visual sync indicator above
+        // This prevents conflicts between volatile Firebase state and authoritative backend state
+        
+        window.dispatchEvent(new CustomEvent('lobbyPlayersUpdated', { detail: { players: presencePlayers, allReady, allConnected } }));
     };
     
     await window.lobbyPresenceManager.joinLobby();
