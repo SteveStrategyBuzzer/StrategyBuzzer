@@ -40,6 +40,31 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
+     * Normalise l'ID de match pour correspondre au backend PHP
+     * Cette logique doit être identique à DuoFirestoreService::normalizeMatchId()
+     * @param {string|number} matchId - Le code de lobby ou match_id brut
+     * @returns {number} - L'ID normalisé
+     */
+    normalizeMatchId(matchId) {
+        if (typeof matchId === 'number' && matchId > 0) {
+            return matchId;
+        }
+        const matchIdStr = String(matchId);
+        const numericId = parseInt(matchIdStr.replace(/[^0-9]/g, ''), 10) || 0;
+        if (numericId === 0) {
+            let crc = 0xFFFFFFFF;
+            for (let i = 0; i < matchIdStr.length; i++) {
+                crc ^= matchIdStr.charCodeAt(i);
+                for (let j = 0; j < 8; j++) {
+                    crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+                }
+            }
+            return ((crc ^ 0xFFFFFFFF) >>> 0) & 0x7FFFFFFF;
+        }
+        return numericId;
+    },
+
+    /**
      * Initialise le provider avec instances Firebase modulaires
      * @param {Object} config - Configuration
      * @param {Object} config.db - Firestore instance (from getFirestore)
@@ -141,9 +166,12 @@ const MultiplayerFirestoreProvider = {
 
     /**
      * Obtient la référence du document de session
+     * Utilise l'ID normalisé pour correspondre au backend PHP
      */
     getSessionRef() {
-        const firestoreGameId = `${this.mode}-match-${this.sessionId}`;
+        const normalizedId = this.normalizeMatchId(this.sessionId);
+        const firestoreGameId = `${this.mode}-match-${normalizedId}`;
+        console.log('[MultiplayerFirestoreProvider] Session ref:', firestoreGameId, '(raw:', this.sessionId, ')');
         return this.firestoreDoc(this.db, 'games', firestoreGameId);
     },
 

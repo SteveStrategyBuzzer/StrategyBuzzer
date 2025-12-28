@@ -2136,6 +2136,14 @@ foreach ($colors as $color) {
         lobbyInput.value = lobbyCode;
         form.appendChild(lobbyInput);
         
+        if (typeof firebaseMatchId !== 'undefined' && firebaseMatchId) {
+            const matchIdInput = document.createElement('input');
+            matchIdInput.type = 'hidden';
+            matchIdInput.name = 'match_id';
+            matchIdInput.value = firebaseMatchId;
+            form.appendChild(matchIdInput);
+        }
+        
         const niveauInput = document.createElement('input');
         niveauInput.type = 'hidden';
         niveauInput.name = 'niveau';
@@ -4138,6 +4146,7 @@ const currentPlayerName = @json($players[$currentPlayerId]['name'] ?? 'Joueur');
 const isHostFirebase = {{ $isHost ? 'true' : 'false' }};
 const currentPlayerData = @json($players[$currentPlayerId] ?? ['name' => 'Joueur', 'ready' => false, 'color' => 'blue']);
 const minPlayersFirebase = {{ $minPlayers }};
+const firebaseMatchId = {{ $matchId ?? 'null' }};
 
 initFirebase().then(async (authenticated) => {
     if (!authenticated) {
@@ -4226,17 +4235,16 @@ initFirebase().then(async (authenticated) => {
                     crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
                 }
             }
-            return (crc ^ 0xFFFFFFFF) >>> 1;
+            return ((crc ^ 0xFFFFFFFF) >>> 0) & 0x7FFFFFFF;
         }
         return numericId;
     }
     
-    const normalizedId = normalizeMatchIdJs(lobbyCode);
-    // Note: Backend always uses DuoFirestoreService which uses 'duo-match-' prefix for all multiplayer modes
+    const normalizedId = firebaseMatchId ? normalizeMatchIdJs(firebaseMatchId) : normalizeMatchIdJs(lobbyCode);
     const gameDocRef = doc(db, 'games', `duo-match-${normalizedId}`);
     let gameStartHandled = false;
     
-    console.log('[Firebase] Listening for game start signal on:', `games/duo-match-${normalizedId}`);
+    console.log('[Firebase] Listening for game start signal on:', `games/duo-match-${normalizedId}`, '(matchId:', firebaseMatchId, ')');
     
     onSnapshot(gameDocRef, (docSnap) => {
         if (!docSnap.exists() || gameStartHandled) return;
