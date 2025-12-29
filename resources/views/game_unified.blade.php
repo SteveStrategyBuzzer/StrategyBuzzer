@@ -1170,9 +1170,33 @@ const app = initializeApp(firebaseConfig, 'webrtc-game');
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const matchId = '{{ $matchId ?? '' }}';
+const sessionId = '{{ $params['session_id'] ?? $params['lobby_code'] ?? $matchId ?? '' }}';
 const currentPlayerId = {{ auth()->id() }};
 const opponentId = {{ $params['opponent_info']['user_id'] ?? 0 }};
+const gameMode = '{{ $mode ?? 'duo' }}';
+
+function normalizeMatchIdForWebRTC(matchId) {
+    if (typeof matchId === 'number' && matchId > 0) {
+        return matchId;
+    }
+    const matchIdStr = String(matchId);
+    const numericId = parseInt(matchIdStr.replace(/[^0-9]/g, ''), 10) || 0;
+    if (numericId === 0) {
+        let crc = 0xFFFFFFFF;
+        for (let i = 0; i < matchIdStr.length; i++) {
+            crc ^= matchIdStr.charCodeAt(i);
+            for (let j = 0; j < 8; j++) {
+                crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+            }
+        }
+        return ((crc ^ 0xFFFFFFFF) >>> 0) & 0x7FFFFFFF;
+    }
+    return numericId;
+}
+
+const normalizedSessionId = normalizeMatchIdForWebRTC(sessionId);
+const firestoreGameId = `${gameMode}-match-${normalizedSessionId}`;
+console.log('[WebRTC] Using Firestore path: games/' + firestoreGameId);
 
 let voiceChat = null;
 let firebaseAuthReady = false;
@@ -1183,7 +1207,7 @@ function initVoiceChat() {
     voiceChat = new GameVoiceChat();
     window.duoVoiceChat = voiceChat;
     
-    if (matchId && opponentId) {
+    if (sessionId && opponentId) {
         voiceChat.startVoiceChat().then(() => {
             console.log('[Voice] Ready - click mic to unmute');
         });
@@ -1219,11 +1243,11 @@ class GameVoiceChat {
     }
     
     getSignalingPath() {
-        return `duoMatches/${matchId}/webrtc`;
+        return `games/${firestoreGameId}/webrtc`;
     }
     
     getPresencePath() {
-        return `duoMatches/${matchId}/voice_presence`;
+        return `games/${firestoreGameId}/voice_presence`;
     }
     
     async startVoiceChat() {
