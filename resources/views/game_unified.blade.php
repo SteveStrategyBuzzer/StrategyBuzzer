@@ -1525,6 +1525,9 @@ window.addEventListener('beforeunload', () => {
 <audio id="incorrectSound" preload="auto">
     <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
 </audio>
+<audio id="timerTickSound" preload="auto">
+    <source src="{{ asset('sounds/tic_tac.mp3') }}" type="audio/mpeg">
+</audio>
 
 <script src="{{ asset('js/GameplayEngine.js') }}"></script>
 @if(!$isFirebaseMode)
@@ -1582,7 +1585,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 sounds: {
                     buzz: document.getElementById('buzzerSound'),
                     correct: document.getElementById('correctSound'),
-                    incorrect: document.getElementById('incorrectSound')
+                    incorrect: document.getElementById('incorrectSound'),
+                    timer: document.getElementById('timerTickSound'),
+                    timerEnd: document.getElementById('noBuzzSound')
                 }
             },
             state: {
@@ -1614,7 +1619,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 sounds: {
                     buzz: document.getElementById('buzzerSound'),
                     correct: document.getElementById('correctSound'),
-                    incorrect: document.getElementById('incorrectSound')
+                    incorrect: document.getElementById('incorrectSound'),
+                    timer: document.getElementById('timerTickSound'),
+                    timerEnd: document.getElementById('noBuzzSound')
                 }
             },
             state: {

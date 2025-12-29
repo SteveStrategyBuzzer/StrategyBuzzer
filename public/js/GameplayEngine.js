@@ -614,6 +614,10 @@ const GameplayEngine = {
             setTimeout(() => {
                 this.nextQuestion();
             }, 1500);
+        } else if (this.state.isHost && this.state.mode !== 'solo') {
+            setTimeout(() => {
+                this.nextQuestion();
+            }, 1500);
         }
     },
 
