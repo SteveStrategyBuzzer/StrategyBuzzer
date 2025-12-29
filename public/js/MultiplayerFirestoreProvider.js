@@ -488,7 +488,8 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
-     * Publie un buzz
+     * Publie un buzz avec timestamp serveur pour synchronisation précise
+     * @param {number} buzzTime - Temps local restant (pour affichage)
      */
     async publishBuzz(buzzTime) {
         if (!this.db || !this.sessionId) return false;
@@ -508,15 +509,19 @@ const MultiplayerFirestoreProvider = {
 
             const isPlayer1 = this.playerId === String(data.player1Id);
             const buzzField = isPlayer1 ? 'player1Buzzed' : 'player2Buzzed';
+            const buzzTimestampField = isPlayer1 ? 'player1BuzzTimestamp' : 'player2BuzzTimestamp';
 
+            // Use server timestamp for fair comparison between players
             await this.firestoreUpdateDoc(sessionRef, {
                 buzzedPlayerId: this.playerId,
                 [buzzField]: true,
+                [buzzTimestampField]: this.firestoreServerTimestamp(),
                 buzzTime: buzzTime,
+                buzzTimestamp: this.firestoreServerTimestamp(),
                 phase: 'buzz'
             });
 
-            console.log('[MultiplayerFirestoreProvider] Buzz published:', this.playerId);
+            console.log('[MultiplayerFirestoreProvider] Buzz published with server timestamp:', this.playerId);
             return true;
         } catch (err) {
             console.error('[MultiplayerFirestoreProvider] Publish buzz error:', err);
@@ -550,11 +555,56 @@ const MultiplayerFirestoreProvider = {
             
             if (opponentBuzzed && this.onBuzzReceived) {
                 console.log('[MultiplayerFirestoreProvider] Opponent buzzed');
-                this.onBuzzReceived(data.buzzedPlayerId, data.buzzTime);
+                this.onBuzzReceived(data.buzzedPlayerId, data.buzzTime, data.buzzTimestamp);
             }
         }, (error) => {
             console.error('[MultiplayerFirestoreProvider] Buzz listener error:', error);
         });
+    },
+
+    /**
+     * Calcule qui a buzzé en premier basé sur les timestamps serveur
+     * @returns {Promise<Object>} { winnerId, player1Time, player2Time } en millisecondes depuis questionPublishedAt
+     */
+    async getFirstBuzzer() {
+        if (!this.db || !this.sessionId) return null;
+
+        try {
+            const sessionRef = this.getSessionRef();
+            const snapshot = await this.firestoreGetDoc(sessionRef);
+            if (!snapshot.exists()) return null;
+
+            const data = snapshot.data();
+            const questionStart = data.questionPublishedAt?.toMillis?.() || data.questionPublishedAt;
+            
+            if (!questionStart) {
+                console.warn('[MultiplayerFirestoreProvider] No questionPublishedAt timestamp');
+                return null;
+            }
+
+            const p1Buzz = data.player1BuzzTimestamp?.toMillis?.() || data.player1BuzzTimestamp;
+            const p2Buzz = data.player2BuzzTimestamp?.toMillis?.() || data.player2BuzzTimestamp;
+
+            const result = {
+                player1Time: p1Buzz ? (p1Buzz - questionStart) : null,
+                player2Time: p2Buzz ? (p2Buzz - questionStart) : null,
+                winnerId: null
+            };
+
+            if (p1Buzz && p2Buzz) {
+                result.winnerId = p1Buzz <= p2Buzz ? data.player1Id : data.player2Id;
+            } else if (p1Buzz) {
+                result.winnerId = data.player1Id;
+            } else if (p2Buzz) {
+                result.winnerId = data.player2Id;
+            }
+
+            console.log('[MultiplayerFirestoreProvider] First buzzer calculation:', result);
+            return result;
+        } catch (err) {
+            console.error('[MultiplayerFirestoreProvider] getFirstBuzzer error:', err);
+            return null;
+        }
     },
 
     /**
