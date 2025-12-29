@@ -2159,6 +2159,12 @@ function hideWaitingOverlay() {
                 if (typeof GameplayEngine !== 'undefined') {
                     GameplayEngine.setProvider(window.MultiplayerFirestoreProvider);
                     console.log('[Firebase] MultiplayerFirestoreProvider set for GameplayEngine');
+                    
+                    if (gameConfig.isHost && GameplayEngine.currentQuestionData) {
+                        console.log('[Firebase] Host publishing initial question to Firebase');
+                        await window.MultiplayerFirestoreProvider.onQuestionStart(GameplayEngine.currentQuestionData);
+                    }
+                    
                     GameplayEngine.startTimer();
                     console.log('[Firebase] Timer started after provider set');
                 }

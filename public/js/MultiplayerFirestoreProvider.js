@@ -384,6 +384,29 @@ const MultiplayerFirestoreProvider = {
 
                 return questionData;
             }
+            
+            if (data.success && data.question_text && data.answers) {
+                const correctIndex = data.answers.findIndex(a => a.is_correct === true);
+                
+                const questionData = {
+                    question_number: data.question_number,
+                    total_questions: parseInt(data.total_questions) || 10,
+                    question_text: data.question_text,
+                    answers: data.answers.map(a => ({
+                        text: a.text || a,
+                        is_correct: a.is_correct || false
+                    })),
+                    correct_index: correctIndex >= 0 ? correctIndex : 0,
+                    theme: data.theme || '',
+                    sub_theme: data.sub_theme || '',
+                    chrono_time: data.chrono_time || 8,
+                    player_score: data.player_score,
+                    opponent_score: data.opponent_score
+                };
+                
+                console.log('[MultiplayerFirestoreProvider] Question parsed successfully:', questionData.question_number);
+                return questionData;
+            }
 
             console.error('[MultiplayerFirestoreProvider] Fetch failed:', data);
             return null;
