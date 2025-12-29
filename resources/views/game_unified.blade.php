@@ -534,6 +534,97 @@ $roomCode = $params['room_code'] ?? null;
     }
     
     @keyframes attack-icon-anim {
+        0% { transform: scale(0.5); opacity: 0; }
+        50% { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(1); opacity: 0; }
+    }
+    
+    /* Attack shake effect on game container */
+    .attack-shake {
+        animation: shake-effect 0.5s ease-out;
+    }
+    
+    @keyframes shake-effect {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+    
+    /* Block shield effect */
+    .block-shield {
+        animation: shield-pulse 0.6s ease-out;
+    }
+    
+    @keyframes shield-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(78, 205, 196, 0.7); }
+        50% { box-shadow: 0 0 30px 15px rgba(78, 205, 196, 0.4); }
+        100% { box-shadow: 0 0 0 0 rgba(78, 205, 196, 0); }
+    }
+    
+    /* Fake score styling */
+    .fake-score {
+        color: #ff6b6b !important;
+        animation: fake-score-pulse 1.5s infinite;
+    }
+    
+    @keyframes fake-score-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    /* Inverted answers grid */
+    .inverted-answers {
+        display: flex !important;
+        flex-direction: column;
+    }
+    
+    /* Shuffle animation */
+    .shuffle-animation {
+        animation: shuffle-wiggle 0.3s ease-out;
+    }
+    
+    @keyframes shuffle-wiggle {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px) rotate(-2deg); }
+        75% { transform: translateX(10px) rotate(2deg); }
+    }
+    
+    .shuffling-answers .answer-option {
+        transition: order 0.2s ease-out;
+    }
+    
+    /* Time reduced effect */
+    .time-reduced {
+        color: #ff4444 !important;
+        animation: time-flash 0.5s ease-out;
+    }
+    
+    @keyframes time-flash {
+        0%, 50% { background: rgba(255, 68, 68, 0.3); }
+        100% { background: transparent; }
+    }
+    
+    /* Opponent selected answer indicator */
+    .opponent-selected {
+        position: relative;
+    }
+    
+    .opponent-selected::after {
+        content: '👁️';
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        font-size: 1.2rem;
+        animation: eye-bounce 0.5s ease-out;
+    }
+    
+    @keyframes eye-bounce {
+        0% { transform: scale(0); }
+        50% { transform: scale(1.3); }
+        100% { transform: scale(1); }
+    }
+    
+    @keyframes attack-icon-anim {
         0% { transform: scale(0) rotate(-30deg); opacity: 0; }
         50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
         100% { transform: scale(1) rotate(0deg); opacity: 0; }
@@ -2984,6 +3075,29 @@ function hideWaitingOverlay() {
                         PhaseController.receivePhase(phase, data);
                     }
                 });
+                
+                // Initialize skill listeners for multiplayer attack/defense synchronization
+                window.MultiplayerFirestoreProvider.listenForSkills((skillId, skillData, fromPlayerId) => {
+                    console.log('[Firebase] Skill received from opponent:', skillId);
+                    if (typeof GameplayEngine !== 'undefined' && GameplayEngine.receiveSkill) {
+                        GameplayEngine.receiveSkill(skillId, skillData, fromPlayerId);
+                    }
+                });
+                
+                // Listen for opponent's answer choice (for see_opponent_choice skill)
+                window.MultiplayerFirestoreProvider.listenForOpponentChoice((answerIndex, playerId) => {
+                    console.log('[Firebase] Opponent choice received:', answerIndex);
+                    if (typeof GameplayEngine !== 'undefined' && GameplayEngine.showOpponentChoice) {
+                        GameplayEngine.showOpponentChoice(answerIndex);
+                    }
+                });
+                
+                // Handler to publish answer choice for see_opponent_choice skill
+                window.handleFirebaseAnswerChoice = async function(answerIndex) {
+                    return await window.MultiplayerFirestoreProvider.publishAnswerChoice(answerIndex);
+                };
+                
+                console.log('[Firebase] Skill listeners initialized');
             }
         }
         

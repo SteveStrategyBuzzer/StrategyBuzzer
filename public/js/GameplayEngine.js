@@ -71,6 +71,19 @@ const GameplayEngine = {
     // Current question data (for answer validation)
     currentQuestionData: null,
 
+    // Skill state for multiplayer
+    skillState: {
+        blockAttackActive: false,
+        counterChallengerActive: false,
+        seeOpponentChoiceActive: false,
+        shuffleInterval: null,
+        activeAttacks: []
+    },
+
+    // Skill catalog for reference (affects_opponent mapping)
+    attackSkills: ['fake_score', 'invert_answers', 'shuffle_answers', 'reduce_time'],
+    challengerSkills: ['shuffle_answers', 'reduce_time'],
+
     /**
      * Initialise le moteur de gameplay
      * @param {Object} options Configuration initiale
@@ -657,24 +670,307 @@ const GameplayEngine = {
     /**
      * Active un skill manuellement
      */
-    activateSkill(skillId) {
+    async activateSkill(skillId) {
         console.log('[GameplayEngine] Activating skill:', skillId);
 
-        fetch(this.config.routes.skill, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': this.config.csrfToken
-            },
-            body: JSON.stringify({ skill_id: skillId })
-        }).then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  this.applySkillEffect(skillId, data);
-                  this.markSkillUsed(skillId);
-              }
-          })
-          .catch(err => console.error('[GameplayEngine] Skill error:', err));
+        try {
+            const response = await fetch(this.config.routes.skill, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.config.csrfToken
+                },
+                body: JSON.stringify({ skill_id: skillId })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.applySkillEffect(skillId, data);
+                this.markSkillUsed(skillId);
+                
+                // For multiplayer: publish attack skills to Firebase
+                const isAttackSkill = this.attackSkills.includes(skillId);
+                if (isAttackSkill && this.provider && this.provider.publishSkillUsed) {
+                    const skillData = {
+                        affects_opponent: true,
+                        effect: skillId,
+                        duration: data.duration || 0
+                    };
+                    await this.provider.publishSkillUsed(skillId, skillData);
+                    console.log('[GameplayEngine] Attack skill published to Firebase:', skillId);
+                }
+                
+                // Handle defense skills locally
+                if (skillId === 'block_attack') {
+                    this.skillState.blockAttackActive = true;
+                    console.log('[GameplayEngine] Block attack activated');
+                } else if (skillId === 'counter_challenger') {
+                    this.skillState.counterChallengerActive = true;
+                    console.log('[GameplayEngine] Counter challenger activated');
+                }
+            }
+        } catch (err) {
+            console.error('[GameplayEngine] Skill error:', err);
+        }
+    },
+
+    /**
+     * Receives and applies opponent's attack skill from multiplayer
+     * @param {string} skillId - The skill identifier
+     * @param {Object} skillData - Skill data from Firebase
+     * @param {string} fromPlayerId - The opponent's player ID
+     */
+    receiveSkill(skillId, skillData, fromPlayerId) {
+        console.log('[GameplayEngine] Receiving opponent skill:', skillId, 'from:', fromPlayerId);
+        
+        // Check if block_attack is active
+        if (this.skillState.blockAttackActive) {
+            this.skillState.blockAttackActive = false;
+            this.showBlockEffect(skillId);
+            console.log('[GameplayEngine] Attack blocked:', skillId);
+            return;
+        }
+        
+        // Check if counter_challenger blocks this skill
+        if (this.skillState.counterChallengerActive && this.challengerSkills.includes(skillId)) {
+            this.showBlockEffect(skillId);
+            console.log('[GameplayEngine] Challenger skill countered:', skillId);
+            return;
+        }
+        
+        // Apply the attack effect
+        this.showAttackEffect(skillId);
+        this.applyOpponentAttack(skillId, skillData);
+    },
+
+    /**
+     * Apply opponent's attack effect locally
+     */
+    applyOpponentAttack(skillId, skillData) {
+        console.log('[GameplayEngine] Applying opponent attack:', skillId);
+        
+        switch (skillId) {
+            case 'fake_score':
+                this.applyFakeScore();
+                break;
+            case 'invert_answers':
+                this.applyInvertAnswers();
+                break;
+            case 'shuffle_answers':
+                this.applyShuffleAnswers();
+                break;
+            case 'reduce_time':
+                this.applyReduceTime();
+                break;
+            default:
+                console.log('[GameplayEngine] Unknown attack skill:', skillId);
+        }
+        
+        this.skillState.activeAttacks.push(skillId);
+    },
+
+    /**
+     * Display fake lower score to player
+     */
+    applyFakeScore() {
+        const opponentScoreEl = this.getElement('opponentScore');
+        if (opponentScoreEl) {
+            const realScore = parseInt(opponentScoreEl.textContent) || 0;
+            const fakeScore = Math.max(0, realScore - 20 - Math.floor(Math.random() * 30));
+            opponentScoreEl.dataset.realScore = realScore;
+            opponentScoreEl.textContent = fakeScore;
+            opponentScoreEl.classList.add('fake-score');
+            console.log('[GameplayEngine] Fake score applied:', fakeScore, 'real:', realScore);
+        }
+    },
+
+    /**
+     * Invert answer positions visually
+     */
+    applyInvertAnswers() {
+        const grid = this.getElement('answersGrid');
+        if (!grid) return;
+        
+        const answers = Array.from(grid.querySelectorAll('.answer-option'));
+        if (answers.length < 2) return;
+        
+        // Reverse the visual order
+        answers.forEach((answer, idx) => {
+            answer.style.order = answers.length - 1 - idx;
+        });
+        
+        grid.classList.add('inverted-answers');
+        console.log('[GameplayEngine] Answers inverted');
+    },
+
+    /**
+     * Shuffle answers every second
+     */
+    applyShuffleAnswers() {
+        const grid = this.getElement('answersGrid');
+        if (!grid) return;
+        
+        // Clear any existing shuffle interval
+        if (this.skillState.shuffleInterval) {
+            clearInterval(this.skillState.shuffleInterval);
+        }
+        
+        const shuffleOnce = () => {
+            const answers = Array.from(grid.querySelectorAll('.answer-option'));
+            if (answers.length < 2) return;
+            
+            // Fisher-Yates shuffle for visual order
+            const orders = answers.map((_, i) => i);
+            for (let i = orders.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [orders[i], orders[j]] = [orders[j], orders[i]];
+            }
+            
+            answers.forEach((answer, idx) => {
+                answer.style.order = orders[idx];
+                answer.classList.add('shuffle-animation');
+            });
+            
+            setTimeout(() => {
+                answers.forEach(a => a.classList.remove('shuffle-animation'));
+            }, 300);
+        };
+        
+        shuffleOnce();
+        this.skillState.shuffleInterval = setInterval(shuffleOnce, 1000);
+        grid.classList.add('shuffling-answers');
+        console.log('[GameplayEngine] Answer shuffle started');
+    },
+
+    /**
+     * Reduce player's timer by 2 seconds
+     */
+    applyReduceTime() {
+        this.state.timeLeft = Math.max(1, this.state.timeLeft - 2);
+        
+        const chronoEl = this.getElement('chronoTimer');
+        if (chronoEl) {
+            chronoEl.textContent = this.state.timeLeft;
+            chronoEl.classList.add('time-reduced');
+            setTimeout(() => chronoEl.classList.remove('time-reduced'), 500);
+        }
+        
+        console.log('[GameplayEngine] Time reduced to:', this.state.timeLeft);
+    },
+
+    /**
+     * Show attack visual effect (shake, flash)
+     */
+    showAttackEffect(skillId) {
+        const overlay = document.getElementById('attackOverlay');
+        const attackIcon = document.getElementById('attackIcon');
+        
+        if (overlay) {
+            overlay.classList.add('active');
+            
+            const icons = {
+                'fake_score': '🎭',
+                'invert_answers': '🔄',
+                'shuffle_answers': '🔀',
+                'reduce_time': '⏱️'
+            };
+            
+            if (attackIcon) {
+                attackIcon.textContent = icons[skillId] || '⚡';
+            }
+            
+            setTimeout(() => {
+                overlay.classList.remove('active');
+            }, 600);
+        }
+        
+        // Shake effect on game container
+        const container = document.querySelector('.game-container');
+        if (container) {
+            container.classList.add('attack-shake');
+            setTimeout(() => container.classList.remove('attack-shake'), 500);
+        }
+        
+        console.log('[GameplayEngine] Attack effect shown:', skillId);
+    },
+
+    /**
+     * Show block/shield visual effect
+     */
+    showBlockEffect(skillId) {
+        const overlay = document.getElementById('attackOverlay');
+        const attackIcon = document.getElementById('attackIcon');
+        
+        if (overlay) {
+            overlay.classList.add('active', 'blocked');
+            
+            if (attackIcon) {
+                attackIcon.textContent = '🛡️';
+            }
+            
+            setTimeout(() => {
+                overlay.classList.remove('active', 'blocked');
+            }, 700);
+        }
+        
+        // Shield pulse effect
+        const container = document.querySelector('.game-container');
+        if (container) {
+            container.classList.add('block-shield');
+            setTimeout(() => container.classList.remove('block-shield'), 600);
+        }
+        
+        console.log('[GameplayEngine] Block effect shown for:', skillId);
+    },
+
+    /**
+     * Show opponent's answer choice (for see_opponent_choice skill)
+     */
+    showOpponentChoice(answerIndex) {
+        if (!this.skillState.seeOpponentChoiceActive) return;
+        
+        const grid = this.getElement('answersGrid');
+        if (!grid) return;
+        
+        const answers = grid.querySelectorAll('.answer-option');
+        if (answers[answerIndex]) {
+            answers[answerIndex].classList.add('opponent-selected');
+            console.log('[GameplayEngine] Opponent selected answer:', answerIndex);
+        }
+    },
+
+    /**
+     * Clear active attack effects (called on new question)
+     */
+    clearAttackEffects() {
+        if (this.skillState.shuffleInterval) {
+            clearInterval(this.skillState.shuffleInterval);
+            this.skillState.shuffleInterval = null;
+        }
+        
+        this.skillState.activeAttacks = [];
+        
+        const grid = this.getElement('answersGrid');
+        if (grid) {
+            grid.classList.remove('inverted-answers', 'shuffling-answers');
+            grid.querySelectorAll('.answer-option').forEach(a => {
+                a.style.order = '';
+                a.classList.remove('opponent-selected', 'shuffle-animation');
+            });
+        }
+        
+        const opponentScoreEl = this.getElement('opponentScore');
+        if (opponentScoreEl && opponentScoreEl.dataset.realScore) {
+            opponentScoreEl.textContent = opponentScoreEl.dataset.realScore;
+            delete opponentScoreEl.dataset.realScore;
+            opponentScoreEl.classList.remove('fake-score');
+        }
+        
+        // Reset skill state for new question (but keep defense skills active for match duration)
+        this.skillState.seeOpponentChoiceActive = false;
+        
+        console.log('[GameplayEngine] Attack effects cleared');
     },
 
     /**
@@ -822,9 +1118,13 @@ const GameplayEngine = {
 
     /**
      * Réinitialise l'état pour une nouvelle question
+     * BUG FIX: Now properly clears skill state for BOTH host and non-host players
      */
     resetState() {
         this.stopTimer();
+        
+        // BUG FIX: Clear attack effects from previous question (clears shuffle intervals)
+        this.clearAttackEffects();
         
         this.state.buzzed = false;
         this.state.answersShown = false;
@@ -847,6 +1147,30 @@ const GameplayEngine = {
                 btn.classList.remove('correct', 'incorrect', 'disabled');
             });
         }
+        
+        // BUG FIX 2 & 3: Reset local skill state flags for BOTH host and non-host
+        // Defense skills (block_attack, counter_challenger) are per-question, not per-match
+        // They must be reset between questions so they don't persist incorrectly
+        this.skillState.counterChallengerActive = false;
+        this.skillState.blockAttackActive = false;
+        this.skillState.seeOpponentChoiceActive = false;
+        
+        // Clear active skills in Firebase for host, reset local tracking for ALL players
+        if (this.provider) {
+            if (this.state.isHost && this.provider.clearActiveSkills) {
+                // Host: clear Firebase pendingAttacks AND reset local state
+                this.provider.clearActiveSkills().catch(err => {
+                    console.warn('[GameplayEngine] Failed to clear active skills:', err);
+                });
+            }
+            // BUG FIX: Call resetLocalSkillState for BOTH host and non-host
+            // This ensures attack tracking (lastProcessedAttackIds) is cleared for everyone
+            if (this.provider.resetLocalSkillState) {
+                this.provider.resetLocalSkillState();
+            }
+        }
+        
+        console.log('[GameplayEngine] State reset - skill flags cleared');
     },
 
     /**

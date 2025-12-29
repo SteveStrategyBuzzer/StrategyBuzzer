@@ -817,6 +817,254 @@ const MultiplayerFirestoreProvider = {
         });
     },
 
+    // ==========================================
+    // SKILL SYNCHRONIZATION FOR MULTIPLAYER
+    // ==========================================
+
+    unsubscribeSkills: null,
+    unsubscribeOpponentChoice: null,
+    lastSkillVersion: 0,
+    activeBlockSkill: false,
+    counterChallengerActive: false,
+    opponentPlayerId: null, // Cached opponent ID for skill targeting
+    lastProcessedAttackIds: new Set(), // Track processed attacks to prevent duplicates
+
+    /**
+     * Publishes when a skill is activated
+     * BUG FIX: Now uses pendingAttacks with unique attackId instead of targetPlayerId
+     * This eliminates the need to know opponent's ID at publish time
+     * @param {string} skillId - The skill identifier
+     * @param {Object} skillData - Skill configuration
+     * @param {string} skillData.effect - Effect type (e.g., 'invert_answers', 'reduce_time')
+     * @param {string} skillData.targetPlayer - 'opponent' or 'self'
+     * @param {number} skillData.duration - Duration if applicable
+     * @param {boolean} skillData.affects_opponent - Whether this affects the opponent
+     */
+    async publishSkillUsed(skillId, skillData = {}) {
+        if (!this.db || !this.sessionId) return false;
+
+        try {
+            const sessionRef = this.getSessionRef();
+            
+            // Generate unique attack ID to prevent duplicates
+            const attackId = `${this.playerId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Get current question version for filtering stale skills
+            const currentQuestionVersion = this.lastProcessedQuestionVersion || this.lastQuestionVersion || 0;
+            
+            // BUG FIX: Use pendingAttacks structure - opponent reads attacks where fromPlayerId !== their ID
+            // No need for explicit targetPlayerId since attacks always go to the opponent
+            const attackPayload = {
+                attackId: attackId,
+                skillId: skillId,
+                timestamp: this.firestoreServerTimestamp(),
+                effect: skillData.effect || skillId,
+                duration: skillData.duration || 0,
+                fromPlayerId: this.playerId,
+                fromPlayerRole: this.isHost ? 'host' : 'guest',
+                questionVersion: currentQuestionVersion,
+                affects_opponent: skillData.affects_opponent !== false // Default true for attack skills
+            };
+
+            const updateData = {
+                [`pendingAttacks.${attackId}`]: attackPayload,
+                lastSkillUpdate: this.firestoreServerTimestamp()
+            };
+
+            if (this.firestoreSetDoc) {
+                await this.firestoreSetDoc(sessionRef, updateData, { merge: true });
+            } else {
+                await this.firestoreUpdateDoc(sessionRef, updateData);
+            }
+
+            console.log('[MultiplayerFirestoreProvider] Attack published:', skillId, 'attackId:', attackId, 'from:', this.playerId);
+            return true;
+        } catch (err) {
+            console.error('[MultiplayerFirestoreProvider] Publish skill error:', err);
+            return false;
+        }
+    },
+
+    /**
+     * Listen for opponent's skill activations
+     * BUG FIX: Uses pendingAttacks structure - processes attacks where fromPlayerId !== this.playerId
+     * No explicit targetPlayerId needed since attacks always target the opponent
+     * @param {Function} callback - Called with (skillId, skillData, fromPlayerId)
+     */
+    listenForSkills(callback) {
+        if (!this.db || !this.sessionId) return;
+
+        const sessionRef = this.getSessionRef();
+
+        this.unsubscribeSkills = this.firestoreOnSnapshot(sessionRef, (snapshot) => {
+            if (!snapshot.exists()) return;
+
+            const data = snapshot.data();
+            const currentQuestionVersion = this.lastProcessedQuestionVersion || this.lastQuestionVersion || 0;
+
+            // BUG FIX: Use pendingAttacks structure instead of activeSkills
+            const pendingAttacks = data.pendingAttacks || {};
+
+            for (const [attackId, attackData] of Object.entries(pendingAttacks)) {
+                // Skip already processed attacks (using Set for O(1) lookup)
+                if (this.lastProcessedAttackIds.has(attackId)) {
+                    continue;
+                }
+
+                // BUG FIX: Skip self-published attacks - only process opponent's attacks
+                // This is the key fix: no need for targetPlayerId, just check fromPlayerId
+                if (attackData.fromPlayerId === this.playerId) {
+                    continue;
+                }
+
+                // Skip attacks from previous questions (stale attacks)
+                const attackQuestionVersion = attackData.questionVersion || 0;
+                if (attackQuestionVersion > 0 && attackQuestionVersion < currentQuestionVersion) {
+                    console.log('[MultiplayerFirestoreProvider] Skipping stale attack from question:', 
+                                attackQuestionVersion, 'current:', currentQuestionVersion);
+                    continue;
+                }
+
+                // Mark as processed BEFORE callback to prevent race conditions
+                this.lastProcessedAttackIds.add(attackId);
+
+                // Process the attack - it passed all filters
+                console.log('[MultiplayerFirestoreProvider] Processing opponent attack:', attackData.skillId, 
+                            'attackId:', attackId, 'from:', attackData.fromPlayerId);
+                
+                if (callback) {
+                    callback(attackData.skillId, attackData, attackData.fromPlayerId);
+                }
+            }
+        }, (error) => {
+            console.error('[MultiplayerFirestoreProvider] Skill listener error:', error);
+        });
+
+        console.log('[MultiplayerFirestoreProvider] Listening for pendingAttacks (no targetPlayerId needed)');
+    },
+
+    /**
+     * Publishes when player selects an answer (for see_opponent_choice skill)
+     * @param {number} answerIndex - The index of the selected answer
+     */
+    async publishAnswerChoice(answerIndex) {
+        if (!this.db || !this.sessionId) return false;
+
+        try {
+            const sessionRef = this.getSessionRef();
+            const choiceData = {
+                answerIndex: answerIndex,
+                timestamp: this.firestoreServerTimestamp(),
+                playerId: this.playerId,
+                version: Date.now()
+            };
+
+            const updateData = {
+                [`answerChoices.${this.playerId}`]: choiceData
+            };
+
+            if (this.firestoreSetDoc) {
+                await this.firestoreSetDoc(sessionRef, updateData, { merge: true });
+            } else {
+                await this.firestoreUpdateDoc(sessionRef, updateData);
+            }
+
+            console.log('[MultiplayerFirestoreProvider] Answer choice published:', answerIndex);
+            return true;
+        } catch (err) {
+            console.error('[MultiplayerFirestoreProvider] Publish answer choice error:', err);
+            return false;
+        }
+    },
+
+    /**
+     * Listen for opponent's answer selection (for see_opponent_choice skill)
+     * @param {Function} callback - Called with (answerIndex, playerId)
+     */
+    listenForOpponentChoice(callback) {
+        if (!this.db || !this.sessionId) return;
+
+        const sessionRef = this.getSessionRef();
+        let lastProcessedChoices = {};
+
+        this.unsubscribeOpponentChoice = this.firestoreOnSnapshot(sessionRef, (snapshot) => {
+            if (!snapshot.exists()) return;
+
+            const data = snapshot.data();
+            const answerChoices = data.answerChoices || {};
+
+            for (const [playerId, choiceData] of Object.entries(answerChoices)) {
+                if (playerId === this.playerId) continue;
+
+                const version = choiceData.version || 0;
+                if (lastProcessedChoices[playerId] >= version) continue;
+
+                lastProcessedChoices[playerId] = version;
+
+                console.log('[MultiplayerFirestoreProvider] Opponent choice received:', choiceData.answerIndex, 'from:', playerId);
+                
+                if (callback) {
+                    callback(choiceData.answerIndex, playerId);
+                }
+            }
+        }, (error) => {
+            console.error('[MultiplayerFirestoreProvider] Opponent choice listener error:', error);
+        });
+
+        console.log('[MultiplayerFirestoreProvider] Listening for opponent choices');
+    },
+
+    /**
+     * Clear active skills for new question (host only - clears Firebase)
+     * BUG FIX: Clears pendingAttacks structure and resets local tracking
+     */
+    async clearActiveSkills() {
+        if (!this.db || !this.sessionId) return false;
+
+        try {
+            const sessionRef = this.getSessionRef();
+            
+            // BUG FIX: Clear pendingAttacks instead of activeSkills
+            const updateData = {
+                pendingAttacks: {},
+                activeSkills: {}, // Also clear legacy structure
+                answerChoices: {}
+            };
+
+            if (this.firestoreSetDoc) {
+                await this.firestoreSetDoc(sessionRef, updateData, { merge: true });
+            } else {
+                await this.firestoreUpdateDoc(sessionRef, updateData);
+            }
+
+            // Reset local tracking - clear processed attack IDs for new question
+            this.lastProcessedAttackIds.clear();
+            this.lastSkillVersion = 0;
+            this.activeBlockSkill = false;
+            this.counterChallengerActive = false;
+            
+            console.log('[MultiplayerFirestoreProvider] Pending attacks cleared in Firebase and locally');
+            return true;
+        } catch (err) {
+            console.error('[MultiplayerFirestoreProvider] Clear skills error:', err);
+            return false;
+        }
+    },
+    
+    /**
+     * Reset local skill state (for non-host players or when syncing)
+     * BUG FIX: Ensures skill effects don't persist between questions
+     * Called for BOTH host and non-host players now
+     */
+    resetLocalSkillState() {
+        // Clear processed attack IDs to allow new attacks to be processed
+        this.lastProcessedAttackIds.clear();
+        this.lastSkillVersion = 0;
+        this.activeBlockSkill = false;
+        this.counterChallengerActive = false;
+        console.log('[MultiplayerFirestoreProvider] Local skill state reset');
+    },
+
     /**
      * Nettoie les listeners
      */
@@ -836,6 +1084,14 @@ const MultiplayerFirestoreProvider = {
         if (this.unsubscribePhase) {
             this.unsubscribePhase();
             this.unsubscribePhase = null;
+        }
+        if (this.unsubscribeSkills) {
+            this.unsubscribeSkills();
+            this.unsubscribeSkills = null;
+        }
+        if (this.unsubscribeOpponentChoice) {
+            this.unsubscribeOpponentChoice();
+            this.unsubscribeOpponentChoice = null;
         }
         console.log('[MultiplayerFirestoreProvider] Cleaned up');
     }
