@@ -1582,6 +1582,17 @@ const gameConfig = {
         matchResult: '/game/{{ $mode }}/match-result',
         sync: '/game/{{ $mode }}/sync',
         fetchQuestion: '/game/{{ $mode }}/fetch-question',
+    },
+    initialQuestion: {
+        question_number: {{ $currentQuestion }},
+        total_questions: {{ $totalQuestions }},
+        question_text: {!! json_encode($params['question_text'] ?? '') !!},
+        theme: {!! json_encode($params['theme'] ?? 'Culture générale') !!},
+        sub_theme: {!! json_encode($params['sub_theme'] ?? '') !!},
+        chrono_time: {{ $params['chrono_time'] ?? 8 }},
+        answers: {!! json_encode(collect($params['answers'] ?? [])->map(function($a, $i) {
+            return ['text' => is_array($a) ? ($a['text'] ?? $a) : $a, 'is_correct' => is_array($a) ? ($a['is_correct'] ?? false) : false];
+        })->values()) !!}
     }
 };
 
@@ -1622,7 +1633,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentQuestion: gameConfig.currentQuestion,
                 totalQuestions: gameConfig.totalQuestions
             },
-            provider: null
+            provider: null,
+            initialQuestion: gameConfig.initialQuestion
         });
     } else {
         LocalProvider.init({
@@ -2160,9 +2172,12 @@ function hideWaitingOverlay() {
                     GameplayEngine.setProvider(window.MultiplayerFirestoreProvider);
                     console.log('[Firebase] MultiplayerFirestoreProvider set for GameplayEngine');
                     
-                    if (gameConfig.isHost && GameplayEngine.currentQuestionData) {
-                        console.log('[Firebase] Host publishing initial question to Firebase');
-                        await window.MultiplayerFirestoreProvider.onQuestionStart(GameplayEngine.currentQuestionData);
+                    // Use gameConfig.initialQuestion directly (available immediately)
+                    // GameplayEngine.currentQuestionData may not be set yet if DOMContentLoaded hasn't fired
+                    const initialQ = gameConfig.initialQuestion || GameplayEngine.currentQuestionData;
+                    if (gameConfig.isHost && initialQ && initialQ.question_text) {
+                        console.log('[Firebase] Host publishing initial question to Firebase:', initialQ.question_number);
+                        await window.MultiplayerFirestoreProvider.onQuestionStart(initialQ);
                     }
                     
                     GameplayEngine.startTimer();

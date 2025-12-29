@@ -316,7 +316,31 @@ const MultiplayerFirestoreProvider = {
 
                 await this.publishQuestion(questionData, data.question_number);
                 return { success: true, question: data.question, questionData };
-            } else if (data.redirect_url) {
+            }
+            
+            if (data.success && data.question_text && data.answers) {
+                const correctIndex = data.answers.findIndex(a => a.is_correct === true);
+                
+                const questionData = {
+                    question_number: data.question_number,
+                    total_questions: parseInt(data.total_questions) || 10,
+                    question_text: data.question_text,
+                    answers: data.answers.map(a => ({
+                        text: a.text || a,
+                        is_correct: a.is_correct || false
+                    })),
+                    correct_index: correctIndex >= 0 ? correctIndex : 0,
+                    theme: data.theme || '',
+                    sub_theme: data.sub_theme || '',
+                    chrono_time: data.chrono_time || 8
+                };
+
+                console.log('[MultiplayerFirestoreProvider] Publishing question to Firebase:', questionData.question_number);
+                await this.publishQuestion(questionData, data.question_number);
+                return { success: true, question: data, questionData };
+            }
+            
+            if (data.redirect_url) {
                 return data;
             }
 

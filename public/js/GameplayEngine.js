@@ -88,6 +88,12 @@ const GameplayEngine = {
         if (options.provider) {
             this.setProvider(options.provider);
         }
+        
+        // Store initial question data for Firebase publishing
+        if (options.initialQuestion && options.initialQuestion.question_text) {
+            this.currentQuestionData = options.initialQuestion;
+            console.log('[GameplayEngine] Initial question stored:', options.initialQuestion.question_number);
+        }
 
         console.log('[GameplayEngine] Initialized', { mode: this.state.mode, isHost: this.state.isHost });
     },
