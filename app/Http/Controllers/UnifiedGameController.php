@@ -454,9 +454,15 @@ class UnifiedGameController extends Controller
         
         $result['success'] = true;
         
-        $result['redirect'] = route('game.answers', ['mode' => $mode]) . 
-            '?buzz_time=' . urlencode($buzzTime) . 
-            '&buzz_winner=player';
+        if ($mode === 'solo') {
+            $result['redirect'] = route('solo.answer') . 
+                '?buzz_time=' . urlencode($buzzTime) . 
+                '&buzz_winner=player';
+        } else {
+            $result['redirect'] = route('game.answers', ['mode' => $mode]) . 
+                '?buzz_time=' . urlencode($buzzTime) . 
+                '&buzz_winner=player';
+        }
         
         return response()->json($result);
     }
@@ -516,6 +522,14 @@ class UnifiedGameController extends Controller
     
     public function showTransition(Request $request, string $mode)
     {
+        if ($mode === 'solo') {
+            $queryString = $request->getQueryString();
+            $url = route('solo.timeout');
+            if ($queryString) {
+                $url .= '?' . $queryString;
+            }
+            return redirect($url);
+        }
         
         $user = Auth::user();
         $gameState = session('game_state', []);
@@ -624,6 +638,12 @@ class UnifiedGameController extends Controller
             'unified_current_question',
             'unified_question_number',
         ]);
+        
+        if ($mode === 'solo') {
+            session(['current_question_number' => $gameState['current_question']]);
+            session()->forget('current_question');
+            return redirect()->route('solo.game');
+        }
         
         return redirect()->route('game.question', ['mode' => $mode]);
     }
