@@ -694,6 +694,244 @@ $roomCode = $params['room_code'] ?? null;
         .chrono-circle { width: 80px; height: 80px; }
         .chrono-time { font-size: 1.8rem; }
     }
+    
+    /* Phase Overlay Styles */
+    .phase-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 300;
+        flex-direction: column;
+        gap: 20px;
+        animation: phaseIn 0.3s ease-out;
+    }
+    
+    .phase-overlay.active { display: flex; }
+    
+    @keyframes phaseIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    /* Intro Phase */
+    .intro-overlay {
+        background: linear-gradient(135deg, rgba(15, 32, 39, 0.95) 0%, rgba(32, 58, 67, 0.95) 50%, rgba(44, 83, 100, 0.95) 100%);
+    }
+    
+    .intro-content {
+        text-align: center;
+        animation: introSlide 0.5s ease-out;
+    }
+    
+    @keyframes introSlide {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .intro-question-number {
+        font-size: 3rem;
+        font-weight: 900;
+        color: #4ECDC4;
+        text-shadow: 0 0 30px rgba(78, 205, 196, 0.8);
+        margin-bottom: 15px;
+    }
+    
+    .intro-theme {
+        font-size: 1.5rem;
+        color: #FFD700;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    
+    .intro-subtheme {
+        font-size: 1.1rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-top: 8px;
+    }
+    
+    /* Reveal Phase */
+    .reveal-overlay {
+        background: rgba(0, 0, 0, 0.85);
+    }
+    
+    .reveal-content {
+        text-align: center;
+        animation: revealPop 0.4s ease-out;
+    }
+    
+    @keyframes revealPop {
+        from { opacity: 0; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    .reveal-icon {
+        font-size: 5rem;
+        margin-bottom: 20px;
+    }
+    
+    .reveal-icon.correct {
+        animation: correctPulse 0.6s ease-out;
+    }
+    
+    @keyframes correctPulse {
+        0% { transform: scale(0); }
+        50% { transform: scale(1.3); }
+        100% { transform: scale(1); }
+    }
+    
+    .reveal-message {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 15px;
+    }
+    
+    .reveal-message.correct {
+        color: #2ECC71;
+        text-shadow: 0 0 20px rgba(46, 204, 113, 0.6);
+    }
+    
+    .reveal-message.incorrect {
+        color: #E74C3C;
+        text-shadow: 0 0 20px rgba(231, 76, 60, 0.6);
+    }
+    
+    .reveal-message.timeout {
+        color: #F39C12;
+        text-shadow: 0 0 20px rgba(243, 156, 18, 0.6);
+    }
+    
+    .reveal-answer {
+        font-size: 1.3rem;
+        color: #4ECDC4;
+        background: rgba(78, 205, 196, 0.15);
+        padding: 15px 30px;
+        border-radius: 15px;
+        border: 2px solid rgba(78, 205, 196, 0.4);
+    }
+    
+    .reveal-points {
+        font-size: 1.5rem;
+        color: #FFD700;
+        margin-top: 15px;
+        font-weight: 700;
+    }
+    
+    /* Scoreboard Phase */
+    .scoreboard-overlay {
+        background: linear-gradient(135deg, rgba(15, 32, 39, 0.97) 0%, rgba(32, 58, 67, 0.97) 50%, rgba(44, 83, 100, 0.97) 100%);
+    }
+    
+    .scoreboard-content {
+        text-align: center;
+        animation: scoreSlide 0.5s ease-out;
+        width: 90%;
+        max-width: 500px;
+    }
+    
+    @keyframes scoreSlide {
+        from { opacity: 0; transform: translateY(-30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .scoreboard-title {
+        font-size: 1.5rem;
+        color: #FFD700;
+        margin-bottom: 30px;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+    }
+    
+    .scoreboard-players {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        gap: 40px;
+    }
+    
+    .scoreboard-player {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .scoreboard-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .scoreboard-avatar.player {
+        border: 3px solid #4ECDC4;
+        box-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+    }
+    
+    .scoreboard-avatar.opponent {
+        border: 3px solid #FF6B6B;
+        box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+    }
+    
+    .scoreboard-name {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    .scoreboard-name.player { color: #4ECDC4; }
+    .scoreboard-name.opponent { color: #FF6B6B; }
+    
+    .scoreboard-score {
+        font-size: 3rem;
+        font-weight: 900;
+    }
+    
+    .scoreboard-score.player {
+        color: #4ECDC4;
+        text-shadow: 0 0 30px rgba(78, 205, 196, 0.8);
+    }
+    
+    .scoreboard-score.opponent {
+        color: #FF6B6B;
+        text-shadow: 0 0 30px rgba(255, 107, 107, 0.8);
+    }
+    
+    .scoreboard-score.leading {
+        animation: scoreGlow 1s ease-in-out infinite;
+    }
+    
+    @keyframes scoreGlow {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    .scoreboard-vs {
+        font-size: 2rem;
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 700;
+    }
+    
+    .scoreboard-progress {
+        margin-top: 30px;
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    @media (max-width: 480px) {
+        .intro-question-number { font-size: 2rem; }
+        .intro-theme { font-size: 1.1rem; }
+        .reveal-icon { font-size: 3.5rem; }
+        .reveal-message { font-size: 1.5rem; }
+        .scoreboard-players { gap: 20px; }
+        .scoreboard-avatar { width: 60px; height: 60px; }
+        .scoreboard-score { font-size: 2.5rem; }
+    }
 </style>
 
 <div class="game-container">
@@ -827,6 +1065,44 @@ $roomCode = $params['room_code'] ?? null;
 <div class="waiting-overlay" id="waitingOverlay">
     <div class="spinner"></div>
     <div class="waiting-text" id="waitingText">{{ __('En attente de l\'adversaire...') }}</div>
+</div>
+
+<!-- Phase Overlays -->
+<div class="phase-overlay intro-overlay" id="introOverlay">
+    <div class="intro-content">
+        <div class="intro-question-number" id="introQuestionNumber">{{ __('Question') }} 1/10</div>
+        <div class="intro-theme" id="introTheme">{{ $params['theme'] ?? __('Culture générale') }}</div>
+        <div class="intro-subtheme" id="introSubtheme">{{ $params['sub_theme'] ?? '' }}</div>
+    </div>
+</div>
+
+<div class="phase-overlay reveal-overlay" id="revealOverlay">
+    <div class="reveal-content">
+        <div class="reveal-icon" id="revealIcon">✓</div>
+        <div class="reveal-message" id="revealMessage">{{ __('Bonne réponse !') }}</div>
+        <div class="reveal-answer" id="revealAnswer"></div>
+        <div class="reveal-points" id="revealPoints"></div>
+    </div>
+</div>
+
+<div class="phase-overlay scoreboard-overlay" id="scoreboardOverlay">
+    <div class="scoreboard-content">
+        <div class="scoreboard-title">{{ __('Scores') }}</div>
+        <div class="scoreboard-players">
+            <div class="scoreboard-player">
+                <img src="{{ auth()->user()->avatar ?? asset('images/default-avatar.png') }}" alt="{{ __('Joueur') }}" class="scoreboard-avatar player">
+                <div class="scoreboard-name player" id="scoreboardPlayerName">{{ auth()->user()->name ?? __('Vous') }}</div>
+                <div class="scoreboard-score player" id="scoreboardPlayerScore">0</div>
+            </div>
+            <div class="scoreboard-vs">VS</div>
+            <div class="scoreboard-player">
+                <img src="{{ $params['opponent_info']['avatar'] ?? asset('images/default-avatar.png') }}" alt="{{ __('Adversaire') }}" class="scoreboard-avatar opponent">
+                <div class="scoreboard-name opponent" id="scoreboardOpponentName">{{ $params['opponent_info']['name'] ?? __('Adversaire') }}</div>
+                <div class="scoreboard-score opponent" id="scoreboardOpponentScore">0</div>
+            </div>
+        </div>
+        <div class="scoreboard-progress" id="scoreboardProgress">{{ __('Question suivante...') }}</div>
+    </div>
 </div>
 
 @if($isFirebaseMode)
@@ -1615,7 +1891,271 @@ const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default
 document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
 buzzerSound.load();
 
-document.addEventListener('DOMContentLoaded', function() {
+// PhaseController - Manages game phase transitions
+const PhaseController = {
+    currentPhase: 'intro',
+    phases: ['intro', 'question', 'buzz', 'reveal', 'scoreboard'],
+    phaseTimers: {
+        intro: 2500,
+        reveal: 2000,
+        scoreboard: 2500
+    },
+    isMultiplayer: gameConfig.isFirebaseMode,
+    isHost: gameConfig.isHost,
+    
+    currentQuestionData: null,
+    lastAnswerResult: null,
+    
+    init() {
+        console.log('[PhaseController] Initializing, multiplayer:', this.isMultiplayer);
+        this.currentPhase = 'intro';
+        window.PhaseController = this;
+    },
+    
+    setPhase(phase, phaseData = {}) {
+        if (!this.phases.includes(phase)) {
+            console.warn('[PhaseController] Invalid phase:', phase);
+            return;
+        }
+        
+        const previousPhase = this.currentPhase;
+        this.currentPhase = phase;
+        console.log('[PhaseController] Phase transition:', previousPhase, '->', phase);
+        
+        // Always hide overlays first when transitioning
+        this.hideAllOverlays();
+        
+        // Publish phase to Firebase for multiplayer sync (host only)
+        if (this.isMultiplayer && this.isHost && typeof window.handleFirebasePhase === 'function') {
+            // Pass phase data for guests to properly render overlays
+            window.handleFirebasePhase(phase, phaseData).catch(err => {
+                console.error('[PhaseController] Firebase phase publish error:', err);
+            });
+        }
+        
+        // Ensure overlays are hidden locally after a short delay (safety measure)
+        // This prevents overlays from being stuck if something interrupts the normal flow
+        if (previousPhase !== phase && ['question', 'buzz'].includes(phase)) {
+            setTimeout(() => this.hideAllOverlays(), 100);
+        }
+        
+        return phase;
+    },
+    
+    hideAllOverlays() {
+        document.getElementById('introOverlay')?.classList.remove('active');
+        document.getElementById('revealOverlay')?.classList.remove('active');
+        document.getElementById('scoreboardOverlay')?.classList.remove('active');
+    },
+    
+    showIntro(questionData) {
+        this.setPhase('intro', { questionData });
+        this.currentQuestionData = questionData;
+        
+        const introOverlay = document.getElementById('introOverlay');
+        const questionNum = document.getElementById('introQuestionNumber');
+        const theme = document.getElementById('introTheme');
+        const subtheme = document.getElementById('introSubtheme');
+        
+        if (questionNum) {
+            questionNum.textContent = `{{ __('Question') }} ${questionData.question_number}/${questionData.total_questions}`;
+        }
+        if (theme) {
+            theme.textContent = questionData.theme || '{{ __("Culture générale") }}';
+        }
+        if (subtheme) {
+            subtheme.textContent = questionData.sub_theme || '';
+            subtheme.style.display = questionData.sub_theme ? 'block' : 'none';
+        }
+        
+        introOverlay?.classList.add('active');
+        
+        return new Promise(resolve => {
+            setTimeout(() => {
+                this.hideAllOverlays();
+                resolve();
+            }, this.phaseTimers.intro);
+        });
+    },
+    
+    startQuestion() {
+        this.setPhase('question');
+        
+        const buzzContainer = document.getElementById('buzzContainer');
+        const answersGrid = document.getElementById('answersGrid');
+        
+        if (buzzContainer) buzzContainer.style.display = 'flex';
+        if (answersGrid) answersGrid.style.display = 'none';
+        
+        if (typeof GameplayEngine !== 'undefined') {
+            GameplayEngine.startTimer();
+        }
+    },
+    
+    onBuzz() {
+        this.setPhase('buzz');
+        
+        const answersGrid = document.getElementById('answersGrid');
+        if (answersGrid) answersGrid.style.display = 'grid';
+    },
+    
+    showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false) {
+        this.setPhase('reveal', { isCorrect, correctAnswer, points, wasTimeout });
+        
+        this.lastAnswerResult = { isCorrect, correctAnswer, points, wasTimeout };
+        
+        const revealOverlay = document.getElementById('revealOverlay');
+        const icon = document.getElementById('revealIcon');
+        const message = document.getElementById('revealMessage');
+        const answer = document.getElementById('revealAnswer');
+        const pointsEl = document.getElementById('revealPoints');
+        
+        icon?.classList.remove('correct');
+        message?.classList.remove('correct', 'incorrect', 'timeout');
+        
+        if (wasTimeout) {
+            if (icon) icon.textContent = '⏱️';
+            if (message) {
+                message.textContent = '{{ __("Temps écoulé !") }}';
+                message.classList.add('timeout');
+            }
+        } else if (isCorrect) {
+            if (icon) {
+                icon.textContent = '✓';
+                icon.classList.add('correct');
+            }
+            if (message) {
+                message.textContent = '{{ __("Bonne réponse !") }}';
+                message.classList.add('correct');
+            }
+        } else {
+            if (icon) icon.textContent = '✗';
+            if (message) {
+                message.textContent = '{{ __("Mauvaise réponse") }}';
+                message.classList.add('incorrect');
+            }
+        }
+        
+        if (answer) {
+            answer.textContent = correctAnswer || '';
+            answer.style.display = correctAnswer ? 'block' : 'none';
+        }
+        
+        if (pointsEl) {
+            if (points > 0) {
+                pointsEl.textContent = `+${points} {{ __("points") }}`;
+                pointsEl.style.display = 'block';
+            } else {
+                pointsEl.style.display = 'none';
+            }
+        }
+        
+        revealOverlay?.classList.add('active');
+        
+        return new Promise(resolve => {
+            setTimeout(() => {
+                this.hideAllOverlays();
+                resolve();
+            }, this.phaseTimers.reveal);
+        });
+    },
+    
+    showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions) {
+        this.setPhase('scoreboard', { playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions });
+        
+        const scoreboardOverlay = document.getElementById('scoreboardOverlay');
+        const playerScoreEl = document.getElementById('scoreboardPlayerScore');
+        const opponentScoreEl = document.getElementById('scoreboardOpponentScore');
+        const progressEl = document.getElementById('scoreboardProgress');
+        
+        if (playerScoreEl) {
+            playerScoreEl.textContent = playerScore;
+            playerScoreEl.classList.toggle('leading', playerScore > opponentScore);
+        }
+        
+        if (opponentScoreEl) {
+            opponentScoreEl.textContent = opponentScore;
+            opponentScoreEl.classList.toggle('leading', opponentScore > playerScore);
+        }
+        
+        if (progressEl) {
+            if (hasNextQuestion) {
+                progressEl.textContent = `{{ __("Question") }} ${questionNum + 1}/${totalQuestions} {{ __("à venir...") }}`;
+            } else {
+                progressEl.textContent = '{{ __("Fin de la manche !") }}';
+            }
+        }
+        
+        scoreboardOverlay?.classList.add('active');
+        
+        return new Promise(resolve => {
+            setTimeout(() => {
+                this.hideAllOverlays();
+                resolve();
+            }, this.phaseTimers.scoreboard);
+        });
+    },
+    
+    async nextQuestion(questionData) {
+        await this.showIntro(questionData);
+        this.startQuestion();
+    },
+    
+    async onAnswerComplete(isCorrect, correctAnswer, points, playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions, wasTimeout = false) {
+        await this.showReveal(isCorrect, correctAnswer, points, wasTimeout);
+        
+        // Always show scoreboard (even at end of game to show final scores)
+        await this.showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions);
+        
+        // If no next question (end of game), ensure all overlays are hidden immediately
+        if (!hasNextQuestion) {
+            this.hideAllOverlays();
+        }
+        
+        return { proceed: hasNextQuestion };
+    },
+    
+    receivePhase(phase, data = {}) {
+        if (!this.isHost) {
+            console.log('[PhaseController] Received phase from host:', phase);
+            
+            switch(phase) {
+                case 'intro':
+                    if (data.questionData) {
+                        this.showIntro(data.questionData);
+                    }
+                    break;
+                case 'question':
+                    this.startQuestion();
+                    break;
+                case 'reveal':
+                    this.showReveal(data.isCorrect, data.correctAnswer, data.points, data.wasTimeout);
+                    break;
+                case 'scoreboard':
+                    this.showScoreboard(data.playerScore, data.opponentScore, data.hasNextQuestion, data.questionNum, data.totalQuestions);
+                    break;
+            }
+        }
+    }
+};
+
+window.PhaseController = PhaseController;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize PhaseController
+    PhaseController.init();
+    
+    // Show intro phase for first question
+    const initialQ = gameConfig.initialQuestion;
+    if (initialQ && initialQ.question_text) {
+        await PhaseController.showIntro({
+            question_number: initialQ.question_number || gameConfig.currentQuestion,
+            total_questions: initialQ.total_questions || gameConfig.totalQuestions,
+            theme: initialQ.theme || '{{ $params["theme"] ?? __("Culture générale") }}',
+            sub_theme: initialQ.sub_theme || ''
+        });
+    }
+    
     if (gameConfig.isFirebaseMode) {
         GameplayEngine.init({
             config: {
@@ -1641,6 +2181,14 @@ document.addEventListener('DOMContentLoaded', function() {
             provider: null,
             initialQuestion: gameConfig.initialQuestion
         });
+        
+        // Phase transition to question happens after intro promise resolves (already awaited above)
+        // Only set phase once per question - intro overlay auto-hides and we're ready for question
+        try {
+            PhaseController.setPhase('question');
+        } catch (e) {
+            console.error('[PhaseController] Error transitioning to question phase:', e);
+        }
     } else {
         LocalProvider.init({
             csrfToken: gameConfig.csrfToken,
@@ -1676,6 +2224,12 @@ document.addEventListener('DOMContentLoaded', function() {
             provider: LocalProvider
         });
         
+        // Phase transition to question after intro promise resolves (already awaited above)
+        try {
+            PhaseController.setPhase('question');
+        } catch (e) {
+            console.error('[PhaseController] Error transitioning to question phase:', e);
+        }
         GameplayEngine.startTimer();
     }
 });
@@ -1702,6 +2256,11 @@ function startTimer() {
 function showAnswers() {
     if (answersShown) return;
     answersShown = true;
+    
+    // Transition to buzz phase
+    if (typeof PhaseController !== 'undefined') {
+        PhaseController.onBuzz();
+    }
     
     const buzzContainer = document.getElementById('buzzContainer');
     const grid = document.getElementById('answersGrid');
@@ -1744,41 +2303,65 @@ async function submitAnswer(answerIndex, isCorrect) {
         showWaitingOverlay('{{ __("En attente du résultat...") }}');
     }
     
-    fetch(gameConfig.routes.answer, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': gameConfig.csrfToken
-        },
-        body: JSON.stringify({
-            answer_id: answerIndex,
-            is_correct: isCorrect,
-            buzz_time: playerBuzzTime
-        })
-    })
-    .then(async response => response.json())
-    .then(async data => {
+    try {
+        const response = await fetch(gameConfig.routes.answer, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': gameConfig.csrfToken
+            },
+            body: JSON.stringify({
+                answer_id: answerIndex,
+                is_correct: isCorrect,
+                buzz_time: playerBuzzTime
+            })
+        });
+        
+        const data = await response.json();
         hideWaitingOverlay();
         
         document.getElementById('playerScore').textContent = data.player_score;
+        const playerScore = data.player_score || 0;
+        const opponentScore = data.opponent?.opponent_score || 0;
         
         if (typeof GameplayEngine !== 'undefined') {
-            GameplayEngine.updateScores(data.player_score, data.opponent?.opponent_score);
+            GameplayEngine.updateScores(playerScore, opponentScore);
         }
         
         if (window.handleFirebaseScore) {
-            await window.handleFirebaseScore(data.player_score);
+            await window.handleFirebaseScore(playerScore);
         }
         
         if (data.opponent) {
-            document.getElementById('opponentScore').textContent = data.opponent.opponent_score;
+            document.getElementById('opponentScore').textContent = opponentScore;
         }
         
         if (window.handleFirebaseReady) {
             await window.handleFirebaseReady();
         }
         
-        setTimeout(() => {
+        // Get correct answer text for reveal
+        const currentQ = gameConfig.initialQuestion || {};
+        const correctAnswer = currentQ?.answers?.[data.correct_index]?.text || '';
+        const points = data.was_correct ? (data.points_earned || 10) : 0;
+        const questionNum = currentQ?.question_number || gameConfig.currentQuestion;
+        const totalQuestions = currentQ?.total_questions || gameConfig.totalQuestions;
+        
+        // Use PhaseController for proper reveal/scoreboard overlay handling
+        if (typeof PhaseController !== 'undefined') {
+            await PhaseController.onAnswerComplete(
+                data.was_correct,
+                correctAnswer,
+                points,
+                playerScore,
+                opponentScore,
+                data.has_next_question,
+                questionNum,
+                totalQuestions,
+                false
+            );
+            
+            // Navigate after overlays complete - no extra delay
             if (data.has_next_question) {
                 if (gameConfig.isFirebaseMode && window.GameFlowController) {
                     GameFlowController.advanceToNextQuestion();
@@ -1786,14 +2369,27 @@ async function submitAnswer(answerIndex, isCorrect) {
                     window.location.reload();
                 }
             } else {
+                // End of game - redirect immediately (overlays already hidden by PhaseController)
                 window.location.href = gameConfig.routes.roundResult;
             }
-        }, 2000);
-    })
-    .catch(error => {
+        } else {
+            // Fallback without PhaseController - brief delay for visual feedback
+            setTimeout(() => {
+                if (data.has_next_question) {
+                    if (gameConfig.isFirebaseMode && window.GameFlowController) {
+                        GameFlowController.advanceToNextQuestion();
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    window.location.href = gameConfig.routes.roundResult;
+                }
+            }, 1500);
+        }
+    } catch (error) {
         console.error('Answer error:', error);
         hideWaitingOverlay();
-    });
+    }
 }
 
 const GameFlowController = {
@@ -1958,7 +2554,7 @@ const GameFlowController = {
         }
     },
     
-    displayQuestion(questionData) {
+    async displayQuestion(questionData) {
         hideWaitingOverlay();
         
         this.resetGameState();
@@ -1966,8 +2562,29 @@ const GameFlowController = {
         gameConfig.currentQuestion = questionData.question_number;
         this.lastQuestionNumber = questionData.question_number;
         
+        // Store current question data for answer handling
+        this.currentQuestionData = questionData;
+        
+        // Show intro phase for all questions (intro overlay must complete before gameplay starts)
+        // Always await showIntro with try/catch to ensure proper phase sequencing
+        if (typeof PhaseController !== 'undefined') {
+            try {
+                await PhaseController.showIntro(questionData);
+            } catch (e) {
+                console.error('[GameFlow] showIntro error:', e);
+            }
+        }
+        
         if (typeof GameplayEngine !== 'undefined' && GameplayEngine.startQuestion) {
             GameplayEngine.startQuestion(questionData);
+            // Set phase to question only once after intro completes
+            if (typeof PhaseController !== 'undefined') {
+                try {
+                    PhaseController.setPhase('question');
+                } catch (e) {
+                    console.error('[GameFlow] setPhase error:', e);
+                }
+            }
             return;
         }
         
@@ -1981,31 +2598,38 @@ const GameFlowController = {
         grid.innerHTML = '';
         grid.style.display = 'none';
         
+        const correctIndex = questionData.answers.findIndex(a => a.is_correct);
+        
         questionData.answers.forEach((answer, idx) => {
             const btn = document.createElement('button');
             btn.className = 'answer-option';
             btn.dataset.index = idx;
             btn.textContent = answer.text;
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', async function() {
                 if (btn.classList.contains('disabled')) return;
                 
                 grid.querySelectorAll('.answer-option').forEach(b => b.classList.add('disabled'));
                 
-                fetch(gameConfig.routes.answer, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': gameConfig.csrfToken
-                    },
-                    body: JSON.stringify({
-                        answer_id: idx,
-                        is_correct: false,
-                        buzz_time: playerBuzzTime || 0
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
+                try {
+                    const response = await fetch(gameConfig.routes.answer, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': gameConfig.csrfToken
+                        },
+                        body: JSON.stringify({
+                            answer_id: idx,
+                            is_correct: false,
+                            buzz_time: playerBuzzTime || 0
+                        })
+                    });
+                    
+                    const data = await response.json();
                     const isCorrect = data.is_correct || data.was_correct;
+                    const correctAnswer = questionData.answers[data.correct_index]?.text || '';
+                    const points = isCorrect ? (data.points_earned || 10) : 0;
+                    const playerScore = data.player_score || 0;
+                    const opponentScore = data.opponent?.opponent_score || 0;
                     
                     if (isCorrect) {
                         btn.classList.add('correct');
@@ -2018,27 +2642,53 @@ const GameFlowController = {
                         });
                     }
                     
-                    document.getElementById('playerScore').textContent = data.player_score;
+                    document.getElementById('playerScore').textContent = playerScore;
                     if (data.opponent) {
-                        document.getElementById('opponentScore').textContent = data.opponent.opponent_score;
+                        document.getElementById('opponentScore').textContent = opponentScore;
                     }
                     
                     if (typeof GameplayEngine !== 'undefined') {
-                        GameplayEngine.updateScores(data.player_score, data.opponent?.opponent_score);
+                        GameplayEngine.updateScores(playerScore, opponentScore);
                     }
                     
-                    setTimeout(() => {
+                    // Use PhaseController for reveal and scoreboard phases
+                    if (typeof PhaseController !== 'undefined') {
+                        await PhaseController.onAnswerComplete(
+                            isCorrect,
+                            correctAnswer,
+                            points,
+                            playerScore,
+                            opponentScore,
+                            data.has_next_question,
+                            questionData.question_number,
+                            questionData.total_questions,
+                            false
+                        );
+                        
                         if (data.has_next_question) {
                             GameFlowController.advanceToNextQuestion();
                         } else {
                             window.location.href = gameConfig.routes.roundResult;
                         }
-                    }, 2000);
-                })
-                .catch(e => console.error('Answer error:', e));
+                    } else {
+                        // Fallback without PhaseController
+                        setTimeout(() => {
+                            if (data.has_next_question) {
+                                GameFlowController.advanceToNextQuestion();
+                            } else {
+                                window.location.href = gameConfig.routes.roundResult;
+                            }
+                        }, 2000);
+                    }
+                } catch(e) {
+                    console.error('Answer error:', e);
+                }
             });
             grid.appendChild(btn);
         });
+        
+        // Phase already set after showIntro completes - no duplicate setPhase needed here
+        // (intro handles phase transition timing)
         
         startTimer();
     },
@@ -2094,12 +2744,88 @@ const GameFlowController = {
 
 window.GameFlowController = GameFlowController;
 
-function handleTimeout() {
+async function handleTimeout() {
     document.getElementById('noBuzzSound').play().catch(e => console.log('Sound error:', e));
     
-    setTimeout(() => {
-        submitAnswer(-1, false);
-    }, 2000);
+    const currentQ = GameFlowController.currentQuestionData || gameConfig.initialQuestion;
+    const correctAnswer = currentQ?.answers?.find(a => a.is_correct)?.text || '';
+    
+    // Submit answer first to get server response (for scores and next question check)
+    try {
+        const response = await fetch(gameConfig.routes.answer, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': gameConfig.csrfToken
+            },
+            body: JSON.stringify({
+                answer_id: -1,
+                is_correct: false,
+                buzz_time: 0
+            })
+        });
+        
+        const data = await response.json();
+        const playerScore = data.player_score || 0;
+        const opponentScore = data.opponent?.opponent_score || 0;
+        
+        document.getElementById('playerScore').textContent = playerScore;
+        if (data.opponent) {
+            document.getElementById('opponentScore').textContent = opponentScore;
+        }
+        
+        if (typeof GameplayEngine !== 'undefined') {
+            GameplayEngine.updateScores(playerScore, opponentScore);
+        }
+        
+        if (window.handleFirebaseScore) {
+            await window.handleFirebaseScore(playerScore);
+        }
+        
+        // Use PhaseController to properly chain reveal → scoreboard → next question
+        if (typeof PhaseController !== 'undefined') {
+            await PhaseController.onAnswerComplete(
+                false,
+                correctAnswer,
+                0,
+                playerScore,
+                opponentScore,
+                data.has_next_question,
+                currentQ?.question_number || gameConfig.currentQuestion,
+                currentQ?.total_questions || gameConfig.totalQuestions,
+                true  // wasTimeout = true
+            );
+            
+            if (data.has_next_question) {
+                if (gameConfig.isFirebaseMode && window.GameFlowController) {
+                    GameFlowController.advanceToNextQuestion();
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                window.location.href = gameConfig.routes.roundResult;
+            }
+        } else {
+            // Fallback without PhaseController
+            setTimeout(() => {
+                if (data.has_next_question) {
+                    if (gameConfig.isFirebaseMode && window.GameFlowController) {
+                        GameFlowController.advanceToNextQuestion();
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    window.location.href = gameConfig.routes.roundResult;
+                }
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('Timeout answer error:', error);
+        // Still show reveal on error
+        if (typeof PhaseController !== 'undefined') {
+            await PhaseController.showReveal(false, correctAnswer, 0, true);
+        }
+    }
 }
 
 function showWaitingOverlay(text) {
@@ -2246,6 +2972,18 @@ function hideWaitingOverlay() {
                 window.handleFirebaseFetchQuestion = async function(questionNumber) {
                     return await window.MultiplayerFirestoreProvider.fetchAndPublishQuestion(questionNumber);
                 };
+                
+                // Phase sync handler for multiplayer
+                window.handleFirebasePhase = async function(phase, data = {}) {
+                    return await window.MultiplayerFirestoreProvider.publishPhase(phase, data);
+                };
+                
+                // Listen for phase changes from host
+                window.MultiplayerFirestoreProvider.listenForPhases((phase, data) => {
+                    if (typeof PhaseController !== 'undefined') {
+                        PhaseController.receivePhase(phase, data);
+                    }
+                });
             }
         }
         

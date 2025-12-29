@@ -28,6 +28,7 @@ const MultiplayerFirestoreProvider = {
     unsubscribeReady: null,
     lastQuestionPublishedAt: 0,
     lastQuestionVersion: 0,
+    lastProcessedQuestionVersion: 0,
     
     onQuestionReceived: null,
     onBuzzReceived: null,
@@ -85,6 +86,7 @@ const MultiplayerFirestoreProvider = {
         // Reset sync state for new session - prevents stale timestamps from blocking question delivery
         this.lastQuestionPublishedAt = 0;
         this.lastQuestionVersion = 0;
+        this.lastProcessedQuestionVersion = 0;
         
         this.db = config.db;
         this.firestoreDoc = config.doc;
@@ -177,6 +179,8 @@ const MultiplayerFirestoreProvider = {
 
     /**
      * Écoute les questions publiées par l'hôte
+     * Uses version-based deduplication to prevent double-processing while still
+     * allowing the host to receive and display their own published questions
      */
     listenForQuestions(callback) {
         if (!this.db || !this.sessionId) return;
@@ -189,21 +193,30 @@ const MultiplayerFirestoreProvider = {
             
             const data = snapshot.data();
             
-            // Use both timestamp and version for robust sync detection
-            const questionPublishedAt = data.questionPublishedAt?.toMillis?.() || data.questionPublishedAt || 0;
+            // Use questionVersion as the primary deduplication key
             const questionVersion = data.questionVersion || 0;
             
-            // Check if this is a new question using either version OR timestamp
-            const isNewByVersion = questionVersion > 0 && questionVersion > this.lastQuestionVersion;
-            const isNewByTimestamp = questionPublishedAt > this.lastQuestionPublishedAt;
+            // Skip if we've already processed this question version
+            // This prevents duplicate processing when Firebase echoes updates back
+            // but still allows the host to receive and display questions the first time
+            if (questionVersion <= this.lastProcessedQuestionVersion) {
+                console.log('[MultiplayerFirestoreProvider] Skipping already processed question version:', questionVersion, '(last processed:', this.lastProcessedQuestionVersion, ')');
+                return;
+            }
             
-            if (data.currentQuestionData && (isNewByVersion || isNewByTimestamp)) {
+            // Also use timestamp as a secondary check for robustness
+            const questionPublishedAt = data.questionPublishedAt?.toMillis?.() || data.questionPublishedAt || 0;
+            
+            if (data.currentQuestionData && questionVersion > 0) {
+                // Update tracking BEFORE callback to prevent race conditions
+                this.lastProcessedQuestionVersion = questionVersion;
                 this.lastQuestionPublishedAt = questionPublishedAt;
                 this.lastQuestionVersion = questionVersion;
+                
                 const questionData = data.currentQuestionData;
                 const questionNumber = data.currentQuestion || questionData.question_number || 1;
                 
-                console.log('[MultiplayerFirestoreProvider] Question received:', questionNumber, 'version:', questionVersion, 'at:', questionPublishedAt);
+                console.log('[MultiplayerFirestoreProvider] Question received:', questionNumber, 'version:', questionVersion, 'isHost:', this.isHost);
                 
                 if (this.onQuestionReceived) {
                     this.onQuestionReceived(questionData, questionNumber);
@@ -237,7 +250,7 @@ const MultiplayerFirestoreProvider = {
                 questionPublishedAt: this.firestoreServerTimestamp(),
                 questionVersion: questionNumber,
                 currentQuestion: questionNumber,
-                phase: 'question',
+                currentPhase: 'question',
                 buzzedPlayerId: null,
                 player1Buzzed: false,
                 player2Buzzed: false,
@@ -750,6 +763,61 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
+     * Publie un changement de phase (host only)
+     * @param {string} phase - 'intro' | 'question' | 'buzz' | 'reveal' | 'scoreboard'
+     * @param {Object} data - Phase data
+     */
+    async publishPhase(phase, data = {}) {
+        if (!this.isHost) {
+            console.log('[MultiplayerFirestoreProvider] Only host can publish phases');
+            return false;
+        }
+        
+        if (!this.db || !this.sessionId) return false;
+        
+        try {
+            const sessionRef = this.getSessionRef();
+            await this.firestoreUpdateDoc(sessionRef, {
+                currentPhase: phase,
+                phaseData: data,
+                phasePublishedAt: this.firestoreServerTimestamp()
+            });
+            console.log('[MultiplayerFirestoreProvider] Phase published:', phase);
+            return true;
+        } catch (error) {
+            console.error('[MultiplayerFirestoreProvider] Failed to publish phase:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Écoute les changements de phase (non-host players)
+     * @param {Function} callback - Called with (phase, data)
+     */
+    listenForPhases(callback) {
+        if (!this.db || !this.sessionId) return;
+        if (this.isHost) return; // Host doesn't need to listen for phases
+        
+        const sessionRef = this.getSessionRef();
+        let lastPhaseTime = 0;
+
+        this.unsubscribePhase = this.firestoreOnSnapshot(sessionRef, (snapshot) => {
+            if (!snapshot.exists()) return;
+            
+            const data = snapshot.data();
+            const phaseTime = data.phasePublishedAt?.toMillis?.() || data.phasePublishedAt || 0;
+            
+            if (data.currentPhase && phaseTime > lastPhaseTime) {
+                lastPhaseTime = phaseTime;
+                console.log('[MultiplayerFirestoreProvider] Phase received:', data.currentPhase);
+                if (callback) {
+                    callback(data.currentPhase, data.phaseData || {});
+                }
+            }
+        });
+    },
+
+    /**
      * Nettoie les listeners
      */
     cleanup() {
@@ -764,6 +832,10 @@ const MultiplayerFirestoreProvider = {
         if (this.unsubscribeReady) {
             this.unsubscribeReady();
             this.unsubscribeReady = null;
+        }
+        if (this.unsubscribePhase) {
+            this.unsubscribePhase();
+            this.unsubscribePhase = null;
         }
         console.log('[MultiplayerFirestoreProvider] Cleaned up');
     }
