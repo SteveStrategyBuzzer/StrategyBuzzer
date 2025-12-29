@@ -443,7 +443,7 @@ const MultiplayerFirestoreProvider = {
     /**
      * HOST ONLY: Publie la question sur Firebase après fetch
      * Appelée par GameplayEngine après fetchQuestion()
-     * Note: On ne publie pas les scores (player_score, opponent_score) car ils sont spécifiques à chaque joueur
+     * CRITICAL: correct_index is authoritative - do not recalculate from is_correct flags
      */
     async onQuestionStart(questionData) {
         if (!this.isHost) {
@@ -451,18 +451,39 @@ const MultiplayerFirestoreProvider = {
             return false;
         }
         
+        // Validate required fields to prevent Firebase invalid-argument error
+        if (!questionData || !questionData.question_text || !Array.isArray(questionData.answers)) {
+            console.error('[MultiplayerFirestoreProvider] Invalid question data:', questionData);
+            return false;
+        }
+        
+        // CRITICAL: Use correct_index from source data as authoritative
+        // Only fallback to finding from is_correct if correct_index is truly missing
+        let correctIndex = questionData.correct_index;
+        if (typeof correctIndex !== 'number' || correctIndex < 0 || correctIndex >= questionData.answers.length) {
+            // Last resort: find from is_correct flags
+            correctIndex = questionData.answers.findIndex(a => a && a.is_correct === true);
+            if (correctIndex < 0) correctIndex = 0;
+            console.warn('[MultiplayerFirestoreProvider] correct_index was invalid, recalculated to:', correctIndex);
+        }
+        
+        // Sanitize answers - preserve text only, strip is_correct to avoid confusion
+        // correct_index is the single source of truth for the correct answer
         const sanitizedQuestion = {
-            question_number: questionData.question_number,
-            total_questions: questionData.total_questions,
+            question_number: questionData.question_number || 1,
+            total_questions: questionData.total_questions || 10,
             question_text: questionData.question_text,
-            answers: questionData.answers,
-            correct_index: questionData.correct_index,
-            theme: questionData.theme,
-            sub_theme: questionData.sub_theme,
-            chrono_time: questionData.chrono_time
+            answers: questionData.answers.map((a, idx) => ({
+                text: a.text || (typeof a === 'string' ? a : ''),
+                is_correct: idx === correctIndex
+            })),
+            correct_index: correctIndex,
+            theme: questionData.theme || 'Culture générale',
+            sub_theme: questionData.sub_theme || '',
+            chrono_time: questionData.chrono_time || 8
         };
         
-        console.log('[MultiplayerFirestoreProvider] Publishing question via onQuestionStart:', sanitizedQuestion.question_number);
+        console.log('[MultiplayerFirestoreProvider] Publishing question:', sanitizedQuestion.question_number, 'correct_index:', correctIndex);
         return await this.publishQuestion(sanitizedQuestion, sanitizedQuestion.question_number);
     },
 

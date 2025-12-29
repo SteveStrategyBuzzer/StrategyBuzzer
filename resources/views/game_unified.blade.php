@@ -727,7 +727,11 @@ $roomCode = $params['room_code'] ?? null;
         </div>
         
         <div class="question-text" id="questionText">
-            {{ $params['question_text'] ?? __('Chargement de la question...') }}
+            @if($isFirebaseMode && !($params['is_host'] ?? false))
+                {{ __('En attente de la question...') }}
+            @else
+                {{ $params['question_text'] ?? __('Chargement de la question...') }}
+            @endif
         </div>
     </div>
     
@@ -1590,6 +1594,7 @@ const gameConfig = {
         theme: {!! json_encode($params['theme'] ?? 'Culture générale') !!},
         sub_theme: {!! json_encode($params['sub_theme'] ?? '') !!},
         chrono_time: {{ $params['chrono_time'] ?? 8 }},
+        correct_index: {{ collect($params['answers'] ?? [])->search(function($a) { return is_array($a) && ($a['is_correct'] ?? false); }) ?: 0 }},
         answers: {!! json_encode(collect($params['answers'] ?? [])->map(function($a, $i) {
             return ['text' => is_array($a) ? ($a['text'] ?? $a) : $a, 'is_correct' => is_array($a) ? ($a['is_correct'] ?? false) : false];
         })->values()) !!}
@@ -2172,21 +2177,35 @@ function hideWaitingOverlay() {
                     GameplayEngine.setProvider(window.MultiplayerFirestoreProvider);
                     console.log('[Firebase] MultiplayerFirestoreProvider set for GameplayEngine');
                     
-                    // Use gameConfig.initialQuestion directly (available immediately)
-                    // GameplayEngine.currentQuestionData may not be set yet if DOMContentLoaded hasn't fired
-                    const initialQ = gameConfig.initialQuestion || GameplayEngine.currentQuestionData;
-                    if (gameConfig.isHost && initialQ && initialQ.question_text) {
-                        console.log('[Firebase] Host publishing initial question to Firebase:', initialQ.question_number);
-                        await window.MultiplayerFirestoreProvider.onQuestionStart(initialQ);
+                    if (gameConfig.isHost) {
+                        // Host: publish initial question and start timer
+                        const initialQ = gameConfig.initialQuestion || GameplayEngine.currentQuestionData;
+                        if (initialQ && initialQ.question_text) {
+                            console.log('[Firebase] Host publishing initial question to Firebase:', initialQ.question_number);
+                            await window.MultiplayerFirestoreProvider.onQuestionStart(initialQ);
+                        }
+                        GameplayEngine.startTimer();
+                        console.log('[Firebase] Host timer started');
+                    } else {
+                        // Guest: wait for question from Firebase, don't start timer yet
+                        console.log('[Firebase] Guest waiting for question from Firebase...');
+                        showWaitingOverlay('{{ __("En attente de la question...") }}');
                     }
-                    
-                    GameplayEngine.startTimer();
-                    console.log('[Firebase] Timer started after provider set');
                 }
                 
                 window.MultiplayerFirestoreProvider.listenForQuestions((questionData, questionNumber) => {
-                    console.log('[Firebase] Question from provider:', questionNumber);
-                    if (questionNumber > GameFlowController.lastQuestionNumber) {
+                    console.log('[Firebase] Question from provider:', questionNumber, 'lastQuestionNumber:', GameFlowController.lastQuestionNumber);
+                    
+                    // Accept question if it's newer OR if guest hasn't received first question yet
+                    const isGuestFirstQuestion = !gameConfig.isHost && questionNumber === 1 && !window._guestReceivedFirstQuestion;
+                    
+                    if (questionNumber > GameFlowController.lastQuestionNumber || isGuestFirstQuestion) {
+                        if (isGuestFirstQuestion) {
+                            window._guestReceivedFirstQuestion = true;
+                            hideWaitingOverlay();
+                            console.log('[Firebase] Guest received first question from host');
+                        }
+                        
                         if (typeof GameplayEngine !== 'undefined' && GameplayEngine.receiveQuestion) {
                             GameplayEngine.receiveQuestion(questionData);
                         }
