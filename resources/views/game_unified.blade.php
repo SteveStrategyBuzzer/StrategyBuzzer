@@ -1219,11 +1219,11 @@ class GameVoiceChat {
     }
     
     getSignalingPath() {
-        return `gameSessions/${matchId}/webrtc`;
+        return `duoMatches/${matchId}/webrtc`;
     }
     
     getPresencePath() {
-        return `gameSessions/${matchId}/voice_presence`;
+        return `duoMatches/${matchId}/voice_presence`;
     }
     
     async startVoiceChat() {
