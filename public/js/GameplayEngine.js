@@ -22,13 +22,16 @@ const GameplayEngine = {
         buzzed: false,
         answersShown: false,
         playerBuzzTime: null,
-        phase: 'waiting', // waiting | question | buzz | answer | result
+        phase: 'waiting', // waiting | intro | question | buzz | answer | result
         isHost: false,
         playerId: null,
         sessionId: null,
         mode: 'solo', // solo | duo | league_individual | league_team | master
         questionStartTime: null
     },
+
+    // Pending question data for guests waiting for phase sync
+    pendingQuestionData: null,
 
     // Configuration
     config: {
@@ -254,11 +257,43 @@ const GameplayEngine = {
 
     /**
      * Called by non-host clients when they receive a question from the provider
+     * For guests: stores question data but waits for phase 'question' before starting
+     * This ensures sync with host's intro overlay (2.5s delay)
      * @param {Object} questionData The question data received
      */
     receiveQuestion(questionData) {
-        console.log('[GameplayEngine] Received question from provider:', questionData.question_number);
-        this.startQuestion(questionData);
+        console.log('[GameplayEngine] Received question from provider:', questionData.question_number, 'isHost:', this.state.isHost);
+        
+        // Host starts immediately (they control the phase)
+        // Solo mode also starts immediately (no phase sync needed)
+        if (this.state.isHost || this.state.mode === 'solo') {
+            this.startQuestion(questionData);
+            return;
+        }
+        
+        // Guest: store question data and wait for phase 'question'
+        // This prevents desync where guest sees answers while host shows intro overlay
+        this.pendingQuestionData = questionData;
+        console.log('[GameplayEngine] Guest storing pending question, waiting for phase sync');
+    },
+
+    /**
+     * Called when a phase change is received from the host via Firebase
+     * @param {string} phase The new phase ('intro' | 'question' | 'buzz' | 'reveal' | 'scoreboard')
+     * @param {Object} data Optional phase data
+     */
+    onPhaseChange(phase, data = {}) {
+        console.log('[GameplayEngine] Phase change received:', phase, 'pendingQuestion:', !!this.pendingQuestionData);
+        
+        // When phase changes to 'question', start the pending question
+        if (phase === 'question' && this.pendingQuestionData) {
+            console.log('[GameplayEngine] Phase is question, starting pending question:', this.pendingQuestionData.question_number);
+            this.startQuestion(this.pendingQuestionData);
+            this.pendingQuestionData = null;
+        }
+        
+        // Update internal phase state
+        this.state.phase = phase;
     },
 
     /**
@@ -1133,6 +1168,7 @@ const GameplayEngine = {
         this.state.phase = 'waiting';
         this.state.questionStartTime = null;
         this.currentQuestionData = null;
+        this.pendingQuestionData = null;
 
         if (this.elements.chronoTimer) {
             this.elements.chronoTimer.textContent = this.config.timerDuration;

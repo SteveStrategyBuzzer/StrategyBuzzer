@@ -3071,6 +3071,13 @@ function hideWaitingOverlay() {
                 
                 // Listen for phase changes from host
                 window.MultiplayerFirestoreProvider.listenForPhases((phase, data) => {
+                    console.log('[Firebase] Phase received from host:', phase);
+                    
+                    // Connect to GameplayEngine for phase sync (guest waits for 'question' phase)
+                    if (typeof GameplayEngine !== 'undefined' && GameplayEngine.onPhaseChange) {
+                        GameplayEngine.onPhaseChange(phase, data);
+                    }
+                    
                     if (typeof PhaseController !== 'undefined') {
                         PhaseController.receivePhase(phase, data);
                     }

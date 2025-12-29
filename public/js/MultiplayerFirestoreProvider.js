@@ -250,7 +250,7 @@ const MultiplayerFirestoreProvider = {
                 questionPublishedAt: this.firestoreServerTimestamp(),
                 questionVersion: questionNumber,
                 currentQuestion: questionNumber,
-                currentPhase: 'question',
+                currentPhase: 'intro',
                 buzzedPlayerId: null,
                 player1Buzzed: false,
                 player2Buzzed: false,
