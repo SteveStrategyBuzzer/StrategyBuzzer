@@ -93,6 +93,7 @@ class SoloController extends Controller
 
     public function start(Request $request)
     {
+        // Vérifier que le joueur a des vies disponibles (sauf pour les invités)
         $user = auth()->user();
         $lifeService = new \App\Services\LifeService();
         
@@ -100,6 +101,7 @@ class SoloController extends Controller
             return redirect()->route('menu')->with('error', 'Vous n\'avez plus de vies disponibles. Revenez plus tard !');
         }
         
+        // Avatar non requis => on ne le valide pas ici
         $validated = $request->validate([
             'nb_questions'  => 'required|integer|min:1',
             'theme'         => 'required|string',
@@ -107,29 +109,12 @@ class SoloController extends Controller
         ]);
 
         $theme        = $validated['theme'];
-        $nbQuestions  = (int) $validated['nb_questions'];
+        $nbQuestions  = (int) $validated['nb_questions'];  // Cast explicite en integer
         $niveau       = (int) $validated['niveau_joueur'];
 
+        // Sécurise : ne pas dépasser le niveau débloqué
         $max = session('choix_niveau', 1);
         if ($niveau > $max) $niveau = $max;
-        
-        session(['choix_niveau' => max($niveau, session('choix_niveau', 1))]);
-        session(['niveau_selectionne' => $niveau]);
-
-        $unifiedRequest = new Request([
-            'theme' => $theme,
-            'nb_questions' => $nbQuestions,
-            'niveau' => $niveau,
-        ]);
-        
-        $unifiedRequest->setMethod('POST');
-        $unifiedRequest->setUserResolver(function() use ($user) {
-            return $user;
-        });
-        
-        return app(\App\Http\Controllers\UnifiedGameController::class)->startGame($unifiedRequest, 'solo');
-        
-        // Legacy code below (kept for reference, but now redirected to UnifiedGameController)
 
         // NOUVEAU SYSTÈME : Best of 3 manches
         // Une manche = TOUTES les questions sélectionnées
