@@ -1579,6 +1579,7 @@ class MasterGameController extends Controller
     /**
      * Process player join - validates code first, then finds game and registers player
      * No gameId in URL prevents bypass attacks
+     * Rate limited to prevent brute force attacks on game codes
      */
     public function processJoin(Request $request)
     {
@@ -1589,10 +1590,28 @@ class MasterGameController extends Controller
         $user = Auth::user();
         $gameCode = strtoupper($validated['game_code']);
         
+        // Rate limiting: max 5 attempts per minute per user
+        $cacheKey = 'master_join_attempts_' . $user->id;
+        $attempts = cache($cacheKey, 0);
+        
+        if ($attempts >= 5) {
+            Log::warning('Master join rate limit exceeded', [
+                'user_id' => $user->id,
+                'attempts' => $attempts
+            ]);
+            return back()->with('error', __('Trop de tentatives. Veuillez réessayer dans une minute.'));
+        }
+        
         // Find game by code - this is the only way to discover a game
         $game = MasterGame::where('game_code', $gameCode)->first();
         
         if (!$game) {
+            // Increment failed attempts counter
+            cache([$cacheKey => $attempts + 1], now()->addMinute());
+            Log::info('Master join failed - invalid code', [
+                'user_id' => $user->id,
+                'attempted_code' => $gameCode
+            ]);
             return back()->with('error', __('Code de partie invalide'));
         }
         
@@ -1600,6 +1619,18 @@ class MasterGameController extends Controller
         if (!in_array($game->status, ['draft', 'lobby'])) {
             return back()->with('error', __('Cette partie n\'accepte plus de joueurs'));
         }
+        
+        // Check max players limit
+        $currentPlayerCount = MasterGamePlayer::where('master_game_id', $game->id)
+            ->where('status', 'joined')
+            ->count();
+        
+        if ($currentPlayerCount >= ($game->participants_expected ?? 40)) {
+            return back()->with('error', __('Cette partie est complète'));
+        }
+        
+        // Clear rate limit on successful join
+        cache()->forget($cacheKey);
         
         // Create or update the player registration
         $player = MasterGamePlayer::updateOrCreate(
@@ -1613,6 +1644,12 @@ class MasterGameController extends Controller
                 'status' => 'joined'
             ]
         );
+        
+        Log::info('Player joined Master game', [
+            'game_id' => $game->id,
+            'game_code' => $gameCode,
+            'user_id' => $user->id
+        ]);
         
         // Add to Firestore if game session exists
         try {
