@@ -1947,12 +1947,21 @@ const gameConfig = {
     currentRound: {{ $currentRound }},
     csrfToken: '{{ csrf_token() }}',
     routes: {
+        @if($mode === 'solo')
+        buzz: '/solo/buzz',
+        answer: '/game/solo/answer',
+        roundResult: '/solo/round-result',
+        matchResult: '/solo/match-result',
+        sync: '/solo/sync',
+        fetchQuestion: '/solo/fetch-question',
+        @else
         buzz: '/game/{{ $mode }}/buzz',
         answer: '/game/{{ $mode }}/answer',
         roundResult: '/game/{{ $mode }}/round-result',
         matchResult: '/game/{{ $mode }}/match-result',
         sync: '/game/{{ $mode }}/sync',
         fetchQuestion: '/game/{{ $mode }}/fetch-question',
+        @endif
     },
     initialQuestion: {
         question_number: {{ $currentQuestion }},
@@ -1999,7 +2008,7 @@ const PhaseController = {
     
     init() {
         console.log('[PhaseController] Initializing, multiplayer:', this.isMultiplayer);
-        this.currentPhase = 'intro';
+        this.currentPhase = this.isMultiplayer ? 'intro' : 'question';
         window.PhaseController = this;
     },
     
@@ -2236,9 +2245,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize PhaseController
     PhaseController.init();
     
-    // Show intro phase for first question
+    // Show intro phase for first question (multiplayer only)
     const initialQ = gameConfig.initialQuestion;
-    if (initialQ && initialQ.question_text) {
+    if (gameConfig.isFirebaseMode && initialQ && initialQ.question_text) {
         await PhaseController.showIntro({
             question_number: initialQ.question_number || gameConfig.currentQuestion,
             total_questions: initialQ.total_questions || gameConfig.totalQuestions,
@@ -2656,9 +2665,9 @@ const GameFlowController = {
         // Store current question data for answer handling
         this.currentQuestionData = questionData;
         
-        // Show intro phase for all questions (intro overlay must complete before gameplay starts)
+        // Show intro phase for multiplayer questions only (Solo skips intro)
         // Always await showIntro with try/catch to ensure proper phase sequencing
-        if (typeof PhaseController !== 'undefined') {
+        if (gameConfig.isFirebaseMode && typeof PhaseController !== 'undefined') {
             try {
                 await PhaseController.showIntro(questionData);
             } catch (e) {
