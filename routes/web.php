@@ -352,6 +352,14 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     
     Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
     Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
+    
+    // Secure player join page (no gameId in URL - players enter code only)
+    Route::get('/join', [App\Http\Controllers\MasterGameController::class, 'showJoinForm'])->name('join.form');
+    Route::post('/join', [App\Http\Controllers\MasterGameController::class, 'processJoin'])->name('join.process');
+    
+    // Invite page (for Master to invite contacts)
+    Route::get('/{gameId}/invite', [App\Http\Controllers\MasterGameController::class, 'showInvite'])->name('invite');
+    Route::post('/{gameId}/invite', [App\Http\Controllers\MasterGameController::class, 'sendInvites'])->name('invite.send');
 });
 
 /* ===== LIGUE (page de sélection) ===== */

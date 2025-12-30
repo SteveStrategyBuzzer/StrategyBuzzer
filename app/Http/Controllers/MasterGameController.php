@@ -7,8 +7,10 @@ use App\Models\MasterGameCode;
 use App\Models\MasterGameQuestion;
 use App\Models\MasterGamePlayer;
 use App\Models\MasterGameTeam;
+use App\Models\MasterGameInvitation;
 use App\Services\MasterFirestoreService;
 use App\Services\ImageGenerationService;
+use App\Services\PlayerContactService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -1553,5 +1555,161 @@ class MasterGameController extends Controller
             'success' => true,
             'message' => 'Jeu annulé'
         ]);
+    }
+    
+    // ===== PLAYER JOIN & INVITE FEATURES =====
+    
+    /**
+     * Show the secure join form - no game info exposed until code is validated
+     * Players only see a form to enter the game code
+     */
+    public function showJoinForm()
+    {
+        $user = Auth::user();
+        
+        // Get player level from duo stats
+        $playerLevel = 0;
+        if ($user->playerDuoStat) {
+            $playerLevel = $user->playerDuoStat->level ?? 0;
+        }
+        
+        return view('master.player-join', compact('user', 'playerLevel'));
+    }
+    
+    /**
+     * Process player join - validates code first, then finds game and registers player
+     * No gameId in URL prevents bypass attacks
+     */
+    public function processJoin(Request $request)
+    {
+        $validated = $request->validate([
+            'game_code' => 'required|string|size:6'
+        ]);
+        
+        $user = Auth::user();
+        $gameCode = strtoupper($validated['game_code']);
+        
+        // Find game by code - this is the only way to discover a game
+        $game = MasterGame::where('game_code', $gameCode)->first();
+        
+        if (!$game) {
+            return back()->with('error', __('Code de partie invalide'));
+        }
+        
+        // Check if game is accepting players
+        if (!in_array($game->status, ['draft', 'lobby'])) {
+            return back()->with('error', __('Cette partie n\'accepte plus de joueurs'));
+        }
+        
+        // Create or update the player registration
+        $player = MasterGamePlayer::updateOrCreate(
+            [
+                'master_game_id' => $game->id,
+                'user_id' => $user->id,
+            ],
+            [
+                'score' => 0,
+                'answered' => [],
+                'status' => 'joined'
+            ]
+        );
+        
+        // Add to Firestore if game session exists
+        try {
+            $this->firestoreService->addParticipant($game->id, $user->id, $user->name);
+        } catch (\Exception $e) {
+            Log::warning('Could not add player to Firestore', [
+                'game_id' => $game->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        return redirect()->route('master.lobby', $game->id)
+            ->with('success', __('Vous avez rejoint la partie !'));
+    }
+    
+    /**
+     * Show the invite page for the Game Master to invite contacts
+     */
+    public function showInvite($gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        // Verify that the current user is the host
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, __('Vous n\'êtes pas l\'hôte de cette partie'));
+        }
+        
+        $user = Auth::user();
+        
+        // Get contacts using PlayerContactService
+        $contactService = app(PlayerContactService::class);
+        $contacts = $contactService->getContacts($user->id);
+        
+        // Get already invited players for this game
+        $invitedUserIds = MasterGamePlayer::where('master_game_id', $gameId)
+            ->pluck('user_id')
+            ->toArray();
+        
+        return view('master.invite', compact('game', 'contacts', 'invitedUserIds'));
+    }
+    
+    /**
+     * Process invitations - store invited contacts
+     * Security: Verify each contact_id belongs to the host's contacts
+     */
+    public function sendInvites(Request $request, $gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        $hostId = Auth::id();
+        
+        // Verify that the current user is the host
+        if ($game->host_user_id !== $hostId) {
+            abort(403, __('Vous n\'êtes pas l\'hôte de cette partie'));
+        }
+        
+        $validated = $request->validate([
+            'contact_ids' => 'required|array|min:1',
+            'contact_ids.*' => 'integer|exists:users,id'
+        ]);
+        
+        // Security: Get the host's actual contacts to verify each contact_id
+        $contactService = app(PlayerContactService::class);
+        $hostContacts = $contactService->getContacts($hostId);
+        $validContactIds = $hostContacts->pluck('contact_id')->toArray();
+        
+        $invitedCount = 0;
+        
+        foreach ($validated['contact_ids'] as $contactId) {
+            // Security check: Verify this contact_id is actually a contact of the host
+            if (!in_array($contactId, $validContactIds)) {
+                Log::warning('Attempted to invite non-contact user', [
+                    'host_id' => $hostId,
+                    'game_id' => $gameId,
+                    'contact_id' => $contactId
+                ]);
+                continue; // Skip invalid contacts
+            }
+            
+            // Check if already registered
+            $existing = MasterGamePlayer::where('master_game_id', $gameId)
+                ->where('user_id', $contactId)
+                ->first();
+            
+            if (!$existing) {
+                // Create a pending invitation record
+                MasterGamePlayer::create([
+                    'master_game_id' => $gameId,
+                    'user_id' => $contactId,
+                    'status' => 'invited',
+                    'score' => 0,
+                    'answered' => []
+                ]);
+                $invitedCount++;
+            }
+        }
+        
+        return back()->with('success', __(':count joueurs ont été invités', ['count' => $invitedCount]));
     }
 }
