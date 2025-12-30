@@ -1714,7 +1714,7 @@ class MasterGameController extends Controller
         // Security: Get the host's actual contacts to verify each contact_id
         $contactService = app(PlayerContactService::class);
         $hostContacts = $contactService->getContacts($hostId);
-        $validContactIds = $hostContacts->pluck('contact_id')->toArray();
+        $validContactIds = $hostContacts->pluck('id')->toArray();
         
         $invitedCount = 0;
         
