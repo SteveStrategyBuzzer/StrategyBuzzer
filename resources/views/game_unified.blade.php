@@ -2631,18 +2631,11 @@ const GameFlowController = {
     },
     
     async publishQuestionToFirestore(questionNumber, questionData) {
-        if (window.MultiplayerFirestoreProvider && window.MultiplayerFirestoreProvider.db) {
-            await window.MultiplayerFirestoreProvider.publishQuestion(questionData, questionNumber);
-            console.log('[GameFlow] Question published via provider');
-            this.displayQuestion(questionData);
-        } else if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
-            await FirebaseGameSync.publishQuestion(questionNumber, questionData);
-            console.log('[GameFlow] Question published to Firestore');
-            this.displayQuestion(questionData);
-        } else {
-            console.error('[GameFlow] No Firebase sync available');
-            window.location.reload();
-        }
+        // OPTION C: Backend publishes directly to Firebase, no client-side publish needed
+        // This method now just displays the question locally
+        // Both host and guest receive via listenForQuestions callback
+        console.log('[GameFlow] OPTION C: Skipping client publish, backend handles Firebase');
+        this.displayQuestion(questionData);
     },
     
     async displayQuestion(questionData) {
@@ -3054,7 +3047,9 @@ function hideWaitingOverlay() {
                 };
                 
                 window.handleFirebaseFetchQuestion = async function(questionNumber) {
-                    return await window.MultiplayerFirestoreProvider.fetchAndPublishQuestion(questionNumber);
+                    // OPTION C: Use fetchQuestion which triggers backend to publish to Firebase
+                    // Backend handles Firebase publishing, client just waits for listener callback
+                    return await window.MultiplayerFirestoreProvider.fetchQuestion(questionNumber);
                 };
                 
                 // Phase sync handler for multiplayer

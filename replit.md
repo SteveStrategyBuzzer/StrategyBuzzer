@@ -19,25 +19,34 @@ The frontend uses React 19 with Vite, employing a component-based architecture d
 ### Technical Implementations
 The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It utilizes an API-first, service-oriented design with an event-driven system for real-time game state broadcasting.
 
-**Real-Time Multiplayer Synchronization (Updated Dec 2025):**
-All multiplayer modes now use a **server-side Firebase publishing architecture** for synchronized gameplay:
+**Real-Time Multiplayer Synchronization - OPTION C Architecture (Updated Dec 2025):**
+All multiplayer modes now use an **Authoritative Backend Architecture** for synchronized gameplay, designed to scale up to 10 players (League Team) and 40 players (Master mode):
 
-1. **Game Start Flow**: When host clicks "Start" in lobby, `LobbyService` sends a `gameStarted` signal via Firebase. Both players' lobby pages listen for this signal and navigate to the game page simultaneously.
+1. **Game Start Flow**: When host clicks "Start" in lobby, `LobbyService` sends a `gameStarted` signal via Firebase. All players' lobby pages listen for this signal and navigate to the game page simultaneously.
 
-2. **Question Synchronization**: Host calls `fetchQuestionJson` API → backend generates question → `DuoFirestoreService.publishQuestion()` publishes to Firebase → all clients receive identical question data via Firestore listeners.
+2. **Question Synchronization (OPTION C)**:
+   - Host calls `GameplayEngine.nextQuestion()` → `provider.fetchQuestion()` → backend API
+   - Backend generates question via AI (Gemini)
+   - Backend publishes directly to Firebase via `DuoFirestoreService.publishQuestion()` with:
+     - `questionSequence`: Unique microsecond timestamp for deduplication
+     - `publishedBy: 'backend'`: Flag to identify authoritative server publishes
+   - ALL clients (including host) receive question via `listenForQuestions()` callback
+   - Both players call `startQuestion()` simultaneously - perfect sync
 
-   **CRITICAL - Host-Only Question Generation (Dec 2025):** Only the host generates questions in `UnifiedGameController::startGame()`. The guest does NOT generate questions; it listens for them via `MultiplayerFirestoreProvider.listenForQuestions()`. This prevents each player from having different questions. The `host_id` from `LobbyService` is required to determine who is the host.
+   **CRITICAL - Backend Authoritative (Dec 2025):** 
+   - Client-side `publishQuestion()` and `fetchAndPublishQuestion()` are DEPRECATED
+   - Only backend publishes are accepted by listeners (`publishedBy === 'backend'`)
+   - Solo mode is completely isolated and uses traditional page redirects
 
-3. **Firestore Document Structure**: All multiplayer modes use unified `games/duo-match-{normalizedId}` documents where `normalizedId` is computed using CRC32 normalization (matching PHP and JS implementations).
+3. **Firestore Document Structure**: All multiplayer modes use unified `games/{mode}-match-{normalizedId}` documents where `normalizedId` is computed using CRC32 normalization (matching PHP and JS implementations).
 
-   **CRITICAL - Path Consistency (Dec 2025):** The `normalizedId` MUST always be derived from `lobby_code` (the 6-character code like "ABC123"), NOT from the numeric `match_id` (database ID like 123). This ensures:
-   - Lobby listener uses `normalizeMatchId(lobbyCode)`
-   - Gameplay `sessionId` prioritizes `lobby_code` over `match_id`
-   - Backend `DuoFirestoreService.publishQuestion()` uses `lobbyCode`
+   **Path Consistency:** The `normalizedId` MUST always be derived from `lobby_code` (the 6-character code like "ABC123"), NOT from the numeric `match_id`.
 
 4. **Security**: `correct_index` and `is_correct` are **never** transmitted to clients via Firebase. Answer validation is strictly server-side.
 
-**Note**: League modes currently use `DuoFirestoreService` for question publishing but may have other operations still using mode-specific services. Full migration to unified Firestore namespace pending for league modes.
+5. **Scalability**: This architecture supports 2-10 players (Duo/League) with future support for 40 players (Master mode) planned.
+
+**Note**: League modes use `DuoFirestoreService` for question publishing. Master mode (40 players) will use manual tempo control by the game master.
 
 **GameplayEngine.js:**
 A unified client-side module manages all game modes (Solo, Duo, League, Master), ensuring consistent gameplay behavior. It supports both local (Solo) and Firestore (multiplayer) providers for managing game state actions.
