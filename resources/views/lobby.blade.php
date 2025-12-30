@@ -2880,7 +2880,7 @@ foreach ($colors as $color) {
         lobbyClosed: '{{ __("Le salon a été fermé") }}',
         waitingMessage: '{{ __("En attente de joueurs") }}',
         waitingReady: '{{ __("En attente que tous soient prêts") }}',
-        waitingConnection: '{{ __("Connexion en cours...") }}',
+        waitingConnection: '{{ __("En attente de connexion") }}',
         synchronized: '{{ __("Synchronisé") }}',
         minimum: '{{ __("minimum") }}',
         audioNotAvailable: '{{ __("Audio non disponible") }}'
@@ -3132,10 +3132,18 @@ foreach ($colors as $color) {
             if (isHost) {
                 updateWaitingMessage(data.lobby?.players, {{ $minPlayers }}, data.all_ready);
                 
-                if (data.can_start) {
-                    document.getElementById('start-btn')?.removeAttribute('disabled');
-                } else {
-                    document.getElementById('start-btn')?.setAttribute('disabled', 'disabled');
+                const startBtn = document.getElementById('start-btn');
+                if (startBtn) {
+                    // Track backend state for combination with Firebase presence check
+                    startBtn.dataset.backendDisabled = data.can_start ? 'false' : 'true';
+                    
+                    // Only enable if BOTH backend allows AND Firebase confirms connection
+                    const firebaseConnected = startBtn.dataset.firebaseConnected === 'true';
+                    if (data.can_start && firebaseConnected) {
+                        startBtn.removeAttribute('disabled');
+                    } else {
+                        startBtn.setAttribute('disabled', 'disabled');
+                    }
                 }
             }
             
@@ -4215,9 +4223,21 @@ initFirebase().then(async (authenticated) => {
         // Note: Ready button is always enabled - Firebase presence is just a visual indicator
         // Backend remains the authoritative source for game start eligibility
         
-        // Note: Start button and waiting message are controlled by backend polling (refreshLobbyState)
-        // Firebase presence only updates the visual sync indicator above
-        // This prevents conflicts between volatile Firebase state and authoritative backend state
+        // TASK 3: Block start button until Firebase presence confirms both players connected
+        // This adds a client-side check on top of the backend $canStart validation
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            // Store Firebase connection state for combination with backend state
+            startBtn.dataset.firebaseConnected = allConnected ? 'true' : 'false';
+            
+            // Only enable if BOTH backend allows AND Firebase confirms connection
+            const backendAllows = !startBtn.dataset.backendDisabled || startBtn.dataset.backendDisabled === 'false';
+            if (!allConnected) {
+                startBtn.disabled = true;
+            } else if (backendAllows) {
+                startBtn.disabled = false;
+            }
+        }
         
         window.dispatchEvent(new CustomEvent('lobbyPlayersUpdated', { detail: { players: presencePlayers, allReady, allConnected } }));
     };

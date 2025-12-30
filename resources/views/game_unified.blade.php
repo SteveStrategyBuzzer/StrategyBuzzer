@@ -1996,7 +1996,7 @@ const PhaseController = {
     currentPhase: 'intro',
     phases: ['intro', 'question', 'buzz', 'reveal', 'scoreboard'],
     phaseTimers: {
-        intro: 2500,
+        intro: 3000,
         reveal: 2000,
         scoreboard: 2500
     },
@@ -2245,9 +2245,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize PhaseController
     PhaseController.init();
     
-    // Show intro phase for first question
+    // Show intro phase for first question - SKIP for multiplayer Question 1
+    // In multiplayer, players enter directly after lobby countdown without intro overlay
     const initialQ = gameConfig.initialQuestion;
-    if (initialQ && initialQ.question_text) {
+    const isFirstQuestion = (initialQ?.question_number || gameConfig.currentQuestion) === 1;
+    const skipIntroForMultiplayer = gameConfig.isFirebaseMode && isFirstQuestion;
+    
+    if (initialQ && initialQ.question_text && !skipIntroForMultiplayer) {
         await PhaseController.showIntro({
             question_number: initialQ.question_number || gameConfig.currentQuestion,
             total_questions: initialQ.total_questions || gameConfig.totalQuestions,
