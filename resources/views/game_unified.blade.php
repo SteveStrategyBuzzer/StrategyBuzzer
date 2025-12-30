@@ -2994,40 +2994,30 @@ function hideWaitingOverlay() {
                     GameplayEngine.setProvider(window.MultiplayerFirestoreProvider);
                     console.log('[Firebase] MultiplayerFirestoreProvider set for GameplayEngine');
                     
-                    if (gameConfig.isHost) {
-                        // Host: publish initial question to Firebase
-                        // SYNC FIX: Do NOT start timer here - wait for phase sync like guest
-                        // Timer will start via onPhaseChange('question') callback
-                        const initialQ = gameConfig.initialQuestion || GameplayEngine.currentQuestionData;
-                        if (initialQ && initialQ.question_text) {
-                            console.log('[Firebase] Host publishing initial question to Firebase:', initialQ.question_number);
-                            await window.MultiplayerFirestoreProvider.onQuestionStart(initialQ);
-                            // Store pending question and show intro overlay
-                            GameplayEngine.receiveQuestion(initialQ);
-                            console.log('[Firebase] Host waiting for phase sync to start timer');
-                        }
-                    } else {
-                        // Guest: wait for question from Firebase, don't start timer yet
-                        console.log('[Firebase] Guest waiting for question from Firebase...');
-                        showWaitingOverlay('{{ __("En attente de la question...") }}');
-                    }
+                    // ARCHITECTURE FIX: Both host and guest wait for question from Firebase
+                    // The backend publishes questions directly to Firebase via DuoFirestoreService
+                    // This ensures perfect synchronization - no client-side publishing needed
+                    console.log('[Firebase] Waiting for question from Firebase (backend publishes)...');
+                    showWaitingOverlay('{{ __("En attente de la question...") }}');
                 }
                 
                 window.MultiplayerFirestoreProvider.listenForQuestions((questionData, questionNumber) => {
-                    console.log('[Firebase] Question from provider:', questionNumber, 'lastQuestionNumber:', GameFlowController.lastQuestionNumber);
+                    console.log('[Firebase] Question received from backend:', questionNumber, 'lastQuestionNumber:', GameFlowController.lastQuestionNumber);
                     
-                    // Accept question if it's newer OR if guest hasn't received first question yet
-                    const isGuestFirstQuestion = !gameConfig.isHost && questionNumber === 1 && !window._guestReceivedFirstQuestion;
+                    // SYNC FIX: Both host and guest receive questions the same way from Firebase
+                    // Backend publishes via DuoFirestoreService, ensuring perfect synchronization
+                    const isFirstQuestion = questionNumber === 1 && !window._receivedFirstQuestion;
                     
-                    if (questionNumber > GameFlowController.lastQuestionNumber || isGuestFirstQuestion) {
-                        if (isGuestFirstQuestion) {
-                            window._guestReceivedFirstQuestion = true;
-                            hideWaitingOverlay();
-                            console.log('[Firebase] Guest received first question from host');
+                    if (questionNumber > GameFlowController.lastQuestionNumber || isFirstQuestion) {
+                        if (isFirstQuestion) {
+                            window._receivedFirstQuestion = true;
                         }
+                        hideWaitingOverlay();
+                        console.log('[Firebase] Both players received question', questionNumber, 'from backend');
                         
-                        if (typeof GameplayEngine !== 'undefined' && GameplayEngine.receiveQuestion) {
-                            GameplayEngine.receiveQuestion(questionData);
+                        // Start question directly - no client-side phase publishing needed
+                        if (typeof GameplayEngine !== 'undefined' && GameplayEngine.startQuestion) {
+                            GameplayEngine.startQuestion(questionData);
                         }
                         GameFlowController.onQuestionDataReceived(questionData, questionNumber);
                     }

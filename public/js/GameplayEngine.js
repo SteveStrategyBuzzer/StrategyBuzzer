@@ -1173,46 +1173,43 @@ const GameplayEngine = {
         
         const nextQuestionNumber = this.state.currentQuestion + 1;
 
-        if (this.provider && this.provider.fetchQuestion) {
+        // MULTIPLAYER ARCHITECTURE:
+        // Only the host calls the backend to trigger question generation
+        // Backend generates question AND publishes to Firebase via DuoFirestoreService
+        // Both players receive the question via listenForQuestions callback
+        // This ensures perfect synchronization - no client-side publishing
+        
+        if (this.state.isHost && this.provider && this.provider.fetchQuestion) {
             try {
-                const questionData = await this.provider.fetchQuestion(nextQuestionNumber);
+                console.log('[GameplayEngine] Host requesting next question from backend:', nextQuestionNumber);
+                const result = await this.provider.fetchQuestion(nextQuestionNumber);
                 
-                if (!questionData) {
-                    console.error('[GameplayEngine] No question data returned');
-                    return;
-                }
-
                 // Handle redirect (game complete)
-                if (questionData.redirect_url) {
-                    // For multiplayer host, publish match_complete phase BEFORE redirecting
-                    // This ensures guest also gets redirected to results
-                    if (this.state.isHost && this.state.mode !== 'solo' && this.provider.publishPhase) {
+                if (result && result.redirect_url) {
+                    // Publish match_complete phase so guest also redirects
+                    if (this.provider.publishPhase) {
                         console.log('[GameplayEngine] Host publishing match_complete phase before redirect');
                         await this.provider.publishPhase('match_complete', { 
-                            redirect_url: questionData.redirect_url,
+                            redirect_url: result.redirect_url,
                             player_score: this.state.playerScore,
                             opponent_score: this.state.opponentScore
                         });
                     }
-                    window.location.href = questionData.redirect_url;
+                    window.location.href = result.redirect_url;
                     return;
                 }
-
-                // For multiplayer host, publish the question
-                if (this.state.isHost && this.provider.onQuestionStart) {
-                    await this.provider.onQuestionStart(questionData);
-                }
-
-                // Receive question (handles intro phase for multiplayer, starts immediately for solo)
-                this.receiveQuestion(questionData);
                 
-                // Update scores if provided
-                if (questionData.player_score !== undefined || questionData.opponent_score !== undefined) {
-                    this.updateScores(questionData.player_score, questionData.opponent_score);
-                }
+                // Backend has published to Firebase - both players will receive via listener
+                console.log('[GameplayEngine] Backend published question, waiting for Firebase...');
+                // DO NOT call receiveQuestion or onQuestionStart here
+                // The listenForQuestions callback will handle it for both players
+                
             } catch (err) {
                 console.error('[GameplayEngine] Next question error:', err);
             }
+        } else if (!this.state.isHost) {
+            // Guest: Just wait for Firebase, backend publishes when host requests
+            console.log('[GameplayEngine] Guest waiting for next question from Firebase...');
         } else if (this.config.routes.nextQuestion) {
             window.location.href = this.config.routes.nextQuestion;
         }
