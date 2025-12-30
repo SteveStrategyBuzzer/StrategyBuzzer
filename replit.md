@@ -81,6 +81,15 @@ All game modes use a unified `/gameSessions/{sessionId}` Firestore collection. F
 
 ### Feature Specifications
 -   **Game Modes**: Solo (90 opponents, 10 boss battles), Duo (division-based, player code invites), League Individual (1v1 career), League Team (5v5 with 3 sub-modes), and Master (real-time hosting for 3-40 players).
+
+**Master Mode Game Structures (Dec 2025):**
+The Master mode now supports 4 distinct game structures with full configuration:
+1. **Chacun pour soi (free_for_all)**: Individual competition with up to 40 players
+2. **Face à Face Multiple (team_open_skills)**: 2 teams up to 20 players each, ALL players can use avatar skills
+3. **Face à Face Simple (team_buzzer_only)**: 2 teams, only the buzzer can answer and use skills
+4. **Multi-Équipes (multi_team)**: 3-8 teams playing the same quiz simultaneously
+
+Database schema includes `structure_type`, `team_count`, `team_size_cap`, `skill_policy`, and `buzz_rule` columns. Teams are managed via `master_game_teams` table with player assignments in `master_game_players.team_id`.
 -   **Avatar System**: User-specific avatars with 12 avatars across 3 rarity tiers, offering 25 unique skills (Passive, Visual, Active_Pre, Active_Post).
 -   **Progression**: Quest/Achievement System with 35 Standard quests, event-driven detection, and atomic transaction-based reward distribution.
 -   **Real-time Features**: Utilizes Firebase Firestore for real-time game state synchronization.

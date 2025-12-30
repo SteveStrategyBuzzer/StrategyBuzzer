@@ -268,7 +268,7 @@ body {
         
         <div class="structure-grid">
             <label class="structure-card" data-structure="free_for_all">
-                <input type="radio" name="game_structure" value="free_for_all" required>
+                <input type="radio" name="structure_type" value="free_for_all" required>
                 <span class="check-badge">✓</span>
                 <div class="card-icon">🏃</div>
                 <div class="card-title">{{ __('Chacun pour soi') }}</div>
@@ -277,7 +277,7 @@ body {
             </label>
             
             <label class="structure-card" data-structure="team_open_skills">
-                <input type="radio" name="game_structure" value="team_open_skills" required>
+                <input type="radio" name="structure_type" value="team_open_skills" required>
                 <span class="check-badge">✓</span>
                 <div class="card-icon">⚔️</div>
                 <div class="card-title">{{ __('Face à Face Multiple') }}</div>
@@ -286,7 +286,7 @@ body {
             </label>
             
             <label class="structure-card" data-structure="team_buzzer_only">
-                <input type="radio" name="game_structure" value="team_buzzer_only" required>
+                <input type="radio" name="structure_type" value="team_buzzer_only" required>
                 <span class="check-badge">✓</span>
                 <div class="card-icon">🔔</div>
                 <div class="card-title">{{ __('Face à Face Simple') }}</div>
@@ -295,7 +295,7 @@ body {
             </label>
             
             <label class="structure-card" data-structure="multi_team">
-                <input type="radio" name="game_structure" value="multi_team" required>
+                <input type="radio" name="structure_type" value="multi_team" required>
                 <span class="check-badge">✓</span>
                 <div class="card-icon">🏆</div>
                 <div class="card-title">{{ __('Multi-Équipes') }}</div>
