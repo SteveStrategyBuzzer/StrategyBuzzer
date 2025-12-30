@@ -39,6 +39,12 @@ All multiplayer modes now use a **server-side Firebase publishing architecture**
 
 **Note**: League modes currently use `DuoFirestoreService` for question publishing but may have other operations still using mode-specific services. Full migration to unified Firestore namespace pending for league modes.
 
+**Unified View Architecture (Dec 2025):**
+All game modes now share the same Blade templates for consistent gameplay:
+-   **game_unified.blade.php**: Single gameplay view for Solo, Duo, League Individual, and League Team. Controllers pass a standardized `$params` array with mode, opponent_type, opponent_info, scores, rounds, avatar skills, and Firebase sync flags.
+-   **game_match_result.blade.php**: Single results view for all modes. Handles victory/defeat display with mode-specific features (Solo: level up, boss unlock, lives; Duo: division promotion/demotion; League Team: team stats).
+-   **Params Structure**: `mode` (solo/duo/league_individual/league_team), `opponent_type` (ai/human), `opponent_info`, `score`, `opponent_score`, `current_round`, `player_rounds_won`, `opponent_rounds_won`, `avatar`, `avatar_skills_full`, `match_id`, `session_id`, `firebase_sync`, `is_host`.
+
 **GameplayEngine.js:**
 A unified client-side module manages all game modes (Solo, Duo, League, Master), ensuring consistent gameplay behavior. It supports both local (Solo) and Firestore (multiplayer) providers for managing game state actions.
 -   **Event Delegation Pattern:** Uses document-level event delegation with singleton guard (`_eventsBound` flag) to prevent duplicate listener registrations when `init()` runs multiple times during SPA-style navigation.
