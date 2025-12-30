@@ -592,33 +592,19 @@ class SoloController extends Controller
             'correct_answer' => isset($question['answers'], $question['correct_index']) ? $question['answers'][$question['correct_index']] : 'N/A',
         ]);
         
-        // Get avatar skills data for game_unified view
-        $avatarSkillsData = $this->getAvatarSkills($avatar);
-        
-        // Build params structure matching UnifiedGameController for game_unified.blade.php
         $params = [
-            'mode' => 'solo',
-            'opponent_type' => 'ai',
-            'opponent_info' => $opponentInfo,
             'question' => $question,
-            'question_text' => $question['text'] ?? '',
-            'answers' => $question['answers'] ?? [],
-            'correct_answer_index' => $question['correct_index'] ?? 0,
-            'current' => $currentQuestion,
             'current_question' => $currentQuestion,
-            'nb_questions' => $nbQuestions,
-            'niveau' => $niveau,
-            'theme' => $theme,
-            'sub_theme' => $question['sub_theme'] ?? '',
+            'total_questions' => $nbQuestions,
             'score' => session('score', 0),
             'opponent_score' => session('opponent_score', 0),
-            'current_round' => session('current_round', 1),
-            'player_rounds_won' => session('player_rounds_won', 0),
-            'opponent_rounds_won' => session('opponent_rounds_won', 0),
-            'scoring' => [],
-            'avatar' => $avatar,
-            'avatar_skills_full' => $avatarSkillsData,
             'chrono_time' => $baseTime,
+            'avatar' => $avatar,
+            'theme' => $theme,
+            'niveau' => $niveau,
+            'current_round' => session('current_round', 1),
+            'total_rounds' => session('total_rounds', 5),
+            'opponent_info' => $opponentInfo,
         ];
         
         session(['game_state' => [
@@ -637,7 +623,7 @@ class SoloController extends Controller
         session(['unified_current_question' => $question]);
         session(['unified_question_number' => $currentQuestion]);
         
-        return view('game_unified', ['params' => $params]);
+        return view('game_question', compact('params'));
     }
 
     public function buzz(Request $request)
@@ -1877,60 +1863,33 @@ class SoloController extends Controller
             }
         }
         
-        // Récupérer les infos de l'adversaire pour le format unifié
-        $opponentInfo = $this->getOpponentInfo($currentLevel);
-        $playerRoundsWon = session('player_rounds_won', 2);
-        $opponentRoundsWon = session('opponent_rounds_won', 0);
-        $playerTotalScore = session('score', 0);
-        $opponentTotalScore = session('opponent_score', 0);
-        
-        // Format unifié compatible avec game_match_result.blade.php
         $params = [
-            'mode' => 'solo',
-            'match_result' => [
-                'player_won' => true,
-                'is_draw' => false,
-                'player_rounds_won' => $playerRoundsWon,
-                'opponent_rounds_won' => $opponentRoundsWon,
-                'player_total_score' => $playerTotalScore,
-                'opponent_total_score' => $opponentTotalScore,
-                'coins_earned' => $coinsEarned,
-                'coins_bonus' => $coinsBonus,
-                'has_stratege_bonus' => $hasStrategeBonus,
-                'xp_earned' => 0,
-                'division_points' => 0,
-                'new_division' => null,
-                'promoted' => false,
-                'demoted' => false,
-                // Solo-specific data
-                'current_level' => $currentLevel,
-                'new_level' => $newLevel,
-                'next_opponent_name' => $nextOpponentName,
-                'duo_full_unlocked' => $duoFullUnlocked,
-                'theme' => $theme,
-                'total_correct' => $totalCorrect,
-                'total_incorrect' => $totalIncorrect,
-                'total_unanswered' => $totalUnanswered,
-                'global_efficiency' => $globalEfficiency,
-                'party_efficiency' => $partyEfficiency,
-                'stats_metrics' => $statsMetrics,
-                'round_summaries' => $roundSummaries,
-                'total_points_earned' => $totalPointsEarned,
-                'total_points_possible' => $totalPointsPossible,
-                'last_10_stats' => $last10Stats,
-            ],
-            'opponent_info' => [
-                'name' => $opponentInfo['name'],
-                'avatar' => $opponentInfo['is_boss'] 
-                    ? "images/avatars/bosses/{$opponentInfo['avatar']}.png"
-                    : "images/avatars/standard/{$opponentInfo['avatar']}.png",
-                'division' => $opponentInfo['is_boss'] ? __('Boss') : __('Niveau') . ' ' . $currentLevel,
-                'level' => $currentLevel,
-                'is_boss' => $opponentInfo['is_boss'],
-            ],
+            'current_level' => $currentLevel,
+            'new_level' => $newLevel,
+            'theme' => $theme,
+            'total_correct' => $totalCorrect,
+            'total_incorrect' => $totalIncorrect,
+            'total_unanswered' => $totalUnanswered,
+            'global_efficiency' => $globalEfficiency,
+            'party_efficiency' => $partyEfficiency,
+            'next_opponent_name' => $nextOpponentName,
+            'stats_metrics' => $statsMetrics,
+            // Stats par manche (toutes les manches de la partie)
+            'round_summaries' => $roundSummaries,
+            // Points cumulés de toutes les manches
+            'total_points_earned' => $totalPointsEarned,
+            'total_points_possible' => $totalPointsPossible,
+            // Pièces d'intelligence gagnées
+            'coins_earned' => $coinsEarned,
+            'coins_bonus' => $coinsBonus,
+            'has_stratege_bonus' => $hasStrategeBonus,
+            // Flag de déblocage Duo complet
+            'duo_full_unlocked' => $duoFullUnlocked,
+            // Stats des 10 dernières parties (efficacité moyenne + ratio V/D)
+            'last_10_stats' => $last10Stats,
         ];
         
-        return view('game_match_result', ['params' => $params]);
+        return view('victory', compact('params'));
     }
     
     public function defeat()
@@ -2058,57 +2017,27 @@ class SoloController extends Controller
             $last10Stats = \App\Models\MatchPerformance::getLast10Stats($user->id, 'solo');
         }
         
-        // Récupérer les infos de l'adversaire pour le format unifié
-        $opponentInfo = $this->getOpponentInfo($currentLevel);
-        $playerRoundsWon = session('player_rounds_won', 0);
-        $opponentRoundsWon = session('opponent_rounds_won', 2);
-        $playerTotalScore = session('score', 0);
-        $opponentTotalScore = session('opponent_score', 0);
-        
-        // Format unifié compatible avec game_match_result.blade.php
         $params = [
-            'mode' => 'solo',
-            'match_result' => [
-                'player_won' => false,
-                'is_draw' => false,
-                'player_rounds_won' => $playerRoundsWon,
-                'opponent_rounds_won' => $opponentRoundsWon,
-                'player_total_score' => $playerTotalScore,
-                'opponent_total_score' => $opponentTotalScore,
-                'coins_earned' => 0,
-                'xp_earned' => 0,
-                'division_points' => 0,
-                'new_division' => null,
-                'promoted' => false,
-                'demoted' => false,
-                // Solo-specific data
-                'current_level' => $currentLevel,
-                'theme' => $theme,
-                'total_correct' => $totalCorrect,
-                'total_incorrect' => $totalIncorrect,
-                'total_unanswered' => $totalUnanswered,
-                'global_efficiency' => $globalEfficiency,
-                'party_efficiency' => $partyEfficiency,
-                'remaining_lives' => $remainingLives,
-                'has_lives' => $hasLives,
-                'cooldown_time' => $cooldownTime,
-                'next_life_regen' => $nextLifeRegen,
-                'stats_metrics' => $statsMetrics,
-                'round_summaries' => $roundSummaries,
-                'last_10_stats' => $last10Stats,
-            ],
-            'opponent_info' => [
-                'name' => $opponentInfo['name'],
-                'avatar' => $opponentInfo['is_boss'] 
-                    ? "images/avatars/bosses/{$opponentInfo['avatar']}.png"
-                    : "images/avatars/standard/{$opponentInfo['avatar']}.png",
-                'division' => $opponentInfo['is_boss'] ? __('Boss') : __('Niveau') . ' ' . $currentLevel,
-                'level' => $currentLevel,
-                'is_boss' => $opponentInfo['is_boss'],
-            ],
+            'current_level' => $currentLevel,
+            'theme' => $theme,
+            'total_correct' => $totalCorrect,
+            'total_incorrect' => $totalIncorrect,
+            'total_unanswered' => $totalUnanswered,
+            'global_efficiency' => $globalEfficiency,
+            'party_efficiency' => $partyEfficiency,
+            'remaining_lives' => $remainingLives,
+            'has_lives' => $hasLives,
+            'cooldown_time' => $cooldownTime,
+            'next_life_regen' => $nextLifeRegen,
+            'is_guest' => false, // Toujours false car auth middleware requis
+            'stats_metrics' => $statsMetrics,
+            // Stats par manche (toutes les manches de la partie)
+            'round_summaries' => $roundSummaries,
+            // Stats des 10 dernières parties (efficacité moyenne + ratio V/D)
+            'last_10_stats' => $last10Stats,
         ];
         
-        return view('game_match_result', ['params' => $params]);
+        return view('defeat', compact('params'));
     }
 
     
