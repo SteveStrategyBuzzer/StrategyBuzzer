@@ -6,6 +6,7 @@ use App\Models\MasterGame;
 use App\Models\MasterGameCode;
 use App\Models\MasterGameQuestion;
 use App\Models\MasterGamePlayer;
+use App\Models\MasterGameTeam;
 use App\Services\MasterFirestoreService;
 use App\Services\ImageGenerationService;
 use Illuminate\Http\Request;
@@ -247,6 +248,147 @@ class MasterGameController extends Controller
                 ],
                 'correct_answer' => 0,
                 'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    // Page: Sélection de la structure de jeu
+    public function showStructure($gameId)
+    {
+        $game = MasterGame::with('questions')->findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+        
+        // Vérifier que le quiz est validé
+        if (!$game->quiz_validated) {
+            return redirect()->route('master.compose', $gameId)
+                ->with('error', 'Veuillez d\'abord valider votre quiz');
+        }
+        
+        return view('master.structure', compact('game'));
+    }
+
+    // POST: Sauvegarder la structure de jeu
+    public function saveStructure(Request $request, $gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+        
+        $validated = $request->validate([
+            'structure_type' => 'required|in:free_for_all,team_open_skills,team_buzzer_only,multi_team',
+            'team_count' => 'nullable|integer|min:2|max:8',
+            'team_size_cap' => 'nullable|integer|min:5|max:20',
+        ]);
+        
+        // Déterminer les paramètres selon la structure
+        $skillPolicy = 'all_players';
+        $buzzRule = 'first_buzz_locks';
+        $teamCount = null;
+        $teamSizeCap = 20;
+        
+        switch ($validated['structure_type']) {
+            case 'free_for_all':
+                $teamCount = null;
+                $teamSizeCap = 40;
+                break;
+            case 'team_open_skills':
+                $teamCount = 2;
+                $teamSizeCap = $validated['team_size_cap'] ?? 20;
+                $skillPolicy = 'all_players';
+                break;
+            case 'team_buzzer_only':
+                $teamCount = 2;
+                $teamSizeCap = $validated['team_size_cap'] ?? 20;
+                $skillPolicy = 'buzzer_only';
+                break;
+            case 'multi_team':
+                $teamCount = $validated['team_count'] ?? 4;
+                $teamSizeCap = $validated['team_size_cap'] ?? 10;
+                break;
+        }
+        
+        $game->update([
+            'structure_type' => $validated['structure_type'],
+            'team_count' => $teamCount,
+            'team_size_cap' => $teamSizeCap,
+            'skill_policy' => $skillPolicy,
+            'buzz_rule' => $buzzRule,
+        ]);
+        
+        // Pour les modes équipe, rediriger vers la config des équipes
+        if (in_array($validated['structure_type'], ['team_open_skills', 'team_buzzer_only', 'multi_team'])) {
+            return redirect()->route('master.teams', $gameId);
+        }
+        
+        // Pour free_for_all, aller directement au lobby
+        return redirect()->route('master.lobby', $gameId);
+    }
+
+    // Page: Configuration des équipes
+    public function showTeams($gameId)
+    {
+        $game = MasterGame::with('teams')->findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+        
+        // Créer les équipes par défaut si elles n'existent pas
+        if ($game->teams->isEmpty()) {
+            $this->createDefaultTeams($game);
+            $game->load('teams');
+        }
+        
+        return view('master.teams', compact('game'));
+    }
+
+    // POST: Sauvegarder la configuration des équipes
+    public function saveTeams(Request $request, $gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+        
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+        
+        $validated = $request->validate([
+            'teams' => 'required|array',
+            'teams.*.id' => 'required|exists:master_game_teams,id',
+            'teams.*.name' => 'required|string|max:100',
+            'teams.*.color' => 'nullable|string|max:20',
+        ]);
+        
+        foreach ($validated['teams'] as $teamData) {
+            MasterGameTeam::where('id', $teamData['id'])
+                ->where('master_game_id', $gameId)
+                ->update([
+                    'name' => $teamData['name'],
+                    'color' => $teamData['color'] ?? null,
+                ]);
+        }
+        
+        return redirect()->route('master.lobby', $gameId);
+    }
+
+    // Helper: Créer les équipes par défaut
+    private function createDefaultTeams($game)
+    {
+        $teamCount = $game->team_count ?? 2;
+        $defaultColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DFE6E9', '#E17055', '#00B894'];
+        $defaultNames = ['Équipe Rouge', 'Équipe Bleue', 'Équipe Verte', 'Équipe Jaune', 'Équipe Orange', 'Équipe Violette', 'Équipe Rose', 'Équipe Cyan'];
+        
+        for ($i = 0; $i < $teamCount; $i++) {
+            MasterGameTeam::create([
+                'master_game_id' => $game->id,
+                'name' => $defaultNames[$i] ?? 'Équipe ' . ($i + 1),
+                'color' => $defaultColors[$i] ?? '#CCCCCC',
+                'team_order' => $i,
+                'max_players' => $game->team_size_cap ?? 10,
             ]);
         }
     }

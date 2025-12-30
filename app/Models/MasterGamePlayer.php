@@ -16,11 +16,15 @@ class MasterGamePlayer extends Model
         'side',
         'score',
         'answered',
-        'status'
+        'status',
+        'team_id',
+        'seat_index',
+        'is_captain'
     ];
 
     protected $casts = [
-        'answered' => 'array'
+        'answered' => 'array',
+        'is_captain' => 'boolean'
     ];
 
     // Relations
@@ -37,5 +41,10 @@ class MasterGamePlayer extends Model
     public function code()
     {
         return $this->belongsTo(MasterGameCode::class, 'master_game_code_id');
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(MasterGameTeam::class, 'team_id');
     }
 }

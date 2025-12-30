@@ -341,6 +341,15 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::get('/{gameId}/question/{questionNumber}/edit', [App\Http\Controllers\MasterGameController::class, 'editQuestion'])->name('question.edit');
     Route::post('/{gameId}/question/{questionNumber}/save', [App\Http\Controllers\MasterGameController::class, 'saveQuestion'])->name('question.save');
     Route::post('/{gameId}/question/{questionNumber}/regenerate', [App\Http\Controllers\MasterGameController::class, 'regenerateQuestion'])->name('question.regenerate');
+    
+    // Sélection de structure de jeu
+    Route::get('/{gameId}/structure', [App\Http\Controllers\MasterGameController::class, 'showStructure'])->name('structure');
+    Route::post('/{gameId}/structure', [App\Http\Controllers\MasterGameController::class, 'saveStructure'])->name('structure.save');
+    
+    // Configuration des équipes (pour modes équipe)
+    Route::get('/{gameId}/teams', [App\Http\Controllers\MasterGameController::class, 'showTeams'])->name('teams');
+    Route::post('/{gameId}/teams', [App\Http\Controllers\MasterGameController::class, 'saveTeams'])->name('teams.save');
+    
     Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
     Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
 });

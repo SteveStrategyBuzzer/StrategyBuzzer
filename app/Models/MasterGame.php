@@ -30,7 +30,12 @@ class MasterGame extends Model
         'current_question',
         'quiz_validated',
         'started_at',
-        'ended_at'
+        'ended_at',
+        'structure_type',
+        'team_count',
+        'team_size_cap',
+        'skill_policy',
+        'buzz_rule'
     ];
 
     protected $casts = [
@@ -65,5 +70,10 @@ class MasterGame extends Model
     public function players()
     {
         return $this->hasMany(MasterGamePlayer::class);
+    }
+
+    public function teams()
+    {
+        return $this->hasMany(MasterGameTeam::class);
     }
 }
