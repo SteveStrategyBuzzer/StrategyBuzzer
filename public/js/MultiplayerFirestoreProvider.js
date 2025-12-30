@@ -792,11 +792,13 @@ const MultiplayerFirestoreProvider = {
 
     /**
      * Écoute les changements de phase (non-host players)
+     * Handles special phases like 'match_complete' to redirect guest to results
      * @param {Function} callback - Called with (phase, data)
      */
     listenForPhases(callback) {
         if (!this.db || !this.sessionId) return;
-        if (this.isHost) return; // Host doesn't need to listen for phases
+        // SYNC FIX: Host MUST also listen for phases to ensure simultaneous timer start
+        // Both host and guest will receive 'question' phase via Firestore and start together
         
         const sessionRef = this.getSessionRef();
         let lastPhaseTime = 0;
@@ -810,6 +812,17 @@ const MultiplayerFirestoreProvider = {
             if (data.currentPhase && phaseTime > lastPhaseTime) {
                 lastPhaseTime = phaseTime;
                 console.log('[MultiplayerFirestoreProvider] Phase received:', data.currentPhase);
+                
+                // Handle match_complete phase - redirect guest to results
+                if (data.currentPhase === 'match_complete') {
+                    const phaseData = data.phaseData || {};
+                    if (phaseData.redirect_url) {
+                        console.log('[MultiplayerFirestoreProvider] Match complete, redirecting guest to:', phaseData.redirect_url);
+                        window.location.href = phaseData.redirect_url;
+                        return;
+                    }
+                }
+                
                 if (callback) {
                     callback(data.currentPhase, data.phaseData || {});
                 }

@@ -257,24 +257,69 @@ const GameplayEngine = {
 
     /**
      * Called by non-host clients when they receive a question from the provider
-     * For guests: stores question data but waits for phase 'question' before starting
+     * For multiplayer: Both host and guest wait for phase 'question' before starting
      * This ensures sync with host's intro overlay (2.5s delay)
+     * For solo: Starts immediately (no Firebase sync needed)
      * @param {Object} questionData The question data received
      */
     receiveQuestion(questionData) {
-        console.log('[GameplayEngine] Received question from provider:', questionData.question_number, 'isHost:', this.state.isHost);
+        console.log('[GameplayEngine] Received question from provider:', questionData.question_number, 'isHost:', this.state.isHost, 'mode:', this.state.mode);
         
-        // Host starts immediately (they control the phase)
-        // Solo mode also starts immediately (no phase sync needed)
-        if (this.state.isHost || this.state.mode === 'solo') {
+        // Solo mode starts immediately (no Firebase sync needed)
+        if (this.state.mode === 'solo') {
             this.startQuestion(questionData);
             return;
         }
         
-        // Guest: store question data and wait for phase 'question'
-        // This prevents desync where guest sees answers while host shows intro overlay
+        // Multiplayer mode: Both host and guest store pending question data
+        // and wait for phase synchronization
         this.pendingQuestionData = questionData;
-        console.log('[GameplayEngine] Guest storing pending question, waiting for phase sync');
+        
+        if (this.state.isHost) {
+            // Host: Show intro overlay, then publish 'question' phase after 2.5s
+            // This triggers both players to start simultaneously
+            console.log('[GameplayEngine] Host storing pending question, showing intro then publishing phase');
+            this.showIntroThenPublishQuestion(questionData);
+        } else {
+            // Guest: Wait for phase 'question' via onPhaseChange callback
+            console.log('[GameplayEngine] Guest storing pending question, waiting for phase sync');
+        }
+    },
+
+    /**
+     * Host-only: Shows intro overlay for 2.5 seconds, then publishes 'question' phase
+     * This synchronizes the start time between host and guest
+     * @param {Object} questionData The question data to start after intro
+     */
+    showIntroThenPublishQuestion(questionData) {
+        if (!this.state.isHost) {
+            console.warn('[GameplayEngine] showIntroThenPublishQuestion called on non-host');
+            return;
+        }
+
+        console.log('[GameplayEngine] Host showing intro overlay for question:', questionData.question_number);
+        
+        // Show intro overlay (the UI should display theme/question number)
+        this.state.phase = 'intro';
+        
+        // Cancel any pending intro timeout from previous questions
+        if (this._introTimeout) {
+            clearTimeout(this._introTimeout);
+            this._introTimeout = null;
+        }
+        
+        // After 2.5 seconds, publish 'question' phase
+        // SYNC FIX: Do NOT start locally here - wait for Firestore callback in onPhaseChange
+        // This ensures both host and guest receive the phase change and start simultaneously
+        this._introTimeout = setTimeout(() => {
+            console.log('[GameplayEngine] Host intro complete, publishing question phase');
+            
+            // Publish phase to Firebase - both host and guest will receive this via listenForPhases
+            if (this.provider && this.provider.publishPhase) {
+                this.provider.publishPhase('question', { question_number: questionData.question_number });
+            }
+            // Host will start via onPhaseChange callback, same as guest
+        }, 2500);
     },
 
     /**
@@ -1127,6 +1172,16 @@ const GameplayEngine = {
 
                 // Handle redirect (game complete)
                 if (questionData.redirect_url) {
+                    // For multiplayer host, publish match_complete phase BEFORE redirecting
+                    // This ensures guest also gets redirected to results
+                    if (this.state.isHost && this.state.mode !== 'solo' && this.provider.publishPhase) {
+                        console.log('[GameplayEngine] Host publishing match_complete phase before redirect');
+                        await this.provider.publishPhase('match_complete', { 
+                            redirect_url: questionData.redirect_url,
+                            player_score: this.state.playerScore,
+                            opponent_score: this.state.opponentScore
+                        });
+                    }
                     window.location.href = questionData.redirect_url;
                     return;
                 }
@@ -1136,8 +1191,8 @@ const GameplayEngine = {
                     await this.provider.onQuestionStart(questionData);
                 }
 
-                // Start the question locally
-                this.startQuestion(questionData);
+                // Receive question (handles intro phase for multiplayer, starts immediately for solo)
+                this.receiveQuestion(questionData);
                 
                 // Update scores if provided
                 if (questionData.player_score !== undefined || questionData.opponent_score !== undefined) {

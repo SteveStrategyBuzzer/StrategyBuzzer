@@ -2995,14 +2995,17 @@ function hideWaitingOverlay() {
                     console.log('[Firebase] MultiplayerFirestoreProvider set for GameplayEngine');
                     
                     if (gameConfig.isHost) {
-                        // Host: publish initial question and start timer
+                        // Host: publish initial question to Firebase
+                        // SYNC FIX: Do NOT start timer here - wait for phase sync like guest
+                        // Timer will start via onPhaseChange('question') callback
                         const initialQ = gameConfig.initialQuestion || GameplayEngine.currentQuestionData;
                         if (initialQ && initialQ.question_text) {
                             console.log('[Firebase] Host publishing initial question to Firebase:', initialQ.question_number);
                             await window.MultiplayerFirestoreProvider.onQuestionStart(initialQ);
+                            // Store pending question and show intro overlay
+                            GameplayEngine.receiveQuestion(initialQ);
+                            console.log('[Firebase] Host waiting for phase sync to start timer');
                         }
-                        GameplayEngine.startTimer();
-                        console.log('[Firebase] Host timer started');
                     } else {
                         // Guest: wait for question from Firebase, don't start timer yet
                         console.log('[Firebase] Guest waiting for question from Firebase...');
