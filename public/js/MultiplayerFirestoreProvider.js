@@ -240,10 +240,12 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
-     * Publie une question (hôte uniquement)
-     * Utilise setDoc avec merge:true pour créer le document s'il n'existe pas
+     * DEPRECATED - Client-side publish is no longer used with Option C architecture
+     * Backend now publishes directly via DuoFirestoreService.publishQuestion()
+     * Kept for backward compatibility but should not be called
      */
     async publishQuestion(questionData, questionNumber) {
+        console.warn('[MultiplayerFirestoreProvider] DEPRECATED: Client-side publishQuestion should not be used. Backend publishes via DuoFirestoreService.');
         if (!this.isHost || !this.db || !this.sessionId) {
             console.warn('[MultiplayerFirestoreProvider] Not host or not initialized');
             return false;
@@ -297,9 +299,12 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
-     * Récupère et publie une question (hôte uniquement)
+     * DEPRECATED - Use fetchQuestion instead
+     * With Option C architecture, backend publishes directly to Firebase
+     * This method is kept for backward compatibility but should not be used
      */
     async fetchAndPublishQuestion(questionNumber) {
+        console.warn('[MultiplayerFirestoreProvider] DEPRECATED: fetchAndPublishQuestion - backend publishes directly now');
         if (!this.isHost) {
             console.log('[MultiplayerFirestoreProvider] Not host, waiting for question via listener');
             return null;
