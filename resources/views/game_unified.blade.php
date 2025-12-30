@@ -237,6 +237,15 @@ $roomCode = $params['room_code'] ?? null;
         margin-bottom: 10px;
     }
     
+    /* Hide question header initially for multiplayer modes until question is received */
+    .question-header.waiting-for-question {
+        opacity: 0.3;
+    }
+    .question-header.waiting-for-question .question-number,
+    .question-header.waiting-for-question .question-text {
+        visibility: hidden;
+    }
+    
     .question-number {
         font-size: 0.9rem;
         color: #4ECDC4;
@@ -1038,7 +1047,7 @@ $roomCode = $params['room_code'] ?? null;
         @endif
     </div>
     
-    <div class="question-header">
+    <div class="question-header{{ $isFirebaseMode ? ' waiting-for-question' : '' }}" id="questionHeader">
         <div class="round-indicator">
             @for($i = 1; $i <= 3; $i++)
                 @php
@@ -1056,8 +1065,8 @@ $roomCode = $params['room_code'] ?? null;
         </div>
         
         <div class="question-text" id="questionText">
-            @if($isFirebaseMode && !($params['is_host'] ?? false))
-                {{ __('En attente de la question...') }}
+            @if($isFirebaseMode)
+                {{ __('Chargement...') }}
             @else
                 {{ $params['question_text'] ?? __('Chargement de la question...') }}
             @endif
@@ -2673,6 +2682,9 @@ const GameFlowController = {
         }
         
         const themeDisplay = questionData.theme === 'Culture générale' ? '{{ __("Général") }}' : questionData.theme;
+        
+        // Show question header now that we have data
+        document.getElementById('questionHeader')?.classList.remove('waiting-for-question');
         
         document.getElementById('questionText').textContent = questionData.question_text;
         document.getElementById('questionNumber').textContent = 

@@ -358,6 +358,12 @@ const GameplayEngine = {
      * Affiche la question dans l'UI
      */
     displayQuestion(questionData) {
+        // Remove waiting class now that we have question data
+        const questionHeader = document.getElementById('questionHeader');
+        if (questionHeader) {
+            questionHeader.classList.remove('waiting-for-question');
+        }
+        
         if (this.elements.questionText) {
             this.elements.questionText.textContent = questionData.question_text;
         }
