@@ -83,8 +83,10 @@ class MasterGameController extends Controller
         // Mode Automatique : Générer toutes les questions automatiquement
         if ($validated['creation_mode'] === 'automatique') {
             $this->generateAllQuestions($game);
+            return redirect()->route('master.compose', $game->id);
         }
 
+        // Mode Personnalisé : Rediriger vers la page de composition pour édition manuelle
         return redirect()->route('master.compose', $game->id);
     }
 
@@ -106,7 +108,7 @@ class MasterGameController extends Controller
     }
 
     // Page 3: Composer le Quiz
-    public function compose($gameId)
+    public function compose(Request $request, $gameId)
     {
         $game = MasterGame::with('questions')->findOrFail($gameId);
         
@@ -115,7 +117,11 @@ class MasterGameController extends Controller
             abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
         }
 
-        return view('master.compose', compact('game'));
+        // Get manche parameter (1-4, where 4 = Manche Ultime)
+        $manche = (int) $request->query('manche', 1);
+        $manche = max(1, min(4, $manche)); // Clamp between 1 and 4
+
+        return view('master.compose', compact('game', 'manche'));
     }
 
     // Page 4: Éditer une question

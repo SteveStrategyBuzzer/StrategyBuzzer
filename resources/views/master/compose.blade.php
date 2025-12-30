@@ -3,7 +3,6 @@
 @section('content')
 
 @php
-// Générer des exemples de questions et réponses selon le thème
 if (!function_exists('getThemeExamples')) {
 function getThemeExamples($theme, $questionNumber, $questionType) {
     $themeLower = strtolower($theme ?? 'culture générale');
@@ -67,7 +66,6 @@ function getThemeExamples($theme, $questionNumber, $questionType) {
         ],
     ];
     
-    // Trouver le thème approprié
     foreach ($examples as $key => $data) {
         if (stripos($themeLower, $key) !== false) {
             $index = ($questionNumber - 1) % count($data['answers']);
@@ -78,7 +76,6 @@ function getThemeExamples($theme, $questionNumber, $questionType) {
         }
     }
     
-    // Par défaut
     $defaultAnswers = [
         ['Paris', 'Lyon', 'Marseille', 'Bordeaux'],
         ['Rouge', 'Bleu', 'Vert', 'Jaune'],
@@ -92,9 +89,8 @@ function getThemeExamples($theme, $questionNumber, $questionType) {
         'answers' => $defaultAnswers[$index],
     ];
 }
-} // end function_exists getThemeExamples
+}
 
-// Déterminer le type de question pour un numéro donné
 if (!function_exists('getQuestionTypeForNumber')) {
 function getQuestionTypeForNumber($game, $questionNumber) {
     $types = $game->question_types ?? ['multiple_choice'];
@@ -103,11 +99,28 @@ function getQuestionTypeForNumber($game, $questionNumber) {
         return 'multiple_choice';
     }
     
-    // Distribution équilibrée des types
     $index = ($questionNumber - 1) % count($types);
     return $types[$index];
 }
-} // end function_exists getQuestionTypeForNumber
+}
+
+$currentManche = $manche ?? 1;
+$totalQuestions = $game->total_questions;
+$questionsPerRound = (int) ceil($totalQuestions / 3);
+$normalQuestions = $game->questions->where('is_tiebreaker', false);
+$tiebreakerQuestion = $game->questions->where('is_tiebreaker', true)->first();
+
+if ($currentManche <= 3) {
+    $startQuestion = ($currentManche - 1) * $questionsPerRound + 1;
+    $endQuestion = min($currentManche * $questionsPerRound, $totalQuestions);
+    $mancheTitle = "Manche {$currentManche}";
+    $isMancheUltime = false;
+} else {
+    $startQuestion = null;
+    $endQuestion = null;
+    $mancheTitle = "Manche Ultime";
+    $isMancheUltime = true;
+}
 @endphp
 
 <style>
@@ -127,9 +140,53 @@ body {
 .compose-title {
     font-size: 1.8rem;
     font-weight: 900;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
     text-align: center;
     color: #FFD700;
+}
+
+.manche-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+}
+
+.manche-ultime-title {
+    background: linear-gradient(135deg, #FF6B35, #FF4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.manche-progress {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.manche-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.manche-dot.active {
+    background: #FFD700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.manche-dot.ultime {
+    background: linear-gradient(135deg, #FF6B35, #FF4444);
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
 }
 
 .question-bubble {
@@ -267,6 +324,48 @@ body {
     box-shadow: 0 6px 20px rgba(0, 212, 0, 0.4);
 }
 
+.btn-next-manche {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #003DA5;
+    padding: 1rem 3rem;
+    border-radius: 12px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block;
+    margin: 2rem auto;
+    text-decoration: none;
+}
+
+.btn-next-manche:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+    color: #003DA5;
+}
+
+.btn-manche-ultime {
+    background: linear-gradient(135deg, #FF6B35, #FF4444);
+    color: white;
+    padding: 1rem 3rem;
+    border-radius: 12px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block;
+    margin: 2rem auto;
+    text-decoration: none;
+}
+
+.btn-manche-ultime:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 68, 68, 0.4);
+    color: white;
+}
+
 .header-back {
     position: absolute;
     top: 20px;
@@ -301,162 +400,272 @@ body {
     padding-left: 0.5rem;
     font-weight: 700;
 }
+
+.tiebreaker-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: 16px;
+    border: 2px dashed rgba(255, 107, 53, 0.5);
+}
+
+.tiebreaker-title {
+    text-align: center;
+    color: #FF6B35;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.tiebreaker-bubble {
+    border: 2px solid #FF6B35;
+}
+
+.tiebreaker-info {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.navigation-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
 </style>
 
-<a href="{{ route('master.create') }}" class="header-back">{{ __('Retour') }}</a>
+@if($currentManche > 1)
+    <a href="{{ route('master.compose', ['gameId' => $game->id, 'manche' => $currentManche - 1]) }}" class="header-back">
+        {{ $currentManche == 4 ? '← Manche 3' : '← Manche ' . ($currentManche - 1) }}
+    </a>
+@else
+    <a href="{{ route('master.create') }}" class="header-back">{{ __('Retour') }}</a>
+@endif
 
 <div class="compose-container">
     <h1 class="compose-title">{{ __('Mode ' . ucfirst($game->creation_mode)) }}</h1>
     
-    @if($game->creation_mode === 'automatique')
-        <!-- Mode Automatique : Questions pré-générées -->
-        @php
-            // Récupérer les questions normales (sans départage)
-            $normalQuestions = $game->questions->where('is_tiebreaker', false);
-            // Récupérer la question de départage
-            $tiebreakerQuestion = $game->questions->where('is_tiebreaker', true)->first();
-        @endphp
-        
-        @for ($i = 1; $i <= $game->total_questions; $i++)
-            @php
-                // Trouver la question existante dans la BDD
-                $existingQuestion = $normalQuestions->firstWhere('question_number', $i);
-                
-                // Déterminer le type pour ce numéro (distribution équilibrée)
-                $questionType = getQuestionTypeForNumber($game, $i);
-                
-                // Réponses par défaut selon le type
-                $defaultAnswers = $questionType === 'true_false' 
-                    ? ['Vrai', 'Faux'] 
-                    : ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'];
-                
-                // Utiliser la question existante ou un exemple
-                if ($existingQuestion) {
-                    $displayQuestion = $existingQuestion->question_text ?? 'Question';
-                    $displayAnswers = $existingQuestion->answers ?? $defaultAnswers;
-                    $correctAnswer = $existingQuestion->correct_answer;
-                    $displayImage = $existingQuestion->question_image;
-                } else {
-                    $example = getThemeExamples($game->theme ?? $game->school_subject, $i, $questionType);
-                    $displayQuestion = $example['question'] ?? 'Question';
-                    $displayAnswers = $example['answers'] ?? $defaultAnswers;
-                    $correctAnswer = null;
-                    $displayImage = null;
-                }
-                
-                // S'assurer que $displayAnswers est toujours un tableau
-                if (!is_array($displayAnswers)) {
-                    $displayAnswers = $defaultAnswers;
-                }
-            @endphp
-            
-            <div class="question-bubble">
-                <div class="bubble-number">{{ $i }}</div>
-                <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Créer') }}</a>
-                
-                <div class="bubble-content">
-                    @if($questionType === 'image')
-                        <div class="question-image">
-                            @if($displayImage)
-                                <img src="{{ asset('storage/' . $displayImage) }}" alt="Question Image">
-                            @else
-                                <div class="image-placeholder">🖼️</div>
-                                <div class="image-label">{{ __('Question image') }}</div>
-                            @endif
-                        </div>
-                        @foreach($displayAnswers as $index => $answer)
-                            <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $index + 1 }}. {{ $answer }}</div>
-                        @endforeach
-                    @elseif($questionType === 'true_false')
-                        <div class="question-text">{{ $displayQuestion }}</div>
-                        @foreach($displayAnswers as $index => $answer)
-                            <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $answer }}</div>
-                        @endforeach
-                    @else
-                        <div class="question-text">{{ $displayQuestion }}</div>
-                        @foreach($displayAnswers as $index => $answer)
-                            <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $index + 1 }}. {{ $answer }}</div>
-                        @endforeach
-                    @endif
-                </div>
-            </div>
+    <div class="manche-progress">
+        @for($i = 1; $i <= 3; $i++)
+            <div class="manche-dot {{ $currentManche == $i ? 'active' : '' }}"></div>
         @endfor
-        
-        <!-- Question de départage -->
-        @if($tiebreakerQuestion)
-            <div style="margin-top: 2rem; padding-top: 1rem; border-top: 2px dashed rgba(255, 215, 0, 0.5);">
-                <h2 style="text-align: center; color: #FFD700; font-size: 1.3rem; margin-bottom: 1rem;">
-                    {{ __('Question de départage') }}
-                </h2>
-                <div class="question-bubble" style="border: 2px solid #FFD700;">
-                    <div class="bubble-number" style="background: linear-gradient(135deg, #FFD700, #FFA500);">⚡</div>
-                    <a href="{{ route('master.question.edit', [$game->id, $tiebreakerQuestion->question_number]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Modifier') }}</a>
+        <div class="manche-dot {{ $currentManche == 4 ? 'active ultime' : '' }}"></div>
+    </div>
+    
+    <h2 class="manche-title {{ $isMancheUltime ? 'manche-ultime-title' : '' }}">{{ $mancheTitle }}</h2>
+    
+    @if($game->creation_mode === 'automatique')
+        @if(!$isMancheUltime)
+            @for ($i = $startQuestion; $i <= $endQuestion; $i++)
+                @php
+                    $existingQuestion = $normalQuestions->firstWhere('question_number', $i);
+                    $questionType = getQuestionTypeForNumber($game, $i);
+                    $defaultAnswers = $questionType === 'true_false' 
+                        ? ['Vrai', 'Faux'] 
+                        : ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'];
+                    
+                    if ($existingQuestion) {
+                        $displayQuestion = $existingQuestion->question_text ?? 'Question';
+                        $displayAnswers = $existingQuestion->answers ?? $defaultAnswers;
+                        $correctAnswer = $existingQuestion->correct_answer;
+                        $displayImage = $existingQuestion->question_image;
+                    } else {
+                        $example = getThemeExamples($game->theme ?? $game->school_subject, $i, $questionType);
+                        $displayQuestion = $example['question'] ?? 'Question';
+                        $displayAnswers = $example['answers'] ?? $defaultAnswers;
+                        $correctAnswer = null;
+                        $displayImage = null;
+                    }
+                    
+                    if (!is_array($displayAnswers)) {
+                        $displayAnswers = $defaultAnswers;
+                    }
+                @endphp
+                
+                <div class="question-bubble">
+                    <div class="bubble-number">{{ $i }}</div>
+                    <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Créer') }}</a>
                     
                     <div class="bubble-content">
-                        <div class="question-text">{{ $tiebreakerQuestion->question_text ?? __('Question de départage') }}</div>
-                        @foreach($tiebreakerQuestion->answers as $index => $answer)
-                            <div class="answer-item {{ $tiebreakerQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
-                                {{ $index + 1 }}. {{ $answer }}
+                        @if($questionType === 'image')
+                            <div class="question-image">
+                                @if($displayImage)
+                                    <img src="{{ asset('storage/' . $displayImage) }}" alt="Question Image">
+                                @else
+                                    <div class="image-placeholder">🖼️</div>
+                                    <div class="image-label">{{ __('Question image') }}</div>
+                                @endif
                             </div>
-                        @endforeach
+                            @foreach($displayAnswers as $index => $answer)
+                                <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $index + 1 }}. {{ $answer }}</div>
+                            @endforeach
+                        @elseif($questionType === 'true_false')
+                            <div class="question-text">{{ $displayQuestion }}</div>
+                            @foreach($displayAnswers as $index => $answer)
+                                <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $answer }}</div>
+                            @endforeach
+                        @else
+                            <div class="question-text">{{ $displayQuestion }}</div>
+                            @foreach($displayAnswers as $index => $answer)
+                                <div class="answer-item {{ $correctAnswer === $index ? 'answer-correct' : '' }}">{{ $index + 1 }}. {{ $answer }}</div>
+                            @endforeach
+                        @endif
                     </div>
                 </div>
-                <p style="text-align: center; color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; margin-top: 0.5rem;">
+            @endfor
+            
+            <div class="navigation-buttons">
+                @if($currentManche < 3)
+                    <a href="{{ route('master.compose', ['gameId' => $game->id, 'manche' => $currentManche + 1]) }}" class="btn-next-manche">
+                        Manche {{ $currentManche + 1 }} →
+                    </a>
+                @else
+                    <a href="{{ route('master.compose', ['gameId' => $game->id, 'manche' => 4]) }}" class="btn-manche-ultime">
+                        ⚡ Manche Ultime →
+                    </a>
+                @endif
+            </div>
+        @else
+            <div class="tiebreaker-section">
+                <h3 class="tiebreaker-title">⚡ {{ __('Question de départage') }}</h3>
+                
+                @if($tiebreakerQuestion)
+                    <div class="question-bubble tiebreaker-bubble">
+                        <div class="bubble-number" style="color: #FF6B35;">⚡</div>
+                        <a href="{{ route('master.question.edit', [$game->id, $tiebreakerQuestion->question_number]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FF6B35, #FF4444); color: white;">{{ __('Modifier') }}</a>
+                        
+                        <div class="bubble-content">
+                            <div class="question-text">{{ $tiebreakerQuestion->question_text ?? __('Question de départage') }}</div>
+                            @foreach($tiebreakerQuestion->answers as $index => $answer)
+                                <div class="answer-item {{ $tiebreakerQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
+                                    {{ $index + 1 }}. {{ $answer }}
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @else
+                    <div class="question-bubble tiebreaker-bubble">
+                        <div class="bubble-number" style="color: #FF6B35;">⚡</div>
+                        <a href="{{ route('master.question.edit', [$game->id, $game->total_questions + 1]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FF6B35, #FF4444); color: white;">{{ __('Créer') }}</a>
+                        
+                        <div class="bubble-content">
+                            <div class="question-text" style="opacity: 0.4;">{{ __('Question de départage') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
+                        </div>
+                    </div>
+                @endif
+                
+                <p class="tiebreaker-info">
                     {{ __('Utilisée uniquement en cas d\'égalité entre les joueurs') }}
                 </p>
             </div>
+            
+            <div class="navigation-buttons">
+                <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
+                    ✓ {{ __('Terminer') }}
+                </button>
+            </div>
         @endif
         
-        <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
-            {{ __('Valider') }}
-        </button>
-        
     @else
-        <!-- Mode Personnalisé : Questions créées ou bulles vides -->
-        @for ($i = 1; $i <= $game->total_questions; $i++)
-            @php
-                // Trouver la question existante dans la BDD
-                $existingQuestion = $game->questions->firstWhere('question_number', $i);
-            @endphp
-            
-            <div class="question-bubble">
-                <div class="bubble-number">{{ $i }}</div>
-                <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Créer') }}</a>
+        @if(!$isMancheUltime)
+            @for ($i = $startQuestion; $i <= $endQuestion; $i++)
+                @php
+                    $existingQuestion = $game->questions->firstWhere('question_number', $i);
+                @endphp
                 
-                <div class="bubble-content">
-                    @if($existingQuestion)
-                        <!-- Afficher la vraie question -->
-                        @if($existingQuestion->question_image)
-                            <div class="question-image">
-                                <img src="{{ asset('storage/' . $existingQuestion->question_image) }}" alt="Question Image">
-                            </div>
+                <div class="question-bubble">
+                    <div class="bubble-number">{{ $i }}</div>
+                    <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Créer') }}</a>
+                    
+                    <div class="bubble-content">
+                        @if($existingQuestion)
+                            @if($existingQuestion->question_image)
+                                <div class="question-image">
+                                    <img src="{{ asset('storage/' . $existingQuestion->question_image) }}" alt="Question Image">
+                                </div>
+                            @else
+                                <div class="question-text">{{ $existingQuestion->question_text }}</div>
+                            @endif
+                            
+                            @foreach($existingQuestion->answers as $index => $answer)
+                                <div class="answer-item {{ $existingQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
+                                    @if(!$existingQuestion->question_image || count($existingQuestion->answers) > 2)
+                                        {{ $index + 1 }}.
+                                    @endif
+                                    {{ $answer }}
+                                </div>
+                            @endforeach
                         @else
-                            <div class="question-text">{{ $existingQuestion->question_text }}</div>
+                            <div class="question-text" style="opacity: 0.4;">{{ __('Question') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
                         @endif
-                        
-                        @foreach($existingQuestion->answers as $index => $answer)
-                            <div class="answer-item {{ $existingQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
-                                @if(!$existingQuestion->question_image || count($existingQuestion->answers) > 2)
-                                    {{ $index + 1 }}.
-                                @endif
-                                {{ $answer }}
-                            </div>
-                        @endforeach
-                    @else
-                        <!-- Bulle vide -->
-                        <div class="question-text" style="opacity: 0.4;">{{ __('Question') }}</div>
-                        <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
-                        <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
-                        <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
-                        <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
-                    @endif
+                    </div>
                 </div>
+            @endfor
+            
+            <div class="navigation-buttons">
+                @if($currentManche < 3)
+                    <a href="{{ route('master.compose', ['gameId' => $game->id, 'manche' => $currentManche + 1]) }}" class="btn-next-manche">
+                        Manche {{ $currentManche + 1 }} →
+                    </a>
+                @else
+                    <a href="{{ route('master.compose', ['gameId' => $game->id, 'manche' => 4]) }}" class="btn-manche-ultime">
+                        ⚡ Manche Ultime →
+                    </a>
+                @endif
             </div>
-        @endfor
-        
-        <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
-            {{ __('Valider') }}
-        </button>
+        @else
+            <div class="tiebreaker-section">
+                <h3 class="tiebreaker-title">⚡ {{ __('Question de départage') }}</h3>
+                
+                @php
+                    $tiebreakerQuestionNum = $game->total_questions + 1;
+                    $existingTiebreaker = $game->questions->firstWhere('question_number', $tiebreakerQuestionNum);
+                @endphp
+                
+                <div class="question-bubble tiebreaker-bubble">
+                    <div class="bubble-number" style="color: #FF6B35;">⚡</div>
+                    <a href="{{ route('master.question.edit', [$game->id, $tiebreakerQuestionNum]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FF6B35, #FF4444); color: white;">{{ $existingTiebreaker ? __('Modifier') : __('Créer') }}</a>
+                    
+                    <div class="bubble-content">
+                        @if($existingTiebreaker)
+                            <div class="question-text">{{ $existingTiebreaker->question_text }}</div>
+                            @foreach($existingTiebreaker->answers as $index => $answer)
+                                <div class="answer-item {{ $existingTiebreaker->correct_answer === $index ? 'answer-correct' : '' }}">
+                                    {{ $index + 1 }}. {{ $answer }}
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="question-text" style="opacity: 0.4;">{{ __('Question de départage') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
+                            <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
+                        @endif
+                    </div>
+                </div>
+                
+                <p class="tiebreaker-info">
+                    {{ __('Utilisée uniquement en cas d\'égalité entre les joueurs') }}
+                </p>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
+                    ✓ {{ __('Terminer') }}
+                </button>
+            </div>
+        @endif
     @endif
 </div>
 @endsection

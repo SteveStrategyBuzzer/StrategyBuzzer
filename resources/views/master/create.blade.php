@@ -378,6 +378,25 @@ body {
             </div>
         </div>
         
+        <!-- Manche Ultime (Tiebreaker) -->
+        <div class="section">
+            <div class="section-title">{{ __('Manche Ultime') }}</div>
+            <div class="radio-group" style="flex-direction: column; gap: 0.8rem; align-items: flex-start;">
+                <label class="radio-label">
+                    <input type="radio" name="tiebreaker_mode" value="bonus" class="radio-input" checked>
+                    <span>{{ __('Bonus') }}</span>
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="tiebreaker_mode" value="efficiency" class="radio-input">
+                    <span>{{ __('Efficacité') }}</span>
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="tiebreaker_mode" value="sudden_death" class="radio-input">
+                    <span>{{ __('Mort Subite') }}</span>
+                </label>
+            </div>
+        </div>
+        
         <!-- Domaine -->
         <div class="section">
             <div class="section-title">Domaine</div>
@@ -436,13 +455,14 @@ body {
         <div class="section-full" style="margin-top: 2rem;">
             <div class="buttons" style="gap: 1rem;">
                 <button type="submit" name="creation_mode" value="automatique" id="automatiqueBtn" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #FFD700, #FFA500); font-size: 1.1rem;">
-                    Automatique
+                    {{ __('Automatique') }}
                 </button>
-                <button type="submit" name="creation_mode" value="personnalise" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #00D4FF, #0099CC); font-size: 1.1rem;">
-                    Personalisé
+                <button type="button" id="personnaliseBtn" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #00D4FF, #0099CC); font-size: 1.1rem;">
+                    {{ __('Personnalisé') }}
                 </button>
             </div>
         </div>
+        <input type="hidden" name="creation_mode" id="creationModeInput" value="automatique">
     </form>
 </div>
 
@@ -628,6 +648,55 @@ window.onclick = function(event) {
     if (event.target == imageWarningModal) {
         closeImageModal();
     }
+}
+
+// Bouton Automatique - change texte pendant la création
+if (automatiqueBtn) {
+    automatiqueBtn.addEventListener('click', function(e) {
+        // Change button text to show creation is in progress
+        this.innerHTML = '<span class="spinner"></span> {{ __("En Création...") }}';
+        this.style.pointerEvents = 'none';
+        this.style.opacity = '0.8';
+        
+        // Add spinner animation
+        const style = document.createElement('style');
+        style.textContent = `
+            .spinner {
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                border: 2px solid #003DA5;
+                border-radius: 50%;
+                border-top-color: transparent;
+                animation: spin 1s linear infinite;
+                margin-right: 8px;
+                vertical-align: middle;
+            }
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    });
+}
+
+// Bouton Personnalisé - soumet le formulaire avec mode personnalise
+const personnaliseBtn = document.getElementById('personnaliseBtn');
+if (personnaliseBtn) {
+    personnaliseBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Set creation mode to personnalise
+        document.getElementById('creationModeInput').value = 'personnalise';
+        
+        // Change button text
+        this.innerHTML = '{{ __("Chargement...") }}';
+        this.style.pointerEvents = 'none';
+        this.style.opacity = '0.8';
+        
+        // Submit the form
+        document.getElementById('createForm').submit();
+    });
 }
 </script>
 @endsection
