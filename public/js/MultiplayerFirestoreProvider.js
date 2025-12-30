@@ -29,6 +29,7 @@ const MultiplayerFirestoreProvider = {
     lastQuestionPublishedAt: 0,
     lastQuestionVersion: 0,
     lastProcessedQuestionVersion: 0,
+    lastProcessedQuestionSequence: 0, // Server-generated unique sequence for Option C
     
     onQuestionReceived: null,
     onBuzzReceived: null,
@@ -87,6 +88,7 @@ const MultiplayerFirestoreProvider = {
         this.lastQuestionPublishedAt = 0;
         this.lastQuestionVersion = 0;
         this.lastProcessedQuestionVersion = 0;
+        this.lastProcessedQuestionSequence = 0;
         
         this.db = config.db;
         this.firestoreDoc = config.doc;
@@ -178,9 +180,10 @@ const MultiplayerFirestoreProvider = {
     },
 
     /**
-     * Écoute les questions publiées par l'hôte
-     * Uses version-based deduplication to prevent double-processing while still
-     * allowing the host to receive and display their own published questions
+     * Écoute les questions publiées par le BACKEND
+     * OPTION C: Uses server-generated questionSequence for deduplication
+     * Both host and guest receive questions the same way from Firebase
+     * Backend publishes via DuoFirestoreService, ensuring perfect synchronization
      */
     listenForQuestions(callback) {
         if (!this.db || !this.sessionId) return;
@@ -193,30 +196,37 @@ const MultiplayerFirestoreProvider = {
             
             const data = snapshot.data();
             
-            // Use questionVersion as the primary deduplication key
+            // OPTION C: Use server-generated questionSequence as primary dedup key
+            // This is a microsecond timestamp that's unique for each backend publish
+            const questionSequence = data.questionSequence || 0;
             const questionVersion = data.questionVersion || 0;
+            const publishedBy = data.publishedBy || 'unknown';
             
-            // Skip if we've already processed this question version
-            // This prevents duplicate processing when Firebase echoes updates back
-            // but still allows the host to receive and display questions the first time
-            if (questionVersion <= this.lastProcessedQuestionVersion) {
-                console.log('[MultiplayerFirestoreProvider] Skipping already processed question version:', questionVersion, '(last processed:', this.lastProcessedQuestionVersion, ')');
+            // Skip if we've already processed this exact question sequence
+            // questionSequence is unique per backend publish, so this allows ALL
+            // clients (including host) to receive backend-published questions
+            if (questionSequence <= this.lastProcessedQuestionSequence) {
+                console.log('[MultiplayerFirestoreProvider] Skipping already processed sequence:', questionSequence);
                 return;
             }
             
-            // Also use timestamp as a secondary check for robustness
-            const questionPublishedAt = data.questionPublishedAt?.toMillis?.() || data.questionPublishedAt || 0;
+            // Only process questions published by backend (security + consistency)
+            if (publishedBy !== 'backend') {
+                console.log('[MultiplayerFirestoreProvider] Ignoring non-backend publish:', publishedBy);
+                return;
+            }
             
             if (data.currentQuestionData && questionVersion > 0) {
                 // Update tracking BEFORE callback to prevent race conditions
+                this.lastProcessedQuestionSequence = questionSequence;
                 this.lastProcessedQuestionVersion = questionVersion;
-                this.lastQuestionPublishedAt = questionPublishedAt;
                 this.lastQuestionVersion = questionVersion;
                 
                 const questionData = data.currentQuestionData;
                 const questionNumber = data.currentQuestion || questionData.question_number || 1;
                 
-                console.log('[MultiplayerFirestoreProvider] Question received:', questionNumber, 'version:', questionVersion, 'isHost:', this.isHost);
+                console.log('[MultiplayerFirestoreProvider] Question from backend:', questionNumber, 
+                    'sequence:', questionSequence, 'isHost:', this.isHost);
                 
                 if (this.onQuestionReceived) {
                     this.onQuestionReceived(questionData, questionNumber);
@@ -226,7 +236,7 @@ const MultiplayerFirestoreProvider = {
             console.error('[MultiplayerFirestoreProvider] Question listener error:', error);
         });
 
-        console.log('[MultiplayerFirestoreProvider] Listening for questions on:', this.getSessionRef().path);
+        console.log('[MultiplayerFirestoreProvider] Listening for backend-published questions on:', this.getSessionRef().path);
     },
 
     /**

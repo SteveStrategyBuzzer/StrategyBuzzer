@@ -398,6 +398,11 @@ class DuoFirestoreService
     {
         $publishTime = microtime(true);
         
+        // OPTION C: Generate unique questionSequence from server timestamp
+        // This ensures each publication is unique and will be processed by ALL clients
+        // Including the host - prevents dedup filter from blocking updates
+        $questionSequence = (int)($publishTime * 1000000); // Microsecond precision
+        
         // Sanitize answers - NEVER include is_correct to protect answer integrity
         $sanitizedAnswers = [];
         foreach ($questionData['answers'] ?? [] as $answer) {
@@ -417,7 +422,9 @@ class DuoFirestoreService
         $questionPayload = [
             'currentQuestion' => $questionNumber,
             'questionVersion' => $questionNumber,
+            'questionSequence' => $questionSequence, // Server-generated unique ID
             'questionPublishedAt' => $publishTime,
+            'publishedBy' => 'backend', // Mark as backend-published for client dedup
             'currentQuestionData' => [
                 'question_number' => $questionNumber,
                 'total_questions' => $questionData['total_questions'] ?? 10,
