@@ -1155,9 +1155,21 @@ const GameplayEngine = {
 
     /**
      * Passe à la question suivante
+     * SOLO ISOLATION: Solo mode uses traditional redirect, never goes through provider.fetchQuestion
      */
     async nextQuestion() {
         this.resetState();
+        
+        // SOLO ISOLATION: Solo mode uses traditional page redirect, not provider.fetchQuestion
+        // This prevents multiplayer changes from affecting Solo gameplay
+        if (this.state.mode === 'solo') {
+            if (this.config.routes.nextQuestion) {
+                window.location.href = this.config.routes.nextQuestion;
+            } else {
+                console.error('[GameplayEngine] Solo mode: nextQuestion route not configured');
+            }
+            return;
+        }
         
         const nextQuestionNumber = this.state.currentQuestion + 1;
 
