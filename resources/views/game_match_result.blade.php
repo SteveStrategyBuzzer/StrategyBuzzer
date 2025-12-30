@@ -34,8 +34,25 @@ $resultIcon = $playerWon ? '🏆' : ($isDraw ? '🤝' : '😔');
 $resultTitle = $playerWon ? __('Victoire') : ($isDraw ? __('Égalité') : __('Défaite'));
 $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' : '#e74c3c, #c0392b');
 
-$modeLabel = $mode === 'duo' ? 'Duo' : ($mode === 'league_individual' ? 'League' : 'Match');
-$returnRoute = $mode === 'duo' ? route('duo.lobby') : ($mode === 'league_individual' ? route('league.individual.index') : route('menu'));
+$modeLabel = $mode === 'solo' ? 'Solo' : ($mode === 'duo' ? 'Duo' : ($mode === 'league_individual' ? 'League' : 'Match'));
+$returnRoute = $mode === 'solo' ? route('solo') : ($mode === 'duo' ? route('duo.lobby') : ($mode === 'league_individual' ? route('league.individual.index') : route('menu')));
+
+$newLevel = $matchResult['new_level'] ?? null;
+$currentLevel = $matchResult['current_level'] ?? ($opponentLevel ?? 1);
+$nextOpponentName = $matchResult['next_opponent_name'] ?? null;
+$duoFullUnlocked = $matchResult['duo_full_unlocked'] ?? false;
+$isBoss = $opponentInfo['is_boss'] ?? false;
+$hasStrategeBonus = $matchResult['has_stratege_bonus'] ?? false;
+$coinsBonus = $matchResult['coins_bonus'] ?? 0;
+$remainingLives = $matchResult['remaining_lives'] ?? null;
+$hasLives = $matchResult['has_lives'] ?? true;
+$cooldownTime = $matchResult['cooldown_time'] ?? null;
+$nextLifeRegen = $matchResult['next_life_regen'] ?? null;
+$roundSummaries = $matchResult['round_summaries'] ?? [];
+$partyEfficiency = $matchResult['party_efficiency'] ?? ($matchResult['global_efficiency'] ?? 0);
+$totalCorrect = $matchResult['total_correct'] ?? 0;
+$totalIncorrect = $matchResult['total_incorrect'] ?? 0;
+$totalUnanswered = $matchResult['total_unanswered'] ?? 0;
 @endphp
 
 @section('title', $resultTitle . ' - StrategyBuzzer')
@@ -446,6 +463,81 @@ $returnRoute = $mode === 'duo' ? route('duo.lobby') : ($mode === 'league_individ
         </div>
         @endif
     </div>
+    @endif
+    
+    @if($mode === 'solo')
+    @if($playerWon && $newLevel)
+    <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 5px 20px rgba(17, 153, 142, 0.4);">
+        <div style="color: white; text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: 900; margin-bottom: 10px;">
+                🎉 {{ __('Niveau') }} {{ $newLevel }} {{ __('débloqué') }} !
+            </div>
+            @if($nextOpponentName)
+            <div style="font-size: 1.1rem; opacity: 0.9;">
+                {{ __('Prochain adversaire') }}: <strong>{{ $nextOpponentName }}</strong>
+            </div>
+            @endif
+        </div>
+    </div>
+    @endif
+    
+    @if($duoFullUnlocked)
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 15px; margin: 20px 0; box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);">
+        <div style="color: white; text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 10px;">🎮</div>
+            <div style="font-size: 1.3rem; font-weight: 700;">{{ __('Mode Duo Débloqué !') }}</div>
+            <div style="font-size: 0.9rem; opacity: 0.9; margin-top: 5px;">{{ __('Affrontez de vrais joueurs en temps réel') }}</div>
+        </div>
+    </div>
+    @endif
+    
+    @if(!empty($roundSummaries))
+    <div style="background: {{ $playerWon ? 'rgba(46, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)' }}; padding: 20px; border-radius: 15px; margin: 25px 0;">
+        <div style="font-size: 1.3rem; font-weight: 700; color: #333; margin-bottom: 15px;">📊 {{ __('Statistiques par Manche') }}</div>
+        
+        @foreach($roundSummaries as $roundNum => $roundStats)
+        <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid {{ $playerWon ? '#11998e' : '#e74c3c' }};">
+            <div style="font-weight: 700; color: {{ $playerWon ? '#11998e' : '#e74c3c' }}; margin-bottom: 10px;">🏆 {{ __('Manche') }} {{ $roundNum }}</div>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 0.9rem;">
+                <div>
+                    <span style="color: #666;">✅ {{ __('Réussi') }}:</span>
+                    <strong style="color: #2ECC71;">{{ $roundStats['correct'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
+                </div>
+                <div>
+                    <span style="color: #666;">❌ {{ __('Échec') }}:</span>
+                    <strong style="color: #E74C3C;">{{ $roundStats['wrong'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
+                </div>
+                <div>
+                    <span style="color: #666;">⏭️ {{ __('Sans réponse') }}:</span>
+                    <strong style="color: #95a5a6;">{{ $roundStats['unanswered'] ?? 0 }}/{{ $roundStats['questions'] ?? 0 }}</strong>
+                </div>
+                <div>
+                    <span style="color: #666;">📈 {{ __('Efficacité') }}:</span>
+                    <strong style="color: {{ $playerWon ? '#11998e' : '#e74c3c' }};">{{ number_format($roundStats['efficiency'] ?? 0, 1) }}%</strong>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @endif
+    
+    @if(!$playerWon && $remainingLives !== null)
+    <div style="background: #f7f9fc; padding: 20px; border-radius: 15px; margin: 20px 0;">
+        <div style="text-align: center;">
+            <div style="font-size: 1.1rem; color: #666; margin-bottom: 10px;">{{ __('Vies restantes') }}</div>
+            <div style="font-size: 2.5rem;">
+                @for($i = 0; $i < $remainingLives; $i++)❤️@endfor
+                @for($i = $remainingLives; $i < 3; $i++)🖤@endfor
+            </div>
+            @if(!$hasLives && $nextLifeRegen)
+            <div style="font-size: 0.9rem; color: #e74c3c; margin-top: 10px;">
+                {{ __('Prochaine vie dans') }}: <span id="life-countdown" data-regen="{{ $nextLifeRegen }}"></span>
+            </div>
+            @endif
+        </div>
+    </div>
+    @endif
     @endif
     
     <div class="action-buttons">

@@ -14,6 +14,7 @@ use App\Services\LobbyService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
+use App\Services\AvatarCatalog;
 
 class DuoController extends Controller
 {
@@ -564,10 +565,176 @@ class DuoController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        return view('duo_game', [
+        $match->load(['player1', 'player2']);
+        
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        
+        $gameState = session('game_state', $match->game_state ?? []);
+        
+        $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'duo');
+        $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
+        
+        $opponentAvatarPath = $this->normalizeAvatarPath($this->getPlayerAvatarFromUser($opponent));
+        
+        $opponentInfo = [
+            'name' => $opponent->pseudo ?? $opponent->name ?? __('Adversaire'),
+            'avatar' => $opponentAvatarPath,
+            'division' => $opponentDivision->division ?? 'Bronze',
+            'level' => $opponentStats->level ?? 1,
+        ];
+        
+        $avatarData = $this->getAvatarData($user);
+        
+        $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
+        $hostId = $gameState['host_id'] ?? $match->player1_id;
+        $isHost = (int)$hostId === (int)$user->id;
+        
+        $matchArray = $match->toArray();
+        $betInfo = $gameState['bet_info'] ?? $matchArray['bet_info'] ?? null;
+        
+        $params = [
+            'mode' => 'duo',
+            'opponent_type' => 'human',
+            'opponent_info' => $opponentInfo,
+            'current' => $gameState['current_question'] ?? 1,
+            'current_question' => $gameState['current_question'] ?? 1,
+            'nb_questions' => $gameState['total_questions'] ?? 10,
+            'niveau' => $gameState['niveau'] ?? session('choix_niveau', 1),
+            'theme' => $gameState['theme'] ?? 'Culture générale',
+            'sub_theme' => $gameState['sub_theme'] ?? '',
+            'score' => $gameState['player_score'] ?? 0,
+            'opponent_score' => $gameState['opponent_score'] ?? 0,
+            'current_round' => $gameState['current_round'] ?? 1,
+            'player_rounds_won' => $gameState['player_rounds_won'] ?? 0,
+            'opponent_rounds_won' => $gameState['opponent_rounds_won'] ?? 0,
+            'avatar' => $avatarData['name'],
+            'avatar_skills_full' => $avatarData['skills_full'],
             'match_id' => $match->id,
-            'match' => $match->load(['player1', 'player2']),
-        ]);
+            'session_id' => $lobbyCode ?? $match->id,
+            'firebase_sync' => true,
+            'is_host' => $isHost,
+            'opponent_id' => $opponent->id,
+            'match' => $matchArray,
+            'bet_info' => $betInfo,
+            'status' => $match->status ?? 'in_progress',
+        ];
+
+        return view('game_unified', ['params' => $params]);
+    }
+    
+    protected function getAvatarData($user): array
+    {
+        $avatarName = 'Aucun';
+        
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        } elseif (is_object($profileSettings)) {
+            $profileSettings = (array) $profileSettings;
+        }
+        
+        if (is_array($profileSettings) && isset($profileSettings['strategic_avatar'])) {
+            $strategicData = $profileSettings['strategic_avatar'];
+            if (is_object($strategicData)) {
+                $strategicData = (array) $strategicData;
+            }
+            if (is_array($strategicData) && !empty($strategicData['name'])) {
+                $avatarName = $strategicData['name'];
+            }
+        }
+        
+        if (empty($avatarName) || $avatarName === 'Aucun' || $avatarName === null) {
+            $avatarName = session('avatar', 'Aucun');
+        }
+        
+        if ($avatarName === 'Aucun' || empty($avatarName)) {
+            return [
+                'name' => 'Aucun',
+                'skills_full' => ['rarity' => null, 'skills' => []],
+            ];
+        }
+        
+        $catalog = AvatarCatalog::get();
+        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+        $avatarInfo = null;
+        
+        foreach ($strategicAvatars as $avatar) {
+            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                $avatarInfo = $avatar;
+                break;
+            }
+        }
+        
+        if (!$avatarInfo) {
+            return [
+                'name' => $avatarName,
+                'skills_full' => ['rarity' => null, 'skills' => []],
+            ];
+        }
+        
+        return [
+            'name' => $avatarName,
+            'skills_full' => [
+                'rarity' => $avatarInfo['tier'] ?? 'Rare',
+                'skills' => $avatarInfo['skills'] ?? [],
+            ],
+        ];
+    }
+    
+    protected function getPlayerAvatarFromUser($user): string
+    {
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        } elseif (is_object($profileSettings)) {
+            $profileSettings = (array) $profileSettings;
+        }
+        
+        if (is_array($profileSettings) && isset($profileSettings['avatar'])) {
+            $avatarData = $profileSettings['avatar'];
+            if (is_object($avatarData)) {
+                $avatarData = (array) $avatarData;
+            }
+            if (is_array($avatarData)) {
+                return $avatarData['url'] ?? $avatarData['id'] ?? 'default';
+            } elseif (is_string($avatarData)) {
+                return $avatarData;
+            }
+        }
+        
+        return 'default';
+    }
+    
+    protected function normalizeAvatarPath(?string $avatarValue): string
+    {
+        if (!$avatarValue || $avatarValue === 'default') {
+            return 'images/avatars/standard/default.png';
+        }
+        
+        if (strpos($avatarValue, 'http://') === 0 || strpos($avatarValue, 'https://') === 0 || strpos($avatarValue, '//') === 0) {
+            return $avatarValue;
+        }
+        
+        $avatarValue = ltrim($avatarValue, '/');
+        
+        if (strpos($avatarValue, 'images/') === 0) {
+            if (substr($avatarValue, -4) !== '.png') {
+                $avatarValue .= '.png';
+            }
+            return $avatarValue;
+        }
+        
+        if (strpos($avatarValue, '/') !== false && substr($avatarValue, -4) !== '.png') {
+            return 'images/avatars/' . $avatarValue . '.png';
+        }
+        
+        if (strpos($avatarValue, '/') !== false) {
+            return $avatarValue;
+        }
+        
+        $avatarValue = preg_replace('/\.png$/', '', $avatarValue);
+        return 'images/avatars/standard/' . $avatarValue . '.png';
     }
 
     public function result(DuoMatch $match)
@@ -616,22 +783,58 @@ class DuoController extends Controller
             $betWinnings = $playerWon ? $betInfo['total_pot'] : 0;
         }
 
-        return view('duo_result', [
-            'match_result' => $matchResult,
-            'opponent' => $opponent,
-            'opponent_id' => $opponent->id ?? null,
-            'opponent_name' => $opponent->name ?? 'Adversaire',
-            'new_division' => $division,
-            'points_earned' => $pointsEarned,
-            'coins_earned' => $coinsEarned,
-            'coins_bonus' => $coinsBonus,
-            'opponent_strength' => $opponentStrength,
-            'global_stats' => $gameState['global_stats'] ?? [],
-            'accuracy' => $accuracy,
-            'round_details' => $gameState['answered_questions'] ?? [],
-            'bet_info' => $betInfo,
-            'bet_winnings' => $betWinnings,
-        ]);
+        $globalStats = $gameState['global_stats'] ?? [];
+        $totalCorrect = $globalStats['correct'] ?? 0;
+        $totalIncorrect = $globalStats['incorrect'] ?? 0;
+        $totalUnanswered = $globalStats['unanswered'] ?? 0;
+
+        $divisionRanks = ['bronze' => 1, 'argent' => 2, 'or' => 3, 'platine' => 4, 'diamant' => 5, 'legende' => 6];
+        $previousDivision = $gameState['previous_division'] ?? $division->division;
+        $currentRank = $divisionRanks[strtolower($division->division ?? 'bronze')] ?? 1;
+        $previousRank = $divisionRanks[strtolower($previousDivision ?? 'bronze')] ?? 1;
+        $promoted = $currentRank > $previousRank;
+        $demoted = $currentRank < $previousRank;
+
+        $opponentAvatarPath = $this->normalizeAvatarPath($opponent->avatar ?? null);
+
+        $params = [
+            'mode' => 'duo',
+            'match_result' => [
+                'player_won' => $matchResult['player_won'] ?? false,
+                'is_draw' => $matchResult['is_draw'] ?? false,
+                'player_rounds_won' => $matchResult['player_rounds_won'] ?? 0,
+                'opponent_rounds_won' => $matchResult['opponent_rounds_won'] ?? 0,
+                'player_total_score' => $matchResult['player_total_score'] ?? ($gameState['player_total_score'] ?? 0),
+                'opponent_total_score' => $matchResult['opponent_total_score'] ?? ($gameState['opponent_total_score'] ?? 0),
+                'coins_earned' => $coinsEarned,
+                'xp_earned' => 0,
+                'division_points' => $pointsEarned,
+                'new_division' => $division->division ?? 'bronze',
+                'promoted' => $promoted,
+                'demoted' => $demoted,
+                'coins_bonus' => $coinsBonus,
+                'party_efficiency' => $accuracy,
+                'global_efficiency' => $accuracy,
+                'total_correct' => $totalCorrect,
+                'total_incorrect' => $totalIncorrect,
+                'total_unanswered' => $totalUnanswered,
+                'round_summaries' => $gameState['round_summaries'] ?? [],
+                'bet_info' => $betInfo,
+                'bet_winnings' => $betWinnings,
+                'forfeit' => $matchResult['forfeit'] ?? false,
+                'forfeit_label' => $matchResult['forfeit_label'] ?? null,
+            ],
+            'opponent_info' => [
+                'id' => $opponent->id ?? null,
+                'name' => $opponent->name ?? __('Adversaire'),
+                'avatar' => $opponentAvatarPath,
+                'division' => ucfirst($opponentDivision->division ?? 'bronze'),
+                'level' => $opponentDivision->level ?? 1,
+                'is_boss' => false,
+            ],
+        ];
+
+        return view('game_match_result', ['params' => $params]);
     }
 
     public function rankings(Request $request)

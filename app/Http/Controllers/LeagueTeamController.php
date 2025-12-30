@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\TeamService;
 use App\Services\LeagueTeamService;
 use App\Services\LeagueTeamFirestoreService;
+use App\Services\AvatarCatalog;
 use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Models\TeamJoinRequest;
@@ -743,7 +744,196 @@ class LeagueTeamController extends Controller
             return redirect()->route('league.team.lobby')->with('error', __('Vous n\'êtes pas dans ce match.'));
         }
 
-        return view('league_team_game', compact('user', 'match'));
+        $isTeam1 = $match->team1->teamMembers->contains('user_id', $user->id);
+        $myTeam = $isTeam1 ? $match->team1 : $match->team2;
+        $opponentTeam = $isTeam1 ? $match->team2 : $match->team1;
+
+        $gameState = $match->game_state ?? [];
+        $leagueTeamMode = $gameState['game_mode'] ?? 'classique';
+        
+        $myTeamScore = $isTeam1 ? ($gameState['team1_score'] ?? 0) : ($gameState['team2_score'] ?? 0);
+        $opponentTeamScore = $isTeam1 ? ($gameState['team2_score'] ?? 0) : ($gameState['team1_score'] ?? 0);
+        $myRoundsWon = $isTeam1 ? ($gameState['team1_rounds_won'] ?? 0) : ($gameState['team2_rounds_won'] ?? 0);
+        $opponentRoundsWon = $isTeam1 ? ($gameState['team2_rounds_won'] ?? 0) : ($gameState['team1_rounds_won'] ?? 0);
+
+        $opponentCaptain = $opponentTeam->captain;
+        $opponentAvatarUrl = 'default';
+        if ($opponentCaptain) {
+            $opponentSettings = $opponentCaptain->profile_settings;
+            if (is_string($opponentSettings)) {
+                $opponentSettings = json_decode($opponentSettings, true) ?? [];
+            }
+            if (is_array($opponentSettings) && isset($opponentSettings['avatar'])) {
+                $avatarData = $opponentSettings['avatar'];
+                if (is_array($avatarData)) {
+                    $opponentAvatarUrl = $avatarData['url'] ?? $avatarData['id'] ?? 'default';
+                } elseif (is_string($avatarData)) {
+                    $opponentAvatarUrl = $avatarData;
+                }
+            }
+        }
+
+        $opponentInfo = [
+            'name' => $opponentTeam->name,
+            'tag' => $opponentTeam->tag,
+            'avatar' => $opponentAvatarUrl,
+            'division' => $opponentTeam->division ?? 'Bronze',
+            'elo' => $opponentTeam->elo ?? 1000,
+            'members' => $opponentTeam->teamMembers->map(fn($m) => [
+                'id' => $m->user_id,
+                'name' => $m->user->name ?? 'Player',
+                'avatar' => $m->user->avatar_url ?? 'default',
+            ])->toArray(),
+        ];
+
+        $avatarData = $this->getAvatarData($user);
+        
+        $skillsFreeForAll = ($leagueTeamMode === 'classique');
+        $isActivePlayer = true;
+        $duelInfo = null;
+        $relayOrder = [];
+        $currentRelayIndex = 0;
+
+        if ($leagueTeamMode === 'bataille_de_niveaux' && isset($gameState['duel_pairings'])) {
+            $currentRound = $gameState['current_round'] ?? 1;
+            $duelPairings = $gameState['duel_pairings'];
+            if (isset($duelPairings[$currentRound - 1])) {
+                $duelInfo = $duelPairings[$currentRound - 1];
+                $myTeamKey = $isTeam1 ? 'team1_player' : 'team2_player';
+                $isActivePlayer = ($duelInfo[$myTeamKey] ?? null) === $user->id;
+            }
+        }
+
+        if ($leagueTeamMode === 'queue_leu_leu' && isset($gameState['player_order'])) {
+            $playerOrder = $gameState['player_order'];
+            $myTeamKey = $isTeam1 ? 'team1' : 'team2';
+            $relayOrder = $playerOrder[$myTeamKey] ?? [];
+            $currentRelayIndex = $gameState['relay_indices'][$myTeamKey] ?? 0;
+            $activePlayerId = $relayOrder[$currentRelayIndex] ?? null;
+            $isActivePlayer = $activePlayerId === $user->id;
+        }
+
+        $isCaptain = $myTeam->captain_id === $user->id;
+        $isHost = $isTeam1 && $isCaptain;
+
+        $currentQuestion = $gameState['current_question'] ?? 1;
+        $totalQuestions = $gameState['total_questions'] ?? 10;
+        $theme = $gameState['theme'] ?? 'Culture générale';
+        $chronoTime = $gameState['chrono_time'] ?? 8;
+
+        $params = [
+            'mode' => 'league_team',
+            'opponent_type' => 'human',
+            'opponent_info' => $opponentInfo,
+            'current' => $currentQuestion,
+            'current_question' => $currentQuestion,
+            'nb_questions' => $totalQuestions,
+            'niveau' => $gameState['niveau'] ?? 50,
+            'theme' => $theme,
+            'sub_theme' => $gameState['sub_theme'] ?? '',
+            'score' => $myTeamScore,
+            'opponent_score' => $opponentTeamScore,
+            'current_round' => $gameState['current_round'] ?? 1,
+            'player_rounds_won' => $myRoundsWon,
+            'opponent_rounds_won' => $opponentRoundsWon,
+            'avatar' => $avatarData['name'],
+            'avatar_skills_full' => $avatarData['skills_full'],
+            'league_team_mode' => $leagueTeamMode,
+            'skills_free_for_all' => $skillsFreeForAll,
+            'can_use_skills' => $isActivePlayer || $skillsFreeForAll,
+            'is_active_player' => $isActivePlayer,
+            'duel_info' => $duelInfo,
+            'relay_order' => $relayOrder,
+            'current_relay_index' => $currentRelayIndex,
+            'match_id' => $matchId,
+            'session_id' => $matchId,
+            'firebase_sync' => true,
+            'is_host' => $isHost,
+            'chrono_time' => $chronoTime,
+            'scoring' => [
+                'correct' => 100,
+                'incorrect' => 0,
+                'time_bonus' => true,
+            ],
+            'question' => null,
+            'question_text' => '',
+            'answers' => [],
+            'correct_answer_index' => 0,
+            'opponent_id' => $opponentTeam->captain_id,
+            'my_team' => [
+                'id' => $myTeam->id,
+                'name' => $myTeam->name,
+                'tag' => $myTeam->tag,
+                'members' => $myTeam->teamMembers->map(fn($m) => [
+                    'id' => $m->user_id,
+                    'name' => $m->user->name ?? 'Player',
+                    'avatar' => $m->user->avatar_url ?? 'default',
+                ])->toArray(),
+            ],
+            'opponent_team' => $opponentInfo,
+            'match' => $match,
+        ];
+
+        return view('game_unified', ['params' => $params, 'match' => $match]);
+    }
+
+    protected function getAvatarData($user): array
+    {
+        $avatarName = 'Aucun';
+        
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        } elseif (is_object($profileSettings)) {
+            $profileSettings = (array) $profileSettings;
+        }
+        
+        if (is_array($profileSettings) && isset($profileSettings['strategic_avatar'])) {
+            $strategicData = $profileSettings['strategic_avatar'];
+            if (is_object($strategicData)) {
+                $strategicData = (array) $strategicData;
+            }
+            if (is_array($strategicData) && !empty($strategicData['name'])) {
+                $avatarName = $strategicData['name'];
+            }
+        }
+        
+        if (empty($avatarName) || $avatarName === 'Aucun' || $avatarName === null) {
+            $avatarName = session('avatar', 'Aucun');
+        }
+        
+        if ($avatarName === 'Aucun' || empty($avatarName)) {
+            return [
+                'name' => 'Aucun',
+                'skills_full' => ['rarity' => null, 'skills' => []],
+            ];
+        }
+        
+        $catalog = AvatarCatalog::get();
+        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+        $avatarInfo = null;
+        
+        foreach ($strategicAvatars as $avatar) {
+            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                $avatarInfo = $avatar;
+                break;
+            }
+        }
+        
+        if (!$avatarInfo) {
+            return [
+                'name' => $avatarName,
+                'skills_full' => ['rarity' => null, 'skills' => []],
+            ];
+        }
+        
+        return [
+            'name' => $avatarName,
+            'skills_full' => [
+                'rarity' => $avatarInfo['tier'] ?? 'Rare',
+                'skills' => $avatarInfo['skills'] ?? [],
+            ],
+        ];
     }
 
     public function getQuestion($matchId)
