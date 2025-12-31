@@ -205,7 +205,7 @@ class SoloGameProvider extends GameModeProvider
     public function calculatePoints(bool $isCorrect, float $buzzTime): int
     {
         if (!$isCorrect) {
-            return -5;
+            return -2;
         }
         
         if ($buzzTime < 3) {
@@ -227,7 +227,7 @@ class SoloGameProvider extends GameModeProvider
             'points_correct_medium' => 12,
             'points_correct_slow' => 10,
             'points_correct_min' => 8,
-            'points_incorrect' => -5,
+            'points_incorrect' => -2,
             'round_win_bonus' => 50,
             'match_win_bonus' => 100,
         ];

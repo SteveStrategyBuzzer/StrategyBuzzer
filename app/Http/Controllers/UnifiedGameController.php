@@ -701,10 +701,11 @@ class UnifiedGameController extends Controller
         $question = $this->getCurrentQuestion($gameState);
         $correctIndex = $question['correct_index'] ?? 0;
         $timedOut = $validated['timed_out'] ?? false;
-        $isCorrect = !$timedOut && $validated['answer_id'] === $correctIndex;
+        // Cast to int for comparison (frontend may send string)
+        $isCorrect = !$timedOut && (int)$validated['answer_id'] === (int)$correctIndex;
         
         // Always call provider to maintain state, but pass timeout flag
-        // Provider calculates points: timeout = 0 points, wrong answer = -5 points
+        // Provider calculates points: timeout = 0 points, wrong answer = -2 points
         $result = $provider->submitAnswer(
             $validated['answer_id'],
             $isCorrect,

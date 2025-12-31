@@ -102,7 +102,7 @@ class LeagueGameProvider extends GameModeProvider
     {
         $matchId = $this->gameState['match_id'] ?? null;
         $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
-        // Timeout = 0 points (no penalty for not buzzing), wrong answer = -5
+        // Timeout = 0 points (no penalty for not buzzing), wrong answer = -2
         $points = $timedOut ? 0 : $this->calculatePoints($isCorrect, $buzzTime);
         
         if ($matchId) {
@@ -134,7 +134,7 @@ class LeagueGameProvider extends GameModeProvider
     public function calculatePoints(bool $isCorrect, float $buzzTime): int
     {
         if (!$isCorrect) {
-            return -5;
+            return -2;
         }
         
         if ($buzzTime < 2) {
@@ -156,7 +156,7 @@ class LeagueGameProvider extends GameModeProvider
             'points_correct_fast' => 15,
             'points_correct_medium' => 12,
             'points_correct_slow' => 10,
-            'points_incorrect' => -5,
+            'points_incorrect' => -2,
             'elo_k_factor' => 32,
             'season_points_win' => 50,
             'season_points_loss' => -30,

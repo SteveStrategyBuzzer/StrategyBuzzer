@@ -193,7 +193,7 @@ class DuoGameProvider extends GameModeProvider
     public function calculatePoints(bool $isCorrect, float $buzzTime): int
     {
         if (!$isCorrect) {
-            return -5;
+            return -2;
         }
         
         if ($buzzTime < 3) {
@@ -215,7 +215,7 @@ class DuoGameProvider extends GameModeProvider
             'points_correct_medium' => 12,
             'points_correct_slow' => 10,
             'points_correct_min' => 8,
-            'points_incorrect' => -5,
+            'points_incorrect' => -2,
             'elo_win_base' => 25,
             'elo_loss_base' => -20,
             'division_points_win' => 30,
