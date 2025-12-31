@@ -27,7 +27,10 @@ const GameplayEngine = {
         playerId: null,
         sessionId: null,
         mode: 'solo', // solo | duo | league_individual | league_team | master
-        questionStartTime: null
+        questionStartTime: null,
+        answerTimeLeft: 5,
+        answerTimerInterval: null,
+        currentPoints: 2
     },
 
     // Pending question data for guests waiting for phase sync
@@ -62,7 +65,9 @@ const GameplayEngine = {
         questionNumber: null,
         playerScore: null,
         opponentScore: null,
-        skillButtons: []
+        skillButtons: [],
+        answerTimer: null,
+        answerTimerContainer: null
     },
 
     // Timer
@@ -593,7 +598,7 @@ const GameplayEngine = {
     },
 
     /**
-     * Affiche les réponses
+     * Affiche les réponses avec chrono et points décroissants
      */
     showAnswers() {
         this.state.answersShown = true;
@@ -601,6 +606,170 @@ const GameplayEngine = {
 
         if (this.elements.answersGrid) {
             this.elements.answersGrid.style.display = 'grid';
+            this.addPointBadgesToAnswers();
+        }
+        
+        this.startAnswerTimer();
+    },
+    
+    /**
+     * Ajoute les badges de points sur les boutons de réponse
+     */
+    addPointBadgesToAnswers() {
+        const buttons = this.elements.answersGrid?.querySelectorAll('.answer-option');
+        if (!buttons) return;
+        
+        buttons.forEach(btn => {
+            let badge = btn.querySelector('.point-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'point-badge';
+                btn.style.position = 'relative';
+                btn.appendChild(badge);
+            }
+            badge.textContent = '2 pts';
+            badge.className = 'point-badge points-high';
+        });
+    },
+    
+    /**
+     * Met à jour les badges de points selon le temps restant
+     */
+    updatePointBadges() {
+        const buttons = this.elements.answersGrid?.querySelectorAll('.answer-option');
+        if (!buttons) return;
+        
+        let pointText, pointClass;
+        if (this.state.answerTimeLeft > 3) {
+            pointText = '2 pts';
+            pointClass = 'points-high';
+            this.state.currentPoints = 2;
+        } else if (this.state.answerTimeLeft > 1) {
+            pointText = '1 pt';
+            pointClass = 'points-medium';
+            this.state.currentPoints = 1;
+        } else {
+            pointText = '0 pt';
+            pointClass = 'points-low';
+            this.state.currentPoints = 0;
+        }
+        
+        buttons.forEach(btn => {
+            const badge = btn.querySelector('.point-badge');
+            if (badge) {
+                badge.textContent = pointText;
+                badge.className = 'point-badge ' + pointClass;
+            }
+        });
+    },
+    
+    /**
+     * Démarre le chrono de réponse (5 secondes après buzz)
+     */
+    startAnswerTimer() {
+        this.state.answerTimeLeft = 5;
+        this.state.currentPoints = 2;
+        
+        this.createAnswerTimerUI();
+        this.updateAnswerTimerUI();
+        
+        if (this.state.answerTimerInterval) {
+            clearInterval(this.state.answerTimerInterval);
+        }
+        
+        this.state.answerTimerInterval = setInterval(() => {
+            this.state.answerTimeLeft--;
+            this.updateAnswerTimerUI();
+            this.updatePointBadges();
+            
+            if (this.state.answerTimeLeft <= 0) {
+                this.stopAnswerTimer();
+                this.handleAnswerTimeout();
+            }
+        }, 1000);
+    },
+    
+    /**
+     * Arrête le chrono de réponse
+     */
+    stopAnswerTimer() {
+        if (this.state.answerTimerInterval) {
+            clearInterval(this.state.answerTimerInterval);
+            this.state.answerTimerInterval = null;
+        }
+    },
+    
+    /**
+     * Crée l'UI du chrono de réponse
+     */
+    createAnswerTimerUI() {
+        let container = document.getElementById('answerTimerContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'answerTimerContainer';
+            container.className = 'answer-timer-container';
+            container.innerHTML = `
+                <div class="answer-timer-circle" id="answerTimerCircle">
+                    <span class="answer-timer-value" id="answerTimerValue">5</span>
+                </div>
+            `;
+            
+            const answersGrid = this.elements.answersGrid;
+            if (answersGrid && answersGrid.parentNode) {
+                answersGrid.parentNode.insertBefore(container, answersGrid);
+            }
+        }
+        container.style.display = 'flex';
+        this.elements.answerTimerContainer = container;
+        this.elements.answerTimer = document.getElementById('answerTimerValue');
+    },
+    
+    /**
+     * Met à jour l'affichage du chrono de réponse
+     */
+    updateAnswerTimerUI() {
+        if (this.elements.answerTimer) {
+            this.elements.answerTimer.textContent = this.state.answerTimeLeft;
+        }
+        
+        const circle = document.getElementById('answerTimerCircle');
+        if (circle) {
+            circle.classList.remove('warning', 'danger');
+            if (this.state.answerTimeLeft <= 1) {
+                circle.classList.add('danger');
+            } else if (this.state.answerTimeLeft <= 2) {
+                circle.classList.add('warning');
+            }
+        }
+    },
+    
+    /**
+     * Gère le timeout de réponse (temps écoulé sans répondre)
+     */
+    async handleAnswerTimeout() {
+        const buttons = this.elements.answersGrid?.querySelectorAll('.answer-option');
+        buttons?.forEach(btn => btn.classList.add('disabled'));
+        
+        this.state.phase = 'result';
+        
+        try {
+            const response = await fetch(this.config.routes.answer, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.config.csrfToken
+                },
+                body: JSON.stringify({
+                    answer_id: -1,
+                    timed_out: true,
+                    buzz_time: this.state.playerBuzzTime,
+                    question_number: this.state.currentQuestion
+                })
+            });
+            const data = await response.json();
+            await this.handleAnswerResult(data);
+        } catch (err) {
+            console.error('[GameplayEngine] Answer timeout error:', err);
         }
     },
 
@@ -614,6 +783,8 @@ const GameplayEngine = {
     async submitAnswer(answerIndex) {
         if (this.state.phase === 'result') return;
 
+        this.stopAnswerTimer();
+        
         const buttons = this.elements.answersGrid?.querySelectorAll('.answer-option');
         buttons?.forEach(btn => btn.classList.add('disabled'));
 
@@ -640,7 +811,7 @@ const GameplayEngine = {
             }
         }
 
-        // Submit answer to server
+        // Submit answer to server with answer time remaining (for point calculation)
         try {
             const response = await fetch(this.config.routes.answer, {
                 method: 'POST',
@@ -651,7 +822,9 @@ const GameplayEngine = {
                 body: JSON.stringify({
                     answer_id: answerIndex,
                     buzz_time: this.state.playerBuzzTime,
-                    question_number: this.state.currentQuestion
+                    question_number: this.state.currentQuestion,
+                    answer_time_remaining: this.state.answerTimeLeft,
+                    points_value: this.state.currentPoints
                 })
             });
             result = await response.json();
@@ -1242,6 +1415,13 @@ const GameplayEngine = {
      */
     resetState() {
         this.stopTimer();
+        this.stopAnswerTimer();
+        
+        // Hide answer timer container
+        const timerContainer = document.getElementById('answerTimerContainer');
+        if (timerContainer) {
+            timerContainer.style.display = 'none';
+        }
         
         // BUG FIX: Clear attack effects from previous question (clears shuffle intervals)
         this.clearAttackEffects();
@@ -1252,6 +1432,8 @@ const GameplayEngine = {
         this.state.timeLeft = this.config.timerDuration;
         this.state.phase = 'waiting';
         this.state.questionStartTime = null;
+        this.state.answerTimeLeft = 5;
+        this.state.currentPoints = 2;
         this.currentQuestionData = null;
         this.pendingQuestionData = null;
 

@@ -684,6 +684,74 @@ $roomCode = $params['room_code'] ?? null;
         pointer-events: none;
     }
     
+    .answer-option {
+        position: relative;
+    }
+    
+    .point-badge {
+        position: absolute;
+        top: 5px;
+        right: 8px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        padding: 3px 8px;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.3);
+    }
+    
+    .point-badge.points-high {
+        background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
+        color: white;
+    }
+    
+    .point-badge.points-medium {
+        background: linear-gradient(135deg, #F39C12 0%, #E67E22 100%);
+        color: white;
+    }
+    
+    .point-badge.points-low {
+        background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);
+        color: white;
+    }
+    
+    .answer-timer-container {
+        display: flex;
+        justify-content: center;
+        margin: 15px 0;
+    }
+    
+    .answer-timer-circle {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        border: 4px solid #4ECDC4;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: border-color 0.3s, transform 0.2s;
+    }
+    
+    .answer-timer-circle.warning {
+        border-color: #F39C12;
+    }
+    
+    .answer-timer-circle.danger {
+        border-color: #E74C3C;
+        animation: timer-pulse 0.5s infinite;
+    }
+    
+    @keyframes timer-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+    }
+    
+    .answer-timer-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #fff;
+    }
+    
     .buzz-container-bottom {
         position: fixed;
         bottom: 30px;
