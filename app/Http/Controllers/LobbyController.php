@@ -578,4 +578,31 @@ class LobbyController extends Controller
         
         return response()->json($result);
     }
+    
+    public function getOpenLobbies(Request $request)
+    {
+        $user = Auth::user();
+        $mode = $request->query('mode');
+        
+        $lobbies = $this->lobbyService->getPlayerOpenLobbies($user->id);
+        
+        if ($mode) {
+            $lobbies = array_filter($lobbies, fn($l) => $l['mode'] === $mode);
+            $lobbies = array_values($lobbies);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'lobbies' => $lobbies,
+        ]);
+    }
+    
+    public function closeLobby(Request $request, string $code)
+    {
+        $user = Auth::user();
+        
+        $result = $this->lobbyService->closeLobbyForPlayer($code, $user->id);
+        
+        return response()->json($result);
+    }
 }

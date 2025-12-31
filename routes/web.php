@@ -189,8 +189,10 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
 
 /* ===== LOBBY (Salon d'attente multijoueur) ===== */
 Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
+    Route::get('/open', [LobbyController::class, 'getOpenLobbies'])->name('open');
     Route::post('/create', [LobbyController::class, 'create'])->name('create');
     Route::post('/join', [LobbyController::class, 'join'])->name('join');
+    Route::post('/{code}/close', [LobbyController::class, 'closeLobby'])->name('close');
     Route::get('/player-stats/{playerId}', [LobbyController::class, 'getPlayerStats'])->name('player-stats');
     Route::get('/{code}', [LobbyController::class, 'show'])->name('show');
     Route::get('/{code}/state', [LobbyController::class, 'getState'])->name('state');

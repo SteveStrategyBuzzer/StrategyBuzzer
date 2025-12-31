@@ -23,6 +23,8 @@ class LobbyService
 
     protected const LOBBY_PREFIX = 'lobby:';
     protected const LOBBY_TTL = 3600;
+    protected const PLAYER_LOBBIES_PREFIX = 'player_lobbies:';
+    protected const PLAYER_LOBBIES_TTL = 3600;
     
     protected array $teamColors = [
         ['id' => 'red', 'name' => 'Rouge', 'hex' => '#E53935', 'light' => '#FFCDD2'],
@@ -168,6 +170,7 @@ class LobbyService
         ];
         
         $this->saveLobby($lobbyCode, $lobby);
+        $this->addPlayerToLobbyList($host->id, $lobbyCode, $mode);
         
         return $lobby;
     }
@@ -212,6 +215,7 @@ class LobbyService
         ];
         
         $this->saveLobby($code, $lobby);
+        $this->addPlayerToLobbyList($player->id, $code, $lobby['mode'] ?? 'duo');
         
         return ['success' => true, 'lobby' => $lobby];
     }
@@ -795,6 +799,93 @@ class LobbyService
     protected function deleteLobby(string $code): void
     {
         Cache::forget(self::LOBBY_PREFIX . strtoupper($code));
+    }
+    
+    protected function addPlayerToLobbyList(int $playerId, string $code, string $mode): void
+    {
+        $lobbies = $this->getPlayerLobbyList($playerId);
+        $lobbies[strtoupper($code)] = [
+            'code' => strtoupper($code),
+            'mode' => $mode,
+            'joined_at' => now()->toISOString(),
+        ];
+        Cache::put(self::PLAYER_LOBBIES_PREFIX . $playerId, $lobbies, self::PLAYER_LOBBIES_TTL);
+    }
+    
+    protected function removePlayerFromLobbyList(int $playerId, string $code): void
+    {
+        $lobbies = $this->getPlayerLobbyList($playerId);
+        unset($lobbies[strtoupper($code)]);
+        if (empty($lobbies)) {
+            Cache::forget(self::PLAYER_LOBBIES_PREFIX . $playerId);
+        } else {
+            Cache::put(self::PLAYER_LOBBIES_PREFIX . $playerId, $lobbies, self::PLAYER_LOBBIES_TTL);
+        }
+    }
+    
+    protected function getPlayerLobbyList(int $playerId): array
+    {
+        return Cache::get(self::PLAYER_LOBBIES_PREFIX . $playerId, []);
+    }
+    
+    public function getPlayerOpenLobbies(int $playerId): array
+    {
+        $lobbyList = $this->getPlayerLobbyList($playerId);
+        $openLobbies = [];
+        
+        foreach ($lobbyList as $code => $info) {
+            $lobby = $this->getLobby($code);
+            if ($lobby && $lobby['status'] === 'waiting' && isset($lobby['players'][$playerId])) {
+                $openLobbies[] = [
+                    'code' => $code,
+                    'mode' => $lobby['mode'] ?? $info['mode'],
+                    'host_name' => $lobby['host_name'] ?? 'Inconnu',
+                    'player_count' => count($lobby['players']),
+                    'max_players' => $lobby['settings']['max_players'] ?? 2,
+                    'theme' => $lobby['settings']['theme'] ?? __('Culture générale'),
+                    'joined_at' => $info['joined_at'] ?? $lobby['created_at'],
+                ];
+            } else {
+                $this->removePlayerFromLobbyList($playerId, $code);
+            }
+        }
+        
+        return $openLobbies;
+    }
+    
+    public function closeLobbyForPlayer(string $code, int $playerId): array
+    {
+        $lobby = $this->getLobby($code);
+        
+        if (!$lobby) {
+            $this->removePlayerFromLobbyList($playerId, $code);
+            return ['success' => true, 'already_closed' => true];
+        }
+        
+        if (!isset($lobby['players'][$playerId])) {
+            $this->removePlayerFromLobbyList($playerId, $code);
+            return ['success' => true, 'not_in_lobby' => true];
+        }
+        
+        $wasHost = $lobby['players'][$playerId]['is_host'] ?? false;
+        unset($lobby['players'][$playerId]);
+        $this->removePlayerFromLobbyList($playerId, $code);
+        
+        if (empty($lobby['players'])) {
+            $this->deleteLobby($code);
+            return ['success' => true, 'lobby_deleted' => true];
+        }
+        
+        if ($wasHost) {
+            $newHostId = array_key_first($lobby['players']);
+            $lobby['players'][$newHostId]['is_host'] = true;
+            $lobby['host_id'] = $newHostId;
+            $lobby['host_name'] = $lobby['players'][$newHostId]['name'];
+        }
+        
+        $this->saveLobby($code, $lobby);
+        
+        return ['success' => true, 'lobby' => $lobby];
     }
     
     protected function generateLobbyCode(): string

@@ -136,6 +136,13 @@
             @endif
         </div>
 
+        <div class="open-lobbies" id="openLobbies" style="display: none;">
+            <h3>🚪 {{ __('Salons ouverts') }}</h3>
+            <div id="openLobbiesList">
+                <p class="no-lobbies">{{ __('Aucun salon ouvert') }}</p>
+            </div>
+        </div>
+
         <div class="pending-invitations" id="pendingInvitations">
             <h3>📬 {{ __('Invitations reçues') }}</h3>
             <div id="invitationsList">
@@ -1041,6 +1048,57 @@
 
 .btn-large {
     width: 100%;
+}
+
+.open-lobbies {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border: 2px solid #667eea;
+    margin-bottom: 20px;
+}
+
+.open-lobbies h3 {
+    margin: 0 0 15px 0;
+    color: white;
+}
+
+.open-lobby-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    gap: 15px;
+}
+
+.open-lobby-item:last-child {
+    margin-bottom: 0;
+}
+
+.open-lobby-item .lobby-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+}
+
+.open-lobby-item .lobby-host {
+    color: white;
+    font-weight: bold;
+}
+
+.open-lobby-item .lobby-details {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85em;
+}
+
+.open-lobby-item .lobby-actions {
+    display: flex;
+    gap: 10px;
 }
 
 .pending-invitations {
@@ -2372,7 +2430,13 @@ $duoTranslations = [
     'Aucun membre dans ce groupe' => __('Aucun membre dans ce groupe'),
     'Code joueur manquant' => __('Code joueur manquant'),
     'Contact supprimé partout' => __('Contact supprimé partout'),
-    'Supprimer ce contact de tous les groupes et du carnet ?' => __('Supprimer ce contact de tous les groupes et du carnet ?')
+    'Supprimer ce contact de tous les groupes et du carnet ?' => __('Supprimer ce contact de tous les groupes et du carnet ?'),
+    'Vos salons ouverts' => __('Vos salons ouverts'),
+    'joueurs' => __('joueurs'),
+    'Salon fermé' => __('Salon fermé'),
+    'Erreur lors de la fermeture' => __('Erreur lors de la fermeture'),
+    'Êtes-vous sûr de vouloir fermer ce salon ?' => __('Êtes-vous sûr de vouloir fermer ce salon ?'),
+    'Entrer' => __('Entrer')
 ];
 @endphp
 <script>
@@ -2547,6 +2611,42 @@ document.addEventListener('DOMContentLoaded', function() {
 
     checkInvitations();
     setInterval(checkInvitations, 5000);
+    
+    function checkOpenLobbies() {
+        fetch('/lobby/open?mode=duo')
+            .then(response => response.json())
+            .then(data => {
+                displayOpenLobbies(data.lobbies || []);
+            })
+            .catch(err => console.error('Error loading open lobbies:', err));
+    }
+    
+    function displayOpenLobbies(lobbies) {
+        const container = document.getElementById('openLobbies');
+        const list = document.getElementById('openLobbiesList');
+        
+        if (lobbies.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        container.style.display = 'block';
+        list.innerHTML = lobbies.map(lobby => `
+            <div class="open-lobby-item">
+                <div class="lobby-info">
+                    <span class="lobby-host">🏠 ${lobby.host_name}</span>
+                    <span class="lobby-details">${lobby.player_count}/${lobby.max_players} ${t('joueurs')} • ${lobby.theme}</span>
+                </div>
+                <div class="lobby-actions">
+                    <button onclick="closeLobby('${lobby.code}')" class="btn-decline">${t('Fermer')}</button>
+                    <button onclick="window.location.href='/lobby/${lobby.code}'" class="btn-accept">${t('Entrer')}</button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    checkOpenLobbies();
+    setInterval(checkOpenLobbies, 5000);
 });
 
 function acceptInvitation(matchId) {
@@ -2619,6 +2719,33 @@ function cancelInvitation(matchId) {
     .catch(error => {
         console.error('Cancel invitation error:', error);
         showToast(t('Erreur lors de l\'annulation'), 'error');
+    });
+}
+
+function closeLobby(code) {
+    if (!confirm(t('Êtes-vous sûr de vouloir fermer ce salon ?'))) {
+        return;
+    }
+    
+    fetch(`/lobby/${code}/close`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(t('Salon fermé'), 'info');
+            document.getElementById('openLobbies').style.display = 'none';
+        } else {
+            showToast(data.error || t('Erreur lors de la fermeture'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Close lobby error:', error);
+        showToast(t('Erreur lors de la fermeture'), 'error');
     });
 }
 
