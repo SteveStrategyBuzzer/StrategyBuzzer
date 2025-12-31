@@ -4480,6 +4480,13 @@ initFirebase().then(async (authenticated) => {
         return;
     }
     
+    // Measure clock offset immediately when entering lobby (not during countdown)
+    // This ensures synchronization is ready before the countdown starts
+    console.log('[ClockSync] Starting early offset measurement...');
+    window.serverTimeOffset = await measureServerOffset();
+    window.offsetMeasured = true;
+    console.log('[ClockSync] Early sync complete, offset:', window.serverTimeOffset, 'ms');
+    
     window.lobbyPresenceManager = new LobbyPresenceManager(lobbyCode, currentPlayerId, currentPlayerData, isHostFirebase);
     
     window.lobbyPresenceManager.onPlayersChange = (presencePlayers) => {
