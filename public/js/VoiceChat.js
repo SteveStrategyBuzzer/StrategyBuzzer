@@ -713,6 +713,28 @@ class VoiceChat {
         return this.locallyMutedUsers[String(remoteUserId)] === true;
     }
     
+    setRemoteAudioMuted(remoteUserId, muted) {
+        const userId = String(remoteUserId);
+        const audioEl = this.remoteAudioElements[userId];
+        
+        this.locallyMutedUsers[userId] = muted;
+        
+        if (audioEl) {
+            audioEl.muted = muted;
+            console.log(`[VoiceChat] Set remote user ${userId} muted: ${muted}`);
+        } else {
+            console.log(`[VoiceChat] No audio element for user ${userId}, but stored mute state: ${muted}`);
+        }
+        
+        const remoteMicOn = this.remoteMicStates[userId] === true;
+        
+        if (this.onRemoteMicStateChange) {
+            this.onRemoteMicStateChange(userId, remoteMicOn, muted);
+        }
+        
+        return muted;
+    }
+    
     getRemoteMicState(remoteUserId) {
         return this.remoteMicStates[String(remoteUserId)] === true;
     }

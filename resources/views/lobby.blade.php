@@ -1010,10 +1010,11 @@ foreach ($colors as $color) {
                                     data-action="mic"
                                     title="{{ __('Votre micro') }}">🎙️</button>
                             @else
-                            <button class="player-action-btn unavailable" 
+                            <button class="player-action-btn muted" 
                                     id="mic-btn-{{ $playerId }}" 
                                     data-player-id="{{ $playerId }}"
-                                    title="{{ __('Micro de l\'adversaire') }}" disabled>🎙️</button>
+                                    data-action="opponent-mic"
+                                    title="{{ __('Cliquez pour couper/rétablir le son') }}">🔇</button>
                             @endif
                         @else
                         <button class="player-action-btn unavailable" 
