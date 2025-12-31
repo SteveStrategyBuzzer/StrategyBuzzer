@@ -675,14 +675,14 @@ const GameplayEngine = {
         }
 
         if (result) {
-            this.handleAnswerResult(result);
+            await this.handleAnswerResult(result);
         }
     },
 
     /**
      * Gère le résultat de la réponse
      */
-    handleAnswerResult(data) {
+    async handleAnswerResult(data) {
         const isCorrect = data.is_correct;
         const correctIndex = data.correct_index;
 
@@ -709,20 +709,35 @@ const GameplayEngine = {
             this.triggerPassiveSkills('incorrect_answer');
         }
 
+        // Get correct answer text from current question data
+        const correctAnswer = this.currentQuestionData?.answers?.[correctIndex]?.text || 
+                              this.currentQuestionData?.answers?.[correctIndex] || '';
+        const points = data.points_earned || (isCorrect ? 10 : -2);
+        const hasNextQuestion = !data.is_round_complete && !data.game_over;
+
+        // Use PhaseController for reveal and scoreboard overlays (transition pages)
+        if (typeof window.PhaseController !== 'undefined' && window.PhaseController.onAnswerComplete) {
+            await window.PhaseController.onAnswerComplete(
+                isCorrect,
+                correctAnswer,
+                points,
+                data.player_score || this.state.playerScore,
+                data.opponent_score || this.state.opponentScore,
+                hasNextQuestion,
+                this.state.currentQuestion,
+                this.state.totalQuestions,
+                false
+            );
+        }
+
         if (data.is_round_complete && data.redirect_url) {
-            setTimeout(() => {
-                window.location.href = data.redirect_url;
-            }, 1500);
+            window.location.href = data.redirect_url;
         } else if (data.game_over) {
             this.onGameOver(data);
         } else if (this.state.mode === 'solo') {
-            setTimeout(() => {
-                this.nextQuestion();
-            }, 1500);
+            this.nextQuestion();
         } else if (this.state.isHost && this.state.mode !== 'solo') {
-            setTimeout(() => {
-                this.nextQuestion();
-            }, 1500);
+            this.nextQuestion();
         }
     },
 
