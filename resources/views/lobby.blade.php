@@ -1095,25 +1095,22 @@ foreach ($colors as $color) {
             <span id="sync-status-text"></span>
         </div>
         
-        @if(!$isHost)
-            <button class="btn btn-ready {{ ($players[$currentPlayerId]['ready'] ?? false) ? 'is-ready' : '' }}" 
-                    onclick="toggleReady()"
-                    id="ready-btn">
-                <span id="ready-text">
-                    {{ ($players[$currentPlayerId]['ready'] ?? false) ? __('Annuler') : __('Je suis prêt !') }}
-                </span>
-            </button>
-        @endif
+        <button class="btn btn-ready {{ ($players[$currentPlayerId]['ready'] ?? false) ? 'is-ready' : '' }}" 
+                onclick="toggleReady()"
+                id="ready-btn">
+            <span id="ready-text">{{ ($players[$currentPlayerId]['ready'] ?? false) ? __('Annuler') : __('Je Suis Prêt!') }}</span> <span id="ready-count">0/{{ $minPlayers }}</span>
+        </button>
         
         @if($isHost)
             <button class="btn btn-start" 
                     onclick="startGame()"
                     id="start-btn"
-                    {{ $canStart ? '' : 'disabled' }}>
+                    data-backend-can-start="{{ $canStart ? 'true' : 'false' }}"
+                    disabled>
                 {{ __('Lancer la partie') }}
             </button>
             
-            <div class="waiting-message" style="{{ $canStart ? 'display: none;' : '' }}">
+            <div class="waiting-message" id="waiting-message-container">
                 @if(count($players) < $minPlayers)
                     {{ __('En attente de joueurs') }} ({{ count($players) }}/{{ $minPlayers }} {{ __('minimum') }})<span class="waiting-dots"></span>
                 @else
@@ -2409,7 +2406,7 @@ foreach ($colors as $color) {
             text.textContent = '{{ __("Annuler") }}';
         } else {
             btn.classList.remove('is-ready');
-            text.textContent = '{{ __("Je suis prêt !") }}';
+            text.textContent = '{{ __("Je Suis Prêt!") }}';
         }
     }
     
@@ -2881,6 +2878,7 @@ foreach ($colors as $color) {
         waitingMessage: '{{ __("En attente de joueurs") }}',
         waitingReady: '{{ __("En attente que tous soient prêts") }}',
         waitingConnection: '{{ __("En attente de connexion") }}',
+        waitingOtherPlayer: '{{ __("En attente de l\'autre joueur...") }}',
         synchronized: '{{ __("Synchronisé") }}',
         minimum: '{{ __("minimum") }}',
         audioNotAvailable: '{{ __("Audio non disponible") }}'
@@ -4198,14 +4196,22 @@ initFirebase().then(async (authenticated) => {
         });
         
         const playerCount = Object.keys(presencePlayers).length;
-        const allReady = Object.values(presencePlayers).every(p => p.ready);
+        const readyCount = Object.values(presencePlayers).filter(p => p.ready).length;
+        const allReady = readyCount === playerCount && playerCount >= minPlayersFirebase;
         const allConnected = playerCount >= minPlayersFirebase;
         
-        // Update sync status indicator
+        // Update ready count display
+        const readyCountEl = document.getElementById('ready-count');
+        if (readyCountEl) {
+            const displayDenominator = Math.max(playerCount, minPlayersFirebase);
+            readyCountEl.textContent = `${readyCount}/${displayDenominator}`;
+        }
+        
+        // Update sync status indicator - RED when < 2 players, GREEN when >= 2
         const syncStatus = document.getElementById('sync-status');
         const syncStatusText = document.getElementById('sync-status-text');
         if (syncStatus && syncStatusText) {
-            if (allConnected) {
+            if (playerCount >= 2) {
                 syncStatus.style.display = 'block';
                 syncStatus.style.background = 'rgba(76, 175, 80, 0.2)';
                 syncStatus.style.border = '1px solid rgba(76, 175, 80, 0.5)';
@@ -4213,29 +4219,46 @@ initFirebase().then(async (authenticated) => {
                 syncStatusText.textContent = '✓ ' + translations.synchronized;
             } else {
                 syncStatus.style.display = 'block';
-                syncStatus.style.background = 'rgba(255, 193, 7, 0.2)';
-                syncStatus.style.border = '1px solid rgba(255, 193, 7, 0.5)';
-                syncStatus.style.color = '#FFC107';
-                syncStatusText.textContent = translations.waitingConnection;
+                syncStatus.style.background = 'rgba(244, 67, 54, 0.2)';
+                syncStatus.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                syncStatus.style.color = '#f44336';
+                syncStatusText.textContent = translations.waitingOtherPlayer;
             }
         }
         
-        // Note: Ready button is always enabled - Firebase presence is just a visual indicator
-        // Backend remains the authoritative source for game start eligibility
-        
-        // TASK 3: Block start button until Firebase presence confirms both players connected
-        // This adds a client-side check on top of the backend $canStart validation
+        // Update start button - Firebase provides visual feedback, backend polling is authoritative
         const startBtn = document.getElementById('start-btn');
         if (startBtn) {
-            // Store Firebase connection state for combination with backend state
             startBtn.dataset.firebaseConnected = allConnected ? 'true' : 'false';
+            startBtn.dataset.allReady = allReady ? 'true' : 'false';
             
-            // Only enable if BOTH backend allows AND Firebase confirms connection
-            const backendAllows = !startBtn.dataset.backendDisabled || startBtn.dataset.backendDisabled === 'false';
-            if (!allConnected) {
+            // Backend polling updates backendDisabled state (see polling handler line ~3133)
+            // Firebase only upgrades to enabled, never downgrades
+            const backendDisabled = startBtn.dataset.backendDisabled === 'true';
+            const backendCanStart = startBtn.dataset.backendCanStart === 'true';
+            
+            if (backendDisabled) {
+                // Backend explicitly revoked permission - always disable
                 startBtn.disabled = true;
-            } else if (backendAllows) {
+            } else if (allReady && allConnected) {
+                // Firebase confirms all ready - enable button
                 startBtn.disabled = false;
+            } else if (backendCanStart) {
+                // Backend approved but Firebase not yet synced - keep enabled
+                startBtn.disabled = false;
+            } else {
+                // Neither approved - keep disabled
+                startBtn.disabled = true;
+            }
+        }
+        
+        // Update waiting message
+        const waitingMessage = document.getElementById('waiting-message-container');
+        if (waitingMessage) {
+            if (allReady && allConnected) {
+                waitingMessage.style.display = 'none';
+            } else {
+                waitingMessage.style.display = 'block';
             }
         }
         

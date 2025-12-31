@@ -869,70 +869,106 @@ class LobbyService
         
         $minPlayers = $lobby['settings']['min_players'] ?? 2;
         $playerIds = array_keys($lobby['players']);
+        $maxRetries = 3;
+        $retryDelay = 500000; // 500ms in microseconds
         
-        try {
-            $firestore = $this->getDuoFirestoreService();
-            $firebase = \App\Services\FirebaseService::getInstance();
-            
-            $presencePath = "lobbies/{$code}/presence";
-            $presenceData = $firebase->getCollection($presencePath);
-            
-            if (empty($presenceData)) {
-                Log::warning("No presence data found for lobby {$code}");
-                return [
-                    'success' => false,
-                    'error' => __('Impossible de vérifier la présence des joueurs. Veuillez réessayer.')
-                ];
-            }
-            
-            $onlineThreshold = 60;
-            $now = microtime(true);
-            $connectedPlayers = [];
-            
-            foreach ($presenceData as $playerId => $data) {
-                $lastSeen = $data['lastSeen'] ?? null;
-                $online = $data['online'] ?? false;
+        Log::info("[VerifyPresence] Starting for lobby {$code}, mode: {$mode}, minPlayers: {$minPlayers}");
+        
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $firebase = \App\Services\FirebaseService::getInstance();
                 
-                if ($lastSeen && is_array($lastSeen) && isset($lastSeen['_seconds'])) {
-                    $lastSeenTime = (float)$lastSeen['_seconds'];
-                } elseif (is_numeric($lastSeen)) {
-                    $lastSeenTime = (float)$lastSeen;
-                } else {
-                    continue;
+                $presencePath = "lobbies/{$code}/presence";
+                $presenceData = $firebase->getCollection($presencePath);
+                
+                $presenceCount = is_array($presenceData) ? count($presenceData) : 0;
+                Log::info("[VerifyPresence] Attempt {$attempt}/{$maxRetries} - Found {$presenceCount} presence entries");
+                
+                if (empty($presenceData)) {
+                    Log::warning("[VerifyPresence] Attempt {$attempt}/{$maxRetries} - No presence data for lobby {$code}");
+                    if ($attempt < $maxRetries) {
+                        usleep($retryDelay);
+                        continue;
+                    }
+                    // Empty presence data after all retries - players may not have synced yet
+                    Log::warning("[VerifyPresence] All retries exhausted with empty data for lobby {$code}");
+                    return [
+                        'success' => false,
+                        'error' => __('Impossible de vérifier la présence des joueurs. Veuillez réessayer.')
+                    ];
                 }
                 
-                $timeSinceLastSeen = $now - $lastSeenTime;
+                $onlineThreshold = 90; // Increased to 90 seconds for more tolerance
+                $now = time(); // Use seconds instead of microtime for consistency with Firebase timestamps
+                $connectedPlayers = [];
                 
-                if ($online && $timeSinceLastSeen < $onlineThreshold) {
-                    $connectedPlayers[] = (int)$playerId;
-                }
-            }
-            
-            if (count($connectedPlayers) < $minPlayers) {
-                $missingPlayers = [];
-                foreach ($playerIds as $playerId) {
-                    if (!in_array((int)$playerId, $connectedPlayers)) {
-                        $playerName = $lobby['players'][$playerId]['name'] ?? 'Joueur';
-                        $missingPlayers[] = $playerName;
+                foreach ($presenceData as $playerId => $data) {
+                    $lastSeen = $data['lastSeen'] ?? null;
+                    $online = $data['online'] ?? false;
+                    $lastSeenTime = null;
+                    
+                    // Handle different timestamp formats from Firebase
+                    if ($lastSeen && is_array($lastSeen) && isset($lastSeen['_seconds'])) {
+                        $lastSeenTime = (int)$lastSeen['_seconds'];
+                    } elseif ($lastSeen && is_array($lastSeen) && isset($lastSeen['seconds'])) {
+                        $lastSeenTime = (int)$lastSeen['seconds'];
+                    } elseif (is_numeric($lastSeen)) {
+                        // Could be seconds or milliseconds
+                        $lastSeenTime = $lastSeen > 9999999999 ? (int)($lastSeen / 1000) : (int)$lastSeen;
+                    }
+                    
+                    if ($lastSeenTime === null) {
+                        // If online flag is true and we can't parse timestamp, assume they're connected
+                        if ($online) {
+                            $connectedPlayers[] = (int)$playerId;
+                        }
+                        continue;
+                    }
+                    
+                    $timeSinceLastSeen = $now - $lastSeenTime;
+                    
+                    if ($online && $timeSinceLastSeen < $onlineThreshold) {
+                        $connectedPlayers[] = (int)$playerId;
                     }
                 }
                 
-                $missingList = implode(', ', $missingPlayers);
-                Log::info("Players not present for lobby {$code}: {$missingList}");
+                Log::info("[VerifyPresence] Connected: " . count($connectedPlayers) . ", required: {$minPlayers}");
+                
+                if (count($connectedPlayers) >= $minPlayers) {
+                    Log::info("[VerifyPresence] SUCCESS for lobby {$code}");
+                    return ['success' => true];
+                }
+                
+                // Not enough players connected, try again if we have retries left
+                if ($attempt < $maxRetries) {
+                    usleep($retryDelay);
+                    continue;
+                }
+                
+                // Final attempt failed - report actual disconnects
+                // Only fail-open on exceptions, not on genuine disconnects
+                $missingCount = $minPlayers - count($connectedPlayers);
+                Log::warning("[VerifyPresence] FAILED for lobby {$code}: only " . count($connectedPlayers) . " of {$minPlayers} verified");
                 
                 return [
                     'success' => false,
                     'error' => __('Un ou plusieurs joueurs ne sont plus connectés. Veuillez vérifier que tous les joueurs sont présents.')
                 ];
+                
+            } catch (\Exception $e) {
+                Log::error("[VerifyPresence] Exception on attempt {$attempt}/{$maxRetries} for lobby {$code}: " . $e->getMessage());
+                if ($attempt < $maxRetries) {
+                    usleep($retryDelay);
+                    continue;
+                }
+                // On final exception, allow the game to start (fail-open for better UX)
+                Log::warning("[VerifyPresence] All retries exhausted with exceptions, allowing game start for lobby {$code}");
+                return ['success' => true];
             }
-            
-            Log::info("All players verified as present for lobby {$code}: " . count($connectedPlayers) . " connected");
-            return ['success' => true];
-            
-        } catch (\Exception $e) {
-            Log::error("Error verifying player presence for lobby {$code}: " . $e->getMessage());
-            return ['success' => true];
         }
+        
+        // Should not reach here, but fail-open if we do
+        return ['success' => true];
     }
     
     protected function canStartGame(array $lobby): bool
