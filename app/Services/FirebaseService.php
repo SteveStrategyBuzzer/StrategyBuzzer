@@ -37,25 +37,49 @@ class FirebaseService
     private function initialize(): void
     {
         try {
-            $this->projectId = env('FIREBASE_PROJECT_ID');
-            $credentialsPath = env('FIREBASE_CREDENTIALS_PATH');
-
-            if (empty($this->projectId)) {
-                Log::warning('FIREBASE_PROJECT_ID not configured');
+            $credentialsArray = null;
+            $credentialsSource = 'unknown';
+            
+            // Priority 1: FIREBASE_CREDENTIALS secret (JSON string)
+            $credentialsJson = env('FIREBASE_CREDENTIALS');
+            if (!empty($credentialsJson)) {
+                $credentialsArray = json_decode($credentialsJson, true);
+                if (is_array($credentialsArray) && isset($credentialsArray['project_id'])) {
+                    $credentialsSource = 'secret';
+                    Log::info('Firebase credentials loaded from FIREBASE_CREDENTIALS secret');
+                } else {
+                    $credentialsArray = null;
+                    Log::warning('FIREBASE_CREDENTIALS secret is not valid JSON');
+                }
+            }
+            
+            // Priority 2: Credentials file path
+            if (empty($credentialsArray)) {
+                $credentialsPath = env('FIREBASE_CREDENTIALS_PATH');
+                if (!empty($credentialsPath) && file_exists(base_path($credentialsPath))) {
+                    $fileJson = file_get_contents(base_path($credentialsPath));
+                    $credentialsArray = json_decode($fileJson, true);
+                    if (is_array($credentialsArray) && isset($credentialsArray['project_id'])) {
+                        $credentialsSource = 'file';
+                        Log::info('Firebase credentials loaded from file: ' . $credentialsPath);
+                    } else {
+                        $credentialsArray = null;
+                    }
+                }
+            }
+            
+            if (empty($credentialsArray)) {
+                Log::warning('No valid Firebase credentials found (neither secret nor file)');
                 return;
             }
-
-            if (empty($credentialsPath) || !file_exists(base_path($credentialsPath))) {
-                Log::warning('Firebase credentials file not found at: ' . $credentialsPath);
-                return;
-            }
-
-            $credentialsJson = file_get_contents(base_path($credentialsPath));
-            $credentialsArray = json_decode($credentialsJson, true);
-
-            if (!isset($credentialsArray['project_id']) || $credentialsArray['project_id'] !== $this->projectId) {
-                Log::error('Firebase credentials project_id mismatch. Expected: ' . $this->projectId . ', Got: ' . ($credentialsArray['project_id'] ?? 'none'));
-                return;
+            
+            // Extract project_id from credentials (authoritative source)
+            $this->projectId = $credentialsArray['project_id'];
+            
+            // If FIREBASE_PROJECT_ID is set, validate it matches (for debugging)
+            $envProjectId = env('FIREBASE_PROJECT_ID');
+            if (!empty($envProjectId) && $envProjectId !== $this->projectId) {
+                Log::warning("FIREBASE_PROJECT_ID mismatch with credentials. Using credentials project: {$this->projectId} (env has: {$envProjectId})");
             }
 
             $this->credentials = new ServiceAccountCredentials(
@@ -71,7 +95,7 @@ class FirebaseService
             $this->refreshAccessToken();
             $this->initialized = true;
 
-            Log::info('Firebase initialized successfully with project: ' . $this->projectId);
+            Log::info("Firebase initialized successfully with project: {$this->projectId} (source: {$credentialsSource})");
         } catch (\Exception $e) {
             Log::error('Firebase initialization failed: ' . $e->getMessage());
             $this->initialized = false;

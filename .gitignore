@@ -21,3 +21,6 @@ storage/framework/views/*
 .env
 .env.*
 !.env.example
+
+# Firebase credentials (never commit)
+storage/app/firebase-credentials.json
