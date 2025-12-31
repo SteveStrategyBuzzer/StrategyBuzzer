@@ -950,6 +950,13 @@ foreach ($colors as $color) {
             <span>👥</span>
             <span>{{ __('Joueurs') }}</span>
             <button id="lobby-chat-btn" class="player-action-btn" style="margin-left: 10px; font-size: 1.2rem;" title="{{ __('Chat') }}">💬</button>
+            @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
+            <button id="my-mic-btn" class="player-action-btn" 
+                    data-player-id="{{ $currentPlayerId }}"
+                    data-action="mic"
+                    style="margin-left: 5px; font-size: 1.2rem;" 
+                    title="{{ __('Votre micro') }}">🎙️</button>
+            @endif
             <button id="lobby-help-btn" class="player-action-btn" style="margin-left: 5px; font-size: 1.2rem;" title="{{ __('Aide') }}" onclick="showHelpModal()">❓</button>
         </div>
         
@@ -1003,22 +1010,13 @@ foreach ($colors as $color) {
                     
                     <div class="player-actions">
                         @if(in_array($mode, ['duo', 'league_individual', 'league_team']))
-                            @if($isCurrentPlayer)
-                            <button class="player-action-btn" 
-                                    id="mic-btn-{{ $playerId }}" 
-                                    data-player-id="{{ $playerId }}"
-                                    data-action="mic"
-                                    title="{{ __('Votre micro') }}">🎙️</button>
-                            @else
+                            @if(!$isCurrentPlayer)
                             <button class="player-action-btn muted" 
                                     id="mic-btn-{{ $playerId }}" 
                                     data-player-id="{{ $playerId }}"
                                     data-action="opponent-mic"
                                     title="{{ __('Cliquez pour couper/rétablir le son') }}">🔇</button>
                             @endif
-                        @else
-                        <button class="player-action-btn unavailable" 
-                                title="{{ __('Audio non disponible') }}" disabled>🎙️</button>
                         @endif
                     </div>
                 </div>
@@ -1949,25 +1947,29 @@ foreach ($colors as $color) {
     micStates[currentPlayerId] = false;
     
     function updateMicStatesOnly(playerEntries) {
+        const myMicBtn = getMyMicBtn();
+        if (myMicBtn) {
+            myMicBtn.classList.toggle('active', micStates[currentPlayerId]);
+            myMicBtn.classList.toggle('muted', !micStates[currentPlayerId]);
+        }
+        
         playerEntries.forEach(([playerId, player]) => {
+            const isCurrentPlayer = parseInt(playerId) === currentPlayerId;
+            if (isCurrentPlayer) return;
+            
             const micBtn = document.getElementById('mic-btn-' + playerId);
             if (!micBtn) return;
             
-            const isCurrentPlayer = parseInt(playerId) === currentPlayerId;
-            if (isCurrentPlayer) {
-                micBtn.classList.toggle('active', micStates[currentPlayerId]);
+            const presence = voicePresence[playerId] || {};
+            const micEnabled = presence.micEnabled ?? false;
+            const speaking = presence.speaking ?? false;
+            
+            micBtn.classList.remove('active', 'muted', 'speaking', 'unavailable');
+            if (micEnabled) {
+                micBtn.classList.add('active');
+                if (speaking) micBtn.classList.add('speaking');
             } else {
-                const presence = voicePresence[playerId] || {};
-                const micEnabled = presence.micEnabled ?? false;
-                const speaking = presence.speaking ?? false;
-                
-                micBtn.classList.remove('active', 'muted', 'speaking', 'unavailable');
-                if (micEnabled) {
-                    micBtn.classList.add('active');
-                    if (speaking) micBtn.classList.add('speaking');
-                } else {
-                    micBtn.classList.add('muted');
-                }
+                micBtn.classList.add('muted');
             }
         });
     }
@@ -2023,13 +2025,12 @@ foreach ($colors as $color) {
         }
     }
     
+    function getMyMicBtn() {
+        return document.getElementById('my-mic-btn');
+    }
+    
     function toggleMic(playerId) {
         console.log('[Mic] toggleMic called for player:', playerId);
-        const btn = document.getElementById('mic-btn-' + playerId);
-        if (!btn) {
-            console.log('[Mic] Button not found');
-            return;
-        }
         
         console.log('[Mic] isVoiceSupported:', isVoiceSupported, 'voiceEnabled:', voiceEnabled);
         
@@ -2051,7 +2052,7 @@ foreach ($colors as $color) {
     
     async function initVoiceChat() {
         console.log('[Mic] initVoiceChat called');
-        const btn = document.getElementById('mic-btn-' + currentPlayerId);
+        const btn = getMyMicBtn();
         if (!btn) {
             console.log('[Mic] Button not found for current player');
             return;
@@ -2111,7 +2112,7 @@ foreach ($colors as $color) {
     }
     
     function toggleLocalMic() {
-        const btn = document.getElementById('mic-btn-' + currentPlayerId);
+        const btn = getMyMicBtn();
         if (!btn || !window.webrtcManager) return;
         
         micStates[currentPlayerId] = !micStates[currentPlayerId];
@@ -2149,7 +2150,8 @@ foreach ($colors as $color) {
     }
     
     function updateSpeakingIndicator(playerId, isSpeaking) {
-        const btn = document.getElementById('mic-btn-' + playerId);
+        const isCurrentPlayer = parseInt(playerId) === currentPlayerId;
+        const btn = isCurrentPlayer ? getMyMicBtn() : document.getElementById('mic-btn-' + playerId);
         const card = document.querySelector(`.player-card[data-player-id="${playerId}"]`);
         
         if (btn) {
@@ -2170,7 +2172,8 @@ foreach ($colors as $color) {
     }
     
     function updateRemoteMicState(playerId, isActive) {
-        const btn = document.getElementById('mic-btn-' + playerId);
+        const isCurrentPlayer = parseInt(playerId) === currentPlayerId;
+        const btn = isCurrentPlayer ? getMyMicBtn() : document.getElementById('mic-btn-' + playerId);
         if (btn) {
             if (isActive) {
                 btn.classList.add('remote-active');
@@ -3014,40 +3017,29 @@ foreach ($colors as $color) {
             const otherSpeaking = voicePresence[playerId]?.speaking ?? false;
             
             let micBtnHtml = '';
-            if (isVoiceSupported) {
-                if (isCurrentPlayer) {
-                    micBtnHtml = `<button class="player-action-btn ${micStates[currentPlayerId] ? 'active' : ''}" 
-                        id="mic-btn-${playerId}" 
-                        data-player-id="${playerId}"
-                        data-action="mic"
-                        title="${translations.yourMic}">🎙️</button>`;
+            if (isVoiceSupported && !isCurrentPlayer) {
+                const isLocallyMuted = locallyMutedPlayers.has(playerId);
+                let micClass, micIcon, micTitle;
+                
+                if (!otherMicEnabled) {
+                    micClass = 'muted';
+                    micIcon = '🔇';
+                    micTitle = translations.opponentMicOff || "Micro adversaire désactivé";
+                } else if (isLocallyMuted) {
+                    micClass = 'muted-locally';
+                    micIcon = '🔕';
+                    micTitle = translations.opponentMutedLocally || "Cliquez pour rétablir le son";
                 } else {
-                    const isLocallyMuted = locallyMutedPlayers.has(playerId);
-                    let micClass, micIcon, micTitle;
-                    
-                    if (!otherMicEnabled) {
-                        micClass = 'muted';
-                        micIcon = '🔇';
-                        micTitle = translations.opponentMicOff || "Micro adversaire désactivé";
-                    } else if (isLocallyMuted) {
-                        micClass = 'muted-locally';
-                        micIcon = '🔕';
-                        micTitle = translations.opponentMutedLocally || "Cliquez pour rétablir le son";
-                    } else {
-                        micClass = otherSpeaking ? 'active speaking' : 'active';
-                        micIcon = '🔊';
-                        micTitle = translations.opponentMicActive || "Cliquez pour couper le son";
-                    }
-                    
-                    micBtnHtml = `<button class="player-action-btn ${micClass}" 
-                        id="mic-btn-${playerId}" 
-                        data-player-id="${playerId}"
-                        data-action="opponent-mic"
-                        title="${micTitle}">${micIcon}</button>`;
+                    micClass = otherSpeaking ? 'active speaking' : 'active';
+                    micIcon = '🔊';
+                    micTitle = translations.opponentMicActive || "Cliquez pour couper le son";
                 }
-            } else {
-                micBtnHtml = `<button class="player-action-btn unavailable" 
-                    title="${translations.audioNotAvailable}" disabled>🎙️</button>`;
+                
+                micBtnHtml = `<button class="player-action-btn ${micClass}" 
+                    id="mic-btn-${playerId}" 
+                    data-player-id="${playerId}"
+                    data-action="opponent-mic"
+                    title="${micTitle}">${micIcon}</button>`;
             }
             
             html += `
