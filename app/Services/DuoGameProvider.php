@@ -159,7 +159,7 @@ class DuoGameProvider extends GameModeProvider
     {
         $matchId = $this->gameState['match_id'] ?? null;
         $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
-        // Timeout = 0 points (no penalty for not buzzing), wrong answer = -5
+        // Timeout = 0 points (no penalty for not buzzing), wrong answer = -2
         $points = $timedOut ? 0 : $this->calculatePoints($isCorrect, $buzzTime);
         
         if ($matchId) {
