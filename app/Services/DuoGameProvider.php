@@ -155,12 +155,21 @@ class DuoGameProvider extends GameModeProvider
         ];
     }
     
-    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false): array
+    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false, ?int $pointsValue = null): array
     {
         $matchId = $this->gameState['match_id'] ?? null;
-        $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
-        // Timeout = 0 points (no penalty for not buzzing), wrong answer = -2
-        $points = $timedOut ? 0 : $this->calculatePoints($isCorrect, $buzzTime);
+        // Use client-side points_value (2/1/0) if provided, otherwise fallback to buzz_time calculation
+        // New unified scoring: correct = 2/1/0 pts based on answer speed, wrong = -2 pts
+        if ($timedOut) {
+            $points = 0;
+        } elseif ($pointsValue !== null) {
+            // Client sent points_value from the answer timer (2, 1, or 0)
+            $points = $isCorrect ? $pointsValue : -2;
+        } else {
+            // Fallback to legacy buzz_time calculation
+            $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
+            $points = $this->calculatePoints($isCorrect, $buzzTime);
+        }
         
         if ($matchId) {
             $player1Score = $this->gameState['player_score'] ?? 0;

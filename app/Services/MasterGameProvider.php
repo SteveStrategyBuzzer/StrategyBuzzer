@@ -125,13 +125,21 @@ class MasterGameProvider extends GameModeProvider
         ];
     }
     
-    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false): array
+    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false, ?int $pointsValue = null): array
     {
         $roomCode = $this->gameState['room_code'] ?? null;
         $playerId = $this->player->id;
-        $buzzTime = $this->gameState['buzz_times'][$playerId] ?? 5.0;
-        // Timeout = 0 points, MasterGameProvider already returns 0 for incorrect
-        $points = $timedOut ? 0 : $this->calculatePoints($isCorrect, $buzzTime);
+        // Use client-side points_value if provided, otherwise use ranking-based calculation
+        // Master mode: 0 penalty for wrong answers (different from Duo/League)
+        if ($timedOut) {
+            $points = 0;
+        } elseif ($pointsValue !== null) {
+            // Master mode keeps 0 penalty for wrong answers to match existing behavior
+            $points = $isCorrect ? $pointsValue : 0;
+        } else {
+            $buzzTime = $this->gameState['buzz_times'][$playerId] ?? 5.0;
+            $points = $this->calculatePoints($isCorrect, $buzzTime);
+        }
         
         if ($roomCode) {
             $this->firestoreService->recordAnswer($roomCode, $playerId, $answerId, $isCorrect, $points);

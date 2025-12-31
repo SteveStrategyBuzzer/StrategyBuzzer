@@ -696,6 +696,8 @@ class UnifiedGameController extends Controller
             'is_correct' => 'boolean',
             'buzz_time' => 'numeric',
             'timed_out' => 'boolean',
+            'answer_time_remaining' => 'nullable|integer',
+            'points_value' => 'nullable|integer|min:0|max:2',
         ]);
         
         $question = $this->getCurrentQuestion($gameState);
@@ -706,10 +708,13 @@ class UnifiedGameController extends Controller
         
         // Always call provider to maintain state, but pass timeout flag
         // Provider calculates points: timeout = 0 points, wrong answer = -2 points
+        // New: points_value from client-side timer (2/1/0 based on answer speed)
+        $pointsValue = $validated['points_value'] ?? null;
         $result = $provider->submitAnswer(
             $validated['answer_id'],
             $isCorrect,
-            $timedOut
+            $timedOut,
+            $pointsValue
         );
         
         $result['is_correct'] = $isCorrect;

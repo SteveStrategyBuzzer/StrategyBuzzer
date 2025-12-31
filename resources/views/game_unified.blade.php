@@ -2429,7 +2429,13 @@ function showAnswers() {
     if (answersShown) return;
     answersShown = true;
     
-    // Transition to buzz phase
+    // Use GameplayEngine if available (for answer timer and point badges)
+    if (typeof GameplayEngine !== 'undefined' && GameplayEngine.showAnswers) {
+        GameplayEngine.showAnswers();
+        return;
+    }
+    
+    // Fallback for non-GameplayEngine flow
     if (typeof PhaseController !== 'undefined') {
         PhaseController.onBuzz();
     }

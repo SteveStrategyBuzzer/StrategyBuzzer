@@ -153,11 +153,17 @@ class SoloGameProvider extends GameModeProvider
         ];
     }
     
-    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false): array
+    public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false, ?int $pointsValue = null): array
     {
-        $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
-        // Timeout = 0 points (no penalty for not buzzing), wrong answer = -2
-        $points = $timedOut ? 0 : $this->calculatePoints($isCorrect, $buzzTime);
+        // Use client-side points_value (2/1/0) if provided, otherwise fallback to buzz_time calculation
+        if ($timedOut) {
+            $points = 0;
+        } elseif ($pointsValue !== null) {
+            $points = $isCorrect ? $pointsValue : -2;
+        } else {
+            $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
+            $points = $this->calculatePoints($isCorrect, $buzzTime);
+        }
         
         $this->gameState['player_score'] = ($this->gameState['player_score'] ?? 0) + $points;
         
