@@ -17,6 +17,7 @@ use App\Services\LobbyService;
 use App\Services\DuoFirestoreService;
 use App\Services\LeagueIndividualFirestoreService;
 use App\Services\LeagueTeamFirestoreService;
+use App\Jobs\GenerateMultiplayerQuestionsJob;
 use Illuminate\Support\Facades\Log;
 
 class UnifiedGameController extends Controller
@@ -199,8 +200,6 @@ class UnifiedGameController extends Controller
     
     protected function generateAndStoreQuestionsForMatch(array $gameState, $user): void
     {
-        // IMPORTANT: Utiliser lobby_code en priorité pour cohérence avec DuoFirestoreService
-        // qui publie sur games/duo-match-{normalize(lobby_code)}
         $matchId = $gameState['lobby_code'] ?? $gameState['match_id'] ?? null;
         $mode = $gameState['mode'] ?? 'duo';
         
@@ -221,57 +220,74 @@ class UnifiedGameController extends Controller
         $niveau = $gameState['niveau'] ?? 1;
         $language = $user->preferred_language ?? 'fr';
         
-        $questions = [];
         $usedQuestionIds = [];
         $usedAnswers = [];
-        $sessionUsedAnswers = [];
         $sessionUsedQuestionTexts = [];
         
-        for ($i = 1; $i <= $totalQuestions; $i++) {
-            $generatedQuestion = $this->questionService->generateQuestion(
-                $theme,
-                $niveau,
-                $i,
-                $usedQuestionIds,
-                $usedAnswers,
-                $sessionUsedAnswers,
-                $sessionUsedQuestionTexts,
-                null,
-                false,
-                $language
-            );
+        $generatedQuestion = $this->questionService->generateQuestion(
+            $theme,
+            $niveau,
+            1,
+            $usedQuestionIds,
+            $usedAnswers,
+            [],
+            $sessionUsedQuestionTexts,
+            null,
+            false,
+            $language
+        );
+        
+        $firstQuestion = null;
+        if ($generatedQuestion) {
+            $firstQuestion = [
+                'id' => $generatedQuestion['id'] ?? uniqid(),
+                'text' => $generatedQuestion['question_text'] ?? $generatedQuestion['text'] ?? '',
+                'answers' => $generatedQuestion['answers'] ?? [],
+                'correct_index' => $generatedQuestion['correct_id'] ?? $generatedQuestion['correct_index'] ?? 0,
+                'sub_theme' => $generatedQuestion['sub_theme'] ?? '',
+            ];
             
-            if ($generatedQuestion) {
-                $question = [
-                    'id' => $generatedQuestion['id'] ?? uniqid(),
-                    'text' => $generatedQuestion['question_text'] ?? $generatedQuestion['text'] ?? '',
-                    'answers' => $generatedQuestion['answers'] ?? [],
-                    'correct_index' => $generatedQuestion['correct_id'] ?? $generatedQuestion['correct_index'] ?? 0,
-                    'sub_theme' => $generatedQuestion['sub_theme'] ?? '',
-                ];
-                
-                $questions[] = $question;
-                
-                $usedQuestionIds[] = $question['id'];
-                $sessionUsedQuestionTexts[] = $question['text'];
-                foreach ($question['answers'] as $answer) {
-                    $answerText = is_array($answer) ? ($answer['text'] ?? '') : $answer;
-                    if ($answerText) {
-                        $usedAnswers[] = $answerText;
-                        $sessionUsedAnswers[] = $answerText;
-                    }
+            $firestoreService->storePreGeneratedQuestion($matchId, 1, $firstQuestion);
+            
+            $usedQuestionIds[] = $firstQuestion['id'];
+            $sessionUsedQuestionTexts[] = $firstQuestion['text'];
+            foreach ($firstQuestion['answers'] as $answer) {
+                $answerText = is_array($answer) ? ($answer['text'] ?? '') : $answer;
+                if ($answerText) {
+                    $usedAnswers[] = $answerText;
                 }
             }
+            
+            Log::info("[Batching] Generated and stored Question 1 synchronously for {$mode} match {$matchId}");
         }
         
-        if (!empty($questions)) {
-            $firestoreService->storeMatchQuestions($matchId, $questions);
+        if ($totalQuestions > 1) {
+            GenerateMultiplayerQuestionsJob::dispatch(
+                $matchId,
+                $mode,
+                $theme,
+                $niveau,
+                $language,
+                $totalQuestions,
+                2,
+                4,
+                $usedQuestionIds,
+                $usedAnswers
+            );
             
-            session(['match_questions' => $questions]);
+            Log::info("[Batching] Dispatched background job to generate questions 2-{$totalQuestions} for {$mode} match {$matchId}");
+        }
+        
+        if ($firstQuestion) {
+            session(['match_questions' => [$firstQuestion]]);
             session(['match_questions_id' => $matchId]);
             session(['match_questions_mode' => $mode]);
             
-            Log::info("Generated and stored " . count($questions) . " questions for {$mode} match {$matchId}");
+            $firestoreService->updateGameState($matchId, [
+                'questions_generated' => true,
+                'questions_count' => 1,
+                'batchingInProgress' => $totalQuestions > 1,
+            ]);
         }
     }
     
@@ -1173,6 +1189,19 @@ class UnifiedGameController extends Controller
         
         if ($currentMatchId) {
             $firestoreService = $this->getFirestoreServiceForMode($mode);
+            
+            $preGeneratedQuestion = $firestoreService->getPreGeneratedQuestion($currentMatchId, $questionNumber);
+            if ($preGeneratedQuestion) {
+                $matchQuestions = session('match_questions', []);
+                $matchQuestions[$questionNumber - 1] = $preGeneratedQuestion;
+                session(['match_questions' => $matchQuestions]);
+                session(['match_questions_id' => $currentMatchId]);
+                session(['match_questions_mode' => $mode]);
+                
+                Log::info("[Batching] Retrieved pre-generated question {$questionNumber} for {$mode} match {$currentMatchId}");
+                return $preGeneratedQuestion;
+            }
+            
             $firestoreQuestions = $firestoreService->getMatchQuestions($currentMatchId);
             
             if ($firestoreQuestions) {
@@ -1186,6 +1215,8 @@ class UnifiedGameController extends Controller
                     return $firestoreQuestions[$index];
                 }
             }
+            
+            Log::info("[Batching] Pre-generated question {$questionNumber} not yet available for {$mode} match {$currentMatchId}, generating on-demand");
         }
         
         Log::warning("Could not get shared question {$questionNumber} for {$mode} match {$currentMatchId}");

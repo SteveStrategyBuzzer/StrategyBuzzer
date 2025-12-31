@@ -325,4 +325,84 @@ class LeagueTeamFirestoreService
         
         return $result;
     }
+
+    /**
+     * Stocke une question pré-générée individuellement dans Firebase
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     * @param int $questionNumber Le numéro de la question (1-indexed)
+     * @param array $questionData Les données de la question
+     */
+    public function storePreGeneratedQuestion($matchId, int $questionNumber, array $questionData): bool
+    {
+        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $collectionPath = "games/league-team-{$normalizedId}/preGeneratedQuestions";
+        $documentId = (string)$questionNumber;
+        
+        // SECURITY: Sanitize answers - NEVER include is_correct flag to protect answer integrity
+        $sanitizedAnswers = [];
+        foreach ($questionData['answers'] ?? [] as $answer) {
+            if (is_array($answer)) {
+                $sanitizedAnswers[] = [
+                    'text' => $answer['text'] ?? $answer[0] ?? '',
+                ];
+            } else {
+                $sanitizedAnswers[] = [
+                    'text' => (string)$answer,
+                ];
+            }
+        }
+        
+        // SECURITY: NEVER store correct_index in Firebase - clients can read this and cheat
+        // correct_index must only be validated server-side
+        $sanitizedData = [
+            'id' => $questionData['id'] ?? uniqid('q_'),
+            'text' => $questionData['text'] ?? '',
+            'answers' => $sanitizedAnswers,
+            'sub_theme' => $questionData['sub_theme'] ?? '',
+            'question_number' => $questionNumber,
+            'generatedAt' => microtime(true),
+        ];
+        
+        $result = $this->firebase->createDocument($collectionPath, $documentId, $sanitizedData);
+        
+        if ($result) {
+            Log::info("Pre-generated question #{$questionNumber} stored for League Team match #{$matchId} (correct_index stripped for security)");
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Récupère une question pré-générée depuis Firebase
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     * @param int $questionNumber Le numéro de la question (1-indexed)
+     * @return array|null Les données de la question ou null si non disponible
+     */
+    public function getPreGeneratedQuestion($matchId, int $questionNumber): ?array
+    {
+        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $collectionPath = "games/league-team-{$normalizedId}/preGeneratedQuestions";
+        
+        $questions = $this->firebase->getCollection($collectionPath);
+        
+        $documentId = (string)$questionNumber;
+        if (isset($questions[$documentId])) {
+            return $questions[$documentId];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Récupère toutes les questions pré-générées disponibles
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     * @return array Tableau associatif [questionNumber => questionData]
+     */
+    public function getAllPreGeneratedQuestions($matchId): array
+    {
+        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $collectionPath = "games/league-team-{$normalizedId}/preGeneratedQuestions";
+        
+        return $this->firebase->getCollection($collectionPath);
+    }
 }

@@ -478,4 +478,92 @@ class DuoFirestoreService
             'readyTime' => microtime(true),
         ]);
     }
+
+    /**
+     * Stocke une question pré-générée individuellement dans Firebase
+     * Utilisé par le job de génération en arrière-plan pour le batching
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     * @param int $questionNumber Le numéro de la question (1-indexed)
+     * @param array $questionData Les données de la question (sans correct_index pour la sécurité côté client)
+     */
+    public function storePreGeneratedQuestion($matchId, int $questionNumber, array $questionData): bool
+    {
+        $normalizedId = self::normalizeMatchId($matchId);
+        $collectionPath = "games/duo-match-{$normalizedId}/preGeneratedQuestions";
+        $documentId = (string)$questionNumber;
+        
+        // SECURITY: Sanitize answers - NEVER include is_correct flag to protect answer integrity
+        $sanitizedAnswers = [];
+        foreach ($questionData['answers'] ?? [] as $answer) {
+            if (is_array($answer)) {
+                $sanitizedAnswers[] = [
+                    'text' => $answer['text'] ?? $answer[0] ?? '',
+                ];
+            } else {
+                $sanitizedAnswers[] = [
+                    'text' => (string)$answer,
+                ];
+            }
+        }
+        
+        // SECURITY: NEVER store correct_index in Firebase - clients can read this and cheat
+        // correct_index must only be validated server-side
+        $sanitizedData = [
+            'id' => $questionData['id'] ?? uniqid('q_'),
+            'text' => $questionData['text'] ?? '',
+            'answers' => $sanitizedAnswers,
+            'sub_theme' => $questionData['sub_theme'] ?? '',
+            'question_number' => $questionNumber,
+            'generatedAt' => microtime(true),
+        ];
+        
+        $result = $this->firebase->createDocument($collectionPath, $documentId, $sanitizedData);
+        
+        if ($result) {
+            Log::info("Pre-generated question #{$questionNumber} stored for Duo match #{$matchId} (correct_index stripped for security)");
+        } else {
+            Log::error("Failed to store pre-generated question #{$questionNumber} for Duo match #{$matchId}");
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Récupère une question pré-générée depuis Firebase
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     * @param int $questionNumber Le numéro de la question (1-indexed)
+     * @return array|null Les données de la question ou null si non disponible
+     */
+    public function getPreGeneratedQuestion($matchId, int $questionNumber): ?array
+    {
+        $normalizedId = self::normalizeMatchId($matchId);
+        $collectionPath = "games/duo-match-{$normalizedId}/preGeneratedQuestions";
+        
+        $questions = $this->firebase->getCollection($collectionPath);
+        
+        $documentId = (string)$questionNumber;
+        if (isset($questions[$documentId])) {
+            Log::info("Retrieved pre-generated question #{$questionNumber} for Duo match #{$matchId}");
+            return $questions[$documentId];
+        }
+        
+        Log::debug("Pre-generated question #{$questionNumber} not found for Duo match #{$matchId}");
+        return null;
+    }
+
+    /**
+     * Récupère toutes les questions pré-générées disponibles
+     * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
+     * @return array Tableau associatif [questionNumber => questionData]
+     */
+    public function getAllPreGeneratedQuestions($matchId): array
+    {
+        $normalizedId = self::normalizeMatchId($matchId);
+        $collectionPath = "games/duo-match-{$normalizedId}/preGeneratedQuestions";
+        
+        $questions = $this->firebase->getCollection($collectionPath);
+        
+        Log::info("Retrieved " . count($questions) . " pre-generated questions for Duo match #{$matchId}");
+        return $questions;
+    }
 }
