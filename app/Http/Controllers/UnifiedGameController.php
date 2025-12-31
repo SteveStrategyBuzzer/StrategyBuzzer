@@ -249,6 +249,21 @@ class UnifiedGameController extends Controller
             
             $firestoreService->storePreGeneratedQuestion($matchId, 1, $firstQuestion);
             
+            // Publish Question 1 so clients receive it immediately via listenForQuestions()
+            // Note: publishQuestion() handles sanitization internally (removes correct_index, sanitizes answers)
+            $questionForPublish = [
+                'id' => $firstQuestion['id'],
+                'text' => $firstQuestion['text'],
+                'answers' => $firstQuestion['answers'], // Pass original answers - publishQuestion() sanitizes
+                'sub_theme' => $firstQuestion['sub_theme'],
+                'question_number' => 1,
+                'total_questions' => $totalQuestions,
+                'theme' => $theme,
+            ];
+            $firestoreService->publishQuestion($matchId, $questionForPublish, 1);
+            
+            Log::info("[Batching] Published Question 1 to main document for {$mode} match {$matchId}");
+            
             $usedQuestionIds[] = $firstQuestion['id'];
             $sessionUsedQuestionTexts[] = $firstQuestion['text'];
             foreach ($firstQuestion['answers'] as $answer) {

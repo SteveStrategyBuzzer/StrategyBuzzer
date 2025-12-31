@@ -553,6 +553,11 @@ class LobbyService
                 return ['success' => false, 'error' => __('Tous les joueurs ne sont pas prêts')];
             }
             
+            $presenceCheck = $this->verifyPlayersPresence($code, $lobby);
+            if (!$presenceCheck['success']) {
+                return $presenceCheck;
+            }
+            
             $betAmount = $lobby['settings']['bet_amount'] ?? 0;
             $playerBets = [];
             
@@ -852,6 +857,82 @@ class LobbyService
         }
         
         return true;
+    }
+    
+    public function verifyPlayersPresence(string $code, array $lobby): array
+    {
+        $mode = $lobby['mode'] ?? 'duo';
+        
+        if (!in_array($mode, ['duo', 'league_individual', 'league_team'])) {
+            return ['success' => true];
+        }
+        
+        $minPlayers = $lobby['settings']['min_players'] ?? 2;
+        $playerIds = array_keys($lobby['players']);
+        
+        try {
+            $firestore = $this->getDuoFirestoreService();
+            $firebase = \App\Services\FirebaseService::getInstance();
+            
+            $presencePath = "lobbies/{$code}/presence";
+            $presenceData = $firebase->getCollection($presencePath);
+            
+            if (empty($presenceData)) {
+                Log::warning("No presence data found for lobby {$code}");
+                return [
+                    'success' => false,
+                    'error' => __('Impossible de vérifier la présence des joueurs. Veuillez réessayer.')
+                ];
+            }
+            
+            $onlineThreshold = 60;
+            $now = microtime(true);
+            $connectedPlayers = [];
+            
+            foreach ($presenceData as $playerId => $data) {
+                $lastSeen = $data['lastSeen'] ?? null;
+                $online = $data['online'] ?? false;
+                
+                if ($lastSeen && is_array($lastSeen) && isset($lastSeen['_seconds'])) {
+                    $lastSeenTime = (float)$lastSeen['_seconds'];
+                } elseif (is_numeric($lastSeen)) {
+                    $lastSeenTime = (float)$lastSeen;
+                } else {
+                    continue;
+                }
+                
+                $timeSinceLastSeen = $now - $lastSeenTime;
+                
+                if ($online && $timeSinceLastSeen < $onlineThreshold) {
+                    $connectedPlayers[] = (int)$playerId;
+                }
+            }
+            
+            if (count($connectedPlayers) < $minPlayers) {
+                $missingPlayers = [];
+                foreach ($playerIds as $playerId) {
+                    if (!in_array((int)$playerId, $connectedPlayers)) {
+                        $playerName = $lobby['players'][$playerId]['name'] ?? 'Joueur';
+                        $missingPlayers[] = $playerName;
+                    }
+                }
+                
+                $missingList = implode(', ', $missingPlayers);
+                Log::info("Players not present for lobby {$code}: {$missingList}");
+                
+                return [
+                    'success' => false,
+                    'error' => __('Un ou plusieurs joueurs ne sont plus connectés. Veuillez vérifier que tous les joueurs sont présents.')
+                ];
+            }
+            
+            Log::info("All players verified as present for lobby {$code}: " . count($connectedPlayers) . " connected");
+            return ['success' => true];
+            
+        } catch (\Exception $e) {
+            Log::error("Error verifying player presence for lobby {$code}: " . $e->getMessage());
+            return ['success' => true];
+        }
     }
     
     protected function canStartGame(array $lobby): bool
