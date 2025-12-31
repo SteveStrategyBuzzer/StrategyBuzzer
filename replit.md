@@ -59,6 +59,19 @@ A unified client-side module manages all game modes (Solo, Duo, League, Master),
 -   **SubthemeRotationSystem:** Implements deterministic sub-theme rotation across 8 main themes and 120 sub-themes.
 -   **Progressive Block Generation:** Questions are pre-generated in blocks during gameplay to eliminate wait times.
 
+**Multiplayer Question Batching (Dec 2025):**
+-   **GenerateMultiplayerQuestionsJob:** Generates questions in blocks of 4 for Duo/League modes, storing them in Firebase for instant delivery.
+-   **Flow:** Question 1 generated synchronously → Background job generates Q2-5 → Chain continues until all questions ready (Manche 1 + 2 + 3 + Manche Ultime).
+-   **Pre-Generated Storage:** Questions stored in Firebase subcollection `preGeneratedQuestions/{questionNumber}` (without `correct_index` for security).
+-   **Retrieval:** `getPreGeneratedQuestion()` checks Firebase first; falls back to on-demand generation if not ready.
+
+**Multiplayer Lobby Synchronization (Dec 2025):**
+-   **Automatic Presence:** Players auto-register in Firebase session on lobby arrival via `LobbyPresenceManager`.
+-   **"Synchronisé" Indicator:** Shows green only when BOTH players are detected in the same Firebase session.
+-   **GO Button Blocking:** Host cannot start game until Firebase confirms both players are connected.
+-   **Question 1 Direct Entry:** In multiplayer, players enter directly into Question 1 after lobby countdown (no intro overlay).
+-   **Questions 2+:** Show "Question X/10 + THÈME" indicator for 3 seconds before each question.
+
 **Firestore Structure & Authentication:**
 All game modes use a unified `/gameSessions/{sessionId}` Firestore collection. Firebase Firestore security rules validate against `request.auth.uid` (Firebase anonymous UID) for all operations, with Laravel user IDs stored separately for display.
 
