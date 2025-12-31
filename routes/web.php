@@ -105,6 +105,12 @@ Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::cl
 /* ===== Menu / Auth ===== */
 Route::view('/menu', 'menu')->name('menu');
 Route::get('/api/notifications', [MenuController::class, 'notifications'])->name('api.notifications')->middleware('auth');
+Route::get('/api/now', function () {
+    return response()->json([
+        'serverTime' => (int)(microtime(true) * 1000),
+        'timestamp' => time()
+    ]);
+})->name('api.now');
 Route::get('/home', fn() => redirect('/menu'))->name('home');
 Route::view('/login', 'login')->name('login');
 Route::get('/connexion', fn() => redirect('/login'))->name('connexion');

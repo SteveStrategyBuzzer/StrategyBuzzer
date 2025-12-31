@@ -691,6 +691,69 @@ foreach ($colors as $color) {
     .custom-modal-btn.cancel:hover {
         background: rgba(255, 255, 255, 0.2);
     }
+    
+    .countdown-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease;
+    }
+    
+    .countdown-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .countdown-number {
+        font-size: 8rem;
+        font-weight: 900;
+        color: #fff;
+        text-shadow: 0 0 50px rgba(102, 126, 234, 0.8), 0 0 100px rgba(102, 126, 234, 0.5);
+        animation: countdownPulse 1s ease-in-out infinite;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .countdown-number.go {
+        color: #4CAF50;
+        text-shadow: 0 0 50px rgba(76, 175, 80, 0.8), 0 0 100px rgba(76, 175, 80, 0.5);
+        animation: goZoom 0.5s ease-out;
+    }
+    
+    .countdown-label {
+        font-size: 1.5rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 30px;
+        text-transform: uppercase;
+        letter-spacing: 4px;
+    }
+    
+    .countdown-precision {
+        font-size: 1.2rem;
+        color: rgba(255, 255, 255, 0.4);
+        margin-top: 20px;
+        font-family: monospace;
+    }
+    
+    @keyframes countdownPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    @keyframes goZoom {
+        0% { transform: scale(0.5); opacity: 0; }
+        50% { transform: scale(1.3); }
+        100% { transform: scale(1); opacity: 1; }
+    }
 </style>
 
 <div class="lobby-container">
@@ -1102,6 +1165,7 @@ foreach ($colors as $color) {
         </button>
         
         @if($isHost)
+            @if($mode !== 'duo')
             <button class="btn btn-start" 
                     onclick="startGame()"
                     id="start-btn"
@@ -1109,6 +1173,7 @@ foreach ($colors as $color) {
                     disabled>
                 {{ __('Lancer la partie') }}
             </button>
+            @endif
             
             <div class="waiting-message" id="waiting-message-container">
                 @if(count($players) < $minPlayers)
@@ -1116,6 +1181,10 @@ foreach ($colors as $color) {
                 @else
                     {{ __('En attente que tous soient prêts') }}<span class="waiting-dots"></span>
                 @endif
+            </div>
+        @else
+            <div class="waiting-message" id="waiting-message-container">
+                {{ __('En attente que tous soient prêts') }}<span class="waiting-dots"></span>
             </div>
         @endif
         
@@ -1126,6 +1195,13 @@ foreach ($colors as $color) {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Countdown Overlay for Duo Auto-Start -->
+<div class="countdown-overlay" id="countdown-overlay">
+    <div class="countdown-label" id="countdown-label"></div>
+    <div class="countdown-number" id="countdown-number">3</div>
+    <div class="countdown-precision" id="countdown-precision"></div>
+</div>
 
 <!-- Modal de confirmation personnalisée -->
 <div class="custom-modal-overlay" id="confirmModal">
@@ -2867,21 +2943,24 @@ foreach ($colors as $color) {
     }
     
     const translations = {
-        you: '{{ __("vous") }}',
-        waitingPlayer: '{{ __("En attente d\'un joueur...") }}',
-        chat: '{{ __("Chat") }}',
-        micro: '{{ __("Micro") }}',
-        yourMic: '{{ __("Votre micro") }}',
-        opponentMic: '{{ __("Micro de l\'adversaire") }}',
-        players: '{{ __("Joueurs") }}',
-        lobbyClosed: '{{ __("Le salon a été fermé") }}',
-        waitingMessage: '{{ __("En attente de joueurs") }}',
-        waitingReady: '{{ __("En attente que tous soient prêts") }}',
-        waitingConnection: '{{ __("En attente de connexion") }}',
-        waitingOtherPlayer: '{{ __("En attente de l\'autre joueur...") }}',
-        synchronized: '{{ __("Synchronisé") }}',
-        minimum: '{{ __("minimum") }}',
-        audioNotAvailable: '{{ __("Audio non disponible") }}'
+        you: @json(__("vous")),
+        waitingPlayer: @json(__("En attente d'un joueur...")),
+        chat: @json(__("Chat")),
+        micro: @json(__("Micro")),
+        yourMic: @json(__("Votre micro")),
+        opponentMic: @json(__("Micro de l'adversaire")),
+        players: @json(__("Joueurs")),
+        lobbyClosed: @json(__("Le salon a été fermé")),
+        waitingMessage: @json(__("En attente de joueurs")),
+        waitingReady: @json(__("En attente que tous soient prêts")),
+        waitingConnection: @json(__("En attente de connexion")),
+        waitingOtherPlayer: @json(__("En attente de l'autre joueur...")),
+        synchronized: @json(__("Synchronisé")),
+        minimum: @json(__("minimum")),
+        audioNotAvailable: @json(__("Audio non disponible")),
+        waitingFor: @json(__("En attente de:")),
+        gameStarting: @json(__("La partie commence dans")),
+        go: @json(__("GO!"))
     };
     
     let lastPlayersHash = '';
@@ -3171,7 +3250,7 @@ foreach ($colors as $color) {
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
@@ -4158,6 +4237,243 @@ const currentPlayerData = @json($players[$currentPlayerId] ?? ['name' => 'Joueur
 const minPlayersFirebase = {{ $minPlayers }};
 const firebaseMatchId = {{ $matchId ?? 'null' }};
 
+window.countdownInitiated = false;
+window.countdownUnsubscriber = null;
+window.countdownAnimationFrame = null;
+window.serverTimeOffset = 0; // Server time - Client time (ms)
+window.offsetMeasured = false;
+
+// Measure clock offset between client and server using /api/now endpoint
+async function measureServerOffset() {
+    const samples = [];
+    const numSamples = 3;
+    
+    for (let i = 0; i < numSamples; i++) {
+        try {
+            const t0 = Date.now();
+            const response = await fetch('/api/now');
+            const t3 = Date.now();
+            const data = await response.json();
+            
+            // NTP-style calculation: offset = serverTime - ((t0 + t3) / 2)
+            const rtt = t3 - t0;
+            const clientMidpoint = (t0 + t3) / 2;
+            const offset = data.serverTime - clientMidpoint;
+            
+            samples.push({ offset, rtt });
+        } catch (e) {
+            console.warn('[ClockSync] Sample failed:', e);
+        }
+    }
+    
+    if (samples.length === 0) {
+        console.warn('[ClockSync] No valid samples, using offset 0');
+        return 0;
+    }
+    
+    // Use the sample with minimum RTT (most accurate)
+    samples.sort((a, b) => a.rtt - b.rtt);
+    const bestSample = samples[0];
+    
+    console.log('[ClockSync] Offset measured:', bestSample.offset, 'ms (RTT:', bestSample.rtt, 'ms)');
+    return bestSample.offset;
+}
+
+// Get synchronized server time
+function getServerTime() {
+    return Date.now() + window.serverTimeOffset;
+}
+
+async function startDuoCountdown(presencePlayers) {
+    if (!db) {
+        console.error('[Countdown] Firebase not initialized');
+        return;
+    }
+    
+    // Measure clock offset before starting countdown (if not already done)
+    if (!window.offsetMeasured) {
+        window.serverTimeOffset = await measureServerOffset();
+        window.offsetMeasured = true;
+    }
+    
+    const countdownDocRef = doc(db, 'lobbies', lobbyCode, 'countdown', 'current');
+    
+    try {
+        const existingDoc = await getDoc(countdownDocRef);
+        
+        if (!existingDoc.exists()) {
+            console.log('[Countdown] Creating countdown document...');
+            await setDoc(countdownDocRef, {
+                startAt: serverTimestamp(),
+                durationMs: 3000,
+                initiatedBy: currentPlayerId
+            });
+            console.log('[Countdown] Countdown document created');
+        } else {
+            console.log('[Countdown] Countdown already exists, waiting for it...');
+        }
+        
+        listenToCountdown(countdownDocRef);
+        
+    } catch (error) {
+        console.error('[Countdown] Error creating countdown:', error);
+        window.countdownInitiated = false;
+    }
+}
+
+function listenToCountdown(countdownDocRef) {
+    if (window.countdownUnsubscriber) return;
+    
+    window.countdownUnsubscriber = onSnapshot(countdownDocRef, async (docSnap) => {
+        if (!docSnap.exists()) return;
+        
+        const data = docSnap.data();
+        if (!data.startAt) return;
+        
+        // Both clients receive the same serverTimestamp from Firebase
+        // This is the authoritative time reference
+        const serverStartTime = data.startAt.toMillis ? data.startAt.toMillis() : Date.now();
+        const durationMs = data.durationMs || 3000;
+        
+        // Calculate end time based on server start time
+        const serverEndTime = serverStartTime + durationMs;
+        
+        // Calculate how much time has already passed since countdown started
+        // Use synchronized server time for accurate calculation
+        const syncedNow = getServerTime();
+        const elapsedSinceStart = syncedNow - serverStartTime;
+        const remainingAtStart = durationMs - elapsedSinceStart;
+        
+        console.log('[Countdown] Starting visual countdown', { 
+            serverStartTime,
+            syncedNow,
+            elapsedSinceStart,
+            remainingAtStart,
+            durationMs,
+            serverTimeOffset: window.serverTimeOffset
+        });
+        
+        // If countdown already finished (late joiner), clean up and start game immediately
+        if (remainingAtStart <= 0) {
+            console.log('[Countdown] Already finished, starting game immediately');
+            
+            // Clean up countdown document
+            try {
+                await deleteDoc(countdownDocRef);
+                console.log('[Countdown] Stale countdown document deleted');
+            } catch (err) {
+                console.error('[Countdown] Failed to delete stale countdown:', err);
+            }
+            
+            if (window.countdownUnsubscriber) {
+                window.countdownUnsubscriber();
+                window.countdownUnsubscriber = null;
+            }
+            window.countdownInitiated = false;
+            
+            submitGameStart(mode, @json($settings ?? []));
+            return;
+        }
+        
+        showCountdownOverlay();
+        // Pass server times so all clients use the same reference point
+        runCountdownAnimation(serverEndTime, durationMs, countdownDocRef, serverStartTime);
+        
+    }, (error) => {
+        console.error('[Countdown] Listener error:', error);
+    });
+}
+
+function showCountdownOverlay() {
+    const overlay = document.getElementById('countdown-overlay');
+    const label = document.getElementById('countdown-label');
+    if (overlay) {
+        overlay.classList.add('show');
+    }
+    if (label) {
+        label.textContent = translations.gameStarting;
+    }
+}
+
+function hideCountdownOverlay() {
+    const overlay = document.getElementById('countdown-overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+    }
+}
+
+function runCountdownAnimation(serverEndTime, totalDuration, countdownDocRef, serverStartTime) {
+    const numberEl = document.getElementById('countdown-number');
+    const precisionEl = document.getElementById('countdown-precision');
+    const label = document.getElementById('countdown-label');
+    let gameNavigated = false;
+    
+    function updateCountdown() {
+        // Calculate remaining time using synchronized server time
+        // getServerTime() = Date.now() + serverTimeOffset (measured via /api/now)
+        // This ensures both clients compute the same remaining time
+        const syncedNow = getServerTime();
+        const remaining = serverEndTime - syncedNow;
+        
+        if (remaining <= 0) {
+            if (!gameNavigated) {
+                gameNavigated = true;
+                
+                if (numberEl) {
+                    numberEl.textContent = translations.go;
+                    numberEl.classList.add('go');
+                }
+                if (precisionEl) {
+                    precisionEl.textContent = '';
+                }
+                
+                setTimeout(async () => {
+                    console.log('[Countdown] Countdown finished! Starting game...');
+                    
+                    // Clean up countdown document to allow future countdowns
+                    if (countdownDocRef) {
+                        try {
+                            await deleteDoc(countdownDocRef);
+                            console.log('[Countdown] Countdown document deleted');
+                        } catch (err) {
+                            console.error('[Countdown] Failed to delete countdown doc:', err);
+                        }
+                    }
+                    
+                    if (window.countdownUnsubscriber) {
+                        window.countdownUnsubscriber();
+                        window.countdownUnsubscriber = null;
+                    }
+                    if (pollingInterval) clearInterval(pollingInterval);
+                    if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
+                    if (window.webrtcManager) window.webrtcManager.cleanup();
+                    
+                    window.countdownInitiated = false; // Reset for future lobbies
+                    
+                    const settings = @json($settings ?? []);
+                    submitGameStart(mode, settings);
+                }, 500);
+            }
+            return;
+        }
+        
+        const seconds = Math.ceil(remaining / 1000);
+        
+        if (numberEl) {
+            numberEl.textContent = seconds.toString();
+            numberEl.classList.remove('go');
+        }
+        if (precisionEl) {
+            // Show centiseconds precision (10ms = 0.01s)
+            precisionEl.textContent = `${(remaining / 1000).toFixed(2)}s`;
+        }
+        
+        window.countdownAnimationFrame = requestAnimationFrame(updateCountdown);
+    }
+    
+    window.countdownAnimationFrame = requestAnimationFrame(updateCountdown);
+}
+
 initFirebase().then(async (authenticated) => {
     if (!authenticated) {
         console.error('[Firebase] Authentication failed - real-time features disabled');
@@ -4207,17 +4523,33 @@ initFirebase().then(async (authenticated) => {
             readyCountEl.textContent = `${readyCount}/${displayDenominator}`;
         }
         
-        // Update sync status indicator - RED when < 2 players, GREEN when >= 2
+        // Find players who are connected but not ready
+        const notReadyPlayers = Object.values(presencePlayers).filter(p => !p.ready);
+        
+        // Update sync status indicator - Show specific player names when waiting
         const syncStatus = document.getElementById('sync-status');
         const syncStatusText = document.getElementById('sync-status-text');
         if (syncStatus && syncStatusText) {
-            if (playerCount >= 2) {
+            if (allReady && allConnected) {
                 syncStatus.style.display = 'block';
                 syncStatus.style.background = 'rgba(76, 175, 80, 0.2)';
                 syncStatus.style.border = '1px solid rgba(76, 175, 80, 0.5)';
                 syncStatus.style.color = '#4CAF50';
                 syncStatusText.textContent = '✓ ' + translations.synchronized;
+            } else if (playerCount >= minPlayersFirebase) {
+                // Have enough players, but not all ready - show who we're waiting for
+                syncStatus.style.display = 'block';
+                syncStatus.style.background = 'rgba(255, 193, 7, 0.2)';
+                syncStatus.style.border = '1px solid rgba(255, 193, 7, 0.5)';
+                syncStatus.style.color = '#FFC107';
+                if (notReadyPlayers.length > 0) {
+                    const waitingNames = notReadyPlayers.map(p => `${p.name} (${p.player_code || 'SB-????'})`).join(', ');
+                    syncStatusText.textContent = translations.waitingFor + ' ' + waitingNames;
+                } else {
+                    syncStatusText.textContent = translations.waitingReady;
+                }
             } else {
+                // Not enough players
                 syncStatus.style.display = 'block';
                 syncStatus.style.background = 'rgba(244, 67, 54, 0.2)';
                 syncStatus.style.border = '1px solid rgba(244, 67, 54, 0.5)';
@@ -4252,14 +4584,28 @@ initFirebase().then(async (authenticated) => {
             }
         }
         
-        // Update waiting message
+        // Update waiting message with specific player names
         const waitingMessage = document.getElementById('waiting-message-container');
         if (waitingMessage) {
             if (allReady && allConnected) {
                 waitingMessage.style.display = 'none';
             } else {
                 waitingMessage.style.display = 'block';
+                // Update the waiting message content to show specific names
+                if (playerCount >= minPlayersFirebase && notReadyPlayers.length > 0) {
+                    const waitingNames = notReadyPlayers.map(p => `${p.name} (${p.player_code || 'SB-????'})`).join(', ');
+                    waitingMessage.innerHTML = `${translations.waitingFor} ${waitingNames}<span class="waiting-dots"></span>`;
+                } else if (playerCount < minPlayersFirebase) {
+                    waitingMessage.innerHTML = `${translations.waitingMessage} (${playerCount}/${minPlayersFirebase} ${translations.minimum})<span class="waiting-dots"></span>`;
+                }
             }
+        }
+        
+        // For Duo mode: Auto-start countdown when all ready
+        if (mode === 'duo' && allReady && allConnected && !window.countdownInitiated) {
+            window.countdownInitiated = true;
+            console.log('[Countdown] All players ready! Starting countdown...');
+            startDuoCountdown(presencePlayers);
         }
         
         window.dispatchEvent(new CustomEvent('lobbyPlayersUpdated', { detail: { players: presencePlayers, allReady, allConnected } }));

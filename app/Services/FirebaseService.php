@@ -476,23 +476,30 @@ class FirebaseService
     public function getCollection(string $collectionPath): array
     {
         if (!$this->initialized) {
+            Log::warning("[FirebaseService] getCollection - Not initialized");
             return [];
         }
 
         try {
             $fullPath = "projects/{$this->projectId}/databases/(default)/documents/{$collectionPath}";
+            Log::info("[FirebaseService] getCollection - Requesting: {$fullPath}");
+            
             $response = $this->makeRequestWithRetry('GET', $fullPath);
+            
+            Log::info("[FirebaseService] getCollection - Response keys: " . json_encode(array_keys($response ?? [])));
 
             $documents = [];
             if (isset($response['documents'])) {
+                Log::info("[FirebaseService] getCollection - Found " . count($response['documents']) . " documents");
                 foreach ($response['documents'] as $doc) {
                     if (isset($doc['fields']) && isset($doc['name'])) {
-                        // Extraire l'ID du document depuis le chemin complet
                         $nameParts = explode('/', $doc['name']);
                         $documentId = end($nameParts);
                         $documents[$documentId] = $this->convertFromFirestoreFormat($doc);
                     }
                 }
+            } else {
+                Log::info("[FirebaseService] getCollection - No 'documents' key in response");
             }
 
             return $documents;

@@ -890,8 +890,8 @@ class LobbyService
                         usleep($retryDelay);
                         continue;
                     }
-                    // Empty presence data after all retries - players may not have synced yet
-                    Log::warning("[VerifyPresence] All retries exhausted with empty data for lobby {$code}");
+                    // Empty Firebase presence after all retries - cannot verify players
+                    Log::warning("[VerifyPresence] All retries exhausted with empty Firebase data for lobby {$code}");
                     return [
                         'success' => false,
                         'error' => __('Impossible de vérifier la présence des joueurs. Veuillez réessayer.')
@@ -908,19 +908,27 @@ class LobbyService
                     $lastSeenTime = null;
                     
                     // Handle different timestamp formats from Firebase
-                    if ($lastSeen && is_array($lastSeen) && isset($lastSeen['_seconds'])) {
+                    // FirebaseService::extractValue() returns timestamps as float (Unix seconds with microseconds)
+                    if (is_float($lastSeen) || is_int($lastSeen)) {
+                        // Float/int timestamp in seconds (from FirebaseService)
+                        $lastSeenTime = (int)$lastSeen;
+                    } elseif (is_numeric($lastSeen)) {
+                        // Numeric string - could be seconds or milliseconds
+                        $numericVal = (float)$lastSeen;
+                        $lastSeenTime = $numericVal > 9999999999 ? (int)($numericVal / 1000) : (int)$numericVal;
+                    } elseif ($lastSeen && is_array($lastSeen) && isset($lastSeen['_seconds'])) {
                         $lastSeenTime = (int)$lastSeen['_seconds'];
                     } elseif ($lastSeen && is_array($lastSeen) && isset($lastSeen['seconds'])) {
                         $lastSeenTime = (int)$lastSeen['seconds'];
-                    } elseif (is_numeric($lastSeen)) {
-                        // Could be seconds or milliseconds
-                        $lastSeenTime = $lastSeen > 9999999999 ? (int)($lastSeen / 1000) : (int)$lastSeen;
                     }
+                    
+                    Log::debug("[VerifyPresence] Player {$playerId}: online={$online}, lastSeenTime={$lastSeenTime}, rawLastSeen=" . json_encode($lastSeen));
                     
                     if ($lastSeenTime === null) {
                         // If online flag is true and we can't parse timestamp, assume they're connected
                         if ($online) {
                             $connectedPlayers[] = (int)$playerId;
+                            Log::debug("[VerifyPresence] Player {$playerId} added (online flag, no timestamp)");
                         }
                         continue;
                     }
@@ -929,6 +937,9 @@ class LobbyService
                     
                     if ($online && $timeSinceLastSeen < $onlineThreshold) {
                         $connectedPlayers[] = (int)$playerId;
+                        Log::debug("[VerifyPresence] Player {$playerId} added (online + recent: {$timeSinceLastSeen}s ago)");
+                    } else {
+                        Log::debug("[VerifyPresence] Player {$playerId} NOT added: online={$online}, timeSince={$timeSinceLastSeen}s");
                     }
                 }
                 
