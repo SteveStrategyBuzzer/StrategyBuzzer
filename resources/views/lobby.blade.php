@@ -1163,8 +1163,7 @@ foreach ($colors as $color) {
             <span id="ready-text">{{ ($players[$currentPlayerId]['ready'] ?? false) ? __('Annuler') : __('Je Suis Prêt!') }}</span> <span id="ready-count">0/{{ $minPlayers }}</span>
         </button>
         
-        @if($isHost)
-            @if($mode !== 'duo')
+        @if($isHost && $mode !== 'duo')
             <button class="btn btn-start" 
                     onclick="startGame()"
                     id="start-btn"
@@ -1172,20 +1171,10 @@ foreach ($colors as $color) {
                     disabled>
                 {{ __('Lancer la partie') }}
             </button>
-            @endif
-            
-            <div class="waiting-message" id="waiting-message-container">
-                @if(count($players) < $minPlayers)
-                    {{ __('En attente de joueurs') }} ({{ count($players) }}/{{ $minPlayers }} {{ __('minimum') }})<span class="waiting-dots"></span>
-                @else
-                    {{ __('En attente que tous soient prêts') }}<span class="waiting-dots"></span>
-                @endif
-            </div>
-        @else
-            <div class="waiting-message" id="waiting-message-container">
-                {{ __('En attente que tous soient prêts') }}<span class="waiting-dots"></span>
-            </div>
         @endif
+        
+        <!-- Hidden container for JS compatibility -->
+        <div class="waiting-message" id="waiting-message-container" style="display: none;"></div>
         
         <button class="btn btn-leave" onclick="leaveLobby()">
             {{ __('Quitter le salon') }}
