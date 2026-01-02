@@ -412,8 +412,11 @@ function createGroup() {
     });
 }
 
-function deleteGroup(groupId) {
-    if (!confirm('{{ __('Supprimer ce groupe ?') }}')) return;
+async function deleteGroup(groupId) {
+    if (window.customDialog) {
+        const confirmed = await window.customDialog.confirm('{{ __('Supprimer ce groupe ?') }}', { danger: true });
+        if (!confirmed) return;
+    }
     
     fetch(`/api/contacts/groups/${groupId}`, {
         method: 'DELETE',

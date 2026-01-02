@@ -1099,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error('Buzz error:', error);
-                alert('{{ __("Erreur lors du buzz. Veuillez réessayer.") }}');
+                if (window.customDialog) window.customDialog.alert('{{ __("Erreur lors du buzz. Veuillez réessayer.") }}');
                 buzzed = false;
                 buzzButton.disabled = false;
                 const buzzContainer = document.getElementById('buzzContainer');

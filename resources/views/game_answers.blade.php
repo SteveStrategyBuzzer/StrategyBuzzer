@@ -706,7 +706,9 @@ document.querySelectorAll('.skill-circle.clickable').forEach(skillEl => {
         const isAuto = this.dataset.skillAuto === 'true';
         
         if (isUsed || isAuto) {
-            alert(isUsed ? 'Ce skill a déjà été utilisé !' : 'Ce skill est automatique et s\'active tout seul.');
+            if (window.customDialog) {
+                window.customDialog.alert(isUsed ? '{{ __("Ce skill a déjà été utilisé !") }}' : '{{ __("Ce skill est automatique et s\'active tout seul.") }}');
+            }
             return;
         }
         
@@ -757,10 +759,10 @@ async function activateAnswerSkill(skillId, skillTrigger, skillElement) {
             
             showSkillActivationFeedback(skillName, skillInfo.description || 'Skill activé !');
         } else if (data.error) {
-            alert(data.error);
+            if (window.customDialog) window.customDialog.alert(data.error);
             skillElement.style.pointerEvents = 'auto';
         } else {
-            alert('Impossible d\'activer ce skill.');
+            if (window.customDialog) window.customDialog.alert('{{ __("Impossible d\'activer ce skill.") }}');
             skillElement.style.pointerEvents = 'auto';
         }
     } catch (error) {

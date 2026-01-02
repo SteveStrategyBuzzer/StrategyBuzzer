@@ -14,13 +14,31 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('account.delete.perform') }}">
+    <form method="POST" action="{{ route('account.delete.perform') }}" id="deleteAccountForm">
         @csrf
-        <button type="submit"
+        <button type="button"
                 class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                onclick="return confirm('Confirmer la suppression définitive de votre compte ?');">
-            Supprimer mon compte
+                id="deleteAccountBtn">
+            {{ __('Supprimer mon compte') }}
         </button>
     </form>
+    
+    <script>
+    document.getElementById('deleteAccountBtn').addEventListener('click', async function() {
+        if (window.customDialog) {
+            const confirmed = await window.customDialog.confirm('{{ __("Confirmer la suppression définitive de votre compte ?") }}', { 
+                title: '⚠️ {{ __("Attention") }}',
+                danger: true 
+            });
+            if (confirmed) {
+                document.getElementById('deleteAccountForm').submit();
+            }
+        } else {
+            if (confirm('{{ __("Confirmer la suppression définitive de votre compte ?") }}')) {
+                document.getElementById('deleteAccountForm').submit();
+            }
+        }
+    });
+    </script>
 </div>
 @endsection
