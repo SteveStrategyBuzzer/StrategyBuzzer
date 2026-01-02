@@ -170,13 +170,15 @@
             
             // Vérifier si la langue du navigateur est supportée
             if (supportedLanguages.includes(browserLang) && browserLang !== 'fr') {
-                // Proposer de changer automatiquement
-                const confirmChange = confirm(
-                    `Votre navigateur est en ${browserLang}. Voulez-vous utiliser StrategyBuzzer dans cette langue ?\n\n` +
-                    `Your browser is in ${browserLang}. Do you want to use StrategyBuzzer in this language?`
-                );
-                
-                if (confirmChange) {
+                // Proposer de changer automatiquement (après chargement du DOM)
+                setTimeout(async () => {
+                    if (!window.customDialog) return;
+                    const confirmChange = await window.customDialog.confirm(
+                        `Votre navigateur est en ${browserLang}. Voulez-vous utiliser StrategyBuzzer dans cette langue ?\n\nYour browser is in ${browserLang}. Do you want to use StrategyBuzzer in this language?`,
+                        { title: '🌐 {{ __("Langue") }}' }
+                    );
+                    
+                    if (confirmChange) {
                     // Envoyer une requête pour sauvegarder la langue
                     const formData = new FormData();
                     formData.append('language', browserLang);
@@ -205,7 +207,8 @@
                         }
                     })
                     .catch(err => console.error('Erreur sauvegarde langue:', err));
-                }
+                    }
+                }, 500);
             }
         }
         @endauth
@@ -269,5 +272,7 @@ window.showToast = function(message, type = 'info', duration = 3000) {
     }, duration);
 };
 </script>
+
+@include('components.custom-dialog')
 </body>
 </html>
