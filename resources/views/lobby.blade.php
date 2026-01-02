@@ -756,6 +756,22 @@ foreach ($colors as $color) {
     }
 </style>
 
+@if(isset($match) && $match && $match->room_id)
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+<script>
+    window.matchRoomId = '{{ $match->room_id }}';
+    window.matchLobbyCode = '{{ $match->lobby_code }}';
+    window.matchPlayerToken = '{{ $playerToken ?? "" }}';
+    window.gameServerUrl = '{{ $gameServerUrl ?? config("services.game_server.url", "ws://localhost:3001") }}';
+    window.useSocketIO = true;
+</script>
+@else
+<script>
+    window.useSocketIO = false;
+</script>
+@endif
+
 <div class="lobby-container">
     <div class="lobby-header">
         <h1 class="lobby-title">{{ __('Salon d\'attente') }} - {{ $modeLabel }}</h1>
@@ -2456,6 +2472,11 @@ foreach ($colors as $color) {
                 
                 if (window.lobbyPresenceManager) {
                     await window.lobbyPresenceManager.updateReady(newReadyState);
+                }
+                
+                if (window.useSocketIO && window.duoSocketConnected && typeof DuoSocketClient !== 'undefined') {
+                    DuoSocketClient.setReady(newReadyState);
+                    console.log('[Socket.IO] Ready state sent:', newReadyState);
                 }
             } else {
                 showToast(data.error || '{{ __("Erreur") }}');
@@ -4624,6 +4645,122 @@ initFirebase().then(async (authenticated) => {
     });
 });
 
+if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'undefined') {
+    (async function initSocketIO() {
+        console.log('[Socket.IO] Initializing connection to Game Server...');
+        window.duoSocketConnected = false;
+        
+        DuoSocketClient.onConnect = () => {
+            console.log('[Socket.IO] Connected to Game Server');
+            window.duoSocketConnected = true;
+            
+            DuoSocketClient.joinRoom(window.matchRoomId, window.matchLobbyCode, {
+                playerId: currentPlayerId,
+                playerName: currentPlayerData.name || '',
+                avatarId: currentPlayerData.avatar || null,
+                token: window.matchPlayerToken
+            });
+        };
+        
+        DuoSocketClient.onDisconnect = (reason) => {
+            console.log('[Socket.IO] Disconnected:', reason);
+            window.duoSocketConnected = false;
+        };
+        
+        DuoSocketClient.onError = (error) => {
+            console.error('[Socket.IO] Error:', error);
+        };
+        
+        DuoSocketClient.onPlayerJoined = (event) => {
+            console.log('[Socket.IO] Player joined:', event);
+            const card = document.querySelector(`.player-card[data-player-id="${event.playerId}"]`);
+            if (card) {
+                card.classList.remove('player-offline');
+                card.classList.add('player-online');
+            }
+        };
+        
+        DuoSocketClient.onPlayerLeft = (event) => {
+            console.log('[Socket.IO] Player left:', event);
+            const card = document.querySelector(`.player-card[data-player-id="${event.playerId}"]`);
+            if (card) {
+                card.classList.add('player-offline');
+                card.classList.remove('player-online');
+            }
+        };
+        
+        DuoSocketClient.onPlayerReady = (data) => {
+            console.log('[Socket.IO] Player ready state changed:', data);
+            const card = document.querySelector(`.player-card[data-player-id="${data.playerId}"]`);
+            if (card) {
+                if (data.isReady) {
+                    card.classList.add('is-ready');
+                } else {
+                    card.classList.remove('is-ready');
+                }
+            }
+        };
+        
+        DuoSocketClient.onLobbyState = (state) => {
+            console.log('[Socket.IO] Lobby state received:', state);
+            
+            if (state && state.players) {
+                const playerCount = Object.keys(state.players).length;
+                const readyCount = Object.values(state.players).filter(p => p.isReady).length;
+                const allReady = readyCount === playerCount && playerCount >= minPlayersFirebase;
+                
+                const readyCountEl = document.getElementById('ready-count');
+                if (readyCountEl) {
+                    const displayDenominator = Math.max(playerCount, minPlayersFirebase);
+                    readyCountEl.textContent = `${readyCount}/${displayDenominator}`;
+                }
+                
+                Object.entries(state.players).forEach(([playerId, playerData]) => {
+                    const card = document.querySelector(`.player-card[data-player-id="${playerId}"]`);
+                    if (card) {
+                        card.classList.remove('player-offline');
+                        card.classList.add('player-online');
+                        if (playerData.isReady) {
+                            card.classList.add('is-ready');
+                        } else {
+                            card.classList.remove('is-ready');
+                        }
+                    }
+                });
+                
+                if (mode === 'duo' && allReady && !window.countdownInitiated) {
+                    window.countdownInitiated = true;
+                    console.log('[Socket.IO] All players ready! Starting countdown...');
+                    startDuoCountdown(state.players);
+                }
+            }
+        };
+        
+        DuoSocketClient.onPhaseChanged = (data) => {
+            console.log('[Socket.IO] Phase changed:', data);
+            if (data.phase === 'playing' || data.phase === 'question') {
+                console.log('[Socket.IO] Game started! Navigating to game...');
+                
+                if (pollingInterval) clearInterval(pollingInterval);
+                if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
+                if (window.webrtcManager) window.webrtcManager.cleanup();
+                
+                const settings = @json($settings ?? []);
+                submitGameStart(mode, settings);
+            }
+        };
+        
+        try {
+            await DuoSocketClient.connect(window.gameServerUrl, window.matchPlayerToken);
+            console.log('[Socket.IO] Connection established');
+        } catch (error) {
+            console.error('[Socket.IO] Failed to connect:', error);
+            console.log('[Socket.IO] Falling back to Firebase-only mode');
+            window.duoSocketConnected = false;
+        }
+    })();
+}
+
 window.addEventListener('beforeunload', () => {
     if (window.lobbyPresenceManager) {
         window.lobbyPresenceManager.cleanup();
@@ -4633,6 +4770,9 @@ window.addEventListener('beforeunload', () => {
     }
     if (window.lobbyChatManager) {
         window.lobbyChatManager.stopListening();
+    }
+    if (window.duoSocketConnected && typeof DuoSocketClient !== 'undefined') {
+        DuoSocketClient.disconnect();
     }
 });
 
@@ -4662,6 +4802,9 @@ window.addEventListener('pagehide', () => {
     }
     if (window.lobbyChatManager) {
         window.lobbyChatManager.stopListening();
+    }
+    if (window.duoSocketConnected && typeof DuoSocketClient !== 'undefined') {
+        DuoSocketClient.disconnect();
     }
 });
 </script>

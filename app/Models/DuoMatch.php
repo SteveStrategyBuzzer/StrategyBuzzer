@@ -25,6 +25,7 @@ class DuoMatch extends Model
         'player2_points_earned',
         'game_state',
         'lobby_code',
+        'room_id',
         'started_at',
         'finished_at',
     ];

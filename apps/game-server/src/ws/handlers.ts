@@ -1,6 +1,24 @@
 import type { Server as SocketIOServer, Socket } from "socket.io";
 import type { RoomManager } from "../services/RoomManager.js";
-import type { GameEvent, GameState } from "../../../../packages/shared/src/types.js";
+import type { GameState, Player } from "../../../../packages/shared/src/types.js";
+import type { GameEvent } from "../../../../packages/shared/src/events.js";
+import { verifyJWT, type PlayerTokenPayload } from "../middleware/auth.js";
+
+function extractScores(players: Record<string, Player>): Record<string, number> {
+  const scores: Record<string, number> = {};
+  for (const [id, player] of Object.entries(players)) {
+    scores[id] = player.score;
+  }
+  return scores;
+}
+
+function extractRoundScores(players: Record<string, Player>): Record<string, number> {
+  const roundScores: Record<string, number> = {};
+  for (const [id, player] of Object.entries(players)) {
+    roundScores[id] = player.roundScore;
+  }
+  return roundScores;
+}
 
 type JoinRoomPayload = {
   roomId?: string;
@@ -35,9 +53,20 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
     
     let currentRoomId: string | null = null;
     let currentPlayerId: string | null = null;
+    let authenticatedPayload: PlayerTokenPayload | null = (socket as any).playerData || null;
 
     socket.on("join_room", (payload: JoinRoomPayload) => {
       try {
+        if (payload.token) {
+          const tokenPayload = verifyJWT(payload.token);
+          if (!tokenPayload) {
+            socket.emit("error", { code: "INVALID_TOKEN", message: "Invalid or expired token" });
+            return;
+          }
+          authenticatedPayload = tokenPayload;
+          console.log(`[WS] Token verified for player: ${tokenPayload.playerName}`);
+        }
+
         let roomId = payload.roomId;
         
         if (!roomId && payload.lobbyCode) {
@@ -48,9 +77,13 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           socket.emit("error", { code: "ROOM_NOT_FOUND", message: "Room not found" });
           return;
         }
+
+        const playerId = authenticatedPayload?.playerId?.toString() || payload.playerId;
+        const playerName = authenticatedPayload?.playerName || payload.playerName;
+        const avatarId = authenticatedPayload?.avatarId || payload.avatarId;
         
-        const event = roomManager.joinRoom(roomId, payload.playerId, payload.playerName, {
-          avatarId: payload.avatarId,
+        const event = roomManager.joinRoom(roomId, playerId, playerName, {
+          avatarId: avatarId,
           strategicAvatarId: payload.strategicAvatarId,
           division: payload.division,
         });
@@ -61,16 +94,25 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         }
         
         currentRoomId = roomId;
-        currentPlayerId = payload.playerId;
+        currentPlayerId = playerId;
         
         socket.join(roomId);
         
         const state = roomManager.getState(roomId);
         socket.emit("state", { state });
         
+        if (state) {
+          socket.emit("phase_changed", {
+            phase: state.phase,
+            phaseEndsAtMs: state.phaseEndsAtMs,
+            questionIndex: state.questionIndex,
+            roundNumber: state.currentRound,
+          });
+        }
+        
         socket.to(roomId).emit("event", { event });
         
-        console.log(`[WS] Player ${payload.playerName} joined room ${roomId}`);
+        console.log(`[WS] Player ${playerName} joined room ${roomId}`);
       } catch (error) {
         console.error("[WS] Error joining room:", error);
         socket.emit("error", { code: "JOIN_ERROR", message: "Error joining room" });
@@ -129,6 +171,30 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         
         socket.emit("answer_received", { success: true });
         
+        const previousScores = extractScores(room.state.players);
+        
+        const state = roomManager.getState(payload.roomId);
+        if (state) {
+          const currentScores = extractScores(state.players);
+          const scoresChanged = Object.keys(currentScores).some(
+            playerId => currentScores[playerId] !== previousScores[playerId]
+          );
+          
+          if (scoresChanged) {
+            io.to(payload.roomId).emit("score_update", {
+              scores: currentScores,
+              roundScores: extractRoundScores(state.players),
+            });
+          }
+          
+          io.to(payload.roomId).emit("phase_changed", {
+            phase: state.phase,
+            phaseEndsAtMs: state.phaseEndsAtMs,
+            questionIndex: state.questionIndex,
+            roundNumber: state.currentRound,
+          });
+        }
+        
       } catch (error) {
         console.error("[WS] Error processing answer:", error);
         socket.emit("error", { code: "ANSWER_ERROR", message: "Error processing answer" });
@@ -168,22 +234,34 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
       }
     });
 
-    socket.on("voice_offer", (payload: { roomId: string; targetId: string; offer: RTCSessionDescriptionInit }) => {
-      socket.to(payload.roomId).emit("voice_offer", {
+    socket.on("voice_offer", (payload: { roomId: string; targetId: string; offer: unknown }) => {
+      if (!currentRoomId || !authenticatedPayload) {
+        socket.emit("error", { code: "UNAUTHORIZED", message: "Not authenticated or not in a room" });
+        return;
+      }
+      socket.to(currentRoomId).emit("voice_offer", {
         from: currentPlayerId,
         offer: payload.offer,
       });
     });
 
-    socket.on("voice_answer", (payload: { roomId: string; targetId: string; answer: RTCSessionDescriptionInit }) => {
-      socket.to(payload.roomId).emit("voice_answer", {
+    socket.on("voice_answer", (payload: { roomId: string; targetId: string; answer: unknown }) => {
+      if (!currentRoomId || !authenticatedPayload) {
+        socket.emit("error", { code: "UNAUTHORIZED", message: "Not authenticated or not in a room" });
+        return;
+      }
+      socket.to(currentRoomId).emit("voice_answer", {
         from: currentPlayerId,
         answer: payload.answer,
       });
     });
 
-    socket.on("voice_ice_candidate", (payload: { roomId: string; targetId: string; candidate: RTCIceCandidateInit }) => {
-      socket.to(payload.roomId).emit("voice_ice_candidate", {
+    socket.on("voice_ice_candidate", (payload: { roomId: string; targetId: string; candidate: unknown }) => {
+      if (!currentRoomId || !authenticatedPayload) {
+        socket.emit("error", { code: "UNAUTHORIZED", message: "Not authenticated or not in a room" });
+        return;
+      }
+      socket.to(currentRoomId).emit("voice_ice_candidate", {
         from: currentPlayerId,
         candidate: payload.candidate,
       });
@@ -206,5 +284,22 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         serverTime: Date.now(),
       });
     });
+  });
+}
+
+export function emitPhaseChanged(io: SocketIOServer, roomId: string, state: GameState): void {
+  io.to(roomId).emit("phase_changed", {
+    phase: state.phase,
+    phaseEndsAtMs: state.phaseEndsAtMs,
+    questionIndex: state.questionIndex,
+    roundNumber: state.currentRound,
+    lockedPlayerId: state.lockedAnswerPlayerId,
+  });
+}
+
+export function emitScoreUpdate(io: SocketIOServer, roomId: string, state: GameState): void {
+  io.to(roomId).emit("score_update", {
+    scores: extractScores(state.players),
+    roundScores: extractRoundScores(state.players),
   });
 }

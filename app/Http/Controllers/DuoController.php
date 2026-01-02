@@ -11,6 +11,7 @@ use App\Services\BuzzManagerService;
 use App\Services\DuoFirestoreService;
 use App\Services\PlayerContactService;
 use App\Services\LobbyService;
+use App\Services\GameServerService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
@@ -24,7 +25,8 @@ class DuoController extends Controller
         private BuzzManagerService $buzzManager,
         private DuoFirestoreService $firestoreService,
         private PlayerContactService $contactService,
-        private LobbyService $lobbyService
+        private LobbyService $lobbyService,
+        private GameServerService $gameServerService
     ) {}
 
     public function showSplash()
@@ -952,6 +954,59 @@ class DuoController extends Controller
             'lobby_code' => $lobby['code'],
             'redirect_url' => route('lobby.show', ['code' => $lobby['code']]),
             'entry_fee_deducted' => $entryFee,
+        ]);
+    }
+
+    public function createGameServerRoom(Request $request)
+    {
+        $request->validate([
+            'match_id' => 'required|integer|exists:duo_matches,id',
+            'mode' => 'nullable|string',
+            'config' => 'nullable|array',
+        ]);
+
+        $user = Auth::user();
+        $match = DuoMatch::findOrFail($request->match_id);
+
+        if ($match->player1_id !== $user->id && $match->player2_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous n\'êtes pas autorisé à créer une salle pour ce match.'),
+            ], 403);
+        }
+
+        $mode = $request->input('mode', 'duo');
+        $config = $request->input('config', []);
+
+        $roomResult = $this->gameServerService->createRoom($mode, $user->id, $config);
+
+        if (!isset($roomResult['roomId']) && !isset($roomResult['room_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => $roomResult['error'] ?? __('Échec de la création de la salle de jeu.'),
+            ], 500);
+        }
+
+        $roomId = $roomResult['roomId'] ?? $roomResult['room_id'];
+        $lobbyCode = $roomResult['lobbyCode'] ?? $roomResult['lobby_code'] ?? $match->lobby_code;
+
+        $match->room_id = $roomId;
+        if ($lobbyCode && !$match->lobby_code) {
+            $match->lobby_code = $lobbyCode;
+        }
+        $match->save();
+
+        $playerToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+
+        $socketUrl = $this->gameServerService->getSocketUrl();
+
+        return response()->json([
+            'success' => true,
+            'room_id' => $roomId,
+            'lobby_code' => $match->lobby_code,
+            'socket_url' => $socketUrl,
+            'player_token' => $playerToken,
+            'match' => $match->load(['player1', 'player2']),
         ]);
     }
 }

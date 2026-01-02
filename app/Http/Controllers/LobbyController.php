@@ -72,6 +72,14 @@ class LobbyController extends Controller
             ->whereIn('status', ['pending', 'waiting', 'lobby', 'in_progress', 'active'])
             ->first();
         
+        $playerToken = null;
+        $gameServerUrl = null;
+        if ($duoMatch && $duoMatch->room_id) {
+            $gameServerService = app(\App\Services\GameServerService::class);
+            $playerToken = $gameServerService->generatePlayerToken($user->id, $duoMatch->room_id);
+            $gameServerUrl = $gameServerService->getSocketUrl();
+        }
+        
         $settings = (array) ($user->profile_settings ?? []);
         $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
         $activeStrategicAvatar = $settings['active_strategic_avatar'] ?? null;
@@ -94,6 +102,9 @@ class LobbyController extends Controller
             'allReady' => $lobbyState['all_ready'],
             'canStart' => $lobbyState['can_start'],
             'matchId' => $duoMatch?->id,
+            'match' => $duoMatch,
+            'playerToken' => $playerToken,
+            'gameServerUrl' => $gameServerUrl,
             'userCompetenceCoins' => $user->competence_coins ?? 0,
             'unlockedStrategicAvatars' => $unlockedStrategic,
             'activeStrategicAvatar' => $activeStrategicAvatar,

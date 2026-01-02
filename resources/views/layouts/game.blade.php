@@ -20,6 +20,7 @@
     <audio id="ambientMusic" preload="auto" loop></audio>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     
     <script>
     // Système de musique d'ambiance globale StrategyBuzzer
