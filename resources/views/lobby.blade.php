@@ -3422,6 +3422,8 @@ class LobbyPresenceManager {
     async joinLobby() {
         try {
             const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
+            const readyState = this.currentPlayerData.ready === true ? true : false;
+            console.log('[Presence] Joining lobby with ready state:', readyState, 'for player:', this.currentPlayerId, 'isHost:', this.isHost);
             await setDoc(presenceRef, {
                 odPlayerId: this.currentPlayerId,
                 name: this.currentPlayerData.name,
@@ -3429,13 +3431,13 @@ class LobbyPresenceManager {
                 avatar: this.currentPlayerData.avatar || null,
                 color: this.currentPlayerData.color || 'blue',
                 team: this.currentPlayerData.team || null,
-                ready: this.currentPlayerData.ready || false,
+                ready: readyState,
                 is_host: this.isHost,
                 online: true,
                 lastSeen: serverTimestamp(),
                 joinedAt: serverTimestamp()
             });
-            console.log('[Presence] Joined lobby:', this.lobbyCode);
+            console.log('[Presence] Joined lobby:', this.lobbyCode, 'with ready:', readyState);
             
             this.startHeartbeat();
             this.startListening();
@@ -3585,8 +3587,9 @@ class LobbyPresenceManager {
     async updateReady(ready) {
         try {
             const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
-            await setDoc(presenceRef, { ready, lastSeen: serverTimestamp() }, { merge: true });
-            console.log('[Presence] Ready updated:', ready);
+            console.log('[Presence] Updating ready state to:', ready, 'for player:', this.currentPlayerId);
+            await setDoc(presenceRef, { ready: ready === true, lastSeen: serverTimestamp() }, { merge: true });
+            console.log('[Presence] Ready updated successfully:', ready);
             return true;
         } catch (error) {
             console.error('[Presence] Error updating ready:', error);
@@ -3667,6 +3670,8 @@ class WebRTCManager {
         this.analyser = null;
         this.isMuted = false;
         this.unsubscribers = [];
+        this.presenceListenerActive = false;
+        this.signalingListenerActive = false;
         
         this.iceServers = [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -3704,6 +3709,41 @@ class WebRTCManager {
         return `lobbies/${this.lobbyCode}/voice_presence`;
     }
     
+    async initialize() {
+        console.log('[WebRTC] Initializing - creating listening presence for player:', this.currentPlayerId);
+        try {
+            await this.createListeningPresence();
+            this.listenForSignaling();
+            this.listenForPresence();
+            console.log('[WebRTC] Initialized successfully - listening for other players');
+            return true;
+        } catch (error) {
+            console.error('[WebRTC] Initialization error:', error);
+            return false;
+        }
+    }
+    
+    async createListeningPresence() {
+        try {
+            const presencePath = this.getPresencePath();
+            console.log('[WebRTC] Creating listening presence at:', presencePath);
+            const presenceRef = doc(db, presencePath, String(this.currentPlayerId));
+            await setDoc(presenceRef, {
+                odPlayerId: this.currentPlayerId,
+                muted: true,
+                speaking: false,
+                listening: true,
+                teamId: this.teamId,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+            console.log('[WebRTC] Listening presence created successfully');
+        } catch (error) {
+            console.error('[WebRTC] Error creating listening presence:', error);
+            throw error;
+        }
+    }
+    
     async startVoiceChat() {
         console.log('[WebRTC] startVoiceChat called');
         try {
@@ -3721,13 +3761,7 @@ class WebRTCManager {
             console.log('[WebRTC] Voice activity detection setup complete');
             
             await this.updatePresence(true, false);
-            console.log('[WebRTC] Presence updated');
-            
-            this.listenForSignaling();
-            console.log('[WebRTC] Signaling listener started');
-            
-            this.listenForPresence();
-            console.log('[WebRTC] Presence listener started');
+            console.log('[WebRTC] Presence updated to mic enabled');
             
             await this.addTracksToExistingConnections();
             console.log('[WebRTC] Tracks added to existing connections');
@@ -3851,6 +3885,11 @@ class WebRTCManager {
     }
     
     listenForPresence() {
+        if (this.presenceListenerActive) {
+            console.log('[WebRTC] Presence listener already active, skipping');
+            return;
+        }
+        this.presenceListenerActive = true;
         const presencePath = this.getPresencePath();
         console.log('[WebRTC] listenForPresence - path:', presencePath);
         const presenceRef = collection(db, presencePath);
@@ -3871,8 +3910,9 @@ class WebRTCManager {
                 if (change.type === 'added' || change.type === 'modified') {
                     const micEnabled = !data.muted;
                     const speaking = data.speaking && micEnabled;
+                    const isListening = data.listening === true;
                     
-                    console.log('[WebRTC] Remote player', odPlayerId, 'micEnabled:', micEnabled, 'speaking:', speaking, 'hasConnection:', !!this.peerConnections[odPlayerId], 'hasLocalStream:', !!this.localStream);
+                    console.log('[WebRTC] Remote player', odPlayerId, 'micEnabled:', micEnabled, 'speaking:', speaking, 'listening:', isListening, 'hasConnection:', !!this.peerConnections[odPlayerId], 'hasLocalStream:', !!this.localStream);
                     
                     if (typeof updateVoicePresence === 'function') {
                         updateVoicePresence(odPlayerId, { micEnabled, speaking });
@@ -3884,9 +3924,10 @@ class WebRTCManager {
                         updateRemoteMicState(odPlayerId, micEnabled);
                     }
                     
-                    if (!this.peerConnections[odPlayerId] && micEnabled && this.localStream) {
-                        console.log('[WebRTC] Creating peer connection with remote player:', odPlayerId);
-                        this.createPeerConnection(odPlayerId, true);
+                    const shouldConnect = (micEnabled && this.localStream) || (isListening && micEnabled);
+                    if (!this.peerConnections[odPlayerId] && shouldConnect) {
+                        console.log('[WebRTC] Creating peer connection with remote player:', odPlayerId, 'reason: micEnabled=', micEnabled, 'listening=', isListening);
+                        this.createPeerConnection(odPlayerId, this.currentPlayerId < parseInt(odPlayerId));
                     }
                 } else if (change.type === 'removed') {
                     this.closePeerConnection(odPlayerId);
@@ -3907,6 +3948,11 @@ class WebRTCManager {
     }
     
     listenForSignaling() {
+        if (this.signalingListenerActive) {
+            console.log('[WebRTC] Signaling listener already active, skipping');
+            return;
+        }
+        this.signalingListenerActive = true;
         const signalingPath = this.getSignalingPath();
         console.log('[WebRTC] listenForSignaling - path:', signalingPath);
         const signalingRef = collection(db, signalingPath);
@@ -4583,6 +4629,7 @@ initFirebase().then(async (authenticated) => {
     console.log('[Presence] Manager initialized for lobby:', lobbyCode);
     
     window.webrtcManager = new WebRTCManager(lobbyCode, currentPlayerId, mode, teamId);
+    await window.webrtcManager.initialize();
     console.log('[WebRTC] Manager assigned to window.webrtcManager:', !!window.webrtcManager);
 
     window.lobbyChatManager = new LobbyChatManager(lobbyCode, currentPlayerId, currentPlayerName);
