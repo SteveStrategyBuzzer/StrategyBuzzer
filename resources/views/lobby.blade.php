@@ -3150,20 +3150,9 @@ foreach ($colors as $color) {
     }
     
     function updateWaitingMessage(players, minPlayers, allReady) {
+        // Waiting message removed - status is shown via player cards with ready indicators
         const waitingDiv = document.querySelector('.waiting-message');
-        if (!waitingDiv) return;
-        
-        const playerCount = Object.keys(players || {}).length;
-        
-        if (playerCount < minPlayers) {
-            waitingDiv.innerHTML = `${translations.waitingMessage} (${playerCount}/${minPlayers} ${translations.minimum})<span class="waiting-dots"></span>`;
-            waitingDiv.style.display = 'block';
-        } else if (!allReady) {
-            waitingDiv.innerHTML = `${translations.waitingReady}<span class="waiting-dots"></span>`;
-            waitingDiv.style.display = 'block';
-        } else {
-            waitingDiv.style.display = 'none';
-        }
+        if (waitingDiv) waitingDiv.style.display = 'none';
     }
     
     async function refreshLobbyState() {
@@ -4515,7 +4504,7 @@ initFirebase().then(async (authenticated) => {
         // Find players who are connected but not ready
         const notReadyPlayers = Object.values(presencePlayers).filter(p => !p.ready);
         
-        // Update sync status indicator - Show specific player names when waiting
+        // Sync status indicator - only show when synchronized (green checkmark)
         const syncStatus = document.getElementById('sync-status');
         const syncStatusText = document.getElementById('sync-status-text');
         if (syncStatus && syncStatusText) {
@@ -4525,25 +4514,9 @@ initFirebase().then(async (authenticated) => {
                 syncStatus.style.border = '1px solid rgba(76, 175, 80, 0.5)';
                 syncStatus.style.color = '#4CAF50';
                 syncStatusText.textContent = '✓ ' + translations.synchronized;
-            } else if (playerCount >= minPlayersFirebase) {
-                // Have enough players, but not all ready - show who we're waiting for
-                syncStatus.style.display = 'block';
-                syncStatus.style.background = 'rgba(255, 193, 7, 0.2)';
-                syncStatus.style.border = '1px solid rgba(255, 193, 7, 0.5)';
-                syncStatus.style.color = '#FFC107';
-                if (notReadyPlayers.length > 0) {
-                    const waitingNames = notReadyPlayers.map(p => `${p.name} (${p.player_code || 'SB-????'})`).join(', ');
-                    syncStatusText.textContent = translations.waitingFor + ' ' + waitingNames;
-                } else {
-                    syncStatusText.textContent = translations.waitingReady;
-                }
             } else {
-                // Not enough players
-                syncStatus.style.display = 'block';
-                syncStatus.style.background = 'rgba(244, 67, 54, 0.2)';
-                syncStatus.style.border = '1px solid rgba(244, 67, 54, 0.5)';
-                syncStatus.style.color = '#f44336';
-                syncStatusText.textContent = translations.waitingOtherPlayer;
+                // Hide status messages - player cards show ready state via icons
+                syncStatus.style.display = 'none';
             }
         }
         
