@@ -1,0 +1,118 @@
+import type { GameState } from "@shared/types";
+import type { GameEvent } from "@shared/events";
+
+function assert(cond: any, msg: string): asserts cond {
+  if (!cond) throw new Error(msg);
+}
+
+export function applyEvent(state: GameState, ev: GameEvent): GameState {
+  // monotonic
+  assert(ev.id === state.lastEventId + 1, "Bad event id order");
+
+  const s: GameState = structuredClone(state);
+  s.lastEventId = ev.id;
+
+  switch (ev.type) {
+    case "PLAYER_JOINED": {
+      if (s.players[ev.playerId]) return s;
+      s.players[ev.playerId] = {
+        id: ev.playerId,
+        name: ev.name,
+        isBot: !!ev.isBot,
+        teamId: ev.teamId,
+        score: 0,
+        skills: {
+          ADD_TIME: { cooldownUntilMs: 0, usesLeft: 1 },
+          REMOVE_ONE_WRONG: { cooldownUntilMs: 0, usesLeft: 1 },
+          RETRY: { cooldownUntilMs: 0, usesLeft: 1 },
+        },
+      };
+      s.order.push(ev.playerId);
+      return s;
+    }
+
+    case "PLAYER_LEFT": {
+      delete s.players[ev.playerId];
+      s.order = s.order.filter(id => id !== ev.playerId);
+      s.buzzQueue = s.buzzQueue.filter(b => b.playerId !== ev.playerId);
+      if (s.lockedAnswerPlayerId === ev.playerId) s.lockedAnswerPlayerId = undefined;
+      return s;
+    }
+
+    case "GAME_STARTED": {
+      assert(s.phase === "LOBBY", "Game already started");
+      s.startedAtMs = ev.atMs;
+      s.phase = "COUNTDOWN";
+      s.phaseEndsAtMs = ev.atMs + 3000;
+      s.questionIndex = 0;
+      s.buzzQueue = [];
+      s.answeredPlayerIds = [];
+      return s;
+    }
+
+    case "PHASE_SET": {
+      s.phase = ev.phase;
+      s.phaseEndsAtMs = ev.phaseEndsAtMs;
+      return s;
+    }
+
+    case "QUESTION_ADVANCE": {
+      s.questionIndex++;
+      s.buzzQueue = [];
+      s.lockedAnswerPlayerId = undefined;
+      s.answeredPlayerIds = [];
+      if (s.questionIndex >= s.questions.length) {
+        s.phase = "END";
+        s.phaseEndsAtMs = undefined;
+      }
+      return s;
+    }
+
+    case "BUZZ_PRESSED": {
+      assert(s.phase === "BUZZ_WINDOW", "Buzz not allowed now");
+      assert(!!s.players[ev.playerId], "Unknown player");
+      // anti-spam : si déjà en queue, ignore
+      if (s.buzzQueue.some(b => b.playerId === ev.playerId)) return s;
+      // si déjà tenté de répondre sur cette question, ignore
+      if (s.answeredPlayerIds.includes(ev.playerId)) return s;
+
+      s.buzzQueue.push({ playerId: ev.playerId, atMs: ev.atMs });
+
+      // si premier buzz => verrouille la main et passe en answer
+      if (s.buzzQueue.length === 1) {
+        s.lockedAnswerPlayerId = ev.playerId;
+        s.phase = "ANSWER_WINDOW";
+        s.phaseEndsAtMs = ev.atMs + 6000; // fenêtre réponse (ex)
+      }
+      return s;
+    }
+
+    case "ANSWER_SUBMITTED": {
+      assert(s.phase === "ANSWER_WINDOW", "Answer not allowed now");
+      assert(s.lockedAnswerPlayerId === ev.playerId, "Not your turn");
+      assert(!!s.players[ev.playerId], "Unknown player");
+
+      // On marque qu’il a tenté
+      if (!s.answeredPlayerIds.includes(ev.playerId)) s.answeredPlayerIds.push(ev.playerId);
+
+      // La validation exacte (MCQ/TF/TEXT) se fait côté serveur runtime
+      // Ici on suppose que le runtime calcule et envoie ensuite SCORE_ADDED + transition
+      return s;
+    }
+
+    case "SCORE_ADDED": {
+      assert(!!s.players[ev.playerId], "Unknown player");
+      s.players[ev.playerId].score += ev.delta;
+      return s;
+    }
+
+    case "MATCH_ENDED": {
+      s.phase = "END";
+      s.phaseEndsAtMs = undefined;
+      return s;
+    }
+
+    default:
+      return s;
+  }
+}

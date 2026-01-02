@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@strategybuzzer/shared": ["../../packages/shared/src"],
+      "@strategybuzzer/game-engine": ["../../packages/game-engine/src"]
+    }
+  },
+  "include": ["src/**/*"]
+}

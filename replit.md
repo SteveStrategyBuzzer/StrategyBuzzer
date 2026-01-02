@@ -64,6 +64,30 @@ Key services include `AnswerNormalizationService`, `Advanced AI Opponent System`
 -   **Multi-language Support**: Full integration for 10 languages with automatic browser detection.
 -   **WebRTC Voice Chat System**: Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling.
 
+## Monorepo Architecture (Node.js Game Server)
+
+### Directory Structure
+```
+packages/
+  shared/src/           # Types partagés (GameState, GameEvent, Phase, etc.)
+  game-engine/src/      # Reducer, state-machine, scoring
+apps/
+  game-server/src/      # Serveur de jeu Node.js/TypeScript
+    services/           # RoomManager
+    http/               # Routes HTTP (POST /rooms, GET /rooms/:id)
+    ws/                 # WebSocket handlers (join_room, buzz, answer, skill)
+```
+
+### Game Server
+- **Port**: 3001 (WebSocket + HTTP)
+- **Architecture**: Socket.IO pour temps réel, Express pour API REST
+- **Phases alignées sur Solo**: INTRO → QUESTION_ACTIVE → ANSWER_SELECTION → REVEAL → ROUND_SCOREBOARD → TIEBREAKER_* → MATCH_END
+- **Timers**: intro 9s, question 8s, answer 10s
+- **Scoring**: +2 (>3s), +1 (1-3s), 0 (<1s), -2 (mauvaise réponse)
+
+### Imports Cross-Package
+Les imports utilisent des chemins relatifs (par exemple `../../../../packages/shared/src/types.js`).
+
 ## External Dependencies
 
 -   **Core Frameworks**: Laravel Framework, React, Inertia.js
