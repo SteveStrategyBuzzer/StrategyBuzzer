@@ -2313,13 +2313,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize PhaseController
     PhaseController.init();
     
-    // Show intro phase for first question - SKIP for multiplayer Question 1
-    // In multiplayer, players enter directly after lobby countdown without intro overlay
+    // Show intro phase for first question - SKIP for first question in ALL modes
+    // Solo: Players already saw intro in game_intro.blade.php with "Ladies and Gentlemen" countdown
+    // Multiplayer: Players enter directly after lobby countdown without intro overlay
+    // Only show intro overlay for subsequent questions (question 2+)
     const initialQ = gameConfig.initialQuestion;
     const isFirstQuestion = (initialQ?.question_number || gameConfig.currentQuestion) === 1;
-    const skipIntroForMultiplayer = gameConfig.isFirebaseMode && isFirstQuestion;
+    const skipIntroForFirstQuestion = isFirstQuestion;
     
-    if (initialQ && initialQ.question_text && !skipIntroForMultiplayer) {
+    if (initialQ && initialQ.question_text && !skipIntroForFirstQuestion) {
         await PhaseController.showIntro({
             question_number: initialQ.question_number || gameConfig.currentQuestion,
             total_questions: initialQ.total_questions || gameConfig.totalQuestions,
