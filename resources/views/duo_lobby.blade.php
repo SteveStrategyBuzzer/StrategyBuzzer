@@ -267,6 +267,18 @@
     </div>
 </div>
 
+<!-- Generic Confirm Dialog Modal -->
+<div id="confirmDialogModal" class="modal-backdrop" style="display: none;">
+    <div class="confirm-match-content">
+        <h3 id="confirmDialogTitle">{{ __('Confirmation') }}</h3>
+        <p id="confirmDialogText"></p>
+        <div class="modal-buttons">
+            <button id="confirmDialogCancel" class="btn-secondary">{{ __('Annuler') }}</button>
+            <button id="confirmDialogOk" class="btn-primary">{{ __('OK') }}</button>
+        </div>
+    </div>
+</div>
+
 <div id="playerCardModal" class="modal-backdrop" style="display: none;">
     <div class="player-card-modal">
         <div class="player-card-header">
@@ -662,7 +674,7 @@
 }
 
 .matchmaking-unified-panel .opponents-section {
-    min-height: 60px;
+    min-height: 40px;
 }
 
 .matchmaking-unified-panel .queue-section {
@@ -752,7 +764,7 @@
 .opponents-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     max-height: 400px;
     overflow-y: auto;
 }
@@ -760,8 +772,9 @@
 .opponents-list .empty-message {
     color: #666;
     text-align: center;
-    padding: 15px 20px;
+    padding: 8px 15px;
     font-style: italic;
+    font-size: 0.9em;
 }
 
 .opponent-card {
@@ -832,8 +845,8 @@
 
 .divider-small {
     color: #999;
-    font-size: 0.9em;
-    margin: 15px 0;
+    font-size: 0.85em;
+    margin: 8px 0;
 }
 
 /* Confirm Match Modal */
@@ -2745,30 +2758,55 @@ function cancelInvitation(matchId) {
     });
 }
 
-function closeLobby(code) {
-    if (!confirm(t('Êtes-vous sûr de vouloir fermer ce salon ?'))) {
-        return;
-    }
+// Custom confirm dialog to avoid browser URL display
+function showConfirmDialog(message, onConfirm, onCancel = null) {
+    const modal = document.getElementById('confirmDialogModal');
+    const textEl = document.getElementById('confirmDialogText');
+    const okBtn = document.getElementById('confirmDialogOk');
+    const cancelBtn = document.getElementById('confirmDialogCancel');
     
-    fetch(`/lobby/${code}/close`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(t('Salon fermé'), 'info');
-            document.getElementById('openLobbies').style.display = 'none';
-        } else {
-            showToast(data.error || t('Erreur lors de la fermeture'), 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Close lobby error:', error);
-        showToast(t('Erreur lors de la fermeture'), 'error');
+    textEl.textContent = message;
+    modal.style.display = 'flex';
+    
+    const cleanup = () => {
+        modal.style.display = 'none';
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+    };
+    
+    okBtn.onclick = () => {
+        cleanup();
+        if (onConfirm) onConfirm();
+    };
+    
+    cancelBtn.onclick = () => {
+        cleanup();
+        if (onCancel) onCancel();
+    };
+}
+
+function closeLobby(code) {
+    showConfirmDialog(t('Êtes-vous sûr de vouloir fermer ce salon ?'), () => {
+        fetch(`/lobby/${code}/close`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(t('Salon fermé'), 'info');
+                document.getElementById('openLobbies').style.display = 'none';
+            } else {
+                showToast(data.error || t('Erreur lors de la fermeture'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Close lobby error:', error);
+            showToast(t('Erreur lors de la fermeture'), 'error');
+        });
     });
 }
 
@@ -2943,26 +2981,26 @@ function removeMemberFromGroup(groupId, memberId) {
 }
 
 function removeMemberEverywhere(memberId) {
-    if (!confirm(t('Supprimer ce contact de tous les groupes et du carnet ?'))) return;
-    
-    fetch(`/duo/contacts/${memberId}`, {
-        method: 'DELETE',
-        headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        },
-        credentials: 'same-origin'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(t('Contact supprimé partout'), 'success');
-            loadContacts();
-            loadGroups();
-            closeGroupDetail();
-        }
-    })
-    .catch(error => console.error('Error:', error));
+    showConfirmDialog(t('Supprimer ce contact de tous les groupes et du carnet ?'), () => {
+        fetch(`/duo/contacts/${memberId}`, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(t('Contact supprimé partout'), 'success');
+                loadContacts();
+                loadGroups();
+                closeGroupDetail();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
 }
 
 function inviteGroup(groupId) {
@@ -3020,25 +3058,25 @@ function createNewGroup() {
 }
 
 function deleteGroup(groupId) {
-    if (!confirm(t('Supprimer ce groupe ?'))) return;
-    
-    fetch(`/duo/contacts/groups/${groupId}`, {
-        method: 'DELETE',
-        headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        },
-        credentials: 'same-origin'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadGroups();
-            showToast(data.message || t('Groupe supprimé'), 'success');
-        }
-    })
-    .catch(error => {
-        console.error('Error deleting group:', error);
+    showConfirmDialog(t('Supprimer ce groupe ?'), () => {
+        fetch(`/duo/contacts/groups/${groupId}`, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadGroups();
+                showToast(data.message || t('Groupe supprimé'), 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting group:', error);
+        });
     });
 }
 
