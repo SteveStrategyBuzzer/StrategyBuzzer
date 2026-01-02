@@ -38,6 +38,13 @@ const DuoSocketClient = {
     onVoiceAnswer: null,
     onIceCandidate: null,
 
+    onGameStarted: null,
+    onQuestionPublished: null,
+    onBuzzWinner: null,
+    onAnswerRevealed: null,
+    onRoundEnded: null,
+    onMatchEnded: null,
+
     _log(message, data = null) {
         if (data) {
             console.log(`[DuoSocket] ${message}`, data);
@@ -158,6 +165,36 @@ const DuoSocketClient = {
 
                 this.socket.on('pong_check', (data) => {
                     this._log('Pong received', data);
+                });
+
+                this.socket.on('game_started', (data) => {
+                    this._log('Game started', data);
+                    if (this.onGameStarted) this.onGameStarted(data);
+                });
+
+                this.socket.on('question_published', (data) => {
+                    this._log('Question published', data);
+                    if (this.onQuestionPublished) this.onQuestionPublished(data);
+                });
+
+                this.socket.on('buzz_winner', (data) => {
+                    this._log('Buzz winner', data);
+                    if (this.onBuzzWinner) this.onBuzzWinner(data);
+                });
+
+                this.socket.on('answer_revealed', (data) => {
+                    this._log('Answer revealed', data);
+                    if (this.onAnswerRevealed) this.onAnswerRevealed(data);
+                });
+
+                this.socket.on('round_ended', (data) => {
+                    this._log('Round ended', data);
+                    if (this.onRoundEnded) this.onRoundEnded(data);
+                });
+
+                this.socket.on('match_ended', (data) => {
+                    this._log('Match ended', data);
+                    if (this.onMatchEnded) this.onMatchEnded(data);
                 });
 
             } catch (error) {

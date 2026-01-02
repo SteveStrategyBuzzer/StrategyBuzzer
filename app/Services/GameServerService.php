@@ -110,30 +110,122 @@ class GameServerService
         return JWT::encode($payload, $secret, 'HS256');
     }
 
-    public function startGame(string $roomId): bool
+    public function sendQuestions(string $roomId, array $questions): array
     {
         try {
-            $response = Http::timeout(10)->post("{$this->gameServerUrl}/rooms/{$roomId}/start");
+            $formattedQuestions = $this->formatQuestionsForGameServer($questions);
+            
+            Log::info('GameServerService: Sending questions to Game Server', [
+                'roomId' => $roomId,
+                'questionCount' => count($formattedQuestions),
+            ]);
+
+            $response = Http::timeout(30)->post("{$this->gameServerUrl}/rooms/{$roomId}/questions", [
+                'questions' => $formattedQuestions,
+            ]);
 
             if ($response->successful()) {
-                return true;
+                Log::info('GameServerService: Questions sent successfully', [
+                    'roomId' => $roomId,
+                    'questionCount' => count($formattedQuestions),
+                ]);
+                
+                return [
+                    'success' => true,
+                    'questionCount' => count($formattedQuestions),
+                ];
             }
 
+            Log::error('GameServerService: Failed to send questions', [
+                'roomId' => $roomId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to send questions to game server',
+            ];
+        } catch (\Exception $e) {
+            Log::error('GameServerService: Exception sending questions', [
+                'roomId' => $roomId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    public function startGame(string $roomId, ?string $hostId = null): array
+    {
+        try {
+            $response = Http::timeout(10)->post("{$this->gameServerUrl}/rooms/{$roomId}/start", [
+                'hostId' => $hostId,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('GameServerService: Game started successfully', [
+                    'roomId' => $roomId,
+                ]);
+                
+                return [
+                    'success' => true,
+                    'state' => $data['state'] ?? null,
+                ];
+            }
+
+            $errorBody = $response->json();
             Log::error('GameServerService: Failed to start game', [
                 'roomId' => $roomId,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
 
-            return false;
+            return [
+                'success' => false,
+                'error' => $errorBody['error'] ?? 'Failed to start game on game server',
+            ];
         } catch (\Exception $e) {
             Log::error('GameServerService: Exception starting game', [
                 'roomId' => $roomId,
                 'message' => $e->getMessage(),
             ]);
 
-            return false;
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
         }
+    }
+
+    private function formatQuestionsForGameServer(array $questions): array
+    {
+        return array_map(function ($q, $index) {
+            $choices = [];
+            $answers = $q['answers'] ?? [];
+            
+            foreach ($answers as $i => $answer) {
+                $answerText = is_array($answer) ? ($answer['text'] ?? $answer['label'] ?? '') : $answer;
+                $choices[] = $answerText;
+            }
+            
+            return [
+                'id' => $q['id'] ?? 'q_' . ($index + 1),
+                'type' => 'MCQ',
+                'text' => $q['text'] ?? $q['question_text'] ?? '',
+                'choices' => $choices,
+                'correctIndex' => (int) ($q['correct_index'] ?? $q['correct_id'] ?? 0),
+                'category' => $q['theme'] ?? $q['category'] ?? 'General',
+                'subCategory' => $q['sub_theme'] ?? $q['subCategory'] ?? '',
+                'difficulty' => (int) ($q['difficulty'] ?? $q['niveau'] ?? 1),
+                'timeLimitMs' => 8000,
+                'funFact' => $q['fun_fact'] ?? $q['funFact'] ?? null,
+            ];
+        }, $questions, array_keys($questions));
     }
 
     public function notifyMatchEnd(string $roomId, array $results): void

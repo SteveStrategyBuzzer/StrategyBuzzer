@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Services\DuoFirestoreService;
+use App\Services\GameServerService;
+use App\Services\QuestionService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +14,12 @@ use Illuminate\Support\Str;
 class LobbyService
 {
     protected ?DuoFirestoreService $duoFirestoreService = null;
+    private GameServerService $gameServerService;
+    
+    public function __construct(GameServerService $gameServerService)
+    {
+        $this->gameServerService = $gameServerService;
+    }
     
     protected function getDuoFirestoreService(): DuoFirestoreService
     {
@@ -621,16 +629,162 @@ class LobbyService
                 ];
             }
             
-            $lobby['status'] = 'starting';
-            $lobby['started_at'] = now()->toISOString();
-            
-            $this->saveLobby($code, $lobby);
-            
-            // Envoyer le signal de démarrage synchronisé via Firebase
             $mode = $lobby['mode'] ?? 'duo';
-            if (in_array($mode, ['duo', 'league_individual', 'league_team'])) {
+            $playerIds = array_keys($lobby['players']);
+            
+            // Mode Duo: Utiliser le Game Server Node.js
+            if ($mode === 'duo') {
                 try {
-                    $playerIds = array_keys($lobby['players']);
+                    Log::info("[LobbyService] Starting Duo game via Game Server", [
+                        'lobby_code' => $code,
+                        'host_id' => $host->id,
+                        'player_count' => count($playerIds),
+                    ]);
+                    
+                    // 1. Créer une room sur le Game Server
+                    $roomResult = $this->gameServerService->createRoom('DUO', $host->id, [
+                        'lobbyCode' => $code,
+                        'playerCount' => count($playerIds),
+                    ]);
+                    
+                    if (!isset($roomResult['roomId'])) {
+                        Log::error("[LobbyService] Failed to create Game Server room", [
+                            'result' => $roomResult,
+                        ]);
+                        return [
+                            'success' => false,
+                            'error' => $roomResult['error'] ?? __('Erreur lors de la création de la room'),
+                        ];
+                    }
+                    
+                    $roomId = $roomResult['roomId'];
+                    $gsLobbyCode = $roomResult['lobbyCode'] ?? $code;
+                    $wsUrl = $this->gameServerService->getSocketUrl();
+                    
+                    Log::info("[LobbyService] Game Server room created", [
+                        'roomId' => $roomId,
+                        'gsLobbyCode' => $gsLobbyCode,
+                        'wsUrl' => $wsUrl,
+                    ]);
+                    
+                    // 2. Générer les questions de manière synchrone
+                    $questionService = app(QuestionService::class);
+                    $questions = [];
+                    $nbQuestions = $lobby['settings']['nb_questions'] ?? 10;
+                    $theme = $lobby['settings']['theme'] ?? 'culture générale';
+                    $niveau = $lobby['settings']['niveau'] ?? 3;
+                    $language = $lobby['settings']['language'] ?? app()->getLocale();
+                    
+                    Log::info("[LobbyService] Generating {$nbQuestions} questions synchronously", [
+                        'theme' => $theme,
+                        'niveau' => $niveau,
+                        'language' => $language,
+                    ]);
+                    
+                    for ($i = 1; $i <= $nbQuestions; $i++) {
+                        $q = $questionService->generateQuestion(
+                            $theme,
+                            $niveau,
+                            $i,
+                            [],
+                            [],
+                            [],
+                            [],
+                            null,
+                            false,
+                            $language,
+                            true
+                        );
+                        
+                        if ($q) {
+                            $questions[] = [
+                                'id' => $q['id'] ?? 'q_' . $i,
+                                'text' => $q['question_text'] ?? $q['text'] ?? '',
+                                'answers' => $q['answers'] ?? [],
+                                'correct_index' => $q['correct_id'] ?? $q['correct_index'] ?? 0,
+                                'sub_theme' => $q['sub_theme'] ?? '',
+                                'theme' => $theme,
+                            ];
+                        }
+                    }
+                    
+                    Log::info("[LobbyService] Generated questions", [
+                        'count' => count($questions),
+                    ]);
+                    
+                    // 3. Envoyer les questions au Game Server
+                    $sendResult = $this->gameServerService->sendQuestions($roomId, $questions);
+                    
+                    if (!($sendResult['success'] ?? false)) {
+                        Log::error("[LobbyService] Failed to send questions to Game Server", [
+                            'roomId' => $roomId,
+                            'error' => $sendResult['error'] ?? 'Unknown error',
+                        ]);
+                        return [
+                            'success' => false,
+                            'error' => $sendResult['error'] ?? __('Erreur lors de l\'envoi des questions'),
+                        ];
+                    }
+                    
+                    // 4. Générer les tokens JWT pour chaque joueur
+                    $playerTokens = [];
+                    foreach ($playerIds as $playerId) {
+                        $playerTokens[$playerId] = $this->gameServerService->generatePlayerToken($playerId, $roomId);
+                    }
+                    
+                    Log::info("[LobbyService] Generated player tokens", [
+                        'player_count' => count($playerTokens),
+                    ]);
+                    
+                    // 5. Démarrer le jeu sur le Game Server AVANT de sauvegarder les métadonnées
+                    $startResult = $this->gameServerService->startGame($roomId, (string) $host->id);
+                    
+                    if (!($startResult['success'] ?? false)) {
+                        Log::error("[LobbyService] Failed to start game on Game Server", [
+                            'roomId' => $roomId,
+                            'error' => $startResult['error'] ?? 'Unknown error',
+                        ]);
+                        return [
+                            'success' => false,
+                            'error' => $startResult['error'] ?? __('Erreur lors du démarrage du jeu'),
+                        ];
+                    }
+                    
+                    // 6. APRÈS succès: Stocker les informations Game Server et marquer comme démarré
+                    $lobby['game_server'] = [
+                        'roomId' => $roomId,
+                        'lobbyCode' => $gsLobbyCode,
+                        'wsUrl' => $wsUrl,
+                        'player_tokens' => $playerTokens,
+                    ];
+                    $lobby['status'] = 'started';
+                    $lobby['started_at'] = now()->toISOString();
+                    $this->saveLobby($code, $lobby);
+                    
+                    Log::info("[LobbyService] Duo game started successfully via Game Server", [
+                        'lobby_code' => $code,
+                        'roomId' => $roomId,
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    Log::error("[LobbyService] Exception during Game Server Duo start", [
+                        'lobby_code' => $code,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    return [
+                        'success' => false,
+                        'error' => __('Erreur lors du démarrage du jeu: :error', ['error' => $e->getMessage()]),
+                    ];
+                }
+            }
+            // Modes League: Utiliser Firebase
+            elseif (in_array($mode, ['league_individual', 'league_team'])) {
+                $lobby['status'] = 'starting';
+                $lobby['started_at'] = now()->toISOString();
+                $this->saveLobby($code, $lobby);
+                
+                try {
                     $player1Id = $playerIds[0] ?? null;
                     $player2Id = $playerIds[1] ?? null;
                     
@@ -643,10 +797,8 @@ class LobbyService
                     
                     $firestore = $this->getDuoFirestoreService();
                     
-                    // Préparer la session Firebase si elle n'existe pas
                     $firestore->prepareGameSession($code, $matchData);
                     
-                    // Envoyer le signal de démarrage avec les paramètres de jeu
                     $gameData = [
                         'total_questions' => $lobby['settings']['nb_questions'] ?? 10,
                         'chrono_time' => $lobby['settings']['chrono_time'] ?? 8,
@@ -655,11 +807,12 @@ class LobbyService
                     
                     $firestore->sendGameStartSignal($code, $gameData);
                     
-                    Log::info("Firebase game start signal sent for lobby {$code}");
+                    Log::info("[LobbyService] Firebase game start signal sent for lobby {$code}");
                 } catch (\Exception $e) {
-                    Log::error("Failed to send Firebase game start signal: " . $e->getMessage());
-                    // Continue même si Firebase échoue - le jeu peut fonctionner sans
+                    Log::error("[LobbyService] Failed to send Firebase game start signal: " . $e->getMessage());
                 }
+            } else {
+                $this->saveLobby($code, $lobby);
             }
             
             return ['success' => true, 'lobby' => $lobby];

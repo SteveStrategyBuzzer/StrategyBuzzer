@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import type { RoomManager } from "../services/RoomManager.js";
+import type { GameOrchestrator } from "../services/GameOrchestrator.js";
 import { DEFAULT_DUO_CONFIG, DEFAULT_LEAGUE_INDIVIDUAL_CONFIG, DEFAULT_LEAGUE_TEAM_CONFIG, DEFAULT_MASTER_CONFIG } from "../../../../packages/shared/src/types.js";
 import type { GameConfig, Mode } from "../../../../packages/shared/src/types.js";
 
@@ -18,7 +19,7 @@ function getConfigForMode(mode: Mode): GameConfig {
   }
 }
 
-export function setupHttpRoutes(app: Express, roomManager: RoomManager): void {
+export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrchestrator: GameOrchestrator): void {
   app.get("/health", (_req: Request, res: Response) => {
     res.json({
       status: "ok",
@@ -129,17 +130,24 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager): void {
       });
     }
     
-    const event = roomManager.startGame(roomId);
-    if (!event) {
+    if (state.questions.length === 0) {
       return res.status(400).json({
         success: false,
-        error: "Cannot start game",
+        error: "No questions set. Use POST /rooms/:roomId/questions first.",
+      });
+    }
+    
+    const startResult = gameOrchestrator.startGame(roomId);
+    
+    if (!startResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: startResult.error || "Failed to start game",
       });
     }
     
     res.json({
       success: true,
-      event,
       state: roomManager.getState(roomId),
     });
   });
@@ -168,7 +176,7 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager): void {
       });
     }
     
-    room.state.questions = questions;
+    gameOrchestrator.setQuestions(roomId, questions);
     
     res.json({
       success: true,

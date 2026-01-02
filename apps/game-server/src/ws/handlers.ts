@@ -1,5 +1,6 @@
 import type { Server as SocketIOServer, Socket } from "socket.io";
 import type { RoomManager } from "../services/RoomManager.js";
+import type { GameOrchestrator } from "../services/GameOrchestrator.js";
 import type { GameState, Player } from "../../../../packages/shared/src/types.js";
 import type { GameEvent } from "../../../../packages/shared/src/events.js";
 import { verifyJWT, type PlayerTokenPayload } from "../middleware/auth.js";
@@ -47,7 +48,7 @@ type SkillPayload = {
   targetPlayerId?: string;
 };
 
-export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager): void {
+export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager, gameOrchestrator: GameOrchestrator): void {
   io.on("connection", (socket: Socket) => {
     console.log(`[WS] Client connected: ${socket.id}`);
     
@@ -126,23 +127,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           return;
         }
         
-        const event = roomManager.registerBuzz(payload.roomId, currentPlayerId, payload.clientTimeMs);
-        
-        if (!event) {
-          socket.emit("error", { code: "BUZZ_FAILED", message: "Could not register buzz" });
-          return;
-        }
-        
-        io.to(payload.roomId).emit("event", { event });
-        
-        const state = roomManager.getState(payload.roomId);
-        if (state && state.phase === "ANSWER_SELECTION") {
-          io.to(payload.roomId).emit("phase_changed", {
-            phase: state.phase,
-            lockedPlayerId: state.lockedAnswerPlayerId,
-            phaseEndsAtMs: state.phaseEndsAtMs,
-          });
-        }
+        gameOrchestrator.handleBuzz(payload.roomId, currentPlayerId, payload.clientTimeMs);
       } catch (error) {
         console.error("[WS] Error processing buzz:", error);
         socket.emit("error", { code: "BUZZ_ERROR", message: "Error processing buzz" });
@@ -168,33 +153,9 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         }
         
         console.log(`[WS] Answer from ${currentPlayerId}: ${payload.answer}`);
-        
         socket.emit("answer_received", { success: true });
         
-        const previousScores = extractScores(room.state.players);
-        
-        const state = roomManager.getState(payload.roomId);
-        if (state) {
-          const currentScores = extractScores(state.players);
-          const scoresChanged = Object.keys(currentScores).some(
-            playerId => currentScores[playerId] !== previousScores[playerId]
-          );
-          
-          if (scoresChanged) {
-            io.to(payload.roomId).emit("score_update", {
-              scores: currentScores,
-              roundScores: extractRoundScores(state.players),
-            });
-          }
-          
-          io.to(payload.roomId).emit("phase_changed", {
-            phase: state.phase,
-            phaseEndsAtMs: state.phaseEndsAtMs,
-            questionIndex: state.questionIndex,
-            roundNumber: state.currentRound,
-          });
-        }
-        
+        gameOrchestrator.handleAnswer(payload.roomId, currentPlayerId, payload.answer);
       } catch (error) {
         console.error("[WS] Error processing answer:", error);
         socket.emit("error", { code: "ANSWER_ERROR", message: "Error processing answer" });

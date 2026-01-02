@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import cors from "cors";
 import { RoomManager } from "./services/RoomManager.js";
+import { GameOrchestrator } from "./services/GameOrchestrator.js";
 import { setupSocketHandlers } from "./ws/handlers.js";
 import { setupHttpRoutes } from "./http/routes.js";
 import { verifyJWT } from "./middleware/auth.js";
@@ -53,10 +54,11 @@ io.use((socket, next) => {
 });
 
 const roomManager = new RoomManager();
+const gameOrchestrator = new GameOrchestrator(io, roomManager);
 
-setupHttpRoutes(app, roomManager);
+setupHttpRoutes(app, roomManager, gameOrchestrator);
 
-setupSocketHandlers(io, roomManager);
+setupSocketHandlers(io, roomManager, gameOrchestrator);
 
 httpServer.listen(PORT, () => {
   console.log(`[GameServer] Running on port ${PORT}`);
