@@ -73,9 +73,10 @@ packages/
   game-engine/src/      # Reducer, state-machine, scoring
 apps/
   game-server/src/      # Serveur de jeu Node.js/TypeScript
-    services/           # RoomManager
+    services/           # RoomManager, QuestionService
     http/               # Routes HTTP (POST /rooms, GET /rooms/:id)
     ws/                 # WebSocket handlers (join_room, buzz, answer, skill)
+    middleware/         # JWT auth middleware
 ```
 
 ### Game Server
@@ -84,6 +85,20 @@ apps/
 - **Phases alignées sur Solo**: INTRO → QUESTION_ACTIVE → ANSWER_SELECTION → REVEAL → ROUND_SCOREBOARD → TIEBREAKER_* → MATCH_END
 - **Timers**: intro 9s, question 8s, answer 10s
 - **Scoring**: +2 (>3s), +1 (1-3s), 0 (<1s), -2 (mauvaise réponse)
+
+### Laravel ↔ Game Server Integration
+- **GameServerService.php**: Manages JWT token generation, room creation via HTTP, player authentication
+- **JWT Token Payload**: camelCase fields (`playerId`, `playerName`, `avatarId`, `roomId`)
+- **JWT Secret**: Uses `GAME_SERVER_JWT_SECRET` env var (falls back to `APP_KEY` decoded from base64)
+- **Security**: Strict JWT validation - invalid tokens are rejected (no anonymous connections allowed)
+- **Room Creation**: Laravel creates rooms via POST `/rooms`, Game Server returns `{roomId, lobbyCode}`
+
+### Frontend Socket.IO Client
+- **DuoSocketClient.js**: Singleton module for Socket.IO communication
+- **Features**: Room join, ready status, buzz, answer, skill activation, voice chat signaling
+- **Events**: Matches server events (`join_room`, `buzz`, `answer`, `skill`, `ready`, `voice_*`)
+- **Voice Chat**: WebRTC signaling integrated into Socket.IO channel (no separate connection)
+- **Latency**: Built-in ping measurement via `ping_check` / `pong_check` events
 
 ### Imports Cross-Package
 Les imports utilisent des chemins relatifs (par exemple `../../../../packages/shared/src/types.js`).
