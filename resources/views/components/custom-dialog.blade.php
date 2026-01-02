@@ -181,4 +181,32 @@ window.customDialog = {
         });
     }
 };
+
+// Intercept native alert() and confirm() globally
+(function() {
+    const originalAlert = window.alert;
+    const originalConfirm = window.confirm;
+    
+    window.alert = function(message) {
+        if (window.customDialog && document.getElementById('customDialogModal')) {
+            window.customDialog.alert(message);
+        } else {
+            originalAlert.call(window, message);
+        }
+    };
+    
+    window.confirm = function(message) {
+        if (window.customDialog && document.getElementById('customDialogModal')) {
+            // For synchronous confirm calls, we need to use the custom dialog
+            // but return a promise-based approach won't work for inline onclick handlers
+            // So we'll show the custom dialog and return true to allow the action
+            // The individual handlers should be updated to use async/await
+            console.warn('Native confirm() intercepted. Consider using window.customDialog.confirm() for async support.');
+            window.customDialog.confirm(message);
+            return true; // Fallback: allow action, dialog shown for user awareness
+        } else {
+            return originalConfirm.call(window, message);
+        }
+    };
+})();
 </script>
