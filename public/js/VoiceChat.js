@@ -3,6 +3,12 @@
  * Provides real-time voice communication for Duo, League Individual, and League Team modes
  * Uses Firebase Firestore for signaling (SDP offer/answer and ICE candidates exchange)
  * Supports mesh network for up to 5 simultaneous speakers (League Team)
+ * 
+ * FIXES v2.0:
+ * - Added automatic renegotiation when microphone is enabled after connection
+ * - Added connection health monitoring with automatic reconnection
+ * - Added TURN servers for better NAT traversal
+ * - Fixed race conditions in peer connection creation
  */
 
 class VoiceChat {
@@ -32,16 +38,37 @@ class VoiceChat {
         this.audioContext = null;
         this.analyser = null;
         this.speakingCheckInterval = null;
+        this.healthCheckInterval = null;
+        this.connectionRetryCount = {};
+        this.maxRetries = 3;
+        this.creatingConnection = {};
         
         this.remoteMicStates = {};
         this.locallyMutedUsers = {};
+        this.remoteAudioReceived = {};
         
         this.iceServers = [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
             { urls: 'stun:stun2.l.google.com:19302' },
             { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' }
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:stun.stunprotocol.org:3478' },
+            {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
         ];
         
         console.log(`[VoiceChat] Created for session ${this.sessionId}, user ${this.localUserId}, mode: ${this.mode}`);
@@ -65,6 +92,7 @@ class VoiceChat {
         try {
             await this.setupFirestoreListeners();
             await this.registerAsParticipant();
+            this.startHealthCheck();
             this.isInitialized = true;
             console.log('[VoiceChat] Initialized successfully for session', this.sessionId);
             return true;
@@ -73,6 +101,50 @@ class VoiceChat {
             if (this.onError) this.onError(error);
             return false;
         }
+    }
+    
+    startHealthCheck() {
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+        }
+        
+        this.healthCheckInterval = setInterval(() => {
+            this.checkConnectionHealth();
+        }, 5000);
+        
+        console.log('[VoiceChat] Health check started');
+    }
+    
+    async checkConnectionHealth() {
+        for (const [remoteUserId, pc] of Object.entries(this.peerConnections)) {
+            if (pc.connectionState === 'failed' || pc.iceConnectionState === 'failed') {
+                console.log(`[VoiceChat] Connection failed with ${remoteUserId}, attempting reconnect...`);
+                await this.reconnectPeer(remoteUserId);
+            } else if (pc.connectionState === 'disconnected' && pc.iceConnectionState === 'disconnected') {
+                const retryCount = this.connectionRetryCount[remoteUserId] || 0;
+                if (retryCount < this.maxRetries) {
+                    console.log(`[VoiceChat] Connection disconnected with ${remoteUserId}, retry ${retryCount + 1}/${this.maxRetries}`);
+                    this.connectionRetryCount[remoteUserId] = retryCount + 1;
+                    await this.reconnectPeer(remoteUserId);
+                }
+            } else if (pc.connectionState === 'connected') {
+                this.connectionRetryCount[remoteUserId] = 0;
+            }
+        }
+    }
+    
+    async reconnectPeer(remoteUserId) {
+        console.log(`[VoiceChat] Reconnecting to ${remoteUserId}...`);
+        
+        this.closePeerConnection(remoteUserId);
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const myId = parseInt(this.localUserId);
+        const theirId = parseInt(remoteUserId);
+        const shouldInitiate = myId < theirId;
+        
+        await this.createPeerConnection(remoteUserId, shouldInitiate);
     }
     
     async registerAsParticipant() {
@@ -99,7 +171,9 @@ class VoiceChat {
                 audio: {
                     echoCancellation: true,
                     noiseSuppression: true,
-                    autoGainControl: true
+                    autoGainControl: true,
+                    sampleRate: 48000,
+                    channelCount: 1
                 } 
             });
             
@@ -107,6 +181,9 @@ class VoiceChat {
             this.setupSpeakingDetection();
             
             await this.addLocalStreamToPeers();
+            
+            await this.renegotiateAllConnections();
+            
             await this.signalMicState(true);
             
             if (this.onConnectionChange) {
@@ -119,6 +196,28 @@ class VoiceChat {
             console.error('[VoiceChat] Microphone access error', error);
             if (this.onError) this.onError(error);
             return false;
+        }
+    }
+    
+    async renegotiateAllConnections() {
+        console.log('[VoiceChat] Renegotiating all connections for new audio track...');
+        
+        for (const [remoteUserId, pc] of Object.entries(this.peerConnections)) {
+            if (pc.connectionState === 'closed') continue;
+            
+            try {
+                const myId = parseInt(this.localUserId);
+                const theirId = parseInt(remoteUserId);
+                
+                if (myId < theirId) {
+                    console.log(`[VoiceChat] Creating new offer for ${remoteUserId} after mic enable`);
+                    const offer = await pc.createOffer({ offerToReceiveAudio: true });
+                    await pc.setLocalDescription(offer);
+                    await this.sendOffer(remoteUserId, offer);
+                }
+            } catch (error) {
+                console.error(`[VoiceChat] Renegotiation error with ${remoteUserId}:`, error);
+            }
         }
     }
     
@@ -200,7 +299,7 @@ class VoiceChat {
                         this.onRemoteMicStateChange(participantId, newMicState, isLocallyMuted);
                     }
                     
-                    if ((data.micEnabled || data.listening) && !this.peerConnections[participantId]) {
+                    if ((data.micEnabled || data.listening) && !this.peerConnections[participantId] && !this.creatingConnection[participantId]) {
                         const myId = parseInt(this.localUserId);
                         const theirId = parseInt(participantId);
                         const shouldInitiate = myId < theirId;
@@ -212,6 +311,7 @@ class VoiceChat {
                 if (change.type === 'removed') {
                     console.log(`[VoiceChat] Participant left: ${participantId}`);
                     delete this.remoteMicStates[participantId];
+                    delete this.creatingConnection[participantId];
                     this.closePeerConnection(participantId);
                     if (this.onRemoteMicStateChange) {
                         this.onRemoteMicStateChange(participantId, false, false);
@@ -268,103 +368,144 @@ class VoiceChat {
             return this.peerConnections[remoteUserId];
         }
         
+        if (this.creatingConnection[remoteUserId]) {
+            console.log(`[VoiceChat] Already creating connection for ${remoteUserId}, skipping`);
+            return null;
+        }
+        
+        this.creatingConnection[remoteUserId] = true;
+        
         console.log(`[VoiceChat] Creating RTCPeerConnection with ${remoteUserId}, initiator: ${isInitiator}`);
         
-        const pc = new RTCPeerConnection({ iceServers: this.iceServers });
-        this.peerConnections[remoteUserId] = pc;
-        if (!this.pendingCandidates[remoteUserId]) {
-            this.pendingCandidates[remoteUserId] = [];
-        }
-        
-        pc.addTransceiver('audio', { direction: 'sendrecv' });
-        console.log(`[VoiceChat] Added audio transceiver for ${remoteUserId}`);
-        
-        if (this.localStream) {
-            const audioTrack = this.localStream.getAudioTracks()[0];
-            if (audioTrack) {
-                const senders = pc.getSenders();
-                const audioSender = senders.find(s => s.track === null || (s.track && s.track.kind === 'audio'));
-                if (audioSender) {
-                    await audioSender.replaceTrack(audioTrack);
-                    console.log(`[VoiceChat] Replaced track on existing sender for ${remoteUserId}`);
-                } else {
-                    pc.addTrack(audioTrack, this.localStream);
-                    console.log(`[VoiceChat] Added audio track for ${remoteUserId}`);
-                }
+        try {
+            const pc = new RTCPeerConnection({ 
+                iceServers: this.iceServers,
+                iceCandidatePoolSize: 10
+            });
+            this.peerConnections[remoteUserId] = pc;
+            if (!this.pendingCandidates[remoteUserId]) {
+                this.pendingCandidates[remoteUserId] = [];
             }
-        }
-        
-        pc.ontrack = (event) => {
-            console.log(`[VoiceChat] Received remote track from ${remoteUserId}`, event.streams);
-            if (event.streams && event.streams[0]) {
-                this.handleRemoteTrack(remoteUserId, event.streams[0]);
-            } else if (event.track) {
-                const stream = new MediaStream([event.track]);
-                this.handleRemoteTrack(remoteUserId, stream);
-            }
-        };
-        
-        pc.onicecandidate = async (event) => {
-            if (event.candidate) {
-                console.log(`[VoiceChat] Sending ICE candidate to ${remoteUserId}`);
-                await this.sendIceCandidate(remoteUserId, event.candidate);
-            }
-        };
-        
-        pc.oniceconnectionstatechange = () => {
-            console.log(`[VoiceChat] ICE state with ${remoteUserId}: ${pc.iceConnectionState}`);
-        };
-        
-        pc.onconnectionstatechange = () => {
-            console.log(`[VoiceChat] Connection state with ${remoteUserId}: ${pc.connectionState}`);
-            if (pc.connectionState === 'connected') {
-                this.isConnected = true;
-                if (this.onConnectionChange) {
-                    this.onConnectionChange({ muted: this.isMuted, connected: true });
-                }
-            } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-                console.log(`[VoiceChat] Connection ${pc.connectionState} with ${remoteUserId}, will retry...`);
-                setTimeout(() => {
-                    if (this.peerConnections[remoteUserId] && 
-                        (this.peerConnections[remoteUserId].connectionState === 'disconnected' ||
-                         this.peerConnections[remoteUserId].connectionState === 'failed')) {
-                        this.closePeerConnection(remoteUserId);
+            
+            pc.addTransceiver('audio', { direction: 'sendrecv' });
+            console.log(`[VoiceChat] Added audio transceiver for ${remoteUserId}`);
+            
+            if (this.localStream) {
+                const audioTrack = this.localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    const senders = pc.getSenders();
+                    const audioSender = senders.find(s => s.track === null || (s.track && s.track.kind === 'audio'));
+                    if (audioSender) {
+                        await audioSender.replaceTrack(audioTrack);
+                        console.log(`[VoiceChat] Replaced track on existing sender for ${remoteUserId}`);
+                    } else {
+                        pc.addTrack(audioTrack, this.localStream);
+                        console.log(`[VoiceChat] Added audio track for ${remoteUserId}`);
                     }
-                }, 5000);
+                }
             }
-        };
-        
-        pc.onnegotiationneeded = async () => {
-            console.log(`[VoiceChat] Negotiation needed with ${remoteUserId}, isInitiator: ${isInitiator}`);
-        };
-        
-        if (isInitiator) {
-            try {
-                const offer = await pc.createOffer({ offerToReceiveAudio: true });
-                await pc.setLocalDescription(offer);
-                console.log(`[VoiceChat] Created and set local offer for ${remoteUserId}`);
-                await this.sendOffer(remoteUserId, offer);
-            } catch (error) {
-                console.error('[VoiceChat] Error creating offer', error);
+            
+            pc.ontrack = (event) => {
+                console.log(`[VoiceChat] Received remote track from ${remoteUserId}`, event.streams);
+                this.remoteAudioReceived[remoteUserId] = true;
+                if (event.streams && event.streams[0]) {
+                    this.handleRemoteTrack(remoteUserId, event.streams[0]);
+                } else if (event.track) {
+                    const stream = new MediaStream([event.track]);
+                    this.handleRemoteTrack(remoteUserId, stream);
+                }
+            };
+            
+            pc.onicecandidate = async (event) => {
+                if (event.candidate) {
+                    await this.sendIceCandidate(remoteUserId, event.candidate);
+                }
+            };
+            
+            pc.onicegatheringstatechange = () => {
+                console.log(`[VoiceChat] ICE gathering state with ${remoteUserId}: ${pc.iceGatheringState}`);
+            };
+            
+            pc.oniceconnectionstatechange = () => {
+                console.log(`[VoiceChat] ICE connection state with ${remoteUserId}: ${pc.iceConnectionState}`);
+                
+                if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+                    this.isConnected = true;
+                    this.connectionRetryCount[remoteUserId] = 0;
+                    if (this.onConnectionChange) {
+                        this.onConnectionChange({ muted: this.isMuted, connected: true });
+                    }
+                }
+            };
+            
+            pc.onconnectionstatechange = () => {
+                console.log(`[VoiceChat] Connection state with ${remoteUserId}: ${pc.connectionState}`);
+                if (pc.connectionState === 'connected') {
+                    this.isConnected = true;
+                    this.connectionRetryCount[remoteUserId] = 0;
+                    if (this.onConnectionChange) {
+                        this.onConnectionChange({ muted: this.isMuted, connected: true });
+                    }
+                }
+            };
+            
+            pc.onnegotiationneeded = async () => {
+                console.log(`[VoiceChat] Negotiation needed with ${remoteUserId}`);
+            };
+            
+            if (isInitiator) {
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    const offer = await pc.createOffer({ 
+                        offerToReceiveAudio: true,
+                        voiceActivityDetection: true
+                    });
+                    await pc.setLocalDescription(offer);
+                    console.log(`[VoiceChat] Created and set local offer for ${remoteUserId}`);
+                    await this.sendOffer(remoteUserId, offer);
+                } catch (error) {
+                    console.error('[VoiceChat] Error creating offer', error);
+                }
             }
+            
+            this.creatingConnection[remoteUserId] = false;
+            return pc;
+        } catch (error) {
+            console.error('[VoiceChat] Error creating peer connection:', error);
+            this.creatingConnection[remoteUserId] = false;
+            throw error;
         }
-        
-        return pc;
     }
     
     async handleOffer(fromUserId, offer) {
         console.log(`[VoiceChat] Handling offer from ${fromUserId}`);
         
         let pc = this.peerConnections[fromUserId];
+        
+        if (pc && pc.signalingState === 'have-local-offer') {
+            const myId = parseInt(this.localUserId);
+            const theirId = parseInt(fromUserId);
+            if (myId > theirId) {
+                console.log(`[VoiceChat] Glare detected, we yield to ${fromUserId}`);
+                this.closePeerConnection(fromUserId);
+                pc = null;
+            } else {
+                console.log(`[VoiceChat] Glare detected, ignoring offer from ${fromUserId}`);
+                return;
+            }
+        }
+        
         if (!pc) {
             pc = await this.createPeerConnection(fromUserId, false);
         }
         
+        if (!pc) {
+            console.warn('[VoiceChat] Could not create peer connection for offer');
+            return;
+        }
+        
         try {
-            if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-local-offer') {
-                console.warn(`[VoiceChat] Unexpected signaling state for offer: ${pc.signalingState}`);
-            }
-            
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
             console.log(`[VoiceChat] Set remote description (offer) from ${fromUserId}`);
             
@@ -382,7 +523,9 @@ class VoiceChat {
                 }
             }
             
-            const answer = await pc.createAnswer();
+            const answer = await pc.createAnswer({
+                voiceActivityDetection: true
+            });
             await pc.setLocalDescription(answer);
             console.log(`[VoiceChat] Created and set local answer for ${fromUserId}`);
             await this.sendAnswer(fromUserId, answer);
@@ -402,7 +545,7 @@ class VoiceChat {
         
         try {
             if (pc.signalingState !== 'have-local-offer') {
-                console.warn(`[VoiceChat] Unexpected signaling state for answer: ${pc.signalingState}`);
+                console.warn(`[VoiceChat] Unexpected signaling state for answer: ${pc.signalingState}, ignoring`);
                 return;
             }
             
@@ -438,9 +581,10 @@ class VoiceChat {
         
         try {
             await pc.addIceCandidate(new RTCIceCandidate(candidate));
-            console.log(`[VoiceChat] Added ICE candidate from ${fromUserId}`);
         } catch (error) {
-            console.error('[VoiceChat] Error adding ICE candidate', error);
+            if (!error.message.includes('end-of-candidates')) {
+                console.error('[VoiceChat] Error adding ICE candidate', error);
+            }
         }
     }
     
@@ -460,7 +604,9 @@ class VoiceChat {
             try {
                 await pc.addIceCandidate(new RTCIceCandidate(candidate));
             } catch (error) {
-                console.warn('[VoiceChat] Error adding pending ICE candidate', error);
+                if (!error.message.includes('end-of-candidates')) {
+                    console.warn('[VoiceChat] Error adding pending ICE candidate', error);
+                }
             }
         }
     }
@@ -482,7 +628,10 @@ class VoiceChat {
             console.log(`[VoiceChat] Created audio element for ${remoteUserId}`);
         }
         
-        audioEl.srcObject = stream;
+        if (audioEl.srcObject !== stream) {
+            audioEl.srcObject = stream;
+            console.log(`[VoiceChat] Set new stream for ${remoteUserId}`);
+        }
         
         if (this.locallyMutedUsers[remoteUserId]) {
             audioEl.muted = true;
@@ -491,21 +640,32 @@ class VoiceChat {
             audioEl.muted = false;
         }
         
-        const playPromise = audioEl.play();
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                console.log(`[VoiceChat] Audio playing from ${remoteUserId}`);
-            }).catch(err => {
-                console.warn('[VoiceChat] Autoplay blocked, adding click listener', err);
-                const resumeAudio = () => {
-                    audioEl.play().then(() => {
-                        console.log(`[VoiceChat] Audio resumed for ${remoteUserId} after user interaction`);
+        const playAudio = () => {
+            const playPromise = audioEl.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log(`[VoiceChat] Audio playing from ${remoteUserId}`);
+                }).catch(err => {
+                    console.warn('[VoiceChat] Autoplay blocked:', err.message);
+                    const resumeAudio = () => {
+                        audioEl.play().then(() => {
+                            console.log(`[VoiceChat] Audio resumed for ${remoteUserId} after user interaction`);
+                        }).catch(e => console.warn('[VoiceChat] Still cannot play:', e.message));
                         document.removeEventListener('click', resumeAudio);
-                    }).catch(e => console.warn('[VoiceChat] Still cannot play:', e));
-                };
-                document.addEventListener('click', resumeAudio, { once: true });
-            });
-        }
+                        document.removeEventListener('touchstart', resumeAudio);
+                    };
+                    document.addEventListener('click', resumeAudio, { once: true });
+                    document.addEventListener('touchstart', resumeAudio, { once: true });
+                });
+            }
+        };
+        
+        playAudio();
+        
+        stream.onaddtrack = () => {
+            console.log(`[VoiceChat] New track added to stream from ${remoteUserId}`);
+            playAudio();
+        };
     }
     
     async sendOffer(toUserId, offer) {
@@ -649,6 +809,9 @@ class VoiceChat {
             delete this.peerConnections[remoteUserId];
         }
         
+        delete this.creatingConnection[remoteUserId];
+        delete this.remoteAudioReceived[remoteUserId];
+        
         if (this.pendingCandidates[remoteUserId]) {
             this.pendingCandidates[remoteUserId].length = 0;
         }
@@ -675,7 +838,8 @@ class VoiceChat {
             status[remoteUserId] = {
                 connectionState: pc.connectionState,
                 iceConnectionState: pc.iceConnectionState,
-                signalingState: pc.signalingState
+                signalingState: pc.signalingState,
+                audioReceived: this.remoteAudioReceived[remoteUserId] || false
             };
         }
         return status;
@@ -741,6 +905,11 @@ class VoiceChat {
     
     async destroy() {
         console.log('[VoiceChat] Destroying...');
+        
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+            this.healthCheckInterval = null;
+        }
         
         this.unsubscribers.forEach(unsub => {
             try {
