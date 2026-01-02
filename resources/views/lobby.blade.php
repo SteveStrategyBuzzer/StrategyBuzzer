@@ -4573,22 +4573,7 @@ initFirebase().then(async (authenticated) => {
             }
         }
         
-        // Update waiting message with specific player names
-        const waitingMessage = document.getElementById('waiting-message-container');
-        if (waitingMessage) {
-            if (allReady && allConnected) {
-                waitingMessage.style.display = 'none';
-            } else {
-                waitingMessage.style.display = 'block';
-                // Update the waiting message content to show specific names
-                if (playerCount >= minPlayersFirebase && notReadyPlayers.length > 0) {
-                    const waitingNames = notReadyPlayers.map(p => `${p.name} (${p.player_code || 'SB-????'})`).join(', ');
-                    waitingMessage.innerHTML = `${translations.waitingFor} ${waitingNames}<span class="waiting-dots"></span>`;
-                } else if (playerCount < minPlayersFirebase) {
-                    waitingMessage.innerHTML = `${translations.waitingMessage} (${playerCount}/${minPlayersFirebase} ${translations.minimum})<span class="waiting-dots"></span>`;
-                }
-            }
-        }
+        // Waiting message removed - status is shown via player cards with ready indicators
         
         // For Duo mode: Auto-start countdown when all ready
         if (mode === 'duo' && allReady && allConnected && !window.countdownInitiated) {
