@@ -370,7 +370,7 @@ document.getElementById('recruitingToggle')?.addEventListener('change', async fu
         
         if (!data.success) {
             this.checked = !isRecruiting;
-            alert(data.error || '{{ __("Erreur lors de la mise à jour") }}');
+            if (window.customDialog) window.customDialog.alert(data.error || '{{ __("Erreur lors de la mise à jour") }}');
         }
     } catch (error) {
         this.checked = !isRecruiting;
@@ -416,7 +416,7 @@ async function handleRequest(requestId, action) {
                 setTimeout(() => window.location.reload(), 1500);
             }
         } else {
-            alert(data.error || '{{ __("Erreur lors du traitement de la demande") }}');
+            if (window.customDialog) window.customDialog.alert(data.error || '{{ __("Erreur lors du traitement de la demande") }}');
             buttons.forEach(btn => btn.disabled = false);
         }
     } catch (error) {

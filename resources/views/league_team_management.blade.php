@@ -1947,8 +1947,10 @@ function showConfirmModal(message) {
         if (overlay && messageEl) {
             messageEl.textContent = message;
             overlay.style.display = 'flex';
+        } else if (window.customDialog) {
+            window.customDialog.confirm(message).then(resolve);
         } else {
-            resolve(confirm(message));
+            resolve(true);
         }
     });
 }
@@ -2062,7 +2064,7 @@ emblemUpload?.addEventListener('change', function() {
 
 function handleFileUpload(file) {
     if (file.size > 2 * 1024 * 1024) {
-        alert('{{ __("Le fichier est trop volumineux (max 2MB)") }}');
+        if (window.customDialog) window.customDialog.alert('{{ __("Le fichier est trop volumineux (max 2MB)") }}');
         return;
     }
     

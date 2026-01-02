@@ -552,7 +552,7 @@ uploadInput?.addEventListener('change', function() {
 
 function handleImageUpload(file) {
     if (file.size > 2 * 1024 * 1024) {
-        alert('{{ __("L\'image ne doit pas dépasser 2MB") }}');
+        if (window.customDialog) window.customDialog.alert('{{ __("L\'image ne doit pas dépasser 2MB") }}');
         return;
     }
     

@@ -584,7 +584,7 @@ document.getElementById('joinRequestBtn')?.addEventListener('click', async funct
         if (data.success) {
             this.outerHTML = `<div class="pending-request-info">⏳ {{ __('Votre demande d\'accès est en attente de validation par le capitaine.') }}</div>`;
         } else {
-            alert(data.error || '{{ __("Erreur lors de l\'envoi de la demande") }}');
+            if (window.customDialog) window.customDialog.alert(data.error || '{{ __("Erreur lors de l\'envoi de la demande") }}');
             this.disabled = false;
             this.innerHTML = '<span class="btn-icon">✋</span> {{ __("DEMANDER À REJOINDRE") }}';
         }
