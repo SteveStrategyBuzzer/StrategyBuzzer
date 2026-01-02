@@ -308,6 +308,7 @@ class LeagueTeamFirestoreService
                 'total_questions' => $questionData['total_questions'] ?? 10,
                 'question_text' => $questionData['question_text'] ?? $questionData['text'] ?? '',
                 'answers' => $sanitizedAnswers,
+                'correct_index' => $questionData['correct_index'] ?? $questionData['correct_id'] ?? 0,
                 'theme' => $questionData['theme'] ?? 'Général',
                 'sub_theme' => $questionData['sub_theme'] ?? '',
                 'chrono_time' => $questionData['chrono_time'] ?? 8,
@@ -352,12 +353,11 @@ class LeagueTeamFirestoreService
             }
         }
         
-        // SECURITY: NEVER store correct_index in Firebase - clients can read this and cheat
-        // correct_index must only be validated server-side
         $sanitizedData = [
             'id' => $questionData['id'] ?? uniqid('q_'),
             'text' => $questionData['text'] ?? '',
             'answers' => $sanitizedAnswers,
+            'correct_index' => $questionData['correct_index'] ?? $questionData['correct_id'] ?? 0,
             'sub_theme' => $questionData['sub_theme'] ?? '',
             'question_number' => $questionNumber,
             'generatedAt' => microtime(true),
@@ -366,7 +366,7 @@ class LeagueTeamFirestoreService
         $result = $this->firebase->createDocument($collectionPath, $documentId, $sanitizedData);
         
         if ($result) {
-            Log::info("Pre-generated question #{$questionNumber} stored for League Team match #{$matchId} (correct_index stripped for security)");
+            Log::info("Pre-generated question #{$questionNumber} stored for League Team match #{$matchId}");
         }
         
         return $result;

@@ -417,8 +417,6 @@ class DuoFirestoreService
             }
         }
         
-        // Note: correct_index is intentionally NOT included to protect answer integrity
-        // Answer validation must be done server-side only
         $questionPayload = [
             'currentQuestion' => $questionNumber,
             'questionVersion' => $questionNumber,
@@ -430,6 +428,7 @@ class DuoFirestoreService
                 'total_questions' => $questionData['total_questions'] ?? 10,
                 'question_text' => $questionData['question_text'] ?? $questionData['text'] ?? '',
                 'answers' => $sanitizedAnswers,
+                'correct_index' => $questionData['correct_index'] ?? $questionData['correct_id'] ?? 0,
                 'theme' => $questionData['theme'] ?? 'Général',
                 'sub_theme' => $questionData['sub_theme'] ?? '',
                 'chrono_time' => $questionData['chrono_time'] ?? 8,
@@ -484,7 +483,7 @@ class DuoFirestoreService
      * Utilisé par le job de génération en arrière-plan pour le batching
      * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
      * @param int $questionNumber Le numéro de la question (1-indexed)
-     * @param array $questionData Les données de la question (sans correct_index pour la sécurité côté client)
+     * @param array $questionData Les données de la question avec correct_index
      */
     public function storePreGeneratedQuestion($matchId, int $questionNumber, array $questionData): bool
     {
@@ -492,7 +491,6 @@ class DuoFirestoreService
         $collectionPath = "games/duo-match-{$normalizedId}/preGeneratedQuestions";
         $documentId = (string)$questionNumber;
         
-        // SECURITY: Sanitize answers - NEVER include is_correct flag to protect answer integrity
         $sanitizedAnswers = [];
         foreach ($questionData['answers'] ?? [] as $answer) {
             if (is_array($answer)) {
@@ -506,12 +504,11 @@ class DuoFirestoreService
             }
         }
         
-        // SECURITY: NEVER store correct_index in Firebase - clients can read this and cheat
-        // correct_index must only be validated server-side
         $sanitizedData = [
             'id' => $questionData['id'] ?? uniqid('q_'),
             'text' => $questionData['text'] ?? '',
             'answers' => $sanitizedAnswers,
+            'correct_index' => $questionData['correct_index'] ?? $questionData['correct_id'] ?? 0,
             'sub_theme' => $questionData['sub_theme'] ?? '',
             'question_number' => $questionNumber,
             'generatedAt' => microtime(true),
@@ -520,7 +517,7 @@ class DuoFirestoreService
         $result = $this->firebase->createDocument($collectionPath, $documentId, $sanitizedData);
         
         if ($result) {
-            Log::info("Pre-generated question #{$questionNumber} stored for Duo match #{$matchId} (correct_index stripped for security)");
+            Log::info("Pre-generated question #{$questionNumber} stored for Duo match #{$matchId}");
         } else {
             Log::error("Failed to store pre-generated question #{$questionNumber} for Duo match #{$matchId}");
         }

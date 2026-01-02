@@ -250,11 +250,11 @@ class UnifiedGameController extends Controller
             $firestoreService->storePreGeneratedQuestion($matchId, 1, $firstQuestion);
             
             // Publish Question 1 so clients receive it immediately via listenForQuestions()
-            // Note: publishQuestion() handles sanitization internally (removes correct_index, sanitizes answers)
             $questionForPublish = [
                 'id' => $firstQuestion['id'],
                 'text' => $firstQuestion['text'],
-                'answers' => $firstQuestion['answers'], // Pass original answers - publishQuestion() sanitizes
+                'answers' => $firstQuestion['answers'],
+                'correct_index' => $firstQuestion['correct_index'],
                 'sub_theme' => $firstQuestion['sub_theme'],
                 'question_number' => 1,
                 'total_questions' => $totalQuestions,
@@ -424,7 +424,7 @@ class UnifiedGameController extends Controller
             'question' => $question,
             'question_text' => $question['text'],
             'answers' => $question['answers'],
-            'correct_answer_index' => $question['correct_index'],
+            'correct_answer_index' => $question['correct_index'] ?? 0,
             'current' => $gameState['current_question'],
             'current_question' => $gameState['current_question'],
             'nb_questions' => $gameState['total_questions'],
@@ -528,7 +528,7 @@ class UnifiedGameController extends Controller
             'opponent_info' => $opponentInfo,
             'question' => $question,
             'answers' => $question['answers'],
-            'correct_answer_index' => $question['correct_index'],
+            'correct_answer_index' => $question['correct_index'] ?? 0,
             'current' => $gameState['current_question'],
             'nb_questions' => $gameState['total_questions'],
             'theme' => $gameState['theme'] ?? 'Culture générale',
@@ -959,13 +959,9 @@ class UnifiedGameController extends Controller
             $lobbyCode = $gameState['lobby_code'] ?? $gameState['room_code'] ?? null;
             if ($lobbyCode) {
                 try {
-                    // Préparer les données pour Firebase (sans correct_index pour la sécurité)
-                    $firebaseQuestionData = $questionData;
-                    unset($firebaseQuestionData['correct_index']);
-                    
                     // Utiliser DuoFirestoreService pour tous les modes multiplayer
                     // Cela assure la cohérence avec LobbyService qui utilise aussi DuoFirestoreService
-                    $this->duoFirestoreService->publishQuestion($lobbyCode, $firebaseQuestionData, $questionNumber);
+                    $this->duoFirestoreService->publishQuestion($lobbyCode, $questionData, $questionNumber);
                     
                     Log::info("Question published to Firebase", [
                         'mode' => $mode,
