@@ -820,13 +820,13 @@ function sendResultMessage() {
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             input.focus();
         } else {
-            alert(data.message || "{{ __('Erreur lors de l\\'envoi du message') }}");
+            if (window.customDialog) window.customDialog.alert(data.message || "{{ __('Erreur lors de l\\'envoi du message') }}");
         }
     })
     .catch(error => {
         console.error('Error sending message:', error);
         input.disabled = false;
-        alert("{{ __('Erreur de connexion') }}");
+        if (window.customDialog) window.customDialog.alert("{{ __('Erreur de connexion') }}");
     });
 }
 

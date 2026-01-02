@@ -1109,7 +1109,7 @@ async function toggleMicrophone() {
                 icon.textContent = '🎤';
             } catch (error) {
                 console.error('Microphone error:', error);
-                alert('{{ __("Impossible d\'accéder au microphone") }}');
+                if (window.customDialog) window.customDialog.alert('{{ __("Impossible d\'accéder au microphone") }}');
             }
         } else {
             if (localStream) {
