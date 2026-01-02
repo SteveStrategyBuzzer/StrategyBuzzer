@@ -50,16 +50,30 @@
                 $currentDivIndex = array_search($division->division ?? 'bronze', $divisions);
                 $maxDivIndex = min($currentDivIndex + 2, count($divisions) - 1);
                 $divisionEmojis = ['🥉', '🥈', '🥇', '💎', '💠', '👑'];
-                $divisionFees = [0, 0, 50, 100, 200, 500];
+                // Gains par victoire pour chaque division
+                $divisionRewards = [10, 15, 25, 50, 100, 250];
+                // Coûts d'accès = 2x les gains (seulement pour divisions supérieures)
+                $divisionFees = [20, 30, 50, 100, 200, 500];
+                $divisionLabels = [
+                    'bronze' => __('Bronze'),
+                    'argent' => __('Argent'),
+                    'or' => __('Or'),
+                    'platine' => __('Platine'),
+                    'diamant' => __('Diamant'),
+                    'legende' => __('Légende')
+                ];
             @endphp
             @for($i = $currentDivIndex; $i <= $maxDivIndex; $i++)
                 <button class="division-option {{ $i == $currentDivIndex ? 'selected current' : '' }}" 
                         data-division="{{ $divisions[$i] }}"
-                        data-fee="{{ $i > $currentDivIndex ? $divisionFees[$i] : 0 }}">
+                        data-division-label="{{ $divisionLabels[$divisions[$i]] }}"
+                        data-fee="{{ $i > $currentDivIndex ? $divisionFees[$i] : 0 }}"
+                        data-reward="{{ $divisionRewards[$i] }}">
                     <span class="div-emoji">{{ $divisionEmojis[$i] }}</span>
                     <span class="div-name">{{ ucfirst($divisions[$i]) }}</span>
+                    <span class="div-reward">🏆 {{ $divisionRewards[$i] }} 💰</span>
                     @if($i > $currentDivIndex)
-                        <span class="div-fee">{{ $divisionFees[$i] }} 💰</span>
+                        <span class="div-fee">{{ __('Accès') }}: {{ $divisionFees[$i] }} 💰</span>
                     @endif
                 </button>
             @endfor
@@ -349,10 +363,18 @@
     text-transform: uppercase;
 }
 
+.div-reward {
+    font-size: 0.75rem;
+    color: #27ae60;
+    font-weight: 600;
+    margin-top: 3px;
+}
+
 .div-fee {
-    font-size: 0.8rem;
-    color: #ffd700;
-    margin-top: 5px;
+    font-size: 0.75rem;
+    color: #e67e22;
+    font-weight: 600;
+    margin-top: 3px;
 }
 
 /* Matchmaking Area */

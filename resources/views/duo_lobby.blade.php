@@ -60,16 +60,30 @@
                         $currentDivIndex = array_search($currentDivision, $divisions);
                         $maxDivIndex = min($currentDivIndex + 2, count($divisions) - 1);
                         $divisionEmojis = ['🥉', '🥈', '🥇', '💎', '💠', '👑'];
-                        $divisionFees = [0, 0, 50, 100, 200, 500];
+                        // Gains par victoire pour chaque division
+                        $divisionRewards = [10, 15, 25, 50, 100, 250];
+                        // Coûts d'accès = 2x les gains (seulement pour divisions supérieures)
+                        $divisionFees = [20, 30, 50, 100, 200, 500];
+                        $divisionLabels = [
+                            'bronze' => __('Bronze'),
+                            'argent' => __('Argent'),
+                            'or' => __('Or'),
+                            'platine' => __('Platine'),
+                            'diamant' => __('Diamant'),
+                            'legende' => __('Légende')
+                        ];
                     @endphp
                     @for($i = $currentDivIndex; $i <= $maxDivIndex; $i++)
                         <button class="division-option {{ $i == $currentDivIndex ? 'selected current' : '' }}" 
                                 data-division="{{ $divisions[$i] }}"
-                                data-fee="{{ $i > $currentDivIndex ? $divisionFees[$i] : 0 }}">
+                                data-division-label="{{ $divisionLabels[$divisions[$i]] }}"
+                                data-fee="{{ $i > $currentDivIndex ? $divisionFees[$i] : 0 }}"
+                                data-reward="{{ $divisionRewards[$i] }}">
                             <span class="div-emoji">{{ $divisionEmojis[$i] }}</span>
                             <span class="div-name">{{ ucfirst($divisions[$i]) }}</span>
+                            <span class="div-reward">🏆 {{ $divisionRewards[$i] }} 💰</span>
                             @if($i > $currentDivIndex)
-                                <span class="div-fee">{{ $divisionFees[$i] }} 💰</span>
+                                <span class="div-fee">{{ __('Accès') }}: {{ $divisionFees[$i] }} 💰</span>
                             @endif
                         </button>
                     @endfor
@@ -83,7 +97,7 @@
                 <!-- Queue Actions Section -->
                 <div class="panel-section queue-section">
                     <h3>🎯 {{ __('MATCHMAKING') }}</h3>
-                    <p>{{ __('Affrontez un adversaire de votre division') }}</p>
+                    <p id="matchmaking-description">{{ __('Affrontez un adversaire niveau') }} {{ ucfirst($currentDivision) }}</p>
                     
                     <button id="randomMatchBtn" class="btn-primary btn-large">
                         {{ __('REJOINDRE LA FILE D\'ATTENTE') }}
@@ -648,7 +662,7 @@
 }
 
 .matchmaking-unified-panel .opponents-section {
-    min-height: 180px;
+    min-height: 60px;
 }
 
 .matchmaking-unified-panel .queue-section {
@@ -685,10 +699,18 @@
     color: #1a1a1a;
 }
 
+.division-option .div-reward {
+    font-size: 0.75em;
+    color: #27ae60;
+    font-weight: 600;
+    margin-top: 3px;
+}
+
 .division-option .div-fee {
-    font-size: 0.85em;
-    color: #f57c00;
-    margin-top: 5px;
+    font-size: 0.75em;
+    color: #e67e22;
+    font-weight: 600;
+    margin-top: 3px;
 }
 
 /* Queue Status Styles */
@@ -724,7 +746,7 @@
 
 /* Opponents List Styles */
 .opponents-section {
-    min-height: 200px;
+    min-height: 80px;
 }
 
 .opponents-list {
@@ -738,7 +760,7 @@
 .opponents-list .empty-message {
     color: #666;
     text-align: center;
-    padding: 40px 20px;
+    padding: 15px 20px;
     font-style: italic;
 }
 
@@ -2363,6 +2385,7 @@
 
 @php
 $duoTranslations = [
+    'Affrontez un adversaire niveau' => __('Affrontez un adversaire niveau'),
     'RECHERCHE EN COURS...' => __('RECHERCHE EN COURS...'),
     'Erreur lors de la recherche' => __('Erreur lors de la recherche'),
     'CHERCHER UN ADVERSAIRE' => __('CHERCHER UN ADVERSAIRE'),
@@ -3580,6 +3603,13 @@ function initQueueButtons() {
             document.querySelectorAll('.division-option').forEach(b => b.classList.remove('selected'));
             this.classList.add('selected');
             selectedDivision = this.dataset.division;
+            
+            // Update matchmaking description text
+            const descEl = document.getElementById('matchmaking-description');
+            const divLabel = this.dataset.divisionLabel || selectedDivision;
+            if (descEl) {
+                descEl.textContent = t('Affrontez un adversaire niveau') + ' ' + divLabel;
+            }
             
             // Refresh queue if in queue
             if (inQueue) {
