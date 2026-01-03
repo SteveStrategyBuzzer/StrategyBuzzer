@@ -1795,10 +1795,8 @@ class SoloController extends Controller
         $hasStrategeBonus = false;
         
         if ($user) {
-            // Calcul: 10 base + 1 par niveau
-            $baseCoins = 10;
-            $levelBonus = $currentLevel; // +1 pièce par niveau battu
-            $coinsEarned = $baseCoins + $levelBonus;
+            // Nouveau système de calcul des pièces par paliers
+            $coinsEarned = $this->calculateCoinsForLevel($currentLevel);
             
             // Bonus Stratège: +20% si l'avatar est "Stratège"
             $avatar = session('avatar', 'Aucun');
@@ -2040,6 +2038,37 @@ class SoloController extends Controller
         return view('defeat', compact('params'));
     }
 
+    /**
+     * Calcule les pièces d'intelligence gagnées selon le niveau
+     * - Niveaux 1-9 : 10 pièces
+     * - Niveaux 11-19 : 20 pièces, etc. (+10 par palier de 10)
+     * - Boss (niveaux multiples de 10) : récompenses spéciales
+     */
+    private function calculateCoinsForLevel(int $level): int
+    {
+        // Boss levels have special rewards
+        $bossRewards = [
+            10 => 50,
+            20 => 50,
+            30 => 75,
+            40 => 75,
+            50 => 100,
+            60 => 100,
+            70 => 125,
+            80 => 125,
+            90 => 150,
+            100 => 250,
+        ];
+        
+        // Check if it's a boss level
+        if (isset($bossRewards[$level])) {
+            return $bossRewards[$level];
+        }
+        
+        // Regular levels: 10 coins per tier (1-9 = 10, 11-19 = 20, etc.)
+        $tier = (int) ceil($level / 10);
+        return $tier * 10;
+    }
     
     private function getOpponentName($niveau)
     {
