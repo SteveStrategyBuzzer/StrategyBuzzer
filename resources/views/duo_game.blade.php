@@ -576,7 +576,7 @@ $skills = $skills ?? [];
     }
     
     .reveal-overlay {
-        background: rgba(0, 0, 0, 0.85);
+        background: rgba(0, 0, 0, 0.92);
     }
     
     .reveal-content {
@@ -1360,10 +1360,28 @@ document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
 document.getElementById('buzzerSound').load();
 
 const PhaseController = {
+    currentPhase: 'waiting',
+    phases: ['intro', 'question', 'buzz', 'reveal', 'scoreboard'],
     phaseTimers: {
         intro: 3000,
         reveal: 3000,
         scoreboard: 2500
+    },
+    
+    setPhase(phase, phaseData = {}) {
+        if (!this.phases.includes(phase) && !['tiebreaker_choice', 'match_end', 'waiting', 'answer'].includes(phase)) {
+            console.warn('[PhaseController] Invalid phase:', phase);
+            return;
+        }
+        
+        const previousPhase = this.currentPhase;
+        this.currentPhase = phase;
+        currentPhase = phase;
+        console.log('[PhaseController] Phase transition:', previousPhase, '->', phase);
+        
+        this.hideAllOverlays();
+        
+        return phase;
     },
     
     hideAllOverlays() {
@@ -1376,8 +1394,9 @@ const PhaseController = {
     },
     
     showIntro(questionData) {
-        currentPhase = 'intro';
+        this.setPhase('intro', { questionData });
         updateSkillStates('intro');
+        
         const introOverlay = document.getElementById('introOverlay');
         const questionNum = document.getElementById('introQuestionNumber');
         const theme = document.getElementById('introTheme');
@@ -1400,7 +1419,7 @@ const PhaseController = {
     },
     
     startQuestion() {
-        currentPhase = 'question';
+        this.setPhase('question');
         updateSkillStates('question');
         canBuzz = true;
         hasBuzzed = false;
@@ -1415,8 +1434,15 @@ const PhaseController = {
         setTimeout(() => applyAutoSkills('question'), 500);
     },
     
+    onBuzz() {
+        this.setPhase('buzz');
+        
+        const answersGrid = document.getElementById('answersGrid');
+        if (answersGrid) answersGrid.style.display = 'grid';
+    },
+    
     showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false) {
-        currentPhase = 'reveal';
+        this.setPhase('reveal', { isCorrect, correctAnswer, points, wasTimeout });
         updateSkillStates('reveal');
         canBuzz = false;
         
@@ -1485,7 +1511,7 @@ const PhaseController = {
     },
     
     showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions) {
-        currentPhase = 'scoreboard';
+        this.setPhase('scoreboard', { playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions });
         
         const scoreboardOverlay = document.getElementById('scoreboardOverlay');
         
@@ -1649,8 +1675,7 @@ const PhaseController = {
     },
     
     showTiebreakerChoice() {
-        currentPhase = 'tiebreaker_choice';
-        this.hideAllOverlays();
+        this.setPhase('tiebreaker_choice');
         
         const overlay = document.getElementById('tiebreakerChoiceOverlay');
         const timerEl = document.getElementById('tiebreakerTimer');
@@ -1673,8 +1698,7 @@ const PhaseController = {
     },
     
     showMatchEnd(isVictory, playerScore, opponentScore, rewards = {}) {
-        currentPhase = 'match_end';
-        this.hideAllOverlays();
+        this.setPhase('match_end', { isVictory, playerScore, opponentScore, rewards });
         
         const overlay = document.getElementById('matchEndOverlay');
         const iconEl = document.getElementById('matchResultIcon');
