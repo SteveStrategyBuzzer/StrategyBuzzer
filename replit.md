@@ -86,6 +86,33 @@ apps/
 - **Timers**: intro 9s, question 8s, answer 10s
 - **Scoring**: +2 (>3s), +1 (1-3s), 0 (<1s), -2 (mauvaise réponse)
 
+### Scalable Architecture (Option A - Production-Ready)
+**Data Flow:**
+- **Redis** = Real-time state (buzzer, timers, room state, event log) - 2h TTL
+- **Firestore** = Source of truth (questions in `questionPools/{roomId}/items/{index}`)
+- **Laravel Cache** = Accelerator for Firestore reads (30 min TTL)
+- **PostgreSQL Queue** = AI question generation jobs only
+
+**Event-Sourcing for Crash Recovery:**
+- All canonical events logged to Redis: GAME_STARTED, PHASE_CHANGED, QUESTION_PUBLISHED, BUZZ_RECEIVED, ANSWER_SUBMITTED, ANSWER_REVEALED, ROUND_ENDED, MATCH_ENDED
+- `RoomRecovery.ts`: rehydrateRoom() (fast path: cached state, slow path: event replay)
+- Automatic recovery on WebSocket reconnect if room not in memory
+
+**Multi-Instance Synchronization:**
+- Socket.IO Redis adapter for horizontal scaling
+- Room state shared via Redis across all Game Server instances
+- Supports millions of concurrent players
+
+**Security (Anti-Cheat):**
+- `correctIndex`, `isCorrect`, `correctBool`, `correctText` NEVER sent before reveal
+- `sanitizeChoices()` strips all correctness metadata from `question_published` event
+- `answer_revealed` event is the ONLY place where correct answer is exposed
+
+**Question Pipeline:**
+- Progressive generation: Q1 at match start, then blocks of 4 during WAITING phases
+- Anti-duplication: usedIds + usedTextHashes stored per match (not reset between rounds)
+- Includes bonus skill questions and tiebreaker questions
+
 ### Laravel ↔ Game Server Integration
 - **GameServerService.php**: Manages JWT token generation, room creation via HTTP, player authentication
 - **JWT Token Payload**: camelCase fields (`playerId`, `playerName`, `avatarId`, `roomId`)
