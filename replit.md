@@ -113,6 +113,12 @@ apps/
 - Anti-duplication: usedIds + usedTextHashes stored per match (not reset between rounds)
 - Includes bonus skill questions and tiebreaker questions
 
+**Production-Ready Features:**
+- **Unit Tests**: 80 tests (reducer, scoring, state-machine) with Vitest
+- **Input Validation**: Zod schemas for all Socket.IO events
+- **Metrics Endpoint**: GET /metrics (latency, rooms, errors, events)
+- **Rate Limiting**: Per-player (1 buzz/answer per question) and per-room (100 events/sec)
+
 ### Laravel ↔ Game Server Integration
 - **GameServerService.php**: Manages JWT token generation, room creation via HTTP, player authentication
 - **JWT Token Payload**: camelCase fields (`playerId`, `playerName`, `avatarId`, `roomId`)
