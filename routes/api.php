@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\GameController;
+use App\Http\Controllers\Api\GameServerController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Api\PlayController;
 use App\Http\Controllers\DuoController;
@@ -107,4 +108,11 @@ Route::middleware('auth:sanctum')->prefix('master')->group(function () {
     Route::post('/game/{gameId}/finish', [App\Http\Controllers\MasterGameController::class, 'finishGame']);
     Route::post('/game/{gameId}/cancel', [App\Http\Controllers\MasterGameController::class, 'cancelGame']);
     Route::get('/game/{gameId}/sync', [App\Http\Controllers\MasterGameController::class, 'syncGameState']);
+});
+
+Route::prefix('game-server')->group(function () {
+    Route::post('/init', [GameServerController::class, 'init']);
+    Route::get('/next-block/{roomId}', [GameServerController::class, 'nextBlock']);
+    Route::get('/status/{roomId}', [GameServerController::class, 'status']);
+    Route::post('/cleanup/{roomId}', [GameServerController::class, 'cleanup']);
 });

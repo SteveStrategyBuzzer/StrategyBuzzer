@@ -4,6 +4,7 @@ import type { Question, Mode, Phase } from "../../../../packages/shared/src/type
 import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent } from "../../../../packages/shared/src/events.js";
 import { applyEvent } from "../../../../packages/game-engine/src/reducer.js";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "../../../../packages/game-engine/src/state-machine.js";
+import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
 
 export class GameOrchestrator {
   private io: SocketIOServer;
@@ -16,12 +17,36 @@ export class GameOrchestrator {
     this.roomManager = roomManager;
   }
 
-  startGame(roomId: string): { success: boolean; error?: string } {
+  async startGame(roomId: string): Promise<{ success: boolean; error?: string }> {
     const room = this.roomManager.getRoom(roomId);
     if (!room) {
       console.error(`[GameOrchestrator] Cannot start game: room ${roomId} not found`);
       return { success: false, error: "Room not found" };
     }
+
+    if (!room.pipelineConfig) {
+      console.error(`[GameOrchestrator] No pipeline config for room ${roomId}`);
+      return { success: false, error: "Pipeline config not set. Please set theme, niveau, language when creating room." };
+    }
+
+    room.usedQuestionIds = new Set<string>();
+
+    const pipelineResult = await initQuestionPipeline({
+      roomId,
+      theme: room.pipelineConfig.theme,
+      niveau: room.pipelineConfig.niveau,
+      language: room.pipelineConfig.language,
+      maxRounds: room.pipelineConfig.maxRounds,
+    });
+
+    if (!pipelineResult.success || !pipelineResult.firstQuestion) {
+      console.error(`[GameOrchestrator] Failed to initialize question pipeline for room ${roomId}: ${pipelineResult.error}`);
+      return { success: false, error: pipelineResult.error || "Failed to initialize questions" };
+    }
+
+    room.state.questions = [pipelineResult.firstQuestion];
+    room.usedQuestionIds.add(pipelineResult.firstQuestion.id);
+    console.log(`[GameOrchestrator] Pipeline initialized with first question for room ${roomId}`);
 
     const event = this.roomManager.startGame(roomId);
     if (!event) {
@@ -273,7 +298,9 @@ export class GameOrchestrator {
         break;
 
       case "WAITING":
-        this.handleWaitingTimeout(roomId);
+        this.handleWaitingTimeout(roomId).catch(err => {
+          console.error(`[GameOrchestrator] Error in handleWaitingTimeout:`, err);
+        });
         break;
 
       case "ROUND_SCOREBOARD":
@@ -440,7 +467,7 @@ export class GameOrchestrator {
     return null;
   }
 
-  private transitionToWaiting(roomId: string): void {
+  private async transitionToWaiting(roomId: string): Promise<void> {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
@@ -480,12 +507,53 @@ export class GameOrchestrator {
 
     console.log(`[GameOrchestrator] Waiting phase for block ${blockInfo.nextBlockStart}-${blockInfo.nextBlockEnd}`);
 
+    const blockResult = await fetchNextBlock(roomId, 4);
+    if (blockResult.questions.length > 0) {
+      const newQuestions = blockResult.questions.filter(q => {
+        if (room.usedQuestionIds?.has(q.id)) {
+          console.log(`[GameOrchestrator] Skipping duplicate question ${q.id}`);
+          return false;
+        }
+        return true;
+      });
+
+      for (const q of newQuestions) {
+        room.usedQuestionIds?.add(q.id);
+        room.state.questions.push(q);
+      }
+
+      console.log(`[GameOrchestrator] Added ${newQuestions.length} new questions for room ${roomId}, total: ${room.state.questions.length}`);
+    }
+
     this.schedulePhaseTimeout(roomId);
   }
 
-  private handleWaitingTimeout(roomId: string): void {
+  private async handleWaitingTimeout(roomId: string): Promise<void> {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
+
+    const nextQuestionIndex = room.state.questionIndex + 1;
+    if (nextQuestionIndex >= room.state.questions.length) {
+      console.log(`[GameOrchestrator] Waiting for questions, checking pipeline status...`);
+      const status = await getPipelineStatus(roomId);
+      if (!status.ready && status.available < nextQuestionIndex + 1) {
+        console.log(`[GameOrchestrator] Questions not ready yet, fetching more...`);
+        const blockResult = await fetchNextBlock(roomId, 4);
+        if (blockResult.questions.length > 0) {
+          const newQuestions = blockResult.questions.filter(q => {
+            if (room.usedQuestionIds?.has(q.id)) {
+              return false;
+            }
+            return true;
+          });
+
+          for (const q of newQuestions) {
+            room.usedQuestionIds?.add(q.id);
+            room.state.questions.push(q);
+          }
+        }
+      }
+    }
 
     room.state.questionIndex++;
     this.transitionToQuestionActive(roomId);
@@ -500,7 +568,9 @@ export class GameOrchestrator {
     if (isLastQuestion) {
       this.endRound(roomId);
     } else if (this.shouldShowWaiting(room.state.questionIndex)) {
-      this.transitionToWaiting(roomId);
+      this.transitionToWaiting(roomId).catch(err => {
+        console.error(`[GameOrchestrator] Error in transitionToWaiting:`, err);
+      });
     } else {
       room.state.questionIndex++;
       this.transitionToQuestionActive(roomId);
@@ -591,9 +661,13 @@ export class GameOrchestrator {
     const maxRoundsWon = Math.max(...Object.values(room.state.players).map(p => p.roundsWon));
 
     if (maxRoundsWon >= room.state.config.roundsToWin) {
-      this.endMatch(roomId);
+      this.endMatch(roomId).catch(err => {
+        console.error(`[GameOrchestrator] Error in endMatch:`, err);
+      });
     } else if (room.state.currentRound >= room.state.config.maxRounds) {
-      this.endMatch(roomId);
+      this.endMatch(roomId).catch(err => {
+        console.error(`[GameOrchestrator] Error in endMatch:`, err);
+      });
     } else {
       room.state.currentRound++;
       room.state.questionIndex = 0;
@@ -622,7 +696,7 @@ export class GameOrchestrator {
     }
   }
 
-  private endMatch(roomId: string): void {
+  private async endMatch(roomId: string): Promise<void> {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
@@ -688,6 +762,8 @@ export class GameOrchestrator {
 
     this.emitPhaseChanged(roomId);
     this.clearPhaseTimer(roomId);
+
+    await cleanupPipeline(roomId);
 
     console.log(`[GameOrchestrator] Match ended in room ${roomId}, winner: ${winnerId}`);
   }

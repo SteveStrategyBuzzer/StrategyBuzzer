@@ -1,0 +1,85 @@
+Oui, c’est globalement correct comme approche pour la phase actuelle, mais je mets une limite claire : ça tient très bien pour le pré-généré, pas pour le “temps réel buzzer” à grande échelle.
+
+1) Queue basée sur PostgreSQL : OK (avec 2 conséquences)
+
+✅ Correct si tu utilises Laravel Queue avec driver database sur PostgreSQL (jobs stockés en DB).
+
+⚠️ Deux conséquences importantes :
+
+Pas de Laravel Horizon (Horizon = Redis).
+
+Performance : Postgres queue marche, mais sous grosse charge tu devras :
+
+augmenter le nombre de workers
+
+mettre retry_after / timeout propres
+
+surveiller la table jobs (bloat, index, vacuum)
+
+👉 Pour StrategyBuzzer, génération IA en background = parfait pour Postgres queue.
+
+2) “Laravel cache + Firestore pour questions pré-générées” : correct, mais il faut une règle
+
+✅ Bonne logique :
+
+Firestore = stockage partagé (multi-serveur / multi-région / dispo)
+
+Cache Laravel = accélérateur local (réduire lectures Firestore et latence)
+
+⚠️ La règle à respecter :
+
+Firestore doit être la “source de vérité” du pool de questions, le cache Laravel doit être jetable (TTL).
+
+Pattern recommandé
+
+Firestore :
+question_pools/{key}/items/{questionId}
+avec key = (lang|pays|niveau|matiere|theme|type|version)
+
+Cache Laravel :
+pool:{key} (liste d’IDs) TTL 5–30 min
+q:{questionId} TTL 30–180 min
+
+Pourquoi ?
+Parce que si ton cache “devient vérité”, tu vas te battre avec l’invalidation et les incohérences.
+
+3) “Déléguer la création du service” : OUI, mais fais-le idempotent
+
+✅ Très bon : tu délègues au worker la génération (IA) + insertion.
+
+Le piège : jobs en queue = at-least-once (un job peut être rejoué).
+Donc il faut une protection anti-duplication.
+
+Minimum vital à mettre
+
+generation_requests (table Postgres) avec :
+
+request_key unique (hash des paramètres)
+
+status (pending|running|done|failed)
+
+attempts, last_error
+
+Dans le Job :
+
+“si status=done → exit”
+
+“lock / transaction” avant d’appeler l’IA
+
+“write Firestore + mark done”
+
+Verdict net
+
+✅ Oui c’est correct :
+
+Postgres queue pour génération IA
+
+Firestore pour stocker les pools (partagé)
+
+Cache Laravel pour accélérer (TTL)
+
+🚫 Mais :
+
+ne compte pas sur cette combo pour le buzzer temps réel à grande échelle (ça demandera un Game Server WS autoritaire plus tard)
+
+ne fais pas du cache Laravel la vérité

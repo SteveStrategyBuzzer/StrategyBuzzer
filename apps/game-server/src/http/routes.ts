@@ -31,12 +31,23 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
 
   app.post("/rooms", (req: Request, res: Response) => {
     try {
-      const { mode = "DUO", hostId, customConfig } = req.body;
+      const { mode = "DUO", hostId, customConfig, theme = "general", niveau = 5, language = "fr" } = req.body;
       
       const baseConfig = getConfigForMode(mode as Mode);
       const config: GameConfig = customConfig ? { ...baseConfig, ...customConfig } : baseConfig;
       
       const { roomId, lobbyCode } = roomManager.createRoom(config, hostId);
+      
+      const room = roomManager.getRoom(roomId);
+      if (room) {
+        room.pipelineConfig = {
+          theme,
+          niveau,
+          language,
+          maxRounds: config.maxRounds,
+        };
+        console.log(`[HTTP] Stored pipeline config for room ${roomId}:`, room.pipelineConfig);
+      }
       
       const wsUrl = `ws://${req.headers.host}`;
       
@@ -46,6 +57,7 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
         lobbyCode,
         wsUrl,
         config,
+        pipelineConfig: room?.pipelineConfig,
       });
     } catch (error) {
       console.error("[HTTP] Error creating room:", error);
@@ -110,7 +122,7 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
     });
   });
 
-  app.post("/rooms/:roomId/start", (req: Request, res: Response) => {
+  app.post("/rooms/:roomId/start", async (req: Request, res: Response) => {
     const { roomId } = req.params;
     const { hostId } = req.body;
     
@@ -130,14 +142,15 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
       });
     }
     
-    if (state.questions.length === 0) {
+    const room = roomManager.getRoom(roomId);
+    if (!room?.pipelineConfig) {
       return res.status(400).json({
         success: false,
-        error: "No questions set. Use POST /rooms/:roomId/questions first.",
+        error: "Pipeline config not set. Please recreate the room with theme, niveau, and language.",
       });
     }
     
-    const startResult = gameOrchestrator.startGame(roomId);
+    const startResult = await gameOrchestrator.startGame(roomId);
     
     if (!startResult.success) {
       return res.status(500).json({

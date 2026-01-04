@@ -4,11 +4,20 @@ import type { GameEvent, PlayerJoinedEvent, GameStartedEvent, PhaseChangedEvent,
 import { createInitialState, applyEvent } from "../../../../packages/game-engine/src/reducer.js";
 import { getPhaseTimeout, getNextPhase } from "../../../../packages/game-engine/src/state-machine.js";
 
+export type RoomPipelineConfig = {
+  theme: string;
+  niveau: number;
+  language: string;
+  maxRounds: number;
+};
+
 export type Room = {
   state: GameState;
   events: GameEvent[];
   phaseTimer?: NodeJS.Timeout;
   questionGenerationTimer?: NodeJS.Timeout;
+  pipelineConfig?: RoomPipelineConfig;
+  usedQuestionIds?: Set<string>;
 };
 
 export class RoomManager {
