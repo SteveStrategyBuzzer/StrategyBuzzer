@@ -2298,6 +2298,13 @@ function initSocketIO() {
         });
     };
     
+    duoSocket.onSkillUsed = (data) => {
+        console.log('[DuoGame] Skill used:', data);
+        if (data.sourcePlayerId != userId) {
+            handleOpponentSkill(data);
+        }
+    };
+    
     return duoSocket.connect(gameServerUrl, jwtToken)
         .then(() => {
             console.log('[DuoGame] Socket.IO connection established');
