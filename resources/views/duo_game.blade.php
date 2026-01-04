@@ -1338,12 +1338,20 @@ const PhaseController = {
         document.getElementById('buzzButton').disabled = false;
         
         startBuzzTimer();
+        
+        setTimeout(() => applyAutoSkills('question'), 500);
     },
     
     showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false) {
         currentPhase = 'reveal';
         updateSkillStates('reveal');
         canBuzz = false;
+        
+        const errorSkillResult = !isCorrect && !wasTimeout ? applyErrorSkills() : null;
+        if (errorSkillResult?.cancelled) {
+            isCorrect = true;
+            points = errorSkillResult.points || 0;
+        }
         
         const revealOverlay = document.getElementById('revealOverlay');
         const icon = document.getElementById('revealIcon');
@@ -1366,7 +1374,9 @@ const PhaseController = {
                 icon.classList.add('correct');
             }
             if (message) {
-                message.textContent = '{{ __("Bonne réponse !") }}';
+                message.textContent = errorSkillResult?.cancelled 
+                    ? '{{ __("Erreur annulée !") }} ✨' 
+                    : '{{ __("Bonne réponse !") }}';
                 message.classList.add('correct');
             }
         } else {
@@ -2467,24 +2477,437 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initSkillClickHandlers() {
-    document.querySelectorAll('.skill-circle.active:not(.used):not(.locked), .skill-circle.usable-now:not(.used):not(.locked), .skill-circle.available:not(.used):not(.locked)').forEach(skillEl => {
+    document.querySelectorAll('.skill-circle:not(.empty)').forEach(skillEl => {
         skillEl.addEventListener('click', function() {
             if (this.classList.contains('used') || this.classList.contains('locked') || this.classList.contains('empty')) {
+                return;
+            }
+            if (this.dataset.auto === 'true') {
+                return;
+            }
+            if (!this.classList.contains('usable-now')) {
+                showAttackMessage('⏳ {{ __("Pas maintenant") }}', 'info');
                 return;
             }
             
             const skillId = this.dataset.skillId;
             if (!skillId) return;
             
-            if (useSocketIO && duoSocket) {
-                duoSocket.activateSkill(skillId);
-                markSkillAsUsed(skillId);
-                showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
+            const isAttackSkill = ['reduce_time', 'shuffle_answers', 'invert_answers'].includes(skillId);
+            
+            if (isAttackSkill) {
+                if (useSocketIO && duoSocket) {
+                    duoSocket.activateSkill(skillId);
+                } else {
+                    activateSkillHttp(skillId);
+                }
             } else {
-                activateSkillHttp(skillId);
+                applyOwnSkill(skillId);
             }
+            
+            markSkillAsUsed(skillId);
         });
     });
+}
+
+const skillsData = @json($skills ?? []);
+
+function applyOwnSkill(skillId) {
+    const answersGrid = document.getElementById('answersGrid');
+    const answers = answersGrid ? answersGrid.querySelectorAll('.answer-option') : [];
+    
+    switch (skillId) {
+        case 'acidify_error':
+            if (currentQuestionData && answers.length > 0) {
+                const correctIdx = currentQuestionData.correctIndex ?? -1;
+                const wrongIndices = [];
+                answers.forEach((btn, i) => {
+                    if (i !== correctIdx) wrongIndices.push(i);
+                });
+                if (wrongIndices.length > 0) {
+                    const randomWrong = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
+                    answers[randomWrong].classList.add('acidified');
+                    answers[randomWrong].style.opacity = '0.5';
+                    answers[randomWrong].style.textDecoration = 'line-through';
+                }
+                showAttackMessage('🧪 {{ __("Une réponse éliminée !") }}', 'skill');
+            }
+            break;
+            
+        case 'eliminate_two':
+            if (currentQuestionData && answers.length > 0) {
+                const correctIdx = currentQuestionData.correctIndex ?? -1;
+                const wrongIndices = [];
+                answers.forEach((btn, i) => {
+                    if (i !== correctIdx) wrongIndices.push(i);
+                });
+                const shuffled = wrongIndices.sort(() => Math.random() - 0.5).slice(0, 2);
+                shuffled.forEach(idx => {
+                    answers[idx].classList.add('eliminated');
+                    answers[idx].style.opacity = '0.3';
+                    answers[idx].style.pointerEvents = 'none';
+                    answers[idx].innerHTML = '<span style="text-decoration: line-through">' + answers[idx].textContent + '</span>';
+                });
+                showAttackMessage('❌ {{ __("2 réponses éliminées !") }}', 'skill');
+            }
+            break;
+            
+        case 'text_hint':
+            if (currentQuestionData) {
+                requestHintFromServer(skillId);
+            }
+            break;
+            
+        case 'ai_suggestion':
+            if (currentQuestionData) {
+                requestAISuggestion();
+            }
+            break;
+            
+        case 'preview_questions':
+            requestFutureQuestions();
+            break;
+            
+        case 'bonus_question':
+            if (useSocketIO && duoSocket) {
+                duoSocket.activateSkill(skillId);
+            }
+            showAttackMessage('❓ {{ __("Question bonus ajoutée !") }}', 'skill');
+            break;
+            
+        case 'replay':
+            if (useSocketIO && duoSocket) {
+                duoSocket.activateSkill(skillId);
+            }
+            showAttackMessage('🔁 {{ __("Rejouer cette question !") }}', 'skill');
+            break;
+            
+        default:
+            showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
+    }
+}
+
+function requestHintFromServer(skillId) {
+    showAttackMessage('📜 {{ __("Chargement de l\'indice...") }}', 'info');
+    fetch(`/duo/match/${matchId}/hint`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({ 
+            skill_id: skillId,
+            question: currentQuestionData?.question || ''
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.hint) {
+            showHintOverlay(data.hint);
+        }
+    })
+    .catch(() => {
+        showAttackMessage('📜 {{ __("Erreur chargement indice") }}', 'attack');
+    });
+}
+
+function requestAISuggestion() {
+    showAttackMessage('🤖 {{ __("L\'IA réfléchit...") }}', 'info');
+    fetch(`/duo/match/${matchId}/ai-suggest`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({ 
+            question: currentQuestionData?.question || '',
+            answers: currentQuestionData?.answers || []
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.suggestion !== undefined) {
+            highlightAISuggestion(data.suggestion, data.confidence || 80);
+        }
+    })
+    .catch(() => {
+        showAttackMessage('🤖 {{ __("Erreur IA") }}', 'attack');
+    });
+}
+
+function requestFutureQuestions() {
+    showAttackMessage('🔮 {{ __("Vision des questions futures...") }}', 'info');
+    fetch(`/duo/match/${matchId}/preview-questions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.questions && data.questions.length > 0) {
+            showFutureQuestionsOverlay(data.questions);
+        }
+    })
+    .catch(() => {
+        showAttackMessage('🔮 {{ __("Erreur vision") }}', 'attack');
+    });
+}
+
+function showHintOverlay(hint) {
+    const overlay = document.createElement('div');
+    overlay.className = 'hint-overlay';
+    overlay.innerHTML = `
+        <div class="hint-content">
+            <div class="hint-icon">📜</div>
+            <div class="hint-text">${hint}</div>
+            <button class="hint-close" onclick="this.parentElement.parentElement.remove()">OK</button>
+        </div>
+    `;
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 10000;
+    `;
+    overlay.querySelector('.hint-content').style.cssText = `
+        background: linear-gradient(135deg, #2c1810, #4a2c20);
+        padding: 30px; border-radius: 15px; max-width: 400px;
+        text-align: center; border: 2px solid #c9a227;
+    `;
+    overlay.querySelector('.hint-icon').style.cssText = 'font-size: 3rem; margin-bottom: 15px;';
+    overlay.querySelector('.hint-text').style.cssText = 'font-size: 1.2rem; margin-bottom: 20px; color: #f5e6d3;';
+    overlay.querySelector('.hint-close').style.cssText = `
+        background: #c9a227; color: #1a0f0a; border: none; padding: 10px 30px;
+        border-radius: 8px; cursor: pointer; font-weight: bold;
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 8000);
+}
+
+function highlightAISuggestion(suggestionIndex, confidence) {
+    const answers = document.querySelectorAll('#answersGrid .answer-option');
+    if (answers[suggestionIndex]) {
+        answers[suggestionIndex].classList.add('ai-suggested');
+        answers[suggestionIndex].style.boxShadow = '0 0 20px rgba(147, 112, 219, 0.8)';
+        answers[suggestionIndex].style.border = '3px solid #9370DB';
+        
+        const badge = document.createElement('span');
+        badge.className = 'ai-badge';
+        badge.innerHTML = `🤖 ${confidence}%`;
+        badge.style.cssText = `
+            position: absolute; top: -10px; right: -10px;
+            background: #9370DB; color: white; padding: 3px 8px;
+            border-radius: 10px; font-size: 0.8rem; font-weight: bold;
+        `;
+        answers[suggestionIndex].style.position = 'relative';
+        answers[suggestionIndex].appendChild(badge);
+        
+        showAttackMessage(`🤖 {{ __("Suggestion IA : Réponse") }} ${suggestionIndex + 1} (${confidence}%)`, 'skill');
+    }
+}
+
+function showFutureQuestionsOverlay(questions) {
+    const overlay = document.createElement('div');
+    overlay.className = 'future-questions-overlay';
+    
+    let questionsHtml = questions.slice(0, 5).map((q, i) => `
+        <div class="future-q-item">
+            <span class="q-num">Q${i + 1}</span>
+            <span class="q-theme">${q.theme || q.subtheme || '{{ __("Question") }}'}</span>
+        </div>
+    `).join('');
+    
+    overlay.innerHTML = `
+        <div class="future-content">
+            <div class="future-title">🔮 {{ __("Questions à venir") }}</div>
+            ${questionsHtml}
+            <button class="future-close" onclick="this.parentElement.parentElement.remove()">OK</button>
+        </div>
+    `;
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.85); display: flex; align-items: center;
+        justify-content: center; z-index: 10000;
+    `;
+    overlay.querySelector('.future-content').style.cssText = `
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        padding: 25px; border-radius: 15px; max-width: 350px;
+        text-align: center; border: 2px solid #9370DB;
+    `;
+    overlay.querySelector('.future-title').style.cssText = 'font-size: 1.5rem; margin-bottom: 20px; color: #9370DB;';
+    overlay.querySelectorAll('.future-q-item').forEach(el => {
+        el.style.cssText = 'display: flex; justify-content: space-between; padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 5px;';
+    });
+    overlay.querySelector('.future-close').style.cssText = `
+        background: #9370DB; color: white; border: none; padding: 10px 30px;
+        border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px;
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 10000);
+}
+
+function applyAutoSkills(phase) {
+    const playerSkills = skillsData || [];
+    
+    playerSkills.forEach(skill => {
+        if (!skill.auto) return;
+        
+        const skillEl = document.querySelector(`[data-skill-id="${skill.id}"]`);
+        if (skillEl && skillEl.classList.contains('used')) return;
+        
+        switch (skill.id) {
+            case 'illuminate_numbers':
+                if (phase === 'question' && currentQuestionData) {
+                    applyIlluminateNumbers();
+                }
+                break;
+                
+            case 'extra_time':
+                if (phase === 'question') {
+                    timeLeft += 2;
+                    document.getElementById('chronoTimer').textContent = timeLeft;
+                    showAttackMessage('⏳ +2s {{ __("automatique") }}', 'skill');
+                }
+                break;
+                
+            case 'extra_reflection':
+                if (phase === 'question') {
+                    timeLeft += 3;
+                    document.getElementById('chronoTimer').textContent = timeLeft;
+                    showAttackMessage('🧠 +3s {{ __("réflexion") }}', 'skill');
+                }
+                break;
+                
+            case 'faster_buzz':
+                break;
+                
+            case 'see_opponent_choice':
+                if (phase === 'answer') {
+                    enableOpponentChoiceTracking();
+                }
+                break;
+        }
+    });
+}
+
+let opponentChoiceTrackingEnabled = false;
+
+function enableOpponentChoiceTracking() {
+    if (opponentChoiceTrackingEnabled) return;
+    opponentChoiceTrackingEnabled = true;
+    
+    if (useSocketIO && duoSocket) {
+        duoSocket.on('opponent_answer_preview', (data) => {
+            showOpponentChoiceIndicator(data.answerIndex);
+        });
+    }
+}
+
+function showOpponentChoiceIndicator(answerIndex) {
+    const answers = document.querySelectorAll('#answersGrid .answer-option');
+    
+    document.querySelectorAll('.opponent-choice-indicator').forEach(el => el.remove());
+    
+    if (answers[answerIndex]) {
+        const indicator = document.createElement('div');
+        indicator.className = 'opponent-choice-indicator';
+        indicator.innerHTML = '👁️';
+        indicator.style.cssText = `
+            position: absolute; top: -8px; left: -8px;
+            background: #e74c3c; color: white; 
+            width: 25px; height: 25px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem; animation: pulse 1s infinite;
+            z-index: 10;
+        `;
+        answers[answerIndex].style.position = 'relative';
+        answers[answerIndex].appendChild(indicator);
+        
+        showAttackMessage('👁️ {{ __("Adversaire hésite sur cette réponse") }}', 'info');
+    }
+}
+
+function applyErrorSkills() {
+    const playerSkills = skillsData || [];
+    let result = { cancelled: false, points: 0, replay: false };
+    
+    for (const skill of playerSkills) {
+        const skillEl = document.querySelector(`[data-skill-id="${skill.id}"]`);
+        if (skillEl && skillEl.classList.contains('used')) continue;
+        
+        switch (skill.id) {
+            case 'cancel_error':
+                if (skill.auto) {
+                    markSkillAsUsed('cancel_error');
+                    showAttackMessage('✨ {{ __("Erreur annulée automatiquement !") }}', 'skill');
+                    result.cancelled = true;
+                    result.points = 0;
+                    return result;
+                }
+                break;
+                
+            case 'lock_correct':
+                if (skill.auto) {
+                    markSkillAsUsed('lock_correct');
+                    showAttackMessage('🔒 {{ __("2 points sécurisés !") }}', 'skill');
+                    result.cancelled = true;
+                    result.points = 2;
+                    return result;
+                }
+                break;
+                
+            case 'replay':
+                showReplayOption();
+                break;
+        }
+    }
+    
+    return result;
+}
+
+function showReplayOption() {
+    const replayBtn = document.createElement('button');
+    replayBtn.className = 'replay-skill-btn';
+    replayBtn.innerHTML = '🔁 {{ __("Rejouer cette question ?") }}';
+    replayBtn.style.cssText = `
+        position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+        background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        color: white; border: none; padding: 15px 30px;
+        border-radius: 25px; font-size: 1.1rem; cursor: pointer;
+        z-index: 10001; animation: pulse 1.5s infinite;
+        box-shadow: 0 5px 20px rgba(155, 89, 182, 0.5);
+    `;
+    
+    replayBtn.onclick = () => {
+        markSkillAsUsed('replay');
+        replayBtn.remove();
+        
+        if (useSocketIO && duoSocket) {
+            duoSocket.activateSkill('replay');
+        }
+        
+        showAttackMessage('🔁 {{ __("Question rejouée !") }}', 'skill');
+    };
+    
+    document.body.appendChild(replayBtn);
+    
+    setTimeout(() => replayBtn.remove(), 5000);
+}
+
+function applyIlluminateNumbers() {
+    const answers = document.querySelectorAll('#answersGrid .answer-option');
+    const correctIdx = currentQuestionData?.correctIndex ?? -1;
+    
+    if (correctIdx >= 0 && answers[correctIdx]) {
+        const answerText = answers[correctIdx].textContent;
+        if (/\d/.test(answerText)) {
+            answers[correctIdx].classList.add('illuminated');
+            answers[correctIdx].style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.6)';
+            answers[correctIdx].style.border = '2px solid gold';
+            showAttackMessage('💡 {{ __("Réponse numérique illuminée !") }}', 'skill');
+        }
+    }
 }
 
 function markSkillAsUsed(skillId) {
@@ -2577,12 +3000,20 @@ function showAttackMessage(message, type) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'attack-message ' + type;
     msgDiv.innerHTML = message;
+    
+    const bgColors = {
+        'blocked': 'rgba(78, 205, 196, 0.9)',
+        'skill': 'rgba(155, 89, 182, 0.9)',
+        'info': 'rgba(52, 152, 219, 0.9)',
+        'attack': 'rgba(255, 107, 107, 0.9)'
+    };
+    
     msgDiv.style.cssText = `
         position: fixed;
         top: 20%;
         left: 50%;
         transform: translateX(-50%);
-        background: ${type === 'blocked' ? 'rgba(78, 205, 196, 0.9)' : type === 'skill' ? 'rgba(155, 89, 182, 0.9)' : 'rgba(255, 107, 107, 0.9)'};
+        background: ${bgColors[type] || bgColors['attack']};
         color: white;
         padding: 15px 30px;
         border-radius: 15px;

@@ -637,6 +637,165 @@ class DuoController extends Controller
         
         return $skills;
     }
+    
+    public function activateSkill(Request $request, DuoMatch $match)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+        
+        $skillId = $request->input('skill_id');
+        $skillData = \App\Services\SkillCatalog::getSkill($skillId);
+        
+        if (!$skillData) {
+            return response()->json(['success' => false, 'error' => 'Skill not found']);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'skill_id' => $skillId,
+            'affects_opponent' => $skillData['affects_opponent'] ?? false,
+        ]);
+    }
+    
+    public function getHint(Request $request, DuoMatch $match)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+        
+        $question = $request->input('question', '');
+        
+        if (empty($question)) {
+            return response()->json(['hint' => 'Aucune question disponible']);
+        }
+        
+        try {
+            $apiKey = env('GEMINI_API_KEY');
+            if (!$apiKey) {
+                return response()->json(['hint' => 'Réfléchissez bien à cette question...']);
+            }
+            
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}", [
+                'json' => [
+                    'contents' => [[
+                        'parts' => [[
+                            'text' => "Donne un indice court (max 15 mots) pour aider à répondre à cette question de quiz sans donner la réponse directement: \"{$question}\""
+                        ]]
+                    ]],
+                    'generationConfig' => [
+                        'temperature' => 0.7,
+                        'maxOutputTokens' => 50,
+                    ]
+                ],
+                'timeout' => 5,
+            ]);
+            
+            $result = json_decode($response->getBody(), true);
+            $hint = $result['candidates'][0]['content']['parts'][0]['text'] ?? 'Réfléchissez bien...';
+            
+            return response()->json(['hint' => trim($hint)]);
+        } catch (\Exception $e) {
+            return response()->json(['hint' => 'Cherchez dans vos connaissances...']);
+        }
+    }
+    
+    public function getAISuggestion(Request $request, DuoMatch $match)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+        
+        $question = $request->input('question', '');
+        $answers = $request->input('answers', []);
+        
+        if (empty($question) || empty($answers)) {
+            $randomIndex = rand(0, 3);
+            return response()->json(['suggestion' => $randomIndex, 'confidence' => 50]);
+        }
+        
+        try {
+            $apiKey = env('GEMINI_API_KEY');
+            if (!$apiKey) {
+                $randomIndex = rand(0, count($answers) - 1);
+                return response()->json(['suggestion' => $randomIndex, 'confidence' => 60]);
+            }
+            
+            $answersText = implode("\n", array_map(fn($a, $i) => ($i + 1) . ". " . $a, $answers, array_keys($answers)));
+            
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}", [
+                'json' => [
+                    'contents' => [[
+                        'parts' => [[
+                            'text' => "Question: {$question}\nRéponses possibles:\n{$answersText}\n\nRéponds UNIQUEMENT avec le numéro de la réponse la plus probable (1, 2, 3 ou 4). Rien d'autre."
+                        ]]
+                    ]],
+                    'generationConfig' => [
+                        'temperature' => 0.3,
+                        'maxOutputTokens' => 10,
+                    ]
+                ],
+                'timeout' => 5,
+            ]);
+            
+            $result = json_decode($response->getBody(), true);
+            $answerText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '1';
+            $answerNum = (int) preg_replace('/[^0-9]/', '', $answerText);
+            
+            $suggestion = max(0, min(count($answers) - 1, $answerNum - 1));
+            $confidence = rand(75, 90);
+            
+            return response()->json(['suggestion' => $suggestion, 'confidence' => $confidence]);
+        } catch (\Exception $e) {
+            $randomIndex = rand(0, count($answers) - 1);
+            return response()->json(['suggestion' => $randomIndex, 'confidence' => 55]);
+        }
+    }
+    
+    public function getPreviewQuestions(Request $request, DuoMatch $match)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+        
+        $gameState = $match->game_state;
+        $currentQuestion = $gameState['question_number'] ?? 1;
+        $allQuestions = $gameState['questions'] ?? [];
+        
+        $futureQuestions = [];
+        for ($i = $currentQuestion; $i < min($currentQuestion + 5, count($allQuestions)); $i++) {
+            if (isset($allQuestions[$i])) {
+                $futureQuestions[] = [
+                    'theme' => $allQuestions[$i]['theme'] ?? '',
+                    'subtheme' => $allQuestions[$i]['subtheme'] ?? '',
+                    'difficulty' => $allQuestions[$i]['difficulty'] ?? 'medium',
+                ];
+            }
+        }
+        
+        if (empty($futureQuestions)) {
+            $themes = ['Histoire', 'Sciences', 'Géographie', 'Sport', 'Culture'];
+            for ($i = 0; $i < 5; $i++) {
+                $futureQuestions[] = [
+                    'theme' => $themes[array_rand($themes)],
+                    'subtheme' => '',
+                    'difficulty' => ['easy', 'medium', 'hard'][rand(0, 2)],
+                ];
+            }
+        }
+        
+        return response()->json(['questions' => $futureQuestions]);
+    }
 
     public function result(DuoMatch $match)
     {
