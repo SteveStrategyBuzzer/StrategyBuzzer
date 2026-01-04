@@ -540,7 +540,7 @@ $skills = $skills ?? [];
     }
     
     .intro-overlay {
-        background: linear-gradient(135deg, rgba(15, 32, 39, 0.95) 0%, rgba(32, 58, 67, 0.95) 50%, rgba(44, 83, 100, 0.95) 100%);
+        background: linear-gradient(135deg, rgba(15, 32, 39, 0.98) 0%, rgba(32, 58, 67, 0.98) 50%, rgba(44, 83, 100, 0.98) 100%);
     }
     
     .intro-content {
@@ -576,7 +576,7 @@ $skills = $skills ?? [];
     }
     
     .reveal-overlay {
-        background: rgba(0, 0, 0, 0.92);
+        background: rgba(0, 0, 0, 0.96);
     }
     
     .reveal-content {
@@ -919,11 +919,11 @@ $skills = $skills ?? [];
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.95);
         display: none;
         align-items: center;
         justify-content: center;
-        z-index: 200;
+        z-index: 350;
         flex-direction: column;
         gap: 20px;
     }
@@ -1407,9 +1407,23 @@ const PhaseController = {
         document.getElementById('tiebreakerChoiceOverlay')?.classList.remove('active');
         document.getElementById('matchEndOverlay')?.classList.remove('active');
         document.getElementById('waitingBlockOverlay')?.classList.remove('active');
+        document.getElementById('waitingOverlay')?.classList.remove('active');
     },
     
     showIntro(questionData) {
+        // Stop any running timer before showing intro
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        if (answerTimerInterval) {
+            clearInterval(answerTimerInterval);
+            answerTimerInterval = null;
+        }
+        
+        // Hide waiting overlay first
+        document.getElementById('waitingOverlay')?.classList.remove('active');
+        
         this.setPhase('intro', { questionData });
         updateSkillStates('intro');
         
@@ -1469,6 +1483,16 @@ const PhaseController = {
     },
     
     showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false) {
+        // Stop any running timers before showing reveal
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        if (answerTimerInterval) {
+            clearInterval(answerTimerInterval);
+            answerTimerInterval = null;
+        }
+        
         this.setPhase('reveal', { isCorrect, correctAnswer, points, wasTimeout });
         updateSkillStates('reveal');
         canBuzz = false;
@@ -1538,6 +1562,16 @@ const PhaseController = {
     },
     
     showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions) {
+        // Stop any running timers before showing scoreboard
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        if (answerTimerInterval) {
+            clearInterval(answerTimerInterval);
+            answerTimerInterval = null;
+        }
+        
         this.setPhase('scoreboard', { playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions });
         
         const scoreboardOverlay = document.getElementById('scoreboardOverlay');
@@ -1807,6 +1841,17 @@ function goToResults() {
     window.location.href = `/duo/result/${matchId}`;
 }
 
+function showMatchEndOverlay() {
+    const playerScore = parseInt(document.getElementById('playerScore').textContent) || 0;
+    const opponentScore = parseInt(document.getElementById('opponentScore').textContent) || 0;
+    const isVictory = playerScore > opponentScore;
+    const efficiency = totalQuestions > 0 ? Math.round((playerScore / (totalQuestions * 10)) * 100) : 0;
+    PhaseController.showMatchEnd(isVictory, playerScore, opponentScore, {
+        coins: 10,
+        efficiency: Math.min(efficiency, 100)
+    });
+}
+
 function startBuzzTimer() {
     timeLeft = 8;
     updateChronoDisplay();
@@ -1904,7 +1949,8 @@ function handleTimeout() {
     })
     .then(response => response.json())
     .then(data => {
-        const correctAnswer = data.correct_answer || '';
+        const rawCorrectAnswer = data.correct_answer || '';
+        const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
         
         PhaseController.onAnswerComplete(
             false,
@@ -1920,7 +1966,7 @@ function handleTimeout() {
             if (currentQuestionData?.has_next_question) {
                 loadGameState();
             } else {
-                window.location.href = `/duo/result/${matchId}`;
+                showMatchEndOverlay();
             }
         });
     })
@@ -1939,7 +1985,7 @@ function handleTimeout() {
             if (currentQuestionData?.has_next_question) {
                 loadGameState();
             } else {
-                window.location.href = `/duo/result/${matchId}`;
+                showMatchEndOverlay();
             }
         });
     });
@@ -1967,7 +2013,8 @@ function handleAnswerTimeout() {
     })
     .then(response => response.json())
     .then(data => {
-        const correctAnswer = data.correct_answer || '';
+        const rawCorrectAnswer = data.correct_answer || '';
+        const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
         const correctIndex = data.correct_index ?? -1;
         
         if (correctIndex >= 0) {
@@ -1988,7 +2035,7 @@ function handleAnswerTimeout() {
             if (currentQuestionData?.has_next_question) {
                 loadGameState();
             } else {
-                window.location.href = `/duo/result/${matchId}`;
+                showMatchEndOverlay();
             }
         });
     })
@@ -2007,7 +2054,7 @@ function handleAnswerTimeout() {
             if (currentQuestionData?.has_next_question) {
                 loadGameState();
             } else {
-                window.location.href = `/duo/result/${matchId}`;
+                showMatchEndOverlay();
             }
         });
     });
@@ -2084,9 +2131,12 @@ function updateUI(data) {
             if (currentPhase !== 'reveal') {
                 currentPhase = 'reveal';
                 const result = state.last_answer_result || {};
+                const rawCorrectAnswer = result.correct_answer || state.correct_answer || '';
+                const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
+                
                 PhaseController.showReveal(
                     result.is_correct || false,
-                    result.correct_answer || state.correct_answer || '',
+                    correctAnswer,
                     result.points || 0,
                     result.was_timeout || false
                 );
@@ -2227,11 +2277,15 @@ function loadQuestionIntoUI(questionData) {
         for (let i = 0; i < 4; i++) {
             const btn = document.getElementById(`answer${i}`);
             if (btn) {
+                // Normalize answer: can be string or {text: "...", value: ...} object
+                const answer = questionData.answers[i];
+                const answerTextValue = typeof answer === 'object' ? (answer.text || answer.label || '') : (answer || '');
+                
                 const answerText = btn.querySelector('.answer-text');
                 if (answerText) {
-                    answerText.textContent = questionData.answers[i];
+                    answerText.textContent = answerTextValue;
                 } else {
-                    btn.innerHTML = `<span class="point-badge" id="badge${i}"></span><span class="answer-text">${questionData.answers[i]}</span>`;
+                    btn.innerHTML = `<span class="point-badge" id="badge${i}"></span><span class="answer-text">${answerTextValue}</span>`;
                 }
                 btn.classList.remove('correct', 'incorrect', 'disabled');
                 btn.disabled = false;
@@ -2344,12 +2398,10 @@ function submitAnswer(answerIndex) {
     })
     .then(response => response.json())
     .then(data => {
-        const isCorrect = data.is_correct ?? false;
+        const rawCorrectAnswer = data.correct_answer || '';
+        const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
         const points = data.points ?? 0;
         const correctIndex = data.correct_index ?? -1;
-        const correctAnswer = data.correct_answer || '';
-        
-        currentQuestionData.correct_index = correctIndex;
         currentQuestionData.correct_answer = correctAnswer;
         
         highlightAnswersAfterReveal(answerIndex, correctIndex, isCorrect);
@@ -2385,13 +2437,13 @@ function submitAnswer(answerIndex) {
                     const oWon = data.gameState?.opponent_rounds_won || data.opponent_rounds_won || 0;
                     
                     if (pWon >= 2 || oWon >= 2) {
-                        window.location.href = `/duo/result/${matchId}`;
+                        showMatchEndOverlay();
                     } else {
                         resetForNextQuestion();
                         loadGameState();
                     }
                 } else {
-                    window.location.href = `/duo/result/${matchId}`;
+                    showMatchEndOverlay();
                 }
             }
         });
@@ -2523,7 +2575,8 @@ function initSocketIO() {
         const points = data.pointsEarned || 0;
         const wasTimeout = data.timeout || false;
         const correctIndex = data.correctIndex ?? -1;
-        const correctAnswer = data.correctAnswer?.toString() || '';
+        const rawCorrectAnswer = data.correctAnswer?.toString() || '';
+        const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
         const selectedIndex = data.answerIndex ?? -1;
         
         if (currentQuestionData) {
@@ -2652,9 +2705,18 @@ function handleServerPhase(phase, data) {
                 if (isFromRevealOrScoreboard) {
                     resetGameplayState();
                 }
-                PhaseController.hideAllOverlays();
+                // Hide waiting overlay and show intro first if we have question data
+                hideWaitingOverlay();
                 hideWaitingBlockOverlay();
-                PhaseController.startQuestion();
+                const questionData = phaseData.questionData || currentQuestionData;
+                if (questionData && currentPhase !== 'intro') {
+                    PhaseController.showIntro(questionData).then(() => {
+                        PhaseController.startQuestion();
+                    });
+                } else {
+                    PhaseController.hideAllOverlays();
+                    PhaseController.startQuestion();
+                }
             }
             break;
             
@@ -2667,9 +2729,12 @@ function handleServerPhase(phase, data) {
             
         case 'REVEAL':
             if (currentPhase !== 'reveal' && phaseData) {
+                const rawCorrectAnswer = phaseData.correctAnswer || '';
+                const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
+                
                 PhaseController.showReveal(
                     phaseData.isCorrect || false,
-                    phaseData.correctAnswer || '',
+                    correctAnswer,
                     phaseData.points || 0,
                     phaseData.wasTimeout || false
                 );
@@ -2768,6 +2833,29 @@ function hideWaitingBlockOverlay() {
     }
 }
 
+function showWaitingOverlay(text = null) {
+    const overlay = document.getElementById('waitingOverlay');
+    const waitingText = document.getElementById('waitingText');
+    if (overlay) {
+        overlay.classList.add('active');
+        if (text && waitingText) {
+            waitingText.textContent = text;
+        }
+    }
+    // Stop the timer when showing waiting overlay
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function hideWaitingOverlay() {
+    const overlay = document.getElementById('waitingOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+}
+
 function handleBuzzClick() {
     if (!canBuzz || hasBuzzed) return;
     
@@ -2845,39 +2933,45 @@ const skillsData = @json($skills ?? []);
 
 function applyOwnSkill(skillId) {
     const answersGrid = document.getElementById('answersGrid');
-    const answers = answersGrid ? answersGrid.querySelectorAll('.answer-option') : [];
+    const answersButtons = answersGrid ? answersGrid.querySelectorAll('.answer-option') : [];
     
     switch (skillId) {
         case 'acidify_error':
-            if (currentQuestionData && answers.length > 0) {
+            if (currentQuestionData && answersButtons.length > 0) {
                 const correctIdx = currentQuestionData.correctIndex ?? -1;
                 const wrongIndices = [];
-                answers.forEach((btn, i) => {
+                answersButtons.forEach((btn, i) => {
                     if (i !== correctIdx) wrongIndices.push(i);
                 });
                 if (wrongIndices.length > 0) {
                     const randomWrong = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
-                    answers[randomWrong].classList.add('acidified');
-                    answers[randomWrong].style.opacity = '0.5';
-                    answers[randomWrong].style.textDecoration = 'line-through';
+                    const answer = currentQuestionData.answers[randomWrong];
+                    const answerTextValue = typeof answer === 'object' ? (answer.text || answer.label || '') : (answer || '');
+                    
+                    answersButtons[randomWrong].classList.add('acidified');
+                    answersButtons[randomWrong].style.opacity = '0.5';
+                    answersButtons[randomWrong].style.textDecoration = 'line-through';
                 }
                 showAttackMessage('🧪 {{ __("Une réponse éliminée !") }}', 'skill');
             }
             break;
             
         case 'eliminate_two':
-            if (currentQuestionData && answers.length > 0) {
+            if (currentQuestionData && answersButtons.length > 0) {
                 const correctIdx = currentQuestionData.correctIndex ?? -1;
                 const wrongIndices = [];
-                answers.forEach((btn, i) => {
+                answersButtons.forEach((btn, i) => {
                     if (i !== correctIdx) wrongIndices.push(i);
                 });
                 const shuffled = wrongIndices.sort(() => Math.random() - 0.5).slice(0, 2);
                 shuffled.forEach(idx => {
-                    answers[idx].classList.add('eliminated');
-                    answers[idx].style.opacity = '0.3';
-                    answers[idx].style.pointerEvents = 'none';
-                    answers[idx].innerHTML = '<span style="text-decoration: line-through">' + answers[idx].textContent + '</span>';
+                    const answer = currentQuestionData.answers[idx];
+                    const answerTextValue = typeof answer === 'object' ? (answer.text || answer.label || '') : (answer || '');
+                    
+                    answersButtons[idx].classList.add('eliminated');
+                    answersButtons[idx].style.opacity = '0.3';
+                    answersButtons[idx].style.pointerEvents = 'none';
+                    answersButtons[idx].innerHTML = '<span style="text-decoration: line-through">' + (answersButtons[idx].textContent || answerTextValue) + '</span>';
                 });
                 showAttackMessage('❌ {{ __("2 réponses éliminées !") }}', 'skill');
             }
@@ -3017,11 +3111,13 @@ function showHintOverlay(hint) {
 }
 
 function highlightAISuggestion(suggestionIndex, confidence) {
-    const answers = document.querySelectorAll('#answersGrid .answer-option');
-    if (answers[suggestionIndex]) {
-        answers[suggestionIndex].classList.add('ai-suggested');
-        answers[suggestionIndex].style.boxShadow = '0 0 20px rgba(147, 112, 219, 0.8)';
-        answers[suggestionIndex].style.border = '3px solid #9370DB';
+    const answersGrid = document.getElementById('answersGrid');
+    const answersButtons = answersGrid ? answersGrid.querySelectorAll('.answer-option') : [];
+    
+    if (answersButtons[suggestionIndex]) {
+        answersButtons[suggestionIndex].classList.add('ai-suggested');
+        answersButtons[suggestionIndex].style.boxShadow = '0 0 20px rgba(147, 112, 219, 0.8)';
+        answersButtons[suggestionIndex].style.border = '3px solid #9370DB';
         
         const badge = document.createElement('span');
         badge.className = 'ai-badge';
@@ -3031,8 +3127,8 @@ function highlightAISuggestion(suggestionIndex, confidence) {
             background: #9370DB; color: white; padding: 3px 8px;
             border-radius: 10px; font-size: 0.8rem; font-weight: bold;
         `;
-        answers[suggestionIndex].style.position = 'relative';
-        answers[suggestionIndex].appendChild(badge);
+        answersButtons[suggestionIndex].style.position = 'relative';
+        answersButtons[suggestionIndex].appendChild(badge);
         
         showAttackMessage(`🤖 {{ __("Suggestion IA : Réponse") }} ${suggestionIndex + 1} (${confidence}%)`, 'skill');
     }
@@ -3136,11 +3232,11 @@ function enableOpponentChoiceTracking() {
 }
 
 function showOpponentChoiceIndicator(answerIndex) {
-    const answers = document.querySelectorAll('#answersGrid .answer-option');
+    const answersButtons = document.querySelectorAll('#answersGrid .answer-option');
     
     document.querySelectorAll('.opponent-choice-indicator').forEach(el => el.remove());
     
-    if (answers[answerIndex]) {
+    if (answersButtons[answerIndex]) {
         const indicator = document.createElement('div');
         indicator.className = 'opponent-choice-indicator';
         indicator.innerHTML = '👁️';
@@ -3152,8 +3248,8 @@ function showOpponentChoiceIndicator(answerIndex) {
             font-size: 0.8rem; animation: pulse 1s infinite;
             z-index: 10;
         `;
-        answers[answerIndex].style.position = 'relative';
-        answers[answerIndex].appendChild(indicator);
+        answersButtons[answerIndex].style.position = 'relative';
+        answersButtons[answerIndex].appendChild(indicator);
         
         showAttackMessage('👁️ {{ __("Adversaire hésite sur cette réponse") }}', 'info');
     }
@@ -3227,15 +3323,15 @@ function showReplayOption() {
 }
 
 function applyIlluminateNumbers() {
-    const answers = document.querySelectorAll('#answersGrid .answer-option');
+    const answersButtons = document.querySelectorAll('#answersGrid .answer-option');
     const correctIdx = currentQuestionData?.correctIndex ?? -1;
     
-    if (correctIdx >= 0 && answers[correctIdx]) {
-        const answerText = answers[correctIdx].textContent;
+    if (correctIdx >= 0 && answersButtons[correctIdx]) {
+        const answerText = answersButtons[correctIdx].textContent;
         if (/\d/.test(answerText)) {
-            answers[correctIdx].classList.add('illuminated');
-            answers[correctIdx].style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.6)';
-            answers[correctIdx].style.border = '2px solid gold';
+            answersButtons[correctIdx].classList.add('illuminated');
+            answersButtons[correctIdx].style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.6)';
+            answersButtons[correctIdx].style.border = '2px solid gold';
             showAttackMessage('💡 {{ __("Réponse numérique illuminée !") }}', 'skill');
         }
     }

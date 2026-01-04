@@ -576,6 +576,12 @@ class DuoController extends Controller
             $jwtToken = $gameServerService->generatePlayerToken($user->id, $roomId);
         }
 
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true);
+        }
+        $strategicAvatar = $profileSettings['strategic_avatar'] ?? 'Aucun';
+        
         $skills = $this->getPlayerSkillsWithTriggers($user);
 
         return view('duo_game', [
@@ -586,6 +592,7 @@ class DuoController extends Controller
             'lobby_code' => $lobbyCode,
             'jwt_token' => $jwtToken,
             'skills' => $skills,
+            'strategic_avatar' => $strategicAvatar,
         ]);
     }
     
