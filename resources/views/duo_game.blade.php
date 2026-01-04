@@ -364,6 +364,39 @@ $skills = $skills ?? [];
         box-shadow: none;
     }
     
+    .skill-circle.locked { 
+        opacity: 0.4; 
+        cursor: not-allowed; 
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(100, 100, 100, 0.3);
+        box-shadow: none;
+    }
+    
+    .skill-circle.usable-now:not(.used):not(.locked) {
+        animation: skill-shimmer 1.5s ease-in-out infinite;
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.25);
+        cursor: pointer;
+    }
+    
+    @keyframes skill-shimmer {
+        0%, 100% { 
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.3);
+            transform: scale(1);
+        }
+        50% { 
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.9), 0 0 50px rgba(255, 215, 0, 0.5);
+            transform: scale(1.08);
+        }
+    }
+    
+    .skill-circle.available:not(.used):not(.locked):not(.usable-now) {
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.15);
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        cursor: pointer;
+    }
+    
     .answers-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1253,6 +1286,7 @@ const PhaseController = {
     
     showIntro(questionData) {
         currentPhase = 'intro';
+        updateSkillStates('intro');
         const introOverlay = document.getElementById('introOverlay');
         const questionNum = document.getElementById('introQuestionNumber');
         const theme = document.getElementById('introTheme');
@@ -1276,6 +1310,7 @@ const PhaseController = {
     
     startQuestion() {
         currentPhase = 'question';
+        updateSkillStates('question');
         canBuzz = true;
         hasBuzzed = false;
         
@@ -1289,6 +1324,7 @@ const PhaseController = {
     
     showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false) {
         currentPhase = 'reveal';
+        updateSkillStates('reveal');
         canBuzz = false;
         
         const revealOverlay = document.getElementById('revealOverlay');
@@ -2027,6 +2063,7 @@ document.getElementById('buzzButton').addEventListener('click', function() {
 
 function showAnswers() {
     currentPhase = 'answer';
+    updateSkillStates('answer');
     
     document.getElementById('buzzContainer').style.display = 'none';
     document.getElementById('answersGrid').style.display = 'grid';
@@ -2412,19 +2449,47 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initSkillClickHandlers() {
-    document.querySelectorAll('.skill-circle.active:not(.used):not(.locked)').forEach(skillEl => {
+    document.querySelectorAll('.skill-circle.active:not(.used):not(.locked), .skill-circle.usable-now:not(.used):not(.locked), .skill-circle.available:not(.used):not(.locked)').forEach(skillEl => {
         skillEl.addEventListener('click', function() {
+            if (this.classList.contains('used') || this.classList.contains('locked') || this.classList.contains('empty')) {
+                return;
+            }
+            
             const skillId = this.dataset.skillId;
             if (!skillId) return;
             
             if (useSocketIO && duoSocket) {
                 duoSocket.activateSkill(skillId);
-                this.classList.add('used');
+                markSkillAsUsed(skillId);
                 showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
             } else {
                 activateSkillHttp(skillId);
             }
         });
+    });
+}
+
+function markSkillAsUsed(skillId) {
+    const skillEl = document.querySelector(`[data-skill-id="${skillId}"]`);
+    if (skillEl) {
+        skillEl.classList.remove('active', 'usable-now', 'available');
+        skillEl.classList.add('used');
+    }
+}
+
+function updateSkillStates(phase) {
+    const usablePhases = ['question', 'answer'];
+    const isUsablePhase = usablePhases.includes(phase);
+    
+    document.querySelectorAll('.skill-circle:not(.used):not(.locked):not(.empty)').forEach(skillEl => {
+        if (isUsablePhase) {
+            skillEl.classList.add('usable-now');
+            skillEl.classList.remove('available', 'active');
+        } else {
+            skillEl.classList.remove('usable-now');
+            skillEl.classList.add('available');
+            skillEl.classList.remove('active');
+        }
     });
 }
 
@@ -2440,7 +2505,7 @@ function activateSkillHttp(skillId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            document.querySelector(`[data-skill-id="${skillId}"]`)?.classList.add('used');
+            markSkillAsUsed(skillId);
             showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
         }
     })
