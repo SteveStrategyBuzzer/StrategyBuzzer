@@ -93,6 +93,8 @@ export type Question = {
   timeLimitMs: number;
 };
 
+export type RedactedQuestion = Omit<Question, 'correctIndex' | 'correctBool' | 'correctText'>;
+
 export type ScoringConfig = {
   correctFast: number;
   correctMedium: number;

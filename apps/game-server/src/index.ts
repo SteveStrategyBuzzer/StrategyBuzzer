@@ -1,12 +1,14 @@
 import express from "express";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import cors from "cors";
 import { RoomManager } from "./services/RoomManager.js";
 import { GameOrchestrator } from "./services/GameOrchestrator.js";
 import { setupSocketHandlers } from "./ws/handlers.js";
 import { setupHttpRoutes } from "./http/routes.js";
 import { verifyJWT } from "./middleware/auth.js";
+import { redisPub, redisSub, ping as redisPing } from "./services/RedisService.js";
 
 const PORT = process.env.GAME_SERVER_PORT || 3001;
 const LARAVEL_ORIGIN = process.env.LARAVEL_ORIGIN || "http://localhost:5000";
@@ -31,6 +33,8 @@ const io = new SocketIOServer(httpServer, {
   pingTimeout: 60000,
   pingInterval: 25000,
 });
+
+io.adapter(createAdapter(redisPub, redisSub));
 
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token || socket.handshake.query?.token;
@@ -60,11 +64,21 @@ setupHttpRoutes(app, roomManager, gameOrchestrator);
 
 setupSocketHandlers(io, roomManager, gameOrchestrator);
 
+app.get("/health/redis", async (_req, res) => {
+  const healthy = await redisPing();
+  if (healthy) {
+    res.json({ status: "ok", redis: "connected" });
+  } else {
+    res.status(503).json({ status: "error", redis: "disconnected" });
+  }
+});
+
 httpServer.listen(PORT, () => {
   console.log(`[GameServer] Running on port ${PORT}`);
   console.log(`[GameServer] WebSocket ready at ws://0.0.0.0:${PORT}`);
   console.log(`[GameServer] HTTP API ready at http://0.0.0.0:${PORT}`);
   console.log(`[GameServer] CORS configured for Laravel backend at ${LARAVEL_ORIGIN}`);
+  console.log(`[GameServer] Redis adapter configured for multi-instance sync`);
 });
 
 process.on("uncaughtException", (error) => {

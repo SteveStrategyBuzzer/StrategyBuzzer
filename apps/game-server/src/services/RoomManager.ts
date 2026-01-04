@@ -269,4 +269,23 @@ export class RoomManager {
     }
     return count;
   }
+
+  restoreRoom(roomId: string, room: Room): void {
+    if (this.rooms.has(roomId)) {
+      console.log(`[RoomManager] Room ${roomId} already exists, skipping restore`);
+      return;
+    }
+    
+    this.rooms.set(roomId, room);
+    
+    for (const playerId of Object.keys(room.state.players)) {
+      this.playerToRoom.set(playerId, roomId);
+    }
+    
+    console.log(`[RoomManager] Restored room ${roomId} with ${Object.keys(room.state.players).length} players`);
+  }
+
+  hasRoom(roomId: string): boolean {
+    return this.rooms.has(roomId);
+  }
 }

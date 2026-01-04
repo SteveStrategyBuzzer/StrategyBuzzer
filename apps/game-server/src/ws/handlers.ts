@@ -4,6 +4,7 @@ import type { GameOrchestrator } from "../services/GameOrchestrator.js";
 import type { GameState, Player } from "../../../../packages/shared/src/types.js";
 import type { GameEvent } from "../../../../packages/shared/src/events.js";
 import { verifyJWT, type PlayerTokenPayload } from "../middleware/auth.js";
+import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";
 
 function extractScores(players: Record<string, Player>): Record<string, number> {
   const scores: Record<string, number> = {};
@@ -56,7 +57,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
     let currentPlayerId: string | null = null;
     let authenticatedPayload: PlayerTokenPayload | null = (socket as any).playerData || null;
 
-    socket.on("join_room", (payload: JoinRoomPayload) => {
+    socket.on("join_room", async (payload: JoinRoomPayload) => {
       try {
         if (payload.token) {
           const tokenPayload = verifyJWT(payload.token);
@@ -77,6 +78,22 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         if (!roomId) {
           socket.emit("error", { code: "ROOM_NOT_FOUND", message: "Room not found" });
           return;
+        }
+
+        if (!roomManager.hasRoom(roomId)) {
+          console.log(`[WS] Room ${roomId} not in memory, attempting recovery...`);
+          const canRecover = await canRecoverRoom(roomId);
+          if (canRecover) {
+            const recoveredRoom = await rehydrateRoom(roomManager, roomId);
+            if (!recoveredRoom) {
+              socket.emit("error", { code: "RECOVERY_FAILED", message: "Failed to recover room" });
+              return;
+            }
+            console.log(`[WS] Room ${roomId} recovered successfully`);
+          } else {
+            socket.emit("error", { code: "ROOM_NOT_FOUND", message: "Room not found" });
+            return;
+          }
         }
 
         const playerId = authenticatedPayload?.playerId?.toString() || payload.playerId;

@@ -3,6 +3,7 @@ import type { RoomManager } from "../services/RoomManager.js";
 import type { GameOrchestrator } from "../services/GameOrchestrator.js";
 import { DEFAULT_DUO_CONFIG, DEFAULT_LEAGUE_INDIVIDUAL_CONFIG, DEFAULT_LEAGUE_TEAM_CONFIG, DEFAULT_MASTER_CONFIG } from "../../../../packages/shared/src/types.js";
 import type { GameConfig, Mode } from "../../../../packages/shared/src/types.js";
+import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";
 
 function getConfigForMode(mode: Mode): GameConfig {
   switch (mode) {
@@ -223,6 +224,82 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
     res.json({
       success: true,
       received: true,
+    });
+  });
+
+  app.get("/rooms/:roomId/recover", async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    
+    const existingRoom = roomManager.getRoom(roomId);
+    if (existingRoom) {
+      return res.json({
+        success: true,
+        recovered: false,
+        message: "Room already exists in memory",
+        state: {
+          sessionId: existingRoom.state.sessionId,
+          lobbyCode: existingRoom.state.lobbyCode,
+          phase: existingRoom.state.phase,
+          playerCount: Object.keys(existingRoom.state.players).length,
+        },
+      });
+    }
+    
+    const canRecover = await canRecoverRoom(roomId);
+    if (!canRecover) {
+      return res.status(404).json({
+        success: false,
+        error: "Room not found and cannot be recovered",
+      });
+    }
+    
+    try {
+      const room = await rehydrateRoom(roomManager, roomId);
+      if (!room) {
+        return res.status(500).json({
+          success: false,
+          error: "Failed to recover room",
+        });
+      }
+      
+      res.json({
+        success: true,
+        recovered: true,
+        state: {
+          sessionId: room.state.sessionId,
+          lobbyCode: room.state.lobbyCode,
+          phase: room.state.phase,
+          playerCount: Object.keys(room.state.players).length,
+          currentRound: room.state.currentRound,
+          questionIndex: room.state.questionIndex,
+        },
+      });
+    } catch (error) {
+      console.error("[HTTP] Error recovering room:", error);
+      res.status(500).json({
+        success: false,
+        error: "Error during room recovery",
+      });
+    }
+  });
+
+  app.get("/rooms/:roomId/can-recover", async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    
+    const existingRoom = roomManager.getRoom(roomId);
+    if (existingRoom) {
+      return res.json({
+        success: true,
+        canRecover: true,
+        reason: "Room exists in memory",
+      });
+    }
+    
+    const canRecover = await canRecoverRoom(roomId);
+    res.json({
+      success: true,
+      canRecover,
+      reason: canRecover ? "Room data found in Redis" : "No room data available",
     });
   });
 }

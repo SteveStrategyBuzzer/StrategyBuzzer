@@ -532,4 +532,61 @@ class FirebaseService
             return [];
         }
     }
+
+    /**
+     * Récupère un document spécifique depuis Firestore
+     * 
+     * @param string $collectionPath Chemin de la collection (ex: "questionPools")
+     * @param string $documentId ID du document
+     * @return array|null Les données du document ou null si non trouvé
+     */
+    public function getDocument(string $collectionPath, string $documentId): ?array
+    {
+        if (!$this->initialized) {
+            Log::warning("[FirebaseService] getDocument - Not initialized");
+            return null;
+        }
+
+        try {
+            $documentPath = "projects/{$this->projectId}/databases/(default)/documents/{$collectionPath}/{$documentId}";
+            $response = $this->makeRequestWithRetry('GET', $documentPath);
+
+            if (isset($response['fields'])) {
+                return $this->convertFromFirestoreFormat($response);
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error("Failed to get document: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Supprime un document de Firestore
+     * 
+     * @param string $collectionPath Chemin de la collection (ex: "questionPools")
+     * @param string $documentId ID du document à supprimer
+     * @return bool
+     */
+    public function deleteDocument(string $collectionPath, string $documentId): bool
+    {
+        if (!$this->initialized) {
+            return false;
+        }
+
+        try {
+            $documentPath = "projects/{$this->projectId}/databases/(default)/documents/{$collectionPath}/{$documentId}";
+            $this->makeRequestWithRetry('DELETE', $documentPath);
+            
+            Log::info("Document deleted from Firestore", [
+                'collection' => $collectionPath,
+                'document_id' => $documentId
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Failed to delete document: " . $e->getMessage());
+            return false;
+        }
+    }
 }

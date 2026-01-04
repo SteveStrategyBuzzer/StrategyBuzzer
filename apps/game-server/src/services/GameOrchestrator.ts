@@ -1,10 +1,12 @@
 import type { Server as SocketIOServer } from "socket.io";
 import type { RoomManager, Room } from "./RoomManager.js";
 import type { Question, Mode, Phase } from "../../../../packages/shared/src/types.js";
-import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent } from "../../../../packages/shared/src/events.js";
+import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent, BuzzReceivedEvent, GameStartedEvent } from "../../../../packages/shared/src/events.js";
 import { applyEvent } from "../../../../packages/game-engine/src/reducer.js";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "../../../../packages/game-engine/src/state-machine.js";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
+import { appendEventLog, setRoomState } from "./RedisService.js";
+import { saveRoomSnapshot } from "./RoomRecovery.js";
 
 export class GameOrchestrator {
   private io: SocketIOServer;
@@ -59,6 +61,8 @@ export class GameOrchestrator {
       config: room.state.config,
     });
 
+    await this.logEventToRedis(roomId, event);
+
     console.log(`[GameOrchestrator] Game started in room ${roomId}, phase: ${room.state.phase}`);
 
     this.emitPhaseChanged(roomId);
@@ -91,6 +95,7 @@ export class GameOrchestrator {
     if (!event) return;
 
     this.io.to(roomId).emit("event", { event });
+    this.logEventToRedis(roomId, event);
 
     if (room.state.lockedAnswerPlayerId === playerId) {
       this.clearPhaseTimer(roomId);
@@ -139,6 +144,7 @@ export class GameOrchestrator {
     room.events.push(submitEvent);
 
     this.io.to(roomId).emit("event", { event: submitEvent });
+    this.logEventToRedis(roomId, submitEvent);
 
     this.pendingAnswers.set(roomId, { playerId, answer, submittedAtMs });
 
@@ -210,6 +216,7 @@ export class GameOrchestrator {
     room.events.push(phaseEvent);
 
     this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
 
     if (pendingAnswer) {
@@ -233,12 +240,16 @@ export class GameOrchestrator {
       room.events.push(revealEvent);
 
       this.io.to(roomId).emit("event", { event: revealEvent });
+      this.logEventToRedis(roomId, revealEvent);
       this.io.to(roomId).emit("answer_revealed", {
         playerId,
         playerName: player?.name,
         answer: pendingAnswer.answer,
         isCorrect,
         correctAnswer,
+        correctIndex: fullQuestion?.correctIndex,
+        correctBool: fullQuestion?.correctBool,
+        correctText: fullQuestion?.correctText,
         pointsEarned,
         totalScore: newTotalScore,
         roundScore: newRoundScore,
@@ -341,9 +352,31 @@ export class GameOrchestrator {
     room.events.push(phaseEvent);
 
     this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
     this.broadcastQuestion(roomId);
     this.schedulePhaseTimeout(roomId);
+  }
+
+  private sanitizeChoices(choices: unknown[] | undefined): string[] | undefined {
+    if (!choices || !Array.isArray(choices)) {
+      return undefined;
+    }
+    return choices.map((choice: unknown) => {
+      if (typeof choice === 'string') {
+        return choice;
+      }
+      if (choice && typeof choice === 'object') {
+        const obj = choice as Record<string, unknown>;
+        if (typeof obj.text === 'string') {
+          return obj.text;
+        }
+        if (typeof obj.answer === 'string') {
+          return obj.answer;
+        }
+      }
+      return String(choice);
+    });
   }
 
   private broadcastQuestion(roomId: string): void {
@@ -356,6 +389,9 @@ export class GameOrchestrator {
       return;
     }
 
+    const rawChoices = (question as Record<string, unknown>).choices || (question as Record<string, unknown>).answers;
+    const sanitizedChoices = this.sanitizeChoices(rawChoices as unknown[] | undefined);
+
     const publishEvent: QuestionPublishedEvent = {
       id: room.state.lastEventId + 1,
       type: "QUESTION_PUBLISHED",
@@ -364,7 +400,7 @@ export class GameOrchestrator {
       questionIndex: room.state.questionIndex,
       questionId: question.id,
       text: question.text,
-      choices: question.choices,
+      choices: sanitizedChoices,
       category: question.category,
       subCategory: question.subCategory,
       difficulty: question.difficulty,
@@ -375,11 +411,12 @@ export class GameOrchestrator {
     room.events.push(publishEvent);
 
     this.io.to(roomId).emit("event", { event: publishEvent });
+    this.logEventToRedis(roomId, publishEvent);
     this.io.to(roomId).emit("question_published", {
       questionIndex: room.state.questionIndex,
       questionId: question.id,
       text: question.text,
-      choices: question.choices,
+      choices: sanitizedChoices,
       category: question.category,
       subCategory: question.subCategory,
       difficulty: question.difficulty,
@@ -408,6 +445,7 @@ export class GameOrchestrator {
     room.events.push(phaseEvent);
 
     this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
 
     const fullQuestion = room.state.questions[room.state.questionIndex];
@@ -428,6 +466,9 @@ export class GameOrchestrator {
       answer: null,
       isCorrect: false,
       correctAnswer,
+      correctIndex: fullQuestion?.correctIndex,
+      correctBool: fullQuestion?.correctBool,
+      correctText: fullQuestion?.correctText,
       pointsEarned: 0,
       totalScore: 0,
       roundScore: 0,
@@ -497,6 +538,7 @@ export class GameOrchestrator {
     room.events.push(phaseEvent);
 
     this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
 
     this.io.to(roomId).emit("waiting_block", {
@@ -626,6 +668,7 @@ export class GameOrchestrator {
     room.events.push(roundEndedEvent);
 
     this.io.to(roomId).emit("event", { event: roundEndedEvent });
+    this.logEventToRedis(roomId, roundEndedEvent);
     this.io.to(roomId).emit("round_ended", {
       roundNumber: room.state.currentRound,
       playerScores,
@@ -650,6 +693,7 @@ export class GameOrchestrator {
     room.events.push(phaseEvent);
 
     this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
     this.schedulePhaseTimeout(roomId);
   }
@@ -691,6 +735,7 @@ export class GameOrchestrator {
       room.events.push(phaseEvent);
 
       this.io.to(roomId).emit("event", { event: phaseEvent });
+      this.logEventToRedis(roomId, phaseEvent);
       this.emitPhaseChanged(roomId);
       this.schedulePhaseTimeout(roomId);
     }
@@ -751,6 +796,7 @@ export class GameOrchestrator {
     room.events.push(matchEndedEvent);
 
     this.io.to(roomId).emit("event", { event: matchEndedEvent });
+    this.logEventToRedis(roomId, matchEndedEvent);
     this.io.to(roomId).emit("match_ended", {
       winnerId,
       winnerName: winnerId ? room.state.players[winnerId]?.name : null,
@@ -790,12 +836,22 @@ export class GameOrchestrator {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    this.io.to(roomId).emit("phase_changed", {
+    const phaseEvent = {
       phase: room.state.phase,
       phaseEndsAtMs: room.state.phaseEndsAtMs,
       questionIndex: room.state.questionIndex,
       roundNumber: room.state.currentRound,
       lockedPlayerId: room.state.lockedAnswerPlayerId,
+    };
+
+    this.io.to(roomId).emit("phase_changed", phaseEvent);
+
+    appendEventLog(roomId, { type: "phase_changed", ...phaseEvent, atMs: Date.now() }).catch(err => {
+      console.error(`[GameOrchestrator] Failed to append event log:`, err);
+    });
+
+    setRoomState(roomId, room.state).catch(err => {
+      console.error(`[GameOrchestrator] Failed to persist room state:`, err);
     });
   }
 
@@ -840,5 +896,22 @@ export class GameOrchestrator {
     this.clearPhaseTimer(roomId);
     this.pendingAnswers.delete(roomId);
     console.log(`[GameOrchestrator] Cleaned up room ${roomId}`);
+  }
+
+  private logEventToRedis(roomId: string, event: GameEvent): void {
+    appendEventLog(roomId, event).catch(err => {
+      console.error(`[GameOrchestrator] Failed to append event log for ${event.type}:`, err);
+    });
+
+    const room = this.roomManager.getRoom(roomId);
+    if (room) {
+      const metadata = {
+        pipelineConfig: room.pipelineConfig,
+        usedQuestionIds: room.usedQuestionIds ? Array.from(room.usedQuestionIds) : [],
+      };
+      saveRoomSnapshot(roomId, room.state, room.events, metadata).catch(err => {
+        console.error(`[GameOrchestrator] Failed to save room snapshot:`, err);
+      });
+    }
   }
 }
