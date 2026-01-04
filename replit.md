@@ -40,8 +40,16 @@ A unified scoring system applies across all modes:
 **Question Management:**
 A question cache system uses file-based caching for pre-generated questions. `QuestionService` manages AI-ready, theme-based question generation with adaptive difficulty, anti-duplication, progressive block-based generation, and language-specific spelling verification using Google Gemini 2.0 Flash. A `SubthemeRotationSystem` ensures deterministic theme rotation.
 
-**Multiplayer Question Batching:**
-`GenerateMultiplayerQuestionsJob` generates questions in blocks of 4 for Duo/League modes, storing them in Firebase for instant delivery, ensuring questions are pre-generated ahead of gameplay.
+**Multiplayer Question Batching (Progressive Pipeline):**
+`GenerateMultiplayerQuestionsJob` generates questions in blocks of 4 for Duo/League modes with the following architecture:
+- **Q1 Synchronous**: First question generated immediately in LobbyService when host clicks "Je Suis Prêt"
+- **Progressive Blocks**: Subsequent questions generated in background job, 4 at a time
+- **QuestionPlanBuilder**: Calculates total needs dynamically: (3 rounds × N questions/round) + skill bonus + tiebreaker
+- **Immediate Append**: Each block sent immediately to Game Server via `appendQuestions()` endpoint
+- **Anti-Duplication**: Global tracking of usedQuestionIds, usedAnswers, usedQuestionTexts across all blocks
+- **Retry Logic**: Up to 3 retries per question, 3 retries for append with exponential backoff
+- **Quota Enforcement**: If deficit cannot be filled after 10 extra attempts, pipeline stops (no partial delivery)
+- **Question Types**: main, skill_bonus (1.2x difficulty), tiebreaker (1.5x difficulty) with metadata flags
 
 **Multiplayer Lobby Synchronization:**
 `LobbyPresenceManager` handles automatic player registration in Firebase sessions. A "Synchronisé" indicator confirms both players are connected before the host can start the game. Multiplayer games proceed directly to Question 1 after a lobby countdown, with subsequent questions displaying a "Question X/10 + THÈME" indicator.
