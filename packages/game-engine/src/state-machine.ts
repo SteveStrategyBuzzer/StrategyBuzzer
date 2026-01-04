@@ -13,6 +13,7 @@ const PHASE_TRANSITIONS: PhaseTransition[] = [
   { from: "QUESTION_ACTIVE", to: "ANSWER_SELECTION" },
   { from: "QUESTION_ACTIVE", to: "REVEAL" },
   { from: "ANSWER_SELECTION", to: "REVEAL" },
+  { from: "REVEAL", to: "WAITING" },
   { 
     from: "REVEAL", 
     to: "QUESTION_ACTIVE",
@@ -23,6 +24,7 @@ const PHASE_TRANSITIONS: PhaseTransition[] = [
     to: "ROUND_SCOREBOARD",
     condition: (state) => state.questionIndex >= state.config.questionsPerRound - 1
   },
+  { from: "WAITING", to: "QUESTION_ACTIVE" },
   { 
     from: "ROUND_SCOREBOARD", 
     to: "INTRO",
@@ -85,6 +87,8 @@ export function getPhaseTimeout(state: GameState): number {
       return state.config.timers.answerSelection;
     case "REVEAL":
       return state.config.timers.reveal;
+    case "WAITING":
+      return state.config.timers.waiting;
     case "ROUND_SCOREBOARD":
       return state.config.timers.roundScoreboard;
     case "TIEBREAKER_CHOICE":

@@ -45,6 +45,7 @@ const DuoSocketClient = {
     onRoundEnded: null,
     onMatchEnded: null,
     onSkillUsed: null,
+    onWaitingBlock: null,
 
     _log(message, data = null) {
         if (data) {
@@ -201,6 +202,11 @@ const DuoSocketClient = {
                 this.socket.on('skill_used', (data) => {
                     this._log('Skill used', data);
                     if (this.onSkillUsed) this.onSkillUsed(data);
+                });
+
+                this.socket.on('waiting_block', (data) => {
+                    this._log('Waiting block', data);
+                    if (this.onWaitingBlock) this.onWaitingBlock(data);
                 });
 
             } catch (error) {

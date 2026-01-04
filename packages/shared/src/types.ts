@@ -13,6 +13,7 @@ export type Phase =
   | "QUESTION_ACTIVE"     
   | "ANSWER_SELECTION"    
   | "REVEAL"              
+  | "WAITING"             
   | "ROUND_SCOREBOARD"    
   | "TIEBREAKER_CHOICE"   
   | "TIEBREAKER_QUESTION" 
@@ -108,6 +109,7 @@ export type TimersConfig = {
   questionActive: number;
   answerSelection: number;
   reveal: number;
+  waiting: number;
   roundScoreboard: number;
   tiebreakerChoice: number;
   matchEnd: number;
@@ -199,6 +201,7 @@ export const DEFAULT_TIMERS: TimersConfig = {
   questionActive: 8000,
   answerSelection: 10000,
   reveal: 3000,
+  waiting: 5000,
   roundScoreboard: 5000,
   tiebreakerChoice: 10000,
   matchEnd: 10000,

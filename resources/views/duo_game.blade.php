@@ -449,6 +449,11 @@ $skills = $skills ?? [];
         background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%);
     }
     
+    .answer-option.selected {
+        background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+        box-shadow: 0 0 20px rgba(155, 89, 182, 0.6);
+    }
+    
     .answer-option.disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -1044,6 +1049,60 @@ $skills = $skills ?? [];
         .chrono-circle { width: 80px; height: 80px; }
         .chrono-time { font-size: 1.8rem; }
     }
+    
+    /* Waiting Block Overlay */
+    .waiting-block-overlay {
+        background: linear-gradient(135deg, rgba(15, 32, 39, 0.95) 0%, rgba(32, 58, 67, 0.95) 50%, rgba(44, 83, 100, 0.95) 100%);
+    }
+    
+    .waiting-block-content {
+        text-align: center;
+        animation: scoreSlide 0.5s ease-out;
+    }
+    
+    .waiting-block-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #FFD700;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    
+    .waiting-block-info {
+        margin-bottom: 30px;
+    }
+    
+    .waiting-block-range {
+        font-size: 1.5rem;
+        color: #4ECDC4;
+        font-weight: 600;
+        background: rgba(78, 205, 196, 0.15);
+        padding: 15px 30px;
+        border-radius: 15px;
+        border: 2px solid rgba(78, 205, 196, 0.4);
+        display: inline-block;
+    }
+    
+    .waiting-block-countdown {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .waiting-block-countdown-label {
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .waiting-block-timer {
+        font-size: 4rem;
+        font-weight: 900;
+        color: #FFD700;
+        text-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+        animation: pulse-glow 1s ease-in-out infinite;
+    }
 </style>
 
 <div class="game-container">
@@ -1238,6 +1297,19 @@ $skills = $skills ?? [];
     <div class="attack-icon" id="attackIcon">⚔️</div>
 </div>
 
+<div class="phase-overlay waiting-block-overlay" id="waitingBlockOverlay">
+    <div class="waiting-block-content">
+        <h2 class="waiting-block-title" id="waitingBlockTitle">{{ __('Prochain bloc') }}</h2>
+        <div class="waiting-block-info">
+            <span class="waiting-block-range" id="waitingBlockRange">Questions 2-5</span>
+        </div>
+        <div class="waiting-block-countdown">
+            <span class="waiting-block-countdown-label">{{ __('Début dans') }}</span>
+            <span class="waiting-block-timer" id="waitingBlockTimer">5</span>
+        </div>
+    </div>
+</div>
+
 <audio id="buzzerSound" preload="auto">
     <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
 </audio>
@@ -1300,6 +1372,7 @@ const PhaseController = {
         document.getElementById('scoreboardOverlay')?.classList.remove('active');
         document.getElementById('tiebreakerChoiceOverlay')?.classList.remove('active');
         document.getElementById('matchEndOverlay')?.classList.remove('active');
+        document.getElementById('waitingBlockOverlay')?.classList.remove('active');
     },
     
     showIntro(questionData) {
@@ -1763,22 +1836,61 @@ function handleTimeout() {
     canBuzz = false;
     document.getElementById('buzzButton').disabled = true;
     
-    PhaseController.onAnswerComplete(
-        false,
-        currentQuestionData?.correct_answer || '',
-        0,
-        parseInt(document.getElementById('playerScore').textContent) || 0,
-        parseInt(document.getElementById('opponentScore').textContent) || 0,
-        currentQuestionData?.has_next_question ?? true,
-        currentQuestionData?.question_number || 1,
-        totalQuestions,
-        true
-    ).then(() => {
-        if (currentQuestionData?.has_next_question) {
-            loadGameState();
-        } else {
-            window.location.href = `/duo/result/${matchId}`;
-        }
+    if (useSocketIO) {
+        return;
+    }
+    
+    fetch(`/duo/matches/${matchId}/timeout`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({
+            question_id: currentQuestionData?.question_number?.toString() || '1',
+            timeout_type: 'buzz'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const correctAnswer = data.correct_answer || '';
+        
+        PhaseController.onAnswerComplete(
+            false,
+            correctAnswer,
+            0,
+            parseInt(document.getElementById('playerScore').textContent) || 0,
+            parseInt(document.getElementById('opponentScore').textContent) || 0,
+            currentQuestionData?.has_next_question ?? true,
+            currentQuestionData?.question_number || 1,
+            totalQuestions,
+            true
+        ).then(() => {
+            if (currentQuestionData?.has_next_question) {
+                loadGameState();
+            } else {
+                window.location.href = `/duo/result/${matchId}`;
+            }
+        });
+    })
+    .catch(() => {
+        PhaseController.onAnswerComplete(
+            false,
+            '',
+            0,
+            parseInt(document.getElementById('playerScore').textContent) || 0,
+            parseInt(document.getElementById('opponentScore').textContent) || 0,
+            currentQuestionData?.has_next_question ?? true,
+            currentQuestionData?.question_number || 1,
+            totalQuestions,
+            true
+        ).then(() => {
+            if (currentQuestionData?.has_next_question) {
+                loadGameState();
+            } else {
+                window.location.href = `/duo/result/${matchId}`;
+            }
+        });
     });
 }
 
@@ -1786,22 +1898,67 @@ function handleAnswerTimeout() {
     const buttons = document.querySelectorAll('.answer-option');
     buttons.forEach(btn => btn.classList.add('disabled'));
     
-    PhaseController.onAnswerComplete(
-        false,
-        currentQuestionData?.correct_answer || '',
-        0,
-        parseInt(document.getElementById('playerScore').textContent) || 0,
-        parseInt(document.getElementById('opponentScore').textContent) || 0,
-        currentQuestionData?.has_next_question ?? true,
-        currentQuestionData?.question_number || 1,
-        totalQuestions,
-        true
-    ).then(() => {
-        if (currentQuestionData?.has_next_question) {
-            loadGameState();
-        } else {
-            window.location.href = `/duo/result/${matchId}`;
+    if (useSocketIO) {
+        duoSocket.answer(-1);
+        return;
+    }
+    
+    fetch(`/duo/matches/${matchId}/timeout`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({
+            question_id: currentQuestionData?.question_number?.toString() || '1',
+            timeout_type: 'answer'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const correctAnswer = data.correct_answer || '';
+        const correctIndex = data.correct_index ?? -1;
+        
+        if (correctIndex >= 0) {
+            highlightAnswersAfterReveal(-1, correctIndex, false);
         }
+        
+        PhaseController.onAnswerComplete(
+            false,
+            correctAnswer,
+            0,
+            parseInt(document.getElementById('playerScore').textContent) || 0,
+            parseInt(document.getElementById('opponentScore').textContent) || 0,
+            currentQuestionData?.has_next_question ?? true,
+            currentQuestionData?.question_number || 1,
+            totalQuestions,
+            true
+        ).then(() => {
+            if (currentQuestionData?.has_next_question) {
+                loadGameState();
+            } else {
+                window.location.href = `/duo/result/${matchId}`;
+            }
+        });
+    })
+    .catch(() => {
+        PhaseController.onAnswerComplete(
+            false,
+            '',
+            0,
+            parseInt(document.getElementById('playerScore').textContent) || 0,
+            parseInt(document.getElementById('opponentScore').textContent) || 0,
+            currentQuestionData?.has_next_question ?? true,
+            currentQuestionData?.question_number || 1,
+            totalQuestions,
+            true
+        ).then(() => {
+            if (currentQuestionData?.has_next_question) {
+                loadGameState();
+            } else {
+                window.location.href = `/duo/result/${matchId}`;
+            }
+        });
     });
 }
 
@@ -1846,8 +2003,8 @@ function updateUI(data) {
                     theme: state.theme || '{{ $theme }}',
                     question_text: state.tiebreaker_question.text,
                     answers: state.tiebreaker_question.answers || [],
-                    correct_answer: state.tiebreaker_question.correct_answer || '',
-                    correct_index: state.tiebreaker_question.correct_index ?? 0,
+                    correct_answer: '',
+                    correct_index: -1,
                     has_next_question: false
                 };
                 loadQuestionIntoUI(currentQuestionData);
@@ -1907,8 +2064,8 @@ function updateUI(data) {
                     theme: state.theme || '{{ $theme }}',
                     question_text: state.current_question.text,
                     answers: state.current_question.answers || [],
-                    correct_answer: state.current_question.correct_answer || '',
-                    correct_index: state.current_question.correct_index ?? 0,
+                    correct_answer: '',
+                    correct_index: -1,
                     has_next_question: state.has_next_question ?? true
                 };
                 
@@ -1944,8 +2101,8 @@ function updateUI(data) {
                     theme: state.theme || '{{ $theme }}',
                     question_text: state.current_question.text,
                     answers: state.current_question.answers || [],
-                    correct_answer: state.current_question.correct_answer || '',
-                    correct_index: state.current_question.correct_index ?? 0,
+                    correct_answer: '',
+                    correct_index: -1,
                     has_next_question: state.has_next_question ?? true
                 };
                 
@@ -1994,8 +2151,8 @@ function updateUI(data) {
             theme: state.theme || '{{ $theme }}',
             question_text: state.current_question.text,
             answers: state.current_question.answers || [],
-            correct_answer: state.current_question.correct_answer || '',
-            correct_index: state.current_question.correct_index ?? 0,
+            correct_answer: '',
+            correct_index: -1,
             has_next_question: state.has_next_question ?? true
         };
         
@@ -2025,7 +2182,6 @@ function loadQuestionIntoUI(questionData) {
                 } else {
                     btn.innerHTML = `<span class="point-badge" id="badge${i}"></span><span class="answer-text">${questionData.answers[i]}</span>`;
                 }
-                btn.dataset.correct = (i === questionData.correct_index) ? 'true' : 'false';
                 btn.classList.remove('correct', 'incorrect', 'disabled');
                 btn.disabled = false;
             }
@@ -2104,37 +2260,20 @@ document.querySelectorAll('.answer-option').forEach(btn => {
         if (this.classList.contains('disabled')) return;
         
         const answerIndex = parseInt(this.dataset.index);
-        const isCorrect = this.dataset.correct === 'true';
         
         if (answerTimerInterval) clearInterval(answerTimerInterval);
         
         document.querySelectorAll('.answer-option').forEach(b => {
             b.classList.add('disabled');
-            if (b.dataset.correct === 'true') {
-                b.classList.add('correct');
-            }
         });
         
-        if (!isCorrect) {
-            this.classList.add('incorrect');
-        }
+        this.classList.add('selected');
         
-        playSound(isCorrect ? 'correctSound' : 'incorrectSound');
-        
-        let points = 0;
-        if (isCorrect) {
-            if (answerTimeLeft > 3) points = 2;
-            else if (answerTimeLeft >= 1) points = 1;
-            else points = 0;
-        } else {
-            points = -2;
-        }
-        
-        submitAnswer(answerIndex, isCorrect, points);
+        submitAnswer(answerIndex);
     });
 });
 
-function submitAnswer(answerIndex, isCorrect, points) {
+function submitAnswer(answerIndex) {
     if (useSocketIO) {
         duoSocket.answer(answerIndex);
         return;
@@ -2149,15 +2288,24 @@ function submitAnswer(answerIndex, isCorrect, points) {
         body: JSON.stringify({
             question_id: currentQuestionData?.question_number?.toString() || '1',
             answer: ['A', 'B', 'C', 'D'][answerIndex] || 'A',
-            correct_answer: ['A', 'B', 'C', 'D'][currentQuestionData?.correct_index || 0] || 'A',
-            answer_index: answerIndex,
-            is_correct: isCorrect,
-            points: points
+            answer_index: answerIndex
         })
     })
     .then(response => response.json())
     .then(data => {
-        const playerScore = data.player_score || data.gameState?.score || parseInt(document.getElementById('playerScore').textContent) + (isCorrect ? points : 0);
+        const isCorrect = data.is_correct ?? false;
+        const points = data.points ?? 0;
+        const correctIndex = data.correct_index ?? -1;
+        const correctAnswer = data.correct_answer || '';
+        
+        currentQuestionData.correct_index = correctIndex;
+        currentQuestionData.correct_answer = correctAnswer;
+        
+        highlightAnswersAfterReveal(answerIndex, correctIndex, isCorrect);
+        
+        playSound(isCorrect ? 'correctSound' : 'incorrectSound');
+        
+        const playerScore = data.player_score || data.gameState?.score || parseInt(document.getElementById('playerScore').textContent);
         const opponentScore = data.opponent_score || data.gameState?.opponent_score || parseInt(document.getElementById('opponentScore').textContent);
         
         document.getElementById('playerScore').textContent = playerScore;
@@ -2168,8 +2316,8 @@ function submitAnswer(answerIndex, isCorrect, points) {
         
         PhaseController.onAnswerComplete(
             isCorrect,
-            currentQuestionData?.answers?.[currentQuestionData.correct_index] || '',
-            isCorrect ? points : 0,
+            correctAnswer,
+            points,
             playerScore,
             opponentScore,
             hasNextQuestion,
@@ -2202,6 +2350,23 @@ function submitAnswer(answerIndex, isCorrect, points) {
     });
 }
 
+function highlightAnswersAfterReveal(selectedIndex, correctIndex, isCorrect) {
+    document.querySelectorAll('.answer-option').forEach((btn, i) => {
+        btn.classList.add('disabled');
+        btn.classList.remove('selected');
+        if (i === correctIndex) {
+            btn.classList.add('correct');
+        }
+    });
+    
+    if (!isCorrect && selectedIndex >= 0) {
+        const selectedBtn = document.getElementById(`answer${selectedIndex}`);
+        if (selectedBtn) {
+            selectedBtn.classList.add('incorrect');
+        }
+    }
+}
+
 function resetGameplayState() {
     hasBuzzed = false;
     canBuzz = false;
@@ -2214,7 +2379,7 @@ function resetGameplayState() {
     document.getElementById('opponentBuzzIndicator').classList.remove('buzzed');
     
     document.querySelectorAll('.answer-option').forEach(btn => {
-        btn.classList.remove('correct', 'incorrect', 'disabled');
+        btn.classList.remove('correct', 'incorrect', 'disabled', 'selected');
         btn.disabled = false;
     });
     
@@ -2303,15 +2468,30 @@ function initSocketIO() {
         const isCorrect = data.isCorrect || false;
         const points = data.pointsEarned || 0;
         const wasTimeout = data.timeout || false;
+        const correctIndex = data.correctIndex ?? -1;
+        const correctAnswer = data.correctAnswer?.toString() || '';
+        const selectedIndex = data.answerIndex ?? -1;
+        
+        if (currentQuestionData) {
+            currentQuestionData.correct_index = correctIndex;
+            currentQuestionData.correct_answer = correctAnswer;
+        }
         
         if (isMyAnswer) {
             document.getElementById('playerScore').textContent = data.totalScore || 0;
-            PhaseController.showReveal(isCorrect, data.correctAnswer?.toString() || '', points, wasTimeout);
+            
+            if (correctIndex >= 0) {
+                highlightAnswersAfterReveal(selectedIndex, correctIndex, isCorrect);
+            }
+            
+            playSound(isCorrect ? 'correctSound' : 'incorrectSound');
+            
+            PhaseController.showReveal(isCorrect, correctAnswer, points, wasTimeout);
         } else {
             document.getElementById('opponentScore').textContent = data.totalScore || 0;
             if (currentPhase !== 'reveal') {
                 currentPhase = 'reveal';
-                PhaseController.showReveal(isCorrect, data.correctAnswer?.toString() || '', points, wasTimeout);
+                PhaseController.showReveal(isCorrect, correctAnswer, points, wasTimeout);
             }
         }
     };
@@ -2370,6 +2550,11 @@ function initSocketIO() {
         }
     };
     
+    duoSocket.onWaitingBlock = (data) => {
+        console.log('[DuoGame] Waiting block:', data);
+        showWaitingBlockOverlay(data.nextBlockStart, data.nextBlockEnd, data.waitingEndsAtMs);
+    };
+    
     return duoSocket.connect(gameServerUrl, jwtToken)
         .then(() => {
             console.log('[DuoGame] Socket.IO connection established');
@@ -2400,8 +2585,13 @@ function handleServerPhase(phase, data) {
             if (currentPhase !== 'question' && currentPhase !== 'answer') {
                 resetGameplayState();
                 PhaseController.hideAllOverlays();
+                hideWaitingBlockOverlay();
                 PhaseController.startQuestion();
             }
+            break;
+            
+        case 'WAITING':
+            currentPhase = 'waiting_block';
             break;
             
         case 'ANSWER_SELECTION':
@@ -2434,6 +2624,51 @@ function handleServerPhase(phase, data) {
             
         default:
             console.log('[DuoGame] Unknown phase:', normalizedPhase);
+    }
+}
+
+let waitingBlockCountdownInterval = null;
+
+function showWaitingBlockOverlay(blockStart, blockEnd, endsAtMs) {
+    const overlay = document.getElementById('waitingBlockOverlay');
+    const blockRange = document.getElementById('waitingBlockRange');
+    const timer = document.getElementById('waitingBlockTimer');
+    
+    if (!overlay) return;
+    
+    currentPhase = 'waiting_block';
+    
+    blockRange.textContent = `{{ __('Questions') }} ${blockStart}-${blockEnd}`;
+    
+    overlay.classList.add('active');
+    
+    if (waitingBlockCountdownInterval) {
+        clearInterval(waitingBlockCountdownInterval);
+    }
+    
+    const updateTimer = () => {
+        const remaining = Math.ceil((endsAtMs - Date.now()) / 1000);
+        if (remaining <= 0) {
+            clearInterval(waitingBlockCountdownInterval);
+            waitingBlockCountdownInterval = null;
+            hideWaitingBlockOverlay();
+        } else {
+            timer.textContent = remaining;
+        }
+    };
+    
+    updateTimer();
+    waitingBlockCountdownInterval = setInterval(updateTimer, 100);
+}
+
+function hideWaitingBlockOverlay() {
+    const overlay = document.getElementById('waitingBlockOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+    if (waitingBlockCountdownInterval) {
+        clearInterval(waitingBlockCountdownInterval);
+        waitingBlockCountdownInterval = null;
     }
 }
 

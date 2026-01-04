@@ -272,6 +272,10 @@ export class GameOrchestrator {
         this.transitionAfterReveal(roomId);
         break;
 
+      case "WAITING":
+        this.handleWaitingTimeout(roomId);
+        break;
+
       case "ROUND_SCOREBOARD":
         this.transitionAfterRoundScoreboard(roomId);
         break;
@@ -423,6 +427,70 @@ export class GameOrchestrator {
     this.revealAnswer(roomId);
   }
 
+  private shouldShowWaiting(questionIndex: number): boolean {
+    return questionIndex === 0 || questionIndex === 4;
+  }
+
+  private getWaitingBlockInfo(questionIndex: number): { nextBlockStart: number; nextBlockEnd: number } | null {
+    if (questionIndex === 0) {
+      return { nextBlockStart: 2, nextBlockEnd: 5 };
+    } else if (questionIndex === 4) {
+      return { nextBlockStart: 6, nextBlockEnd: 9 };
+    }
+    return null;
+  }
+
+  private transitionToWaiting(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    const blockInfo = this.getWaitingBlockInfo(room.state.questionIndex);
+    if (!blockInfo) {
+      room.state.questionIndex++;
+      this.transitionToQuestionActive(roomId);
+      return;
+    }
+
+    const waitingDuration = room.state.config.timers.waiting;
+    const waitingEndsAtMs = Date.now() + waitingDuration;
+
+    const phaseEvent: PhaseChangedEvent = {
+      id: room.state.lastEventId + 1,
+      type: "PHASE_CHANGED",
+      atMs: Date.now(),
+      sessionId: roomId,
+      fromPhase: room.state.phase,
+      toPhase: "WAITING",
+      phaseEndsAtMs: waitingEndsAtMs,
+      questionIndex: room.state.questionIndex,
+      roundNumber: room.state.currentRound,
+    };
+
+    room.state = applyEvent(room.state, phaseEvent);
+    room.events.push(phaseEvent);
+
+    this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.emitPhaseChanged(roomId);
+
+    this.io.to(roomId).emit("waiting_block", {
+      nextBlockStart: blockInfo.nextBlockStart,
+      nextBlockEnd: blockInfo.nextBlockEnd,
+      waitingEndsAtMs,
+    });
+
+    console.log(`[GameOrchestrator] Waiting phase for block ${blockInfo.nextBlockStart}-${blockInfo.nextBlockEnd}`);
+
+    this.schedulePhaseTimeout(roomId);
+  }
+
+  private handleWaitingTimeout(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    room.state.questionIndex++;
+    this.transitionToQuestionActive(roomId);
+  }
+
   private transitionAfterReveal(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
@@ -431,6 +499,8 @@ export class GameOrchestrator {
 
     if (isLastQuestion) {
       this.endRound(roomId);
+    } else if (this.shouldShowWaiting(room.state.questionIndex)) {
+      this.transitionToWaiting(roomId);
     } else {
       room.state.questionIndex++;
       this.transitionToQuestionActive(roomId);
