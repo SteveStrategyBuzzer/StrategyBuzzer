@@ -207,14 +207,13 @@ class GenerateMultiplayerQuestionsJob implements ShouldQueue
         }
         
         if ($deficit > 0) {
-            Log::error('[GenerateMultiplayerQuestionsJob] Cannot meet quota after all attempts - NOT dispatching next bloc', [
+            Log::warning('[GenerateMultiplayerQuestionsJob] Deficit could not be fully filled - continuing with partial bloc', [
                 'room_id' => $this->roomId,
                 'expected' => $expectedCount,
                 'generated' => count($generatedQuestions),
                 'deficit' => $deficit,
                 'extra_attempts' => $extraAttempts,
             ]);
-            return;
         }
 
         $generatedCount = count($generatedQuestions);
@@ -239,11 +238,10 @@ class GenerateMultiplayerQuestionsJob implements ShouldQueue
         $appendSuccess = $this->appendQuestionsWithRetry($gameServerService, $generatedQuestions);
         
         if (!$appendSuccess) {
-            Log::error('[GenerateMultiplayerQuestionsJob] Failed to append questions after all retries - NOT dispatching next bloc', [
+            Log::error('[GenerateMultiplayerQuestionsJob] Failed to append questions after all retries - continuing to next bloc anyway', [
                 'room_id' => $this->roomId,
                 'bloc_count' => $generatedCount,
             ]);
-            return;
         }
 
         Log::info('[GenerateMultiplayerQuestionsJob] Bloc completed successfully', [
