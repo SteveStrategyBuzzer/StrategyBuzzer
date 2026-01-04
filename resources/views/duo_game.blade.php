@@ -1170,6 +1170,9 @@ let answerTimerInterval = null;
 let currentQuestionData = null;
 let useSocketIO = false;
 let phaseEndsAtMs = null;
+let isProcessingPhase = false;
+let pendingQuestionQueue = [];
+let lastAcceptedQuestionNum = 0;
 
 const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default_1';
 document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
@@ -1290,6 +1293,7 @@ const PhaseController = {
         currentPhase = 'scoreboard';
         
         const scoreboardOverlay = document.getElementById('scoreboardOverlay');
+        
         const playerScoreEl = document.getElementById('scoreboardPlayerScore');
         const opponentScoreEl = document.getElementById('scoreboardOpponentScore');
         const progressEl = document.getElementById('scoreboardProgress');
@@ -1312,7 +1316,9 @@ const PhaseController = {
             }
         }
         
-        scoreboardOverlay?.classList.add('active');
+        if (scoreboardOverlay) {
+            scoreboardOverlay.classList.add('active');
+        }
         
         return new Promise(resolve => {
             setTimeout(() => {
@@ -1322,15 +1328,129 @@ const PhaseController = {
         });
     },
     
-    async onAnswerComplete(isCorrect, correctAnswer, points, playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions, wasTimeout = false) {
-        await this.showReveal(isCorrect, correctAnswer, points, wasTimeout);
-        await this.showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions);
+    async finishPhase(options) {
+        const {
+            showRevealPhase = true,
+            isCorrect = false,
+            correctAnswer = '',
+            points = 0,
+            wasTimeout = false,
+            playerScore = 0,
+            opponentScore = 0,
+            hasNextQuestion = false,
+            questionNum = 1,
+            totalQuestionsParam = totalQuestions
+        } = options;
+        
+        isProcessingPhase = true;
+        
+        try {
+            if (showRevealPhase && currentPhase !== 'reveal') {
+                await this.showReveal(isCorrect, correctAnswer, points, wasTimeout);
+            }
+            await this.showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestionsParam);
+        } finally {
+            isProcessingPhase = false;
+        }
         
         if (!hasNextQuestion) {
             this.hideAllOverlays();
+            return { proceed: false };
         }
         
+        this.processQueue();
+        
         return { proceed: hasNextQuestion };
+    },
+    
+    async onAnswerComplete(isCorrect, correctAnswer, points, playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestionsParam, wasTimeout = false) {
+        return this.finishPhase({
+            showRevealPhase: true,
+            isCorrect,
+            correctAnswer,
+            points,
+            wasTimeout,
+            playerScore,
+            opponentScore,
+            hasNextQuestion,
+            questionNum,
+            totalQuestionsParam
+        });
+    },
+    
+    async onRoundComplete(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestionsParam) {
+        return this.finishPhase({
+            showRevealPhase: false,
+            playerScore,
+            opponentScore,
+            hasNextQuestion,
+            questionNum,
+            totalQuestionsParam
+        });
+    },
+    
+    queueQuestion(questionData) {
+        const qNum = questionData.question_number;
+        
+        if (qNum <= lastAcceptedQuestionNum) {
+            console.log('[PhaseController] Ignoring already accepted question:', qNum);
+            return;
+        }
+        
+        const exists = pendingQuestionQueue.some(q => q.question_number === qNum);
+        if (!exists) {
+            pendingQuestionQueue.push(questionData);
+            pendingQuestionQueue.sort((a, b) => a.question_number - b.question_number);
+            console.log('[PhaseController] Queued question:', qNum, 'queue length:', pendingQuestionQueue.length);
+        }
+    },
+    
+    processQueue() {
+        if (isProcessingPhase || pendingQuestionQueue.length === 0) {
+            return;
+        }
+        
+        const nextQ = pendingQuestionQueue.shift();
+        
+        if (nextQ.question_number <= lastAcceptedQuestionNum) {
+            this.processQueue();
+            return;
+        }
+        
+        this.startNextQuestion(nextQ);
+    },
+    
+    startNextQuestion(questionData, retryCount = 0) {
+        const qNum = questionData.question_number;
+        const MAX_RETRIES = 2;
+        
+        if (qNum <= lastAcceptedQuestionNum) {
+            console.log('[PhaseController] Skipping already accepted question:', qNum);
+            return;
+        }
+        
+        currentQuestionData = questionData;
+        isProcessingPhase = true;
+        
+        this.showIntro(questionData).then(() => {
+            lastAcceptedQuestionNum = qNum;
+            loadQuestionIntoUI(questionData);
+            resetGameplayState();
+            this.startQuestion();
+        }).catch(err => {
+            console.error('[PhaseController] Intro error:', err);
+            if (retryCount < MAX_RETRIES) {
+                console.log('[PhaseController] Retrying intro, attempt:', retryCount + 1);
+                setTimeout(() => this.startNextQuestion(questionData, retryCount + 1), 500);
+            } else {
+                console.log('[PhaseController] Max retries reached, proceeding to question');
+                lastAcceptedQuestionNum = qNum;
+                loadQuestionIntoUI(questionData);
+                resetGameplayState();
+                this.hideAllOverlays();
+                this.startQuestion();
+            }
+        });
     },
     
     showTiebreakerChoice() {
@@ -1656,9 +1776,11 @@ function updateUI(data) {
             return;
             
         case 'INTRO':
-            if (currentPhase !== 'intro' && state.current_question) {
-                currentQuestionData = {
-                    question_number: state.current_question_number || 1,
+            if (state.current_question) {
+                const qNum = state.current_question_number || 1;
+                
+                const questionData = {
+                    question_number: qNum,
                     total_questions: totalQuestions,
                     theme: state.theme || '{{ $theme }}',
                     question_text: state.current_question.text,
@@ -1667,19 +1789,35 @@ function updateUI(data) {
                     correct_index: state.current_question.correct_index ?? 0,
                     has_next_question: state.has_next_question ?? true
                 };
-                loadQuestionIntoUI(currentQuestionData);
-                resetGameplayState();
-                PhaseController.showIntro(currentQuestionData).then(() => {
-                    PhaseController.startQuestion();
-                });
+                
+                if (isProcessingPhase || currentPhase === 'reveal' || currentPhase === 'scoreboard') {
+                    PhaseController.queueQuestion(questionData);
+                    return;
+                }
+                
+                if (currentPhase === 'intro' || currentPhase === 'question' || currentPhase === 'answer') {
+                    return;
+                }
+                
+                PhaseController.startNextQuestion(questionData);
             }
             return;
             
         case 'QUESTION_ACTIVE':
         case 'QUESTION':
-            if (currentPhase !== 'question' && currentPhase !== 'answer' && state.current_question) {
-                currentQuestionData = {
-                    question_number: state.current_question_number || 1,
+            if (currentPhase === 'question' || currentPhase === 'answer' || currentPhase === 'intro') {
+                return;
+            }
+            
+            if (state.current_question) {
+                const qNum = state.current_question_number || 1;
+                
+                if (qNum <= lastAcceptedQuestionNum) {
+                    return;
+                }
+                
+                const questionData = {
+                    question_number: qNum,
                     total_questions: totalQuestions,
                     theme: state.theme || '{{ $theme }}',
                     question_text: state.current_question.text,
@@ -1688,10 +1826,13 @@ function updateUI(data) {
                     correct_index: state.current_question.correct_index ?? 0,
                     has_next_question: state.has_next_question ?? true
                 };
-                loadQuestionIntoUI(currentQuestionData);
-                resetGameplayState();
-                PhaseController.hideAllOverlays();
-                PhaseController.startQuestion();
+                
+                if (isProcessingPhase || currentPhase === 'reveal' || currentPhase === 'scoreboard') {
+                    PhaseController.queueQuestion(questionData);
+                    return;
+                }
+                
+                PhaseController.startNextQuestion(questionData);
             }
             return;
             
@@ -1719,8 +1860,14 @@ function updateUI(data) {
     }
     
     if (state.current_question) {
-        currentQuestionData = {
-            question_number: state.current_question_number || 1,
+        const qNum = state.current_question_number || 1;
+        
+        if (qNum <= lastAcceptedQuestionNum) {
+            return;
+        }
+        
+        const questionData = {
+            question_number: qNum,
             total_questions: totalQuestions,
             theme: state.theme || '{{ $theme }}',
             question_text: state.current_question.text,
@@ -1730,12 +1877,13 @@ function updateUI(data) {
             has_next_question: state.has_next_question ?? true
         };
         
-        loadQuestionIntoUI(currentQuestionData);
+        if (isProcessingPhase || currentPhase === 'reveal' || currentPhase === 'scoreboard') {
+            PhaseController.queueQuestion(questionData);
+            return;
+        }
         
-        if (currentPhase === 'waiting' || currentPhase === 'scoreboard') {
-            PhaseController.showIntro(currentQuestionData).then(() => {
-                PhaseController.startQuestion();
-            });
+        if (currentPhase === 'waiting') {
+            PhaseController.startNextQuestion(questionData);
         }
     }
 }
@@ -2054,11 +2202,14 @@ function initSocketIO() {
         }
     };
     
-    duoSocket.onRoundEnded = (data) => {
+    duoSocket.onRoundEnded = async (data) => {
         console.log('[DuoGame] Round ended:', data);
         const playerScore = data.playerScores?.[userId] || 0;
         const opponentId = Object.keys(data.playerScores || {}).find(id => id != userId);
         const opponentScore = opponentId ? data.playerScores[opponentId] : 0;
+        const qNum = currentQuestionData?.question_number || 1;
+        const isMatchOver = data.matchEnded === true || data.isMatchOver === true;
+        const hasNextQuestion = !isMatchOver && (data.hasNextQuestion !== false);
         
         updateRoundIndicators(
             data.playerRoundsWon?.[userId] || 0,
@@ -2066,10 +2217,11 @@ function initSocketIO() {
             data.roundNumber
         );
         
-        PhaseController.showScoreboard(
-            playerScore, opponentScore,
-            true,
-            currentQuestionData?.question_number || 1,
+        await PhaseController.onRoundComplete(
+            playerScore,
+            opponentScore,
+            hasNextQuestion,
+            qNum,
             totalQuestions
         );
     };
