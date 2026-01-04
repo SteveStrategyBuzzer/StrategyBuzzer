@@ -82,6 +82,23 @@ export class GameOrchestrator {
     console.log(`[GameOrchestrator] Set ${questions.length} questions for room ${roomId}`);
   }
 
+  appendQuestions(roomId: string, questions: Question[]): { success: boolean; totalCount: number } {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) {
+      console.error(`[GameOrchestrator] Cannot append questions: room ${roomId} not found`);
+      return { success: false, totalCount: 0 };
+    }
+
+    room.state.questions = [...room.state.questions, ...questions];
+    
+    for (const q of questions) {
+      room.usedQuestionIds.add(q.id);
+    }
+    
+    console.log(`[GameOrchestrator] Appended ${questions.length} questions for room ${roomId}, total: ${room.state.questions.length}`);
+    return { success: true, totalCount: room.state.questions.length };
+  }
+
   handleBuzz(roomId: string, playerId: string, clientTimeMs: number): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;

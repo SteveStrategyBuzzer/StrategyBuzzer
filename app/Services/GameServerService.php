@@ -159,6 +159,58 @@ class GameServerService
         }
     }
 
+    public function appendQuestions(string $roomId, array $questions): array
+    {
+        try {
+            $formattedQuestions = $this->formatQuestionsForGameServer($questions);
+            
+            Log::info('GameServerService: Appending questions to Game Server', [
+                'roomId' => $roomId,
+                'questionCount' => count($formattedQuestions),
+            ]);
+
+            $response = Http::timeout(30)->post("{$this->gameServerUrl}/rooms/{$roomId}/questions/append", [
+                'questions' => $formattedQuestions,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('GameServerService: Questions appended successfully', [
+                    'roomId' => $roomId,
+                    'appendedCount' => count($formattedQuestions),
+                    'totalCount' => $data['totalCount'] ?? 0,
+                ]);
+                
+                return [
+                    'success' => true,
+                    'appendedCount' => count($formattedQuestions),
+                    'totalCount' => $data['totalCount'] ?? 0,
+                ];
+            }
+
+            Log::error('GameServerService: Failed to append questions', [
+                'roomId' => $roomId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to append questions to game server',
+            ];
+        } catch (\Exception $e) {
+            Log::error('GameServerService: Exception appending questions', [
+                'roomId' => $roomId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
     public function startGame(string $roomId, ?string $hostId = null): array
     {
         try {

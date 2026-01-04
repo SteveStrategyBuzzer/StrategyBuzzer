@@ -208,6 +208,27 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
     });
   });
 
+  app.post("/rooms/:roomId/questions/append", (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    const { questions } = req.body;
+    
+    const room = roomManager.getRoom(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        error: "Room not found",
+      });
+    }
+    
+    const result = gameOrchestrator.appendQuestions(roomId, questions);
+    
+    res.json({
+      success: result.success,
+      appendedCount: questions.length,
+      totalCount: result.totalCount,
+    });
+  });
+
   app.delete("/rooms/:roomId", (req: Request, res: Response) => {
     const { roomId } = req.params;
     

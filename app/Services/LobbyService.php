@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Services\DuoFirestoreService;
 use App\Services\GameServerService;
+use App\Services\QuestionPlanBuilder;
 use App\Services\QuestionService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -727,21 +728,54 @@ class LobbyService
                         ];
                     }
                     
-                    // Générer les questions 2-N en arrière-plan
-                    if ($nbQuestions > 1) {
+                    // Générer les questions 2-N en arrière-plan avec QuestionPlanBuilder
+                    $usedQuestionIds = array_map(fn($q) => $q['id'], $questions);
+                    $usedAnswers = [];
+                    $usedQuestionTexts = [];
+                    foreach ($questions as $q) {
+                        $usedQuestionTexts[] = $q['text'];
+                        foreach ($q['answers'] as $answer) {
+                            $answerText = is_array($answer) ? ($answer['text'] ?? '') : $answer;
+                            if ($answerText) {
+                                $usedAnswers[] = $answerText;
+                            }
+                        }
+                    }
+                    
+                    $hasStrategicAvatar = !empty($lobby['settings']['strategic_avatar'] ?? null) 
+                        && ($lobby['settings']['strategic_avatar'] ?? 'Aucun') !== 'Aucun';
+                    
+                    $plan = QuestionPlanBuilder::build([
+                        'nb_questions' => $nbQuestions,
+                        'nb_rounds' => $lobby['settings']['nb_rounds'] ?? 3,
+                        'strategic_avatar' => $lobby['settings']['strategic_avatar'] ?? 'Aucun',
+                        'skill_bonus_enabled' => $hasStrategicAvatar,
+                        'tiebreaker_questions' => 5,
+                    ]);
+                    
+                    $totalQuestions = $plan['total_questions'];
+                    
+                    if ($totalQuestions > 1) {
                         GenerateMultiplayerQuestionsJob::dispatch(
                             $roomId,
                             'duo',
                             $theme,
                             $niveau,
                             $language,
-                            $nbQuestions,
+                            $totalQuestions,
                             2,
                             4,
-                            [],
-                            []
+                            $usedQuestionIds,
+                            $usedAnswers,
+                            $usedQuestionTexts,
+                            $hasStrategicAvatar,
+                            true,
+                            $plan['main_questions'],
+                            $plan['skill_bonus_questions']
                         );
-                        Log::info("[LobbyService] Dispatched background job for questions 2-{$nbQuestions}");
+                        Log::info("[LobbyService] Dispatched background job for questions 2-{$totalQuestions}", [
+                            'plan' => $plan,
+                        ]);
                     }
                     
                     // 4. Générer les tokens JWT pour chaque joueur
