@@ -1334,6 +1334,7 @@ const matchId = {{ $match_id }};
 const userId = {{ Auth::id() }};
 const csrfToken = '{{ csrf_token() }}';
 const totalQuestions = {{ $totalQuestions }};
+const isHost = {{ $match->player1_id == Auth::id() ? 'true' : 'false' }};
 
 const gameServerUrl = '{{ $game_server_url ?? "" }}';
 const roomId = '{{ $room_id ?? "" }}';
@@ -1367,6 +1368,7 @@ const PhaseController = {
         reveal: 3000,
         scoreboard: 2500
     },
+    isHost: isHost,
     
     setPhase(phase, phaseData = {}) {
         if (!this.phases.includes(phase) && !['tiebreaker_choice', 'match_end', 'waiting', 'answer'].includes(phase)) {
@@ -1377,9 +1379,23 @@ const PhaseController = {
         const previousPhase = this.currentPhase;
         this.currentPhase = phase;
         currentPhase = phase;
-        console.log('[PhaseController] Phase transition:', previousPhase, '->', phase);
+        console.log('[PhaseController] Phase transition:', previousPhase, '->', phase, 'isHost:', this.isHost);
         
         this.hideAllOverlays();
+        
+        // Publish phase to Socket.IO for multiplayer sync (host only to avoid loops)
+        if (this.isHost && useSocketIO && typeof duoSocket !== 'undefined' && typeof duoSocket.isConnected === 'function' && duoSocket.isConnected()) {
+            try {
+                duoSocket.emit('phase_change', { phase, phaseData });
+            } catch (err) {
+                console.error('[PhaseController] Socket.IO phase publish error:', err);
+            }
+        }
+        
+        // Ensure overlays are hidden locally after a short delay (guard for question/buzz phases)
+        if (previousPhase !== phase && ['question', 'buzz'].includes(phase)) {
+            setTimeout(() => this.hideAllOverlays(), 100);
+        }
         
         return phase;
     },
@@ -1424,10 +1440,21 @@ const PhaseController = {
         canBuzz = true;
         hasBuzzed = false;
         
+        // Reset UI state for new question
         document.getElementById('questionHeader').classList.remove('waiting-for-question');
         document.getElementById('buzzContainer').style.display = 'flex';
         document.getElementById('answersGrid').style.display = 'none';
         document.getElementById('buzzButton').disabled = false;
+        
+        // Clear buzz indicators
+        document.getElementById('playerBuzzIndicator').classList.remove('buzzed');
+        document.getElementById('opponentBuzzIndicator').classList.remove('buzzed');
+        
+        // Reset answer button states (clear correct/incorrect/disabled/selected classes)
+        document.querySelectorAll('.answer-option').forEach(btn => {
+            btn.classList.remove('correct', 'incorrect', 'disabled', 'selected');
+            btn.disabled = false;
+        });
         
         startBuzzTimer();
         
@@ -2402,13 +2429,16 @@ function resetGameplayState() {
     document.getElementById('playerBuzzIndicator').classList.remove('buzzed');
     document.getElementById('opponentBuzzIndicator').classList.remove('buzzed');
     
+    // Reset answer button states
     document.querySelectorAll('.answer-option').forEach(btn => {
         btn.classList.remove('correct', 'incorrect', 'disabled', 'selected');
         btn.disabled = false;
     });
     
+    // Reset UI to waiting-for-question state
     document.getElementById('answersGrid').style.display = 'none';
     document.getElementById('buzzContainer').style.display = 'flex';
+    document.getElementById('questionHeader').classList.add('waiting-for-question');
 }
 
 function resetForNextQuestion() {
@@ -2592,22 +2622,36 @@ function initSocketIO() {
 
 function handleServerPhase(phase, data) {
     const normalizedPhase = phase.toUpperCase();
-    console.log('[DuoGame] Handling server phase:', normalizedPhase);
+    const phaseData = data.phaseData || data || {};
+    const previousPhase = currentPhase;
+    console.log('[DuoGame] Handling server phase:', normalizedPhase, 'from:', previousPhase, 'phaseData:', phaseData);
+    
+    // Helper to check if transitioning from reveal/scoreboard phases
+    const isFromRevealOrScoreboard = ['reveal', 'scoreboard', 'round_scoreboard'].includes(previousPhase);
     
     switch (normalizedPhase) {
         case 'INTRO':
-            if (currentPhase !== 'intro' && currentQuestionData) {
-                resetGameplayState();
-                PhaseController.showIntro(currentQuestionData).then(() => {
-                    PhaseController.startQuestion();
-                });
+            if (currentPhase !== 'intro') {
+                // Reset state when transitioning from reveal/scoreboard
+                if (isFromRevealOrScoreboard) {
+                    resetGameplayState();
+                }
+                const questionData = phaseData.questionData || currentQuestionData;
+                if (questionData) {
+                    PhaseController.showIntro(questionData).then(() => {
+                        PhaseController.startQuestion();
+                    });
+                }
             }
             break;
             
         case 'QUESTION_ACTIVE':
         case 'QUESTION':
             if (currentPhase !== 'question' && currentPhase !== 'answer') {
-                resetGameplayState();
+                // Reset state when transitioning from reveal/scoreboard
+                if (isFromRevealOrScoreboard) {
+                    resetGameplayState();
+                }
                 PhaseController.hideAllOverlays();
                 hideWaitingBlockOverlay();
                 PhaseController.startQuestion();
@@ -2622,10 +2666,27 @@ function handleServerPhase(phase, data) {
             break;
             
         case 'REVEAL':
+            if (currentPhase !== 'reveal' && phaseData) {
+                PhaseController.showReveal(
+                    phaseData.isCorrect || false,
+                    phaseData.correctAnswer || '',
+                    phaseData.points || 0,
+                    phaseData.wasTimeout || false
+                );
+            }
             break;
             
         case 'ROUND_SCOREBOARD':
         case 'SCOREBOARD':
+            if (currentPhase !== 'scoreboard' && phaseData) {
+                PhaseController.showScoreboard(
+                    phaseData.playerScore || 0,
+                    phaseData.opponentScore || 0,
+                    phaseData.hasNextQuestion !== false,
+                    phaseData.questionNum || 1,
+                    phaseData.totalQuestions || totalQuestions
+                );
+            }
             break;
             
         case 'TIEBREAKER_CHOICE':
@@ -2636,7 +2697,10 @@ function handleServerPhase(phase, data) {
             
         case 'TIEBREAKER_QUESTION':
             if (currentPhase !== 'question' && currentPhase !== 'answer') {
-                resetGameplayState();
+                // Reset state when transitioning from any overlay phase
+                if (isFromRevealOrScoreboard) {
+                    resetGameplayState();
+                }
                 currentPhase = 'waiting';
                 PhaseController.hideAllOverlays();
                 PhaseController.startQuestion();
@@ -2644,6 +2708,14 @@ function handleServerPhase(phase, data) {
             break;
             
         case 'MATCH_END':
+            if (phaseData) {
+                PhaseController.showMatchEnd(
+                    phaseData.isVictory || false,
+                    phaseData.playerScore || 0,
+                    phaseData.opponentScore || 0,
+                    phaseData.rewards || { coins: 0, bet: 0, efficiency: 0 }
+                );
+            }
             break;
             
         default:
