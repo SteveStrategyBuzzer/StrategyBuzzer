@@ -347,6 +347,7 @@ $skills = $skills ?? [];
         background: rgba(255, 255, 255, 0.1);
         transition: all 0.3s ease;
         cursor: pointer;
+        position: relative;
     }
     
     .skill-circle.active {
@@ -395,6 +396,21 @@ $skills = $skills ?? [];
         background: rgba(255, 215, 0, 0.15);
         box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
         cursor: pointer;
+    }
+    
+    .skill-circle.auto:not(.used) {
+        border-color: rgba(100, 200, 255, 0.6);
+        background: rgba(100, 200, 255, 0.15);
+        box-shadow: 0 0 8px rgba(100, 200, 255, 0.3);
+        cursor: default;
+    }
+    
+    .skill-circle.auto:not(.used)::after {
+        content: '⚡';
+        position: absolute;
+        bottom: -5px;
+        right: -5px;
+        font-size: 0.7rem;
     }
     
     .answers-grid {
@@ -1093,8 +1109,10 @@ $skills = $skills ?? [];
                 @for($i = 0; $i < 3; $i++)
                     @if(isset($skills[$i]))
                         @php $skill = $skills[$i]; @endphp
-                        <div class="skill-circle {{ $skill['used'] ?? false ? 'used' : 'active' }}" 
+                        <div class="skill-circle {{ $skill['used'] ?? false ? 'used' : 'available' }} {{ ($skill['auto'] ?? false) ? 'auto' : '' }}" 
                              data-skill-id="{{ $skill['id'] ?? '' }}"
+                             data-trigger="{{ $skill['trigger'] ?? 'on_question' }}"
+                             data-auto="{{ ($skill['auto'] ?? false) ? 'true' : 'false' }}"
                              title="{{ ($skill['name'] ?? '') . ': ' . ($skill['description'] ?? '') }}">
                             {{ $skill['icon'] ?? '❓' }}
                         </div>
@@ -2478,17 +2496,32 @@ function markSkillAsUsed(skillId) {
 }
 
 function updateSkillStates(phase) {
-    const usablePhases = ['question', 'answer'];
-    const isUsablePhase = usablePhases.includes(phase);
+    const triggerToPhaseMap = {
+        'on_question': ['question'],
+        'on_answer': ['answer'],
+        'on_result': ['reveal'],
+        'on_error': ['reveal'],
+        'on_victory': ['scoreboard', 'match_end'],
+        'always': ['question', 'answer', 'reveal', 'scoreboard'],
+        'match_start': []
+    };
     
     document.querySelectorAll('.skill-circle:not(.used):not(.locked):not(.empty)').forEach(skillEl => {
-        if (isUsablePhase) {
+        const trigger = skillEl.dataset.trigger || 'on_question';
+        const isAuto = skillEl.dataset.auto === 'true';
+        const validPhases = triggerToPhaseMap[trigger] || [];
+        const isUsableNow = validPhases.includes(phase) && !isAuto;
+        
+        skillEl.classList.remove('active');
+        
+        if (isUsableNow) {
             skillEl.classList.add('usable-now');
-            skillEl.classList.remove('available', 'active');
+            skillEl.classList.remove('available');
         } else {
             skillEl.classList.remove('usable-now');
-            skillEl.classList.add('available');
-            skillEl.classList.remove('active');
+            if (!isAuto) {
+                skillEl.classList.add('available');
+            }
         }
     });
 }

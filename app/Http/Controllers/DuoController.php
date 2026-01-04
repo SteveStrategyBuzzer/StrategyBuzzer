@@ -576,6 +576,8 @@ class DuoController extends Controller
             $jwtToken = $gameServerService->generatePlayerToken($user->id, $roomId);
         }
 
+        $skills = $this->getPlayerSkillsWithTriggers($user);
+
         return view('duo_game', [
             'match_id' => $match->id,
             'match' => $match->load(['player1', 'player2']),
@@ -583,7 +585,57 @@ class DuoController extends Controller
             'room_id' => $roomId,
             'lobby_code' => $lobbyCode,
             'jwt_token' => $jwtToken,
+            'skills' => $skills,
         ]);
+    }
+    
+    protected function getPlayerSkillsWithTriggers($user): array
+    {
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true);
+        }
+        
+        $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
+        
+        if ($avatarName === 'Aucun' || empty($avatarName)) {
+            return [];
+        }
+        
+        $catalog = \App\Services\AvatarCatalog::get();
+        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+        $avatarInfo = null;
+        
+        foreach ($strategicAvatars as $avatar) {
+            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                $avatarInfo = $avatar;
+                break;
+            }
+        }
+        
+        if (!$avatarInfo || empty($avatarInfo['skills'])) {
+            return [];
+        }
+        
+        $skills = [];
+        foreach ($avatarInfo['skills'] as $skillId) {
+            $skillData = \App\Services\SkillCatalog::getSkill($skillId);
+            if ($skillData) {
+                $skills[] = [
+                    'id' => $skillData['id'],
+                    'name' => $skillData['name'],
+                    'icon' => $skillData['icon'],
+                    'description' => $skillData['description'],
+                    'trigger' => $skillData['trigger'],
+                    'type' => $skillData['type'],
+                    'auto' => $skillData['auto'] ?? false,
+                    'uses_per_match' => $skillData['uses_per_match'] ?? 1,
+                    'used' => false,
+                ];
+            }
+        }
+        
+        return $skills;
     }
 
     public function result(DuoMatch $match)
