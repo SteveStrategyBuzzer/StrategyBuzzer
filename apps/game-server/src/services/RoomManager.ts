@@ -270,6 +270,15 @@ export class RoomManager {
     return count;
   }
 
+  getRoomsByPhase(): Record<string, number> {
+    const phases: Record<string, number> = {};
+    for (const room of this.rooms.values()) {
+      const phase = room.state.phase;
+      phases[phase] = (phases[phase] || 0) + 1;
+    }
+    return phases;
+  }
+
   restoreRoom(roomId: string, room: Room): void {
     if (this.rooms.has(roomId)) {
       console.log(`[RoomManager] Room ${roomId} already exists, skipping restore`);

@@ -43,7 +43,7 @@ export async function appendEventLog(roomId: string, event: object): Promise<voi
 
 export async function getEventLog(roomId: string): Promise<object[]> {
   const events = await redisClient.lrange(`room:${roomId}:events`, 0, -1);
-  return events.map(e => JSON.parse(e));
+  return events.map((e: string) => JSON.parse(e));
 }
 
 // Cleanup all room data

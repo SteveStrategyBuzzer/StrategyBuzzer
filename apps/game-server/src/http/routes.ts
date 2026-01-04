@@ -4,6 +4,7 @@ import type { GameOrchestrator } from "../services/GameOrchestrator.js";
 import { DEFAULT_DUO_CONFIG, DEFAULT_LEAGUE_INDIVIDUAL_CONFIG, DEFAULT_LEAGUE_TEAM_CONFIG, DEFAULT_MASTER_CONFIG } from "../../../../packages/shared/src/types.js";
 import type { GameConfig, Mode } from "../../../../packages/shared/src/types.js";
 import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";
+import { MetricsService } from "../services/MetricsService.js";
 
 function getConfigForMode(mode: Mode): GameConfig {
   switch (mode) {
@@ -28,6 +29,15 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
       players: roomManager.getActivePlayerCount(),
       uptime: process.uptime(),
     });
+  });
+
+  app.get("/metrics", (_req: Request, res: Response) => {
+    const metrics = MetricsService.getMetrics(
+      roomManager.getRoomCount(),
+      roomManager.getActivePlayerCount(),
+      roomManager.getRoomsByPhase()
+    );
+    res.json(metrics);
   });
 
   app.post("/rooms", (req: Request, res: Response) => {
