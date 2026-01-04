@@ -698,14 +698,14 @@ body {
         
         <div class="countdown-section" id="countdownSection" style="display: none;">
             <div class="countdown-text">{{ __('La partie commence dans') }}...</div>
-            <div class="countdown-number" id="countdown">3</div>
+            <div class="countdown-number" id="countdown">9</div>
         </div>
     </div>
     @else
-    <!-- Simple countdown for Solo/other modes -->
+    <!-- Simple countdown for Solo/other modes - 9 seconds "Ladies and Gentlemen" -->
     <div class="countdown-section">
         <div class="countdown-text">{{ __('La partie commence dans') }}...</div>
-        <div class="countdown-number" id="countdown">5</div>
+        <div class="countdown-number" id="countdown">9</div>
     </div>
     @endif
 </div>
@@ -829,9 +829,9 @@ body {
     window.addEventListener('beforeunload', cleanup);
     window.addEventListener('pagehide', cleanup);
     
-    // Simple countdown for non-sync modes (Solo, etc)
+    // Simple countdown for non-sync modes (Solo, etc) - 9 seconds like "Ladies and Gentlemen"
     if (!needsSyncGo) {
-        let count = 5;
+        let count = 9;
         const countdownEl = document.getElementById('countdown');
         
         if (countdownEl && redirectUrl) {
@@ -963,9 +963,9 @@ body {
             fallbackCountdown();
         }
         
-        // Fallback countdown without audio
+        // Fallback countdown without audio - 9 seconds like "Ladies and Gentlemen"
         function fallbackCountdown() {
-            let count = 5;
+            let count = 9;
             if (countdownEl) countdownEl.textContent = count;
             
             const interval = setInterval(() => {
