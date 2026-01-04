@@ -1145,11 +1145,19 @@ $skills = $skills ?? [];
     <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
 </audio>
 
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+
 <script>
 const matchId = {{ $match_id }};
 const userId = {{ Auth::id() }};
 const csrfToken = '{{ csrf_token() }}';
 const totalQuestions = {{ $totalQuestions }};
+
+const gameServerUrl = '{{ $game_server_url ?? "" }}';
+const roomId = '{{ $room_id ?? "" }}';
+const lobbyCode = '{{ $lobby_code ?? "" }}';
+const jwtToken = '{{ $jwt_token ?? "" }}';
 
 let gameState = null;
 let canBuzz = false;
@@ -1160,6 +1168,8 @@ let timerInterval = null;
 let answerTimeLeft = 10;
 let answerTimerInterval = null;
 let currentQuestionData = null;
+let useSocketIO = false;
+let phaseEndsAtMs = null;
 
 const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default_1';
 document.getElementById('buzzerSource').src = `/sounds/${selectedBuzzer}.mp3`;
@@ -1782,27 +1792,31 @@ document.getElementById('buzzButton').addEventListener('click', function() {
     playSound('buzzerSound');
     document.getElementById('playerBuzzIndicator').classList.add('buzzed');
     
-    fetch(`/duo/matches/${matchId}/buzz`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify({
-            question_id: currentQuestionData?.question_number?.toString() || '1',
-            client_time: Date.now() / 1000
+    if (useSocketIO) {
+        duoSocket.buzz(Date.now());
+    } else {
+        fetch(`/duo/matches/${matchId}/buzz`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({
+                question_id: currentQuestionData?.question_number?.toString() || '1',
+                client_time: Date.now() / 1000
+            })
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success || data.canAnswer) {
+        .then(response => response.json())
+        .then(data => {
+            if (data.success || data.canAnswer) {
+                showAnswers();
+            }
+        })
+        .catch(err => {
+            console.error('Buzz error:', err);
             showAnswers();
-        }
-    })
-    .catch(err => {
-        console.error('Buzz error:', err);
-        showAnswers();
-    });
+        });
+    }
 });
 
 function showAnswers() {
@@ -1850,6 +1864,11 @@ document.querySelectorAll('.answer-option').forEach(btn => {
 });
 
 function submitAnswer(answerIndex, isCorrect, points) {
+    if (useSocketIO) {
+        duoSocket.answer(answerIndex);
+        return;
+    }
+    
     fetch(`/duo/matches/${matchId}/submit-answer`, {
         method: 'POST',
         headers: {
@@ -1937,9 +1956,240 @@ function resetForNextQuestion() {
     currentPhase = 'waiting';
 }
 
+function initSocketIO() {
+    if (typeof duoSocket === 'undefined' || typeof io === 'undefined') {
+        console.log('[DuoGame] Socket.IO client not loaded, using HTTP polling');
+        return Promise.resolve(false);
+    }
+    
+    if (!gameServerUrl || !roomId || !jwtToken) {
+        console.log('[DuoGame] Socket.IO not available, using HTTP polling');
+        return Promise.resolve(false);
+    }
+    
+    console.log('[DuoGame] Initializing Socket.IO connection...');
+    
+    duoSocket.onConnect = () => {
+        console.log('[DuoGame] Socket.IO connected');
+        useSocketIO = true;
+        
+        duoSocket.joinRoom(roomId, lobbyCode, {
+            playerId: userId,
+            playerName: '{{ $match->player1_id == Auth::id() ? ($match->player1->name ?? "Joueur") : ($match->player2->name ?? "Joueur") }}',
+            token: jwtToken
+        });
+    };
+    
+    duoSocket.onDisconnect = (reason) => {
+        console.log('[DuoGame] Socket.IO disconnected:', reason);
+        useSocketIO = false;
+    };
+    
+    duoSocket.onError = (error) => {
+        console.error('[DuoGame] Socket.IO error:', error);
+    };
+    
+    duoSocket.onPhaseChanged = (data) => {
+        console.log('[DuoGame] Phase changed:', data);
+        phaseEndsAtMs = data.phaseEndsAtMs;
+        handleServerPhase(data.phase, data);
+    };
+    
+    duoSocket.onQuestionPublished = (data) => {
+        console.log('[DuoGame] Question published:', data);
+        currentQuestionData = {
+            question_number: data.questionIndex + 1,
+            total_questions: data.totalQuestions || totalQuestions,
+            theme: data.category || '{{ $theme }}',
+            question_text: data.text,
+            answers: data.choices || [],
+            correct_answer: '',
+            correct_index: -1,
+            has_next_question: (data.questionIndex + 1) < (data.totalQuestions || totalQuestions)
+        };
+        loadQuestionIntoUI(currentQuestionData);
+    };
+    
+    duoSocket.onBuzzWinner = (data) => {
+        console.log('[DuoGame] Buzz winner:', data);
+        
+        if (data.playerId == userId) {
+            document.getElementById('playerBuzzIndicator').classList.add('buzzed');
+            hasBuzzed = true;
+            showAnswers();
+            startAnswerTimer();
+        } else {
+            document.getElementById('opponentBuzzIndicator').classList.add('buzzed');
+            canBuzz = false;
+            document.getElementById('buzzButton').disabled = true;
+        }
+    };
+    
+    duoSocket.onAnswerRevealed = (data) => {
+        console.log('[DuoGame] Answer revealed:', data);
+        
+        const isMyAnswer = data.playerId == userId;
+        const isCorrect = data.isCorrect || false;
+        const points = data.pointsEarned || 0;
+        const wasTimeout = data.timeout || false;
+        
+        if (isMyAnswer) {
+            document.getElementById('playerScore').textContent = data.totalScore || 0;
+            PhaseController.showReveal(isCorrect, data.correctAnswer?.toString() || '', points, wasTimeout);
+        } else {
+            document.getElementById('opponentScore').textContent = data.totalScore || 0;
+            if (currentPhase !== 'reveal') {
+                currentPhase = 'reveal';
+                PhaseController.showReveal(isCorrect, data.correctAnswer?.toString() || '', points, wasTimeout);
+            }
+        }
+    };
+    
+    duoSocket.onScoreUpdate = (data) => {
+        console.log('[DuoGame] Score update:', data);
+        if (data.playerId == userId) {
+            document.getElementById('playerScore').textContent = data.score || 0;
+        } else {
+            document.getElementById('opponentScore').textContent = data.score || 0;
+        }
+    };
+    
+    duoSocket.onRoundEnded = (data) => {
+        console.log('[DuoGame] Round ended:', data);
+        const playerScore = data.playerScores?.[userId] || 0;
+        const opponentId = Object.keys(data.playerScores || {}).find(id => id != userId);
+        const opponentScore = opponentId ? data.playerScores[opponentId] : 0;
+        
+        updateRoundIndicators(
+            data.playerRoundsWon?.[userId] || 0,
+            opponentId ? (data.playerRoundsWon?.[opponentId] || 0) : 0,
+            data.roundNumber
+        );
+        
+        PhaseController.showScoreboard(
+            playerScore, opponentScore,
+            true,
+            currentQuestionData?.question_number || 1,
+            totalQuestions
+        );
+    };
+    
+    duoSocket.onMatchEnded = (data) => {
+        console.log('[DuoGame] Match ended:', data);
+        const isVictory = data.winnerId == userId;
+        const playerScore = data.finalScores?.[userId] || 0;
+        const opponentId = Object.keys(data.finalScores || {}).find(id => id != userId);
+        const opponentScore = opponentId ? data.finalScores[opponentId] : 0;
+        
+        PhaseController.showMatchEnd(isVictory, playerScore, opponentScore, {
+            coins: 0,
+            bet: 0,
+            efficiency: 0
+        });
+    };
+    
+    return duoSocket.connect(gameServerUrl, jwtToken)
+        .then(() => {
+            console.log('[DuoGame] Socket.IO connection established');
+            return true;
+        })
+        .catch(err => {
+            console.error('[DuoGame] Socket.IO connection failed:', err);
+            return false;
+        });
+}
+
+function handleServerPhase(phase, data) {
+    const normalizedPhase = phase.toUpperCase();
+    console.log('[DuoGame] Handling server phase:', normalizedPhase);
+    
+    switch (normalizedPhase) {
+        case 'INTRO':
+            if (currentPhase !== 'intro' && currentQuestionData) {
+                resetGameplayState();
+                PhaseController.showIntro(currentQuestionData).then(() => {
+                    PhaseController.startQuestion();
+                });
+            }
+            break;
+            
+        case 'QUESTION_ACTIVE':
+        case 'QUESTION':
+            if (currentPhase !== 'question' && currentPhase !== 'answer') {
+                resetGameplayState();
+                PhaseController.hideAllOverlays();
+                PhaseController.startQuestion();
+            }
+            break;
+            
+        case 'ANSWER_SELECTION':
+            break;
+            
+        case 'REVEAL':
+            break;
+            
+        case 'ROUND_SCOREBOARD':
+        case 'SCOREBOARD':
+            break;
+            
+        case 'TIEBREAKER_CHOICE':
+            if (currentPhase !== 'tiebreaker_choice') {
+                PhaseController.showTiebreakerChoice();
+            }
+            break;
+            
+        case 'TIEBREAKER_QUESTION':
+            if (currentPhase !== 'question' && currentPhase !== 'answer') {
+                resetGameplayState();
+                currentPhase = 'waiting';
+                PhaseController.hideAllOverlays();
+                PhaseController.startQuestion();
+            }
+            break;
+            
+        case 'MATCH_END':
+            break;
+            
+        default:
+            console.log('[DuoGame] Unknown phase:', normalizedPhase);
+    }
+}
+
+function handleBuzzClick() {
+    if (!canBuzz || hasBuzzed) return;
+    
+    if (useSocketIO) {
+        duoSocket.buzz(Date.now());
+    }
+    
+    hasBuzzed = true;
+    canBuzz = false;
+    document.getElementById('buzzButton').disabled = true;
+    document.getElementById('playerBuzzIndicator').classList.add('buzzed');
+    playSound('buzzerSound');
+    
+    if (!useSocketIO) {
+        showAnswers();
+        startAnswerTimer();
+    }
+}
+
+function submitAnswerSocket(answerIndex) {
+    if (useSocketIO) {
+        duoSocket.answer(answerIndex);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    loadGameState();
-    setInterval(loadGameState, 3000);
+    initSocketIO().then(connected => {
+        if (!connected) {
+            loadGameState();
+            setInterval(loadGameState, 3000);
+        }
+    }).catch(() => {
+        loadGameState();
+        setInterval(loadGameState, 3000);
+    });
 });
 </script>
 

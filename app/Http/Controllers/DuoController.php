@@ -566,9 +566,23 @@ class DuoController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
+        $roomId = $match->room_id ?? null;
+        $lobbyCode = $match->lobby_code ?? null;
+        
+        $jwtToken = null;
+        if ($roomId) {
+            $gameServerService = app(\App\Services\GameServerService::class);
+            $jwtToken = $gameServerService->generatePlayerToken($user->id, $roomId);
+        }
+
         return view('duo_game', [
             'match_id' => $match->id,
             'match' => $match->load(['player1', 'player2']),
+            'game_server_url' => $gameServerUrl,
+            'room_id' => $roomId,
+            'lobby_code' => $lobbyCode,
+            'jwt_token' => $jwtToken,
         ]);
     }
 
