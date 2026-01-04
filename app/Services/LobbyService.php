@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Jobs\GenerateMultiplayerQuestionsJob;
 
 class LobbyService
 {
@@ -667,7 +668,7 @@ class LobbyService
                         'wsUrl' => $wsUrl,
                     ]);
                     
-                    // 2. Générer les questions de manière synchrone
+                    // 2. Générer seulement la question 1 de manière synchrone (les autres en arrière-plan)
                     $questionService = app(QuestionService::class);
                     $questions = [];
                     $nbQuestions = $lobby['settings']['nb_questions'] ?? 10;
@@ -675,13 +676,13 @@ class LobbyService
                     $niveau = $lobby['settings']['niveau'] ?? 3;
                     $language = $lobby['settings']['language'] ?? app()->getLocale();
                     
-                    Log::info("[LobbyService] Generating {$nbQuestions} questions synchronously", [
+                    Log::info("[LobbyService] Generating question 1 synchronously, questions 2-{$nbQuestions} will be generated in background", [
                         'theme' => $theme,
                         'niveau' => $niveau,
                         'language' => $language,
                     ]);
                     
-                    for ($i = 1; $i <= $nbQuestions; $i++) {
+                    for ($i = 1; $i <= 1; $i++) {
                         $q = $questionService->generateQuestion(
                             $theme,
                             $niveau,
@@ -724,6 +725,23 @@ class LobbyService
                             'success' => false,
                             'error' => $sendResult['error'] ?? __('Erreur lors de l\'envoi des questions'),
                         ];
+                    }
+                    
+                    // Générer les questions 2-N en arrière-plan
+                    if ($nbQuestions > 1) {
+                        GenerateMultiplayerQuestionsJob::dispatch(
+                            $roomId,
+                            'duo',
+                            $theme,
+                            $niveau,
+                            $language,
+                            $nbQuestions,
+                            2,
+                            4,
+                            [],
+                            []
+                        );
+                        Log::info("[LobbyService] Dispatched background job for questions 2-{$nbQuestions}");
                     }
                     
                     // 4. Générer les tokens JWT pour chaque joueur

@@ -1364,7 +1364,7 @@ const PhaseController = {
     currentPhase: 'waiting',
     phases: ['intro', 'question', 'buzz', 'reveal', 'scoreboard'],
     phaseTimers: {
-        intro: 3000,
+        intro: 9000,
         reveal: 3000,
         scoreboard: 2500
     },

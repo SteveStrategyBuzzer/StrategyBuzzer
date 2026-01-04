@@ -576,13 +576,47 @@ class DuoController extends Controller
             $jwtToken = $gameServerService->generatePlayerToken($user->id, $roomId);
         }
 
-        $profileSettings = $user->profile_settings;
+        $profileSettings = $user->profile_settings ?? [];
         if (is_string($profileSettings)) {
-            $profileSettings = json_decode($profileSettings, true);
+            $profileSettings = json_decode($profileSettings, true) ?? [];
         }
-        $strategicAvatar = $profileSettings['strategic_avatar'] ?? 'Aucun';
+        if (!is_array($profileSettings)) {
+            $profileSettings = [];
+        }
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
         
         $skills = $this->getPlayerSkillsWithTriggers($user);
+
+        $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        $opponentName = data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire');
+        $opponentAvatarPath = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+
+        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+
+        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+        $strategicAvatarPath = null;
+        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+            $catalog = \App\Services\AvatarCatalog::get();
+            $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+            foreach ($strategicAvatars as $avatar) {
+                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                    $strategicAvatarPath = $avatar['image'] ?? null;
+                    break;
+                }
+            }
+        }
+
+        $totalQuestions = 10;
+        $currentQuestion = 1;
+        $theme = 'Culture générale';
+        $themeDisplay = '🧠 Culture générale';
+        $playerScore = 0;
+        $opponentScore = 0;
+        $currentUser = $user;
 
         return view('duo_game', [
             'match_id' => $match->id,
@@ -593,6 +627,18 @@ class DuoController extends Controller
             'jwt_token' => $jwtToken,
             'skills' => $skills,
             'strategic_avatar' => $strategicAvatar,
+            'currentUser' => $currentUser,
+            'avatarName' => $avatarName,
+            'strategicAvatarPath' => $strategicAvatarPath,
+            'playerAvatarPath' => $playerAvatarPath,
+            'opponentAvatarPath' => $opponentAvatarPath,
+            'opponentName' => $opponentName,
+            'playerScore' => $playerScore,
+            'opponentScore' => $opponentScore,
+            'totalQuestions' => $totalQuestions,
+            'currentQuestion' => $currentQuestion,
+            'theme' => $theme,
+            'themeDisplay' => $themeDisplay,
         ]);
     }
     
