@@ -1,0 +1,86 @@
+export type GameId = string;
+export type PlayerId = string;
+
+export type GameMode = "solo" | "duo" | "master" | "league";
+
+export type Phase =
+  | "LOBBY"
+  | "COUNTDOWN"
+  | "QUESTION_READING"
+  | "BUZZ_WINDOW"
+  | "ANSWER_WINDOW"
+  | "REVEAL"
+  | "SCOREBOARD"
+  | "END";
+
+export type QuestionType = "mcq" | "tf" | "text" | "imageRisk";
+
+export interface Question {
+  id: string;
+  type: QuestionType;
+  prompt: string;                 // texte question
+  imageUrl?: string;              // si question image
+  choices?: string[];             // mcq/tf
+  answer: string;                 // bonne réponse (string)
+  explanation?: string;
+  timeLimitMs: number;            // temps pour répondre
+  buzzOpenMs?: number;            // temps d’ouverture buzzer (si audio)
+}
+
+export interface PlayerState {
+  id: PlayerId;
+  name: string;
+  avatarId?: string;              // pack avatar + id
+  strategicAvatarId?: string;     // "Mathématicien", etc
+  score: number;
+  lives?: number;
+  connected: boolean;
+
+  // Skills (simple)
+  skills: Record<string, { usesLeft: number; cooldownUntilMs?: number }>;
+}
+
+export interface BuzzState {
+  openedAtMs?: number;            // moment où buzz devient actif
+  firstBuzzPlayerId?: PlayerId;   // gagnant du buzz
+  buzzOrder: PlayerId[];          // ordre de buzz
+  locked: boolean;                // verrou en reveal/screen
+}
+
+export interface RoundState {
+  index: number;                  // numéro de question
+  question?: Question;
+  shownAtMs?: number;
+  buzz: BuzzState;
+  answers: Record<PlayerId, { value: string; atMs: number }>;
+  result?: {
+    correctPlayerIds: PlayerId[];
+    wrongPlayerIds: PlayerId[];
+    pointsDelta: Record<PlayerId, number>;
+  };
+}
+
+export interface GameState {
+  gameId: GameId;
+  mode: GameMode;
+  phase: Phase;
+
+  createdAtMs: number;
+  serverNowMs: number;            // horloge serveur (mise à jour)
+  seed: number;                   // pour random deterministe (optionnel)
+
+  players: Record<PlayerId, PlayerState>;
+  playerOrder: PlayerId[];        // ordre stable
+
+  round: RoundState;
+
+  settings: {
+    maxPlayers: number;
+    roundsTotal: number;
+    allowSkills: boolean;
+    region?: string;
+  };
+
+  // Event-sourcing minimal
+  version: number;                // increment à chaque event
+}
