@@ -44,6 +44,7 @@ const DuoSocketClient = {
     onAnswerRevealed: null,
     onRoundEnded: null,
     onMatchEnded: null,
+    onSkillUsed: null,
 
     _log(message, data = null) {
         if (data) {
@@ -197,6 +198,11 @@ const DuoSocketClient = {
                     if (this.onMatchEnded) this.onMatchEnded(data);
                 });
 
+                this.socket.on('skill_used', (data) => {
+                    this._log('Skill used', data);
+                    if (this.onSkillUsed) this.onSkillUsed(data);
+                });
+
             } catch (error) {
                 this._log('Failed to create socket', { error: error.message });
                 reject(error);
@@ -296,6 +302,10 @@ const DuoSocketClient = {
             targetPlayerId: targetPlayerId
         });
         return true;
+    },
+
+    activateSkill(skillId, targetPlayerId = null) {
+        return this.useSkill(skillId, targetPlayerId);
     },
 
     sendVoiceOffer(targetId, offer) {

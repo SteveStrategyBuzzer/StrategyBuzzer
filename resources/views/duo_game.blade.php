@@ -894,6 +894,60 @@ $skills = $skills ?? [];
         to { transform: rotate(360deg); }
     }
     
+    /* Attack Overlay */
+    .attack-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        display: none;
+    }
+    
+    .attack-overlay.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 0, 0, 0.2);
+        animation: attack-flash 0.5s ease-out;
+    }
+    
+    .attack-overlay.blocked {
+        background: rgba(78, 205, 196, 0.3);
+        animation: block-flash 0.6s ease-out;
+    }
+    
+    @keyframes attack-flash {
+        0% { background: rgba(255, 0, 0, 0.5); }
+        100% { background: rgba(255, 0, 0, 0); }
+    }
+    
+    @keyframes block-flash {
+        0% { background: rgba(78, 205, 196, 0.6); }
+        50% { background: rgba(78, 205, 196, 0.3); }
+        100% { background: rgba(78, 205, 196, 0); }
+    }
+    
+    .attack-icon {
+        font-size: 8rem;
+        animation: attack-icon-anim 0.5s ease-out;
+    }
+    
+    @keyframes attack-icon-anim {
+        0% { transform: scale(0.5); opacity: 0; }
+        50% { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(1); opacity: 0; }
+    }
+    
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translate(-50%, -20px); }
+        20% { opacity: 1; transform: translate(-50%, 0); }
+        80% { opacity: 1; transform: translate(-50%, 0); }
+        100% { opacity: 0; transform: translate(-50%, 20px); }
+    }
+    
     @media (max-width: 768px) {
         .game-layout { gap: 15px; }
         .player-avatar, .opponent-avatar { width: 70px; height: 70px; }
@@ -1127,6 +1181,10 @@ $skills = $skills ?? [];
         <div class="match-efficiency" id="matchEfficiency"></div>
         <button class="match-end-btn" onclick="goToResults()">{{ __('Voir les détails') }}</button>
     </div>
+</div>
+
+<div class="attack-overlay" id="attackOverlay">
+    <div class="attack-icon" id="attackIcon">⚔️</div>
 </div>
 
 <audio id="buzzerSound" preload="auto">
@@ -2342,7 +2400,156 @@ document.addEventListener('DOMContentLoaded', function() {
         loadGameState();
         setInterval(loadGameState, 3000);
     });
+    
+    initSkillClickHandlers();
 });
+
+function initSkillClickHandlers() {
+    document.querySelectorAll('.skill-circle.active:not(.used):not(.locked)').forEach(skillEl => {
+        skillEl.addEventListener('click', function() {
+            const skillId = this.dataset.skillId;
+            if (!skillId) return;
+            
+            if (useSocketIO && duoSocket) {
+                duoSocket.activateSkill(skillId);
+                this.classList.add('used');
+                showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
+            } else {
+                activateSkillHttp(skillId);
+            }
+        });
+    });
+}
+
+function activateSkillHttp(skillId) {
+    fetch(`/duo/match/${matchId}/skill`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({ skill_id: skillId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelector(`[data-skill-id="${skillId}"]`)?.classList.add('used');
+            showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
+        }
+    })
+    .catch(err => console.error('Skill activation error:', err));
+}
+
+function playAttackEffect() {
+    const overlay = document.getElementById('attackOverlay');
+    const icon = document.getElementById('attackIcon');
+    
+    if (!overlay) return;
+    
+    icon.textContent = '⚔️';
+    overlay.classList.add('active');
+    
+    setTimeout(() => {
+        overlay.classList.remove('active');
+    }, 600);
+}
+
+function playBlockEffect() {
+    const overlay = document.getElementById('attackOverlay');
+    const icon = document.getElementById('attackIcon');
+    
+    if (!overlay) return;
+    
+    icon.textContent = '🛡️';
+    overlay.classList.add('active', 'blocked');
+    
+    setTimeout(() => {
+        overlay.classList.remove('active', 'blocked');
+    }, 800);
+}
+
+function showAttackMessage(message, type) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'attack-message ' + type;
+    msgDiv.innerHTML = message;
+    msgDiv.style.cssText = `
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${type === 'blocked' ? 'rgba(78, 205, 196, 0.9)' : type === 'skill' ? 'rgba(155, 89, 182, 0.9)' : 'rgba(255, 107, 107, 0.9)'};
+        color: white;
+        padding: 15px 30px;
+        border-radius: 15px;
+        font-size: 1.3rem;
+        font-weight: 700;
+        z-index: 10000;
+        animation: fadeInOut 2s ease-in-out forwards;
+    `;
+    document.body.appendChild(msgDiv);
+    
+    setTimeout(() => msgDiv.remove(), 2000);
+}
+
+function applyAttackEffect(skillId, params) {
+    switch (skillId) {
+        case 'reduce_time':
+            const reduction = params?.seconds || 3;
+            timeLeft = Math.max(1, timeLeft - reduction);
+            document.getElementById('chronoTimer').textContent = timeLeft;
+            showAttackMessage('⏱️ -' + reduction + 's {{ __("temps réduit !") }}', 'attack');
+            break;
+            
+        case 'shuffle_answers':
+            startAnswerShuffle(params?.interval || 1000);
+            showAttackMessage('🔀 {{ __("Réponses en mouvement !") }}', 'attack');
+            break;
+            
+        case 'invert_answers':
+            invertAnswersVisually();
+            showAttackMessage('🔄 {{ __("Réponses inversées !") }}', 'attack');
+            break;
+    }
+}
+
+function startAnswerShuffle(interval) {
+    const answersGrid = document.getElementById('answersGrid');
+    if (!answersGrid) return;
+    
+    const answers = answersGrid.querySelectorAll('.answer-option');
+    const shuffleInterval = setInterval(() => {
+        const shuffled = Array.from(answers).sort(() => Math.random() - 0.5);
+        shuffled.forEach((btn, i) => {
+            btn.style.order = i;
+        });
+    }, interval);
+    
+    setTimeout(() => clearInterval(shuffleInterval), 8000);
+}
+
+function invertAnswersVisually() {
+    const answersGrid = document.getElementById('answersGrid');
+    if (!answersGrid) return;
+    
+    const answers = answersGrid.querySelectorAll('.answer-option');
+    const reversed = Array.from(answers).reverse();
+    reversed.forEach((btn, i) => {
+        btn.style.order = i;
+    });
+}
+
+function handleOpponentSkill(data) {
+    const skillId = data.skillId;
+    const params = data.params || {};
+    
+    if (data.blocked) {
+        playBlockEffect();
+        showAttackMessage('🛡️ {{ __("Attaque bloquée !") }}', 'blocked');
+    } else {
+        playAttackEffect();
+        applyAttackEffect(skillId, params);
+    }
+}
 </script>
 
 @endsection
