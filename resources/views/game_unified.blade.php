@@ -3255,11 +3255,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
         
         // Phase transition to question happens after intro promise resolves (already awaited above)
-        // Only set phase once per question - intro overlay auto-hides and we're ready for question
+        // Use startQuestion() which sets phase AND starts the 8-second buzz timer
         try {
-            PhaseController.setPhase('question');
+            PhaseController.startQuestion();
         } catch (e) {
-            console.error('[PhaseController] Error transitioning to question phase:', e);
+            console.error('[PhaseController] Error starting question phase:', e);
         }
     } else {
         LocalProvider.init({
@@ -3297,12 +3297,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
         
         // Phase transition to question after intro promise resolves (already awaited above)
+        // Use startQuestion() which sets phase AND starts the 8-second buzz timer
         try {
-            PhaseController.setPhase('question');
+            PhaseController.startQuestion();
         } catch (e) {
-            console.error('[PhaseController] Error transitioning to question phase:', e);
+            console.error('[PhaseController] Error starting question phase:', e);
         }
-        GameplayEngine.startTimer();
     }
 });
 
