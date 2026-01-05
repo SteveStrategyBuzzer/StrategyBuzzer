@@ -575,6 +575,204 @@ $skills = $skills ?? [];
         margin-top: 8px;
     }
     
+    /* Answer Overlay Styles (like Solo mode) */
+    .answer-overlay {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    
+    .answer-container {
+        max-width: 900px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        max-height: 100vh;
+    }
+    
+    .answer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    
+    .answer-info {
+        background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
+        padding: 12px 20px;
+        border-radius: 15px;
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        backdrop-filter: blur(10px);
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .answer-timer {
+        margin-bottom: 15px;
+        position: relative;
+        flex-shrink: 0;
+    }
+    
+    .timer-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+    
+    .timer-bar-container {
+        height: 10px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        border: 2px solid rgba(255,255,255,0.2);
+    }
+    
+    .timer-bar {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #4ECDC4 0%, #667eea 100%);
+        transition: width 1s linear;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(78, 205, 196, 0.6);
+    }
+    
+    .timer-bar.warning {
+        background: linear-gradient(90deg, #FF6B6B 0%, #EE5A6F 100%);
+        animation: timer-pulse 0.5s infinite;
+    }
+    
+    @keyframes timer-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    .answers-grid {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 15px;
+        flex: 1;
+    }
+    
+    .answer-bubble {
+        background: linear-gradient(145deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 15px;
+        padding: 15px 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .answer-bubble::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        transition: left 0.5s;
+    }
+    
+    .answer-bubble:hover::before {
+        left: 100%;
+    }
+    
+    .answer-bubble:hover:not(.disabled) {
+        transform: translateX(8px) scale(1.02);
+        border-color: #4ECDC4;
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.25) 0%, rgba(102, 126, 234, 0.25) 100%);
+        box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
+    }
+    
+    .answer-bubble:active:not(.disabled) {
+        transform: translateX(4px) scale(0.98);
+    }
+    
+    .answer-bubble.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .answer-bubble.selected {
+        border-color: #FFD700;
+        background: linear-gradient(145deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 165, 0, 0.25) 100%);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    }
+    
+    .answer-bubble.hidden-answer {
+        display: none;
+    }
+    
+    .answer-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: bold;
+        flex-shrink: 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+    }
+    
+    .answer-bubble .answer-text {
+        font-size: 1rem;
+        font-weight: 500;
+        flex: 1;
+    }
+    
+    .answer-icon {
+        font-size: 1.3rem;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .answer-bubble:hover .answer-icon {
+        opacity: 1;
+    }
+    
+    .buzz-info {
+        text-align: center;
+        padding: 12px;
+        background: rgba(78, 205, 196, 0.15);
+        border-radius: 12px;
+        margin-top: 10px;
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        flex-shrink: 0;
+    }
+    
+    .buzz-info.not-buzzed {
+        background: rgba(255, 107, 107, 0.15);
+        border-color: rgba(255, 107, 107, 0.3);
+    }
+    
+    .buzz-info.not-buzzed .buzz-info-text {
+        color: #FF6B6B;
+    }
+    
+    .buzz-info-text {
+        font-size: 0.9rem;
+        color: #4ECDC4;
+    }
+    
     .reveal-overlay {
         background: rgba(0, 0, 0, 0.96);
     }
@@ -1634,6 +1832,68 @@ $skills = $skills ?? [];
     </div>
 </div>
 
+<!-- Answer Phase Overlay (like Solo mode) -->
+<div class="phase-overlay answer-overlay" id="answerOverlay">
+    <div class="answer-container">
+        <!-- Header: Question #X | +pts | Score -->
+        <div class="answer-header">
+            <div class="answer-info" style="text-align: center; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 15px;">
+                <div class="answer-question-num" id="answerQuestionNum" style="font-size: 1.7rem; font-weight: 700; flex: 1; text-align: left;">
+                    Question #1
+                </div>
+                <div class="answer-points-display" id="answerPointsDisplay" style="font-size: 2.5rem; font-weight: 900; color: #4ECDC4; text-shadow: 0 0 20px rgba(78, 205, 196, 0.5);">
+                    +2
+                </div>
+                <div class="answer-score-display" id="answerScoreDisplay" style="font-size: 1.7rem; font-weight: 700; flex: 1; text-align: right;">
+                    Score 0/0
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timer Bar -->
+        <div class="answer-timer">
+            <div class="timer-label">
+                <span>⏱️ {{ __('Temps pour répondre') }}</span>
+                <span id="answerTimerText">10s</span>
+            </div>
+            <div class="timer-bar-container">
+                <div class="timer-bar" id="answerTimerBar"></div>
+            </div>
+        </div>
+        
+        <!-- Answer Buttons (numbered bubbles) -->
+        <div class="answers-grid" id="answerGridOverlay">
+            <div class="answer-bubble" data-index="0" id="answerBubble0">
+                <div class="answer-number">1</div>
+                <div class="answer-text" id="answerBubbleText0"></div>
+                <div class="answer-icon">👉</div>
+            </div>
+            <div class="answer-bubble" data-index="1" id="answerBubble1">
+                <div class="answer-number">2</div>
+                <div class="answer-text" id="answerBubbleText1"></div>
+                <div class="answer-icon">👉</div>
+            </div>
+            <div class="answer-bubble" data-index="2" id="answerBubble2">
+                <div class="answer-number">3</div>
+                <div class="answer-text" id="answerBubbleText2"></div>
+                <div class="answer-icon">👉</div>
+            </div>
+            <div class="answer-bubble" data-index="3" id="answerBubble3">
+                <div class="answer-number">4</div>
+                <div class="answer-text" id="answerBubbleText3"></div>
+                <div class="answer-icon">👉</div>
+            </div>
+        </div>
+        
+        <!-- Buzz Info Message -->
+        <div class="buzz-info" id="buzzInfoMessage">
+            <div class="buzz-info-text" id="buzzInfoText">
+                {{ __('Vous avez buzzé !') }} 💚
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="waiting-overlay" id="waitingOverlay">
     <div class="spinner"></div>
     <div class="waiting-text" id="waitingText">{{ __('En attente de l\'adversaire...') }}</div>
@@ -1949,6 +2209,7 @@ const PhaseController = {
     
     hideAllOverlays() {
         document.getElementById('introOverlay')?.classList.remove('active');
+        document.getElementById('answerOverlay')?.classList.remove('active');
         document.getElementById('revealOverlay')?.classList.remove('active');
         document.getElementById('scoreboardOverlay')?.classList.remove('active');
         document.getElementById('tiebreakerChoiceOverlay')?.classList.remove('active');
@@ -2023,10 +2284,131 @@ const PhaseController = {
     },
     
     onBuzz() {
-        this.setPhase('buzz');
+        // Transition to answer phase - show the answer overlay (like Solo mode)
+        this.showAnswerPhase();
+    },
+    
+    showAnswerPhase(options = {}) {
+        const {
+            playerBuzzed = hasBuzzed,
+            buzzTime = null,
+            potentialPoints = 2  // Default max points
+        } = options;
         
-        const answersGrid = document.getElementById('answersGrid');
-        if (answersGrid) answersGrid.style.display = 'grid';
+        // Stop buzz timer
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        
+        this.setPhase('answer');
+        
+        const answerOverlay = document.getElementById('answerOverlay');
+        const answerTimerBar = document.getElementById('answerTimerBar');
+        const answerTimerText = document.getElementById('answerTimerText');
+        const buzzInfoMessage = document.getElementById('buzzInfoMessage');
+        const buzzInfoText = document.getElementById('buzzInfoText');
+        
+        // Update header info
+        const questionNum = currentQuestionData?.question_number || 1;
+        const playerScore = parseInt(document.getElementById('playerScore')?.textContent || '0');
+        const opponentScore = parseInt(document.getElementById('opponentScore')?.textContent || '0');
+        
+        document.getElementById('answerQuestionNum').textContent = `Question #${questionNum}`;
+        document.getElementById('answerScoreDisplay').textContent = `Score ${playerScore}/${opponentScore}`;
+        
+        // Set potential points with color (yellow for 0, green for 1+)
+        const pointsDisplay = document.getElementById('answerPointsDisplay');
+        const displayPoints = playerBuzzed ? potentialPoints : 0;
+        pointsDisplay.textContent = `+${displayPoints}`;
+        pointsDisplay.style.color = displayPoints === 0 ? '#FFD700' : '#4ECDC4';
+        pointsDisplay.style.textShadow = displayPoints === 0 
+            ? '0 0 20px rgba(255, 215, 0, 0.5)' 
+            : '0 0 20px rgba(78, 205, 196, 0.5)';
+        
+        // Update buzz info message
+        if (!playerBuzzed) {
+            buzzInfoMessage.classList.add('not-buzzed');
+            buzzInfoText.innerHTML = `⚠️ {{ __("Pas buzzé - Vous pouvez quand même répondre (0 point)") }}`;
+        } else if (buzzTime) {
+            buzzInfoMessage.classList.remove('not-buzzed');
+            buzzInfoText.innerHTML = `{{ __("Vous avez buzzé en") }} ${buzzTime}s 💚`;
+        } else {
+            buzzInfoMessage.classList.remove('not-buzzed');
+            buzzInfoText.innerHTML = `{{ __("Vous avez buzzé !") }} 💚`;
+        }
+        
+        // Populate answer bubbles with current question answers
+        if (currentQuestionData?.answers) {
+            currentQuestionData.answers.forEach((answer, index) => {
+                const bubble = document.getElementById(`answerBubble${index}`);
+                const textEl = document.getElementById(`answerBubbleText${index}`);
+                
+                if (bubble && textEl) {
+                    const answerText = typeof answer === 'object' ? (answer?.text || answer?.label || '') : (answer || '');
+                    
+                    if (!answerText || answerText.trim() === '') {
+                        bubble.classList.add('hidden-answer');
+                    } else {
+                        bubble.classList.remove('hidden-answer', 'disabled', 'selected');
+                        textEl.textContent = answerText;
+                    }
+                }
+            });
+        }
+        
+        // Reset timer bar
+        if (answerTimerBar) {
+            answerTimerBar.style.width = '100%';
+            answerTimerBar.classList.remove('warning');
+        }
+        if (answerTimerText) {
+            answerTimerText.textContent = '10s';
+        }
+        
+        // Show the overlay
+        answerOverlay?.classList.add('active');
+        
+        // Start the answer countdown timer (10 seconds)
+        answerTimeLeft = 10;
+        if (answerTimerInterval) {
+            clearInterval(answerTimerInterval);
+        }
+        
+        answerTimerInterval = setInterval(() => {
+            answerTimeLeft--;
+            const percentage = (answerTimeLeft / 10) * 100;
+            
+            if (answerTimerBar) {
+                answerTimerBar.style.width = percentage + '%';
+            }
+            if (answerTimerText) {
+                answerTimerText.textContent = answerTimeLeft + 's';
+            }
+            
+            // Warning state at 3 seconds
+            if (answerTimeLeft <= 3 && answerTimerBar) {
+                answerTimerBar.classList.add('warning');
+            }
+            
+            // Time's up
+            if (answerTimeLeft <= 0) {
+                clearInterval(answerTimerInterval);
+                answerTimerInterval = null;
+                // Handle timeout - submit no answer
+                handleAnswerTimeout();
+            }
+        }, 1000);
+        
+        // Add click handlers to answer bubbles
+        document.querySelectorAll('#answerGridOverlay .answer-bubble').forEach(bubble => {
+            bubble.onclick = function() {
+                if (this.classList.contains('disabled')) return;
+                
+                const index = parseInt(this.getAttribute('data-index'));
+                selectAnswerFromOverlay(index);
+            };
+        });
     },
     
     showReveal(options = {}) {
@@ -2657,7 +3039,11 @@ function startBuzzTimer() {
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             if (!hasBuzzed) {
-                handleTimeout();
+                // Buzz timer expired without buzzing - transition to answer phase with 0 points
+                PhaseController.showAnswerPhase({
+                    playerBuzzed: false,
+                    potentialPoints: 0
+                });
             }
         }
     }, 1000);
@@ -2779,9 +3165,36 @@ function handleTimeout() {
     });
 }
 
+function selectAnswerFromOverlay(answerIndex) {
+    // Stop answer timer
+    if (answerTimerInterval) {
+        clearInterval(answerTimerInterval);
+        answerTimerInterval = null;
+    }
+    
+    // Disable all answer bubbles
+    document.querySelectorAll('#answerGridOverlay .answer-bubble').forEach(bubble => {
+        bubble.classList.add('disabled');
+    });
+    
+    // Mark selected answer
+    const selectedBubble = document.getElementById(`answerBubble${answerIndex}`);
+    if (selectedBubble) {
+        selectedBubble.classList.add('selected');
+    }
+    
+    // Submit the answer using existing logic
+    submitAnswer(answerIndex);
+}
+
 function handleAnswerTimeout() {
     const buttons = document.querySelectorAll('.answer-option');
     buttons.forEach(btn => btn.classList.add('disabled'));
+    
+    // Also disable answer overlay bubbles
+    document.querySelectorAll('#answerGridOverlay .answer-bubble').forEach(bubble => {
+        bubble.classList.add('disabled');
+    });
     
     if (useSocketIO) {
         duoSocket.answer(-1);
@@ -3120,11 +3533,29 @@ document.getElementById('buzzButton').addEventListener('click', function() {
     
     if (timerInterval) clearInterval(timerInterval);
     
+    // Calculate buzz time (how much time was left when they buzzed)
+    const buzzTimeRemaining = timeLeft;
+    
     playSound('buzzerSound');
     document.getElementById('playerBuzzIndicator').classList.add('buzzed');
     
+    // Calculate potential points based on remaining buzz time
+    // Using >3s = 2pts, 1-3s = 1pt, 0s = 0pt logic
+    let potentialPoints = 2;
+    if (buzzTimeRemaining <= 3 && buzzTimeRemaining >= 1) {
+        potentialPoints = 1;
+    } else if (buzzTimeRemaining < 1) {
+        potentialPoints = 0;
+    }
+    
     if (useSocketIO) {
         duoSocket.buzz(Date.now());
+        // Show answer overlay immediately for responsiveness
+        PhaseController.showAnswerPhase({
+            playerBuzzed: true,
+            buzzTime: (8 - buzzTimeRemaining).toFixed(1),
+            potentialPoints: potentialPoints
+        });
     } else {
         fetch(`/duo/matches/${matchId}/buzz`, {
             method: 'POST',
@@ -3140,24 +3571,32 @@ document.getElementById('buzzButton').addEventListener('click', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success || data.canAnswer) {
-                showAnswers();
+                // Show the answer overlay (like Solo mode)
+                PhaseController.showAnswerPhase({
+                    playerBuzzed: true,
+                    buzzTime: (8 - buzzTimeRemaining).toFixed(1),
+                    potentialPoints: potentialPoints
+                });
             }
         })
         .catch(err => {
             console.error('Buzz error:', err);
-            showAnswers();
+            // Show answers anyway on error
+            PhaseController.showAnswerPhase({
+                playerBuzzed: true,
+                buzzTime: (8 - buzzTimeRemaining).toFixed(1),
+                potentialPoints: potentialPoints
+            });
         });
     }
 });
 
 function showAnswers() {
-    currentPhase = 'answer';
-    updateSkillStates('answer');
-    
-    document.getElementById('buzzContainer').style.display = 'none';
-    document.getElementById('answersGrid').style.display = 'grid';
-    
-    startAnswerTimer();
+    // Legacy function - redirect to showAnswerPhase
+    PhaseController.showAnswerPhase({
+        playerBuzzed: hasBuzzed,
+        potentialPoints: hasBuzzed ? 2 : 0
+    });
 }
 
 document.querySelectorAll('.answer-option').forEach(btn => {
@@ -3356,15 +3795,33 @@ function initSocketIO() {
     duoSocket.onBuzzWinner = (data) => {
         console.log('[DuoGame] Buzz winner:', data);
         
+        // Stop buzz timer
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        
         if (data.playerId == userId) {
+            // I buzzed first
             document.getElementById('playerBuzzIndicator').classList.add('buzzed');
             hasBuzzed = true;
-            showAnswers();
-            startAnswerTimer();
+            // Show answer phase with full points potential
+            PhaseController.showAnswerPhase({
+                playerBuzzed: true,
+                buzzTime: data.buzzTime ? data.buzzTime.toFixed(1) : null,
+                potentialPoints: 2
+            });
         } else {
+            // Opponent buzzed first - I still get to answer but with 0 points
             document.getElementById('opponentBuzzIndicator').classList.add('buzzed');
             canBuzz = false;
+            hasBuzzed = false;
             document.getElementById('buzzButton').disabled = true;
+            // Show answer phase but with 0 points (not buzzed)
+            PhaseController.showAnswerPhase({
+                playerBuzzed: false,
+                potentialPoints: 0
+            });
         }
     };
     
@@ -3541,6 +3998,13 @@ function handleServerPhase(phase, data) {
             break;
             
         case 'ANSWER_SELECTION':
+            // Both players should transition to answer phase
+            if (currentPhase !== 'answer' && currentPhase !== 'reveal') {
+                PhaseController.showAnswerPhase({
+                    playerBuzzed: hasBuzzed,
+                    potentialPoints: hasBuzzed ? 2 : 0
+                });
+            }
             break;
             
         case 'REVEAL':
