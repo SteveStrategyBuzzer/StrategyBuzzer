@@ -641,6 +641,431 @@ $skills = $skills ?? [];
         font-weight: 700;
     }
     
+    /* Enhanced Reveal Overlay Styles */
+    .reveal-overlay {
+        background: rgba(0, 0, 0, 0.96);
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .reveal-full-content {
+        max-width: 500px;
+        width: 100%;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .reveal-vs-header {
+        padding: 10px 15px;
+        background: rgba(102, 126, 234, 0.2);
+        border-radius: 10px;
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+    
+    .reveal-vs-label {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #4ECDC4;
+    }
+    
+    .reveal-opponent-name {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #667eea;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .reveal-result-section {
+        text-align: center;
+        padding: 10px 0;
+    }
+    
+    .reveal-round-details {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        padding: 10px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .reveal-round-player, .reveal-round-opponent {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .reveal-round-label {
+        font-size: 0.85rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
+    .reveal-round-opponent .reveal-round-label {
+        color: #f39c12;
+    }
+    
+    .reveal-round-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .reveal-points-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .reveal-points-badge.points-gained {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .reveal-points-badge.points-lost {
+        background: linear-gradient(135deg, #f093fb, #f5576c);
+        color: white;
+    }
+    
+    .reveal-points-badge.points-neutral {
+        background: rgba(255,255,255,0.1);
+        color: #95a5a6;
+    }
+    
+    .reveal-speed-indicator {
+        font-size: 0.75rem;
+        color: #95a5a6;
+        padding: 2px 8px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+    }
+    
+    .reveal-speed-indicator.first {
+        color: #f39c12;
+        background: rgba(243, 156, 18, 0.2);
+    }
+    
+    .reveal-score-battle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+    }
+    
+    .reveal-score-player, .reveal-score-opponent {
+        width: 120px;
+        padding: 12px;
+        border-radius: 12px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+    
+    .reveal-score-player {
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.2) 0%, rgba(68, 160, 141, 0.2) 100%);
+        border: 2px solid #4ECDC4;
+        box-shadow: 0 5px 20px rgba(78, 205, 196, 0.3);
+    }
+    
+    .reveal-score-opponent {
+        background: linear-gradient(145deg, rgba(243, 156, 18, 0.2) 0%, rgba(230, 126, 34, 0.2) 100%);
+        border: 2px solid #f39c12;
+        box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);
+    }
+    
+    .reveal-score-label {
+        font-size: 0.75rem;
+        opacity: 0.8;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .reveal-score-number {
+        font-size: 2rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+    
+    .reveal-score-player .reveal-score-number {
+        color: #4ECDC4;
+    }
+    
+    .reveal-score-opponent .reveal-score-number {
+        color: #f39c12;
+    }
+    
+    .reveal-vs-divider {
+        font-size: 1rem;
+        font-weight: bold;
+        color: #4ECDC4;
+        background: rgba(78, 205, 196, 0.2);
+        padding: 8px;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #4ECDC4;
+    }
+    
+    .reveal-skills-container {
+        background: rgba(102, 126, 234, 0.15);
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 12px;
+        padding: 12px;
+    }
+    
+    .reveal-skills-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 10px;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .reveal-skills-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 1px solid #667eea;
+    }
+    
+    .reveal-skills-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .reveal-skill-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+        border-radius: 8px;
+        padding: 8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .reveal-skill-item.used {
+        opacity: 0.5;
+    }
+    
+    .reveal-skill-icon {
+        font-size: 1.5rem;
+    }
+    
+    .reveal-skill-info {
+        flex: 1;
+    }
+    
+    .reveal-skill-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #667eea;
+    }
+    
+    .reveal-skill-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .reveal-skill-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.5);
+    }
+    
+    .reveal-skill-btn:disabled {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.5);
+        cursor: not-allowed;
+    }
+    
+    .reveal-answers {
+        background: rgba(0,0,0,0.4);
+        padding: 12px;
+        border-radius: 12px;
+        border: 2px solid rgba(255,255,255,0.1);
+    }
+    
+    .reveal-answer-display {
+        padding: 8px 12px;
+        border-radius: 10px;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+        backdrop-filter: blur(5px);
+    }
+    
+    .reveal-answer-display:last-child {
+        margin-bottom: 0;
+    }
+    
+    .reveal-answer-correct {
+        background: rgba(46, 204, 113, 0.25);
+        border: 2px solid #2ECC71;
+    }
+    
+    .reveal-answer-user {
+        background: rgba(231, 76, 60, 0.25);
+        border: 2px solid #E74C3C;
+    }
+    
+    .reveal-answer-user.was-correct {
+        background: rgba(46, 204, 113, 0.25);
+        border: 2px solid #2ECC71;
+    }
+    
+    .reveal-answer-label {
+        opacity: 0.9;
+        font-size: 0.85rem;
+        font-weight: 600;
+        flex-shrink: 0;
+        min-width: 100px;
+    }
+    
+    .reveal-answer-text {
+        flex: 1;
+        text-align: left;
+        font-weight: 500;
+    }
+    
+    .reveal-answer-icon {
+        font-size: 1.4rem;
+    }
+    
+    .reveal-stats {
+        background: rgba(0,0,0,0.3);
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        border-radius: 10px;
+        padding: 10px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .reveal-stats-columns {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .reveal-stats-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .reveal-stats-column.left {
+        border-right: 1px solid rgba(78, 205, 196, 0.3);
+        padding-right: 10px;
+    }
+    
+    .reveal-stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 6px;
+        background: rgba(78, 205, 196, 0.08);
+        border-radius: 5px;
+    }
+    
+    .reveal-stat-label {
+        font-size: 0.7rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
+    .reveal-stat-value {
+        font-size: 0.8rem;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .reveal-stat-row.no-answer .reveal-stat-value {
+        color: #F39C12;
+    }
+    
+    .reveal-stat-row.correct .reveal-stat-value {
+        color: #2ECC71;
+    }
+    
+    .reveal-stat-row.wrong .reveal-stat-value {
+        color: #E74C3C;
+    }
+    
+    .reveal-did-you-know {
+        background: rgba(102, 126, 234, 0.15);
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 10px;
+        padding: 12px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .reveal-did-you-know-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+    
+    .reveal-did-you-know-content {
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.9);
+        text-align: center;
+        font-style: italic;
+    }
+    
+    .reveal-countdown {
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        text-align: center;
+    }
+    
+    .reveal-countdown-timer {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: #4ECDC4;
+        display: inline-block;
+        margin: 0 5px;
+        animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+    }
+    
     .scoreboard-overlay {
         background: linear-gradient(135deg, rgba(15, 32, 39, 0.97) 0%, rgba(32, 58, 67, 0.97) 50%, rgba(44, 83, 100, 0.97) 100%);
     }
@@ -1223,11 +1648,131 @@ $skills = $skills ?? [];
 </div>
 
 <div class="phase-overlay reveal-overlay" id="revealOverlay">
-    <div class="reveal-content">
-        <div class="reveal-icon" id="revealIcon">✓</div>
-        <div class="reveal-message" id="revealMessage">{{ __('Bonne réponse !') }}</div>
-        <div class="reveal-answer" id="revealAnswer"></div>
-        <div class="reveal-points" id="revealPoints"></div>
+    <div class="reveal-content reveal-full-content">
+        <!-- VS Header -->
+        <div class="reveal-vs-header" id="revealVsHeader">
+            <span class="reveal-vs-label">VS</span>
+            <span class="reveal-opponent-name" id="revealOpponentName">{{ $opponentName }}</span>
+        </div>
+        
+        <!-- Result Icon & Message -->
+        <div class="reveal-result-section">
+            <div class="reveal-icon" id="revealIcon">✓</div>
+            <div class="reveal-message" id="revealMessage">{{ __('Bonne réponse !') }}</div>
+        </div>
+        
+        <!-- Round Details: Player vs Opponent points -->
+        <div class="reveal-round-details" id="revealRoundDetails">
+            <div class="reveal-round-player">
+                <div class="reveal-round-label">{{ __('Vous') }}</div>
+                <div class="reveal-round-info">
+                    <span class="reveal-points-badge points-gained" id="revealPlayerPoints">+0</span>
+                    <span class="reveal-speed-indicator" id="revealPlayerSpeed"></span>
+                </div>
+            </div>
+            <div class="reveal-round-opponent">
+                <div class="reveal-round-label" id="revealOpponentLabel">{{ __('Adversaire') }}</div>
+                <div class="reveal-round-info">
+                    <span class="reveal-points-badge points-neutral" id="revealOpponentPoints">+0</span>
+                    <span class="reveal-speed-indicator" id="revealOpponentSpeed"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Score Battle -->
+        <div class="reveal-score-battle" id="revealScoreBattle">
+            <div class="reveal-score-player">
+                <div class="reveal-score-label">{{ __('VOUS') }}</div>
+                <div class="reveal-score-number" id="revealScorePlayer">0</div>
+            </div>
+            <div class="reveal-vs-divider">VS</div>
+            <div class="reveal-score-opponent">
+                <div class="reveal-score-label" id="revealScoreOpponentLabel">{{ __('ADVERSAIRE') }}</div>
+                <div class="reveal-score-number" id="revealScoreOpponent">0</div>
+            </div>
+        </div>
+        
+        <!-- Skills Section -->
+        <div class="reveal-skills-container" id="revealSkillsContainer">
+            <div class="reveal-skills-title">
+                <span>{{ __('Compétences') }}</span>
+                @if($strategicAvatarPath)
+                    <img src="{{ $strategicAvatarPath }}" alt="{{ $avatarName }}" class="reveal-skills-avatar">
+                @endif
+            </div>
+            <div class="reveal-skills-grid" id="revealSkillsGrid">
+                @foreach($skills as $index => $skill)
+                    @if($skill)
+                        <div class="reveal-skill-item" data-skill-index="{{ $index }}" id="revealSkill{{ $index }}">
+                            <span class="reveal-skill-icon">{{ $skill['icon'] ?? '❓' }}</span>
+                            <div class="reveal-skill-info">
+                                <span class="reveal-skill-name">{{ $skill['name'] ?? '' }}</span>
+                            </div>
+                            <button class="reveal-skill-btn" onclick="activateRevealSkill({{ $index }})" id="revealSkillBtn{{ $index }}">{{ __('Activer') }}</button>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        </div>
+        
+        <!-- Answers Section -->
+        <div class="reveal-answers" id="revealAnswers">
+            <div class="reveal-answer-display reveal-answer-user" id="revealUserAnswerRow">
+                <span class="reveal-answer-label">{{ __('Votre réponse') }}</span>
+                <span class="reveal-answer-text" id="revealUserAnswer">—</span>
+                <span class="reveal-answer-icon" id="revealUserAnswerIcon">❌</span>
+            </div>
+            <div class="reveal-answer-display reveal-answer-correct">
+                <span class="reveal-answer-label">{{ __('Bonne réponse') }}</span>
+                <span class="reveal-answer-text" id="revealCorrectAnswer">—</span>
+                <span class="reveal-answer-icon">✅</span>
+            </div>
+        </div>
+        
+        <!-- Stats Section (2 columns) -->
+        <div class="reveal-stats" id="revealStats">
+            <div class="reveal-stats-columns">
+                <div class="reveal-stats-column left">
+                    <div class="reveal-stat-row">
+                        <span class="reveal-stat-label">{{ __('Score Match') }}</span>
+                        <span class="reveal-stat-value" id="revealStatMatchScore">0</span>
+                    </div>
+                    <div class="reveal-stat-row">
+                        <span class="reveal-stat-label">{{ __('Vie') }}</span>
+                        <span class="reveal-stat-value" id="revealStatLives">3</span>
+                    </div>
+                    <div class="reveal-stat-row">
+                        <span class="reveal-stat-label">{{ __('Question') }}</span>
+                        <span class="reveal-stat-value" id="revealStatQuestion">1/10</span>
+                    </div>
+                </div>
+                <div class="reveal-stats-column right">
+                    <div class="reveal-stat-row no-answer">
+                        <span class="reveal-stat-label">{{ __('Sans Réponse') }}</span>
+                        <span class="reveal-stat-value" id="revealStatNoAnswer">0</span>
+                    </div>
+                    <div class="reveal-stat-row correct">
+                        <span class="reveal-stat-label">{{ __('Bonne') }}</span>
+                        <span class="reveal-stat-value" id="revealStatCorrect">0</span>
+                    </div>
+                    <div class="reveal-stat-row wrong">
+                        <span class="reveal-stat-label">{{ __('Échec') }}</span>
+                        <span class="reveal-stat-value" id="revealStatWrong">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Did You Know Section -->
+        <div class="reveal-did-you-know" id="revealDidYouKnow">
+            <div class="reveal-did-you-know-title">{{ __('Le saviez-vous ?') }}</div>
+            <div class="reveal-did-you-know-content" id="revealDidYouKnowContent">...</div>
+        </div>
+        
+        <!-- Countdown Timer -->
+        <div class="reveal-countdown" id="revealCountdown">
+            {{ __('Prochaine question dans') }} <span class="reveal-countdown-timer" id="revealCountdownTimer">6</span> {{ __('secondes...') }}
+        </div>
     </div>
 </div>
 
@@ -1365,9 +1910,11 @@ const PhaseController = {
     phases: ['intro', 'question', 'buzz', 'reveal', 'scoreboard'],
     phaseTimers: {
         intro: 9000,
-        reveal: 3000,
+        reveal: 6000,
         scoreboard: 2500
     },
+    revealCountdownInterval: null,
+    questionStats: { correct: 0, wrong: 0, noAnswer: 0 },
     isHost: isHost,
     
     setPhase(phase, phaseData = {}) {
@@ -1482,7 +2029,26 @@ const PhaseController = {
         if (answersGrid) answersGrid.style.display = 'grid';
     },
     
-    showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false) {
+    showReveal(options = {}) {
+        const {
+            isCorrect = false,
+            correctAnswer = '',
+            points = 0,
+            wasTimeout = false,
+            playerScore = 0,
+            opponentScore = 0,
+            playerPoints = 0,
+            opponentPoints = 0,
+            wasPlayerFaster = false,
+            wasOpponentFaster = false,
+            userAnswerText = '—',
+            userAnswerIndex = -1,
+            questionNum = 1,
+            totalQuestionsCount = totalQuestions,
+            explanation = '',
+            revealEndsAt = null
+        } = options;
+        
         // Stop any running timers before showing reveal
         if (timerInterval) {
             clearInterval(timerInterval);
@@ -1492,33 +2058,49 @@ const PhaseController = {
             clearInterval(answerTimerInterval);
             answerTimerInterval = null;
         }
+        if (this.revealCountdownInterval) {
+            clearInterval(this.revealCountdownInterval);
+            this.revealCountdownInterval = null;
+        }
         
         this.setPhase('reveal', { isCorrect, correctAnswer, points, wasTimeout });
         updateSkillStates('reveal');
         canBuzz = false;
         
+        // Track stats
+        if (wasTimeout) {
+            this.questionStats.noAnswer++;
+        } else if (isCorrect) {
+            this.questionStats.correct++;
+        } else {
+            this.questionStats.wrong++;
+        }
+        
+        let finalIsCorrect = isCorrect;
+        let finalPoints = points;
         const errorSkillResult = !isCorrect && !wasTimeout ? applyErrorSkills() : null;
         if (errorSkillResult?.cancelled) {
-            isCorrect = true;
-            points = errorSkillResult.points || 0;
+            finalIsCorrect = true;
+            finalPoints = errorSkillResult.points || 0;
+            this.questionStats.wrong--;
+            this.questionStats.correct++;
         }
         
         const revealOverlay = document.getElementById('revealOverlay');
         const icon = document.getElementById('revealIcon');
         const message = document.getElementById('revealMessage');
-        const answer = document.getElementById('revealAnswer');
-        const pointsEl = document.getElementById('revealPoints');
         
         icon?.classList.remove('correct');
         message?.classList.remove('correct', 'incorrect', 'timeout');
         
+        // Update result icon and message
         if (wasTimeout) {
             if (icon) icon.textContent = '⏱️';
             if (message) {
                 message.textContent = '{{ __("Temps écoulé !") }}';
                 message.classList.add('timeout');
             }
-        } else if (isCorrect) {
+        } else if (finalIsCorrect) {
             if (icon) {
                 icon.textContent = '✓';
                 icon.classList.add('correct');
@@ -1537,27 +2119,155 @@ const PhaseController = {
             }
         }
         
-        if (answer) {
-            answer.textContent = correctAnswer || '';
-            answer.style.display = correctAnswer ? 'block' : 'none';
+        // Update round details - Player points
+        const revealPlayerPoints = document.getElementById('revealPlayerPoints');
+        const revealPlayerSpeed = document.getElementById('revealPlayerSpeed');
+        if (revealPlayerPoints) {
+            revealPlayerPoints.textContent = finalPoints > 0 ? `+${finalPoints}` : '+0';
+            revealPlayerPoints.className = 'reveal-points-badge ' + (finalPoints > 0 ? 'points-gained' : 'points-neutral');
+        }
+        if (revealPlayerSpeed) {
+            if (wasPlayerFaster) {
+                revealPlayerSpeed.textContent = '1er';
+                revealPlayerSpeed.className = 'reveal-speed-indicator first';
+            } else if (wasOpponentFaster) {
+                revealPlayerSpeed.textContent = '2ème';
+                revealPlayerSpeed.className = 'reveal-speed-indicator';
+            } else {
+                revealPlayerSpeed.textContent = '';
+            }
         }
         
-        if (pointsEl) {
-            if (points > 0) {
-                pointsEl.textContent = `+${points} {{ __("points") }}`;
-                pointsEl.style.display = 'block';
+        // Update round details - Opponent points
+        const revealOpponentPoints = document.getElementById('revealOpponentPoints');
+        const revealOpponentSpeed = document.getElementById('revealOpponentSpeed');
+        if (revealOpponentPoints) {
+            revealOpponentPoints.textContent = opponentPoints > 0 ? `+${opponentPoints}` : '+0';
+            revealOpponentPoints.className = 'reveal-points-badge ' + (opponentPoints > 0 ? 'points-gained' : 'points-neutral');
+        }
+        if (revealOpponentSpeed) {
+            if (wasOpponentFaster) {
+                revealOpponentSpeed.textContent = '1er';
+                revealOpponentSpeed.className = 'reveal-speed-indicator first';
+            } else if (wasPlayerFaster) {
+                revealOpponentSpeed.textContent = '2ème';
+                revealOpponentSpeed.className = 'reveal-speed-indicator';
             } else {
-                pointsEl.style.display = 'none';
+                revealOpponentSpeed.textContent = '';
             }
+        }
+        
+        // Update score battle
+        const revealScorePlayer = document.getElementById('revealScorePlayer');
+        const revealScoreOpponent = document.getElementById('revealScoreOpponent');
+        if (revealScorePlayer) revealScorePlayer.textContent = playerScore;
+        if (revealScoreOpponent) revealScoreOpponent.textContent = opponentScore;
+        
+        // Update answers section
+        const revealUserAnswer = document.getElementById('revealUserAnswer');
+        const revealUserAnswerRow = document.getElementById('revealUserAnswerRow');
+        const revealUserAnswerIcon = document.getElementById('revealUserAnswerIcon');
+        const revealCorrectAnswer = document.getElementById('revealCorrectAnswer');
+        
+        if (revealUserAnswer) {
+            revealUserAnswer.textContent = wasTimeout ? '{{ __("Pas de réponse") }}' : userAnswerText;
+        }
+        if (revealUserAnswerRow) {
+            revealUserAnswerRow.classList.toggle('was-correct', finalIsCorrect && !wasTimeout);
+        }
+        if (revealUserAnswerIcon) {
+            revealUserAnswerIcon.textContent = finalIsCorrect && !wasTimeout ? '✅' : '❌';
+        }
+        if (revealCorrectAnswer) {
+            revealCorrectAnswer.textContent = correctAnswer || '—';
+        }
+        
+        // Update stats
+        const revealStatMatchScore = document.getElementById('revealStatMatchScore');
+        const revealStatQuestion = document.getElementById('revealStatQuestion');
+        const revealStatNoAnswer = document.getElementById('revealStatNoAnswer');
+        const revealStatCorrect = document.getElementById('revealStatCorrect');
+        const revealStatWrong = document.getElementById('revealStatWrong');
+        
+        if (revealStatMatchScore) revealStatMatchScore.textContent = playerScore;
+        if (revealStatQuestion) revealStatQuestion.textContent = `${questionNum}/${totalQuestionsCount}`;
+        if (revealStatNoAnswer) revealStatNoAnswer.textContent = this.questionStats.noAnswer;
+        if (revealStatCorrect) revealStatCorrect.textContent = this.questionStats.correct;
+        if (revealStatWrong) revealStatWrong.textContent = this.questionStats.wrong;
+        
+        // Update skills button states in reveal overlay
+        this.updateRevealSkillButtons();
+        
+        // Update "Le saviez-vous?" section with explanation
+        const didYouKnowContent = document.getElementById('revealDidYouKnowContent');
+        const didYouKnowSection = document.getElementById('revealDidYouKnow');
+        const actualExplanation = explanation || currentQuestionData?.explanation || '';
+        if (didYouKnowContent) {
+            if (actualExplanation && actualExplanation.trim()) {
+                didYouKnowContent.textContent = actualExplanation;
+                if (didYouKnowSection) didYouKnowSection.style.display = 'block';
+            } else {
+                didYouKnowContent.textContent = '{{ __("Explication en cours de chargement...") }}';
+                if (didYouKnowSection) didYouKnowSection.style.display = 'block';
+            }
+        }
+        
+        // Calculate synchronized countdown using revealEndsAt timestamp
+        const effectiveRevealEndsAt = revealEndsAt || (Date.now() + this.phaseTimers.reveal);
+        const calculateRemainingTime = () => Math.max(0, Math.ceil((effectiveRevealEndsAt - Date.now()) / 1000));
+        
+        let remainingSeconds = calculateRemainingTime();
+        const countdownTimer = document.getElementById('revealCountdownTimer');
+        
+        // If time already expired, proceed immediately
+        if (remainingSeconds <= 0) {
+            if (countdownTimer) countdownTimer.textContent = '0';
+            revealOverlay?.classList.add('active');
+            return Promise.resolve();
+        }
+        
+        if (countdownTimer) {
+            countdownTimer.textContent = remainingSeconds;
+            this.revealCountdownInterval = setInterval(() => {
+                remainingSeconds = calculateRemainingTime();
+                if (countdownTimer) countdownTimer.textContent = remainingSeconds;
+                if (remainingSeconds <= 0) {
+                    clearInterval(this.revealCountdownInterval);
+                    this.revealCountdownInterval = null;
+                }
+            }, 200); // Update more frequently for better sync
         }
         
         revealOverlay?.classList.add('active');
         
+        // Calculate actual remaining duration for Promise resolution
+        const remainingDuration = Math.max(0, effectiveRevealEndsAt - Date.now());
+        
         return new Promise(resolve => {
             setTimeout(() => {
+                if (this.revealCountdownInterval) {
+                    clearInterval(this.revealCountdownInterval);
+                    this.revealCountdownInterval = null;
+                }
                 this.hideAllOverlays();
                 resolve();
-            }, this.phaseTimers.reveal);
+            }, remainingDuration);
+        });
+    },
+    
+    updateRevealSkillButtons() {
+        const skillCircles = document.querySelectorAll('.skill-circle');
+        skillCircles.forEach((circle, index) => {
+            const isUsed = circle.classList.contains('used');
+            const revealBtn = document.getElementById(`revealSkillBtn${index}`);
+            if (revealBtn) {
+                revealBtn.disabled = isUsed;
+                revealBtn.textContent = isUsed ? '{{ __("Utilisé") }}' : '{{ __("Activer") }}';
+            }
+            const revealItem = document.getElementById(`revealSkill${index}`);
+            if (revealItem) {
+                revealItem.classList.toggle('used', isUsed);
+            }
         });
     },
     
@@ -1619,16 +2329,44 @@ const PhaseController = {
             wasTimeout = false,
             playerScore = 0,
             opponentScore = 0,
+            playerPoints = 0,
+            opponentPoints = 0,
+            wasPlayerFaster = false,
+            wasOpponentFaster = false,
+            userAnswerText = '—',
+            userAnswerIndex = -1,
             hasNextQuestion = false,
             questionNum = 1,
-            totalQuestionsParam = totalQuestions
+            totalQuestionsParam = totalQuestions,
+            explanation = '',
+            revealEndsAt = null
         } = options;
         
         isProcessingPhase = true;
         
+        // Calculate revealEndsAt if not provided (host broadcasts this timestamp)
+        const effectiveRevealEndsAt = revealEndsAt || (Date.now() + this.phaseTimers.reveal);
+        
         try {
             if (showRevealPhase && currentPhase !== 'reveal') {
-                await this.showReveal(isCorrect, correctAnswer, points, wasTimeout);
+                await this.showReveal({
+                    isCorrect,
+                    correctAnswer,
+                    points,
+                    wasTimeout,
+                    playerScore,
+                    opponentScore,
+                    playerPoints: playerPoints || points,
+                    opponentPoints,
+                    wasPlayerFaster,
+                    wasOpponentFaster,
+                    userAnswerText,
+                    userAnswerIndex,
+                    questionNum,
+                    totalQuestionsCount: totalQuestionsParam,
+                    explanation: explanation || currentQuestionData?.explanation || '',
+                    revealEndsAt: effectiveRevealEndsAt
+                });
             }
             await this.showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestionsParam);
         } finally {
@@ -1645,7 +2383,48 @@ const PhaseController = {
         return { proceed: hasNextQuestion };
     },
     
-    async onAnswerComplete(isCorrect, correctAnswer, points, playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestionsParam, wasTimeout = false) {
+    async onAnswerComplete(options) {
+        const {
+            isCorrect = false,
+            correctAnswer = '',
+            points = 0,
+            playerScore = 0,
+            opponentScore = 0,
+            playerPoints = 0,
+            opponentPoints = 0,
+            wasPlayerFaster = false,
+            wasOpponentFaster = false,
+            userAnswerText = '—',
+            userAnswerIndex = -1,
+            hasNextQuestion = false,
+            questionNum = 1,
+            totalQuestionsParam = totalQuestions,
+            wasTimeout = false
+        } = typeof options === 'object' ? options : {};
+        
+        // Support legacy call signature for backward compatibility
+        if (typeof options !== 'object') {
+            const args = arguments;
+            return this.finishPhase({
+                showRevealPhase: true,
+                isCorrect: args[0] || false,
+                correctAnswer: args[1] || '',
+                points: args[2] || 0,
+                playerScore: args[3] || 0,
+                opponentScore: args[4] || 0,
+                hasNextQuestion: args[5] || false,
+                questionNum: args[6] || 1,
+                totalQuestionsParam: args[7] || totalQuestions,
+                wasTimeout: args[8] || false,
+                playerPoints: args[2] || 0,
+                opponentPoints: 0,
+                wasPlayerFaster: false,
+                wasOpponentFaster: false,
+                userAnswerText: '—',
+                userAnswerIndex: -1
+            });
+        }
+        
         return this.finishPhase({
             showRevealPhase: true,
             isCorrect,
@@ -1654,6 +2433,12 @@ const PhaseController = {
             wasTimeout,
             playerScore,
             opponentScore,
+            playerPoints: playerPoints || points,
+            opponentPoints,
+            wasPlayerFaster,
+            wasOpponentFaster,
+            userAnswerText,
+            userAnswerIndex,
             hasNextQuestion,
             questionNum,
             totalQuestionsParam
@@ -2103,7 +2888,8 @@ function updateUI(data) {
                     answers: state.tiebreaker_question.answers || [],
                     correct_answer: '',
                     correct_index: -1,
-                    has_next_question: false
+                    has_next_question: false,
+                    explanation: state.tiebreaker_question.explanation || ''
                 };
                 loadQuestionIntoUI(currentQuestionData);
                 resetGameplayState();
@@ -2134,12 +2920,14 @@ function updateUI(data) {
                 const rawCorrectAnswer = result.correct_answer || state.correct_answer || '';
                 const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
                 
-                PhaseController.showReveal(
-                    result.is_correct || false,
-                    correctAnswer,
-                    result.points || 0,
-                    result.was_timeout || false
-                );
+                PhaseController.showReveal({
+                    isCorrect: result.is_correct || false,
+                    correctAnswer: correctAnswer,
+                    points: result.points || 0,
+                    wasTimeout: result.was_timeout || false,
+                    explanation: currentQuestionData?.explanation || '',
+                    revealEndsAt: state.reveal_ends_at || (Date.now() + PhaseController.phaseTimers.reveal)
+                });
             }
             return;
             
@@ -2167,7 +2955,8 @@ function updateUI(data) {
                     answers: state.current_question.answers || [],
                     correct_answer: '',
                     correct_index: -1,
-                    has_next_question: state.has_next_question ?? true
+                    has_next_question: state.has_next_question ?? true,
+                    explanation: state.current_question.explanation || ''
                 };
                 
                 if (isProcessingPhase || currentPhase === 'reveal' || currentPhase === 'scoreboard') {
@@ -2204,7 +2993,8 @@ function updateUI(data) {
                     answers: state.current_question.answers || [],
                     correct_answer: '',
                     correct_index: -1,
-                    has_next_question: state.has_next_question ?? true
+                    has_next_question: state.has_next_question ?? true,
+                    explanation: state.current_question.explanation || ''
                 };
                 
                 if (isProcessingPhase || currentPhase === 'reveal' || currentPhase === 'scoreboard') {
@@ -2254,7 +3044,8 @@ function updateUI(data) {
             answers: state.current_question.answers || [],
             correct_answer: '',
             correct_index: -1,
-            has_next_question: state.has_next_question ?? true
+            has_next_question: state.has_next_question ?? true,
+            explanation: state.current_question.explanation || ''
         };
         
         if (isProcessingPhase || currentPhase === 'reveal' || currentPhase === 'scoreboard') {
@@ -2547,7 +3338,8 @@ function initSocketIO() {
             answers: data.choices || [],
             correct_answer: '',
             correct_index: -1,
-            has_next_question: (data.questionIndex + 1) < (data.totalQuestions || totalQuestions)
+            has_next_question: (data.questionIndex + 1) < (data.totalQuestions || totalQuestions),
+            explanation: data.explanation || ''
         };
         loadQuestionIntoUI(currentQuestionData);
     };
@@ -2578,6 +3370,7 @@ function initSocketIO() {
         const rawCorrectAnswer = data.correctAnswer?.toString() || '';
         const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
         const selectedIndex = data.answerIndex ?? -1;
+        const revealEndsAt = data.revealEndsAt || phaseEndsAtMs || (Date.now() + PhaseController.phaseTimers.reveal);
         
         if (currentQuestionData) {
             currentQuestionData.correct_index = correctIndex;
@@ -2593,12 +3386,26 @@ function initSocketIO() {
             
             playSound(isCorrect ? 'correctSound' : 'incorrectSound');
             
-            PhaseController.showReveal(isCorrect, correctAnswer, points, wasTimeout);
+            PhaseController.showReveal({
+                isCorrect: isCorrect,
+                correctAnswer: correctAnswer,
+                points: points,
+                wasTimeout: wasTimeout,
+                explanation: data.explanation || currentQuestionData?.explanation || '',
+                revealEndsAt: revealEndsAt
+            });
         } else {
             document.getElementById('opponentScore').textContent = data.totalScore || 0;
             if (currentPhase !== 'reveal') {
                 currentPhase = 'reveal';
-                PhaseController.showReveal(isCorrect, correctAnswer, points, wasTimeout);
+                PhaseController.showReveal({
+                    isCorrect: isCorrect,
+                    correctAnswer: correctAnswer,
+                    points: points,
+                    wasTimeout: wasTimeout,
+                    explanation: data.explanation || currentQuestionData?.explanation || '',
+                    revealEndsAt: revealEndsAt
+                });
             }
         }
     };
@@ -2732,12 +3539,14 @@ function handleServerPhase(phase, data) {
                 const rawCorrectAnswer = phaseData.correctAnswer || '';
                 const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
                 
-                PhaseController.showReveal(
-                    phaseData.isCorrect || false,
-                    correctAnswer,
-                    phaseData.points || 0,
-                    phaseData.wasTimeout || false
-                );
+                PhaseController.showReveal({
+                    isCorrect: phaseData.isCorrect || false,
+                    correctAnswer: correctAnswer,
+                    points: phaseData.points || 0,
+                    wasTimeout: phaseData.wasTimeout || false,
+                    explanation: phaseData.explanation || currentQuestionData?.explanation || '',
+                    revealEndsAt: phaseData.revealEndsAt || phaseEndsAtMs || (Date.now() + PhaseController.phaseTimers.reveal)
+                });
             }
             break;
             
@@ -3393,6 +4202,39 @@ function activateSkillHttp(skillId) {
         }
     })
     .catch(err => console.error('Skill activation error:', err));
+}
+
+function activateRevealSkill(index) {
+    const skillCircles = document.querySelectorAll('.skill-circle');
+    const skillCircle = skillCircles[index];
+    
+    if (!skillCircle || skillCircle.classList.contains('used') || skillCircle.classList.contains('empty')) {
+        return;
+    }
+    
+    const skillId = skillCircle.dataset.skillId;
+    if (!skillId) return;
+    
+    skillCircle.classList.add('used');
+    skillCircle.classList.remove('available', 'usable-now');
+    
+    const revealBtn = document.getElementById(`revealSkillBtn${index}`);
+    if (revealBtn) {
+        revealBtn.disabled = true;
+        revealBtn.textContent = '{{ __("Utilisé") }}';
+    }
+    const revealItem = document.getElementById(`revealSkill${index}`);
+    if (revealItem) {
+        revealItem.classList.add('used');
+    }
+    
+    if (useSocketIO && typeof duoSocket !== 'undefined' && duoSocket.isConnected()) {
+        duoSocket.emit('activate_skill', { skill_id: skillId });
+    } else {
+        activateSkillHttp(skillId);
+    }
+    
+    showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
 }
 
 function playAttackEffect() {
