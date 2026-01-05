@@ -936,6 +936,215 @@ class DuoController extends Controller
         ]);
     }
 
+    public function question(DuoMatch $match)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        
+        $gameState = $match->game_state ?? [];
+        $currentQuestion = $gameState['current_question_number'] ?? 1;
+        
+        $playerScore = $isPlayer1 
+            ? ($gameState['player_scores_map']['player'] ?? 0) 
+            : ($gameState['player_scores_map']['opponent'] ?? 0);
+        $opponentScore = $isPlayer1 
+            ? ($gameState['player_scores_map']['opponent'] ?? 0) 
+            : ($gameState['player_scores_map']['player'] ?? 0);
+        
+        $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
+        $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
+
+        return view('duo_question', [
+            'match_id' => $match->id,
+            'room_code' => $match->room_id ?? null,
+            'lobby_code' => $match->lobby_code ?? null,
+            'player_info' => [
+                'id' => $user->id,
+                'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $playerScore,
+                'level' => $stats->level,
+            ],
+            'opponent_info' => [
+                'id' => $opponent->id,
+                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $opponentScore,
+                'level' => $opponentStats->level,
+            ],
+            'current_question' => $currentQuestion,
+            'total_questions' => 10,
+        ]);
+    }
+
+    public function answer(DuoMatch $match, Request $request)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        
+        $gameState = $match->game_state ?? [];
+        $currentQuestion = $request->input('question_number', $gameState['current_question_number'] ?? 1);
+        
+        $playerScore = $isPlayer1 
+            ? ($gameState['player_scores_map']['player'] ?? 0) 
+            : ($gameState['player_scores_map']['opponent'] ?? 0);
+        $opponentScore = $isPlayer1 
+            ? ($gameState['player_scores_map']['opponent'] ?? 0) 
+            : ($gameState['player_scores_map']['player'] ?? 0);
+        
+        $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
+        $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
+
+        $playerBuzzed = $request->input('buzzed', false);
+        $opponentBuzzed = $request->input('opponent_buzzed', false);
+        $timeout = $request->input('timeout', false);
+        
+        $buzzOrder = 0;
+        if ($playerBuzzed && !$opponentBuzzed) {
+            $buzzOrder = 1;
+        } elseif ($playerBuzzed && $opponentBuzzed) {
+            $buzzOrder = 2;
+        }
+        
+        $potentialPoints = 0;
+        if ($buzzOrder === 1) {
+            $potentialPoints = 2;
+        } elseif ($buzzOrder === 2) {
+            $potentialPoints = 1;
+        }
+
+        $questionData = $request->input('question', []);
+        $questionText = $questionData['text'] ?? '';
+        $answers = $questionData['answers'] ?? [];
+        $correctIndex = $questionData['correct_index'] ?? 0;
+
+        return view('duo_answer', [
+            'match_id' => $match->id,
+            'room_code' => $match->room_id ?? null,
+            'lobby_code' => $match->lobby_code ?? null,
+            'player_info' => [
+                'id' => $user->id,
+                'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $playerScore,
+                'level' => $stats->level,
+            ],
+            'opponent_info' => [
+                'id' => $opponent->id,
+                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $opponentScore,
+                'level' => $opponentStats->level,
+            ],
+            'current_question' => $currentQuestion,
+            'total_questions' => 10,
+            'question' => [
+                'text' => $questionText,
+                'answers' => $answers,
+            ],
+            'player_buzzed' => $playerBuzzed,
+            'buzz_order' => $buzzOrder,
+            'potential_points' => $potentialPoints,
+            'correct_index' => $correctIndex,
+            'timeout' => $timeout,
+        ]);
+    }
+
+    public function waiting(DuoMatch $match, Request $request)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        
+        $gameState = $match->game_state ?? [];
+        $currentQuestion = $request->input('current_question', $gameState['current_question_number'] ?? 1);
+        
+        $playerScore = $isPlayer1 
+            ? ($gameState['player_scores_map']['player'] ?? 0) 
+            : ($gameState['player_scores_map']['opponent'] ?? 0);
+        $opponentScore = $isPlayer1 
+            ? ($gameState['player_scores_map']['opponent'] ?? 0) 
+            : ($gameState['player_scores_map']['player'] ?? 0);
+        
+        $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
+        $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
+
+        $nextQuestionNumber = $currentQuestion + 1;
+        if ($nextQuestionNumber > 10) {
+            $nextQuestionNumber = 10;
+        }
+
+        return view('duo_waiting', [
+            'match_id' => $match->id,
+            'room_code' => $match->room_id ?? null,
+            'lobby_code' => $match->lobby_code ?? null,
+            'player_info' => [
+                'id' => $user->id,
+                'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $playerScore,
+                'level' => $stats->level,
+            ],
+            'opponent_info' => [
+                'id' => $opponent->id,
+                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $opponentScore,
+                'level' => $opponentStats->level,
+            ],
+            'current_question' => $currentQuestion,
+            'total_questions' => 10,
+            'next_question_number' => $nextQuestionNumber,
+        ]);
+    }
+
     public function getInvitations()
     {
         $user = Auth::user();
