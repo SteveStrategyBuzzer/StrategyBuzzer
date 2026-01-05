@@ -743,10 +743,13 @@ class LobbyService
                         }
                     }
                     
-                    // Initialiser le cache anti-doublon avec Q1
+                    // Initialiser le cache anti-doublon avec Q1 (nettoie les anciennes données)
                     $antiDuplicationCache = new AntiDuplicationCacheService();
-                    foreach ($questions as $q) {
-                        $antiDuplicationCache->addQuestion($roomId, $q);
+                    if (!empty($questions)) {
+                        $antiDuplicationCache->initialize($roomId, $questions[0]);
+                        for ($i = 1; $i < count($questions); $i++) {
+                            $antiDuplicationCache->addQuestion($roomId, $questions[$i]);
+                        }
                     }
                     Log::info("[LobbyService] Initialized anti-duplication cache with Q1", [
                         'roomId' => $roomId,

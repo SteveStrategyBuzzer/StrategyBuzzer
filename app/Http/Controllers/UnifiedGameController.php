@@ -276,9 +276,9 @@ class UnifiedGameController extends Controller
             
             Log::info("[Batching] Generated and stored Question 1 synchronously for {$mode} match {$matchId}");
             
-            // Initialiser le cache anti-doublon avec Q1
+            // Initialiser le cache anti-doublon avec Q1 (nettoie les anciennes données)
             $antiDuplicationCache = new AntiDuplicationCacheService();
-            $antiDuplicationCache->addQuestion($matchId, $firstQuestion);
+            $antiDuplicationCache->initialize($matchId, $firstQuestion);
             Log::info("[Batching] Initialized anti-duplication cache with Q1", [
                 'matchId' => $matchId,
             ]);
