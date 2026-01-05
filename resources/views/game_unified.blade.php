@@ -991,6 +991,101 @@ $roomCode = $params['room_code'] ?? null;
         font-weight: 700;
     }
     
+    /* Answer Phase Overlay Styles */
+    .answer-overlay {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .answer-overlay.active { display: flex !important; }
+    .answer-container {
+        width: 100%;
+        max-width: 600px;
+        padding: 20px;
+    }
+    .answer-header { margin-bottom: 20px; }
+    .answer-info { display: flex; }
+    .answer-timer {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 10px 15px;
+        margin-bottom: 20px;
+    }
+    .answer-overlay .timer-label {
+        display: flex;
+        justify-content: space-between;
+        color: white;
+        margin-bottom: 8px;
+    }
+    .answer-overlay .timer-bar-container {
+        background: rgba(255,255,255,0.2);
+        border-radius: 5px;
+        height: 8px;
+        overflow: hidden;
+    }
+    .answer-overlay .timer-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #4ECDC4, #44a08d);
+        border-radius: 5px;
+        transition: width 0.3s linear;
+    }
+    .answer-overlay .timer-bar.warning {
+        background: linear-gradient(90deg, #e74c3c, #c0392b);
+    }
+    #answerGridOverlay {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .answer-bubble {
+        background: rgba(255,255,255,0.1);
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 12px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .answer-bubble:hover {
+        background: rgba(78, 205, 196, 0.3);
+        border-color: #4ECDC4;
+        transform: scale(1.02);
+    }
+    .answer-number {
+        width: 30px;
+        height: 30px;
+        background: #4ECDC4;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #1a1a2e;
+        margin-bottom: 8px;
+    }
+    .answer-bubble .answer-text {
+        color: white;
+        text-align: center;
+        font-size: 0.95rem;
+    }
+    .buzz-info {
+        text-align: center;
+        padding: 15px;
+        background: rgba(78, 205, 196, 0.2);
+        border-radius: 10px;
+    }
+    .buzz-info.not-buzzed {
+        background: rgba(255, 215, 0, 0.2);
+    }
+    .buzz-info-text {
+        color: white;
+        font-size: 1.1rem;
+    }
+    
     /* Scoreboard Phase */
     .scoreboard-overlay {
         background: linear-gradient(135deg, rgba(15, 32, 39, 0.97) 0%, rgba(32, 58, 67, 0.97) 50%, rgba(44, 83, 100, 0.97) 100%);
@@ -1270,6 +1365,49 @@ $roomCode = $params['room_code'] ?? null;
             </div>
         </div>
         <div class="scoreboard-progress" id="scoreboardProgress">{{ __('Question suivante...') }}</div>
+    </div>
+</div>
+
+<!-- Answer Phase Overlay (like Solo mode) -->
+<div class="phase-overlay answer-overlay" id="answerOverlay">
+    <div class="answer-container">
+        <div class="answer-header">
+            <div class="answer-info" style="text-align: center; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 15px;">
+                <div class="answer-question-num" id="answerQuestionNum" style="font-size: 1.7rem; font-weight: 700; flex: 1; text-align: left;">Question #1</div>
+                <div class="answer-points-display" id="answerPointsDisplay" style="font-size: 2.5rem; font-weight: 900; color: #4ECDC4; text-shadow: 0 0 20px rgba(78, 205, 196, 0.5);">+2</div>
+                <div class="answer-score-display" id="answerScoreDisplay" style="font-size: 1.7rem; font-weight: 700; flex: 1; text-align: right;">Score 0/0</div>
+            </div>
+        </div>
+        <div class="answer-timer">
+            <div class="timer-label">
+                <span>⏱️ {{ __('Temps pour répondre') }}</span>
+                <span id="answerTimerText">10s</span>
+            </div>
+            <div class="timer-bar-container">
+                <div class="timer-bar" id="answerTimerBar"></div>
+            </div>
+        </div>
+        <div class="answers-grid" id="answerGridOverlay">
+            <div class="answer-bubble" data-index="0" id="answerBubble0">
+                <div class="answer-number">1</div>
+                <div class="answer-text" id="answerBubbleText0"></div>
+            </div>
+            <div class="answer-bubble" data-index="1" id="answerBubble1">
+                <div class="answer-number">2</div>
+                <div class="answer-text" id="answerBubbleText1"></div>
+            </div>
+            <div class="answer-bubble" data-index="2" id="answerBubble2">
+                <div class="answer-number">3</div>
+                <div class="answer-text" id="answerBubbleText2"></div>
+            </div>
+            <div class="answer-bubble" data-index="3" id="answerBubble3">
+                <div class="answer-number">4</div>
+                <div class="answer-text" id="answerBubbleText3"></div>
+            </div>
+        </div>
+        <div class="buzz-info" id="buzzInfoMessage">
+            <div class="buzz-info-text" id="buzzInfoText">{{ __('Vous avez buzzé !') }} 💚</div>
+        </div>
     </div>
 </div>
 
@@ -2062,10 +2200,11 @@ buzzerSound.load();
 // PhaseController - Manages game phase transitions
 const PhaseController = {
     currentPhase: 'intro',
-    phases: ['intro', 'question', 'buzz', 'reveal', 'scoreboard'],
+    phases: ['intro', 'question', 'buzz', 'answer', 'reveal', 'scoreboard'],
     phaseTimers: {
-        intro: 9000, // 9 seconds intro to match Solo mode (synchronized via introEndTimestamp)
-        reveal: 2000,
+        intro: 9000,
+        answer: 10000,
+        reveal: 15000,
         scoreboard: 2500
     },
     isMultiplayer: gameConfig.isFirebaseMode,
@@ -2112,6 +2251,7 @@ const PhaseController = {
     
     hideAllOverlays() {
         document.getElementById('introOverlay')?.classList.remove('active');
+        document.getElementById('answerOverlay')?.classList.remove('active');
         document.getElementById('revealOverlay')?.classList.remove('active');
         document.getElementById('scoreboardOverlay')?.classList.remove('active');
     },
@@ -2197,6 +2337,86 @@ const PhaseController = {
         
         const answersGrid = document.getElementById('answersGrid');
         if (answersGrid) answersGrid.style.display = 'grid';
+    },
+    
+    showAnswerPhase(options = {}) {
+        const { playerBuzzed = buzzed, potentialPoints = 2 } = options;
+        console.log('[PhaseController] showAnswerPhase called', { playerBuzzed, potentialPoints });
+        
+        this.setPhase('answer');
+        
+        const buzzContainer = document.getElementById('buzzContainer');
+        const answerGrid = document.getElementById('answersGrid');
+        if (buzzContainer) buzzContainer.style.display = 'none';
+        if (answerGrid) answerGrid.style.display = 'none';
+        
+        const answerOverlay = document.getElementById('answerOverlay');
+        const answerTimerBar = document.getElementById('answerTimerBar');
+        const answerTimerText = document.getElementById('answerTimerText');
+        
+        const qNum = gameConfig.currentQuestion || 1;
+        const pScore = parseInt(document.getElementById('playerScore')?.textContent || '0');
+        const oScore = parseInt(document.getElementById('opponentScore')?.textContent || '0');
+        
+        document.getElementById('answerQuestionNum').textContent = `Question #${qNum}`;
+        document.getElementById('answerScoreDisplay').textContent = `Score ${pScore}/${oScore}`;
+        
+        const pointsDisplay = document.getElementById('answerPointsDisplay');
+        const displayPoints = playerBuzzed ? potentialPoints : 0;
+        pointsDisplay.textContent = `+${displayPoints}`;
+        pointsDisplay.style.color = displayPoints === 0 ? '#FFD700' : '#4ECDC4';
+        
+        const buzzInfoMessage = document.getElementById('buzzInfoMessage');
+        const buzzInfoText = document.getElementById('buzzInfoText');
+        if (!playerBuzzed) {
+            buzzInfoMessage?.classList.add('not-buzzed');
+            if (buzzInfoText) buzzInfoText.innerHTML = "⚠️ {{ __('Pas buzzé - Vous pouvez répondre (0 point)') }}";
+        } else {
+            buzzInfoMessage?.classList.remove('not-buzzed');
+            if (buzzInfoText) buzzInfoText.innerHTML = "{{ __('Vous avez buzzé !') }} 💚";
+        }
+        
+        const answers = gameConfig.initialQuestion?.answers || [];
+        answers.forEach((answer, i) => {
+            const textEl = document.getElementById(`answerBubbleText${i}`);
+            if (textEl) {
+                const answerText = typeof answer === 'object' ? (answer?.text || '') : (answer || '');
+                textEl.textContent = answerText;
+            }
+        });
+        
+        if (answerTimerBar) answerTimerBar.style.width = '100%';
+        if (answerTimerText) answerTimerText.textContent = '10s';
+        
+        answerOverlay?.classList.add('active');
+        
+        let answerTimeLeft = 10;
+        if (window.answerTimerInterval) clearInterval(window.answerTimerInterval);
+        
+        window.answerTimerInterval = setInterval(() => {
+            answerTimeLeft--;
+            if (answerTimerBar) answerTimerBar.style.width = (answerTimeLeft / 10 * 100) + '%';
+            if (answerTimerText) answerTimerText.textContent = answerTimeLeft + 's';
+            
+            if (answerTimeLeft <= 3 && answerTimerBar) answerTimerBar.classList.add('warning');
+            
+            if (answerTimeLeft <= 0) {
+                clearInterval(window.answerTimerInterval);
+                window.answerTimerInterval = null;
+                if (typeof submitAnswer === 'function') {
+                    submitAnswer(-1, true);
+                }
+            }
+        }, 1000);
+        
+        document.querySelectorAll('#answerGridOverlay .answer-bubble').forEach(bubble => {
+            bubble.onclick = function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (typeof submitAnswer === 'function') {
+                    submitAnswer(index, false);
+                }
+            };
+        });
     },
     
     showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false) {
@@ -2327,6 +2547,9 @@ const PhaseController = {
                     break;
                 case 'question':
                     this.startQuestion();
+                    break;
+                case 'answer':
+                    this.showAnswerPhase(data);
                     break;
                 case 'reveal':
                     this.showReveal(data.isCorrect, data.correctAnswer, data.points, data.wasTimeout);
