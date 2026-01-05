@@ -715,6 +715,19 @@ class LobbyService
                         'count' => count($questions),
                     ]);
                     
+                    // 2.5. Stocker Q1 dans Firestore pour accès instantané par UnifiedGameController
+                    if (!empty($questions)) {
+                        $firestoreService = $this->getDuoFirestoreService();
+                        $q1Data = $questions[0];
+                        $q1Data['theme'] = $theme;
+                        $q1Data['question_number'] = 1;
+                        $firestoreService->storePreGeneratedQuestion($code, 1, $q1Data);
+                        Log::info("[LobbyService] Q1 stored in Firestore for instant access", [
+                            'lobby_code' => $code,
+                            'question_id' => $q1Data['id'] ?? 'unknown',
+                        ]);
+                    }
+                    
                     // 3. Envoyer les questions au Game Server
                     $sendResult = $this->gameServerService->sendQuestions($roomId, $questions);
                     
