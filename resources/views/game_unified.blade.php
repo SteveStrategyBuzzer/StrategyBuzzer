@@ -2873,27 +2873,53 @@ const PhaseController = {
         }
     },
     
-    onBuzz() {
-        // Calculate points based on remaining time (scoring rules from replit.md)
-        // +2 pts if >3s remaining, +1 pt if 1-3s remaining, 0 pt if <1s remaining
-        let potentialPoints = 0;
-        if (timeLeft > 3) {
-            potentialPoints = 2;
-        } else if (timeLeft >= 1) {
-            potentialPoints = 1;
+    async onBuzz() {
+        // In multiplayer mode, publish buzz to Firebase and get scoring based on who buzzed first
+        if (gameConfig.isFirebaseMode && window.MultiplayerFirestoreProvider) {
+            // Publish our buzz with server timestamp
+            await window.handleFirebaseBuzz(timeLeft);
+            
+            // Wait briefly for opponent's buzz to be registered (race condition handling)
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Get scoring based on buzz order (first buzzer = 2pts, second = 1pt)
+            const scoring = await window.MultiplayerFirestoreProvider.getBuzzScoring();
+            console.log('[PhaseController] onBuzz - Firebase scoring:', scoring);
+            
+            // Show answer phase with calculated points
+            this.showAnswerPhase({ 
+                playerBuzzed: true, 
+                potentialPoints: scoring.myPoints,
+                iAmFirst: scoring.iAmFirst,
+                bothBuzzed: scoring.bothBuzzed
+            });
         } else {
-            potentialPoints = 0;
+            // Solo mode: points based on remaining time
+            // +2 pts if >3s remaining, +1 pt if 1-3s remaining, 0 pt if <1s remaining
+            let potentialPoints = 0;
+            if (timeLeft > 3) {
+                potentialPoints = 2;
+            } else if (timeLeft >= 1) {
+                potentialPoints = 1;
+            } else {
+                potentialPoints = 0;
+            }
+            
+            console.log('[PhaseController] onBuzz - Solo mode, timeLeft:', timeLeft, 'potentialPoints:', potentialPoints);
+            this.showAnswerPhase({ playerBuzzed: true, potentialPoints: potentialPoints });
         }
-        
-        console.log('[PhaseController] onBuzz - timeLeft:', timeLeft, 'potentialPoints:', potentialPoints);
-        
-        // Transition directly to answer phase with the new overlay (like Solo mode)
-        this.showAnswerPhase({ playerBuzzed: true, potentialPoints: potentialPoints });
     },
     
     showAnswerPhase(options = {}) {
-        const { playerBuzzed = buzzed, potentialPoints = 2, answers: optionAnswers = null, questionNumber = null } = options;
-        console.log('[PhaseController] showAnswerPhase called', { playerBuzzed, potentialPoints, optionAnswers });
+        const { 
+            playerBuzzed = buzzed, 
+            potentialPoints = 2, 
+            answers: optionAnswers = null, 
+            questionNumber = null,
+            iAmFirst = false,
+            bothBuzzed = false
+        } = options;
+        console.log('[PhaseController] showAnswerPhase called', { playerBuzzed, potentialPoints, iAmFirst, bothBuzzed });
         
         // Stop buzz timer
         if (timerInterval) {
@@ -2936,6 +2962,8 @@ const PhaseController = {
         this.setPhase('answer', { 
             playerBuzzed, 
             potentialPoints,
+            iAmFirst,
+            bothBuzzed,
             answers: currentQ.answers || [],
             questionNumber: currentQ.question_number || gameConfig.currentQuestion
         });
@@ -2959,13 +2987,25 @@ const PhaseController = {
         const pointsDisplay = document.getElementById('answerPointsDisplay');
         const displayPoints = playerBuzzed ? potentialPoints : 0;
         pointsDisplay.textContent = `+${displayPoints}`;
-        pointsDisplay.style.color = displayPoints === 0 ? '#FFD700' : '#4ECDC4';
+        pointsDisplay.style.color = displayPoints === 0 ? '#FFD700' : (displayPoints === 2 ? '#4ECDC4' : '#FFA500');
         
         const buzzInfoMessage = document.getElementById('buzzInfoMessage');
         const buzzInfoText = document.getElementById('buzzInfoText');
         if (!playerBuzzed) {
             buzzInfoMessage?.classList.add('not-buzzed');
             if (buzzInfoText) buzzInfoText.innerHTML = "⚠️ {{ __('Pas buzzé - Vous pouvez répondre (0 point)') }}";
+        } else if (gameConfig.isFirebaseMode && bothBuzzed) {
+            // Both players buzzed - show who was first
+            buzzInfoMessage?.classList.remove('not-buzzed');
+            if (iAmFirst) {
+                if (buzzInfoText) buzzInfoText.innerHTML = "🥇 {{ __('Premier buzzer !') }} (+2 pts)";
+            } else {
+                if (buzzInfoText) buzzInfoText.innerHTML = "🥈 {{ __('Deuxième buzzer') }} (+1 pt)";
+            }
+        } else if (gameConfig.isFirebaseMode && playerBuzzed) {
+            // Only I buzzed
+            buzzInfoMessage?.classList.remove('not-buzzed');
+            if (buzzInfoText) buzzInfoText.innerHTML = "🥇 {{ __('Seul à buzzer !') }} (+2 pts)";
         } else {
             buzzInfoMessage?.classList.remove('not-buzzed');
             if (buzzInfoText) buzzInfoText.innerHTML = "{{ __('Vous avez buzzé !') }} 💚";

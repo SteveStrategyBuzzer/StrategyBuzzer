@@ -546,27 +546,35 @@ const MultiplayerFirestoreProvider = {
             if (!snapshot.exists()) return false;
             
             const data = snapshot.data();
-            
-            if (data.buzzedPlayerId || data.player1Buzzed || data.player2Buzzed) {
-                console.log('[MultiplayerFirestoreProvider] Someone already buzzed');
-                return false;
-            }
-
             const isPlayer1 = this.playerId === String(data.player1Id);
             const buzzField = isPlayer1 ? 'player1Buzzed' : 'player2Buzzed';
             const buzzTimestampField = isPlayer1 ? 'player1BuzzTimestamp' : 'player2BuzzTimestamp';
+            const buzzTimeField = isPlayer1 ? 'player1BuzzTime' : 'player2BuzzTime';
+            
+            // Check if THIS player already buzzed (prevent double buzz)
+            if ((isPlayer1 && data.player1Buzzed) || (!isPlayer1 && data.player2Buzzed)) {
+                console.log('[MultiplayerFirestoreProvider] Already buzzed');
+                return false;
+            }
 
-            // Use server timestamp for fair comparison between players
-            await this.firestoreUpdateDoc(sessionRef, {
-                buzzedPlayerId: this.playerId,
+            // Allow both players to buzz - we compare timestamps to determine first/second
+            const updateData = {
                 [buzzField]: true,
                 [buzzTimestampField]: this.firestoreServerTimestamp(),
-                buzzTime: buzzTime,
-                buzzTimestamp: this.firestoreServerTimestamp(),
+                [buzzTimeField]: buzzTime,
                 phase: 'buzz'
-            });
+            };
+            
+            // Also set legacy fields for backwards compatibility
+            if (!data.buzzedPlayerId) {
+                updateData.buzzedPlayerId = this.playerId;
+                updateData.buzzTime = buzzTime;
+                updateData.buzzTimestamp = this.firestoreServerTimestamp();
+            }
+            
+            await this.firestoreUpdateDoc(sessionRef, updateData);
 
-            console.log('[MultiplayerFirestoreProvider] Buzz published with server timestamp:', this.playerId);
+            console.log('[MultiplayerFirestoreProvider] Buzz published with server timestamp:', this.playerId, 'timeLeft:', buzzTime);
             return true;
         } catch (err) {
             console.error('[MultiplayerFirestoreProvider] Publish buzz error:', err);
@@ -633,7 +641,11 @@ const MultiplayerFirestoreProvider = {
             const result = {
                 player1Time: p1Buzz ? (p1Buzz - questionStart) : null,
                 player2Time: p2Buzz ? (p2Buzz - questionStart) : null,
-                winnerId: null
+                player1Buzzed: data.player1Buzzed || false,
+                player2Buzzed: data.player2Buzzed || false,
+                winnerId: null,
+                player1Id: data.player1Id,
+                player2Id: data.player2Id
             };
 
             if (p1Buzz && p2Buzz) {
@@ -649,6 +661,65 @@ const MultiplayerFirestoreProvider = {
         } catch (err) {
             console.error('[MultiplayerFirestoreProvider] getFirstBuzzer error:', err);
             return null;
+        }
+    },
+    
+    /**
+     * Calcule les points potentiels pour chaque joueur basé sur l'ordre des buzz
+     * Scoring rules:
+     * - Premier à buzzer: 2 points (si bonne réponse)
+     * - Deuxième à buzzer: 1 point (si bonne réponse)
+     * - Pas buzzé: 0 points
+     * @returns {Promise<Object>} { myPoints, opponentPoints, iAmFirst, bothBuzzed, noBuzz }
+     */
+    async getBuzzScoring() {
+        if (!this.db || !this.sessionId) return { myPoints: 0, opponentPoints: 0, iAmFirst: false, bothBuzzed: false, noBuzz: true };
+
+        try {
+            const sessionRef = this.getSessionRef();
+            const snapshot = await this.firestoreGetDoc(sessionRef);
+            if (!snapshot.exists()) return { myPoints: 0, opponentPoints: 0, iAmFirst: false, bothBuzzed: false, noBuzz: true };
+
+            const data = snapshot.data();
+            const isPlayer1 = this.playerId === String(data.player1Id);
+            
+            const myBuzzed = isPlayer1 ? data.player1Buzzed : data.player2Buzzed;
+            const opponentBuzzed = isPlayer1 ? data.player2Buzzed : data.player1Buzzed;
+            
+            // If no one buzzed
+            if (!myBuzzed && !opponentBuzzed) {
+                return { myPoints: 0, opponentPoints: 0, iAmFirst: false, bothBuzzed: false, noBuzz: true };
+            }
+            
+            // If only I buzzed: I get 2 points potential
+            if (myBuzzed && !opponentBuzzed) {
+                return { myPoints: 2, opponentPoints: 0, iAmFirst: true, bothBuzzed: false, noBuzz: false };
+            }
+            
+            // If only opponent buzzed: they get 2 points potential
+            if (!myBuzzed && opponentBuzzed) {
+                return { myPoints: 0, opponentPoints: 2, iAmFirst: false, bothBuzzed: false, noBuzz: false };
+            }
+            
+            // Both buzzed - compare timestamps to determine who was first
+            const p1Buzz = data.player1BuzzTimestamp?.toMillis?.() || data.player1BuzzTimestamp || 0;
+            const p2Buzz = data.player2BuzzTimestamp?.toMillis?.() || data.player2BuzzTimestamp || 0;
+            
+            const myBuzzTime = isPlayer1 ? p1Buzz : p2Buzz;
+            const opponentBuzzTime = isPlayer1 ? p2Buzz : p1Buzz;
+            
+            const iAmFirst = myBuzzTime <= opponentBuzzTime;
+            
+            return {
+                myPoints: iAmFirst ? 2 : 1,
+                opponentPoints: iAmFirst ? 1 : 2,
+                iAmFirst: iAmFirst,
+                bothBuzzed: true,
+                noBuzz: false
+            };
+        } catch (err) {
+            console.error('[MultiplayerFirestoreProvider] getBuzzScoring error:', err);
+            return { myPoints: 0, opponentPoints: 0, iAmFirst: false, bothBuzzed: false, noBuzz: true };
         }
     },
 
