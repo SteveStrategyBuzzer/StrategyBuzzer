@@ -715,14 +715,62 @@ class LobbyService
                         'count' => count($questions),
                     ]);
                     
-                    // 2.5. Stocker Q1 dans Firestore pour accès instantané par UnifiedGameController
-                    if (!empty($questions)) {
+                    // 2.5. Créer session Firestore, stocker et publier Q1, mettre les flags
+                    // NOTE: We use $code (lobby code) as the canonical identifier for Firestore
+                    // This must match what UnifiedGameController uses (gameState['lobby_code'])
+                    if (!empty($questions) && count($playerIds) >= 2) {
                         $firestoreService = $this->getDuoFirestoreService();
+                        
+                        // Get player information for Firestore session
+                        $player1Id = $playerIds[0] ?? $host->id;
+                        $player2Id = $playerIds[1];
+                        $player1Name = $lobby['players'][$player1Id]['name'] ?? 'Player 1';
+                        $player2Name = $lobby['players'][$player2Id]['name'] ?? 'Player 2';
+                        
+                        // Create Firestore match session document first
+                        $firestoreService->createMatchSession($code, [
+                            'player1_id' => $player1Id,
+                            'player2_id' => $player2Id,
+                            'player1_name' => $player1Name,
+                            'player2_name' => $player2Name,
+                            'theme' => $theme,
+                            'niveau' => $niveau,
+                            'total_questions' => $nbQuestions,
+                            'chrono_time' => $lobby['settings']['chrono_time'] ?? 8,
+                        ]);
+                        Log::info("[LobbyService] Firestore match session created", [
+                            'lobby_code' => $code,
+                        ]);
+                        
                         $q1Data = $questions[0];
                         $q1Data['theme'] = $theme;
                         $q1Data['question_number'] = 1;
+                        
+                        // Store Q1 in preGeneratedQuestions subcollection
                         $firestoreService->storePreGeneratedQuestion($code, 1, $q1Data);
-                        Log::info("[LobbyService] Q1 stored in Firestore for instant access", [
+                        
+                        // Publish Q1 to main document so clients receive it immediately
+                        $questionForPublish = [
+                            'id' => $q1Data['id'] ?? uniqid(),
+                            'text' => $q1Data['text'] ?? '',
+                            'answers' => $q1Data['answers'] ?? [],
+                            'correct_index' => $q1Data['correct_index'] ?? 0,
+                            'sub_theme' => $q1Data['sub_theme'] ?? '',
+                            'question_number' => 1,
+                            'total_questions' => $nbQuestions,
+                            'theme' => $theme,
+                        ];
+                        $firestoreService->publishQuestion($code, $questionForPublish, 1);
+                        
+                        // Set questionsGenerated flag so UnifiedGameController skips regeneration
+                        $firestoreService->updateGameState($code, [
+                            'questionsGenerated' => true,
+                            'questions_generated' => true,
+                            'questions_count' => 1,
+                            'batchingInProgress' => $nbQuestions > 1,
+                        ]);
+                        
+                        Log::info("[LobbyService] Q1 stored, published and flags set in Firestore", [
                             'lobby_code' => $code,
                             'question_id' => $q1Data['id'] ?? 'unknown',
                         ]);
@@ -757,15 +805,16 @@ class LobbyService
                     }
                     
                     // Initialiser le cache anti-doublon avec Q1 (nettoie les anciennes données)
+                    // Use $code (lobby code) as canonical identifier to match Firestore and job dispatch
                     $antiDuplicationCache = new AntiDuplicationCacheService();
                     if (!empty($questions)) {
-                        $antiDuplicationCache->initialize($roomId, $questions[0]);
+                        $antiDuplicationCache->initialize($code, $questions[0]);
                         for ($i = 1; $i < count($questions); $i++) {
-                            $antiDuplicationCache->addQuestion($roomId, $questions[$i]);
+                            $antiDuplicationCache->addQuestion($code, $questions[$i]);
                         }
                     }
                     Log::info("[LobbyService] Initialized anti-duplication cache with Q1", [
-                        'roomId' => $roomId,
+                        'lobby_code' => $code,
                         'question_count' => count($questions),
                     ]);
                     
@@ -784,7 +833,7 @@ class LobbyService
                     
                     if ($totalQuestions > 1) {
                         GenerateMultiplayerQuestionsJob::dispatch(
-                            $roomId,
+                            $code, // Use lobby code for Firestore storage (normalized internally)
                             'duo',
                             $theme,
                             $niveau,

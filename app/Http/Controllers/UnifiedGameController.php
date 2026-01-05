@@ -225,6 +225,7 @@ class UnifiedGameController extends Controller
         $usedAnswers = [];
         $sessionUsedQuestionTexts = [];
         
+        // Generate Q1 (fallback for non-lobby flows like League Individual)
         $generatedQuestion = $this->questionService->generateQuestion(
             $theme,
             $niveau,

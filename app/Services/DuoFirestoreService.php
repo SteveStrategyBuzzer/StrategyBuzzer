@@ -335,7 +335,8 @@ class DuoFirestoreService
     }
 
     /**
-     * Vérifie si les questions ont été générées pour ce match
+     * Vérifie si les questions ont été ENTIÈREMENT générées pour ce match
+     * Ne vérifie que le flag questionsGenerated (pas les questions pré-générées du lobby)
      * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
      */
     public function hasQuestions($matchId): bool
