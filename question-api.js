@@ -571,7 +571,7 @@ IMPORTANT:
 - LONGUEUR: ${lengthConstraint}
 
 🚫 INTERDICTION ABSOLUE DE DUPLICATION:
-${usedAnswers.length > 0 ? `- Réponses déjà utilisées dans ce match: ${usedAnswers.slice(0, 20).map(a => `"${a}"`).join(', ')}${usedAnswers.length > 20 ? ` ... et ${usedAnswers.length - 20} autres` : ''}` : ''}
+${usedAnswers.length > 0 ? `- Réponses/sujets déjà utilisés: ${usedAnswers.slice(0, 50).map(a => `"${a}"`).join(', ')}${usedAnswers.length > 50 ? ` (+${usedAnswers.length - 50} autres)` : ''}` : ''}
 
 RÈGLES ANTI-DUPLICATION STRICTES:
 1. Change de sujet de question si tu arrives à une réponse déjà générée
@@ -728,7 +728,7 @@ IMPORTANT:
 - LONGUEUR: ${lengthConstraint}
 
 🚫 INTERDICTION ABSOLUE DE DUPLICATION:
-${usedAnswers.length > 0 ? `- Réponses/sujets déjà utilisés dans ce match: ${usedAnswers.slice(0, 20).map(a => `"${a}"`).join(', ')}${usedAnswers.length > 20 ? ` ... et ${usedAnswers.length - 20} autres` : ''}` : ''}
+${usedAnswers.length > 0 ? `- Réponses/sujets déjà utilisés: ${usedAnswers.slice(0, 50).map(a => `"${a}"`).join(', ')}${usedAnswers.length > 50 ? ` (+${usedAnswers.length - 50} autres)` : ''}` : ''}
 
 RÈGLES ANTI-DUPLICATION STRICTES:
 1. Change de sujet de question si tu arrives à une réponse déjà générée

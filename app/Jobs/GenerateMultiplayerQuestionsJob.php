@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Services\QuestionService;
 use App\Services\GameServerService;
 use App\Services\QuestionPlanBuilder;
+use App\Services\AntiDuplicationCacheService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -93,13 +94,29 @@ class GenerateMultiplayerQuestionsJob implements ShouldQueue
 
         $questionService = new QuestionService();
         $gameServerService = app(GameServerService::class);
+        $antiDuplicationCache = new AntiDuplicationCacheService();
         
         $endIndex = min($this->startIndex + $this->blocSize - 1, $this->totalQuestions);
         $expectedCount = $endIndex - $this->startIndex + 1;
         $generatedQuestions = [];
-        $usedQuestionIds = $this->usedQuestionIds;
-        $usedAnswers = $this->usedAnswers;
-        $usedQuestionTexts = $this->usedQuestionTexts;
+        
+        $usedQuestionIds = $antiDuplicationCache->exists($this->roomId) 
+            ? $antiDuplicationCache->getUsedQuestionIds($this->roomId) 
+            : $this->usedQuestionIds;
+        $usedAnswers = $antiDuplicationCache->exists($this->roomId) 
+            ? $antiDuplicationCache->getUsedAnswers($this->roomId) 
+            : $this->usedAnswers;
+        $usedQuestionTexts = $antiDuplicationCache->exists($this->roomId) 
+            ? $antiDuplicationCache->getUsedQuestionTexts($this->roomId) 
+            : $this->usedQuestionTexts;
+        
+        Log::info('[GenerateMultiplayerQuestionsJob] Loaded anti-duplication data from Redis', [
+            'room_id' => $this->roomId,
+            'used_ids_count' => count($usedQuestionIds),
+            'used_answers_count' => count($usedAnswers),
+            'used_texts_count' => count($usedQuestionTexts),
+            'from_redis' => $antiDuplicationCache->exists($this->roomId),
+        ]);
 
         for ($questionNumber = $this->startIndex; $questionNumber <= $endIndex; $questionNumber++) {
             $questionType = QuestionPlanBuilder::getQuestionTypeByIndex(
@@ -145,6 +162,8 @@ class GenerateMultiplayerQuestionsJob implements ShouldQueue
                         $usedAnswers[] = $answerText;
                     }
                 }
+                
+                $antiDuplicationCache->addQuestion($this->roomId, $question);
                 
                 Log::info("[GenerateMultiplayerQuestionsJob] Generated question {$questionNumber}", [
                     'type' => $questionType,
@@ -194,6 +213,7 @@ class GenerateMultiplayerQuestionsJob implements ShouldQueue
                     }
                 }
                 
+                $antiDuplicationCache->addQuestion($this->roomId, $question);
                 $deficit--;
                 
                 Log::info('[GenerateMultiplayerQuestionsJob] Replacement question generated', [

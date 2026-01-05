@@ -18,6 +18,7 @@ use App\Services\DuoFirestoreService;
 use App\Services\LeagueIndividualFirestoreService;
 use App\Services\LeagueTeamFirestoreService;
 use App\Jobs\GenerateMultiplayerQuestionsJob;
+use App\Services\AntiDuplicationCacheService;
 use Illuminate\Support\Facades\Log;
 
 class UnifiedGameController extends Controller
@@ -274,6 +275,13 @@ class UnifiedGameController extends Controller
             }
             
             Log::info("[Batching] Generated and stored Question 1 synchronously for {$mode} match {$matchId}");
+            
+            // Initialiser le cache anti-doublon avec Q1
+            $antiDuplicationCache = new AntiDuplicationCacheService();
+            $antiDuplicationCache->addQuestion($matchId, $firstQuestion);
+            Log::info("[Batching] Initialized anti-duplication cache with Q1", [
+                'matchId' => $matchId,
+            ]);
         }
         
         if ($totalQuestions > 1) {

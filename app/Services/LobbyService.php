@@ -7,6 +7,7 @@ use App\Services\DuoFirestoreService;
 use App\Services\GameServerService;
 use App\Services\QuestionPlanBuilder;
 use App\Services\QuestionService;
+use App\Services\AntiDuplicationCacheService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -741,6 +742,16 @@ class LobbyService
                             }
                         }
                     }
+                    
+                    // Initialiser le cache anti-doublon avec Q1
+                    $antiDuplicationCache = new AntiDuplicationCacheService();
+                    foreach ($questions as $q) {
+                        $antiDuplicationCache->addQuestion($roomId, $q);
+                    }
+                    Log::info("[LobbyService] Initialized anti-duplication cache with Q1", [
+                        'roomId' => $roomId,
+                        'question_count' => count($questions),
+                    ]);
                     
                     $hasStrategicAvatar = !empty($lobby['settings']['strategic_avatar'] ?? null) 
                         && ($lobby['settings']['strategic_avatar'] ?? 'Aucun') !== 'Aucun';
