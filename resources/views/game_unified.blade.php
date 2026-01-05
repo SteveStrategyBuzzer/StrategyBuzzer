@@ -1381,7 +1381,6 @@ $roomCode = $params['room_code'] ?? null;
     /* Answer Phase Overlay Styles */
     .answer-overlay {
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        display: flex;
         justify-content: center;
         align-items: center;
     }
