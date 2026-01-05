@@ -991,6 +991,393 @@ $roomCode = $params['room_code'] ?? null;
         font-weight: 700;
     }
     
+    /* Enhanced Reveal Overlay Styles (Unified Design) */
+    .reveal-overlay {
+        background: rgba(0, 0, 0, 0.96);
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .reveal-full-content {
+        max-width: 500px;
+        width: 100%;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .reveal-vs-header {
+        padding: 10px 15px;
+        background: rgba(102, 126, 234, 0.2);
+        border-radius: 10px;
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+    
+    .reveal-vs-label {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #4ECDC4;
+    }
+    
+    .reveal-opponent-name {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #667eea;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .reveal-result-section {
+        text-align: center;
+        padding: 10px 0;
+    }
+    
+    .reveal-round-details {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        padding: 10px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .reveal-round-player, .reveal-round-opponent {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .reveal-round-label {
+        font-size: 0.85rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
+    .reveal-round-opponent .reveal-round-label {
+        color: #f39c12;
+    }
+    
+    .reveal-round-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .reveal-points-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .reveal-points-badge.points-gained {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .reveal-points-badge.points-lost {
+        background: linear-gradient(135deg, #f093fb, #f5576c);
+        color: white;
+    }
+    
+    .reveal-points-badge.points-neutral {
+        background: rgba(255,255,255,0.1);
+        color: #95a5a6;
+    }
+    
+    .reveal-speed-indicator {
+        font-size: 0.75rem;
+        color: #95a5a6;
+        padding: 2px 8px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+    }
+    
+    .reveal-speed-indicator.first {
+        color: #f39c12;
+        background: rgba(243, 156, 18, 0.2);
+    }
+    
+    .reveal-score-battle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+    }
+    
+    .reveal-score-player, .reveal-score-opponent {
+        width: 120px;
+        padding: 12px;
+        border-radius: 12px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+    
+    .reveal-score-player {
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.2) 0%, rgba(68, 160, 141, 0.2) 100%);
+        border: 2px solid #4ECDC4;
+        box-shadow: 0 5px 20px rgba(78, 205, 196, 0.3);
+    }
+    
+    .reveal-score-opponent {
+        background: linear-gradient(145deg, rgba(243, 156, 18, 0.2) 0%, rgba(230, 126, 34, 0.2) 100%);
+        border: 2px solid #f39c12;
+        box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);
+    }
+    
+    .reveal-score-label {
+        font-size: 0.75rem;
+        opacity: 0.8;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .reveal-score-number {
+        font-size: 2rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+    
+    .reveal-score-player .reveal-score-number {
+        color: #4ECDC4;
+    }
+    
+    .reveal-score-opponent .reveal-score-number {
+        color: #f39c12;
+    }
+    
+    .reveal-vs-divider {
+        font-size: 1rem;
+        font-weight: bold;
+        color: #4ECDC4;
+        background: rgba(78, 205, 196, 0.2);
+        padding: 8px;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #4ECDC4;
+    }
+    
+    .reveal-skills-container {
+        background: rgba(102, 126, 234, 0.15);
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 12px;
+        padding: 12px;
+    }
+    
+    .reveal-skills-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 10px;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .reveal-skills-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 1px solid #667eea;
+    }
+    
+    .reveal-skills-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .reveal-skill-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+        border-radius: 8px;
+        padding: 8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .reveal-skill-item.used {
+        opacity: 0.5;
+    }
+    
+    .reveal-skill-icon {
+        font-size: 1.5rem;
+    }
+    
+    .reveal-skill-info {
+        flex: 1;
+    }
+    
+    .reveal-skill-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #667eea;
+    }
+    
+    .reveal-skill-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .reveal-skill-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.5);
+    }
+    
+    .reveal-skill-btn:disabled {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.5);
+        cursor: not-allowed;
+    }
+    
+    .reveal-answers {
+        background: rgba(0,0,0,0.4);
+        padding: 12px;
+        border-radius: 12px;
+        border: 2px solid rgba(255,255,255,0.1);
+    }
+    
+    .reveal-answer-display {
+        padding: 8px 12px;
+        border-radius: 10px;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+        backdrop-filter: blur(5px);
+    }
+    
+    .reveal-answer-display:last-child {
+        margin-bottom: 0;
+    }
+    
+    .reveal-answer-correct {
+        background: rgba(46, 204, 113, 0.25);
+        border: 2px solid #2ECC71;
+    }
+    
+    .reveal-answer-user {
+        background: rgba(231, 76, 60, 0.25);
+        border: 2px solid #E74C3C;
+    }
+    
+    .reveal-answer-user.was-correct {
+        background: rgba(46, 204, 113, 0.25);
+        border: 2px solid #2ECC71;
+    }
+    
+    .reveal-answer-label {
+        opacity: 0.9;
+        font-size: 0.85rem;
+        font-weight: 600;
+        flex-shrink: 0;
+        min-width: 100px;
+    }
+    
+    .reveal-answer-text {
+        flex: 1;
+        text-align: left;
+        font-weight: 500;
+    }
+    
+    .reveal-answer-icon {
+        font-size: 1.4rem;
+    }
+    
+    .reveal-stats {
+        background: rgba(0,0,0,0.3);
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        border-radius: 10px;
+        padding: 10px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .reveal-stats-columns {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .reveal-stats-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .reveal-stats-column.left {
+        border-right: 1px solid rgba(78, 205, 196, 0.3);
+        padding-right: 10px;
+    }
+    
+    .reveal-stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 6px;
+        background: rgba(78, 205, 196, 0.08);
+        border-radius: 5px;
+    }
+    
+    .reveal-stat-row.correct {
+        background: rgba(46, 204, 113, 0.15);
+    }
+    
+    .reveal-stat-row.wrong {
+        background: rgba(231, 76, 60, 0.15);
+    }
+    
+    .reveal-stat-row.no-answer {
+        background: rgba(241, 196, 15, 0.15);
+    }
+    
+    .reveal-stat-label {
+        font-size: 0.75rem;
+        color: rgba(255,255,255,0.7);
+    }
+    
+    .reveal-stat-value {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #4ECDC4;
+    }
+    
+    .answer-icon {
+        font-size: 1.2rem;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .answer-bubble:hover .answer-icon {
+        opacity: 1;
+    }
+    
     /* Answer Phase Overlay Styles */
     .answer-overlay {
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -1340,11 +1727,120 @@ $roomCode = $params['room_code'] ?? null;
 </div>
 
 <div class="phase-overlay reveal-overlay" id="revealOverlay">
-    <div class="reveal-content">
-        <div class="reveal-icon" id="revealIcon">✓</div>
-        <div class="reveal-message" id="revealMessage">{{ __('Bonne réponse !') }}</div>
-        <div class="reveal-answer" id="revealAnswer"></div>
-        <div class="reveal-points" id="revealPoints"></div>
+    <div class="reveal-content reveal-full-content">
+        <!-- VS Header -->
+        <div class="reveal-vs-header" id="revealVsHeader">
+            <span class="reveal-vs-label">VS</span>
+            <span class="reveal-opponent-name" id="revealOpponentName">{{ $opponentName }}</span>
+        </div>
+        
+        <!-- Result Icon & Message -->
+        <div class="reveal-result-section">
+            <div class="reveal-icon" id="revealIcon">✓</div>
+            <div class="reveal-message" id="revealMessage">{{ __('Bonne réponse !') }}</div>
+        </div>
+        
+        <!-- Round Details: Player vs Opponent points -->
+        <div class="reveal-round-details" id="revealRoundDetails">
+            <div class="reveal-round-player">
+                <div class="reveal-round-label">{{ __('Vous') }}</div>
+                <div class="reveal-round-info">
+                    <span class="reveal-points-badge points-gained" id="revealPlayerPoints">+0</span>
+                    <span class="reveal-speed-indicator" id="revealPlayerSpeed"></span>
+                </div>
+            </div>
+            <div class="reveal-round-opponent">
+                <div class="reveal-round-label" id="revealOpponentLabel">{{ __('Adversaire') }}</div>
+                <div class="reveal-round-info">
+                    <span class="reveal-points-badge points-neutral" id="revealOpponentPoints">+0</span>
+                    <span class="reveal-speed-indicator" id="revealOpponentSpeed"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Score Battle -->
+        <div class="reveal-score-battle" id="revealScoreBattle">
+            <div class="reveal-score-player">
+                <div class="reveal-score-label">{{ __('VOUS') }}</div>
+                <div class="reveal-score-number" id="revealScorePlayer">0</div>
+            </div>
+            <div class="reveal-vs-divider">VS</div>
+            <div class="reveal-score-opponent">
+                <div class="reveal-score-label" id="revealScoreOpponentLabel">{{ __('ADVERSAIRE') }}</div>
+                <div class="reveal-score-number" id="revealScoreOpponent">0</div>
+            </div>
+        </div>
+        
+        <!-- Skills Section -->
+        <div class="reveal-skills-container" id="revealSkillsContainer">
+            <div class="reveal-skills-title">
+                <span>{{ __('Compétences') }}</span>
+                @if($strategicAvatarPath)
+                    <img src="{{ $strategicAvatarPath }}" alt="{{ $avatarName }}" class="reveal-skills-avatar">
+                @endif
+            </div>
+            <div class="reveal-skills-grid" id="revealSkillsGrid">
+                @foreach($skills as $index => $skill)
+                    @if($skill)
+                        <div class="reveal-skill-item" data-skill-index="{{ $index }}" id="revealSkill{{ $index }}">
+                            <span class="reveal-skill-icon">{{ $skill['icon'] ?? '❓' }}</span>
+                            <div class="reveal-skill-info">
+                                <span class="reveal-skill-name">{{ $skill['name'] ?? '' }}</span>
+                            </div>
+                            <button class="reveal-skill-btn" onclick="activateRevealSkill({{ $index }})" id="revealSkillBtn{{ $index }}">{{ __('Activer') }}</button>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        </div>
+        
+        <!-- Answers Section -->
+        <div class="reveal-answers" id="revealAnswers">
+            <div class="reveal-answer-display reveal-answer-user" id="revealUserAnswerRow">
+                <span class="reveal-answer-label">{{ __('Votre réponse') }}</span>
+                <span class="reveal-answer-text" id="revealUserAnswer">—</span>
+                <span class="reveal-answer-icon" id="revealUserAnswerIcon">❌</span>
+            </div>
+            <div class="reveal-answer-display reveal-answer-correct">
+                <span class="reveal-answer-label">{{ __('Bonne réponse') }}</span>
+                <span class="reveal-answer-text" id="revealCorrectAnswer">—</span>
+                <span class="reveal-answer-icon">✅</span>
+            </div>
+        </div>
+        
+        <!-- Stats Section (2 columns) -->
+        <div class="reveal-stats" id="revealStats">
+            <div class="reveal-stats-columns">
+                <div class="reveal-stats-column left">
+                    <div class="reveal-stat-row">
+                        <span class="reveal-stat-label">{{ __('Score Match') }}</span>
+                        <span class="reveal-stat-value" id="revealStatMatchScore">0</span>
+                    </div>
+                    <div class="reveal-stat-row">
+                        <span class="reveal-stat-label">{{ __('Vie') }}</span>
+                        <span class="reveal-stat-value" id="revealStatLives">3</span>
+                    </div>
+                    <div class="reveal-stat-row">
+                        <span class="reveal-stat-label">{{ __('Question') }}</span>
+                        <span class="reveal-stat-value" id="revealStatQuestion">1/10</span>
+                    </div>
+                </div>
+                <div class="reveal-stats-column right">
+                    <div class="reveal-stat-row no-answer">
+                        <span class="reveal-stat-label">{{ __('Sans Réponse') }}</span>
+                        <span class="reveal-stat-value" id="revealStatNoAnswer">0</span>
+                    </div>
+                    <div class="reveal-stat-row correct">
+                        <span class="reveal-stat-label">{{ __('Bonne') }}</span>
+                        <span class="reveal-stat-value" id="revealStatCorrect">0</span>
+                    </div>
+                    <div class="reveal-stat-row wrong">
+                        <span class="reveal-stat-label">{{ __('Échec') }}</span>
+                        <span class="reveal-stat-value" id="revealStatWrong">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1391,18 +1887,22 @@ $roomCode = $params['room_code'] ?? null;
             <div class="answer-bubble" data-index="0" id="answerBubble0">
                 <div class="answer-number">1</div>
                 <div class="answer-text" id="answerBubbleText0"></div>
+                <div class="answer-icon">👉</div>
             </div>
             <div class="answer-bubble" data-index="1" id="answerBubble1">
                 <div class="answer-number">2</div>
                 <div class="answer-text" id="answerBubbleText1"></div>
+                <div class="answer-icon">👉</div>
             </div>
             <div class="answer-bubble" data-index="2" id="answerBubble2">
                 <div class="answer-number">3</div>
                 <div class="answer-text" id="answerBubbleText2"></div>
+                <div class="answer-icon">👉</div>
             </div>
             <div class="answer-bubble" data-index="3" id="answerBubble3">
                 <div class="answer-number">4</div>
                 <div class="answer-text" id="answerBubbleText3"></div>
+                <div class="answer-icon">👉</div>
             </div>
         </div>
         <div class="buzz-info" id="buzzInfoMessage">
@@ -2254,6 +2754,12 @@ const PhaseController = {
         document.getElementById('answerOverlay')?.classList.remove('active');
         document.getElementById('revealOverlay')?.classList.remove('active');
         document.getElementById('scoreboardOverlay')?.classList.remove('active');
+        
+        // Stop any running answer timer
+        if (window.answerTimerInterval) {
+            clearInterval(window.answerTimerInterval);
+            window.answerTimerInterval = null;
+        }
     },
     
     showIntro(questionData) {
@@ -2333,17 +2839,32 @@ const PhaseController = {
     },
     
     onBuzz() {
-        this.setPhase('buzz');
-        
-        const answersGrid = document.getElementById('answersGrid');
-        if (answersGrid) answersGrid.style.display = 'grid';
+        // Transition directly to answer phase with the new overlay (like Solo mode)
+        this.showAnswerPhase({ playerBuzzed: true, potentialPoints: 2 });
     },
     
     showAnswerPhase(options = {}) {
-        const { playerBuzzed = buzzed, potentialPoints = 2 } = options;
+        const { playerBuzzed = buzzed, potentialPoints = 2, answers: optionAnswers = null, questionNumber = null } = options;
         console.log('[PhaseController] showAnswerPhase called', { playerBuzzed, potentialPoints });
         
-        this.setPhase('answer');
+        // Stop buzz timer
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        
+        // Get current question data (prefer currentQuestionData, fallback to GameFlowController, then gameConfig)
+        const currentQ = this.currentQuestionData || 
+                         (typeof GameFlowController !== 'undefined' ? GameFlowController.currentQuestionData : null) || 
+                         gameConfig.initialQuestion || {};
+        
+        // Pass answer phase data with question info for Firebase guests
+        this.setPhase('answer', { 
+            playerBuzzed, 
+            potentialPoints,
+            answers: currentQ.answers || [],
+            questionNumber: currentQ.question_number || gameConfig.currentQuestion
+        });
         
         const buzzContainer = document.getElementById('buzzContainer');
         const answerGrid = document.getElementById('answersGrid');
@@ -2354,7 +2875,7 @@ const PhaseController = {
         const answerTimerBar = document.getElementById('answerTimerBar');
         const answerTimerText = document.getElementById('answerTimerText');
         
-        const qNum = gameConfig.currentQuestion || 1;
+        const qNum = questionNumber || currentQ.question_number || gameConfig.currentQuestion || 1;
         const pScore = parseInt(document.getElementById('playerScore')?.textContent || '0');
         const oScore = parseInt(document.getElementById('opponentScore')?.textContent || '0');
         
@@ -2376,7 +2897,8 @@ const PhaseController = {
             if (buzzInfoText) buzzInfoText.innerHTML = "{{ __('Vous avez buzzé !') }} 💚";
         }
         
-        const answers = gameConfig.initialQuestion?.answers || [];
+        // Use answers from options (for Firebase guests), or from current question data
+        const answers = optionAnswers || currentQ.answers || [];
         answers.forEach((answer, i) => {
             const textEl = document.getElementById(`answerBubbleText${i}`);
             if (textEl) {
@@ -2419,16 +2941,22 @@ const PhaseController = {
         });
     },
     
-    showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false) {
-        this.setPhase('reveal', { isCorrect, correctAnswer, points, wasTimeout });
+    showReveal(isCorrect, correctAnswer, points = 0, wasTimeout = false, options = {}) {
+        const {
+            playerScore = 0,
+            opponentScore = 0,
+            userAnswer = null,
+            questionNum = 1,
+            totalQuestions = 10
+        } = options;
         
-        this.lastAnswerResult = { isCorrect, correctAnswer, points, wasTimeout };
+        this.setPhase('reveal', { isCorrect, correctAnswer, points, wasTimeout, ...options });
+        
+        this.lastAnswerResult = { isCorrect, correctAnswer, points, wasTimeout, ...options };
         
         const revealOverlay = document.getElementById('revealOverlay');
         const icon = document.getElementById('revealIcon');
         const message = document.getElementById('revealMessage');
-        const answer = document.getElementById('revealAnswer');
-        const pointsEl = document.getElementById('revealPoints');
         
         icon?.classList.remove('correct');
         message?.classList.remove('correct', 'incorrect', 'timeout');
@@ -2456,18 +2984,62 @@ const PhaseController = {
             }
         }
         
-        if (answer) {
-            answer.textContent = correctAnswer || '';
-            answer.style.display = correctAnswer ? 'block' : 'none';
+        const playerPointsEl = document.getElementById('revealPlayerPoints');
+        if (playerPointsEl) {
+            playerPointsEl.textContent = `+${points}`;
+            playerPointsEl.className = 'reveal-points-badge ' + (points > 0 ? 'points-gained' : 'points-neutral');
         }
         
-        if (pointsEl) {
-            if (points > 0) {
-                pointsEl.textContent = `+${points} {{ __("points") }}`;
-                pointsEl.style.display = 'block';
+        const opponentPointsEl = document.getElementById('revealOpponentPoints');
+        if (opponentPointsEl) {
+            opponentPointsEl.textContent = '+0';
+            opponentPointsEl.className = 'reveal-points-badge points-neutral';
+        }
+        
+        const revealScorePlayer = document.getElementById('revealScorePlayer');
+        if (revealScorePlayer) revealScorePlayer.textContent = playerScore;
+        
+        const revealScoreOpponent = document.getElementById('revealScoreOpponent');
+        if (revealScoreOpponent) revealScoreOpponent.textContent = opponentScore;
+        
+        const userAnswerRow = document.getElementById('revealUserAnswerRow');
+        const userAnswerEl = document.getElementById('revealUserAnswer');
+        const userAnswerIcon = document.getElementById('revealUserAnswerIcon');
+        
+        if (userAnswerEl) {
+            if (wasTimeout) {
+                userAnswerEl.textContent = '{{ __("Pas de réponse") }}';
+            } else if (userAnswer) {
+                userAnswerEl.textContent = userAnswer;
             } else {
-                pointsEl.style.display = 'none';
+                userAnswerEl.textContent = '—';
             }
+        }
+        
+        if (userAnswerRow) {
+            userAnswerRow.classList.toggle('was-correct', isCorrect);
+        }
+        if (userAnswerIcon) {
+            userAnswerIcon.textContent = isCorrect ? '✅' : '❌';
+        }
+        
+        const correctAnswerEl = document.getElementById('revealCorrectAnswer');
+        if (correctAnswerEl) correctAnswerEl.textContent = correctAnswer || '—';
+        
+        const statMatchScore = document.getElementById('revealStatMatchScore');
+        if (statMatchScore) statMatchScore.textContent = playerScore;
+        
+        const statQuestion = document.getElementById('revealStatQuestion');
+        if (statQuestion) statQuestion.textContent = `${questionNum}/${totalQuestions}`;
+        
+        if (!gameConfig.isFirebaseMode) {
+            const vsHeader = document.getElementById('revealVsHeader');
+            const roundDetails = document.getElementById('revealRoundDetails');
+            const scoreBattle = document.getElementById('revealScoreBattle');
+            
+            if (vsHeader) vsHeader.style.display = 'none';
+            if (roundDetails) roundDetails.style.display = 'none';
+            if (scoreBattle) scoreBattle.style.display = 'none';
         }
         
         revealOverlay?.classList.add('active');
@@ -2521,13 +3093,15 @@ const PhaseController = {
         this.startQuestion();
     },
     
-    async onAnswerComplete(isCorrect, correctAnswer, points, playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions, wasTimeout = false) {
-        await this.showReveal(isCorrect, correctAnswer, points, wasTimeout);
+    async onAnswerComplete(isCorrect, correctAnswer, points, playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions, wasTimeout = false, userAnswer = null) {
+        await this.showReveal(isCorrect, correctAnswer, points, wasTimeout, {
+            playerScore,
+            opponentScore,
+            userAnswer,
+            questionNum,
+            totalQuestions
+        });
         
-        // Always show scoreboard (even at end of game to show final scores)
-        await this.showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestions);
-        
-        // If no next question (end of game), ensure all overlays are hidden immediately
         if (!hasNextQuestion) {
             this.hideAllOverlays();
         }
@@ -2552,7 +3126,13 @@ const PhaseController = {
                     this.showAnswerPhase(data);
                     break;
                 case 'reveal':
-                    this.showReveal(data.isCorrect, data.correctAnswer, data.points, data.wasTimeout);
+                    this.showReveal(data.isCorrect, data.correctAnswer, data.points, data.wasTimeout, {
+                        playerScore: data.playerScore || 0,
+                        opponentScore: data.opponentScore || 0,
+                        userAnswer: data.userAnswer || null,
+                        questionNum: data.questionNum || 1,
+                        totalQuestions: data.totalQuestions || 10
+                    });
                     break;
                 case 'scoreboard':
                     this.showScoreboard(data.playerScore, data.opponentScore, data.hasNextQuestion, data.questionNum, data.totalQuestions);
@@ -2778,6 +3358,7 @@ async function submitAnswer(answerIndex, isCorrect) {
         // Get correct answer text for reveal
         const currentQ = gameConfig.initialQuestion || {};
         const correctAnswer = currentQ?.answers?.[data.correct_index]?.text || '';
+        const userAnswer = currentQ?.answers?.[answerIndex]?.text || '';
         const points = data.was_correct ? (data.points_earned || 10) : 0;
         const questionNum = currentQ?.question_number || gameConfig.currentQuestion;
         const totalQuestions = currentQ?.total_questions || gameConfig.totalQuestions;
@@ -2793,7 +3374,8 @@ async function submitAnswer(answerIndex, isCorrect) {
                 data.has_next_question,
                 questionNum,
                 totalQuestions,
-                false
+                false,
+                userAnswer
             );
             
             // Navigate after overlays complete - no extra delay
@@ -3058,6 +3640,7 @@ const GameFlowController = {
                     const data = await response.json();
                     const isCorrect = data.is_correct || data.was_correct;
                     const correctAnswer = questionData.answers[data.correct_index]?.text || '';
+                    const userAnswer = btn.textContent || questionData.answers[idx]?.text || '';
                     const points = isCorrect ? (data.points_earned || 10) : 0;
                     const playerScore = data.player_score || 0;
                     const opponentScore = data.opponent?.opponent_score || 0;
@@ -3093,7 +3676,8 @@ const GameFlowController = {
                             data.has_next_question,
                             questionData.question_number,
                             questionData.total_questions,
-                            false
+                            false,
+                            userAnswer
                         );
                         
                         if (data.has_next_question) {
@@ -3178,10 +3762,16 @@ window.GameFlowController = GameFlowController;
 async function handleTimeout() {
     document.getElementById('noBuzzSound').play().catch(e => console.log('Sound error:', e));
     
+    // Buzz timer expired - show Answer phase with 0 points (player can still answer but for 0 pts)
+    if (typeof PhaseController !== 'undefined') {
+        PhaseController.showAnswerPhase({ playerBuzzed: false, potentialPoints: 0 });
+        return; // Let the answer phase timer handle the rest
+    }
+    
+    // Fallback: Submit timeout answer directly if PhaseController not available
     const currentQ = GameFlowController.currentQuestionData || gameConfig.initialQuestion;
     const correctAnswer = currentQ?.answers?.find(a => a.is_correct)?.text || '';
     
-    // Submit answer first to get server response (for scores and next question check)
     try {
         const response = await fetch(gameConfig.routes.answer, {
             method: 'POST',
@@ -3213,7 +3803,7 @@ async function handleTimeout() {
             await window.handleFirebaseScore(playerScore);
         }
         
-        // Use PhaseController to properly chain reveal → scoreboard → next question
+        // Use PhaseController fallback to properly chain reveal → next question
         if (typeof PhaseController !== 'undefined') {
             await PhaseController.onAnswerComplete(
                 false,
@@ -3224,7 +3814,8 @@ async function handleTimeout() {
                 data.has_next_question,
                 currentQ?.question_number || gameConfig.currentQuestion,
                 currentQ?.total_questions || gameConfig.totalQuestions,
-                true  // wasTimeout = true
+                true,  // wasTimeout = true
+                null   // userAnswer = null (no answer was given)
             );
             
             if (data.has_next_question) {
@@ -3647,6 +4238,36 @@ function markSkillUsed(skillId) {
         skillEl.classList.remove('active');
     }
 }
+
+function activateRevealSkill(skillIndex) {
+    const skillItem = document.getElementById(`revealSkill${skillIndex}`);
+    const skillBtn = document.getElementById(`revealSkillBtn${skillIndex}`);
+    
+    if (!skillItem || skillItem.classList.contains('used')) return;
+    
+    const skillEl = skillItem.querySelector('.reveal-skill-icon');
+    const skillId = skillItem.dataset?.skillIndex ?? skillIndex;
+    
+    skillItem.classList.add('used');
+    if (skillBtn) skillBtn.disabled = true;
+    
+    console.log('[RevealSkill] Activating skill:', skillIndex);
+    
+    fetch('/game/{{ $mode }}/use-skill', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': gameConfig.csrfToken
+        },
+        body: JSON.stringify({ skill_id: skillId, from_reveal: true })
+    }).then(response => response.json()).then(data => {
+        console.log('[RevealSkill] Skill activated:', data);
+    }).catch(err => {
+        console.error('[RevealSkill] Error:', err);
+    });
+}
+
+window.activateRevealSkill = activateRevealSkill;
 
 function markAttackProcessed(attackId) {
     if (gameConfig.matchId && typeof firebase !== 'undefined') {
