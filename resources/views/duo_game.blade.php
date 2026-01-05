@@ -3059,6 +3059,19 @@ function updateUI(data) {
     }
 }
 
+function toAnswerText(answer) {
+    if (answer === null || answer === undefined) return '';
+    if (typeof answer === 'string') return answer;
+    if (typeof answer === 'number' || typeof answer === 'boolean') return String(answer);
+    if (typeof answer === 'object') {
+        if (answer.text) return String(answer.text);
+        if (answer.label) return String(answer.label);
+        if (answer.value !== undefined && answer.value !== null) return String(answer.value);
+        return '';
+    }
+    return String(answer);
+}
+
 function loadQuestionIntoUI(questionData) {
     document.getElementById('currentQuestionNum').textContent = questionData.question_number;
     document.getElementById('questionText').textContent = questionData.question_text;
@@ -3068,9 +3081,7 @@ function loadQuestionIntoUI(questionData) {
         for (let i = 0; i < 4; i++) {
             const btn = document.getElementById(`answer${i}`);
             if (btn) {
-                // Normalize answer: can be string or {text: "...", value: ...} object
-                const answer = questionData.answers[i];
-                const answerTextValue = typeof answer === 'object' ? (answer.text || answer.label || '') : (answer || '');
+                const answerTextValue = toAnswerText(questionData.answers[i]);
                 
                 const answerText = btn.querySelector('.answer-text');
                 if (answerText) {
@@ -3754,8 +3765,7 @@ function applyOwnSkill(skillId) {
                 });
                 if (wrongIndices.length > 0) {
                     const randomWrong = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
-                    const answer = currentQuestionData.answers[randomWrong];
-                    const answerTextValue = typeof answer === 'object' ? (answer.text || answer.label || '') : (answer || '');
+                    const answerTextValue = toAnswerText(currentQuestionData.answers[randomWrong]);
                     
                     answersButtons[randomWrong].classList.add('acidified');
                     answersButtons[randomWrong].style.opacity = '0.5';
@@ -3774,8 +3784,7 @@ function applyOwnSkill(skillId) {
                 });
                 const shuffled = wrongIndices.sort(() => Math.random() - 0.5).slice(0, 2);
                 shuffled.forEach(idx => {
-                    const answer = currentQuestionData.answers[idx];
-                    const answerTextValue = typeof answer === 'object' ? (answer.text || answer.label || '') : (answer || '');
+                    const answerTextValue = toAnswerText(currentQuestionData.answers[idx]);
                     
                     answersButtons[idx].classList.add('eliminated');
                     answersButtons[idx].style.opacity = '0.3';
