@@ -2064,7 +2064,7 @@ const PhaseController = {
     currentPhase: 'intro',
     phases: ['intro', 'question', 'buzz', 'reveal', 'scoreboard'],
     phaseTimers: {
-        intro: 3000,
+        intro: 9000, // 9 seconds intro to match Solo mode (synchronized via introEndTimestamp)
         reveal: 2000,
         scoreboard: 2500
     },
@@ -2139,10 +2139,42 @@ const PhaseController = {
         introOverlay?.classList.add('active');
         
         return new Promise(resolve => {
+            // For Q1 in multiplayer: use synchronized introEndTimestamp from Firebase
+            // This ensures all players see the intro end at the exact same moment
+            let introDuration = this.phaseTimers.intro;
+            
+            if (this.isMultiplayer && questionData.question_number === 1 && window.introEndTimestamp) {
+                const now = Date.now();
+                const remaining = window.introEndTimestamp - now;
+                
+                console.log('[PhaseController] Synchronized intro timing:', {
+                    introEndTimestamp: window.introEndTimestamp,
+                    now: now,
+                    remainingMs: remaining
+                });
+                
+                if (remaining <= 0) {
+                    // Intro already finished (late load), skip immediately
+                    console.log('[PhaseController] Intro already finished, skipping');
+                    this.hideAllOverlays();
+                    resolve();
+                    return;
+                }
+                
+                introDuration = remaining;
+            }
+            
+            // For Q2+ or solo mode: use standard 3-second intro
+            if (questionData.question_number > 1) {
+                introDuration = 3000;
+            }
+            
+            console.log('[PhaseController] Intro duration:', introDuration, 'ms for Q', questionData.question_number);
+            
             setTimeout(() => {
                 this.hideAllOverlays();
                 resolve();
-            }, this.phaseTimers.intro);
+            }, introDuration);
         });
     },
     

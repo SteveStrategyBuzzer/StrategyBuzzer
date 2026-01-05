@@ -196,6 +196,23 @@ const MultiplayerFirestoreProvider = {
             
             const data = snapshot.data();
             
+            // Store intro sync timestamps for synchronized game start
+            // Update if timestamps change (late joiners may receive corrected data)
+            if (data.introEndTimestamp) {
+                const isNewOrUpdated = !window.introEndTimestamp || 
+                    window.introEndTimestamp !== data.introEndTimestamp;
+                if (isNewOrUpdated) {
+                    window.introEndTimestamp = data.introEndTimestamp;
+                    window.gameStartTimeMs = data.gameStartTimeMs || 0;
+                    window.introDurationMs = data.introDurationMs || 9000;
+                    console.log('[MultiplayerFirestoreProvider] Intro sync timestamps stored:', {
+                        introEndTimestamp: window.introEndTimestamp,
+                        gameStartTimeMs: window.gameStartTimeMs,
+                        introDurationMs: window.introDurationMs
+                    });
+                }
+            }
+            
             // OPTION C: Use server-generated questionSequence as primary dedup key
             // This is a microsecond timestamp that's unique for each backend publish
             const questionSequence = data.questionSequence || 0;

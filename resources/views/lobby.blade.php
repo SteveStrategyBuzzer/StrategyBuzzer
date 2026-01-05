@@ -4440,11 +4440,40 @@ function hideCountdownOverlay() {
     }
 }
 
+// Normalize match ID for Firebase path - must match backend DuoFirestoreService::normalizeMatchId()
+function normalizeMatchIdJs(matchId) {
+    if (typeof matchId === 'number' && matchId > 0) {
+        return matchId;
+    }
+    const matchIdStr = String(matchId);
+    const numericId = parseInt(matchIdStr.replace(/[^0-9]/g, ''), 10) || 0;
+    if (numericId === 0) {
+        let crc = 0xFFFFFFFF;
+        for (let i = 0; i < matchIdStr.length; i++) {
+            crc ^= matchIdStr.charCodeAt(i);
+            for (let j = 0; j < 8; j++) {
+                crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
+            }
+        }
+        return ((crc ^ 0xFFFFFFFF) >>> 0) & 0x7FFFFFFF;
+    }
+    return numericId;
+}
+
 function runCountdownAnimation(serverEndTime, totalDuration, countdownDocRef, serverStartTime) {
     const numberEl = document.getElementById('countdown-number');
     const precisionEl = document.getElementById('countdown-precision');
     const label = document.getElementById('countdown-label');
     let gameNavigated = false;
+    
+    // Prefetch the game page during countdown to reduce load time
+    // This ensures the page is cached when we navigate after countdown
+    const prefetchLink = document.createElement('link');
+    prefetchLink.rel = 'prefetch';
+    prefetchLink.href = `/game/${mode}/play`;
+    prefetchLink.as = 'document';
+    document.head.appendChild(prefetchLink);
+    console.log('[Countdown] Prefetching game page:', prefetchLink.href);
     
     function updateCountdown() {
         // Calculate remaining time using synchronized server time
@@ -4467,6 +4496,32 @@ function runCountdownAnimation(serverEndTime, totalDuration, countdownDocRef, se
                 
                 setTimeout(async () => {
                     console.log('[Countdown] Countdown finished! Starting game...');
+                    
+                    // Calculate introEndTimestamp = countdown end time + 9 seconds intro
+                    // Use serverEndTime (synchronized) so all clients get the same value
+                    const introDurationMs = 9000;
+                    const introEndTimestamp = serverEndTime + introDurationMs;
+                    
+                    // Publish introEndTimestamp to Firebase for synchronized intro
+                    // Host publishes, all clients read the same value
+                    if (isHostFirebase && db) {
+                        try {
+                            const normalizedId = normalizeMatchIdJs(lobbyCode);
+                            const gameDocRef = doc(db, 'games', `duo-match-${normalizedId}`);
+                            await setDoc(gameDocRef, {
+                                introEndTimestamp: introEndTimestamp,
+                                gameStartTimeMs: serverEndTime,
+                                introDurationMs: introDurationMs
+                            }, { merge: true });
+                            console.log('[Countdown] Published intro sync timestamps:', {
+                                introEndTimestamp,
+                                gameStartTimeMs: serverEndTime,
+                                introDurationMs
+                            });
+                        } catch (err) {
+                            console.error('[Countdown] Failed to publish intro timestamps:', err);
+                        }
+                    }
                     
                     // Clean up countdown document to allow future countdowns
                     if (countdownDocRef) {

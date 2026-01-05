@@ -367,6 +367,11 @@ class DuoFirestoreService
     {
         $startTime = microtime(true);
         
+        // Check if intro timestamps already exist (published by lobby countdown)
+        // If they exist, do NOT overwrite them - lobby countdown is the source of truth
+        $existingState = $this->getGameState($matchId);
+        $hasLobbyTimestamps = isset($existingState['introEndTimestamp']) && $existingState['introEndTimestamp'] > 0;
+        
         $signalData = [
             'gameStarted' => true,
             'gameStartTime' => $startTime,
@@ -376,6 +381,19 @@ class DuoFirestoreService
             'totalQuestions' => $gameData['total_questions'] ?? 10,
             'chronoTime' => $gameData['chrono_time'] ?? 8,
         ];
+        
+        // Only set intro timestamps if they weren't already set by the lobby
+        // This preserves the synchronized timestamps from the countdown
+        if (!$hasLobbyTimestamps) {
+            $startTimeMs = round($startTime * 1000);
+            $introDurationMs = 9000;
+            $signalData['gameStartTimeMs'] = $startTimeMs;
+            $signalData['introEndTimestamp'] = $startTimeMs + $introDurationMs;
+            $signalData['introDurationMs'] = $introDurationMs;
+            Log::info("sendGameStartSignal: No lobby timestamps found, using backend timestamps for match #{$matchId}");
+        } else {
+            Log::info("sendGameStartSignal: Preserving lobby intro timestamps for match #{$matchId}");
+        }
         
         $result = $this->updateGameState($matchId, $signalData);
         
