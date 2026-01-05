@@ -2874,8 +2874,21 @@ const PhaseController = {
     },
     
     onBuzz() {
+        // Calculate points based on remaining time (scoring rules from replit.md)
+        // +2 pts if >3s remaining, +1 pt if 1-3s remaining, 0 pt if <1s remaining
+        let potentialPoints = 0;
+        if (timeLeft > 3) {
+            potentialPoints = 2;
+        } else if (timeLeft >= 1) {
+            potentialPoints = 1;
+        } else {
+            potentialPoints = 0;
+        }
+        
+        console.log('[PhaseController] onBuzz - timeLeft:', timeLeft, 'potentialPoints:', potentialPoints);
+        
         // Transition directly to answer phase with the new overlay (like Solo mode)
-        this.showAnswerPhase({ playerBuzzed: true, potentialPoints: 2 });
+        this.showAnswerPhase({ playerBuzzed: true, potentialPoints: potentialPoints });
     },
     
     showAnswerPhase(options = {}) {
