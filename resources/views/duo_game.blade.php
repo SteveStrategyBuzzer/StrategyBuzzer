@@ -1771,7 +1771,7 @@ $skills = $skills ?? [];
         
         <!-- Countdown Timer -->
         <div class="reveal-countdown" id="revealCountdown">
-            {{ __('Prochaine question dans') }} <span class="reveal-countdown-timer" id="revealCountdownTimer">6</span> {{ __('secondes...') }}
+            {{ __('Prochaine question dans') }} <span class="reveal-countdown-timer" id="revealCountdownTimer">15</span> {{ __('secondes...') }}
         </div>
     </div>
 </div>
@@ -1910,7 +1910,7 @@ const PhaseController = {
     phases: ['intro', 'question', 'buzz', 'reveal', 'scoreboard'],
     phaseTimers: {
         intro: 9000,
-        reveal: 6000,
+        reveal: 15000,  // 15 seconds like Solo mode
         scoreboard: 2500
     },
     revealCountdownInterval: null,
