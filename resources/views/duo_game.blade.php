@@ -2349,6 +2349,8 @@ const PhaseController = {
         
         try {
             if (showRevealPhase && currentPhase !== 'reveal') {
+                // Show unified reveal page (contains score battle, stats, skills, etc.)
+                // No separate scoreboard - everything is in one comprehensive reveal like Solo mode
                 await this.showReveal({
                     isCorrect,
                     correctAnswer,
@@ -2365,10 +2367,11 @@ const PhaseController = {
                     questionNum,
                     totalQuestionsCount: totalQuestionsParam,
                     explanation: explanation || currentQuestionData?.explanation || '',
-                    revealEndsAt: effectiveRevealEndsAt
+                    revealEndsAt: effectiveRevealEndsAt,
+                    hasNextQuestion
                 });
             }
-            await this.showScoreboard(playerScore, opponentScore, hasNextQuestion, questionNum, totalQuestionsParam);
+            // REMOVED: showScoreboard() call - unified reveal already contains score battle
         } finally {
             isProcessingPhase = false;
         }
@@ -2933,14 +2936,9 @@ function updateUI(data) {
             
         case 'ROUND_SCOREBOARD':
         case 'SCOREBOARD':
-            if (currentPhase !== 'scoreboard') {
-                currentPhase = 'scoreboard';
-                const pScore = state.score || state.player_score || 0;
-                const oScore = state.opponent_score || 0;
-                const hasNext = state.has_next_question ?? true;
-                const qNum = state.current_question_number || 1;
-                PhaseController.showScoreboard(pScore, oScore, hasNext, qNum, totalQuestions);
-            }
+            // IGNORED: Scoreboard is now integrated into the unified reveal overlay
+            // The reveal already shows score battle, so no separate scoreboard needed
+            console.log('[DuoGame] Ignoring SCOREBOARD phase - using unified reveal');
             return;
             
         case 'INTRO':
@@ -3563,15 +3561,9 @@ function handleServerPhase(phase, data) {
             
         case 'ROUND_SCOREBOARD':
         case 'SCOREBOARD':
-            if (currentPhase !== 'scoreboard' && phaseData) {
-                PhaseController.showScoreboard(
-                    phaseData.playerScore || 0,
-                    phaseData.opponentScore || 0,
-                    phaseData.hasNextQuestion !== false,
-                    phaseData.questionNum || 1,
-                    phaseData.totalQuestions || totalQuestions
-                );
-            }
+            // IGNORED: Scoreboard is now integrated into the unified reveal overlay
+            // The reveal already shows score battle, so no separate scoreboard needed
+            console.log('[DuoGame] Ignoring SCOREBOARD phase - using unified reveal');
             break;
             
         case 'TIEBREAKER_CHOICE':
