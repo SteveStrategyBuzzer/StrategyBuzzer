@@ -2272,10 +2272,11 @@ const PhaseController = {
         document.getElementById('playerBuzzIndicator').classList.remove('buzzed');
         document.getElementById('opponentBuzzIndicator').classList.remove('buzzed');
         
-        // Reset answer button states (clear correct/incorrect/disabled/selected classes)
+        // Disable and hide old answer buttons during question phase (must buzz first!)
         document.querySelectorAll('.answer-option').forEach(btn => {
-            btn.classList.remove('correct', 'incorrect', 'disabled', 'selected');
-            btn.disabled = false;
+            btn.classList.remove('correct', 'incorrect', 'selected');
+            btn.classList.add('disabled');
+            btn.disabled = true;
         });
         
         startBuzzTimer();
@@ -2295,6 +2296,8 @@ const PhaseController = {
             potentialPoints = 2  // Default max points
         } = options;
         
+        console.log('[PhaseController] showAnswerPhase called', { playerBuzzed, potentialPoints });
+        
         // Stop buzz timer
         if (timerInterval) {
             clearInterval(timerInterval);
@@ -2302,6 +2305,14 @@ const PhaseController = {
         }
         
         this.setPhase('answer');
+        
+        // Hide question phase elements explicitly
+        const buzzContainer = document.getElementById('buzzContainer');
+        const oldAnswersGrid = document.getElementById('answersGrid');
+        const questionArea = document.getElementById('questionArea');
+        if (buzzContainer) buzzContainer.style.display = 'none';
+        if (oldAnswersGrid) oldAnswersGrid.style.display = 'none';
+        if (questionArea) questionArea.style.opacity = '0.3';
         
         const answerOverlay = document.getElementById('answerOverlay');
         const answerTimerBar = document.getElementById('answerTimerBar');
@@ -2368,6 +2379,7 @@ const PhaseController = {
         
         // Show the overlay
         answerOverlay?.classList.add('active');
+        console.log('[PhaseController] Answer overlay shown, active:', answerOverlay?.classList.contains('active'));
         
         // Start the answer countdown timer (10 seconds)
         answerTimeLeft = 10;

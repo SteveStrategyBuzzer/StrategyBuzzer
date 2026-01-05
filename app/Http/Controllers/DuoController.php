@@ -618,7 +618,7 @@ class DuoController extends Controller
         $opponentScore = 0;
         $currentUser = $user;
 
-        return view('duo_game', [
+        return response()->view('duo_game', [
             'match_id' => $match->id,
             'match' => $match->load(['player1', 'player2']),
             'game_server_url' => $gameServerUrl,
@@ -639,7 +639,9 @@ class DuoController extends Controller
             'currentQuestion' => $currentQuestion,
             'theme' => $theme,
             'themeDisplay' => $themeDisplay,
-        ]);
+        ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
     }
     
     protected function getPlayerSkillsWithTriggers($user): array
