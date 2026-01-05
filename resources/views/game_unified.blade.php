@@ -1422,42 +1422,77 @@ $roomCode = $params['room_code'] ?? null;
     }
     #answerGridOverlay {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-bottom: 20px;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+        flex: 1;
+        overflow-y: auto;
     }
     .answer-bubble {
-        background: rgba(255,255,255,0.1);
-        border: 2px solid rgba(255,255,255,0.3);
-        border-radius: 12px;
-        padding: 15px;
+        background: linear-gradient(145deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 15px;
+        padding: 12px 18px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(5px);
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
+        gap: 12px;
+    }
+    .answer-bubble::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        transition: left 0.5s;
+    }
+    .answer-bubble:hover::before {
+        left: 100%;
     }
     .answer-bubble:hover {
-        background: rgba(78, 205, 196, 0.3);
+        transform: translateX(8px) scale(1.02);
         border-color: #4ECDC4;
-        transform: scale(1.02);
+        background: linear-gradient(145deg, rgba(78, 205, 196, 0.25) 0%, rgba(102, 126, 234, 0.25) 100%);
+        box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
+    }
+    .answer-bubble:active {
+        transform: translateX(4px) scale(0.98);
     }
     .answer-number {
-        width: 30px;
-        height: 30px;
-        background: #4ECDC4;
+        width: 35px;
+        height: 35px;
+        min-width: 35px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: bold;
-        color: #1a1a2e;
-        margin-bottom: 8px;
+        font-size: 1.1rem;
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
     }
     .answer-bubble .answer-text {
         color: white;
-        text-align: center;
+        text-align: left;
         font-size: 0.95rem;
+        font-weight: 500;
+        flex: 1;
+    }
+    .answer-bubble .answer-icon {
+        font-size: 1.2rem;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .answer-bubble:hover .answer-icon {
+        opacity: 1;
     }
     .buzz-info {
         text-align: center;
@@ -2845,7 +2880,7 @@ const PhaseController = {
     
     showAnswerPhase(options = {}) {
         const { playerBuzzed = buzzed, potentialPoints = 2, answers: optionAnswers = null, questionNumber = null } = options;
-        console.log('[PhaseController] showAnswerPhase called', { playerBuzzed, potentialPoints });
+        console.log('[PhaseController] showAnswerPhase called', { playerBuzzed, potentialPoints, optionAnswers });
         
         // Stop buzz timer
         if (timerInterval) {
@@ -2853,10 +2888,36 @@ const PhaseController = {
             timerInterval = null;
         }
         
-        // Get current question data (prefer currentQuestionData, fallback to GameFlowController, then gameConfig)
-        const currentQ = this.currentQuestionData || 
-                         (typeof GameFlowController !== 'undefined' ? GameFlowController.currentQuestionData : null) || 
-                         gameConfig.initialQuestion || {};
+        // Get current question data with robust fallback chain
+        let currentQ = null;
+        
+        // Priority 1: Options passed directly (for Firebase guests)
+        if (optionAnswers && optionAnswers.length > 0) {
+            currentQ = { answers: optionAnswers, question_number: questionNumber };
+            console.log('[PhaseController] Using optionAnswers from Firebase');
+        }
+        // Priority 2: PhaseController's stored data
+        else if (this.currentQuestionData && this.currentQuestionData.answers) {
+            currentQ = this.currentQuestionData;
+            console.log('[PhaseController] Using this.currentQuestionData');
+        }
+        // Priority 3: GameFlowController's stored data
+        else if (typeof GameFlowController !== 'undefined' && GameFlowController.currentQuestionData?.answers) {
+            currentQ = GameFlowController.currentQuestionData;
+            console.log('[PhaseController] Using GameFlowController.currentQuestionData');
+        }
+        // Priority 4: Initial question from page load
+        else if (gameConfig.initialQuestion && gameConfig.initialQuestion.answers) {
+            currentQ = gameConfig.initialQuestion;
+            console.log('[PhaseController] Using gameConfig.initialQuestion');
+        }
+        // Fallback: empty
+        else {
+            currentQ = { answers: [], question_number: 1 };
+            console.warn('[PhaseController] No question data found!');
+        }
+        
+        console.log('[PhaseController] currentQ answers:', currentQ.answers);
         
         // Pass answer phase data with question info for Firebase guests
         this.setPhase('answer', { 
@@ -2897,12 +2958,14 @@ const PhaseController = {
             if (buzzInfoText) buzzInfoText.innerHTML = "{{ __('Vous avez buzzé !') }} 💚";
         }
         
-        // Use answers from options (for Firebase guests), or from current question data
-        const answers = optionAnswers || currentQ.answers || [];
+        // Use answers from current question data
+        const answers = currentQ.answers || [];
+        console.log('[PhaseController] Populating bubbles with', answers.length, 'answers');
         answers.forEach((answer, i) => {
             const textEl = document.getElementById(`answerBubbleText${i}`);
             if (textEl) {
                 const answerText = typeof answer === 'object' ? (answer?.text || '') : (answer || '');
+                console.log(`[PhaseController] Bubble ${i}:`, answerText);
                 textEl.textContent = answerText;
             }
         });
