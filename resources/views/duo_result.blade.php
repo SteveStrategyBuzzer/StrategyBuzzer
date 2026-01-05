@@ -1,897 +1,526 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="duo-result-container">
-    <div class="result-header">
-        @if($match_result['forfeit'] ?? false)
-            <div class="result-title victory forfeit">VICTOIRE PAR FORFAIT !</div>
-            <div class="result-icon">🏆</div>
-            <div class="forfeit-reason">{{ $match_result['forfeit_label'] ?? __('Abandon du joueur adverse') }}</div>
-        @elseif($match_result['player_won'])
-            <div class="result-title victory">VICTOIRE !</div>
-            <div class="result-icon">🏆</div>
-        @else
-            <div class="result-title defeat">DÉFAITE</div>
-            <div class="result-icon">😔</div>
-        @endif
-    </div>
-
-    <div class="final-score">
-        <div class="player-final player-side">
-            <div class="player-avatar">
-                @if(Auth::user()->avatar_url)
-                    <img src="{{ Auth::user()->avatar_url }}" alt="Vous">
-                @else
-                    <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
-                @endif
-            </div>
-            <h3>{{ Auth::user()->name }}</h3>
-            <div class="rounds-won {{ $match_result['player_won'] ? 'winner' : '' }}">
-                {{ $match_result['player_rounds_won'] }}
-            </div>
-        </div>
-
-        <div class="vs-divider">-</div>
-
-        <div class="player-final opponent-side">
-            <div class="player-avatar">
-                @if($opponent['avatar_url'] ?? null)
-                    <img src="{{ $opponent['avatar_url'] }}" alt="{{ $opponent['name'] }}">
-                @else
-                    <div class="default-avatar">{{ substr($opponent['name'] ?? 'O', 0, 1) }}</div>
-                @endif
-            </div>
-            <h3>{{ $opponent['name'] ?? 'Adversaire' }}</h3>
-            <div class="rounds-won {{ !$match_result['player_won'] ? 'winner' : '' }}">
-                {{ $match_result['opponent_rounds_won'] }}
-            </div>
-        </div>
-    </div>
-
-    <div class="stats-section">
-        <div class="stat-card">
-            <div class="stat-label">Points gagnés/perdus</div>
-            <div class="stat-value {{ $points_earned >= 0 ? 'positive' : 'negative' }}">
-                {{ $points_earned >= 0 ? '+' : '' }}{{ $points_earned }}
-            </div>
-        </div>
-
-        @if(($coins_earned ?? 0) > 0)
-        <div class="stat-card coins-card">
-            <div class="stat-label">Pièces de compétence gagnées</div>
-            <div class="stat-value coins">
-                +{{ $coins_earned }} 🪙
-            </div>
-            @if($coins_bonus ?? 0)
-            <div class="stat-detail {{ $coins_bonus > 0 ? 'bonus-positive' : 'bonus-negative' }}">
-                @if($opponent_strength === 'stronger')
-                    Bonus adversaire plus fort (+50%)
-                @elseif($opponent_strength === 'weaker')
-                    Malus adversaire plus faible (-50%)
-                @endif
-            </div>
-            @endif
-        </div>
-        @endif
-
-        @if($bet_info ?? null)
-        <div class="stat-card bet-card" id="bet-result-card">
-            <div class="stat-label">
-                <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 20px; height: 20px; vertical-align: middle;">
-                {{ __('Résultat du pari') }}
-            </div>
-            <div class="stat-value bet-counter" id="bet-counter" data-target="{{ $bet_winnings ?? 0 }}">
-                0
-            </div>
-            <div class="stat-detail">
-                {{ __('Mise totale') }}: {{ $bet_info['total_pot'] ?? 0 }} 🪙
-            </div>
-        </div>
-        @endif
-
-        <div class="stat-card">
-            <div class="stat-label">Nouvelle division</div>
-            <div class="stat-value division">
-                {{ $new_division['name'] }}
-            </div>
-            <div class="stat-detail">
-                Niveau {{ $new_division['level'] }} • {{ $new_division['points'] }} pts
-            </div>
-        </div>
-
-        @if($division_changed ?? false)
-        <div class="division-change">
-            <div class="change-message">
-                Vous êtes passé en {{ $new_division['name'] }} !
-            </div>
-        </div>
-        @endif
-    </div>
-
-    <div class="match-stats">
-        <h3>STATISTIQUES DU MATCH</h3>
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="stat-icon">✓</span>
-                <span class="stat-number">{{ $global_stats['correct'] ?? 0 }}</span>
-                <span class="stat-text">Bonnes réponses</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-icon">✗</span>
-                <span class="stat-number">{{ $global_stats['incorrect'] ?? 0 }}</span>
-                <span class="stat-text">Mauvaises réponses</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-icon">💯</span>
-                <span class="stat-number">{{ $global_stats['total_points'] ?? 0 }}</span>
-                <span class="stat-text">Points totaux</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-icon">⚡</span>
-                <span class="stat-number">{{ $accuracy ?? 0 }}%</span>
-                <span class="stat-text">Précision</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="round-details">
-        <h3>DÉTAIL DES ROUNDS</h3>
-        <div class="rounds-list">
-            @foreach($round_details ?? [] as $index => $round)
-            <div class="round-item">
-                <div class="round-header">
-                    <span class="round-number">Round {{ $index + 1 }}</span>
-                    <span class="round-winner">
-                        @if($round['winner'] === 'player')
-                            ✓ Gagné
-                        @elseif($round['winner'] === 'opponent')
-                            ✗ Perdu
-                        @else
-                            = Égalité
-                        @endif
-                    </span>
-                </div>
-                <div class="round-score">
-                    {{ $round['player_score'] ?? 0 }} - {{ $round['opponent_score'] ?? 0 }}
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </div>
-
-    <div class="actions">
-        @if($opponent_id)
-        <button onclick="openResultChat({{ $opponent_id }}, '{{ addslashes($opponent_name) }}')" class="btn-chat-result" title="{{ __('Envoyer un message') }}">
-            💬 {{ __('Envoyer un message') }}
-        </button>
-        @endif
-        <button onclick="window.location.href='{{ route('duo.lobby') }}'" class="btn-primary">
-            {{ __('REJOUER') }}
-        </button>
-        <button onclick="window.location.href='{{ route('duo.rankings') }}'" class="btn-secondary">
-            {{ __('CLASSEMENTS') }}
-        </button>
-        <button onclick="window.location.href='{{ route('menu') }}'" class="btn-secondary">
-            {{ __('MENU PRINCIPAL') }}
-        </button>
-    </div>
-</div>
-
-<div id="chatModal" class="result-chat-modal" style="display: none;">
-    <div class="chat-modal-content">
-        <div class="chat-header">
-            <button class="chat-back-btn" onclick="closeResultChatModal()">←</button>
-            <h3 id="chatContactName">{{ __('Chat') }}</h3>
-            <button class="modal-close" onclick="closeResultChatModal()">×</button>
-        </div>
-        <div class="chat-messages" id="chatMessages">
-            <p class="chat-loading">{{ __('Chargement...') }}</p>
-        </div>
-        <div class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="{{ __('Écrivez votre message...') }}" maxlength="500">
-            <button onclick="sendResultMessage()">{{ __('Envoyer') }}</button>
-        </div>
-    </div>
-</div>
-
-<audio id="messageNotificationSound" preload="auto">
-    <source src="{{ asset('sounds/message_notification.mp3') }}" type="audio/mpeg">
-</audio>
-
-<audio id="cashCounterSound" preload="auto">
-    <source src="{{ asset('sounds/cash_counter_bet_winner.mp3') }}" type="audio/mpeg">
-</audio>
-
 <style>
-.duo-result-container {
-    min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 40px 20px;
-    color: white;
-}
-
-.result-header {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.result-title {
-    font-size: 4em;
-    font-weight: bold;
-    margin-bottom: 20px;
-    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
-}
-
-.result-title.victory {
-    color: #ffd700;
-}
-
-.result-title.defeat {
-    color: #ffcdd2;
-}
-
-.result-title.forfeit {
-    animation: forfeitPulse 2s ease-in-out infinite;
-}
-
-@keyframes forfeitPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-.forfeit-reason {
-    font-size: 1.2em;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(0, 0, 0, 0.3);
-    padding: 10px 20px;
-    border-radius: 20px;
-    margin-top: 15px;
-    display: inline-block;
-}
-
-.result-icon {
-    font-size: 5em;
-}
-
-.final-score {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 40px;
-    align-items: center;
-    max-width: 800px;
-    margin: 0 auto 40px;
-}
-
-.player-final {
-    text-align: center;
-}
-
-.player-avatar {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    margin: 0 auto 15px;
-    overflow: hidden;
-    border: 4px solid white;
-}
-
-.player-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.default-avatar {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.3);
-    font-size: 2.5em;
-    font-weight: bold;
-}
-
-.player-final h3 {
-    margin: 0 0 10px 0;
-    font-size: 1.5em;
-}
-
-.rounds-won {
-    font-size: 3em;
-    font-weight: bold;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    width: 80px;
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-}
-
-.rounds-won.winner {
-    background: #ffd700;
-    color: #1a1a1a;
-}
-
-.vs-divider {
-    font-size: 2em;
-    font-weight: bold;
-}
-
-.stats-section {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    max-width: 1000px;
-    margin: 0 auto 40px;
-}
-
-.stat-card {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 25px;
-    text-align: center;
-    backdrop-filter: blur(10px);
-}
-
-.stat-label {
-    font-size: 1em;
-    opacity: 0.9;
-    margin-bottom: 10px;
-}
-
-.stat-value {
-    font-size: 2.5em;
-    font-weight: bold;
-}
-
-.stat-value.positive {
-    color: #4caf50;
-}
-
-.stat-value.negative {
-    color: #f44336;
-}
-
-.stat-value.division {
-    color: #ffd700;
-}
-
-.stat-detail {
-    font-size: 0.9em;
-    opacity: 0.9;
-    margin-top: 5px;
-}
-
-.division-change {
-    grid-column: 1 / -1;
-    background: linear-gradient(135deg, #ffd700 0%, #ffeb3b 100%);
-    border-radius: 16px;
-    padding: 20px;
-    text-align: center;
-}
-
-.change-message {
-    font-size: 1.5em;
-    font-weight: bold;
-    color: #1a1a1a;
-}
-
-.match-stats, .round-details {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 20px;
-    padding: 30px;
-    max-width: 1000px;
-    margin: 0 auto 30px;
-    backdrop-filter: blur(10px);
-}
-
-.match-stats h3, .round-details h3 {
-    margin: 0 0 25px 0;
-    font-size: 1.5em;
-    text-align: center;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 20px;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-icon {
-    font-size: 2em;
-    display: block;
-    margin-bottom: 10px;
-}
-
-.stat-number {
-    font-size: 2.5em;
-    font-weight: bold;
-    display: block;
-    margin-bottom: 5px;
-}
-
-.stat-text {
-    font-size: 0.9em;
-    opacity: 0.9;
-}
-
-.rounds-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.round-item {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.round-header {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.round-number {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-.round-winner {
-    opacity: 0.9;
-}
-
-.round-score {
-    font-size: 1.5em;
-    font-weight: bold;
-}
-
-.actions {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.btn-primary, .btn-secondary {
-    padding: 15px 40px;
-    border: none;
-    border-radius: 12px;
-    font-size: 1.1em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.btn-primary {
-    background: white;
-    color: #667eea;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(255, 255, 255, 0.3);
-}
-
-.btn-secondary {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid white;
-}
-
-.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-@media (max-width: 768px) {
-    .result-title {
-        font-size: 2.5em;
+    body {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #fff;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        margin: 0;
     }
     
-    .final-score {
-        grid-template-columns: 1fr;
+    .result-container {
+        max-width: 800px;
+        width: 100%;
+        text-align: center;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        max-height: 100vh;
+    }
+    
+    .opponent-header {
+        margin-bottom: 15px;
+        padding: 12px;
+        background: rgba(102, 126, 234, 0.2);
+        border-radius: 12px;
+        border: 2px solid rgba(102, 126, 234, 0.4);
+    }
+    
+    .opponent-name {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #667eea;
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .round-details {
+        display: flex;
+        justify-content: center;
         gap: 20px;
+        margin-bottom: 12px;
+        padding: 12px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .round-player, .round-opponent {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .round-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .round-label {
+        font-size: 0.85rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
+    .points-gained {
+        background: linear-gradient(135deg, #2ECC71, #27AE60);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 1rem;
+    }
+    
+    .points-lost {
+        background: linear-gradient(135deg, #E74C3C, #C0392B);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 1rem;
+    }
+    
+    .points-neutral {
+        background: rgba(255,255,255,0.1);
+        color: #95a5a6;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    
+    .points-timeout {
+        background: linear-gradient(135deg, #F39C12, #E67E22);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 1rem;
+    }
+    
+    .score-battle {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+        animation: fadeIn 0.8s ease-out;
+        flex-shrink: 0;
+    }
+    
+    .score-player, .score-opponent {
+        width: 150px;
+        min-width: 150px;
+        flex-shrink: 0;
+        padding: 15px;
+        border-radius: 15px;
+        position: relative;
+        backdrop-filter: blur(10px);
+    }
+    
+    .score-player {
+        background: linear-gradient(145deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+        border: 3px solid #667eea;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+    }
+    
+    .score-player.correct {
+        border-color: #2ECC71;
+        box-shadow: 0 10px 40px rgba(46, 204, 113, 0.3);
+    }
+    
+    .score-player.incorrect {
+        border-color: #E74C3C;
+        box-shadow: 0 10px 40px rgba(231, 76, 60, 0.3);
+    }
+    
+    .score-player.timeout {
+        border-color: #F39C12;
+        box-shadow: 0 10px 40px rgba(243, 156, 18, 0.3);
+    }
+    
+    .score-opponent {
+        background: linear-gradient(145deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+        border: 3px solid #667eea;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+    }
+    
+    .score-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .score-number {
+        font-size: 2.5rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+    
+    .score-player .score-number {
+        color: #667eea;
+    }
+    
+    .score-player.correct .score-number {
+        color: #2ECC71;
+    }
+    
+    .score-player.incorrect .score-number {
+        color: #E74C3C;
+    }
+    
+    .score-player.timeout .score-number {
+        color: #F39C12;
+    }
+    
+    .score-opponent .score-number {
+        color: #667eea;
     }
     
     .vs-divider {
-        transform: rotate(90deg);
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #4ECDC4;
+        background: rgba(78, 205, 196, 0.2);
+        padding: 10px;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #4ECDC4;
+        box-shadow: 0 5px 20px rgba(78, 205, 196, 0.5);
     }
     
-    .actions {
+    .result-answers {
+        background: rgba(0,0,0,0.4);
+        padding: 15px;
+        border-radius: 15px;
+        margin-bottom: 15px;
+        animation: fadeIn 1s ease-out;
+        border: 2px solid rgba(255,255,255,0.1);
+        flex-shrink: 0;
+    }
+    
+    .answer-display {
+        padding: 10px 15px;
+        border-radius: 12px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.95rem;
+        backdrop-filter: blur(5px);
+    }
+    
+    .answer-display:last-child {
+        margin-bottom: 0;
+    }
+    
+    .answer-correct {
+        background: rgba(46, 204, 113, 0.25);
+        border: 2px solid #2ECC71;
+        box-shadow: 0 5px 20px rgba(46, 204, 113, 0.3);
+    }
+    
+    .answer-incorrect {
+        background: rgba(231, 76, 60, 0.25);
+        border: 2px solid #E74C3C;
+        box-shadow: 0 5px 20px rgba(231, 76, 60, 0.3);
+    }
+    
+    .answer-timeout {
+        background: rgba(243, 156, 18, 0.25);
+        border: 2px solid #F39C12;
+        box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);
+    }
+    
+    .answer-label {
+        opacity: 0.9;
+        font-size: 0.95rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+    
+    .answer-text {
+        flex: 1;
+        text-align: left;
+        font-weight: 500;
+    }
+    
+    .answer-icon {
+        font-size: 1.8rem;
+    }
+    
+    .question-info {
+        background: rgba(0,0,0,0.3);
+        border: 2px solid rgba(78, 205, 196, 0.3);
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 15px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .question-info-text {
+        font-size: 0.9rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
+    .result-actions {
+        display: flex;
         flex-direction: column;
+        gap: 10px;
+        flex-shrink: 0;
     }
     
-    .btn-primary, .btn-secondary, .btn-chat-result {
+    .btn-continue {
         width: 100%;
+        padding: 16px 30px;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+        color: white;
+        box-shadow: 0 5px 20px rgba(78, 205, 196, 0.4);
+        text-decoration: none;
+        display: inline-block;
     }
-}
+    
+    .btn-continue:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(78, 205, 196, 0.6);
+        color: white;
+    }
 
-.btn-chat-result {
-    padding: 15px 40px;
-    border: none;
-    border-radius: 12px;
-    font-size: 1.1em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-    background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
-    color: white;
-}
-
-.btn-chat-result:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 184, 148, 0.3);
-}
-
-.result-chat-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-}
-
-.chat-modal-content {
-    background: white;
-    border-radius: 20px;
-    width: 100%;
-    max-width: 500px;
-    height: 70vh;
-    max-height: 600px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.chat-header {
-    display: flex;
-    align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid #e0e0e0;
-    gap: 15px;
-}
-
-.chat-header h3 {
-    flex: 1;
-    margin: 0;
-    font-size: 1.3em;
-    color: #1a1a1a;
-}
-
-.chat-back-btn {
-    background: none;
-    border: none;
-    font-size: 1.5em;
-    color: #666;
-    cursor: pointer;
-    padding: 0 10px;
-}
-
-.chat-back-btn:hover {
-    color: #1a1a1a;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5em;
-    color: #666;
-    cursor: pointer;
-}
-
-.modal-close:hover {
-    color: #1a1a1a;
-}
-
-.chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-    background: #f5f5f5;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.chat-loading {
-    text-align: center;
-    color: #666;
-    padding: 20px;
-}
-
-.chat-empty {
-    text-align: center;
-    color: #999;
-    padding: 40px 20px;
-    font-style: italic;
-}
-
-.chat-message {
-    max-width: 80%;
-    padding: 10px 15px;
-    border-radius: 16px;
-    word-wrap: break-word;
-}
-
-.chat-message.mine {
-    align-self: flex-end;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-bottom-right-radius: 4px;
-}
-
-.chat-message.theirs {
-    align-self: flex-start;
-    background: white;
-    color: #1a1a1a;
-    border-bottom-left-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.chat-message .message-text {
-    margin-bottom: 5px;
-}
-
-.chat-message .message-time {
-    font-size: 0.75em;
-    opacity: 0.7;
-}
-
-.chat-input-area {
-    display: flex;
-    gap: 10px;
-    padding: 15px;
-    border-top: 1px solid #e0e0e0;
-    background: white;
-}
-
-.chat-input-area input {
-    flex: 1;
-    padding: 12px 16px;
-    border: 2px solid #e0e0e0;
-    border-radius: 25px;
-    font-size: 1em;
-    outline: none;
-}
-
-.chat-input-area input:focus {
-    border-color: #667eea;
-}
-
-.chat-input-area button {
-    padding: 12px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 25px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.chat-input-area button:hover {
-    transform: scale(1.05);
-}
-
-.bet-card {
-    background: linear-gradient(135deg, rgba(255, 193, 7, 0.3), rgba(255, 152, 0, 0.2)) !important;
-    border: 2px solid rgba(255, 193, 7, 0.5);
-}
-
-.stat-value.bet-counter {
-    color: #ffc107;
-    font-size: 3em;
-    transition: all 0.1s ease;
-}
-
-.bet-counter.counting {
-    animation: betPulse 0.15s ease-in-out infinite;
-}
-
-@keyframes betPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-.bet-counter.winner {
-    color: #4caf50;
-    text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
-}
-
-.bet-counter.loser {
-    color: #f44336;
-}
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .score-battle {
+            gap: 15px;
+        }
+        
+        .score-number {
+            font-size: 2.5rem;
+        }
+        
+        .vs-divider {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+        }
+        
+        .answer-text {
+            font-size: 1rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .score-battle {
+            gap: 12px;
+        }
+        
+        .score-player, .score-opponent {
+            max-width: 140px;
+        }
+        
+        .score-label {
+            font-size: 0.75rem;
+        }
+        
+        .score-number {
+            font-size: 2rem;
+        }
+    }
+    
+    @media (max-width: 480px) and (orientation: portrait) {
+        .result-container {
+            padding: 16px;
+        }
+        
+        .score-number {
+            font-size: 2rem;
+        }
+        
+        .round-details {
+            padding: 12px;
+        }
+        
+        .answer-text {
+            font-size: 0.95rem;
+        }
+    }
+    
+    @media (max-height: 500px) and (orientation: landscape) {
+        .result-container {
+            padding: 10px;
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .score-battle {
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .score-number {
+            font-size: 2rem;
+        }
+        
+        .vs-divider {
+            width: 45px;
+            height: 45px;
+            font-size: 1rem;
+        }
+        
+        .round-details {
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .answer-text {
+            font-size: 0.9rem;
+        }
+    }
 </style>
 
-<script>
-let currentChatContactId = null;
-let currentChatContactName = '';
-
-function openResultChat(contactId, contactName) {
-    currentChatContactId = contactId;
-    currentChatContactName = contactName;
-    document.getElementById('chatContactName').textContent = contactName;
-    document.getElementById('chatModal').style.display = 'flex';
-    document.getElementById('chatInput').value = '';
-    loadResultConversation();
-}
-
-function closeResultChatModal() {
-    document.getElementById('chatModal').style.display = 'none';
-    currentChatContactId = null;
-    currentChatContactName = '';
-}
-
-function loadResultConversation() {
-    const messagesDiv = document.getElementById('chatMessages');
-    messagesDiv.innerHTML = '<p class="chat-loading">{{ __("Chargement...") }}</p>';
-
-    fetch(`/chat/conversation/${currentChatContactId}`, {
-        headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            displayResultMessages(data.messages);
-        } else {
-            messagesDiv.innerHTML = '<p class="chat-empty">{{ __("Erreur de chargement") }}</p>';
-        }
-    })
-    .catch(error => {
-        console.error('Error loading conversation:', error);
-        messagesDiv.innerHTML = '<p class="chat-empty">{{ __("Erreur de connexion") }}</p>';
-    });
-}
-
-function displayResultMessages(messages) {
-    const messagesDiv = document.getElementById('chatMessages');
+@php
+    $isCorrect = $params['is_correct'] ?? false;
+    $isTimeout = $params['is_timeout'] ?? false;
+    $playerAnswer = $params['player_answer'] ?? '';
+    $correctAnswer = $params['correct_answer'] ?? '';
+    $playerPoints = $params['player_points'] ?? 0;
+    $opponentPoints = $params['opponent_points'] ?? 0;
+    $score = $params['score'] ?? 0;
+    $opponentScore = $params['opponent_score'] ?? 0;
+    $playerInfo = $params['player_info'] ?? [];
+    $opponentInfo = $params['opponent_info'] ?? [];
+    $matchId = $params['match_id'] ?? '';
+    $roomCode = $params['room_code'] ?? '';
+    $currentQuestion = $params['current_question'] ?? 1;
+    $totalQuestions = $params['total_questions'] ?? 10;
     
-    if (messages.length === 0) {
-        messagesDiv.innerHTML = '<p class="chat-empty">{{ __("Aucun message. Commencez la conversation !") }}</p>';
-        return;
-    }
+    $playerName = $playerInfo['username'] ?? __('Vous');
+    $opponentName = $opponentInfo['username'] ?? __('Adversaire');
+    
+    $playerStatusClass = $isTimeout ? 'timeout' : ($isCorrect ? 'correct' : 'incorrect');
+@endphp
 
-    messagesDiv.innerHTML = messages.map(msg => `
-        <div class="chat-message ${msg.is_mine ? 'mine' : 'theirs'}">
-            <div class="message-text">${escapeHtml(msg.message)}</div>
-            <div class="message-time">${msg.time_ago}</div>
+<div class="result-container">
+    <div class="opponent-header">
+        <h2 class="opponent-name">Vs {{ $opponentName }}</h2>
+    </div>
+    
+    <div class="round-details">
+        <div class="round-player">
+            <div class="round-info">
+                <span class="round-label">🎮 {{ __('Vous') }}</span>
+                @if($isTimeout)
+                    <span class="points-timeout">0</span>
+                @elseif($playerPoints > 0)
+                    <span class="points-gained">+{{ $playerPoints }}</span>
+                @elseif($playerPoints < 0)
+                    <span class="points-lost">{{ $playerPoints }}</span>
+                @else
+                    <span class="points-neutral">0</span>
+                @endif
+            </div>
         </div>
-    `).join('');
-
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-function sendResultMessage() {
-    const input = document.getElementById('chatInput');
-    const message = input.value.trim();
-    
-    if (!message || !currentChatContactId) return;
-    
-    input.disabled = true;
-
-    fetch('/chat/send', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({
-            receiver_id: currentChatContactId,
-            message: message
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        input.disabled = false;
-        if (data.success) {
-            input.value = '';
-            const messagesDiv = document.getElementById('chatMessages');
-            const emptyMsg = messagesDiv.querySelector('.chat-empty');
-            if (emptyMsg) emptyMsg.remove();
-            
-            messagesDiv.innerHTML += `
-                <div class="chat-message mine">
-                    <div class="message-text">${escapeHtml(data.message.message)}</div>
-                    <div class="message-time">${data.message.time_ago}</div>
-                </div>
-            `;
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            input.focus();
-        } else {
-            if (window.customDialog) window.customDialog.alert(data.message || "{{ __('Erreur lors de l\\'envoi du message') }}");
-        }
-    })
-    .catch(error => {
-        console.error('Error sending message:', error);
-        input.disabled = false;
-        if (window.customDialog) window.customDialog.alert("{{ __('Erreur de connexion') }}");
-    });
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('chatModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeResultChatModal();
-        }
-    });
-
-    document.getElementById('chatInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendResultMessage();
-        }
-    });
-
-    const betCounter = document.getElementById('bet-counter');
-    if (betCounter) {
-        const targetValue = parseInt(betCounter.dataset.target) || 0;
-        const cashSound = document.getElementById('cashCounterSound');
         
-        setTimeout(function() {
-            if (targetValue > 0 && cashSound) {
-                cashSound.play().catch(e => console.log('Audio play failed:', e));
-            }
-            
-            betCounter.classList.add('counting');
-            
-            let currentValue = 0;
-            const duration = 2000;
-            const steps = 40;
-            const increment = targetValue / steps;
-            const stepDuration = duration / steps;
-            
-            const counterInterval = setInterval(function() {
-                currentValue += increment;
-                if (currentValue >= targetValue) {
-                    currentValue = targetValue;
-                    clearInterval(counterInterval);
-                    betCounter.classList.remove('counting');
-                    
-                    if (targetValue > 0) {
-                        betCounter.classList.add('winner');
-                        betCounter.textContent = '+' + targetValue + ' 🪙';
-                    } else {
-                        betCounter.classList.add('loser');
-                        betCounter.textContent = '0 🪙';
-                    }
-                    
-                    if (cashSound) {
-                        cashSound.pause();
-                        cashSound.currentTime = 0;
-                    }
-                } else {
-                    betCounter.textContent = Math.floor(currentValue);
-                }
-            }, stepDuration);
-        }, 1000);
-    }
-});
-</script>
+        <div class="round-opponent">
+            <div class="round-info">
+                <span class="round-label">🎯 {{ $opponentName }}</span>
+                @if($opponentPoints > 0)
+                    <span class="points-gained">+{{ $opponentPoints }}</span>
+                @elseif($opponentPoints < 0)
+                    <span class="points-lost">{{ $opponentPoints }}</span>
+                @else
+                    <span class="points-neutral">0</span>
+                @endif
+            </div>
+        </div>
+    </div>
+    
+    <div class="score-battle">
+        <div class="score-player {{ $playerStatusClass }}">
+            <div class="score-label">🎮 {{ __('Vous') }}</div>
+            <div class="score-number">{{ $score }}</div>
+        </div>
+        
+        <div class="vs-divider">VS</div>
+        
+        <div class="score-opponent">
+            <div class="score-label">🎯 {{ $opponentName }}</div>
+            <div class="score-number">{{ $opponentScore }}</div>
+        </div>
+    </div>
+    
+    <div class="result-answers">
+        @if($isTimeout)
+            <div class="answer-display answer-timeout">
+                <span class="answer-label">{{ __('Votre réponse') }} :</span>
+                <span class="answer-text">⏰ {{ __('Temps écoulé') }}</span>
+                <span class="answer-icon">⏱️</span>
+            </div>
+        @elseif($isCorrect)
+            <div class="answer-display answer-correct">
+                <span class="answer-label">{{ __('Votre réponse') }} :</span>
+                <span class="answer-text">{{ $playerAnswer }}</span>
+                <span class="answer-icon">✅</span>
+            </div>
+        @else
+            <div class="answer-display answer-incorrect">
+                <span class="answer-label">{{ __('Votre réponse') }} :</span>
+                <span class="answer-text">{{ $playerAnswer ?: __('Aucune réponse') }}</span>
+                <span class="answer-icon">❌</span>
+            </div>
+        @endif
+        
+        <div class="answer-display answer-correct">
+            <span class="answer-label">{{ __('Bonne réponse') }} :</span>
+            <span class="answer-text">{{ $correctAnswer }}</span>
+            <span class="answer-icon">✅</span>
+        </div>
+    </div>
+    
+    <div class="question-info">
+        <span class="question-info-text">❓ {{ __('Question') }} {{ $currentQuestion }}/{{ $totalQuestions }}</span>
+    </div>
+    
+    <div class="result-actions">
+        <a href="/game/duo/waiting" class="btn-continue">
+            🚀 {{ __('Continuer') }}
+        </a>
+    </div>
+</div>
 @endsection
