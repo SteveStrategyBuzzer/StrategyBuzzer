@@ -2190,10 +2190,9 @@ const PhaseController = {
         
         this.hideAllOverlays();
         
-        // Publish phase to Socket.IO for multiplayer sync (host only to avoid loops)
-        if (this.isHost && useSocketIO && typeof duoSocket !== 'undefined' && typeof duoSocket.isConnected === 'function' && duoSocket.isConnected()) {
+        if (this.isHost && typeof duoSocket !== 'undefined' && typeof duoSocket.isConnected === 'function' && duoSocket.isConnected()) {
             try {
-                duoSocket.emit('phase_change', { phase, phaseData });
+                duoSocket.socket.emit('phase_change', { phase, phaseData });
             } catch (err) {
                 console.error('[PhaseController] Socket.IO phase publish error:', err);
             }
@@ -3002,21 +3001,12 @@ function selectTiebreakerMode(mode) {
     
     PhaseController.hideAllOverlays();
     
-    fetch(`/duo/matches/${matchId}/tiebreaker-choice`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify({ mode: mode })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadGameState();
-        }
-    })
-    .catch(err => console.error('Tiebreaker choice error:', err));
+    if (duoSocket && duoSocket.socket) {
+        duoSocket.socket.emit('tiebreaker_choice', {
+            roomId: roomId,
+            mode: mode
+        });
+    }
 }
 
 function goToResults() {
@@ -3117,64 +3107,6 @@ function handleTimeout() {
     playSound('noBuzzSound');
     canBuzz = false;
     document.getElementById('buzzButton').disabled = true;
-    
-    if (useSocketIO) {
-        return;
-    }
-    
-    fetch(`/duo/matches/${matchId}/timeout`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify({
-            question_id: currentQuestionData?.question_number?.toString() || '1',
-            timeout_type: 'buzz'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        const rawCorrectAnswer = data.correct_answer || '';
-        const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
-        
-        PhaseController.onAnswerComplete(
-            false,
-            correctAnswer,
-            0,
-            parseInt(document.getElementById('playerScore').textContent) || 0,
-            parseInt(document.getElementById('opponentScore').textContent) || 0,
-            currentQuestionData?.has_next_question ?? true,
-            currentQuestionData?.question_number || 1,
-            totalQuestions,
-            true
-        ).then(() => {
-            if (currentQuestionData?.has_next_question) {
-                loadGameState();
-            } else {
-                showMatchEndOverlay();
-            }
-        });
-    })
-    .catch(() => {
-        PhaseController.onAnswerComplete(
-            false,
-            '',
-            0,
-            parseInt(document.getElementById('playerScore').textContent) || 0,
-            parseInt(document.getElementById('opponentScore').textContent) || 0,
-            currentQuestionData?.has_next_question ?? true,
-            currentQuestionData?.question_number || 1,
-            totalQuestions,
-            true
-        ).then(() => {
-            if (currentQuestionData?.has_next_question) {
-                loadGameState();
-            } else {
-                showMatchEndOverlay();
-            }
-        });
-    });
 }
 
 function selectAnswerFromOverlay(answerIndex) {
@@ -3203,84 +3135,14 @@ function handleAnswerTimeout() {
     const buttons = document.querySelectorAll('.answer-option');
     buttons.forEach(btn => btn.classList.add('disabled'));
     
-    // Also disable answer overlay bubbles
     document.querySelectorAll('#answerGridOverlay .answer-bubble').forEach(bubble => {
         bubble.classList.add('disabled');
     });
     
-    if (useSocketIO) {
-        duoSocket.answer(-1);
-        return;
-    }
-    
-    fetch(`/duo/matches/${matchId}/timeout`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify({
-            question_id: currentQuestionData?.question_number?.toString() || '1',
-            timeout_type: 'answer'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        const rawCorrectAnswer = data.correct_answer || '';
-        const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
-        const correctIndex = data.correct_index ?? -1;
-        
-        if (correctIndex >= 0) {
-            highlightAnswersAfterReveal(-1, correctIndex, false);
-        }
-        
-        PhaseController.onAnswerComplete(
-            false,
-            correctAnswer,
-            0,
-            parseInt(document.getElementById('playerScore').textContent) || 0,
-            parseInt(document.getElementById('opponentScore').textContent) || 0,
-            currentQuestionData?.has_next_question ?? true,
-            currentQuestionData?.question_number || 1,
-            totalQuestions,
-            true
-        ).then(() => {
-            if (currentQuestionData?.has_next_question) {
-                loadGameState();
-            } else {
-                showMatchEndOverlay();
-            }
-        });
-    })
-    .catch(() => {
-        PhaseController.onAnswerComplete(
-            false,
-            '',
-            0,
-            parseInt(document.getElementById('playerScore').textContent) || 0,
-            parseInt(document.getElementById('opponentScore').textContent) || 0,
-            currentQuestionData?.has_next_question ?? true,
-            currentQuestionData?.question_number || 1,
-            totalQuestions,
-            true
-        ).then(() => {
-            if (currentQuestionData?.has_next_question) {
-                loadGameState();
-            } else {
-                showMatchEndOverlay();
-            }
-        });
-    });
+    duoSocket.answer(-1);
 }
 
 function loadGameState() {
-    fetch(`/duo/matches/${matchId}/game-state`)
-        .then(response => response.json())
-        .then(data => {
-            gameState = data.game_state;
-            updateUI(data);
-        })
-        .catch(err => console.error('Error loading game state:', err));
 }
 
 function updateUI(data) {
@@ -3560,47 +3422,12 @@ document.getElementById('buzzButton').addEventListener('click', function() {
         potentialPoints = 0;
     }
     
-    if (useSocketIO) {
-        duoSocket.buzz(Date.now());
-        // Show answer overlay immediately for responsiveness
-        PhaseController.showAnswerPhase({
-            playerBuzzed: true,
-            buzzTime: (8 - buzzTimeRemaining).toFixed(1),
-            potentialPoints: potentialPoints
-        });
-    } else {
-        fetch(`/duo/matches/${matchId}/buzz`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify({
-                question_id: currentQuestionData?.question_number?.toString() || '1',
-                client_time: Date.now() / 1000
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success || data.canAnswer) {
-                // Show the answer overlay (like Solo mode)
-                PhaseController.showAnswerPhase({
-                    playerBuzzed: true,
-                    buzzTime: (8 - buzzTimeRemaining).toFixed(1),
-                    potentialPoints: potentialPoints
-                });
-            }
-        })
-        .catch(err => {
-            console.error('Buzz error:', err);
-            // Show answers anyway on error
-            PhaseController.showAnswerPhase({
-                playerBuzzed: true,
-                buzzTime: (8 - buzzTimeRemaining).toFixed(1),
-                potentialPoints: potentialPoints
-            });
-        });
-    }
+    duoSocket.buzz(Date.now());
+    PhaseController.showAnswerPhase({
+        playerBuzzed: true,
+        buzzTime: (8 - buzzTimeRemaining).toFixed(1),
+        potentialPoints: potentialPoints
+    });
 });
 
 function showAnswers() {
@@ -3630,78 +3457,7 @@ document.querySelectorAll('.answer-option').forEach(btn => {
 });
 
 function submitAnswer(answerIndex) {
-    if (useSocketIO) {
-        duoSocket.answer(answerIndex);
-        return;
-    }
-    
-    fetch(`/duo/matches/${matchId}/submit-answer`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify({
-            question_id: currentQuestionData?.question_number?.toString() || '1',
-            answer: ['A', 'B', 'C', 'D'][answerIndex] || 'A',
-            answer_index: answerIndex
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        const rawCorrectAnswer = data.correct_answer || '';
-        const correctAnswer = typeof rawCorrectAnswer === 'object' ? (rawCorrectAnswer.text || rawCorrectAnswer.label || '') : (rawCorrectAnswer || '');
-        const points = data.points ?? 0;
-        const correctIndex = data.correct_index ?? -1;
-        currentQuestionData.correct_answer = correctAnswer;
-        
-        highlightAnswersAfterReveal(answerIndex, correctIndex, isCorrect);
-        
-        playSound(isCorrect ? 'correctSound' : 'incorrectSound');
-        
-        const playerScore = data.player_score || data.gameState?.score || parseInt(document.getElementById('playerScore').textContent);
-        const opponentScore = data.opponent_score || data.gameState?.opponent_score || parseInt(document.getElementById('opponentScore').textContent);
-        
-        document.getElementById('playerScore').textContent = playerScore;
-        document.getElementById('opponentScore').textContent = opponentScore;
-        
-        const hasNextQuestion = data.hasMoreQuestions ?? data.has_next_question ?? true;
-        const questionNum = currentQuestionData?.question_number || 1;
-        
-        PhaseController.onAnswerComplete(
-            isCorrect,
-            correctAnswer,
-            points,
-            playerScore,
-            opponentScore,
-            hasNextQuestion,
-            questionNum,
-            totalQuestions,
-            false
-        ).then(() => {
-            if (hasNextQuestion) {
-                resetForNextQuestion();
-                loadGameState();
-            } else {
-                if (data.roundFinished || data.round_finished) {
-                    const pWon = data.gameState?.player_rounds_won || data.player_rounds_won || 0;
-                    const oWon = data.gameState?.opponent_rounds_won || data.opponent_rounds_won || 0;
-                    
-                    if (pWon >= 2 || oWon >= 2) {
-                        showMatchEndOverlay();
-                    } else {
-                        resetForNextQuestion();
-                        loadGameState();
-                    }
-                } else {
-                    showMatchEndOverlay();
-                }
-            }
-        });
-    })
-    .catch(err => {
-        console.error('Answer submission error:', err);
-    });
+    duoSocket.answer(answerIndex);
 }
 
 function highlightAnswersAfterReveal(selectedIndex, correctIndex, isCorrect) {
@@ -4147,37 +3903,26 @@ function hideWaitingOverlay() {
 function handleBuzzClick() {
     if (!canBuzz || hasBuzzed) return;
     
-    if (useSocketIO) {
-        duoSocket.buzz(Date.now());
-    }
+    duoSocket.buzz(Date.now());
     
     hasBuzzed = true;
     canBuzz = false;
     document.getElementById('buzzButton').disabled = true;
     document.getElementById('playerBuzzIndicator').classList.add('buzzed');
     playSound('buzzerSound');
-    
-    if (!useSocketIO) {
-        showAnswers();
-        startAnswerTimer();
-    }
 }
 
 function submitAnswerSocket(answerIndex) {
-    if (useSocketIO) {
-        duoSocket.answer(answerIndex);
-    }
+    duoSocket.answer(answerIndex);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     initSocketIO().then(connected => {
         if (!connected) {
-            loadGameState();
-            setInterval(loadGameState, 3000);
+            console.error('[DuoGame] Socket.IO connection required for gameplay');
         }
-    }).catch(() => {
-        loadGameState();
-        setInterval(loadGameState, 3000);
+    }).catch(err => {
+        console.error('[DuoGame] Socket.IO connection failed:', err);
     });
     
     initSkillClickHandlers();
@@ -4203,11 +3948,7 @@ function initSkillClickHandlers() {
             const isAttackSkill = ['reduce_time', 'shuffle_answers', 'invert_answers'].includes(skillId);
             
             if (isAttackSkill) {
-                if (useSocketIO && duoSocket) {
-                    duoSocket.activateSkill(skillId);
-                } else {
-                    activateSkillHttp(skillId);
-                }
+                duoSocket.activateSkill(skillId);
             } else {
                 applyOwnSkill(skillId);
             }
@@ -4280,16 +4021,12 @@ function applyOwnSkill(skillId) {
             break;
             
         case 'bonus_question':
-            if (useSocketIO && duoSocket) {
-                duoSocket.activateSkill(skillId);
-            }
+            duoSocket.activateSkill(skillId);
             showAttackMessage('❓ {{ __("Question bonus ajoutée !") }}', 'skill');
             break;
             
         case 'replay':
-            if (useSocketIO && duoSocket) {
-                duoSocket.activateSkill(skillId);
-            }
+            duoSocket.activateSkill(skillId);
             showAttackMessage('🔁 {{ __("Rejouer cette question !") }}', 'skill');
             break;
             
@@ -4510,11 +4247,9 @@ function enableOpponentChoiceTracking() {
     if (opponentChoiceTrackingEnabled) return;
     opponentChoiceTrackingEnabled = true;
     
-    if (useSocketIO && duoSocket) {
-        duoSocket.on('opponent_answer_preview', (data) => {
-            showOpponentChoiceIndicator(data.answerIndex);
-        });
-    }
+    duoSocket.on('opponent_answer_preview', (data) => {
+        showOpponentChoiceIndicator(data.answerIndex);
+    });
 }
 
 function showOpponentChoiceIndicator(answerIndex) {
@@ -4596,9 +4331,7 @@ function showReplayOption() {
         markSkillAsUsed('replay');
         replayBtn.remove();
         
-        if (useSocketIO && duoSocket) {
-            duoSocket.activateSkill('replay');
-        }
+        duoSocket.activateSkill('replay');
         
         showAttackMessage('🔁 {{ __("Question rejouée !") }}', 'skill');
     };
@@ -4705,11 +4438,7 @@ function activateRevealSkill(index) {
         revealItem.classList.add('used');
     }
     
-    if (useSocketIO && typeof duoSocket !== 'undefined' && duoSocket.isConnected()) {
-        duoSocket.emit('activate_skill', { skill_id: skillId });
-    } else {
-        activateSkillHttp(skillId);
-    }
+    duoSocket.activateSkill(skillId);
     
     showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
 }
