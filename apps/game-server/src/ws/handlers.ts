@@ -141,6 +141,94 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             questionIndex: state.questionIndex,
             roundNumber: state.currentRound,
           });
+          
+          // Emit comprehensive game_state for initial hydration
+          const playersRoster: Record<string, {
+            id: string;
+            name: string;
+            avatarId?: string;
+            avatarUrl?: string;
+            strategicAvatarId?: string;
+            score: number;
+            roundScore: number;
+            roundsWon: number;
+            isConnected: boolean;
+            isHost?: boolean;
+          }> = {};
+          
+          for (const [pid, player] of Object.entries(state.players)) {
+            playersRoster[pid] = {
+              id: player.id,
+              name: player.name,
+              avatarId: player.avatarId,
+              avatarUrl: player.avatarUrl,
+              strategicAvatarId: player.strategicAvatarId,
+              score: player.score,
+              roundScore: player.roundScore,
+              roundsWon: player.roundsWon,
+              isConnected: player.isConnected,
+              isHost: player.isHost,
+            };
+          }
+          
+          // Sanitize current question (remove correct answer info)
+          // Include timer metadata matching what question_published delivers
+          let currentQuestionSanitized = null;
+          if (state.currentQuestion) {
+            const q = state.currentQuestion;
+            // Sanitize choices to ensure they are plain strings (like question_published does)
+            const rawChoices = q.choices || (q as any).answers;
+            let sanitizedChoices: string[] | undefined = undefined;
+            if (rawChoices && Array.isArray(rawChoices)) {
+              sanitizedChoices = rawChoices.map((choice: unknown) => {
+                if (typeof choice === 'string') return choice;
+                if (choice && typeof choice === 'object') {
+                  const obj = choice as Record<string, unknown>;
+                  if (typeof obj.text === 'string') return obj.text;
+                  if (typeof obj.answer === 'string') return obj.answer;
+                  if (typeof obj.label === 'string') return obj.label;
+                }
+                return String(choice);
+              });
+            }
+            currentQuestionSanitized = {
+              id: q.id,
+              text: q.text,
+              type: q.type,
+              choices: sanitizedChoices,
+              difficulty: q.difficulty,
+              category: q.category,
+              subCategory: q.subCategory,
+              theme: q.category || q.subCategory || 'Culture générale',
+              timeLimitMs: q.timeLimitMs || state.config.timers.questionActive,
+              buzzWindowDurationMs: state.config.timers.questionActive,
+              answerDurationMs: state.config.timers.answerSelection,
+            };
+          }
+          
+          socket.emit("game_state", {
+            sessionId: state.sessionId,
+            lobbyCode: state.lobbyCode,
+            phase: state.phase,
+            phaseEndsAtMs: state.phaseEndsAtMs,
+            phaseStartedAtMs: state.phaseStartedAtMs,
+            currentRound: state.currentRound,
+            questionIndex: state.questionIndex,
+            totalQuestions: state.questions.length,
+            players: playersRoster,
+            currentQuestion: currentQuestionSanitized,
+            lockedAnswerPlayerId: state.lockedAnswerPlayerId,
+            buzzQueue: state.buzzQueue,
+            roundResults: state.roundResults,
+            config: {
+              mode: state.config.mode,
+              questionsPerRound: state.config.questionsPerRound,
+              roundsToWin: state.config.roundsToWin,
+              maxRounds: state.config.maxRounds,
+              buzzEnabled: state.config.buzzEnabled,
+              timers: state.config.timers,
+            },
+          });
         }
         
         socket.to(roomId).emit("event", { event });

@@ -2174,6 +2174,7 @@ const PhaseController = {
         scoreboard: 2500
     },
     revealCountdownInterval: null,
+    introTimeoutId: null,  // Track intro timeout to cancel it when phase changes
     questionStats: { correct: 0, wrong: 0, noAnswer: 0 },
     isHost: isHost,
     
@@ -2187,6 +2188,12 @@ const PhaseController = {
         this.currentPhase = phase;
         currentPhase = phase;
         console.log('[PhaseController] Phase transition:', previousPhase, '->', phase, 'isHost:', this.isHost);
+        
+        // Cancel any pending intro timeout when changing phases
+        if (this.introTimeoutId && phase !== 'intro') {
+            clearTimeout(this.introTimeoutId);
+            this.introTimeoutId = null;
+        }
         
         this.hideAllOverlays();
         
@@ -2228,6 +2235,12 @@ const PhaseController = {
             answerTimerInterval = null;
         }
         
+        // Cancel any previous intro timeout
+        if (this.introTimeoutId) {
+            clearTimeout(this.introTimeoutId);
+            this.introTimeoutId = null;
+        }
+        
         // Hide waiting overlay first
         document.getElementById('waitingOverlay')?.classList.remove('active');
         
@@ -2248,8 +2261,12 @@ const PhaseController = {
         introOverlay?.classList.add('active');
         
         return new Promise(resolve => {
-            setTimeout(() => {
-                this.hideAllOverlays();
+            this.introTimeoutId = setTimeout(() => {
+                this.introTimeoutId = null;
+                // Only hide if we're still in intro phase
+                if (this.currentPhase === 'intro') {
+                    this.hideAllOverlays();
+                }
                 resolve();
             }, this.phaseTimers.intro);
         });
@@ -2324,28 +2341,34 @@ const PhaseController = {
         const playerScore = parseInt(document.getElementById('playerScore')?.textContent || '0');
         const opponentScore = parseInt(document.getElementById('opponentScore')?.textContent || '0');
         
-        document.getElementById('answerQuestionNum').textContent = `Question #${questionNum}`;
-        document.getElementById('answerScoreDisplay').textContent = `Score ${playerScore}/${opponentScore}`;
+        const answerQuestionNum = document.getElementById('answerQuestionNum');
+        const answerScoreDisplay = document.getElementById('answerScoreDisplay');
+        if (answerQuestionNum) answerQuestionNum.textContent = `Question #${questionNum}`;
+        if (answerScoreDisplay) answerScoreDisplay.textContent = `Score ${playerScore}/${opponentScore}`;
         
         // Set potential points with color (yellow for 0, green for 1+)
         const pointsDisplay = document.getElementById('answerPointsDisplay');
         const displayPoints = playerBuzzed ? potentialPoints : 0;
-        pointsDisplay.textContent = `+${displayPoints}`;
-        pointsDisplay.style.color = displayPoints === 0 ? '#FFD700' : '#4ECDC4';
-        pointsDisplay.style.textShadow = displayPoints === 0 
-            ? '0 0 20px rgba(255, 215, 0, 0.5)' 
-            : '0 0 20px rgba(78, 205, 196, 0.5)';
+        if (pointsDisplay) {
+            pointsDisplay.textContent = `+${displayPoints}`;
+            pointsDisplay.style.color = displayPoints === 0 ? '#FFD700' : '#4ECDC4';
+            pointsDisplay.style.textShadow = displayPoints === 0 
+                ? '0 0 20px rgba(255, 215, 0, 0.5)' 
+                : '0 0 20px rgba(78, 205, 196, 0.5)';
+        }
         
         // Update buzz info message
-        if (!playerBuzzed) {
-            buzzInfoMessage.classList.add('not-buzzed');
-            buzzInfoText.innerHTML = `⚠️ {{ __("Pas buzzé - Vous pouvez quand même répondre (0 point)") }}`;
-        } else if (buzzTime) {
-            buzzInfoMessage.classList.remove('not-buzzed');
-            buzzInfoText.innerHTML = `{{ __("Vous avez buzzé en") }} ${buzzTime}s 💚`;
-        } else {
-            buzzInfoMessage.classList.remove('not-buzzed');
-            buzzInfoText.innerHTML = `{{ __("Vous avez buzzé !") }} 💚`;
+        if (buzzInfoMessage && buzzInfoText) {
+            if (!playerBuzzed) {
+                buzzInfoMessage.classList.add('not-buzzed');
+                buzzInfoText.innerHTML = `⚠️ {{ __("Pas buzzé - Vous pouvez quand même répondre (0 point)") }}`;
+            } else if (buzzTime) {
+                buzzInfoMessage.classList.remove('not-buzzed');
+                buzzInfoText.innerHTML = `{{ __("Vous avez buzzé en") }} ${buzzTime}s 💚`;
+            } else {
+                buzzInfoMessage.classList.remove('not-buzzed');
+                buzzInfoText.innerHTML = `{{ __("Vous avez buzzé !") }} 💚`;
+            }
         }
         
         // Populate answer bubbles with current question answers
@@ -2375,6 +2398,9 @@ const PhaseController = {
         if (answerTimerText) {
             answerTimerText.textContent = '10s';
         }
+        
+        // Ensure intro overlay is definitely hidden before showing answer overlay
+        document.getElementById('introOverlay')?.classList.remove('active');
         
         // Show the overlay
         answerOverlay?.classList.add('active');
@@ -3145,6 +3171,187 @@ function handleAnswerTimeout() {
 function loadGameState() {
 }
 
+function hydrateFromGameState(data) {
+    if (!data) return;
+    console.log('[DuoGame] Hydrating UI from game state');
+    
+    const myPlayerId = String(userId);
+    let opponentId = null;
+    let myPlayer = null;
+    let opponentPlayer = null;
+    
+    if (data.players) {
+        for (const [pid, player] of Object.entries(data.players)) {
+            if (String(pid) === myPlayerId) {
+                myPlayer = player;
+            } else {
+                opponentId = pid;
+                opponentPlayer = player;
+            }
+        }
+    }
+    
+    if (myPlayer) {
+        document.getElementById('playerScore').textContent = myPlayer.score || 0;
+    }
+    
+    if (opponentPlayer) {
+        document.getElementById('opponentScore').textContent = opponentPlayer.score || 0;
+        document.getElementById('opponentName').textContent = opponentPlayer.name || 'Adversaire';
+        
+        if (document.getElementById('scoreboardOpponentName')) {
+            document.getElementById('scoreboardOpponentName').textContent = opponentPlayer.name || 'Adversaire';
+        }
+        
+        if (opponentPlayer.avatarId || opponentPlayer.avatarUrl) {
+            const avatarSrc = opponentPlayer.avatarUrl || getAvatarPath(opponentPlayer.avatarId);
+            const opponentAvatarEl = document.getElementById('opponentAvatar');
+            if (opponentAvatarEl && avatarSrc) {
+                opponentAvatarEl.src = avatarSrc;
+            }
+        }
+        
+        updateRoundIndicators(
+            myPlayer?.roundsWon || 0, 
+            opponentPlayer?.roundsWon || 0, 
+            data.currentRound || 1
+        );
+    }
+    
+    if (data.totalQuestions) {
+        totalQuestions = data.totalQuestions;
+        document.getElementById('totalQuestionNum').textContent = totalQuestions;
+    }
+    
+    if (data.phaseEndsAtMs) {
+        phaseEndsAtMs = data.phaseEndsAtMs;
+    }
+    
+    if (data.currentQuestion && data.phase !== 'LOBBY') {
+        const qNum = (data.questionIndex || 0) + 1;
+        const q = data.currentQuestion;
+        currentQuestionData = {
+            question_number: qNum,
+            total_questions: data.totalQuestions || totalQuestions,
+            theme: q.theme || q.category || q.subCategory || '{{ $theme }}',
+            question_text: q.text,
+            answers: q.choices || [],
+            correct_answer: '',
+            correct_index: -1,
+            has_next_question: qNum < (data.totalQuestions || totalQuestions),
+            explanation: '',
+            buzzWindowDurationMs: q.buzzWindowDurationMs || data.config?.timers?.questionActive || 8000,
+            answerDurationMs: q.answerDurationMs || data.config?.timers?.answerSelection || 10000,
+            timeLimitMs: q.timeLimitMs || 8000
+        };
+        loadQuestionIntoUI(currentQuestionData);
+        
+        const normalizedPhase = (data.phase || '').toUpperCase();
+        if (normalizedPhase === 'QUESTION_ACTIVE' || normalizedPhase === 'ANSWER_SELECTION') {
+            const questionHeader = document.getElementById('questionHeader');
+            const questionNumber = document.getElementById('questionNumber');
+            const questionText = document.getElementById('questionText');
+            
+            if (questionHeader) {
+                questionHeader.classList.remove('waiting-for-question');
+            }
+            if (questionNumber) {
+                const themeDisplay = currentQuestionData.theme === 'Culture générale' ? 'Général' : currentQuestionData.theme;
+                questionNumber.innerHTML = `Question ${qNum}/${data.totalQuestions || totalQuestions} &bull; <span style="color: #FFD700">${themeDisplay}</span>`;
+            }
+            if (questionText) {
+                questionText.textContent = currentQuestionData.question_text;
+            }
+        }
+        
+        if (normalizedPhase === 'ANSWER_SELECTION') {
+            const choices = currentQuestionData.answers || [];
+            console.log('[DuoGame] Hydrating answer choices for ANSWER_SELECTION phase, choices:', choices.length);
+            
+            choices.forEach((choice, index) => {
+                const bubble = document.getElementById(`answerBubble${index}`);
+                const textEl = document.getElementById(`answerBubbleText${index}`);
+                
+                if (bubble && textEl) {
+                    const choiceText = typeof choice === 'object' ? (choice?.text || choice?.label || '') : (choice || '');
+                    
+                    if (!choiceText || choiceText.trim() === '') {
+                        bubble.classList.add('hidden-answer');
+                    } else {
+                        bubble.classList.remove('hidden-answer', 'disabled', 'selected');
+                        textEl.textContent = choiceText;
+                    }
+                }
+            });
+            
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`answer${i}`);
+                if (btn && choices[i]) {
+                    const choiceText = typeof choices[i] === 'object' ? (choices[i]?.text || choices[i]?.label || '') : (choices[i] || '');
+                    const answerText = btn.querySelector('.answer-text');
+                    if (answerText) {
+                        answerText.textContent = choiceText;
+                    }
+                    btn.classList.remove('correct', 'incorrect', 'disabled', 'selected');
+                }
+            }
+        }
+    }
+    
+    // Restore buzz state indicators from buzzQueue
+    if (data.buzzQueue && Array.isArray(data.buzzQueue) && data.buzzQueue.length > 0) {
+        const myPlayerId = String(userId);
+        const playerBuzzIndicator = document.getElementById('playerBuzzIndicator');
+        const opponentBuzzIndicator = document.getElementById('opponentBuzzIndicator');
+        
+        data.buzzQueue.forEach(buzzEntry => {
+            const buzzPlayerId = String(buzzEntry.playerId);
+            if (buzzPlayerId === myPlayerId) {
+                hasBuzzed = true;
+                canBuzz = false;
+                if (playerBuzzIndicator) {
+                    playerBuzzIndicator.classList.add('buzzed');
+                }
+                const buzzButton = document.getElementById('buzzButton');
+                if (buzzButton) {
+                    buzzButton.disabled = true;
+                }
+            } else {
+                if (opponentBuzzIndicator) {
+                    opponentBuzzIndicator.classList.add('buzzed');
+                }
+            }
+        });
+        console.log('[DuoGame] Restored buzz state - hasBuzzed:', hasBuzzed, 'buzzQueue:', data.buzzQueue.length);
+    }
+    
+    if (data.phase && data.phase !== 'LOBBY') {
+        handleServerPhase(data.phase, {
+            phaseEndsAtMs: data.phaseEndsAtMs,
+            questionIndex: data.questionIndex,
+            roundNumber: data.currentRound,
+            lockedPlayerId: data.lockedAnswerPlayerId,
+            questionData: currentQuestionData
+        });
+    }
+    
+    console.log('[DuoGame] Hydration complete - phase:', data.phase, 'players:', Object.keys(data.players || {}).length, 'answers:', currentQuestionData?.answers?.length || 0);
+}
+
+function getAvatarPath(avatarId) {
+    if (!avatarId) return null;
+    if (avatarId.startsWith('http://') || avatarId.startsWith('https://') || avatarId.startsWith('//')) {
+        return avatarId;
+    }
+    if (avatarId.startsWith('images/')) {
+        return '/' + avatarId + (avatarId.endsWith('.png') ? '' : '.png');
+    }
+    if (avatarId.includes('/')) {
+        return '/images/avatars/' + avatarId + (avatarId.endsWith('.png') ? '' : '.png');
+    }
+    return '/images/avatars/standard/' + avatarId + (avatarId.endsWith('.png') ? '' : '.png');
+}
+
 function updateUI(data) {
     if (!data) return;
     
@@ -3546,6 +3753,10 @@ function initSocketIO() {
     
     duoSocket.onQuestionPublished = (data) => {
         console.log('[DuoGame] Question published:', data);
+        
+        // Hide any lingering overlays (especially intro overlay) before showing new question
+        PhaseController.hideAllOverlays();
+        
         currentQuestionData = {
             question_number: data.questionIndex + 1,
             total_questions: data.totalQuestions || totalQuestions,
@@ -3701,6 +3912,11 @@ function initSocketIO() {
     duoSocket.onWaitingBlock = (data) => {
         console.log('[DuoGame] Waiting block:', data);
         showWaitingBlockOverlay(data.nextBlockStart, data.nextBlockEnd, data.waitingEndsAtMs);
+    };
+    
+    duoSocket.onGameState = (data) => {
+        console.log('[DuoGame] Initial game state received:', data);
+        hydrateFromGameState(data);
     };
     
     return duoSocket.connect(gameServerUrl, jwtToken)
