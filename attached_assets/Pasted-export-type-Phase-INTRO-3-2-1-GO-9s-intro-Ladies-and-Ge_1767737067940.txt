@@ -1,0 +1,21 @@
+export type Phase =
+  | "INTRO"         // 3,2,1,GO! + 9s intro Ladies and Gentlemen VS display création de la première 
+Page Question
+| "BUZZ_WINDOW"         // 8s chrono, buzzer actif, son grenouille à 3s restant + son deception fin du chrono
+  | "QUESTION_DISPLAY"    // Lecture question (buzzer waiting)
+Avatar joueurs et emplacement avatar Stratégique avec emplacements skills
+Logique de la page, identifié joueurs qui ont buzzer,le plus rapide pour l’attribution des points; plus rapide joue sur 2 points. plus lent 1 point et pas buzzer 0 point
+
+  | "ANSWER_SELECTION"    // Numéro de la Question, valeur joué de la réponse et pointage actuel dans la manche, Chrono (10s), Choix A,B,C,D ou Vrai /Faux, explication du pointage avec si il y a lieu votre temps et le temps de l’adversaire au buzzer.
+Logique détermine le pointage à additionner ou à soustraire si erreur car une erreur vos -2 points
+
+  | "REVEAL"             //VS “joueur adverse”, points joueurs sur réponse, score actuel des joueurs avec les perte ou les gains de la réponse, skills si il y a lieu de l’Avatar Stratégique  Réponse Correct/Incorrect, score de manche, vie, numéro de question, nombre de bonnes réponse mauvaise réponse et sans buzzer, le Saviez-vous, sortie (du jeu), Go à 2 autorisation de la prochaine question ou après une minute automatisation au retour de la prochaine question.
+
+  | "ROUND_SCOREBOARD"    // Fin de manche, scores actuel du match, descriptif du setup du Match (Thème, vie, niveau gain de Manche), Score de la manche, Statistique de la manche( nombre de bonnes réponses+ mauvaises réponses et sans buzzer avec l’efficacité de la manche) fin de la manche 2 et 3 statistique de chaque manche, Efficacité Globale ( accumulatif des bonne réponse, mauvaise réponse et sans buzzer après chaque manche), Skills utilisé, Manche 2 (next manche) à 2 autorisations.
+
+  | "TIEBREAKER_CHOICE"   // Égalité sur la manche 3 avec 1-1 après 2 manches, choix mode (10s)
+si pas le même c’est le choix non choisi des joueurs qui sera le mode joué, vois les choix des joueurs après qu’ils ont les 2 choisi avec leur Avatar vis à vis leur choix et clignotant du mode pour désigner le mode jouable. donc choix identique les 2 image de leur avatar au bout du mode qui clignote ou chacun sur leur choix et le non choisi clignote à cause d’une non entente. 3 sec pour prendre conscience du mode et puis compte à rebours de 3 sec avant de démarrer le mode 
+
+  | "TIEBREAKER_QUESTION" // Game playQuestion décisive ou autre mode choisi
+
+  | "MATCH_END";          // Résultats finaux, distribution des gains de la catégorie et du niveau de l’adversaire, distribution de la sommes de la mise au gagnant ou récupération si égalité, efficacité par manche et globale retoure au lobby, faire un autre match, nouvelle mise

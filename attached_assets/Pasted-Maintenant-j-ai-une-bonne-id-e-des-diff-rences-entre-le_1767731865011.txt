@@ -1,0 +1,51 @@
+Maintenant j'ai une bonne idée des différences entre les layouts Solo et Duo. Laissez-moi résumer pour l'utilisateur:
+
+Comparaison des layouts Duo vs Solo (screenshots)
+Page Question:
+Solo: Layout 3 colonnes avec Joueur (haut gauche) + Adversaire (bas gauche), Chrono au centre, Cercles vides à droite (pour skills)
+Duo actuel: Layout 3 colonnes avec Joueur (gauche), Chrono (centre), Adversaire (droite)
+Différence: Position de l'adversaire différente
+Page Answer:
+Solo: Header avec Question #, points, Score + Timer bar + 4 choix + message buzz
+Duo actuel: Similaire ✓
+Page Waiting/Result:
+Solo: VS TAZIO, scores, section Compétences avec skills, Votre réponse/Bonne réponse, stats, "Le saviez-vous?", boutons SOLO/GO
+Duo actuel: Titre, scores, statut joueurs, boutons Sortir/Continuer
+Différence: Manque section skills, réponses, stats, "Le saviez-vous?"
+Je vais informer l'utilisateur de ces différences.
+
+J'ai analysé les layouts en comparant vos screenshots Solo avec les pages Duo. Voici les différences :
+
+Comparaison Duo vs Solo
+❌ Page Question - DIFFÉRENT
+Solo (screenshot 1) :
+
+Joueur ET Adversaire tous les deux dans la colonne gauche (empilés verticalement)
+Chrono au centre
+Cercles gris vides à droite (pour les skills)
+Duo actuel :
+
+Joueur à gauche, Adversaire à droite (séparés)
+Chrono au centre
+Pas de cercles skills à droite
+✅ Page Answer - SIMILAIRE
+Les deux ont : Question #, points potentiels, score, timer bar, 4 choix avec numéros, message de buzz
+
+❌ Page Waiting/Result - TRÈS DIFFÉRENT
+Solo (screenshots 3-7) :
+
+"VS TAZIO" avec scores côte à côte ✓
+Section "Compétences Magicienne" avec skills "Annule erreur", "Question bonus"
+"Votre réponse" et "Bonne réponse" avec X/✓
+Statistiques : Score Match, Vie, Question, Sans Réponse, Bonne, Échec
+"Le saviez-vous ?" avec explication de la bonne réponse
+Boutons "← SOLO" et "GO"
+Compte à rebours "Prochaine question dans X secondes"
+Duo actuel :
+
+Titre simple "Prêt pour la suite ?"
+Scores côte à côte ✓
+Statut joueurs (prêt/en attente)
+Boutons "Sortir" / "Continuer"
+PAS de section skills, réponses, stats, ni "Le saviez-vous?"
+En résumé : Les pages Duo ne correspondent pas exactement au layout Solo. Voulez-vous que j'aligne les pages Duo sur le layout Solo exact ?

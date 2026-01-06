@@ -1,9 +1,9 @@
 # StrategyBuzzer
 
-## Overview
-StrategyBuzzer is a real-time quiz buzzer game application designed for an immersive and competitive experience. It features interactive quiz sessions, a strategic avatar system with boss battles, and comprehensive gameplay across Solo, Duo, League, and Master modes. The project aims to be a dynamic platform for competition, question answering, and score tracking in a game show-style environment, with ambitions for international expansion through multi-language support.
+### Overview
+StrategyBuzzer is a real-time quiz buzzer game application offering an immersive and competitive experience. It features interactive quiz sessions, a strategic avatar system with boss battles, and comprehensive gameplay across Solo, Duo, League, and Master modes. The project aims to be a dynamic platform for competition, question answering, and score tracking in a game show-style environment, with ambitions for international expansion through multi-language support.
 
-## User Preferences
+### User Preferences
 Preferred communication style: Simple, everyday language.
 
 **Multi-language Requirement (CRITICAL):**
@@ -11,149 +11,68 @@ Preferred communication style: Simple, everyday language.
 - ALL new text MUST be translated in all 10 language files: `resources/lang/{ar,de,el,en,es,fr,it,pt,ru,zh}.json`
 - Never add French-only text - always add translations for all languages
 
-## System Architecture
+### System Architecture
 
-### UI/UX Decisions
-The frontend uses React 19 with Vite, employing a component-based architecture designed for competitiveness with energetic chronometers and realistic buzz buttons. It features a 3-column game question layout, visually persistent strategic avatar skills, and mobile responsiveness. A multi-language UI with automatic browser detection and manual selection across 10 languages is integrated. The boutique system uses a menu-style card navigation with 7 categories and orientation-aware responsive layouts.
+#### UI/UX Decisions
+The frontend uses React 19 with Vite, employing a component-based architecture for competitiveness with energetic chronometers and realistic buzz buttons. It features a 3-column game question layout, visually persistent strategic avatar skills, and mobile responsiveness. A multi-language UI with automatic browser detection and manual selection across 10 languages is integrated. The boutique system uses a menu-style card navigation with 7 categories and orientation-aware responsive layouts. Duo and League modes must have identical visual layouts to Solo mode.
 
-### Technical Implementations
+#### Technical Implementations
 The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It utilizes an API-first, service-oriented design with an event-driven system for real-time game state broadcasting.
 
-**Real-Time Multiplayer Synchronization (Authoritative Backend Architecture):**
-All multiplayer modes use an Authoritative Backend Architecture for synchronized gameplay, designed to scale up to 10 players (League Team) and 40 players (Master mode). The backend is solely responsible for publishing questions to Firebase, ensuring perfect synchronization and preventing client-side manipulation. `correct_index` and `is_correct` are never transmitted to clients; answer validation is strictly server-side. Solo mode is completely isolated and uses traditional page redirects.
+**Real-Time Multiplayer Synchronization:** All multiplayer modes use an Authoritative Backend Architecture for synchronized gameplay, designed to scale up to 40 players. The backend publishes questions to Firestore, ensuring synchronization and preventing client-side manipulation. Answer validation is strictly server-side. Solo mode is isolated, using traditional page redirects. Multiplayer modes use unified `games/{mode}-match-{normalizedId}` Firestore documents where `normalizedId` is derived from the `lobby_code`.
 
-**Firestore Document Structure:**
-All multiplayer modes use unified `games/{mode}-match-{normalizedId}` Firestore documents. The `normalizedId` is computed using CRC32 normalization and must always be derived from the `lobby_code` (e.g., "ABC123"), not the numeric `match_id`.
+**Gameplay Engine:** A unified client-side `GameplayEngine.js` manages all game modes, supporting both local (Solo) and Firestore (multiplayer) providers for game state actions. Solo mode dictates the strict sequence of game phases (intro, question, buzz, reveal, scoreboard) and question flow, which multiplayer implementations must adhere to.
 
-**Gameplay Engine:**
-A unified client-side `GameplayEngine.js` module manages all game modes, ensuring consistent gameplay. It supports both local (Solo) and Firestore (multiplayer) providers for game state actions, using event delegation and retry logic for robust score synchronization.
+**Scoring System:** A unified scoring system awards 2 pts (>3s remaining), 1 pt (1-3s remaining), 0 pt (<1s remaining) for correct answers. Wrong answers incur a -2 pt penalty in Solo, Duo, League, and 0 pt in Master. Timeout is 0 pts.
 
-**Solo Mode Reference Structure:**
-Solo mode serves as the critical reference implementation for all multiplayer modes, dictating the strict sequence of game phases (intro, question, buzz, reveal, scoreboard) and the question flow. Multiplayer implementations must adhere to this structure, ensuring synchronized overlays, timers, answer submissions, and score displays across all players.
+**Question Management:** A question cache uses file-based caching. `QuestionService` manages AI-ready, theme-based question generation with adaptive difficulty, anti-duplication, and language-specific spelling verification using Google Gemini 2.0 Flash. A `SubthemeRotationSystem` ensures deterministic theme rotation. Multiplayer questions are generated in progressive blocks of 4 by `GenerateMultiplayerQuestionsJob`, using a `QuestionPlanBuilder` for dynamic needs calculation, anti-duplication, and retry logic.
 
-**Scoring System:**
-A unified scoring system applies across all modes:
--   **Correct Answer Points:** 2 pts (>3s remaining), 1 pt (1-3s remaining), 0 pt (<1s remaining).
--   **Wrong Answer Penalty:** -2 pts (Solo, Duo, League); 0 pts (Master).
--   **Timeout:** 0 pts.
+**Multiplayer Lobby Synchronization:** `LobbyPresenceManager` handles player registration in Firebase sessions, with a "Synchronisé" indicator confirming connection before game start.
 
-**Question Management:**
-A question cache system uses file-based caching for pre-generated questions. `QuestionService` manages AI-ready, theme-based question generation with adaptive difficulty, anti-duplication, progressive block-based generation, and language-specific spelling verification using Google Gemini 2.0 Flash. A `SubthemeRotationSystem` ensures deterministic theme rotation.
+**Firestore Structure & Authentication:** All game modes use a unified `/gameSessions/{sessionId}` Firestore collection. Firebase Firestore security rules validate operations against `request.auth.uid` (Firebase anonymous UID).
 
-**Multiplayer Question Batching (Progressive Pipeline):**
-`GenerateMultiplayerQuestionsJob` generates questions in blocks of 4 for Duo/League modes with the following architecture:
-- **Q1 Synchronous**: First question generated immediately in LobbyService when host clicks "Je Suis Prêt"
-- **Progressive Blocks**: Subsequent questions generated in background job, 4 at a time
-- **QuestionPlanBuilder**: Calculates total needs dynamically: (3 rounds × N questions/round) + skill bonus + tiebreaker
-- **Immediate Append**: Each block sent immediately to Game Server via `appendQuestions()` endpoint
-- **Anti-Duplication**: Global tracking of usedQuestionIds, usedAnswers, usedQuestionTexts across all blocks
-- **Retry Logic**: Up to 3 retries per question, 3 retries for append with exponential backoff
-- **Quota Enforcement**: If deficit cannot be filled after 10 extra attempts, pipeline stops (no partial delivery)
-- **Question Types**: main, skill_bonus (1.2x difficulty), tiebreaker (1.5x difficulty) with metadata flags
+**Game Modes:** Solo (90 opponents, 10 boss battles), Duo (division-based), League Individual (1v1 career), League Team (5v5 with 3 sub-modes), and Master (real-time hosting for 3-40 players with four distinct game structures).
 
-**Multiplayer Lobby Synchronization:**
-`LobbyPresenceManager` handles automatic player registration in Firebase sessions. A "Synchronisé" indicator confirms both players are connected before the host can start the game. Multiplayer games proceed directly to Question 1 after a lobby countdown, with subsequent questions displaying a "Question X/10 + THÈME" indicator.
+**Avatar System:** User-specific avatars (12 across 3 tiers) offering 25 unique skills (Passive, Visual, Active_Pre, Active_Post).
 
-**Firestore Structure & Authentication:**
-All game modes use a unified `/gameSessions/{sessionId}` Firestore collection. Firebase Firestore security rules validate operations against `request.auth.uid` (Firebase anonymous UID).
+**Progression:** Quest/Achievement System with 35 Standard quests.
 
-**Multiplayer Systems:**
-Includes Firebase-based queue systems for League Individual and Duo matchmaking, a multiplayer resume page with chat/mic toggles, and various League Team sub-modes (Classique, Bataille de Niveaux, Queue Leu Leu). A League Team gathering system provides real-time team assembly with voice chat.
+**Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
 
-**Core Services:**
-Key services include `AnswerNormalizationService`, `Advanced AI Opponent System`, `GameStateService`, `BuzzManagerService` (for fair buzz management), `RoomService`, `PlayerMessageService/ChatController`, `PlayerContactService`, and `LobbyService/LobbyController`.
+**WebRTC Voice Chat System:** Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling.
 
-**Feature Specifications:**
--   **Game Modes**: Solo (90 opponents, 10 boss battles), Duo (division-based), League Individual (1v1 career), League Team (5v5 with 3 sub-modes), and Master (real-time hosting for 3-40 players with four distinct game structures: free-for-all, team_open_skills, team_buzzer_only, multi_team).
--   **Avatar System**: User-specific avatars (12 across 3 tiers) offering 25 unique skills (Passive, Visual, Active_Pre, Active_Post).
--   **Progression**: Quest/Achievement System with 35 Standard quests.
--   **Real-time Features**: Firebase Firestore for real-time game state synchronization.
--   **Authentication**: Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
--   **Multi-language Support**: Full integration for 10 languages with automatic browser detection.
--   **WebRTC Voice Chat System**: Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling.
+#### Monorepo Architecture (Node.js Game Server)
+The project uses a monorepo with `shared`, `game-engine`, and `game-server` packages. The Game Server (Node.js/TypeScript) uses Socket.IO for real-time communication and Express for REST API. Game phases (INTRO, BUZZ_WINDOW, ANSWER_SELECTION, REVEAL, ROUND_SCOREBOARD, TIEBREAKER_*, MATCH_END) are aligned with Solo mode.
 
-## Monorepo Architecture (Node.js Game Server)
+**Scalable Architecture (Production):**
+- **Redis:** Real-time state (buzzer, timers, room state, event log) with 2-hour TTL.
+- **Firestore:** Source of truth for questions.
+- **Laravel Cache:** Accelerator for Firestore reads with 30-minute TTL.
+- **PostgreSQL Queue:** Used exclusively for AI question generation jobs.
+- **Event-Sourcing:** All canonical events are logged to Redis for crash recovery.
+- **Multi-Instance Synchronization:** Socket.IO Redis adapter for horizontal scaling, sharing room state across instances.
+- **Security (Anti-Cheat):** Correct answer metadata is never sent before reveal.
+- **Production Features:** Includes unit tests (Vitest), Zod schemas for input validation, metrics endpoint, and rate limiting.
 
-### Directory Structure
-```
-packages/
-  shared/src/           # Types partagés (GameState, GameEvent, Phase, etc.)
-  game-engine/src/      # Reducer, state-machine, scoring
-apps/
-  game-server/src/      # Serveur de jeu Node.js/TypeScript
-    services/           # RoomManager, QuestionService
-    http/               # Routes HTTP (POST /rooms, GET /rooms/:id)
-    ws/                 # WebSocket handlers (join_room, buzz, answer, skill)
-    middleware/         # JWT auth middleware
+**Laravel ↔ Game Server Integration:** `GameServerService.php` manages JWT token generation and room creation. JWT tokens include player and room data, secured by `GAME_SERVER_JWT_SECRET`.
+
+**Frontend Socket.IO Client:** `DuoSocketClient.js` is a singleton for Socket.IO communication, handling room join, ready status, buzz, answer, skill activation, and WebRTC voice chat signaling. Duo mode pages (`duo_question.blade.php`, `duo_answer.blade.php`, `duo_waiting.blade.php`, `duo_result.blade.php`) now use Socket.IO for low-latency communication.
+
+#### Game Phases (TypeScript)
+```typescript
+export type Phase =
+  | "INTRO"
+  | "BUZZ_WINDOW"
+  | "QUESTION_DISPLAY"
+  | "ANSWER_SELECTION"
+  | "REVEAL"
+  | "ROUND_SCOREBOARD"
+  | "TIEBREAKER_CHOICE"
+  | "TIEBREAKER_QUESTION"
+  | "MATCH_END";
 ```
 
-### Game Server
-- **Port**: 3001 (WebSocket + HTTP)
-- **Architecture**: Socket.IO pour temps réel, Express pour API REST
-- **Phases alignées sur Solo**: INTRO → QUESTION_ACTIVE → ANSWER_SELECTION → REVEAL → ROUND_SCOREBOARD → TIEBREAKER_* → MATCH_END
-- **Timers**: intro 9s, question 8s, answer 10s
-- **Scoring**: +2 (>3s), +1 (1-3s), 0 (<1s), -2 (mauvaise réponse)
-
-### Scalable Architecture (Option A - Production-Ready)
-**Data Flow:**
-- **Redis** = Real-time state (buzzer, timers, room state, event log) - 2h TTL
-- **Firestore** = Source of truth (questions in `questionPools/{roomId}/items/{index}`)
-- **Laravel Cache** = Accelerator for Firestore reads (30 min TTL)
-- **PostgreSQL Queue** = AI question generation jobs only
-
-**Event-Sourcing for Crash Recovery:**
-- All canonical events logged to Redis: GAME_STARTED, PHASE_CHANGED, QUESTION_PUBLISHED, BUZZ_RECEIVED, ANSWER_SUBMITTED, ANSWER_REVEALED, ROUND_ENDED, MATCH_ENDED
-- `RoomRecovery.ts`: rehydrateRoom() (fast path: cached state, slow path: event replay)
-- Automatic recovery on WebSocket reconnect if room not in memory
-
-**Multi-Instance Synchronization:**
-- Socket.IO Redis adapter for horizontal scaling
-- Room state shared via Redis across all Game Server instances
-- Supports millions of concurrent players
-
-**Security (Anti-Cheat):**
-- `correctIndex`, `isCorrect`, `correctBool`, `correctText` NEVER sent before reveal
-- `sanitizeChoices()` strips all correctness metadata from `question_published` event
-- `answer_revealed` event is the ONLY place where correct answer is exposed
-
-**Question Pipeline:**
-- Progressive generation: Q1 at match start, then blocks of 4 during WAITING phases
-- Anti-duplication: usedIds + usedTextHashes stored per match (not reset between rounds)
-- Includes bonus skill questions and tiebreaker questions
-
-**Production-Ready Features:**
-- **Unit Tests**: 80 tests (reducer, scoring, state-machine) with Vitest
-- **Input Validation**: Zod schemas for all Socket.IO events
-- **Metrics Endpoint**: GET /metrics (latency, rooms, errors, events)
-- **Rate Limiting**: Per-player (1 buzz/answer per question) and per-room (100 events/sec)
-
-### Laravel ↔ Game Server Integration
-- **GameServerService.php**: Manages JWT token generation, room creation via HTTP, player authentication
-- **JWT Token Payload**: camelCase fields (`playerId`, `playerName`, `avatarId`, `roomId`)
-- **JWT Secret**: Uses `GAME_SERVER_JWT_SECRET` env var (falls back to `APP_KEY` decoded from base64)
-- **Security**: Strict JWT validation - invalid tokens are rejected (no anonymous connections allowed)
-- **Room Creation**: Laravel creates rooms via POST `/rooms`, Game Server returns `{roomId, lobbyCode}`
-
-### Frontend Socket.IO Client
-- **DuoSocketClient.js**: Singleton module for Socket.IO communication
-- **Features**: Room join, ready status, buzz, answer, skill activation, voice chat signaling
-- **Events**: Matches server events (`join_room`, `buzz`, `answer`, `skill`, `ready`, `voice_*`)
-- **Voice Chat**: WebRTC signaling integrated into Socket.IO channel (no separate connection)
-- **Latency**: Built-in ping measurement via `ping_check` / `pong_check` events
-
-### Duo Mode Pages (Socket.IO Integration - January 2026)
-All Duo mode pages now use Socket.IO via DuoSocketClient.js for low-latency real-time communication (~10-50ms):
-- **duo_question.blade.php**: Buzz synchronization, opponent buzz detection
-- **duo_answer.blade.php**: Answer submission, score updates, answer reveal
-- **duo_waiting.blade.php**: Player ready sync (GO button), phase transitions
-- **duo_result.blade.php**: Score display, round/match end events
-- **Connection**: `ws://hostname:3001` or `wss://` for secure connections
-- **Key callbacks**: onBuzzWinner, onPhaseChanged, onPlayerReady, onScoreUpdate, onRoundEnded, onMatchEnded
-
-### Imports Cross-Package
-Les imports utilisent des chemins relatifs (par exemple `../../../../packages/shared/src/types.js`).
-
-## External Dependencies
+### External Dependencies
 
 -   **Core Frameworks**: Laravel Framework, React, Inertia.js
 -   **Firebase**: Firebase PHP SDK, Firebase JavaScript SDK, Firebase Firestore (real-time data), Firebase Authentication (user auth).
@@ -162,6 +81,6 @@ Les imports utilisent des chemins relatifs (par exemple `../../../../packages/sh
 -   **HTTP/API**: Guzzle HTTP, openai-php/laravel (AI question generation).
 -   **Payment**: Stripe PHP SDK.
 -   **Databases**: PostgreSQL (Replit Neon), Firebase Firestore.
+-   **Real-time Communication**: Socket.IO, Redis.
 
-### Firebase Configuration
-Firebase Firestore security rules (from `firebase-rules.txt`) must be deployed to the Firebase Console to manage read/write permissions for game-related paths.
+**Firebase Configuration:** Firebase Firestore security rules (from `firebase-rules.txt`) must be deployed to the Firebase Console.

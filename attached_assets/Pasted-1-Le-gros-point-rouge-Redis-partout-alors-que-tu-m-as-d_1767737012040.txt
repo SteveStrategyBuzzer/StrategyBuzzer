@@ -1,0 +1,167 @@
+1) Le gros point rouge : Redis partout… alors que tu m’as dit “pas Redis”
+Dans ton schéma, Redis sert à 2 choses différentes :
+Pub/Sub inter-nodes (synchronisation d’événements Socket.IO)
+
+
+Session store (état de partie / room state / presence)
+
+
+👉 Si tu veux vraiment éviter Redis, il faut le remplacer par un vrai composant “messaging + state”.
+Remplacement recommandé (sans Redis)
+Pub/Sub inter-régions : NATS JetStream (ou Kafka si très gros, mais trop lourd au début)
+
+
+Session Store :
+
+
+soit PostgreSQL + LISTEN/NOTIFY (OK pour petit/moyen, moins idéal mondial)
+
+
+soit KeyDB (Redis-compatible mais techniquement autre produit)
+
+
+soit Memory + sticky sessions + rehydration via Firestore/EventLog (plus complexe)
+
+
+✅ Mon avis : garde Redis (ou KeyDB) pour le Game Server, parce que c’est la solution la plus simple et la plus fiable pour du WebSocket mondial.
+ Et garde ton PostgreSQL queue pour les workers IA — c’est parfait.
+
+2) Firestore “Source of Truth” : oui… mais PAS pour le temps réel buzzer
+Firestore est excellent pour :
+questions pré-générées
+
+
+quêtes
+
+
+inventaire boutique
+
+
+profil
+
+
+configuration
+
+
+historique / event log long terme
+
+
+Firestore est mauvais pour :
+arbitrer un buzzer en live
+
+
+gérer des compteurs/chronos ultra serrés
+
+
+empêcher la triche sur des événements qui arrivent quasi simultanément
+
+
+✅ Donc : ton schéma est bon si tu adoptes cette règle :
+Règle d’or
+Game Server = vérité du temps réel (state live)
+
+
+Firestore = vérité du long terme (config + contenu + historique)
+
+
+
+3) Le load balancer “Anycast/Cloudflare” : attention au WebSocket
+Cloudflare/Anycast, c’est excellent, mais tu dois décider si tu veux :
+Sticky sessions (même joueur sur le même nœud)
+
+
+ou stateless + session store (Redis/KeyDB/NATS) pour permettre de tomber sur un autre nœud sans perdre la partie
+
+
+✅ Pour un jeu live, le meilleur combo est :
+Cloudflare (WAF + DDoS + TLS + edge)
+
+
+LB avec session affinity ou session store partagé
+
+
+
+Ce que je changerais dans TON schéma (version optimale)
+Option A — “Pro, simple, scalable” (recommandée)
+Redis/KeyDB uniquement pour Game Server (pub/sub + room state)
+
+
+Firestore = questions/quêtes/historique
+
+
+Laravel API = auth/boutique/config/stats
+
+
+PostgreSQL = users/stats + queue jobs IA
+
+
+👉 C’est le plus réaliste et le plus rapide à rendre stable.
+
+Ce que tu devrais continuer tout de suite (ordre de priorité)
+Priorité 1 — Définir la “vérité live”
+Décide :
+où vit le state live d’une partie (Redis/KeyDB ou mémoire + sticky)
+
+
+comment on reconstruit une partie si un nœud crash (event log + snapshot)
+
+
+Priorité 2 — Standardiser tes événements (Event-Sourcing minimal)
+Tu dois figer une liste d’événements “canon” :
+GAME_CREATED
+
+
+PLAYER_JOINED
+
+
+ROUND_STARTED
+
+
+QUESTION_SHOWN
+
+
+BUZZ_PRESSED
+
+
+ANSWER_SUBMITTED
+
+
+SCORE_UPDATED
+
+
+ROUND_ENDED
+
+
+GAME_ENDED
+Et tout autres éléments important
+Priorité 3 — Séparer ce qui est “workers IA” vs “live”
+Workers IA (PostgreSQL queue) : génèrent et stockent dans Firestore
+
+
+Game Server : consomme des questions déjà prêtes (cache local + Firestore)
+
+
+
+Actions concrètes à faire (sans blabla)
+Action 1
+Écris “✅ Option A” ou “✅ Option B” (mais je recommande A).
+Action 2
+Dis-moi ce que tu utilises déjà en live dans Replit :
+Socket.IO oui/non
+
+
+plusieurs instances oui/non
+
+
+où tu stockes le state (mémoire / Firestore / Postgres)
+
+
+Action 3
+Ensuite je te donne :
+la structure exacte des dossiers apps/game-server, packages/game-engine
+
+
+les interfaces TS (GameState, GameEvent, applyEvent)
+
+
+et une stratégie claire “avec Redis”
