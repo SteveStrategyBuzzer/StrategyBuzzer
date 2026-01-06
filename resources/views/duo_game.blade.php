@@ -4395,25 +4395,6 @@ function updateSkillStates(phase) {
     });
 }
 
-function activateSkillHttp(skillId) {
-    fetch(`/duo/match/${matchId}/skill`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify({ skill_id: skillId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            markSkillAsUsed(skillId);
-            showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
-        }
-    })
-    .catch(err => console.error('Skill activation error:', err));
-}
-
 function activateRevealSkill(index) {
     const skillCircles = document.querySelectorAll('.skill-circle');
     const skillCircle = skillCircles[index];
