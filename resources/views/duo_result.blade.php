@@ -438,7 +438,7 @@
 
 <div class="result-container">
     <div class="opponent-header">
-        <h2 class="opponent-name">Vs {{ $opponentName }}</h2>
+        <h2 class="opponent-name">{{ __('Vs') }} {{ $opponentName }}</h2>
     </div>
     
     <div class="round-details">
@@ -477,7 +477,7 @@
             <div class="score-number">{{ $score }}</div>
         </div>
         
-        <div class="vs-divider">VS</div>
+        <div class="vs-divider">{{ __('VS') }}</div>
         
         <div class="score-opponent">
             <div class="score-label">🎯 {{ $opponentName }}</div>
@@ -523,4 +523,47 @@
         </a>
     </div>
 </div>
+
+<script src="{{ asset('js/firebase-game-sync.js') }}"></script>
+<script>
+(function() {
+    const MATCH_ID = @json($matchId);
+    const ROOM_CODE = @json($roomCode);
+    const CURRENT_QUESTION = @json($currentQuestion);
+    const PLAYER_ID = @json(auth()->id());
+    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    function initFirebase() {
+        if (typeof FirebaseGameSync !== 'undefined' && MATCH_ID) {
+            FirebaseGameSync.init({
+                matchId: MATCH_ID,
+                mode: 'duo',
+                laravelUserId: PLAYER_ID,
+                csrfToken: CSRF_TOKEN,
+                callbacks: {
+                    onReady: function() {
+                        console.log('[DuoResult] Firebase ready');
+                    },
+                    onPhaseChange: function(phase, data) {
+                        console.log('[DuoResult] Phase changed:', phase, data);
+                    },
+                    onOpponentDisconnect: function(opponentId, info) {
+                        console.log('[DuoResult] Opponent disconnected:', opponentId);
+                    }
+                }
+            }).catch(function(error) {
+                console.error('[DuoResult] Firebase init failed:', error);
+            });
+        }
+    }
+
+    initFirebase();
+
+    window.addEventListener('beforeunload', function() {
+        if (typeof FirebaseGameSync !== 'undefined') {
+            FirebaseGameSync.cleanup();
+        }
+    });
+})();
+</script>
 @endsection

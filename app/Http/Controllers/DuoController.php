@@ -970,26 +970,35 @@ class DuoController extends Controller
         $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
         $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
 
+        $questionData = $gameState['questions'][$currentQuestion - 1] ?? [];
+        
         return view('duo_question', [
-            'match_id' => $match->id,
-            'room_code' => $match->room_id ?? null,
-            'lobby_code' => $match->lobby_code ?? null,
-            'player_info' => [
-                'id' => $user->id,
-                'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
-                'score' => $playerScore,
-                'level' => $stats->level,
+            'params' => [
+                'match_id' => $match->id,
+                'room_code' => $match->room_id ?? null,
+                'lobby_code' => $match->lobby_code ?? null,
+                'player_info' => [
+                    'id' => $user->id,
+                    'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+                    'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                    'score' => $playerScore,
+                    'level' => $stats->level,
+                ],
+                'opponent_info' => [
+                    'id' => $opponent->id,
+                    'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                    'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                    'score' => $opponentScore,
+                    'level' => $opponentStats->level,
+                ],
+                'question' => [
+                    'text' => $questionData['text'] ?? '',
+                    'theme' => $questionData['theme'] ?? 'Culture générale',
+                    'answers' => $questionData['answers'] ?? [],
+                ],
+                'current_question' => $currentQuestion,
+                'total_questions' => 10,
             ],
-            'opponent_info' => [
-                'id' => $opponent->id,
-                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
-                'score' => $opponentScore,
-                'level' => $opponentStats->level,
-            ],
-            'current_question' => $currentQuestion,
-            'total_questions' => 10,
         ]);
     }
 
@@ -1051,34 +1060,38 @@ class DuoController extends Controller
         $correctIndex = $questionData['correct_index'] ?? 0;
 
         return view('duo_answer', [
-            'match_id' => $match->id,
-            'room_code' => $match->room_id ?? null,
-            'lobby_code' => $match->lobby_code ?? null,
-            'player_info' => [
-                'id' => $user->id,
-                'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+            'params' => [
+                'match_id' => $match->id,
+                'room_code' => $match->room_id ?? null,
+                'lobby_code' => $match->lobby_code ?? null,
+                'player_info' => [
+                    'id' => $user->id,
+                    'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+                    'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                    'score' => $playerScore,
+                    'level' => $stats->level,
+                ],
+                'opponent_info' => [
+                    'id' => $opponent->id,
+                    'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                    'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                    'score' => $opponentScore,
+                    'level' => $opponentStats->level,
+                ],
+                'current_question' => $currentQuestion,
+                'total_questions' => 10,
+                'question' => [
+                    'text' => $questionText,
+                    'answers' => $answers,
+                ],
+                'player_buzzed' => $playerBuzzed,
+                'buzz_order' => $buzzOrder,
+                'potential_points' => $potentialPoints,
+                'correct_index' => $correctIndex,
                 'score' => $playerScore,
-                'level' => $stats->level,
+                'opponent_score' => $opponentScore,
+                'timeout' => $timeout,
             ],
-            'opponent_info' => [
-                'id' => $opponent->id,
-                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
-                'score' => $opponentScore,
-                'level' => $opponentStats->level,
-            ],
-            'current_question' => $currentQuestion,
-            'total_questions' => 10,
-            'question' => [
-                'text' => $questionText,
-                'answers' => $answers,
-            ],
-            'player_buzzed' => $playerBuzzed,
-            'buzz_order' => $buzzOrder,
-            'potential_points' => $potentialPoints,
-            'correct_index' => $correctIndex,
-            'timeout' => $timeout,
         ]);
     }
 
@@ -1122,26 +1135,30 @@ class DuoController extends Controller
         }
 
         return view('duo_waiting', [
-            'match_id' => $match->id,
-            'room_code' => $match->room_id ?? null,
-            'lobby_code' => $match->lobby_code ?? null,
-            'player_info' => [
-                'id' => $user->id,
-                'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+            'params' => [
+                'match_id' => $match->id,
+                'room_code' => $match->room_id ?? null,
+                'lobby_code' => $match->lobby_code ?? null,
+                'player_info' => [
+                    'id' => $user->id,
+                    'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+                    'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                    'score' => $playerScore,
+                    'level' => $stats->level,
+                ],
+                'opponent_info' => [
+                    'id' => $opponent->id,
+                    'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                    'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                    'score' => $opponentScore,
+                    'level' => $opponentStats->level,
+                ],
                 'score' => $playerScore,
-                'level' => $stats->level,
+                'opponent_score' => $opponentScore,
+                'current_question' => $currentQuestion,
+                'total_questions' => 10,
+                'next_question_number' => $nextQuestionNumber,
             ],
-            'opponent_info' => [
-                'id' => $opponent->id,
-                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
-                'score' => $opponentScore,
-                'level' => $opponentStats->level,
-            ],
-            'current_question' => $currentQuestion,
-            'total_questions' => 10,
-            'next_question_number' => $nextQuestionNumber,
         ]);
     }
 

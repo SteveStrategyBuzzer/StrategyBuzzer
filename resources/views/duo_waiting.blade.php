@@ -331,7 +331,7 @@ $opponentScore = $params['opponent_score'] ?? ($opponentInfo['score'] ?? 0);
             <div class="score-number">{{ $playerScore }}</div>
         </div>
         
-        <div class="vs-divider">VS</div>
+        <div class="vs-divider">{{ __('VS') }}</div>
         
         <div class="score-opponent">
             <div class="score-label">🎯 {{ $opponentName }}</div>
@@ -381,133 +381,163 @@ $opponentScore = $params['opponent_score'] ?? ($opponentInfo['score'] ?? 0);
     </div>
 </div>
 
+<script src="{{ asset('js/firebase-game-sync.js') }}"></script>
 <script>
-const matchId = "{{ $matchId }}";
-const roomCode = "{{ $roomCode }}";
-const currentQuestion = {{ $currentQuestion }};
-const playerId = "{{ auth()->id() }}";
-const opponentName = "{{ addslashes($opponentName) }}";
+(function() {
+    const MATCH_ID = @json($matchId);
+    const ROOM_CODE = @json($roomCode);
+    const CURRENT_QUESTION = @json($currentQuestion);
+    const PLAYER_ID = @json(auth()->id());
+    const OPPONENT_ID = @json($opponentInfo['id'] ?? '');
+    const OPPONENT_NAME = @json($opponentName);
+    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-let playerReady = false;
-let opponentReady = false;
-let autoRedirectTimer = null;
-let countdown = 15;
+    let playerReady = false;
+    let opponentReady = false;
+    let autoRedirectTimer = null;
+    let countdown = 15;
 
-function markAsReady() {
-    if (playerReady) return;
-    
-    playerReady = true;
-    
-    const playerStatusEl = document.getElementById('playerStatus');
-    playerStatusEl.classList.remove('waiting');
-    playerStatusEl.classList.add('ready');
-    playerStatusEl.innerHTML = `
-        <span class="status-icon">✓</span>
-        <span class="status-text">{{ __('Vous') }} - {{ __('Prêt') }}</span>
-    `;
-    
-    const continueBtn = document.getElementById('continueBtn');
-    continueBtn.classList.add('ready');
-    continueBtn.disabled = true;
-    continueBtn.textContent = "{{ __('Prêt !') }}";
-    
-    document.getElementById('pageTitle').textContent = "{{ __('En attente...') }}";
-    
-    if (typeof firebase !== 'undefined' && firebase.firestore && matchId) {
-        const db = firebase.firestore();
-        const updateData = {};
-        updateData[`ready_for_q${currentQuestion + 1}_${playerId}`] = true;
-        updateData[`ready_for_q${currentQuestion + 1}_${playerId}_timestamp`] = firebase.firestore.FieldValue.serverTimestamp();
+    function updatePlayerStatusUI() {
+        const playerStatusEl = document.getElementById('playerStatus');
+        playerStatusEl.classList.remove('waiting');
+        playerStatusEl.classList.add('ready');
+        playerStatusEl.innerHTML = `
+            <span class="status-icon">✓</span>
+            <span class="status-text">{{ __('Vous') }} - {{ __('Prêt') }}</span>
+        `;
         
-        db.collection('matches').doc(matchId).update(updateData)
-            .then(() => {
-                console.log('Status updated to ready');
+        const continueBtn = document.getElementById('continueBtn');
+        continueBtn.classList.add('ready');
+        continueBtn.disabled = true;
+        continueBtn.textContent = "{{ __('Prêt !') }}";
+        
+        document.getElementById('pageTitle').textContent = "{{ __('En attente...') }}";
+    }
+
+    function updateOpponentStatusUI() {
+        const opponentStatusEl = document.getElementById('opponentStatus');
+        opponentStatusEl.classList.remove('waiting');
+        opponentStatusEl.classList.add('ready');
+        opponentStatusEl.innerHTML = `
+            <span class="status-icon">✓</span>
+            <span class="status-text">${OPPONENT_NAME} - {{ __('Prêt') }}</span>
+        `;
+    }
+
+    window.markAsReady = function() {
+        if (playerReady) return;
+        
+        playerReady = true;
+        updatePlayerStatusUI();
+        
+        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady && MATCH_ID) {
+            FirebaseGameSync.setPlayerReady(CURRENT_QUESTION + 1).then(function() {
+                console.log('[DuoWaiting] Ready status sent');
                 checkBothReady();
-            })
-            .catch(error => {
-                console.error('Error updating ready status:', error);
+            }).catch(function(error) {
+                console.error('[DuoWaiting] Error sending ready status:', error);
+                checkBothReady();
             });
-    } else {
-        checkBothReady();
-    }
-}
+        } else {
+            checkBothReady();
+        }
+    };
 
-function checkBothReady() {
-    if (playerReady && opponentReady) {
-        document.getElementById('waitingAnimation').style.display = 'none';
-        document.getElementById('timerInfo').style.display = 'block';
-        startAutoRedirect();
+    function checkBothReady() {
+        if (playerReady && opponentReady) {
+            document.getElementById('waitingAnimation').style.display = 'none';
+            document.getElementById('timerInfo').style.display = 'block';
+            startAutoRedirect();
+        }
     }
-}
 
-function startAutoRedirect() {
-    if (autoRedirectTimer) return;
-    
-    const timerCountEl = document.getElementById('timerCount');
-    
-    autoRedirectTimer = setInterval(() => {
-        countdown--;
-        timerCountEl.textContent = countdown;
+    function startAutoRedirect() {
+        if (autoRedirectTimer) return;
         
-        if (countdown <= 0) {
-            clearInterval(autoRedirectTimer);
-            redirectToNextQuestion();
-        }
-    }, 1000);
-}
-
-function redirectToNextQuestion() {
-    window.location.href = "{{ route('game.question', ['mode' => 'duo']) }}";
-}
-
-function exitMatch() {
-    if (window.customDialog) {
-        window.customDialog.confirm("{{ __('Êtes-vous sûr de vouloir quitter le match ?') }}")
-            .then(confirmed => {
-                if (confirmed) {
-                    window.location.href = "{{ route('duo.lobby') }}";
-                }
-            });
-    } else {
-        if (confirm("{{ __('Êtes-vous sûr de vouloir quitter le match ?') }}")) {
-            window.location.href = "{{ route('duo.lobby') }}";
-        }
-    }
-}
-
-if (typeof firebase !== 'undefined' && firebase.firestore && matchId) {
-    const db = firebase.firestore();
-    const opponentId = "{{ $opponentInfo['id'] ?? '' }}";
-    
-    db.collection('matches').doc(matchId).onSnapshot(doc => {
-        const data = doc.data();
-        if (data) {
-            const opponentReadyField = `ready_for_q${currentQuestion + 1}_${opponentId}`;
+        const timerCountEl = document.getElementById('timerCount');
+        
+        autoRedirectTimer = setInterval(function() {
+            countdown--;
+            timerCountEl.textContent = countdown;
             
-            if (data[opponentReadyField] && !opponentReady) {
-                opponentReady = true;
-                
-                const opponentStatusEl = document.getElementById('opponentStatus');
-                opponentStatusEl.classList.remove('waiting');
-                opponentStatusEl.classList.add('ready');
-                opponentStatusEl.innerHTML = `
-                    <span class="status-icon">✓</span>
-                    <span class="status-text">${opponentName} - {{ __('Prêt') }}</span>
-                `;
-                
-                checkBothReady();
+            if (countdown <= 0) {
+                clearInterval(autoRedirectTimer);
+                redirectToNextQuestion();
+            }
+        }, 1000);
+    }
+
+    function redirectToNextQuestion() {
+        window.location.href = "{{ route('game.question', ['mode' => 'duo']) }}";
+    }
+
+    window.exitMatch = function() {
+        if (window.customDialog) {
+            window.customDialog.confirm("{{ __('Êtes-vous sûr de vouloir quitter le match ?') }}")
+                .then(function(confirmed) {
+                    if (confirmed) {
+                        window.location.href = "{{ route('duo.lobby') }}";
+                    }
+                });
+        } else {
+            if (confirm("{{ __('Êtes-vous sûr de vouloir quitter le match ?') }}")) {
+                window.location.href = "{{ route('duo.lobby') }}";
             }
         }
-    }, error => {
-        console.error('Firebase listener error:', error);
-    });
-}
+    };
 
-setTimeout(() => {
-    if (!playerReady) {
-        console.log('Auto-timeout: marking as ready');
-        markAsReady();
+    function handleOpponentReady(data) {
+        if (opponentReady) return;
+        
+        const nextQuestion = CURRENT_QUESTION + 1;
+        const opponentReadyField = `ready_for_q${nextQuestion}_${OPPONENT_ID}`;
+        
+        if (data && (data[opponentReadyField] || data.opponentReady === true)) {
+            opponentReady = true;
+            updateOpponentStatusUI();
+            checkBothReady();
+        }
     }
-}, 60000);
+
+    function initFirebase() {
+        if (typeof FirebaseGameSync !== 'undefined' && MATCH_ID) {
+            FirebaseGameSync.init({
+                matchId: MATCH_ID,
+                mode: 'duo',
+                laravelUserId: PLAYER_ID,
+                csrfToken: CSRF_TOKEN,
+                callbacks: {
+                    onReady: function() {
+                        console.log('[DuoWaiting] Firebase ready');
+                    },
+                    onPhaseChange: function(phase, data) {
+                        console.log('[DuoWaiting] Phase changed:', phase, data);
+                        handleOpponentReady(data);
+                    },
+                    onOpponentDisconnect: function(opponentId, info) {
+                        console.log('[DuoWaiting] Opponent disconnected:', opponentId);
+                    }
+                }
+            }).catch(function(error) {
+                console.error('[DuoWaiting] Firebase init failed:', error);
+            });
+        }
+    }
+
+    initFirebase();
+
+    setTimeout(function() {
+        if (!playerReady) {
+            console.log('[DuoWaiting] Auto-timeout: marking as ready');
+            window.markAsReady();
+        }
+    }, 60000);
+
+    window.addEventListener('beforeunload', function() {
+        if (typeof FirebaseGameSync !== 'undefined') {
+            FirebaseGameSync.cleanup();
+        }
+    });
+})();
 </script>
 @endsection
