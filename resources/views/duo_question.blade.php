@@ -117,89 +117,138 @@ $questionTheme = $question['theme'] ?? '';
         margin: 20px 0;
     }
     
-    .left-column, .right-column {
+    .left-column {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+        gap: 30px;
         width: 100%;
     }
     
-    .player-circle {
+    .player-circle, .opponent-circle {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 10px;
+    }
+    
+    .player-avatar, .opponent-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
     }
     
     .player-avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
         border: 3px solid #4ECDC4;
         box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
-        object-fit: cover;
-    }
-    
-    .player-name {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #4ECDC4;
-    }
-    
-    .player-level {
-        font-size: 0.85rem;
-        color: #4ECDC4;
-        opacity: 0.8;
-    }
-    
-    .player-score {
-        font-size: 2rem;
-        font-weight: 900;
-        color: #4ECDC4;
-        text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
-    }
-    
-    .opponent-circle {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
     }
     
     .opponent-avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
         border: 3px solid #FF6B6B;
         box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
-        object-fit: cover;
     }
     
-    .opponent-name {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #FF6B6B;
+    .opponent-avatar.human {
+        border-color: #f39c12;
+        box-shadow: 0 8px 30px rgba(243, 156, 18, 0.5);
     }
     
-    .opponent-level {
-        font-size: 0.85rem;
-        color: #FF6B6B;
-        opacity: 0.8;
-    }
+    .player-name { color: #4ECDC4; font-weight: 600; }
+    .opponent-name { color: #FF6B6B; font-weight: 600; }
+    .opponent-name.human { color: #f39c12; }
     
-    .opponent-score {
+    .player-score, .opponent-score {
         font-size: 2rem;
         font-weight: 900;
-        color: #FF6B6B;
-        text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
     }
+    
+    .player-score { color: #4ECDC4; text-shadow: 0 0 20px rgba(78, 205, 196, 0.8); }
+    .opponent-score { color: #FF6B6B; text-shadow: 0 0 20px rgba(255, 107, 107, 0.8); }
+    .opponent-score.human { color: #f39c12; text-shadow: 0 0 20px rgba(243, 156, 18, 0.8); }
     
     .center-column {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+    }
+    
+    .right-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+    }
+    
+    .strategic-avatar-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid #FFD700;
+        box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 215, 0, 0.1);
+        object-fit: cover;
+    }
+    
+    .strategic-avatar-circle.empty {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: none;
+    }
+    
+    .strategic-avatar-image {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .skills-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    .skill-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .skill-circle.active {
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.2);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+    }
+    
+    .skill-circle.empty { opacity: 0.3; cursor: default; }
+    .skill-circle.used { 
+        opacity: 0.5; 
+        cursor: default;
+        border-color: rgba(128, 128, 128, 0.5);
+        background: rgba(128, 128, 128, 0.2);
+        box-shadow: none;
+    }
+    .skill-circle.locked { 
+        opacity: 0.4; 
+        cursor: not-allowed; 
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(100, 100, 100, 0.3);
+        box-shadow: none;
     }
     
     .chrono-circle {
@@ -374,6 +423,17 @@ $questionTheme = $question['theme'] ?? '';
         .chrono-time {
             font-size: 4rem;
         }
+        
+        .strategic-avatar-circle {
+            width: 100px;
+            height: 100px;
+        }
+        
+        .skill-circle {
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+        }
     }
     
     @media (max-width: 768px) {
@@ -406,6 +466,21 @@ $questionTheme = $question['theme'] ?? '';
         
         .question-text {
             font-size: 1.2rem;
+        }
+        
+        .strategic-avatar-circle {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .skill-circle {
+            width: 45px;
+            height: 45px;
+            font-size: 1.3rem;
+        }
+        
+        .skills-container {
+            gap: 8px;
         }
     }
     
@@ -443,6 +518,25 @@ $questionTheme = $question['theme'] ?? '';
         
         .question-text {
             font-size: 1rem;
+        }
+        
+        .strategic-avatar-circle {
+            width: 60px;
+            height: 60px;
+        }
+        
+        .skill-circle {
+            width: 40px;
+            height: 40px;
+            font-size: 1.1rem;
+        }
+        
+        .skills-container {
+            gap: 6px;
+        }
+        
+        .left-column {
+            gap: 20px;
         }
     }
     
@@ -491,6 +585,25 @@ $questionTheme = $question['theme'] ?? '';
         .buzz-container-bottom {
             bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         }
+        
+        .strategic-avatar-circle {
+            width: 50px;
+            height: 50px;
+        }
+        
+        .skill-circle {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
+        
+        .skills-container {
+            gap: 5px;
+        }
+        
+        .left-column {
+            gap: 15px;
+        }
     }
 </style>
 
@@ -513,6 +626,13 @@ $questionTheme = $question['theme'] ?? '';
                 <div class="player-level">{{ __('Niveau') }} {{ $playerLevel }}</div>
                 <div class="player-score" id="playerScore">{{ $playerScore }}</div>
             </div>
+            
+            <div class="opponent-circle">
+                <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar human">
+                <div class="opponent-name human">{{ $opponentName }}</div>
+                <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel }}</div>
+                <div class="opponent-score human" id="opponentScore">{{ $opponentScore }}</div>
+            </div>
         </div>
         
         <div class="center-column">
@@ -522,11 +642,13 @@ $questionTheme = $question['theme'] ?? '';
         </div>
         
         <div class="right-column">
-            <div class="opponent-circle">
-                <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar">
-                <div class="opponent-name">{{ $opponentName }}</div>
-                <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel }}</div>
-                <div class="opponent-score" id="opponentScore">{{ $opponentScore }}</div>
+            <div class="strategic-avatar-circle empty"></div>
+            
+            <div class="skills-container">
+                <div class="skill-circle empty"></div>
+                <div class="skill-circle empty"></div>
+                <div class="skill-circle empty"></div>
+                <div class="skill-circle empty"></div>
             </div>
         </div>
     </div>
