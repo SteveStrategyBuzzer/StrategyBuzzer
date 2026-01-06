@@ -524,7 +524,8 @@
     </div>
 </div>
 
-<script src="{{ asset('js/firebase-game-sync.js') }}"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 <script>
 (function() {
     const MATCH_ID = @json($matchId);
@@ -533,35 +534,43 @@
     const PLAYER_ID = @json(auth()->id());
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-    function initFirebase() {
-        if (typeof FirebaseGameSync !== 'undefined' && MATCH_ID) {
-            FirebaseGameSync.init({
-                matchId: MATCH_ID,
-                mode: 'duo',
-                laravelUserId: PLAYER_ID,
-                csrfToken: CSRF_TOKEN,
-                callbacks: {
-                    onReady: function() {
-                        console.log('[DuoResult] Firebase ready');
-                    },
-                    onPhaseChange: function(phase, data) {
-                        console.log('[DuoResult] Phase changed:', phase, data);
-                    },
-                    onOpponentDisconnect: function(opponentId, info) {
-                        console.log('[DuoResult] Opponent disconnected:', opponentId);
-                    }
-                }
+    function initSocketIO() {
+        if (typeof DuoSocketClient !== 'undefined' && MATCH_ID) {
+            const socketUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':3001';
+            
+            DuoSocketClient.connect(socketUrl).then(function() {
+                console.log('[DuoResult] Socket.IO connected');
+                
+                DuoSocketClient.joinRoom(MATCH_ID, ROOM_CODE, {
+                    playerId: PLAYER_ID
+                });
             }).catch(function(error) {
-                console.error('[DuoResult] Firebase init failed:', error);
+                console.error('[DuoResult] Socket.IO connect failed:', error);
             });
+            
+            DuoSocketClient.onScoreUpdate = function(data) {
+                console.log('[DuoResult] Score update:', data);
+            };
+            
+            DuoSocketClient.onMatchEnded = function(data) {
+                console.log('[DuoResult] Match ended:', data);
+            };
+            
+            DuoSocketClient.onRoundEnded = function(data) {
+                console.log('[DuoResult] Round ended:', data);
+            };
+            
+            DuoSocketClient.onPlayerLeft = function(data) {
+                console.log('[DuoResult] Player left:', data);
+            };
         }
     }
 
-    initFirebase();
+    initSocketIO();
 
     window.addEventListener('beforeunload', function() {
-        if (typeof FirebaseGameSync !== 'undefined') {
-            FirebaseGameSync.cleanup();
+        if (typeof DuoSocketClient !== 'undefined') {
+            DuoSocketClient.disconnect();
         }
     });
 })();

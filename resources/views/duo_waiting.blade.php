@@ -430,14 +430,10 @@ $opponentScore = $params['opponent_score'] ?? ($opponentInfo['score'] ?? 0);
         playerReady = true;
         updatePlayerStatusUI();
         
-        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady && MATCH_ID) {
-            FirebaseGameSync.setPlayerReady(CURRENT_QUESTION + 1).then(function() {
-                console.log('[DuoWaiting] Ready status sent');
-                checkBothReady();
-            }).catch(function(error) {
-                console.error('[DuoWaiting] Error sending ready status:', error);
-                checkBothReady();
-            });
+        if (typeof DuoSocketClient !== 'undefined' && DuoSocketClient.isConnected() && MATCH_ID) {
+            DuoSocketClient.setReady(true);
+            console.log('[DuoWaiting] Ready status sent via Socket.IO');
+            checkBothReady();
         } else {
             checkBothReady();
         }
@@ -499,32 +495,49 @@ $opponentScore = $params['opponent_score'] ?? ($opponentInfo['score'] ?? 0);
         }
     }
 
-    function initFirebase() {
-        if (typeof FirebaseGameSync !== 'undefined' && MATCH_ID) {
-            FirebaseGameSync.init({
-                matchId: MATCH_ID,
-                mode: 'duo',
-                laravelUserId: PLAYER_ID,
-                csrfToken: CSRF_TOKEN,
-                callbacks: {
-                    onReady: function() {
-                        console.log('[DuoWaiting] Firebase ready');
-                    },
-                    onPhaseChange: function(phase, data) {
-                        console.log('[DuoWaiting] Phase changed:', phase, data);
-                        handleOpponentReady(data);
-                    },
-                    onOpponentDisconnect: function(opponentId, info) {
-                        console.log('[DuoWaiting] Opponent disconnected:', opponentId);
-                    }
-                }
+    function initSocketIO() {
+        if (typeof DuoSocketClient !== 'undefined' && MATCH_ID) {
+            const socketUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':3001';
+            
+            DuoSocketClient.connect(socketUrl).then(function() {
+                console.log('[DuoWaiting] Socket.IO connected');
+                
+                DuoSocketClient.joinRoom(MATCH_ID, ROOM_CODE, {
+                    playerId: PLAYER_ID,
+                    playerName: PLAYER_NAME
+                });
             }).catch(function(error) {
-                console.error('[DuoWaiting] Firebase init failed:', error);
+                console.error('[DuoWaiting] Socket.IO connect failed:', error);
             });
+            
+            DuoSocketClient.onPlayerReady = function(data) {
+                console.log('[DuoWaiting] Player ready:', data);
+                if (data.playerId && data.playerId !== PLAYER_ID && data.isReady) {
+                    opponentReady = true;
+                    updateOpponentStatusUI();
+                    checkBothReady();
+                }
+            };
+            
+            DuoSocketClient.onPhaseChanged = function(data) {
+                console.log('[DuoWaiting] Phase changed:', data);
+                if (data.phase === 'QUESTION_ACTIVE') {
+                    redirectToNextQuestion();
+                }
+            };
+            
+            DuoSocketClient.onQuestionPublished = function(data) {
+                console.log('[DuoWaiting] Question published:', data);
+                redirectToNextQuestion();
+            };
+            
+            DuoSocketClient.onPlayerLeft = function(data) {
+                console.log('[DuoWaiting] Player left:', data);
+            };
         }
     }
 
-    initFirebase();
+    initSocketIO();
 
     setTimeout(function() {
         if (!playerReady) {
@@ -534,10 +547,13 @@ $opponentScore = $params['opponent_score'] ?? ($opponentInfo['score'] ?? 0);
     }, 60000);
 
     window.addEventListener('beforeunload', function() {
-        if (typeof FirebaseGameSync !== 'undefined') {
-            FirebaseGameSync.cleanup();
+        if (typeof DuoSocketClient !== 'undefined') {
+            DuoSocketClient.disconnect();
         }
     });
 })();
 </script>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 @endsection

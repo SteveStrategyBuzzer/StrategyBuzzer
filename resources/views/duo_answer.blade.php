@@ -472,24 +472,46 @@ $opponentScore = $params['opponent_score'] ?? 0;
         incorrectSoundDuration = Math.floor(incorrectSound.duration * 1000) + 100;
     });
     
-    function initFirebase() {
-        if (typeof FirebaseGameSync !== 'undefined' && MATCH_ID) {
-            FirebaseGameSync.init({
-                matchId: MATCH_ID,
-                mode: 'duo',
-                laravelUserId: PLAYER_ID,
-                csrfToken: CSRF_TOKEN,
-                callbacks: {
-                    onReady: function() {
-                        console.log('[DuoAnswer] Firebase ready');
-                    }
-                }
-            }).catch(function(error) {
-                console.error('[DuoAnswer] Firebase init failed:', error);
+    function initSocket() {
+        const socketUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':3001';
+        
+        if (typeof DuoSocketClient !== 'undefined' && MATCH_ID) {
+            DuoSocketClient.connect(socketUrl).then(() => {
+                console.log('[DuoAnswer] Socket connected');
+                DuoSocketClient.joinRoom(MATCH_ID, ROOM_CODE, {
+                    playerId: PLAYER_ID,
+                    token: CSRF_TOKEN
+                });
+            }).catch(error => {
+                console.error('[DuoAnswer] Socket connection failed:', error);
             });
+
+            // Handlers
+            DuoSocketClient.onAnswerResult = function(data) {
+                console.log('[DuoAnswer] Answer confirmed by server:', data);
+            };
+
+            DuoSocketClient.onAnswerRevealed = function(data) {
+                console.log('[DuoAnswer] Answer revealed:', data);
+                // The selectAnswer already handles redirection, but we could use this 
+                // if we wanted to sync the reveal for both players.
+                // For now, we follow the existing logic where selectAnswer triggers redirect.
+            };
+
+            DuoSocketClient.onScoreUpdate = function(data) {
+                console.log('[DuoAnswer] Score update:', data);
+                // Update UI scores if needed
+            };
+
+            DuoSocketClient.onPhaseChanged = function(data) {
+                console.log('[DuoAnswer] Phase changed:', data);
+                if (data.phase === 'result' && !answered) {
+                    handleTimeout();
+                }
+            };
         }
     }
-    
+
     function startTimer() {
         timerInterval = setInterval(function() {
             timeLeft--;
@@ -510,21 +532,13 @@ $opponentScore = $params['opponent_score'] ?? 0;
             }
         }, 1000);
     }
-    
-    function sendAnswerToFirebase(answerIndex, isCorrect) {
-        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
-            FirebaseGameSync.sendAnswerAfterServerConfirm({
-                answerIndex: answerIndex,
-                isCorrect: isCorrect
-            }, {
-                points: isCorrect ? POTENTIAL_POINTS : 0,
-                newScore: @json($score) + (isCorrect ? POTENTIAL_POINTS : 0)
-            }).catch(function(error) {
-                console.error('[DuoAnswer] Firebase sendAnswer error:', error);
-            });
+
+    function sendAnswerToSocket(answerIndex) {
+        if (typeof DuoSocketClient !== 'undefined' && DuoSocketClient.isConnected()) {
+            DuoSocketClient.answer(answerIndex);
         }
     }
-    
+
     window.selectAnswer = function(index) {
         if (answered) return;
         answered = true;
@@ -549,7 +563,7 @@ $opponentScore = $params['opponent_score'] ?? 0;
             soundDelay = incorrectSoundDuration;
         }
         
-        sendAnswerToFirebase(index, isCorrect);
+        sendAnswerToSocket(index);
         
         setTimeout(function() {
             const params = new URLSearchParams({
@@ -561,7 +575,7 @@ $opponentScore = $params['opponent_score'] ?? 0;
             window.location.href = '/game/duo/result?' + params.toString();
         }, soundDelay);
     };
-    
+
     function handleTimeout() {
         if (answered) return;
         answered = true;
@@ -572,7 +586,7 @@ $opponentScore = $params['opponent_score'] ?? 0;
             bubble.classList.add('disabled');
         });
         
-        sendAnswerToFirebase(-1, false);
+        sendAnswerToSocket(-1);
         
         setTimeout(function() {
             const params = new URLSearchParams({
@@ -585,15 +599,18 @@ $opponentScore = $params['opponent_score'] ?? 0;
             window.location.href = '/game/duo/result?' + params.toString();
         }, 2000);
     }
-    
-    initFirebase();
+
+    initSocket();
     startTimer();
-    
+
     window.addEventListener('beforeunload', function() {
-        if (typeof FirebaseGameSync !== 'undefined') {
-            FirebaseGameSync.cleanup();
+        if (typeof DuoSocketClient !== 'undefined') {
+            DuoSocketClient.disconnect();
         }
     });
 })();
 </script>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 @endsection

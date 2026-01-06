@@ -624,8 +624,8 @@ $questionTheme = $question['theme'] ?? '';
             buzzerSound.play().catch(function() {});
         }
         
-        if (typeof FirebaseGameSync !== 'undefined' && FirebaseGameSync.isReady) {
-            FirebaseGameSync.sendBuzz(Date.now());
+        if (typeof DuoSocketClient !== 'undefined' && DuoSocketClient.isConnected()) {
+            DuoSocketClient.buzz(Date.now());
         }
         
         isRedirecting = true;
@@ -660,47 +660,52 @@ $questionTheme = $question['theme'] ?? '';
         }
     });
     
-    if (MATCH_ID && typeof FirebaseGameSync !== 'undefined') {
-        FirebaseGameSync.init({
-            matchId: MATCH_ID,
-            mode: 'duo',
-            laravelUserId: PLAYER_ID,
-            csrfToken: CSRF_TOKEN,
-            callbacks: {
-                onReady: function() {
-                    console.log('[DuoQuestion] Firebase ready');
-                    startTimer();
-                },
-                onBuzz: function(buzzWinnerRole, buzzTime, data, isOpponentBuzz) {
-                    if (isOpponentBuzz && !hasBuzzed) {
-                        handleOpponentBuzz(data.buzzWinnerLaravelId, buzzTime);
-                    }
-                },
-                onPhaseChange: function(phase, data) {
-                    console.log('[DuoQuestion] Phase changed:', phase);
-                    if (phase === 'answering' && data.buzzWinnerLaravelId && data.buzzWinnerLaravelId !== PLAYER_ID) {
-                        handleOpponentBuzz(data.buzzWinnerLaravelId, data.buzzTime);
-                    }
-                },
-                onOpponentDisconnect: function(opponentId, info) {
-                    console.log('[DuoQuestion] Opponent disconnected:', opponentId);
-                }
-            }
+    if (MATCH_ID && typeof DuoSocketClient !== 'undefined') {
+        const socketUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':3001';
+        
+        DuoSocketClient.connect(socketUrl).then(function() {
+            console.log('[DuoQuestion] Socket.IO connected');
+            
+            DuoSocketClient.joinRoom(MATCH_ID, ROOM_CODE, {
+                playerId: PLAYER_ID,
+                playerName: @json($playerName ?? 'Joueur')
+            });
+            
+            startTimer();
         }).catch(function(error) {
-            console.error('[DuoQuestion] Firebase init failed:', error);
+            console.error('[DuoQuestion] Socket.IO connect failed:', error);
             startTimer();
         });
+        
+        DuoSocketClient.onBuzzWinner = function(data) {
+            console.log('[DuoQuestion] Buzz winner:', data);
+            if (data.playerId && data.playerId !== PLAYER_ID && !hasBuzzed) {
+                handleOpponentBuzz(data.playerId, data.buzzTime);
+            }
+        };
+        
+        DuoSocketClient.onPhaseChanged = function(data) {
+            console.log('[DuoQuestion] Phase changed:', data);
+            if (data.phase === 'ANSWER_SELECTION' && data.buzzWinnerId && data.buzzWinnerId !== PLAYER_ID && !hasBuzzed) {
+                handleOpponentBuzz(data.buzzWinnerId, Date.now());
+            }
+        };
+        
+        DuoSocketClient.onPlayerLeft = function(data) {
+            console.log('[DuoQuestion] Player left:', data);
+        };
     } else {
         setTimeout(startTimer, 500);
     }
     
     window.addEventListener('beforeunload', function() {
-        if (typeof FirebaseGameSync !== 'undefined') {
-            FirebaseGameSync.cleanup();
+        if (typeof DuoSocketClient !== 'undefined') {
+            DuoSocketClient.disconnect();
         }
     });
 })();
 </script>
 
-<script src="{{ asset('js/firebase-game-sync.js') }}"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 @endsection
