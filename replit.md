@@ -141,6 +141,15 @@ apps/
 - **Voice Chat**: WebRTC signaling integrated into Socket.IO channel (no separate connection)
 - **Latency**: Built-in ping measurement via `ping_check` / `pong_check` events
 
+### Duo Mode Pages (Socket.IO Integration - January 2026)
+All Duo mode pages now use Socket.IO via DuoSocketClient.js for low-latency real-time communication (~10-50ms):
+- **duo_question.blade.php**: Buzz synchronization, opponent buzz detection
+- **duo_answer.blade.php**: Answer submission, score updates, answer reveal
+- **duo_waiting.blade.php**: Player ready sync (GO button), phase transitions
+- **duo_result.blade.php**: Score display, round/match end events
+- **Connection**: `ws://hostname:3001` or `wss://` for secure connections
+- **Key callbacks**: onBuzzWinner, onPhaseChanged, onPlayerReady, onScoreUpdate, onRoundEnded, onMatchEnded
+
 ### Imports Cross-Package
 Les imports utilisent des chemins relatifs (par exemple `../../../../packages/shared/src/types.js`).
 
