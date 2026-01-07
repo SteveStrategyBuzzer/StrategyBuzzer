@@ -2198,7 +2198,7 @@ let gameState = null;
 let canBuzz = false;
 let hasBuzzed = false;
 let currentPhase = 'waiting';
-let timeLeft = 8;
+let timeLeft = 60; // ISSUE 3 FIX: Duo mode uses 60 second timer
 let timerInterval = null;
 let answerTimeLeft = 10;
 let answerTimerInterval = null;
@@ -2292,15 +2292,31 @@ const PhaseController = {
         // Hide waiting overlay first
         document.getElementById('waitingOverlay')?.classList.remove('active');
         
+        // ISSUE 1 FIX: Hide question content during intro - question should NOT be visible
+        const questionHeader = document.getElementById('questionHeader');
+        const gameLayout = document.querySelector('.game-layout');
+        const buzzContainer = document.getElementById('buzzContainer');
+        if (questionHeader) {
+            questionHeader.style.opacity = '0';
+            questionHeader.style.visibility = 'hidden';
+        }
+        if (gameLayout) {
+            gameLayout.style.opacity = '0';
+            gameLayout.style.visibility = 'hidden';
+        }
+        if (buzzContainer) {
+            buzzContainer.style.display = 'none';
+        }
+        
         this.setPhase('intro', { questionData });
         updateSkillStates('intro');
         
         const introOverlay = document.getElementById('introOverlay');
-        const questionNum = document.getElementById('introQuestionNumber');
+        const questionNumEl = document.getElementById('introQuestionNumber');
         const theme = document.getElementById('introTheme');
         
-        if (questionNum) {
-            questionNum.textContent = `{{ __('Question') }} ${questionData.question_number}/${questionData.total_questions}`;
+        if (questionNumEl) {
+            questionNumEl.textContent = `{{ __('Question') }} ${questionData.question_number}/${questionData.total_questions}`;
         }
         if (theme) {
             theme.textContent = questionData.theme || '{{ __("Culture générale") }}';
@@ -2309,6 +2325,7 @@ const PhaseController = {
         introOverlay?.classList.add('active');
         
         return new Promise(resolve => {
+            // ISSUE 1 FIX: Use 3 seconds for intro as specified
             this.introTimeoutId = setTimeout(() => {
                 this.introTimeoutId = null;
                 // Only hide if we're still in intro phase
@@ -2316,7 +2333,7 @@ const PhaseController = {
                     this.hideAllOverlays();
                 }
                 resolve();
-            }, this.phaseTimers.intro);
+            }, 3000); // 3 seconds intro duration
         });
     },
     
@@ -2326,9 +2343,25 @@ const PhaseController = {
         canBuzz = true;
         hasBuzzed = false;
         
-        // Reset UI state for new question
-        document.getElementById('questionHeader').classList.remove('waiting-for-question');
-        document.getElementById('buzzContainer').style.display = 'flex';
+        // ISSUE 1 FIX: Show question content AFTER intro completes
+        const questionHeader = document.getElementById('questionHeader');
+        const gameLayout = document.querySelector('.game-layout');
+        const buzzContainer = document.getElementById('buzzContainer');
+        
+        // Restore visibility of question elements (hidden during intro)
+        if (questionHeader) {
+            questionHeader.style.opacity = '1';
+            questionHeader.style.visibility = 'visible';
+            questionHeader.classList.remove('waiting-for-question');
+        }
+        if (gameLayout) {
+            gameLayout.style.opacity = '1';
+            gameLayout.style.visibility = 'visible';
+        }
+        if (buzzContainer) {
+            buzzContainer.style.display = 'flex';
+        }
+        
         document.getElementById('answersGrid').style.display = 'none';
         document.getElementById('buzzButton').disabled = false;
         
@@ -3099,7 +3132,8 @@ function showMatchEndOverlay() {
 }
 
 function startBuzzTimer() {
-    timeLeft = 8;
+    // ISSUE 3 FIX: Duo mode uses 60 second timer (not 8 seconds)
+    timeLeft = 60;
     updateChronoDisplay();
     
     if (timerInterval) clearInterval(timerInterval);
@@ -3108,7 +3142,8 @@ function startBuzzTimer() {
         timeLeft--;
         updateChronoDisplay();
         
-        if (timeLeft <= 3 && timeLeft > 0) {
+        // Play tick sound in final 10 seconds
+        if (timeLeft <= 10 && timeLeft > 0) {
             playSound('timerTickSound');
         }
         

@@ -209,6 +209,18 @@ export const DEFAULT_TIMERS: TimersConfig = {
   matchEnd: 10000,
 };
 
+// Duo mode uses 60 seconds for question phase
+export const DEFAULT_DUO_TIMERS: TimersConfig = {
+  intro: 3000,
+  questionActive: 60000,
+  answerSelection: 10000,
+  reveal: 5000,
+  waiting: 5000,
+  roundScoreboard: 5000,
+  tiebreakerChoice: 10000,
+  matchEnd: 10000,
+};
+
 export const DEFAULT_DUO_CONFIG: GameConfig = {
   mode: "DUO",
   maxPlayers: 2,
@@ -218,7 +230,7 @@ export const DEFAULT_DUO_CONFIG: GameConfig = {
   buzzEnabled: true,
   voiceChatEnabled: true,
   scoring: DEFAULT_SCORING,
-  timers: DEFAULT_TIMERS,
+  timers: DEFAULT_DUO_TIMERS,
 };
 
 export const DEFAULT_LEAGUE_INDIVIDUAL_CONFIG: GameConfig = {
