@@ -618,7 +618,7 @@ class DuoController extends Controller
         $opponentScore = 0;
         $currentUser = $user;
 
-        return response()->view('duo_game', [
+        return response()->view('duo_question', [
             'match_id' => $match->id,
             'match' => $match->load(['player1', 'player2']),
             'game_server_url' => $gameServerUrl,

@@ -2,615 +2,880 @@
 
 @section('content')
 @php
-$matchId = $params['match_id'] ?? null;
-$roomCode = $params['room_code'] ?? null;
-$currentQuestion = $params['current_question'] ?? 1;
-$totalQuestions = $params['total_questions'] ?? 10;
-
-$question = $params['question'] ?? [];
+$mode = 'duo';
+$choices = $question['choices'] ?? [];
 $questionText = $question['text'] ?? '';
-$answers = $question['answers'] ?? [];
-$correctIndex = $params['correct_index'] ?? -1;
-
-$playerBuzzed = $params['player_buzzed'] ?? false;
-$buzzOrder = $params['buzz_order'] ?? 0;
-$potentialPoints = $params['potential_points'] ?? 0;
-$score = $params['score'] ?? 0;
-$opponentScore = $params['opponent_score'] ?? 0;
+$isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
 @endphp
 
 <style>
     body {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
         min-height: 100vh;
-        height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 5px;
-        overflow: hidden;
+        padding: 10px;
         margin: 0;
+        overflow-x: hidden;
     }
     
-    .answer-container {
-        max-width: 900px;
+    .game-container {
+        max-width: 1200px;
         width: 100%;
         margin: 0 auto;
-        padding: 10px;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        height: 100%;
-        max-height: 100vh;
+        gap: 20px;
+        position: relative;
+        min-height: 100vh;
+        padding-bottom: 40px;
     }
     
-    .answer-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        flex-wrap: wrap;
-        gap: 10px;
-        flex-shrink: 0;
-    }
-    
-    .answer-info {
-        background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
-        padding: 8px 15px;
-        border-radius: 15px;
+    .question-header {
+        background: rgba(78, 205, 196, 0.1);
+        padding: 20px;
+        border-radius: 20px;
+        text-align: center;
         border: 2px solid rgba(78, 205, 196, 0.3);
-        backdrop-filter: blur(10px);
-        flex: 1;
-        min-width: 150px;
+        margin-bottom: 10px;
+    }
+    
+    .question-number {
+        font-size: 0.9rem;
+        color: #4ECDC4;
+        margin-bottom: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .question-text {
+        font-size: 1.4rem;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+    
+    .buzz-winner-banner {
+        background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
+        padding: 15px 25px;
+        border-radius: 15px;
+        text-align: center;
+        border: 2px solid;
+        margin-bottom: 10px;
+        animation: bannerPulse 2s ease-in-out infinite;
+    }
+    
+    .buzz-winner-banner.player-won {
+        border-color: #4ECDC4;
+        box-shadow: 0 0 30px rgba(78, 205, 196, 0.4);
+    }
+    
+    .buzz-winner-banner.opponent-won {
+        border-color: #FF6B6B;
+        box-shadow: 0 0 30px rgba(255, 107, 107, 0.4);
+    }
+    
+    @keyframes bannerPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+    
+    .buzz-winner-text {
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+    
+    .buzz-winner-banner.player-won .buzz-winner-text {
+        color: #4ECDC4;
+    }
+    
+    .buzz-winner-banner.opponent-won .buzz-winner-text {
+        color: #FF6B6B;
+    }
+    
+    .game-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 30px;
+        align-items: start;
+        justify-items: center;
+        margin: 20px 0;
+    }
+    
+    .left-column {
         display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        width: 100%;
+    }
+    
+    .player-circle {
+        display: flex;
+        flex-direction: column;
         align-items: center;
         gap: 10px;
     }
     
-    .answer-title {
-        font-size: 0.85rem;
-        color: #4ECDC4;
-        margin-bottom: 3px;
+    .player-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid #4ECDC4;
+        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
+        object-fit: cover;
+    }
+    
+    .player-name {
+        font-size: 1rem;
         font-weight: 600;
+        color: #4ECDC4;
     }
     
-    .answer-value {
-        font-size: 1.2rem;
-        font-weight: bold;
+    .player-score {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #4ECDC4;
+        text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
     }
     
-    .score-box {
-        text-align: right;
-    }
-    
-    .answer-timer {
-        margin-bottom: 10px;
-        position: relative;
-        flex-shrink: 0;
-    }
-    
-    .timer-label {
+    .opponent-circle {
         display: flex;
-        justify-content: space-between;
+        flex-direction: column;
         align-items: center;
-        margin-bottom: 6px;
-        font-size: 0.8rem;
+        gap: 10px;
     }
     
-    .timer-bar-container {
-        height: 8px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 8px;
-        overflow: hidden;
-        position: relative;
-        border: 2px solid rgba(255,255,255,0.2);
+    .opponent-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid #FF6B6B;
+        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
+        object-fit: cover;
     }
     
-    .timer-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #4ECDC4 0%, #667eea 100%);
-        transition: width 1s linear;
-        border-radius: 8px;
-        box-shadow: 0 0 20px rgba(78, 205, 196, 0.6);
-    }
-    
-    .timer-bar.warning {
-        background: linear-gradient(90deg, #FF6B6B 0%, #EE5A6F 100%);
-        animation: timer-pulse 0.5s infinite;
-    }
-    
-    @keyframes timer-pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    
-    .answers-grid {
-        display: grid;
-        gap: 8px;
-        margin-bottom: 10px;
-        flex: 1;
-        overflow-y: auto;
-    }
-    
-    .answer-bubble {
-        background: linear-gradient(145deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-        border: 2px solid rgba(102, 126, 234, 0.4);
-        border-radius: 15px;
-        padding: 12px 18px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-        backdrop-filter: blur(5px);
+    .opponent-avatar-empty {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid #FF6B6B;
+        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: center;
+        background: rgba(255, 107, 107, 0.1);
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: #FF6B6B;
     }
     
-    .answer-bubble::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-        transition: left 0.5s;
+    .opponent-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #FF6B6B;
     }
     
-    .answer-bubble:hover::before {
-        left: 100%;
+    .opponent-score {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #FF6B6B;
+        text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
     }
     
-    .answer-bubble:hover:not(.disabled) {
-        transform: translateX(8px) scale(1.02);
-        border-color: #4ECDC4;
-        background: linear-gradient(145deg, rgba(78, 205, 196, 0.25) 0%, rgba(102, 126, 234, 0.25) 100%);
-        box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
+    .center-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
     
-    .answer-bubble:active:not(.disabled) {
-        transform: translateX(4px) scale(0.98);
-    }
-    
-    .answer-bubble.disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    
-    .answer-number {
-        width: 35px;
-        height: 35px;
+    .chrono-circle {
+        width: 180px;
+        height: 180px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+        box-shadow: 0 15px 50px rgba(102, 126, 234, 0.6);
+        animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-glow {
+        0%, 100% {
+            box-shadow: 0 15px 50px rgba(102, 126, 234, 0.6);
+        }
+        50% {
+            box-shadow: 0 15px 70px rgba(102, 126, 234, 0.9);
+        }
+    }
+    
+    .chrono-circle::before {
+        content: '';
+        position: absolute;
+        inset: -5px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #4ECDC4, #667eea, #FF6B6B);
+        opacity: 0.5;
+        filter: blur(15px);
+        animation: rotate-glow 3s linear infinite;
+    }
+    
+    @keyframes rotate-glow {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .chrono-time {
+        font-size: 4rem;
+        font-weight: 900;
+        position: relative;
+        z-index: 1;
+        background: linear-gradient(180deg, #fff 0%, #4ECDC4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .chrono-time.warning {
+        background: linear-gradient(180deg, #fff 0%, #FF6B6B 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+    
+    .right-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+    }
+    
+    .answers-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+    
+    .answer-button {
+        background: rgba(255, 255, 255, 0.1);
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 25px 20px;
+        color: #fff;
         font-size: 1.1rem;
-        font-weight: bold;
-        flex-shrink: 0;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
-    }
-    
-    .answer-text {
-        font-size: 0.95rem;
-        font-weight: 500;
-        flex: 1;
-    }
-    
-    .answer-icon {
-        font-size: 1.2rem;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-    
-    .answer-bubble:hover .answer-icon {
-        opacity: 1;
-    }
-    
-    .answer-bubble.highlighted {
-        background: linear-gradient(145deg, rgba(78, 205, 196, 0.6) 0%, rgba(102, 234, 126, 0.6) 100%) !important;
-        border-color: #4ECDC4 !important;
-        box-shadow: 0 0 30px rgba(78, 205, 196, 0.9), inset 0 0 20px rgba(78, 205, 196, 0.4) !important;
-        animation: glow-pulse 1.5s infinite;
-    }
-    
-    @keyframes glow-pulse {
-        0%, 100% { box-shadow: 0 0 30px rgba(78, 205, 196, 0.9), inset 0 0 20px rgba(78, 205, 196, 0.4); }
-        50% { box-shadow: 0 0 50px rgba(78, 205, 196, 1), inset 0 0 30px rgba(78, 205, 196, 0.6); }
-    }
-    
-    .buzz-info {
-        text-align: center;
-        padding: 12px;
-        border-radius: 12px;
-        margin-bottom: 5px;
-        flex-shrink: 0;
-    }
-    
-    .buzz-info.first-buzzer {
-        background: rgba(255, 215, 0, 0.15);
-        border: 2px solid rgba(255, 215, 0, 0.4);
-    }
-    
-    .buzz-info.second-buzzer {
-        background: rgba(192, 192, 192, 0.15);
-        border: 2px solid rgba(192, 192, 192, 0.4);
-    }
-    
-    .buzz-info.no-buzz {
-        background: rgba(255, 107, 107, 0.15);
-        border: 2px solid rgba(255, 107, 107, 0.3);
-    }
-    
-    .buzz-info-text {
-        font-size: 1rem;
         font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        min-height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
-    .buzz-info.first-buzzer .buzz-info-text {
-        color: #FFD700;
+    .answer-button:hover:not(.disabled):not(.selected) {
+        background: rgba(78, 205, 196, 0.2);
+        border-color: #4ECDC4;
+        transform: scale(1.02);
+        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.4);
     }
     
-    .buzz-info.second-buzzer .buzz-info-text {
-        color: #C0C0C0;
+    .answer-button.selected {
+        background: rgba(78, 205, 196, 0.3);
+        border-color: #4ECDC4;
+        box-shadow: 0 0 30px rgba(78, 205, 196, 0.6);
+        animation: selectedPulse 1.5s ease-in-out infinite;
     }
     
-    .buzz-info.no-buzz .buzz-info-text {
+    @keyframes selectedPulse {
+        0%, 100% { box-shadow: 0 0 30px rgba(78, 205, 196, 0.6); }
+        50% { box-shadow: 0 0 50px rgba(78, 205, 196, 0.9); }
+    }
+    
+    .answer-button.correct {
+        background: rgba(78, 205, 196, 0.4);
+        border-color: #4ECDC4;
+        box-shadow: 0 0 40px rgba(78, 205, 196, 0.8);
+    }
+    
+    .answer-button.incorrect {
+        background: rgba(255, 107, 107, 0.4);
+        border-color: #FF6B6B;
+        box-shadow: 0 0 40px rgba(255, 107, 107, 0.8);
+    }
+    
+    .answer-button.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .answer-button.waiting {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .result-overlay {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.95);
+        padding: 40px 60px;
+        border-radius: 30px;
+        text-align: center;
+        z-index: 200;
+        border: 3px solid;
+        animation: fadeIn 0.3s ease;
+        display: none;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -60%);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+    }
+    
+    .result-overlay.correct {
+        border-color: #4ECDC4;
+        box-shadow: 0 0 50px rgba(78, 205, 196, 0.8);
+    }
+    
+    .result-overlay.incorrect {
+        border-color: #FF6B6B;
+        box-shadow: 0 0 50px rgba(255, 107, 107, 0.8);
+    }
+    
+    .result-text {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin-bottom: 15px;
+    }
+    
+    .result-overlay.correct .result-text {
+        color: #4ECDC4;
+    }
+    
+    .result-overlay.incorrect .result-text {
         color: #FF6B6B;
     }
     
-    @media (max-width: 768px) {
-        .answer-header {
-            flex-direction: column;
-            gap: 10px;
+    .points-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        opacity: 0.9;
+    }
+    
+    .correct-answer-text {
+        font-size: 1.2rem;
+        margin-top: 15px;
+        color: #FFD700;
+    }
+    
+    .connection-status {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        z-index: 1000;
+    }
+    
+    .connection-status.connected {
+        background: rgba(78, 205, 196, 0.3);
+        color: #4ECDC4;
+    }
+    
+    .connection-status.disconnected {
+        background: rgba(255, 107, 107, 0.3);
+        color: #FF6B6B;
+    }
+    
+    .connection-status.connecting {
+        background: rgba(255, 215, 0, 0.3);
+        color: #FFD700;
+    }
+    
+    .waiting-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 150;
+    }
+    
+    .waiting-message {
+        background: rgba(0, 0, 0, 0.9);
+        padding: 40px 60px;
+        border-radius: 30px;
+        text-align: center;
+        border: 3px solid #FFD700;
+        box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+    }
+    
+    .waiting-message h2 {
+        font-size: 1.8rem;
+        color: #FFD700;
+        margin-bottom: 10px;
+    }
+    
+    .waiting-message p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+    
+    @media (max-width: 1024px) {
+        .game-layout {
+            gap: 20px;
         }
         
-        .answer-info {
-            width: 100%;
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+            width: 85px;
+            height: 85px;
         }
         
-        .answer-value {
-            font-size: 1.3rem;
+        .chrono-circle {
+            width: 150px;
+            height: 150px;
         }
         
-        .answer-text {
+        .chrono-time {
+            font-size: 3.5rem;
+        }
+        
+        .answer-button {
+            padding: 20px 15px;
             font-size: 1rem;
         }
+    }
+    
+    @media (max-width: 768px) {
+        .game-layout {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
         
-        .answer-number {
-            width: 40px;
-            height: 40px;
-            font-size: 1.1rem;
+        .left-column {
+            flex-direction: row;
+            justify-content: space-around;
+            gap: 20px;
+        }
+        
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+            width: 70px;
+            height: 70px;
+        }
+        
+        .player-score, .opponent-score {
+            font-size: 1.6rem;
+        }
+        
+        .chrono-circle {
+            width: 120px;
+            height: 120px;
+        }
+        
+        .chrono-time {
+            font-size: 2.8rem;
+        }
+        
+        .answers-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .answer-button {
+            padding: 20px;
+            font-size: 1rem;
+            min-height: 60px;
+        }
+        
+        .question-text {
+            font-size: 1.2rem;
         }
     }
     
     @media (max-width: 480px) {
-        .answer-bubble {
-            padding: 15px 18px;
-        }
-    }
-    
-    @media (max-width: 480px) and (orientation: portrait) {
-        .answer-container {
-            padding: 12px;
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+            width: 60px;
+            height: 60px;
         }
         
-        .answer-bubble {
-            padding: 12px 16px;
-            margin-bottom: 8px;
+        .player-score, .opponent-score {
+            font-size: 1.4rem;
         }
         
-        .answer-text {
-            font-size: 0.95rem;
-        }
-    }
-    
-    @media (max-height: 500px) and (orientation: landscape) {
-        .answer-container {
-            padding: 8px;
-            max-height: 100vh;
-            overflow-y: auto;
+        .player-name, .opponent-name {
+            font-size: 0.85rem;
         }
         
-        .answer-header {
-            margin-bottom: 8px;
+        .chrono-circle {
+            width: 100px;
+            height: 100px;
         }
         
-        .answer-timer {
-            margin-bottom: 8px;
+        .chrono-time {
+            font-size: 2.2rem;
         }
         
-        .answer-bubble {
-            padding: 10px 14px;
-            margin-bottom: 6px;
-        }
-        
-        .answer-text {
-            font-size: 0.9rem;
-        }
-        
-        .answer-number {
-            width: 35px;
-            height: 35px;
+        .question-text {
             font-size: 1rem;
         }
-    }
-    
-    @media (min-width: 481px) and (max-width: 900px) and (orientation: portrait) {
-        .answer-bubble {
-            padding: 16px 20px;
+        
+        .answer-button {
+            padding: 15px;
+            font-size: 0.95rem;
         }
-    }
-    
-    @media (min-width: 481px) and (max-width: 1024px) and (orientation: landscape) {
-        .answer-container {
-            padding: 16px;
+        
+        .buzz-winner-text {
+            font-size: 0.95rem;
         }
     }
 </style>
 
-<div class="answer-container">
-    <div class="answer-header">
-        <div class="answer-info" style="text-align: center; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 15px;">
-            @php
-                $pointColor = $potentialPoints == 0 ? '#FF6B6B' : ($potentialPoints == 1 ? '#C0C0C0' : '#FFD700');
-            @endphp
-            <div style="font-size: 1.7rem; font-weight: 700; flex: 1; text-align: left;">
-                {{ __('Question') }} #{{ $currentQuestion }}/{{ $totalQuestions }}
-            </div>
-            <div style="font-size: 2.5rem; font-weight: 900; color: {{ $pointColor }}; text-shadow: 0 0 20px {{ $pointColor }}80;">
-                +{{ $potentialPoints }}
-            </div>
-            <div style="font-size: 1.7rem; font-weight: 700; flex: 1; text-align: right;">
-                {{ __('Score') }} {{ $score }}/{{ $opponentScore }}
-            </div>
-        </div>
+<div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
+
+<div class="game-container">
+    <div class="question-header">
+        <div class="question-number">{{ __('Question') }} {{ $currentQuestion ?? 1 }}/{{ $totalQuestions ?? 10 }}</div>
+        <div class="question-text" id="questionText">{{ $questionText }}</div>
     </div>
     
-    <div class="answer-timer">
-        <div class="timer-label">
-            <span>⏱️ {{ __('Temps pour répondre') }}</span>
-            <span id="timerText">10s</span>
-        </div>
-        <div class="timer-bar-container">
-            <div class="timer-bar" id="timerBar"></div>
-        </div>
-    </div>
-    
-    <div class="answers-grid">
-        @php
-            $isTrueFalse = ($question['type'] ?? '') === 'true_false';
-        @endphp
-        
-        @foreach($answers as $index => $answer)
-            @if($isTrueFalse && $answer === null)
-                @continue
+    <div class="buzz-winner-banner {{ $isBuzzWinner ? 'player-won' : 'opponent-won' }}" id="buzzWinnerBanner">
+        <div class="buzz-winner-text">
+            @if($isBuzzWinner)
+                🔔 {{ __('Vous avez buzzé en premier ! Choisissez votre réponse.') }}
+            @else
+                ⏳ {{ __(':name a buzzé en premier. En attente de sa réponse...', ['name' => $opponentName ?? __('Adversaire')]) }}
             @endif
-            
-            <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
-                <div class="answer-number">{{ $index + 1 }}</div>
-                <div class="answer-text">{{ $answer }}</div>
-                <div class="answer-icon">👉</div>
+        </div>
+    </div>
+    
+    <div class="game-layout">
+        <div class="left-column">
+            <div class="player-circle">
+                <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
+                <div class="player-name">{{ __('Vous') }}</div>
+                <div class="player-score" id="playerScore">{{ $playerScore ?? 0 }}</div>
             </div>
+            
+            <div class="opponent-circle">
+                @if(!empty($opponentAvatarPath))
+                    <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar">
+                @else
+                    <div class="opponent-avatar-empty">?</div>
+                @endif
+                <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
+                <div class="opponent-score" id="opponentScore">{{ $opponentScore ?? 0 }}</div>
+            </div>
+        </div>
+        
+        <div class="center-column">
+            <div class="chrono-circle">
+                <div class="chrono-time" id="chronoTimer">10</div>
+            </div>
+        </div>
+        
+        <div class="right-column"></div>
+    </div>
+    
+    <div class="answers-container" id="answersContainer">
+        @foreach($choices as $index => $choice)
+            <button class="answer-button {{ !$isBuzzWinner ? 'waiting' : '' }}" 
+                    data-index="{{ $index }}"
+                    {{ !$isBuzzWinner ? 'disabled' : '' }}>
+                {{ $choice }}
+            </button>
         @endforeach
     </div>
-    
-    @if($playerBuzzed && $buzzOrder === 1)
-        <div class="buzz-info first-buzzer">
-            <div class="buzz-info-text">
-                🥇 {{ __('Premier buzzer !') }} (+2pts)
-            </div>
-        </div>
-    @elseif($playerBuzzed && $buzzOrder === 2)
-        <div class="buzz-info second-buzzer">
-            <div class="buzz-info-text">
-                🥈 {{ __('Deuxième buzzer') }} (+1pt)
-            </div>
-        </div>
-    @else
-        <div class="buzz-info no-buzz">
-            <div class="buzz-info-text">
-                ⚠️ {{ __('Pas buzzé') }} (0 {{ __('point') }})
-            </div>
-        </div>
-    @endif
 </div>
 
-<audio id="tickSound" preload="auto" loop>
-    <source src="{{ asset('sounds/tic_tac.mp3') }}" type="audio/mpeg">
-</audio>
+<div class="result-overlay" id="resultOverlay">
+    <div class="result-text" id="resultText"></div>
+    <div class="points-text" id="pointsText"></div>
+    <div class="correct-answer-text" id="correctAnswerText"></div>
+</div>
 
-<audio id="timeoutSound" preload="auto">
-    <source src="{{ asset('sounds/timeout.mp3') }}" type="audio/mpeg">
-</audio>
+<div class="waiting-overlay" id="waitingOverlay">
+    <div class="waiting-message">
+        <h2>⏳ {{ __('En attente...') }}</h2>
+        <p id="waitingText">{{ __(':name répond à la question...', ['name' => $opponentName ?? __('Adversaire')]) }}</p>
+    </div>
+</div>
 
 <audio id="correctSound" preload="auto">
-    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="incorrectSound" preload="auto">
-    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('audio/buzzers/incorrect/incorrect1.mp3') }}" type="audio/mpeg">
 </audio>
 
-<script src="{{ asset('js/firebase-game-sync.js') }}"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 
 <script>
 (function() {
-    const MATCH_ID = @json($matchId);
-    const ROOM_CODE = @json($roomCode);
-    const CURRENT_QUESTION = @json($currentQuestion);
-    const PLAYER_ID = @json(auth()->id());
-    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const CORRECT_INDEX = @json($correctIndex);
-    const POTENTIAL_POINTS = @json($potentialPoints);
+    'use strict';
     
-    let timeLeft = 10;
-    let totalTime = 10;
-    let answered = false;
-    let correctSoundDuration = 2000;
-    let incorrectSoundDuration = 500;
+    const MATCH_ID = '{{ $match_id ?? "" }}';
+    const ROOM_ID = '{{ $room_id ?? "" }}';
+    const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
+    const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
+    const GAME_SERVER_URL = '{{ config("app.game_server_url", "") }}';
+    const IS_BUZZ_WINNER = {{ $isBuzzWinner ? 'true' : 'false' }};
+    
+    const ANSWER_TIME = 10;
+    let timeLeft = ANSWER_TIME;
     let timerInterval = null;
+    let answered = false;
+    let selectedIndex = null;
+    let isRedirecting = false;
     
-    const timerBar = document.getElementById('timerBar');
-    const tickSound = document.getElementById('tickSound');
-    const timeoutSound = document.getElementById('timeoutSound');
+    const chronoTimer = document.getElementById('chronoTimer');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const playerScoreEl = document.getElementById('playerScore');
+    const opponentScoreEl = document.getElementById('opponentScore');
+    const resultOverlay = document.getElementById('resultOverlay');
+    const resultText = document.getElementById('resultText');
+    const pointsText = document.getElementById('pointsText');
+    const correctAnswerText = document.getElementById('correctAnswerText');
+    const waitingOverlay = document.getElementById('waitingOverlay');
+    const answersContainer = document.getElementById('answersContainer');
     const correctSound = document.getElementById('correctSound');
     const incorrectSound = document.getElementById('incorrectSound');
+    const answerButtons = document.querySelectorAll('.answer-button');
     
-    timerBar.style.width = '100%';
-    
-    tickSound.currentTime = 0;
-    tickSound.play().catch(function(e) { console.log('Audio play failed:', e); });
-    
-    correctSound.addEventListener('loadedmetadata', function() {
-        correctSoundDuration = Math.floor(correctSound.duration * 1000) + 100;
-    });
-    
-    incorrectSound.addEventListener('loadedmetadata', function() {
-        incorrectSoundDuration = Math.floor(incorrectSound.duration * 1000) + 100;
-    });
-    
-    function initSocket() {
-        const socketUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':3001';
-        
-        if (typeof DuoSocketClient !== 'undefined' && MATCH_ID) {
-            DuoSocketClient.connect(socketUrl).then(() => {
-                console.log('[DuoAnswer] Socket connected');
-                DuoSocketClient.joinRoom(MATCH_ID, ROOM_CODE, {
-                    playerId: PLAYER_ID,
-                    token: CSRF_TOKEN
-                });
-            }).catch(error => {
-                console.error('[DuoAnswer] Socket connection failed:', error);
-            });
-
-            // Handlers
-            DuoSocketClient.onAnswerResult = function(data) {
-                console.log('[DuoAnswer] Answer confirmed by server:', data);
-            };
-
-            DuoSocketClient.onAnswerRevealed = function(data) {
-                console.log('[DuoAnswer] Answer revealed:', data);
-                // The selectAnswer already handles redirection, but we could use this 
-                // if we wanted to sync the reveal for both players.
-                // For now, we follow the existing logic where selectAnswer triggers redirect.
-            };
-
-            DuoSocketClient.onScoreUpdate = function(data) {
-                console.log('[DuoAnswer] Score update:', data);
-                // Update UI scores if needed
-            };
-
-            DuoSocketClient.onPhaseChanged = function(data) {
-                console.log('[DuoAnswer] Phase changed:', data);
-                if (data.phase === 'result' && !answered) {
-                    handleTimeout();
-                }
-            };
+    function updateConnectionStatus(status) {
+        connectionStatus.className = 'connection-status ' + status;
+        switch(status) {
+            case 'connected':
+                connectionStatus.textContent = '{{ __("Connecté") }}';
+                break;
+            case 'disconnected':
+                connectionStatus.textContent = '{{ __("Déconnecté") }}';
+                break;
+            case 'connecting':
+                connectionStatus.textContent = '{{ __("Connexion...") }}';
+                break;
         }
     }
-
+    
     function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        
         timerInterval = setInterval(function() {
             timeLeft--;
-            const percentage = (timeLeft / totalTime) * 100;
-            timerBar.style.width = percentage + '%';
-            document.getElementById('timerText').textContent = timeLeft + 's';
+            chronoTimer.textContent = Math.max(0, timeLeft);
             
-            if (timeLeft <= 3) {
-                timerBar.classList.add('warning');
+            if (timeLeft <= 5) {
+                chronoTimer.classList.add('warning');
             }
             
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
-                tickSound.pause();
-                if (!answered) {
+                timerInterval = null;
+                if (!answered && IS_BUZZ_WINNER) {
                     handleTimeout();
                 }
             }
         }, 1000);
     }
-
-    function sendAnswerToSocket(answerIndex) {
-        if (typeof DuoSocketClient !== 'undefined' && DuoSocketClient.isConnected()) {
-            DuoSocketClient.answer(answerIndex);
-        }
-    }
-
-    window.selectAnswer = function(index) {
-        if (answered) return;
-        answered = true;
-        
-        clearInterval(timerInterval);
-        tickSound.pause();
-        
-        document.querySelectorAll('.answer-bubble').forEach(function(bubble) {
-            bubble.classList.add('disabled');
-        });
-        
-        const isCorrect = (index === CORRECT_INDEX);
-        let soundDelay = 500;
-        
-        if (isCorrect) {
-            correctSound.currentTime = 0;
-            correctSound.play().catch(function(e) { console.log('Audio play failed:', e); });
-            soundDelay = correctSoundDuration;
-        } else {
-            incorrectSound.currentTime = 0;
-            incorrectSound.play().catch(function(e) { console.log('Audio play failed:', e); });
-            soundDelay = incorrectSoundDuration;
-        }
-        
-        sendAnswerToSocket(index);
-        
-        setTimeout(function() {
-            const params = new URLSearchParams({
-                match_id: MATCH_ID,
-                room_code: ROOM_CODE || '',
-                answer_index: index,
-                question_number: CURRENT_QUESTION
-            });
-            window.location.href = '/game/duo/result?' + params.toString();
-        }, soundDelay);
-    };
-
+    
     function handleTimeout() {
         if (answered) return;
         answered = true;
         
-        timeoutSound.play().catch(function(e) { console.log('Audio play failed:', e); });
-        
-        document.querySelectorAll('.answer-bubble').forEach(function(bubble) {
-            bubble.classList.add('disabled');
+        answerButtons.forEach(function(btn) {
+            btn.classList.add('disabled');
         });
         
-        sendAnswerToSocket(-1);
+        DuoSocketClient.answer(-1);
+    }
+    
+    function selectAnswer(index) {
+        if (answered || !IS_BUZZ_WINNER) return;
+        
+        answered = true;
+        selectedIndex = index;
+        
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        
+        answerButtons.forEach(function(btn) {
+            btn.classList.remove('selected');
+            btn.classList.add('disabled');
+        });
+        
+        answerButtons[index].classList.add('selected');
+        answerButtons[index].classList.remove('disabled');
+        
+        DuoSocketClient.answer(index);
+    }
+    
+    function showResult(isCorrect, correctIndex, pointsEarned) {
+        resultOverlay.className = 'result-overlay ' + (isCorrect ? 'correct' : 'incorrect');
+        resultText.textContent = isCorrect ? '{{ __("Bonne réponse !") }}' : '{{ __("Mauvaise réponse !") }}';
+        pointsText.textContent = isCorrect ? '+' + pointsEarned + ' {{ __("points") }}' : '{{ __("0 point") }}';
+        
+        if (!isCorrect && correctIndex !== undefined && correctIndex >= 0) {
+            const choices = @json($choices);
+            if (choices[correctIndex]) {
+                correctAnswerText.textContent = '{{ __("La bonne réponse était :") }} ' + choices[correctIndex];
+            }
+        } else {
+            correctAnswerText.textContent = '';
+        }
+        
+        resultOverlay.style.display = 'block';
+        
+        if (isCorrect && correctSound) {
+            correctSound.play().catch(function() {});
+        } else if (!isCorrect && incorrectSound) {
+            incorrectSound.play().catch(function() {});
+        }
+        
+        answerButtons.forEach(function(btn, idx) {
+            btn.classList.remove('selected');
+            if (idx === correctIndex) {
+                btn.classList.add('correct');
+            } else if (idx === selectedIndex && !isCorrect) {
+                btn.classList.add('incorrect');
+            }
+        });
+    }
+    
+    function updateScores(playerScore, opponentScore) {
+        if (playerScoreEl) playerScoreEl.textContent = playerScore;
+        if (opponentScoreEl) opponentScoreEl.textContent = opponentScore;
+    }
+    
+    answerButtons.forEach(function(btn, index) {
+        btn.addEventListener('click', function() {
+            selectAnswer(index);
+        });
+    });
+    
+    DuoSocketClient.onConnect = function() {
+        updateConnectionStatus('connected');
+        
+        DuoSocketClient.joinRoom(ROOM_ID, LOBBY_CODE, {
+            token: JWT_TOKEN
+        });
+    };
+    
+    DuoSocketClient.onDisconnect = function(reason) {
+        updateConnectionStatus('disconnected');
+    };
+    
+    DuoSocketClient.onError = function(error) {
+        console.error('[DuoAnswer] Socket error:', error);
+    };
+    
+    DuoSocketClient.onAnswerRevealed = function(data) {
+        if (isRedirecting) return;
+        
+        waitingOverlay.style.display = 'none';
+        
+        const isCorrect = data.isCorrect || false;
+        const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
+        const pointsEarned = data.points || data.pointsEarned || 0;
+        
+        if (data.scores) {
+            updateScores(data.scores.player || 0, data.scores.opponent || 0);
+        }
+        
+        showResult(isCorrect, correctIndex, pointsEarned);
         
         setTimeout(function() {
-            const params = new URLSearchParams({
-                match_id: MATCH_ID,
-                room_code: ROOM_CODE || '',
-                answer_index: -1,
-                question_number: CURRENT_QUESTION,
-                timeout: 'true'
-            });
-            window.location.href = '/game/duo/result?' + params.toString();
-        }, 2000);
-    }
-
-    initSocket();
-    startTimer();
-
-    window.addEventListener('beforeunload', function() {
-        if (typeof DuoSocketClient !== 'undefined') {
-            DuoSocketClient.disconnect();
+            if (isRedirecting) return;
+            
+            if (data.nextUrl) {
+                isRedirecting = true;
+                window.location.href = data.nextUrl;
+            } else if (data.matchEnded) {
+                isRedirecting = true;
+                window.location.href = '/duo/result/' + MATCH_ID;
+            }
+        }, 3000);
+    };
+    
+    DuoSocketClient.onRoundEnded = function(data) {
+        if (isRedirecting) return;
+        
+        if (data.scores) {
+            updateScores(data.scores.player || 0, data.scores.opponent || 0);
         }
-    });
+        
+        setTimeout(function() {
+            if (isRedirecting) return;
+            isRedirecting = true;
+            
+            if (data.nextQuestionUrl) {
+                window.location.href = data.nextQuestionUrl;
+            } else {
+                window.location.href = '/duo/question/' + MATCH_ID;
+            }
+        }, 2000);
+    };
+    
+    DuoSocketClient.onMatchEnded = function(data) {
+        if (isRedirecting) return;
+        isRedirecting = true;
+        
+        setTimeout(function() {
+            window.location.href = '/duo/result/' + MATCH_ID;
+        }, 2000);
+    };
+    
+    DuoSocketClient.onScoreUpdate = function(data) {
+        if (data.playerScore !== undefined) {
+            playerScoreEl.textContent = data.playerScore;
+        }
+        if (data.opponentScore !== undefined) {
+            opponentScoreEl.textContent = data.opponentScore;
+        }
+    };
+    
+    if (GAME_SERVER_URL) {
+        updateConnectionStatus('connecting');
+        DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN)
+            .then(function() {
+                console.log('[DuoAnswer] Connected to game server');
+            })
+            .catch(function(error) {
+                console.error('[DuoAnswer] Failed to connect:', error);
+                updateConnectionStatus('disconnected');
+            });
+    }
+    
+    if (IS_BUZZ_WINNER) {
+        startTimer();
+    } else {
+        waitingOverlay.style.display = 'flex';
+    }
 })();
 </script>
-
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 @endsection

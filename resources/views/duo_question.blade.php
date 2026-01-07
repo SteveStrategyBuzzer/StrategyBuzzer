@@ -2,50 +2,7 @@
 
 @section('content')
 @php
-$matchId = $params['match_id'] ?? null;
-$roomCode = $params['room_code'] ?? null;
-$currentQuestion = $params['current_question'] ?? 1;
-$totalQuestions = $params['total_questions'] ?? 10;
-
-$playerInfo = $params['player_info'] ?? [];
-$playerName = $playerInfo['name'] ?? __('Joueur');
-$playerScore = $playerInfo['score'] ?? 0;
-$playerLevel = $playerInfo['level'] ?? 1;
-$playerAvatar = $playerInfo['avatar'] ?? 'default';
-
-if (strpos($playerAvatar, 'http://') === 0 || strpos($playerAvatar, 'https://') === 0 || strpos($playerAvatar, '//') === 0) {
-    $playerAvatarPath = $playerAvatar;
-} elseif (strpos($playerAvatar, 'images/') === 0) {
-    $playerAvatarPath = asset($playerAvatar);
-} elseif (strpos($playerAvatar, '/') !== false && strpos($playerAvatar, '.png') === false) {
-    $playerAvatarPath = asset("images/avatars/{$playerAvatar}.png");
-} elseif (strpos($playerAvatar, '/') !== false) {
-    $playerAvatarPath = asset($playerAvatar);
-} else {
-    $playerAvatarPath = asset("images/avatars/standard/{$playerAvatar}.png");
-}
-
-$opponentInfo = $params['opponent_info'] ?? [];
-$opponentName = $opponentInfo['name'] ?? __('Adversaire');
-$opponentScore = $opponentInfo['score'] ?? 0;
-$opponentLevel = $opponentInfo['level'] ?? 1;
-$opponentAvatar = $opponentInfo['avatar'] ?? 'default';
-
-if (strpos($opponentAvatar, 'http://') === 0 || strpos($opponentAvatar, 'https://') === 0 || strpos($opponentAvatar, '//') === 0) {
-    $opponentAvatarPath = $opponentAvatar;
-} elseif (strpos($opponentAvatar, 'images/') === 0) {
-    $opponentAvatarPath = asset($opponentAvatar);
-} elseif (strpos($opponentAvatar, '/') !== false && strpos($opponentAvatar, '.png') === false) {
-    $opponentAvatarPath = asset("images/avatars/{$opponentAvatar}.png");
-} elseif (strpos($opponentAvatar, '/') !== false) {
-    $opponentAvatarPath = asset($opponentAvatar);
-} else {
-    $opponentAvatarPath = asset("images/avatars/standard/{$opponentAvatar}.png");
-}
-
-$question = $params['question'] ?? [];
-$questionText = $question['text'] ?? '';
-$questionTheme = $question['theme'] ?? '';
+$mode = 'duo';
 @endphp
 
 <style>
@@ -82,24 +39,20 @@ $questionTheme = $question['theme'] ?? '';
         margin-bottom: 10px;
     }
     
-    .question-info {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        font-size: 0.85rem;
-        color: #4ECDC4;
-        opacity: 0.9;
-    }
-    
     .question-number {
+        font-size: 0.9rem;
+        color: #4ECDC4;
+        margin-bottom: 12px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 1px;
     }
     
     .question-theme {
-        font-style: italic;
+        font-size: 0.85rem;
+        color: #FFD700;
+        margin-bottom: 8px;
+        font-weight: 500;
     }
     
     .question-text {
@@ -125,130 +78,84 @@ $questionTheme = $question['theme'] ?? '';
         width: 100%;
     }
     
-    .player-circle, .opponent-circle {
+    .player-circle {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 10px;
     }
     
-    .player-avatar, .opponent-avatar {
+    .player-avatar {
         width: 100px;
         height: 100px;
         border-radius: 50%;
+        border: 3px solid #4ECDC4;
+        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
         object-fit: cover;
     }
     
-    .player-avatar {
-        border: 3px solid #4ECDC4;
-        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
+    .player-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #4ECDC4;
+    }
+    
+    .player-score {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #4ECDC4;
+        text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
+    }
+    
+    .opponent-circle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
     }
     
     .opponent-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
         border: 3px solid #FF6B6B;
         box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
+        object-fit: cover;
     }
     
-    .opponent-avatar.human {
-        border-color: #f39c12;
-        box-shadow: 0 8px 30px rgba(243, 156, 18, 0.5);
+    .opponent-avatar-empty {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid #FF6B6B;
+        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 107, 107, 0.1);
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: #FF6B6B;
     }
     
-    .player-name { color: #4ECDC4; font-weight: 600; }
-    .opponent-name { color: #FF6B6B; font-weight: 600; }
-    .opponent-name.human { color: #f39c12; }
+    .opponent-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #FF6B6B;
+    }
     
-    .player-score, .opponent-score {
+    .opponent-score {
         font-size: 2rem;
         font-weight: 900;
+        color: #FF6B6B;
+        text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
     }
-    
-    .player-score { color: #4ECDC4; text-shadow: 0 0 20px rgba(78, 205, 196, 0.8); }
-    .opponent-score { color: #FF6B6B; text-shadow: 0 0 20px rgba(255, 107, 107, 0.8); }
-    .opponent-score.human { color: #f39c12; text-shadow: 0 0 20px rgba(243, 156, 18, 0.8); }
     
     .center-column {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-    }
-    
-    .right-column {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        width: 100%;
-    }
-    
-    .strategic-avatar-circle {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        border: 3px solid #FFD700;
-        box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 215, 0, 0.1);
-        object-fit: cover;
-    }
-    
-    .strategic-avatar-circle.empty {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.3);
-        box-shadow: none;
-    }
-    
-    .strategic-avatar-image {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        object-fit: cover;
-    }
-    
-    .skills-container {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        align-items: center;
-    }
-    
-    .skill-circle {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.8rem;
-        background: rgba(255, 255, 255, 0.1);
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    
-    .skill-circle.active {
-        border-color: #FFD700;
-        background: rgba(255, 215, 0, 0.2);
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
-    }
-    
-    .skill-circle.empty { opacity: 0.3; cursor: default; }
-    .skill-circle.used { 
-        opacity: 0.5; 
-        cursor: default;
-        border-color: rgba(128, 128, 128, 0.5);
-        background: rgba(128, 128, 128, 0.2);
-        box-shadow: none;
-    }
-    .skill-circle.locked { 
-        opacity: 0.4; 
-        cursor: not-allowed; 
-        border-color: rgba(255, 255, 255, 0.2);
-        background: rgba(100, 100, 100, 0.3);
-        box-shadow: none;
     }
     
     .chrono-circle {
@@ -298,6 +205,94 @@ $questionTheme = $question['theme'] ?? '';
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+    }
+    
+    .right-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+    }
+    
+    .strategic-avatar-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 3px solid #FFD700;
+        box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 215, 0, 0.1);
+        object-fit: cover;
+    }
+    
+    .strategic-avatar-circle.empty {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: none;
+    }
+    
+    .strategic-avatar-image {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .strategic-avatar-name {
+        font-size: 0.9rem;
+        color: #FFD700;
+        font-weight: 600;
+        text-align: center;
+    }
+    
+    .skills-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    .skill-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .skill-circle.active {
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.2);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        animation: golden-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes golden-pulse {
+        0%, 100% {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        }
+        50% {
+            box-shadow: 0 0 35px rgba(255, 215, 0, 0.9);
+        }
+    }
+    
+    .skill-circle.empty {
+        opacity: 0.3;
+        cursor: default;
+    }
+    
+    .skill-circle.used {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     
     .buzz-container-bottom {
@@ -366,6 +361,88 @@ $questionTheme = $question['theme'] ?? '';
         transition: opacity 0.3s ease;
     }
     
+    .result-overlay {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        padding: 40px 60px;
+        border-radius: 30px;
+        text-align: center;
+        z-index: 200;
+        border: 3px solid;
+        animation: fadeIn 0.3s ease;
+        display: none;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -60%);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+    }
+    
+    .result-overlay.correct {
+        border-color: #4ECDC4;
+        box-shadow: 0 0 50px rgba(78, 205, 196, 0.8);
+    }
+    
+    .result-overlay.incorrect {
+        border-color: #FF6B6B;
+        box-shadow: 0 0 50px rgba(255, 107, 107, 0.8);
+    }
+    
+    .result-text {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin-bottom: 15px;
+    }
+    
+    .result-overlay.correct .result-text {
+        color: #4ECDC4;
+    }
+    
+    .result-overlay.incorrect .result-text {
+        color: #FF6B6B;
+    }
+    
+    .points-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        opacity: 0.9;
+    }
+    
+    .connection-status {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        z-index: 1000;
+    }
+    
+    .connection-status.connected {
+        background: rgba(78, 205, 196, 0.3);
+        color: #4ECDC4;
+    }
+    
+    .connection-status.disconnected {
+        background: rgba(255, 107, 107, 0.3);
+        color: #FF6B6B;
+    }
+    
+    .connection-status.connecting {
+        background: rgba(255, 215, 0, 0.3);
+        color: #FFD700;
+    }
+    
     .opponent-buzzed-overlay {
         position: fixed;
         top: 0;
@@ -373,7 +450,7 @@ $questionTheme = $question['theme'] ?? '';
         right: 0;
         bottom: 0;
         background: rgba(255, 107, 107, 0.2);
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: center;
         z-index: 200;
@@ -400,28 +477,14 @@ $questionTheme = $question['theme'] ?? '';
         opacity: 0.9;
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
     @media (max-width: 1024px) {
         .game-layout {
             gap: 20px;
         }
         
-        .player-avatar, .opponent-avatar {
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
             width: 85px;
             height: 85px;
-        }
-        
-        .chrono-circle {
-            width: 180px;
-            height: 180px;
-        }
-        
-        .chrono-time {
-            font-size: 4rem;
         }
         
         .strategic-avatar-circle {
@@ -432,7 +495,16 @@ $questionTheme = $question['theme'] ?? '';
         .skill-circle {
             width: 50px;
             height: 50px;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
+        }
+        
+        .chrono-circle {
+            width: 180px;
+            height: 180px;
+        }
+        
+        .chrono-time {
+            font-size: 4rem;
         }
     }
     
@@ -441,9 +513,14 @@ $questionTheme = $question['theme'] ?? '';
             gap: 15px;
         }
         
-        .player-avatar, .opponent-avatar {
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
             width: 70px;
             height: 70px;
+        }
+        
+        .strategic-avatar-circle {
+            width: 80px;
+            height: 80px;
         }
         
         .player-score, .opponent-score {
@@ -459,6 +536,12 @@ $questionTheme = $question['theme'] ?? '';
             font-size: 3rem;
         }
         
+        .skill-circle {
+            width: 45px;
+            height: 45px;
+            font-size: 1.2rem;
+        }
+        
         .buzz-button img {
             width: 150px;
             height: 150px;
@@ -467,27 +550,17 @@ $questionTheme = $question['theme'] ?? '';
         .question-text {
             font-size: 1.2rem;
         }
-        
-        .strategic-avatar-circle {
-            width: 80px;
-            height: 80px;
-        }
-        
-        .skill-circle {
-            width: 45px;
-            height: 45px;
-            font-size: 1.3rem;
-        }
-        
-        .skills-container {
-            gap: 8px;
-        }
     }
     
     @media (max-width: 480px) {
-        .player-avatar, .opponent-avatar {
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
             width: 60px;
             height: 60px;
+        }
+        
+        .strategic-avatar-circle {
+            width: 70px;
+            height: 70px;
         }
         
         .player-score, .opponent-score {
@@ -496,10 +569,6 @@ $questionTheme = $question['theme'] ?? '';
         
         .player-name, .opponent-name {
             font-size: 0.85rem;
-        }
-        
-        .player-level, .opponent-level {
-            font-size: 0.75rem;
         }
         
         .chrono-circle {
@@ -511,6 +580,12 @@ $questionTheme = $question['theme'] ?? '';
             font-size: 2.5rem;
         }
         
+        .skill-circle {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+        }
+        
         .buzz-button img {
             width: 130px;
             height: 130px;
@@ -518,25 +593,6 @@ $questionTheme = $question['theme'] ?? '';
         
         .question-text {
             font-size: 1rem;
-        }
-        
-        .strategic-avatar-circle {
-            width: 60px;
-            height: 60px;
-        }
-        
-        .skill-circle {
-            width: 40px;
-            height: 40px;
-            font-size: 1.1rem;
-        }
-        
-        .skills-container {
-            gap: 6px;
-        }
-        
-        .left-column {
-            gap: 20px;
         }
     }
     
@@ -559,9 +615,14 @@ $questionTheme = $question['theme'] ?? '';
             margin: 10px 0;
         }
         
-        .player-avatar, .opponent-avatar {
+        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
             width: 60px;
             height: 60px;
+        }
+        
+        .strategic-avatar-circle {
+            width: 70px;
+            height: 70px;
         }
         
         .player-score, .opponent-score {
@@ -577,6 +638,12 @@ $questionTheme = $question['theme'] ?? '';
             font-size: 2.2rem;
         }
         
+        .skill-circle {
+            width: 35px;
+            height: 35px;
+            font-size: 0.9rem;
+        }
+        
         .buzz-button img {
             width: 110px;
             height: 110px;
@@ -585,82 +652,95 @@ $questionTheme = $question['theme'] ?? '';
         .buzz-container-bottom {
             bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         }
-        
-        .strategic-avatar-circle {
-            width: 50px;
-            height: 50px;
-        }
-        
-        .skill-circle {
-            width: 35px;
-            height: 35px;
-            font-size: 1rem;
-        }
-        
-        .skills-container {
-            gap: 5px;
-        }
-        
-        .left-column {
-            gap: 15px;
-        }
     }
 </style>
 
+<div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
+
 <div class="game-container">
     <div class="question-header">
-        <div class="question-info">
-            <span class="question-number">{{ __('Question') }} {{ $currentQuestion }}/{{ $totalQuestions }}</span>
-            @if($questionTheme)
-                <span class="question-theme">{{ $questionTheme }}</span>
-            @endif
-        </div>
-        <div class="question-text">{{ $questionText }}</div>
+        <div class="question-number">{{ __('Question') }} {{ $currentQuestion ?? 1 }}/{{ $totalQuestions ?? 10 }}</div>
+        @if(!empty($themeDisplay))
+            <div class="question-theme">{{ $themeDisplay }}</div>
+        @elseif(!empty($theme))
+            <div class="question-theme">{{ $theme }}</div>
+        @endif
+        <div class="question-text" id="questionText">{{ __('En attente de la question...') }}</div>
     </div>
     
     <div class="game-layout">
         <div class="left-column">
             <div class="player-circle">
-                <img src="{{ $playerAvatarPath }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
-                <div class="player-name">{{ $playerName }}</div>
-                <div class="player-level">{{ __('Niveau') }} {{ $playerLevel }}</div>
-                <div class="player-score" id="playerScore">{{ $playerScore }}</div>
+                <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
+                <div class="player-name">{{ __('Vous') }}</div>
+                <div class="player-score" id="playerScore">{{ $playerScore ?? 0 }}</div>
             </div>
             
             <div class="opponent-circle">
-                <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar human">
-                <div class="opponent-name human">{{ $opponentName }}</div>
-                <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel }}</div>
-                <div class="opponent-score human" id="opponentScore">{{ $opponentScore }}</div>
+                @if(!empty($opponentAvatarPath))
+                    <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar">
+                @else
+                    <div class="opponent-avatar-empty">?</div>
+                @endif
+                <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
+                <div class="opponent-score" id="opponentScore">{{ $opponentScore ?? 0 }}</div>
             </div>
         </div>
         
         <div class="center-column">
             <div class="chrono-circle">
-                <div class="chrono-time" id="chronoTimer">8</div>
+                <div class="chrono-time" id="chronoTimer">60</div>
             </div>
         </div>
         
         <div class="right-column">
-            <div class="strategic-avatar-circle empty"></div>
+            @if(!empty($strategic_avatar))
+                <div class="strategic-avatar-circle">
+                    <img src="{{ $strategic_avatar }}" alt="{{ __('Avatar stratégique') }}" class="strategic-avatar-image">
+                </div>
+                @if(!empty($avatarName))
+                    <div class="strategic-avatar-name">{{ $avatarName }}</div>
+                @endif
+            @else
+                <div class="strategic-avatar-circle empty"></div>
+            @endif
             
             <div class="skills-container">
-                <div class="skill-circle empty"></div>
-                <div class="skill-circle empty"></div>
-                <div class="skill-circle empty"></div>
-                <div class="skill-circle empty"></div>
+                @if(!empty($skills) && is_array($skills))
+                    @foreach($skills as $skill)
+                        <div class="skill-circle {{ ($skill['used'] ?? false) ? 'used' : 'active' }}" 
+                             data-skill-id="{{ $skill['id'] ?? '' }}"
+                             data-skill-trigger="{{ $skill['trigger'] ?? 'question' }}"
+                             data-uses-left="{{ $skill['uses_left'] ?? 1 }}"
+                             title="{{ $skill['name'] ?? '' }}: {{ $skill['description'] ?? '' }}">
+                            {{ $skill['icon'] ?? '⭐' }}
+                        </div>
+                    @endforeach
+                    @for($i = count($skills); $i < 3; $i++)
+                        <div class="skill-circle empty"></div>
+                    @endfor
+                @else
+                    <div class="skill-circle empty"></div>
+                    <div class="skill-circle empty"></div>
+                    <div class="skill-circle empty"></div>
+                @endif
             </div>
         </div>
     </div>
-    
-    <div class="buzz-container-bottom buzzer-waiting" id="buzzContainer">
-        <button id="buzzButton" class="buzz-button" disabled>
-            <img src="{{ asset('images/buzzer.png') }}" alt="{{ __('Buzzer') }}">
-        </button>
-    </div>
 </div>
 
-<div id="opponentBuzzedOverlay" class="opponent-buzzed-overlay" style="display: none;">
+<div class="buzz-container-bottom buzzer-waiting" id="buzzContainer">
+    <button class="buzz-button" id="buzzButton" disabled>
+        <img src="{{ asset('images/buzzer.png') }}" alt="{{ __('Buzzer') }}">
+    </button>
+</div>
+
+<div class="result-overlay" id="resultOverlay">
+    <div class="result-text" id="resultText"></div>
+    <div class="points-text" id="pointsText"></div>
+</div>
+
+<div id="opponentBuzzedOverlay" class="opponent-buzzed-overlay">
     <div class="opponent-buzzed-message">
         <h2>🔔 {{ __('Adversaire a buzzé !') }}</h2>
         <p>{{ __('En attente de sa réponse...') }}</p>
@@ -668,33 +748,73 @@ $questionTheme = $question['theme'] ?? '';
 </div>
 
 <audio id="buzzerSound" preload="auto">
-    <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="noBuzzSound" preload="auto">
     <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
 </audio>
 
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+
 <script>
 (function() {
-    const MATCH_ID = @json($matchId);
-    const ROOM_CODE = @json($roomCode);
-    const CURRENT_QUESTION = @json($currentQuestion);
-    const PLAYER_ID = @json(auth()->id());
-    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    'use strict';
     
-    let timeLeft = 8;
+    const MATCH_ID = '{{ $match_id ?? "" }}';
+    const ROOM_ID = '{{ $room_id ?? "" }}';
+    const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
+    const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
+    const GAME_SERVER_URL = '{{ config("app.game_server_url", "") }}';
+    
+    const TOTAL_TIME = 60;
+    let timeLeft = TOTAL_TIME;
     let timerInterval = null;
-    let hasBuzzed = false;
-    let opponentHasBuzzed = false;
+    let buzzed = false;
+    let phaseEndsAtMs = null;
+    let currentPhase = 'LOBBY';
+    let currentQuestion = null;
     let isRedirecting = false;
     
     const chronoTimer = document.getElementById('chronoTimer');
-    const buzzContainer = document.getElementById('buzzContainer');
     const buzzButton = document.getElementById('buzzButton');
+    const buzzContainer = document.getElementById('buzzContainer');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const questionText = document.getElementById('questionText');
+    const playerScoreEl = document.getElementById('playerScore');
+    const opponentScoreEl = document.getElementById('opponentScore');
+    const resultOverlay = document.getElementById('resultOverlay');
+    const resultText = document.getElementById('resultText');
+    const pointsText = document.getElementById('pointsText');
     const buzzerSound = document.getElementById('buzzerSound');
     const noBuzzSound = document.getElementById('noBuzzSound');
     const opponentBuzzedOverlay = document.getElementById('opponentBuzzedOverlay');
+    
+    function updateConnectionStatus(status) {
+        connectionStatus.className = 'connection-status ' + status;
+        switch(status) {
+            case 'connected':
+                connectionStatus.textContent = '{{ __("Connecté") }}';
+                break;
+            case 'disconnected':
+                connectionStatus.textContent = '{{ __("Déconnecté") }}';
+                break;
+            case 'connecting':
+                connectionStatus.textContent = '{{ __("Connexion...") }}';
+                break;
+        }
+    }
+    
+    function syncTimerWithServer(serverPhaseEndsAtMs) {
+        if (!serverPhaseEndsAtMs) return;
+        
+        phaseEndsAtMs = serverPhaseEndsAtMs;
+        const now = Date.now();
+        const remainingMs = Math.max(0, phaseEndsAtMs - now);
+        timeLeft = Math.ceil(remainingMs / 1000);
+        chronoTimer.textContent = timeLeft;
+    }
     
     function setBuzzerState(state) {
         buzzContainer.classList.remove('buzzer-waiting', 'buzzer-ready', 'buzzer-hidden');
@@ -703,131 +823,365 @@ $questionTheme = $question['theme'] ?? '';
     }
     
     function startTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+        
         setBuzzerState('ready');
         
-        timerInterval = setInterval(function() {
-            timeLeft--;
-            chronoTimer.textContent = timeLeft;
+        timerInterval = setInterval(() => {
+            if (phaseEndsAtMs) {
+                const now = Date.now();
+                const remainingMs = Math.max(0, phaseEndsAtMs - now);
+                timeLeft = Math.ceil(remainingMs / 1000);
+            } else {
+                timeLeft--;
+            }
             
-            if (timeLeft <= 3) {
+            chronoTimer.textContent = Math.max(0, timeLeft);
+            
+            if (timeLeft <= 10) {
                 chronoTimer.style.color = '#FF6B6B';
             }
             
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
-                handleTimeout();
+                timerInterval = null;
+                if (!buzzed) {
+                    handleNoBuzz();
+                }
             }
         }, 1000);
     }
     
-    function handleTimeout() {
-        if (isRedirecting) return;
-        isRedirecting = true;
-        
-        setBuzzerState('hidden');
-        
-        if (noBuzzSound) {
-            noBuzzSound.play().catch(function() {});
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
         }
-        
-        setTimeout(function() {
-            window.location.href = '/game/duo/answer?timeout=true&match_id=' + MATCH_ID;
-        }, 500);
     }
     
-    function handlePlayerBuzz() {
-        if (hasBuzzed || opponentHasBuzzed || isRedirecting) return;
+    function handleBuzz() {
+        if (buzzed || isRedirecting) return;
         
-        hasBuzzed = true;
-        clearInterval(timerInterval);
+        buzzed = true;
+        stopTimer();
+        
+        buzzerSound.currentTime = 0;
+        buzzerSound.play().catch(e => console.log('{{ __("Erreur audio") }}:', e));
+        
+        buzzButton.disabled = true;
         setBuzzerState('hidden');
         
-        if (buzzerSound) {
-            buzzerSound.play().catch(function() {});
-        }
-        
-        if (typeof DuoSocketClient !== 'undefined' && DuoSocketClient.isConnected()) {
-            DuoSocketClient.buzz(Date.now());
+        if (duoSocket && duoSocket.isConnected()) {
+            duoSocket.buzz(Date.now());
         }
         
         isRedirecting = true;
-        setTimeout(function() {
+        setTimeout(() => {
             window.location.href = '/game/duo/answer?buzzed=true&match_id=' + MATCH_ID;
         }, 300);
     }
     
-    function handleOpponentBuzz(opponentId, buzzTime) {
-        if (opponentHasBuzzed || hasBuzzed || isRedirecting) return;
+    function handleNoBuzz() {
+        if (isRedirecting) return;
         
-        opponentHasBuzzed = true;
-        clearInterval(timerInterval);
+        noBuzzSound.currentTime = 0;
+        noBuzzSound.play().catch(e => console.log('{{ __("Erreur audio") }}:', e));
+        
+        buzzButton.disabled = true;
+        setBuzzerState('waiting');
+        
+        isRedirecting = true;
+        setTimeout(() => {
+            window.location.href = '/game/duo/answer?timeout=true&match_id=' + MATCH_ID;
+        }, 500);
+    }
+    
+    function handleOpponentBuzz(data) {
+        if (buzzed || isRedirecting) return;
+        
+        stopTimer();
         setBuzzerState('hidden');
-        
         opponentBuzzedOverlay.style.display = 'flex';
         
         isRedirecting = true;
-        setTimeout(function() {
+        setTimeout(() => {
             window.location.href = '/game/duo/answer?opponent_buzzed=true&match_id=' + MATCH_ID;
         }, 1500);
     }
     
-    buzzButton.addEventListener('click', handlePlayerBuzz);
+    function showResult(isCorrect, points) {
+        resultOverlay.style.display = 'block';
+        resultOverlay.className = 'result-overlay ' + (isCorrect ? 'correct' : 'incorrect');
+        resultText.textContent = isCorrect ? '{{ __("Correct!") }}' : '{{ __("Incorrect!") }}';
+        pointsText.textContent = (points >= 0 ? '+' : '') + points + ' {{ __("points") }}';
+        
+        setTimeout(() => {
+            resultOverlay.style.display = 'none';
+        }, 2000);
+    }
+    
+    function updateScores(playerScore, opponentScore) {
+        if (playerScoreEl && playerScore !== undefined) {
+            playerScoreEl.textContent = playerScore;
+        }
+        if (opponentScoreEl && opponentScore !== undefined) {
+            opponentScoreEl.textContent = opponentScore;
+        }
+    }
+    
+    function handleGameState(data) {
+        console.log('[DuoQuestion] {{ __("État du jeu reçu") }}:', data);
+        
+        if (data.phase) {
+            currentPhase = data.phase;
+        }
+        
+        if (data.phaseEndsAtMs) {
+            syncTimerWithServer(data.phaseEndsAtMs);
+        }
+        
+        if (data.currentQuestion) {
+            currentQuestion = data.currentQuestion;
+            if (questionText && currentQuestion.text) {
+                questionText.textContent = currentQuestion.text;
+            }
+        }
+        
+        if (data.players) {
+            const players = Object.values(data.players);
+            players.forEach(player => {
+                if (player.isHost !== undefined) {
+                    if (player.isHost) {
+                        updateScores(player.score, undefined);
+                    } else {
+                        updateScores(undefined, player.score);
+                    }
+                }
+            });
+        }
+        
+        if (currentPhase === 'QUESTION_ACTIVE' && !buzzed && !isRedirecting) {
+            if (!timerInterval) {
+                startTimer();
+            }
+        } else if (currentPhase !== 'QUESTION_ACTIVE') {
+            stopTimer();
+            setBuzzerState('waiting');
+        }
+    }
+    
+    function handlePhaseChanged(data) {
+        console.log('[DuoQuestion] {{ __("Phase changée") }}:', data);
+        
+        currentPhase = data.phase;
+        
+        if (data.phaseEndsAtMs) {
+            syncTimerWithServer(data.phaseEndsAtMs);
+        }
+        
+        if (currentPhase === 'QUESTION_ACTIVE') {
+            buzzed = false;
+            isRedirecting = false;
+            startTimer();
+        } else if (currentPhase === 'ANSWER_SELECTION') {
+            stopTimer();
+        } else if (currentPhase === 'REVEAL') {
+            stopTimer();
+        }
+    }
+    
+    function handleQuestionPublished(data) {
+        console.log('[DuoQuestion] {{ __("Question publiée") }}:', data);
+        
+        if (data.question && questionText) {
+            questionText.textContent = data.question.text;
+            currentQuestion = data.question;
+        }
+        
+        if (data.phaseEndsAtMs) {
+            syncTimerWithServer(data.phaseEndsAtMs);
+        }
+        
+        buzzed = false;
+        isRedirecting = false;
+        startTimer();
+    }
+    
+    function handleBuzzWinner(data) {
+        console.log('[DuoQuestion] {{ __("Gagnant du buzz") }}:', data);
+        
+        stopTimer();
+        buzzButton.disabled = true;
+        setBuzzerState('hidden');
+        
+        if (data.playerId && data.playerId !== '{{ auth()->id() ?? "" }}') {
+            handleOpponentBuzz(data);
+        }
+    }
+    
+    function handleAnswerRevealed(data) {
+        console.log('[DuoQuestion] {{ __("Réponse révélée") }}:', data);
+        
+        if (data.isCorrect !== undefined && data.pointsEarned !== undefined) {
+            showResult(data.isCorrect, data.pointsEarned);
+        }
+        
+        if (data.playerScore !== undefined) {
+            updateScores(data.playerScore, undefined);
+        }
+        if (data.opponentScore !== undefined) {
+            updateScores(undefined, data.opponentScore);
+        }
+    }
+    
+    function handleScoreUpdate(data) {
+        console.log('[DuoQuestion] {{ __("Mise à jour des scores") }}:', data);
+        
+        if (data.scores) {
+            Object.entries(data.scores).forEach(([playerId, score]) => {
+                if (playerId === '{{ auth()->id() ?? "" }}') {
+                    updateScores(score, undefined);
+                } else {
+                    updateScores(undefined, score);
+                }
+            });
+        }
+    }
+    
+    function handleMatchEnded(data) {
+        console.log('[DuoQuestion] {{ __("Match terminé") }}:', data);
+        
+        stopTimer();
+        
+        isRedirecting = true;
+        setTimeout(() => {
+            window.location.href = '/duo/results?match_id=' + MATCH_ID;
+        }, 2000);
+    }
+    
+    function handleSkillUsed(data) {
+        console.log('[DuoQuestion] {{ __("Skill utilisé") }}:', data);
+        
+        if (data.effect === 'time_bonus' && data.extraSeconds) {
+            timeLeft += data.extraSeconds;
+            if (phaseEndsAtMs) {
+                phaseEndsAtMs += data.extraSeconds * 1000;
+            }
+            chronoTimer.textContent = timeLeft;
+            showSkillMessage('⏰ +' + data.extraSeconds + ' {{ __("secondes") }}!', 'success');
+        }
+    }
+    
+    function showSkillMessage(message, type, duration = 3000) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'skill-message skill-message-' + type;
+        msgDiv.innerHTML = message;
+        msgDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 15px 30px; border-radius: 10px; font-weight: bold; z-index: 9999; animation: fadeInOut ' + (duration/1000) + 's ease-in-out;';
+        
+        if (type === 'success') {
+            msgDiv.style.background = 'linear-gradient(135deg, #2ECC71, #27AE60)';
+        } else if (type === 'error') {
+            msgDiv.style.background = 'linear-gradient(135deg, #E74C3C, #C0392B)';
+        } else if (type === 'warning') {
+            msgDiv.style.background = 'linear-gradient(135deg, #F39C12, #E67E22)';
+        } else {
+            msgDiv.style.background = 'linear-gradient(135deg, #3498DB, #2980B9)';
+        }
+        msgDiv.style.color = 'white';
+        
+        document.body.appendChild(msgDiv);
+        setTimeout(() => msgDiv.remove(), duration);
+    }
+    
+    async function initializeSocket() {
+        if (!GAME_SERVER_URL) {
+            console.warn('[DuoQuestion] {{ __("URL du serveur de jeu non configurée") }}');
+            updateConnectionStatus('disconnected');
+            startTimer();
+            return;
+        }
+        
+        updateConnectionStatus('connecting');
+        
+        duoSocket.onConnect = () => {
+            updateConnectionStatus('connected');
+            
+            duoSocket.joinRoom(ROOM_ID, LOBBY_CODE, {
+                token: JWT_TOKEN
+            });
+        };
+        
+        duoSocket.onDisconnect = (reason) => {
+            updateConnectionStatus('disconnected');
+            console.log('[DuoQuestion] {{ __("Déconnecté") }}:', reason);
+        };
+        
+        duoSocket.onError = (error) => {
+            console.error('[DuoQuestion] {{ __("Erreur Socket") }}:', error);
+            updateConnectionStatus('disconnected');
+        };
+        
+        duoSocket.onGameState = handleGameState;
+        duoSocket.onPhaseChanged = handlePhaseChanged;
+        duoSocket.onQuestionPublished = handleQuestionPublished;
+        duoSocket.onBuzzWinner = handleBuzzWinner;
+        duoSocket.onBuzzResult = handleBuzzWinner;
+        duoSocket.onAnswerRevealed = handleAnswerRevealed;
+        duoSocket.onScoreUpdate = handleScoreUpdate;
+        duoSocket.onMatchEnded = handleMatchEnded;
+        duoSocket.onSkillUsed = handleSkillUsed;
+        
+        try {
+            await duoSocket.connect(GAME_SERVER_URL, JWT_TOKEN);
+        } catch (error) {
+            console.error('[DuoQuestion] {{ __("Échec de la connexion") }}:', error);
+            updateConnectionStatus('disconnected');
+            startTimer();
+        }
+    }
+    
+    buzzButton.addEventListener('click', handleBuzz);
     
     document.addEventListener('keydown', function(e) {
         if (e.code === 'Space' || e.key === ' ') {
             e.preventDefault();
-            if (!buzzButton.disabled) {
-                handlePlayerBuzz();
+            if (!buzzButton.disabled && !buzzed && !isRedirecting) {
+                handleBuzz();
             }
         }
     });
     
-    if (MATCH_ID && typeof DuoSocketClient !== 'undefined') {
-        const socketUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':3001';
-        
-        DuoSocketClient.connect(socketUrl).then(function() {
-            console.log('[DuoQuestion] Socket.IO connected');
+    document.querySelectorAll('.skill-circle.active').forEach(skill => {
+        skill.addEventListener('click', function() {
+            const skillId = this.getAttribute('data-skill-id');
+            if (!skillId) return;
             
-            DuoSocketClient.joinRoom(MATCH_ID, ROOM_CODE, {
-                playerId: PLAYER_ID,
-                playerName: @json($playerName ?? 'Joueur')
-            });
+            if (this.classList.contains('used')) {
+                showSkillMessage('⚪ {{ __("Skill déjà utilisé") }}', 'error');
+                return;
+            }
             
-            startTimer();
-        }).catch(function(error) {
-            console.error('[DuoQuestion] Socket.IO connect failed:', error);
-            startTimer();
+            if (duoSocket && duoSocket.isConnected()) {
+                duoSocket.useSkill(skillId);
+                
+                this.classList.remove('active');
+                this.classList.add('used');
+                this.textContent = '⚪';
+            } else {
+                showSkillMessage('❌ {{ __("Non connecté au serveur") }}', 'error');
+            }
         });
-        
-        DuoSocketClient.onBuzzWinner = function(data) {
-            console.log('[DuoQuestion] Buzz winner:', data);
-            if (data.playerId && data.playerId !== PLAYER_ID && !hasBuzzed) {
-                handleOpponentBuzz(data.playerId, data.buzzTime);
-            }
-        };
-        
-        DuoSocketClient.onPhaseChanged = function(data) {
-            console.log('[DuoQuestion] Phase changed:', data);
-            if (data.phase === 'ANSWER_SELECTION' && data.buzzWinnerId && data.buzzWinnerId !== PLAYER_ID && !hasBuzzed) {
-                handleOpponentBuzz(data.buzzWinnerId, Date.now());
-            }
-        };
-        
-        DuoSocketClient.onPlayerLeft = function(data) {
-            console.log('[DuoQuestion] Player left:', data);
-        };
-    } else {
-        setTimeout(startTimer, 500);
-    }
+    });
     
-    window.addEventListener('beforeunload', function() {
-        if (typeof DuoSocketClient !== 'undefined') {
-            DuoSocketClient.disconnect();
+    initializeSocket();
+    
+    window.addEventListener('beforeunload', () => {
+        if (duoSocket && duoSocket.isConnected()) {
+            duoSocket.disconnect();
         }
     });
 })();
 </script>
-
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 @endsection
