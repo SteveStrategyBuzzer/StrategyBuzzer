@@ -1259,6 +1259,41 @@ $skills = $skills ?? [];
         animation: pulse 1s infinite;
     }
     
+    .reveal-go-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 15px;
+    }
+    
+    .btn-action {
+        padding: 15px 50px;
+        font-size: 1.4rem;
+        font-weight: 800;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    
+    .btn-go {
+        background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+        color: white;
+        box-shadow: 0 5px 20px rgba(78, 205, 196, 0.4);
+    }
+    
+    .btn-go:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(78, 205, 196, 0.6);
+    }
+    
+    .btn-go:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
     @keyframes pulse {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.15); }
@@ -1790,11 +1825,17 @@ $skills = $skills ?? [];
             <div class="skills-container">
                 @for($i = 0; $i < 3; $i++)
                     @if(isset($skills[$i]))
-                        @php $skill = $skills[$i]; @endphp
-                        <div class="skill-circle {{ $skill['used'] ?? false ? 'used' : 'available' }} {{ ($skill['auto'] ?? false) ? 'auto' : '' }}" 
+                        @php 
+                            $skill = $skills[$i]; 
+                            $isUsed = $skill['used'] ?? false;
+                            $isAuto = $skill['auto'] ?? false;
+                        @endphp
+                        <div class="skill-circle {{ $isUsed ? 'used' : 'active' }} {{ $isAuto ? 'auto' : 'clickable' }}" 
                              data-skill-id="{{ $skill['id'] ?? '' }}"
-                             data-trigger="{{ $skill['trigger'] ?? 'on_question' }}"
-                             data-auto="{{ ($skill['auto'] ?? false) ? 'true' : 'false' }}"
+                             data-skill-type="{{ $skill['type'] ?? 'personal' }}"
+                             data-skill-trigger="{{ $skill['trigger'] ?? 'on_question' }}"
+                             data-affects-opponent="{{ ($skill['affects_opponent'] ?? false) ? 'true' : 'false' }}"
+                             data-auto="{{ $isAuto ? 'true' : 'false' }}"
                              title="{{ ($skill['name'] ?? '') . ': ' . ($skill['description'] ?? '') }}">
                             {{ $skill['icon'] ?? '❓' }}
                         </div>
@@ -2027,6 +2068,13 @@ $skills = $skills ?? [];
         <div class="reveal-did-you-know" id="revealDidYouKnow">
             <div class="reveal-did-you-know-title">{{ __('Le saviez-vous ?') }}</div>
             <div class="reveal-did-you-know-content" id="revealDidYouKnowContent">...</div>
+        </div>
+        
+        <!-- GO Button -->
+        <div class="reveal-go-container" id="revealGoContainer">
+            <button class="btn-action btn-go" id="revealGoButton" onclick="handleRevealGoClick()">
+                🚀 GO
+            </button>
         </div>
         
         <!-- Countdown Timer -->
@@ -4592,7 +4640,7 @@ function updateSkillStates(phase) {
     };
     
     document.querySelectorAll('.skill-circle:not(.used):not(.locked):not(.empty)').forEach(skillEl => {
-        const trigger = skillEl.dataset.trigger || 'on_question';
+        const trigger = skillEl.dataset.skillTrigger || 'on_question';
         const isAuto = skillEl.dataset.auto === 'true';
         const validPhases = triggerToPhaseMap[trigger] || [];
         const isUsableNow = validPhases.includes(phase) && !isAuto;
@@ -4623,7 +4671,7 @@ function activateRevealSkill(index) {
     if (!skillId) return;
     
     skillCircle.classList.add('used');
-    skillCircle.classList.remove('available', 'usable-now');
+    skillCircle.classList.remove('available', 'active', 'usable-now');
     
     const revealBtn = document.getElementById(`revealSkillBtn${index}`);
     if (revealBtn) {
@@ -4638,6 +4686,23 @@ function activateRevealSkill(index) {
     duoSocket.activateSkill(skillId);
     
     showAttackMessage('✨ {{ __("Compétence activée !") }}', 'skill');
+}
+
+function handleRevealGoClick() {
+    const goButton = document.getElementById('revealGoButton');
+    if (goButton) {
+        goButton.disabled = true;
+        goButton.style.opacity = '0.5';
+        goButton.style.cursor = 'not-allowed';
+        goButton.textContent = '⏳ {{ __("En attente...") }}';
+    }
+    
+    if (typeof duoSocket !== 'undefined' && duoSocket.isConnected()) {
+        duoSocket.playerReady();
+        console.log('[DuoGame] Emitted player_ready via DuoSocketClient');
+    } else {
+        console.log('[DuoGame] DuoSocketClient not available, waiting for server transition');
+    }
 }
 
 function playAttackEffect() {

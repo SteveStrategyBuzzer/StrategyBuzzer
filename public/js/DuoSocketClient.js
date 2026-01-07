@@ -320,6 +320,19 @@ const DuoSocketClient = {
         return this.useSkill(skillId, targetPlayerId);
     },
 
+    playerReady() {
+        if (!this.isConnected() || !this.currentRoomId) {
+            this._log('Cannot signal ready: not connected or not in room');
+            return false;
+        }
+
+        this._log('Signaling player ready');
+        this.socket.emit('player_ready', {
+            roomId: this.currentRoomId
+        });
+        return true;
+    },
+
     sendVoiceOffer(targetId, offer) {
         if (!this.isConnected() || !this.currentRoomId) {
             this._log('Cannot send voice offer: not connected or not in room');
