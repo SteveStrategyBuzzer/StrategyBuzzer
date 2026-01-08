@@ -667,26 +667,21 @@ $stats = $params['stats'] ?? [
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: #333;
-        border: 2px solid #555;
-        color: #888;
-        font-size: 20px;
+        background: #dc3545;
+        border: 2px solid #c82333;
+        font-size: 24px;
         cursor: pointer;
         z-index: 1000;
         transition: all 0.3s ease;
     }
     .voice-mic-btn.active {
-        background: #4CAF50;
-        border-color: #2E7D32;
-        color: white;
-    }
-    .voice-mic-btn.connected {
-        box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        background: #28a745;
+        border-color: #1e7e34;
     }
 </style>
 
 <button id="voiceMicBtn" class="voice-mic-btn" onclick="toggleVoiceMic()" title="{{ __('Activer/Désactiver le micro') }}">
-    🎤
+    🔇
 </button>
 
 <div class="waiting-container">
@@ -1059,7 +1054,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         const micBtn = document.getElementById('voiceMicBtn');
         if (micBtn) {
             micBtn.classList.toggle('active', !state.muted);
-            micBtn.classList.toggle('connected', state.connected);
+            micBtn.textContent = state.muted ? '🔇' : '🔊';
         }
     }
     
