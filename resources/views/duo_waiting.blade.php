@@ -659,7 +659,35 @@ $stats = $params['stats'] ?? [
             font-size: 1rem;
         }
     }
+    
+    .voice-mic-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #333;
+        border: 2px solid #555;
+        color: #888;
+        font-size: 20px;
+        cursor: pointer;
+        z-index: 1000;
+        transition: all 0.3s ease;
+    }
+    .voice-mic-btn.active {
+        background: #4CAF50;
+        border-color: #2E7D32;
+        color: white;
+    }
+    .voice-mic-btn.connected {
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+    }
 </style>
+
+<button id="voiceMicBtn" class="voice-mic-btn" onclick="toggleVoiceMic()" title="{{ __('Activer/Désactiver le micro') }}">
+    🎤
+</button>
 
 <div class="waiting-container">
     <div class="opponent-header">
@@ -974,4 +1002,83 @@ $stats = $params['stats'] ?? [
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "{{ config('services.firebase.api_key', 'AIzaSyC2D2lVq3D_lRFM3kvbLmLUFJpv8Dh35qU') }}",
+    authDomain: "{{ config('services.firebase.project_id', 'strategybuzzer') }}.firebaseapp.com",
+    projectId: "{{ config('services.firebase.project_id', 'strategybuzzer') }}",
+    storageBucket: "{{ config('services.firebase.project_id', 'strategybuzzer') }}.appspot.com",
+    messagingSenderId: "{{ config('services.firebase.messaging_sender_id', '681234567890') }}",
+    appId: "{{ config('services.firebase.app_id', '1:681234567890:web:abc123') }}"
+};
+
+const app = initializeApp(firebaseConfig, 'voice-chat-app');
+const db = getFirestore(app);
+window.voiceChatDb = db;
+window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp };
+</script>
+
+<script src="{{ asset('js/VoiceChat.js') }}"></script>
+
+<script>
+(function() {
+    'use strict';
+    
+    let voiceChat = null;
+    const VOICE_LOBBY_CODE = '{{ $roomCode ?? "" }}';
+    const CURRENT_PLAYER_ID = {{ auth()->id() ?? 0 }};
+    
+    async function initVoiceChat() {
+        if (!VOICE_LOBBY_CODE || !window.voiceChatDb) {
+            console.log('[VoiceChat] Missing lobby code or Firebase - skipping');
+            return;
+        }
+        
+        try {
+            voiceChat = new VoiceChat({
+                sessionId: VOICE_LOBBY_CODE,
+                localUserId: CURRENT_PLAYER_ID,
+                mode: 'duo',
+                db: window.voiceChatDb,
+                onConnectionChange: (state) => updateMicUI(state),
+                onError: (error) => console.error('[VoiceChat] Error:', error)
+            });
+            
+            await voiceChat.initialize();
+            console.log('[VoiceChat] Initialized successfully');
+        } catch (error) {
+            console.error('[VoiceChat] Init error:', error);
+        }
+    }
+    
+    function updateMicUI(state) {
+        const micBtn = document.getElementById('voiceMicBtn');
+        if (micBtn) {
+            micBtn.classList.toggle('active', !state.muted);
+            micBtn.classList.toggle('connected', state.connected);
+        }
+    }
+    
+    window.toggleVoiceMic = async function() {
+        if (!voiceChat) {
+            await initVoiceChat();
+        }
+        if (voiceChat) {
+            await voiceChat.toggleMicrophone();
+        }
+    };
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initVoiceChat, 1000);
+    });
+    
+    window.addEventListener('beforeunload', () => {
+        if (voiceChat) voiceChat.cleanup();
+    });
+})();
+</script>
 @endsection

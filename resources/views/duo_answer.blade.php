@@ -879,4 +879,66 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     }
 })();
 </script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "{{ config('services.firebase.api_key', 'AIzaSyC2D2lVq3D_lRFM3kvbLmLUFJpv8Dh35qU') }}",
+    authDomain: "{{ config('services.firebase.project_id', 'strategybuzzer') }}.firebaseapp.com",
+    projectId: "{{ config('services.firebase.project_id', 'strategybuzzer') }}",
+    storageBucket: "{{ config('services.firebase.project_id', 'strategybuzzer') }}.appspot.com",
+    messagingSenderId: "{{ config('services.firebase.messaging_sender_id', '681234567890') }}",
+    appId: "{{ config('services.firebase.app_id', '1:681234567890:web:abc123') }}"
+};
+
+const app = initializeApp(firebaseConfig, 'voice-chat-app');
+const db = getFirestore(app);
+window.voiceChatDb = db;
+window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp };
+</script>
+
+<script src="{{ asset('js/VoiceChat.js') }}"></script>
+
+<script>
+(function() {
+    'use strict';
+    
+    let voiceChat = null;
+    const VOICE_LOBBY_CODE = '{{ $lobby_code ?? "" }}';
+    const CURRENT_PLAYER_ID = {{ auth()->id() ?? 0 }};
+    
+    async function initVoiceChat() {
+        if (!VOICE_LOBBY_CODE || !window.voiceChatDb) {
+            console.log('[VoiceChat] Missing lobby code or Firebase - skipping');
+            return;
+        }
+        
+        try {
+            voiceChat = new VoiceChat({
+                sessionId: VOICE_LOBBY_CODE,
+                localUserId: CURRENT_PLAYER_ID,
+                mode: 'duo',
+                db: window.voiceChatDb,
+                onConnectionChange: (state) => console.log('[VoiceChat] State:', state),
+                onError: (error) => console.error('[VoiceChat] Error:', error)
+            });
+            
+            await voiceChat.initialize();
+            console.log('[VoiceChat] Background audio initialized successfully');
+        } catch (error) {
+            console.error('[VoiceChat] Init error:', error);
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initVoiceChat, 1000);
+    });
+    
+    window.addEventListener('beforeunload', () => {
+        if (voiceChat) voiceChat.cleanup();
+    });
+})();
+</script>
 @endsection
