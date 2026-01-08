@@ -950,19 +950,26 @@ $mode = 'duo';
         }
         
         if (data.players) {
-            const currentUserId = '{{ auth()->id() ?? "" }}';
+            const currentUserId = String('{{ auth()->id() ?? "" }}');
             let myScore = undefined;
             let opponentScore = undefined;
             
-            Object.entries(data.players).forEach(([playerId, player]) => {
-                if (playerId === currentUserId || player.id === currentUserId) {
-                    myScore = player.score;
-                } else {
-                    opponentScore = player.score;
-                }
-            });
+            if (currentUserId) {
+                Object.entries(data.players).forEach(([playerId, player]) => {
+                    const pId = String(playerId);
+                    const playerIdFromObj = player.id !== undefined ? String(player.id) : null;
+                    
+                    if (pId === currentUserId || playerIdFromObj === currentUserId) {
+                        myScore = player.score;
+                    } else {
+                        opponentScore = player.score;
+                    }
+                });
+            }
             
-            updateScores(myScore, opponentScore);
+            if (myScore !== undefined || opponentScore !== undefined) {
+                updateScores(myScore, opponentScore);
+            }
         }
         
         if (currentPhase === 'QUESTION_ACTIVE' && !buzzed && !isRedirecting) {
