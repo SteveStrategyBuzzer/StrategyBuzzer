@@ -59,6 +59,8 @@ return [
 
     'asset_url' => env('ASSET_URL'),
 
+    'game_server_url' => env('GAME_SERVER_URL', 'http://localhost:3001'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

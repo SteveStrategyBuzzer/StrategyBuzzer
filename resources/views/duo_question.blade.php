@@ -950,16 +950,19 @@ $mode = 'duo';
         }
         
         if (data.players) {
-            const players = Object.values(data.players);
-            players.forEach(player => {
-                if (player.isHost !== undefined) {
-                    if (player.isHost) {
-                        updateScores(player.score, undefined);
-                    } else {
-                        updateScores(undefined, player.score);
-                    }
+            const currentUserId = '{{ auth()->id() ?? "" }}';
+            let myScore = undefined;
+            let opponentScore = undefined;
+            
+            Object.entries(data.players).forEach(([playerId, player]) => {
+                if (playerId === currentUserId || player.id === currentUserId) {
+                    myScore = player.score;
+                } else {
+                    opponentScore = player.score;
                 }
             });
+            
+            updateScores(myScore, opponentScore);
         }
         
         if (currentPhase === 'QUESTION_ACTIVE' && !buzzed && !isRedirecting) {

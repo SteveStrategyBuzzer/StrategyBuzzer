@@ -1319,9 +1319,20 @@ class DuoController extends Controller
 
         $questionData = $gameState['current_question'] ?? [];
         $buzzWinner = $gameState['buzz_winner'] ?? 'player';
+        
+        $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
+        $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
+        $jwtToken = $gameState['jwt_token'] ?? null;
+        
+        if (!$jwtToken && $roomId) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        }
 
         return view('duo_answer', [
             'match_id' => $match->id,
+            'room_id' => $roomId,
+            'lobby_code' => $lobbyCode,
+            'jwt_token' => $jwtToken,
             'question' => $questionData,
             'buzz_winner' => $buzzWinner,
             'player_score' => $playerScore,
@@ -1376,9 +1387,20 @@ class DuoController extends Controller
         $lastAnswer = $gameState['last_answer'] ?? [];
         $isCorrect = $lastAnswer['is_correct'] ?? false;
         $pointsEarned = $lastAnswer['points'] ?? 0;
+        
+        $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
+        $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
+        $jwtToken = $gameState['jwt_token'] ?? null;
+        
+        if (!$jwtToken && $roomId) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        }
 
         return view('duo_result', [
             'match_id' => $match->id,
+            'room_id' => $roomId,
+            'lobby_code' => $lobbyCode,
+            'jwt_token' => $jwtToken,
             'is_correct' => $isCorrect,
             'points_earned' => $pointsEarned,
             'player_score' => $playerScore,
