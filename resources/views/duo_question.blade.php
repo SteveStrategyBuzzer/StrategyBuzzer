@@ -694,9 +694,9 @@ $mode = 'duo';
         </div>
         
         <div class="right-column">
-            @if(!empty($strategic_avatar))
+            @if(!empty($strategicAvatarPath))
                 <div class="strategic-avatar-circle">
-                    <img src="{{ $strategic_avatar }}" alt="{{ __('Avatar stratégique') }}" class="strategic-avatar-image">
+                    <img src="{{ $strategicAvatarPath }}" alt="{{ __('Avatar stratégique') }}" class="strategic-avatar-image">
                 </div>
                 @if(!empty($avatarName))
                     <div class="strategic-avatar-name">{{ $avatarName }}</div>
