@@ -11,6 +11,7 @@ use App\Services\BuzzManagerService;
 use App\Services\PlayerContactService;
 use App\Services\LobbyService;
 use App\Services\GameServerService;
+use App\Services\DuoFirestoreService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
@@ -24,7 +25,8 @@ class DuoController extends Controller
         private BuzzManagerService $buzzManager,
         private PlayerContactService $contactService,
         private LobbyService $lobbyService,
-        private GameServerService $gameServerService
+        private GameServerService $gameServerService,
+        private DuoFirestoreService $firestoreService
     ) {}
 
     public function showSplash()

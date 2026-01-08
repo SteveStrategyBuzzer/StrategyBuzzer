@@ -19,9 +19,25 @@ The frontend uses React 19 with Vite, employing a component-based architecture f
 #### Technical Implementations
 The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It utilizes an API-first, service-oriented design with an event-driven system for real-time game state broadcasting.
 
-**Real-Time Multiplayer Synchronization:** All multiplayer modes use an Authoritative Backend Architecture for synchronized gameplay, designed to scale up to 40 players. The backend publishes questions to Firestore, ensuring synchronization and preventing client-side manipulation. Answer validation is strictly server-side. Solo mode is isolated, using traditional page redirects. Multiplayer modes use unified `games/{mode}-match-{normalizedId}` Firestore documents where `normalizedId` is derived from the `lobby_code`.
+**Real-Time Multiplayer Synchronization (Socket.IO Migration):** Multiplayer modes (Duo, League, Master) are migrating from Firestore to Socket.IO for lower latency. The architecture uses:
+- **Socket.IO Game Server** (apps/game-server/) for real-time events (buzz, answers, phase changes)
+- **DuoSocketClient.js** for frontend-server communication
+- **JWT tokens** for player authentication in rooms
+- **Redis** for game state persistence with 2-hour TTL
 
-**Gameplay Engine:** A unified client-side `GameplayEngine.js` manages all game modes, supporting both local (Solo) and Firestore (multiplayer) providers for game state actions. Solo mode dictates the strict sequence of game phases (intro, question, buzz, reveal, scoreboard) and question flow, which multiplayer implementations must adhere to.
+**Current Migration Status:**
+- Duo mode: Socket.IO routes active (`/game/duo/*`), DuoController methods implemented
+- League/Master: Routes temporarily disabled pending controller implementation
+- DuoFirestoreService: Still used for lobby/invite flows (to be deprecated)
+
+Solo mode remains isolated using AI opponents with traditional page redirects.
+
+**Gameplay Flow (Socket.IO):** Multiplayer games follow a 3-page-per-round structure:
+1. **Question page** (`duo_question.blade.php`): 60s timer, buzz system, 3-column layout
+2. **Answer page** (`duo_answer.blade.php`): 4 choices, 10s timer
+3. **Result page** (`duo_result.blade.php`): Skills, stats, "Le saviez-vous?", GO button
+
+Solo mode dictates the strict sequence of game phases (intro, question, buzz, reveal, scoreboard) and question flow.
 
 **Scoring System:** A unified scoring system awards 2 pts (>3s remaining), 1 pt (1-3s remaining), 0 pt (<1s remaining) for correct answers. Wrong answers incur a -2 pt penalty in Solo, Duo, League, and 0 pt in Master. Timeout is 0 pts.
 

@@ -400,7 +400,8 @@ Route::prefix('game/duo')->name('game.duo.')->middleware('auth')->group(function
     Route::post('/forfeit', [App\Http\Controllers\DuoController::class, 'handleForfeit'])->name('forfeit');
 });
 
-/* ===== INTERFACE DE JEU LEAGUE (Socket.IO) ===== */
+/* ===== INTERFACE DE JEU LEAGUE (Socket.IO) - TODO: Add methods to LeagueIndividualController ===== */
+/* Temporarily disabled - requires LeagueIndividualController Socket.IO methods
 Route::prefix('game/league')->name('game.league.')->middleware('auth')->group(function () {
     Route::post('/start', [App\Http\Controllers\LeagueIndividualController::class, 'startGame'])->name('start');
     Route::get('/resume', [App\Http\Controllers\LeagueIndividualController::class, 'showResume'])->name('resume');
@@ -412,8 +413,10 @@ Route::prefix('game/league')->name('game.league.')->middleware('auth')->group(fu
     Route::get('/match-result', [App\Http\Controllers\LeagueIndividualController::class, 'showMatchResult'])->name('match-result');
     Route::post('/forfeit', [App\Http\Controllers\LeagueIndividualController::class, 'handleForfeit'])->name('forfeit');
 });
+*/
 
-/* ===== INTERFACE DE JEU MASTER (Socket.IO - jusqu'à 40 joueurs) ===== */
+/* ===== INTERFACE DE JEU MASTER (Socket.IO - jusqu'à 40 joueurs) - TODO: Add methods to MasterGameController ===== */
+/* Temporarily disabled - requires MasterGameController Socket.IO methods
 Route::prefix('game/master')->name('game.master.')->middleware('auth')->group(function () {
     Route::post('/start', [App\Http\Controllers\MasterGameController::class, 'startGame'])->name('start');
     Route::get('/resume', [App\Http\Controllers\MasterGameController::class, 'showResume'])->name('resume');
@@ -423,6 +426,7 @@ Route::prefix('game/master')->name('game.master.')->middleware('auth')->group(fu
     Route::post('/fetch-question', [App\Http\Controllers\MasterGameController::class, 'fetchQuestionJson'])->name('fetch-question');
     Route::get('/match-result', [App\Http\Controllers\MasterGameController::class, 'showMatchResult'])->name('match-result');
 });
+*/
 
 /* ===== QUÊTES & QUÊTES QUOTIDIENNES ===== */
 Route::get('/quetes', [App\Http\Controllers\QuestesController::class, 'index'])->middleware('auth')->name('quetes');
