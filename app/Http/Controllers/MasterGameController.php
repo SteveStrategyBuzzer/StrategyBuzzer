@@ -9,6 +9,7 @@ use App\Models\MasterGamePlayer;
 use App\Models\MasterGameTeam;
 use App\Models\MasterGameInvitation;
 use App\Services\MasterFirestoreService;
+use App\Services\GameServerService;
 use App\Services\ImageGenerationService;
 use App\Services\PlayerContactService;
 use Illuminate\Http\Request;
@@ -20,10 +21,12 @@ use OpenAI\Laravel\Facades\OpenAI;
 class MasterGameController extends Controller
 {
     private MasterFirestoreService $firestoreService;
+    private GameServerService $gameServerService;
     
-    public function __construct(MasterFirestoreService $firestoreService)
+    public function __construct(MasterFirestoreService $firestoreService, GameServerService $gameServerService)
     {
         $this->firestoreService = $firestoreService;
+        $this->gameServerService = $gameServerService;
     }
     // Page 1: Accueil Maître du Jeu avec image
     public function index()
@@ -1754,5 +1757,411 @@ class MasterGameController extends Controller
         }
         
         return back()->with('success', __(':count joueurs ont été invités', ['count' => $invitedCount]));
+    }
+    
+    // ===== SOCKET.IO GAMEPLAY METHODS (for up to 40 players) =====
+    
+    /**
+     * Get MasterGame from session
+     */
+    protected function getGameFromSession(): ?MasterGame
+    {
+        $gameState = session('master_game_state');
+        
+        if (!$gameState || !isset($gameState['game_id'])) {
+            return null;
+        }
+        
+        return MasterGame::with(['questions', 'players.user', 'host'])->find($gameState['game_id']);
+    }
+    
+    /**
+     * POST /game/master/start - Starts game from lobby
+     */
+    public function startGameFromLobby(Request $request)
+    {
+        $user = Auth::user();
+        $gameState = session('master_game_state');
+        
+        if (!$gameState || !isset($gameState['game_id'])) {
+            return redirect()->route('master.index')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $game = MasterGame::find($gameState['game_id']);
+        
+        if (!$game) {
+            session()->forget('master_game_state');
+            return redirect()->route('master.index')->with('error', __('Partie introuvable'));
+        }
+        
+        if ($game->host_user_id != $user->id) {
+            return redirect()->route('master.index')->with('error', __('Seul l\'hôte peut démarrer la partie'));
+        }
+        
+        $game->status = 'playing';
+        $game->current_question = 1;
+        $game->started_at = now();
+        $game->save();
+        
+        if ($game->room_id) {
+            $this->gameServerService->startGame($game->room_id, (string) $user->id);
+        }
+        
+        session(['master_game_state' => array_merge($gameState, [
+            'started' => true,
+            'started_at' => now()->timestamp,
+        ])]);
+        
+        return redirect()->route('game.master.question');
+    }
+    
+    /**
+     * GET /game/master/resume - Resume a game in progress
+     */
+    public function showResume()
+    {
+        $user = Auth::user();
+        $game = $this->getGameFromSession();
+        
+        if (!$game) {
+            return redirect()->route('master.index')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $isHost = $game->host_user_id == $user->id;
+        $player = $game->players->where('user_id', $user->id)->first();
+        
+        if (!$isHost && !$player) {
+            session()->forget('master_game_state');
+            return redirect()->route('master.index')->with('error', __('Vous n\'appartenez pas à cette partie'));
+        }
+        
+        return $this->renderQuestionView($game, $user, $isHost);
+    }
+    
+    /**
+     * GET /game/master/question - Shows current question to all players
+     */
+    public function showQuestionPage()
+    {
+        $user = Auth::user();
+        $game = $this->getGameFromSession();
+        
+        if (!$game) {
+            return redirect()->route('master.index')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $isHost = $game->host_user_id == $user->id;
+        $player = $game->players->where('user_id', $user->id)->first();
+        
+        if (!$isHost && !$player) {
+            session()->forget('master_game_state');
+            return redirect()->route('master.index')->with('error', __('Vous n\'appartenez pas à cette partie'));
+        }
+        
+        return $this->renderQuestionView($game, $user, $isHost);
+    }
+    
+    /**
+     * GET /game/master/answer - Shows answer selection
+     */
+    public function showAnswerPage()
+    {
+        $user = Auth::user();
+        $game = $this->getGameFromSession();
+        
+        if (!$game) {
+            return redirect()->route('master.index')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $isHost = $game->host_user_id == $user->id;
+        $player = $game->players->where('user_id', $user->id)->first();
+        
+        if (!$isHost && !$player) {
+            session()->forget('master_game_state');
+            return redirect()->route('master.index')->with('error', __('Vous n\'appartenez pas à cette partie'));
+        }
+        
+        $gameState = session('master_game_state', []);
+        
+        return $this->renderAnswerView($game, $user, $isHost, $gameState);
+    }
+    
+    /**
+     * GET /game/master/result - Shows question result and scores
+     */
+    public function showResultPage()
+    {
+        $user = Auth::user();
+        $game = $this->getGameFromSession();
+        
+        if (!$game) {
+            return redirect()->route('master.index')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $isHost = $game->host_user_id == $user->id;
+        $player = $game->players->where('user_id', $user->id)->first();
+        
+        if (!$isHost && !$player) {
+            session()->forget('master_game_state');
+            return redirect()->route('master.index')->with('error', __('Vous n\'appartenez pas à cette partie'));
+        }
+        
+        $gameState = session('master_game_state', []);
+        
+        return $this->renderResultView($game, $user, $isHost, $gameState);
+    }
+    
+    /**
+     * POST /game/master/fetch-question - Returns current question data as JSON
+     */
+    public function fetchQuestionJsonApi(Request $request)
+    {
+        $user = Auth::user();
+        $game = $this->getGameFromSession();
+        
+        if (!$game) {
+            return response()->json(['success' => false, 'error' => 'No active game'], 400);
+        }
+        
+        $isHost = $game->host_user_id == $user->id;
+        $player = $game->players->where('user_id', $user->id)->first();
+        
+        if (!$isHost && !$player) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+        
+        $currentQuestionNumber = $game->current_question ?? 1;
+        $question = $game->questions->where('question_number', $currentQuestionNumber)->first();
+        
+        if (!$question) {
+            return response()->json([
+                'success' => false,
+                'finished' => true,
+                'message' => 'No more questions'
+            ]);
+        }
+        
+        $questionData = [
+            'id' => $question->id,
+            'number' => $question->question_number,
+            'text' => $question->text,
+            'type' => $question->type,
+            'choices' => $question->choices,
+            'media_url' => $question->media_url,
+        ];
+        
+        if ($isHost) {
+            $questionData['correct_indexes'] = $question->correct_indexes;
+        }
+        
+        return response()->json([
+            'success' => true,
+            'question' => $questionData,
+            'current_question' => $currentQuestionNumber,
+            'total_questions' => $game->total_questions,
+            'is_host' => $isHost,
+        ]);
+    }
+    
+    /**
+     * GET /game/master/match-result - Shows final game results with rankings
+     */
+    public function showMatchResultPage()
+    {
+        $user = Auth::user();
+        $game = $this->getGameFromSession();
+        
+        if (!$game) {
+            return redirect()->route('master.index')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $isHost = $game->host_user_id == $user->id;
+        $player = $game->players->where('user_id', $user->id)->first();
+        
+        if (!$isHost && !$player) {
+            session()->forget('master_game_state');
+            return redirect()->route('master.index')->with('error', __('Vous n\'appartenez pas à cette partie'));
+        }
+        
+        $players = $game->players()
+            ->with('user')
+            ->orderBy('score', 'desc')
+            ->get();
+        
+        $winner = $players->first();
+        
+        $gameState = session('master_game_state', []);
+        
+        session()->forget('master_game_state');
+        
+        return view('master.match-result', [
+            'game' => $game,
+            'players' => $players,
+            'winner' => $winner,
+            'is_host' => $isHost,
+            'current_user' => $user,
+            'game_state' => $gameState,
+        ]);
+    }
+    
+    /**
+     * Render the question view for Master mode
+     */
+    protected function renderQuestionView(MasterGame $game, $user, bool $isHost)
+    {
+        $gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
+        $roomId = $game->room_id ?? null;
+        
+        $jwtToken = null;
+        if ($roomId) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        }
+        
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        $playerName = data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur');
+        
+        $currentQuestion = $game->current_question ?? 1;
+        $question = $game->questions->where('question_number', $currentQuestion)->first();
+        
+        $players = $game->players()
+            ->with('user')
+            ->orderBy('score', 'desc')
+            ->get();
+        
+        $viewData = [
+            'game' => $game,
+            'game_id' => $game->id,
+            'game_server_url' => $gameServerUrl,
+            'room_id' => $roomId,
+            'jwt_token' => $jwtToken,
+            'is_host' => $isHost,
+            'current_user' => $user,
+            'player_name' => $playerName,
+            'player_avatar' => $playerAvatarPath,
+            'current_question' => $currentQuestion,
+            'total_questions' => $game->total_questions,
+            'question' => $question,
+            'players' => $players,
+            'game_mode' => $game->mode,
+            'structure_type' => $game->structure_type,
+        ];
+        
+        return response()->view('master.game-question', $viewData)
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
+    
+    /**
+     * Render the answer view for Master mode
+     */
+    protected function renderAnswerView(MasterGame $game, $user, bool $isHost, array $gameState)
+    {
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        $playerName = data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur');
+        
+        $currentQuestion = $game->current_question ?? 1;
+        $question = $game->questions->where('question_number', $currentQuestion)->first();
+        
+        $players = $game->players()
+            ->with('user')
+            ->orderBy('score', 'desc')
+            ->get();
+        
+        $gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
+        $roomId = $game->room_id ?? null;
+        
+        $jwtToken = null;
+        if ($roomId) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        }
+        
+        $viewData = [
+            'game' => $game,
+            'game_id' => $game->id,
+            'game_server_url' => $gameServerUrl,
+            'room_id' => $roomId,
+            'jwt_token' => $jwtToken,
+            'is_host' => $isHost,
+            'current_user' => $user,
+            'player_name' => $playerName,
+            'player_avatar' => $playerAvatarPath,
+            'current_question' => $currentQuestion,
+            'total_questions' => $game->total_questions,
+            'question' => $question,
+            'players' => $players,
+            'game_mode' => $game->mode,
+            'structure_type' => $game->structure_type,
+            'game_state' => $gameState,
+        ];
+        
+        return response()->view('master.game-answer', $viewData)
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
+    
+    /**
+     * Render the result view for Master mode
+     */
+    protected function renderResultView(MasterGame $game, $user, bool $isHost, array $gameState)
+    {
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        $playerName = data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur');
+        
+        $currentQuestion = $game->current_question ?? 1;
+        $question = $game->questions->where('question_number', $currentQuestion)->first();
+        
+        $players = $game->players()
+            ->with('user')
+            ->orderBy('score', 'desc')
+            ->get();
+        
+        $gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
+        $roomId = $game->room_id ?? null;
+        
+        $jwtToken = null;
+        if ($roomId) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        }
+        
+        $viewData = [
+            'game' => $game,
+            'game_id' => $game->id,
+            'game_server_url' => $gameServerUrl,
+            'room_id' => $roomId,
+            'jwt_token' => $jwtToken,
+            'is_host' => $isHost,
+            'current_user' => $user,
+            'player_name' => $playerName,
+            'player_avatar' => $playerAvatarPath,
+            'current_question' => $currentQuestion,
+            'total_questions' => $game->total_questions,
+            'question' => $question,
+            'players' => $players,
+            'game_mode' => $game->mode,
+            'structure_type' => $game->structure_type,
+            'game_state' => $gameState,
+        ];
+        
+        return response()->view('master.game-result', $viewData)
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 }
