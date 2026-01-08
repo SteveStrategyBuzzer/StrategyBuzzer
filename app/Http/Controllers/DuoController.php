@@ -866,6 +866,56 @@ class DuoController extends Controller
     {
         $user = Auth::user();
         $gameState = session('game_state');
+        $lobbyCode = $request->input('lobby_code');
+        
+        // If no game_state but lobby_code provided, try to get match from lobby
+        if ((!$gameState || !isset($gameState['match_id'])) && $lobbyCode) {
+            $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
+            
+            if ($lobby) {
+                $matchId = $lobby['match_id'] ?? null;
+                
+                // If no match_id in lobby, find or create match from lobby players
+                if (!$matchId) {
+                    $playerIds = array_keys($lobby['players'] ?? []);
+                    if (count($playerIds) >= 2) {
+                        $match = DuoMatch::where(function($query) use ($playerIds) {
+                            $query->where('player1_id', $playerIds[0])
+                                  ->where('player2_id', $playerIds[1]);
+                        })->orWhere(function($query) use ($playerIds) {
+                            $query->where('player1_id', $playerIds[1])
+                                  ->where('player2_id', $playerIds[0]);
+                        })
+                        ->whereIn('status', ['pending', 'accepted', 'starting'])
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                        
+                        if ($match) {
+                            $matchId = $match->id;
+                        }
+                    }
+                }
+                
+                if ($matchId) {
+                    // Get game server data from lobby
+                    $gameServer = $lobby['game_server'] ?? [];
+                    $roomId = $gameServer['roomId'] ?? null;
+                    $playerTokens = $gameServer['player_tokens'] ?? [];
+                    $jwtToken = $playerTokens[$user->id] ?? null;
+                    
+                    $gameState = [
+                        'match_id' => $matchId,
+                        'lobby_code' => $lobbyCode,
+                        'theme' => $lobby['settings']['theme'] ?? 'Culture générale',
+                        'nb_questions' => $lobby['settings']['nb_questions'] ?? 10,
+                        'current_round' => 1,
+                        'room_id' => $roomId,
+                        'jwt_token' => $jwtToken,
+                    ];
+                    session(['game_state' => $gameState]);
+                }
+            }
+        }
         
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
@@ -886,10 +936,22 @@ class DuoController extends Controller
         $match->status = 'in_progress';
         $match->started_at = now();
         
+        // Get room info from lobby if available
+        $lobbyCode = $gameState['lobby_code'] ?? $request->input('lobby_code');
+        if ($lobbyCode) {
+            $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
+            if ($lobby && isset($lobby['game_server'])) {
+                $gameServer = $lobby['game_server'];
+                if (!$match->room_id && isset($gameServer['roomId'])) {
+                    $match->room_id = $gameServer['roomId'];
+                }
+            }
+        }
+        
         if (!$match->room_id) {
             $roomResult = $this->gameServerService->createRoom('duo', $user->id, [
                 'match_id' => $match->id,
-                'nb_questions' => 10,
+                'nb_questions' => $gameState['nb_questions'] ?? 10,
             ]);
             
             if (isset($roomResult['roomId']) || isset($roomResult['room_id'])) {
@@ -899,8 +961,8 @@ class DuoController extends Controller
         
         $match->save();
         
-        $jwtToken = null;
-        if ($match->room_id) {
+        $jwtToken = $gameState['jwt_token'] ?? null;
+        if (!$jwtToken && $match->room_id) {
             $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $match->room_id);
         }
         
@@ -911,7 +973,7 @@ class DuoController extends Controller
             'jwt_token' => $jwtToken,
         ])]);
         
-        return redirect()->route('duo.game.question');
+        return redirect()->route('game.duo.question');
     }
 
     public function showResume()

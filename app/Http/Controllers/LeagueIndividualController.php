@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use App\Models\LeagueIndividualMatch;
 use App\Models\LeagueIndividualStat;
 use App\Services\LeagueIndividualService;
@@ -452,6 +453,48 @@ class LeagueIndividualController extends Controller
     {
         $user = Auth::user();
         $gameState = session('game_state');
+        $lobbyCode = $request->input('lobby_code');
+        
+        // If no game_state but lobby_code provided, try to get match from lobby
+        if ((!$gameState || !isset($gameState['match_id'])) && $lobbyCode) {
+            $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
+            
+            if ($lobby) {
+                $matchId = $lobby['match_id'] ?? null;
+                
+                // If no match_id in lobby, find match from lobby players
+                if (!$matchId) {
+                    $playerIds = array_keys($lobby['players'] ?? []);
+                    if (count($playerIds) >= 2) {
+                        $match = LeagueIndividualMatch::where(function($query) use ($playerIds) {
+                            $query->where('player1_id', $playerIds[0])
+                                  ->where('player2_id', $playerIds[1]);
+                        })->orWhere(function($query) use ($playerIds) {
+                            $query->where('player1_id', $playerIds[1])
+                                  ->where('player2_id', $playerIds[0]);
+                        })
+                        ->whereIn('status', ['pending', 'accepted', 'starting'])
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                        
+                        if ($match) {
+                            $matchId = $match->id;
+                        }
+                    }
+                }
+                
+                if ($matchId) {
+                    $gameState = [
+                        'match_id' => $matchId,
+                        'lobby_code' => $lobbyCode,
+                        'theme' => $lobby['settings']['theme'] ?? 'Culture générale',
+                        'nb_questions' => $lobby['settings']['nb_questions'] ?? 10,
+                        'current_round' => 1,
+                    ];
+                    session(['game_state' => $gameState]);
+                }
+            }
+        }
         
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('league.individual.lobby')->with('error', __('Aucune partie en cours'));
