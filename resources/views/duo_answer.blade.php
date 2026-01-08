@@ -551,6 +551,7 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
             font-size: 0.95rem;
         }
     }
+    
 </style>
 
 <div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>

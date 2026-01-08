@@ -653,6 +653,7 @@ $mode = 'duo';
             bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         }
     }
+    
 </style>
 
 <div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
