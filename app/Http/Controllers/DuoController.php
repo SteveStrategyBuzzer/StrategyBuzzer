@@ -1328,6 +1328,21 @@ class DuoController extends Controller
             $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
         }
 
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+        $skills = $this->getPlayerSkillsWithTriggers($user);
+        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+        $strategicAvatarPath = null;
+        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+            $catalog = \App\Services\AvatarCatalog::get();
+            $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+            foreach ($strategicAvatars as $avatar) {
+                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                    $strategicAvatarPath = $avatar['image'] ?? null;
+                    break;
+                }
+            }
+        }
+
         return view('duo_answer', [
             'match_id' => $match->id,
             'room_id' => $roomId,
@@ -1339,6 +1354,9 @@ class DuoController extends Controller
             'opponent_score' => $opponentScore,
             'current_question' => $currentQuestion,
             'total_questions' => 10,
+            'skills' => $skills,
+            'avatarName' => $avatarName,
+            'strategicAvatarPath' => $strategicAvatarPath,
             'player_info' => [
                 'id' => $user->id,
                 'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
@@ -1396,6 +1414,21 @@ class DuoController extends Controller
             $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
         }
 
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+        $skills = $this->getPlayerSkillsWithTriggers($user);
+        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+        $strategicAvatarPath = null;
+        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+            $catalog = \App\Services\AvatarCatalog::get();
+            $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+            foreach ($strategicAvatars as $avatar) {
+                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                    $strategicAvatarPath = $avatar['image'] ?? null;
+                    break;
+                }
+            }
+        }
+
         return view('duo_result', [
             'match_id' => $match->id,
             'room_id' => $roomId,
@@ -1407,6 +1440,9 @@ class DuoController extends Controller
             'opponent_score' => $opponentScore,
             'current_question' => $currentQuestion,
             'total_questions' => 10,
+            'skills' => $skills,
+            'avatarName' => $avatarName,
+            'strategicAvatarPath' => $strategicAvatarPath,
             'player_info' => [
                 'id' => $user->id,
                 'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
