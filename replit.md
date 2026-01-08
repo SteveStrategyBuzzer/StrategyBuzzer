@@ -25,10 +25,13 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - **JWT tokens** for player authentication in rooms
 - **Redis** for game state persistence with 2-hour TTL
 
-**Current Migration Status:**
-- Duo mode: Socket.IO routes active (`/game/duo/*`), DuoController methods implemented
-- League/Master: Routes temporarily disabled pending controller implementation
-- DuoFirestoreService: Still used for lobby/invite flows (to be deprecated)
+**Current Migration Status (COMPLETED):**
+- Duo mode: Socket.IO routes active (`/game/duo/*`), fully migrated
+- League mode: Socket.IO routes active (`/game/league/*`), fully migrated
+- Master mode: Socket.IO routes active (`/game/master/*`), supports up to 40 players
+- Matchmaking queue: Uses Redis Cache polling instead of Firestore
+- Firestore: Removed from gameplay controllers (DuoController, LeagueIndividualController)
+- Firebase: Retained only for chat/voice features and MasterFirestoreService (host lobby management)
 
 Solo mode remains isolated using AI opponents with traditional page redirects.
 

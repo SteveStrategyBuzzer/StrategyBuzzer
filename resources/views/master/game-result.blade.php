@@ -56,6 +56,55 @@ body {
     margin-bottom: 2rem;
 }
 
+.round-points-section {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.round-points-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #FFD700;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.points-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.8rem;
+}
+
+.points-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.points-player-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.points-earned {
+    font-weight: 900;
+    color: #4CAF50;
+    margin-left: 0.5rem;
+}
+
+.points-earned.zero {
+    color: rgba(255, 255, 255, 0.4);
+}
+
 .leaderboard-section {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
@@ -85,6 +134,10 @@ body {
     border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
+.player-row.gained-points {
+    border-left: 3px solid #4CAF50;
+}
+
 .player-rank {
     font-weight: 900;
     font-size: 1.2rem;
@@ -95,10 +148,22 @@ body {
 .player-rank.silver { color: #C0C0C0; }
 .player-rank.bronze { color: #CD7F32; }
 
-.player-name {
+.player-info {
     flex: 1;
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     padding-left: 1rem;
+}
+
+.player-name {
+    font-weight: 600;
+}
+
+.player-round-points {
+    font-size: 0.85rem;
+    color: #4CAF50;
+    font-weight: 700;
 }
 
 .player-score {
@@ -122,6 +187,13 @@ body {
     color: #FFD700;
 }
 
+.control-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
 .control-btn {
     background: #FFD700;
     color: #003DA5;
@@ -132,7 +204,6 @@ body {
     font-size: 1rem;
     cursor: pointer;
     transition: transform 0.2s;
-    margin: 0 0.5rem;
 }
 
 .control-btn:hover {
@@ -141,6 +212,11 @@ body {
 
 .control-btn.secondary {
     background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.control-btn.finish {
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
     color: #fff;
 }
 </style>
@@ -157,23 +233,40 @@ body {
         <div class="result-title">{{ __('Classement actuel') }}</div>
         <div class="result-subtitle">
             @if($current_question < $total_questions)
-                {{ __('Encore :count questions à jouer', ['count' => $total_questions - $current_question]) }}
+                {{ __('Encore :count question(s) à jouer', ['count' => $total_questions - $current_question]) }}
             @else
                 {{ __('Dernière question terminée !') }}
             @endif
         </div>
     </div>
 
+    @if(isset($round_points) && count($round_points) > 0)
+        <div class="round-points-section">
+            <div class="round-points-title">{{ __('Points gagnés ce tour') }}</div>
+            <div class="points-grid">
+                @foreach($round_points->sortByDesc('points')->take(10) as $rp)
+                    @if($rp->points > 0)
+                        <div class="points-item">
+                            <span class="points-player-name">{{ $rp->player->user->name ?? $rp->player->guest_name ?? __('Joueur') }}</span>
+                            <span class="points-earned">+{{ $rp->points }}</span>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <div class="leaderboard-section">
         <div class="leaderboard-title">{{ __('Tableau des scores') }}</div>
-        @foreach($players as $index => $p)
+        @foreach($players->sortByDesc('score') as $index => $p)
             @php
                 $rankClass = '';
                 if ($index === 0) $rankClass = 'gold';
                 elseif ($index === 1) $rankClass = 'silver';
                 elseif ($index === 2) $rankClass = 'bronze';
+                $pointsThisRound = isset($round_points) ? ($round_points->firstWhere('player_id', $p->id)->points ?? 0) : 0;
             @endphp
-            <div class="player-row {{ $index < 3 ? 'top-3' : '' }}">
+            <div class="player-row {{ $index < 3 ? 'top-3' : '' }} {{ $pointsThisRound > 0 ? 'gained-points' : '' }}">
                 <span class="player-rank {{ $rankClass }}">
                     @if($index === 0) 🥇
                     @elseif($index === 1) 🥈
@@ -181,9 +274,14 @@ body {
                     @else {{ $index + 1 }}.
                     @endif
                 </span>
-                <span class="player-name">
-                    {{ $p->user->name ?? 'Joueur' }}
-                </span>
+                <div class="player-info">
+                    <span class="player-name">
+                        {{ $p->user->name ?? $p->guest_name ?? __('Joueur') }}
+                    </span>
+                    @if($pointsThisRound > 0)
+                        <span class="player-round-points">+{{ $pointsThisRound }}</span>
+                    @endif
+                </div>
                 <span class="player-score">
                     {{ $p->score ?? 0 }} pts
                 </span>
@@ -194,20 +292,26 @@ body {
     @if($is_host)
         <div class="host-controls">
             <div class="host-controls-title">{{ __('Contrôles du Maître') }}</div>
-            @if($current_question < $total_questions)
-                <button class="control-btn" id="next-question-btn">
-                    {{ __('Question suivante') }}
-                </button>
-            @else
-                <button class="control-btn" onclick="window.location.href='{{ route('game.master.match-result') }}'">
-                    {{ __('Résultats finaux') }}
-                </button>
-            @endif
+            <div class="control-buttons">
+                @if($current_question < $total_questions)
+                    <button class="control-btn" id="next-question-btn">
+                        {{ __('Question suivante') }} →
+                    </button>
+                @else
+                    <button class="control-btn finish" onclick="window.location.href='{{ route('game.master.match-result') }}'">
+                        🏆 {{ __('Résultats finaux') }}
+                    </button>
+                @endif
+            </div>
         </div>
     @endif
 </div>
 
 <script>
+const GAME_SERVER_URL = @json($game_server_url ?? '');
+const JWT_TOKEN = @json($jwt_token ?? '');
+const IS_HOST = @json($is_host);
+
 document.addEventListener('DOMContentLoaded', function() {
     const nextBtn = document.getElementById('next-question-btn');
     if (nextBtn) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use App\Services\DuoMatchmakingService;
 use App\Services\DivisionService;
 use App\Services\GameStateService;
@@ -884,11 +885,30 @@ class DuoController extends Controller
         
         $match->status = 'in_progress';
         $match->started_at = now();
+        
+        if (!$match->room_id) {
+            $roomResult = $this->gameServerService->createRoom('duo', $user->id, [
+                'match_id' => $match->id,
+                'nb_questions' => 10,
+            ]);
+            
+            if (isset($roomResult['roomId']) || isset($roomResult['room_id'])) {
+                $match->room_id = $roomResult['roomId'] ?? $roomResult['room_id'];
+            }
+        }
+        
         $match->save();
+        
+        $jwtToken = null;
+        if ($match->room_id) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $match->room_id);
+        }
         
         session(['game_state' => array_merge($gameState, [
             'started' => true,
             'started_at' => now()->timestamp,
+            'room_id' => $match->room_id,
+            'jwt_token' => $jwtToken,
         ])]);
         
         return redirect()->route('duo.game.question');
@@ -1650,11 +1670,9 @@ class DuoController extends Controller
         $user = Auth::user();
         $targetDivision = $request->target_division;
         
-        // Get user's current division
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
         $currentDivision = $division->division ?? 'bronze';
         
-        // Division hierarchy and fees
         $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
         $divisionFees = [
             'bronze' => 0,
@@ -1668,7 +1686,6 @@ class DuoController extends Controller
         $currentIndex = array_search($currentDivision, $divisions);
         $targetIndex = array_search($targetDivision, $divisions);
         
-        // Validate target division is within 2 divisions above current
         if ($targetIndex < $currentIndex) {
             return response()->json([
                 'success' => false,
@@ -1683,13 +1700,11 @@ class DuoController extends Controller
             ], 400);
         }
         
-        // Calculate entry fee (only if playing in higher division)
         $entryFee = 0;
         if ($targetIndex > $currentIndex) {
             $entryFee = $divisionFees[$targetDivision];
         }
         
-        // Check if user has enough coins
         if ($entryFee > 0 && $user->coins < $entryFee) {
             return response()->json([
                 'success' => false,
@@ -1697,17 +1712,8 @@ class DuoController extends Controller
             ], 400);
         }
         
-        // Store queue entry in cache (Redis) for 5 minutes
-        $cacheKey = 'duo_queue:' . $targetDivision;
-        $queueData = cache()->get($cacheKey, []);
-        
-        // Remove any stale entries older than 2 minutes
-        $now = now()->timestamp;
-        $queueData = array_filter($queueData, fn($entry) => ($now - ($entry['timestamp'] ?? 0)) < 120);
-        
-        // Add/update current user in queue
         $stats = PlayerDuoStat::where('user_id', $user->id)->first();
-        $queueData[$user->id] = [
+        $data = [
             'id' => $user->id,
             'name' => $user->name,
             'avatar_url' => $user->avatar_url ?? '',
@@ -1717,10 +1723,14 @@ class DuoController extends Controller
             'efficiency' => $division->initial_efficiency ?? 0,
             'matches_won' => $stats->matches_won ?? 0,
             'matches_lost' => $stats->matches_lost ?? 0,
-            'timestamp' => $now,
+            'timestamp' => now()->timestamp,
         ];
         
-        cache()->put($cacheKey, $queueData, 300);
+        Cache::put("duo_queue:{$user->id}", $data, 300);
+        
+        $queueIndex = Cache::get('duo_queue_index', []);
+        $queueIndex[$user->id] = $targetDivision;
+        Cache::put('duo_queue_index', $queueIndex, 300);
         
         return response()->json([
             'success' => true,
@@ -1734,26 +1744,14 @@ class DuoController extends Controller
      */
     public function leaveQueue(Request $request)
     {
-        $request->validate([
-            'target_division' => 'nullable|string|in:bronze,argent,or,platine,diamant,legende',
-        ]);
-
         $user = Auth::user();
-        $targetDivision = $request->target_division;
         
-        // If no specific division, remove from all queues
-        $divisions = $targetDivision 
-            ? [$targetDivision] 
-            : ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+        Cache::forget("duo_queue:{$user->id}");
         
-        foreach ($divisions as $division) {
-            $cacheKey = 'duo_queue:' . $division;
-            $queueData = cache()->get($cacheKey, []);
-            
-            if (isset($queueData[$user->id])) {
-                unset($queueData[$user->id]);
-                cache()->put($cacheKey, $queueData, 300);
-            }
+        $queueIndex = Cache::get('duo_queue_index', []);
+        if (isset($queueIndex[$user->id])) {
+            unset($queueIndex[$user->id]);
+            Cache::put('duo_queue_index', $queueIndex, 300);
         }
         
         return response()->json([
@@ -1774,33 +1772,29 @@ class DuoController extends Controller
         $user = Auth::user();
         $targetDivision = $request->target_division;
         
-        $cacheKey = 'duo_queue:' . $targetDivision;
-        $queueData = cache()->get($cacheKey, []);
-        
-        // Remove stale entries and self
+        $queueIndex = Cache::get('duo_queue_index', []);
         $now = now()->timestamp;
         $userStats = PlayerDuoStat::where('user_id', $user->id)->first();
         $userLevel = $userStats->level ?? 1;
         
         $opponents = [];
-        foreach ($queueData as $userId => $entry) {
-            // Skip self
+        foreach ($queueIndex as $userId => $division) {
             if ($userId == $user->id) continue;
+            if ($division !== $targetDivision) continue;
             
-            // Skip stale entries (older than 2 minutes)
+            $entry = Cache::get("duo_queue:{$userId}");
+            if (!$entry) continue;
+            
             if (($now - ($entry['timestamp'] ?? 0)) >= 120) continue;
             
-            // Check level difference (±10)
             $levelDiff = abs(($entry['level'] ?? 1) - $userLevel);
             if ($levelDiff <= 10) {
                 $opponents[] = $entry;
             }
         }
         
-        // Sort by timestamp (most recent first)
         usort($opponents, fn($a, $b) => ($b['timestamp'] ?? 0) - ($a['timestamp'] ?? 0));
         
-        // Return max 5 opponents
         return response()->json([
             'success' => true,
             'opponents' => array_slice($opponents, 0, 5),

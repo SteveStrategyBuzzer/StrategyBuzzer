@@ -22,11 +22,41 @@ body {
     padding: 2rem;
     text-align: center;
     margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.winner-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+    animation: winnerGlow 3s ease-in-out infinite;
+}
+
+@keyframes winnerGlow {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 1; }
+}
+
+.winner-content {
+    position: relative;
+    z-index: 1;
 }
 
 .winner-crown {
-    font-size: 4rem;
+    font-size: 5rem;
     margin-bottom: 1rem;
+    animation: crownBounce 1s ease-out;
+}
+
+@keyframes crownBounce {
+    0% { transform: translateY(-50px); opacity: 0; }
+    60% { transform: translateY(10px); }
+    100% { transform: translateY(0); opacity: 1; }
 }
 
 .winner-title {
@@ -37,15 +67,77 @@ body {
 }
 
 .winner-name {
-    font-size: 2.2rem;
+    font-size: 2.5rem;
     font-weight: 900;
     margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .winner-score {
     font-size: 1.5rem;
     font-weight: 700;
     color: #FFD700;
+}
+
+.podium-section {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+}
+
+.podium-place {
+    text-align: center;
+    flex: 1;
+    max-width: 150px;
+}
+
+.podium-player {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.podium-rank {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.podium-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.3rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.podium-score {
+    color: #FFD700;
+    font-weight: 700;
+}
+
+.podium-bar {
+    border-radius: 8px 8px 0 0;
+    width: 100%;
+}
+
+.podium-bar.gold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    height: 80px;
+}
+
+.podium-bar.silver {
+    background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
+    height: 60px;
+}
+
+.podium-bar.bronze {
+    background: linear-gradient(135deg, #CD7F32, #8B4513);
+    height: 40px;
 }
 
 .final-leaderboard {
@@ -128,7 +220,7 @@ body {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
     text-align: center;
 }
@@ -169,11 +261,14 @@ body {
     cursor: pointer;
     transition: transform 0.2s;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .action-btn:hover {
     transform: scale(1.05);
+    color: #003DA5;
 }
 
 .action-btn.secondary {
@@ -181,34 +276,114 @@ body {
     color: #fff;
 }
 
+.action-btn.secondary:hover {
+    color: #fff;
+}
+
+.confetti {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    top: -10px;
+    animation: confettiFall 4s linear forwards;
+    pointer-events: none;
+}
+
+@keyframes confettiFall {
+    to {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
 @media (max-width: 600px) {
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .podium-section {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .podium-place {
+        width: 80%;
+        max-width: none;
+    }
+    
+    .podium-bar {
+        height: 20px !important;
     }
 }
 </style>
 
 <div class="game-container">
     <div class="winner-section">
-        <div class="winner-crown">👑</div>
-        <div class="winner-title">{{ __('Vainqueur') }}</div>
-        @if($winner)
-            <div class="winner-name">{{ $winner->user->name ?? 'Joueur' }}</div>
-            <div class="winner-score">{{ $winner->score ?? 0 }} {{ __('points') }}</div>
-        @else
-            <div class="winner-name">{{ __('Aucun vainqueur') }}</div>
-        @endif
+        <div class="winner-content">
+            <div class="winner-crown">👑</div>
+            <div class="winner-title">{{ __('Vainqueur') }}</div>
+            @if($winner)
+                <div class="winner-name">{{ $winner->user->name ?? $winner->guest_name ?? __('Joueur') }}</div>
+                <div class="winner-score">{{ $winner->score ?? 0 }} {{ __('points') }}</div>
+            @else
+                <div class="winner-name">{{ __('Aucun vainqueur') }}</div>
+            @endif
+        </div>
     </div>
+
+    @if($players->count() >= 3)
+        <div class="podium-section">
+            @php
+                $sortedPlayers = $players->sortByDesc('score')->values();
+                $second = $sortedPlayers->get(1);
+                $first = $sortedPlayers->get(0);
+                $third = $sortedPlayers->get(2);
+            @endphp
+            
+            @if($second)
+                <div class="podium-place">
+                    <div class="podium-player">
+                        <div class="podium-rank">🥈</div>
+                        <div class="podium-name">{{ $second->user->name ?? $second->guest_name ?? __('Joueur') }}</div>
+                        <div class="podium-score">{{ $second->score ?? 0 }} pts</div>
+                    </div>
+                    <div class="podium-bar silver"></div>
+                </div>
+            @endif
+            
+            @if($first)
+                <div class="podium-place">
+                    <div class="podium-player">
+                        <div class="podium-rank">🥇</div>
+                        <div class="podium-name">{{ $first->user->name ?? $first->guest_name ?? __('Joueur') }}</div>
+                        <div class="podium-score">{{ $first->score ?? 0 }} pts</div>
+                    </div>
+                    <div class="podium-bar gold"></div>
+                </div>
+            @endif
+            
+            @if($third)
+                <div class="podium-place">
+                    <div class="podium-player">
+                        <div class="podium-rank">🥉</div>
+                        <div class="podium-name">{{ $third->user->name ?? $third->guest_name ?? __('Joueur') }}</div>
+                        <div class="podium-score">{{ $third->score ?? 0 }} pts</div>
+                    </div>
+                    <div class="podium-bar bronze"></div>
+                </div>
+            @endif
+        </div>
+    @endif
 
     <div class="final-leaderboard">
         <div class="leaderboard-title">{{ __('Classement final') }}</div>
-        @foreach($players as $index => $p)
+        @foreach($players->sortByDesc('score') as $index => $p)
             @php
                 $rankClass = '';
                 if ($index === 0) $rankClass = 'gold';
                 elseif ($index === 1) $rankClass = 'silver';
                 elseif ($index === 2) $rankClass = 'bronze';
-                $isCurrentUser = $p->user_id == $current_user->id;
+                $isCurrentUser = isset($current_user) && $p->user_id == $current_user->id;
             @endphp
             <div class="player-row {{ $index < 3 ? 'top-3' : '' }} {{ $isCurrentUser ? 'current-user' : '' }}">
                 <div class="player-info">
@@ -220,7 +395,7 @@ body {
                         @endif
                     </span>
                     <span class="player-name">
-                        {{ $p->user->name ?? 'Joueur' }}
+                        {{ $p->user->name ?? $p->guest_name ?? __('Joueur') }}
                         @if($isCurrentUser) ({{ __('Vous') }}) @endif
                     </span>
                 </div>
@@ -243,19 +418,52 @@ body {
                 <div class="stat-label">{{ __('Joueurs') }}</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value">{{ ucfirst($game->structure_type ?? 'podium') }}</div>
+                <div class="stat-value">{{ $game_duration ?? '--' }}</div>
+                <div class="stat-label">{{ __('Durée') }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ ucfirst($game->structure_type ?? 'libre') }}</div>
                 <div class="stat-label">{{ __('Mode') }}</div>
             </div>
         </div>
     </div>
 
     <div class="action-buttons">
-        <a href="{{ route('master.index') }}" class="action-btn">
-            {{ __('Nouvelle partie') }}
+        @if($is_host)
+            <a href="{{ route('master.create') }}" class="action-btn">
+                🔄 {{ __('Nouvelle partie') }}
+            </a>
+        @endif
+        <a href="{{ route('master.index') }}" class="action-btn secondary">
+            🏠 {{ __('Accueil') }}
         </a>
         <a href="{{ route('profile') }}" class="action-btn secondary">
-            {{ __('Retour au profil') }}
+            👤 {{ __('Mon profil') }}
         </a>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    createConfetti();
+});
+
+function createConfetti() {
+    const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+    
+    for (let i = 0; i < 50; i++) {
+        setTimeout(() => {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.animationDuration = (3 + Math.random() * 2) + 's';
+            confetti.style.animationDelay = Math.random() * 0.5 + 's';
+            document.body.appendChild(confetti);
+            
+            setTimeout(() => confetti.remove(), 5000);
+        }, i * 100);
+    }
+}
+</script>
 @endsection
