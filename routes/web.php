@@ -387,38 +387,41 @@ Route::get('/guide', [App\Http\Controllers\GuideController::class, 'index'])->na
 Route::get('/guide/{mode}', [App\Http\Controllers\GuideController::class, 'show'])->name('guide.show');
 Route::get('/reglements', fn() => redirect()->route('guide.index'))->name('reglements');
 
-/* ===== INTERFACE DE JEU UNIFIÉE ===== */
-Route::prefix('game')->name('game.')->middleware('auth')->group(function () {
-    Route::post('/{mode}/start', [App\Http\Controllers\UnifiedGameController::class, 'startGame'])->name('start');
-    Route::get('/{mode}/resume', [App\Http\Controllers\UnifiedGameController::class, 'showResume'])->name('resume');
-    Route::get('/{mode}/preparation', [App\Http\Controllers\UnifiedGameController::class, 'showPreparation'])->name('preparation');
-    Route::get('/{mode}/question', [App\Http\Controllers\UnifiedGameController::class, 'showQuestion'])->name('question');
-    Route::post('/{mode}/buzz', [App\Http\Controllers\UnifiedGameController::class, 'handleBuzz'])->name('buzz');
-    Route::get('/{mode}/answers', [App\Http\Controllers\UnifiedGameController::class, 'showAnswers'])->name('answers');
-    Route::post('/{mode}/answer', [App\Http\Controllers\UnifiedGameController::class, 'submitAnswer'])->name('answer');
-    Route::get('/{mode}/transition', [App\Http\Controllers\UnifiedGameController::class, 'showTransition'])->name('transition');
-    Route::get('/{mode}/next-question', [App\Http\Controllers\UnifiedGameController::class, 'advanceToNextQuestion'])->name('next-question');
-    Route::get('/{mode}/round-result', [App\Http\Controllers\UnifiedGameController::class, 'showRoundResult'])->name('round-result');
-    Route::post('/{mode}/next-round', [App\Http\Controllers\UnifiedGameController::class, 'startNextRound'])->name('next-round');
-    Route::get('/{mode}/match-result', [App\Http\Controllers\UnifiedGameController::class, 'showMatchResult'])->name('match-result');
-    Route::get('/{mode}/state', [App\Http\Controllers\UnifiedGameController::class, 'getGameState'])->name('state');
-    Route::post('/{mode}/sync', [App\Http\Controllers\UnifiedGameController::class, 'syncFromFirebase'])->name('sync');
-    Route::post('/{mode}/use-skill', [App\Http\Controllers\UnifiedGameController::class, 'useSkill'])->name('use-skill');
-    Route::post('/{mode}/fetch-question', [App\Http\Controllers\UnifiedGameController::class, 'fetchQuestionJson'])->name('fetch-question');
-    Route::post('/{mode}/preload-questions', [App\Http\Controllers\UnifiedGameController::class, 'preloadQuestions'])->name('preload-questions');
-    
-    // Tiebreaker routes
-    Route::get('/{mode}/tiebreaker-choice', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerChoice'])->name('tiebreaker-choice');
-    Route::post('/{mode}/tiebreaker-select', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerSelect'])->name('tiebreaker-select');
-    Route::get('/{mode}/tiebreaker-bonus', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerBonus'])->name('tiebreaker-bonus');
-    Route::post('/{mode}/tiebreaker-bonus-answer', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerBonusAnswer'])->name('tiebreaker-bonus-answer');
-    Route::get('/{mode}/tiebreaker-efficiency', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerEfficiency'])->name('tiebreaker-efficiency');
-    Route::get('/{mode}/tiebreaker-sudden-death', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerSuddenDeath'])->name('tiebreaker-sudden-death');
-    Route::post('/{mode}/tiebreaker-sudden-death-answer', [App\Http\Controllers\UnifiedGameController::class, 'tiebreakerSuddenDeathAnswer'])->name('tiebreaker-sudden-death-answer');
-    
-    // Forfeit/Disconnect handling
-    Route::post('/{mode}/forfeit', [App\Http\Controllers\UnifiedGameController::class, 'handleForfeit'])->name('forfeit');
-    Route::get('/{mode}/forfeit-result', [App\Http\Controllers\UnifiedGameController::class, 'showForfeitResult'])->name('forfeit-result');
+/* ===== INTERFACE DE JEU DUO (Socket.IO) ===== */
+Route::prefix('game/duo')->name('game.duo.')->middleware('auth')->group(function () {
+    Route::post('/start', [App\Http\Controllers\DuoController::class, 'startGame'])->name('start');
+    Route::get('/resume', [App\Http\Controllers\DuoController::class, 'showResume'])->name('resume');
+    Route::get('/question', [App\Http\Controllers\DuoController::class, 'showQuestion'])->name('question');
+    Route::get('/answer', [App\Http\Controllers\DuoController::class, 'showAnswer'])->name('answer');
+    Route::get('/result', [App\Http\Controllers\DuoController::class, 'showResult'])->name('result');
+    Route::post('/fetch-question', [App\Http\Controllers\DuoController::class, 'fetchQuestionJson'])->name('fetch-question');
+    Route::post('/use-skill', [App\Http\Controllers\DuoController::class, 'useSkill'])->name('use-skill');
+    Route::get('/match-result', [App\Http\Controllers\DuoController::class, 'showMatchResult'])->name('match-result');
+    Route::post('/forfeit', [App\Http\Controllers\DuoController::class, 'handleForfeit'])->name('forfeit');
+});
+
+/* ===== INTERFACE DE JEU LEAGUE (Socket.IO) ===== */
+Route::prefix('game/league')->name('game.league.')->middleware('auth')->group(function () {
+    Route::post('/start', [App\Http\Controllers\LeagueIndividualController::class, 'startGame'])->name('start');
+    Route::get('/resume', [App\Http\Controllers\LeagueIndividualController::class, 'showResume'])->name('resume');
+    Route::get('/question', [App\Http\Controllers\LeagueIndividualController::class, 'showQuestion'])->name('question');
+    Route::get('/answer', [App\Http\Controllers\LeagueIndividualController::class, 'showAnswer'])->name('answer');
+    Route::get('/result', [App\Http\Controllers\LeagueIndividualController::class, 'showResult'])->name('result');
+    Route::post('/fetch-question', [App\Http\Controllers\LeagueIndividualController::class, 'fetchQuestionJson'])->name('fetch-question');
+    Route::post('/use-skill', [App\Http\Controllers\LeagueIndividualController::class, 'useSkill'])->name('use-skill');
+    Route::get('/match-result', [App\Http\Controllers\LeagueIndividualController::class, 'showMatchResult'])->name('match-result');
+    Route::post('/forfeit', [App\Http\Controllers\LeagueIndividualController::class, 'handleForfeit'])->name('forfeit');
+});
+
+/* ===== INTERFACE DE JEU MASTER (Socket.IO - jusqu'à 40 joueurs) ===== */
+Route::prefix('game/master')->name('game.master.')->middleware('auth')->group(function () {
+    Route::post('/start', [App\Http\Controllers\MasterGameController::class, 'startGame'])->name('start');
+    Route::get('/resume', [App\Http\Controllers\MasterGameController::class, 'showResume'])->name('resume');
+    Route::get('/question', [App\Http\Controllers\MasterGameController::class, 'showQuestion'])->name('question');
+    Route::get('/answer', [App\Http\Controllers\MasterGameController::class, 'showAnswer'])->name('answer');
+    Route::get('/result', [App\Http\Controllers\MasterGameController::class, 'showResult'])->name('result');
+    Route::post('/fetch-question', [App\Http\Controllers\MasterGameController::class, 'fetchQuestionJson'])->name('fetch-question');
+    Route::get('/match-result', [App\Http\Controllers\MasterGameController::class, 'showMatchResult'])->name('match-result');
 });
 
 /* ===== QUÊTES & QUÊTES QUOTIDIENNES ===== */
