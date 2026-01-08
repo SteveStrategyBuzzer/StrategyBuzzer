@@ -245,6 +245,8 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::post('/contacts/groups/{groupId}/members', [App\Http\Controllers\PlayerGroupController::class, 'addMembers'])->name('contacts.groups.addMembers');
     Route::delete('/contacts/groups/{groupId}/members', [App\Http\Controllers\PlayerGroupController::class, 'removeMembers'])->name('contacts.groups.removeMembers');
     Route::post('/queue/join', [App\Http\Controllers\DuoController::class, 'joinQueue'])->name('queue.join');
+    Route::post('/queue/leave', [App\Http\Controllers\DuoController::class, 'leaveQueue'])->name('queue.leave');
+    Route::get('/queue/opponents', [App\Http\Controllers\DuoController::class, 'getQueueOpponents'])->name('queue.opponents');
     Route::post('/queue/create-match', [App\Http\Controllers\DuoController::class, 'createQueueMatch'])->name('queue.createMatch');
     Route::post('/matches/{match}/create-room', [App\Http\Controllers\DuoController::class, 'createGameServerRoom'])->name('matches.create-room');
     
@@ -400,8 +402,7 @@ Route::prefix('game/duo')->name('game.duo.')->middleware('auth')->group(function
     Route::post('/forfeit', [App\Http\Controllers\DuoController::class, 'handleForfeit'])->name('forfeit');
 });
 
-/* ===== INTERFACE DE JEU LEAGUE (Socket.IO) - TODO: Add methods to LeagueIndividualController ===== */
-/* Temporarily disabled - requires LeagueIndividualController Socket.IO methods
+/* ===== INTERFACE DE JEU LEAGUE (Socket.IO) ===== */
 Route::prefix('game/league')->name('game.league.')->middleware('auth')->group(function () {
     Route::post('/start', [App\Http\Controllers\LeagueIndividualController::class, 'startGame'])->name('start');
     Route::get('/resume', [App\Http\Controllers\LeagueIndividualController::class, 'showResume'])->name('resume');
@@ -413,7 +414,6 @@ Route::prefix('game/league')->name('game.league.')->middleware('auth')->group(fu
     Route::get('/match-result', [App\Http\Controllers\LeagueIndividualController::class, 'showMatchResult'])->name('match-result');
     Route::post('/forfeit', [App\Http\Controllers\LeagueIndividualController::class, 'handleForfeit'])->name('forfeit');
 });
-*/
 
 /* ===== INTERFACE DE JEU MASTER (Socket.IO - jusqu'à 40 joueurs) - TODO: Add methods to MasterGameController ===== */
 /* Temporarily disabled - requires MasterGameController Socket.IO methods

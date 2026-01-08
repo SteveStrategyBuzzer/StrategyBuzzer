@@ -745,8 +745,14 @@ body {
     <source src="{{ asset('sounds/ready_announcement.mp3') }}" type="audio/mpeg">
 </audio>
 
-<!-- Firebase SDK - loaded first -->
-@if($needsSyncGo || $needsChat || $needsMic)
+<!-- Socket.IO for ready synchronization -->
+@if($needsSyncGo)
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/js/DuoSocketClient.js"></script>
+@endif
+
+<!-- Firebase SDK for chat and voice (if needed) -->
+@if($needsChat || $needsMic)
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -773,15 +779,81 @@ body {
     let opponentReady = false;
     let redirected = false;
     let micEnabled = false;
+    let socketInitialized = false;
     let firebaseInitialized = false;
-    let unsubscribeReady = null;
     let unsubscribeChat = null;
     let db = null;
     
     const isLeagueMode = mode.startsWith('league');
     const hasValidSession = sessionId && sessionId !== null && sessionId !== 'null';
     
-    // Initialize Firebase once
+    // Get game server URL from environment or construct from current host
+    function getGameServerUrl() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        // Game server runs on port 3001
+        return `${protocol}//${host.replace(/:\d+$/, '')}:3001`;
+    }
+    
+    // Initialize Socket.IO for ready synchronization
+    async function initSocket() {
+        if (socketInitialized || typeof DuoSocketClient === 'undefined') return false;
+        
+        try {
+            const gameServerUrl = getGameServerUrl();
+            console.log('[Socket] Connecting to game server:', gameServerUrl);
+            
+            await DuoSocketClient.connect(gameServerUrl);
+            
+            // Set up ready event handler for opponent
+            DuoSocketClient.onPlayerReady = (data) => {
+                console.log('[Socket] Player ready event received:', data);
+                // Check if this is the opponent (not us)
+                if (data.playerId && String(data.playerId) !== String(playerId)) {
+                    if (!opponentReady) {
+                        opponentReady = true;
+                        const opponentDot = document.getElementById('opponentDot');
+                        if (opponentDot) opponentDot.classList.add('ready');
+                        checkBothReady();
+                    }
+                }
+            };
+            
+            // Also handle state updates which may contain ready status
+            DuoSocketClient.onLobbyState = (state) => {
+                console.log('[Socket] Lobby state received:', state);
+                if (state && state.players) {
+                    Object.entries(state.players).forEach(([pid, player]) => {
+                        if (String(pid) !== String(playerId) && player.isReady) {
+                            if (!opponentReady) {
+                                opponentReady = true;
+                                const opponentDot = document.getElementById('opponentDot');
+                                if (opponentDot) opponentDot.classList.add('ready');
+                                checkBothReady();
+                            }
+                        }
+                    });
+                }
+            };
+            
+            // Join the room
+            DuoSocketClient.joinRoom(sessionId, null, {
+                playerId: String(playerId),
+                playerName: @json($playerName),
+                avatarId: @json($playerAvatar),
+                division: @json($playerDivision)
+            });
+            
+            socketInitialized = true;
+            console.log('[Socket] Connected and joined room:', sessionId);
+            return true;
+        } catch (err) {
+            console.warn('[Socket] Init failed:', err.message);
+            return false;
+        }
+    }
+    
+    // Initialize Firebase for chat/voice only (not for ready sync)
     async function initFirebase() {
         if (firebaseInitialized || typeof firebase === 'undefined') return false;
         
@@ -816,9 +888,8 @@ body {
     
     // Cleanup listeners on page unload
     function cleanup() {
-        if (unsubscribeReady) {
-            unsubscribeReady();
-            unsubscribeReady = null;
+        if (DuoSocketClient && DuoSocketClient.isConnected()) {
+            DuoSocketClient.disconnect();
         }
         if (unsubscribeChat) {
             unsubscribeChat();
@@ -873,14 +944,13 @@ body {
         if (playerDot) playerDot.classList.add('ready');
         if (waitingMessage) waitingMessage.style.display = 'block';
         
-        // Sync with Firebase
-        if (hasValidSession && await initFirebase()) {
+        // Sync ready status via Socket.IO
+        if (hasValidSession && socketInitialized && DuoSocketClient.isConnected()) {
             try {
-                await db.collection('gameSessions').doc(sessionId).set({
-                    readyStatus: { [playerId]: true }
-                }, { merge: true });
+                DuoSocketClient.setReady(true);
+                console.log('[Socket] Ready status sent');
             } catch (err) {
-                console.warn('Ready sync failed:', err.message);
+                console.warn('[Socket] Ready sync failed:', err.message);
             }
         }
         
@@ -987,12 +1057,14 @@ body {
         }
     }
     
-    // Listen for opponent ready status via Firebase
+    // Listen for opponent ready status via Socket.IO
     async function startReadyListener() {
         if (!needsSyncGo || !hasValidSession) return;
         
-        if (!await initFirebase()) {
-            // Fallback: auto-proceed after 10s if no Firebase
+        // Initialize Socket.IO connection (event handlers are set up in initSocket())
+        if (!await initSocket()) {
+            // Fallback: auto-proceed after 10s if Socket.IO fails
+            console.warn('[Socket] Fallback: auto-proceed after 10s');
             setTimeout(() => {
                 if (!opponentReady) {
                     opponentReady = true;
@@ -1004,30 +1076,7 @@ body {
             return;
         }
         
-        try {
-            unsubscribeReady = db.collection('gameSessions').doc(sessionId).onSnapshot((doc) => {
-                if (!doc.exists) return;
-                
-                const data = doc.data();
-                const readyStatus = data.readyStatus || {};
-                
-                // Check all other players in readyStatus
-                Object.keys(readyStatus).forEach(pid => {
-                    if (pid !== String(playerId) && readyStatus[pid] === true) {
-                        if (!opponentReady) {
-                            opponentReady = true;
-                            const opponentDot = document.getElementById('opponentDot');
-                            if (opponentDot) opponentDot.classList.add('ready');
-                            checkBothReady();
-                        }
-                    }
-                });
-            }, (err) => {
-                console.warn('Ready listener error:', err.message);
-            });
-        } catch (err) {
-            console.warn('Failed to start ready listener:', err.message);
-        }
+        console.log('[Socket] Ready listener initialized via Socket.IO');
     }
     
     // Chat functionality

@@ -11,7 +11,6 @@ use App\Services\BuzzManagerService;
 use App\Services\PlayerContactService;
 use App\Services\LobbyService;
 use App\Services\GameServerService;
-use App\Services\DuoFirestoreService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
@@ -25,8 +24,7 @@ class DuoController extends Controller
         private BuzzManagerService $buzzManager,
         private PlayerContactService $contactService,
         private LobbyService $lobbyService,
-        private GameServerService $gameServerService,
-        private DuoFirestoreService $firestoreService
+        private GameServerService $gameServerService
     ) {}
 
     public function showSplash()
@@ -93,15 +91,6 @@ class DuoController extends Controller
         $match->lobby_code = $lobby['code'];
         $match->save();
 
-        $this->firestoreService->createMatchSession($match->id, [
-            'player1_id' => $match->player1_id,
-            'player2_id' => $match->player2_id,
-            'player1_name' => $user->name ?? 'Player 1',
-            'player2_name' => $opponent->name ?? 'Player 2',
-            'lobby_code' => $lobby['code'],
-            'status' => 'waiting',
-        ]);
-
         return response()->json([
             'success' => true,
             'match' => $match->load(['player1', 'player2']),
@@ -154,11 +143,6 @@ class DuoController extends Controller
 
         $this->lobbyService->joinLobby($match->lobby_code, $user);
 
-        $this->firestoreService->updateGameState($match->id, [
-            'status' => 'lobby',
-            'player2Joined' => true,
-        ]);
-
         return response()->json([
             'success' => true,
             'match' => $match->load(['player1', 'player2']),
@@ -184,12 +168,6 @@ class DuoController extends Controller
 
         $this->matchmaking->cancelMatch($match);
 
-        $this->firestoreService->updateGameState($match->id, [
-            'status' => 'declined',
-            'declinedBy' => $user->id,
-            'declinedByName' => $user->name,
-        ]);
-
         return response()->json([
             'success' => true,
             'message' => __('Invitation refusée'),
@@ -208,12 +186,7 @@ class DuoController extends Controller
         }
 
         $this->matchmaking->cancelMatch($match);
-
-        if ($this->firestoreService->sessionExists($match->id)) {
-            $this->firestoreService->deleteMatchSession($match->id);
-        }
         
-        // Nettoyer les sessions de jeu incluant les skills
         session()->forget(['game_state', 'game_mode', 'used_skills', 'skill_usage_counts']);
 
         return response()->json([
@@ -255,12 +228,6 @@ class DuoController extends Controller
         $gameState['buzzes'] = $buzzes;
         $match->game_state = $gameState;
         $match->save();
-
-        $this->firestoreService->recordBuzz(
-            $match->id,
-            $playerId,
-            $buzzRecord['server_time']
-        );
 
         $fastest = $this->buzzManager->determineFastest($buzzes);
 
@@ -332,34 +299,6 @@ class DuoController extends Controller
         $match->game_state = $gameState;
         $match->save();
 
-        $this->firestoreService->updateScores(
-            $match->id,
-            $gameState['player_scores_map']['player'] ?? 0,
-            $gameState['player_scores_map']['opponent'] ?? 0
-        );
-
-        if ($hasMoreQuestions) {
-            $this->firestoreService->updateGameState($match->id, [
-                'currentQuestion' => $gameState['current_question_number'],
-                'questionStartTime' => $gameState['question_start_time'] ?? microtime(true),
-            ]);
-        } else {
-            $this->firestoreService->finishRound(
-                $match->id,
-                $gameState['current_round'],
-                $gameState['player_rounds_won'],
-                $gameState['opponent_rounds_won']
-            );
-            
-            if (!$this->gameStateService->isMatchFinished($gameState)) {
-                $this->firestoreService->updateGameState($match->id, [
-                    'currentQuestion' => $gameState['current_question_number'],
-                    'questionStartTime' => $gameState['question_start_time'] ?? microtime(true),
-                    'currentRound' => $gameState['current_round'],
-                ]);
-            }
-        }
-
         return response()->json([
             'success' => true,
             'isCorrect' => $isCorrect,
@@ -403,9 +342,6 @@ class DuoController extends Controller
                 $player2Score,
                 $gameState
             );
-
-            $this->firestoreService->finishMatch($match->id, $matchResult['winner']);
-            $this->firestoreService->deleteMatchSession($match->id);
 
             $wasDecisiveRound = ($gameState['current_round'] ?? 1) === 3;
             
@@ -458,20 +394,9 @@ class DuoController extends Controller
             ], 403);
         }
 
-        $firestoreState = $this->firestoreService->getGameState($match->id);
-        $firestoreBuzzes = $this->firestoreService->getBuzzes($match->id);
-
-        if (!$firestoreState) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Session Firestore introuvable',
-            ], 404);
-        }
-
         return response()->json([
             'success' => true,
-            'firestoreState' => $firestoreState,
-            'buzzes' => $firestoreBuzzes,
+            'gameState' => $match->game_state ?? [],
             'matchId' => $match->id,
             'timestamp' => microtime(true),
         ]);
@@ -1772,10 +1697,114 @@ class DuoController extends Controller
             ], 400);
         }
         
+        // Store queue entry in cache (Redis) for 5 minutes
+        $cacheKey = 'duo_queue:' . $targetDivision;
+        $queueData = cache()->get($cacheKey, []);
+        
+        // Remove any stale entries older than 2 minutes
+        $now = now()->timestamp;
+        $queueData = array_filter($queueData, fn($entry) => ($now - ($entry['timestamp'] ?? 0)) < 120);
+        
+        // Add/update current user in queue
+        $stats = PlayerDuoStat::where('user_id', $user->id)->first();
+        $queueData[$user->id] = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'avatar_url' => $user->avatar_url ?? '',
+            'division' => $currentDivision,
+            'target_division' => $targetDivision,
+            'level' => $stats->level ?? 1,
+            'efficiency' => $division->initial_efficiency ?? 0,
+            'matches_won' => $stats->matches_won ?? 0,
+            'matches_lost' => $stats->matches_lost ?? 0,
+            'timestamp' => $now,
+        ];
+        
+        cache()->put($cacheKey, $queueData, 300);
+        
         return response()->json([
             'success' => true,
             'message' => __('Prêt à rejoindre la file'),
             'entry_fee' => $entryFee,
+        ]);
+    }
+
+    /**
+     * Leave the matchmaking queue
+     */
+    public function leaveQueue(Request $request)
+    {
+        $request->validate([
+            'target_division' => 'nullable|string|in:bronze,argent,or,platine,diamant,legende',
+        ]);
+
+        $user = Auth::user();
+        $targetDivision = $request->target_division;
+        
+        // If no specific division, remove from all queues
+        $divisions = $targetDivision 
+            ? [$targetDivision] 
+            : ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+        
+        foreach ($divisions as $division) {
+            $cacheKey = 'duo_queue:' . $division;
+            $queueData = cache()->get($cacheKey, []);
+            
+            if (isset($queueData[$user->id])) {
+                unset($queueData[$user->id]);
+                cache()->put($cacheKey, $queueData, 300);
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => __('Vous avez quitté la file d\'attente'),
+        ]);
+    }
+
+    /**
+     * Get available opponents in the queue
+     */
+    public function getQueueOpponents(Request $request)
+    {
+        $request->validate([
+            'target_division' => 'required|string|in:bronze,argent,or,platine,diamant,legende',
+        ]);
+
+        $user = Auth::user();
+        $targetDivision = $request->target_division;
+        
+        $cacheKey = 'duo_queue:' . $targetDivision;
+        $queueData = cache()->get($cacheKey, []);
+        
+        // Remove stale entries and self
+        $now = now()->timestamp;
+        $userStats = PlayerDuoStat::where('user_id', $user->id)->first();
+        $userLevel = $userStats->level ?? 1;
+        
+        $opponents = [];
+        foreach ($queueData as $userId => $entry) {
+            // Skip self
+            if ($userId == $user->id) continue;
+            
+            // Skip stale entries (older than 2 minutes)
+            if (($now - ($entry['timestamp'] ?? 0)) >= 120) continue;
+            
+            // Check level difference (±10)
+            $levelDiff = abs(($entry['level'] ?? 1) - $userLevel);
+            if ($levelDiff <= 10) {
+                $opponents[] = $entry;
+            }
+        }
+        
+        // Sort by timestamp (most recent first)
+        usort($opponents, fn($a, $b) => ($b['timestamp'] ?? 0) - ($a['timestamp'] ?? 0));
+        
+        // Return max 5 opponents
+        return response()->json([
+            'success' => true,
+            'opponents' => array_slice($opponents, 0, 5),
+            'queue_size' => count($opponents),
         ]);
     }
 
@@ -1901,19 +1930,7 @@ class DuoController extends Controller
         $match->lobby_code = $lobby['code'];
         $match->save();
         
-        // Register mutual contacts
         $this->contactService->registerMutualContacts($user->id, $opponentId);
-        
-        // Create Firestore match session
-        $this->firestoreService->createMatchSession($match->id, [
-            'player1_id' => $match->player1_id,
-            'player2_id' => $match->player2_id,
-            'player1_name' => $user->name ?? 'Player 1',
-            'player2_name' => $opponent->name ?? 'Player 2',
-            'lobby_code' => $lobby['code'],
-            'status' => 'lobby',
-            'division' => $targetDivision,
-        ]);
         
         return response()->json([
             'success' => true,

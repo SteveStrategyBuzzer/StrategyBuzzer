@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\LeagueIndividualMatch;
+use App\Models\LeagueIndividualStat;
 use App\Services\LeagueIndividualService;
 use App\Services\GameStateService;
 use App\Services\BuzzManagerService;
 use App\Services\DivisionService;
-use App\Services\LeagueIndividualFirestoreService;
+use App\Services\GameServerService;
 
 class LeagueIndividualController extends Controller
 {
@@ -18,12 +19,9 @@ class LeagueIndividualController extends Controller
         private GameStateService $gameStateService,
         private BuzzManagerService $buzzManager,
         private DivisionService $divisionService,
-        private LeagueIndividualFirestoreService $firestoreService
+        private GameServerService $gameServerService
     ) {}
 
-    /**
-     * Page d'accueil Ligue Individuel
-     */
     public function index()
     {
         $user = Auth::user();
@@ -44,13 +42,11 @@ class LeagueIndividualController extends Controller
         $rankings = $this->leagueService->getRankingsByDivision($division->division, 10);
         $rank = $this->leagueService->getPlayerRank($user);
         
-        // Calculate efficiency
         $efficiency = 0;
         if ($stats && $stats->matches_played > 0) {
             $efficiency = ($stats->matches_won / $stats->matches_played) * 100;
         }
         
-        // Division emoji mapping
         $divisionEmojis = [
             'bronze' => '🥉',
             'argent' => '🥈',
@@ -61,7 +57,6 @@ class LeagueIndividualController extends Controller
         ];
         $divisionEmoji = $divisionEmojis[$division->division ?? 'bronze'] ?? '🥉';
 
-        // Check for active match in progress
         $activeMatch = LeagueIndividualMatch::where(function ($query) use ($user) {
                 $query->where('player1_id', $user->id)
                       ->orWhere('player2_id', $user->id);
@@ -81,9 +76,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Initialise la Ligue Individuel
-     */
     public function initialize()
     {
         $user = Auth::user();
@@ -97,9 +89,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Vérifie si la Ligue est initialisée
-     */
     public function checkInitialized()
     {
         $user = Auth::user();
@@ -111,9 +100,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Crée un match avec un adversaire sélectionné
-     */
     public function createMatch(Request $request)
     {
         $user = Auth::user();
@@ -128,7 +114,6 @@ class LeagueIndividualController extends Controller
         $opponentId = $request->input('opponent_id');
         $selectedDivision = $request->input('division', null);
         
-        // If opponent_id provided, use that opponent
         if ($opponentId) {
             $opponent = \App\Models\User::find($opponentId);
             
@@ -139,7 +124,6 @@ class LeagueIndividualController extends Controller
                 ], 404);
             }
         } else {
-            // Fallback to random opponent (legacy behavior)
             $opponent = $this->leagueService->findRandomOpponent($user);
 
             if (!$opponent) {
@@ -152,34 +136,6 @@ class LeagueIndividualController extends Controller
 
         $match = $this->leagueService->createMatch($user, $opponent);
 
-        // Generate first question and create Firestore session with question data
-        $questionService = app(\App\Services\QuestionService::class);
-        $userDivision = $this->divisionService->getOrCreateDivision($user, 'league_individual');
-        $theme = 'Culture générale'; // Default theme
-        $niveau = $this->mapDivisionToLevel($userDivision->division);
-        $language = app()->getLocale();
-        
-        try {
-            $question = $questionService->generateQuestion($theme, $niveau, $language);
-        } catch (\Exception $e) {
-            $question = null;
-        }
-
-        $this->firestoreService->createMatchSession($match->id, [
-            'player1_id' => $match->player1_id,
-            'player2_id' => $match->player2_id,
-            'player1_name' => $user->name,
-            'player2_name' => $opponent->name,
-            'questionStartTime' => microtime(true),
-            'currentQuestionData' => $question,
-            'currentQuestionNumber' => 1,
-            'totalQuestions' => 10,
-            'status' => 'playing',
-            'buzzer' => null,
-            'player1_score' => 0,
-            'player2_score' => 0,
-        ]);
-
         return response()->json([
             'success' => true,
             'match_id' => $match->id,
@@ -187,9 +143,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
     
-    /**
-     * Map division name to difficulty level
-     */
     private function mapDivisionToLevel(string $division): string
     {
         $mapping = [
@@ -204,9 +157,6 @@ class LeagueIndividualController extends Controller
         return $mapping[$division] ?? 'Facile';
     }
 
-    /**
-     * API: Récupère l'état du jeu
-     */
     public function getGameState(LeagueIndividualMatch $match)
     {
         $user = Auth::user();
@@ -223,9 +173,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Enregistre un buzz
-     */
     public function buzz(Request $request, LeagueIndividualMatch $match)
     {
         $user = Auth::user();
@@ -244,17 +191,12 @@ class LeagueIndividualController extends Controller
         $match->game_state = $gameState;
         $match->save();
 
-        $this->firestoreService->recordBuzz($match->id, $playerId, $buzz['server_time']);
-
         return response()->json([
             'success' => true,
             'buzz' => $buzz,
         ]);
     }
 
-    /**
-     * API: Soumet une réponse
-     */
     public function submitAnswer(Request $request, LeagueIndividualMatch $match)
     {
         $user = Auth::user();
@@ -309,27 +251,6 @@ class LeagueIndividualController extends Controller
         $match->game_state = $gameState;
         $match->save();
 
-        $this->firestoreService->updateScores(
-            $match->id,
-            $gameState['player_score'] ?? 0,
-            $gameState['opponent_score'] ?? 0
-        );
-
-        if ($hasMoreQuestions) {
-            $this->firestoreService->nextQuestion(
-                $match->id,
-                $gameState['current_question_index'] ?? 1,
-                microtime(true)
-            );
-        } elseif ($roundResult && !$this->gameStateService->isMatchFinished($gameState)) {
-            $this->firestoreService->finishRound(
-                $match->id,
-                $gameState['current_round'] ?? 1,
-                $gameState['player_rounds_won'] ?? 0,
-                $gameState['opponent_rounds_won'] ?? 0
-            );
-        }
-
         return response()->json([
             'success' => true,
             'isCorrect' => $result['is_correct'],
@@ -341,9 +262,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Termine le match
-     */
     public function finishMatch(LeagueIndividualMatch $match)
     {
         $user = Auth::user();
@@ -364,8 +282,6 @@ class LeagueIndividualController extends Controller
         $matchResult = $this->gameStateService->getMatchResult($gameState);
         $this->leagueService->finishMatch($match, $matchResult);
 
-        $this->firestoreService->deleteMatchSession($match->id);
-
         return response()->json([
             'success' => true,
             'match_result' => $matchResult,
@@ -373,9 +289,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Synchronise l'état du jeu pour polling temps réel
-     */
     public function syncGameState(LeagueIndividualMatch $match)
     {
         $user = Auth::user();
@@ -384,18 +297,14 @@ class LeagueIndividualController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $firestoreState = $this->firestoreService->syncGameState($match->id);
-
         return response()->json([
             'success' => true,
-            'firestore_state' => $firestoreState,
-            'status' => $match->status,
+            'gameState' => $match->game_state ?? [],
+            'matchId' => $match->id,
+            'timestamp' => microtime(true),
         ]);
     }
 
-    /**
-     * API: Récupère les classements par division
-     */
     public function getRankings(Request $request)
     {
         $division = $request->input('division', 'bronze');
@@ -408,9 +317,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Récupère les statistiques du joueur
-     */
     public function getMyStats()
     {
         $user = Auth::user();
@@ -426,9 +332,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * Page de résultat du match
-     */
     public function result(LeagueIndividualMatch $match)
     {
         $user = Auth::user();
@@ -487,9 +390,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Obtenir les infos d'accès temporaire
-     */
     public function getTemporaryAccessInfo()
     {
         $user = Auth::user();
@@ -517,9 +417,6 @@ class LeagueIndividualController extends Controller
         ]);
     }
 
-    /**
-     * API: Acheter un accès temporaire
-     */
     public function purchaseTemporaryAccess(Request $request)
     {
         $user = Auth::user();
@@ -549,5 +446,641 @@ class LeagueIndividualController extends Controller
             'cost' => $result['cost'],
             'remaining_coins' => $result['remaining_coins'],
         ]);
+    }
+
+    public function startGame(Request $request)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return redirect()->route('league.individual.lobby')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Match introuvable'));
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
+        }
+        
+        $match->status = 'in_progress';
+        $match->started_at = now();
+        $match->save();
+        
+        session(['game_state' => array_merge($gameState, [
+            'started' => true,
+            'started_at' => now()->timestamp,
+        ])]);
+        
+        return redirect()->route('game.league.question');
+    }
+
+    public function showResume()
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return redirect()->route('league.individual.lobby')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Match introuvable'));
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
+        }
+        
+        return $this->renderQuestionView($match, $user);
+    }
+
+    public function showQuestion()
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return redirect()->route('league.individual.lobby')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Match introuvable'));
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
+        }
+        
+        return $this->renderQuestionView($match, $user);
+    }
+
+    public function showAnswer()
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return redirect()->route('league.individual.lobby')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Match introuvable'));
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
+        }
+        
+        return $this->renderAnswerView($match, $user, $gameState);
+    }
+
+    public function showResult()
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return redirect()->route('league.individual.lobby')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Match introuvable'));
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
+        }
+        
+        return $this->renderResultView($match, $user, $gameState);
+    }
+
+    public function fetchQuestionJson(Request $request)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return response()->json(['success' => false, 'error' => 'No active game'], 400);
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            return response()->json(['success' => false, 'error' => 'Match not found'], 404);
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+        
+        $matchGameState = $match->game_state ?? [];
+        $currentQuestion = $matchGameState['current_question_number'] ?? 1;
+        $questions = $matchGameState['questions'] ?? [];
+        
+        if ($currentQuestion > count($questions)) {
+            return response()->json([
+                'success' => false,
+                'finished' => true,
+                'message' => 'No more questions'
+            ]);
+        }
+        
+        $questionData = $questions[$currentQuestion - 1] ?? null;
+        
+        return response()->json([
+            'success' => true,
+            'question' => $questionData,
+            'current_question' => $currentQuestion,
+            'total_questions' => count($questions),
+        ]);
+    }
+
+    public function useSkill(Request $request)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return response()->json(['success' => false, 'error' => 'No active game'], 400);
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            return response()->json(['success' => false, 'error' => 'Match not found'], 404);
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+        
+        $skillId = $request->input('skill_id');
+        $skillData = \App\Services\SkillCatalog::getSkill($skillId);
+        
+        if (!$skillData) {
+            return response()->json(['success' => false, 'error' => 'Skill not found']);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'skill_id' => $skillId,
+            'affects_opponent' => $skillData['affects_opponent'] ?? false,
+        ]);
+    }
+
+    public function showMatchResult()
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return redirect()->route('league.individual.lobby')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Match introuvable'));
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            session()->forget('game_state');
+            return redirect()->route('league.individual.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
+        }
+        
+        $matchGameState = $match->game_state ?? [];
+        $matchResult = $this->gameStateService->getMatchResult($matchGameState);
+        
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
+        
+        $accuracy = 0;
+        $total = ($matchGameState['global_stats']['correct'] ?? 0) + ($matchGameState['global_stats']['incorrect'] ?? 0);
+        if ($total > 0) {
+            $accuracy = round(($matchGameState['global_stats']['correct'] ?? 0) / $total * 100);
+        }
+
+        $pointsEarned = $isPlayer1 ? ($match->player1_points_earned ?? 0) : ($match->player2_points_earned ?? 0);
+        $coinsEarned = $isPlayer1 ? ($match->player1_coins_earned ?? 0) : ($match->player2_coins_earned ?? 0);
+        
+        session()->forget('game_state');
+        
+        return view('league_individual_results', [
+            'match' => $match,
+            'gameState' => $matchGameState,
+            'match_result' => $matchResult,
+            'opponent' => $opponent,
+            'opponent_id' => $opponent->id ?? null,
+            'opponent_name' => $opponent->name ?? 'Adversaire',
+            'division' => $division,
+            'points_earned' => $pointsEarned,
+            'coins_earned' => $coinsEarned,
+            'coins_bonus' => 0,
+            'opponent_strength' => 'equal',
+            'global_stats' => $matchGameState['global_stats'] ?? [],
+            'accuracy' => $accuracy,
+            'round_details' => $matchGameState['answered_questions'] ?? [],
+        ]);
+    }
+
+    public function handleForfeit(Request $request)
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return response()->json(['success' => false, 'error' => 'No active game'], 400);
+        }
+        
+        $match = LeagueIndividualMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            session()->forget('game_state');
+            return response()->json(['success' => false, 'error' => 'Match not found'], 404);
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+        
+        $isPlayer1 = $match->player1_id == $user->id;
+        $winnerId = $isPlayer1 ? $match->player2_id : $match->player1_id;
+        
+        $match->status = 'completed';
+        $match->winner_id = $winnerId;
+        $match->finished_at = now();
+        $match->forfeit_by = $user->id;
+        $match->save();
+        
+        session()->forget('game_state');
+        
+        return response()->json([
+            'success' => true,
+            'message' => __('Vous avez abandonné la partie'),
+            'redirect_url' => route('league.individual.lobby'),
+        ]);
+    }
+
+    protected function getMatchFromSession(): ?LeagueIndividualMatch
+    {
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return null;
+        }
+        
+        return LeagueIndividualMatch::find($gameState['match_id']);
+    }
+
+    protected function renderQuestionView(LeagueIndividualMatch $match, $user)
+    {
+        $gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
+        $roomId = $match->room_id ?? null;
+        $lobbyCode = $match->lobby_code ?? null;
+        
+        $jwtToken = null;
+        if ($roomId) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        }
+
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        if (!is_array($profileSettings)) {
+            $profileSettings = [];
+        }
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+        
+        $skills = $this->getPlayerSkillsWithTriggers($user);
+
+        $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        $opponentName = data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire');
+        $opponentAvatarPath = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+
+        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+
+        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+        $strategicAvatarPath = null;
+        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+            $catalog = \App\Services\AvatarCatalog::get();
+            $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+            foreach ($strategicAvatars as $avatar) {
+                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                    $strategicAvatarPath = $avatar['image'] ?? null;
+                    break;
+                }
+            }
+        }
+
+        $totalQuestions = 10;
+        $currentQuestion = 1;
+        $theme = 'Culture générale';
+        $themeDisplay = '🧠 Culture générale';
+        $playerScore = 0;
+        $opponentScore = 0;
+
+        return response()->view('league_question', [
+            'match_id' => $match->id,
+            'match' => $match->load(['player1', 'player2']),
+            'game_server_url' => $gameServerUrl,
+            'room_id' => $roomId,
+            'lobby_code' => $lobbyCode,
+            'jwt_token' => $jwtToken,
+            'skills' => $skills,
+            'strategic_avatar' => $strategicAvatar,
+            'currentUser' => $user,
+            'avatarName' => $avatarName,
+            'strategicAvatarPath' => $strategicAvatarPath,
+            'playerAvatarPath' => $playerAvatarPath,
+            'opponentAvatarPath' => $opponentAvatarPath,
+            'opponentName' => $opponentName,
+            'playerScore' => $playerScore,
+            'opponentScore' => $opponentScore,
+            'totalQuestions' => $totalQuestions,
+            'currentQuestion' => $currentQuestion,
+            'theme' => $theme,
+            'themeDisplay' => $themeDisplay,
+        ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
+    }
+
+    protected function renderAnswerView(LeagueIndividualMatch $match, $user, array $gameState)
+    {
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        
+        $matchGameState = $match->game_state ?? [];
+        $currentQuestion = $matchGameState['current_question_number'] ?? 1;
+        
+        $playerScore = $isPlayer1 
+            ? ($matchGameState['player_scores_map']['player'] ?? 0) 
+            : ($matchGameState['player_scores_map']['opponent'] ?? 0);
+        $opponentScore = $isPlayer1 
+            ? ($matchGameState['player_scores_map']['opponent'] ?? 0) 
+            : ($matchGameState['player_scores_map']['player'] ?? 0);
+        
+        $stats = LeagueIndividualStat::firstOrCreate(['user_id' => $user->id], ['level' => 1]);
+        $opponentStats = LeagueIndividualStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 1]);
+
+        $questionData = $gameState['current_question'] ?? [];
+        $buzzWinner = $gameState['buzz_winner'] ?? 'player';
+
+        return view('league_answer', [
+            'match_id' => $match->id,
+            'question' => $questionData,
+            'buzz_winner' => $buzzWinner,
+            'player_score' => $playerScore,
+            'opponent_score' => $opponentScore,
+            'current_question' => $currentQuestion,
+            'total_questions' => 10,
+            'player_info' => [
+                'id' => $user->id,
+                'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $playerScore,
+                'level' => $stats->level,
+            ],
+            'opponent_info' => [
+                'id' => $opponent->id,
+                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $opponentScore,
+                'level' => $opponentStats->level,
+            ],
+        ]);
+    }
+
+    protected function renderResultView(LeagueIndividualMatch $match, $user, array $gameState)
+    {
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        
+        $matchGameState = $match->game_state ?? [];
+        $currentQuestion = $matchGameState['current_question_number'] ?? 1;
+        
+        $playerScore = $isPlayer1 
+            ? ($matchGameState['player_scores_map']['player'] ?? 0) 
+            : ($matchGameState['player_scores_map']['opponent'] ?? 0);
+        $opponentScore = $isPlayer1 
+            ? ($matchGameState['player_scores_map']['opponent'] ?? 0) 
+            : ($matchGameState['player_scores_map']['player'] ?? 0);
+        
+        $stats = LeagueIndividualStat::firstOrCreate(['user_id' => $user->id], ['level' => 1]);
+        $opponentStats = LeagueIndividualStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 1]);
+
+        $lastAnswer = $gameState['last_answer'] ?? [];
+        $isCorrect = $lastAnswer['is_correct'] ?? false;
+        $pointsEarned = $lastAnswer['points'] ?? 0;
+
+        return view('league_result', [
+            'match_id' => $match->id,
+            'is_correct' => $isCorrect,
+            'points_earned' => $pointsEarned,
+            'player_score' => $playerScore,
+            'opponent_score' => $opponentScore,
+            'current_question' => $currentQuestion,
+            'total_questions' => 10,
+            'player_info' => [
+                'id' => $user->id,
+                'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $playerScore,
+                'level' => $stats->level,
+            ],
+            'opponent_info' => [
+                'id' => $opponent->id,
+                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'score' => $opponentScore,
+                'level' => $opponentStats->level,
+            ],
+            'correct_answer' => $lastAnswer['correct_answer'] ?? '',
+            'player_answer' => $lastAnswer['player_answer'] ?? '',
+        ]);
+    }
+
+    protected function getPlayerSkillsWithTriggers($user): array
+    {
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true);
+        }
+        
+        $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
+        
+        if ($avatarName === 'Aucun' || empty($avatarName)) {
+            return [];
+        }
+        
+        $catalog = \App\Services\AvatarCatalog::get();
+        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+        $avatarInfo = null;
+        
+        foreach ($strategicAvatars as $avatar) {
+            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                $avatarInfo = $avatar;
+                break;
+            }
+        }
+        
+        if (!$avatarInfo || empty($avatarInfo['skills'])) {
+            return [];
+        }
+        
+        $skills = [];
+        foreach ($avatarInfo['skills'] as $skillId) {
+            $skillData = \App\Services\SkillCatalog::getSkill($skillId);
+            if ($skillData) {
+                $skills[] = [
+                    'id' => $skillData['id'],
+                    'name' => $skillData['name'],
+                    'icon' => $skillData['icon'],
+                    'description' => $skillData['description'],
+                    'trigger' => $skillData['trigger'],
+                    'type' => $skillData['type'],
+                    'auto' => $skillData['auto'] ?? false,
+                    'uses_per_match' => $skillData['uses_per_match'] ?? 1,
+                    'used' => false,
+                ];
+            }
+        }
+        
+        return $skills;
+    }
+
+    public function game(LeagueIndividualMatch $match)
+    {
+        $user = Auth::user();
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        $gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
+        $roomId = $match->room_id ?? null;
+        $lobbyCode = $match->lobby_code ?? null;
+        
+        $jwtToken = null;
+        if ($roomId) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        }
+
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        if (!is_array($profileSettings)) {
+            $profileSettings = [];
+        }
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+        
+        $skills = $this->getPlayerSkillsWithTriggers($user);
+
+        $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        $opponentName = data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire');
+        $opponentAvatarPath = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+
+        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+
+        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+        $strategicAvatarPath = null;
+        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+            $catalog = \App\Services\AvatarCatalog::get();
+            $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+            foreach ($strategicAvatars as $avatar) {
+                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                    $strategicAvatarPath = $avatar['image'] ?? null;
+                    break;
+                }
+            }
+        }
+
+        $totalQuestions = 10;
+        $currentQuestion = 1;
+        $theme = 'Culture générale';
+        $themeDisplay = '🧠 Culture générale';
+        $playerScore = 0;
+        $opponentScore = 0;
+        $currentUser = $user;
+
+        return response()->view('league_question', [
+            'match_id' => $match->id,
+            'match' => $match->load(['player1', 'player2']),
+            'game_server_url' => $gameServerUrl,
+            'room_id' => $roomId,
+            'lobby_code' => $lobbyCode,
+            'jwt_token' => $jwtToken,
+            'skills' => $skills,
+            'strategic_avatar' => $strategicAvatar,
+            'currentUser' => $currentUser,
+            'avatarName' => $avatarName,
+            'strategicAvatarPath' => $strategicAvatarPath,
+            'playerAvatarPath' => $playerAvatarPath,
+            'opponentAvatarPath' => $opponentAvatarPath,
+            'opponentName' => $opponentName,
+            'playerScore' => $playerScore,
+            'opponentScore' => $opponentScore,
+            'totalQuestions' => $totalQuestions,
+            'currentQuestion' => $currentQuestion,
+            'theme' => $theme,
+            'themeDisplay' => $themeDisplay,
+        ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
     }
 }

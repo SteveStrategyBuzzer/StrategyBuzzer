@@ -2817,7 +2817,7 @@ let contactsRefreshInterval = null;
 function openContactsModal() {
     document.getElementById('contactsModal').style.display = 'flex';
     loadContacts();
-    // Fallback: slow refresh every 60 seconds (Firestore handles real-time updates)
+    // Refresh contacts every 60 seconds
     if (!contactsRefreshInterval) {
         contactsRefreshInterval = setInterval(loadContacts, 60000);
     }
@@ -3568,36 +3568,14 @@ setInterval(loadUnreadCounts, 10000);
 setTimeout(loadUnreadCounts, 1000);
 </script>
 
-<!-- Firebase SDK pour synchronisation temps réel des contacts et file d'attente -->
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, doc, collection, setDoc, deleteDoc, onSnapshot, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-const firebaseConfig = {
-    apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
-    authDomain: "strategybuzzergame.firebaseapp.com",
-    projectId: "strategybuzzergame",
-    storageBucket: "strategybuzzergame.appspot.com",
-    messagingSenderId: "68047817391",
-    appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
+<!-- Matchmaking Queue Script (uses Laravel API with polling) -->
+<script>
 const currentUserId = {{ Auth::id() }};
-let contactsUnsubscribe = null;
-let matchUnsubscribe = null;
-let queueUnsubscribe = null;
-let lastVersion = null;
-let firebaseInitialized = false;
 let inQueue = false;
 let selectedOpponent = null;
-let firebaseUid = null;
+let queuePollingInterval = null;
+let contactPollingInterval = null;
 
-// Current user data for queue
 const currentUser = {
     id: {{ Auth::id() }},
     name: "{{ Auth::user()->name }}",
@@ -3611,19 +3589,12 @@ const currentUser = {
 
 let selectedDivision = currentUser.division;
 
-onAuthStateChanged(auth, (user) => {
-    if (user && !firebaseInitialized) {
-        firebaseInitialized = true;
-        firebaseUid = user.uid;
-        console.log('[Firebase] Duo lobby authenticated with UID:', firebaseUid);
-        startContactsListener();
-        initQueueButtons();
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Queue] Initializing matchmaking queue system');
+    initQueueButtons();
+    startContactPolling();
 });
 
-signInAnonymously(auth).catch(e => console.error('[Firebase] Auth error:', e));
-
-// Initialize queue button event listeners
 function initQueueButtons() {
     const joinBtn = document.getElementById('randomMatchBtn');
     const leaveBtn = document.getElementById('leaveQueueBtn');
@@ -3635,21 +3606,18 @@ function initQueueButtons() {
         leaveBtn.addEventListener('click', leaveQueue);
     }
     
-    // Division selector
     document.querySelectorAll('.division-option').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.division-option').forEach(b => b.classList.remove('selected'));
             this.classList.add('selected');
             selectedDivision = this.dataset.division;
             
-            // Update matchmaking description text
             const descEl = document.getElementById('matchmaking-description');
             const divLabel = this.dataset.divisionLabel || selectedDivision;
             if (descEl) {
                 descEl.textContent = t('Affrontez un adversaire niveau') + ' ' + divLabel;
             }
             
-            // Refresh queue if in queue
             if (inQueue) {
                 leaveQueue().then(() => joinQueue());
             }
@@ -3657,20 +3625,11 @@ function initQueueButtons() {
     });
 }
 
-// Join the matchmaking queue
 async function joinQueue() {
     const joinBtn = document.getElementById('randomMatchBtn');
     const leaveBtn = document.getElementById('leaveQueueBtn');
     const queueStatus = document.getElementById('queueStatus');
     
-    // Ensure Firebase is authenticated before queue operations
-    if (!firebaseUid) {
-        console.error('Firebase not authenticated yet');
-        window.showToast('Connexion en cours, veuillez réessayer', 'warning');
-        return;
-    }
-    
-    // Validate entry fee via backend first
     const fee = document.querySelector('.division-option.selected')?.dataset.fee || 0;
     
     try {
@@ -3693,38 +3652,22 @@ async function joinQueue() {
             return;
         }
         
-        // Add to Firebase queue using Firebase UID as document ID
-        // The 'id' field stores Laravel user ID for backend matching
-        const queueRef = doc(db, 'duoQueue', firebaseUid);
-        await setDoc(queueRef, {
-            id: currentUser.id,
-            name: currentUser.name,
-            avatar_url: currentUser.avatar_url,
-            division: currentUser.division,
-            target_division: selectedDivision,
-            level: currentUser.level,
-            efficiency: currentUser.efficiency,
-            matches_won: currentUser.matches_won,
-            matches_lost: currentUser.matches_lost,
-            joined_at: serverTimestamp(),
-            ready: true
-        });
-        
         joinBtn.style.display = 'none';
         leaveBtn.style.display = 'inline-block';
         queueStatus.style.display = 'flex';
         inQueue = true;
         
-        // Start listening for opponents
-        listenForOpponents();
+        pollForOpponents();
+        queuePollingInterval = setInterval(pollForOpponents, 5000);
+        
+        console.log('[Queue] Joined queue for division:', selectedDivision);
         
     } catch (error) {
-        console.error('Error joining queue:', error);
+        console.error('[Queue] Error joining queue:', error);
         window.showToast('Erreur lors de la connexion à la file', 'error');
     }
 }
 
-// Leave the matchmaking queue
 async function leaveQueue() {
     const joinBtn = document.getElementById('randomMatchBtn');
     const leaveBtn = document.getElementById('leaveQueueBtn');
@@ -3735,54 +3678,71 @@ async function leaveQueue() {
     queueStatus.style.display = 'none';
     inQueue = false;
     
-    // Remove from Firebase queue using Firebase UID
+    if (queuePollingInterval) {
+        clearInterval(queuePollingInterval);
+        queuePollingInterval = null;
+    }
+    
     try {
-        if (firebaseUid) {
-            await deleteDoc(doc(db, 'duoQueue', firebaseUid));
-        }
+        await fetch('/duo/queue/leave', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                target_division: selectedDivision
+            })
+        });
+        console.log('[Queue] Left queue');
     } catch (error) {
-        console.error('Error leaving queue:', error);
+        console.error('[Queue] Error leaving queue:', error);
     }
     
-    // Stop listening
-    if (queueUnsubscribe) {
-        queueUnsubscribe();
-        queueUnsubscribe = null;
-    }
-    
-    // Clear opponents list
     const opponentsList = document.getElementById('opponentsList');
     if (opponentsList) {
         opponentsList.innerHTML = '<div class="empty-message">{{ __("Rejoignez la file pour voir les adversaires disponibles") }}</div>';
     }
 }
 
-// Listen for opponents in the queue
-function listenForOpponents() {
-    const opponentsList = document.getElementById('opponentsList');
+async function pollForOpponents() {
+    if (!inQueue) return;
     
-    // Query for players in the same target division
-    const queueQuery = query(
-        collection(db, 'duoQueue'),
-        where('target_division', '==', selectedDivision),
-        where('ready', '==', true)
-    );
-    
-    queueUnsubscribe = onSnapshot(queueQuery, (snapshot) => {
-        const opponents = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            // Exclude self and check level range (±10)
-            if (data.id !== currentUser.id) {
-                const levelDiff = Math.abs(data.level - currentUser.level);
-                if (levelDiff <= 10) {
-                    opponents.push(data);
-                }
+    try {
+        const response = await fetch(`/duo/queue/opponents?target_division=${encodeURIComponent(selectedDivision)}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             }
         });
         
-        renderOpponents(opponents);
-    });
+        const data = await response.json();
+        
+        if (data.success) {
+            renderOpponents(data.opponents || []);
+        }
+    } catch (error) {
+        console.error('[Queue] Error polling opponents:', error);
+    }
+}
+
+function startContactPolling() {
+    pollContacts();
+    contactPollingInterval = setInterval(pollContacts, 30000);
+}
+
+async function pollContacts() {
+    try {
+        const response = await fetch('/duo/contacts', {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await response.json();
+        console.log('[Contacts] Polled contacts, count:', data.contacts?.length || 0);
+    } catch (error) {
+        console.error('[Contacts] Error polling contacts:', error);
+    }
 }
 
 // Render opponents list
@@ -3883,14 +3843,12 @@ window.confirmMatch = async function() {
         const data = await response.json();
         
         if (data.success) {
-            // Remove self from queue (using Firebase UID)
-            // Note: We can only delete our own document due to security rules
-            // The opponent's document will be cleaned up by their own client
-            if (firebaseUid) {
-                await deleteDoc(doc(db, 'duoQueue', firebaseUid));
+            inQueue = false;
+            if (queuePollingInterval) {
+                clearInterval(queuePollingInterval);
+                queuePollingInterval = null;
             }
             
-            // Redirect to lobby
             window.location.href = data.redirect_url;
         } else {
             window.showToast(data.message || '{{ __("Erreur lors de la création du match") }}', 'error');
@@ -3898,7 +3856,7 @@ window.confirmMatch = async function() {
             confirmBtn.textContent = '{{ __("Confirmer") }}';
         }
     } catch (error) {
-        console.error('Error creating match:', error);
+        console.error('[Queue] Error creating match:', error);
         window.showToast('{{ __("Erreur lors de la création du match") }}', 'error');
         confirmBtn.disabled = false;
         confirmBtn.textContent = '{{ __("Confirmer") }}';
@@ -3907,105 +3865,79 @@ window.confirmMatch = async function() {
     window.closeConfirmModal();
 };
 
-// Contacts listener
-function startContactsListener() {
-    if (contactsUnsubscribe) return;
+let matchPollingInterval = null;
+
+window.startMatchListener = function(matchId) {
+    console.log('[Match] Starting match polling for match', matchId);
     
-    const contactDocRef = doc(db, 'duoContacts', `user-${currentUserId}`);
+    if (matchPollingInterval) {
+        clearInterval(matchPollingInterval);
+    }
     
-    contactsUnsubscribe = onSnapshot(contactDocRef, (docSnapshot) => {
-        if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
+    const pollMatch = async () => {
+        try {
+            const response = await fetch('/duo/invitations', {
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await response.json();
             
-            if (lastVersion && data.version !== lastVersion) {
-                console.log('Nouveau contact détecté via Firestore:', data.lastContactName);
-                
-                const contactsModal = document.getElementById('contactsModal');
-                if (contactsModal && contactsModal.style.display === 'flex') {
-                    window.loadContacts();
-                }
-                
-                if (window.showToast) {
-                    window.showToast(`${data.lastContactName} ajouté à votre carnet !`, 'success');
+            if (data.pending_invitations) {
+                const match = data.pending_invitations.find(m => m.id === matchId);
+                if (match && match.status === 'accepted' && match.lobby_code) {
+                    console.log('[Match] Invitation accepted! Redirecting to lobby:', match.lobby_code);
+                    if (window.showToast) {
+                        window.showToast('Invitation acceptée ! Redirection vers le salon...', 'success');
+                    }
+                    clearInterval(matchPollingInterval);
+                    setTimeout(() => {
+                        window.location.href = '/lobby/' + match.lobby_code;
+                    }, 500);
                 }
             }
-            
-            lastVersion = data.version;
+        } catch (error) {
+            console.error('[Match] Error polling match:', error);
         }
-    }, (error) => {
-        console.error('Firestore contacts listener error:', error);
-    });
+    };
     
-    console.log('Firestore contacts listener started for user', currentUserId);
-}
-
-function startMatchListener(matchId) {
-    if (matchUnsubscribe) {
-        matchUnsubscribe();
-        matchUnsubscribe = null;
-    }
-    
-    const matchDocRef = doc(db, 'gameSessions', `match-${matchId}`);
-    
-    matchUnsubscribe = onSnapshot(matchDocRef, (docSnapshot) => {
-        if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
-            console.log('Match update received:', data);
-            
-            if (data.status === 'lobby' && data.lobby_code) {
-                console.log('Invitation accepted! Redirecting to lobby:', data.lobby_code);
-                if (window.showToast) {
-                    window.showToast('Invitation acceptée ! Redirection vers le salon...', 'success');
-                }
-                setTimeout(() => {
-                    window.location.href = '/lobby/' + data.lobby_code;
-                }, 500);
-            }
-        }
-    }, (error) => {
-        console.error('Firestore match listener error:', error);
-    });
-    
-    console.log('Firestore match listener started for match', matchId);
-}
-
-window.startMatchListener = startMatchListener;
-
-function stopContactsListener() {
-    if (contactsUnsubscribe) {
-        contactsUnsubscribe();
-        contactsUnsubscribe = null;
-        console.log('Firestore contacts listener stopped');
-    }
-}
-
-function stopMatchListener() {
-    if (matchUnsubscribe) {
-        matchUnsubscribe();
-        matchUnsubscribe = null;
-        console.log('Firestore match listener stopped');
-    }
-}
+    pollMatch();
+    matchPollingInterval = setInterval(pollMatch, 3000);
+};
 
 async function cleanupQueue() {
-    if (inQueue && firebaseUid) {
+    if (inQueue) {
         try {
-            await deleteDoc(doc(db, 'duoQueue', firebaseUid));
-            console.log('Removed from queue on page unload');
+            await fetch('/duo/queue/leave', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ target_division: selectedDivision })
+            });
+            console.log('[Queue] Removed from queue on page unload');
         } catch (error) {
-            console.error('Error removing from queue:', error);
+            console.error('[Queue] Error removing from queue:', error);
         }
     }
 }
 
-startContactsListener();
-
-window.addEventListener('beforeunload', async (event) => {
-    await cleanupQueue();
-    stopContactsListener();
-    stopMatchListener();
-    if (queueUnsubscribe) {
-        queueUnsubscribe();
+window.addEventListener('beforeunload', (event) => {
+    if (inQueue) {
+        navigator.sendBeacon('/duo/queue/leave?' + new URLSearchParams({
+            target_division: selectedDivision,
+            _token: document.querySelector('meta[name="csrf-token"]').content
+        }));
+    }
+    
+    if (queuePollingInterval) {
+        clearInterval(queuePollingInterval);
+    }
+    if (contactPollingInterval) {
+        clearInterval(contactPollingInterval);
+    }
+    if (matchPollingInterval) {
+        clearInterval(matchPollingInterval);
     }
 });
 </script>
