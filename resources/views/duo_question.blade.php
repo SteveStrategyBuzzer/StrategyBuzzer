@@ -654,11 +654,61 @@ $mode = 'duo';
         }
     }
     
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        transition: opacity 0.3s ease;
+    }
+    
+    .loading-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    
+    .loading-content {
+        text-align: center;
+    }
+    
+    .loading-spinner {
+        width: 80px;
+        height: 80px;
+        border: 4px solid rgba(78, 205, 196, 0.3);
+        border-top-color: #4ECDC4;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+        font-size: 1.2rem;
+        color: #4ECDC4;
+        font-weight: 600;
+    }
+    
 </style>
+
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">{{ __('Connexion au serveur...') }}</div>
+    </div>
+</div>
 
 <div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
 
-<div class="game-container">
+<div class="game-container" id="gameContainer" style="display: none;">
     <div class="question-header">
         <div class="question-number">{{ __('Question') }} {{ $currentQuestion ?? 1 }}/{{ $totalQuestions ?? 10 }}</div>
         @if(!empty($themeDisplay))
@@ -690,7 +740,7 @@ $mode = 'duo';
         
         <div class="center-column">
             <div class="chrono-circle">
-                <div class="chrono-time" id="chronoTimer">60</div>
+                <div class="chrono-time" id="chronoTimer">8</div>
             </div>
         </div>
         
@@ -767,9 +817,19 @@ $mode = 'duo';
     const ROOM_ID = '{{ $room_id ?? "" }}';
     const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
     const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
-    const GAME_SERVER_URL = '{{ config("app.game_server_url", "") }}';
     
-    const TOTAL_TIME = 60;
+    function getGameServerUrl() {
+        const configUrl = '{{ config("app.game_server_url", "") }}';
+        if (configUrl && !configUrl.includes('localhost')) {
+            return configUrl;
+        }
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const hostname = window.location.hostname;
+        return `${protocol}//${hostname}:3001`;
+    }
+    const GAME_SERVER_URL = getGameServerUrl();
+    
+    const TOTAL_TIME = 8;
     let timeLeft = TOTAL_TIME;
     let timerInterval = null;
     let buzzed = false;
@@ -777,6 +837,9 @@ $mode = 'duo';
     let currentPhase = 'LOBBY';
     let currentQuestion = null;
     let isRedirecting = false;
+    let gameLayoutReady = false;
+    let socketConnected = false;
+    let questionReceived = false;
     
     const chronoTimer = document.getElementById('chronoTimer');
     const buzzButton = document.getElementById('buzzButton');
@@ -791,6 +854,36 @@ $mode = 'duo';
     const buzzerSound = document.getElementById('buzzerSound');
     const noBuzzSound = document.getElementById('noBuzzSound');
     const opponentBuzzedOverlay = document.getElementById('opponentBuzzedOverlay');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    const gameContainer = document.getElementById('gameContainer');
+    
+    function showGameLayout() {
+        if (gameLayoutReady) return;
+        gameLayoutReady = true;
+        
+        loadingOverlay.classList.add('hidden');
+        gameContainer.style.display = 'flex';
+        
+        chronoTimer.textContent = TOTAL_TIME;
+        
+        setBuzzerState('ready');
+        
+        console.log('[DuoQuestion] {{ __("Interface de jeu prête - buzzer activé") }}');
+    }
+    
+    function updateLoadingText(text) {
+        if (loadingText) {
+            loadingText.textContent = text;
+        }
+    }
+    
+    function tryShowGameLayout() {
+        if (socketConnected && questionReceived) {
+            showGameLayout();
+            startTimer();
+        }
+    }
     
     function updateConnectionStatus(status) {
         connectionStatus.className = 'connection-status ' + status;
@@ -948,6 +1041,7 @@ $mode = 'duo';
             if (questionText && currentQuestion.text) {
                 questionText.textContent = currentQuestion.text;
             }
+            questionReceived = true;
         }
         
         if (data.players) {
@@ -973,13 +1067,18 @@ $mode = 'duo';
             }
         }
         
-        if (currentPhase === 'QUESTION_ACTIVE' && !buzzed && !isRedirecting) {
-            if (!timerInterval) {
+        if (currentPhase === 'QUESTION_ACTIVE') {
+            if (questionReceived) {
+                tryShowGameLayout();
+            }
+            if (gameLayoutReady && !buzzed && !isRedirecting && !timerInterval) {
                 startTimer();
             }
         } else if (currentPhase !== 'QUESTION_ACTIVE') {
             stopTimer();
-            setBuzzerState('waiting');
+            if (gameLayoutReady) {
+                setBuzzerState('waiting');
+            }
         }
     }
     
@@ -992,10 +1091,20 @@ $mode = 'duo';
             syncTimerWithServer(data.phaseEndsAtMs);
         }
         
+        if (data.question) {
+            currentQuestion = data.question;
+            if (questionText && currentQuestion.text) {
+                questionText.textContent = currentQuestion.text;
+            }
+            questionReceived = true;
+        }
+        
         if (currentPhase === 'QUESTION_ACTIVE') {
             buzzed = false;
             isRedirecting = false;
-            startTimer();
+            if (questionReceived) {
+                tryShowGameLayout();
+            }
         } else if (currentPhase === 'ANSWER_SELECTION') {
             stopTimer();
         } else if (currentPhase === 'REVEAL') {
@@ -1011,13 +1120,15 @@ $mode = 'duo';
             currentQuestion = data.question;
         }
         
+        questionReceived = true;
+        
         if (data.phaseEndsAtMs) {
             syncTimerWithServer(data.phaseEndsAtMs);
         }
         
         buzzed = false;
         isRedirecting = false;
-        startTimer();
+        tryShowGameLayout();
     }
     
     function handleBuzzWinner(data) {
@@ -1110,14 +1221,21 @@ $mode = 'duo';
         if (!GAME_SERVER_URL) {
             console.warn('[DuoQuestion] {{ __("URL du serveur de jeu non configurée") }}');
             updateConnectionStatus('disconnected');
+            updateLoadingText('{{ __("Serveur non configuré - Mode hors ligne") }}');
+            socketConnected = true;
+            questionReceived = true;
+            showGameLayout();
             startTimer();
             return;
         }
         
         updateConnectionStatus('connecting');
+        updateLoadingText('{{ __("Connexion au serveur...") }}');
         
         duoSocket.onConnect = () => {
             updateConnectionStatus('connected');
+            socketConnected = true;
+            updateLoadingText('{{ __("En attente de la question...") }}');
             
             duoSocket.joinRoom(ROOM_ID, LOBBY_CODE, {
                 token: JWT_TOKEN
@@ -1149,6 +1267,10 @@ $mode = 'duo';
         } catch (error) {
             console.error('[DuoQuestion] {{ __("Échec de la connexion") }}:', error);
             updateConnectionStatus('disconnected');
+            updateLoadingText('{{ __("Connexion échouée - Mode hors ligne") }}');
+            socketConnected = true;
+            questionReceived = true;
+            showGameLayout();
             startTimer();
         }
     }

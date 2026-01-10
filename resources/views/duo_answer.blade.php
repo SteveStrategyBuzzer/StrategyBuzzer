@@ -643,7 +643,17 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     const ROOM_ID = '{{ $room_id ?? "" }}';
     const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
     const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
-    const GAME_SERVER_URL = '{{ config("app.game_server_url", "") }}';
+    
+    function getGameServerUrl() {
+        const configUrl = '{{ config("app.game_server_url", "") }}';
+        if (configUrl && !configUrl.includes('localhost')) {
+            return configUrl;
+        }
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const hostname = window.location.hostname;
+        return `${protocol}//${hostname}:3001`;
+    }
+    const GAME_SERVER_URL = getGameServerUrl();
     const IS_BUZZ_WINNER = {{ $isBuzzWinner ? 'true' : 'false' }};
     
     const ANSWER_TIME = 10;

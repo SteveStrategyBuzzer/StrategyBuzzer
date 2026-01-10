@@ -209,10 +209,10 @@ export const DEFAULT_TIMERS: TimersConfig = {
   matchEnd: 10000,
 };
 
-// Duo mode uses 60 seconds for question phase
+// Duo mode uses 8 seconds for question phase
 export const DEFAULT_DUO_TIMERS: TimersConfig = {
   intro: 3000,
-  questionActive: 60000,
+  questionActive: 8000,
   answerSelection: 10000,
   reveal: 5000,
   waiting: 5000,

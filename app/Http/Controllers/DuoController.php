@@ -1021,6 +1021,11 @@ class DuoController extends Controller
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
         
+        $phaseRedirect = $this->validatePhaseAccess($match, $user, 'question');
+        if ($phaseRedirect) {
+            return $phaseRedirect;
+        }
+        
         return $this->renderQuestionView($match, $user);
     }
 
@@ -1045,6 +1050,11 @@ class DuoController extends Controller
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
         
+        $phaseRedirect = $this->validatePhaseAccess($match, $user, 'answer');
+        if ($phaseRedirect) {
+            return $phaseRedirect;
+        }
+        
         return $this->renderAnswerView($match, $user, $gameState);
     }
 
@@ -1067,6 +1077,11 @@ class DuoController extends Controller
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
+        }
+        
+        $phaseRedirect = $this->validatePhaseAccess($match, $user, 'result');
+        if ($phaseRedirect) {
+            return $phaseRedirect;
         }
         
         return $this->renderResultView($match, $user, $gameState);
@@ -1305,7 +1320,7 @@ class DuoController extends Controller
         }
         
         $matchGameState = $match->game_state ?? [];
-        $currentQuestion = $matchGameState['current_question_number'] ?? 1;
+        $currentQuestionNumber = $matchGameState['current_question_number'] ?? 1;
         
         $playerScore = $isPlayer1 
             ? ($matchGameState['player_scores_map']['player'] ?? 0) 
@@ -1318,6 +1333,16 @@ class DuoController extends Controller
         $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
 
         $questionData = $gameState['current_question'] ?? [];
+        
+        if (empty($questionData) || empty($questionData['text'])) {
+            $questions = $matchGameState['questions'] ?? [];
+            $questionData = $questions[$currentQuestionNumber - 1] ?? [];
+        }
+        
+        if (!isset($questionData['choices']) && isset($questionData['answers'])) {
+            $questionData['choices'] = $questionData['answers'];
+        }
+        
         $buzzWinner = $gameState['buzz_winner'] ?? 'player';
         
         $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
@@ -1352,7 +1377,7 @@ class DuoController extends Controller
             'buzz_winner' => $buzzWinner,
             'player_score' => $playerScore,
             'opponent_score' => $opponentScore,
-            'current_question' => $currentQuestion,
+            'current_question' => $currentQuestionNumber,
             'total_questions' => 10,
             'skills' => $skills,
             'avatarName' => $avatarName,
@@ -2106,5 +2131,98 @@ class DuoController extends Controller
             'player_token' => $playerToken,
             'match' => $match->load(['player1', 'player2']),
         ]);
+    }
+
+    private function validatePhaseAccess(DuoMatch $match, $user, string $expectedPage): ?\Illuminate\Http\RedirectResponse
+    {
+        $roomId = $match->room_id;
+        
+        if (!$roomId) {
+            return null;
+        }
+        
+        try {
+            $roomData = $this->gameServerService->getRoom($roomId);
+            
+            if (!$roomData || !isset($roomData['state'])) {
+                return null;
+            }
+            
+            $state = $roomData['state'];
+            $currentPhase = $state['phase'] ?? null;
+            $lockedAnswerPlayerId = $state['lockedAnswerPlayerId'] ?? null;
+            
+            if (!$currentPhase) {
+                return null;
+            }
+            
+            $questionPhases = ['INTRO', 'QUESTION_ACTIVE', 'WAITING'];
+            $answerPhases = ['ANSWER_SELECTION'];
+            $resultPhases = ['REVEAL'];
+            $terminalPhases = ['ROUND_SCOREBOARD', 'MATCH_END', 'FINISHED'];
+            
+            switch ($expectedPage) {
+                case 'question':
+                    if (in_array($currentPhase, $answerPhases)) {
+                        $playerId = (string) $user->id;
+                        if ($lockedAnswerPlayerId === $playerId) {
+                            return redirect()->route('game.duo.answer');
+                        }
+                    }
+                    if (in_array($currentPhase, $resultPhases)) {
+                        return redirect()->route('game.duo.result');
+                    }
+                    if (in_array($currentPhase, $terminalPhases)) {
+                        return redirect()->route('game.duo.match_result');
+                    }
+                    break;
+                    
+                case 'answer':
+                    if (!in_array($currentPhase, $answerPhases)) {
+                        if (in_array($currentPhase, $questionPhases)) {
+                            return redirect()->route('game.duo.question');
+                        }
+                        if (in_array($currentPhase, $resultPhases)) {
+                            return redirect()->route('game.duo.result');
+                        }
+                        if (in_array($currentPhase, $terminalPhases)) {
+                            return redirect()->route('game.duo.match_result');
+                        }
+                    }
+                    
+                    $playerId = (string) $user->id;
+                    if ($lockedAnswerPlayerId && $lockedAnswerPlayerId !== $playerId) {
+                        return redirect()->route('game.duo.question');
+                    }
+                    break;
+                    
+                case 'result':
+                    if (!in_array($currentPhase, $resultPhases)) {
+                        if (in_array($currentPhase, $questionPhases)) {
+                            return redirect()->route('game.duo.question');
+                        }
+                        if (in_array($currentPhase, $answerPhases)) {
+                            $playerId = (string) $user->id;
+                            if ($lockedAnswerPlayerId === $playerId) {
+                                return redirect()->route('game.duo.answer');
+                            }
+                            return redirect()->route('game.duo.question');
+                        }
+                        if (in_array($currentPhase, $terminalPhases)) {
+                            return redirect()->route('game.duo.match_result');
+                        }
+                    }
+                    break;
+            }
+            
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Phase validation failed', [
+                'match_id' => $match->id,
+                'room_id' => $roomId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+        
+        return null;
     }
 }

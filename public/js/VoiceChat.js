@@ -937,6 +937,10 @@ class VoiceChat {
         this.isInitialized = false;
         console.log('[VoiceChat] Destroyed');
     }
+    
+    async cleanup() {
+        return this.destroy();
+    }
 }
 
 if (typeof window !== 'undefined') {
