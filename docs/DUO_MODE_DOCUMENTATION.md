@@ -25,8 +25,9 @@
 ## Séquence Principale
 
 ```
-LOBBY → MATCHMAKING → [QUESTION → ANSWER → RESULT → WAITING] x10 → FIN
+LOBBY → MATCHMAKING → [QUESTION → ANSWER → RESULT → WAITING] xN → FIN
 ```
+*(où N = nombre de questions configuré)*
 
 ## Branches Possibles
 
@@ -37,7 +38,7 @@ LOBBY → MATCHMAKING → [QUESTION → ANSWER → RESULT → WAITING] x10 → F
 | Lobby | Invitation acceptée | lobby.show (Room générique) |
 | Room | 2 joueurs prêts | duo_question.blade.php |
 
-## Boucle de Jeu (10 questions/manche)
+## Boucle de Jeu (Questions configurables)
 
 | Étape | Page | Durée |
 |-------|------|-------|
@@ -49,7 +50,7 @@ LOBBY → MATCHMAKING → [QUESTION → ANSWER → RESULT → WAITING] x10 → F
 ## Format de Match
 
 - **Best of 3** manches
-- **10 questions** par manche
+- **10, 20, 30, 40 ou 50 questions** par manche (configurable)
 - **Tiebreaker** si égalité
 
 ---
@@ -132,7 +133,7 @@ $activeLobby   // Données salon actif
 │   Niveau X               Niveau Y           │
 │                                             │
 │   Mode: Best of 3                           │
-│   Questions: 10 par manche                  │
+│   Questions: 10/20/30/40/50 (configurable)  │
 │   Thème: Culture Générale                   │
 │                                             │
 ├─────────────────────────────────────────────┤
@@ -166,7 +167,7 @@ $player_level  // Niveau du joueur
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ ⚡ Connexion              Question 1/10                  │
+│ ⚡ Connexion              Question 1/N                   │
 ├─────────────────────────────────────────────────────────┤
 │              🧠 Culture générale                         │
 │    Quel est le plus grand océan du monde ?              │
@@ -195,7 +196,7 @@ $player_level  // Niveau du joueur
 
 | Zone | Contenu |
 |------|---------|
-| Header | Connexion status, Question X/10 |
+| Header | Connexion status, Question X/N (N configurable) |
 | Thème | Emoji + nom thème |
 | Question | Texte de la question |
 | Colonne gauche | Avatar joueur, pseudo, score (cyan) |
@@ -231,8 +232,8 @@ $opponentAvatarPath // Chemin avatar adversaire
 $opponentName       // Pseudo adversaire
 $playerScore        // Score joueur
 $opponentScore      // Score adversaire
-$totalQuestions     // 10
-$currentQuestion    // 1-10
+$totalQuestions     // 10, 20, 30, 40 ou 50 (configurable)
+$currentQuestion    // 1 à $totalQuestions
 $theme              // Thème actuel
 $themeDisplay       // Thème avec emoji
 ```
@@ -258,7 +259,7 @@ $themeDisplay       // Thème avec emoji
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ ⚡ Connexion        Question 1/10 • À vous de répondre   │
+│ ⚡ Connexion        Question 1/N • À vous de répondre    │
 ├─────────────────────────────────────────────────────────┤
 │              🧠 Culture générale                         │
 │    Quel est le plus grand océan du monde ?              │
@@ -328,7 +329,7 @@ $opponentName       // Pseudo adversaire
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│               MANCHE 1 • Question 1/10                   │
+│               MANCHE 1 • Question 1/N                    │
 ├─────────────────────────────────────────────────────────┤
 │                   ✅ CORRECT!                            │
 │                    +2 pts                                │
@@ -357,7 +358,7 @@ $opponentName       // Pseudo adversaire
 
 | Zone | Contenu |
 |------|---------|
-| Header | Manche X, Question Y/10 |
+| Header | Manche X, Question Y/N (N configurable) |
 | Résultat | ✅ CORRECT / ❌ FAUX + points |
 | Score battle | Avatars + scores côte à côte |
 | Bonne réponse | Toujours affichée |
@@ -385,7 +386,7 @@ $playerScore       // Score joueur
 $opponentScore     // Score adversaire
 $skills            // Skills disponibles
 $currentQuestion   // Question actuelle
-$totalQuestions    // 10
+$totalQuestions    // 10, 20, 30, 40 ou 50 (configurable)
 ```
 
 ---
@@ -442,7 +443,7 @@ $totalQuestions    // 10
 $params['match_id']        // ID match
 $params['room_code']       // Code room
 $params['current_question'] // Question actuelle
-$params['total_questions']  // 10
+$params['total_questions']  // 10, 20, 30, 40 ou 50
 $params['player_info']     // {name, score}
 $params['opponent_info']   // {name, score}
 $params['last_answer']     // Dernière réponse
