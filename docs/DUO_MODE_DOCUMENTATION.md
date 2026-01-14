@@ -25,9 +25,11 @@
 ## Séquence Principale
 
 ```
-LOBBY → MATCHMAKING → [QUESTION → ANSWER → RESULT → WAITING] xN → FIN
+LOBBY → MATCHMAKING → INTRO → [QUESTION → ANSWER → RESULT → WAITING] xN → FIN
 ```
 *(où N = nombre de questions configuré)*
+
+**Phases d'intro :** Fond noir (3s) + "Ladies and Gentlemen" (9s) = 12 secondes total
 
 ## Branches Possibles
 
@@ -42,10 +44,12 @@ LOBBY → MATCHMAKING → [QUESTION → ANSWER → RESULT → WAITING] xN → FI
 
 | Étape | Page | Durée |
 |-------|------|-------|
-| 1 | duo_question.blade.php | 8 secondes |
-| 2 | duo_answer.blade.php | 10 secondes |
-| 3 | duo_result.blade.php | Variable |
-| 4 | duo_waiting.blade.php | Sync joueurs |
+| 1 | Intro (fond noir) | 3 secondes |
+| 2 | Ladies and Gentlemen | 9 secondes |
+| 3 | duo_question.blade.php | 8 secondes |
+| 4 | duo_answer.blade.php | 10 secondes |
+| 5 | duo_result.blade.php | Variable |
+| 6 | duo_waiting.blade.php | Sync joueurs |
 
 ## Format de Match
 
