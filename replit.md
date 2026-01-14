@@ -75,7 +75,7 @@ The project uses a monorepo with `shared`, `game-engine`, and `game-server` pack
 
 **Laravel ↔ Game Server Integration:** `GameServerService.php` manages JWT token generation and room creation. JWT tokens include player and room data, secured by `GAME_SERVER_JWT_SECRET`.
 
-**Frontend Socket.IO Client:** `DuoSocketClient.js` is a singleton for Socket.IO communication, handling room join, ready status, buzz, answer, skill activation, and WebRTC voice chat signaling. Duo mode pages (`duo_question.blade.php`, `duo_answer.blade.php`, `duo_waiting.blade.php`, `duo_result.blade.php`) now use Socket.IO for low-latency communication.
+**Frontend Socket.IO Client:** `DuoSocketClient.js` is a singleton for Socket.IO communication, handling room join, ready status, buzz, answer, skill activation, and WebRTC voice chat signaling. Duo mode pages (`duo_question.blade.php`, `duo_answer.blade.php`, `duo_result.blade.php`) now use Socket.IO for low-latency communication.
 
 #### Game Phases (TypeScript)
 ```typescript

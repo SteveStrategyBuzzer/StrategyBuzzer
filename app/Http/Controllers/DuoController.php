@@ -1685,31 +1685,27 @@ class DuoController extends Controller
             $nextQuestionNumber = 10;
         }
 
-        return view('duo_waiting', [
-            'params' => [
-                'match_id' => $match->id,
-                'room_code' => $match->room_id ?? null,
-                'lobby_code' => $match->lobby_code ?? null,
-                'player_info' => [
-                    'id' => $user->id,
-                    'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                    'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
-                    'score' => $playerScore,
-                    'level' => $stats->level,
-                ],
-                'opponent_info' => [
-                    'id' => $opponent->id,
-                    'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                    'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
-                    'score' => $opponentScore,
-                    'level' => $opponentStats->level,
-                ],
-                'score' => $playerScore,
-                'opponent_score' => $opponentScore,
-                'current_question' => $currentQuestion,
-                'total_questions' => 10,
-                'next_question_number' => $nextQuestionNumber,
-            ],
+        return view('duo_result', [
+            'match_id' => $match->id,
+            'room_id' => $match->room_id ?? null,
+            'lobby_code' => $match->lobby_code ?? null,
+            'playerId' => $user->id,
+            'playerName' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
+            'playerAvatarPath' => asset(data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png')),
+            'opponentId' => $opponent->id,
+            'opponentName' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+            'opponentAvatarPath' => asset(data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png')),
+            'playerScore' => $playerScore,
+            'opponentScore' => $opponentScore,
+            'currentQuestion' => $currentQuestion,
+            'totalQuestions' => $gameState['total_questions'] ?? 10,
+            'currentRound' => $gameState['current_round'] ?? 1,
+            'wasCorrect' => $gameState['last_was_correct'] ?? false,
+            'pointsEarned' => $gameState['last_points_earned'] ?? 0,
+            'playerAnswer' => $gameState['last_player_answer'] ?? null,
+            'question' => $gameState['last_question'] ?? [],
+            'skills' => $gameState['player_skills'] ?? [],
+            'avatarName' => $gameState['avatar_name'] ?? '',
         ]);
     }
 

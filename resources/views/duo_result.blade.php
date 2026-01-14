@@ -331,6 +331,167 @@ $mode = 'duo';
         font-style: italic;
     }
     
+    .skills-container {
+        background: rgba(102, 126, 234, 0.15);
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        border-radius: 15px;
+        padding: 15px;
+    }
+    
+    .skills-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 12px;
+        text-align: center;
+    }
+    
+    .skills-grid {
+        display: grid;
+        gap: 10px;
+    }
+    
+    .skill-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 12px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.3s;
+    }
+    
+    .skill-item.used {
+        background: rgba(255, 215, 0, 0.1);
+        border-color: gold;
+    }
+    
+    .skill-icon {
+        font-size: 1.8rem;
+    }
+    
+    .skill-info {
+        flex: 1;
+        text-align: left;
+    }
+    
+    .skill-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #667eea;
+    }
+    
+    .skill-desc {
+        font-size: 0.75rem;
+        opacity: 0.8;
+        margin-top: 2px;
+    }
+    
+    .skill-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .skill-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+    }
+    
+    .skill-btn:disabled {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.5);
+        cursor: not-allowed;
+    }
+    
+    .skill-used-badge {
+        background: gold;
+        color: #1a1a2e;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    
+    .status-section {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 15px;
+    }
+    
+    .status-title {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: center;
+    }
+    
+    .status-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+    }
+    
+    .status-item {
+        flex: 1;
+        padding: 12px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .status-item.player {
+        background: rgba(78, 205, 196, 0.1);
+        border: 2px solid rgba(78, 205, 196, 0.3);
+    }
+    
+    .status-item.opponent {
+        background: rgba(255, 107, 107, 0.1);
+        border: 2px solid rgba(255, 107, 107, 0.3);
+    }
+    
+    .status-item.ready {
+        background: rgba(46, 204, 113, 0.2);
+        border-color: #2ECC71;
+    }
+    
+    .status-item.ready .status-icon {
+        color: #2ECC71;
+    }
+    
+    .status-item.waiting .status-icon {
+        color: #F39C12;
+        animation: pulse 1.5s infinite;
+    }
+    
+    .status-icon {
+        font-size: 1.3rem;
+    }
+    
+    .status-text {
+        font-size: 0.85rem;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
     .result-actions {
         display: flex;
         flex-direction: column;
@@ -690,6 +851,44 @@ $mode = 'duo';
         </div>
     @endif
     
+    @if(!empty($skills) && count($skills) > 0)
+    <div class="skills-container">
+        <div class="skills-title">✨ {{ __('Compétences') }} {{ $avatarName ?? '' }} ✨</div>
+        <div class="skills-grid">
+            @foreach($skills as $skill)
+            <div class="skill-item {{ ($skill['used'] ?? false) ? 'used' : '' }}">
+                <span class="skill-icon">{{ $skill['icon'] ?? '🔮' }}</span>
+                <div class="skill-info">
+                    <div class="skill-name">{{ $skill['name'] ?? __('Compétence') }}</div>
+                    @if(!empty($skill['description']))
+                    <div class="skill-desc">{{ $skill['description'] }}</div>
+                    @endif
+                </div>
+                @if($skill['used'] ?? false)
+                    <span class="skill-used-badge">{{ __('Utilisé') }}</span>
+                @else
+                    <button class="skill-btn" onclick="activateSkill('{{ $skill['id'] ?? '' }}')">{{ __('Activer') }}</button>
+                @endif
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+    
+    <div class="status-section">
+        <div class="status-title">{{ __('Statut des joueurs') }}</div>
+        <div class="status-row">
+            <div class="status-item player waiting" id="playerStatus">
+                <span class="status-icon">⏳</span>
+                <span class="status-text">{{ __('Vous') }} - {{ __('En attente') }}</span>
+            </div>
+            <div class="status-item opponent waiting" id="opponentStatus">
+                <span class="status-icon">⏳</span>
+                <span class="status-text">{{ $opponentName ?? __('Adversaire') }} - {{ __('En attente') }}</span>
+            </div>
+        </div>
+    </div>
+    
     <div class="result-actions">
         <button class="btn-go" id="btnGo">{{ __('GO') }}</button>
         <div class="waiting-message" id="waitingMessage">
@@ -712,6 +911,7 @@ $mode = 'duo';
     const GAME_SERVER_URL = '{{ config("app.game_server_url", "") }}';
     const CURRENT_QUESTION = {{ $currentQuestion ?? 1 }};
     const TOTAL_QUESTIONS = {{ $totalQuestions ?? 10 }};
+    const CURRENT_PLAYER_ID = {{ $playerId ?? auth()->id() ?? 0 }};
     
     let isReady = false;
     let isRedirecting = false;
@@ -721,6 +921,8 @@ $mode = 'duo';
     const waitingMessage = document.getElementById('waitingMessage');
     const playerScoreEl = document.getElementById('playerScore');
     const opponentScoreEl = document.getElementById('opponentScore');
+    const playerStatus = document.getElementById('playerStatus');
+    const opponentStatus = document.getElementById('opponentStatus');
     
     function updateConnectionStatus(status) {
         connectionStatus.className = 'connection-status ' + status;
@@ -745,12 +947,55 @@ $mode = 'duo';
         btnGo.textContent = '{{ __("PRÊT !") }}';
         waitingMessage.classList.add('show');
         
+        if (playerStatus) {
+            playerStatus.classList.remove('waiting');
+            playerStatus.classList.add('ready');
+            playerStatus.querySelector('.status-icon').textContent = '✅';
+            playerStatus.querySelector('.status-text').textContent = '{{ __("Vous") }} - {{ __("Prêt") }}';
+        }
+        
         if (DuoSocketClient.isConnected()) {
             DuoSocketClient.socket.emit('player_ready', {
                 roomId: ROOM_ID || LOBBY_CODE,
                 matchId: MATCH_ID
             });
             console.log('[DuoResult] Player ready sent');
+        }
+    }
+    
+    function setOpponentReady() {
+        if (opponentStatus) {
+            opponentStatus.classList.remove('waiting');
+            opponentStatus.classList.add('ready');
+            opponentStatus.querySelector('.status-icon').textContent = '✅';
+            opponentStatus.querySelector('.status-text').textContent = '{{ $opponentName ?? __("Adversaire") }} - {{ __("Prêt") }}';
+        }
+    }
+    
+    function resetReadyStatus() {
+        isReady = false;
+        
+        if (btnGo) {
+            btnGo.disabled = false;
+            btnGo.textContent = '{{ __("GO") }}';
+        }
+        
+        if (waitingMessage) {
+            waitingMessage.classList.remove('show');
+        }
+        
+        if (playerStatus) {
+            playerStatus.classList.remove('ready');
+            playerStatus.classList.add('waiting');
+            playerStatus.querySelector('.status-icon').textContent = '⏳';
+            playerStatus.querySelector('.status-text').textContent = '{{ __("Vous") }} - {{ __("En attente") }}';
+        }
+        
+        if (opponentStatus) {
+            opponentStatus.classList.remove('ready');
+            opponentStatus.classList.add('waiting');
+            opponentStatus.querySelector('.status-icon').textContent = '⏳';
+            opponentStatus.querySelector('.status-text').textContent = '{{ $opponentName ?? __("Adversaire") }} - {{ __("En attente") }}';
         }
     }
     
@@ -826,6 +1071,16 @@ $mode = 'duo';
         
         DuoSocketClient.onPlayerReady = function(data) {
             console.log('[DuoResult] Player ready received', data);
+            if (data && data.playerId && data.playerId !== CURRENT_PLAYER_ID) {
+                setOpponentReady();
+            }
+        };
+        
+        DuoSocketClient.onPhaseChanged = function(data) {
+            console.log('[DuoResult] Phase changed', data);
+            if (data && (data.phase === 'BUZZ_WINDOW' || data.phase === 'QUESTION_DISPLAY')) {
+                resetReadyStatus();
+            }
         };
         
         DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN)
@@ -858,6 +1113,25 @@ $mode = 'duo';
             DuoSocketClient.disconnect();
         }
     });
+    
+    window.activateSkill = function(skillId) {
+        if (!skillId) return;
+        
+        console.log('[DuoResult] Activating skill:', skillId);
+        
+        if (DuoSocketClient.isConnected()) {
+            DuoSocketClient.socket.emit('activate_skill', {
+                roomId: ROOM_ID || LOBBY_CODE,
+                matchId: MATCH_ID,
+                skillId: skillId
+            });
+        }
+        
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = '{{ __("Activé") }}';
+        btn.closest('.skill-item').classList.add('used');
+    };
 })();
 </script>
 

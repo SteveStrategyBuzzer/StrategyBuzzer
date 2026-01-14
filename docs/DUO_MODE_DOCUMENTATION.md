@@ -10,13 +10,12 @@
 3. Page 2 : Matchmaking
 4. Page 3 : Question (Buzz)
 5. Page 4 : Answer (Réponse)
-6. Page 5 : Result (Résultat)
-7. Page 6 : Waiting (Attente)
-8. Page 7 : Rankings (Classement)
-9. Avatars Stratégiques & Skills
-10. Système de Points & Divisions
-11. Communication Vocale & Texto
-12. Architecture Technique
+6. Page 5 : Result (Résultat + Sync)
+7. Page 6 : Rankings (Classement)
+8. Avatars Stratégiques & Skills
+9. Système de Points & Divisions
+10. Communication Vocale & Texto
+11. Architecture Technique
 
 ---
 
@@ -25,11 +24,13 @@
 ## Séquence Principale
 
 ```
-LOBBY → MATCHMAKING → INTRO → [QUESTION → ANSWER → RESULT → WAITING] xN → FIN
+LOBBY → MATCHMAKING → INTRO → [QUESTION → ANSWER → RESULT] xN → FIN
 ```
 *(où N = nombre de questions configuré)*
 
 **Phases d'intro :** Fond noir (3s) + "Ladies and Gentlemen" (9s) = 12 secondes total
+
+**Note :** La page Result inclut la synchronisation des joueurs (ancien Waiting fusionné)
 
 ## Branches Possibles
 
@@ -48,8 +49,7 @@ LOBBY → MATCHMAKING → INTRO → [QUESTION → ANSWER → RESULT → WAITING]
 | 2 | Ladies and Gentlemen | 9 secondes |
 | 3 | duo_question.blade.php | 8 secondes |
 | 4 | duo_answer.blade.php | 10 secondes |
-| 5 | duo_result.blade.php | Variable |
-| 6 | duo_waiting.blade.php | Sync joueurs |
+| 5 | duo_result.blade.php | Variable + Sync joueurs |
 
 ## Format de Match
 
@@ -395,73 +395,7 @@ $totalQuestions    // 10, 20, 30, 40 ou 50 (configurable)
 
 ---
 
-# 7. PAGE 6 : WAITING (ATTENTE)
-
-**Fichier :** `resources/views/duo_waiting.blade.php`
-
-## Layout
-
-```
-┌─────────────────────────────────────────────────────────┐
-│               Adversaire: [Pseudo]                       │
-├─────────────────────────────────────────────────────────┤
-│ ┌─────────┐          VS          ┌─────────┐           │
-│ │  MOI    │                      │ADVERSAIRE│           │
-│ │ 2 pts   │                      │  0 pts   │           │
-│ └─────────┘                      └─────────┘           │
-├─────────────────────────────────────────────────────────┤
-│ 🎯 SKILLS DE [Avatar]                                    │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ 💡 Illumine si chiffre         ∞ utilisations       │ │
-│ │ Met en évidence si réponse contient un chiffre      │ │
-│ └─────────────────────────────────────────────────────┘ │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ 🧪 Acidifie erreur             0/1 utilisé          │ │
-│ │ Marque visuellement une mauvaise réponse            │ │
-│ └─────────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────┤
-│ 📊 STATS DU MATCH                                        │
-│ Score: 2 | Vies: ❤️❤️❤️ | Bonnes: 1 | Erreurs: 0        │
-├─────────────────────────────────────────────────────────┤
-│                [🔊] [💬]                                 │
-├─────────────────────────────────────────────────────────┤
-│           En attente de l'adversaire...                  │
-│ OU        [ GO → Question suivante ]                     │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Composants
-
-| Zone | Contenu |
-|------|---------|
-| Header | Nom adversaire |
-| Score battle | Avatars + scores |
-| Skills | Liste détaillée avec utilisations |
-| Stats | Score, vies, bonnes, erreurs |
-| Communication | 🔊 Micro + 💬 Texto |
-| Action | Attente sync OU bouton GO |
-
-## Variables PHP
-
-```php
-$params['match_id']        // ID match
-$params['room_code']       // Code room
-$params['current_question'] // Question actuelle
-$params['total_questions']  // 10, 20, 30, 40 ou 50
-$params['player_info']     // {name, score}
-$params['opponent_info']   // {name, score}
-$params['last_answer']     // Dernière réponse
-$params['correct_answer']  // Bonne réponse
-$params['was_correct']     // bool
-$params['did_you_know']    // Anecdote
-$params['skills']          // Skills array
-$params['avatar_name']     // Nom avatar
-$params['stats']           // Stats du match
-```
-
----
-
-# 8. PAGE 7 : RANKINGS (CLASSEMENT)
+# 7. PAGE 6 : RANKINGS (CLASSEMENT)
 
 **Fichier :** `resources/views/duo_rankings.blade.php`
 
@@ -493,7 +427,7 @@ $params['stats']           // Stats du match
 
 ---
 
-# 9. AVATARS STRATÉGIQUES & SKILLS
+# 8. AVATARS STRATÉGIQUES & SKILLS
 
 ## Tiers et Prix
 
@@ -554,7 +488,7 @@ $params['stats']           // Stats du match
 
 ---
 
-# 10. SYSTÈME DE POINTS & DIVISIONS
+# 9. SYSTÈME DE POINTS & DIVISIONS
 
 ## Attribution des Points (par question)
 
@@ -584,7 +518,7 @@ $params['stats']           // Stats du match
 
 ---
 
-# 11. COMMUNICATION VOCALE & TEXTO
+# 10. COMMUNICATION VOCALE & TEXTO
 
 ## Disponibilité par Page
 
@@ -593,7 +527,6 @@ $params['stats']           // Stats du match
 | duo_question.blade.php | ✅ | ❌ |
 | duo_answer.blade.php | ✅ | ❌ |
 | duo_result.blade.php | ✅ | ✅ |
-| duo_waiting.blade.php | ✅ | ✅ |
 
 ## Boutons UI
 
@@ -628,7 +561,7 @@ class VoiceChat {
 
 ---
 
-# 12. ARCHITECTURE TECHNIQUE
+# 11. ARCHITECTURE TECHNIQUE
 
 ## Stack
 
@@ -704,8 +637,7 @@ INTRO → BUZZ_WINDOW → ANSWER_SELECTION → REVEAL → ROUND_SCOREBOARD
 | duo_matchmaking.blade.php | Vue | Recherche adversaire |
 | duo_question.blade.php | Vue | Page buzz (8s) |
 | duo_answer.blade.php | Vue | Page réponse (10s) |
-| duo_result.blade.php | Vue | Page résultat |
-| duo_waiting.blade.php | Vue | Salle d'attente |
+| duo_result.blade.php | Vue | Page résultat + Sync joueurs |
 | duo_rankings.blade.php | Vue | Classement |
 | duo_splash.blade.php | Vue | Splash screen |
 | duo_resume.blade.php | Vue | Reprise match |
