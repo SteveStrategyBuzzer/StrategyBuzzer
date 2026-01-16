@@ -6,16 +6,17 @@
 # TABLE DES MATIÈRES
 
 1. Vue d'ensemble et flux de navigation
-2. Page 1 : Lobby Duo
-3. Page 2 : Matchmaking
-4. Page 3 : Question (Buzz)
-5. Page 4 : Answer (Réponse)
-6. Page 5 : Result (Résultat + Sync)
-7. Page 6 : Rankings (Classement)
-8. Avatars Stratégiques & Skills
-9. Système de Points & Divisions
-10. Communication Vocale & Texto
-11. Architecture Technique
+2. Page 1 : Duo (Menu principal)
+3. Page 2 : Lobby Duo (Synchronisation)
+4. Page 3 : Matchmaking
+5. Page 4 : Question (Buzz)
+6. Page 5 : Answer (Réponse)
+7. Page 6 : Result (Résultat + Sync)
+8. Page 7 : Rankings (Classement)
+9. Avatars Stratégiques & Skills
+10. Système de Points, Divisions & Pièces
+11. Communication Vocale & Texto
+12. Architecture Technique
 
 ---
 
@@ -24,44 +25,45 @@
 ## Séquence Principale
 
 ```
-LOBBY → MATCHMAKING → INTRO → [QUESTION → ANSWER → RESULT] xN → FIN
+DUO (Menu) → LOBBY (Sync) → MATCHMAKING → INTRO → [QUESTION → ANSWER → RESULT] xN → FIN
 ```
-*(où N = nombre de questions configuré)*
+*(où N = nombre de questions configuré : 10, 20, 30, 40 ou 50)*
 
 **Phases d'intro :** Fond noir (3s) + "Ladies and Gentlemen" (9s) = 12 secondes total
 
-**Note :** La page Result inclut la synchronisation des joueurs (ancien Waiting fusionné)
+**Note :** La page Result inclut la synchronisation des joueurs (ancien Waiting fusionné) avec bouton GO
 
 ## Branches Possibles
 
 | Départ | Action | Destination |
 |--------|--------|-------------|
-| Lobby | Matchmaking aléatoire | duo_matchmaking.blade.php |
-| Lobby | Invitation envoyée | lobby.show (Room générique) |
-| Lobby | Invitation acceptée | lobby.show (Room générique) |
-| Room | 2 joueurs prêts | duo_question.blade.php |
+| Page Duo | Matchmaking aléatoire | duo_matchmaking.blade.php |
+| Page Duo | Invitation envoyée | Lobby Duo (synchronisation) |
+| Page Duo | Invitation acceptée | Lobby Duo (synchronisation) |
+| Lobby Duo | 2 joueurs synchronisés | duo_question.blade.php |
 
 ## Boucle de Jeu (Questions configurables)
 
-| Étape | Page | Durée |
-|-------|------|-------|
-| 1 | Intro (fond noir) | 3 secondes |
-| 2 | Ladies and Gentlemen | 9 secondes |
-| 3 | duo_question.blade.php | 8 secondes |
-| 4 | duo_answer.blade.php | 10 secondes |
-| 5 | duo_result.blade.php | Variable + Sync joueurs |
+| Étape | Page | Durée | Contenu |
+|-------|------|-------|---------|
+| 1 | Intro (fond noir) | 3 secondes | Écran noir |
+| 2 | Ladies and Gentlemen | 9 secondes | Animation d'intro |
+| 3 | duo_question.blade.php | 8 secondes | Question + Avatars + Buzzer |
+| 4 | duo_answer.blade.php | 10 secondes | 4 choix ou Vrai/Faux + Skills |
+| 5 | duo_result.blade.php | Variable | Points + Résultat + Skills + "Le saviez-vous" + GO |
 
 ## Format de Match
 
 - **Best of 3** manches
 - **10, 20, 30, 40 ou 50 questions** par manche (configurable)
 - **Tiebreaker** si égalité
+- **Pièces de Compétence** gagnées selon performance
 
 ---
 
-# 2. PAGE 1 : LOBBY DUO
+# 2. PAGE 1 : DUO (MENU PRINCIPAL)
 
-**Fichier :** `resources/views/duo_lobby.blade.php`
+**Fichier :** `resources/views/duo.blade.php`
 
 ## Layout
 
@@ -101,6 +103,7 @@ LOBBY → MATCHMAKING → INTRO → [QUESTION → ANSWER → RESULT] xN → FIN
 | Invitation par code | Format SB-XXXX | Niveau ≥ 11 |
 | Carnet contacts | Joueurs rencontrés | Toujours |
 | Voir invitations | Accepter/Refuser | Toujours |
+| Voir classement | Accès page Rankings | Toujours |
 
 ## Variables PHP
 
@@ -116,7 +119,56 @@ $activeLobby   // Données salon actif
 
 ---
 
-# 3. PAGE 2 : MATCHMAKING
+# 3. PAGE 2 : LOBBY DUO (SYNCHRONISATION)
+
+**Fichier :** `resources/views/duo_lobby.blade.php`
+
+## Rôle
+
+Le Lobby Duo est l'endroit où les 2 joueurs se synchronisent avant de démarrer le gameplay. C'est une salle d'attente où les joueurs confirment qu'ils sont prêts.
+
+## Layout
+
+```
+┌─────────────────────────────────────────────┐
+│                 LOBBY DUO                    │
+├─────────────────────────────────────────────┤
+│                                             │
+│   [👤 Joueur 1]      [👤 Joueur 2]          │
+│     ✅ Prêt           ⏳ En attente          │
+│                                             │
+├─────────────────────────────────────────────┤
+│             [🔊] [💬]                        │
+│        Communication vocale active          │
+├─────────────────────────────────────────────┤
+│     Synchronisé: Connexion établie          │
+├─────────────────────────────────────────────┤
+│              [DÉMARRER]                      │
+│     (Actif quand 2 joueurs prêts)           │
+└─────────────────────────────────────────────┘
+```
+
+## Fonctionnalités
+
+| Fonction | Description |
+|----------|-------------|
+| Affichage joueurs | Avatars + noms des 2 joueurs |
+| Statut synchronisation | ⏳ En attente / ✅ Prêt |
+| Communication | Boutons micro et texto visibles |
+| Démarrage | Bouton actif quand 2 joueurs synchronisés |
+
+## Variables PHP
+
+```php
+$lobby_code    // Code du lobby
+$player1       // Données joueur 1
+$player2       // Données joueur 2
+$isReady       // Statut de synchronisation
+```
+
+---
+
+# 4. PAGE 3 : MATCHMAKING
 
 **Fichier :** `resources/views/duo_matchmaking.blade.php`
 
@@ -163,7 +215,7 @@ $player_level  // Niveau du joueur
 
 ---
 
-# 4. PAGE 3 : QUESTION (BUZZ)
+# 5. PAGE 4 : QUESTION (BUZZ)
 
 **Fichier :** `resources/views/duo_question.blade.php`
 
@@ -203,9 +255,9 @@ $player_level  // Niveau du joueur
 | Header | Connexion status, Question X/N (N configurable) |
 | Thème | Emoji + nom thème |
 | Question | Texte de la question |
-| Colonne gauche | Avatar joueur, pseudo, score (cyan) |
+| Colonne gauche | Avatar joueur + pseudo + score (cyan) + Emplacement Avatar Stratégique + Skills |
 | Colonne centre | Chronomètre 8s (220px cercle) |
-| Colonne droite | Avatar adversaire, pseudo, score (rouge) |
+| Colonne droite | Avatar adversaire + pseudo + score (rouge) + Emplacement Avatar Stratégique adverse |
 | Footer | Buzzer géant |
 
 ## États du Buzzer
@@ -255,11 +307,11 @@ $themeDisplay       // Thème avec emoji
 
 ---
 
-# 5. PAGE 4 : ANSWER (RÉPONSE)
+# 6. PAGE 5 : ANSWER (RÉPONSE)
 
 **Fichier :** `resources/views/duo_answer.blade.php`
 
-## Layout - VUE BUZZ WINNER
+## Layout - VUE BUZZ WINNER (4 choix)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -282,10 +334,28 @@ $themeDisplay       // Thème avec emoji
 │ ┌─────────────────────────────────────────────────────┐ │
 │ │ D. Océan Arctique                                   │ │
 │ └─────────────────────────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────┤
+│ 🎯 Skills disponibles (si applicable)                   │
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Layout - VUE NON-WINNER
+## Layout - VUE BUZZ WINNER (Vrai/Faux)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ ⚡ Connexion        Question 1/N • À vous de répondre    │
+├─────────────────────────────────────────────────────────┤
+│    Le soleil tourne autour de la Terre.                 │
+├─────────────────────────────────────────────────────────┤
+│                      ⏱️ 10                               │
+├─────────────────────────────────────────────────────────┤
+│ ┌────────────────────┐    ┌────────────────────┐       │
+│ │      ✅ VRAI        │    │      ❌ FAUX        │       │
+│ └────────────────────┘    └────────────────────┘       │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Layout - VUE NON-BUZZER
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -296,6 +366,15 @@ $themeDisplay       // Thème avec emoji
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
+
+## Points selon vitesse de buzz
+
+| Buzz | Points (si correct) |
+|------|---------------------|
+| Plus rapide (> 3s restantes) | +2 pts |
+| Moins rapide (1-3s restantes) | +1 pt |
+| Lent (< 1s restante) | 0 pt |
+| Erreur | -2 pts |
 
 ## Chronomètre
 
@@ -325,7 +404,7 @@ $opponentName       // Pseudo adversaire
 
 ---
 
-# 6. PAGE 5 : RESULT (RÉSULTAT)
+# 7. PAGE 6 : RESULT (RÉSULTAT + SYNC)
 
 **Fichier :** `resources/views/duo_result.blade.php`
 
@@ -340,21 +419,22 @@ $opponentName       // Pseudo adversaire
 ├─────────────────────────────────────────────────────────┤
 │ ┌─────────┐          VS          ┌─────────┐           │
 │ │  👤     │                      │  👤     │           │
-│ │ 2 pts   │                      │ 0 pts   │           │
-│ │ (cyan)  │                      │ (rouge) │           │
+│ │ 2 pts   │    RÉSULTAT EN       │ 0 pts   │           │
+│ │ (cyan)  │      COURS           │ (rouge) │           │
 │ └─────────┘                      └─────────┘           │
 ├─────────────────────────────────────────────────────────┤
-│ ✅ La bonne réponse était: Océan Pacifique              │
-├─────────────────────────────────────────────────────────┤
-│ 💡 Le saviez-vous?                                       │
-│ Le Pacifique couvre 46% de la surface océanique...      │
+│ ✅ Bonne réponse: Océan Pacifique                       │
+│ ❌ Mauvaise réponse sélectionnée: Océan Atlantique      │
 ├─────────────────────────────────────────────────────────┤
 │ 🎯 SKILLS DISPONIBLES                                    │
 │ [💡 Skill1] [🧪 Skill2] [👁️ Skill3]                     │
 ├─────────────────────────────────────────────────────────┤
-│                [🔊] [💬]                                 │
+│ 💡 Le saviez-vous?                                       │
+│ Le Pacifique couvre 46% de la surface océanique...      │
 ├─────────────────────────────────────────────────────────┤
-│                   [ GO → ]                               │
+│ Statut: [Vous ✅] [Adversaire ⏳]                        │
+├─────────────────────────────────────────────────────────┤
+│        [🔊] [💬]           [ GO → ]    [🚪 Sortie]       │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -363,13 +443,14 @@ $opponentName       // Pseudo adversaire
 | Zone | Contenu |
 |------|---------|
 | Header | Manche X, Question Y/N (N configurable) |
-| Résultat | ✅ CORRECT / ❌ FAUX + points |
+| Points obtenus | +2 pts, +1 pt, 0 pt, -2 pts |
+| Résultat | ✅ CORRECT / ❌ FAUX (résultat en cours) |
 | Score battle | Avatars + scores côte à côte |
-| Bonne réponse | Toujours affichée |
-| Le saviez-vous | Anecdote IA (Gemini) |
+| Bonne/Mauvaise réponse | Toujours affichées |
 | Skills | Grille compétences disponibles |
-| Communication | 🔊 Micro + 💬 Texto |
-| Action | Bouton GO → |
+| Le saviez-vous | Anecdote IA (Gemini) |
+| Statut sync | État prêt des 2 joueurs (⏳/✅) |
+| Actions | 🔊 Micro + 💬 Texto + GO (sync 2 joueurs) + 🚪 Sortie |
 
 ## Couleurs
 
@@ -395,9 +476,11 @@ $totalQuestions    // 10, 20, 30, 40 ou 50 (configurable)
 
 ---
 
-# 7. PAGE 6 : RANKINGS (CLASSEMENT)
+# 8. PAGE 7 : RANKINGS (CLASSEMENT)
 
 **Fichier :** `resources/views/duo_rankings.blade.php`
+
+**Accessible depuis :** Page Duo (Menu principal) via bouton "Voir classement complet"
 
 ## Layout
 
@@ -427,7 +510,13 @@ $totalQuestions    // 10, 20, 30, 40 ou 50 (configurable)
 
 ---
 
-# 8. AVATARS STRATÉGIQUES & SKILLS
+# 9. AVATARS STRATÉGIQUES & SKILLS
+
+Les avatars stratégiques offrent des compétences (skills) qui peuvent :
+- **Altérer ou augmenter les temps de chrono** (ajouter/retirer des secondes)
+- **Affecter le comportement des réponses** (déplacer les choix, mélanger)
+- **Modifier le pointage** (bonus/malus de points)
+- **Autres effets spéciaux** (voir adversaire, bloquer attaques, etc.)
 
 ## Tiers et Prix
 
@@ -488,7 +577,7 @@ $totalQuestions    // 10, 20, 30, 40 ou 50 (configurable)
 
 ---
 
-# 9. SYSTÈME DE POINTS & DIVISIONS
+# 10. SYSTÈME DE POINTS, DIVISIONS & PIÈCES
 
 ## Attribution des Points (par question)
 
@@ -499,6 +588,12 @@ $totalQuestions    // 10, 20, 30, 40 ou 50 (configurable)
 | Correct lent | 0 | < 1 seconde restante |
 | Incorrect | -2 | Mauvaise réponse |
 | Timeout | 0 | Aucune réponse |
+
+## Pièces de Compétence
+
+Les joueurs gagnent des **Pièces de Compétence** selon leur performance :
+- Utilisées pour acheter des avatars stratégiques
+- Gagnées selon le résultat du match et la division
 
 ## Divisions
 
@@ -518,15 +613,18 @@ $totalQuestions    // 10, 20, 30, 40 ou 50 (configurable)
 
 ---
 
-# 10. COMMUNICATION VOCALE & TEXTO
+# 11. COMMUNICATION VOCALE & TEXTO
 
 ## Disponibilité par Page
 
 | Page | Audio actif | Boutons visibles |
 |------|-------------|------------------|
+| duo_lobby.blade.php (Synchronisation) | ✅ | ✅ |
 | duo_question.blade.php | ✅ | ❌ |
 | duo_answer.blade.php | ✅ | ❌ |
 | duo_result.blade.php | ✅ | ✅ |
+| Pages fin de manche | ✅ | ✅ |
+| Pages fin de partie | ✅ | ✅ |
 
 ## Boutons UI
 
@@ -561,7 +659,7 @@ class VoiceChat {
 
 ---
 
-# 11. ARCHITECTURE TECHNIQUE
+# 12. ARCHITECTURE TECHNIQUE
 
 ## Stack
 
@@ -633,12 +731,13 @@ INTRO → BUZZ_WINDOW → ANSWER_SELECTION → REVEAL → ROUND_SCOREBOARD
 
 | Fichier | Type | Description |
 |---------|------|-------------|
-| duo_lobby.blade.php | Vue | Lobby principal |
+| duo.blade.php | Vue | Page Duo (Menu principal) |
+| duo_lobby.blade.php | Vue | Lobby Duo (Synchronisation joueurs) |
 | duo_matchmaking.blade.php | Vue | Recherche adversaire |
-| duo_question.blade.php | Vue | Page buzz (8s) |
-| duo_answer.blade.php | Vue | Page réponse (10s) |
-| duo_result.blade.php | Vue | Page résultat + Sync joueurs |
-| duo_rankings.blade.php | Vue | Classement |
+| duo_question.blade.php | Vue | Page buzz (8s) + Avatars + Skills |
+| duo_answer.blade.php | Vue | Page réponse (10s) + 4 choix ou Vrai/Faux |
+| duo_result.blade.php | Vue | Page résultat + Skills + Sync joueurs + Le saviez-vous |
+| duo_rankings.blade.php | Vue | Classement par division |
 | duo_splash.blade.php | Vue | Splash screen |
 | duo_resume.blade.php | Vue | Reprise match |
 | duo_game.blade.php | Vue | (Legacy) |
