@@ -1092,7 +1092,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const buzzTime = 8 - timeLeft;
             
             try {
-                const response = await fetch('{{ route("game.buzz", ["mode" => $mode]) }}', {
+                @php
+                    // Solo utilise des routes HTTP, Duo/League utilisent Socket.IO
+                    $buzzRoute = match($mode) {
+                        'solo' => route('solo.buzz'),
+                        default => '/game/' . $mode . '/buzz'
+                    };
+                    $answerRoute = match($mode) {
+                        'solo' => route('solo.answer'),
+                        'duo' => route('duo.answer', ['match' => $matchId ?? 0]),
+                        default => '/game/' . $mode . '/answer'
+                    };
+                @endphp
+                const response = await fetch('{{ $buzzRoute }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1113,7 +1125,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.redirect) {
                     window.location.href = data.redirect;
                 } else {
-                    window.location.href = '{{ route("game.answers", ["mode" => $mode]) }}?buzz_time=' + buzzTime + '&buzz_winner=player';
+                    window.location.href = '{{ $answerRoute }}?buzz_time=' + buzzTime + '&buzz_winner=player';
                 }
             } catch (error) {
                 console.error('Buzz error:', error);
@@ -1129,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, buzzerDuration);
     });
     
-    // Pas de buzz - redirection vers /game/{mode}/transition
+    // Pas de buzz - redirection vers la page timeout
     function handleNoBuzz() {
         // Jouer le son "sans buzzer"
         const noBuzzSound = document.getElementById('noBuzzSound');
@@ -1137,8 +1149,15 @@ document.addEventListener('DOMContentLoaded', function() {
         noBuzzSound.play().catch(e => console.log('Audio play failed:', e));
         
         // Rediriger après que le son se soit joué complètement
+        @php
+            $timeoutRoute = match($mode) {
+                'solo' => route('solo.timeout') . '?no_buzz=1',
+                'duo' => route('duo.answer', ['match' => $matchId ?? 0]) . '?no_buzz=1',
+                default => '/game/' . $mode . '/timeout?no_buzz=1'
+            };
+        @endphp
         setTimeout(() => {
-            window.location.href = '{{ route("game.transition", ["mode" => $mode]) }}?no_buzz=1';
+            window.location.href = '{{ $timeoutRoute }}';
         }, noBuzzDuration);
     }
     
