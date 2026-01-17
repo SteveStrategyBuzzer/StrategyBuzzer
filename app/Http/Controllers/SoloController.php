@@ -2291,22 +2291,22 @@ class SoloController extends Controller
                 'icon' => '📚',
                 'skills' => [
                     [
-                        'id' => 'show_hint',
-                        'name' => 'Indice historique',
-                        'icon' => '🪶',
-                        'description' => 'Voit un indice texte avant les autres',
-                        'type' => 'info',
-                        'trigger' => 'question',
-                        'uses_per_match' => 3,
+                        'id' => 'history_corrects',
+                        'name' => 'L\'histoire corrige',
+                        'icon' => '📜',
+                        'description' => '+2 points si mauvaise réponse (activable sur la page Result)',
+                        'type' => 'correction',
+                        'trigger' => 'result',
+                        'uses_per_match' => 1,
                         'auto' => false
                     ],
                     [
-                        'id' => 'extra_time',
-                        'name' => 'Temps bonus',
-                        'icon' => '⏰',
-                        'description' => 'Dispose d\'un bonus de +2 secondes pour répondre une fois par partie',
-                        'type' => 'time',
-                        'trigger' => 'question',
+                        'id' => 'knowledge_without_time',
+                        'name' => 'Le savoir sans temps',
+                        'icon' => '🪶',
+                        'description' => '+1 point si bonne réponse sans avoir buzzé (activable sur la page Result)',
+                        'type' => 'bonus',
+                        'trigger' => 'result',
                         'uses_per_match' => 1,
                         'auto' => false
                     ]
