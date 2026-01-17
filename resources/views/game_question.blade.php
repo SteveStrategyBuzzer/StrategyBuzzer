@@ -365,6 +365,16 @@ if ($opponentInfo['is_boss'] ?? false) {
         background: rgba(255, 215, 0, 0.2);
         box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
         animation: golden-pulse 2s ease-in-out infinite;
+        cursor: pointer;
+    }
+    
+    .skill-circle.active:hover {
+        transform: scale(1.15);
+        box-shadow: 0 0 40px rgba(255, 215, 0, 1);
+    }
+    
+    .skill-circle.active:active {
+        transform: scale(0.95);
     }
     
     @keyframes golden-pulse {
@@ -378,12 +388,20 @@ if ($opponentInfo['is_boss'] ?? false) {
     
     .skill-circle.empty {
         opacity: 0.3;
+        cursor: not-allowed;
     }
     
-    /* Classe 'disabled' pour logique JS uniquement - PAS de style grisé visuel */
-    .skill-circle.disabled {
-        /* Pas de style visuel - le bouton reste normal */
-        /* La classe sert uniquement à déclencher le popup JS */
+    .skill-circle.used {
+        opacity: 0.4;
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(100, 100, 100, 0.2);
+        box-shadow: none;
+        animation: none;
+        cursor: not-allowed;
+    }
+    
+    .skill-circle.disabled:not(.used) {
+        cursor: help;
     }
     
     /* BOUTON BUZZER CENTRÉ EN BAS */
