@@ -15,8 +15,10 @@
 8. Page 7 : Rankings (Classement)
 9. Avatars Stratégiques & Skills
 10. Système de Points, Divisions & Pièces
-11. Communication Vocale & Texto
-12. Architecture Technique
+11. Système de Mise (Betting)
+12. Manche Ultime (Tiebreaker)
+13. Communication Vocale & Texto
+14. Architecture Technique
 
 ---
 
@@ -613,7 +615,137 @@ Les joueurs gagnent des **Pièces de Compétence** selon leur performance :
 
 ---
 
-# 11. COMMUNICATION VOCALE & TEXTO
+# 11. SYSTÈME DE MISE (BETTING)
+
+## Localisation
+
+**Fichier :** `resources/views/lobby.blade.php` (lignes 817-890)
+
+## Fonctionnement
+
+Le système de mise permet aux joueurs de parier des **Pièces de Compétence** sur l'issue du match.
+
+## Montants Disponibles
+
+| Montant | Condition |
+|---------|-----------|
+| 0 (Sans mise) | Toujours disponible |
+| 5 💰 | Solde >= 5 pièces |
+| 10 💰 | Solde >= 10 pièces |
+| 25 💰 | Solde >= 25 pièces |
+| 50 💰 | Solde >= 50 pièces |
+| 100 💰 | Solde >= 100 pièces |
+
+## Actions du Joueur
+
+| Action | Description | Bouton |
+|--------|-------------|--------|
+| Proposer | Initier une mise | Doré "Proposer une mise" |
+| Accepter | Accepter la mise proposée | Vert ✓ |
+| Relancer | Proposer un montant supérieur | Violet ↑ |
+| Refuser | Refuser la mise | Rouge ✗ |
+| Annuler | Annuler sa propre proposition | Rouge "Annuler" |
+
+## États UI
+
+| État | Description | UI affichée |
+|------|-------------|-------------|
+| Aucune mise | Pas de proposition active | "Proposer une mise" (dropdown) |
+| En attente | Mise proposée, attente réponse | "X proposé" + "Annuler" |
+| Acceptée | Mise acceptée par les 2 joueurs | "✓ X accepté" (vert) |
+| Refusée | Mise refusée | Retour à "Proposer une mise" |
+
+## Redistribution des Gains
+
+| Résultat | Gagnant reçoit | Perdant perd |
+|----------|----------------|--------------|
+| Victoire | Mise x2 | Mise totale |
+| Égalité | Remboursement | Remboursement |
+
+## Routes API
+
+| Route | Méthode | Description |
+|-------|---------|-------------|
+| `/lobby/{code}/bet/propose` | POST | Proposer une mise |
+| `/lobby/{code}/bet/respond` | POST | Accepter/Refuser/Relancer |
+| `/lobby/{code}/bet/cancel` | POST | Annuler sa proposition |
+| `/lobby/{code}/bet/refund` | POST | Rembourser en cas d'égalité |
+
+## Affichage dans duo_result.blade.php
+
+Quand une mise est active, le résultat affiche :
+- Montant misé par chaque joueur
+- Gains/Pertes selon le résultat
+- Animation de pièces pour le gagnant
+
+---
+
+# 12. MANCHE ULTIME (TIEBREAKER)
+
+## Déclenchement
+
+La Manche Ultime se déclenche en cas d'**égalité parfaite** à la fin du match Best of 3.
+
+## Les 3 Modes
+
+### Mode 1 : Triple Duel (`quick_question`)
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Questions | 3 |
+| Format | Buzz + Réponse standard |
+| Gagnant | Premier à 2 bonnes réponses |
+| Durée estimée | ~2 minutes |
+
+### Mode 2 : Sprint Final (`speed_round`)
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Questions | 5 |
+| Scoring | Cumulatif (0-2 pts par question) |
+| Gagnant | Meilleur score total |
+| Durée estimée | ~3 minutes |
+
+### Mode 3 : Mort Subite (`sudden_death`)
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Questions | Illimité |
+| Condition | Premier à répondre correctement |
+| Gagnant | Première bonne réponse différenciante |
+| Durée estimée | Variable |
+
+## Sélection du Mode
+
+Le mode est sélectionné **aléatoirement** par le serveur Socket.IO au moment du déclenchement.
+
+## Égalité en Manche Ultime
+
+Si la Manche Ultime se termine en égalité :
+- Les Pièces de Compétence misées sont **remboursées** aux deux joueurs
+- Aucun vainqueur n'est déclaré
+- Les deux joueurs reçoivent une récompense de participation
+
+## Phases Socket.IO
+
+```typescript
+type TiebreakerPhase =
+  | "TIEBREAKER_CHOICE"    // Affichage du mode sélectionné
+  | "TIEBREAKER_QUESTION"  // Questions de la Manche Ultime
+  | "MATCH_END";           // Fin de partie
+```
+
+## Implémentation (types.ts)
+
+```typescript
+tiebreakerMode?: 'quick_question' | 'speed_round' | 'sudden_death';
+tiebreakerRound?: number;
+tiebreakerScores?: { [playerId: string]: number };
+```
+
+---
+
+# 13. COMMUNICATION VOCALE & TEXTO
 
 ## Disponibilité par Page
 
@@ -659,7 +791,7 @@ class VoiceChat {
 
 ---
 
-# 12. ARCHITECTURE TECHNIQUE
+# 14. ARCHITECTURE TECHNIQUE
 
 ## Stack
 
@@ -749,5 +881,5 @@ INTRO → BUZZ_WINDOW → ANSWER_SELECTION → REVEAL → ROUND_SCOREBOARD
 
 ---
 
-*Document généré le 13 janvier 2026*
-*StrategyBuzzer - Mode Duo v2.0*
+*Document mis à jour le 17 janvier 2026*
+*StrategyBuzzer - Mode Duo v2.1*
