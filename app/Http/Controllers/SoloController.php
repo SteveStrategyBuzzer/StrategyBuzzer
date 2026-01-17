@@ -770,17 +770,18 @@ class SoloController extends Controller
                 break;
                 
             // 🟣 ÉPIQUE SKILLS
-            case 'show_hint':
-                // Historien: Affiche un indice textuel
-                $hint = $this->generateQuestionHint($question, $correctIndex);
-                $result['hint'] = $hint;
-                $result['effect'] = 'hint';
+            case 'history_corrects':
+                // Historien: L'histoire corrige - +2 points si mauvaise réponse
+                $result['effect'] = 'history_corrects';
+                $result['points_bonus'] = 2;
+                $result['message'] = 'L\'histoire corrige! +2 points';
                 break;
                 
-            case 'extra_time':
-                // Historien: +2 secondes de temps
-                $result['extra_seconds'] = 2;
-                $result['effect'] = 'time_bonus';
+            case 'knowledge_without_time':
+                // Historien: Le savoir sans temps - +1 point si bonne réponse sans buzz
+                $result['effect'] = 'knowledge_without_time';
+                $result['points_bonus'] = 1;
+                $result['message'] = 'Le savoir sans temps! +1 point';
                 break;
                 
             case 'invert_answers':
