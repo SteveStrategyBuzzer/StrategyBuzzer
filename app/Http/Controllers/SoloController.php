@@ -2232,32 +2232,6 @@ class SoloController extends Controller
                     ]
                 ]
             ],
-            'Magicien' => [
-                'rarity' => 'epic',
-                'icon' => '🧙‍♂️',
-                'skills' => [
-                    [
-                        'id' => 'bonus_question',
-                        'name' => 'Question bonus',
-                        'icon' => '✨',
-                        'description' => 'Obtient une question bonus par partie',
-                        'type' => 'bonus',
-                        'trigger' => 'result',
-                        'uses_per_match' => 1,
-                        'auto' => false
-                    ],
-                    [
-                        'id' => 'cancel_error',
-                        'name' => 'Annule erreur',
-                        'icon' => '💫',
-                        'description' => 'Annule une mauvaise réponse non-Buzz une fois par partie',
-                        'type' => 'correction',
-                        'trigger' => 'result',
-                        'uses_per_match' => 1,
-                        'auto' => false
-                    ]
-                ]
-            ],
             'Magicienne' => [
                 'rarity' => 'epic',
                 'icon' => '🧙‍♀️',
