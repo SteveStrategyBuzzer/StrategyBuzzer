@@ -600,11 +600,13 @@ class SoloController extends Controller
             'opponent_score' => session('opponent_score', 0),
             'chrono_time' => $baseTime,
             'avatar' => $avatar,
+            'avatar_skills_full' => $this->getAvatarSkills($avatar),
             'theme' => $theme,
             'niveau' => $niveau,
             'current_round' => session('current_round', 1),
             'total_rounds' => session('total_rounds', 5),
             'opponent_info' => $opponentInfo,
+            'mode' => 'solo',
         ];
         
         session(['game_state' => [
