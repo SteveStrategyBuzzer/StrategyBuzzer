@@ -231,7 +231,6 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::get('/game/{match}', [App\Http\Controllers\DuoController::class, 'game'])->name('game');
     Route::get('/question/{match}', [App\Http\Controllers\DuoController::class, 'question'])->name('question');
     Route::get('/answer/{match}', [App\Http\Controllers\DuoController::class, 'answer'])->name('answer');
-    Route::get('/waiting/{match}', [App\Http\Controllers\DuoController::class, 'waiting'])->name('waiting');
     Route::get('/result/{match}', [App\Http\Controllers\DuoController::class, 'result'])->name('result');
     Route::get('/rankings', [App\Http\Controllers\DuoController::class, 'rankings'])->name('rankings');
     Route::get('/contacts', [App\Http\Controllers\DuoController::class, 'getContacts'])->name('contacts');
