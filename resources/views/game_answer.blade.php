@@ -19,6 +19,24 @@ $answerRoute = match($mode) {
     'master' => route('game.answer', ['mode' => 'master']),
     default => route('solo.answer'),
 };
+
+// Skill Historien - Plume (answer_without_buzz)
+$hasFeatherSkill = false;
+$featherSkillAvailable = false;
+$usedSkills = $params['used_skills'] ?? session('used_skills', []);
+$avatarSkillsFull = $params['avatar_skills_full'] ?? [];
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skill) {
+        if (($skill['id'] ?? '') === 'answer_without_buzz') {
+            $hasFeatherSkill = true;
+            $featherSkillAvailable = !in_array('answer_without_buzz', $usedSkills);
+            break;
+        }
+    }
+}
+// La Plume est active si le joueur n'a pas buzzé ET le skill est disponible
+$playerBuzzed = $params['player_buzzed'] ?? true;
+$featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
 @endphp
 
 <style>
@@ -379,6 +397,7 @@ $answerRoute = match($mode) {
     <form id="answerForm" method="POST" action="{{ $answerRoute }}">
         @csrf
         <input type="hidden" name="answer_index" id="answerIndex">
+        <input type="hidden" name="feather_skill_used" id="featherSkillUsed" value="{{ $featherActive ? '1' : '0' }}">
         
         <div class="answers-grid">
             @php
@@ -392,7 +411,7 @@ $answerRoute = match($mode) {
                 @endif
                 
                 <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
-                    <div class="answer-number">{{ $index + 1 }}</div>
+                    <div class="answer-number">@if($featherActive)🪶 @endif{{ $index + 1 }}</div>
                     <div class="answer-text">{{ $answer }}</div>
                     <div class="answer-icon">👉</div>
                 </div>
@@ -401,10 +420,16 @@ $answerRoute = match($mode) {
     </form>
     
     <!-- Buzz info -->
-    @if(isset($params['player_buzzed']) && !$params['player_buzzed'])
+    @if($featherActive)
+        <div class="buzz-info" style="background: rgba(78, 205, 196, 0.15); border-color: rgba(78, 205, 196, 0.3);">
+            <div class="buzz-info-text" style="color: #4ECDC4;">
+                🪶 {{ __('Savoir sans temps') }} - {{ __('Vous pouvez répondre') }} (+1 {{ __('point max') }})
+            </div>
+        </div>
+    @elseif(isset($params['player_buzzed']) && !$params['player_buzzed'])
         <div class="buzz-info" style="background: rgba(255, 107, 107, 0.15); border-color: rgba(255, 107, 107, 0.3);">
             <div class="buzz-info-text" style="color: #FF6B6B;">
-                ⚠️ Pas buzzé - Vous pouvez quand même répondre (0 point)
+                ⚠️ {{ __('Pas buzzé - Vous pouvez quand même répondre (0 point)') }}
             </div>
         </div>
     @elseif(isset($params['buzz_time']))

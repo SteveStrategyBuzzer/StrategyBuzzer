@@ -1003,12 +1003,22 @@
         </div>
     </div>
     
-    <!-- Skills Magicienne -->
+    <!-- Skills -->
     @php
         $avatar = session('avatar', 'Aucun');
         $usedSkills = session('used_skills', []);
         $cancelErrorUsed = in_array('cancel_error', $usedSkills);
         $bonusQuestionUsed = in_array('bonus_question', $usedSkills);
+        
+        // Skill Historien - Parchemin (history_corrects)
+        $hasScrollSkill = ($avatar === 'Historien');
+        $scrollSkillUsed = in_array('history_corrects', $usedSkills);
+        $scrollSkillAvailable = $hasScrollSkill && !$scrollSkillUsed && !$params['is_correct'];
+        // Les points à récupérer sont les points absolus (si le joueur jouait pour 2, il récupère 2)
+        $potentialPointsToRecover = abs($params['player_points'] ?? 0);
+        if ($potentialPointsToRecover == 0) {
+            $potentialPointsToRecover = 1; // Minimum 1 point
+        }
     @endphp
     
     @if($avatar === 'Magicienne')
@@ -1100,11 +1110,24 @@
         @endif
         
         <!-- Afficher la bonne réponse -->
-        <div class="answer-display answer-correct">
+        <div class="answer-display answer-correct {{ $scrollSkillAvailable ? 'scroll-skill-clickable' : '' }}" 
+             @if($scrollSkillAvailable) onclick="useScrollSkill({{ $potentialPointsToRecover }})" style="cursor: pointer;" @endif>
             <span class="answer-label">{{ __('Bonne réponse') }}:</span>
-            <span class="answer-text">{{ $question['answers'][$correctIndex] }}</span>
+            <span class="answer-text">
+                @if($scrollSkillAvailable)📜 @endif{{ $question['answers'][$correctIndex] }}
+            </span>
             <span class="answer-icon">✅</span>
         </div>
+    </div>
+    
+    <!-- Popup pour le skill Parchemin -->
+    <div id="scrollSkillPopup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(78, 205, 196, 0.95) 100%); 
+        padding: 30px 50px; border-radius: 20px; z-index: 1000; text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 3px solid rgba(255,255,255,0.3);">
+        <div style="font-size: 3rem; margin-bottom: 10px;">📜</div>
+        <div style="font-size: 1.5rem; font-weight: bold; color: white;">{{ __("L'histoire corrige") }}</div>
+        <div id="scrollSkillPoints" style="font-size: 2rem; font-weight: 900; color: #FFD700; margin-top: 10px;">+{{ $potentialPointsToRecover }} {{ __('points') }}</div>
     </div>
     
     <!-- Informations de progression en 2 colonnes -->
@@ -1273,6 +1296,62 @@ if (!isMultiplayerMode && countdownElement) {
             goToNextQuestion();
         }
     }, 1000);
+}
+
+// Skill Historien - Parchemin (L'histoire corrige)
+function useScrollSkill(pointsToRecover) {
+    fetch("{{ route('solo.use-scroll-skill') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ points_to_recover: pointsToRecover })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Afficher le popup
+            const popup = document.getElementById('scrollSkillPopup');
+            if (popup) {
+                popup.style.display = 'block';
+                // Mettre à jour les points affichés
+                const pointsEl = document.getElementById('scrollSkillPoints');
+                if (pointsEl && data.points_recovered !== undefined) {
+                    pointsEl.textContent = '+' + data.points_recovered + ' {{ __("points") }}';
+                }
+                // Masquer après 3 secondes
+                setTimeout(() => {
+                    popup.style.display = 'none';
+                }, 3000);
+            }
+            
+            // Mettre à jour le score affiché
+            const scoreElement = document.querySelector('.score-player .score-number');
+            if (scoreElement && data.new_score !== undefined) {
+                scoreElement.textContent = data.new_score;
+            }
+            
+            // Supprimer la classe cliquable et le 📜
+            const correctAnswer = document.querySelector('.answer-display.answer-correct');
+            if (correctAnswer) {
+                correctAnswer.classList.remove('scroll-skill-clickable');
+                correctAnswer.style.cursor = 'default';
+                correctAnswer.onclick = null;
+                // Retirer le 📜 du texte
+                const answerText = correctAnswer.querySelector('.answer-text');
+                if (answerText) {
+                    answerText.textContent = answerText.textContent.replace('📜 ', '');
+                }
+            }
+        } else {
+            showSkillMessage(data.message || '{{ __("Erreur lors de l\'activation du skill") }}', false);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showSkillMessage('{{ __("Erreur lors de l\'activation du skill") }}', false);
+    });
 }
 
 // Skills Magicienne

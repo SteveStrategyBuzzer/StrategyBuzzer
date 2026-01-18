@@ -1156,6 +1156,9 @@ class SoloController extends Controller
         // Calculer les points du joueur selon les nouvelles règles (BUG #2 FIX)
         $playerPoints = 0;
         
+        // Vérifier si le skill Plume (answer_without_buzz) a été utilisé
+        $featherSkillUsed = $request->input('feather_skill_used', '0') === '1';
+        
         if ($playerBuzzed) {
             // Le joueur a buzzé
             if ($answerIndex === -1) {
@@ -1168,6 +1171,16 @@ class SoloController extends Controller
             } else {
                 // Mauvaise réponse = -2 pts
                 $playerPoints = -2;
+            }
+        } elseif ($featherSkillUsed) {
+            // Skill Plume (Historien): +1 si correct, 0 si incorrect (pas de pénalité)
+            $playerPoints = $isCorrect ? 1 : 0;
+            
+            // Marquer le skill comme utilisé
+            $usedSkills = session('used_skills', []);
+            if (!in_array('answer_without_buzz', $usedSkills)) {
+                $usedSkills[] = 'answer_without_buzz';
+                session(['used_skills' => $usedSkills]);
             }
         } else {
             // Le joueur n'a PAS buzzé mais répond quand même = 0 points (ni gain ni perte)
@@ -2784,6 +2797,83 @@ class SoloController extends Controller
             'success' => true, 
             'message' => 'Erreur annulée ! +' . $pointsToRecover . ' points récupérés',
             'new_score' => session('score'),
+            'used_skills' => $usedSkills
+        ]);
+    }
+    
+    /**
+     * Skill Historien - Parchemin (L'histoire corrige)
+     * Permet de récupérer les points après une mauvaise réponse en cliquant sur la bonne réponse
+     */
+    public function useScrollSkill(Request $request)
+    {
+        $avatar = session('avatar', 'Aucun');
+        
+        if ($avatar !== 'Historien') {
+            return response()->json(['success' => false, 'message' => __('Skill non disponible pour cet avatar')], 403);
+        }
+        
+        $usedSkills = session('used_skills', []);
+        if (in_array('history_corrects', $usedSkills)) {
+            return response()->json(['success' => false, 'message' => __('Skill déjà utilisé')], 403);
+        }
+        
+        $globalStats = session('global_stats', []);
+        if (empty($globalStats)) {
+            return response()->json(['success' => false, 'message' => __('Aucune question à corriger')], 403);
+        }
+        
+        $lastIndex = count($globalStats) - 1;
+        $lastStat = $globalStats[$lastIndex];
+        
+        // Le skill ne fonctionne que si le joueur a fait une erreur
+        if ($lastStat['is_correct']) {
+            return response()->json(['success' => false, 'message' => __('La dernière réponse était correcte')], 403);
+        }
+        
+        // Les points à récupérer (passés par la requête ou calculés)
+        $pointsToRecover = $request->input('points_to_recover', 1);
+        $pointsToRecover = max(1, min(2, intval($pointsToRecover))); // Entre 1 et 2
+        
+        // Si le joueur avait buzzé et perdu des points, on récupère ce qu'il avait perdu
+        $playerPoints = $lastStat['player_points'] ?? 0;
+        if ($playerPoints < 0) {
+            // S'il avait perdu 2 points, il récupère tout (erreur devient succès)
+            $pointsToRecover = abs($playerPoints);
+        }
+        
+        // Mettre à jour le score
+        $currentScore = session('score', 0);
+        $newScore = $currentScore + $pointsToRecover;
+        session(['score' => $newScore]);
+        
+        // Mettre à jour les statistiques
+        $answeredQuestions = session('answered_questions', []);
+        $answeredLastIndex = count($answeredQuestions) - 1;
+        if ($answeredLastIndex >= 0) {
+            $answeredQuestions[$answeredLastIndex]['is_correct'] = true;
+            $answeredQuestions[$answeredLastIndex]['player_points'] = $pointsToRecover;
+            $answeredQuestions[$answeredLastIndex]['skill_adjusted'] = true;
+            session(['answered_questions' => $answeredQuestions]);
+        }
+        
+        // Mettre à jour global_stats
+        $globalStats[$lastIndex]['is_correct'] = true;
+        $globalStats[$lastIndex]['player_points'] = $pointsToRecover;
+        $globalStats[$lastIndex]['skill_adjusted'] = true;
+        session(['global_stats' => $globalStats]);
+        
+        // Marquer le skill comme utilisé
+        $usedSkills[] = 'history_corrects';
+        session(['used_skills' => $usedSkills]);
+        
+        \Log::info('[Historien] Parchemin utilisé: +' . $pointsToRecover . ' points récupérés');
+        
+        return response()->json([
+            'success' => true,
+            'message' => __("L'histoire corrige") . ' ! +' . $pointsToRecover . ' ' . __('points'),
+            'new_score' => $newScore,
+            'points_recovered' => $pointsToRecover,
             'used_skills' => $usedSkills
         ]);
     }

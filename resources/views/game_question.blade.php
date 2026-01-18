@@ -1197,6 +1197,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Skills Historien: sur la page Question, afficher seulement le titre (pas de consommation)
+        if (skillId === 'answer_without_buzz') {
+            showSkillMessage('🪶 {{ __("Savoir sans temps") }}', 'info', 2000);
+            return;
+        }
+        if (skillId === 'history_corrects') {
+            showSkillMessage('📜 {{ __("L\'histoire corrige") }}', 'info', 2000);
+            return;
+        }
+        
         // Skills qui redirigent vers une autre page
         if (skillId === 'bonus_question') {
             const bonusRoute = '{{ $mode }}' === 'solo' 
