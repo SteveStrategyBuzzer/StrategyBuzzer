@@ -375,12 +375,16 @@ body {
     const playerId = @json($playerId);
     const isHost = @json($isHost);
     const mode = @json($mode);
+    const matchId = @json($params['match_id'] ?? null);
     
     let redirected = false;
     let db = null;
+    let unsubscribe = null;
+    let questionPrefetched = false;
     
-    const VS_DISPLAY_TIME = 4000;
+    const VS_DISPLAY_TIME = 3000;
     const COUNTDOWN_NUMBERS = [3, 2, 1];
+    const SYNC_TIMEOUT = 10000;
     
     async function initFirebase() {
         if (typeof firebase === 'undefined') return false;
@@ -409,31 +413,98 @@ body {
         }
     }
     
+    async function prefetchFirstQuestion() {
+        if (questionPrefetched || !matchId) return;
+        
+        try {
+            const response = await fetch('/game/' + mode + '/fetch-question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({ match_id: matchId, question_number: 1 })
+            });
+            
+            if (response.ok) {
+                questionPrefetched = true;
+                console.log('[Intro] First question prefetched');
+            }
+        } catch (err) {
+            console.warn('[Intro] Question prefetch failed:', err.message);
+        }
+    }
+    
     async function syncReadyAndStart() {
         const countdownEl = document.getElementById('countdown');
         const countdownText = document.getElementById('countdownText');
         const audio = document.getElementById('readyAudio');
         
-        if (sessionId && await initFirebase()) {
-            try {
-                await db.collection('gameSessions').doc(sessionId).set({
-                    readyStatus: { [playerId]: true },
-                    lastActivity: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-            } catch (err) {
-                console.warn('Ready sync failed:', err.message);
-            }
-        }
+        prefetchFirstQuestion();
         
         if (audio) {
             audio.volume = 1.0;
             audio.play().catch(() => {});
         }
         
-        setTimeout(() => {
-            if (countdownText) countdownText.textContent = "{{ __('La partie commence dans') }}...";
-            runCountdown();
-        }, VS_DISPLAY_TIME);
+        const firebaseReady = sessionId && await initFirebase();
+        
+        if (firebaseReady) {
+            try {
+                await db.collection('gameSessions').doc(sessionId).set({
+                    readyStatus: { [playerId]: true },
+                    lastActivity: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                
+                if (countdownText) countdownText.textContent = "{{ __('Synchronisation des joueurs') }}...";
+                
+                let syncResolved = false;
+                const syncTimeout = setTimeout(() => {
+                    if (!syncResolved) {
+                        syncResolved = true;
+                        console.log('[Intro] Sync timeout - starting anyway');
+                        if (unsubscribe) unsubscribe();
+                        startCountdownSequence();
+                    }
+                }, SYNC_TIMEOUT);
+                
+                unsubscribe = db.collection('gameSessions').doc(sessionId).onSnapshot((doc) => {
+                    if (syncResolved) return;
+                    
+                    const data = doc.data();
+                    const readyStatus = data?.readyStatus || {};
+                    const readyCount = Object.keys(readyStatus).filter(k => readyStatus[k] === true).length;
+                    
+                    console.log('[Intro] Ready status:', readyCount, '/ 2');
+                    
+                    if (readyCount >= 2) {
+                        syncResolved = true;
+                        clearTimeout(syncTimeout);
+                        if (unsubscribe) unsubscribe();
+                        
+                        if (countdownText) countdownText.textContent = "{{ __('Joueurs synchronisés') }}!";
+                        
+                        setTimeout(() => {
+                            startCountdownSequence();
+                        }, 500);
+                    }
+                });
+                
+            } catch (err) {
+                console.warn('Ready sync failed:', err.message);
+                startCountdownSequence();
+            }
+        } else {
+            setTimeout(() => {
+                startCountdownSequence();
+            }, VS_DISPLAY_TIME);
+        }
+    }
+    
+    function startCountdownSequence() {
+        const countdownText = document.getElementById('countdownText');
+        if (countdownText) countdownText.textContent = "{{ __('La partie commence dans') }}...";
+        runCountdown();
     }
     
     function runCountdown() {
