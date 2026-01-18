@@ -519,7 +519,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     <div class="header-row">
         <div class="question-label">{{ __('Question') }} #{{ $currentQuestion ?? 1 }}</div>
         <div class="potential-points points-2" id="potentialPoints">+2</div>
-        <div class="score-display">{{ __('Score') }} {{ $playerScore ?? 0 }}/{{ $currentQuestion ?? 1 }}</div>
+        <div class="score-display" id="scoreDisplay">{{ __('Score') }} <span id="playerScoreValue">{{ $playerScore ?? 0 }}</span></div>
     </div>
     
     <div class="question-text-box">
@@ -620,6 +620,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     const ROOM_ID = '{{ $room_id ?? "" }}';
     const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
     const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
+    const PLAYER_ID = {{ auth()->id() ?? 0 }};
     
     function getGameServerUrl() {
         const configUrl = '{{ config("app.game_server_url", "") }}';
@@ -904,6 +905,18 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         setTimeout(function() {
             window.location.href = '/duo/result/' + MATCH_ID;
         }, 2000);
+    };
+    
+    DuoSocketClient.onScoreUpdate = function(data) {
+        console.log('[DuoAnswer] Score update received:', data);
+        const playerScoreEl = document.getElementById('playerScoreValue');
+        if (playerScoreEl && data.score !== undefined) {
+            const dataPlayerId = String(data.playerId).replace('player:', '');
+            const currentPlayerId = String(PLAYER_ID);
+            if (dataPlayerId === currentPlayerId || data.playerId == PLAYER_ID) {
+                playerScoreEl.textContent = data.score;
+            }
+        }
     };
     
     if (GAME_SERVER_URL) {

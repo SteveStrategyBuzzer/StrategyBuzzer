@@ -1222,7 +1222,13 @@ $mode = 'duo';
     function handleScoreUpdate(data) {
         console.log('[DuoQuestion] {{ __("Mise à jour des scores") }}:', data);
         
-        if (data.scores) {
+        if (data.playerId && data.score !== undefined) {
+            if (String(data.playerId) === '{{ auth()->id() ?? "" }}') {
+                updateScores(data.score, undefined);
+            } else {
+                updateScores(undefined, data.score);
+            }
+        } else if (data.scores) {
             Object.entries(data.scores).forEach(([playerId, score]) => {
                 if (playerId === '{{ auth()->id() ?? "" }}') {
                     updateScores(score, undefined);
