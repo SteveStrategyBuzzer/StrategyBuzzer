@@ -77,7 +77,7 @@ class AvatarCatalog
             'historien'     => [
                 'tier'   => 'Épique',
                 'name'   => 'Historien',
-                'skills' => ['Indice texte','+2s réponse'],
+                'skills' => ['Plume','Parchemin'],
             ],
 
             // Légendaire 👑
