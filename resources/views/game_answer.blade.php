@@ -411,9 +411,9 @@ $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
                 @endif
                 
                 <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
-                    <div class="answer-number">@if($featherActive)🪶 @endif{{ $index + 1 }}</div>
+                    <div class="answer-number">{{ $index + 1 }}</div>
                     <div class="answer-text">{{ $answer }}</div>
-                    <div class="answer-icon">👉</div>
+                    <div class="answer-icon">@if($featherActive)🪶@else👉@endif</div>
                 </div>
             @endforeach
         </div>
