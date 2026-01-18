@@ -1029,7 +1029,7 @@ class DuoController extends Controller
         return $this->renderQuestionView($match, $user);
     }
 
-    public function showAnswer()
+    public function showAnswer(Request $request)
     {
         $user = Auth::user();
         $gameState = session('game_state');
@@ -1054,6 +1054,22 @@ class DuoController extends Controller
         if ($phaseRedirect) {
             return $phaseRedirect;
         }
+        
+        // Determine buzz_winner from query params
+        if ($request->has('buzzed') && $request->buzzed === 'true') {
+            $gameState['buzz_winner'] = 'player';
+        } elseif ($request->has('opponent_buzzed') && $request->opponent_buzzed === 'true') {
+            $gameState['buzz_winner'] = 'opponent';
+        } elseif ($request->has('timeout') && $request->timeout === 'true') {
+            // On timeout, neither buzzed - opponent wins by default in Duo
+            $gameState['buzz_winner'] = 'opponent';
+        } else {
+            // Default to opponent if no indicator (safer default)
+            $gameState['buzz_winner'] = $gameState['buzz_winner'] ?? 'opponent';
+        }
+        
+        // Update session with buzz_winner
+        session(['game_state' => $gameState]);
         
         return $this->renderAnswerView($match, $user, $gameState);
     }
@@ -1386,6 +1402,8 @@ class DuoController extends Controller
             $opponentAvatar = '/' . $opponentAvatar;
         }
 
+        $opponentName = data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire');
+        
         return view('duo_answer', [
             'match_id' => $match->id,
             'room_id' => $roomId,
@@ -1393,13 +1411,16 @@ class DuoController extends Controller
             'jwt_token' => $jwtToken,
             'question' => $questionData,
             'buzz_winner' => $buzzWinner,
-            'player_score' => $playerScore,
-            'opponent_score' => $opponentScore,
-            'current_question' => $currentQuestionNumber,
-            'total_questions' => 10,
+            'playerScore' => $playerScore,
+            'opponentScore' => $opponentScore,
+            'currentQuestion' => $currentQuestionNumber,
+            'totalQuestions' => 10,
             'skills' => $skills,
             'avatarName' => $avatarName,
             'strategicAvatarPath' => $strategicAvatarPath,
+            'playerAvatarPath' => $playerAvatar,
+            'opponentAvatarPath' => $opponentAvatar,
+            'opponentName' => $opponentName,
             'player_info' => [
                 'id' => $user->id,
                 'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
@@ -1409,7 +1430,7 @@ class DuoController extends Controller
             ],
             'opponent_info' => [
                 'id' => $opponent->id,
-                'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
+                'name' => $opponentName,
                 'avatar' => $opponentAvatar,
                 'score' => $opponentScore,
                 'level' => $opponentStats->level,
