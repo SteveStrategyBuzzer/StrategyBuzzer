@@ -895,12 +895,12 @@ $mode = 'duo';
     let timerInterval = null;
     let buzzed = false;
     let phaseEndsAtMs = null;
-    let currentPhase = 'LOBBY';
-    let currentQuestion = null;
+    let currentPhase = 'QUESTION_ACTIVE';
+    let currentQuestion = FALLBACK_QUESTION;
     let isRedirecting = false;
     let gameLayoutReady = false;
     let socketConnected = false;
-    let questionReceived = false;
+    let questionReceived = (FALLBACK_QUESTION.text && FALLBACK_QUESTION.text !== '{{ __("Question en cours de chargement...") }}');
     
     const chronoTimer = document.getElementById('chronoTimer');
     const buzzButton = document.getElementById('buzzButton');
@@ -940,7 +940,7 @@ $mode = 'duo';
     }
     
     function tryShowGameLayout() {
-        if (socketConnected && questionReceived) {
+        if (questionReceived) {
             showGameLayout();
             startTimer();
         }
@@ -1303,27 +1303,38 @@ $mode = 'duo';
     }
     
     async function initializeSocket() {
+        if (questionReceived) {
+            console.log('[DuoQuestion] {{ __("Question PHP disponible - démarrage immédiat") }}');
+            showGameLayout();
+            startTimer();
+        }
+        
         if (!GAME_SERVER_URL || !JWT_TOKEN) {
             console.warn('[DuoQuestion] {{ __("Mode partie locale - pas de serveur en temps réel") }}');
             updateConnectionStatus('disconnected');
-            updateLoadingText('{{ __("Chargement de la question...") }}');
             
-            await loadQuestionFromServer();
-            
-            socketConnected = true;
-            questionReceived = true;
-            showGameLayout();
-            startTimer();
+            if (!questionReceived) {
+                updateLoadingText('{{ __("Chargement de la question...") }}');
+                await loadQuestionFromServer();
+                questionReceived = true;
+                showGameLayout();
+                startTimer();
+            }
             return;
         }
         
         updateConnectionStatus('connecting');
-        updateLoadingText('{{ __("Connexion au serveur...") }}');
+        if (!gameLayoutReady) {
+            updateLoadingText('{{ __("Connexion au serveur...") }}');
+        }
         
         duoSocket.onConnect = () => {
             updateConnectionStatus('connected');
             socketConnected = true;
-            updateLoadingText('{{ __("En attente de la question...") }}');
+            
+            if (!gameLayoutReady) {
+                updateLoadingText('{{ __("En attente de la question...") }}');
+            }
             
             duoSocket.joinRoom(ROOM_ID, LOBBY_CODE, {
                 token: JWT_TOKEN
@@ -1355,14 +1366,14 @@ $mode = 'duo';
         } catch (error) {
             console.error('[DuoQuestion] {{ __("Échec de la connexion") }}:', error);
             updateConnectionStatus('disconnected');
-            updateLoadingText('{{ __("Chargement de la question...") }}');
             
-            await loadQuestionFromServer();
-            
-            socketConnected = true;
-            questionReceived = true;
-            showGameLayout();
-            startTimer();
+            if (!gameLayoutReady) {
+                updateLoadingText('{{ __("Chargement de la question...") }}');
+                await loadQuestionFromServer();
+                questionReceived = true;
+                showGameLayout();
+                startTimer();
+            }
         }
     }
     
