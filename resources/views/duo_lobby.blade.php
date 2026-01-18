@@ -303,10 +303,21 @@
                 <span class="player-card-item-arrow">→</span>
             </div>
             
+            @php
+                $userSettings = Auth::user()->profile_settings ?? [];
+                if (is_string($userSettings)) {
+                    $userSettings = json_decode($userSettings, true) ?? [];
+                }
+                $strategicAvatarData = $userSettings['strategic_avatar'] ?? null;
+                $strategicAvatarName = is_array($strategicAvatarData) ? ($strategicAvatarData['name'] ?? 'Aucun') : ($strategicAvatarData ?? 'Aucun');
+                if (empty($strategicAvatarName) || $strategicAvatarName === 'null') {
+                    $strategicAvatarName = 'Aucun';
+                }
+            @endphp
             <div class="player-card-item" onclick="window.location.href='{{ route('avatars') }}?tab=strategic&return_to=duo_lobby'">
                 <span class="player-card-item-icon">✨</span>
                 <span class="player-card-item-label">{{ __('Avatar Stratégique') }}</span>
-                <span class="player-card-item-value">{{ session('avatar', 'Aucun') }}</span>
+                <span class="player-card-item-value">{{ $strategicAvatarName }}</span>
                 <span class="player-card-item-arrow">→</span>
             </div>
             
