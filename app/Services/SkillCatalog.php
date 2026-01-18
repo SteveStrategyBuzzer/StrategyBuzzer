@@ -163,6 +163,18 @@ class SkillCatalog
                 'uses_per_match' => -1,
                 'affects_opponent' => false,
             ],
+            'answer_without_buzz' => [
+                'id' => 'answer_without_buzz',
+                'name' => 'Réponse historique',
+                'icon' => '🪶',
+                'description' => 'Permet de répondre sans avoir buzzé pour 1 point (0 si erreur)',
+                'avatar' => 'historien',
+                'type' => self::TYPE_PERSONAL,
+                'trigger' => self::TRIGGER_ON_ANSWER,
+                'auto' => false,
+                'uses_per_match' => -1,
+                'affects_opponent' => false,
+            ],
             'ai_suggestion' => [
                 'id' => 'ai_suggestion',
                 'name' => 'Suggestion IA',

@@ -253,6 +253,69 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         color: #FF6B6B;
     }
     
+    .buzz-status-banner.historian-active {
+        background: rgba(139, 90, 43, 0.2);
+        border: 2px solid rgba(205, 133, 63, 0.6);
+        color: #DEB887;
+    }
+    
+    .historian-skill-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        margin: 15px 0;
+    }
+    
+    .historian-skill-button {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: linear-gradient(135deg, rgba(139, 90, 43, 0.3) 0%, rgba(205, 133, 63, 0.3) 100%);
+        border: 2px solid rgba(205, 133, 63, 0.6);
+        border-radius: 15px;
+        padding: 15px 25px;
+        color: #DEB887;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        animation: pulse-historian 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-historian {
+        0%, 100% { box-shadow: 0 0 15px rgba(205, 133, 63, 0.4); }
+        50% { box-shadow: 0 0 25px rgba(205, 133, 63, 0.7); }
+    }
+    
+    .historian-skill-button:hover {
+        background: linear-gradient(135deg, rgba(139, 90, 43, 0.5) 0%, rgba(205, 133, 63, 0.5) 100%);
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(205, 133, 63, 0.8);
+    }
+    
+    .historian-skill-button .skill-icon {
+        font-size: 1.8rem;
+    }
+    
+    .historian-skill-button .skill-text {
+        font-weight: 700;
+    }
+    
+    .historian-skill-button .skill-points {
+        background: rgba(78, 205, 196, 0.3);
+        padding: 4px 10px;
+        border-radius: 8px;
+        color: #4ECDC4;
+        font-size: 0.9rem;
+    }
+    
+    .skill-hint {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin: 0;
+    }
+    
     .result-overlay {
         position: fixed;
         top: 50%;
@@ -483,6 +546,18 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         @endforeach
     </div>
     
+    @php
+        $hasHistorianSkill = false;
+        if (isset($skills) && is_array($skills)) {
+            foreach ($skills as $skill) {
+                if (($skill['id'] ?? '') === 'answer_without_buzz') {
+                    $hasHistorianSkill = true;
+                    break;
+                }
+            }
+        }
+    @endphp
+
     @if($noBuzz)
         <div class="buzz-status-banner no-buzz">
             ⚠️ {{ __('Pas buzzé - Vous pouvez quand même répondre (0 point)') }}
@@ -490,6 +565,21 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     @elseif($isBuzzWinner)
         <div class="buzz-status-banner buzzed">
             {{ __('Vous avez buzzé en') }} {{ number_format($buzzTime, 1) }}s 💚
+        </div>
+    @elseif($hasHistorianSkill)
+        <div class="buzz-status-banner opponent-buzz" id="waitingBanner">
+            ⏳ {{ __(':name a buzzé - En attente de sa réponse...', ['name' => $opponentName ?? __('Adversaire')]) }}
+        </div>
+        <div class="historian-skill-section" id="historianSkillSection">
+            <button class="historian-skill-button" id="historianSkillBtn" title="{{ __('Activer le skill Réponse historique') }}">
+                <span class="skill-icon">🪶</span>
+                <span class="skill-text">{{ __('Réponse historique') }}</span>
+                <span class="skill-points">+1 {{ __('point') }}</span>
+            </button>
+            <p class="skill-hint">{{ __('Cliquez pour tenter de répondre (+1 si correct, 0 si erreur)') }}</p>
+        </div>
+        <div class="buzz-status-banner historian-active" id="historianActiveBanner" style="display: none;">
+            🪶 {{ __('Skill activé - Répondez pour +1 point (0 si erreur)') }}
         </div>
     @else
         <div class="buzz-status-banner opponent-buzz">
@@ -543,6 +633,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     const GAME_SERVER_URL = getGameServerUrl();
     const IS_BUZZ_WINNER = {{ $isBuzzWinner ? 'true' : 'false' }};
     const NO_BUZZ = {{ ($noBuzz ?? false) ? 'true' : 'false' }};
+    const HAS_HISTORIAN_SKILL = {{ ($hasHistorianSkill ?? false) ? 'true' : 'false' }};
     
     const ANSWER_TIME = 10;
     let timeLeft = ANSWER_TIME;
@@ -550,6 +641,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     let answered = false;
     let selectedIndex = null;
     let isRedirecting = false;
+    let historianSkillUsed = false;
     
     const timerBar = document.getElementById('timerBar');
     const timerSeconds = document.getElementById('timerSeconds');
@@ -566,6 +658,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     const answerButtons = document.querySelectorAll('.answer-button');
     
     function calculatePotentialPoints(remainingTime) {
+        if (historianSkillUsed) return 1;
         if (NO_BUZZ) return 0;
         if (remainingTime > 3) return 2;
         if (remainingTime >= 1) return 1;
@@ -638,7 +731,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     }
     
     function selectAnswer(index) {
-        if (answered || (!IS_BUZZ_WINNER && !NO_BUZZ)) return;
+        if (answered || (!IS_BUZZ_WINNER && !NO_BUZZ && !historianSkillUsed)) return;
         
         answered = true;
         selectedIndex = index;
@@ -656,8 +749,44 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         answerButtons[index].classList.add('selected');
         answerButtons[index].classList.remove('disabled');
         
-        const pointsToSend = NO_BUZZ ? 0 : calculatePotentialPoints(timeLeft);
-        DuoSocketClient.answer(index, { potentialPoints: pointsToSend });
+        let pointsToSend = 0;
+        if (historianSkillUsed) {
+            pointsToSend = 1;
+        } else if (!NO_BUZZ) {
+            pointsToSend = calculatePotentialPoints(timeLeft);
+        }
+        
+        DuoSocketClient.answer(index, { 
+            potentialPoints: pointsToSend,
+            historianSkillUsed: historianSkillUsed
+        });
+    }
+    
+    function activateHistorianSkill() {
+        if (historianSkillUsed || answered || IS_BUZZ_WINNER) return;
+        
+        historianSkillUsed = true;
+        
+        const historianSection = document.getElementById('historianSkillSection');
+        const waitingBanner = document.getElementById('waitingBanner');
+        const historianActiveBanner = document.getElementById('historianActiveBanner');
+        
+        if (historianSection) historianSection.style.display = 'none';
+        if (waitingBanner) waitingBanner.style.display = 'none';
+        if (historianActiveBanner) historianActiveBanner.style.display = 'block';
+        
+        answerButtons.forEach(function(btn) {
+            btn.classList.remove('waiting');
+            btn.disabled = false;
+        });
+        
+        updatePotentialPointsDisplay(1);
+        
+        if (!timerInterval) {
+            startTimer();
+        }
+        
+        console.log('[DuoAnswer] Historian skill activated - can answer for 1 point');
     }
     
     function showResult(isCorrect, correctIndex, pointsEarned) {
@@ -666,6 +795,8 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         
         if (isCorrect) {
             pointsText.textContent = '+' + pointsEarned + ' {{ __("points") }}';
+        } else if (historianSkillUsed) {
+            pointsText.textContent = '{{ __("0 point") }}';
         } else {
             pointsText.textContent = '{{ __("-2 points") }}';
         }
@@ -705,6 +836,11 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
             selectAnswer(index);
         });
     });
+    
+    const historianSkillBtn = document.getElementById('historianSkillBtn');
+    if (historianSkillBtn) {
+        historianSkillBtn.addEventListener('click', activateHistorianSkill);
+    }
     
     DuoSocketClient.onConnect = function() {
         updateConnectionStatus('connected');
