@@ -630,12 +630,15 @@ class SoloController extends Controller
 
     public function buzz(Request $request)
     {
-        // Enregistrer le temps de buzz
-        $buzzTime = time() - session('question_start_time');
+        // Utiliser le buzz_time envoyé par le client (plus précis)
+        $buzzTime = $request->input('buzz_time', 0);
         session(['buzz_time' => $buzzTime]);
         session(['buzzed' => true]);
         
-        return $this->renderAnswerView(true, $buzzTime);
+        // Retourner du JSON - le client gère la redirection avec son propre buzz_time
+        return response()->json([
+            'success' => true
+        ]);
     }
     
     public function useSkill(Request $request)

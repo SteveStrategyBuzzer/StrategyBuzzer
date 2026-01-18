@@ -95,15 +95,23 @@ if ($opponentInfo['is_boss'] ?? false) {
 @endphp
 
 <style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
     body {
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         padding: 10px;
-        margin: 0;
+        padding-bottom: env(safe-area-inset-bottom, 10px);
+        box-sizing: border-box;
         overflow-x: hidden;
     }
     
@@ -113,10 +121,11 @@ if ($opponentInfo['is_boss'] ?? false) {
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 15px;
         position: relative;
-        min-height: 100vh;
-        padding-bottom: 180px;
+        min-height: calc(100vh - 20px);
+        min-height: calc(100dvh - 20px);
+        padding-bottom: 20px;
     }
     
     /* Question en haut */
