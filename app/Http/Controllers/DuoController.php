@@ -1376,6 +1376,16 @@ class DuoController extends Controller
             }
         }
 
+        // Ensure avatar paths are absolute for answer view
+        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        if ($playerAvatar && !str_starts_with($playerAvatar, '/') && !str_starts_with($playerAvatar, 'http')) {
+            $playerAvatar = '/' . $playerAvatar;
+        }
+        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        if ($opponentAvatar && !str_starts_with($opponentAvatar, '/') && !str_starts_with($opponentAvatar, 'http')) {
+            $opponentAvatar = '/' . $opponentAvatar;
+        }
+
         return view('duo_answer', [
             'match_id' => $match->id,
             'room_id' => $roomId,
@@ -1393,14 +1403,14 @@ class DuoController extends Controller
             'player_info' => [
                 'id' => $user->id,
                 'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'avatar' => $playerAvatar,
                 'score' => $playerScore,
                 'level' => $stats->level,
             ],
             'opponent_info' => [
                 'id' => $opponent->id,
                 'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'avatar' => $opponentAvatar,
                 'score' => $opponentScore,
                 'level' => $opponentStats->level,
             ],
@@ -1462,6 +1472,16 @@ class DuoController extends Controller
             }
         }
 
+        // Ensure avatar paths are absolute for result view
+        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        if ($playerAvatar && !str_starts_with($playerAvatar, '/') && !str_starts_with($playerAvatar, 'http')) {
+            $playerAvatar = '/' . $playerAvatar;
+        }
+        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        if ($opponentAvatar && !str_starts_with($opponentAvatar, '/') && !str_starts_with($opponentAvatar, 'http')) {
+            $opponentAvatar = '/' . $opponentAvatar;
+        }
+
         return view('duo_result', [
             'match_id' => $match->id,
             'room_id' => $roomId,
@@ -1479,14 +1499,14 @@ class DuoController extends Controller
             'player_info' => [
                 'id' => $user->id,
                 'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'avatar' => $playerAvatar,
                 'score' => $playerScore,
                 'level' => $stats->level,
             ],
             'opponent_info' => [
                 'id' => $opponent->id,
                 'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                'avatar' => $opponentAvatar,
                 'score' => $opponentScore,
                 'level' => $opponentStats->level,
             ],
@@ -1531,6 +1551,16 @@ class DuoController extends Controller
 
         $questionData = $gameState['questions'][$currentQuestion - 1] ?? [];
         
+        // Ensure avatar paths are absolute
+        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        if ($playerAvatar && !str_starts_with($playerAvatar, '/') && !str_starts_with($playerAvatar, 'http')) {
+            $playerAvatar = '/' . $playerAvatar;
+        }
+        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        if ($opponentAvatar && !str_starts_with($opponentAvatar, '/') && !str_starts_with($opponentAvatar, 'http')) {
+            $opponentAvatar = '/' . $opponentAvatar;
+        }
+        
         return view('duo_question', [
             'params' => [
                 'match_id' => $match->id,
@@ -1539,14 +1569,14 @@ class DuoController extends Controller
                 'player_info' => [
                     'id' => $user->id,
                     'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                    'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                    'avatar' => $playerAvatar,
                     'score' => $playerScore,
                     'level' => $stats->level,
                 ],
                 'opponent_info' => [
                     'id' => $opponent->id,
                     'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                    'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+                    'avatar' => $opponentAvatar,
                     'score' => $opponentScore,
                     'level' => $opponentStats->level,
                 ],
