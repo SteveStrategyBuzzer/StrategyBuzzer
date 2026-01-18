@@ -4470,7 +4470,7 @@ function runCountdownAnimation(serverEndTime, totalDuration, countdownDocRef, se
     // This ensures the page is cached when we navigate after countdown
     const prefetchLink = document.createElement('link');
     prefetchLink.rel = 'prefetch';
-    prefetchLink.href = `/game/${mode}/play`;
+    prefetchLink.href = `/game/${mode}/question`;
     prefetchLink.as = 'document';
     document.head.appendChild(prefetchLink);
     console.log('[Countdown] Prefetching game page:', prefetchLink.href);

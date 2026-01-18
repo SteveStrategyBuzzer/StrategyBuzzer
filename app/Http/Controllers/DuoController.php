@@ -1255,8 +1255,16 @@ class DuoController extends Controller
         }
         $opponentName = data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire');
         $opponentAvatarPath = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        // Ensure avatar paths are absolute for question view
+        if ($opponentAvatarPath && !str_starts_with($opponentAvatarPath, '/') && !str_starts_with($opponentAvatarPath, 'http')) {
+            $opponentAvatarPath = '/' . $opponentAvatarPath;
+        }
 
         $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+        // Ensure avatar paths are absolute for question view
+        if ($playerAvatarPath && !str_starts_with($playerAvatarPath, '/') && !str_starts_with($playerAvatarPath, 'http')) {
+            $playerAvatarPath = '/' . $playerAvatarPath;
+        }
 
         $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
         $strategicAvatarPath = null;
