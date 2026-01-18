@@ -585,8 +585,8 @@
                     ['icon' => '⏳', 'name' => 'Temps', 'description' => 'Active automatiquement']
                 ],
                 'Historien' => [
-                    ['icon' => '🪶', 'name' => 'Plume', 'description' => 'Active automatiquement'],
-                    ['icon' => '📜', 'name' => 'Parchemin', 'description' => 'Active automatiquement']
+                    ['icon' => '🪶', 'name' => 'Plume', 'description' => 'Savoir sans temps - Répondre sans buzzer (+1 max)'],
+                    ['icon' => '📜', 'name' => 'Parchemin', 'description' => "L'histoire corrige - Récupérer les points après erreur"]
                 ],
                 'IA Junior' => [
                     ['icon' => '🤖', 'name' => 'IA Assist', 'description' => 'Active automatiquement'],
