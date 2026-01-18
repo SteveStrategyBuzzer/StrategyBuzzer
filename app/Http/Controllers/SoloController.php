@@ -1093,6 +1093,7 @@ class SoloController extends Controller
             'current_question' => $currentQuestion,
             'total_questions' => $nbQuestions,
             'score' => session('score', 0),
+            'opponent_score' => session('opponent_score', 0),
             'answer_time' => $answerTime,
             'buzz_time' => $buzzTime,
             'player_buzzed' => $playerBuzzed,
