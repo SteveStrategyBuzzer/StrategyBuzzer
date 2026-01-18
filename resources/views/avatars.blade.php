@@ -605,8 +605,8 @@
     'Historien': {
       name: 'Historien',
       skills: [
-        {icon: '🪶', name: 'Histoire', desc: 'Voit un indice texte avant les autres'},
-        {icon: '⏰', name: 'Chrono', desc: '1 fois 2 sec de plus pour répondre'}
+        {icon: '🪶', name: 'Plume', desc: 'Savoir sans temps - Répondre sans buzzer (+1 max)'},
+        {icon: '📜', name: 'Parchemin', desc: "L'histoire corrige - Récupérer les points après erreur"}
       ]
     },
     'IA Junior': {

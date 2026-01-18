@@ -585,8 +585,8 @@
                     ['icon' => '⏳', 'name' => 'Temps', 'description' => 'Active automatiquement']
                 ],
                 'Historien' => [
-                    ['icon' => '🪶', 'name' => 'Histoire', 'description' => 'Active automatiquement'],
-                    ['icon' => '⏰', 'name' => 'Chrono', 'description' => 'Active automatiquement']
+                    ['icon' => '🪶', 'name' => 'Plume', 'description' => 'Active automatiquement'],
+                    ['icon' => '📜', 'name' => 'Parchemin', 'description' => 'Active automatiquement']
                 ],
                 'IA Junior' => [
                     ['icon' => '🤖', 'name' => 'IA Assist', 'description' => 'Active automatiquement'],
