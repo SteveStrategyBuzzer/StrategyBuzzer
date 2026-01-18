@@ -973,7 +973,82 @@ class DuoController extends Controller
             'jwt_token' => $jwtToken,
         ])]);
         
-        return redirect()->route('game.duo.question');
+        return redirect()->route('game.duo.intro');
+    }
+    
+    public function showIntro()
+    {
+        $user = Auth::user();
+        $gameState = session('game_state');
+        
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
+        }
+        
+        $match = DuoMatch::find($gameState['match_id']);
+        
+        if (!$match) {
+            session()->forget('game_state');
+            return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
+        }
+        
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            session()->forget('game_state');
+            return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
+        }
+        
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+        
+        $profileSettings = $user->profile_settings ?? [];
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true) ?? [];
+        }
+        
+        $opponentSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentSettings)) {
+            $opponentSettings = json_decode($opponentSettings, true) ?? [];
+        }
+        
+        $playerName = data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur');
+        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/default.png');
+        if ($playerAvatar && !str_starts_with($playerAvatar, '/') && !str_starts_with($playerAvatar, 'http')) {
+            $playerAvatar = $playerAvatar;
+        }
+        
+        $opponentName = data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire');
+        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/default.png');
+        if ($opponentAvatar && !str_starts_with($opponentAvatar, '/') && !str_starts_with($opponentAvatar, 'http')) {
+            $opponentAvatar = $opponentAvatar;
+        }
+        
+        $playerStats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
+        $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
+        
+        $playerDivision = $this->divisionService->getOrCreateDivision($user, 'duo')->division ?? 'Bronze';
+        $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'duo')->division ?? 'Bronze';
+        
+        $theme = $gameState['theme'] ?? 'Culture générale';
+        $nbQuestions = $gameState['nb_questions'] ?? 10;
+        
+        return view('game_intro', [
+            'params' => [
+                'mode' => 'duo',
+                'theme' => $theme,
+                'nb_questions' => $nbQuestions,
+                'player_name' => $playerName,
+                'player_avatar' => $playerAvatar,
+                'opponent_name' => $opponentName,
+                'opponent_avatar' => $opponentAvatar,
+                'player_division' => $playerDivision,
+                'opponent_division' => $opponentDivision,
+                'redirect_url' => route('game.duo.question'),
+                'match_id' => $match->id,
+                'session_id' => $match->id,
+                'opponent_id' => $opponent->id,
+                'is_host' => $isPlayer1,
+            ],
+        ]);
     }
 
     public function showResume()

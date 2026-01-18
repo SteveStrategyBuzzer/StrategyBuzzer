@@ -391,6 +391,7 @@ Route::get('/reglements', fn() => redirect()->route('guide.index'))->name('regle
 /* ===== INTERFACE DE JEU DUO (Socket.IO) ===== */
 Route::prefix('game/duo')->name('game.duo.')->middleware('auth')->group(function () {
     Route::post('/start', [App\Http\Controllers\DuoController::class, 'startGame'])->name('start');
+    Route::get('/intro', [App\Http\Controllers\DuoController::class, 'showIntro'])->name('intro');
     Route::get('/resume', [App\Http\Controllers\DuoController::class, 'showResume'])->name('resume');
     Route::get('/question', [App\Http\Controllers\DuoController::class, 'showQuestion'])->name('question');
     Route::get('/answer', [App\Http\Controllers\DuoController::class, 'showAnswer'])->name('answer');
