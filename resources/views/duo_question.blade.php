@@ -708,6 +708,62 @@ $mode = 'duo';
 
 <div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
 
+<button id="voiceMicButton" class="voice-mic-button" title="{{ __('Activer/désactiver le micro') }}">
+    <span id="micIcon">🎤</span>
+</button>
+
+<style>
+    .voice-mic-button {
+        position: fixed;
+        bottom: 200px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid rgba(78, 205, 196, 0.5);
+        background: rgba(15, 32, 39, 0.9);
+        color: white;
+        font-size: 1.4rem;
+        cursor: pointer;
+        z-index: 1000;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .voice-mic-button:hover {
+        background: rgba(78, 205, 196, 0.3);
+        transform: scale(1.1);
+    }
+    
+    .voice-mic-button.active {
+        background: linear-gradient(135deg, #2ECC71, #27AE60);
+        border-color: #2ECC71;
+        animation: pulse-mic 1.5s infinite;
+    }
+    
+    .voice-mic-button.muted {
+        background: rgba(60, 60, 60, 0.9);
+        border-color: rgba(150, 150, 150, 0.5);
+    }
+    
+    @keyframes pulse-mic {
+        0%, 100% { box-shadow: 0 0 10px rgba(46, 204, 113, 0.5); }
+        50% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.8); }
+    }
+    
+    @media (max-width: 768px) {
+        .voice-mic-button {
+            width: 45px;
+            height: 45px;
+            font-size: 1.2rem;
+            bottom: 180px;
+            right: 15px;
+        }
+    }
+</style>
+
 <div class="game-container" id="gameContainer" style="display: none;">
     <div class="question-header">
         <div class="question-number">{{ __('Question') }} {{ $currentQuestion ?? 1 }}/{{ $totalQuestions ?? 10 }}</div>
@@ -817,6 +873,11 @@ $mode = 'duo';
     const ROOM_ID = '{{ $room_id ?? "" }}';
     const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
     const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
+    
+    const FALLBACK_QUESTION = {
+        text: '{{ addslashes($questionText ?? __("Question en cours de chargement...")) }}',
+        theme: '{{ addslashes($themeDisplay ?? $theme ?? "Culture générale") }}'
+    };
     
     function getGameServerUrl() {
         const configUrl = '{{ config("app.game_server_url", "") }}';
@@ -1217,11 +1278,38 @@ $mode = 'duo';
         setTimeout(() => msgDiv.remove(), duration);
     }
     
+    async function loadQuestionFromServer() {
+        try {
+            const response = await fetch('/game/duo/fetch-question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                }
+            });
+            const data = await response.json();
+            
+            if (data.success && data.question) {
+                currentQuestion = data.question;
+                if (questionText && currentQuestion.text) {
+                    questionText.textContent = currentQuestion.text;
+                }
+                return true;
+            }
+        } catch (fetchError) {
+            console.error('[DuoQuestion] {{ __("Erreur chargement question") }}:', fetchError);
+        }
+        return false;
+    }
+    
     async function initializeSocket() {
-        if (!GAME_SERVER_URL) {
-            console.warn('[DuoQuestion] {{ __("URL du serveur de jeu non configurée") }}');
+        if (!GAME_SERVER_URL || !JWT_TOKEN) {
+            console.warn('[DuoQuestion] {{ __("Mode partie locale - pas de serveur en temps réel") }}');
             updateConnectionStatus('disconnected');
-            updateLoadingText('{{ __("Serveur non configuré - Mode hors ligne") }}');
+            updateLoadingText('{{ __("Chargement de la question...") }}');
+            
+            await loadQuestionFromServer();
+            
             socketConnected = true;
             questionReceived = true;
             showGameLayout();
@@ -1267,7 +1355,10 @@ $mode = 'duo';
         } catch (error) {
             console.error('[DuoQuestion] {{ __("Échec de la connexion") }}:', error);
             updateConnectionStatus('disconnected');
-            updateLoadingText('{{ __("Connexion échouée - Mode hors ligne") }}');
+            updateLoadingText('{{ __("Chargement de la question...") }}');
+            
+            await loadQuestionFromServer();
+            
             socketConnected = true;
             questionReceived = true;
             showGameLayout();
@@ -1344,12 +1435,45 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
     'use strict';
     
     let voiceChat = null;
+    let isMicActive = false;
     const VOICE_LOBBY_CODE = '{{ $lobby_code ?? "" }}';
     const CURRENT_PLAYER_ID = {{ auth()->id() ?? 0 }};
     
+    const micButton = document.getElementById('voiceMicButton');
+    const micIcon = document.getElementById('micIcon');
+    
+    function updateMicButtonState(active) {
+        isMicActive = active;
+        if (active) {
+            micButton.classList.add('active');
+            micButton.classList.remove('muted');
+            micIcon.textContent = '🎤';
+        } else {
+            micButton.classList.remove('active');
+            micButton.classList.add('muted');
+            micIcon.textContent = '🔇';
+        }
+    }
+    
+    async function toggleMicrophone() {
+        if (!voiceChat) {
+            console.log('[VoiceChat] Voice chat not initialized');
+            return;
+        }
+        
+        try {
+            const newState = await voiceChat.toggleMicrophone();
+            updateMicButtonState(newState);
+            console.log('[VoiceChat] Mic toggled:', newState ? 'ON' : 'OFF');
+        } catch (error) {
+            console.error('[VoiceChat] Toggle mic error:', error);
+        }
+    }
+    
     async function initVoiceChat() {
         if (!VOICE_LOBBY_CODE || !window.voiceChatDb) {
-            console.log('[VoiceChat] Missing lobby code or Firebase - skipping');
+            console.log('[VoiceChat] Missing lobby code or Firebase - hiding mic button');
+            if (micButton) micButton.style.display = 'none';
             return;
         }
         
@@ -1359,14 +1483,25 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
                 localUserId: CURRENT_PLAYER_ID,
                 mode: 'duo',
                 db: window.voiceChatDb,
-                onConnectionChange: (state) => console.log('[VoiceChat] State:', state),
+                onConnectionChange: (state) => {
+                    console.log('[VoiceChat] State:', state);
+                    if (state.muted !== undefined) {
+                        updateMicButtonState(!state.muted);
+                    }
+                },
                 onError: (error) => console.error('[VoiceChat] Error:', error)
             });
             
             await voiceChat.initialize();
             console.log('[VoiceChat] Background audio initialized successfully');
+            
+            if (micButton) {
+                micButton.addEventListener('click', toggleMicrophone);
+                updateMicButtonState(false);
+            }
         } catch (error) {
             console.error('[VoiceChat] Init error:', error);
+            if (micButton) micButton.style.display = 'none';
         }
     }
     
