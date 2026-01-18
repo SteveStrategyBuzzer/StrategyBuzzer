@@ -6,6 +6,8 @@ $mode = 'duo';
 $choices = $question['choices'] ?? [];
 $questionText = $question['text'] ?? '';
 $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
+$buzzTime = $buzz_time ?? 0;
+$noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
 @endphp
 
 <style>
@@ -22,295 +24,190 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     }
     
     .game-container {
-        max-width: 1200px;
+        max-width: 600px;
         width: 100%;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 15px;
         position: relative;
-        min-height: 100vh;
-        padding-bottom: 40px;
-    }
-    
-    .question-header {
-        background: rgba(78, 205, 196, 0.1);
         padding: 20px;
-        border-radius: 20px;
-        text-align: center;
-        border: 2px solid rgba(78, 205, 196, 0.3);
-        margin-bottom: 10px;
     }
     
-    .question-number {
-        font-size: 0.9rem;
-        color: #4ECDC4;
-        margin-bottom: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .question-text {
-        font-size: 1.4rem;
-        font-weight: 600;
-        line-height: 1.5;
-    }
-    
-    .buzz-winner-banner {
-        background: linear-gradient(135deg, rgba(78, 205, 196, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
+    .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(30, 50, 70, 0.8);
         padding: 15px 25px;
         border-radius: 15px;
-        text-align: center;
-        border: 2px solid;
-        margin-bottom: 10px;
-        animation: bannerPulse 2s ease-in-out infinite;
+        border: 2px solid rgba(78, 205, 196, 0.3);
     }
     
-    .buzz-winner-banner.player-won {
-        border-color: #4ECDC4;
-        box-shadow: 0 0 30px rgba(78, 205, 196, 0.4);
-    }
-    
-    .buzz-winner-banner.opponent-won {
-        border-color: #FF6B6B;
-        box-shadow: 0 0 30px rgba(255, 107, 107, 0.4);
-    }
-    
-    @keyframes bannerPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.8; }
-    }
-    
-    .buzz-winner-text {
-        font-size: 1.1rem;
+    .question-label {
+        font-size: 1.3rem;
         font-weight: 700;
+        color: #fff;
     }
     
-    .buzz-winner-banner.player-won .buzz-winner-text {
-        color: #4ECDC4;
-    }
-    
-    .buzz-winner-banner.opponent-won .buzz-winner-text {
-        color: #FF6B6B;
-    }
-    
-    .game-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 30px;
-        align-items: start;
-        justify-items: center;
-        margin: 20px 0;
-    }
-    
-    .left-column {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 30px;
-        width: 100%;
-    }
-    
-    .player-circle {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .player-avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        border: 3px solid #4ECDC4;
-        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
-        object-fit: cover;
-    }
-    
-    .player-name {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #4ECDC4;
-    }
-    
-    .player-score {
-        font-size: 2rem;
+    .potential-points {
+        font-size: 1.8rem;
         font-weight: 900;
+        transition: all 0.3s ease;
+    }
+    
+    .potential-points.points-2 {
         color: #4ECDC4;
         text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
     }
     
-    .opponent-circle {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
+    .potential-points.points-1 {
+        color: #FFD700;
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
     }
     
-    .opponent-avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        border: 3px solid #FF6B6B;
-        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
-        object-fit: cover;
-    }
-    
-    .opponent-avatar-empty {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        border: 3px solid #FF6B6B;
-        box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 107, 107, 0.1);
-        font-size: 2.5rem;
-        font-weight: 900;
-        color: #FF6B6B;
-    }
-    
-    .opponent-name {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #FF6B6B;
-    }
-    
-    .opponent-score {
-        font-size: 2rem;
-        font-weight: 900;
+    .potential-points.points-0 {
         color: #FF6B6B;
         text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
     }
     
-    .center-column {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+    .score-display {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #aaa;
     }
     
-    .chrono-circle {
-        width: 180px;
-        height: 180px;
+    .question-text-box {
+        background: rgba(30, 50, 70, 0.6);
+        padding: 20px;
+        border-radius: 12px;
+        font-size: 1.2rem;
+        font-weight: 500;
+        line-height: 1.5;
+        text-align: center;
+        border: 1px solid rgba(78, 205, 196, 0.2);
+    }
+    
+    .timer-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px 0;
+    }
+    
+    .timer-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+        white-space: nowrap;
+    }
+    
+    .timer-bar-container {
+        flex: 1;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .timer-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #4ECDC4, #667eea);
+        border-radius: 4px;
+        transition: width 0.3s linear;
+        width: 100%;
+    }
+    
+    .timer-bar.warning {
+        background: linear-gradient(90deg, #FF6B6B, #FF8E53);
+    }
+    
+    .timer-seconds {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #4ECDC4;
+        min-width: 30px;
+        text-align: right;
+    }
+    
+    .timer-seconds.warning {
+        color: #FF6B6B;
+    }
+    
+    .answers-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin: 10px 0;
+    }
+    
+    .answer-button {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 18px 20px;
+        color: #fff;
+        font-size: 1.1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+        width: 100%;
+    }
+    
+    .answer-number {
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        position: relative;
-        box-shadow: 0 15px 50px rgba(102, 126, 234, 0.6);
-        animation: pulse-glow 2s ease-in-out infinite;
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
     }
     
-    @keyframes pulse-glow {
-        0%, 100% {
-            box-shadow: 0 15px 50px rgba(102, 126, 234, 0.6);
-        }
-        50% {
-            box-shadow: 0 15px 70px rgba(102, 126, 234, 0.9);
-        }
-    }
-    
-    .chrono-circle::before {
-        content: '';
-        position: absolute;
-        inset: -5px;
-        border-radius: 50%;
-        background: linear-gradient(45deg, #4ECDC4, #667eea, #FF6B6B);
-        opacity: 0.5;
-        filter: blur(15px);
-        animation: rotate-glow 3s linear infinite;
-    }
-    
-    @keyframes rotate-glow {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    .chrono-time {
-        font-size: 4rem;
-        font-weight: 900;
-        position: relative;
-        z-index: 1;
-        background: linear-gradient(180deg, #fff 0%, #4ECDC4 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    
-    .chrono-time.warning {
-        background: linear-gradient(180deg, #fff 0%, #FF6B6B 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
-    }
-    
-    .right-column {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        width: 100%;
-    }
-    
-    .answers-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        width: 100%;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 0 20px;
-    }
-    
-    .answer-button {
-        background: rgba(255, 255, 255, 0.1);
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-radius: 20px;
-        padding: 25px 20px;
-        color: #fff;
-        font-size: 1.1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-align: center;
-        min-height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .answer-text {
+        flex: 1;
     }
     
     .answer-button:hover:not(.disabled):not(.selected) {
-        background: rgba(78, 205, 196, 0.2);
-        border-color: #4ECDC4;
-        transform: scale(1.02);
-        box-shadow: 0 8px 30px rgba(78, 205, 196, 0.4);
+        background: rgba(78, 205, 196, 0.15);
+        border-color: rgba(78, 205, 196, 0.5);
+        transform: translateX(5px);
     }
     
     .answer-button.selected {
-        background: rgba(78, 205, 196, 0.3);
+        background: rgba(78, 205, 196, 0.25);
         border-color: #4ECDC4;
-        box-shadow: 0 0 30px rgba(78, 205, 196, 0.6);
-        animation: selectedPulse 1.5s ease-in-out infinite;
+        box-shadow: 0 0 20px rgba(78, 205, 196, 0.4);
     }
     
-    @keyframes selectedPulse {
-        0%, 100% { box-shadow: 0 0 30px rgba(78, 205, 196, 0.6); }
-        50% { box-shadow: 0 0 50px rgba(78, 205, 196, 0.9); }
+    .answer-button.selected .answer-number {
+        background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
     }
     
     .answer-button.correct {
-        background: rgba(78, 205, 196, 0.4);
+        background: rgba(78, 205, 196, 0.3);
         border-color: #4ECDC4;
-        box-shadow: 0 0 40px rgba(78, 205, 196, 0.8);
+        box-shadow: 0 0 25px rgba(78, 205, 196, 0.6);
+    }
+    
+    .answer-button.correct .answer-number {
+        background: linear-gradient(135deg, #4ECDC4 0%, #2ECC71 100%);
     }
     
     .answer-button.incorrect {
-        background: rgba(255, 107, 107, 0.4);
+        background: rgba(255, 107, 107, 0.3);
         border-color: #FF6B6B;
-        box-shadow: 0 0 40px rgba(255, 107, 107, 0.8);
+        box-shadow: 0 0 25px rgba(255, 107, 107, 0.6);
+    }
+    
+    .answer-button.incorrect .answer-number {
+        background: linear-gradient(135deg, #FF6B6B 0%, #E74C3C 100%);
     }
     
     .answer-button.disabled {
@@ -322,6 +219,38 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     .answer-button.waiting {
         opacity: 0.6;
         cursor: not-allowed;
+    }
+    
+    .answer-indicator {
+        font-size: 1.4rem;
+        margin-left: auto;
+    }
+    
+    .buzz-status-banner {
+        padding: 12px 20px;
+        border-radius: 10px;
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+    
+    .buzz-status-banner.buzzed {
+        background: rgba(78, 205, 196, 0.15);
+        border: 2px solid rgba(78, 205, 196, 0.5);
+        color: #4ECDC4;
+    }
+    
+    .buzz-status-banner.no-buzz {
+        background: rgba(255, 165, 0, 0.15);
+        border: 2px solid rgba(255, 165, 0, 0.5);
+        color: #FFA500;
+    }
+    
+    .buzz-status-banner.opponent-buzz {
+        background: rgba(255, 107, 107, 0.15);
+        border: 2px solid rgba(255, 107, 107, 0.5);
+        color: #FF6B6B;
     }
     
     .result-overlay {
@@ -445,125 +374,9 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         opacity: 0.9;
     }
     
-    @media (max-width: 1024px) {
-        .game-layout {
-            gap: 20px;
-        }
-        
-        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
-            width: 85px;
-            height: 85px;
-        }
-        
-        .chrono-circle {
-            width: 150px;
-            height: 150px;
-        }
-        
-        .chrono-time {
-            font-size: 3.5rem;
-        }
-        
-        .answer-button {
-            padding: 20px 15px;
-            font-size: 1rem;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .game-layout {
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        
-        .left-column {
-            flex-direction: row;
-            justify-content: space-around;
-            gap: 20px;
-        }
-        
-        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
-            width: 70px;
-            height: 70px;
-        }
-        
-        .player-score, .opponent-score {
-            font-size: 1.6rem;
-        }
-        
-        .chrono-circle {
-            width: 120px;
-            height: 120px;
-        }
-        
-        .chrono-time {
-            font-size: 2.8rem;
-        }
-        
-        .answers-container {
-            grid-template-columns: 1fr;
-        }
-        
-        .answer-button {
-            padding: 20px;
-            font-size: 1rem;
-            min-height: 60px;
-        }
-        
-        .question-text {
-            font-size: 1.2rem;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
-            width: 60px;
-            height: 60px;
-        }
-        
-        .player-score, .opponent-score {
-            font-size: 1.4rem;
-        }
-        
-        .player-name, .opponent-name {
-            font-size: 0.85rem;
-        }
-        
-        .chrono-circle {
-            width: 100px;
-            height: 100px;
-        }
-        
-        .chrono-time {
-            font-size: 2.2rem;
-        }
-        
-        .question-text {
-            font-size: 1rem;
-        }
-        
-        .answer-button {
-            padding: 15px;
-            font-size: 0.95rem;
-        }
-        
-        .buzz-winner-text {
-            font-size: 0.95rem;
-        }
-    }
-    
-</style>
-
-<div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
-
-<button id="voiceMicButton" class="voice-mic-button" title="{{ __('Activer/désactiver le micro') }}">
-    <span id="micIcon">🎤</span>
-</button>
-
-<style>
     .voice-mic-button {
         position: fixed;
-        bottom: 100px;
+        bottom: 30px;
         right: 20px;
         width: 50px;
         height: 50px;
@@ -601,70 +414,88 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         50% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.8); }
     }
     
-    @media (max-width: 768px) {
-        .voice-mic-button {
-            width: 45px;
-            height: 45px;
-            font-size: 1.2rem;
-            bottom: 80px;
-            right: 15px;
+    @media (max-width: 480px) {
+        .game-container {
+            padding: 15px;
+        }
+        
+        .header-row {
+            padding: 12px 18px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .question-label {
+            font-size: 1.1rem;
+        }
+        
+        .potential-points {
+            font-size: 1.5rem;
+        }
+        
+        .answer-button {
+            padding: 15px;
+            font-size: 1rem;
+        }
+        
+        .answer-number {
+            width: 32px;
+            height: 32px;
+            font-size: 0.9rem;
         }
     }
 </style>
 
+<div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
+
+<button id="voiceMicButton" class="voice-mic-button" title="{{ __('Activer/désactiver le micro') }}">
+    <span id="micIcon">🎤</span>
+</button>
+
 <div class="game-container">
-    <div class="question-header">
-        <div class="question-number">{{ __('Question') }} {{ $currentQuestion ?? 1 }}/{{ $totalQuestions ?? 10 }}</div>
-        <div class="question-text" id="questionText">{{ $questionText }}</div>
+    <div class="header-row">
+        <div class="question-label">{{ __('Question') }} #{{ $currentQuestion ?? 1 }}</div>
+        <div class="potential-points points-2" id="potentialPoints">+2</div>
+        <div class="score-display">{{ __('Score') }} {{ $playerScore ?? 0 }}/{{ $currentQuestion ?? 1 }}</div>
     </div>
     
-    <div class="buzz-winner-banner {{ $isBuzzWinner ? 'player-won' : 'opponent-won' }}" id="buzzWinnerBanner">
-        <div class="buzz-winner-text">
-            @if($isBuzzWinner)
-                🔔 {{ __('Vous avez buzzé en premier ! Choisissez votre réponse.') }}
-            @else
-                ⏳ {{ __(':name a buzzé en premier. En attente de sa réponse...', ['name' => $opponentName ?? __('Adversaire')]) }}
-            @endif
-        </div>
+    <div class="question-text-box">
+        {{ $questionText }}
     </div>
     
-    <div class="game-layout">
-        <div class="left-column">
-            <div class="player-circle">
-                <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
-                <div class="player-name">{{ __('Vous') }}</div>
-                <div class="player-score" id="playerScore">{{ $playerScore ?? 0 }}</div>
-            </div>
-            
-            <div class="opponent-circle">
-                @if(!empty($opponentAvatarPath))
-                    <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar">
-                @else
-                    <div class="opponent-avatar-empty">?</div>
-                @endif
-                <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
-                <div class="opponent-score" id="opponentScore">{{ $opponentScore ?? 0 }}</div>
-            </div>
+    <div class="timer-section">
+        <span class="timer-label">{{ __('Temps pour répondre') }}</span>
+        <div class="timer-bar-container">
+            <div class="timer-bar" id="timerBar"></div>
         </div>
-        
-        <div class="center-column">
-            <div class="chrono-circle">
-                <div class="chrono-time" id="chronoTimer">10</div>
-            </div>
-        </div>
-        
-        <div class="right-column"></div>
+        <span class="timer-seconds" id="timerSeconds">10s</span>
     </div>
     
     <div class="answers-container" id="answersContainer">
         @foreach($choices as $index => $choice)
-            <button class="answer-button {{ !$isBuzzWinner ? 'waiting' : '' }}" 
+            <button class="answer-button {{ (!$isBuzzWinner && !$noBuzz) ? 'waiting' : '' }}" 
                     data-index="{{ $index }}"
-                    {{ !$isBuzzWinner ? 'disabled' : '' }}>
-                {{ $choice }}
+                    {{ (!$isBuzzWinner && !$noBuzz) ? 'disabled' : '' }}>
+                <span class="answer-number">{{ $index + 1 }}</span>
+                <span class="answer-text">{{ $choice }}</span>
+                <span class="answer-indicator" id="indicator{{ $index }}"></span>
             </button>
         @endforeach
     </div>
+    
+    @if($noBuzz)
+        <div class="buzz-status-banner no-buzz">
+            ⚠️ {{ __('Pas buzzé - Vous pouvez quand même répondre (0 point)') }}
+        </div>
+    @elseif($isBuzzWinner)
+        <div class="buzz-status-banner buzzed">
+            {{ __('Vous avez buzzé en') }} {{ number_format($buzzTime, 1) }}s 💚
+        </div>
+    @else
+        <div class="buzz-status-banner opponent-buzz">
+            ⏳ {{ __(':name a buzzé - En attente de sa réponse...', ['name' => $opponentName ?? __('Adversaire')]) }}
+        </div>
+    @endif
 </div>
 
 <div class="result-overlay" id="resultOverlay">
@@ -711,6 +542,7 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     }
     const GAME_SERVER_URL = getGameServerUrl();
     const IS_BUZZ_WINNER = {{ $isBuzzWinner ? 'true' : 'false' }};
+    const NO_BUZZ = {{ ($noBuzz ?? false) ? 'true' : 'false' }};
     
     const ANSWER_TIME = 10;
     let timeLeft = ANSWER_TIME;
@@ -719,10 +551,10 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     let selectedIndex = null;
     let isRedirecting = false;
     
-    const chronoTimer = document.getElementById('chronoTimer');
+    const timerBar = document.getElementById('timerBar');
+    const timerSeconds = document.getElementById('timerSeconds');
+    const potentialPoints = document.getElementById('potentialPoints');
     const connectionStatus = document.getElementById('connectionStatus');
-    const playerScoreEl = document.getElementById('playerScore');
-    const opponentScoreEl = document.getElementById('opponentScore');
     const resultOverlay = document.getElementById('resultOverlay');
     const resultText = document.getElementById('resultText');
     const pointsText = document.getElementById('pointsText');
@@ -732,6 +564,18 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     const correctSound = document.getElementById('correctSound');
     const incorrectSound = document.getElementById('incorrectSound');
     const answerButtons = document.querySelectorAll('.answer-button');
+    
+    function calculatePotentialPoints(remainingTime) {
+        if (NO_BUZZ) return 0;
+        if (remainingTime > 3) return 2;
+        if (remainingTime >= 1) return 1;
+        return 0;
+    }
+    
+    function updatePotentialPointsDisplay(points) {
+        potentialPoints.textContent = '+' + points;
+        potentialPoints.className = 'potential-points points-' + points;
+    }
     
     function updateConnectionStatus(status) {
         connectionStatus.className = 'connection-status ' + status;
@@ -751,12 +595,25 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     function startTimer() {
         if (timerInterval) clearInterval(timerInterval);
         
+        if (NO_BUZZ) {
+            updatePotentialPointsDisplay(0);
+        }
+        
         timerInterval = setInterval(function() {
             timeLeft--;
-            chronoTimer.textContent = Math.max(0, timeLeft);
+            
+            const percentage = (timeLeft / ANSWER_TIME) * 100;
+            timerBar.style.width = percentage + '%';
+            timerSeconds.textContent = Math.max(0, timeLeft) + 's';
             
             if (timeLeft <= 5) {
-                chronoTimer.classList.add('warning');
+                timerBar.classList.add('warning');
+                timerSeconds.classList.add('warning');
+            }
+            
+            if (!NO_BUZZ) {
+                const points = calculatePotentialPoints(timeLeft);
+                updatePotentialPointsDisplay(points);
             }
             
             if (timeLeft <= 0) {
@@ -781,7 +638,7 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     }
     
     function selectAnswer(index) {
-        if (answered || !IS_BUZZ_WINNER) return;
+        if (answered || (!IS_BUZZ_WINNER && !NO_BUZZ)) return;
         
         answered = true;
         selectedIndex = index;
@@ -799,13 +656,19 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         answerButtons[index].classList.add('selected');
         answerButtons[index].classList.remove('disabled');
         
-        DuoSocketClient.answer(index);
+        const pointsToSend = NO_BUZZ ? 0 : calculatePotentialPoints(timeLeft);
+        DuoSocketClient.answer(index, { potentialPoints: pointsToSend });
     }
     
     function showResult(isCorrect, correctIndex, pointsEarned) {
         resultOverlay.className = 'result-overlay ' + (isCorrect ? 'correct' : 'incorrect');
         resultText.textContent = isCorrect ? '{{ __("Bonne réponse !") }}' : '{{ __("Mauvaise réponse !") }}';
-        pointsText.textContent = isCorrect ? '+' + pointsEarned + ' {{ __("points") }}' : '{{ __("0 point") }}';
+        
+        if (isCorrect) {
+            pointsText.textContent = '+' + pointsEarned + ' {{ __("points") }}';
+        } else {
+            pointsText.textContent = '{{ __("-2 points") }}';
+        }
         
         if (!isCorrect && correctIndex !== undefined && correctIndex >= 0) {
             const choices = @json($choices);
@@ -826,17 +689,15 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         
         answerButtons.forEach(function(btn, idx) {
             btn.classList.remove('selected');
+            const indicator = document.getElementById('indicator' + idx);
             if (idx === correctIndex) {
                 btn.classList.add('correct');
+                if (indicator) indicator.textContent = '✓';
             } else if (idx === selectedIndex && !isCorrect) {
                 btn.classList.add('incorrect');
+                if (indicator) indicator.textContent = '✗';
             }
         });
-    }
-    
-    function updateScores(playerScore, opponentScore) {
-        if (playerScoreEl) playerScoreEl.textContent = playerScore;
-        if (opponentScoreEl) opponentScoreEl.textContent = opponentScore;
     }
     
     answerButtons.forEach(function(btn, index) {
@@ -870,10 +731,6 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
         const pointsEarned = data.points || data.pointsEarned || 0;
         
-        if (data.scores) {
-            updateScores(data.scores.player || 0, data.scores.opponent || 0);
-        }
-        
         showResult(isCorrect, correctIndex, pointsEarned);
         
         setTimeout(function() {
@@ -891,10 +748,6 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     
     DuoSocketClient.onRoundEnded = function(data) {
         if (isRedirecting) return;
-        
-        if (data.scores) {
-            updateScores(data.scores.player || 0, data.scores.opponent || 0);
-        }
         
         setTimeout(function() {
             if (isRedirecting) return;
@@ -917,15 +770,6 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         }, 2000);
     };
     
-    DuoSocketClient.onScoreUpdate = function(data) {
-        if (data.playerScore !== undefined) {
-            playerScoreEl.textContent = data.playerScore;
-        }
-        if (data.opponentScore !== undefined) {
-            opponentScoreEl.textContent = data.opponentScore;
-        }
-    };
-    
     if (GAME_SERVER_URL) {
         updateConnectionStatus('connecting');
         DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN)
@@ -938,7 +782,7 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
             });
     }
     
-    if (IS_BUZZ_WINNER) {
+    if (IS_BUZZ_WINNER || NO_BUZZ) {
         startTimer();
     } else {
         waitingOverlay.style.display = 'flex';

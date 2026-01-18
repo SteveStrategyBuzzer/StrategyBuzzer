@@ -1454,6 +1454,8 @@ class DuoController extends Controller
         }
         
         $buzzWinner = $gameState['buzz_winner'] ?? 'player';
+        $buzzTime = $gameState['buzz_time'] ?? 0;
+        $noBuzz = $gameState['no_buzz'] ?? false;
         
         $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
         $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
@@ -1497,6 +1499,8 @@ class DuoController extends Controller
             'jwt_token' => $jwtToken,
             'question' => $questionData,
             'buzz_winner' => $buzzWinner,
+            'buzz_time' => $buzzTime,
+            'no_buzz' => $noBuzz,
             'playerScore' => $playerScore,
             'opponentScore' => $opponentScore,
             'currentQuestion' => $currentQuestionNumber,
