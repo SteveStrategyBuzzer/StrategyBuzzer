@@ -367,6 +367,8 @@ body {
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 
 <script>
 (function() {
@@ -376,11 +378,15 @@ body {
     const isHost = @json($isHost);
     const mode = @json($mode);
     const matchId = @json($params['match_id'] ?? null);
+    const roomId = @json($params['room_id'] ?? null);
+    const lobbyCode = @json($params['lobby_code'] ?? null);
+    const jwtToken = @json($params['jwt_token'] ?? null);
     
     let redirected = false;
     let db = null;
     let unsubscribe = null;
     let questionPrefetched = false;
+    let socketConnected = false;
     
     const VS_DISPLAY_TIME = 3000;
     const COUNTDOWN_NUMBERS = [3, 2, 1];
@@ -435,12 +441,54 @@ body {
         }
     }
     
+    async function warmupSocketConnection() {
+        if (socketConnected || !jwtToken || !roomId) {
+            console.log('[Intro] Socket warmup skipped - missing credentials');
+            return;
+        }
+        
+        try {
+            function getGameServerUrl() {
+                const hostname = window.location.hostname;
+                const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+                return `${protocol}//${hostname}:3001`;
+            }
+            
+            const serverUrl = getGameServerUrl();
+            console.log('[Intro] Socket warmup starting...', serverUrl);
+            
+            if (typeof DuoSocketClient !== 'undefined') {
+                const warmupSocket = new DuoSocketClient();
+                
+                warmupSocket.onConnect = () => {
+                    socketConnected = true;
+                    console.log('[Intro] Socket connected - joining room...');
+                    warmupSocket.joinRoom(roomId, lobbyCode, { token: jwtToken });
+                    
+                    sessionStorage.setItem('duo_socket_warmed', 'true');
+                    sessionStorage.setItem('duo_socket_timestamp', Date.now().toString());
+                };
+                
+                warmupSocket.onGameState = (data) => {
+                    console.log('[Intro] Game state received from server');
+                    sessionStorage.setItem('duo_game_state', JSON.stringify(data));
+                };
+                
+                await warmupSocket.connect(serverUrl, jwtToken);
+                console.log('[Intro] Socket warmup complete');
+            }
+        } catch (err) {
+            console.warn('[Intro] Socket warmup failed:', err.message);
+        }
+    }
+    
     async function syncReadyAndStart() {
         const countdownEl = document.getElementById('countdown');
         const countdownText = document.getElementById('countdownText');
         const audio = document.getElementById('readyAudio');
         
         prefetchFirstQuestion();
+        warmupSocketConnection();
         
         if (audio) {
             audio.volume = 1.0;

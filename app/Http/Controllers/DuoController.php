@@ -1031,6 +1031,14 @@ class DuoController extends Controller
         $theme = $gameState['theme'] ?? 'Culture générale';
         $nbQuestions = $gameState['nb_questions'] ?? 10;
         
+        $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
+        $jwtToken = $gameState['jwt_token'] ?? null;
+        $lobbyCode = $gameState['lobby_code'] ?? null;
+        
+        if (!$jwtToken && $roomId) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        }
+        
         return view('game_intro', [
             'params' => [
                 'mode' => 'duo',
@@ -1047,6 +1055,9 @@ class DuoController extends Controller
                 'session_id' => $match->id,
                 'opponent_id' => $opponent->id,
                 'is_host' => $isPlayer1,
+                'room_id' => $roomId,
+                'lobby_code' => $lobbyCode,
+                'jwt_token' => $jwtToken,
             ],
         ]);
     }
