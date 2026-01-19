@@ -2858,18 +2858,15 @@ class SoloController extends Controller
             return response()->json(['success' => false, 'message' => __('La dernière réponse était correcte')], 403);
         }
         
-        // Points perdus (généralement -2)
-        $playerPoints = $lastStat['player_points'] ?? 0;
-        $pointsLost = abs($playerPoints); // Généralement 2
-        
         // Points que le joueur aurait gagnés selon l'ordre de buzz
         // opponent_faster = true → joueur était 2ème → 1 point
         // opponent_faster = false → joueur était 1er → 2 points
         $opponentFaster = $lastStat['opponent_faster'] ?? false;
         $pointsWouldHaveWon = $opponentFaster ? 1 : 2;
         
-        // Total à ajouter = annuler la pénalité + récupérer les points gagnés
-        $totalPointsToAdd = $pointsLost + $pointsWouldHaveWon;
+        // Le Parchemin annule le -2 et donne les points que le joueur jouait pour
+        // Donc on ajoute seulement les points qu'il aurait gagnés (le -2 est annulé, pas additionné)
+        $totalPointsToAdd = $pointsWouldHaveWon;
         
         // Mettre à jour le score
         $currentScore = session('score', 0);
@@ -2895,15 +2892,13 @@ class SoloController extends Controller
         $usedSkills[] = 'history_corrects';
         session(['used_skills' => $usedSkills]);
         
-        \Log::info('[Historien] Parchemin utilisé: +' . $totalPointsToAdd . ' points (annulation ' . $pointsLost . ' + gain ' . $pointsWouldHaveWon . ')');
+        \Log::info('[Historien] Parchemin utilisé: +' . $totalPointsToAdd . ' points récupérés');
         
         return response()->json([
             'success' => true,
             'message' => __("L'histoire corrige") . ' ! +' . $totalPointsToAdd . ' ' . __('points'),
             'new_score' => $newScore,
             'points_recovered' => $totalPointsToAdd,
-            'points_lost_cancelled' => $pointsLost,
-            'points_would_have_won' => $pointsWouldHaveWon,
             'used_skills' => $usedSkills
         ]);
     }
