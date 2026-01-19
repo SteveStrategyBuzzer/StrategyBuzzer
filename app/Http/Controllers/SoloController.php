@@ -1189,8 +1189,8 @@ class SoloController extends Controller
             
             // Marquer le skill comme utilisé
             $usedSkills = session('used_skills', []);
-            if (!in_array('answer_without_buzz', $usedSkills)) {
-                $usedSkills[] = 'answer_without_buzz';
+            if (!in_array('knowledge_without_time', $usedSkills)) {
+                $usedSkills[] = 'knowledge_without_time';
                 session(['used_skills' => $usedSkills]);
             }
         } else {
@@ -1365,8 +1365,23 @@ class SoloController extends Controller
         // Le joueur n'a pas buzzé à temps - marquer qu'il n'a pas buzzé
         session(['buzzed' => false]);
         
-        // Afficher la page de réponse pour permettre au joueur de répondre quand même
-        return $this->renderAnswerView(false, null);
+        // Vérifier si le skill Plume (answer_without_buzz) est disponible
+        $avatar = session('avatar', 'Aucun');
+        $usedSkills = session('used_skills', []);
+        $featherAvailable = false;
+        
+        if ($avatar === 'Historien') {
+            $avatarSkills = $this->getAvatarSkills($avatar);
+            foreach ($avatarSkills['skills'] ?? [] as $skill) {
+                if (($skill['id'] ?? '') === 'knowledge_without_time' && !in_array('knowledge_without_time', $usedSkills)) {
+                    $featherAvailable = true;
+                    break;
+                }
+            }
+        }
+        
+        // Afficher la page de réponse avec la Plume si disponible
+        return $this->renderAnswerView(false, null, $featherAvailable);
     }
 
     public function nextQuestion()

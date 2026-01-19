@@ -20,16 +20,16 @@ $answerRoute = match($mode) {
     default => route('solo.answer'),
 };
 
-// Skill Historien - Plume (answer_without_buzz)
+// Skill Historien - Plume (knowledge_without_time)
 $hasFeatherSkill = false;
 $featherSkillAvailable = false;
 $usedSkills = $params['used_skills'] ?? session('used_skills', []);
 $avatarSkillsFull = $params['avatar_skills_full'] ?? [];
 if (!empty($avatarSkillsFull['skills'])) {
     foreach ($avatarSkillsFull['skills'] as $skill) {
-        if (($skill['id'] ?? '') === 'answer_without_buzz') {
+        if (($skill['id'] ?? '') === 'knowledge_without_time') {
             $hasFeatherSkill = true;
-            $featherSkillAvailable = !in_array('answer_without_buzz', $usedSkills);
+            $featherSkillAvailable = !in_array('knowledge_without_time', $usedSkills);
             break;
         }
     }
