@@ -1050,7 +1050,7 @@ class SoloController extends Controller
         return $hints[array_rand($hints)];
     }
     
-    private function renderAnswerView($playerBuzzed, $buzzTime = null)
+    private function renderAnswerView($playerBuzzed, $buzzTime = null, $featherUsed = false)
     {
         // Récupérer la question actuelle
         $question = session('current_question');
@@ -1063,7 +1063,8 @@ class SoloController extends Controller
         $answerTime = 10;
         
         // NOUVEAU : Calculer potential_points en simulant le comportement de l'adversaire
-        $potentialPoints = 0;  // Par défaut : 0 si pas buzzé
+        // Si Plume utilisée (featherUsed), le joueur peut gagner +1 point max
+        $potentialPoints = $featherUsed ? 1 : 0;  // Par défaut : 0 si pas buzzé, 1 si Plume
         
         if ($playerBuzzed) {
             // Simuler le comportement de l'adversaire pour déterminer qui est le plus rapide
@@ -1115,8 +1116,18 @@ class SoloController extends Controller
         // Si c'est un GET, afficher la page de réponse
         if ($request->isMethod('get')) {
             $buzzTime = $request->query('buzz_time', session('buzz_time', 0));
-            $playerBuzzed = session('buzzed', false) || $request->query('buzz_winner') === 'player';
-            return $this->renderAnswerView($playerBuzzed, $buzzTime);
+            
+            // Vérifier si le skill Plume (feather) est utilisé (no_buzz + feather=1)
+            $featherUsed = $request->query('feather') === '1' && $request->query('no_buzz') === '1';
+            
+            // Si feather est utilisé, le joueur n'a pas buzzé mais peut répondre
+            if ($featherUsed) {
+                $playerBuzzed = false;
+            } else {
+                $playerBuzzed = session('buzzed', false) || $request->query('buzz_winner') === 'player';
+            }
+            
+            return $this->renderAnswerView($playerBuzzed, $buzzTime, $featherUsed);
         }
         
         $questionService = new \App\Services\QuestionService();

@@ -1150,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, buzzerDuration);
     });
     
-    // Pas de buzz - redirection vers la page timeout
+    // Pas de buzz - redirection vers la page timeout OU answer (si skill Plume)
     function handleNoBuzz() {
         // Jouer le son "sans buzzer"
         const noBuzzSound = document.getElementById('noBuzzSound');
@@ -1159,14 +1159,32 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Rediriger après que le son se soit joué complètement
         @php
-            $timeoutRoute = match($mode) {
-                'solo' => route('solo.timeout') . '?no_buzz=1',
-                'duo' => route('duo.answer', ['match' => $matchId ?? 0]) . '?no_buzz=1',
-                default => '/game/' . $mode . '/timeout?no_buzz=1'
-            };
+            // Vérifier si le joueur a le skill Plume (answer_without_buzz) disponible
+            $hasFeatherSkillAvailable = false;
+            foreach ($skills as $skill) {
+                if ($skill['id'] === 'answer_without_buzz' && !$skill['used']) {
+                    $hasFeatherSkillAvailable = true;
+                    break;
+                }
+            }
+            
+            // Si le skill Plume est disponible, rediriger vers Answer sinon vers Timeout
+            if ($hasFeatherSkillAvailable) {
+                $noBuzzRoute = match($mode) {
+                    'solo' => route('solo.answer') . '?no_buzz=1&feather=1',
+                    'duo' => route('duo.answer', ['match' => $matchId ?? 0]) . '?no_buzz=1&feather=1',
+                    default => '/game/' . $mode . '/answer?no_buzz=1&feather=1'
+                };
+            } else {
+                $noBuzzRoute = match($mode) {
+                    'solo' => route('solo.timeout') . '?no_buzz=1',
+                    'duo' => route('duo.answer', ['match' => $matchId ?? 0]) . '?no_buzz=1',
+                    default => '/game/' . $mode . '/timeout?no_buzz=1'
+                };
+            }
         @endphp
         setTimeout(() => {
-            window.location.href = '{{ $timeoutRoute }}';
+            window.location.href = '{{ $noBuzzRoute }}';
         }, noBuzzDuration);
     }
     
