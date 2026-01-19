@@ -402,7 +402,7 @@ $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
     <form id="answerForm" method="POST" action="{{ $answerRoute }}">
         @csrf
         <input type="hidden" name="answer_index" id="answerIndex">
-        <input type="hidden" name="feather_skill_used" id="featherSkillUsed" value="{{ $featherActive ? '1' : '0' }}">
+        <input type="hidden" name="feather_skill_used" id="featherSkillUsed" value="0">
         
         <div class="answers-grid">
             @php
@@ -511,6 +511,8 @@ const timerInterval = setInterval(() => {
     }
 }, 1000);
 
+const featherActive = {{ $featherActive ? 'true' : 'false' }};
+
 function selectAnswer(index) {
     if (answered) return;
     answered = true;
@@ -523,6 +525,11 @@ function selectAnswer(index) {
     
     // Marquer la réponse choisie
     document.getElementById('answerIndex').value = index;
+    
+    // Si la Plume est active, marquer le skill comme utilisé (le joueur a cliqué sur une réponse)
+    if (featherActive) {
+        document.getElementById('featherSkillUsed').value = '1';
+    }
     
     // Désactiver tous les boutons
     document.querySelectorAll('.answer-bubble').forEach(bubble => {
