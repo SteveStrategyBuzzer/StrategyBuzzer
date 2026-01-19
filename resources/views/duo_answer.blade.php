@@ -550,7 +550,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         $hasHistorianSkill = false;
         if (isset($skills) && is_array($skills)) {
             foreach ($skills as $skill) {
-                if (($skill['id'] ?? '') === 'answer_without_buzz') {
+                if (($skill['id'] ?? '') === 'knowledge_without_time') {
                     $hasHistorianSkill = true;
                     break;
                 }

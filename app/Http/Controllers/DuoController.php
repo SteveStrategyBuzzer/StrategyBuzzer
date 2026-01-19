@@ -1834,6 +1834,12 @@ class DuoController extends Controller
             $nextQuestionNumber = 10;
         }
 
+        // Données pour le skill Parchemin de l'Historien
+        $playerBuzzed = $gameState['last_player_buzzed'] ?? false;
+        $buzzOrder = $gameState['last_buzz_order'] ?? 0;
+        $opponentFaster = ($buzzOrder === 2); // 2 = joueur était 2ème
+        $playerPoints = $gameState['last_points_earned'] ?? 0;
+        
         return view('duo_result', [
             'match_id' => $match->id,
             'room_id' => $match->room_id ?? null,
@@ -1855,6 +1861,10 @@ class DuoController extends Controller
             'question' => $gameState['last_question'] ?? [],
             'skills' => $gameState['player_skills'] ?? [],
             'avatarName' => $gameState['avatar_name'] ?? '',
+            // Données pour le skill Parchemin (Historien)
+            'playerBuzzed' => $playerBuzzed,
+            'playerPoints' => $playerPoints,
+            'opponentFaster' => $opponentFaster,
         ]);
     }
 

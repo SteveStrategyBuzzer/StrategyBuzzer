@@ -54,6 +54,43 @@ Solo mode dictates the strict sequence of game phases (intro, question, buzz, re
 
 **Avatar System:** User-specific avatars (12 across 3 tiers) offering 25 unique skills (Passive, Visual, Active_Pre, Active_Post).
 
+#### Historien Avatar (Epic Tier)
+The Historian avatar has 2 unique skills:
+
+**🪶 Plume (Le savoir sans temps / knowledge_without_time)**
+- **Trigger:** When player did NOT buzz (timeout on question page)
+- **Effect:** Player can still answer the question for +1 point max
+- **Consumption:** Only consumed when player clicks on an answer (not on page load or timeout)
+- **Uses per match:** 1
+- **Flow:**
+  1. Player doesn't buzz → `/solo/timeout` route
+  2. `timeout()` checks if avatar === 'Historien' && skill not used
+  3. If available, renders answer page with `featherAvailable=true`
+  4. Answer page shows 🪶 icon on all answers (always visible, not hover-only)
+  5. Player clicks answer → `feather_skill_used=1` set in form
+  6. POST to `answer()` → +1 point if correct, 0 if wrong, skill consumed
+
+**📜 Parchemin (L'histoire corrige / history_corrects)**
+- **Trigger:** On result page after player buzzed AND made an error (-2 points)
+- **Effect:** Cancels the -2 penalty and awards points player was playing for
+- **Consumption:** Player clicks on the 📜 icon next to correct answer
+- **Uses per match:** 1
+- **Points recovered:**
+  - 1st to buzz + error → recovers +2 points
+  - 2nd to buzz + error → recovers +1 point
+- **Flow:**
+  1. Player buzzes and answers incorrectly → result page
+  2. If `player_buzzed=true` && `is_correct=false` && `player_points < 0` → show 📜 on correct answer
+  3. Player clicks 📜 → AJAX call to `useScrollSkill()`
+  4. Score updated: +1 or +2 based on buzz order, skill consumed
+  5. Stats keep `is_correct=false` (error remains in statistics)
+
+**Conditions for skill display:**
+| Skill | Condition |
+|-------|-----------|
+| 🪶 Plume | `!player_buzzed` && skill not used |
+| 📜 Parchemin | `player_buzzed` && `!is_correct` && `player_points < 0` && skill not used |
+
 **Progression:** Quest/Achievement System with 35 Standard quests.
 
 **Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
