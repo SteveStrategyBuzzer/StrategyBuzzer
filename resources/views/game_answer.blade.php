@@ -233,6 +233,11 @@ $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
         opacity: 1;
     }
     
+    /* Plume toujours visible quand le skill est actif */
+    .answer-icon.feather-active {
+        opacity: 1;
+    }
+    
     /* Style pour la bonne réponse illuminée */
     .answer-bubble.highlighted {
         background: linear-gradient(145deg, rgba(78, 205, 196, 0.6) 0%, rgba(102, 234, 126, 0.6) 100%) !important;
@@ -413,7 +418,7 @@ $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
                 <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
                     <div class="answer-number">{{ $index + 1 }}</div>
                     <div class="answer-text">{{ $answer }}</div>
-                    <div class="answer-icon">@if($featherActive)🪶@else👉@endif</div>
+                    <div class="answer-icon {{ $featherActive ? 'feather-active' : '' }}">@if($featherActive)🪶@else👉@endif</div>
                 </div>
             @endforeach
         </div>
