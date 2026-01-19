@@ -2857,49 +2857,52 @@ class SoloController extends Controller
             return response()->json(['success' => false, 'message' => __('La dernière réponse était correcte')], 403);
         }
         
-        // Les points à récupérer (passés par la requête ou calculés)
-        $pointsToRecover = $request->input('points_to_recover', 1);
-        $pointsToRecover = max(1, min(2, intval($pointsToRecover))); // Entre 1 et 2
-        
-        // Si le joueur avait buzzé et perdu des points, on récupère ce qu'il avait perdu
+        // Points perdus (généralement -2)
         $playerPoints = $lastStat['player_points'] ?? 0;
-        if ($playerPoints < 0) {
-            // S'il avait perdu 2 points, il récupère tout (erreur devient succès)
-            $pointsToRecover = abs($playerPoints);
-        }
+        $pointsLost = abs($playerPoints); // Généralement 2
+        
+        // Points que le joueur aurait gagnés selon l'ordre de buzz
+        // opponent_faster = true → joueur était 2ème → 1 point
+        // opponent_faster = false → joueur était 1er → 2 points
+        $opponentFaster = $lastStat['opponent_faster'] ?? false;
+        $pointsWouldHaveWon = $opponentFaster ? 1 : 2;
+        
+        // Total à ajouter = annuler la pénalité + récupérer les points gagnés
+        $totalPointsToAdd = $pointsLost + $pointsWouldHaveWon;
         
         // Mettre à jour le score
         $currentScore = session('score', 0);
-        $newScore = $currentScore + $pointsToRecover;
+        $newScore = $currentScore + $totalPointsToAdd;
         session(['score' => $newScore]);
         
-        // Mettre à jour les statistiques
+        // Mettre à jour les statistiques - GARDER is_correct = false (l'erreur reste une erreur)
         $answeredQuestions = session('answered_questions', []);
         $answeredLastIndex = count($answeredQuestions) - 1;
         if ($answeredLastIndex >= 0) {
-            $answeredQuestions[$answeredLastIndex]['is_correct'] = true;
-            $answeredQuestions[$answeredLastIndex]['player_points'] = $pointsToRecover;
+            // L'erreur reste une erreur dans les stats, mais on marque que le skill a été utilisé
             $answeredQuestions[$answeredLastIndex]['skill_adjusted'] = true;
+            $answeredQuestions[$answeredLastIndex]['skill_points_added'] = $totalPointsToAdd;
             session(['answered_questions' => $answeredQuestions]);
         }
         
-        // Mettre à jour global_stats
-        $globalStats[$lastIndex]['is_correct'] = true;
-        $globalStats[$lastIndex]['player_points'] = $pointsToRecover;
+        // Mettre à jour global_stats - GARDER is_correct = false
         $globalStats[$lastIndex]['skill_adjusted'] = true;
+        $globalStats[$lastIndex]['skill_points_added'] = $totalPointsToAdd;
         session(['global_stats' => $globalStats]);
         
         // Marquer le skill comme utilisé
         $usedSkills[] = 'history_corrects';
         session(['used_skills' => $usedSkills]);
         
-        \Log::info('[Historien] Parchemin utilisé: +' . $pointsToRecover . ' points récupérés');
+        \Log::info('[Historien] Parchemin utilisé: +' . $totalPointsToAdd . ' points (annulation ' . $pointsLost . ' + gain ' . $pointsWouldHaveWon . ')');
         
         return response()->json([
             'success' => true,
-            'message' => __("L'histoire corrige") . ' ! +' . $pointsToRecover . ' ' . __('points'),
+            'message' => __("L'histoire corrige") . ' ! +' . $totalPointsToAdd . ' ' . __('points'),
             'new_score' => $newScore,
-            'points_recovered' => $pointsToRecover,
+            'points_recovered' => $totalPointsToAdd,
+            'points_lost_cancelled' => $pointsLost,
+            'points_would_have_won' => $pointsWouldHaveWon,
             'used_skills' => $usedSkills
         ]);
     }
