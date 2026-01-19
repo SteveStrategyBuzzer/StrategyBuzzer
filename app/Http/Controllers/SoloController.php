@@ -1338,6 +1338,7 @@ class SoloController extends Controller
             'show_position' => $showPosition,
             'position' => $position,
             // Données du nouveau système de pointage
+            'player_buzzed' => $playerBuzzed,
             'player_points' => $playerPoints,
             'opponent_buzzed' => $opponentBehavior['buzzes'],
             'opponent_faster' => $opponentBehavior['is_faster'],
