@@ -1011,13 +1011,17 @@
         $bonusQuestionUsed = in_array('bonus_question', $usedSkills);
         
         // Skill Historien - Parchemin (history_corrects)
+        // Ne s'affiche QUE si le joueur a buzzé ET fait une mauvaise réponse (donc -2 points)
         $hasScrollSkill = ($avatar === 'Historien');
         $scrollSkillUsed = in_array('history_corrects', $usedSkills);
-        $scrollSkillAvailable = $hasScrollSkill && !$scrollSkillUsed && !$params['is_correct'];
-        // Les points à récupérer sont les points absolus (si le joueur jouait pour 2, il récupère 2)
-        $potentialPointsToRecover = abs($params['player_points'] ?? 0);
+        $playerBuzzed = $params['player_buzzed'] ?? false;
+        $playerPoints = $params['player_points'] ?? 0;
+        // Parchemin disponible seulement si: Historien + pas encore utilisé + a buzzé + mauvaise réponse + points négatifs
+        $scrollSkillAvailable = $hasScrollSkill && !$scrollSkillUsed && $playerBuzzed && !$params['is_correct'] && $playerPoints < 0;
+        // Les points à récupérer selon l'ordre de buzz (calculé dans le contrôleur)
+        $potentialPointsToRecover = abs($playerPoints);
         if ($potentialPointsToRecover == 0) {
-            $potentialPointsToRecover = 1; // Minimum 1 point
+            $potentialPointsToRecover = 2; // Défaut si pas de données
         }
     @endphp
     
