@@ -3,91 +3,82 @@ import { calculateScore, calculateTimeoutScore, calculateEfficiency, determineRo
 import { DEFAULT_TEST_SCORING } from './fixtures.js';
 
 describe('calculateScore', () => {
-  const timeoutMs = 10000;
-  
-  describe('correct answers', () => {
-    it('should return 2 points for correct answer with >3s remaining (fast)', () => {
-      const buzzTimeMs = 5000;
-      const result = calculateScore(true, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'DUO');
+  describe('first buzzer scenarios', () => {
+    it('should return +2 points for 1st to buzz + correct answer', () => {
+      const result = calculateScore(true, true, 1, DEFAULT_TEST_SCORING);
       
       expect(result.points).toBe(2);
-      expect(result.reason).toBe('correct_fast');
+      expect(result.reason).toBe('first_buzzer_correct');
     });
     
-    it('should return 1 point for correct answer with 1-3s remaining (medium)', () => {
-      const buzzTimeMs = 8000;
-      const result = calculateScore(true, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'DUO');
+    it('should return -2 points for 1st to buzz + wrong answer', () => {
+      const result = calculateScore(false, true, 1, DEFAULT_TEST_SCORING);
       
-      expect(result.points).toBe(1);
-      expect(result.reason).toBe('correct_medium');
-    });
-    
-    it('should return 0 points for correct answer with <1s remaining (slow)', () => {
-      const buzzTimeMs = 9500;
-      const result = calculateScore(true, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'DUO');
-      
-      expect(result.points).toBe(0);
-      expect(result.reason).toBe('correct_slow');
-    });
-    
-    it('should return 0 points at exactly 1s remaining boundary (slow)', () => {
-      const buzzTimeMs = 9000;
-      const result = calculateScore(true, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'DUO');
-      
-      expect(result.points).toBe(0);
-      expect(result.reason).toBe('correct_slow');
-    });
-    
-    it('should return 1 point at just over 1s remaining (medium)', () => {
-      const buzzTimeMs = 8999;
-      const result = calculateScore(true, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'DUO');
-      
-      expect(result.points).toBe(1);
-      expect(result.reason).toBe('correct_medium');
-    });
-    
-    it('should return 2 points at just over 3s remaining (fast)', () => {
-      const buzzTimeMs = 6999;
-      const result = calculateScore(true, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'DUO');
-      
-      expect(result.points).toBe(2);
-      expect(result.reason).toBe('correct_fast');
+      expect(result.points).toBe(-2);
+      expect(result.reason).toBe('buzz_wrong');
     });
   });
   
-  describe('wrong answers', () => {
-    it('should return -2 points penalty for wrong answer in DUO mode', () => {
-      const buzzTimeMs = 3000;
-      const result = calculateScore(false, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'DUO');
+  describe('other buzzer scenarios (2nd+)', () => {
+    it('should return +1 point for 2nd to buzz + correct answer', () => {
+      const result = calculateScore(true, true, 2, DEFAULT_TEST_SCORING);
       
-      expect(result.points).toBe(-2);
-      expect(result.reason).toBe('wrong');
+      expect(result.points).toBe(1);
+      expect(result.reason).toBe('other_buzzer_correct');
     });
     
-    it('should return -2 points penalty for wrong answer in SOLO mode', () => {
-      const buzzTimeMs = 3000;
-      const result = calculateScore(false, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'SOLO');
+    it('should return +1 point for 3rd to buzz + correct answer', () => {
+      const result = calculateScore(true, true, 3, DEFAULT_TEST_SCORING);
       
-      expect(result.points).toBe(-2);
-      expect(result.reason).toBe('wrong');
+      expect(result.points).toBe(1);
+      expect(result.reason).toBe('other_buzzer_correct');
     });
     
-    it('should return 0 points for wrong answer in MASTER mode', () => {
-      const buzzTimeMs = 3000;
-      const result = calculateScore(false, buzzTimeMs, timeoutMs, DEFAULT_TEST_SCORING, 'MASTER');
+    it('should return -2 points for 2nd to buzz + wrong answer', () => {
+      const result = calculateScore(false, true, 2, DEFAULT_TEST_SCORING);
+      
+      expect(result.points).toBe(-2);
+      expect(result.reason).toBe('buzz_wrong');
+    });
+  });
+  
+  describe('no buzz scenarios', () => {
+    it('should return 0 points for no buzz + correct answer', () => {
+      const result = calculateScore(true, false, 0, DEFAULT_TEST_SCORING);
       
       expect(result.points).toBe(0);
-      expect(result.reason).toBe('wrong');
+      expect(result.reason).toBe('no_buzz_correct');
+    });
+    
+    it('should return 0 points for no buzz + wrong answer (no penalty)', () => {
+      const result = calculateScore(false, false, 0, DEFAULT_TEST_SCORING);
+      
+      expect(result.points).toBe(0);
+      expect(result.reason).toBe('no_buzz_wrong');
+    });
+    
+    it('should treat buzzOrder=0 as no buzz even if didBuzz=true', () => {
+      const result = calculateScore(true, true, 0, DEFAULT_TEST_SCORING);
+      
+      expect(result.points).toBe(0);
+      expect(result.reason).toBe('no_buzz_correct');
     });
   });
 });
 
 describe('calculateTimeoutScore', () => {
-  it('should return 0 points for timeout', () => {
-    const result = calculateTimeoutScore(DEFAULT_TEST_SCORING);
+  it('should return -2 points for timeout after buzz', () => {
+    const result = calculateTimeoutScore(true, DEFAULT_TEST_SCORING);
+    
+    expect(result.points).toBe(-2);
+    expect(result.reason).toBe('buzz_timeout');
+  });
+  
+  it('should return 0 points for timeout without buzz (no penalty)', () => {
+    const result = calculateTimeoutScore(false, DEFAULT_TEST_SCORING);
     
     expect(result.points).toBe(0);
-    expect(result.reason).toBe('timeout');
+    expect(result.reason).toBe('no_buzz_timeout');
   });
 });
 

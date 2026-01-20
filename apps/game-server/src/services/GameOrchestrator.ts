@@ -203,17 +203,19 @@ export class GameOrchestrator {
     const player = pendingAnswer ? room.state.players[pendingAnswer.playerId] : null;
     const playerId = pendingAnswer?.playerId || "";
 
-    let timeRemainingMs = 0;
-    if (room.state.phaseStartedAtMs && pendingAnswer) {
-      const questionDuration = room.state.config.timers.questionActive;
-      const buzzEntry = room.state.buzzQueue.find(b => b.playerId === playerId);
-      if (buzzEntry && room.state.phaseStartedAtMs) {
-        timeRemainingMs = questionDuration - (buzzEntry.atMs - room.state.phaseStartedAtMs);
+    // Calculate buzz order (1 = first, 2+ = other, 0 = didn't buzz)
+    let buzzOrder = 0;
+    let didBuzz = false;
+    if (pendingAnswer) {
+      const buzzIndex = room.state.buzzQueue.findIndex(b => b.playerId === playerId);
+      if (buzzIndex >= 0) {
+        didBuzz = true;
+        buzzOrder = buzzIndex + 1; // 1-indexed: 1 = first to buzz, 2 = second, etc.
       }
     }
 
     const pointsEarned = pendingAnswer 
-      ? this.calculateScore(isCorrect, timeRemainingMs, room.state.config.mode)
+      ? this.calculateScore(isCorrect, didBuzz, buzzOrder)
       : 0;
 
     const newRoundScore = (player?.roundScore || 0) + pointsEarned;
@@ -285,21 +287,26 @@ export class GameOrchestrator {
     this.schedulePhaseTimeout(roomId);
   }
 
-  private calculateScore(isCorrect: boolean, timeRemainingMs: number, mode: Mode): number {
-    if (!isCorrect) {
-      if (mode === "MASTER") {
-        return 0;
-      }
-      return -2;
+  private calculateScore(isCorrect: boolean, didBuzz: boolean, buzzOrder: number): number {
+    // Universal scoring rules for all modes:
+    // - 1st to buzz + correct = +2 pts
+    // - 2nd+ to buzz + correct = +1 pt
+    // - Buzz + wrong/timeout = -2 pts
+    // - No buzz = 0 pts (no penalty ever)
+    
+    if (!didBuzz || buzzOrder === 0) {
+      return 0; // No buzz = 0 pts, no penalty
     }
 
-    if (timeRemainingMs > 3000) {
-      return 2;
-    } else if (timeRemainingMs >= 1000) {
-      return 1;
-    } else {
-      return 0;
+    if (!isCorrect) {
+      return -2; // Buzz + wrong = -2 pts
     }
+
+    if (buzzOrder === 1) {
+      return 2; // 1st to buzz + correct = +2 pts
+    }
+    
+    return 1; // 2nd+ to buzz + correct = +1 pt
   }
 
   private onPhaseTimeout(roomId: string): void {

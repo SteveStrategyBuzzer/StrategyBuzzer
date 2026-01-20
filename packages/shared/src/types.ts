@@ -96,14 +96,11 @@ export type Question = {
 export type RedactedQuestion = Omit<Question, 'correctIndex' | 'correctBool' | 'correctText'>;
 
 export type ScoringConfig = {
-  correctFast: number;
-  correctMedium: number;
-  correctSlow: number;
-  wrongPenalty: number;
-  wrongMaster: number;
-  timeout: number;
-  fastThresholdMs: number;
-  mediumThresholdMs: number;
+  firstBuzzerCorrect: number;   // +2 pts for 1st to buzz + correct
+  otherBuzzersCorrect: number;  // +1 pt for 2nd+ to buzz + correct
+  noBuzzCorrect: number;        // 0 pt for no buzz + correct
+  buzzWrong: number;            // -2 pts for buzz + wrong/timeout
+  noBuzzWrong: number;          // 0 pt for no buzz + wrong/timeout
 };
 
 export type TimersConfig = {
@@ -188,14 +185,11 @@ export type GameState = {
 };
 
 export const DEFAULT_SCORING: ScoringConfig = {
-  correctFast: 2,
-  correctMedium: 1,
-  correctSlow: 0,
-  wrongPenalty: -2,
-  wrongMaster: 0,
-  timeout: 0,
-  fastThresholdMs: 5000,
-  mediumThresholdMs: 7000,
+  firstBuzzerCorrect: 2,    // +2 pts for 1st to buzz + correct
+  otherBuzzersCorrect: 1,   // +1 pt for 2nd+ to buzz + correct
+  noBuzzCorrect: 0,         // 0 pt for no buzz + correct
+  buzzWrong: -2,            // -2 pts for buzz + wrong/timeout
+  noBuzzWrong: 0,           // 0 pt for no buzz + wrong/timeout
 };
 
 export const DEFAULT_TIMERS: TimersConfig = {
@@ -265,9 +259,6 @@ export const DEFAULT_MASTER_CONFIG: GameConfig = {
   maxRounds: 1,
   buzzEnabled: true,
   voiceChatEnabled: false,
-  scoring: {
-    ...DEFAULT_SCORING,
-    wrongPenalty: 0,
-  },
+  scoring: DEFAULT_SCORING,
   timers: DEFAULT_TIMERS,
 };

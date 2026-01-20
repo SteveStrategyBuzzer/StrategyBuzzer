@@ -42,7 +42,21 @@ Solo mode remains isolated using AI opponents with traditional page redirects.
 
 Solo mode dictates the strict sequence of game phases (intro, question, buzz, reveal, scoreboard) and question flow.
 
-**Scoring System:** A unified scoring system awards 2 pts (>3s remaining), 1 pt (1-3s remaining), 0 pt (<1s remaining) for correct answers. Wrong answers incur a -2 pt penalty in Solo, Duo, League, and 0 pt in Master. Timeout is 0 pts.
+**Scoring System (Universal - All Modes):**
+
+| Situation | Result |
+|-----------|--------|
+| 1st to buzz + correct answer | +2 pts |
+| 1st to buzz + wrong answer | -2 pts |
+| 1st to buzz + no choice (timeout) | -2 pts |
+| 2nd+ to buzz + correct answer | +1 pt |
+| 2nd+ to buzz + wrong answer | -2 pts |
+| 2nd+ to buzz + no choice (timeout) | -2 pts |
+| Didn't buzz + correct answer | 0 pt |
+| Didn't buzz + wrong answer | 0 pt |
+| Didn't buzz + no choice (timeout) | 0 pt |
+
+**Summary:** Buzz = commitment (play for +2 or +1, but any error or timeout = -2 pts). No buzz = safe (0 pt max, never penalized).
 
 **Question Management:** A question cache uses file-based caching. `QuestionService` manages AI-ready, theme-based question generation with adaptive difficulty, anti-duplication, and language-specific spelling verification using Google Gemini 2.0 Flash. A `SubthemeRotationSystem` ensures deterministic theme rotation. Multiplayer questions are generated in progressive blocks of 4 by `GenerateMultiplayerQuestionsJob`, using a `QuestionPlanBuilder` for dynamic needs calculation, anti-duplication, and retry logic.
 

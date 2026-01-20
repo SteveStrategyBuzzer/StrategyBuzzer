@@ -1,14 +1,11 @@
 import type { GameState, GameConfig, Player, Question, ScoringConfig, TimersConfig } from '../../../packages/shared/src/types.js';
 
 export const DEFAULT_TEST_SCORING: ScoringConfig = {
-  correctFast: 2,
-  correctMedium: 1,
-  correctSlow: 0,
-  wrongPenalty: -2,
-  wrongMaster: 0,
-  timeout: 0,
-  fastThresholdMs: 3000,
-  mediumThresholdMs: 1000,
+  firstBuzzerCorrect: 2,    // +2 pts for 1st to buzz + correct
+  otherBuzzersCorrect: 1,   // +1 pt for 2nd+ to buzz + correct
+  noBuzzCorrect: 0,         // 0 pt for no buzz + correct
+  buzzWrong: -2,            // -2 pts for buzz + wrong/timeout
+  noBuzzWrong: 0,           // 0 pt for no buzz + wrong/timeout
 };
 
 export const DEFAULT_TEST_TIMERS: TimersConfig = {

@@ -1,37 +1,41 @@
-import type { ScoringConfig, Mode } from "../../shared/src/types.js";
+import type { ScoringConfig } from "../../shared/src/types.js";
 
 export type ScoreResult = {
   points: number;
-  reason: "correct_fast" | "correct_medium" | "correct_slow" | "wrong" | "timeout";
+  reason: "first_buzzer_correct" | "other_buzzer_correct" | "no_buzz_correct" | "buzz_wrong" | "buzz_timeout" | "no_buzz_wrong" | "no_buzz_timeout";
 };
 
 export function calculateScore(
   isCorrect: boolean,
-  buzzTimeMs: number,
-  timeoutMs: number,
-  config: ScoringConfig,
-  mode: Mode
+  didBuzz: boolean,
+  buzzOrder: number, // 1 = first to buzz, 2+ = other buzzers, 0 = didn't buzz
+  config: ScoringConfig
 ): ScoreResult {
-  if (!isCorrect) {
-    const penalty = mode === "MASTER" ? config.wrongMaster : config.wrongPenalty;
-    return { points: penalty, reason: "wrong" };
+  // Case 1: Player didn't buzz
+  if (!didBuzz || buzzOrder === 0) {
+    if (isCorrect) {
+      return { points: config.noBuzzCorrect, reason: "no_buzz_correct" };
+    }
+    return { points: config.noBuzzWrong, reason: "no_buzz_wrong" };
   }
 
-  const timeRemaining = timeoutMs - buzzTimeMs;
-
-  if (timeRemaining > config.fastThresholdMs) {
-    return { points: config.correctFast, reason: "correct_fast" };
+  // Case 2: Player buzzed
+  if (isCorrect) {
+    if (buzzOrder === 1) {
+      return { points: config.firstBuzzerCorrect, reason: "first_buzzer_correct" };
+    }
+    return { points: config.otherBuzzersCorrect, reason: "other_buzzer_correct" };
   }
 
-  if (timeRemaining > config.mediumThresholdMs) {
-    return { points: config.correctMedium, reason: "correct_medium" };
-  }
-
-  return { points: config.correctSlow, reason: "correct_slow" };
+  // Case 3: Player buzzed but wrong answer
+  return { points: config.buzzWrong, reason: "buzz_wrong" };
 }
 
-export function calculateTimeoutScore(config: ScoringConfig): ScoreResult {
-  return { points: config.timeout, reason: "timeout" };
+export function calculateTimeoutScore(didBuzz: boolean, config: ScoringConfig): ScoreResult {
+  if (didBuzz) {
+    return { points: config.buzzWrong, reason: "buzz_timeout" };
+  }
+  return { points: config.noBuzzWrong, reason: "no_buzz_timeout" };
 }
 
 export function calculateEfficiency(
