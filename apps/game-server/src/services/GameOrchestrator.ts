@@ -13,6 +13,8 @@ export class GameOrchestrator {
   private roomManager: RoomManager;
   private phaseTimers: Map<string, NodeJS.Timeout> = new Map();
   private pendingAnswers: Map<string, { playerId: string; answer: number | string | boolean; submittedAtMs: number }> = new Map();
+  // Store answers from ALL buzzers (key = roomId, value = Map of playerId -> answer data)
+  private allBuzzerAnswers: Map<string, Map<string, { answer: number | string | boolean; submittedAtMs: number; buzzOrder: number }>> = new Map();
 
   constructor(io: SocketIOServer, roomManager: RoomManager) {
     this.io = io;
@@ -140,12 +142,31 @@ export class GameOrchestrator {
       return;
     }
 
-    if (room.state.lockedAnswerPlayerId !== playerId) {
-      console.log(`[GameOrchestrator] Answer rejected: ${playerId} is not the locked player`);
+    // Check if this player buzzed (is in the buzz queue)
+    const buzzIndex = room.state.buzzQueue.findIndex(b => b.playerId === playerId);
+    if (buzzIndex === -1) {
+      console.log(`[GameOrchestrator] Answer rejected: ${playerId} did not buzz`);
+      return;
+    }
+
+    // Initialize room's buzzer answers map if needed
+    if (!this.allBuzzerAnswers.has(roomId)) {
+      this.allBuzzerAnswers.set(roomId, new Map());
+    }
+    
+    const roomAnswers = this.allBuzzerAnswers.get(roomId)!;
+    
+    // Check if this player already answered
+    if (roomAnswers.has(playerId)) {
+      console.log(`[GameOrchestrator] Answer rejected: ${playerId} already answered`);
       return;
     }
 
     const submittedAtMs = Date.now();
+    const buzzOrder = buzzIndex + 1; // 1-indexed buzz order
+
+    // Store this buzzer's answer
+    roomAnswers.set(playerId, { answer, submittedAtMs, buzzOrder });
 
     const submitEvent: AnswerSubmittedEvent = {
       id: room.state.lastEventId + 1,
@@ -163,17 +184,21 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event: submitEvent });
     this.logEventToRedis(roomId, submitEvent);
 
-    this.pendingAnswers.set(roomId, { playerId, answer, submittedAtMs });
 
-    this.clearPhaseTimer(roomId);
-    this.revealAnswer(roomId);
+    console.log(`[GameOrchestrator] Player ${playerId} answered (buzz order: ${buzzOrder}). ${roomAnswers.size}/${room.state.buzzQueue.length} buzzers answered`);
+
+    // Check if all buzzers have answered
+    if (roomAnswers.size >= room.state.buzzQueue.length) {
+      console.log(`[GameOrchestrator] All ${roomAnswers.size} buzzers answered - revealing now`);
+      this.clearPhaseTimer(roomId);
+      this.revealAnswer(roomId);
+    }
   }
 
   private revealAnswer(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    const pendingAnswer = this.pendingAnswers.get(roomId);
     const currentQuestion = room.state.currentQuestion;
     
     if (!currentQuestion) {
@@ -184,43 +209,19 @@ export class GameOrchestrator {
 
     const fullQuestion = room.state.questions[room.state.questionIndex];
     
-    let isCorrect = false;
+    // Determine correct answer
     let correctAnswer: number | string | boolean = 0;
-
     if (fullQuestion) {
       if (fullQuestion.type === "MCQ" && fullQuestion.correctIndex !== undefined) {
         correctAnswer = fullQuestion.correctIndex;
-        isCorrect = pendingAnswer?.answer === fullQuestion.correctIndex;
       } else if (fullQuestion.type === "TRUE_FALSE" && fullQuestion.correctBool !== undefined) {
         correctAnswer = fullQuestion.correctBool;
-        isCorrect = pendingAnswer?.answer === fullQuestion.correctBool;
       } else if (fullQuestion.type === "TEXT" && fullQuestion.correctText !== undefined) {
         correctAnswer = fullQuestion.correctText;
-        isCorrect = String(pendingAnswer?.answer).toLowerCase() === fullQuestion.correctText.toLowerCase();
       }
     }
 
-    const player = pendingAnswer ? room.state.players[pendingAnswer.playerId] : null;
-    const playerId = pendingAnswer?.playerId || "";
-
-    // Calculate buzz order (1 = first, 2+ = other, 0 = didn't buzz)
-    let buzzOrder = 0;
-    let didBuzz = false;
-    if (pendingAnswer) {
-      const buzzIndex = room.state.buzzQueue.findIndex(b => b.playerId === playerId);
-      if (buzzIndex >= 0) {
-        didBuzz = true;
-        buzzOrder = buzzIndex + 1; // 1-indexed: 1 = first to buzz, 2 = second, etc.
-      }
-    }
-
-    const pointsEarned = pendingAnswer 
-      ? this.calculateScore(isCorrect, didBuzz, buzzOrder)
-      : 0;
-
-    const newRoundScore = (player?.roundScore || 0) + pointsEarned;
-    const newTotalScore = (player?.score || 0) + pointsEarned;
-
+    // Transition to REVEAL phase first
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
       type: "PHASE_CHANGED",
@@ -238,21 +239,88 @@ export class GameOrchestrator {
     this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
 
-    if (pendingAnswer) {
+    // Score ALL buzzers using allBuzzerAnswers as single source of truth
+    this.scoreAllBuzzers(roomId, correctAnswer, fullQuestion);
+
+    this.pendingAnswers.delete(roomId);
+    this.allBuzzerAnswers.delete(roomId);
+    this.schedulePhaseTimeout(roomId);
+  }
+
+  private scoreAllBuzzers(
+    roomId: string,
+    correctAnswer: number | string | boolean,
+    question: Question | undefined
+  ): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    const roomAnswers = this.allBuzzerAnswers.get(roomId) || new Map();
+    const buzzQueue = room.state.buzzQueue;
+
+    if (buzzQueue.length === 0) {
+      console.log(`[GameOrchestrator] No buzzers to score in room ${roomId}`);
+      return;
+    }
+
+    console.log(`[GameOrchestrator] Scoring ${buzzQueue.length} buzzers in room ${roomId}`);
+
+    for (let i = 0; i < buzzQueue.length; i++) {
+      const buzzer = buzzQueue[i];
+      const buzzOrder = i + 1; // 1-indexed
+      const buzzerAnswer = roomAnswers.get(buzzer.playerId);
+      const player = room.state.players[buzzer.playerId];
+      
+      if (!player) continue;
+
+      let isCorrect = false;
+      let playerAnswer: number | string | boolean | null = null;
+      let pointsEarned = 0;
+
+      if (buzzerAnswer) {
+        // Player buzzed AND answered - score based on correctness
+        playerAnswer = buzzerAnswer.answer;
+        
+        if (question) {
+          if (question.type === "MCQ" && question.correctIndex !== undefined) {
+            isCorrect = buzzerAnswer.answer === question.correctIndex;
+          } else if (question.type === "TRUE_FALSE" && question.correctBool !== undefined) {
+            isCorrect = buzzerAnswer.answer === question.correctBool;
+          } else if (question.type === "TEXT" && question.correctText !== undefined) {
+            isCorrect = String(buzzerAnswer.answer).toLowerCase() === question.correctText.toLowerCase();
+          }
+        }
+        
+        // Score based on buzz order: 1st = +2/-2, 2nd+ = +1/-2
+        pointsEarned = this.calculateScore(isCorrect, true, buzzOrder);
+        
+        console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) answered ${isCorrect ? 'correctly' : 'incorrectly'}: ${pointsEarned} pts`);
+      } else {
+        // Player buzzed but did NOT answer (timeout) - penalized with -2
+        pointsEarned = -2;
+        console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) timed out (no answer): ${pointsEarned} pts`);
+      }
+
+      // Calculate expected scores for event payload (reducer will apply the actual update)
+      const newRoundScore = (player.roundScore || 0) + pointsEarned;
+      const newTotalScore = (player.score || 0) + pointsEarned;
+
+      // Emit proper AnswerRevealedEvent for each buzzer
+      // NOTE: The reducer (applyEvent) handles the actual score update
       const revealEvent: AnswerRevealedEvent = {
         id: room.state.lastEventId + 1,
         type: "ANSWER_REVEALED",
         atMs: Date.now(),
         sessionId: roomId,
-        playerId,
-        answer: pendingAnswer.answer,
+        playerId: buzzer.playerId,
+        answer: playerAnswer ?? -1,
         isCorrect,
         correctAnswer,
         pointsEarned,
-        buzzTimeMs: room.state.buzzQueue.find(b => b.playerId === playerId)?.atMs || 0,
+        buzzTimeMs: buzzer.atMs || 0,
         totalScore: newTotalScore,
         roundScore: newRoundScore,
-        funFact: fullQuestion?.funFact,
+        funFact: question?.funFact,
       };
 
       room.state = applyEvent(room.state, revealEvent);
@@ -260,60 +328,30 @@ export class GameOrchestrator {
 
       this.io.to(roomId).emit("event", { event: revealEvent });
       this.logEventToRedis(roomId, revealEvent);
+
+      // Emit socket events for UI updates
       this.io.to(roomId).emit("answer_revealed", {
-        playerId,
+        playerId: buzzer.playerId,
         playerName: player?.name,
-        answer: pendingAnswer.answer,
+        answer: playerAnswer,
         isCorrect,
         correctAnswer,
-        correctIndex: fullQuestion?.correctIndex,
-        correctBool: fullQuestion?.correctBool,
-        correctText: fullQuestion?.correctText,
+        correctIndex: question?.correctIndex,
+        correctBool: question?.correctBool,
+        correctText: question?.correctText,
         pointsEarned,
         totalScore: newTotalScore,
         roundScore: newRoundScore,
-        funFact: fullQuestion?.funFact,
+        funFact: question?.funFact,
       });
 
       this.io.to(roomId).emit("score_update", {
-        playerId,
+        playerId: buzzer.playerId,
         score: newTotalScore,
         roundScore: newRoundScore,
         delta: pointsEarned,
       });
     }
-
-    // Score other buzzers who didn't get to answer
-    // In multiplayer modes, players who buzzed but weren't first get scored based on the revealed answer
-    // They get -2 for having buzzed (committed) but not getting to answer (treated as timeout)
-    this.scoreOtherBuzzers(roomId, playerId, correctAnswer, fullQuestion);
-
-    this.pendingAnswers.delete(roomId);
-    this.schedulePhaseTimeout(roomId);
-  }
-
-  private scoreOtherBuzzers(
-    roomId: string, 
-    answeredPlayerId: string,
-    correctAnswer: number | string | boolean,
-    question: Question | undefined
-  ): void {
-    const room = this.roomManager.getRoom(roomId);
-    if (!room) return;
-
-    // Get all buzzers except the one who answered
-    const otherBuzzers = room.state.buzzQueue.filter(b => b.playerId !== answeredPlayerId);
-    
-    if (otherBuzzers.length === 0) return;
-
-    // In this game mode, only the first buzzer gets to answer.
-    // Other buzzers who buzzed but didn't get to answer are NOT penalized
-    // (they didn't make a choice, so they get 0 pts - the "safe" option).
-    // This is fair because they committed to buzzing but were beaten to it.
-    // 
-    // NOTE: If we wanted a cascade system (2nd buzzer answers if 1st fails),
-    // that would require a different game flow implementation.
-    console.log(`[GameOrchestrator] ${otherBuzzers.length} other buzzers in room ${roomId} - not penalized (no chance to answer)`);
   }
 
   private calculateScore(isCorrect: boolean, didBuzz: boolean, buzzOrder: number): number {
@@ -536,15 +574,9 @@ export class GameOrchestrator {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    const lockedPlayerId = room.state.lockedAnswerPlayerId;
-    if (lockedPlayerId) {
-      this.pendingAnswers.set(roomId, {
-        playerId: lockedPlayerId,
-        answer: -1,
-        submittedAtMs: Date.now(),
-      });
-    }
-
+    // All buzzers who didn't answer will be scored as timeout (-2 pts) in scoreAllBuzzers
+    // We use allBuzzerAnswers as single source of truth - buzzers not in the map = timeout
+    console.log(`[GameOrchestrator] Answer timeout in room ${roomId} - revealing answers`);
     this.revealAnswer(roomId);
   }
 

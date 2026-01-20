@@ -156,7 +156,9 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
 
     case "ANSWER_SUBMITTED": {
       assert(s.phase === "ANSWER_SELECTION", "Answer not allowed in current phase");
-      assert(s.lockedAnswerPlayerId === event.playerId, "Not your turn to answer");
+      // Allow any player who buzzed (is in buzzQueue) to answer, not just first buzzer
+      const isInBuzzQueue = s.buzzQueue.some(b => b.playerId === event.playerId);
+      assert(isInBuzzQueue, "Player did not buzz for this question");
       assert(!!s.players[event.playerId], "Unknown player");
       
       if (!s.answeredPlayerIds.includes(event.playerId)) {
