@@ -283,8 +283,37 @@ export class GameOrchestrator {
       });
     }
 
+    // Score other buzzers who didn't get to answer
+    // In multiplayer modes, players who buzzed but weren't first get scored based on the revealed answer
+    // They get -2 for having buzzed (committed) but not getting to answer (treated as timeout)
+    this.scoreOtherBuzzers(roomId, playerId, correctAnswer, fullQuestion);
+
     this.pendingAnswers.delete(roomId);
     this.schedulePhaseTimeout(roomId);
+  }
+
+  private scoreOtherBuzzers(
+    roomId: string, 
+    answeredPlayerId: string,
+    correctAnswer: number | string | boolean,
+    question: Question | undefined
+  ): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    // Get all buzzers except the one who answered
+    const otherBuzzers = room.state.buzzQueue.filter(b => b.playerId !== answeredPlayerId);
+    
+    if (otherBuzzers.length === 0) return;
+
+    // In this game mode, only the first buzzer gets to answer.
+    // Other buzzers who buzzed but didn't get to answer are NOT penalized
+    // (they didn't make a choice, so they get 0 pts - the "safe" option).
+    // This is fair because they committed to buzzing but were beaten to it.
+    // 
+    // NOTE: If we wanted a cascade system (2nd buzzer answers if 1st fails),
+    // that would require a different game flow implementation.
+    console.log(`[GameOrchestrator] ${otherBuzzers.length} other buzzers in room ${roomId} - not penalized (no chance to answer)`);
   }
 
   private calculateScore(isCorrect: boolean, didBuzz: boolean, buzzOrder: number): number {

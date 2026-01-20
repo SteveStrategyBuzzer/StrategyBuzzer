@@ -2086,6 +2086,10 @@ class MasterGameController extends Controller
             $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
         }
         
+        // Historien skills data (for players, not host)
+        $skills = !$isHost ? $this->getPlayerSkillsWithTriggers($user) : [];
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+
         $viewData = [
             'game' => $game,
             'game_id' => $game->id,
@@ -2103,6 +2107,8 @@ class MasterGameController extends Controller
             'game_mode' => $game->mode,
             'structure_type' => $game->structure_type,
             'game_state' => $gameState,
+            'skills' => $skills,
+            'strategic_avatar' => $strategicAvatar,
         ];
         
         return response()->view('master.game-answer', $viewData)
@@ -2140,6 +2146,10 @@ class MasterGameController extends Controller
             $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
         }
         
+        // Historien skills data (for players, not host)
+        $skills = !$isHost ? $this->getPlayerSkillsWithTriggers($user) : [];
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+
         $viewData = [
             'game' => $game,
             'game_id' => $game->id,
@@ -2157,11 +2167,61 @@ class MasterGameController extends Controller
             'game_mode' => $game->mode,
             'structure_type' => $game->structure_type,
             'game_state' => $gameState,
+            'skills' => $skills,
+            'strategic_avatar' => $strategicAvatar,
         ];
         
         return response()->view('master.game-result', $viewData)
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
             ->header('Pragma', 'no-cache')
             ->header('Expires', '0');
+    }
+    
+    /**
+     * Get player skills with triggers for Historian avatar
+     */
+    protected function getPlayerSkillsWithTriggers($user): array
+    {
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true);
+        }
+        
+        $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
+        
+        if ($avatarName === 'Aucun' || empty($avatarName)) {
+            return [];
+        }
+        
+        $catalog = \App\Services\AvatarCatalog::get();
+        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+        $avatarInfo = null;
+        
+        foreach ($strategicAvatars as $avatar) {
+            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                $avatarInfo = $avatar;
+                break;
+            }
+        }
+        
+        if (!$avatarInfo || empty($avatarInfo['skills'])) {
+            return [];
+        }
+        
+        $skills = [];
+        foreach ($avatarInfo['skills'] as $skillId) {
+            $skillInfo = \App\Services\SkillCatalog::getSkillById($skillId);
+            if ($skillInfo) {
+                $skills[] = [
+                    'id' => $skillId,
+                    'name' => $skillInfo['name'] ?? $skillId,
+                    'description' => $skillInfo['description'] ?? '',
+                    'icon' => $skillInfo['icon'] ?? '🔮',
+                    'used' => false,
+                ];
+            }
+        }
+        
+        return $skills;
     }
 }

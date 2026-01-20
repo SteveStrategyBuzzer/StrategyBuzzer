@@ -619,6 +619,28 @@ $mode = 'league';
         </div>
     </div>
     
+    @php
+        // Skill Historien - Parchemin (history_corrects)
+        $hasScrollSkill = false;
+        $scrollSkillUsed = false;
+        $playerBuzzed = $playerBuzzed ?? false;
+        $playerPoints = $playerPoints ?? 0;
+        if (isset($skills) && is_array($skills)) {
+            foreach ($skills as $skill) {
+                if (($skill['id'] ?? '') === 'history_corrects') {
+                    $hasScrollSkill = true;
+                    $scrollSkillUsed = $skill['used'] ?? false;
+                    break;
+                }
+            }
+        }
+        // Parchemin disponible si: Historien + pas utilisé + a buzzé + erreur + points négatifs
+        $scrollSkillAvailable = $hasScrollSkill && !$scrollSkillUsed && $playerBuzzed && !$wasCorrect && $playerPoints < 0;
+        // Points à récupérer selon l'ordre de buzz
+        $opponentFaster = $opponentFaster ?? false;
+        $pointsToRecover = $opponentFaster ? 1 : 2;
+    @endphp
+    
     <div class="result-answers">
         @if(!empty($playerAnswer))
             <div class="answer-display {{ $wasCorrect ? 'answer-correct' : 'answer-incorrect' }}">
@@ -628,12 +650,23 @@ $mode = 'league';
             </div>
         @endif
         
-        <div class="answer-display answer-correct">
+        <div class="answer-display answer-correct {{ $scrollSkillAvailable ? 'scroll-skill-clickable' : '' }}" 
+             @if($scrollSkillAvailable) onclick="useScrollSkill({{ $pointsToRecover }})" style="cursor: pointer;" @endif>
             <span class="answer-icon">✓</span>
             <span class="answer-label">{{ __('Bonne réponse') }} :</span>
-            <span class="answer-text">{{ $question['correct_answer'] ?? $question['answer'] ?? '-' }}</span>
+            <span class="answer-text">@if($scrollSkillAvailable)📜 @endif{{ $question['correct_answer'] ?? $question['answer'] ?? '-' }}</span>
         </div>
     </div>
+    
+    @if($scrollSkillAvailable)
+    <div id="scrollSkillPopup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+         background: linear-gradient(135deg, #1a3a4a 0%, #2d5a6a 100%); padding: 30px; border-radius: 20px; 
+         border: 3px solid #4ECDC4; box-shadow: 0 0 50px rgba(78, 205, 196, 0.5); z-index: 1000; text-align: center;">
+        <div style="font-size: 3rem;">📜</div>
+        <div style="font-size: 1.3rem; font-weight: 700; color: #fff; margin-top: 10px;">{{ __("L'histoire corrige") }}</div>
+        <div id="scrollSkillPoints" style="font-size: 2rem; font-weight: 900; color: #FFD700; margin-top: 10px;">+{{ $pointsToRecover }} {{ __('points') }}</div>
+    </div>
+    @endif
     
     <div class="progress-info">
         <div class="stats-columns">
@@ -757,6 +790,47 @@ $mode = 'league';
         
         window.location.href = '/duo/match/' + MATCH_ID + '/final';
     }
+    
+    // Skill Historien - Parchemin (L'histoire corrige)
+    window.useScrollSkill = function(pointsToRecover) {
+        console.log('[LeagueResult] Using scroll skill for', pointsToRecover, 'points');
+        
+        // Émettre l'événement au serveur Socket.IO
+        if (DuoSocketClient.isConnected()) {
+            DuoSocketClient.socket.emit('activate_skill', {
+                roomId: ROOM_ID || LOBBY_CODE,
+                matchId: MATCH_ID,
+                skillId: 'history_corrects',
+                pointsToRecover: pointsToRecover
+            });
+        }
+        
+        // Afficher le popup de confirmation
+        var popup = document.getElementById('scrollSkillPopup');
+        if (popup) {
+            popup.style.display = 'block';
+            
+            // Mettre à jour le score affiché
+            var playerScoreEl = document.getElementById('playerScore');
+            if (playerScoreEl) {
+                var currentScore = parseInt(playerScoreEl.textContent) || 0;
+                playerScoreEl.textContent = currentScore + pointsToRecover;
+            }
+            
+            // Masquer après 2 secondes
+            setTimeout(function() {
+                popup.style.display = 'none';
+            }, 2000);
+            
+            // Désactiver le clic sur la bonne réponse
+            var correctAnswer = document.querySelector('.answer-correct.scroll-skill-clickable');
+            if (correctAnswer) {
+                correctAnswer.onclick = null;
+                correctAnswer.style.cursor = 'default';
+                correctAnswer.classList.remove('scroll-skill-clickable');
+            }
+        }
+    };
     
     btnGo.addEventListener('click', setPlayerReady);
     

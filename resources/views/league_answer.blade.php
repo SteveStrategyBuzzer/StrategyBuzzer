@@ -599,6 +599,19 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         <div class="right-column"></div>
     </div>
     
+    @php
+        // Skill Historien - Plume (knowledge_without_time)
+        $hasHistorianSkill = false;
+        if (isset($skills) && is_array($skills)) {
+            foreach ($skills as $skill) {
+                if (($skill['id'] ?? '') === 'knowledge_without_time') {
+                    $hasHistorianSkill = true;
+                    break;
+                }
+            }
+        }
+    @endphp
+
     <div class="answers-container" id="answersContainer">
         @foreach($choices as $index => $choice)
             <button class="answer-button {{ !$isBuzzWinner ? 'waiting' : '' }}" 
@@ -608,6 +621,20 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
             </button>
         @endforeach
     </div>
+    
+    @if(!$isBuzzWinner && $hasHistorianSkill)
+    <div class="historian-skill-section" id="historianSkillSection">
+        <button class="historian-skill-button" id="historianSkillBtn" style="display: flex; align-items: center; gap: 10px; padding: 15px 25px; background: linear-gradient(135deg, #1a3a4a, #2d5a6a); border: 2px solid #4ECDC4; border-radius: 15px; color: white; cursor: pointer; font-size: 1rem; margin: 15px auto;">
+            <span class="skill-icon" style="font-size: 1.5rem;">🪶</span>
+            <span class="skill-text">{{ __('Réponse historique') }}</span>
+            <span class="skill-points" style="color: #4ECDC4; font-weight: bold;">+1 {{ __('point') }}</span>
+        </button>
+        <p class="skill-hint" style="text-align: center; color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-top: 5px;">{{ __('Cliquez pour tenter de répondre (+1 si correct, 0 si erreur)') }}</p>
+    </div>
+    <div class="buzz-status-banner historian-active" id="historianActiveBanner" style="display: none; background: rgba(78, 205, 196, 0.2); padding: 15px; border-radius: 10px; text-align: center; border: 2px solid #4ECDC4; margin: 10px 0;">
+        🪶 {{ __('Skill activé - Répondez pour +1 point (0 si erreur)') }}
+    </div>
+    @endif
 </div>
 
 <div class="result-overlay" id="resultOverlay">
@@ -644,6 +671,8 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
     const GAME_SERVER_URL = '{{ config("app.game_server_url", "") }}';
     const IS_BUZZ_WINNER = {{ $isBuzzWinner ? 'true' : 'false' }};
+    const HAS_HISTORIAN_SKILL = {{ ($hasHistorianSkill ?? false) ? 'true' : 'false' }};
+    let historianSkillActivated = false;
     
     const ANSWER_TIME = 10;
     let timeLeft = ANSWER_TIME;
@@ -714,7 +743,8 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     }
     
     function selectAnswer(index) {
-        if (answered || !IS_BUZZ_WINNER) return;
+        if (answered) return;
+        if (!IS_BUZZ_WINNER && !historianSkillActivated) return;
         
         answered = true;
         selectedIndex = index;
@@ -875,6 +905,39 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         startTimer();
     } else {
         waitingOverlay.style.display = 'flex';
+    }
+    
+    // Skill Historien - Plume (knowledge_without_time)
+    var historianSkillBtn = document.getElementById('historianSkillBtn');
+    var historianSkillSection = document.getElementById('historianSkillSection');
+    var historianActiveBanner = document.getElementById('historianActiveBanner');
+    
+    if (HAS_HISTORIAN_SKILL && !IS_BUZZ_WINNER && historianSkillBtn) {
+        historianSkillBtn.addEventListener('click', function() {
+            historianSkillActivated = true;
+            
+            // Cacher la section skill et montrer le banner actif
+            if (historianSkillSection) historianSkillSection.style.display = 'none';
+            if (historianActiveBanner) historianActiveBanner.style.display = 'block';
+            if (waitingOverlay) waitingOverlay.style.display = 'none';
+            
+            // Activer les boutons de réponse
+            answerButtons.forEach(function(btn) {
+                btn.classList.remove('waiting');
+                btn.disabled = false;
+            });
+            
+            // Émettre l'événement au serveur Socket.IO
+            if (DuoSocketClient.isConnected()) {
+                DuoSocketClient.socket.emit('activate_skill', {
+                    roomId: ROOM_ID || LOBBY_CODE,
+                    matchId: MATCH_ID,
+                    skillId: 'knowledge_without_time'
+                });
+            }
+            
+            console.log('[LeagueAnswer] Historian skill activated');
+        });
     }
 })();
 </script>

@@ -909,6 +909,10 @@ class LeagueIndividualController extends Controller
         $questionData = $gameState['current_question'] ?? [];
         $buzzWinner = $gameState['buzz_winner'] ?? 'player';
 
+        // Historien skills data
+        $skills = $this->getPlayerSkillsWithTriggers($user);
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+
         return view('league_answer', [
             'match_id' => $match->id,
             'question' => $questionData,
@@ -931,6 +935,9 @@ class LeagueIndividualController extends Controller
                 'score' => $opponentScore,
                 'level' => $opponentStats->level,
             ],
+            'skills' => $skills,
+            'strategic_avatar' => $strategicAvatar,
+            'opponentName' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
         ]);
     }
 
@@ -966,6 +973,13 @@ class LeagueIndividualController extends Controller
         $isCorrect = $lastAnswer['is_correct'] ?? false;
         $pointsEarned = $lastAnswer['points'] ?? 0;
 
+        // Historien skills data
+        $playerBuzzed = $lastAnswer['player_buzzed'] ?? false;
+        $buzzWinner = $gameState['buzz_winner'] ?? null;
+        $opponentFaster = ($buzzWinner === 'opponent');
+        $skills = $this->getPlayerSkillsWithTriggers($user);
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+
         return view('league_result', [
             'match_id' => $match->id,
             'is_correct' => $isCorrect,
@@ -990,6 +1004,12 @@ class LeagueIndividualController extends Controller
             ],
             'correct_answer' => $lastAnswer['correct_answer'] ?? '',
             'player_answer' => $lastAnswer['player_answer'] ?? '',
+            'question' => $gameState['current_question'] ?? [],
+            'playerBuzzed' => $playerBuzzed,
+            'opponentFaster' => $opponentFaster,
+            'playerPoints' => $pointsEarned,
+            'skills' => $skills,
+            'strategic_avatar' => $strategicAvatar,
         ]);
     }
 
