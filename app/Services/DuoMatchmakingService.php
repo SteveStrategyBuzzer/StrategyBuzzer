@@ -219,6 +219,10 @@ class DuoMatchmakingService
             $player2TempAccess
         );
 
+        // Apply passive skills bonuses (coin_bonus from Stratege avatar)
+        $player1Reward['coins'] = $this->applyCoinBonus($player1, $player1Reward['coins']);
+        $player2Reward['coins'] = $this->applyCoinBonus($player2, $player2Reward['coins']);
+
         $betInfo = $gameState['bet_info'] ?? null;
         if ($betInfo && ($betInfo['total_pot'] ?? 0) > 0) {
             $totalPot = $betInfo['total_pot'];
@@ -277,5 +281,32 @@ class DuoMatchmakingService
         $this->divisionService->clearCurrentMatch($player2);
 
         return $match;
+    }
+
+    /**
+     * Apply coin bonus from Stratege avatar skill (+20% coins)
+     */
+    private function applyCoinBonus(User $player, int $baseCoins): int
+    {
+        if ($baseCoins <= 0) {
+            return $baseCoins;
+        }
+
+        $profileSettings = (array) ($player->profile_settings ?? []);
+        $avatarData = data_get($profileSettings, 'strategic_avatar');
+        
+        $avatarName = null;
+        if (is_array($avatarData)) {
+            $avatarName = strtolower($avatarData['name'] ?? '');
+        } elseif (is_string($avatarData)) {
+            $avatarName = strtolower($avatarData);
+        }
+
+        // Stratege avatar has coin_bonus skill (+20% coins)
+        if ($avatarName === 'stratège' || $avatarName === 'stratege') {
+            return (int) ceil($baseCoins * 1.20);
+        }
+
+        return $baseCoins;
     }
 }

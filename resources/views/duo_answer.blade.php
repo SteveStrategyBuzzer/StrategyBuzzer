@@ -636,7 +636,20 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     const NO_BUZZ = {{ ($noBuzz ?? false) ? 'true' : 'false' }};
     const HAS_HISTORIAN_SKILL = {{ ($hasHistorianSkill ?? false) ? 'true' : 'false' }};
     
-    const ANSWER_TIME = 10;
+    // Sprinteur passive skill: extra_reflection adds +3 seconds
+    @php
+        $hasExtraReflection = false;
+        if (isset($skills) && is_array($skills)) {
+            foreach ($skills as $skill) {
+                if (($skill['id'] ?? '') === 'extra_reflection') {
+                    $hasExtraReflection = true;
+                    break;
+                }
+            }
+        }
+    @endphp
+    const HAS_EXTRA_REFLECTION = {{ $hasExtraReflection ? 'true' : 'false' }};
+    const ANSWER_TIME = HAS_EXTRA_REFLECTION ? 13 : 10;
     let timeLeft = ANSWER_TIME;
     let timerInterval = null;
     let answered = false;

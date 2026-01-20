@@ -902,6 +902,21 @@ $mode = 'duo';
     let socketConnected = false;
     let questionReceived = (FALLBACK_QUESTION.text && FALLBACK_QUESTION.text !== '{{ __("Question en cours de chargement...") }}');
     
+    // Sprinteur passive skill: faster_buzz reduces delay
+    @php
+        $hasFasterBuzz = false;
+        if (isset($skills) && is_array($skills)) {
+            foreach ($skills as $skill) {
+                if (($skill['id'] ?? '') === 'faster_buzz') {
+                    $hasFasterBuzz = true;
+                    break;
+                }
+            }
+        }
+    @endphp
+    const HAS_FASTER_BUZZ = {{ $hasFasterBuzz ? 'true' : 'false' }};
+    const BUZZ_REDIRECT_DELAY = HAS_FASTER_BUZZ ? 100 : 300;
+    
     const chronoTimer = document.getElementById('chronoTimer');
     const buzzButton = document.getElementById('buzzButton');
     const buzzContainer = document.getElementById('buzzContainer');
@@ -1035,7 +1050,7 @@ $mode = 'duo';
         isRedirecting = true;
         setTimeout(() => {
             window.location.href = '/game/duo/answer?buzzed=true&match_id=' + MATCH_ID;
-        }, 300);
+        }, BUZZ_REDIRECT_DELAY);
     }
     
     function handleNoBuzz() {
