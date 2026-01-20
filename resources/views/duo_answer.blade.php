@@ -316,6 +316,135 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         margin: 0;
     }
     
+    .active-skills-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin: 10px 0;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+    }
+    
+    .skill-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 10px;
+        border: 2px solid;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .skill-action-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    
+    .skill-action-btn.used {
+        opacity: 0.3;
+        text-decoration: line-through;
+    }
+    
+    .skill-action-btn .skill-icon {
+        font-size: 1.2rem;
+    }
+    
+    .skill-action-btn.mathematicien {
+        background: rgba(147, 112, 219, 0.2);
+        border-color: rgba(147, 112, 219, 0.6);
+        color: #B19CD9;
+    }
+    
+    .skill-action-btn.scientifique {
+        background: rgba(0, 255, 136, 0.15);
+        border-color: rgba(0, 255, 136, 0.5);
+        color: #00FF88;
+    }
+    
+    .skill-action-btn.ia-junior {
+        background: rgba(0, 191, 255, 0.15);
+        border-color: rgba(0, 191, 255, 0.5);
+        color: #00BFFF;
+    }
+    
+    .skill-action-btn.visionnaire {
+        background: rgba(255, 215, 0, 0.15);
+        border-color: rgba(255, 215, 0, 0.5);
+        color: #FFD700;
+    }
+    
+    .skill-action-btn.sprinteur {
+        background: rgba(255, 165, 0, 0.15);
+        border-color: rgba(255, 165, 0, 0.5);
+        color: #FFA500;
+    }
+    
+    .skill-action-btn.historien {
+        background: rgba(139, 90, 43, 0.2);
+        border-color: rgba(205, 133, 63, 0.6);
+        color: #DEB887;
+    }
+    
+    .skill-action-btn:not(:disabled):hover {
+        transform: scale(1.05);
+        filter: brightness(1.2);
+    }
+    
+    .answer-button.illuminated {
+        background: linear-gradient(135deg, rgba(147, 112, 219, 0.4) 0%, rgba(186, 85, 211, 0.4) 100%);
+        border-color: #B19CD9;
+        box-shadow: 0 0 20px rgba(147, 112, 219, 0.6);
+        animation: pulse-illuminate 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-illuminate {
+        0%, 100% { box-shadow: 0 0 20px rgba(147, 112, 219, 0.6); }
+        50% { box-shadow: 0 0 35px rgba(147, 112, 219, 0.9); }
+    }
+    
+    .answer-button.acidified {
+        background: rgba(0, 255, 136, 0.1);
+        border-color: #00FF88;
+        box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+    }
+    
+    .answer-button.acidified::after {
+        content: '🧪';
+        position: absolute;
+        right: 10px;
+        font-size: 1.2rem;
+    }
+    
+    .answer-button.eliminated {
+        opacity: 0.2;
+        pointer-events: none;
+        text-decoration: line-through;
+    }
+    
+    .answer-button.ai-suggested {
+        background: linear-gradient(135deg, rgba(0, 191, 255, 0.3) 0%, rgba(30, 144, 255, 0.3) 100%);
+        border-color: #00BFFF;
+        box-shadow: 0 0 20px rgba(0, 191, 255, 0.5);
+    }
+    
+    .answer-button.ai-suggested::before {
+        content: '🤖';
+        position: absolute;
+        left: 10px;
+        font-size: 1rem;
+    }
+    
+    .answer-button.locked-correct {
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);
+        border-color: #FFD700;
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    }
+    
     .result-overlay {
         position: fixed;
         top: 50%;
@@ -538,6 +667,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         @foreach($choices as $index => $choice)
             <button class="answer-button {{ (!$isBuzzWinner && !$noBuzz) ? 'waiting' : '' }}" 
                     data-index="{{ $index }}"
+                    data-text="{{ $choice }}"
                     {{ (!$isBuzzWinner && !$noBuzz) ? 'disabled' : '' }}>
                 <span class="answer-number">{{ $index + 1 }}</span>
                 <span class="answer-text">{{ $choice }}</span>
@@ -548,15 +678,72 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     
     @php
         $hasHistorianSkill = false;
+        $hasIlluminateNumbers = false;
+        $hasAcidifyError = false;
+        $hasEliminateTwo = false;
+        $hasAiSuggestion = false;
+        $hasLockCorrect = false;
+        $hasExtraAnswerTime = false;
+        
         if (isset($skills) && is_array($skills)) {
             foreach ($skills as $skill) {
-                if (($skill['id'] ?? '') === 'knowledge_without_time') {
+                $skillId = $skill['id'] ?? '';
+                if ($skillId === 'knowledge_without_time' || $skillId === 'hint_before_others') {
                     $hasHistorianSkill = true;
-                    break;
                 }
+                if ($skillId === 'illuminate_numbers') $hasIlluminateNumbers = true;
+                if ($skillId === 'acidify_error') $hasAcidifyError = true;
+                if ($skillId === 'eliminate_two') $hasEliminateTwo = true;
+                if ($skillId === 'ai_suggestion') $hasAiSuggestion = true;
+                if ($skillId === 'lock_correct') $hasLockCorrect = true;
+                if ($skillId === 'extra_answer_time') $hasExtraAnswerTime = true;
             }
         }
+        
+        $correctIndex = $correct_index ?? null;
+        $choicesJson = json_encode($choices);
     @endphp
+    
+    @if($hasIlluminateNumbers || $hasAcidifyError || $hasEliminateTwo || $hasAiSuggestion || $hasLockCorrect || $hasExtraAnswerTime)
+    <div class="active-skills-bar" id="activeSkillsBar">
+        @if($hasIlluminateNumbers)
+            <button class="skill-action-btn mathematicien" id="skillIlluminate" title="{{ __('Illumine une réponse si elle contient un chiffre') }}">
+                <span class="skill-icon">💡</span>
+                <span>{{ __('Illuminer') }}</span>
+            </button>
+        @endif
+        @if($hasAcidifyError)
+            <button class="skill-action-btn scientifique" id="skillAcidify" title="{{ __('Acidifie une mauvaise réponse') }}">
+                <span class="skill-icon">🧪</span>
+                <span>{{ __('Acidifier') }}</span>
+            </button>
+        @endif
+        @if($hasEliminateTwo)
+            <button class="skill-action-btn ia-junior" id="skillEliminate" title="{{ __('Élimine 2 mauvaises réponses') }}">
+                <span class="skill-icon">❌</span>
+                <span>{{ __('Éliminer 2') }}</span>
+            </button>
+        @endif
+        @if($hasAiSuggestion)
+            <button class="skill-action-btn ia-junior" id="skillAiSuggest" title="{{ __('L\'IA suggère une réponse') }}">
+                <span class="skill-icon">🤖</span>
+                <span>{{ __('Suggestion IA') }}</span>
+            </button>
+        @endif
+        @if($hasLockCorrect)
+            <button class="skill-action-btn visionnaire" id="skillLockCorrect" title="{{ __('Seule la bonne réponse sélectionnable') }}">
+                <span class="skill-icon">🔒</span>
+                <span>{{ __('2 pts sécurisés') }}</span>
+            </button>
+        @endif
+        @if($hasExtraAnswerTime)
+            <button class="skill-action-btn historien" id="skillExtraTime" title="{{ __('Ajoute 2 secondes') }}">
+                <span class="skill-icon">⏰</span>
+                <span>{{ __('+2s') }}</span>
+            </button>
+        @endif
+    </div>
+    @endif
 
     @if($noBuzz)
         <div class="buzz-status-banner no-buzz">
@@ -649,13 +836,30 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         }
     @endphp
     const HAS_EXTRA_REFLECTION = {{ $hasExtraReflection ? 'true' : 'false' }};
-    const ANSWER_TIME = HAS_EXTRA_REFLECTION ? 13 : 10;
+    let ANSWER_TIME = HAS_EXTRA_REFLECTION ? 13 : 10;
     let timeLeft = ANSWER_TIME;
     let timerInterval = null;
     let answered = false;
     let selectedIndex = null;
     let isRedirecting = false;
     let historianSkillUsed = false;
+    
+    const CHOICES = @json($choices);
+    const HAS_ILLUMINATE = {{ ($hasIlluminateNumbers ?? false) ? 'true' : 'false' }};
+    const HAS_ACIDIFY = {{ ($hasAcidifyError ?? false) ? 'true' : 'false' }};
+    const HAS_ELIMINATE = {{ ($hasEliminateTwo ?? false) ? 'true' : 'false' }};
+    const HAS_AI_SUGGEST = {{ ($hasAiSuggestion ?? false) ? 'true' : 'false' }};
+    const HAS_LOCK_CORRECT = {{ ($hasLockCorrect ?? false) ? 'true' : 'false' }};
+    const HAS_EXTRA_ANSWER_TIME = {{ ($hasExtraAnswerTime ?? false) ? 'true' : 'false' }};
+    
+    let skillsUsed = {
+        illuminate: false,
+        acidify: false,
+        eliminate: false,
+        aiSuggest: false,
+        lockCorrect: false,
+        extraTime: false
+    };
     
     const timerBar = document.getElementById('timerBar');
     const timerSeconds = document.getElementById('timerSeconds');
@@ -670,6 +874,172 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     const correctSound = document.getElementById('correctSound');
     const incorrectSound = document.getElementById('incorrectSound');
     const answerButtons = document.querySelectorAll('.answer-button');
+    
+    function containsNumber(str) {
+        return /\d/.test(str);
+    }
+    
+    function activateIlluminateSkill() {
+        if (skillsUsed.illuminate || answered) return;
+        skillsUsed.illuminate = true;
+        
+        const btn = document.getElementById('skillIlluminate');
+        if (btn) btn.classList.add('used');
+        
+        answerButtons.forEach(function(button) {
+            const text = button.getAttribute('data-text') || '';
+            if (containsNumber(text)) {
+                button.classList.add('illuminated');
+            }
+        });
+        
+        console.log('[Skills] Illuminate numbers activated');
+    }
+    
+    function activateAcidifySkill() {
+        if (skillsUsed.acidify || answered) return;
+        skillsUsed.acidify = true;
+        
+        const btn = document.getElementById('skillAcidify');
+        if (btn) btn.classList.add('used');
+        
+        const wrongAnswers = [];
+        answerButtons.forEach(function(button, idx) {
+            if (!button.classList.contains('correct') && !button.classList.contains('illuminated')) {
+                wrongAnswers.push(idx);
+            }
+        });
+        
+        if (wrongAnswers.length > 0) {
+            const randomIdx = wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
+            answerButtons[randomIdx].classList.add('acidified');
+        }
+        
+        console.log('[Skills] Acidify error activated');
+    }
+    
+    function activateEliminateSkill() {
+        if (skillsUsed.eliminate || answered) return;
+        skillsUsed.eliminate = true;
+        
+        const btn = document.getElementById('skillEliminate');
+        if (btn) btn.classList.add('used');
+        
+        const wrongAnswers = [];
+        answerButtons.forEach(function(button, idx) {
+            if (!button.classList.contains('illuminated') && !button.classList.contains('ai-suggested')) {
+                wrongAnswers.push(idx);
+            }
+        });
+        
+        for (let i = wrongAnswers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [wrongAnswers[i], wrongAnswers[j]] = [wrongAnswers[j], wrongAnswers[i]];
+        }
+        
+        let eliminated = 0;
+        for (let i = 0; i < wrongAnswers.length && eliminated < 2; i++) {
+            const idx = wrongAnswers[i];
+            if (answerButtons.length - eliminated > 2) {
+                answerButtons[idx].classList.add('eliminated');
+                eliminated++;
+            }
+        }
+        
+        console.log('[Skills] Eliminate 2 activated, removed', eliminated, 'answers');
+    }
+    
+    function activateAiSuggestSkill() {
+        if (skillsUsed.aiSuggest || answered) return;
+        skillsUsed.aiSuggest = true;
+        
+        const btn = document.getElementById('skillAiSuggest');
+        if (btn) btn.classList.add('used');
+        
+        const availableAnswers = [];
+        answerButtons.forEach(function(button, idx) {
+            if (!button.classList.contains('eliminated') && !button.classList.contains('acidified')) {
+                availableAnswers.push(idx);
+            }
+        });
+        
+        if (availableAnswers.length > 0) {
+            const suggestedIdx = availableAnswers[Math.floor(Math.random() * availableAnswers.length)];
+            answerButtons[suggestedIdx].classList.add('ai-suggested');
+        }
+        
+        console.log('[Skills] AI Suggestion activated');
+    }
+    
+    function activateLockCorrectSkill() {
+        if (skillsUsed.lockCorrect || answered) return;
+        
+        const currentPoints = calculatePotentialPoints(timeLeft);
+        if (currentPoints !== 2) {
+            alert('{{ __("Ce skill ne fonctionne que si vous êtes sur 2 points !") }}');
+            return;
+        }
+        
+        skillsUsed.lockCorrect = true;
+        
+        const btn = document.getElementById('skillLockCorrect');
+        if (btn) btn.classList.add('used');
+        
+        answerButtons.forEach(function(button) {
+            button.classList.add('locked-correct');
+        });
+        
+        console.log('[Skills] Lock correct activated - 2 points secured');
+    }
+    
+    function activateExtraTimeSkill() {
+        if (skillsUsed.extraTime || answered) return;
+        skillsUsed.extraTime = true;
+        
+        const btn = document.getElementById('skillExtraTime');
+        if (btn) btn.classList.add('used');
+        
+        timeLeft += 2;
+        ANSWER_TIME += 2;
+        
+        timerSeconds.textContent = timeLeft + 's';
+        const percentage = (timeLeft / ANSWER_TIME) * 100;
+        timerBar.style.width = percentage + '%';
+        
+        console.log('[Skills] Extra time activated, +2s');
+    }
+    
+    function initSkillButtons() {
+        const illuminateBtn = document.getElementById('skillIlluminate');
+        if (illuminateBtn) {
+            illuminateBtn.addEventListener('click', activateIlluminateSkill);
+        }
+        
+        const acidifyBtn = document.getElementById('skillAcidify');
+        if (acidifyBtn) {
+            acidifyBtn.addEventListener('click', activateAcidifySkill);
+        }
+        
+        const eliminateBtn = document.getElementById('skillEliminate');
+        if (eliminateBtn) {
+            eliminateBtn.addEventListener('click', activateEliminateSkill);
+        }
+        
+        const aiSuggestBtn = document.getElementById('skillAiSuggest');
+        if (aiSuggestBtn) {
+            aiSuggestBtn.addEventListener('click', activateAiSuggestSkill);
+        }
+        
+        const lockCorrectBtn = document.getElementById('skillLockCorrect');
+        if (lockCorrectBtn) {
+            lockCorrectBtn.addEventListener('click', activateLockCorrectSkill);
+        }
+        
+        const extraTimeBtn = document.getElementById('skillExtraTime');
+        if (extraTimeBtn) {
+            extraTimeBtn.addEventListener('click', activateExtraTimeSkill);
+        }
+    }
     
     function calculatePotentialPoints(remainingTime) {
         if (historianSkillUsed) return 1;
@@ -943,6 +1313,8 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
                 updateConnectionStatus('disconnected');
             });
     }
+    
+    initSkillButtons();
     
     if (IS_BUZZ_WINNER || NO_BUZZ) {
         startTimer();

@@ -258,6 +258,11 @@ class BoutiqueController extends Controller
                         $map  = ['Rare' => 500, 'Épique' => 1000, 'Légendaire' => 1500];
                         $unitPrice = $map[$tier] ?? 500;
                     }
+                    
+                    $currentStrategicAvatar = $user->strategic_avatar ?? null;
+                    if ($currentStrategicAvatar && in_array(strtolower($currentStrategicAvatar), ['stratege', 'stratège'])) {
+                        $unitPrice = (int) round($unitPrice * 0.8);
+                    }
                     break;
                 case 'life':
                     $unitPrice = 120;

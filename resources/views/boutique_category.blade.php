@@ -45,6 +45,13 @@
     foreach (($catalog['stratégiques']['items'] ?? []) as $slug => $a) {
         $strategiques[] = array_merge($a, ['slug' => $slug]);
     }
+    
+    $hasStrategeDiscount = false;
+    $currentStrategicAvatar = $user->strategic_avatar ?? null;
+    if ($currentStrategicAvatar && in_array(strtolower($currentStrategicAvatar), ['stratege', 'stratège'])) {
+        $hasStrategeDiscount = true;
+    }
+    $discountPercent = $hasStrategeDiscount ? 20 : 0;
 @endphp
 
 <style>
@@ -514,7 +521,20 @@ audio { width: 100%; }
                     <div class="head">
                         <div class="title">{{ $a['label'] ?? $a['name'] ?? ucfirst($slug) }}</div>
                         @unless($isUnlockedStrategic)
-                            <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">{{ $a['price'] ?? 500 }}</div>
+                            @php
+                                $originalPrice = $a['price'] ?? 500;
+                                $finalPrice = $hasStrategeDiscount ? round($originalPrice * 0.8) : $originalPrice;
+                            @endphp
+                            <div class="price">
+                                <img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">
+                                @if($hasStrategeDiscount)
+                                    <span style="text-decoration: line-through; opacity: 0.5; margin-right: 5px;">{{ $originalPrice }}</span>
+                                    <span style="color: #22c55e;">{{ $finalPrice }}</span>
+                                    <span style="font-size: 0.7rem; color: #22c55e; margin-left: 3px;">-20%</span>
+                                @else
+                                    {{ $originalPrice }}
+                                @endif
+                            </div>
                         @endunless
                     </div>
                     <div class="avatar-row">
