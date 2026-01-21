@@ -715,7 +715,7 @@ class SoloController extends Controller
         
         switch ($skillId) {
             // 🔵 RARE SKILLS
-            case 'illuminate_number':
+            case 'illuminate_numbers':
                 // Mathématicien: Illumine la bonne réponse si elle contient un chiffre
                 $correctAnswer = $question['answers'][$correctIndex] ?? '';
                 $hasNumber = preg_match('/\d/', $correctAnswer);
@@ -730,7 +730,7 @@ class SoloController extends Controller
                 }
                 break;
                 
-            case 'acidify_answer':
+            case 'acidify_error':
                 // Scientifique: Marque une mauvaise réponse en rouge
                 $wrongIndices = [];
                 for ($i = 0; $i < $answerCount; $i++) {
@@ -746,7 +746,7 @@ class SoloController extends Controller
                 }
                 break;
                 
-            case 'show_popular_answer':
+            case 'see_opponent_choice':
                 // Explorateur: Montre la réponse la plus choisie par l'adversaire
                 // En mode Solo, on simule avec la bonne réponse 60% du temps
                 $showCorrect = (rand(1, 100) <= 60);
@@ -806,9 +806,9 @@ class SoloController extends Controller
                 $result['interval'] = 1000; // 1 seconde
                 break;
                 
-            case 'reduce_timer':
+            case 'reduce_time':
                 // Challenger: Réduit le chrono des adversaires
-                $result['effect'] = 'reduce_timer';
+                $result['effect'] = 'reduce_time';
                 $result['reduction'] = 2; // -2 secondes pour les adversaires
                 break;
                 
@@ -919,24 +919,24 @@ class SoloController extends Controller
                 $result['message'] = 'Bonus +20% pièces actif sur victoire';
                 break;
                 
-            case 'team_mode':
+            case 'create_team':
                 // Stratège: Permet d'ajouter un Avatar rare comme coéquipier
-                $result['effect'] = 'team_mode';
+                $result['effect'] = 'create_team';
                 $result['available_avatars'] = $this->getAvailableRareAvatars();
                 $result['message'] = 'Sélectionnez un Avatar rare comme coéquipier';
                 break;
                 
-            case 'unlock_discount':
-                // Stratège: PASSIF - -10% coût déblocage avatars (géré dans boutique)
+            case 'avatar_discount':
+                // Stratège: PASSIF - -20% coût déblocage avatars (géré dans boutique)
                 $result['effect'] = 'passive_active';
-                $result['discount'] = 10;
-                $result['message'] = 'Réduction -10% sur déblocage avatars';
+                $result['discount'] = 20;
+                $result['message'] = 'Réduction -20% sur déblocage avatars';
                 break;
                 
             // 🟡 SPRINTEUR SKILLS  
-            case 'buzz_rewind':
+            case 'faster_buzz':
                 // Sprinteur: Recule le temps de buzz jusqu'à 0.5s du plus rapide
-                $result['effect'] = 'buzz_rewind';
+                $result['effect'] = 'faster_buzz';
                 $result['max_rewind'] = 0.5; // secondes
                 $result['message'] = 'Buzz recalé à 0.5s du plus rapide';
                 break;
@@ -976,9 +976,9 @@ class SoloController extends Controller
                 break;
                 
             // 🤖 IA JUNIOR - Skill manquant
-            case 'replay_answer':
+            case 'replay':
                 // IA Junior: Rejouer une réponse une fois
-                $result['effect'] = 'replay_answer';
+                $result['effect'] = 'replay';
                 session(['replay_available' => true]);
                 $result['message'] = 'Vous pouvez rejouer une mauvaise réponse!';
                 break;
@@ -2189,10 +2189,10 @@ class SoloController extends Controller
                 'icon' => '🧠',
                 'skills' => [
                     [
-                        'id' => 'illuminate_number',
-                        'name' => 'Illumination chiffrée',
-                        'icon' => '🔢',
-                        'description' => 'Illumine une bonne réponse si un chiffre figure dans la réponse',
+                        'id' => 'illuminate_numbers',
+                        'name' => 'Illumine si chiffre',
+                        'icon' => '💡',
+                        'description' => 'Met en évidence la bonne réponse si elle contient un chiffre',
                         'type' => 'visual',
                         'trigger' => 'question',
                         'uses_per_match' => 1,
@@ -2205,10 +2205,10 @@ class SoloController extends Controller
                 'icon' => '🧪',
                 'skills' => [
                     [
-                        'id' => 'acidify_answer',
-                        'name' => 'Acidification',
-                        'icon' => '⚗️',
-                        'description' => 'Acidifie une mauvaise réponse une fois avant de choisir',
+                        'id' => 'acidify_error',
+                        'name' => 'Acidifie erreur',
+                        'icon' => '🧪',
+                        'description' => 'Acidifie une mauvaise réponse avant de choisir (1 fois)',
                         'type' => 'visual',
                         'trigger' => 'question',
                         'uses_per_match' => 1,
@@ -2221,10 +2221,10 @@ class SoloController extends Controller
                 'icon' => '🧭',
                 'skills' => [
                     [
-                        'id' => 'show_popular_answer',
-                        'name' => 'Réponse populaire',
-                        'icon' => '🧭',
-                        'description' => 'Fait apparaître la réponse la plus choisie par l\'adversaire ou le groupe',
+                        'id' => 'see_opponent_choice',
+                        'name' => 'Voit choix adverse',
+                        'icon' => '👁️',
+                        'description' => 'Voit le choix de l\'adversaire (ou la réponse la plus cliquée en Master)',
                         'type' => 'info',
                         'trigger' => 'question',
                         'uses_per_match' => 1,
@@ -2319,10 +2319,10 @@ class SoloController extends Controller
                         'affects_others' => true
                     ],
                     [
-                        'id' => 'reduce_timer',
-                        'name' => 'Chrono réduit',
-                        'icon' => '⏳',
-                        'description' => 'Réduit le compte à rebours des autres joueurs',
+                        'id' => 'reduce_time',
+                        'name' => 'Diminue temps',
+                        'icon' => '⏱️',
+                        'description' => 'Diminue le compte à rebours des autres joueurs',
                         'type' => 'attack',
                         'trigger' => 'question',
                         'uses_per_match' => 1,
@@ -2385,10 +2385,10 @@ class SoloController extends Controller
                         'auto' => false
                     ],
                     [
-                        'id' => 'replay_answer',
-                        'name' => 'Rejouer',
+                        'id' => 'replay',
+                        'name' => 'Reprendre',
                         'icon' => '🔁',
-                        'description' => 'Peut rejouer une réponse une fois',
+                        'description' => 'Reprendre une réponse 1 fois',
                         'type' => 'correction',
                         'trigger' => 'result',
                         'uses_per_match' => 1,
@@ -2411,20 +2411,20 @@ class SoloController extends Controller
                         'auto' => true
                     ],
                     [
-                        'id' => 'team_mode',
-                        'name' => 'Mode équipe',
-                        'icon' => '🤝',
-                        'description' => 'Peut créer un team (ajouter 1 Avatar rare) en mode solo',
+                        'id' => 'create_team',
+                        'name' => 'Créer team',
+                        'icon' => '👥',
+                        'description' => 'Permet de créer et gérer une équipe',
                         'type' => 'team',
                         'trigger' => 'match_start',
                         'uses_per_match' => 1,
                         'auto' => false
                     ],
                     [
-                        'id' => 'unlock_discount',
-                        'name' => 'Réduction déblocage',
-                        'icon' => '💰',
-                        'description' => 'Réduit de 10% le coût de déblocage des Avatars stratégiques',
+                        'id' => 'avatar_discount',
+                        'name' => '-20% avatars',
+                        'icon' => '🏷️',
+                        'description' => 'Réduction de 20% sur les avatars en boutique',
                         'type' => 'passive',
                         'trigger' => 'permanent',
                         'uses_per_match' => -1,
@@ -2437,10 +2437,10 @@ class SoloController extends Controller
                 'icon' => '⚡',
                 'skills' => [
                     [
-                        'id' => 'buzz_rewind',
-                        'name' => 'Recul buzz',
-                        'icon' => '⏱️',
-                        'description' => 'Reculer son temps de Buzz jusqu\'à 0,5s du plus rapide',
+                        'id' => 'faster_buzz',
+                        'name' => 'Buzzer + rapide',
+                        'icon' => '⚡',
+                        'description' => 'Peut reculer son temps de buzzer jusqu\'à 0.5s du plus rapide',
                         'type' => 'time',
                         'trigger' => 'result',
                         'uses_per_match' => 1,
