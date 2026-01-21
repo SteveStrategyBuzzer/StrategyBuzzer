@@ -2336,21 +2336,21 @@ class SoloController extends Controller
                 'icon' => '📚',
                 'skills' => [
                     [
-                        'id' => 'history_corrects',
-                        'name' => 'L\'histoire corrige',
-                        'icon' => '📜',
-                        'description' => '+2 points si mauvaise réponse (activable sur la page Result)',
-                        'type' => 'correction',
-                        'trigger' => 'result',
+                        'id' => 'knowledge_without_time',
+                        'name' => 'Savoir sans temps',
+                        'icon' => '🪶',
+                        'description' => 'Répondre sans buzzer (+1 max)',
+                        'type' => 'bonus',
+                        'trigger' => 'answer',
                         'uses_per_match' => 1,
                         'auto' => false
                     ],
                     [
-                        'id' => 'knowledge_without_time',
-                        'name' => 'Le savoir sans temps',
-                        'icon' => '🪶',
-                        'description' => '+1 point si bonne réponse sans avoir buzzé (activable sur la page Result)',
-                        'type' => 'bonus',
+                        'id' => 'history_corrects',
+                        'name' => "L'histoire corrige",
+                        'icon' => '📜',
+                        'description' => 'Récupérer les points après erreur',
+                        'type' => 'correction',
                         'trigger' => 'result',
                         'uses_per_match' => 1,
                         'auto' => false
