@@ -86,17 +86,17 @@ The Historian avatar has 2 unique skills:
 
 **📜 Parchemin (L'histoire corrige / history_corrects)**
 - **Trigger:** On result page after player buzzed AND made an error (-2 points)
-- **Effect:** Cancels the -2 penalty and awards points player was playing for
+- **Effect:** Cancels the -2 penalty AND awards the points player was playing for
 - **Consumption:** Player clicks on the 📜 icon next to correct answer
 - **Uses per match:** 1
-- **Points recovered:**
-  - 1st to buzz + error → recovers +2 points
-  - 2nd to buzz + error → recovers +1 point
+- **Score calculation (cumulative):**
+  - 1st to buzz + error: -2 cancelled (+2) AND +2 pts awarded = **final +2 pts**
+  - 2nd to buzz + error: -2 cancelled (+2) AND +1 pt awarded = **final +1 pt**
 - **Flow:**
-  1. Player buzzes and answers incorrectly → result page
+  1. Player buzzes and answers incorrectly → result page (score shows -2)
   2. If `player_buzzed=true` && `is_correct=false` && `player_points < 0` → show 📜 on correct answer
   3. Player clicks 📜 → AJAX call to `useScrollSkill()`
-  4. Score updated: +1 or +2 based on buzz order, skill consumed
+  4. Score updated: cancel -2 then add points played for, skill consumed
   5. Stats keep `is_correct=false` (error remains in statistics)
 
 **Conditions for skill display:**

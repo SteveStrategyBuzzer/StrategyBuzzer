@@ -155,7 +155,7 @@ class SkillCatalog
                 'id' => 'parchemin',
                 'name' => 'Parchemin',
                 'icon' => '📜',
-                'description' => 'Après erreur avec buzz, récupère les points joués en cliquant sur la bonne réponse',
+                'description' => 'Après erreur avec buzz: annule le -2 pts ET ajoute les points joués (+1 ou +2)',
                 'avatar' => 'historien',
                 'type' => self::TYPE_PERSONAL,
                 'trigger' => self::TRIGGER_ON_RESULT,
