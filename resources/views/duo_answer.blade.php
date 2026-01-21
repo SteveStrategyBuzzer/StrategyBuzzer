@@ -688,7 +688,7 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         if (isset($skills) && is_array($skills)) {
             foreach ($skills as $skill) {
                 $skillId = $skill['id'] ?? '';
-                if ($skillId === 'knowledge_without_time' || $skillId === 'hint_before_others') {
+                if ($skillId === 'knowledge_without_time') {
                     $hasHistorianSkill = true;
                 }
                 if ($skillId === 'illuminate_numbers') $hasIlluminateNumbers = true;
@@ -745,28 +745,19 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     </div>
     @endif
 
-    @if($noBuzz)
+    @if($noBuzz && $hasHistorianSkill)
+        {{-- Plume (Savoir sans temps): le joueur n'a pas buzzé mais peut répondre pour +1 pt max --}}
+        <div class="buzz-status-banner historian-active" style="background: rgba(78, 205, 196, 0.15); border-color: rgba(78, 205, 196, 0.3);">
+            🪶 {{ __('Savoir sans temps') }} - {{ __('Vous pouvez répondre') }} (+1 {{ __('point max') }})
+        </div>
+        <input type="hidden" id="featherSkillActive" value="1">
+    @elseif($noBuzz)
         <div class="buzz-status-banner no-buzz">
             ⚠️ {{ __('Pas buzzé - Vous pouvez quand même répondre (0 point)') }}
         </div>
     @elseif($isBuzzWinner)
         <div class="buzz-status-banner buzzed">
             {{ __('Vous avez buzzé en') }} {{ number_format($buzzTime, 1) }}s 💚
-        </div>
-    @elseif($hasHistorianSkill)
-        <div class="buzz-status-banner opponent-buzz" id="waitingBanner">
-            ⏳ {{ __(':name a buzzé - En attente de sa réponse...', ['name' => $opponentName ?? __('Adversaire')]) }}
-        </div>
-        <div class="historian-skill-section" id="historianSkillSection">
-            <button class="historian-skill-button" id="historianSkillBtn" title="{{ __('Activer le skill Réponse historique') }}">
-                <span class="skill-icon">🪶</span>
-                <span class="skill-text">{{ __('Réponse historique') }}</span>
-                <span class="skill-points">+1 {{ __('point') }}</span>
-            </button>
-            <p class="skill-hint">{{ __('Cliquez pour tenter de répondre (+1 si correct, 0 si erreur)') }}</p>
-        </div>
-        <div class="buzz-status-banner historian-active" id="historianActiveBanner" style="display: none;">
-            🪶 {{ __('Skill activé - Répondez pour +1 point (0 si erreur)') }}
         </div>
     @else
         <div class="buzz-status-banner opponent-buzz">

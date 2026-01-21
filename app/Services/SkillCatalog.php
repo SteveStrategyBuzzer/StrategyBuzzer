@@ -139,11 +139,11 @@ class SkillCatalog
                 'uses_per_match' => 2,
                 'affects_opponent' => true,
             ],
-            'plume' => [
-                'id' => 'plume',
-                'name' => 'Plume',
+            'knowledge_without_time' => [
+                'id' => 'knowledge_without_time',
+                'name' => 'Savoir sans temps',
                 'icon' => '🪶',
-                'description' => 'Si pas de buzz (timeout), peut quand même répondre pour +1 pt max',
+                'description' => 'Répondre sans buzzer (+1 max)',
                 'avatar' => 'historien',
                 'type' => self::TYPE_PERSONAL,
                 'trigger' => self::TRIGGER_ON_ANSWER,
@@ -151,11 +151,11 @@ class SkillCatalog
                 'uses_per_match' => 1,
                 'affects_opponent' => false,
             ],
-            'parchemin' => [
-                'id' => 'parchemin',
-                'name' => 'Parchemin',
+            'history_corrects' => [
+                'id' => 'history_corrects',
+                'name' => "L'histoire corrige",
                 'icon' => '📜',
-                'description' => 'Après erreur avec buzz: annule le -2 pts ET ajoute les points joués (+1 ou +2)',
+                'description' => 'Récupérer les points après erreur',
                 'avatar' => 'historien',
                 'type' => self::TYPE_PERSONAL,
                 'trigger' => self::TRIGGER_ON_RESULT,
