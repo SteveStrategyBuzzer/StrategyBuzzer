@@ -817,9 +817,9 @@ if ($opponentInfo['is_boss'] ?? false) {
         </div>
     </div>
     
-    <!-- Bouton Buzzer centré en bas -->
-    <div class="buzz-container-bottom buzzer-waiting" id="buzzContainer">
-        <button id="buzzButton" class="buzz-button" disabled>
+    <!-- Bouton Buzzer centré en bas - prêt dès le début -->
+    <div class="buzz-container-bottom buzzer-ready" id="buzzContainer">
+        <button id="buzzButton" class="buzz-button">
             <img src="{{ asset('images/buzzer.png') }}" alt="Strategy Buzzer">
         </button>
     </div>

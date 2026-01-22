@@ -1,5 +1,13 @@
 @extends('layouts.app')
 
+@push('head')
+{{-- Préchargement des ressources critiques de la page question --}}
+<link rel="prefetch" href="{{ asset('images/buzzer.png') }}" as="image">
+<link rel="prefetch" href="{{ asset('sounds/buzzer_default_1.mp3') }}" as="audio">
+<link rel="prefetch" href="{{ asset('sounds/no_buzz.mp3') }}" as="audio">
+<link rel="preload" href="{{ asset('images/buzzer.png') }}" as="image">
+@endpush
+
 @section('content')
 @php
 $mode = $params['mode'] ?? 'duo';

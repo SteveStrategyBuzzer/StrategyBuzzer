@@ -1,5 +1,13 @@
 @extends('layouts.app')
 
+@push('head')
+{{-- Préchargement des ressources de la page question suivante --}}
+<link rel="prefetch" href="{{ asset('images/buzzer.png') }}" as="image">
+<link rel="prefetch" href="{{ asset('sounds/buzzer_default_1.mp3') }}" as="audio">
+<link rel="prefetch" href="{{ asset('sounds/grenouille.mp3') }}" as="audio">
+<link rel="preload" href="{{ asset('images/buzzer.png') }}" as="image">
+@endpush
+
 @section('content')
 <style>
     body {
