@@ -1089,11 +1089,17 @@ class SoloController extends Controller
             $potentialPoints = $opponentBehavior['is_faster'] ? 1 : 2;
         }
         
-        // Mathématicien: illuminate_numbers - le skill est disponible si pas encore utilisé
+        // Mathématicien: illuminate_numbers - disponible 1 fois par 30 questions
         $usedSkills = session('used_skills', []);
         $illuminateSkillAvailable = false;
+        $illuminateLastUsedQuestion = session('illuminate_last_used_question', 0);
+        $currentQuestionNumber = session('current_question_number', 1);
         
-        if ($avatar === 'Mathématicien' && !in_array('illuminate_numbers', $usedSkills)) {
+        // Skill disponible si: pas utilisé OU si 30 questions se sont écoulées depuis la dernière utilisation
+        $questionsSinceLastUse = $currentQuestionNumber - $illuminateLastUsedQuestion;
+        $canUseIlluminate = ($illuminateLastUsedQuestion === 0) || ($questionsSinceLastUse >= 30);
+        
+        if ($avatar === 'Mathématicien' && $canUseIlluminate) {
             $correctIndex = $question['correct_index'] ?? 0;
             $correctAnswer = $question['answers'][$correctIndex] ?? '';
             // Vérifie si la bonne réponse contient un chiffre
@@ -1187,11 +1193,9 @@ class SoloController extends Controller
         // Vérifier si le skill Illumine (illuminate_numbers) a été utilisé
         $illuminateSkillUsed = $request->input('illuminate_skill_used', '0') === '1';
         if ($illuminateSkillUsed) {
-            $usedSkills = session('used_skills', []);
-            if (!in_array('illuminate_numbers', $usedSkills)) {
-                $usedSkills[] = 'illuminate_numbers';
-                session(['used_skills' => $usedSkills]);
-            }
+            // Sauvegarder le numéro de question pour le cooldown de 30 questions
+            $currentQuestionNumber = session('current_question_number', 1);
+            session(['illuminate_last_used_question' => $currentQuestionNumber]);
         }
         
         if ($playerBuzzed) {

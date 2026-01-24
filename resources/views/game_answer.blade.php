@@ -535,7 +535,7 @@ $illuminateSkillAvailable = $params['illuminate_skill_available'] ?? false;
 
 @if($illuminateSkillAvailable)
 <div class="illuminate-skill-btn" id="illuminateSkillBtn" onclick="activateIlluminateSkill()">
-    💡
+    🔢
 </div>
 <div class="skill-label">{{ __('Illuminer') }}</div>
 @endif
