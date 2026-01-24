@@ -814,8 +814,8 @@ class SoloController extends Controller
                 
             // 🟡 LÉGENDAIRE SKILLS
             case 'ai_suggestion':
-                // IA Junior: 80% de chance d'illuminer la bonne réponse
-                $isCorrect = (rand(1, 100) <= 80);
+                // IA Junior: 90% de chance d'illuminer la bonne réponse
+                $isCorrect = (rand(1, 100) <= 90);
                 
                 if ($isCorrect) {
                     $result['suggestion_index'] = $correctIndex;
@@ -2462,12 +2462,12 @@ class SoloController extends Controller
                         'id' => 'ai_suggestion',
                         'name' => 'Suggestion IA',
                         'icon' => '💡',
-                        'description' => 'A 80% de chance que la réponse illuminée soit correcte',
+                        'description' => 'A 90% de chance que la réponse illuminée soit correcte',
                         'type' => 'visual',
                         'trigger' => 'question',
                         'uses_per_match' => 1,
                         'auto' => false,
-                        'success_rate' => 0.8
+                        'success_rate' => 0.9
                     ],
                     [
                         'id' => 'eliminate_two',
