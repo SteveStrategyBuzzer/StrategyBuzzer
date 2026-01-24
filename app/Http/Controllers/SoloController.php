@@ -2864,9 +2864,11 @@ class SoloController extends Controller
         $opponentFaster = $lastStat['opponent_faster'] ?? false;
         $pointsWouldHaveWon = $opponentFaster ? 1 : 2;
         
-        // Le Parchemin annule le -2 et donne les points que le joueur jouait pour
-        // Donc on ajoute seulement les points qu'il aurait gagnés (le -2 est annulé, pas additionné)
-        $totalPointsToAdd = $pointsWouldHaveWon;
+        // Le Parchemin fait un calcul CUMULATIF:
+        // 1. Annule le -2 pts de l'erreur = +2
+        // 2. PUIS ajoute les points que le joueur jouait pour (+2 si 1er, +1 si 2ème)
+        // Résultat final: 1er buzz → +2 pts, 2ème buzz → +1 pt
+        $totalPointsToAdd = 2 + $pointsWouldHaveWon;
         
         // Mettre à jour le score
         $currentScore = session('score', 0);
