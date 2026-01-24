@@ -40,6 +40,17 @@ $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
 
 // Mathématicien: illuminate_numbers - skill disponible mais pas encore activé
 $illuminateSkillAvailable = $params['illuminate_skill_available'] ?? false;
+
+// Scientifique: acidify_error - skill disponible
+$acidifySkillAvailable = false;
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skill) {
+        if (($skill['id'] ?? '') === 'acidify_error') {
+            $acidifySkillAvailable = !in_array('acidify_error', $usedSkills);
+            break;
+        }
+    }
+}
 @endphp
 
 <style>
@@ -337,6 +348,79 @@ $illuminateSkillAvailable = $params['illuminate_skill_available'] ?? false;
         text-align: center;
     }
     
+    /* Scientifique Acidify Skill Button */
+    .acidify-skill-btn {
+        position: fixed;
+        bottom: 100px;
+        left: 20px;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #00FF00, #32CD32);
+        border: 3px solid #fff;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.2rem;
+        z-index: 1000;
+        animation: acidify-pulse 1.2s ease-in-out infinite;
+        transition: transform 0.2s;
+    }
+    
+    .acidify-skill-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    .acidify-skill-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .acidify-skill-btn.used {
+        opacity: 0.4;
+        pointer-events: none;
+        animation: none;
+    }
+    
+    @keyframes acidify-pulse {
+        0%, 100% { 
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1);
+        }
+        50% { 
+            box-shadow: 0 0 40px rgba(0, 255, 0, 1), 0 0 60px rgba(50, 205, 50, 0.6), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1.05);
+        }
+    }
+    
+    .skill-label.acidify-label {
+        bottom: 70px;
+        left: 10px;
+        right: auto;
+        color: #00FF00;
+    }
+    
+    /* Acidified answer style */
+    .answer-bubble.acidified {
+        opacity: 0.3;
+        pointer-events: none;
+        background: rgba(0, 0, 0, 0.5) !important;
+        border-color: #00FF00 !important;
+        text-decoration: line-through;
+        position: relative;
+    }
+    
+    .answer-bubble.acidified::after {
+        content: '🧪';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2rem;
+        opacity: 0.7;
+    }
+    
     /* Buzz info */
     .buzz-info {
         text-align: center;
@@ -540,6 +624,13 @@ $illuminateSkillAvailable = $params['illuminate_skill_available'] ?? false;
 <div class="skill-label">{{ __('Illuminer') }}</div>
 @endif
 
+@if($acidifySkillAvailable)
+<div class="acidify-skill-btn" id="acidifySkillBtn" onclick="activateAcidifySkill()">
+    🧪
+</div>
+<div class="skill-label acidify-label">{{ __('Acidifier') }}</div>
+@endif
+
 <audio id="tickSound" preload="auto" loop>
     <source src="{{ asset('sounds/tic_tac.mp3') }}" type="audio/mpeg">
 </audio>
@@ -608,6 +699,52 @@ function activateIlluminateSkill() {
     setTimeout(() => {
         document.getElementById('answerForm').submit();
     }, 1500);
+}
+
+// Fonction pour activer le skill Scientifique "Acidifie 2 erreurs"
+let acidifySkillUsed = false;
+function activateAcidifySkill() {
+    if (answered || acidifySkillUsed) return;
+    
+    acidifySkillUsed = true;
+    
+    // Marquer le bouton comme utilisé
+    const skillBtn = document.getElementById('acidifySkillBtn');
+    if (skillBtn) {
+        skillBtn.classList.add('used');
+    }
+    
+    // Trouver les indices des mauvaises réponses
+    const bubbles = document.querySelectorAll('.answer-bubble');
+    const wrongIndices = [];
+    bubbles.forEach((bubble, index) => {
+        if (index !== correctIndex) {
+            wrongIndices.push(index);
+        }
+    });
+    
+    // Mélanger et prendre 2 mauvaises réponses
+    for (let i = wrongIndices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [wrongIndices[i], wrongIndices[j]] = [wrongIndices[j], wrongIndices[i]];
+    }
+    const toAcidify = wrongIndices.slice(0, 2);
+    
+    // Acidifier les 2 mauvaises réponses
+    toAcidify.forEach(index => {
+        bubbles[index].classList.add('acidified');
+    });
+    
+    // Marquer le skill comme utilisé dans le formulaire
+    let acidifyInput = document.getElementById('acidifySkillUsedInput');
+    if (!acidifyInput) {
+        acidifyInput = document.createElement('input');
+        acidifyInput.type = 'hidden';
+        acidifyInput.id = 'acidifySkillUsedInput';
+        acidifyInput.name = 'acidify_skill_used';
+        document.getElementById('answerForm').appendChild(acidifyInput);
+    }
+    acidifyInput.value = '1';
 }
 
 // Animation de la barre de temps

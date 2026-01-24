@@ -33,9 +33,9 @@ class SkillCatalog
             ],
             'acidify_error' => [
                 'id' => 'acidify_error',
-                'name' => 'Acidifie erreur',
+                'name' => 'Acidifie 2 erreurs',
                 'icon' => '🧪',
-                'description' => 'Acidifie une mauvaise réponse avant de choisir (1 fois)',
+                'description' => 'Acidifie 2 mauvaises réponses avant de choisir (1 fois par partie)',
                 'avatar' => 'scientifique',
                 'type' => self::TYPE_PERSONAL,
                 'trigger' => self::TRIGGER_ON_ANSWER,

@@ -1194,6 +1194,16 @@ class SoloController extends Controller
             }
         }
         
+        // Vérifier si le skill Acidifie (acidify_error) a été utilisé
+        $acidifySkillUsed = $request->input('acidify_skill_used', '0') === '1';
+        if ($acidifySkillUsed) {
+            $usedSkills = session('used_skills', []);
+            if (!in_array('acidify_error', $usedSkills)) {
+                $usedSkills[] = 'acidify_error';
+                session(['used_skills' => $usedSkills]);
+            }
+        }
+        
         if ($playerBuzzed) {
             // Le joueur a buzzé
             if ($answerIndex === -1) {
