@@ -2894,13 +2894,14 @@ class SoloController extends Controller
         $usedSkills[] = 'history_corrects';
         session(['used_skills' => $usedSkills]);
         
-        \Log::info('[Historien] Parchemin utilisé: +' . $totalPointsToAdd . ' points récupérés');
+        \Log::info('[Historien] Parchemin utilisé: -2 annulé, +' . $pointsWouldHaveWon . ' pts gagnés (total ajouté: ' . $totalPointsToAdd . ')');
         
         return response()->json([
             'success' => true,
-            'message' => __("L'histoire corrige") . ' ! +' . $totalPointsToAdd . ' ' . __('points'),
+            'message' => __("L'histoire corrige") . ' ! -2 ' . __('annulé') . ', +' . $pointsWouldHaveWon . ' ' . __('pts'),
             'new_score' => $newScore,
             'points_recovered' => $totalPointsToAdd,
+            'points_final' => $pointsWouldHaveWon,
             'used_skills' => $usedSkills
         ]);
     }
