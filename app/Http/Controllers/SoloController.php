@@ -1073,6 +1073,13 @@ class SoloController extends Controller
             $opponentScore = session('opponent_score', 0);
             $chronoTime = session('chrono_time', 8);
             
+            // Skill Challenger: Chrono Réduit - réduire le chrono de l'adversaire de 2 sec
+            $reduceTimeActive = session('reduce_time_active', false);
+            if ($reduceTimeActive) {
+                $reduction = session('reduce_time_reduction', 2);
+                $chronoTime = max(3, $chronoTime - $reduction); // Minimum 3 sec pour l'IA
+            }
+            
             $opponentBehavior = $questionService->simulateOpponentBehavior(
                 $niveau,
                 $question,
@@ -1177,13 +1184,32 @@ class SoloController extends Controller
         $opponentScore = session('opponent_score', 0);
         $questionNumber = session('current_question_number', 1);
         
+        // Skill Challenger: Chrono Réduit - réduire le chrono de l'adversaire de 2 sec
+        $reduceTimeActive = session('reduce_time_active', false);
+        $effectiveChronoTime = $chronoTime;
+        if ($reduceTimeActive) {
+            $reduction = session('reduce_time_reduction', 2);
+            $effectiveChronoTime = max(3, $chronoTime - $reduction); // Minimum 3 sec pour l'IA
+            
+            // Décrémenter le compteur de questions restantes
+            $questionsLeft = session('reduce_time_questions_left', 0);
+            $questionsLeft--;
+            session(['reduce_time_questions_left' => $questionsLeft]);
+            
+            // Désactiver le skill si plus de questions restantes
+            if ($questionsLeft <= 0) {
+                session(['reduce_time_active' => false]);
+                \Log::info('[CHALLENGER] Skill reduce_time épuisé');
+            }
+        }
+        
         // Simuler le comportement complet de l'adversaire IA (passer timing du buzz)
         $opponentBehavior = $questionService->simulateOpponentBehavior(
             $niveau, 
             $question, 
             $playerBuzzed, 
             $buzzTime, 
-            $chronoTime,
+            $effectiveChronoTime,
             $playerScore,
             $opponentScore,
             $questionNumber
@@ -2879,6 +2905,56 @@ class SoloController extends Controller
             'success' => true, 
             'message' => 'Erreur annulée ! +' . $pointsToRecover . ' points récupérés',
             'new_score' => session('score'),
+            'used_skills' => $usedSkills
+        ]);
+    }
+    
+    /**
+     * Skill Challenger - Chrono Réduit
+     * Réduit le chrono de l'adversaire de 2 sec pendant plusieurs questions
+     * Manche 1-2: 5 questions, Manche 3: 3 questions, Manche Ultime: 1 question
+     */
+    public function reduceTime(Request $request)
+    {
+        $avatar = session('avatar', 'Aucun');
+        
+        if ($avatar !== 'Challenger') {
+            return response()->json(['success' => false, 'message' => 'Skill non disponible pour cet avatar'], 403);
+        }
+        
+        $usedSkills = session('used_skills', []);
+        if (in_array('reduce_time', $usedSkills)) {
+            return response()->json(['success' => false, 'message' => 'Skill déjà utilisé'], 403);
+        }
+        
+        // Déterminer le nombre de questions affectées selon la manche
+        $currentRound = session('current_round', 1);
+        $questionsAffected = 5; // Par défaut Manche 1-2
+        
+        if ($currentRound === 3) {
+            $questionsAffected = 3; // Manche 3 (5 questions)
+        } elseif ($currentRound >= 4) {
+            $questionsAffected = 1; // Manche Ultime (3 questions)
+        }
+        
+        // Activer le skill
+        session(['reduce_time_active' => true]);
+        session(['reduce_time_questions_left' => $questionsAffected]);
+        session(['reduce_time_reduction' => 2]); // -2 secondes
+        
+        // Marquer le skill comme utilisé
+        $usedSkills[] = 'reduce_time';
+        session(['used_skills' => $usedSkills]);
+        
+        \Log::info('[CHALLENGER] Skill reduce_time activé', [
+            'current_round' => $currentRound,
+            'questions_affected' => $questionsAffected,
+        ]);
+        
+        return response()->json([
+            'success' => true, 
+            'message' => 'Chrono Réduit activé ! -2 sec pour l\'adversaire pendant ' . $questionsAffected . ' questions',
+            'questions_affected' => $questionsAffected,
             'used_skills' => $usedSkills
         ]);
     }
