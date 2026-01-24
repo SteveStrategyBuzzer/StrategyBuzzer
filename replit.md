@@ -69,7 +69,7 @@ Solo mode dictates the strict sequence of game phases (intro, question, buzz, re
 
 **Game Modes:** Solo (90 opponents, 10 boss battles), Duo (division-based), League Individual (1v1 career), League Team (5v5 with 3 sub-modes), and Master (real-time hosting for 3-40 players with four distinct game structures).
 
-**Avatar System:** User-specific avatars (12 across 3 tiers) offering 25 unique skills (Passive, Visual, Active_Pre, Active_Post).
+**Avatar System:** User-specific avatars (12 across 3 tiers) offering 25+ unique skills.
 
 **Skill Targeting System (Attack Skills):**
 All attack skills must target an opponent according to these rules:
@@ -79,42 +79,99 @@ All attack skills must target an opponent according to these rules:
   2. If player IS leader: Target the player closest in score below (or equal to) the player
 - This creates strategic depth where attacks always go toward the most threatening competitor
 
-#### Historien Avatar (Epic Tier)
-The Historian avatar has 2 unique skills:
+---
 
-**🪶 Plume (Le savoir sans temps / knowledge_without_time)**
-- **Trigger:** When player did NOT buzz (timeout on question page)
-- **Effect:** Player can still answer the question for +1 point max
-- **Consumption:** Only consumed when player clicks on an answer (not on page load or timeout)
+### Avatar Skills Documentation
+
+#### Mathématicien (Rare Tier)
+**🔢 Illumine si chiffre (`illuminate_numbers`)**
+- **Trigger:** Page Réponse (automatique)
+- **Effect:** Met en évidence la bonne réponse si elle contient un chiffre
+- **Uses per match:** Illimité (passif)
+
+#### Scientifique (Rare Tier)
+**🧪 Acidifie 2 erreurs (`acidify_error`)**
+- **Trigger:** Page Réponse (manuel)
+- **Effect:** Acidifie visuellement 2 mauvaises réponses avant de choisir
+- **Uses per match:** 1
+
+#### Explorateur (Rare Tier)
+**👁️ Voit choix adverse (`see_opponent_choice`)**
+- **Trigger:** Page Réponse (manuel)
+- **Effect:** Affiche le choix de l'adversaire/IA en temps réel
+- **Uses per match:** 1
+
+#### Challenger (Rare Tier)
+**⏱️ Chrono Réduit (`reduce_time`)**
+- **Trigger:** Page Résultat (manuel)
+- **Effect:** Réduit le chrono de l'adversaire de 2 secondes
+- **Duration:** 5/3/1 questions selon la manche (1-2/3/Ultime)
+- **Uses per match:** 1
+
+**🔀 Mélange Réponses (`shuffle_answers`)**
+- **Trigger:** Page Résultat (manuel)
+- **Effect:** Les 4 réponses changent de position toutes les 1.5 secondes
+- **Duration:** 5/3/1 questions selon la manche
+- **Uses per match:** 1
+
+#### IA Junior (Rare Tier)
+**💡 Suggestion IA (`ai_suggestion`)**
+- **Trigger:** Page Réponse (manuel)
+- **Effect:** L'IA suggère une réponse en l'illuminant
+- **Accuracy:** 90% (10% de chance d'indiquer une mauvaise réponse)
+- **Uses per match:** 1
+
+**❌ Éliminer 2 erreurs (`eliminate_two`)**
+- **Trigger:** Page Réponse (manuel)
+- **Effect:** Élimine 2 mauvaises réponses sur les 4, laissant 2 choix
+- **Uses per match:** 1
+
+**🔄 Reprendre réponse (`retry_answer`)**
+- **Trigger:** Après erreur sur Page Réponse
+- **Effect:** Après une mauvaise réponse, le son d'erreur retentit et l'emoji apparaît permettant de rechoisir parmi les 3 autres réponses
 - **Uses per match:** 1
 - **Flow:**
-  1. Player doesn't buzz → `/solo/timeout` route
-  2. `timeout()` checks if avatar === 'Historien' && skill not used
-  3. If available, renders answer page with `featherAvailable=true`
-  4. Answer page shows 🪶 icon on all answers (always visible, not hover-only)
-  5. Player clicks answer → `feather_skill_used=1` set in form
-  6. POST to `answer()` → +1 point if correct, 0 if wrong, skill consumed
+  1. Joueur clique sur une mauvaise réponse
+  2. Son d'erreur retentit
+  3. Emoji 🔄 apparaît (comme 🪶 pour Historien)
+  4. Les 3 autres réponses deviennent sélectionnables
+  5. Joueur peut choisir une autre réponse
 
-**📜 Parchemin (L'histoire corrige / history_corrects)**
-- **Trigger:** On result page after player buzzed AND made an error (-2 points)
-- **Effect:** Cancels the -2 penalty AND awards the points player was playing for
-- **Consumption:** Player clicks on the 📜 icon next to correct answer
+#### Historien (Épique Tier)
+**🪶 Plume (`knowledge_without_time`)**
+- **Trigger:** Quand le joueur n'a PAS buzzé (timeout sur page Question)
+- **Effect:** Le joueur peut quand même répondre pour +1 point max
+- **Consumption:** Consommé uniquement quand le joueur clique sur une réponse
 - **Uses per match:** 1
-- **Score calculation (cumulative):**
-  - 1st to buzz + error: -2 cancelled (+2) AND +2 pts awarded = **final +2 pts**
-  - 2nd to buzz + error: -2 cancelled (+2) AND +1 pt awarded = **final +1 pt**
 - **Flow:**
-  1. Player buzzes and answers incorrectly → result page (score shows -2)
-  2. If `player_buzzed=true` && `is_correct=false` && `player_points < 0` → show 📜 on correct answer
-  3. Player clicks 📜 → AJAX call to `useScrollSkill()`
-  4. Score updated: cancel -2 then add points played for, skill consumed
-  5. Stats keep `is_correct=false` (error remains in statistics)
+  1. Joueur ne buzze pas → route `/solo/timeout`
+  2. `timeout()` vérifie si avatar === 'Historien' && skill non utilisé
+  3. Si disponible, affiche page réponse avec `featherAvailable=true`
+  4. Page réponse montre 🪶 sur toutes les réponses
+  5. Joueur clique → +1 point si correct, 0 si faux, skill consommé
 
-**Conditions for skill display:**
-| Skill | Condition |
-|-------|-----------|
-| 🪶 Plume | `!player_buzzed` && skill not used |
-| 📜 Parchemin | `player_buzzed` && `!is_correct` && `player_points < 0` && skill not used |
+**📜 Parchemin (`history_corrects`)**
+- **Trigger:** Page Résultat après erreur (-2 points)
+- **Effect:** Annule la pénalité de -2 ET accorde les points joués
+- **Consumption:** Joueur clique sur 📜 à côté de la bonne réponse
+- **Uses per match:** 1
+- **Score calculation:**
+  - 1er à buzzer + erreur: -2 annulé (+2) ET +2 pts = **final +2 pts**
+  - 2ème+ à buzzer + erreur: -2 annulé (+2) ET +1 pt = **final +1 pt**
+
+#### Comédienne (Épique Tier)
+**🎭 Score masqué (`fake_score`)**
+- **Trigger:** Début de match (automatique)
+- **Effect:** Affiche un score moins élevé à l'adversaire jusqu'à la fin
+- **Uses per match:** Passif (toute la partie)
+
+**🔄 Trompe réponse (`invert_answers`)**
+- **Trigger:** Page Réponse (manuel)
+- **Effect:** Chez l'adversaire, une bonne réponse apparaît comme mauvaise
+- **Uses per match:** 1
+- **Type:** Attaque (suit les règles de ciblage)
+
+---
 
 **Progression:** Quest/Achievement System with 35 Standard quests.
 
