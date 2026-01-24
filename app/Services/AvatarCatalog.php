@@ -41,25 +41,25 @@ class AvatarCatalog
                 'tier'   => 'Rare',
                 'name'   => 'Mathématicien',
                 'skills' => ['💡 Illumination : Skill Automatique, Met en évidence la bonne réponse si elle contient un chiffre'],
-                'skills_short' => ['💡 Illumination : Automatique'],
+                'skills_short' => ['💡 Automatique'],
             ],
             'scientifique'  => [
                 'tier'   => 'Rare',
                 'name'   => 'Scientifique',
                 'skills' => ['🧪 Acidification : Skill Sélectionnable, Marque visuellement 2 mauvaises réponses (1x par partie)'],
-                'skills_short' => ['🧪 Acidification : Sélectionnable (1x)'],
+                'skills_short' => ['🧪 Sélectionnable (1x)'],
             ],
             'explorateur'   => [
                 'tier'   => 'Rare',
                 'name'   => 'Explorateur',
                 'skills' => ['👁️ Vision : Skill Sélectionnable, Affiche le choix de l\'adversaire ou de l\'IA (1x par partie)'],
-                'skills_short' => ['👁️ Vision : Sélectionnable (1x)'],
+                'skills_short' => ['👁️ Sélectionnable (1x)'],
             ],
             'defenseur'     => [
                 'tier'   => 'Rare',
                 'name'   => 'Défenseur',
                 'skills' => ['🛡️ Bouclier : Skill Automatique, Annule la prochaine attaque d\'un adversaire'],
-                'skills_short' => ['🛡️ Bouclier : Automatique'],
+                'skills_short' => ['🛡️ Automatique'],
             ],
 
             // Épique ⭐
@@ -70,7 +70,7 @@ class AvatarCatalog
                     '🎭 Faux Score : Skill Automatique, Affiche un score réduit à l\'adversaire pour le tromper',
                     '🔀 Inversion : Skill Sélectionnable, La bonne réponse apparaît fausse pour l\'adversaire (1x par partie)'
                 ],
-                'skills_short' => ['🎭 Faux Score : Automatique', '🔀 Inversion : Sélectionnable (1x)'],
+                'skills_short' => ['🎭 Automatique', '🔀 Sélectionnable (1x)'],
             ],
             'magicienne'    => [
                 'tier'   => 'Épique',
@@ -79,7 +79,7 @@ class AvatarCatalog
                     '✨ Question Bonus : Skill Sélectionnable, Ajoute une question supplémentaire pour marquer des points (1x par partie)',
                     '🔮 Annulation : Skill Sélectionnable, Annule les points perdus sur une erreur (1x par partie)'
                 ],
-                'skills_short' => ['✨ Question Bonus : Sélectionnable (1x)', '🔮 Annulation : Sélectionnable (1x)'],
+                'skills_short' => ['✨ Sélectionnable (1x)', '🔮 Sélectionnable (1x)'],
             ],
             'challenger'    => [
                 'tier'   => 'Épique',
@@ -88,7 +88,7 @@ class AvatarCatalog
                     '🔀 Mélange Réponses : Skill Sélectionnable, Les réponses de l\'adversaire se mélangent toutes les 1.5s (1x par partie)',
                     '⏱️ Chrono Réduit : Skill Sélectionnable, Réduit le temps de buzz de l\'adversaire de 8s à 6s (1x par partie)'
                 ],
-                'skills_short' => ['🔀 Mélange Réponses : Sélectionnable (1x)', '⏱️ Chrono Réduit : Sélectionnable (1x)'],
+                'skills_short' => ['🔀 Sélectionnable (1x)', '⏱️ Sélectionnable (1x)'],
             ],
             'historien'     => [
                 'tier'   => 'Épique',
@@ -97,7 +97,7 @@ class AvatarCatalog
                     '📜 Savoir Intemporel : Skill Automatique, Permet de répondre après le timeout pour +1 pt',
                     '✍️ Correction Historique : Skill Sélectionnable, Annule la pénalité -2 et donne des points après un mauvais buzz (1x par partie)'
                 ],
-                'skills_short' => ['📜 Savoir Intemporel : Automatique', '✍️ Correction : Sélectionnable (1x)'],
+                'skills_short' => ['📜 Automatique', '✍️ Sélectionnable (1x)'],
             ],
 
             // Légendaire 👑
@@ -109,7 +109,7 @@ class AvatarCatalog
                     '❌ Élimination : Skill Sélectionnable, Élimine 2 mauvaises réponses sur les 4 (1x par partie)',
                     '🔄 Seconde Chance : Skill Sélectionnable, Après une erreur, permet de rechoisir parmi les 3 autres réponses (1x par partie)'
                 ],
-                'skills_short' => ['💡 IA Assist : Sélectionnable (1x)', '❌ Élimination : Sélectionnable (1x)', '🔄 Seconde Chance : Sélectionnable (1x)'],
+                'skills_short' => ['💡 Sélectionnable (1x)', '❌ Sélectionnable (1x)', '🔄 Sélectionnable (1x)'],
             ],
             'stratege'      => [
                 'tier'   => 'Légendaire',
@@ -119,7 +119,7 @@ class AvatarCatalog
                     '👥 Chef d\'Équipe : Skill Passif, Permet de créer et gérer une équipe en mode League',
                     '🏷️ Réduction : Skill Passif, -10% sur le coût des avatars stratégiques en boutique'
                 ],
-                'skills_short' => ['💰 Bonus Pièces : Automatique', '👥 Chef d\'Équipe : Passif', '🏷️ Réduction : Passif'],
+                'skills_short' => ['💰 Automatique', '👥 Passif', '🏷️ Passif'],
             ],
             'sprinteur'     => [
                 'tier'   => 'Légendaire',
@@ -129,7 +129,7 @@ class AvatarCatalog
                     '⏳ Temps Bonus : Skill Automatique, +3 secondes pour choisir la réponse',
                     '🔁 Auto-Réactivation : Skill Automatique, Le buzzer se réactive automatiquement après un buzz'
                 ],
-                'skills_short' => ['⚡ Réflexes : Automatique', '⏳ Temps Bonus : Automatique', '🔁 Auto-Réactivation : Automatique'],
+                'skills_short' => ['⚡ Automatique', '⏳ Automatique', '🔁 Automatique'],
             ],
             'visionnaire'   => [
                 'tier'   => 'Légendaire',
@@ -139,7 +139,7 @@ class AvatarCatalog
                     '🛡️ Contre-Challenger : Skill Automatique, Immunité contre les skills du Challenger',
                     '🔒 Points Sécurisés : Skill Automatique, 2 points ne peuvent jamais être perdus'
                 ],
-                'skills_short' => ['🔮 Prémonition : Sélectionnable (1x)', '🛡️ Contre-Challenger : Automatique', '🔒 Points Sécurisés : Automatique'],
+                'skills_short' => ['🔮 Sélectionnable (1x)', '🛡️ Automatique', '🔒 Automatique'],
             ],
         ];
 
