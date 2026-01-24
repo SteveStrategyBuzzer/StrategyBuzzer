@@ -562,7 +562,7 @@ audio { width: 100%; }
                         <div class="details" id="details-{{ $slug }}">
                             <div class="skills">
                                 @foreach($a['skills'] as $sk)
-                                    <div>• {{ $sk }}</div>
+                                    <div>{{ __($sk) }}</div>
                                 @endforeach
                             </div>
                             <button class="btn ghost close" type="button" onclick="toggleDetails('{{ $slug }}')">{{ __('Fermer') }}</button>

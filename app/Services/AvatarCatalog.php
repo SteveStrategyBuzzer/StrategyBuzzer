@@ -40,66 +40,94 @@ class AvatarCatalog
             'mathematicien' => [
                 'tier'   => 'Rare',
                 'name'   => 'Mathématicien',
-                'skills' => ['Illumine si chiffre'],
+                'skills' => ['💡 Illumination : Skill Automatique, Met en évidence la bonne réponse si elle contient un chiffre'],
             ],
             'scientifique'  => [
                 'tier'   => 'Rare',
                 'name'   => 'Scientifique',
-                'skills' => ['Acidifie 2 erreurs (1x)'],
+                'skills' => ['🧪 Acidification : Skill Sélectionnable, Marque visuellement 2 mauvaises réponses (1x par partie)'],
             ],
             'explorateur'   => [
                 'tier'   => 'Rare',
                 'name'   => 'Explorateur',
-                'skills' => ['Voir choix adverse (1x)'],
+                'skills' => ['👁️ Vision : Skill Sélectionnable, Affiche le choix de l\'adversaire ou de l\'IA (1x par partie)'],
             ],
             'defenseur'     => [
                 'tier'   => 'Rare',
                 'name'   => 'Défenseur',
-                'skills' => ['Annule attaque'],
+                'skills' => ['🛡️ Bouclier : Skill Automatique, Annule la prochaine attaque d\'un adversaire'],
             ],
 
             // Épique ⭐
             'comedienne'    => [
                 'tier'   => 'Épique',
                 'name'   => 'Comédienne',
-                'skills' => ['Score - en MJ','Trompe réponse'],
+                'skills' => [
+                    '🎭 Faux Score : Skill Automatique, Affiche un score réduit à l\'adversaire pour le tromper',
+                    '🔀 Inversion : Skill Sélectionnable, La bonne réponse apparaît fausse pour l\'adversaire (1x par partie)'
+                ],
             ],
             'magicienne'    => [
                 'tier'   => 'Épique',
                 'name'   => 'Magicienne',
-                'skills' => ['Q° bonus (1x)','Annule erreur (1x)'],
+                'skills' => [
+                    '✨ Question Bonus : Skill Sélectionnable, Ajoute une question supplémentaire pour marquer des points (1x par partie)',
+                    '🔮 Annulation : Skill Sélectionnable, Annule les points perdus sur une erreur (1x par partie)'
+                ],
             ],
             'challenger'    => [
                 'tier'   => 'Épique',
                 'name'   => 'Challenger',
-                'skills' => ['Mélange réponses','Diminue temps'],
+                'skills' => [
+                    '🔀 Mélange Réponses : Skill Sélectionnable, Les réponses de l\'adversaire se mélangent toutes les 1.5s (1x par partie)',
+                    '⏱️ Chrono Réduit : Skill Sélectionnable, Réduit le temps de buzz de l\'adversaire de 8s à 6s (1x par partie)'
+                ],
             ],
             'historien'     => [
                 'tier'   => 'Épique',
                 'name'   => 'Historien',
-                'skills' => ['Plume','Parchemin'],
+                'skills' => [
+                    '📜 Savoir Intemporel : Skill Automatique, Permet de répondre après le timeout pour +1 pt',
+                    '✍️ Correction Historique : Skill Sélectionnable, Annule la pénalité -2 et donne des points après un mauvais buzz (1x par partie)'
+                ],
             ],
 
             // Légendaire 👑
             'ia-junior'     => [
                 'tier'   => 'Légendaire',
                 'name'   => 'IA Junior',
-                'skills' => ['Suggestion IA','Élimine 2','Rejouer (1x)'],
+                'skills' => [
+                    '💡 IA Assist : Skill Sélectionnable, L\'IA suggère une réponse avec 90% de précision (1x par partie)',
+                    '❌ Élimination : Skill Sélectionnable, Élimine 2 mauvaises réponses sur les 4 (1x par partie)',
+                    '🔄 Seconde Chance : Skill Sélectionnable, Après une erreur, permet de rechoisir parmi les 3 autres réponses (1x par partie)'
+                ],
             ],
             'stratege'      => [
                 'tier'   => 'Légendaire',
                 'name'   => 'Stratège',
-                'skills' => ['+20% pièces','Créer team','-10% coût avatars'],
+                'skills' => [
+                    '💰 Bonus Pièces : Skill Automatique, +20% de pièces gagnées à chaque victoire',
+                    '👥 Chef d\'Équipe : Skill Passif, Permet de créer et gérer une équipe en mode League',
+                    '🏷️ Réduction : Skill Passif, -10% sur le coût des avatars stratégiques en boutique'
+                ],
             ],
             'sprinteur'     => [
                 'tier'   => 'Légendaire',
                 'name'   => 'Sprinteur',
-                'skills' => ['Buzzer + rapide','+3s réflexion','Auto-réactivation'],
+                'skills' => [
+                    '⚡ Réflexes : Skill Automatique, Le buzzer se déclenche 0.5s plus vite',
+                    '⏳ Temps Bonus : Skill Automatique, +3 secondes pour choisir la réponse',
+                    '🔁 Auto-Réactivation : Skill Automatique, Le buzzer se réactive automatiquement après un buzz'
+                ],
             ],
             'visionnaire'   => [
                 'tier'   => 'Légendaire',
                 'name'   => 'Visionnaire',
-                'skills' => ['5 Q° futures','Contre Challenger','2 pts sécurisés'],
+                'skills' => [
+                    '🔮 Prémonition : Skill Sélectionnable, Prévisualise les 5 prochaines questions du match (1x par partie)',
+                    '🛡️ Contre-Challenger : Skill Automatique, Immunité contre les skills du Challenger',
+                    '🔒 Points Sécurisés : Skill Automatique, 2 points ne peuvent jamais être perdus'
+                ],
             ],
         ];
 
