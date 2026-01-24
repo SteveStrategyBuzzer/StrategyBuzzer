@@ -59,6 +59,39 @@ $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
 // Challenger: shuffle_answers - les réponses bougent toutes les 1.5 sec
 $shuffleAnswersActive = session('shuffle_answers_active', false);
 $shuffleQuestionsLeft = session('shuffle_answers_questions_left', 0);
+
+// IA Junior: ai_suggestion - skill disponible (suggère la réponse à 90%)
+$aiSuggestionSkillAvailable = false;
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skill) {
+        if (($skill['id'] ?? '') === 'ai_suggestion') {
+            $aiSuggestionSkillAvailable = !in_array('ai_suggestion', $usedSkills);
+            break;
+        }
+    }
+}
+
+// IA Junior: eliminate_two - skill disponible (élimine 2 mauvaises réponses)
+$eliminateTwoSkillAvailable = false;
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skill) {
+        if (($skill['id'] ?? '') === 'eliminate_two') {
+            $eliminateTwoSkillAvailable = !in_array('eliminate_two', $usedSkills);
+            break;
+        }
+    }
+}
+
+// IA Junior: replay - skill disponible (rejouer après une erreur)
+$replaySkillAvailable = false;
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skill) {
+        if (($skill['id'] ?? '') === 'replay') {
+            $replaySkillAvailable = !in_array('replay', $usedSkills);
+            break;
+        }
+    }
+}
 @endphp
 
 <style>
@@ -509,6 +542,248 @@ $shuffleQuestionsLeft = session('shuffle_answers_questions_left', 0);
         color: #9B59B6;
     }
     
+    /* IA Junior: Suggestion IA skill button */
+    .ai-suggestion-skill-btn {
+        position: fixed;
+        bottom: 140px;
+        right: 15px;
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3498DB, #2980B9);
+        border: 3px solid #5DADE2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        cursor: pointer;
+        box-shadow: 0 0 20px rgba(52, 152, 219, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+        animation: ai-suggestion-pulse 1.5s ease-in-out infinite;
+        z-index: 1000;
+        transition: transform 0.2s;
+    }
+    
+    .ai-suggestion-skill-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    .ai-suggestion-skill-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .ai-suggestion-skill-btn.used {
+        opacity: 0.4;
+        pointer-events: none;
+        animation: none;
+    }
+    
+    @keyframes ai-suggestion-pulse {
+        0%, 100% { 
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1);
+        }
+        50% { 
+            box-shadow: 0 0 40px rgba(52, 152, 219, 1), 0 0 60px rgba(41, 128, 185, 0.6), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1.05);
+        }
+    }
+    
+    .skill-label.ai-suggestion-label {
+        bottom: 200px;
+        right: 10px;
+        color: #3498DB;
+    }
+    
+    /* IA Junior: Eliminate two skill button */
+    .eliminate-two-skill-btn {
+        position: fixed;
+        bottom: 210px;
+        right: 15px;
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #E74C3C, #C0392B);
+        border: 3px solid #EC7063;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        cursor: pointer;
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+        animation: eliminate-two-pulse 1.5s ease-in-out infinite;
+        z-index: 1000;
+        transition: transform 0.2s;
+    }
+    
+    .eliminate-two-skill-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    .eliminate-two-skill-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .eliminate-two-skill-btn.used {
+        opacity: 0.4;
+        pointer-events: none;
+        animation: none;
+    }
+    
+    @keyframes eliminate-two-pulse {
+        0%, 100% { 
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1);
+        }
+        50% { 
+            box-shadow: 0 0 40px rgba(231, 76, 60, 1), 0 0 60px rgba(192, 57, 43, 0.6), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1.05);
+        }
+    }
+    
+    .skill-label.eliminate-two-label {
+        bottom: 270px;
+        right: 10px;
+        color: #E74C3C;
+    }
+    
+    /* IA Junior: Replay skill overlay (appears after wrong answer) */
+    .replay-skill-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+    
+    .replay-skill-overlay.active {
+        display: flex;
+    }
+    
+    .replay-skill-container {
+        text-align: center;
+        padding: 30px;
+        background: linear-gradient(135deg, rgba(230, 126, 34, 0.95), rgba(211, 84, 0, 0.95));
+        border-radius: 20px;
+        border: 3px solid #F39C12;
+        box-shadow: 0 0 40px rgba(230, 126, 34, 0.8);
+        animation: replay-appear 0.3s ease-out;
+    }
+    
+    @keyframes replay-appear {
+        from {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    
+    .replay-skill-icon {
+        font-size: 4rem;
+        margin-bottom: 15px;
+    }
+    
+    .replay-skill-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 10px;
+    }
+    
+    .replay-skill-desc {
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 15px;
+    }
+    
+    .replay-skill-timer {
+        font-size: 1.2rem;
+        color: #F1C40F;
+        font-weight: 600;
+        margin-bottom: 20px;
+    }
+    
+    .replay-skill-btn {
+        padding: 15px 40px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #27AE60, #1E8449);
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        box-shadow: 0 5px 20px rgba(39, 174, 96, 0.5);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .replay-skill-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 30px rgba(39, 174, 96, 0.7);
+    }
+    
+    .replay-skill-skip {
+        margin-top: 15px;
+        padding: 10px 30px;
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.7);
+        background: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .replay-skill-skip:hover {
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.6);
+    }
+    
+    /* AI suggested answer highlight */
+    .answer-bubble.ai-suggested {
+        border: 4px solid #3498DB !important;
+        box-shadow: 0 0 25px rgba(52, 152, 219, 0.9), inset 0 0 20px rgba(52, 152, 219, 0.3);
+        position: relative;
+    }
+    
+    .answer-bubble.ai-suggested::before {
+        content: '💡';
+        position: absolute;
+        top: -15px;
+        right: -15px;
+        font-size: 1.5rem;
+        background: #3498DB;
+        border-radius: 50%;
+        padding: 5px;
+        z-index: 10;
+    }
+    
+    /* Eliminated answer styling */
+    .answer-bubble.eliminated {
+        opacity: 0.3;
+        pointer-events: none;
+        text-decoration: line-through;
+        filter: grayscale(100%);
+        position: relative;
+    }
+    
+    .answer-bubble.eliminated::after {
+        content: '❌';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2rem;
+        z-index: 10;
+    }
+    
     /* Opponent choice highlight */
     .answer-bubble.opponent-choice {
         border: 4px solid #9B59B6 !important;
@@ -750,6 +1025,20 @@ $shuffleQuestionsLeft = session('shuffle_answers_questions_left', 0);
 <div class="skill-label see-opponent-label">{{ __('Voir choix') }}</div>
 @endif
 
+@if($aiSuggestionSkillAvailable)
+<div class="ai-suggestion-skill-btn" id="aiSuggestionSkillBtn" onclick="activateAiSuggestionSkill()">
+    💡
+</div>
+<div class="skill-label ai-suggestion-label">{{ __('Suggestion IA') }}</div>
+@endif
+
+@if($eliminateTwoSkillAvailable)
+<div class="eliminate-two-skill-btn" id="eliminateTwoSkillBtn" onclick="activateEliminateTwoSkill()">
+    ❌
+</div>
+<div class="skill-label eliminate-two-label">{{ __('Éliminer') }}</div>
+@endif
+
 <audio id="tickSound" preload="auto" loop>
     <source src="{{ asset('sounds/tic_tac.mp3') }}" type="audio/mpeg">
 </audio>
@@ -946,6 +1235,100 @@ function activateSeeOpponentSkill() {
         document.getElementById('answerForm').appendChild(seeOpponentInput);
     }
     seeOpponentInput.value = '1';
+}
+
+// IA Junior: Skill Suggestion IA (90% de chance de suggérer la bonne réponse)
+let aiSuggestionSkillUsed = false;
+
+function activateAiSuggestionSkill() {
+    if (answered || aiSuggestionSkillUsed) return;
+    
+    aiSuggestionSkillUsed = true;
+    
+    // Marquer le bouton comme utilisé
+    const skillBtn = document.getElementById('aiSuggestionSkillBtn');
+    if (skillBtn) {
+        skillBtn.classList.add('used');
+    }
+    
+    const bubbles = document.querySelectorAll('.answer-bubble');
+    const isCorrect = Math.random() < 0.9; // 90% de chance
+    
+    let suggestionIndex;
+    if (isCorrect) {
+        suggestionIndex = correctIndex;
+    } else {
+        // Trouver une mauvaise réponse aléatoire
+        const wrongIndices = [];
+        for (let i = 0; i < bubbles.length; i++) {
+            if (i !== correctIndex) wrongIndices.push(i);
+        }
+        suggestionIndex = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
+    }
+    
+    // Illuminer la réponse suggérée
+    if (bubbles[suggestionIndex]) {
+        bubbles[suggestionIndex].classList.add('ai-suggested');
+    }
+    
+    // Marquer le skill comme utilisé dans le formulaire
+    let aiSuggestionInput = document.getElementById('aiSuggestionSkillUsedInput');
+    if (!aiSuggestionInput) {
+        aiSuggestionInput = document.createElement('input');
+        aiSuggestionInput.type = 'hidden';
+        aiSuggestionInput.id = 'aiSuggestionSkillUsedInput';
+        aiSuggestionInput.name = 'ai_suggestion_skill_used';
+        document.getElementById('answerForm').appendChild(aiSuggestionInput);
+    }
+    aiSuggestionInput.value = '1';
+}
+
+// IA Junior: Skill Élimination (élimine 2 mauvaises réponses)
+let eliminateTwoSkillUsed = false;
+
+function activateEliminateTwoSkill() {
+    if (answered || eliminateTwoSkillUsed) return;
+    
+    eliminateTwoSkillUsed = true;
+    
+    // Marquer le bouton comme utilisé
+    const skillBtn = document.getElementById('eliminateTwoSkillBtn');
+    if (skillBtn) {
+        skillBtn.classList.add('used');
+    }
+    
+    const bubbles = document.querySelectorAll('.answer-bubble');
+    
+    // Trouver toutes les mauvaises réponses (non déjà éliminées)
+    let wrongIndices = [];
+    for (let i = 0; i < bubbles.length; i++) {
+        if (i !== correctIndex && !bubbles[i].classList.contains('eliminated')) {
+            wrongIndices.push(i);
+        }
+    }
+    
+    // Mélanger et prendre 2 mauvaises réponses
+    for (let i = wrongIndices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [wrongIndices[i], wrongIndices[j]] = [wrongIndices[j], wrongIndices[i]];
+    }
+    const toEliminate = wrongIndices.slice(0, 2);
+    
+    // Éliminer les 2 mauvaises réponses
+    toEliminate.forEach(index => {
+        bubbles[index].classList.add('eliminated');
+    });
+    
+    // Marquer le skill comme utilisé dans le formulaire
+    let eliminateTwoInput = document.getElementById('eliminateTwoSkillUsedInput');
+    if (!eliminateTwoInput) {
+        eliminateTwoInput = document.createElement('input');
+        eliminateTwoInput.type = 'hidden';
+        eliminateTwoInput.id = 'eliminateTwoSkillUsedInput';
+        eliminateTwoInput.name = 'eliminate_two_skill_used';
+        document.getElementById('answerForm').appendChild(eliminateTwoInput);
+    }
+    eliminateTwoInput.value = '1';
 }
 
 // Animation de la barre de temps
