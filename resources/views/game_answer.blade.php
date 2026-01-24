@@ -37,6 +37,9 @@ if (!empty($avatarSkillsFull['skills'])) {
 // La Plume est active si le joueur n'a pas buzzé ET le skill est disponible
 $playerBuzzed = $params['player_buzzed'] ?? true;
 $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
+
+// Mathématicien: illuminate_numbers - illumine la bonne réponse si elle contient un chiffre
+$illuminateIndex = $params['illuminate_index'] ?? -1;
 @endphp
 
 <style>
@@ -251,6 +254,34 @@ $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
         50% { box-shadow: 0 0 50px rgba(78, 205, 196, 1), inset 0 0 30px rgba(78, 205, 196, 0.6); }
     }
     
+    /* Mathématicien skill: illuminate_numbers - bordure dorée brillante */
+    .answer-bubble.illuminated {
+        background: linear-gradient(145deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 165, 0, 0.25) 100%) !important;
+        border: 3px solid #FFD700 !important;
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.8), 0 0 50px rgba(255, 165, 0, 0.4), inset 0 0 15px rgba(255, 215, 0, 0.3) !important;
+        animation: illuminate-glow 1.2s infinite;
+        position: relative;
+    }
+    
+    .answer-bubble.illuminated::after {
+        content: '💡';
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        font-size: 1.5rem;
+        animation: illuminate-bounce 0.6s ease-in-out infinite alternate;
+    }
+    
+    @keyframes illuminate-glow {
+        0%, 100% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.8), 0 0 50px rgba(255, 165, 0, 0.4), inset 0 0 15px rgba(255, 215, 0, 0.3); }
+        50% { box-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 70px rgba(255, 165, 0, 0.6), inset 0 0 25px rgba(255, 215, 0, 0.5); }
+    }
+    
+    @keyframes illuminate-bounce {
+        from { transform: translateY(0) scale(1); }
+        to { transform: translateY(-3px) scale(1.1); }
+    }
+    
     /* Buzz info */
     .buzz-info {
         text-align: center;
@@ -415,7 +446,7 @@ $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
                     @continue
                 @endif
                 
-                <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
+                <div class="answer-bubble {{ $index === $illuminateIndex ? 'illuminated' : '' }}" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
                     <div class="answer-number">{{ $index + 1 }}</div>
                     <div class="answer-text">{{ $answer }}</div>
                     <div class="answer-icon {{ $featherActive ? 'feather-active' : '' }}">@if($featherActive)🪶@else👉@endif</div>
@@ -425,7 +456,13 @@ $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
     </form>
     
     <!-- Buzz info -->
-    @if($featherActive)
+    @if($illuminateIndex >= 0)
+        <div class="buzz-info" style="background: rgba(255, 215, 0, 0.15); border-color: rgba(255, 215, 0, 0.4);">
+            <div class="buzz-info-text" style="color: #FFD700;">
+                💡 {{ __('Mathématicien') }} - {{ __('La bonne réponse contient un chiffre') }} !
+            </div>
+        </div>
+    @elseif($featherActive)
         <div class="buzz-info" style="background: rgba(78, 205, 196, 0.15); border-color: rgba(78, 205, 196, 0.3);">
             <div class="buzz-info-text" style="color: #4ECDC4;">
                 🪶 {{ __('Savoir sans temps') }} - {{ __('Vous pouvez répondre') }} (+1 {{ __('point max') }})

@@ -1089,6 +1089,23 @@ class SoloController extends Controller
             $potentialPoints = $opponentBehavior['is_faster'] ? 1 : 2;
         }
         
+        // Appliquer les skills auto sur la page answer
+        $illuminateIndex = -1;  // -1 = pas d'illumination
+        $usedSkills = session('used_skills', []);
+        
+        // Mathématicien: illuminate_numbers - illumine si la bonne réponse contient un chiffre
+        if ($avatar === 'Mathématicien' && !in_array('illuminate_numbers', $usedSkills)) {
+            $correctIndex = $question['correct_index'] ?? 0;
+            $correctAnswer = $question['answers'][$correctIndex] ?? '';
+            // Vérifie si la bonne réponse contient un chiffre
+            if (preg_match('/\d/', $correctAnswer)) {
+                $illuminateIndex = $correctIndex;
+                // Marquer le skill comme utilisé
+                $usedSkills[] = 'illuminate_numbers';
+                session(['used_skills' => $usedSkills]);
+            }
+        }
+        
         $params = [
             'question' => $question,
             'current_question' => $currentQuestion,
@@ -1106,6 +1123,7 @@ class SoloController extends Controller
             'avatar_skills_full' => $this->getAvatarSkills($avatar),  // Structure complète des skills
             'used_skills' => session('used_skills', []),  // Skills déjà utilisés dans la partie
             'correct_index' => $question['correct_index'] ?? -1,  // Index de la bonne réponse pour les sons
+            'illuminate_index' => $illuminateIndex,  // Mathématicien skill: index de la réponse illuminée
         ];
         
         return view('game_answer', compact('params'));
