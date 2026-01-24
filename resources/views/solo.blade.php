@@ -1,6 +1,19 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+// Avatars non-avantageux en mode Solo (skills orientés multijoueur)
+$soloDisadvantagedAvatars = [
+    'défenseur' => 'Cet avatar ne sera pas nécessaire en mode Solo car il n\'y aura pas d\'attaque des joueurs adverses.',
+    'defenseur' => 'Cet avatar ne sera pas nécessaire en mode Solo car il n\'y aura pas d\'attaque des joueurs adverses.',
+    'comédienne' => 'Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.',
+    'comedienne' => 'Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.',
+];
+$currentStrategicAvatar = strtolower($avatar_stratégique ?? 'aucun');
+$showSoloWarning = isset($soloDisadvantagedAvatars[$currentStrategicAvatar]);
+$soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrategicAvatar] : '';
+@endphp
+
 <style>
   .container-solo{ overflow-x:hidden; overflow-y:visible; }
   *, *::before, *::after { box-sizing: border-box; }
@@ -28,6 +41,86 @@
     .grid-2 {
       grid-template-columns: repeat(2, 1fr);
     }
+  }
+
+  /* Popup avertissement avatar non-avantageux en Solo */
+  .solo-warning-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeInWarning 0.3s ease;
+  }
+
+  .solo-warning-popup {
+    background: linear-gradient(145deg, #2d1f3d, #1a1a2e);
+    border: 2px solid #f39c12;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 400px;
+    margin: 20px;
+    position: relative;
+    box-shadow: 0 0 40px rgba(243, 156, 18, 0.3);
+    animation: scaleInWarning 0.3s ease;
+  }
+
+  .solo-warning-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: rgba(255,255,255,0.6);
+    transition: color 0.2s, transform 0.2s;
+    background: none;
+    border: none;
+  }
+
+  .solo-warning-close:hover {
+    color: #fff;
+    transform: scale(1.2);
+  }
+
+  .solo-warning-icon {
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 15px;
+  }
+
+  .solo-warning-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 15px;
+    color: #f39c12;
+  }
+
+  .solo-warning-message {
+    font-size: 1rem;
+    line-height: 1.5;
+    text-align: center;
+    color: rgba(255,255,255,0.85);
+  }
+
+  @keyframes fadeInWarning {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scaleInWarning {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes fadeOutWarning {
+    from { opacity: 1; }
+    to { opacity: 0; }
   }
 
 </style>
@@ -106,7 +199,27 @@
   {{ __('Choisissez le nombre de questions') }}.
 </div>
 
+@if($showSoloWarning)
+<div class="solo-warning-overlay" id="soloWarningOverlay">
+    <div class="solo-warning-popup">
+        <button class="solo-warning-close" onclick="closeSoloWarning()">&times;</button>
+        <div class="solo-warning-icon">⚠️</div>
+        <div class="solo-warning-title">{{ __('Avertissement Avatar') }}</div>
+        <div class="solo-warning-message">{{ __($soloWarningMessage) }}</div>
+    </div>
+</div>
+@endif
+
 <script>
+  // Fonction pour fermer le popup d'avertissement avatar
+  function closeSoloWarning() {
+    const overlay = document.getElementById('soloWarningOverlay');
+    if (overlay) {
+      overlay.style.animation = 'fadeOutWarning 0.3s ease forwards';
+      setTimeout(() => overlay.remove(), 300);
+    }
+  }
+
   const form = document.getElementById('soloForm');
   const validationMsg = document.getElementById('validationMessage');
   const nbQuestionsSelect = document.getElementById('nb_questions');
