@@ -321,6 +321,30 @@ if (!empty($avatarSkillsFull['skills'])) {
         opacity: 1;
     }
     
+    /* IA Junior: Replay skill - icône ↩️ visible après erreur */
+    .answer-icon.replay-active {
+        opacity: 1;
+    }
+    
+    /* Style pour la mauvaise réponse sélectionnée */
+    .answer-bubble.wrong-selected {
+        background: linear-gradient(145deg, rgba(231, 76, 60, 0.4) 0%, rgba(192, 57, 43, 0.4) 100%) !important;
+        border: 3px solid #E74C3C !important;
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    
+    /* Style pour les réponses avec replay actif */
+    .answer-bubble.replay-available {
+        border: 2px solid #9B59B6 !important;
+        animation: replay-pulse 1s infinite;
+    }
+    
+    @keyframes replay-pulse {
+        0%, 100% { box-shadow: 0 0 15px rgba(155, 89, 182, 0.5); }
+        50% { box-shadow: 0 0 30px rgba(155, 89, 182, 0.8); }
+    }
+    
     /* Style pour la bonne réponse illuminée */
     .answer-bubble.highlighted {
         background: linear-gradient(145deg, rgba(78, 205, 196, 0.6) 0%, rgba(102, 234, 126, 0.6) 100%) !important;
@@ -956,6 +980,7 @@ if (!empty($avatarSkillsFull['skills'])) {
         <input type="hidden" name="answer_index" id="answerIndex">
         <input type="hidden" name="feather_skill_used" id="featherSkillUsed" value="0">
         <input type="hidden" name="illuminate_skill_used" id="illuminateSkillUsedInput" value="0">
+        <input type="hidden" name="replay_skill_used" id="replaySkillUsedInput" value="0">
         
         <div class="answers-grid{{ $shuffleAnswersActive ? ' shuffle-active' : '' }}" id="answersGrid">
             @if($shuffleAnswersActive)
@@ -1373,8 +1398,17 @@ const timerInterval = setInterval(() => {
 }, 1000);
 
 const featherActive = {{ $featherActive ? 'true' : 'false' }};
+const replaySkillAvailable = {{ $replaySkillAvailable ? 'true' : 'false' }};
+let replayModeActive = false;
+let wrongAnswerIndex = -1;
 
 function selectAnswer(index) {
+    // Si en mode replay, c'est la deuxième tentative
+    if (replayModeActive) {
+        selectReplayAnswer(index);
+        return;
+    }
+    
     if (answered) return;
     answered = true;
     
@@ -1398,14 +1432,22 @@ function selectAnswer(index) {
         document.getElementById('featherSkillUsed').value = '1';
     }
     
+    // Vérifier si la réponse est correcte
+    const isCorrect = (index === correctIndex);
+    
+    // Si réponse incorrecte ET skill Rejouer disponible → activer le mode replay
+    if (!isCorrect && replaySkillAvailable) {
+        activateReplayMode(index);
+        return;
+    }
+    
     // Désactiver tous les boutons
     document.querySelectorAll('.answer-bubble').forEach(bubble => {
         bubble.classList.add('disabled');
     });
     
-    // Vérifier si la réponse est correcte et jouer le son approprié
-    const isCorrect = (index === correctIndex);
-    let soundDelay = 500; // Délai par défaut
+    // Jouer le son approprié
+    let soundDelay = 500;
     
     if (isCorrect) {
         const correctSound = document.getElementById('correctSound');
@@ -1420,6 +1462,85 @@ function selectAnswer(index) {
     }
     
     // Soumettre le formulaire 100ms après la fin du son
+    setTimeout(() => {
+        document.getElementById('answerForm').submit();
+    }, soundDelay);
+}
+
+// Activer le mode Replay après une erreur
+function activateReplayMode(wrongIndex) {
+    replayModeActive = true;
+    wrongAnswerIndex = wrongIndex;
+    answered = false; // Permettre une nouvelle réponse
+    
+    // Marquer le skill replay comme utilisé IMMÉDIATEMENT (même si le joueur abandonne)
+    document.getElementById('replaySkillUsedInput').value = '1';
+    
+    // Jouer le son d'erreur
+    const incorrectSound = document.getElementById('incorrectSound');
+    incorrectSound.currentTime = 0;
+    incorrectSound.play().catch(e => console.log('Audio play failed:', e));
+    
+    // Marquer la mauvaise réponse comme sélectionnée (grisée)
+    const bubbles = document.querySelectorAll('.answer-bubble');
+    bubbles.forEach((bubble, idx) => {
+        const originalIndex = parseInt(bubble.getAttribute('data-original-index'));
+        if (originalIndex === wrongIndex) {
+            bubble.classList.add('wrong-selected');
+            bubble.classList.add('disabled');
+        } else {
+            // Afficher ↩️ sur les 3 autres réponses
+            bubble.classList.add('replay-available');
+            const iconDiv = bubble.querySelector('.answer-icon');
+            if (iconDiv) {
+                iconDiv.textContent = '↩️';
+                iconDiv.classList.add('replay-active');
+            }
+        }
+    });
+    
+    // Masquer les boutons de skills (ils ne peuvent plus être utilisés)
+    const skillBtns = document.querySelectorAll('.ai-suggestion-skill-btn, .eliminate-two-skill-btn, .acidify-skill-btn, .illuminate-skill-btn, .see-opponent-skill-btn');
+    skillBtns.forEach(btn => btn.style.display = 'none');
+    const skillLabels = document.querySelectorAll('.skill-label');
+    skillLabels.forEach(label => label.style.display = 'none');
+}
+
+// Sélectionner une réponse en mode Replay
+function selectReplayAnswer(index) {
+    if (!replayModeActive) return;
+    if (index === wrongAnswerIndex) return; // Ne peut pas re-cliquer sur la mauvaise réponse
+    
+    answered = true;
+    replayModeActive = false;
+    
+    // Marquer le skill replay comme utilisé
+    document.getElementById('replaySkillUsedInput').value = '1';
+    document.getElementById('answerIndex').value = index;
+    
+    // Désactiver tous les boutons
+    document.querySelectorAll('.answer-bubble').forEach(bubble => {
+        bubble.classList.add('disabled');
+        bubble.classList.remove('replay-available');
+    });
+    
+    // Vérifier si la nouvelle réponse est correcte
+    const isCorrect = (index === correctIndex);
+    let soundDelay = 500;
+    
+    if (isCorrect) {
+        const correctSound = document.getElementById('correctSound');
+        correctSound.currentTime = 0;
+        correctSound.play().catch(e => console.log('Audio play failed:', e));
+        soundDelay = correctSoundDuration;
+    } else {
+        const incorrectSound = document.getElementById('incorrectSound');
+        incorrectSound.currentTime = 0;
+        incorrectSound.play().catch(e => console.log('Audio play failed:', e));
+        soundDelay = incorrectSoundDuration;
+    }
+    
+    // Soumettre le formulaire
     setTimeout(() => {
         document.getElementById('answerForm').submit();
     }, soundDelay);

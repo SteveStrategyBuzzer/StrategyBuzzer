@@ -1265,6 +1265,36 @@ class SoloController extends Controller
             }
         }
         
+        // Vérifier si le skill Rejouer (replay) a été utilisé - IA Junior
+        $replaySkillUsed = $request->input('replay_skill_used', '0') === '1';
+        if ($replaySkillUsed) {
+            $usedSkills = session('used_skills', []);
+            if (!in_array('replay', $usedSkills)) {
+                $usedSkills[] = 'replay';
+                session(['used_skills' => $usedSkills]);
+            }
+        }
+        
+        // Vérifier si le skill Suggestion IA (ai_suggestion) a été utilisé - IA Junior
+        $aiSuggestionSkillUsed = $request->input('ai_suggestion_skill_used', '0') === '1';
+        if ($aiSuggestionSkillUsed) {
+            $usedSkills = session('used_skills', []);
+            if (!in_array('ai_suggestion', $usedSkills)) {
+                $usedSkills[] = 'ai_suggestion';
+                session(['used_skills' => $usedSkills]);
+            }
+        }
+        
+        // Vérifier si le skill Élimination (eliminate_two) a été utilisé - IA Junior
+        $eliminateTwoSkillUsed = $request->input('eliminate_two_skill_used', '0') === '1';
+        if ($eliminateTwoSkillUsed) {
+            $usedSkills = session('used_skills', []);
+            if (!in_array('eliminate_two', $usedSkills)) {
+                $usedSkills[] = 'eliminate_two';
+                session(['used_skills' => $usedSkills]);
+            }
+        }
+        
         if ($playerBuzzed) {
             // Le joueur a buzzé
             if ($answerIndex === -1) {
@@ -1526,8 +1556,16 @@ class SoloController extends Controller
             // Qui a gagné cette manche ?
             if ($playerScore > $opponentScore) {
                 $playerRoundsWon++;
-            } else {
+            } elseif ($opponentScore > $playerScore) {
                 $opponentRoundsWon++;
+            } else {
+                // ÉGALITÉ - aller en tiebreaker pour cette manche
+                session([
+                    'tiebreaker_round' => session('current_round', 1),
+                    'tiebreaker_player_score' => $playerScore,
+                    'tiebreaker_opponent_score' => $opponentScore,
+                ]);
+                return redirect()->route('solo.tiebreaker-choice');
             }
             
             session([
