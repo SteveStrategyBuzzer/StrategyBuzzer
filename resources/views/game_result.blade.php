@@ -1329,8 +1329,8 @@ function useScrollSkill(pointsToRecover) {
                 popup.style.display = 'block';
                 // Mettre à jour les points affichés
                 const pointsEl = document.getElementById('scrollSkillPoints');
-                if (pointsEl && data.points_recovered !== undefined) {
-                    pointsEl.textContent = '+' + data.points_recovered + ' {{ __("points") }}';
+                if (pointsEl && data.points_final !== undefined) {
+                    pointsEl.textContent = '+' + data.points_final + ' {{ __("pts") }}';
                 }
                 // Masquer après 3 secondes
                 setTimeout(() => {
