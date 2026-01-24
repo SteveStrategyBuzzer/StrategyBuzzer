@@ -304,8 +304,8 @@ class QuestionService
             return $this->simulateBossBehavior($niveau, $question, $playerBuzzed, $buzzTime, $chronoTime, $playerScore, $opponentScore, $questionNumber);
         }
         
-        // Algorithme standard pour les étudiants (ancien comportement)
-        // Difficulté progressive : plus le niveau est élevé, plus l'adversaire est fort
+        // Algorithme réaliste pour les étudiants basé sur la vitesse de lecture humaine
+        // Les étudiants sont 10% plus lents que leur Boss de référence
         $difficulty = min($niveau / 100, 0.95); // Max 95% de difficulté
         
         // 1. L'adversaire décide de buzzer ou non (probabilité augmente avec le niveau)
@@ -323,16 +323,30 @@ class QuestionService
             ];
         }
         
-        // 2. Si l'adversaire buzz, calculer son temps de réaction
-        // Base de temps : 1 à 7 secondes, plus rapide avec le niveau
-        $opponentBuzzTime = rand(10, 70 - ($difficulty * 50)) / 10;
+        // 2. Calculer le temps de buzz basé sur la vitesse de lecture humaine
+        // Les étudiants sont 10% plus lents que leur Boss (multiplicateur 0.9)
+        $readingSpeed = $this->getReadingSpeed($niveau) * 0.9; // 10% plus lent que le Boss
+        $wordsPerSecond = $readingSpeed / 60;
         
-        // Si le joueur a buzzé, ajuster le temps de l'adversaire pour créer de la compétition
+        // Compter les mots dans la question
+        $questionText = $question['text'] ?? '';
+        $wordCount = str_word_count($questionText);
+        $wordCount = max($wordCount, 5); // Minimum 5 mots pour éviter temps trop courts
+        
+        // Temps de lecture + temps de réflexion (0.5-2.5s pour étudiants, plus variable que Boss)
+        $readingTime = $wordCount / $wordsPerSecond;
+        $thinkingTime = rand(5, 25) / 10; // 0.5 à 2.5 secondes
+        $opponentBuzzTime = $readingTime + $thinkingTime;
+        
+        // Ajuster si le joueur a buzzé (compétition)
         if ($playerBuzzed) {
-            // L'adversaire peut être légèrement plus rapide ou plus lent que le joueur
-            $adjustment = rand(-15, 15) / 10; // -1.5s à +1.5s
-            $opponentBuzzTime = max(0.1, $buzzTime + $adjustment - ($difficulty * 0.5));
+            $adjustment = rand(-10, 15) / 10; // -1s à +1.5s (étudiants moins réactifs)
+            $opponentBuzzTime = max($readingTime * 0.8, $buzzTime + $adjustment);
         }
+        
+        // Limiter au temps du chrono
+        $opponentBuzzTime = min($opponentBuzzTime, $chronoTime - 0.1);
+        $opponentBuzzTime = max(0.5, $opponentBuzzTime); // Minimum 0.5 sec
         
         // 3. L'adversaire est-il plus rapide que le joueur ?
         $isFaster = $playerBuzzed ? ($opponentBuzzTime < $buzzTime) : true;
