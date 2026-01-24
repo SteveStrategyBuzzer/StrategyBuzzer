@@ -177,6 +177,44 @@ class QuestionService
     }
 
     /**
+     * Calcule le temps de réflexion progressif selon le niveau
+     * Plus le niveau est élevé, plus l'adversaire réfléchit vite
+     * @param int $niveau Le niveau de l'adversaire
+     * @param bool $isBoss True si c'est un Boss, false si c'est un étudiant
+     * @return array [min, max] en secondes
+     */
+    private function getThinkingTime($niveau, $isBoss = false)
+    {
+        // Déterminer le Boss de référence
+        $bossLevel = ceil($niveau / 10) * 10;
+        
+        // Temps de réflexion par niveau de Boss (en secondes) [min, max]
+        $bossThinkingTimes = [
+            10 => [1.5, 2.5],   // Boss niveau 10 - réflexion lente
+            20 => [1.3, 2.3],   // Boss niveau 20
+            30 => [1.2, 2.2],   // Boss niveau 30
+            40 => [1.0, 2.0],   // Boss niveau 40
+            50 => [1.0, 2.0],   // Boss niveau 50
+            60 => [0.9, 1.9],   // Boss niveau 60
+            70 => [0.8, 1.8],   // Boss niveau 70
+            80 => [0.7, 1.6],   // Boss niveau 80
+            90 => [0.5, 1.5],   // Boss niveau 90 - réflexion rapide
+            100 => [0.3, 1.2],  // Boss niveau 100 - réflexion très rapide
+        ];
+        
+        $times = $bossThinkingTimes[$bossLevel] ?? [1.5, 2.5];
+        
+        // Les étudiants réfléchissent 0.5 sec de plus que leur Boss
+        if (!$isBoss) {
+            $times[0] += 0.5;
+            $times[1] += 0.5;
+        }
+        
+        // Retourner un temps aléatoire dans la fourchette
+        return rand($times[0] * 10, $times[1] * 10) / 10;
+    }
+
+    /**
      * Obtient les statistiques de base d'un Boss depuis la config
      */
     private function getBossStats($niveau)
@@ -333,12 +371,16 @@ class QuestionService
         $wordCount = str_word_count($questionText);
         $wordCount = max($wordCount, 5); // Minimum 5 mots pour éviter temps trop courts
         
-        // Temps de lecture + temps de réflexion (0.5-2.5s pour étudiants, plus variable que Boss)
+        // Temps de lecture + temps de réflexion progressif selon le niveau
         $readingTime = $wordCount / $wordsPerSecond;
-        $thinkingTime = rand(5, 25) / 10; // 0.5 à 2.5 secondes
-        $opponentBuzzTime = $readingTime + $thinkingTime;
+        $thinkingTime = $this->getThinkingTime($niveau, false); // false = étudiant
+        $naturalBuzzTime = $readingTime + $thinkingTime;
+        
+        // Vérifier si l'IA buzze sous pression (temps naturel > chrono)
+        $buzzingUnderPressure = $naturalBuzzTime > $chronoTime;
         
         // Ajuster si le joueur a buzzé (compétition)
+        $opponentBuzzTime = $naturalBuzzTime;
         if ($playerBuzzed) {
             $adjustment = rand(-10, 15) / 10; // -1s à +1.5s (étudiants moins réactifs)
             $opponentBuzzTime = max($readingTime * 0.8, $buzzTime + $adjustment);
@@ -352,7 +394,12 @@ class QuestionService
         $isFaster = $playerBuzzed ? ($opponentBuzzTime < $buzzTime) : true;
         
         // 4. L'adversaire répond-il correctement ? (probabilité augmente avec le niveau)
-        $answerProbability = 40 + ($difficulty * 50); // 40% à 90% de bonnes réponses
+        // Si l'IA buzze sous pression (temps naturel > 8 sec), taux de réussite réduit à 60%
+        if ($buzzingUnderPressure) {
+            $answerProbability = 60; // Taux fixe à 60% sous pression
+        } else {
+            $answerProbability = 40 + ($difficulty * 50); // 40% à 90% de bonnes réponses
+        }
         $isCorrect = rand(1, 100) <= $answerProbability;
         
         // 5. Calculer les points de l'adversaire
@@ -464,19 +511,27 @@ class QuestionService
         $wordsPerSecond = $readingSpeed / 60;
         
         // Compter les mots dans la question
-        $questionText = $question['text'];
+        $questionText = $question['text'] ?? '';
         $wordCount = str_word_count($questionText);
+        $wordCount = max($wordCount, 5); // Minimum 5 mots
         
         // Temps minimum pour lire la question
         $readingTime = $wordCount / $wordsPerSecond;
         
+        // Temps de réflexion progressif selon le niveau (Boss)
+        $thinkingTime = $this->getThinkingTime($niveau, true); // true = Boss
+        $naturalBuzzTime = $readingTime + $thinkingTime;
+        
+        // Vérifier si le Boss buzze sous pression (temps naturel > chrono)
+        $buzzingUnderPressure = $naturalBuzzTime > $chronoTime;
+        
         // Mode panique : buzz ultra vite (ignore lecture complète)
         if ($nervousness['panic_mode']) {
             $opponentBuzzTime = rand(20, $nervousness['panic_speed'] * 10) / 10;
+            $buzzingUnderPressure = true; // Mode panique = sous pression
         } else {
-            // Temps normal : lecture + réflexion (0.5-2s)
-            $thinkingTime = rand(5, 20) / 10; // 0.5 à 2 secondes
-            $opponentBuzzTime = $readingTime + $thinkingTime;
+            // Temps normal : lecture + réflexion progressive
+            $opponentBuzzTime = $naturalBuzzTime;
             
             // Ajuster si le joueur a buzzé (compétition)
             if ($playerBuzzed) {
@@ -487,12 +542,18 @@ class QuestionService
         
         // Limiter au temps du chrono
         $opponentBuzzTime = min($opponentBuzzTime, $chronoTime - 0.1);
+        $opponentBuzzTime = max(0.5, $opponentBuzzTime); // Minimum 0.5 sec
         
         // 9. Comparaison de vitesse
         $isFaster = $playerBuzzed ? ($opponentBuzzTime < $buzzTime) : true;
         
-        // 10. Précision finale (déjà calculée plus haut avec willBeCorrect)
-        $isCorrect = $willBeCorrect;
+        // 10. Précision finale
+        // Si le Boss buzze sous pression (temps naturel > 8 sec), taux de réussite réduit à 60%
+        if ($buzzingUnderPressure && !$nervousness['panic_mode']) {
+            $isCorrect = rand(1, 100) <= 60; // Taux fixe à 60% sous pression
+        } else {
+            $isCorrect = $willBeCorrect; // Précision normale calculée plus haut
+        }
         
         // 11. Attribution des points
         $points = 0;
