@@ -34,6 +34,7 @@ export class GameOrchestrator {
     }
 
     room.usedQuestionIds = new Set<string>();
+    this.roomManager.resetSkillEffects(roomId);
 
     const pipelineResult = await initQuestionPipeline({
       roomId,
@@ -483,6 +484,9 @@ export class GameOrchestrator {
     const rawChoices = (question as Record<string, unknown>).choices || (question as Record<string, unknown>).answers;
     const sanitizedChoices = this.sanitizeChoices(rawChoices as unknown[] | undefined);
 
+    const baseTimeLimit = question.timeLimitMs || room.state.config.timers.questionActive;
+    const reducedTimeLimit = baseTimeLimit - 2000;
+
     const publishEvent: QuestionPublishedEvent = {
       id: room.state.lastEventId + 1,
       type: "QUESTION_PUBLISHED",
@@ -495,7 +499,7 @@ export class GameOrchestrator {
       category: question.category,
       subCategory: question.subCategory,
       difficulty: question.difficulty,
-      timeLimitMs: question.timeLimitMs || room.state.config.timers.questionActive,
+      timeLimitMs: baseTimeLimit,
     };
 
     room.state = applyEvent(room.state, publishEvent);
@@ -503,17 +507,29 @@ export class GameOrchestrator {
 
     this.io.to(roomId).emit("event", { event: publishEvent });
     this.logEventToRedis(roomId, publishEvent);
-    this.io.to(roomId).emit("question_published", {
-      questionIndex: room.state.questionIndex,
-      questionId: question.id,
-      text: question.text,
-      choices: sanitizedChoices,
-      category: question.category,
-      subCategory: question.subCategory,
-      difficulty: question.difficulty,
-      timeLimitMs: question.timeLimitMs || room.state.config.timers.questionActive,
-      totalQuestions: room.state.questions.length,
-    });
+    
+    for (const playerId of Object.keys(room.state.players)) {
+      const isReduceTimeActive = this.roomManager.isReduceTimeActive(roomId, playerId);
+      const playerTimeLimit = isReduceTimeActive ? reducedTimeLimit : baseTimeLimit;
+      
+      this.io.to(`player:${playerId}`).emit("question_published", {
+        questionIndex: room.state.questionIndex,
+        questionId: question.id,
+        text: question.text,
+        choices: sanitizedChoices,
+        category: question.category,
+        subCategory: question.subCategory,
+        difficulty: question.difficulty,
+        timeLimitMs: playerTimeLimit,
+        totalQuestions: room.state.questions.length,
+        reduceTimeActive: isReduceTimeActive,
+      });
+      
+      if (isReduceTimeActive) {
+        const stillActive = this.roomManager.decrementReduceTime(roomId, playerId);
+        console.log(`[GameOrchestrator] Player ${playerId} has reduced time (${playerTimeLimit}ms), remaining: ${stillActive ? 'active' : 'expired'}`);
+      }
+    }
 
     console.log(`[GameOrchestrator] Broadcast question ${room.state.questionIndex + 1}/${room.state.questions.length}`);
   }

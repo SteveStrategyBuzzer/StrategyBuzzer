@@ -65,6 +65,14 @@ The project uses a monorepo with `shared`, `game-engine`, and `game-server` pack
 - **Multi-Instance Synchronization:** Socket.IO Redis adapter for horizontal scaling.
 - **Security (Anti-Cheat):** Correct answer metadata is never sent before reveal.
 
+**Challenger Skills (Socket.IO Implementation):**
+- **reduce_time:** Reduces target's Question page timer (8s → 6s) for 5/3/1 questions based on round.
+  - Activated via `skill` event with `skillId: 'reduce_time'`
+  - Dynamic targeting: highest scorer above attacker, or closest below if leader
+  - Per-player `question_published` events with personalized `timeLimitMs`
+  - Stored in `room.skillEffects` per player with decrement on each question
+- **shuffle_answers:** (Pending implementation) Shuffles target's answer options every 1.5s.
+
 ### External Dependencies
 
 -   **Core Frameworks**: Laravel Framework, React, Inertia.js

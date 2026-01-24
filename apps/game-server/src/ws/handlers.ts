@@ -130,6 +130,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         currentPlayerId = playerId;
         
         socket.join(roomId);
+        socket.join(`player:${playerId}`);
         
         const state = roomManager.getState(roomId);
         socket.emit("state", { state });
@@ -365,6 +366,67 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         }
         
         console.log(`[WS] Skill ${payload.skillId} from ${currentPlayerId}`);
+        
+        if (payload.skillId === 'reduce_time') {
+          const room = roomManager.getRoom(payload.roomId);
+          if (!room) {
+            socket.emit("error", { code: "ROOM_NOT_FOUND", message: "Room not found" });
+            MetricsService.incrementEventsFailed();
+            return;
+          }
+          
+          let targetId = payload.targetPlayerId;
+          if (!targetId) {
+            targetId = roomManager.findAttackTarget(payload.roomId, currentPlayerId) || undefined;
+          }
+          
+          if (!targetId) {
+            socket.emit("error", { code: "NO_TARGET", message: "No valid target found" });
+            MetricsService.incrementEventsFailed();
+            return;
+          }
+          
+          const currentRound = room.state.currentRound;
+          let questionsAffected = 5;
+          if (currentRound === 3) {
+            questionsAffected = 3;
+          } else if (currentRound >= 4) {
+            questionsAffected = 1;
+          }
+          
+          const activateResult = roomManager.activateReduceTime(
+            payload.roomId,
+            currentPlayerId,
+            targetId,
+            questionsAffected
+          );
+          
+          if (!activateResult.success) {
+            socket.emit("skill_failed", { 
+              skillId: 'reduce_time',
+              reason: activateResult.error 
+            });
+            MetricsService.incrementEventsFailed();
+            return;
+          }
+          
+          const targetPlayer = room.state.players[targetId];
+          const attackerPlayer = room.state.players[currentPlayerId];
+          
+          io.to(payload.roomId).emit("skill_activated", {
+            skillId: 'reduce_time',
+            attackerId: currentPlayerId,
+            attackerName: attackerPlayer?.name,
+            targetId,
+            targetName: targetPlayer?.name,
+            questionsAffected,
+            effect: 'question_timer_reduced',
+            timeReduction: 2000,
+          });
+          
+          console.log(`[WS] Skill reduce_time: ${attackerPlayer?.name} → ${targetPlayer?.name} for ${questionsAffected} questions`);
+        }
+        
         MetricsService.incrementEventsProcessed();
         
       } catch (error) {

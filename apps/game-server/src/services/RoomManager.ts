@@ -11,6 +11,14 @@ export type RoomPipelineConfig = {
   maxRounds: number;
 };
 
+export type ChallengerSkillEffect = {
+  reduceTimeActive: boolean;
+  reduceTimeQuestionsLeft: number;
+  shuffleAnswersActive: boolean;
+  shuffleAnswersQuestionsLeft: number;
+  usedSkills: string[];
+};
+
 export type Room = {
   state: GameState;
   events: GameEvent[];
@@ -18,6 +26,7 @@ export type Room = {
   questionGenerationTimer?: NodeJS.Timeout;
   pipelineConfig?: RoomPipelineConfig;
   usedQuestionIds?: Set<string>;
+  skillEffects?: Record<string, ChallengerSkillEffect>;
 };
 
 export class RoomManager {
@@ -296,5 +305,114 @@ export class RoomManager {
 
   hasRoom(roomId: string): boolean {
     return this.rooms.has(roomId);
+  }
+
+  initializeSkillEffects(roomId: string, playerId: string): void {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    
+    if (!room.skillEffects) {
+      room.skillEffects = {};
+    }
+    
+    if (!room.skillEffects[playerId]) {
+      room.skillEffects[playerId] = {
+        reduceTimeActive: false,
+        reduceTimeQuestionsLeft: 0,
+        shuffleAnswersActive: false,
+        shuffleAnswersQuestionsLeft: 0,
+        usedSkills: [],
+      };
+    }
+  }
+
+  getSkillEffects(roomId: string, playerId: string): ChallengerSkillEffect | null {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.skillEffects) return null;
+    return room.skillEffects[playerId] || null;
+  }
+
+  activateReduceTime(roomId: string, attackerId: string, targetId: string, questionsAffected: number): { success: boolean; error?: string } {
+    const room = this.rooms.get(roomId);
+    if (!room) return { success: false, error: "Room not found" };
+    
+    this.initializeSkillEffects(roomId, attackerId);
+    this.initializeSkillEffects(roomId, targetId);
+    
+    const attackerEffects = room.skillEffects![attackerId];
+    
+    if (attackerEffects.usedSkills.includes('reduce_time')) {
+      return { success: false, error: "Skill already used this match" };
+    }
+    
+    attackerEffects.usedSkills.push('reduce_time');
+    
+    const targetEffects = room.skillEffects![targetId];
+    targetEffects.reduceTimeActive = true;
+    targetEffects.reduceTimeQuestionsLeft = questionsAffected;
+    
+    console.log(`[RoomManager] Skill reduce_time activated: ${attackerId} → ${targetId}, ${questionsAffected} questions`);
+    return { success: true };
+  }
+
+  decrementReduceTime(roomId: string, playerId: string): boolean {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.skillEffects || !room.skillEffects[playerId]) return false;
+    
+    const effects = room.skillEffects[playerId];
+    if (!effects.reduceTimeActive || effects.reduceTimeQuestionsLeft <= 0) return false;
+    
+    effects.reduceTimeQuestionsLeft--;
+    if (effects.reduceTimeQuestionsLeft <= 0) {
+      effects.reduceTimeActive = false;
+      console.log(`[RoomManager] Skill reduce_time expired for ${playerId}`);
+    }
+    
+    return effects.reduceTimeActive;
+  }
+
+  isReduceTimeActive(roomId: string, playerId: string): boolean {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.skillEffects || !room.skillEffects[playerId]) return false;
+    return room.skillEffects[playerId].reduceTimeActive;
+  }
+
+  findAttackTarget(roomId: string, attackerId: string): string | null {
+    const room = this.rooms.get(roomId);
+    if (!room) return null;
+    
+    const players = Object.entries(room.state.players)
+      .filter(([id]) => id !== attackerId)
+      .map(([id, player]) => ({ id, score: player.score }));
+    
+    if (players.length === 0) return null;
+    
+    const attackerScore = room.state.players[attackerId]?.score ?? 0;
+    
+    const higherScorePlayers = players
+      .filter(p => p.score > attackerScore)
+      .sort((a, b) => b.score - a.score);
+    
+    if (higherScorePlayers.length > 0) {
+      return higherScorePlayers[0].id;
+    }
+    
+    const closestBelowPlayers = players
+      .filter(p => p.score <= attackerScore)
+      .sort((a, b) => b.score - a.score);
+    
+    if (closestBelowPlayers.length > 0) {
+      return closestBelowPlayers[0].id;
+    }
+    
+    return players[0].id;
+  }
+
+  resetSkillEffects(roomId: string): void {
+    const room = this.rooms.get(roomId);
+    if (room) {
+      room.skillEffects = {};
+      console.log(`[RoomManager] Reset skill effects for room ${roomId}`);
+    }
   }
 }
