@@ -2481,9 +2481,9 @@ class SoloController extends Controller
                     ],
                     [
                         'id' => 'replay',
-                        'name' => 'Reprendre',
-                        'icon' => '🔁',
-                        'description' => 'Reprendre une réponse 1 fois',
+                        'name' => 'Rejouer',
+                        'icon' => '↩️',
+                        'description' => 'Rejouer après une erreur (1x)',
                         'type' => 'correction',
                         'trigger' => 'result',
                         'uses_per_match' => 1,

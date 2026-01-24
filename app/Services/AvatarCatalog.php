@@ -107,9 +107,9 @@ class AvatarCatalog
                 'skills' => [
                     '💡 IA Assist : Skill Sélectionnable, L\'IA suggère une réponse avec 90% de précision (1x par partie)',
                     '❌ Élimination : Skill Sélectionnable, Élimine 2 mauvaises réponses sur les 4 (1x par partie)',
-                    '🔄 Seconde Chance : Skill Sélectionnable, Après une erreur, permet de rechoisir parmi les 3 autres réponses (1x par partie)'
+                    '↩️ Seconde Chance : Skill Sélectionnable, Après une erreur, permet de rechoisir parmi les 3 autres réponses (1x par partie)'
                 ],
-                'skills_short' => ['💡 Suggère la réponse à 90% (1x)', '❌ Élimine 2 mauvaises réponses (1x)', '🔄 Rejouer après erreur (1x)'],
+                'skills_short' => ['💡 Suggère la réponse à 90% (1x)', '❌ Élimine 2 mauvaises réponses (1x)', '↩️ Rejouer après erreur (1x)'],
             ],
             'stratege'      => [
                 'tier'   => 'Légendaire',
