@@ -425,10 +425,10 @@ $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
         opacity: 0.7;
     }
     
-    /* Explorateur See Opponent Skill Button */
+    /* Explorateur See Opponent Skill Button - Bas droite comme les autres */
     .see-opponent-skill-btn {
         position: fixed;
-        top: 100px;
+        bottom: 100px;
         right: 20px;
         width: 70px;
         height: 70px;
@@ -472,9 +472,8 @@ $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
     }
     
     .skill-label.see-opponent-label {
-        top: 170px;
+        bottom: 70px;
         right: 10px;
-        bottom: auto;
         color: #9B59B6;
     }
     
