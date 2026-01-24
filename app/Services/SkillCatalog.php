@@ -180,7 +180,7 @@ class SkillCatalog
                 'id' => 'reduce_time',
                 'name' => 'Chrono',
                 'icon' => '⏱️',
-                'description' => 'Réduit le chrono de l\'adversaire de 2 sec pendant 5/3/1 questions',
+                'description' => 'Réduit le chrono Question de l\'adversaire (8s → 6s pour buzzer)',
                 'short_description' => 'Active manuellement',
                 'avatar' => 'challenger',
                 'type' => self::TYPE_ATTACK,
@@ -189,6 +189,7 @@ class SkillCatalog
                 'uses_per_match' => 1,
                 'affects_opponent' => true,
                 'time_reduction' => 2,
+                'affects_page' => 'question',
             ],
             'knowledge_without_time' => [
                 'id' => 'knowledge_without_time',

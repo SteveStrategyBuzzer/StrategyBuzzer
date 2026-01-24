@@ -44,7 +44,7 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - **Mathématicien (Rare Tier):** `illuminate_numbers` - highlights correct answer if it contains a number (passive).
 - **Scientifique (Rare Tier):** `acidify_error` - visually marks 2 wrong answers (manual, 1 use).
 - **Explorateur (Rare Tier):** `see_opponent_choice` - displays opponent's/AI's choice (manual, 1 use).
-- **Challenger (Rare Tier):** `reduce_time` - reduces opponent's answer time; `shuffle_answers` - shuffles opponent's answer options (attack, manual, 1 use each).
+- **Challenger (Rare Tier):** `reduce_time` - reduces opponent's Question page chrono (8s → 6s for buzzing); `shuffle_answers` - shuffles opponent's answer options every 1.5s (attack, manual, 1 use each, affects 5/3/1 questions based on round).
 - **IA Junior (Rare Tier):** `ai_suggestion` - AI suggests an answer with 90% accuracy; `eliminate_two` - removes 2 wrong answers; `retry_answer` - allows retrying an answer after an error (manual, 1 use each).
 - **Historien (Epic Tier):** `knowledge_without_time` - allows answering after timeout for +1 pt; `history_corrects` - cancels -2 penalty and awards points after incorrect buzz (manual, 1 use each).
 - **Comédienne (Epic Tier):** `fake_score` - displays a reduced score to opponent (passive); `invert_answers` - makes correct answer appear wrong to opponent (attack, manual, 1 use).
