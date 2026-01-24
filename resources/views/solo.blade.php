@@ -204,7 +204,7 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
     <div class="solo-warning-popup">
         <button class="solo-warning-close" onclick="closeSoloWarning()">&times;</button>
         <div class="solo-warning-icon">⚠️</div>
-        <div class="solo-warning-title">{{ __('Avertissement Avatar') }}</div>
+        <div class="solo-warning-title">{{ __('Avertissement Avatar Stratégique') }}</div>
         <div class="solo-warning-message">{{ __($soloWarningMessage) }}</div>
     </div>
 </div>
