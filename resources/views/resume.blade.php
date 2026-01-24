@@ -559,7 +559,7 @@
                     ['icon' => '🧪', 'name' => 'Acidifier', 'description' => 'Élimine 2 mauvaises réponses (1x par partie)']
                 ],
                 'Explorateur' => [
-                    ['icon' => '🧭', 'name' => 'Navigation', 'description' => 'Active automatiquement']
+                    ['icon' => '👁️', 'name' => 'Voir choix', 'description' => 'Voit le choix de l\'adversaire (1x par partie)']
                 ],
                 'Défenseur' => [
                     ['icon' => '🛡️', 'name' => 'Protection', 'description' => 'Active automatiquement']

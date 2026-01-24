@@ -51,6 +51,10 @@ if (!empty($avatarSkillsFull['skills'])) {
         }
     }
 }
+
+// Explorateur: see_opponent_choice - skill disponible
+$seeOpponentSkillAvailable = $params['see_opponent_skill_available'] ?? false;
+$opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
 @endphp
 
 <style>
@@ -421,6 +425,78 @@ if (!empty($avatarSkillsFull['skills'])) {
         opacity: 0.7;
     }
     
+    /* Explorateur See Opponent Skill Button */
+    .see-opponent-skill-btn {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #9B59B6, #8E44AD);
+        border: 3px solid #fff;
+        box-shadow: 0 0 20px rgba(155, 89, 182, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.2rem;
+        z-index: 1000;
+        animation: see-opponent-pulse 1.2s ease-in-out infinite;
+        transition: transform 0.2s;
+    }
+    
+    .see-opponent-skill-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    .see-opponent-skill-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .see-opponent-skill-btn.used {
+        opacity: 0.4;
+        pointer-events: none;
+        animation: none;
+    }
+    
+    @keyframes see-opponent-pulse {
+        0%, 100% { 
+            box-shadow: 0 0 20px rgba(155, 89, 182, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1);
+        }
+        50% { 
+            box-shadow: 0 0 40px rgba(155, 89, 182, 1), 0 0 60px rgba(142, 68, 173, 0.6), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1.05);
+        }
+    }
+    
+    .skill-label.see-opponent-label {
+        top: 170px;
+        right: 10px;
+        bottom: auto;
+        color: #9B59B6;
+    }
+    
+    /* Opponent choice highlight */
+    .answer-bubble.opponent-choice {
+        border: 4px solid #9B59B6 !important;
+        box-shadow: 0 0 20px rgba(155, 89, 182, 0.8), inset 0 0 15px rgba(155, 89, 182, 0.3);
+        position: relative;
+    }
+    
+    .answer-bubble.opponent-choice::before {
+        content: '👁️';
+        position: absolute;
+        top: -15px;
+        right: -15px;
+        font-size: 1.5rem;
+        background: #9B59B6;
+        border-radius: 50%;
+        padding: 5px;
+        z-index: 10;
+    }
+    
     /* Buzz info */
     .buzz-info {
         text-align: center;
@@ -631,6 +707,13 @@ if (!empty($avatarSkillsFull['skills'])) {
 <div class="skill-label acidify-label">{{ __('Acidifier') }}</div>
 @endif
 
+@if($seeOpponentSkillAvailable)
+<div class="see-opponent-skill-btn" id="seeOpponentSkillBtn" onclick="activateSeeOpponentSkill()">
+    👁️
+</div>
+<div class="skill-label see-opponent-label">{{ __('Voir choix') }}</div>
+@endif
+
 <audio id="tickSound" preload="auto" loop>
     <source src="{{ asset('sounds/tic_tac.mp3') }}" type="audio/mpeg">
 </audio>
@@ -745,6 +828,40 @@ function activateAcidifySkill() {
         document.getElementById('answerForm').appendChild(acidifyInput);
     }
     acidifyInput.value = '1';
+}
+
+// Fonction pour activer le skill Explorateur "Voir choix adverse"
+let seeOpponentSkillUsed = false;
+const opponentAnswerChoice = {{ $opponentAnswerChoice ?? 'null' }};
+
+function activateSeeOpponentSkill() {
+    if (answered || seeOpponentSkillUsed) return;
+    if (opponentAnswerChoice === null) return; // L'adversaire n'a pas choisi
+    
+    seeOpponentSkillUsed = true;
+    
+    // Marquer le bouton comme utilisé
+    const skillBtn = document.getElementById('seeOpponentSkillBtn');
+    if (skillBtn) {
+        skillBtn.classList.add('used');
+    }
+    
+    // Illuminer le choix de l'adversaire
+    const bubbles = document.querySelectorAll('.answer-bubble');
+    if (bubbles[opponentAnswerChoice]) {
+        bubbles[opponentAnswerChoice].classList.add('opponent-choice');
+    }
+    
+    // Marquer le skill comme utilisé dans le formulaire
+    let seeOpponentInput = document.getElementById('seeOpponentSkillUsedInput');
+    if (!seeOpponentInput) {
+        seeOpponentInput = document.createElement('input');
+        seeOpponentInput.type = 'hidden';
+        seeOpponentInput.id = 'seeOpponentSkillUsedInput';
+        seeOpponentInput.name = 'see_opponent_skill_used';
+        document.getElementById('answerForm').appendChild(seeOpponentInput);
+    }
+    seeOpponentInput.value = '1';
 }
 
 // Animation de la barre de temps

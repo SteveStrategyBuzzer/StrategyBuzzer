@@ -572,7 +572,7 @@
     'Explorateur': {
       name: 'Explorateur',
       skills: [
-        {icon: '🧭', name: 'Navigation', desc: 'La réponse s\'illumine du choix du joueur adverse ou la réponse la plus cliqué'}
+        {icon: '👁️', name: 'Voir choix', desc: 'Voit le choix de l\'adversaire/IA (1x par partie)'}
       ]
     },
     'Défenseur': {

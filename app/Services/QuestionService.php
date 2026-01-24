@@ -319,6 +319,7 @@ class QuestionService
                 'is_correct' => false,
                 'points' => 0,
                 'buzz_time' => null,
+                'answer_choice' => null,
             ];
         }
         
@@ -357,12 +358,24 @@ class QuestionService
             $points = -2;
         }
         
+        // 6. Générer le choix de réponse de l'adversaire pour le skill Explorateur
+        $correctIndex = $question['correct_index'] ?? 0;
+        $numAnswers = count($question['answers'] ?? [4]);
+        if ($isCorrect) {
+            $answerChoice = $correctIndex;
+        } else {
+            // Choisir une mauvaise réponse au hasard
+            $wrongIndices = array_diff(range(0, $numAnswers - 1), [$correctIndex]);
+            $answerChoice = $wrongIndices[array_rand($wrongIndices)];
+        }
+        
         return [
             'buzzes' => true,
             'is_faster' => $isFaster,
             'is_correct' => $isCorrect,
             'points' => $points,
             'buzz_time' => $opponentBuzzTime,
+            'answer_choice' => $answerChoice,
         ];
     }
 
@@ -427,6 +440,7 @@ class QuestionService
                     'is_correct' => false,
                     'points' => 0,
                     'buzz_time' => null,
+                    'answer_choice' => null,
                 ];
             }
         }
@@ -479,12 +493,23 @@ class QuestionService
             $points = -2; // Mauvaise réponse
         }
         
+        // 12. Générer le choix de réponse du Boss pour le skill Explorateur
+        $correctIndex = $question['correct_index'] ?? 0;
+        $numAnswers = count($question['answers'] ?? [4]);
+        if ($isCorrect) {
+            $answerChoice = $correctIndex;
+        } else {
+            $wrongIndices = array_diff(range(0, $numAnswers - 1), [$correctIndex]);
+            $answerChoice = $wrongIndices[array_rand($wrongIndices)];
+        }
+        
         return [
             'buzzes' => true,
             'is_faster' => $isFaster,
             'is_correct' => $isCorrect,
             'points' => $points,
             'buzz_time' => $opponentBuzzTime,
+            'answer_choice' => $answerChoice,
         ];
     }
 }

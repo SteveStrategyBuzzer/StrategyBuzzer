@@ -1102,6 +1102,15 @@ class SoloController extends Controller
             }
         }
         
+        // Explorateur: see_opponent_choice - stocker le choix de l'adversaire et vérifier si skill disponible
+        $opponentAnswerChoice = $opponentBehavior['answer_choice'] ?? null;
+        session(['opponent_answer_choice' => $opponentAnswerChoice]);
+        
+        $seeOpponentSkillAvailable = false;
+        if ($avatar === 'Explorateur' && !in_array('see_opponent_choice', $usedSkills)) {
+            $seeOpponentSkillAvailable = true;
+        }
+        
         $params = [
             'question' => $question,
             'current_question' => $currentQuestion,
@@ -1120,6 +1129,8 @@ class SoloController extends Controller
             'used_skills' => session('used_skills', []),  // Skills déjà utilisés dans la partie
             'correct_index' => $question['correct_index'] ?? -1,  // Index de la bonne réponse pour les sons
             'illuminate_skill_available' => $illuminateSkillAvailable,  // Mathématicien skill: disponible mais pas activé
+            'see_opponent_skill_available' => $seeOpponentSkillAvailable,  // Explorateur skill: disponible
+            'opponent_answer_choice' => $opponentAnswerChoice,  // Choix de l'adversaire (pour skill Explorateur)
         ];
         
         return view('game_answer', compact('params'));
@@ -1200,6 +1211,16 @@ class SoloController extends Controller
             $usedSkills = session('used_skills', []);
             if (!in_array('acidify_error', $usedSkills)) {
                 $usedSkills[] = 'acidify_error';
+                session(['used_skills' => $usedSkills]);
+            }
+        }
+        
+        // Vérifier si le skill Voir choix (see_opponent_choice) a été utilisé
+        $seeOpponentSkillUsed = $request->input('see_opponent_skill_used', '0') === '1';
+        if ($seeOpponentSkillUsed) {
+            $usedSkills = session('used_skills', []);
+            if (!in_array('see_opponent_choice', $usedSkills)) {
+                $usedSkills[] = 'see_opponent_choice';
                 session(['used_skills' => $usedSkills]);
             }
         }

@@ -50,7 +50,7 @@ class AvatarCatalog
             'explorateur'   => [
                 'tier'   => 'Rare',
                 'name'   => 'Explorateur',
-                'skills' => ['Voit choix adverse'],
+                'skills' => ['Voir choix adverse (1x)'],
             ],
             'defenseur'     => [
                 'tier'   => 'Rare',
