@@ -6,6 +6,9 @@ StrategyBuzzer is a real-time quiz buzzer game application offering an immersive
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
+**Pending Features (TO IMPLEMENT LATER):**
+- **Quit penalty**: If a player quits a game in progress, they should lose 1 life. Currently DISABLED for testing purposes.
+
 **Multi-language Requirement (CRITICAL):**
 - ALL user-facing text MUST be wrapped with `{{ __('text') }}` in Blade templates
 - ALL new text MUST be translated in all 10 language files: `resources/lang/{ar,de,el,en,es,fr,it,pt,ru,zh}.json`
