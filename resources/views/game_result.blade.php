@@ -1213,7 +1213,7 @@
             @if($isMultiplayer)
                 {{ __('En attente des autres joueurs...') }}
             @else
-                {{ __('Prochaine question dans') }} <span class="timer-count" id="countdown">15</span> {{ __('secondes...') }}
+                {{ __('Prochaine question dans') }} <span class="timer-count" id="countdown">30</span> {{ __('secondes...') }}
             @endif
         </div>
         
@@ -1292,7 +1292,7 @@ if (isGameplayMusicEnabled()) {
 
 // Compte à rebours de 15 secondes (UNIQUEMENT en mode Solo)
 const isMultiplayerMode = {{ $isMultiplayer ? 'true' : 'false' }};
-let countdown = 15;
+let countdown = 30;
 const countdownElement = document.getElementById('countdown');
 
 // Ne pas lancer le chrono en mode multijoueur - les joueurs décident du rythme
