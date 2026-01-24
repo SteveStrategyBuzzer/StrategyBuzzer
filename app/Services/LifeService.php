@@ -39,29 +39,52 @@ class LifeService
             return;
         }
 
-        // Init si vide
+        // Si déjà au max, pas besoin de timer
+        if ($currentLives >= $this->maxLives()) {
+            if ($user->next_life_regen) {
+                $user->next_life_regen = null;
+                $user->save();
+            }
+            return;
+        }
+
+        // Init si vide (joueur en dessous du max sans timer actif)
         if (!$user->next_life_regen) {
             $user->next_life_regen = now()->addMinutes($this->regenMinutes());
             $user->save();
             return;
         }
 
-        // Si l'heure est atteinte et qu'on n'est pas au max
-        $currentLives = (int) ($user->lives ?? 0);
-        if (now()->greaterThanOrEqualTo($user->next_life_regen) && $currentLives < $this->maxLives()) {
-            // BUG FIX #2: S'assurer de ne jamais dépasser le maximum
-            $user->lives = min($currentLives + 1, $this->maxLives());
-            
-            // Si on n'est toujours pas au max après la régénération, redémarrer le cooldown
-            if ($user->lives < $this->maxLives()) {
-                $user->next_life_regen = now()->addMinutes($this->regenMinutes());
-            } else {
-                // Si on a atteint le max, supprimer le cooldown
-                $user->next_life_regen = null;
-            }
-            
-            $user->save();
+        // Calculer combien de vies auraient dû être régénérées pendant l'absence
+        $target = Carbon::parse($user->next_life_regen);
+        
+        // Si le temps n'est pas encore écoulé, rien à faire
+        if (now()->lt($target)) {
+            return;
         }
+        
+        // Calculer le temps écoulé depuis la première échéance
+        $minutesElapsed = now()->diffInMinutes($target);
+        $regenMinutes = $this->regenMinutes();
+        
+        // Nombre de vies à régénérer : 1 (pour l'échéance passée) + 1 par période complète écoulée
+        $livesToRegen = 1 + (int) floor($minutesElapsed / $regenMinutes);
+        
+        // Calculer les nouvelles vies (sans dépasser le max)
+        $newLives = min($currentLives + $livesToRegen, $this->maxLives());
+        $user->lives = $newLives;
+        
+        // Si on n'est toujours pas au max, calculer le prochain timer
+        if ($newLives < $this->maxLives()) {
+            // Temps restant de la période en cours
+            $remainingMinutes = $regenMinutes - ($minutesElapsed % $regenMinutes);
+            $user->next_life_regen = now()->addMinutes($remainingMinutes);
+        } else {
+            // Au max, supprimer le timer
+            $user->next_life_regen = null;
+        }
+        
+        $user->save();
     }
 
     /**
