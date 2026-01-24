@@ -47,7 +47,7 @@ class AvatarCatalog
                 'tier'   => 'Rare',
                 'name'   => 'Scientifique',
                 'skills' => ['🧪 Acidification : Skill Sélectionnable, Marque visuellement 2 mauvaises réponses (1x par partie)'],
-                'skills_short' => ['🧪 Marque 2 mauvaises réponses (1x)'],
+                'skills_short' => ['🧪 Acidifie 2 mauvaises réponses (1x)'],
             ],
             'explorateur'   => [
                 'tier'   => 'Rare',
@@ -88,7 +88,7 @@ class AvatarCatalog
                     '🔀 Mélange Réponses : Skill Sélectionnable, Les réponses de l\'adversaire se mélangent toutes les 1.5s (1x par partie)',
                     '⏱️ Chrono Réduit : Skill Sélectionnable, Réduit le temps de buzz de l\'adversaire de 8s à 6s (1x par partie)'
                 ],
-                'skills_short' => ['🔀 Mélange les réponses adverses (1x)', '⏱️ Réduit le temps de buzz adverse (1x)'],
+                'skills_short' => ['🔀 Mélange les réponses adverses (1x)', '⏱️ Réduit -2 sec le buzzer adverse (1x)'],
             ],
             'historien'     => [
                 'tier'   => 'Épique',
