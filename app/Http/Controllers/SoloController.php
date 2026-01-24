@@ -51,12 +51,37 @@ class SoloController extends Controller
         $niveau_selectionne = session('niveau_selectionne', $choix_niveau); // par défaut le max débloqué
         $avatar             = session('avatar', 'Aucun');            // avatar optionnel
         $nb_questions       = session('nb_questions', null);
+        
+        // Skill Stratège: Coéquipier - récupérer les avatars rares débloqués
+        $unlockedRareAvatars = [];
+        $isStratege = in_array(strtolower($avatar), ['stratège', 'stratege']);
+        
+        if ($isStratege) {
+            $user = auth()->user();
+            if ($user) {
+                $settings = (array) ($user->profile_settings ?? []);
+                $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+                
+                // Filtrer seulement les avatars rares
+                $avatarCatalog = \App\Services\AvatarCatalog::getStrategiques();
+                foreach ($unlockedAvatars as $slug) {
+                    if (isset($avatarCatalog[$slug]) && ($avatarCatalog[$slug]['tier'] ?? '') === 'Rare') {
+                        $unlockedRareAvatars[$slug] = $avatarCatalog[$slug];
+                    }
+                }
+            }
+        }
+        
+        $selectedTeammate = session('stratege_teammate', null);
 
         return view('solo', [
             'choix_niveau'       => $choix_niveau,
             'niveau_selectionne' => $niveau_selectionne,
             'avatar_stratégique'      => $avatar,
             'nb_questions'       => $nb_questions,
+            'is_stratege'        => $isStratege,
+            'unlocked_rare_avatars' => $unlockedRareAvatars,
+            'selected_teammate'  => $selectedTeammate,
         ]);
     }
 
@@ -75,6 +100,26 @@ class SoloController extends Controller
             'opponents' => $opponents,
             'playerLevel' => $playerLevel,
         ]);
+    }
+
+    /**
+     * Skill Stratège: Sauvegarder le coéquipier sélectionné
+     */
+    public function setTeammate(Request $request)
+    {
+        $teammate = $request->input('teammate', '');
+        
+        // Valider que c'est un avatar rare valide (si non vide)
+        if (!empty($teammate)) {
+            $avatarCatalog = \App\Services\AvatarCatalog::getStrategiques();
+            if (!isset($avatarCatalog[$teammate]) || ($avatarCatalog[$teammate]['tier'] ?? '') !== 'Rare') {
+                return response()->json(['success' => false, 'message' => 'Avatar invalide']);
+            }
+        }
+        
+        session(['stratege_teammate' => $teammate ?: null]);
+        
+        return response()->json(['success' => true, 'teammate' => $teammate]);
     }
 
     public function selectOpponent($level)
@@ -2660,7 +2705,30 @@ class SoloController extends Controller
         // Si l'avatar est un slug, le convertir en nom complet
         $normalizedAvatar = $slugToName[strtolower($avatar)] ?? $avatar;
         
-        return $skills[$normalizedAvatar] ?? ['rarity' => null, 'skills' => []];
+        $result = $skills[$normalizedAvatar] ?? ['rarity' => null, 'skills' => []];
+        
+        // Skill Stratège: Ajouter les skills du coéquipier (avatar rare)
+        if (in_array(strtolower($normalizedAvatar), ['stratège', 'stratege'])) {
+            $teammate = session('stratege_teammate');
+            if ($teammate) {
+                // Convertir le slug du coéquipier en nom complet
+                $teammateFullName = $slugToName[strtolower($teammate)] ?? $teammate;
+                $teammateData = $skills[$teammateFullName] ?? null;
+                
+                if ($teammateData && !empty($teammateData['skills'])) {
+                    // Ajouter les skills du coéquipier aux skills du Stratège
+                    $result['skills'] = array_merge($result['skills'], $teammateData['skills']);
+                    $result['teammate'] = [
+                        'name' => $teammateFullName,
+                        'slug' => $teammate,
+                        'rarity' => $teammateData['rarity'] ?? 'rare',
+                        'icon' => $teammateData['icon'] ?? '🎯'
+                    ];
+                }
+            }
+        }
+        
+        return $result;
     }
     
     private function getAvatarSkillsSimple($avatar)

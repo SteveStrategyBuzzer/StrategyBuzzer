@@ -179,6 +179,27 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
         <a href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}"
            class="btn btn-sm btn-outline-light ms-2">{{ __('Sélectionner') }}</a>
       </div>
+      
+      @if($is_stratege ?? false)
+      <div class="mb-2 mt-3" style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px;">
+        <span class="lbl">👥 {{ __('Coéquipier (Skill Stratège)') }} :</span>
+        @if(count($unlocked_rare_avatars ?? []) > 0)
+          <select name="teammate" id="teammate_select" class="form-select d-inline-block" style="width:auto;" onchange="saveTeammate(this.value)">
+            <option value="">-- {{ __('Aucun coéquipier') }} --</option>
+            @foreach($unlocked_rare_avatars as $slug => $avatar)
+              <option value="{{ $slug }}" {{ ($selected_teammate ?? '') === $slug ? 'selected' : '' }}>
+                {{ $avatar['name'] }} ({{ $avatar['tier'] }})
+              </option>
+            @endforeach
+          </select>
+          <small style="display:block; margin-top:6px; color:rgba(255,255,255,0.7);">
+            {{ __('Ajoute les skills d\'un avatar rare à votre équipe') }}
+          </small>
+        @else
+          <span style="color:#f39c12;">{{ __('Débloquez des avatars rares en boutique pour utiliser ce skill') }}</span>
+        @endif
+      </div>
+      @endif
     </div>
 
     <div class="grid-2">
@@ -218,6 +239,23 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
       overlay.style.animation = 'fadeOutWarning 0.3s ease forwards';
       setTimeout(() => overlay.remove(), 300);
     }
+  }
+  
+  // Fonction pour sauvegarder le coéquipier sélectionné (Skill Stratège)
+  function saveTeammate(slug) {
+    fetch('{{ route("solo.set-teammate") }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+      },
+      body: JSON.stringify({ teammate: slug })
+    }).then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('Coéquipier sauvegardé:', slug);
+        }
+      });
   }
 
   const form = document.getElementById('soloForm');

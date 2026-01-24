@@ -156,6 +156,7 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     
     Route::get('/opponents', [SoloController::class, 'opponents'])->name('opponents');
     Route::post('/select-opponent/{level}', [SoloController::class, 'selectOpponent'])->name('select-opponent');
+    Route::post('/set-teammate', [SoloController::class, 'setTeammate'])->name('set-teammate');
     
     Route::get('/resume',  [SoloController::class, 'resume'])->name('resume');
     Route::get('/prepare', [SoloController::class, 'prepare'])->name('prepare');
