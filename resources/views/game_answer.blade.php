@@ -38,8 +38,8 @@ if (!empty($avatarSkillsFull['skills'])) {
 $playerBuzzed = $params['player_buzzed'] ?? true;
 $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
 
-// Mathématicien: illuminate_numbers - illumine la bonne réponse si elle contient un chiffre
-$illuminateIndex = $params['illuminate_index'] ?? -1;
+// Mathématicien: illuminate_numbers - skill disponible mais pas encore activé
+$illuminateSkillAvailable = $params['illuminate_skill_available'] ?? false;
 @endphp
 
 <style>
@@ -254,32 +254,87 @@ $illuminateIndex = $params['illuminate_index'] ?? -1;
         50% { box-shadow: 0 0 50px rgba(78, 205, 196, 1), inset 0 0 30px rgba(78, 205, 196, 0.6); }
     }
     
-    /* Mathématicien skill: illuminate_numbers - bordure dorée brillante */
+    /* Mathématicien skill: illuminate_numbers - bordure dorée brillante quand activé */
     .answer-bubble.illuminated {
-        background: linear-gradient(145deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 165, 0, 0.25) 100%) !important;
+        background: linear-gradient(145deg, rgba(255, 215, 0, 0.35) 0%, rgba(255, 165, 0, 0.35) 100%) !important;
         border: 3px solid #FFD700 !important;
-        box-shadow: 0 0 25px rgba(255, 215, 0, 0.8), 0 0 50px rgba(255, 165, 0, 0.4), inset 0 0 15px rgba(255, 215, 0, 0.3) !important;
-        animation: illuminate-glow 1.2s infinite;
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 165, 0, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.4) !important;
+        animation: illuminate-glow 1s infinite;
         position: relative;
+        transform: scale(1.02);
     }
     
     .answer-bubble.illuminated::after {
         content: '💡';
         position: absolute;
-        top: -10px;
-        right: -10px;
-        font-size: 1.5rem;
-        animation: illuminate-bounce 0.6s ease-in-out infinite alternate;
+        top: -12px;
+        right: -12px;
+        font-size: 1.6rem;
     }
     
     @keyframes illuminate-glow {
-        0%, 100% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.8), 0 0 50px rgba(255, 165, 0, 0.4), inset 0 0 15px rgba(255, 215, 0, 0.3); }
-        50% { box-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 70px rgba(255, 165, 0, 0.6), inset 0 0 25px rgba(255, 215, 0, 0.5); }
+        0%, 100% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 165, 0, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.4); }
+        50% { box-shadow: 0 0 50px rgba(255, 215, 0, 1), 0 0 80px rgba(255, 165, 0, 0.7), inset 0 0 30px rgba(255, 215, 0, 0.6); }
     }
     
-    @keyframes illuminate-bounce {
-        from { transform: translateY(0) scale(1); }
-        to { transform: translateY(-3px) scale(1.1); }
+    /* Bouton skill Mathématicien cliquable */
+    .illuminate-skill-btn {
+        position: fixed;
+        bottom: 100px;
+        right: 20px;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #FFD700, #FFA500);
+        border: 3px solid #fff;
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.2rem;
+        z-index: 1000;
+        animation: skill-pulse 1.2s ease-in-out infinite;
+        transition: transform 0.2s;
+    }
+    
+    .illuminate-skill-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    .illuminate-skill-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .illuminate-skill-btn.used {
+        opacity: 0.4;
+        pointer-events: none;
+        animation: none;
+    }
+    
+    @keyframes skill-pulse {
+        0%, 100% { 
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1);
+        }
+        50% { 
+            box-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 165, 0, 0.6), 0 4px 15px rgba(0,0,0,0.3);
+            transform: scale(1.05);
+        }
+    }
+    
+    .skill-label {
+        position: fixed;
+        bottom: 70px;
+        right: 10px;
+        background: rgba(0,0,0,0.7);
+        color: #FFD700;
+        padding: 5px 12px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        z-index: 999;
+        text-align: center;
     }
     
     /* Buzz info */
@@ -434,6 +489,7 @@ $illuminateIndex = $params['illuminate_index'] ?? -1;
         @csrf
         <input type="hidden" name="answer_index" id="answerIndex">
         <input type="hidden" name="feather_skill_used" id="featherSkillUsed" value="0">
+        <input type="hidden" name="illuminate_skill_used" id="illuminateSkillUsedInput" value="0">
         
         <div class="answers-grid">
             @php
@@ -446,7 +502,7 @@ $illuminateIndex = $params['illuminate_index'] ?? -1;
                     @continue
                 @endif
                 
-                <div class="answer-bubble {{ $index === $illuminateIndex ? 'illuminated' : '' }}" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
+                <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
                     <div class="answer-number">{{ $index + 1 }}</div>
                     <div class="answer-text">{{ $answer }}</div>
                     <div class="answer-icon {{ $featherActive ? 'feather-active' : '' }}">@if($featherActive)🪶@else👉@endif</div>
@@ -456,13 +512,7 @@ $illuminateIndex = $params['illuminate_index'] ?? -1;
     </form>
     
     <!-- Buzz info -->
-    @if($illuminateIndex >= 0)
-        <div class="buzz-info" style="background: rgba(255, 215, 0, 0.15); border-color: rgba(255, 215, 0, 0.4);">
-            <div class="buzz-info-text" style="color: #FFD700;">
-                💡 {{ __('Mathématicien') }} - {{ __('La bonne réponse contient un chiffre') }} !
-            </div>
-        </div>
-    @elseif($featherActive)
+    @if($featherActive)
         <div class="buzz-info" style="background: rgba(78, 205, 196, 0.15); border-color: rgba(78, 205, 196, 0.3);">
             <div class="buzz-info-text" style="color: #4ECDC4;">
                 🪶 {{ __('Savoir sans temps') }} - {{ __('Vous pouvez répondre') }} (+1 {{ __('point max') }})
@@ -482,6 +532,13 @@ $illuminateIndex = $params['illuminate_index'] ?? -1;
         </div>
     @endif
 </div>
+
+@if($illuminateSkillAvailable)
+<div class="illuminate-skill-btn" id="illuminateSkillBtn" onclick="activateIlluminateSkill()">
+    💡
+</div>
+<div class="skill-label">{{ __('Illuminer') }}</div>
+@endif
 
 <audio id="tickSound" preload="auto" loop>
     <source src="{{ asset('sounds/tic_tac.mp3') }}" type="audio/mpeg">
@@ -506,6 +563,52 @@ let answered = false;
 const correctIndex = {{ $params['correct_index'] ?? -1 }}; // Index de la bonne réponse
 let correctSoundDuration = 2000; // Délai par défaut
 let incorrectSoundDuration = 500; // Délai par défaut
+let illuminateSkillUsed = false;
+
+// Fonction pour activer le skill Mathématicien "Illumine si chiffre"
+function activateIlluminateSkill() {
+    if (answered || illuminateSkillUsed) return;
+    
+    illuminateSkillUsed = true;
+    answered = true;  // Empêche d'autres actions
+    
+    // Marquer le bouton comme utilisé
+    const skillBtn = document.getElementById('illuminateSkillBtn');
+    if (skillBtn) {
+        skillBtn.classList.add('used');
+    }
+    
+    // Arrêter le timer et le son
+    clearInterval(timerInterval);
+    const tickSound = document.getElementById('tickSound');
+    tickSound.pause();
+    tickSound.currentTime = 0;
+    
+    // Illuminer la bonne réponse
+    const bubbles = document.querySelectorAll('.answer-bubble');
+    bubbles.forEach((bubble, index) => {
+        if (index === correctIndex) {
+            bubble.classList.add('illuminated');
+            bubble.classList.add('selected');
+        } else {
+            bubble.classList.add('disabled');
+        }
+    });
+    
+    // Jouer le son de bonne réponse
+    const correctSound = document.getElementById('correctSound');
+    correctSound.currentTime = 0;
+    correctSound.play().catch(e => console.log('Audio play failed:', e));
+    
+    // Sélectionner la bonne réponse dans le formulaire
+    document.getElementById('answerIndex').value = correctIndex;
+    document.getElementById('illuminateSkillUsedInput').value = '1';
+    
+    // Soumettre après 1.5 secondes
+    setTimeout(() => {
+        document.getElementById('answerForm').submit();
+    }, 1500);
+}
 
 // Animation de la barre de temps
 const timerBar = document.getElementById('timerBar');

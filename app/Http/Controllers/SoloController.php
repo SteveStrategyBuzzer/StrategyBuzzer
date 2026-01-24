@@ -1089,20 +1089,16 @@ class SoloController extends Controller
             $potentialPoints = $opponentBehavior['is_faster'] ? 1 : 2;
         }
         
-        // Appliquer les skills auto sur la page answer
-        $illuminateIndex = -1;  // -1 = pas d'illumination
+        // Mathématicien: illuminate_numbers - le skill est disponible si pas encore utilisé
         $usedSkills = session('used_skills', []);
+        $illuminateSkillAvailable = false;
         
-        // Mathématicien: illuminate_numbers - illumine si la bonne réponse contient un chiffre
         if ($avatar === 'Mathématicien' && !in_array('illuminate_numbers', $usedSkills)) {
             $correctIndex = $question['correct_index'] ?? 0;
             $correctAnswer = $question['answers'][$correctIndex] ?? '';
             // Vérifie si la bonne réponse contient un chiffre
             if (preg_match('/\d/', $correctAnswer)) {
-                $illuminateIndex = $correctIndex;
-                // Marquer le skill comme utilisé
-                $usedSkills[] = 'illuminate_numbers';
-                session(['used_skills' => $usedSkills]);
+                $illuminateSkillAvailable = true;  // Skill disponible, mais pas encore activé
             }
         }
         
@@ -1123,7 +1119,7 @@ class SoloController extends Controller
             'avatar_skills_full' => $this->getAvatarSkills($avatar),  // Structure complète des skills
             'used_skills' => session('used_skills', []),  // Skills déjà utilisés dans la partie
             'correct_index' => $question['correct_index'] ?? -1,  // Index de la bonne réponse pour les sons
-            'illuminate_index' => $illuminateIndex,  // Mathématicien skill: index de la réponse illuminée
+            'illuminate_skill_available' => $illuminateSkillAvailable,  // Mathématicien skill: disponible mais pas activé
         ];
         
         return view('game_answer', compact('params'));
@@ -1187,6 +1183,16 @@ class SoloController extends Controller
         
         // Vérifier si le skill Plume (answer_without_buzz) a été utilisé
         $featherSkillUsed = $request->input('feather_skill_used', '0') === '1';
+        
+        // Vérifier si le skill Illumine (illuminate_numbers) a été utilisé
+        $illuminateSkillUsed = $request->input('illuminate_skill_used', '0') === '1';
+        if ($illuminateSkillUsed) {
+            $usedSkills = session('used_skills', []);
+            if (!in_array('illuminate_numbers', $usedSkills)) {
+                $usedSkills[] = 'illuminate_numbers';
+                session(['used_skills' => $usedSkills]);
+            }
+        }
         
         if ($playerBuzzed) {
             // Le joueur a buzzé
