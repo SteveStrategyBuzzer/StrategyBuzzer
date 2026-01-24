@@ -1101,6 +1101,9 @@
         $reduceTimeUsed = in_array('reduce_time', $usedSkills);
         $reduceTimeActive = session('reduce_time_active', false);
         $reduceTimeQuestionsLeft = session('reduce_time_questions_left', 0);
+        $shuffleAnswersUsed = in_array('shuffle_answers', $usedSkills);
+        $shuffleAnswersActive = session('shuffle_answers_active', false);
+        $shuffleAnswersQuestionsLeft = session('shuffle_answers_questions_left', 0);
     @endphp
     <div class="skills-container" style="border-color: rgba(255, 87, 34, 0.4); background: rgba(255, 87, 34, 0.15);">
         <div class="skills-title">⚔️ {{ __('Compétences Challenger') }} ⚔️</div>
@@ -1122,6 +1125,26 @@
                     <div class="skill-used-badge">{{ $reduceTimeActive ? __('ACTIF') : __('UTILISÉ') }}</div>
                 @else
                     <button class="skill-btn" onclick="useReduceTime()" style="background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);">{{ __('Activer') }}</button>
+                @endif
+            </div>
+            
+            <!-- Skill: Mélange Réponses -->
+            <div class="skill-item {{ $shuffleAnswersUsed ? 'used' : '' }}">
+                <div class="skill-icon">🔀</div>
+                <div class="skill-info">
+                    <div class="skill-name">{{ __('Mélange Réponses') }}</div>
+                    <div class="skill-desc" style="font-size: 0.75rem; opacity: 0.7;">
+                        @if($shuffleAnswersActive)
+                            {{ $shuffleAnswersQuestionsLeft }} {{ __('questions restantes') }}
+                        @else
+                            {{ __('Réponses en mouvement') }}
+                        @endif
+                    </div>
+                </div>
+                @if($shuffleAnswersUsed || $shuffleAnswersActive)
+                    <div class="skill-used-badge">{{ $shuffleAnswersActive ? __('ACTIF') : __('UTILISÉ') }}</div>
+                @else
+                    <button class="skill-btn" onclick="useShuffleAnswers()" style="background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);">{{ __('Activer') }}</button>
                 @endif
             </div>
         </div>
@@ -1438,6 +1461,31 @@ function useCancelError() {
 // Skill Challenger: Chrono Réduit
 function useReduceTime() {
     fetch("{{ route('solo.reduce-time') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSkillMessage(data.message);
+            // Recharger la page après 1.5s pour mettre à jour l'interface
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showSkillMessage(data.message || 'Erreur lors de l\'activation du skill', false);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showSkillMessage('Erreur lors de l\'activation du skill', false);
+    });
+}
+
+// Skill Challenger: Mélange Réponses
+function useShuffleAnswers() {
+    fetch("{{ route('solo.shuffle-answers') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

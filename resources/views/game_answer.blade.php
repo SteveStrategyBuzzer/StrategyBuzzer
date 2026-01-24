@@ -55,6 +55,10 @@ if (!empty($avatarSkillsFull['skills'])) {
 // Explorateur: see_opponent_choice - skill disponible
 $seeOpponentSkillAvailable = $params['see_opponent_skill_available'] ?? false;
 $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
+
+// Challenger: shuffle_answers - les réponses bougent toutes les 1.5 sec
+$shuffleAnswersActive = session('shuffle_answers_active', false);
+$shuffleQuestionsLeft = session('shuffle_answers_questions_left', 0);
 @endphp
 
 <style>
@@ -173,6 +177,34 @@ $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
         margin-bottom: 10px;
         flex: 1;
         overflow-y: auto;
+        position: relative;
+    }
+    
+    /* Skill Challenger: Shuffle answers - animation de déplacement */
+    .answers-grid.shuffle-active .answer-bubble {
+        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                    opacity 0.2s ease;
+    }
+    
+    .answers-grid.shuffle-active .answer-bubble.shuffling {
+        opacity: 0.7;
+    }
+    
+    .shuffle-indicator {
+        position: absolute;
+        top: -25px;
+        right: 10px;
+        font-size: 0.75rem;
+        color: #FF6B6B;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        animation: pulse-shuffle 1.5s infinite;
+    }
+    
+    @keyframes pulse-shuffle {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
     
     .answer-bubble {
@@ -650,7 +682,12 @@ $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
         <input type="hidden" name="feather_skill_used" id="featherSkillUsed" value="0">
         <input type="hidden" name="illuminate_skill_used" id="illuminateSkillUsedInput" value="0">
         
-        <div class="answers-grid">
+        <div class="answers-grid{{ $shuffleAnswersActive ? ' shuffle-active' : '' }}" id="answersGrid">
+            @if($shuffleAnswersActive)
+            <div class="shuffle-indicator">
+                🔀 {{ __('Réponses en mouvement') }}
+            </div>
+            @endif
             @php
                 $question = $params['question'];
                 $isTrueFalse = $question['type'] === 'true_false';
@@ -661,7 +698,7 @@ $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
                     @continue
                 @endif
                 
-                <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}">
+                <div class="answer-bubble" onclick="selectAnswer({{ $index }})" data-index="{{ $index }}" data-original-index="{{ $index }}">
                     <div class="answer-number">{{ $index + 1 }}</div>
                     <div class="answer-text">{{ $answer }}</div>
                     <div class="answer-icon {{ $featherActive ? 'feather-active' : '' }}">@if($featherActive)🪶@else👉@endif</div>
@@ -737,6 +774,54 @@ const correctIndex = {{ $params['correct_index'] ?? -1 }}; // Index de la bonne 
 let correctSoundDuration = 2000; // Délai par défaut
 let incorrectSoundDuration = 500; // Délai par défaut
 let illuminateSkillUsed = false;
+
+// Skill Challenger: Shuffle Answers - les réponses bougent toutes les 1.5 sec
+const shuffleActive = {{ $shuffleAnswersActive ? 'true' : 'false' }};
+let shuffleInterval = null;
+
+function shuffleAnswers() {
+    if (answered) return;
+    
+    const grid = document.getElementById('answersGrid');
+    const bubbles = Array.from(grid.querySelectorAll('.answer-bubble'));
+    
+    if (bubbles.length <= 1) return;
+    
+    // Ajouter effet de transition
+    bubbles.forEach(b => b.classList.add('shuffling'));
+    
+    // Fisher-Yates shuffle pour mélanger l'ordre
+    for (let i = bubbles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        // Échanger les positions dans le DOM
+        if (i !== j) {
+            const temp = bubbles[i];
+            grid.insertBefore(bubbles[i], bubbles[j]);
+            grid.insertBefore(bubbles[j], temp);
+            // Mettre à jour le tableau
+            [bubbles[i], bubbles[j]] = [bubbles[j], bubbles[i]];
+        }
+    }
+    
+    // Mettre à jour les numéros visuels (1, 2, 3, 4)
+    bubbles.forEach((bubble, visualIndex) => {
+        const numberDiv = bubble.querySelector('.answer-number');
+        if (numberDiv) {
+            numberDiv.textContent = visualIndex + 1;
+        }
+    });
+    
+    // Retirer l'effet après l'animation
+    setTimeout(() => {
+        bubbles.forEach(b => b.classList.remove('shuffling'));
+    }, 400);
+}
+
+// Démarrer le shuffle si actif
+if (shuffleActive) {
+    // Premier shuffle après 1.5 sec
+    shuffleInterval = setInterval(shuffleAnswers, 1500);
+}
 
 // Fonction pour activer le skill Mathématicien "Illumine si chiffre"
 function activateIlluminateSkill() {
@@ -911,6 +996,12 @@ function selectAnswer(index) {
     answered = true;
     
     clearInterval(timerInterval);
+    
+    // Arrêter le shuffle si actif
+    if (shuffleInterval) {
+        clearInterval(shuffleInterval);
+        shuffleInterval = null;
+    }
     
     // Arrêter le son tic-tac
     const tickSound = document.getElementById('tickSound');

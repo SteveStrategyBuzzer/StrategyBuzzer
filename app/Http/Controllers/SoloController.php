@@ -1203,6 +1203,20 @@ class SoloController extends Controller
             }
         }
         
+        // Skill Challenger: Shuffle Answers - décrémenter le compteur
+        $shuffleAnswersActive = session('shuffle_answers_active', false);
+        if ($shuffleAnswersActive) {
+            $shuffleQuestionsLeft = session('shuffle_answers_questions_left', 0);
+            $shuffleQuestionsLeft--;
+            session(['shuffle_answers_questions_left' => $shuffleQuestionsLeft]);
+            
+            // Désactiver le skill si plus de questions restantes
+            if ($shuffleQuestionsLeft <= 0) {
+                session(['shuffle_answers_active' => false]);
+                \Log::info('[CHALLENGER] Skill shuffle_answers épuisé');
+            }
+        }
+        
         // Simuler le comportement complet de l'adversaire IA (passer timing du buzz)
         $opponentBehavior = $questionService->simulateOpponentBehavior(
             $niveau, 
@@ -2954,6 +2968,55 @@ class SoloController extends Controller
         return response()->json([
             'success' => true, 
             'message' => 'Chrono Réduit activé ! -2 sec pour l\'adversaire pendant ' . $questionsAffected . ' questions',
+            'questions_affected' => $questionsAffected,
+            'used_skills' => $usedSkills
+        ]);
+    }
+    
+    /**
+     * Skill Challenger - Mélange Réponses
+     * Les réponses se déplacent toutes les 1.5 sec sur la page réponse
+     * Manche 1-2: 5 questions, Manche 3: 3 questions, Manche Ultime: 1 question
+     */
+    public function shuffleAnswers(Request $request)
+    {
+        $avatar = session('avatar', 'Aucun');
+        
+        if ($avatar !== 'Challenger') {
+            return response()->json(['success' => false, 'message' => 'Skill non disponible pour cet avatar'], 403);
+        }
+        
+        $usedSkills = session('used_skills', []);
+        if (in_array('shuffle_answers', $usedSkills)) {
+            return response()->json(['success' => false, 'message' => 'Skill déjà utilisé'], 403);
+        }
+        
+        // Déterminer le nombre de questions affectées selon la manche
+        $currentRound = session('current_round', 1);
+        $questionsAffected = 5; // Par défaut Manche 1-2
+        
+        if ($currentRound === 3) {
+            $questionsAffected = 3; // Manche 3 (5 questions)
+        } elseif ($currentRound >= 4) {
+            $questionsAffected = 1; // Manche Ultime (3 questions)
+        }
+        
+        // Activer le skill
+        session(['shuffle_answers_active' => true]);
+        session(['shuffle_answers_questions_left' => $questionsAffected]);
+        
+        // Marquer le skill comme utilisé
+        $usedSkills[] = 'shuffle_answers';
+        session(['used_skills' => $usedSkills]);
+        
+        \Log::info('[CHALLENGER] Skill shuffle_answers activé', [
+            'current_round' => $currentRound,
+            'questions_affected' => $questionsAffected,
+        ]);
+        
+        return response()->json([
+            'success' => true, 
+            'message' => 'Mélange Réponses activé ! Les réponses bougent pendant ' . $questionsAffected . ' questions',
             'questions_affected' => $questionsAffected,
             'used_skills' => $usedSkills
         ]);

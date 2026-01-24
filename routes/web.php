@@ -168,6 +168,7 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     Route::post('/cancel-error', [SoloController::class, 'cancelError'])->name('cancel-error');
     Route::post('/use-scroll-skill', [SoloController::class, 'useScrollSkill'])->name('use-scroll-skill');
     Route::post('/reduce-time', [SoloController::class, 'reduceTime'])->name('reduce-time');
+    Route::post('/shuffle-answers', [SoloController::class, 'shuffleAnswers'])->name('shuffle-answers');
     Route::get('/bonus-question', [SoloController::class, 'bonusQuestion'])->name('bonus-question');
     Route::post('/answer-bonus', [SoloController::class, 'answerBonus'])->name('answer-bonus');
     Route::get('/next',    [SoloController::class, 'nextQuestion'])->name('next');

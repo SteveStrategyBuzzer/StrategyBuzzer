@@ -323,39 +323,6 @@ class QuestionService
     }
 
     /**
-     * Calcule le temps de lecture des réponses jusqu'à trouver la bonne
-     * L'IA lit séquentiellement (réponse 1, puis 2, etc.) jusqu'à trouver la bonne
-     * 
-     * @param array $question La question avec ses réponses
-     * @param float $wordsPerSecond Vitesse de lecture en mots/seconde
-     * @param int $correctAnswerPosition Position de la bonne réponse (1-4), null = position réelle
-     * @return float Temps de lecture des réponses en secondes
-     */
-    private function calculateAnswerReadingTime($question, $wordsPerSecond, $correctAnswerPosition = null)
-    {
-        $answers = $question['answers'] ?? [];
-        if (empty($answers)) {
-            return 0;
-        }
-        
-        // Si pas de position forcée, utiliser la position réelle
-        if ($correctAnswerPosition === null) {
-            $correctAnswerPosition = ($question['correct_index'] ?? 0) + 1; // Convertir index 0-based en position 1-based
-        }
-        
-        // L'IA lit les réponses jusqu'à la position de la bonne réponse
-        $totalWords = 0;
-        for ($i = 0; $i < $correctAnswerPosition && $i < count($answers); $i++) {
-            $answerText = $answers[$i] ?? '';
-            $wordCount = str_word_count($answerText);
-            $wordCount = max($wordCount, 2); // Minimum 2 mots par réponse
-            $totalWords += $wordCount;
-        }
-        
-        return $totalWords / $wordsPerSecond;
-    }
-    
-    /**
      * Simule le comportement complet de l'adversaire IA
      * 
      * @param int $niveau Le niveau du joueur
@@ -366,14 +333,13 @@ class QuestionService
      * @param int $playerScore Le score actuel du joueur (pour nervosité)
      * @param int $opponentScore Le score actuel de l'adversaire (pour nervosité)
      * @param int $questionNumber Le numéro de la question (pour fatigue)
-     * @param int|null $forceCorrectAnswerPosition Position forcée de la bonne réponse (1-4) pour le skill Mélange
      * @return array Comportement de l'adversaire avec is_faster, is_correct, points, buzzes
      */
-    public function simulateOpponentBehavior($niveau, $question, $playerBuzzed, $buzzTime, $chronoTime, $playerScore = 0, $opponentScore = 0, $questionNumber = 1, $forceCorrectAnswerPosition = null)
+    public function simulateOpponentBehavior($niveau, $question, $playerBuzzed, $buzzTime, $chronoTime, $playerScore = 0, $opponentScore = 0, $questionNumber = 1)
     {
         // Déterminer si c'est un Boss et utiliser l'algorithme approprié
         if ($this->isBoss($niveau)) {
-            return $this->simulateBossBehavior($niveau, $question, $playerBuzzed, $buzzTime, $chronoTime, $playerScore, $opponentScore, $questionNumber, $forceCorrectAnswerPosition);
+            return $this->simulateBossBehavior($niveau, $question, $playerBuzzed, $buzzTime, $chronoTime, $playerScore, $opponentScore, $questionNumber);
         }
         
         // Algorithme réaliste pour les étudiants basé sur la vitesse de lecture humaine
@@ -405,15 +371,10 @@ class QuestionService
         $wordCount = str_word_count($questionText);
         $wordCount = max($wordCount, 5); // Minimum 5 mots pour éviter temps trop courts
         
-        // Temps de lecture de la question
-        $questionReadingTime = $wordCount / $wordsPerSecond;
-        
-        // Temps de lecture des réponses (l'IA lit jusqu'à trouver la bonne)
-        $answerReadingTime = $this->calculateAnswerReadingTime($question, $wordsPerSecond, $forceCorrectAnswerPosition);
-        
-        // Temps total = lecture question + lecture réponses + réflexion
+        // Temps de lecture + temps de réflexion progressif selon le niveau
+        $readingTime = $wordCount / $wordsPerSecond;
         $thinkingTime = $this->getThinkingTime($niveau, false); // false = étudiant
-        $naturalBuzzTime = $questionReadingTime + $answerReadingTime + $thinkingTime;
+        $naturalBuzzTime = $readingTime + $thinkingTime;
         
         // Vérifier si l'IA buzze sous pression (temps naturel > chrono)
         $buzzingUnderPressure = $naturalBuzzTime > $chronoTime;
