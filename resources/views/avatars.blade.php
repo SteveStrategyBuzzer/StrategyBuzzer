@@ -566,7 +566,7 @@
     'Scientifique': {
       name: 'Scientifique',
       skills: [
-        {icon: '⚗️', name: 'Analyse', desc: 'Peut acidifier une mauvaise réponse 1 fois avant de choisir'}
+        {icon: '🧪', name: 'Acidifier', desc: 'Élimine 2 mauvaises réponses (1x par partie)'}
       ]
     },
     'Explorateur': {

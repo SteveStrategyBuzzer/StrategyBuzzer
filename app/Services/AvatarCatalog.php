@@ -45,7 +45,7 @@ class AvatarCatalog
             'scientifique'  => [
                 'tier'   => 'Rare',
                 'name'   => 'Scientifique',
-                'skills' => ['Acidifie erreur (1x)'],
+                'skills' => ['Acidifie 2 erreurs (1x)'],
             ],
             'explorateur'   => [
                 'tier'   => 'Rare',

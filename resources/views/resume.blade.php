@@ -556,7 +556,7 @@
                     ['icon' => '🔢', 'name' => 'Calcul Rapide', 'description' => 'Active automatiquement']
                 ],
                 'Scientifique' => [
-                    ['icon' => '⚗️', 'name' => 'Analyse', 'description' => 'Active automatiquement']
+                    ['icon' => '🧪', 'name' => 'Acidifier', 'description' => 'Élimine 2 mauvaises réponses (1x par partie)']
                 ],
                 'Explorateur' => [
                     ['icon' => '🧭', 'name' => 'Navigation', 'description' => 'Active automatiquement']
