@@ -2876,18 +2876,21 @@ class SoloController extends Controller
         session(['score' => $newScore]);
         
         // Mettre à jour les statistiques - GARDER is_correct = false (l'erreur reste une erreur)
+        // MAIS modifier player_points pour refléter le résultat final (+1 ou +2 au lieu de -2)
         $answeredQuestions = session('answered_questions', []);
         $answeredLastIndex = count($answeredQuestions) - 1;
         if ($answeredLastIndex >= 0) {
-            // L'erreur reste une erreur dans les stats, mais on marque que le skill a été utilisé
+            // L'erreur reste une erreur dans les stats, mais les points sont corrigés
             $answeredQuestions[$answeredLastIndex]['skill_adjusted'] = true;
             $answeredQuestions[$answeredLastIndex]['skill_points_added'] = $totalPointsToAdd;
+            $answeredQuestions[$answeredLastIndex]['player_points'] = $pointsWouldHaveWon; // +1 ou +2 (résultat final)
             session(['answered_questions' => $answeredQuestions]);
         }
         
-        // Mettre à jour global_stats - GARDER is_correct = false
+        // Mettre à jour global_stats - GARDER is_correct = false, MAIS corriger player_points
         $globalStats[$lastIndex]['skill_adjusted'] = true;
         $globalStats[$lastIndex]['skill_points_added'] = $totalPointsToAdd;
+        $globalStats[$lastIndex]['player_points'] = $pointsWouldHaveWon; // +1 ou +2 (résultat final)
         session(['global_stats' => $globalStats]);
         
         // Marquer le skill comme utilisé
