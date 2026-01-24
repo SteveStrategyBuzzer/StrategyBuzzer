@@ -359,4 +359,88 @@ class SkillCatalog
         $skill = self::getSkill($skillId);
         return $skill && ($skill['affects_opponent'] ?? false);
     }
+    
+    /**
+     * Determine the target of an attack skill based on game mode and scores
+     * 
+     * Rules:
+     * - Solo/Duo (1v1): Target is always the single opponent
+     * - Master (multi-player): Dynamic targeting based on score ranking:
+     *   1. If player is NOT leader: Target the player with highest score above the player
+     *   2. If player IS leader: Target the player closest in score below (or equal to)
+     * 
+     * @param int $playerId Current player's ID
+     * @param int $playerScore Current player's score
+     * @param array $opponents Array of opponents with 'id' and 'score' keys
+     * @param string $gameMode 'solo', 'duo', 'league', or 'master'
+     * @return int|null Target player ID or null if no valid target
+     */
+    public static function getAttackTarget(int $playerId, int $playerScore, array $opponents, string $gameMode = 'solo'): ?int
+    {
+        if (empty($opponents)) {
+            return null;
+        }
+        
+        // Solo/Duo: Single opponent
+        if (in_array($gameMode, ['solo', 'duo', 'league'])) {
+            return $opponents[0]['id'] ?? null;
+        }
+        
+        // Master mode: Dynamic targeting
+        $opponentsAbove = [];
+        $opponentsBelowOrEqual = [];
+        
+        foreach ($opponents as $opponent) {
+            $oppScore = $opponent['score'] ?? 0;
+            $oppId = $opponent['id'] ?? null;
+            
+            if ($oppId === null) continue;
+            
+            if ($oppScore > $playerScore) {
+                $opponentsAbove[] = ['id' => $oppId, 'score' => $oppScore];
+            } else {
+                $opponentsBelowOrEqual[] = ['id' => $oppId, 'score' => $oppScore];
+            }
+        }
+        
+        // If player is NOT leader (there are players above)
+        if (!empty($opponentsAbove)) {
+            // Target the player with highest score above
+            usort($opponentsAbove, fn($a, $b) => $b['score'] <=> $a['score']);
+            return $opponentsAbove[0]['id'];
+        }
+        
+        // Player IS leader: Target closest in score below or equal
+        if (!empty($opponentsBelowOrEqual)) {
+            // Sort by score descending to get closest below
+            usort($opponentsBelowOrEqual, fn($a, $b) => $b['score'] <=> $a['score']);
+            return $opponentsBelowOrEqual[0]['id'];
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Get formatted target info for UI display
+     */
+    public static function getTargetInfo(int $targetId, array $players): array
+    {
+        foreach ($players as $player) {
+            if (($player['id'] ?? null) === $targetId) {
+                return [
+                    'id' => $targetId,
+                    'name' => $player['name'] ?? 'Adversaire',
+                    'avatar' => $player['avatar'] ?? null,
+                    'score' => $player['score'] ?? 0,
+                ];
+            }
+        }
+        
+        return [
+            'id' => $targetId,
+            'name' => 'Adversaire',
+            'avatar' => null,
+            'score' => 0,
+        ];
+    }
 }

@@ -71,6 +71,14 @@ Solo mode dictates the strict sequence of game phases (intro, question, buzz, re
 
 **Avatar System:** User-specific avatars (12 across 3 tiers) offering 25 unique skills (Passive, Visual, Active_Pre, Active_Post).
 
+**Skill Targeting System (Attack Skills):**
+All attack skills must target an opponent according to these rules:
+- **Solo/Duo (1v1):** Target is always the single opponent
+- **Master (multi-player):** Dynamic targeting based on score ranking:
+  1. If player is NOT leader: Target the player with highest score above the player
+  2. If player IS leader: Target the player closest in score below (or equal to) the player
+- This creates strategic depth where attacks always go toward the most threatening competitor
+
 #### Historien Avatar (Epic Tier)
 The Historian avatar has 2 unique skills:
 
