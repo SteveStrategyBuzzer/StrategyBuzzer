@@ -21,6 +21,15 @@ $playerDivision = $params['player_division'] ?? 'Bronze';
 $opponentDivision = $params['opponent_division'] ?? 'Bronze';
 $redirectUrl = $params['redirect_url'] ?? route('game.question', ['mode' => $mode]);
 
+// Avatars non-avantageux en mode Solo (skills orientés multijoueur)
+$soloDisadvantagedAvatars = [
+    'defenseur' => 'Cet avatar ne sera pas nécessaire en mode Solo car il n\'y aura pas d\'attaque des joueurs adverses.',
+    'comedienne' => 'Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.',
+];
+$playerAvatarKey = strtolower($playerAvatar);
+$showSoloWarning = ($mode === 'solo') && isset($soloDisadvantagedAvatars[$playerAvatarKey]);
+$soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$playerAvatarKey] : '';
+
 $playerId = auth()->id();
 $opponentId = $params['opponent_id'] ?? null;
 $matchId = $params['match_id'] ?? null;
@@ -316,6 +325,87 @@ body {
         font-size: 1.5rem;
     }
 }
+
+/* Popup avertissement avatar non-avantageux en Solo */
+.solo-warning-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+}
+
+.solo-warning-popup {
+    background: linear-gradient(145deg, #2d1f3d, #1a1a2e);
+    border: 2px solid #f39c12;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 400px;
+    margin: 20px;
+    position: relative;
+    box-shadow: 0 0 40px rgba(243, 156, 18, 0.3);
+    animation: scaleIn 0.3s ease;
+}
+
+.solo-warning-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: rgba(255,255,255,0.6);
+    transition: color 0.2s, transform 0.2s;
+    background: none;
+    border: none;
+}
+
+.solo-warning-close:hover {
+    color: #fff;
+    transform: scale(1.2);
+}
+
+.solo-warning-icon {
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.solo-warning-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 15px;
+    color: #f39c12;
+}
+
+.solo-warning-message {
+    font-size: 1rem;
+    line-height: 1.5;
+    text-align: center;
+    color: rgba(255,255,255,0.85);
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
 </style>
 
 <div class="intro-container">
@@ -368,6 +458,17 @@ body {
     </div>
 </div>
 
+@if($showSoloWarning)
+<div class="solo-warning-overlay" id="soloWarningOverlay">
+    <div class="solo-warning-popup">
+        <button class="solo-warning-close" onclick="closeSoloWarning()">&times;</button>
+        <div class="solo-warning-icon">⚠️</div>
+        <div class="solo-warning-title">{{ __('Avertissement Avatar') }}</div>
+        <div class="solo-warning-message">{{ __($soloWarningMessage) }}</div>
+    </div>
+</div>
+@endif
+
 <audio id="readyAudio" preload="auto">
     <source src="{{ asset('sounds/ready_announcement.mp3') }}" type="audio/mpeg">
 </audio>
@@ -379,6 +480,15 @@ body {
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 
 <script>
+// Fonction pour fermer le popup d'avertissement
+function closeSoloWarning() {
+    const overlay = document.getElementById('soloWarningOverlay');
+    if (overlay) {
+        overlay.style.animation = 'fadeOut 0.3s ease forwards';
+        setTimeout(() => overlay.remove(), 300);
+    }
+}
+
 (function() {
     const redirectUrl = @json($redirectUrl);
     const sessionId = @json($sessionId);
