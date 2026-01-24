@@ -754,7 +754,7 @@ if (!empty($avatarSkillsFull['skills'])) {
     }
     
     .answer-bubble.ai-suggested::before {
-        content: '💡';
+        content: '🤖';
         position: absolute;
         top: -15px;
         right: -15px;
@@ -1027,7 +1027,7 @@ if (!empty($avatarSkillsFull['skills'])) {
 
 @if($aiSuggestionSkillAvailable)
 <div class="ai-suggestion-skill-btn" id="aiSuggestionSkillBtn" onclick="activateAiSuggestionSkill()">
-    💡
+    🤖
 </div>
 <div class="skill-label ai-suggestion-label">{{ __('Suggestion IA') }}</div>
 @endif
