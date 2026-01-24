@@ -2602,7 +2602,27 @@ class SoloController extends Controller
             ],
         ];
         
-        return $skills[$avatar] ?? ['rarity' => null, 'skills' => []];
+        // Normalisation des noms d'avatar (slug -> nom complet)
+        $slugToName = [
+            'mathematicien' => 'Mathématicien',
+            'scientifique' => 'Scientifique',
+            'explorateur' => 'Explorateur',
+            'defenseur' => 'Défenseur',
+            'comedienne' => 'Comédienne',
+            'comedien' => 'Comédien',
+            'magicienne' => 'Magicienne',
+            'challenger' => 'Challenger',
+            'historien' => 'Historien',
+            'ia-junior' => 'IA Junior',
+            'stratege' => 'Stratège',
+            'sprinteur' => 'Sprinteur',
+            'visionnaire' => 'Visionnaire',
+        ];
+        
+        // Si l'avatar est un slug, le convertir en nom complet
+        $normalizedAvatar = $slugToName[strtolower($avatar)] ?? $avatar;
+        
+        return $skills[$normalizedAvatar] ?? ['rarity' => null, 'skills' => []];
     }
     
     private function getAvatarSkillsSimple($avatar)
