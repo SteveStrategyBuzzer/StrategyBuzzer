@@ -8,6 +8,10 @@ $questionText = $question['text'] ?? '';
 $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
 $buzzTime = $buzz_time ?? 0;
 $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
+
+// Skills Challenger - passés par le contrôleur
+$shuffleAnswersActive = $shuffleAnswersActive ?? false;
+$shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 @endphp
 
 <style>
@@ -636,6 +640,39 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
             font-size: 0.9rem;
         }
     }
+    
+    /* Shuffle Answers Animation (Challenger Skill) */
+    .answers-grid.shuffle-active .answer-button {
+        transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    
+    .answers-grid.shuffle-active .answer-button.shuffling {
+        animation: shuffleBounce 0.3s ease;
+    }
+    
+    @keyframes shuffleBounce {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(0.95); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .shuffle-indicator {
+        grid-column: 1 / -1;
+        text-align: center;
+        color: #ff5722;
+        font-weight: 700;
+        font-size: 1rem;
+        padding: 10px;
+        background: rgba(255, 87, 34, 0.2);
+        border-radius: 10px;
+        border: 1px solid rgba(255, 87, 34, 0.4);
+        animation: shufflePulse 1.5s infinite;
+    }
+    
+    @keyframes shufflePulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
 </style>
 
 <div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
@@ -663,7 +700,12 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         <span class="timer-seconds" id="timerSeconds">10s</span>
     </div>
     
-    <div class="answers-container" id="answersContainer">
+    <div class="answers-container{{ $shuffleAnswersActive ? ' shuffle-active' : '' }}" id="answersContainer">
+        @if($shuffleAnswersActive)
+        <div class="shuffle-indicator">
+            🔀 {{ __('Réponses en mouvement') }}
+        </div>
+        @endif
         @foreach($choices as $index => $choice)
             <button class="answer-button {{ (!$isBuzzWinner && !$noBuzz) ? 'waiting' : '' }}" 
                     data-index="{{ $index }}"
@@ -851,6 +893,52 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         lockCorrect: false,
         extraTime: false
     };
+    
+    // Skill Challenger: Shuffle Answers
+    const SHUFFLE_ACTIVE = {{ $shuffleAnswersActive ? 'true' : 'false' }};
+    let shuffleInterval = null;
+    
+    function shuffleAnswers() {
+        if (answered) return;
+        
+        const container = document.getElementById('answersContainer');
+        const buttons = Array.from(container.querySelectorAll('.answer-button'));
+        const indicator = container.querySelector('.shuffle-indicator');
+        
+        // Fisher-Yates shuffle pour l'ordre des boutons
+        for (let i = buttons.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [buttons[i], buttons[j]] = [buttons[j], buttons[i]];
+        }
+        
+        // Ajouter l'animation de shuffle
+        buttons.forEach(btn => btn.classList.add('shuffling'));
+        
+        // Réorganiser le DOM
+        buttons.forEach(btn => container.appendChild(btn));
+        
+        // Remettre l'indicateur en haut si présent
+        if (indicator) {
+            container.insertBefore(indicator, container.firstChild);
+        }
+        
+        // Retirer l'animation après 0.3s
+        setTimeout(() => {
+            buttons.forEach(btn => btn.classList.remove('shuffling'));
+        }, 300);
+    }
+    
+    function startShuffleInterval() {
+        if (!SHUFFLE_ACTIVE) return;
+        shuffleInterval = setInterval(shuffleAnswers, 1500);
+    }
+    
+    function stopShuffleInterval() {
+        if (shuffleInterval) {
+            clearInterval(shuffleInterval);
+            shuffleInterval = null;
+        }
+    }
     
     const timerBar = document.getElementById('timerBar');
     const timerSeconds = document.getElementById('timerSeconds');
@@ -1063,6 +1151,9 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
     function startTimer() {
         if (timerInterval) clearInterval(timerInterval);
         
+        // Démarrer le shuffle des réponses si actif
+        startShuffleInterval();
+        
         if (NO_BUZZ) {
             updatePotentialPointsDisplay(0);
         }
@@ -1098,6 +1189,9 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         if (answered) return;
         answered = true;
         
+        // Arrêter le shuffle des réponses
+        stopShuffleInterval();
+        
         answerButtons.forEach(function(btn) {
             btn.classList.add('disabled');
         });
@@ -1110,6 +1204,9 @@ $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
         
         answered = true;
         selectedIndex = index;
+        
+        // Arrêter le shuffle des réponses
+        stopShuffleInterval();
         
         if (timerInterval) {
             clearInterval(timerInterval);

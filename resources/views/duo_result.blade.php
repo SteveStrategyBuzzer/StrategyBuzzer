@@ -908,6 +908,72 @@ $mode = 'duo';
     </div>
     @endif
     
+    {{-- Skills Challenger (reduce_time, shuffle_answers) --}}
+    @if(($avatarName ?? '') === 'Challenger')
+    @php
+        // Skills scopés au match
+        $matchId = $match_id ?? session('game_state.match_id', 0);
+        $skillsKey = "duo_skills_{$matchId}";
+        $matchSkills = session($skillsKey, [
+            'used_skills' => [],
+            'reduce_time_active' => false,
+            'reduce_time_questions_left' => 0,
+            'shuffle_answers_active' => false,
+            'shuffle_answers_questions_left' => 0,
+        ]);
+        $reduceTimeUsed = in_array('reduce_time', $matchSkills['used_skills']);
+        $reduceTimeActive = $matchSkills['reduce_time_active'];
+        $reduceTimeQuestionsLeft = $matchSkills['reduce_time_questions_left'];
+        $shuffleAnswersUsed = in_array('shuffle_answers', $matchSkills['used_skills']);
+        $shuffleAnswersActive = $matchSkills['shuffle_answers_active'];
+        $shuffleAnswersQuestionsLeft = $matchSkills['shuffle_answers_questions_left'];
+    @endphp
+    <div class="skills-container" style="border-color: rgba(255, 87, 34, 0.4); background: rgba(255, 87, 34, 0.15);">
+        <div class="skills-title">⚔️ {{ __('Compétences Challenger') }} ⚔️</div>
+        <div class="skills-grid">
+            <!-- Skill: Chrono Réduit -->
+            <div class="skill-item {{ $reduceTimeUsed ? 'used' : '' }}">
+                <div class="skill-icon">⏱️</div>
+                <div class="skill-info">
+                    <div class="skill-name">{{ __('Chrono Réduit') }}</div>
+                    <div class="skill-desc" style="font-size: 0.75rem; opacity: 0.7;">
+                        @if($reduceTimeActive)
+                            {{ $reduceTimeQuestionsLeft }} {{ __('questions restantes') }}
+                        @else
+                            {{ __('-2 sec pour l\'adversaire') }}
+                        @endif
+                    </div>
+                </div>
+                @if($reduceTimeUsed || $reduceTimeActive)
+                    <div class="skill-used-badge">{{ $reduceTimeActive ? __('ACTIF') : __('UTILISÉ') }}</div>
+                @else
+                    <button class="skill-btn" onclick="useChallengerSkill('reduce_time')" style="background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);">{{ __('Activer') }}</button>
+                @endif
+            </div>
+            
+            <!-- Skill: Mélange Réponses -->
+            <div class="skill-item {{ $shuffleAnswersUsed ? 'used' : '' }}">
+                <div class="skill-icon">🔀</div>
+                <div class="skill-info">
+                    <div class="skill-name">{{ __('Mélange Réponses') }}</div>
+                    <div class="skill-desc" style="font-size: 0.75rem; opacity: 0.7;">
+                        @if($shuffleAnswersActive)
+                            {{ $shuffleAnswersQuestionsLeft }} {{ __('questions restantes') }}
+                        @else
+                            {{ __('Réponses en mouvement') }}
+                        @endif
+                    </div>
+                </div>
+                @if($shuffleAnswersUsed || $shuffleAnswersActive)
+                    <div class="skill-used-badge">{{ $shuffleAnswersActive ? __('ACTIF') : __('UTILISÉ') }}</div>
+                @else
+                    <button class="skill-btn" onclick="useChallengerSkill('shuffle_answers')" style="background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);">{{ __('Activer') }}</button>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+    
     <div class="status-section">
         <div class="status-title">{{ __('Statut des joueurs') }}</div>
         <div class="status-row">
@@ -1165,6 +1231,72 @@ $mode = 'duo';
         btn.textContent = '{{ __("Activé") }}';
         btn.closest('.skill-item').classList.add('used');
     };
+    
+    // Skill Challenger - reduce_time et shuffle_answers
+    window.useChallengerSkill = function(skillId) {
+        if (!skillId) return;
+        
+        console.log('[DuoResult] Activating Challenger skill:', skillId);
+        
+        fetch("{{ route('game.duo.use-skill') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ skill_id: skillId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSkillMessage(data.message);
+                // Recharger la page après 1.5s pour mettre à jour l'interface
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showSkillMessage(data.message || 'Erreur lors de l\'activation du skill', false);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showSkillMessage('Erreur lors de l\'activation du skill', false);
+        });
+    };
+    
+    function showSkillMessage(message, isSuccess = true) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        `;
+        
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+            background: ${isSuccess ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' : 'linear-gradient(135deg, #2e1a1a 0%, #3e1616 100%)'};
+            border: 2px solid ${isSuccess ? '#4CAF50' : '#f44336'};
+            border-radius: 20px;
+            padding: 30px 40px;
+            text-align: center;
+            max-width: 90%;
+            animation: popIn 0.3s ease;
+        `;
+        popup.innerHTML = `
+            <div style="font-size: 3rem; margin-bottom: 15px;">${isSuccess ? '✅' : '❌'}</div>
+            <div style="color: white; font-size: 1.2rem; font-weight: 600;">${message}</div>
+        `;
+        
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+        
+        setTimeout(() => overlay.remove(), 2000);
+    }
     
     // Skill Historien - Parchemin (L'histoire corrige)
     window.useScrollSkill = function(pointsToRecover) {

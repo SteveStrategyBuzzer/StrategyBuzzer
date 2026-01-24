@@ -1492,6 +1492,45 @@ class DuoController extends Controller
 
         $opponentName = data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire');
         
+        // Skills Challenger scopés au match
+        $skillsKey = "duo_skills_{$match->id}";
+        $matchSkills = session($skillsKey, [
+            'used_skills' => [],
+            'reduce_time_active' => false,
+            'reduce_time_questions_left' => 0,
+            'shuffle_answers_active' => false,
+            'shuffle_answers_questions_left' => 0,
+            'last_question_decremented' => 0,
+        ]);
+        
+        // Éviter de décrémenter plusieurs fois sur la même question (protection reload)
+        if ($matchSkills['last_question_decremented'] < $currentQuestionNumber) {
+            // Décrémenter shuffle_answers si actif
+            if ($matchSkills['shuffle_answers_active'] && $matchSkills['shuffle_answers_questions_left'] > 0) {
+                $matchSkills['shuffle_answers_questions_left']--;
+                if ($matchSkills['shuffle_answers_questions_left'] <= 0) {
+                    $matchSkills['shuffle_answers_active'] = false;
+                    \Log::info('[DUO-CHALLENGER] Skill shuffle_answers épuisé', ['match_id' => $match->id]);
+                }
+            }
+            
+            // Décrémenter reduce_time si actif
+            if ($matchSkills['reduce_time_active'] && $matchSkills['reduce_time_questions_left'] > 0) {
+                $matchSkills['reduce_time_questions_left']--;
+                if ($matchSkills['reduce_time_questions_left'] <= 0) {
+                    $matchSkills['reduce_time_active'] = false;
+                    \Log::info('[DUO-CHALLENGER] Skill reduce_time épuisé', ['match_id' => $match->id]);
+                }
+            }
+            
+            $matchSkills['last_question_decremented'] = $currentQuestionNumber;
+            session([$skillsKey => $matchSkills]);
+        }
+        
+        // Passer les états des skills à la vue
+        $shuffleAnswersActive = $matchSkills['shuffle_answers_active'];
+        $shuffleQuestionsLeft = $matchSkills['shuffle_answers_questions_left'];
+        
         return view('duo_answer', [
             'match_id' => $match->id,
             'room_id' => $roomId,
@@ -1511,6 +1550,8 @@ class DuoController extends Controller
             'playerAvatarPath' => $playerAvatar,
             'opponentAvatarPath' => $opponentAvatar,
             'opponentName' => $opponentName,
+            'shuffleAnswersActive' => $shuffleAnswersActive,
+            'shuffleQuestionsLeft' => $shuffleQuestionsLeft,
             'player_info' => [
                 'id' => $user->id,
                 'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
@@ -2379,5 +2420,122 @@ class DuoController extends Controller
         }
         
         return null;
+    }
+    
+    /**
+     * Activer un skill Challenger (reduce_time ou shuffle_answers) depuis la page Result
+     */
+    public function useSkill(Request $request)
+    {
+        $user = Auth::user();
+        $skillId = $request->input('skill_id');
+        
+        // Récupérer le game_state pour valider le contexte du match
+        $gameState = session('game_state');
+        if (!$gameState || !isset($gameState['match_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Aucune partie en cours'),
+            ]);
+        }
+        
+        $matchId = $gameState['match_id'];
+        
+        $profileSettings = $user->profile_settings;
+        if (is_string($profileSettings)) {
+            $profileSettings = json_decode($profileSettings, true);
+        }
+        
+        $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
+        
+        // Vérifier que c'est un Challenger
+        if ($avatarName !== 'Challenger') {
+            return response()->json([
+                'success' => false,
+                'message' => __('Skill non disponible pour cet avatar'),
+            ]);
+        }
+        
+        // Clé de session scopée au match
+        $skillsKey = "duo_skills_{$matchId}";
+        $matchSkills = session($skillsKey, [
+            'used_skills' => [],
+            'reduce_time_active' => false,
+            'reduce_time_questions_left' => 0,
+            'shuffle_answers_active' => false,
+            'shuffle_answers_questions_left' => 0,
+            'last_question_decremented' => 0,
+        ]);
+        
+        // Vérifier si le skill a déjà été utilisé
+        if (in_array($skillId, $matchSkills['used_skills'])) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Ce skill a déjà été utilisé'),
+            ]);
+        }
+        
+        // Récupérer le numéro de question actuel pour calculer les questions affectées
+        $currentQuestion = $gameState['current_question_number'] ?? 1;
+        
+        // Calculer le nombre de questions affectées selon la manche
+        // Manche 1: Q1-5 (5 questions), Manche 2: Q6-10 (5 questions)
+        if ($currentQuestion <= 5) {
+            $questionsAffected = 5;
+        } elseif ($currentQuestion <= 8) {
+            $questionsAffected = 3;
+        } else {
+            $questionsAffected = 1;
+        }
+        
+        // Traiter le skill
+        if ($skillId === 'reduce_time') {
+            // Skill: Chrono Réduit (-2 sec pour l'adversaire)
+            $matchSkills['reduce_time_active'] = true;
+            $matchSkills['reduce_time_questions_left'] = $questionsAffected;
+            $matchSkills['used_skills'][] = 'reduce_time';
+            session([$skillsKey => $matchSkills]);
+            
+            \Log::info('[DUO-CHALLENGER] Skill reduce_time activé', [
+                'user_id' => $user->id,
+                'match_id' => $matchId,
+                'questions_affected' => $questionsAffected,
+                'current_question' => $currentQuestion,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => __('⏱️ Chrono Réduit activé! -2 sec pour l\'adversaire pendant :count questions', ['count' => $questionsAffected]),
+                'skill_id' => 'reduce_time',
+                'questions_affected' => $questionsAffected,
+            ]);
+            
+        } elseif ($skillId === 'shuffle_answers') {
+            // Skill: Mélange Réponses
+            $matchSkills['shuffle_answers_active'] = true;
+            $matchSkills['shuffle_answers_questions_left'] = $questionsAffected;
+            $matchSkills['used_skills'][] = 'shuffle_answers';
+            session([$skillsKey => $matchSkills]);
+            
+            \Log::info('[DUO-CHALLENGER] Skill shuffle_answers activé', [
+                'user_id' => $user->id,
+                'match_id' => $matchId,
+                'questions_affected' => $questionsAffected,
+                'current_question' => $currentQuestion,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => __('🔀 Mélange Réponses activé! Réponses en mouvement pendant :count questions', ['count' => $questionsAffected]),
+                'skill_id' => 'shuffle_answers',
+                'questions_affected' => $questionsAffected,
+            ]);
+            
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => __('Skill non reconnu'),
+            ]);
+        }
     }
 }
