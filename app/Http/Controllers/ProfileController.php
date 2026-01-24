@@ -87,7 +87,7 @@ class ProfileController extends Controller
         if (!empty($stratSlug) && isset($catalog['stratégiques']['items'][$stratSlug])) {
             $stratData  = $catalog['stratégiques']['items'][$stratSlug];
             $stratTier  = $stratData['tier'] ?? null;
-            $stratSkills = $stratData['skills'] ?? [];
+            $stratSkills = $stratData['skills_short'] ?? $stratData['skills'] ?? [];
             if (!$stratUrl) $stratUrl = asset($stratData['path']);
             if (!$stratName) $stratName = $stratData['name'];
         }
