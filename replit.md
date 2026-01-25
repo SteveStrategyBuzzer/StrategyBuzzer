@@ -57,7 +57,7 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 **Legendary Tier (4 avatars, 1500 coins):**
 - **IA Junior:** `ai_suggestion` - AI suggests an answer with 90% accuracy (manual, 1 use); `eliminate_two` - removes 2 wrong answers (manual, 1 use); `retry_answer` - allows retrying an answer after an error (manual, 1 use).
 - **Stratège:** `coin_bonus` - +25% intelligence and skill coins on victories (passive); `create_team` - add 1 rare avatar as teammate in all modes (passive); `avatar_discount` - unlock cost reduction: Rare -40%, Epic -30%, Legendary -20% (passive).
-- **Sprinteur:** `faster_buzz` - buzzer triggers 0.5s faster (passive); `time_bonus` - +3 seconds to choose answer (passive); `auto_reactivation` - buzzer auto-reactivates after a buzz (passive).
+- **Sprinteur:** `faster_buzz` - first 5 questions show buzzer at 0.75s of real time (passive); `time_bonus` - +3 seconds extra thinking time (manual, 1 use per round); `skill_recharge` - all skills auto-reactivate after each round (passive).
 - **Visionnaire:** `premonition` - preview the next 5 questions (manual, 1 use); `counter_challenger` - immunity against Challenger's skills (passive); `secured_points` - 2 points can never be lost (passive).
 
 **Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.

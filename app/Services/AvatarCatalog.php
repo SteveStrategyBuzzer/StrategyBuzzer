@@ -125,11 +125,11 @@ class AvatarCatalog
                 'tier'   => 'Légendaire',
                 'name'   => 'Sprinteur',
                 'skills' => [
-                    '⚡ Réflexes : Skill Automatique, Le buzzer se déclenche 0.5s plus vite',
-                    '⏳ Temps Bonus : Skill Automatique, +3 secondes pour choisir la réponse',
-                    '🔁 Auto-Réactivation : Skill Automatique, Le buzzer se réactive automatiquement après un buzz'
+                    '⚡ Réflexes : Skill Automatique, Les 5 premières questions affichent le buzzer à 0.75s du vrai temps',
+                    '🕒 Temps Bonus : Skill Sélectionnable, +3 secondes de réflexion supplémentaires (1x par manche)',
+                    '🔋 Recharge : Skill Automatique, Réactive tous les skills automatiquement après chaque manche'
                 ],
-                'skills_short' => ['⚡ Buzzer 0.5s plus rapide', '⏳ +3s pour répondre', '🔁 Buzzer auto-réactivé'],
+                'skills_short' => ['⚡ Buzzer à 0.75s (5 premières questions)', '🕒 +3s réflexion (1x/manche)', '🔋 Skills réactivés après chaque manche'],
             ],
             'visionnaire'   => [
                 'tier'   => 'Légendaire',

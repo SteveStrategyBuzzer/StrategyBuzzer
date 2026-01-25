@@ -994,16 +994,24 @@ class SoloController extends Controller
                 
             // 🟡 SPRINTEUR SKILLS  
             case 'faster_buzz':
-                // Sprinteur: Recule le temps de buzz jusqu'à 0.5s du plus rapide
-                $result['effect'] = 'faster_buzz';
-                $result['max_rewind'] = 0.5; // secondes
-                $result['message'] = 'Buzz recalé à 0.5s du plus rapide';
+                // Sprinteur: Les 5 premières questions affichent le buzzer à 0.75s du vrai temps (PASSIF)
+                $result['effect'] = 'passive_active';
+                $result['display_time'] = 0.75; // secondes
+                $result['questions_affected'] = 5;
+                $result['message'] = 'Buzzer affiché à 0.75s du vrai temps (5 premières questions)';
+                break;
+            
+            case 'time_bonus':
+                // Sprinteur: +3 secondes de réflexion (1x par manche)
+                $result['effect'] = 'time_bonus';
+                $result['extra_seconds'] = 3;
+                $result['message'] = '+3 secondes de réflexion';
                 break;
                 
-            case 'auto_reset':
-                // Sprinteur: Auto-reset par niveau (PASSIF)
+            case 'skill_recharge':
+                // Sprinteur: Réactive tous les skills après chaque manche (PASSIF)
                 $result['effect'] = 'passive_active';
-                $result['message'] = 'Reset automatique des skills chaque niveau';
+                $result['message'] = 'Skills réactivés automatiquement après chaque manche';
                 break;
                 
             // 🟣 MAGICIENNE SKILLS
@@ -2630,31 +2638,31 @@ class SoloController extends Controller
                 'skills' => [
                     [
                         'id' => 'faster_buzz',
-                        'name' => 'Buzzer + rapide',
+                        'name' => 'Réflexes',
                         'icon' => '⚡',
-                        'description' => 'Peut reculer son temps de buzzer jusqu\'à 0.5s du plus rapide',
-                        'type' => 'time',
-                        'trigger' => 'result',
-                        'uses_per_match' => 1,
-                        'auto' => false
+                        'description' => 'Les 5 premières questions affichent le buzzer à 0.75s du vrai temps',
+                        'type' => 'passive',
+                        'trigger' => 'first_5_questions',
+                        'uses_per_match' => -1,
+                        'auto' => true
                     ],
                     [
-                        'id' => 'extra_reflection',
-                        'name' => 'Réflexion bonus',
+                        'id' => 'time_bonus',
+                        'name' => 'Temps Bonus',
                         'icon' => '🕒',
-                        'description' => 'Bénéficie de 3s supplémentaires de réflexion une fois par partie',
+                        'description' => '+3 secondes de réflexion supplémentaires (1x par manche)',
                         'type' => 'time',
                         'trigger' => 'question',
                         'uses_per_match' => 1,
                         'auto' => false
                     ],
                     [
-                        'id' => 'auto_reset',
-                        'name' => 'Auto-réactivation',
+                        'id' => 'skill_recharge',
+                        'name' => 'Recharge',
                         'icon' => '🔋',
-                        'description' => 'Ses compétences se réactivent automatiquement après chaque niveau',
+                        'description' => 'Réactive tous les skills automatiquement après chaque manche',
                         'type' => 'passive',
-                        'trigger' => 'level_complete',
+                        'trigger' => 'round_complete',
                         'uses_per_match' => -1,
                         'auto' => true
                     ]
