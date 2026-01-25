@@ -123,6 +123,114 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
     to { opacity: 0; }
   }
 
+  /* Teammate Dropdown Styles */
+  .teammate-dropdown-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 8px;
+    margin-left: 4px;
+    transition: transform 0.2s ease;
+  }
+  .teammate-dropdown-btn:hover {
+    transform: scale(1.2);
+  }
+  .teammate-dropdown-btn.open {
+    transform: rotate(180deg);
+  }
+  
+  .teammate-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(145deg, #1a3a6e, #0d2347);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    min-width: 280px;
+    max-width: 320px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    z-index: 1000;
+    overflow: hidden;
+    animation: dropdownSlide 0.2s ease;
+  }
+  
+  @keyframes dropdownSlide {
+    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  
+  .teammate-dropdown-header {
+    background: rgba(255,255,255,0.1);
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+  }
+  
+  .teammate-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  .teammate-option:last-child {
+    border-bottom: none;
+  }
+  
+  .teammate-option.unlocked:hover {
+    background: rgba(255,255,255,0.15);
+  }
+  
+  .teammate-option.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .teammate-option.selected {
+    background: rgba(46, 204, 113, 0.25);
+    border-left: 3px solid #2ecc71;
+  }
+  
+  .teammate-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+  }
+  
+  .teammate-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .teammate-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  
+  .teammate-skill {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.7);
+    margin-top: 2px;
+  }
+  
+  .teammate-check {
+    color: #2ecc71;
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+
 </style>
 
 <a href="{{ route('menu') }}" class="header-menu" style="
@@ -173,33 +281,45 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
         </div>
       </div>
 
-      <div class="mb-1">
+      <div class="mb-1" style="position: relative;">
         <span class="lbl">{{ __('Choix de l\'Avatar Stratégique (optionnel)') }} :</span>
-        <span>{{ $avatar_stratégique ?? __('Aucun') }}</span>
+        <span id="avatar_name_display">{{ $avatar_stratégique ?? __('Aucun') }}</span>
+        @if($is_stratege ?? false)
+          <button type="button" id="teammate_dropdown_btn" class="teammate-dropdown-btn" onclick="toggleTeammateDropdown()">🔽</button>
+          <div id="teammate_dropdown" class="teammate-dropdown" style="display: none;">
+            <div class="teammate-dropdown-header">👥 {{ __('Sélectionner un coéquipier') }}</div>
+            <div class="teammate-option {{ empty($selected_teammate) ? 'selected' : '' }}" onclick="selectTeammate('')">
+              <span class="teammate-icon">❌</span>
+              <div class="teammate-info">
+                <span class="teammate-name">{{ __('Aucun coéquipier') }}</span>
+              </div>
+            </div>
+            @foreach($rare_avatars_data ?? [] as $slug => $avatarData)
+              @php
+                $isUnlocked = $avatarData['unlocked'] ?? false;
+                $isSelected = ($selected_teammate ?? '') === $slug;
+                $avatarIcon = $avatarData['icon'] ?? '🎯';
+                $skillName = $avatarData['skills'][0]['name'] ?? '';
+                $skillIcon = $avatarData['skills'][0]['icon'] ?? '✨';
+                $skillDesc = $avatarData['skills'][0]['description_short'] ?? $avatarData['skills'][0]['description'] ?? '';
+              @endphp
+              <div class="teammate-option {{ $isUnlocked ? 'unlocked' : 'locked' }} {{ $isSelected ? 'selected' : '' }}" 
+                   onclick="{{ $isUnlocked ? "selectTeammate('$slug')" : 'return false;' }}">
+                <span class="teammate-icon">{{ $avatarIcon }}</span>
+                <div class="teammate-info">
+                  <span class="teammate-name">{{ $avatarData['name'] }} @if(!$isUnlocked) 🔒 @endif</span>
+                  <span class="teammate-skill">{{ $skillIcon }} {{ $skillName }}</span>
+                </div>
+                @if($isSelected)
+                  <span class="teammate-check">✓</span>
+                @endif
+              </div>
+            @endforeach
+          </div>
+        @endif
         <a href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}"
            class="btn btn-sm btn-outline-light ms-2">{{ __('Sélectionner') }}</a>
       </div>
-      
-      @if($is_stratege ?? false)
-      <div class="mb-2 mt-3" style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px;">
-        <span class="lbl">👥 {{ __('Coéquipier (Skill Stratège)') }} :</span>
-        @if(count($unlocked_rare_avatars ?? []) > 0)
-          <select name="teammate" id="teammate_select" class="form-select d-inline-block" style="width:auto;" onchange="saveTeammate(this.value)">
-            <option value="">-- {{ __('Aucun coéquipier') }} --</option>
-            @foreach($unlocked_rare_avatars as $slug => $avatar)
-              <option value="{{ $slug }}" {{ ($selected_teammate ?? '') === $slug ? 'selected' : '' }}>
-                {{ $avatar['name'] }} ({{ $avatar['tier'] }})
-              </option>
-            @endforeach
-          </select>
-          <small style="display:block; margin-top:6px; color:rgba(255,255,255,0.7);">
-            {{ __('Ajoute les skills d\'un avatar rare à votre équipe') }}
-          </small>
-        @else
-          <span style="color:#f39c12;">{{ __('Débloquez des avatars rares en boutique pour utiliser ce skill') }}</span>
-        @endif
-      </div>
-      @endif
     </div>
 
     <div class="grid-2">
@@ -241,8 +361,22 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
     }
   }
   
-  // Fonction pour sauvegarder le coéquipier sélectionné (Skill Stratège)
-  function saveTeammate(slug) {
+  // Toggle le dropdown du coéquipier
+  function toggleTeammateDropdown() {
+    const dropdown = document.getElementById('teammate_dropdown');
+    const btn = document.getElementById('teammate_dropdown_btn');
+    if (dropdown.style.display === 'none') {
+      dropdown.style.display = 'block';
+      btn.classList.add('open');
+    } else {
+      dropdown.style.display = 'none';
+      btn.classList.remove('open');
+    }
+  }
+  
+  // Sélectionner un coéquipier
+  function selectTeammate(slug) {
+    // Sauvegarder via AJAX
     fetch('{{ route("solo.set-teammate") }}', {
       method: 'POST',
       headers: {
@@ -254,9 +388,40 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
       .then(data => {
         if (data.success) {
           console.log('Coéquipier sauvegardé:', slug);
+          // Mettre à jour visuellement
+          document.querySelectorAll('.teammate-option').forEach(opt => {
+            opt.classList.remove('selected');
+            const checkEl = opt.querySelector('.teammate-check');
+            if (checkEl) checkEl.remove();
+          });
+          // Trouver l'option cliquée et la marquer comme sélectionnée
+          document.querySelectorAll('.teammate-option').forEach(opt => {
+            if ((slug === '' && opt.querySelector('.teammate-name').textContent.includes('{{ __("Aucun") }}')) ||
+                (slug && opt.getAttribute('onclick') && opt.getAttribute('onclick').includes(slug))) {
+              opt.classList.add('selected');
+              if (!opt.querySelector('.teammate-check')) {
+                const check = document.createElement('span');
+                check.className = 'teammate-check';
+                check.textContent = '✓';
+                opt.appendChild(check);
+              }
+            }
+          });
+          // Fermer le dropdown
+          toggleTeammateDropdown();
         }
       });
   }
+  
+  // Fermer le dropdown si on clique en dehors
+  document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('teammate_dropdown');
+    const btn = document.getElementById('teammate_dropdown_btn');
+    if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.style.display = 'none';
+      btn.classList.remove('open');
+    }
+  });
 
   const form = document.getElementById('soloForm');
   const validationMsg = document.getElementById('validationMessage');

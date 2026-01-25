@@ -52,22 +52,26 @@ class SoloController extends Controller
         $avatar             = session('avatar', 'Aucun');            // avatar optionnel
         $nb_questions       = session('nb_questions', null);
         
-        // Skill Stratège: Coéquipier - récupérer les avatars rares débloqués
-        $unlockedRareAvatars = [];
+        // Skill Stratège: Coéquipier - récupérer TOUS les avatars rares avec leur état
+        $rareAvatarsData = [];
         $isStratege = in_array(strtolower($avatar), ['stratège', 'stratege']);
         
         if ($isStratege) {
             $user = auth()->user();
+            $unlockedAvatars = [];
             if ($user) {
                 $settings = (array) ($user->profile_settings ?? []);
                 $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
-                
-                // Filtrer seulement les avatars rares
-                $avatarCatalog = \App\Services\AvatarCatalog::getStrategiques();
-                foreach ($unlockedAvatars as $slug) {
-                    if (isset($avatarCatalog[$slug]) && ($avatarCatalog[$slug]['tier'] ?? '') === 'Rare') {
-                        $unlockedRareAvatars[$slug] = $avatarCatalog[$slug];
-                    }
+            }
+            
+            // Récupérer TOUS les avatars rares avec leur état (débloqué ou non)
+            $avatarCatalog = \App\Services\AvatarCatalog::getStrategiques();
+            foreach ($avatarCatalog as $slug => $avatarData) {
+                if (($avatarData['tier'] ?? '') === 'Rare') {
+                    $rareAvatarsData[$slug] = array_merge($avatarData, [
+                        'slug' => $slug,
+                        'unlocked' => in_array($slug, $unlockedAvatars)
+                    ]);
                 }
             }
         }
@@ -80,7 +84,7 @@ class SoloController extends Controller
             'avatar_stratégique'      => $avatar,
             'nb_questions'       => $nb_questions,
             'is_stratege'        => $isStratege,
-            'unlocked_rare_avatars' => $unlockedRareAvatars,
+            'rare_avatars_data'  => $rareAvatarsData,
             'selected_teammate'  => $selectedTeammate,
         ]);
     }
