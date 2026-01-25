@@ -40,15 +40,25 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Avatar System:** User-specific avatars (12 across 3 tiers) offer 25+ unique skills. Attack skills target opponents based on their score ranking.
 
-**Skill Specifications (Examples):**
-- **Mathématicien (Rare Tier):** `illuminate_numbers` - highlights correct answer if it contains a number (passive).
-- **Scientifique (Rare Tier):** `acidify_error` - visually marks 2 wrong answers (manual, 1 use).
-- **Explorateur (Rare Tier):** `see_opponent_choice` - displays opponent's/AI's choice (manual, 1 use).
-- **Challenger (Rare Tier):** `reduce_time` - reduces opponent's Question page chrono (8s → 6s for buzzing); `shuffle_answers` - shuffles opponent's answer options every 1.5s (attack, manual, 1 use each, affects 5/3/1 questions based on round).
-- **IA Junior (Rare Tier):** `ai_suggestion` - AI suggests an answer with 90% accuracy; `eliminate_two` - removes 2 wrong answers; `retry_answer` - allows retrying an answer after an error (manual, 1 use each).
-- **Historien (Epic Tier):** `knowledge_without_time` - allows answering after timeout for +1 pt; `history_corrects` - cancels -2 penalty and awards points after incorrect buzz (manual, 1 use each).
-- **Comédienne (Epic Tier):** `fake_score` - displays a reduced score to opponent (passive); `invert_answers` - makes correct answer appear wrong to opponent (attack, manual, 1 use).
-- **Stratège (Legendary Tier):** `coin_bonus` - +25% intelligence and skill coins on victories (passive); `create_team` - add 1 rare avatar as teammate in all modes (passive); `avatar_discount` - unlock cost reduction: Rare -40%, Epic -30%, Legendary -20% (passive).
+**Skill Specifications (All 12 Avatars):**
+
+**Rare Tier (4 avatars, 500 coins):**
+- **Mathématicien:** `illuminate_numbers` - highlights correct answer if it contains a number (passive).
+- **Scientifique:** `acidify_error` - visually marks 2 wrong answers (manual, 1 use).
+- **Explorateur:** `see_opponent_choice` - displays opponent's/AI's choice (manual, 1 use).
+- **Défenseur:** `shield` - blocks the next opponent attack skill (passive).
+
+**Epic Tier (4 avatars, 1000 coins):**
+- **Comédienne:** `fake_score` - displays a reduced score to opponent (passive); `invert_answers` - makes correct answer appear wrong to opponent (attack, manual, 1 use).
+- **Magicienne:** `bonus_question` - adds an extra question to score points (manual, 1 use); `cancel_penalty` - cancels points lost on an error (manual, 1 use).
+- **Challenger:** `reduce_time` - reduces opponent's Question page chrono (8s → 6s for buzzing); `shuffle_answers` - shuffles opponent's answer options every 1.5s (attack, manual, 1 use each, affects 5/3/1 questions based on round).
+- **Historien:** `knowledge_without_time` - allows answering after timeout for +1 pt; `history_corrects` - cancels -2 penalty and awards points after incorrect buzz (manual, 1 use each).
+
+**Legendary Tier (4 avatars, 1500 coins):**
+- **IA Junior:** `ai_suggestion` - AI suggests an answer with 90% accuracy (manual, 1 use); `eliminate_two` - removes 2 wrong answers (manual, 1 use); `retry_answer` - allows retrying an answer after an error (manual, 1 use).
+- **Stratège:** `coin_bonus` - +25% intelligence and skill coins on victories (passive); `create_team` - add 1 rare avatar as teammate in all modes (passive); `avatar_discount` - unlock cost reduction: Rare -40%, Epic -30%, Legendary -20% (passive).
+- **Sprinteur:** `faster_buzz` - buzzer triggers 0.5s faster (passive); `time_bonus` - +3 seconds to choose answer (passive); `auto_reactivation` - buzzer auto-reactivates after a buzz (passive).
+- **Visionnaire:** `premonition` - preview the next 5 questions (manual, 1 use); `counter_challenger` - immunity against Challenger's skills (passive); `secured_points` - 2 points can never be lost (passive).
 
 **Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
 
