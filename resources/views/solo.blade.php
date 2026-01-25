@@ -288,11 +288,14 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
           <button type="button" id="teammate_dropdown_btn" class="teammate-dropdown-btn" onclick="toggleTeammateDropdown()">🔽</button>
           <div id="teammate_dropdown" class="teammate-dropdown" style="display: none;">
             <div class="teammate-dropdown-header">👥 {{ __('Sélectionner un coéquipier') }}</div>
-            <div class="teammate-option {{ empty($selected_teammate) ? 'selected' : '' }}" onclick="selectTeammate('')">
+            <div class="teammate-option {{ empty($selected_teammate) ? 'selected' : '' }}" data-slug="" data-locked="0">
               <span class="teammate-icon">❌</span>
               <div class="teammate-info">
                 <span class="teammate-name">{{ __('Aucun coéquipier') }}</span>
               </div>
+              @if(empty($selected_teammate))
+                <span class="teammate-check">✓</span>
+              @endif
             </div>
             @foreach($rare_avatars_data ?? [] as $slug => $avatarData)
               @php
@@ -301,10 +304,9 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
                 $avatarIcon = $avatarData['icon'] ?? '🎯';
                 $skillName = $avatarData['skills'][0]['name'] ?? '';
                 $skillIcon = $avatarData['skills'][0]['icon'] ?? '✨';
-                $skillDesc = $avatarData['skills'][0]['description_short'] ?? $avatarData['skills'][0]['description'] ?? '';
               @endphp
               <div class="teammate-option {{ $isUnlocked ? 'unlocked' : 'locked' }} {{ $isSelected ? 'selected' : '' }}" 
-                   onclick="{{ $isUnlocked ? "selectTeammate('$slug')" : 'return false;' }}">
+                   data-slug="{{ $slug }}" data-locked="{{ $isUnlocked ? '0' : '1' }}">
                 <span class="teammate-icon">{{ $avatarIcon }}</span>
                 <div class="teammate-info">
                   <span class="teammate-name">{{ $avatarData['name'] }} @if(!$isUnlocked) 🔒 @endif</span>
@@ -317,8 +319,10 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
             @endforeach
           </div>
         @endif
+        @if(!($is_stratege ?? false))
         <a href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}"
            class="btn btn-sm btn-outline-light ms-2">{{ __('Sélectionner') }}</a>
+        @endif
       </div>
     </div>
 
@@ -362,21 +366,18 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
   }
   
   // Toggle le dropdown du coéquipier
+  let dropdownOpen = false;
   function toggleTeammateDropdown() {
     const dropdown = document.getElementById('teammate_dropdown');
     const btn = document.getElementById('teammate_dropdown_btn');
-    if (dropdown.style.display === 'none') {
-      dropdown.style.display = 'block';
-      btn.classList.add('open');
-    } else {
-      dropdown.style.display = 'none';
-      btn.classList.remove('open');
-    }
+    if (!dropdown || !btn) return;
+    dropdownOpen = !dropdownOpen;
+    dropdown.style.display = dropdownOpen ? 'block' : 'none';
+    btn.classList.toggle('open', dropdownOpen);
   }
   
-  // Sélectionner un coéquipier
+  // Sélectionner un coéquipier via data-attributes
   function selectTeammate(slug) {
-    // Sauvegarder via AJAX
     fetch('{{ route("solo.set-teammate") }}', {
       method: 'POST',
       headers: {
@@ -387,31 +388,41 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
     }).then(response => response.json())
       .then(data => {
         if (data.success) {
-          console.log('Coéquipier sauvegardé:', slug);
           // Mettre à jour visuellement
           document.querySelectorAll('.teammate-option').forEach(opt => {
             opt.classList.remove('selected');
             const checkEl = opt.querySelector('.teammate-check');
             if (checkEl) checkEl.remove();
           });
-          // Trouver l'option cliquée et la marquer comme sélectionnée
-          document.querySelectorAll('.teammate-option').forEach(opt => {
-            if ((slug === '' && opt.querySelector('.teammate-name').textContent.includes('{{ __("Aucun") }}')) ||
-                (slug && opt.getAttribute('onclick') && opt.getAttribute('onclick').includes(slug))) {
-              opt.classList.add('selected');
-              if (!opt.querySelector('.teammate-check')) {
-                const check = document.createElement('span');
-                check.className = 'teammate-check';
-                check.textContent = '✓';
-                opt.appendChild(check);
-              }
-            }
-          });
-          // Fermer le dropdown
+          // Marquer la nouvelle sélection
+          const selectedOpt = slug === '' 
+            ? document.querySelector('.teammate-option:first-child')
+            : document.querySelector('.teammate-option[data-slug="' + slug + '"]');
+          if (selectedOpt) {
+            selectedOpt.classList.add('selected');
+            const check = document.createElement('span');
+            check.className = 'teammate-check';
+            check.textContent = '✓';
+            selectedOpt.appendChild(check);
+          }
           toggleTeammateDropdown();
         }
       });
   }
+  
+  // Event delegation pour les clics sur les options
+  document.addEventListener('DOMContentLoaded', function() {
+    const dropdown = document.getElementById('teammate_dropdown');
+    if (dropdown) {
+      dropdown.addEventListener('click', function(e) {
+        const option = e.target.closest('.teammate-option');
+        if (!option) return;
+        if (option.dataset.locked === '1') return; // Ignorer les avatars verrouillés
+        const slug = option.dataset.slug || '';
+        selectTeammate(slug);
+      });
+    }
+  });
   
   // Fermer le dropdown si on clique en dehors
   document.addEventListener('click', function(e) {
@@ -420,6 +431,7 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
     if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
       dropdown.style.display = 'none';
       btn.classList.remove('open');
+      dropdownOpen = false;
     }
   });
 

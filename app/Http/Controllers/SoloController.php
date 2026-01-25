@@ -113,11 +113,21 @@ class SoloController extends Controller
     {
         $teammate = $request->input('teammate', '');
         
-        // Valider que c'est un avatar rare valide (si non vide)
+        // Valider que c'est un avatar rare valide ET débloqué (si non vide)
         if (!empty($teammate)) {
             $avatarCatalog = \App\Services\AvatarCatalog::getStrategiques();
             if (!isset($avatarCatalog[$teammate]) || ($avatarCatalog[$teammate]['tier'] ?? '') !== 'Rare') {
                 return response()->json(['success' => false, 'message' => 'Avatar invalide']);
+            }
+            
+            // Vérifier que l'avatar est débloqué pour cet utilisateur
+            $user = auth()->user();
+            if ($user) {
+                $settings = (array) ($user->profile_settings ?? []);
+                $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+                if (!in_array($teammate, $unlockedAvatars)) {
+                    return response()->json(['success' => false, 'message' => 'Avatar verrouillé']);
+                }
             }
         }
         
