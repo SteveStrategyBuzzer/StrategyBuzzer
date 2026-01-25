@@ -910,8 +910,9 @@ class SoloController extends Controller
                 $result['effect'] = 'time_bonus';
                 break;
                 
+            case 'premonition':
             case 'preview_questions':
-                // Visionnaire: Voir les 5 prochaines questions (depuis le stock progressif)
+                // Visionnaire: Voir les 5 prochaines questions (👁️ 5/5 → 4/5 → ...)
                 $currentRound = session('current_round', 1);
                 $stockKey = "progressive_question_stock_round_{$currentRound}";
                 $questionStock = session($stockKey, []);
@@ -956,18 +957,21 @@ class SoloController extends Controller
                 $result['effect'] = 'preview';
                 break;
                 
+            case 'secure_answer':
             case 'lock_correct':
-                // Visionnaire: Si 2 points d'avance, seule la bonne réponse est cliquable
+                // Visionnaire: Sur 2 pts, bonne réponse seule cliquable avec surbrillance
                 $playerScore = session('score', 0);
-                $opponentScore = session('opponent_score', 0);
-                $result['effect'] = 'lock_correct';
+                $result['effect'] = 'secure_answer';
                 
-                // Vérifie si le joueur a 2 points D'AVANCE (pas juste 2 points)
-                if (($playerScore - $opponentScore) >= 2) {
+                // Vérifie si le joueur a exactement 2 points
+                if ($playerScore == 2) {
                     $result['lock_index'] = $correctIndex;
+                    $result['highlight_all'] = true;
+                    $result['fade_on_wrong_click'] = true;
+                    $result['message'] = 'Seule la bonne réponse est cliquable';
                 } else {
                     $result['lock_index'] = -1;
-                    $result['message'] = 'Nécessite 2 points d\'avance';
+                    $result['message'] = 'Nécessite exactement 2 points';
                 }
                 break;
                 
@@ -1050,12 +1054,14 @@ class SoloController extends Controller
                 $result['message'] = 'Vous pouvez rejouer une mauvaise réponse!';
                 break;
                 
-            // 🌟 VISIONNAIRE - Skill manquant  
+            // 🌟 VISIONNAIRE - Forteresse  
+            case 'fortress':
             case 'counter_challenger':
-                // Visionnaire: Contre l'attaque du Challenger (immunité shuffle)
-                $result['effect'] = 'counter_challenger';
+                // Visionnaire: Immunité contre les attaques du Challenger
+                $result['effect'] = 'fortress';
                 session(['shuffle_immunity' => true]);
-                $result['message'] = 'Immunité anti-Challenger activée!';
+                session(['reduce_time_immunity' => true]);
+                $result['message'] = '🏰 Forteresse activée - Immunité contre Challenger';
                 break;
                 
             default:
@@ -2670,37 +2676,38 @@ class SoloController extends Controller
             ],
             'Visionnaire' => [
                 'rarity' => 'legendary',
-                'icon' => '🌟',
+                'icon' => '👁️',
                 'skills' => [
                     [
-                        'id' => 'preview_questions',
-                        'name' => 'Vision future',
+                        'id' => 'premonition',
+                        'name' => 'Prémonition',
                         'icon' => '👁️',
-                        'description' => 'Voit 5 questions futures en avant-première',
+                        'description' => 'Voit 5 questions futures en avant-première (👁️ 5/5 → 4/5 → ...)',
                         'type' => 'info',
-                        'trigger' => 'question',
+                        'trigger' => 'result_page',
                         'uses_per_match' => 5,
-                        'auto' => false
+                        'auto' => false,
+                        'display_counter' => true
                     ],
                     [
-                        'id' => 'counter_challenger',
-                        'name' => 'Contre-attaque',
+                        'id' => 'fortress',
+                        'name' => 'Forteresse',
                         'icon' => '🏰',
-                        'description' => 'Contre l\'attaque du Challenger',
+                        'description' => 'Immunité contre les attaques du Challenger',
                         'type' => 'defensive',
                         'trigger' => 'passive',
                         'uses_per_match' => -1,
                         'auto' => true
                     ],
                     [
-                        'id' => 'lock_correct',
-                        'name' => 'Verrouillage',
+                        'id' => 'secure_answer',
+                        'name' => 'Réponse Sécurisée',
                         'icon' => '🎯',
-                        'description' => 'Si le joueur est sur 2 points, seule la bonne réponse devient cliquable',
+                        'description' => 'Sur 2 pts, bonne réponse seule cliquable avec surbrillance',
                         'type' => 'visual',
-                        'trigger' => 'question',
+                        'trigger' => 'answer_page',
                         'uses_per_match' => -1,
-                        'auto' => true,
+                        'auto' => false,
                         'condition' => 'player_at_2_points'
                     ]
                 ]

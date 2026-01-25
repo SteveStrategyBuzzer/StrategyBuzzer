@@ -135,11 +135,11 @@ class AvatarCatalog
                 'tier'   => 'Légendaire',
                 'name'   => 'Visionnaire',
                 'skills' => [
-                    '🔮 Prémonition : Skill Sélectionnable, Prévisualise les 5 prochaines questions du match (1x par partie)',
-                    '🛡️ Contre-Challenger : Skill Automatique, Immunité contre les skills du Challenger',
-                    '🔒 Points Sécurisés : Skill Automatique, 2 points ne peuvent jamais être perdus'
+                    '👁️ Prémonition : Skill Sélectionnable, Voit 5 questions futures en avant-première (👁️ 5/5 → 4/5 → ...)',
+                    '🏰 Forteresse : Skill Automatique, Immunité contre les attaques du Challenger',
+                    '🎯 Points Sécurisés : Skill Sélectionnable, Sur 2 pts la bonne réponse devient la seule cliquable avec surbrillance'
                 ],
-                'skills_short' => ['🔮 Voit les 5 prochaines questions (1x)', '🛡️ Immunité contre Challenger', '🔒 2 points protégés'],
+                'skills_short' => ['👁️ Voit 5 questions futures (5/5)', '🏰 Contre attaque Challenger', '🎯 Bonne réponse en surbrillance (2 pts)'],
             ],
         ];
 
