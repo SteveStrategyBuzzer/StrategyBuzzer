@@ -48,6 +48,7 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - **IA Junior (Rare Tier):** `ai_suggestion` - AI suggests an answer with 90% accuracy; `eliminate_two` - removes 2 wrong answers; `retry_answer` - allows retrying an answer after an error (manual, 1 use each).
 - **Historien (Epic Tier):** `knowledge_without_time` - allows answering after timeout for +1 pt; `history_corrects` - cancels -2 penalty and awards points after incorrect buzz (manual, 1 use each).
 - **Comédienne (Epic Tier):** `fake_score` - displays a reduced score to opponent (passive); `invert_answers` - makes correct answer appear wrong to opponent (attack, manual, 1 use).
+- **Stratège (Legendary Tier):** `coin_bonus` - +25% intelligence and skill coins on victories (passive); `create_team` - add 1 rare avatar as teammate in all modes (passive); `avatar_discount` - unlock cost reduction: Rare -40%, Epic -30%, Legendary -20% (passive).
 
 **Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
 

@@ -115,11 +115,11 @@ class AvatarCatalog
                 'tier'   => 'Légendaire',
                 'name'   => 'Stratège',
                 'skills' => [
-                    '💰 Bonus Pièces : Skill Automatique, +20% de pièces d\'intelligence gagnées sur les victoires',
-                    '👥 Coéquipier : Skill Passif, Permet d\'ajouter 1 Avatar rare comme coéquipier en mode Solo',
-                    '🏷️ Réduction : Skill Passif, -20% sur le coût de déblocage des avatars stratégiques'
+                    '💰 Bonus Pièces : Skill Automatique, +25% de pièces d\'intelligence et de compétence gagnées sur les victoires',
+                    '👥 Coéquipier : Skill Passif, Permet d\'ajouter 1 Avatar rare comme coéquipier dans tous les modes',
+                    '🏷️ Réduction : Skill Passif, Réduit le coût de déblocage des avatars : Rare -40%, Épique -30%, Légendaire -20%'
                 ],
-                'skills_short' => ['💰 +20% pièces sur victoires', '👥 Ajouter 1 coéquipier rare (Solo)', '🏷️ -20% avatars stratégiques'],
+                'skills_short' => ['💰 +25% pièces sur victoires', '👥 Ajouter 1 coéquipier rare (tous modes)', '🏷️ Avatars: Rare -40%, Épique -30%, Légendaire -20%'],
             ],
             'sprinteur'     => [
                 'tier'   => 'Légendaire',

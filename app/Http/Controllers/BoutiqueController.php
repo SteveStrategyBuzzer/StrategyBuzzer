@@ -261,7 +261,11 @@ class BoutiqueController extends Controller
                     
                     $currentStrategicAvatar = $user->strategic_avatar ?? null;
                     if ($currentStrategicAvatar && in_array(strtolower($currentStrategicAvatar), ['stratege', 'stratège'])) {
-                        $unitPrice = (int) round($unitPrice * 0.8);
+                        // Réductions Stratège différenciées par tier: Rare -40%, Épique -30%, Légendaire -20%
+                        $tier = $strategique['tier'] ?? 'Rare';
+                        $discountMap = ['Rare' => 0.60, 'Épique' => 0.70, 'Légendaire' => 0.80];
+                        $multiplier = $discountMap[$tier] ?? 0.80;
+                        $unitPrice = (int) round($unitPrice * $multiplier);
                     }
                     break;
                 case 'life':

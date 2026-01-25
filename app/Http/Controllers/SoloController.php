@@ -973,9 +973,9 @@ class SoloController extends Controller
                 
             // 🟡 STRATÈGE SKILLS
             case 'coin_bonus':
-                // Stratège: PASSIF - +20% pièces d'intelligence (géré dans CoinLedgerService)
+                // Stratège: PASSIF - +25% pièces d'intelligence et de compétence (géré dans CoinLedgerService)
                 $result['effect'] = 'passive_active';
-                $result['message'] = 'Bonus +20% pièces actif sur victoire';
+                $result['message'] = 'Bonus +25% pièces actif sur victoire';
                 break;
                 
             case 'create_team':
@@ -986,10 +986,10 @@ class SoloController extends Controller
                 break;
                 
             case 'avatar_discount':
-                // Stratège: PASSIF - -20% coût déblocage avatars (géré dans boutique)
+                // Stratège: PASSIF - Réductions par tier (géré dans boutique)
                 $result['effect'] = 'passive_active';
-                $result['discount'] = 20;
-                $result['message'] = 'Réduction -20% sur déblocage avatars';
+                $result['discount'] = ['Rare' => 40, 'Épique' => 30, 'Légendaire' => 20];
+                $result['message'] = 'Réduction avatars: Rare -40%, Épique -30%, Légendaire -20%';
                 break;
                 
             // 🟡 SPRINTEUR SKILLS  
@@ -2037,11 +2037,11 @@ class SoloController extends Controller
             // Nouveau système de calcul des pièces par paliers
             $coinsEarned = $this->calculateCoinsForLevel($currentLevel);
             
-            // Bonus Stratège: +20% si l'avatar est "Stratège"
+            // Bonus Stratège: +25% si l'avatar est "Stratège"
             $avatar = session('avatar', 'Aucun');
             if ($avatar === 'Stratège') {
                 $hasStrategeBonus = true;
-                $coinsBonus = (int) ceil($coinsEarned * 0.20);
+                $coinsBonus = (int) ceil($coinsEarned * 0.25);
                 $coinsEarned += $coinsBonus;
             }
             
@@ -2050,7 +2050,7 @@ class SoloController extends Controller
             $coinService->credit(
                 $user,
                 $coinsEarned,
-                "Victoire Solo niveau {$currentLevel}" . ($hasStrategeBonus ? " (+20% Stratège)" : ""),
+                "Victoire Solo niveau {$currentLevel}" . ($hasStrategeBonus ? " (+25% Stratège)" : ""),
                 'solo_victory',
                 $currentLevel
             );
@@ -2595,8 +2595,8 @@ class SoloController extends Controller
                     [
                         'id' => 'coin_bonus',
                         'name' => 'Bonus pièces',
-                        'icon' => '🧠',
-                        'description' => 'Gagne +20% de pièces d\'intelligence sur une victoire',
+                        'icon' => '💰',
+                        'description' => 'Gagne +25% de pièces d\'intelligence et de compétence sur victoire',
                         'type' => 'passive',
                         'trigger' => 'victory',
                         'uses_per_match' => -1,
@@ -2604,9 +2604,9 @@ class SoloController extends Controller
                     ],
                     [
                         'id' => 'create_team',
-                        'name' => 'Créer team',
+                        'name' => 'Coéquipier',
                         'icon' => '👥',
-                        'description' => 'Permet de créer et gérer une équipe',
+                        'description' => 'Ajouter 1 avatar rare comme coéquipier dans tous les modes',
                         'type' => 'team',
                         'trigger' => 'match_start',
                         'uses_per_match' => 1,
@@ -2614,9 +2614,9 @@ class SoloController extends Controller
                     ],
                     [
                         'id' => 'avatar_discount',
-                        'name' => '-20% avatars',
+                        'name' => 'Réduction avatars',
                         'icon' => '🏷️',
-                        'description' => 'Réduction de 20% sur les avatars en boutique',
+                        'description' => 'Rare -40%, Épique -30%, Légendaire -20%',
                         'type' => 'passive',
                         'trigger' => 'permanent',
                         'uses_per_match' => -1,
