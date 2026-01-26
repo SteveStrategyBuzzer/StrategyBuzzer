@@ -875,7 +875,7 @@ if ($opponentInfo['is_boss'] ?? false) {
 <!-- Animation Bouclier Défenseur - Fullscreen Defense (quand on est attaqué) -->
 <div id="shieldDefenseFlash" class="shield-defense-flash"></div>
 <div id="shieldDefenseOverlay" class="shield-defense-overlay">
-    <div id="shieldDefenseIcon" class="shield-defense-icon">🛡️</div>
+    <img id="shieldDefenseIcon" class="shield-defense-icon" src="{{ asset('images/shield_medieval.png') }}" alt="Shield">
 </div>
 
 <style>
@@ -985,10 +985,11 @@ if ($opponentInfo['is_boss'] ?? false) {
 }
 
 .shield-defense-icon {
-    font-size: 50px;
+    width: 120px;
+    height: auto;
     opacity: 0;
     transform: scale(0.1) translateY(200vh);
-    filter: drop-shadow(0 0 50px rgba(78, 205, 196, 1));
+    filter: drop-shadow(0 0 50px rgba(70, 130, 180, 1));
 }
 
 .shield-defense-icon.animate {
@@ -999,20 +1000,20 @@ if ($opponentInfo['is_boss'] ?? false) {
     0% {
         opacity: 0;
         transform: scale(0.1) translateY(200vh);
-        filter: drop-shadow(0 0 20px rgba(78, 205, 196, 0.5));
+        filter: drop-shadow(0 0 20px rgba(70, 130, 180, 0.5));
     }
     20% {
         opacity: 1;
         transform: scale(2) translateY(0);
-        filter: drop-shadow(0 0 40px rgba(78, 205, 196, 0.8));
+        filter: drop-shadow(0 0 40px rgba(70, 130, 180, 0.8));
     }
     40% {
         transform: scale(8) translateY(0);
-        filter: drop-shadow(0 0 80px rgba(78, 205, 196, 1));
+        filter: drop-shadow(0 0 80px rgba(70, 130, 180, 1));
     }
     60% {
         transform: scale(15) translateY(0) rotate(-5deg);
-        filter: drop-shadow(0 0 100px rgba(78, 205, 196, 1));
+        filter: drop-shadow(0 0 100px rgba(70, 130, 180, 1));
     }
     80% {
         opacity: 1;
