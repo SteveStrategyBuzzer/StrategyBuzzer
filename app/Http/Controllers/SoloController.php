@@ -926,11 +926,12 @@ class SoloController extends Controller
                 
             case 'premonition':
             case 'preview_questions':
-                // Visionnaire: Voir les 5 prochaines questions (👁️ 5/5 → 4/5 → ...)
+                // Visionnaire: Voir un résumé thématique de la question suivante (👁️ 5/5 → 4/5 → ...)
                 $currentRound = session('current_round', 1);
                 $stockKey = "progressive_question_stock_round_{$currentRound}";
                 $questionStock = session($stockKey, []);
                 $currentQuestionNumber = session('current_question_number', 1);
+                $questionsPerRound = 10; // 10 questions par manche standard
                 
                 // Récupérer le compteur de previews restantes (5 max par match)
                 $previewsRemaining = session('visionnaire_previews_remaining', 5);
@@ -941,8 +942,20 @@ class SoloController extends Controller
                     break;
                 }
                 
-                // Extraire LA PROCHAINE question seulement (pas les 5)
-                $nextQuestionIndex = $currentQuestionNumber; // Index de la prochaine question
+                // Condition: Ne peut pas voir la Q1 de la manche suivante (Q10 = dernière question)
+                // Sauf en manche Ultime où il peut voir les questions restantes
+                $isUltimateRound = ($currentRound >= 10); // Manche Ultime
+                $isLastQuestionOfRound = ($currentQuestionNumber >= $questionsPerRound);
+                
+                if ($isLastQuestionOfRound && !$isUltimateRound) {
+                    $result['effect'] = 'no_question';
+                    $result['message'] = 'Pas de vision disponible pour la dernière question de la manche';
+                    $result['is_disabled'] = true;
+                    break;
+                }
+                
+                // Extraire LA PROCHAINE question seulement
+                $nextQuestionIndex = $currentQuestionNumber; // Index de la prochaine question (0-based)
                 $previewQuestions = array_slice($questionStock, $nextQuestionIndex, 1);
                 
                 if (empty($previewQuestions)) {
