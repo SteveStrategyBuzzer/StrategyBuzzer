@@ -969,84 +969,90 @@ if ($opponentInfo['is_boss'] ?? false) {
     100% { transform: scale(1) rotate(0deg); }
 }
 
-/* Animation Bouclier Défenseur - Fullscreen Defense */
+/* Animation Bouclier Défenseur - Non-Blocking Defense */
 .shield-defense-overlay {
     position: fixed;
     top: 0;
-    left: 0;
-    width: 100%;
+    right: 0;
+    width: 200px;
     height: 100%;
     z-index: 9998;
     pointer-events: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .shield-defense-icon {
-    width: 120px;
+    width: 150px;
     height: auto;
     opacity: 0;
-    transform: scale(0.1) translateY(200vh);
-    filter: drop-shadow(0 0 50px rgba(70, 130, 180, 1));
+    transform: scale(0.3) translateX(100px);
+    filter: drop-shadow(0 0 30px rgba(70, 130, 180, 1));
 }
 
 .shield-defense-icon.animate {
-    animation: shieldDefenseRush 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation: shieldDefenseSlide 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
-@keyframes shieldDefenseRush {
+@keyframes shieldDefenseSlide {
     0% {
         opacity: 0;
-        transform: scale(0.1) translateY(200vh);
+        transform: scale(0.3) translateX(150px);
         filter: drop-shadow(0 0 20px rgba(70, 130, 180, 0.5));
     }
-    20% {
+    15% {
         opacity: 1;
-        transform: scale(2) translateY(0);
-        filter: drop-shadow(0 0 40px rgba(70, 130, 180, 0.8));
+        transform: scale(1.2) translateX(0);
+        filter: drop-shadow(0 0 50px rgba(70, 130, 180, 1));
     }
-    40% {
-        transform: scale(8) translateY(0);
+    30% {
+        transform: scale(1.5) translateX(-20px) rotate(-5deg);
         filter: drop-shadow(0 0 80px rgba(70, 130, 180, 1));
     }
-    60% {
-        transform: scale(15) translateY(0) rotate(-5deg);
-        filter: drop-shadow(0 0 100px rgba(70, 130, 180, 1));
-    }
-    80% {
+    50% {
         opacity: 1;
-        transform: scale(25) translateY(0) rotate(3deg);
-        filter: drop-shadow(0 0 150px rgba(255, 255, 255, 0.8));
+        transform: scale(1.3) translateX(-10px) rotate(3deg);
+        filter: drop-shadow(0 0 60px rgba(100, 180, 255, 1));
+    }
+    70% {
+        opacity: 1;
+        transform: scale(1.4) translateX(-15px) rotate(-2deg);
+        filter: drop-shadow(0 0 70px rgba(70, 130, 180, 1));
+    }
+    85% {
+        opacity: 0.8;
+        transform: scale(1.1) translateX(0);
+        filter: drop-shadow(0 0 40px rgba(70, 130, 180, 0.8));
     }
     100% {
         opacity: 0;
-        transform: scale(40) translateY(0);
-        filter: drop-shadow(0 0 200px rgba(255, 255, 255, 0));
+        transform: scale(0.8) translateX(50px);
+        filter: drop-shadow(0 0 10px rgba(70, 130, 180, 0));
     }
 }
 
-/* Flash lumineux derrière le bouclier */
+/* Flash lumineux sur le bord droit (non-bloquant) */
 .shield-defense-flash {
     position: fixed;
     top: 0;
-    left: 0;
-    width: 100%;
+    right: 0;
+    width: 40%;
     height: 100%;
     z-index: 9997;
     pointer-events: none;
-    background: radial-gradient(circle at center, rgba(78, 205, 196, 0.3) 0%, transparent 70%);
+    background: linear-gradient(to left, rgba(70, 130, 180, 0.4) 0%, rgba(78, 205, 196, 0.2) 30%, transparent 100%);
     opacity: 0;
 }
 
 .shield-defense-flash.animate {
-    animation: shieldFlash 1.2s ease-out forwards;
+    animation: shieldFlashSide 1.5s ease-out forwards;
 }
 
-@keyframes shieldFlash {
+@keyframes shieldFlashSide {
     0% { opacity: 0; }
-    30% { opacity: 0.6; }
+    15% { opacity: 0.8; }
     60% { opacity: 0.8; }
     100% { opacity: 0; }
 }
@@ -1657,10 +1663,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Jouer le son épée/bouclier
+        // Jouer le son épée/bouclier - VOLUME MAXIMUM
         if (sound) {
             sound.currentTime = 0;
-            sound.volume = 0.8;
+            sound.volume = 1.0;
             sound.play().catch(e => console.log('Shield sound failed:', e));
         }
         
@@ -1672,7 +1678,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             flash.classList.remove('animate');
             icon.classList.remove('animate');
-        }, 1500);
+        }, 1600);
     };
     
     // ===== SHUFFLE DES RÉPONSES =====
