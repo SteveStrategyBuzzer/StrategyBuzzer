@@ -134,6 +134,7 @@ if ($opponentInfo['is_boss'] ?? false) {
         flex-direction: column;
         gap: 15px;
         position: relative;
+        z-index: 10;
         min-height: calc(100vh - 20px);
         min-height: calc(100dvh - 20px);
         padding-bottom: 20px;
@@ -969,90 +970,84 @@ if ($opponentInfo['is_boss'] ?? false) {
     100% { transform: scale(1) rotate(0deg); }
 }
 
-/* Animation Bouclier Défenseur - Non-Blocking Defense */
+/* Animation Bouclier Défenseur - Fullscreen DERRIÈRE tous les éléments */
 .shield-defense-overlay {
     position: fixed;
     top: 0;
-    right: 0;
-    width: 200px;
+    left: 0;
+    width: 100%;
     height: 100%;
-    z-index: 9998;
+    z-index: 5;
     pointer-events: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: visible;
+    overflow: hidden;
 }
 
 .shield-defense-icon {
-    width: 150px;
+    width: 120px;
     height: auto;
     opacity: 0;
-    transform: scale(0.3) translateX(100px);
-    filter: drop-shadow(0 0 30px rgba(70, 130, 180, 1));
+    transform: scale(0.1) translateY(200vh);
+    filter: drop-shadow(0 0 50px rgba(70, 130, 180, 1));
 }
 
 .shield-defense-icon.animate {
-    animation: shieldDefenseSlide 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation: shieldDefenseRush 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
-@keyframes shieldDefenseSlide {
+@keyframes shieldDefenseRush {
     0% {
         opacity: 0;
-        transform: scale(0.3) translateX(150px);
+        transform: scale(0.1) translateY(200vh);
         filter: drop-shadow(0 0 20px rgba(70, 130, 180, 0.5));
     }
-    15% {
+    20% {
         opacity: 1;
-        transform: scale(1.2) translateX(0);
-        filter: drop-shadow(0 0 50px rgba(70, 130, 180, 1));
+        transform: scale(2) translateY(0);
+        filter: drop-shadow(0 0 40px rgba(70, 130, 180, 0.8));
     }
-    30% {
-        transform: scale(1.5) translateX(-20px) rotate(-5deg);
+    40% {
+        transform: scale(8) translateY(0);
         filter: drop-shadow(0 0 80px rgba(70, 130, 180, 1));
     }
-    50% {
-        opacity: 1;
-        transform: scale(1.3) translateX(-10px) rotate(3deg);
-        filter: drop-shadow(0 0 60px rgba(100, 180, 255, 1));
+    60% {
+        transform: scale(15) translateY(0) rotate(-5deg);
+        filter: drop-shadow(0 0 100px rgba(70, 130, 180, 1));
     }
-    70% {
+    80% {
         opacity: 1;
-        transform: scale(1.4) translateX(-15px) rotate(-2deg);
-        filter: drop-shadow(0 0 70px rgba(70, 130, 180, 1));
-    }
-    85% {
-        opacity: 0.8;
-        transform: scale(1.1) translateX(0);
-        filter: drop-shadow(0 0 40px rgba(70, 130, 180, 0.8));
+        transform: scale(25) translateY(0) rotate(3deg);
+        filter: drop-shadow(0 0 150px rgba(255, 255, 255, 0.8));
     }
     100% {
         opacity: 0;
-        transform: scale(0.8) translateX(50px);
-        filter: drop-shadow(0 0 10px rgba(70, 130, 180, 0));
+        transform: scale(40) translateY(0);
+        filter: drop-shadow(0 0 200px rgba(255, 255, 255, 0));
     }
 }
 
-/* Flash lumineux sur le bord droit (non-bloquant) */
+/* Flash lumineux derrière le bouclier */
 .shield-defense-flash {
     position: fixed;
     top: 0;
-    right: 0;
-    width: 40%;
+    left: 0;
+    width: 100%;
     height: 100%;
-    z-index: 9997;
+    z-index: 4;
     pointer-events: none;
-    background: linear-gradient(to left, rgba(70, 130, 180, 0.4) 0%, rgba(78, 205, 196, 0.2) 30%, transparent 100%);
+    background: radial-gradient(circle at center, rgba(78, 205, 196, 0.3) 0%, transparent 70%);
     opacity: 0;
 }
 
 .shield-defense-flash.animate {
-    animation: shieldFlashSide 1.5s ease-out forwards;
+    animation: shieldFlash 1.2s ease-out forwards;
 }
 
-@keyframes shieldFlashSide {
+@keyframes shieldFlash {
     0% { opacity: 0; }
-    15% { opacity: 0.8; }
+    30% { opacity: 0.6; }
     60% { opacity: 0.8; }
     100% { opacity: 0; }
 }
@@ -1674,11 +1669,11 @@ document.addEventListener('DOMContentLoaded', function() {
         flash.classList.add('animate');
         icon.classList.add('animate');
         
-        // Nettoyer après l'animation (1.5s)
+        // Nettoyer après l'animation (1.2s)
         setTimeout(() => {
             flash.classList.remove('animate');
             icon.classList.remove('animate');
-        }, 1600);
+        }, 1300);
     };
     
     // ===== SHUFFLE DES RÉPONSES =====
