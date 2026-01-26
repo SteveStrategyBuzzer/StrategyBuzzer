@@ -15,11 +15,22 @@ $currentAvatar = $params['avatar'] ?? 'Aucun';
 // Récupérer les skills utilisés
 $usedSkills = session('used_skills', []);
 
+// Pour le Stratège, on affiche les skills du coéquipier, pas les skills passifs du Stratège
+$isStratege = in_array(strtolower($currentAvatar), ['stratège', 'stratege']);
+$strategePassiveSkills = ['coin_bonus', 'create_team', 'avatar_discount'];
+$teammateInfo = $avatarSkillsFull['teammate'] ?? null;
+
 // Construire le tableau des skills pour l'affichage
 $skills = [];
 if (!empty($avatarSkillsFull['skills'])) {
     foreach ($avatarSkillsFull['skills'] as $skillData) {
         $skillId = $skillData['id'];
+        
+        // Pour le Stratège, ignorer les skills passifs et n'afficher que les skills du coéquipier
+        if ($isStratege && in_array($skillId, $strategePassiveSkills)) {
+            continue;
+        }
+        
         $isUsed = in_array($skillId, $usedSkills);
         
         // Compter les utilisations pour les skills multi-usage
@@ -861,6 +872,12 @@ if ($opponentInfo['is_boss'] ?? false) {
     </div>
 </div>
 
+<!-- Animation Bouclier Défenseur - Fullscreen Defense (quand on est attaqué) -->
+<div id="shieldDefenseFlash" class="shield-defense-flash"></div>
+<div id="shieldDefenseOverlay" class="shield-defense-overlay">
+    <div id="shieldDefenseIcon" class="shield-defense-icon">🛡️</div>
+</div>
+
 <style>
 .shield-overlay {
     position: fixed;
@@ -950,6 +967,87 @@ if ($opponentInfo['is_boss'] ?? false) {
     50% { transform: scale(1.1) rotate(5deg); }
     75% { transform: scale(1.05) rotate(-2deg); }
     100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Animation Bouclier Défenseur - Fullscreen Defense */
+.shield-defense-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9998;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.shield-defense-icon {
+    font-size: 50px;
+    opacity: 0;
+    transform: scale(0.1) translateY(200vh);
+    filter: drop-shadow(0 0 50px rgba(78, 205, 196, 1));
+}
+
+.shield-defense-icon.animate {
+    animation: shieldDefenseRush 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes shieldDefenseRush {
+    0% {
+        opacity: 0;
+        transform: scale(0.1) translateY(200vh);
+        filter: drop-shadow(0 0 20px rgba(78, 205, 196, 0.5));
+    }
+    20% {
+        opacity: 1;
+        transform: scale(2) translateY(0);
+        filter: drop-shadow(0 0 40px rgba(78, 205, 196, 0.8));
+    }
+    40% {
+        transform: scale(8) translateY(0);
+        filter: drop-shadow(0 0 80px rgba(78, 205, 196, 1));
+    }
+    60% {
+        transform: scale(15) translateY(0) rotate(-5deg);
+        filter: drop-shadow(0 0 100px rgba(78, 205, 196, 1));
+    }
+    80% {
+        opacity: 1;
+        transform: scale(25) translateY(0) rotate(3deg);
+        filter: drop-shadow(0 0 150px rgba(255, 255, 255, 0.8));
+    }
+    100% {
+        opacity: 0;
+        transform: scale(40) translateY(0);
+        filter: drop-shadow(0 0 200px rgba(255, 255, 255, 0));
+    }
+}
+
+/* Flash lumineux derrière le bouclier */
+.shield-defense-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9997;
+    pointer-events: none;
+    background: radial-gradient(circle at center, rgba(78, 205, 196, 0.3) 0%, transparent 70%);
+    opacity: 0;
+}
+
+.shield-defense-flash.animate {
+    animation: shieldFlash 1.2s ease-out forwards;
+}
+
+@keyframes shieldFlash {
+    0% { opacity: 0; }
+    30% { opacity: 0.6; }
+    60% { opacity: 0.8; }
+    100% { opacity: 0; }
 }
 </style>
 
@@ -1545,6 +1643,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 2000);
         }
     }
+    
+    // Animation Bouclier Défenseur - Fullscreen (quand on est attaqué et le bouclier bloque)
+    window.triggerShieldDefense = function() {
+        const flash = document.getElementById('shieldDefenseFlash');
+        const overlay = document.getElementById('shieldDefenseOverlay');
+        const icon = document.getElementById('shieldDefenseIcon');
+        const sound = document.getElementById('swordShieldSound');
+        
+        if (!flash || !overlay || !icon) {
+            console.log('Shield defense elements not found');
+            return;
+        }
+        
+        // Jouer le son épée/bouclier
+        if (sound) {
+            sound.currentTime = 0;
+            sound.volume = 0.8;
+            sound.play().catch(e => console.log('Shield sound failed:', e));
+        }
+        
+        // Déclencher les animations
+        flash.classList.add('animate');
+        icon.classList.add('animate');
+        
+        // Nettoyer après l'animation (1.5s)
+        setTimeout(() => {
+            flash.classList.remove('animate');
+            icon.classList.remove('animate');
+        }, 1500);
+    };
     
     // ===== SHUFFLE DES RÉPONSES =====
     

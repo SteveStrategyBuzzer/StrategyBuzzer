@@ -594,7 +594,7 @@
                 ],
                 'Stratège' => [
                     ['icon' => '💰', 'name' => 'Bonus Pièces', 'description' => '25% gain supplémentaire'],
-                    ['icon' => '👥', 'name' => 'Team', 'description' => $params['teammate_name'] ?? 'Aucun'],
+                    ['icon' => $params['teammate_skill_icon'] ?? '👥', 'name' => $params['teammate_name'] ?? 'Aucun', 'description' => 'Coéquipier'],
                     ['icon' => '🏷️', 'name' => 'Réduction', 'description' => 'Boutique']
                 ],
                 'Sprinteur' => [

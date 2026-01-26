@@ -322,8 +322,9 @@ class SoloController extends Controller
             // Données du Visionnaire pour preview des questions
             'visionnaire_next_question' => session('visionnaire_next_question'),
             'visionnaire_previews_remaining' => session('visionnaire_previews_remaining', 5),
-            // Nom du coéquipier Stratège
+            // Coéquipier Stratège
             'teammate_name' => $this->getTeammateName(),
+            'teammate_skill_icon' => $this->getTeammateSkillIcon(),
         ];
 
         return view('resume', compact('params'));
@@ -436,8 +437,9 @@ class SoloController extends Controller
             // Données du Visionnaire pour preview des questions
             'visionnaire_next_question' => session('visionnaire_next_question'),
             'visionnaire_previews_remaining' => session('visionnaire_previews_remaining', 5),
-            // Nom du coéquipier Stratège
+            // Coéquipier Stratège
             'teammate_name' => $this->getTeammateName(),
+            'teammate_skill_icon' => $this->getTeammateSkillIcon(),
         ];
         
         return view('resume', compact('params'));
@@ -1182,6 +1184,27 @@ class SoloController extends Controller
         ];
         
         return $slugToName[strtolower($teammate)] ?? ucfirst($teammate);
+    }
+    
+    /**
+     * Récupérer l'icône du skill du coéquipier Stratège
+     */
+    private function getTeammateSkillIcon(): string
+    {
+        $teammate = session('stratege_teammate');
+        if (!$teammate) {
+            return '👥';
+        }
+        
+        // Mapping des slugs vers les icônes des skills principaux
+        $slugToSkillIcon = [
+            'mathematicien' => '🔢',  // illuminate_numbers
+            'scientifique' => '🧪',   // acidify_error
+            'explorateur' => '🔭',    // see_opponent_choice
+            'defenseur' => '🛡️',      // shield
+        ];
+        
+        return $slugToSkillIcon[strtolower($teammate)] ?? '👥';
     }
     
     private function getAvailableRareAvatars()
