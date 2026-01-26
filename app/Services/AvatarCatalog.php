@@ -208,7 +208,8 @@ class AvatarCatalog
     public static function getStrategiques(): array
     {
         $catalog = self::get();
-        return $catalog['strategiques'] ?? [];
+        $strategiques = $catalog['stratégiques'] ?? [];
+        return $strategiques['items'] ?? [];
     }
 
     private static function scanImages(string $relativeDir): array
