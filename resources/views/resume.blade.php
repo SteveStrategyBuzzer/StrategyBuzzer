@@ -594,16 +594,17 @@
                 ],
                 'Stratège' => [
                     ['icon' => '💰', 'name' => 'Bonus Pièces', 'description' => 'Active automatiquement'],
-                    ['icon' => '👥', 'name' => 'Team', 'description' => 'Active automatiquement']
+                    ['icon' => '👥', 'name' => 'Team', 'description' => 'Active automatiquement'],
+                    ['icon' => '🏷️', 'name' => 'Réduction', 'description' => 'Active automatiquement']
                 ],
                 'Sprinteur' => [
                     ['icon' => '⚡', 'name' => 'Vitesse', 'description' => 'Active automatiquement'],
                     ['icon' => '⏱️', 'name' => 'Réflexion', 'description' => 'Active automatiquement']
                 ],
                 'Visionnaire' => [
-                    ['icon' => '👁️', 'name' => 'Voir Question Suivante', 'description' => 'Cliquez pour voir en avant-première', 'skill_id' => 'preview_questions'],
-                    ['icon' => '🏰', 'name' => 'Anti-Challenger', 'description' => 'Immunité contre le shuffle'],
-                    ['icon' => '🎯', 'name' => 'Verrouillage', 'description' => 'Avec 2pts d\'avance, seule bonne réponse cliquable']
+                    ['icon' => '👁️', 'name' => 'Prémonition', 'description' => 'Cliquez pour voir un résumé', 'skill_id' => 'premonition'],
+                    ['icon' => '🏰', 'name' => 'Forteresse', 'description' => 'Immunité contre Challenger'],
+                    ['icon' => '🎯', 'name' => 'Réponse Sécurisée', 'description' => 'Sur 2 pts, bonne réponse cliquable']
                 ],
             ];
             $currentSkills = $avatarSkillsComplete[$params['avatar']] ?? [];
