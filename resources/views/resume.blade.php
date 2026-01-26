@@ -593,9 +593,9 @@
                     ['icon' => '🎯', 'name' => 'Élimination', 'description' => 'Active automatiquement']
                 ],
                 'Stratège' => [
-                    ['icon' => '💰', 'name' => 'Bonus Pièces', 'description' => 'Active automatiquement'],
-                    ['icon' => '👥', 'name' => 'Team', 'description' => 'Active automatiquement'],
-                    ['icon' => '🏷️', 'name' => 'Réduction', 'description' => 'Active automatiquement']
+                    ['icon' => '💰', 'name' => 'Bonus Pièces', 'description' => '25% gain supplémentaire'],
+                    ['icon' => '👥', 'name' => 'Team', 'description' => $params['teammate_name'] ?? 'Aucun'],
+                    ['icon' => '🏷️', 'name' => 'Réduction', 'description' => 'Boutique']
                 ],
                 'Sprinteur' => [
                     ['icon' => '⚡', 'name' => 'Vitesse', 'description' => 'Active automatiquement'],

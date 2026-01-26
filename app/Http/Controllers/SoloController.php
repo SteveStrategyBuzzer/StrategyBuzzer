@@ -322,6 +322,8 @@ class SoloController extends Controller
             // Données du Visionnaire pour preview des questions
             'visionnaire_next_question' => session('visionnaire_next_question'),
             'visionnaire_previews_remaining' => session('visionnaire_previews_remaining', 5),
+            // Nom du coéquipier Stratège
+            'teammate_name' => $this->getTeammateName(),
         ];
 
         return view('resume', compact('params'));
@@ -434,6 +436,8 @@ class SoloController extends Controller
             // Données du Visionnaire pour preview des questions
             'visionnaire_next_question' => session('visionnaire_next_question'),
             'visionnaire_previews_remaining' => session('visionnaire_previews_remaining', 5),
+            // Nom du coéquipier Stratège
+            'teammate_name' => $this->getTeammateName(),
         ];
         
         return view('resume', compact('params'));
@@ -1157,6 +1161,27 @@ class SoloController extends Controller
         }
         
         return "question de culture générale.";
+    }
+    
+    /**
+     * Récupérer le nom complet du coéquipier Stratège depuis la session
+     */
+    private function getTeammateName(): string
+    {
+        $teammate = session('stratege_teammate');
+        if (!$teammate) {
+            return 'Aucun';
+        }
+        
+        // Mapping des slugs vers les noms complets
+        $slugToName = [
+            'mathematicien' => 'Mathématicien',
+            'scientifique' => 'Scientifique',
+            'explorateur' => 'Explorateur',
+            'defenseur' => 'Défenseur',
+        ];
+        
+        return $slugToName[strtolower($teammate)] ?? ucfirst($teammate);
     }
     
     private function getAvailableRareAvatars()
