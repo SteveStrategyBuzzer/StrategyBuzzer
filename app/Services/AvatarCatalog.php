@@ -46,8 +46,8 @@ class AvatarCatalog
             'scientifique'  => [
                 'tier'   => 'Rare',
                 'name'   => 'Scientifique',
-                'skills' => ['🧪 Acidification : Skill Sélectionnable, Marque visuellement 2 mauvaises réponses (1x par partie)'],
-                'skills_short' => ['🧪 Acidifie 2 mauvaises réponses (1x)'],
+                'skills' => ['🧪 Acidification : Skill Sélectionnable, Après avoir buzzé marque visuellement 2 mauvaises réponses (1x par partie)'],
+                'skills_short' => ['🧪 Acidifie 2 réponses (après buzz, 1x)'],
             ],
             'explorateur'   => [
                 'tier'   => 'Rare',
@@ -135,11 +135,11 @@ class AvatarCatalog
                 'tier'   => 'Légendaire',
                 'name'   => 'Visionnaire',
                 'skills' => [
-                    '👁️ Prémonition : Skill Sélectionnable, Voit la question suivante depuis la page Résultat (👁️ 5/5 → 4/5 → ...)',
+                    '👁️ Prémonition : Skill Sélectionnable, Voit un résumé thématique de la question suivante depuis la page Résultat (👁️ 5/5 → 4/5 → ...)',
                     '🏰 Forteresse : Skill Automatique, Immunité contre les attaques du Challenger',
                     '🎯 Points Sécurisés : Skill Sélectionnable, Sur 2 pts la bonne réponse devient la seule cliquable avec surbrillance'
                 ],
-                'skills_short' => ['👁️ Voit la question suivante (5/5)', '🏰 Contre attaque Challenger', '🎯 Bonne réponse en surbrillance (2 pts)'],
+                'skills_short' => ['👁️ Résumé question suivante (5/5)', '🏰 Contre attaque Challenger', '🎯 Bonne réponse en surbrillance (2 pts)'],
             ],
         ];
 

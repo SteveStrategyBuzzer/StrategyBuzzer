@@ -790,17 +790,31 @@ class SoloController extends Controller
                 break;
                 
             case 'acidify_error':
-                // Scientifique: Marque une mauvaise réponse en rouge
+                // Scientifique: Marque 2 mauvaises réponses en rouge (après avoir buzzé)
+                // Vérifier que le joueur a buzzé (validation côté serveur)
+                $hasBuzzed = session('player_has_buzzed', false);
+                if (!$hasBuzzed) {
+                    $result['effect'] = 'requires_buzz';
+                    $result['message'] = 'Vous devez buzzer avant d\'utiliser ce skill!';
+                    break;
+                }
+                
                 $wrongIndices = [];
                 for ($i = 0; $i < $answerCount; $i++) {
                     if ($i !== $correctIndex) {
                         $wrongIndices[] = $i;
                     }
                 }
-                // Choisir une mauvaise réponse aléatoire à acidifier
-                if (!empty($wrongIndices)) {
-                    $acidifiedIndex = $wrongIndices[array_rand($wrongIndices)];
-                    $result['acidify_index'] = $acidifiedIndex;
+                // Choisir 2 mauvaises réponses aléatoires à acidifier
+                if (count($wrongIndices) >= 2) {
+                    shuffle($wrongIndices);
+                    $acidifiedIndices = array_slice($wrongIndices, 0, 2);
+                    $result['acidify_indices'] = $acidifiedIndices;
+                    $result['acidify_index'] = $acidifiedIndices[0]; // Compatibilité rétroactive
+                    $result['effect'] = 'acidify';
+                } elseif (!empty($wrongIndices)) {
+                    $result['acidify_indices'] = $wrongIndices;
+                    $result['acidify_index'] = $wrongIndices[0]; // Compatibilité rétroactive
                     $result['effect'] = 'acidify';
                 }
                 break;
@@ -938,20 +952,25 @@ class SoloController extends Controller
                 }
                 
                 $nextQuestion = $previewQuestions[0];
+                $questionText = $nextQuestion['text'] ?? $nextQuestion['question_text'] ?? '';
+                $theme = $nextQuestion['theme'] ?? '';
+                
+                // Générer un résumé thématique au lieu de la question complète
+                $thematicHint = $this->generateThematicHint($questionText, $theme);
                 
                 // Stocker en session pour la page resume
                 session([
                     'visionnaire_next_question' => [
-                        'text' => $nextQuestion['text'] ?? $nextQuestion['question_text'] ?? '',
-                        'theme' => $nextQuestion['theme'] ?? '',
-                        'subtheme' => $nextQuestion['subtheme'] ?? ''
+                        'hint' => $thematicHint,
+                        'theme' => $theme
                     ],
                     'visionnaire_previews_remaining' => $previewsRemaining - 1
                 ]);
                 
                 $result['preview'] = [
-                    'text' => $nextQuestion['text'] ?? $nextQuestion['question_text'] ?? '',
-                    'theme' => $nextQuestion['theme'] ?? ''
+                    'hint' => $thematicHint,
+                    'text' => $thematicHint, // Compatibilité rétroactive
+                    'theme' => $theme
                 ];
                 $result['previews_remaining'] = $previewsRemaining - 1;
                 $result['effect'] = 'preview';
@@ -1069,6 +1088,62 @@ class SoloController extends Controller
         }
         
         return $result;
+    }
+    
+    private function generateThematicHint(string $questionText, string $theme): string
+    {
+        $questionLower = mb_strtolower($questionText);
+        
+        if (str_contains($questionLower, 'lumière') || str_contains($questionLower, 'soleil') || str_contains($questionLower, 'distance')) {
+            if (str_contains($questionLower, 'espace') || str_contains($questionLower, 'planète') || str_contains($questionLower, 'soleil')) {
+                return "l'espace et la vitesse de la lumière.";
+            }
+        }
+        
+        if (str_contains($questionLower, 'métal') || str_contains($questionLower, 'électricité') || str_contains($questionLower, 'conduit')) {
+            return "propriétés électriques des métaux.";
+        }
+        
+        if (str_contains($questionLower, 'fleuve') && str_contains($questionLower, 'europe')) {
+            return "géographie européenne et aux fleuves.";
+        }
+        
+        if (str_contains($questionLower, 'soleil') && (str_contains($questionLower, 'lève') || str_contains($questionLower, 'endroit'))) {
+            return "idée reçue liée à l'astronomie et aux saisons.";
+        }
+        
+        if (str_contains($questionLower, 'îles') || str_contains($questionLower, 'île')) {
+            if (str_contains($questionLower, 'europe') || str_contains($questionLower, 'pays')) {
+                return "pays européen fortement lié aux îles.";
+            }
+        }
+        
+        if (str_contains($questionLower, 'os') || str_contains($questionLower, 'corps') || str_contains($questionLower, 'naissance')) {
+            return "structure humaine et son évolution avec l'âge.";
+        }
+        
+        if (str_contains($questionLower, 'jean') || str_contains($questionLower, 'vêtement') || str_contains($questionLower, 'inventé')) {
+            return "l'histoire d'un vêtement devenu universel.";
+        }
+        
+        if (!empty($theme)) {
+            $themeHints = [
+                'Science' => "un concept scientifique.",
+                'Géographie' => "géographie et localisation.",
+                'Histoire' => "un fait historique.",
+                'Sport' => "le monde du sport.",
+                'Art' => "art et culture.",
+                'Cinéma' => "le monde du cinéma.",
+                'Musique' => "le monde de la musique.",
+                'Littérature' => "le monde littéraire.",
+                'Nature' => "la nature et l'environnement.",
+                'Technologie' => "la technologie.",
+            ];
+            
+            return $themeHints[$theme] ?? "thème : {$theme}.";
+        }
+        
+        return "question de culture générale.";
     }
     
     private function getAvailableRareAvatars()
@@ -2414,11 +2489,12 @@ class SoloController extends Controller
                         'id' => 'acidify_error',
                         'name' => 'Acidifie erreur',
                         'icon' => '🧪',
-                        'description' => 'Acidifie une mauvaise réponse avant de choisir (1 fois)',
+                        'description' => 'Après avoir buzzé, acidifie 2 mauvaises réponses (1x par partie)',
                         'type' => 'visual',
-                        'trigger' => 'question',
+                        'trigger' => 'answer',
                         'uses_per_match' => 1,
-                        'auto' => false
+                        'auto' => false,
+                        'requires_buzz' => true
                     ]
                 ]
             ],
@@ -2682,7 +2758,7 @@ class SoloController extends Controller
                         'id' => 'premonition',
                         'name' => 'Prémonition',
                         'icon' => '👁️',
-                        'description' => 'Voit la question suivante depuis la page Résultat (👁️ 5/5 → 4/5 → ...)',
+                        'description' => 'Voit un résumé thématique de la question suivante (👁️ 5/5 → 4/5 → ...)',
                         'type' => 'info',
                         'trigger' => 'result_page',
                         'uses_per_match' => 5,
