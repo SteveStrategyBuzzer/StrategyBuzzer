@@ -38,8 +38,20 @@ if (!empty($avatarSkillsFull['skills'])) {
 $playerBuzzed = $params['player_buzzed'] ?? true;
 $featherActive = $hasFeatherSkill && $featherSkillAvailable && !$playerBuzzed;
 
-// Mathématicien: illuminate_numbers - skill disponible mais pas encore activé
-$illuminateSkillAvailable = $params['illuminate_skill_available'] ?? false;
+// Mathématicien: illuminate_numbers - skill disponible (vérifier dans avatarSkillsFull pour coéquipier)
+$illuminateSkillAvailable = false;
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skill) {
+        if (($skill['id'] ?? '') === 'illuminate_numbers') {
+            $illuminateSkillAvailable = !in_array('illuminate_numbers', $usedSkills);
+            break;
+        }
+    }
+}
+// Fallback sur les params si déjà calculé
+if (!$illuminateSkillAvailable) {
+    $illuminateSkillAvailable = $params['illuminate_skill_available'] ?? false;
+}
 
 // Scientifique: acidify_error - skill disponible
 $acidifySkillAvailable = false;
@@ -52,8 +64,20 @@ if (!empty($avatarSkillsFull['skills'])) {
     }
 }
 
-// Explorateur: see_opponent_choice - skill disponible
-$seeOpponentSkillAvailable = $params['see_opponent_skill_available'] ?? false;
+// Explorateur: see_opponent_choice - skill disponible (vérifier dans avatarSkillsFull pour coéquipier)
+$seeOpponentSkillAvailable = false;
+if (!empty($avatarSkillsFull['skills'])) {
+    foreach ($avatarSkillsFull['skills'] as $skill) {
+        if (($skill['id'] ?? '') === 'see_opponent_choice') {
+            $seeOpponentSkillAvailable = !in_array('see_opponent_choice', $usedSkills);
+            break;
+        }
+    }
+}
+// Fallback sur les params si déjà calculé
+if (!$seeOpponentSkillAvailable) {
+    $seeOpponentSkillAvailable = $params['see_opponent_skill_available'] ?? false;
+}
 $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
 
 // Challenger: shuffle_answers - les réponses bougent toutes les 1.5 sec
