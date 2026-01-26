@@ -2682,7 +2682,7 @@ class SoloController extends Controller
                         'id' => 'premonition',
                         'name' => 'Prémonition',
                         'icon' => '👁️',
-                        'description' => 'Voit 5 questions futures en avant-première (👁️ 5/5 → 4/5 → ...)',
+                        'description' => 'Voit la question suivante depuis la page Résultat (👁️ 5/5 → 4/5 → ...)',
                         'type' => 'info',
                         'trigger' => 'result_page',
                         'uses_per_match' => 5,

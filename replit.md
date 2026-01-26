@@ -58,7 +58,7 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - **IA Junior:** `ai_suggestion` - AI suggests an answer with 90% accuracy (manual, 1 use); `eliminate_two` - removes 2 wrong answers (manual, 1 use); `retry_answer` - allows retrying an answer after an error (manual, 1 use).
 - **Stratège:** `coin_bonus` - +25% intelligence and skill coins on victories (passive); `create_team` - add 1 rare avatar as teammate in all modes (passive); `avatar_discount` - unlock cost reduction: Rare -40%, Epic -30%, Legendary -20% (passive).
 - **Sprinteur:** `faster_buzz` - first 5 questions show buzzer at 0.75s of real time (passive); `time_bonus` - +3 seconds extra thinking time (manual, 1 use per round); `skill_recharge` - all skills auto-reactivate after each round (passive).
-- **Visionnaire:** `premonition` - preview 5 future questions (manual, 5 uses shown as 👁️ 5/5 → 4/5 → etc.); `fortress` - immunity against Challenger's attacks (passive); `secure_answer` - when on 2 pts, only correct answer becomes clickable with highlight effect, wrong answers fade on click (manual, uses within chrono time).
+- **Visionnaire:** `premonition` - preview the next question from Result page (manual, 5 uses shown as 👁️ 5/5 → 4/5 → etc.); `fortress` - immunity against Challenger's attacks (passive); `secure_answer` - when on 2 pts, only correct answer becomes clickable with highlight effect, wrong answers fade on click (manual, uses within chrono time).
 
 **Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
 
