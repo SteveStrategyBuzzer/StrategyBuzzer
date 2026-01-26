@@ -202,6 +202,15 @@ class AvatarCatalog
         );
     }
 
+    /**
+     * Retourne uniquement les avatars stratégiques.
+     */
+    public static function getStrategiques(): array
+    {
+        $catalog = self::get();
+        return $catalog['strategiques'] ?? [];
+    }
+
     private static function scanImages(string $relativeDir): array
     {
         $dir = public_path($relativeDir);
