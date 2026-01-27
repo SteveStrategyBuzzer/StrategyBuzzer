@@ -21,6 +21,7 @@ $strategePassiveSkills = ['coin_bonus', 'create_team', 'avatar_discount'];
 $teammateInfo = $avatarSkillsFull['teammate'] ?? null;
 
 // Construire le tableau des skills pour l'affichage
+// IMPORTANT: Seuls les skills manuels (auto: false) sont affichés comme icônes cliquables
 $skills = [];
 if (!empty($avatarSkillsFull['skills'])) {
     foreach ($avatarSkillsFull['skills'] as $skillData) {
@@ -28,6 +29,20 @@ if (!empty($avatarSkillsFull['skills'])) {
         
         // Pour le Stratège, ignorer les skills passifs et n'afficher que les skills du coéquipier
         if ($isStratege && in_array($skillId, $strategePassiveSkills)) {
+            continue;
+        }
+        
+        // Filtrer les skills passifs/automatiques (auto: true) - ils ne doivent pas apparaître comme icônes
+        // Cela inclut: illuminate_numbers (Mathématicien), block_attack (Défenseur), coin_bonus, etc.
+        $isAutoSkill = $skillData['auto'] ?? false;
+        if ($isAutoSkill) {
+            continue;
+        }
+        
+        // Filtrer les skills avec trigger passif/permanent (victory, permanent, passive, match_start, etc.)
+        $passiveTriggers = ['victory', 'permanent', 'passive', 'first_5_questions', 'round_complete'];
+        $trigger = $skillData['trigger'] ?? '';
+        if (in_array($trigger, $passiveTriggers)) {
             continue;
         }
         
@@ -50,7 +65,7 @@ if (!empty($avatarSkillsFull['skills'])) {
             'description' => $skillData['description'],
             'type' => $skillData['type'],
             'trigger' => $skillData['trigger'],
-            'auto' => $skillData['auto'] ?? false,
+            'auto' => false, // Tous les skills affichés sont manuels
             'used' => $isFullyUsed,
             'uses_left' => $maxUses > 0 ? max(0, $maxUses - $usesCount) : -1,
         ];
