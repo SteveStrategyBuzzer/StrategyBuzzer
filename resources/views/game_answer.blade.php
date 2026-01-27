@@ -53,6 +53,11 @@ if (!$illuminateSkillAvailable) {
     $illuminateSkillAvailable = $params['illuminate_skill_available'] ?? false;
 }
 
+// Vérifier si la bonne réponse contient un chiffre (pour rendre l'icône brillante)
+$correctAnswerText = $allAnswers[$correctIndex] ?? '';
+$correctAnswerHasNumber = preg_match('/\d/', $correctAnswerText);
+$illuminateCanActivate = $illuminateSkillAvailable && $correctAnswerHasNumber;
+
 // Scientifique: acidify_error - skill disponible
 $acidifySkillAvailable = false;
 if (!empty($avatarSkillsFull['skills'])) {
@@ -440,6 +445,15 @@ if (!empty($avatarSkillsFull['skills'])) {
         opacity: 0.4;
         pointer-events: none;
         animation: none;
+    }
+    
+    .illuminate-skill-btn.not-activable {
+        opacity: 0.5;
+        background: linear-gradient(145deg, #666, #555);
+        box-shadow: 0 0 10px rgba(100, 100, 100, 0.5), 0 4px 15px rgba(0,0,0,0.3);
+        animation: none;
+        cursor: not-allowed;
+        pointer-events: none;
     }
     
     @keyframes skill-pulse {
@@ -1157,7 +1171,7 @@ if (!empty($avatarSkillsFull['skills'])) {
 </div>
 
 @if($illuminateSkillAvailable)
-<div class="illuminate-skill-btn" id="illuminateSkillBtn" onclick="activateIlluminateSkill()">
+<div class="illuminate-skill-btn{{ !$illuminateCanActivate ? ' not-activable' : '' }}" id="illuminateSkillBtn" onclick="activateIlluminateSkill()">
     🔢
 </div>
 <div class="skill-label">{{ __('Illuminer') }}</div>

@@ -15,61 +15,103 @@ $currentAvatar = $params['avatar'] ?? 'Aucun';
 // Récupérer les skills utilisés
 $usedSkills = session('used_skills', []);
 
-// Pour le Stratège, on affiche les skills du coéquipier, pas les skills passifs du Stratège
+// Détection du Stratège
 $isStratege = in_array(strtolower($currentAvatar), ['stratège', 'stratege']);
-$strategePassiveSkills = ['coin_bonus', 'create_team', 'avatar_discount'];
 $teammateInfo = $avatarSkillsFull['teammate'] ?? null;
 
 // Construire le tableau des skills pour l'affichage
-// IMPORTANT: Seuls les skills manuels (auto: false) sont affichés comme icônes cliquables
 $skills = [];
-if (!empty($avatarSkillsFull['skills'])) {
-    foreach ($avatarSkillsFull['skills'] as $skillData) {
-        $skillId = $skillData['id'];
-        
-        // Pour le Stratège, ignorer les skills passifs et n'afficher que les skills du coéquipier
-        if ($isStratege && in_array($skillId, $strategePassiveSkills)) {
-            continue;
-        }
-        
-        // Filtrer les skills passifs/automatiques (auto: true) - ils ne doivent pas apparaître comme icônes
-        // Cela inclut: illuminate_numbers (Mathématicien), block_attack (Défenseur), coin_bonus, etc.
-        $isAutoSkill = $skillData['auto'] ?? false;
-        if ($isAutoSkill) {
-            continue;
-        }
-        
-        // Filtrer les skills avec trigger passif/permanent (victory, permanent, passive, match_start, etc.)
-        // Ces triggers indiquent des skills qui ne sont pas activables manuellement pendant le jeu
-        $passiveTriggers = ['victory', 'permanent', 'passive', 'first_5_questions', 'round_complete', 'match_start'];
-        $trigger = $skillData['trigger'] ?? '';
-        if (in_array($trigger, $passiveTriggers)) {
-            continue;
-        }
-        
-        $isUsed = in_array($skillId, $usedSkills);
-        
-        // Compter les utilisations pour les skills multi-usage
-        $usesCount = 0;
-        foreach ($usedSkills as $used) {
-            if (strpos($used, $skillId) === 0) {
-                $usesCount++;
+
+if ($isStratege) {
+    // STRATÈGE : Afficher exactement 3 icônes : 💰 coin_bonus, 🏷️ avatar_discount, + skill du coéquipier
+    $strategeSkillsToShow = ['coin_bonus', 'avatar_discount'];
+    
+    // Trouver les skills du Stratège (coin_bonus, avatar_discount)
+    if (!empty($avatarSkillsFull['skills'])) {
+        foreach ($avatarSkillsFull['skills'] as $skillData) {
+            $skillId = $skillData['id'];
+            
+            // Ajouter coin_bonus et avatar_discount
+            if (in_array($skillId, $strategeSkillsToShow)) {
+                $skills[] = [
+                    'id' => $skillId,
+                    'icon' => $skillData['icon'],
+                    'name' => $skillData['name'],
+                    'description' => $skillData['description'],
+                    'type' => $skillData['type'],
+                    'trigger' => $skillData['trigger'],
+                    'auto' => true,
+                    'used' => false,
+                    'uses_left' => -1,
+                    'is_teammate_skill' => false,
+                ];
             }
         }
-        $maxUses = $skillData['uses_per_match'] ?? 1;
-        $isFullyUsed = ($maxUses > 0 && $usesCount >= $maxUses);
         
-        $skills[] = [
-            'id' => $skillId,
-            'icon' => $isFullyUsed ? '⚪' : $skillData['icon'],
-            'name' => $skillData['name'],
-            'description' => $skillData['description'],
-            'type' => $skillData['type'],
-            'trigger' => $skillData['trigger'],
-            'auto' => false, // Tous les skills affichés sont manuels
-            'used' => $isFullyUsed,
-            'uses_left' => $maxUses > 0 ? max(0, $maxUses - $usesCount) : -1,
-        ];
+        // Ajouter le skill du coéquipier (le 3ème skill)
+        if ($teammateInfo) {
+            foreach ($avatarSkillsFull['skills'] as $skillData) {
+                $skillId = $skillData['id'];
+                
+                // Si ce n'est pas un skill du Stratège, c'est le skill du coéquipier
+                if (!in_array($skillId, ['coin_bonus', 'avatar_discount', 'create_team'])) {
+                    $isUsed = in_array($skillId, $usedSkills);
+                    $usesCount = 0;
+                    foreach ($usedSkills as $used) {
+                        if (strpos($used, $skillId) === 0) {
+                            $usesCount++;
+                        }
+                    }
+                    $maxUses = $skillData['uses_per_match'] ?? 1;
+                    $isFullyUsed = ($maxUses > 0 && $usesCount >= $maxUses);
+                    
+                    $skills[] = [
+                        'id' => $skillId,
+                        'icon' => $isFullyUsed ? '⚪' : $skillData['icon'],
+                        'name' => $skillData['name'],
+                        'description' => $skillData['description'],
+                        'type' => $skillData['type'],
+                        'trigger' => $skillData['trigger'],
+                        'auto' => $skillData['auto'] ?? false,
+                        'used' => $isFullyUsed,
+                        'uses_left' => $maxUses > 0 ? max(0, $maxUses - $usesCount) : -1,
+                        'is_teammate_skill' => true,
+                    ];
+                    break; // Un seul skill du coéquipier
+                }
+            }
+        }
+    }
+} else {
+    // AUTRES AVATARS : Afficher tous leurs skills
+    if (!empty($avatarSkillsFull['skills'])) {
+        foreach ($avatarSkillsFull['skills'] as $skillData) {
+            $skillId = $skillData['id'];
+            $isUsed = in_array($skillId, $usedSkills);
+            
+            // Compter les utilisations pour les skills multi-usage
+            $usesCount = 0;
+            foreach ($usedSkills as $used) {
+                if (strpos($used, $skillId) === 0) {
+                    $usesCount++;
+                }
+            }
+            $maxUses = $skillData['uses_per_match'] ?? 1;
+            $isFullyUsed = ($maxUses > 0 && $usesCount >= $maxUses);
+            
+            $skills[] = [
+                'id' => $skillId,
+                'icon' => $isFullyUsed ? '⚪' : $skillData['icon'],
+                'name' => $skillData['name'],
+                'description' => $skillData['description'],
+                'type' => $skillData['type'],
+                'trigger' => $skillData['trigger'],
+                'auto' => $skillData['auto'] ?? false,
+                'used' => $isFullyUsed,
+                'uses_left' => $maxUses > 0 ? max(0, $maxUses - $usesCount) : -1,
+                'is_teammate_skill' => false,
+            ];
+        }
     }
 }
 
