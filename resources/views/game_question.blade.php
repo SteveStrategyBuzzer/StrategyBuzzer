@@ -412,6 +412,15 @@ if ($opponentInfo['is_boss'] ?? false) {
         cursor: not-allowed;
     }
     
+    .skill-circle.passive {
+        opacity: 0.7;
+        border-color: rgba(150, 150, 150, 0.5);
+        background: rgba(100, 100, 100, 0.3);
+        box-shadow: 0 0 10px rgba(150, 150, 150, 0.3);
+        animation: none;
+        cursor: help;
+    }
+    
     .skill-circle.used {
         opacity: 0.4;
         border-color: rgba(255, 255, 255, 0.2);
@@ -421,7 +430,7 @@ if ($opponentInfo['is_boss'] ?? false) {
         cursor: not-allowed;
     }
     
-    .skill-circle.disabled:not(.used) {
+    .skill-circle.disabled:not(.used):not(.passive) {
         cursor: help;
     }
     
@@ -785,9 +794,12 @@ if ($opponentInfo['is_boss'] ?? false) {
                 <div class="strategic-avatar-circle empty"></div>
             @endif
             
-            <!-- 3 cercles de skills -->
+            <!-- Cercles de skills (jusqu'à 4 pour Stratège + coéquipier) -->
             <div class="skills-container">
-                @for($i = 0; $i < 3; $i++)
+                @php
+                    $maxSkills = min(count($skills), 4);
+                @endphp
+                @for($i = 0; $i < $maxSkills; $i++)
                     @if(isset($skills[$i]))
                         @php
                             $skill = $skills[$i];
@@ -796,7 +808,7 @@ if ($opponentInfo['is_boss'] ?? false) {
                             $isAuto = $skill['auto'];
                             $isUsed = $skill['used'];
                             
-                            // Skills qui s'activent sur la page question
+                            // Skills qui s'activent sur la page question (manuels seulement)
                             $isQuestionSkill = in_array($skillTrigger, ['question']);
                             
                             // Désactiver si déjà utilisé ou si c'est un skill passif/auto
@@ -807,10 +819,13 @@ if ($opponentInfo['is_boss'] ?? false) {
                                 $isDisabled = true;
                             }
                             
+                            // Style: skills passifs ont une apparence différente
+                            $passiveClass = $isAuto ? 'passive' : '';
                             $disabledClass = $isDisabled ? 'disabled' : '';
                             $usedClass = $isUsed ? 'used' : '';
+                            $activeClass = (!$isAuto && !$isUsed) ? 'active' : '';
                         @endphp
-                        <div class="skill-circle active {{ $disabledClass }} {{ $usedClass }}" 
+                        <div class="skill-circle {{ $activeClass }} {{ $passiveClass }} {{ $disabledClass }} {{ $usedClass }}" 
                              data-skill-id="{{ $skillId }}"
                              data-skill-index="{{ $i }}" 
                              data-skill-type="{{ $skill['type'] }}"
@@ -821,9 +836,10 @@ if ($opponentInfo['is_boss'] ?? false) {
                              title="{{ $skill['name'] }}: {{ $skill['description'] }}">
                             {{ $skill['icon'] }}
                         </div>
-                    @else
-                        <div class="skill-circle empty"></div>
                     @endif
+                @endfor
+                @for($j = $maxSkills; $j < 3; $j++)
+                    <div class="skill-circle empty"></div>
                 @endfor
             </div>
         </div>
