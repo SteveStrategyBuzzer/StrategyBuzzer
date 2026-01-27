@@ -575,6 +575,14 @@ if (!empty($avatarSkillsFull['skills'])) {
         animation: none;
     }
     
+    .see-opponent-skill-btn.not-usable {
+        opacity: 0.5;
+        background: linear-gradient(145deg, #666, #555);
+        box-shadow: 0 0 10px rgba(100, 100, 100, 0.5), 0 4px 15px rgba(0,0,0,0.3);
+        animation: none;
+        cursor: not-allowed;
+    }
+    
     @keyframes see-opponent-pulse {
         0%, 100% { 
             box-shadow: 0 0 20px rgba(155, 89, 182, 0.8), 0 4px 15px rgba(0,0,0,0.3);
@@ -1163,7 +1171,11 @@ if (!empty($avatarSkillsFull['skills'])) {
 @endif
 
 @if($seeOpponentSkillAvailable)
-<div class="see-opponent-skill-btn" id="seeOpponentSkillBtn" onclick="activateSeeOpponentSkill()">
+@php
+    // Le skill est utilisable seulement si l'adversaire a fait un choix
+    $skillUsable = $opponentAnswerChoice !== null;
+@endphp
+<div class="see-opponent-skill-btn{{ !$skillUsable ? ' not-usable' : '' }}" id="seeOpponentSkillBtn" onclick="activateSeeOpponentSkill()">
     👁️
 </div>
 <div class="skill-label see-opponent-label">{{ __('Voir choix') }}</div>

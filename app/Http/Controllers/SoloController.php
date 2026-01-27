@@ -1309,7 +1309,16 @@ class SoloController extends Controller
         $usedSkills = session('used_skills', []);
         $illuminateSkillAvailable = false;
         
-        if ($avatar === 'Mathématicien' && !in_array('illuminate_numbers', $usedSkills)) {
+        // Récupérer le coéquipier du Stratège
+        $teammate = session('stratege_teammate');
+        $isStratege = in_array(strtolower($avatar), ['stratège', 'stratege']);
+        $teammateIsMathematicien = $teammate && in_array(strtolower($teammate), ['mathematicien', 'mathématicien']);
+        $teammateIsExplorateur = $teammate && strtolower($teammate) === 'explorateur';
+        
+        // Vérifier si l'avatar principal OU le coéquipier est Mathématicien
+        $hasMathSkill = ($avatar === 'Mathématicien') || ($isStratege && $teammateIsMathematicien);
+        
+        if ($hasMathSkill && !in_array('illuminate_numbers', $usedSkills)) {
             $correctIndex = $question['correct_index'] ?? 0;
             $correctAnswer = $question['answers'][$correctIndex] ?? '';
             // Vérifie si la bonne réponse contient un chiffre
@@ -1322,8 +1331,11 @@ class SoloController extends Controller
         $opponentAnswerChoice = $opponentBehavior['answer_choice'] ?? null;
         session(['opponent_answer_choice' => $opponentAnswerChoice]);
         
+        // Vérifier si l'avatar principal OU le coéquipier est Explorateur
+        $hasExplorateurSkill = ($avatar === 'Explorateur') || ($isStratege && $teammateIsExplorateur);
+        
         $seeOpponentSkillAvailable = false;
-        if ($avatar === 'Explorateur' && !in_array('see_opponent_choice', $usedSkills)) {
+        if ($hasExplorateurSkill && !in_array('see_opponent_choice', $usedSkills)) {
             $seeOpponentSkillAvailable = true;
         }
         
