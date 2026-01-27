@@ -40,7 +40,8 @@ if (!empty($avatarSkillsFull['skills'])) {
         }
         
         // Filtrer les skills avec trigger passif/permanent (victory, permanent, passive, match_start, etc.)
-        $passiveTriggers = ['victory', 'permanent', 'passive', 'first_5_questions', 'round_complete'];
+        // Ces triggers indiquent des skills qui ne sont pas activables manuellement pendant le jeu
+        $passiveTriggers = ['victory', 'permanent', 'passive', 'first_5_questions', 'round_complete', 'match_start'];
         $trigger = $skillData['trigger'] ?? '';
         if (in_array($trigger, $passiveTriggers)) {
             continue;
