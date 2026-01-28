@@ -595,6 +595,21 @@ if (!empty($avatarSkillsFull['skills'])) {
         box-shadow: 0 0 10px rgba(100, 100, 100, 0.5), 0 4px 15px rgba(0,0,0,0.3);
         animation: none;
         cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .see-opponent-skill-btn.waiting {
+        opacity: 0.6;
+        background: linear-gradient(145deg, #888, #666);
+        box-shadow: 0 0 15px rgba(155, 89, 182, 0.4), 0 4px 15px rgba(0,0,0,0.3);
+        animation: waiting-pulse 1s infinite;
+        cursor: wait;
+        pointer-events: none;
+    }
+    
+    @keyframes waiting-pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 0.8; }
     }
     
     @keyframes see-opponent-pulse {
@@ -1188,8 +1203,10 @@ if (!empty($avatarSkillsFull['skills'])) {
 @php
     // Le skill est utilisable seulement si l'adversaire a fait un choix
     $skillUsable = $opponentAnswerChoice !== null;
+    // Délai de lecture de l'IA : 0.5s par réponse selon la position du choix (1-4)
+    $readingDelayMs = $skillUsable ? (($opponentAnswerChoice + 1) * 500) : 0;
 @endphp
-<div class="see-opponent-skill-btn{{ !$skillUsable ? ' not-usable' : '' }}" id="seeOpponentSkillBtn" onclick="activateSeeOpponentSkill()">
+<div class="see-opponent-skill-btn{{ !$skillUsable ? ' not-usable' : ' waiting' }}" id="seeOpponentSkillBtn" onclick="activateSeeOpponentSkill()" data-reading-delay="{{ $readingDelayMs }}">
     👁️
 </div>
 <div class="skill-label see-opponent-label">{{ __('Voir choix') }}</div>
@@ -1405,11 +1422,25 @@ function activateAcidifySkill() {
 
 // Fonction pour activer le skill Explorateur "Voir choix adverse"
 let seeOpponentSkillUsed = false;
+let seeOpponentSkillReady = false; // Le skill est prêt après le délai de lecture
 const opponentAnswerChoice = {{ $opponentAnswerChoice ?? 'null' }};
+
+// Activer le skill après le délai de lecture de l'IA
+document.addEventListener('DOMContentLoaded', function() {
+    const seeOpponentBtn = document.getElementById('seeOpponentSkillBtn');
+    if (seeOpponentBtn && opponentAnswerChoice !== null) {
+        const readingDelay = parseInt(seeOpponentBtn.dataset.readingDelay) || 0;
+        setTimeout(function() {
+            seeOpponentBtn.classList.remove('waiting');
+            seeOpponentSkillReady = true;
+        }, readingDelay);
+    }
+});
 
 function activateSeeOpponentSkill() {
     if (answered || seeOpponentSkillUsed) return;
     if (opponentAnswerChoice === null) return; // L'adversaire n'a pas choisi
+    if (!seeOpponentSkillReady) return; // Le skill n'est pas encore prêt (délai de lecture)
     
     seeOpponentSkillUsed = true;
     
