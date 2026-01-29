@@ -49,6 +49,7 @@ if ($isStratege) {
         }
         
         // Ajouter le skill du coéquipier (le 3ème skill)
+        $teammateSkillAdded = false;
         if ($teammateInfo) {
             foreach ($avatarSkillsFull['skills'] as $skillData) {
                 $skillId = $skillData['id'];
@@ -77,9 +78,27 @@ if ($isStratege) {
                         'uses_left' => $maxUses > 0 ? max(0, $maxUses - $usesCount) : -1,
                         'is_teammate_skill' => true,
                     ];
+                    $teammateSkillAdded = true;
                     break; // Un seul skill du coéquipier
                 }
             }
+        }
+        
+        // Si aucun teammate n'est sélectionné, afficher un placeholder pour le skill Team
+        if (!$teammateSkillAdded) {
+            $skills[] = [
+                'id' => 'create_team',
+                'icon' => '👥',
+                'name' => 'Team',
+                'description' => 'Choix d\'un Avatar Stratégique Rare',
+                'type' => 'team',
+                'trigger' => 'passive',
+                'auto' => true,
+                'used' => false,
+                'uses_left' => -1,
+                'is_teammate_skill' => false,
+                'is_placeholder' => true,
+            ];
         }
     }
 } else {
