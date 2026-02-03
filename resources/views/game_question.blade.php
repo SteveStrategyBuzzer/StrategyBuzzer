@@ -84,13 +84,15 @@ if ($isStratege) {
             }
         }
         
-        // Si aucun teammate n'est sélectionné, afficher un placeholder pour le skill Team
+        // Si aucun teammate skill n'est ajouté, afficher un placeholder
+        // SEULEMENT si aucun avatar Rare n'est débloqué (👥)
         if (!$teammateSkillAdded) {
+            $hasUnlockedRare = $avatarSkillsFull['has_unlocked_rare'] ?? false;
             $skills[] = [
                 'id' => 'create_team',
                 'icon' => '👥',
                 'name' => 'Team',
-                'description' => 'Choix d\'un Avatar Stratégique Rare',
+                'description' => $hasUnlockedRare ? 'Sélectionnez un coéquipier' : 'Débloquez un Avatar Rare',
                 'type' => 'team',
                 'trigger' => 'passive',
                 'auto' => true,
@@ -98,6 +100,7 @@ if ($isStratege) {
                 'uses_left' => -1,
                 'is_teammate_skill' => false,
                 'is_placeholder' => true,
+                'no_rare_unlocked' => !$hasUnlockedRare,
             ];
         }
     }

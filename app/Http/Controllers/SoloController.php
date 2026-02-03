@@ -1166,11 +1166,72 @@ class SoloController extends Controller
     }
     
     /**
+     * Récupérer le coéquipier effectif du Stratège (avec auto-sélection si nécessaire)
+     * Si aucun teammate n'est sélectionné mais qu'un avatar Rare est débloqué,
+     * le premier Rare débloqué devient automatiquement le coéquipier
+     */
+    private function getEffectiveTeammate(): ?string
+    {
+        // Vérifier si un teammate est déjà sélectionné en session
+        $teammate = session('stratege_teammate');
+        if ($teammate) {
+            return $teammate;
+        }
+        
+        // Sinon, chercher le premier avatar Rare débloqué
+        $user = auth()->user();
+        if (!$user) {
+            return null;
+        }
+        
+        $settings = (array) ($user->profile_settings ?? []);
+        $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+        
+        // Liste ordonnée des avatars Rares (ordre de priorité pour auto-sélection)
+        $rareAvatars = ['mathematicien', 'scientifique', 'explorateur', 'defenseur'];
+        
+        foreach ($rareAvatars as $rareSlug) {
+            if (in_array($rareSlug, $unlockedAvatars)) {
+                // Auto-sélectionner ce Rare comme coéquipier
+                session(['stratege_teammate' => $rareSlug]);
+                return $rareSlug;
+            }
+        }
+        
+        // Aucun avatar Rare débloqué
+        return null;
+    }
+    
+    /**
+     * Vérifier si l'utilisateur a au moins un avatar Rare débloqué
+     */
+    private function hasUnlockedRareAvatar(): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+        
+        $settings = (array) ($user->profile_settings ?? []);
+        $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+        
+        $rareAvatars = ['mathematicien', 'scientifique', 'explorateur', 'defenseur'];
+        
+        foreach ($rareAvatars as $rareSlug) {
+            if (in_array($rareSlug, $unlockedAvatars)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
      * Récupérer le nom complet du coéquipier Stratège depuis la session
      */
     private function getTeammateName(): string
     {
-        $teammate = session('stratege_teammate');
+        $teammate = $this->getEffectiveTeammate();
         if (!$teammate) {
             return 'Aucun';
         }
@@ -1191,7 +1252,7 @@ class SoloController extends Controller
      */
     private function getTeammateSkillIcon(): string
     {
-        $teammate = session('stratege_teammate');
+        $teammate = $this->getEffectiveTeammate();
         if (!$teammate) {
             return '👥';
         }
@@ -1200,7 +1261,7 @@ class SoloController extends Controller
         $slugToSkillIcon = [
             'mathematicien' => '🔢',  // illuminate_numbers
             'scientifique' => '🧪',   // acidify_error
-            'explorateur' => '🔭',    // see_opponent_choice
+            'explorateur' => '👁️',    // see_opponent_choice
             'defenseur' => '🛡️',      // shield
         ];
         
@@ -2887,7 +2948,8 @@ class SoloController extends Controller
         
         // Skill Stratège: Ajouter les skills du coéquipier (avatar rare)
         if (in_array(strtolower($normalizedAvatar), ['stratège', 'stratege'])) {
-            $teammate = session('stratege_teammate');
+            // Utiliser getEffectiveTeammate() pour auto-sélectionner si nécessaire
+            $teammate = $this->getEffectiveTeammate();
             if ($teammate) {
                 // Convertir le slug du coéquipier en nom complet
                 $teammateFullName = $slugToName[strtolower($teammate)] ?? $teammate;
@@ -2904,6 +2966,9 @@ class SoloController extends Controller
                     ];
                 }
             }
+            
+            // Indiquer si aucun avatar Rare n'est débloqué
+            $result['has_unlocked_rare'] = $this->hasUnlockedRareAvatar();
         }
         
         return $result;

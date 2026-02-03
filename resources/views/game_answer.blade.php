@@ -69,19 +69,24 @@ if (!empty($avatarSkillsFull['skills'])) {
     }
 }
 
-// Explorateur: see_opponent_choice - skill disponible (vérifier dans avatarSkillsFull pour coéquipier)
-$seeOpponentSkillAvailable = false;
+// Explorateur: see_opponent_choice - skill existe ET disponible
+$seeOpponentSkillExists = false;  // Le skill existe (pour affichage permanent)
+$seeOpponentSkillAvailable = false;  // Le skill est utilisable (pas encore utilisé)
+$seeOpponentSkillUsed = false;  // Le skill a déjà été utilisé
 if (!empty($avatarSkillsFull['skills'])) {
     foreach ($avatarSkillsFull['skills'] as $skill) {
         if (($skill['id'] ?? '') === 'see_opponent_choice') {
-            $seeOpponentSkillAvailable = !in_array('see_opponent_choice', $usedSkills);
+            $seeOpponentSkillExists = true;
+            $seeOpponentSkillUsed = in_array('see_opponent_choice', $usedSkills);
+            $seeOpponentSkillAvailable = !$seeOpponentSkillUsed;
             break;
         }
     }
 }
 // Fallback sur les params si déjà calculé
-if (!$seeOpponentSkillAvailable) {
+if (!$seeOpponentSkillExists) {
     $seeOpponentSkillAvailable = $params['see_opponent_skill_available'] ?? false;
+    $seeOpponentSkillExists = $seeOpponentSkillAvailable;
 }
 $opponentAnswerChoice = $params['opponent_answer_choice'] ?? null;
 
@@ -589,6 +594,16 @@ if (!empty($avatarSkillsFull['skills'])) {
         animation: none;
     }
     
+    .see-opponent-skill-btn.not-buzzed {
+        opacity: 0.35;
+        background: linear-gradient(145deg, #444, #333);
+        box-shadow: 0 0 5px rgba(80, 80, 80, 0.3), 0 4px 10px rgba(0,0,0,0.4);
+        animation: none;
+        cursor: not-allowed;
+        pointer-events: none;
+        filter: grayscale(80%);
+    }
+    
     .see-opponent-skill-btn.not-usable {
         opacity: 0.5;
         background: linear-gradient(145deg, #666, #555);
@@ -605,6 +620,15 @@ if (!empty($avatarSkillsFull['skills'])) {
         animation: waiting-pulse 1s infinite;
         cursor: wait;
         pointer-events: none;
+    }
+    
+    .see-opponent-skill-btn.ready {
+        opacity: 1;
+        background: linear-gradient(145deg, #9b59b6, #8e44ad);
+        box-shadow: 0 0 25px rgba(155, 89, 182, 0.9), 0 4px 15px rgba(0,0,0,0.3);
+        animation: see-opponent-pulse 1.5s infinite;
+        cursor: pointer;
+        pointer-events: auto;
     }
     
     @keyframes waiting-pulse {
@@ -1199,14 +1223,29 @@ if (!empty($avatarSkillsFull['skills'])) {
 <div class="skill-label acidify-label">{{ __('Acidifier') }}</div>
 @endif
 
-@if($seeOpponentSkillAvailable)
+@if($seeOpponentSkillExists)
 @php
-    // Le skill est utilisable seulement si l'adversaire a fait un choix
-    $skillUsable = $opponentAnswerChoice !== null;
+    // Le skill nécessite que le joueur ait buzzé ET que l'adversaire ait fait un choix
+    $hasOpponentChoice = $opponentAnswerChoice !== null;
+    $skillCanBeUsed = $seeOpponentSkillAvailable && $playerBuzzed && $hasOpponentChoice;
+    
+    // États du bouton :
+    // - used : le skill a déjà été utilisé (très grisé)
+    // - not-buzzed : le joueur n'a pas encore buzzé (grisé foncé)
+    // - not-usable : le joueur a buzzé mais l'adversaire n'a pas encore choisi (grisé)
+    // - waiting : les deux ont choisi, délai de lecture en cours (pulsation)
+    // - ready : prêt à être utilisé
+    $buttonState = 'not-buzzed';
+    if ($seeOpponentSkillUsed) {
+        $buttonState = 'used';
+    } elseif ($playerBuzzed) {
+        $buttonState = $hasOpponentChoice ? 'waiting' : 'not-usable';
+    }
+    
     // Délai de lecture de l'IA : 0.5s par réponse selon la position du choix (1-4)
-    $readingDelayMs = $skillUsable ? (($opponentAnswerChoice + 1) * 500) : 0;
+    $readingDelayMs = $skillCanBeUsed ? (($opponentAnswerChoice + 1) * 500) : 0;
 @endphp
-<div class="see-opponent-skill-btn{{ !$skillUsable ? ' not-usable' : ' waiting' }}" id="seeOpponentSkillBtn" onclick="activateSeeOpponentSkill()" data-reading-delay="{{ $readingDelayMs }}">
+<div class="see-opponent-skill-btn {{ $buttonState }}" id="seeOpponentSkillBtn" onclick="activateSeeOpponentSkill()" data-reading-delay="{{ $readingDelayMs }}" data-player-buzzed="{{ $playerBuzzed ? 'true' : 'false' }}">
     👁️
 </div>
 <div class="skill-label see-opponent-label">{{ __('Voir choix') }}</div>
@@ -1421,32 +1460,39 @@ function activateAcidifySkill() {
 }
 
 // Fonction pour activer le skill Explorateur "Voir choix adverse"
-let seeOpponentSkillUsed = false;
+let seeOpponentSkillUsedJS = {{ $seeOpponentSkillUsed ? 'true' : 'false' }};  // Déjà utilisé avant cette page
 let seeOpponentSkillReady = false; // Le skill est prêt après le délai de lecture
 const opponentAnswerChoice = {{ $opponentAnswerChoice ?? 'null' }};
+const playerHasBuzzed = {{ $playerBuzzed ? 'true' : 'false' }};
+const seeOpponentSkillAvailableJS = {{ $seeOpponentSkillAvailable ? 'true' : 'false' }};
 
 // Activer le skill après le délai de lecture de l'IA
+// Le skill ne peut être utilisé que si le joueur a buzzé ET l'adversaire a choisi ET pas déjà utilisé
 document.addEventListener('DOMContentLoaded', function() {
     const seeOpponentBtn = document.getElementById('seeOpponentSkillBtn');
-    if (seeOpponentBtn && opponentAnswerChoice !== null) {
+    if (seeOpponentBtn && seeOpponentSkillAvailableJS && playerHasBuzzed && opponentAnswerChoice !== null) {
         const readingDelay = parseInt(seeOpponentBtn.dataset.readingDelay) || 0;
         setTimeout(function() {
-            seeOpponentBtn.classList.remove('waiting');
+            // Supprimer tous les états et ajouter l'état "ready" (illuminé)
+            seeOpponentBtn.classList.remove('waiting', 'not-buzzed', 'not-usable', 'used');
+            seeOpponentBtn.classList.add('ready');
             seeOpponentSkillReady = true;
         }, readingDelay);
     }
 });
 
 function activateSeeOpponentSkill() {
-    if (answered || seeOpponentSkillUsed) return;
+    if (answered || seeOpponentSkillUsedJS) return;
+    if (!playerHasBuzzed) return; // Le joueur n'a pas buzzé
     if (opponentAnswerChoice === null) return; // L'adversaire n'a pas choisi
     if (!seeOpponentSkillReady) return; // Le skill n'est pas encore prêt (délai de lecture)
     
-    seeOpponentSkillUsed = true;
+    seeOpponentSkillUsedJS = true;
     
     // Marquer le bouton comme utilisé
     const skillBtn = document.getElementById('seeOpponentSkillBtn');
     if (skillBtn) {
+        skillBtn.classList.remove('ready');
         skillBtn.classList.add('used');
     }
     
