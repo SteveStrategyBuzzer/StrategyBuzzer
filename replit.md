@@ -19,7 +19,11 @@ The frontend uses React 19 with Vite, employing a component-based architecture f
 #### Technical Implementations
 The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It utilizes an API-first, service-oriented design with an event-driven system for real-time game state broadcasting.
 
-**Real-Time Multiplayer Synchronization:** Multiplayer modes (Duo, League, Master) are migrated from Firestore to Socket.IO for lower latency. The architecture uses a Socket.IO Game Server for real-time events, `DuoSocketClient.js` for frontend-server communication, JWT tokens for player authentication, and Redis for game state persistence with a 2-hour TTL. Solo mode uses AI opponents with traditional page redirects.
+**Unified Game Layout:** The `game_question.blade.php` template is shared between Solo and Duo modes for visual consistency. The template uses `$isMultiplayer` flag to detect multiplayer modes and adapt data sources (player_info/opponent_info vs random AI names). Firebase is used for League/Master modes while Duo uses Socket.IO for lower latency.
+
+**Real-Time Multiplayer Synchronization:** Multiplayer modes (Duo, League, Master) are migrated from Firestore to Socket.IO for lower latency. The architecture uses a Socket.IO Game Server for real-time events, `DuoSocketClient.js` (singleton pattern) for frontend-server communication, JWT tokens for player authentication, and Redis for game state persistence with a 2-hour TTL. Solo mode uses AI opponents with traditional page redirects.
+
+**Avatar Skills Service:** `AvatarSkillService.php` provides a centralized static service for managing 12 avatars and 30+ skills across all game modes. The service handles skill retrieval, teammate bonuses (Stratège), and avatar path resolution.
 
 **Gameplay Flow (Socket.IO):** Multiplayer games follow a 3-page-per-round structure: Question page, Answer page, and Result page. Solo mode dictates the strict sequence of game phases.
 
