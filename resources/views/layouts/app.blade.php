@@ -37,10 +37,11 @@
         
         const gameplayPages = [
             '/solo/prepare', '/solo/game', '/solo/answer', '/solo/timeout', '/solo/next', '/solo/victory', '/solo/defeat',
-            '/duo/game', '/duo/answer',
+            '/duo/game', '/duo/answer', '/game/duo/question', '/game/duo/answer', '/game/duo/intro', '/game/duo/result',
             '/league-individual/game', '/league-individual/answer',
             '/league-team/game', '/league-team/answer',
-            '/game_preparation', '/game_question', '/game_answer', '/game_result', '/victory', '/defeat'
+            '/game_preparation', '/game_question', '/game_answer', '/game_result', '/victory', '/defeat',
+            '/game/solo/question', '/game/solo/answer', '/game/league'
         ];
         
         function isGameplayPage() {

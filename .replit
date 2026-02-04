@@ -126,6 +126,7 @@ SESSION_SECURE_COOKIE = "false"
 SESSION_SAME_SITE = "lax"
 QUESTION_API_URL = "http://localhost:3000"
 QUEUE_CONNECTION = "database"
+GAME_SERVER_JWT_SECRET = "strategybuzzer-game-server-jwt-secret-2026"
 
 [userenv.development]
 GAME_SERVER_URL = "http://localhost:3001"
