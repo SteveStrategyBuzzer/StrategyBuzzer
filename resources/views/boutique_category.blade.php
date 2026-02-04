@@ -666,7 +666,7 @@ audio { width: 100%; }
                     @if($pack['popular'] ?? false)
                         <div class="popular-badge">⭐ {{ __('Populaire') }}</div>
                     @endif
-                    <div class="coin-icon-display" style="margin-top:-18px;margin-bottom:-12px;">
+                    <div class="coin-icon-display" style="margin-top:-20px;margin-bottom:-40px;">
                         <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:128px;height:128px;object-fit:contain;">
                     </div>
                     <div class="coin-amount">{{ number_format($pack['coins'] ?? 0) }}</div>
