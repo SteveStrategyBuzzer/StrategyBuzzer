@@ -6,7 +6,8 @@ return [
     | Packs de Pièces d'Intelligence
     |--------------------------------------------------------------------------
     |
-    | Pièces gagnées en Solo et Quêtes, aussi achetables avec Stripe.
+    | Pièces gagnées en Multijoueur (Duo, Ligue, Master) car vous prouvez
+    | vos connaissances face à d'autres joueurs. Aussi achetables avec Stripe.
     |
     */
 
@@ -58,8 +59,9 @@ return [
     | Packs de Pièces de Compétence
     |--------------------------------------------------------------------------
     |
-    | Pièces gagnées en Duo et Ligue, aussi achetables avec Stripe.
-    | Prix progressifs avec économies sur les gros packs.
+    | Pièces gagnées en Solo et Quêtes car vous débloquez des skills/compétences.
+    | Utilisées pour acheter des avatars stratégiques dans la boutique.
+    | Aussi achetables avec Stripe. Prix progressifs avec économies sur les gros packs.
     |
     */
 
