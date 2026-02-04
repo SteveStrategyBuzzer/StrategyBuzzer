@@ -218,11 +218,8 @@ class BoutiqueController extends Controller
         return DB::transaction(function () use ($user, $kind, $target, $qty) {
             $user->lockForUpdate()->find($user->id);
             
-            // Avatars stratégiques utilisent competence_coins, le reste utilise coins (intelligence)
-            $useCompetenceCoins = ($kind === 'stratégique');
-            $availableCoins = $useCompetenceCoins 
-                ? ($user->competence_coins ?? 0) 
-                : ($user->coins ?? 0);
+            // Tous les achats boutique utilisent les pièces de Compétence
+            $availableCoins = $user->competence_coins ?? 0;
             $settings = (array) ($user->profile_settings ?? []);
             $unlocked = $settings['unlocked_avatars'] ?? [];
             $catalog  = AvatarCatalog::get();
@@ -296,16 +293,11 @@ class BoutiqueController extends Controller
             $total = $unitPrice * $qty;
 
             if ($total > $availableCoins) {
-                $coinTypeName = $useCompetenceCoins ? "Compétence" : "Intelligence";
-                return back()->with('error', "Pièces de {$coinTypeName} insuffisantes pour cet achat.");
+                return back()->with('error', "Pièces de Compétence insuffisantes pour cet achat.");
             }
 
-            // Déduire les pièces appropriées
-            if ($useCompetenceCoins) {
-                $user->competence_coins -= $total;
-            } else {
-                $user->coins -= $total;
-            }
+            // Tous les achats boutique déduisent les pièces de Compétence
+            $user->competence_coins -= $total;
 
             if ($kind === 'life') {
                 $user->lives += $qty;
@@ -317,7 +309,7 @@ class BoutiqueController extends Controller
                     'reason' => 'life_purchase',
                     'ref_type' => null,
                     'ref_id' => null,
-                    'balance_after' => $user->coins,
+                    'balance_after' => $user->competence_coins,
                 ]);
                 
                 return back()->with('success', "Achat réussi : +{$qty} vie(s) !");
@@ -346,7 +338,7 @@ class BoutiqueController extends Controller
                     'reason' => 'music_purchase',
                     'ref_type' => null,
                     'ref_id' => null,
-                    'balance_after' => $user->coins,
+                    'balance_after' => $user->competence_coins,
                 ]);
                 
                 return back()->with('success', "Musique débloquée !");
@@ -366,7 +358,7 @@ class BoutiqueController extends Controller
                 'reason' => $kind . '_purchase',
                 'ref_type' => null,
                 'ref_id' => null,
-                'balance_after' => $user->coins,
+                'balance_after' => $user->competence_coins,
             ]);
 
             return back()->with('success', "Achat réussi, élément débloqué !");
