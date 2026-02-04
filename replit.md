@@ -84,6 +84,12 @@ The project uses a monorepo with `shared`, `game-engine`, and `game-server` pack
   - Stored in `room.skillEffects` per player with decrement on each question
 - **shuffle_answers:** (Pending implementation) Shuffles target's answer options every 1.5s.
 
+**Currency System (Two Types of Coins):**
+- **Pièces d'Intelligence (Intelligence Coins):** Earned in Multiplayer modes (Duo, League, Master) as you prove your knowledge against other players. Used for general purchases.
+- **Pièces de Compétence (Skill Coins):** Earned in Solo mode and Quests as you unlock skills/abilities. Used specifically for purchasing Strategic Avatars in the boutique.
+- **Boutique Logic:** Strategic avatars are purchased with Compétence coins; other items (packs, buzzers, music, lives) use Intelligence coins.
+- **Stratège Bonus:** The Stratège avatar grants +20% coin bonus on multiplayer victories.
+
 ### External Dependencies
 
 -   **Core Frameworks**: Laravel Framework, React, Inertia.js

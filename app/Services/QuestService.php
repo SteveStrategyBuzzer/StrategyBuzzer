@@ -54,10 +54,10 @@ class QuestService
                     $progress->rewarded = true;
                     $progress->save();
                     
-                    // Verrouiller l'utilisateur et attribuer les coins
+                    // Verrouiller l'utilisateur et attribuer les pièces de Compétence (Solo/Quêtes)
                     $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
                     if ($lockedUser) {
-                        $lockedUser->coins = ($lockedUser->coins ?? 0) + $quest->reward_coins;
+                        $lockedUser->competence_coins = ($lockedUser->competence_coins ?? 0) + $quest->reward_coins;
                         $lockedUser->save();
                     }
                     
@@ -629,10 +629,10 @@ class QuestService
             $progress->rewarded = true;
             $progress->save();
             
-            // Attribuer les pièces
+            // Attribuer les pièces de Compétence (Solo/Quêtes)
             $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
             if ($lockedUser) {
-                $lockedUser->coins = ($lockedUser->coins ?? 0) + $quest->reward_coins;
+                $lockedUser->competence_coins = ($lockedUser->competence_coins ?? 0) + $quest->reward_coins;
                 $lockedUser->save();
             }
         });

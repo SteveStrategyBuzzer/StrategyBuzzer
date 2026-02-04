@@ -185,8 +185,9 @@ class LeagueIndividualService
         $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
         $this->divisionService->updateDivisionPointsWithFloor($division, $pointsEarned);
 
+        // Ligue gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
         if ($coinsEarned > 0) {
-            $user->competence_coins = ($user->competence_coins ?? 0) + $coinsEarned;
+            $user->coins = ($user->coins ?? 0) + $coinsEarned;
             $user->save();
         }
     }

@@ -223,11 +223,12 @@ class DuoMatchmakingService
         $player1Reward['coins'] = $this->applyCoinBonus($player1, $player1Reward['coins']);
         $player2Reward['coins'] = $this->applyCoinBonus($player2, $player2Reward['coins']);
 
+        // Mises Duo : le gagnant récupère le pot en pièces d'Intelligence
         $betInfo = $gameState['bet_info'] ?? null;
         if ($betInfo && ($betInfo['total_pot'] ?? 0) > 0) {
             $totalPot = $betInfo['total_pot'];
             $winner = $winnerId === $match->player1_id ? $player1 : $player2;
-            $winner->competence_coins = ($winner->competence_coins ?? 0) + $totalPot;
+            $winner->coins = ($winner->coins ?? 0) + $totalPot;
             $winner->save();
             
             $gameState['bet_info']['winner_id'] = $winnerId;
@@ -267,13 +268,14 @@ class DuoMatchmakingService
         $player2Division->level = $player2Stats->level;
         $player2Division->save();
         
+        // Multijoueur gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
         if ($player1Reward['coins'] > 0) {
-            $player1->competence_coins = ($player1->competence_coins ?? 0) + $player1Reward['coins'];
+            $player1->coins = ($player1->coins ?? 0) + $player1Reward['coins'];
             $player1->save();
         }
         
         if ($player2Reward['coins'] > 0) {
-            $player2->competence_coins = ($player2->competence_coins ?? 0) + $player2Reward['coins'];
+            $player2->coins = ($player2->coins ?? 0) + $player2Reward['coins'];
             $player2->save();
         }
         

@@ -218,7 +218,11 @@ class BoutiqueController extends Controller
         return DB::transaction(function () use ($user, $kind, $target, $qty) {
             $user->lockForUpdate()->find($user->id);
             
-            $coins    = $user->coins;
+            // Avatars stratégiques utilisent competence_coins, le reste utilise coins (intelligence)
+            $useCompetenceCoins = ($kind === 'stratégique');
+            $availableCoins = $useCompetenceCoins 
+                ? ($user->competence_coins ?? 0) 
+                : ($user->coins ?? 0);
             $settings = (array) ($user->profile_settings ?? []);
             $unlocked = $settings['unlocked_avatars'] ?? [];
             $catalog  = AvatarCatalog::get();
@@ -291,11 +295,17 @@ class BoutiqueController extends Controller
 
             $total = $unitPrice * $qty;
 
-            if ($total > $coins) {
-                return back()->with('error', "Pièces d'intelligence insuffisantes pour cet achat.");
+            if ($total > $availableCoins) {
+                $coinTypeName = $useCompetenceCoins ? "Compétence" : "Intelligence";
+                return back()->with('error', "Pièces de {$coinTypeName} insuffisantes pour cet achat.");
             }
 
-            $user->coins -= $total;
+            // Déduire les pièces appropriées
+            if ($useCompetenceCoins) {
+                $user->competence_coins -= $total;
+            } else {
+                $user->coins -= $total;
+            }
 
             if ($kind === 'life') {
                 $user->lives += $qty;
