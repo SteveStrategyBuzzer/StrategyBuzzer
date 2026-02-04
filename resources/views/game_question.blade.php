@@ -1889,7 +1889,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-@if($isFirebaseMode)
+@if($isFirebaseMode && $mode !== 'duo')
+{{-- Firebase sync for non-Duo multiplayer modes (League, Master) --}}
 <script src="/js/firebase-game-sync.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
@@ -1949,55 +1950,91 @@ document.addEventListener('DOMContentLoaded', async function() {
     const LOBBY_CODE = '{{ $lobbyCode ?? "" }}';
     const JWT_TOKEN = '{{ session("duo_jwt_token") ?? "" }}';
     const PLAYER_ID = '{{ auth()->id() }}';
+    const PLAYER_NAME = '{{ $playerName ?? "Joueur" }}';
     const IS_HOST = {{ ($params['is_host'] ?? false) ? 'true' : 'false' }};
     
-    if (!ROOM_ID || !LOBBY_CODE) {
-        console.warn('[Duo] Missing room or lobby code');
+    if (!ROOM_ID && !LOBBY_CODE) {
+        console.warn('[Duo] Missing room and lobby code');
         return;
     }
     
     // Reference to buzz button
     const buzzButton = document.getElementById('buzzButton');
-    let duoSocket = null;
     
     async function initializeSocket() {
-        duoSocket = new DuoSocketClient();
-        
-        duoSocket.onConnect = () => {
+        // DuoSocketClient is a singleton object, not a class
+        DuoSocketClient.onConnect = () => {
             console.log('[Duo] Socket connected');
-            duoSocket.joinRoom(ROOM_ID, LOBBY_CODE, {
-                laravelUserId: PLAYER_ID,
+            DuoSocketClient.joinRoom(ROOM_ID, LOBBY_CODE, {
+                playerId: PLAYER_ID,
+                playerName: PLAYER_NAME,
                 isHost: IS_HOST
             });
         };
         
-        duoSocket.onDisconnect = (reason) => {
+        DuoSocketClient.onDisconnect = (reason) => {
             console.log('[Duo] Disconnected:', reason);
         };
         
-        duoSocket.onBuzzWinner = (data) => {
+        DuoSocketClient.onError = (error) => {
+            console.error('[Duo] Error:', error);
+        };
+        
+        DuoSocketClient.onBuzzWinner = (data) => {
             console.log('[Duo] Buzz winner:', data);
-            const isMyBuzz = data.playerId === PLAYER_ID;
+            const isMyBuzz = String(data.playerId) === String(PLAYER_ID);
             window.location.href = '{{ route("game.answers", ["mode" => "duo"]) }}?buzz_time=' + data.buzzTime + '&buzz_winner=' + (isMyBuzz ? 'player' : 'opponent');
         };
         
-        duoSocket.onPhaseChanged = (phase, data) => {
-            console.log('[Duo] Phase changed:', phase);
-            if (phase === 'answering') {
+        DuoSocketClient.onBuzzResult = DuoSocketClient.onBuzzWinner;
+        
+        DuoSocketClient.onPhaseChanged = (data) => {
+            console.log('[Duo] Phase changed:', data);
+            const phase = data?.phase || data;
+            if (phase === 'answering' || phase === 'ANSWER_SELECTION') {
                 window.location.href = '{{ route("game.answers", ["mode" => "duo"]) }}';
+            } else if (phase === 'REVEAL' || phase === 'reveal') {
+                // Handle reveal phase
+            } else if (phase === 'ROUND_SCOREBOARD' || phase === 'round_scoreboard') {
+                window.location.href = '{{ route("duo.result") }}';
+            } else if (phase === 'MATCH_END' || phase === 'match_end') {
+                window.location.href = '{{ route("duo.summary") }}';
             }
         };
         
-        duoSocket.onScoreUpdate = (scores) => {
+        DuoSocketClient.onScoreUpdate = (scores) => {
             console.log('[Duo] Score update:', scores);
-            const myScore = scores[PLAYER_ID];
-            const opponentScore = Object.entries(scores).find(([id]) => id !== PLAYER_ID)?.[1] ?? 0;
-            document.getElementById('playerScore').textContent = myScore;
-            document.getElementById('opponentScore').textContent = opponentScore;
+            const myScore = scores[PLAYER_ID] ?? 0;
+            const opponentScore = Object.entries(scores).find(([id]) => String(id) !== String(PLAYER_ID))?.[1] ?? 0;
+            const playerScoreEl = document.getElementById('playerScore');
+            const opponentScoreEl = document.getElementById('opponentScore');
+            if (playerScoreEl) playerScoreEl.textContent = myScore;
+            if (opponentScoreEl) opponentScoreEl.textContent = opponentScore;
+        };
+        
+        DuoSocketClient.onGameState = (state) => {
+            console.log('[Duo] Game state:', state);
+        };
+        
+        DuoSocketClient.onQuestionPublished = (questionData) => {
+            console.log('[Duo] Question published:', questionData);
+        };
+        
+        DuoSocketClient.onAnswerRevealed = (revealData) => {
+            console.log('[Duo] Answer revealed:', revealData);
+        };
+        
+        DuoSocketClient.onSkillUsed = (skillData) => {
+            console.log('[Duo] Skill used:', skillData);
+        };
+        
+        DuoSocketClient.onMatchEnded = (matchData) => {
+            console.log('[Duo] Match ended:', matchData);
+            window.location.href = '{{ route("duo.summary") }}';
         };
         
         try {
-            await duoSocket.connect(GAME_SERVER_URL, JWT_TOKEN);
+            await DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN);
         } catch (error) {
             console.error('[Duo] Connection error:', error);
         }
@@ -2007,8 +2044,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (buzzButton) {
         buzzButton.addEventListener('click', function(e) {
             e.stopImmediatePropagation();
-            if (duoSocket && duoSocket.isConnected()) {
-                duoSocket.buzz(Date.now());
+            if (DuoSocketClient.isConnected()) {
+                DuoSocketClient.buzz(Date.now());
             }
         }, true);
     }
@@ -2016,8 +2053,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     initializeSocket();
     
     window.addEventListener('beforeunload', () => {
-        if (duoSocket && duoSocket.isConnected()) {
-            duoSocket.disconnect();
+        if (DuoSocketClient.isConnected()) {
+            DuoSocketClient.disconnect();
         }
     });
 });
