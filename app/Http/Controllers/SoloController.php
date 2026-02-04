@@ -2268,14 +2268,15 @@ class SoloController extends Controller
                 $coinsEarned += $coinsBonus;
             }
             
-            // Créditer les pièces via le CoinLedgerService
+            // Créditer les pièces de Compétence via le CoinLedgerService (Solo = Compétence coins)
             $coinService = new CoinLedgerService();
             $coinService->credit(
                 $user,
                 $coinsEarned,
                 "Victoire Solo niveau {$currentLevel}" . ($hasStrategeBonus ? " (+25% Stratège)" : ""),
                 'solo_victory',
-                $currentLevel
+                $currentLevel,
+                'competence'
             );
         }
         

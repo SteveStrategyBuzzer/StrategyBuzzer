@@ -8,12 +8,18 @@ use Illuminate\Support\Facades\DB;
 
 class CoinLedgerService
 {
-    public function credit(User $user, int $amount, string $reason, ?string $refType = null, ?int $refId = null): CoinLedger
+    public function credit(User $user, int $amount, string $reason, ?string $refType = null, ?int $refId = null, string $coinType = 'intelligence'): CoinLedger
     {
-        return DB::transaction(function () use ($user, $amount, $reason, $refType, $refId) {
+        return DB::transaction(function () use ($user, $amount, $reason, $refType, $refId, $coinType) {
             $user->lockForUpdate()->find($user->id);
             
-            $user->coins += $amount;
+            if ($coinType === 'competence') {
+                $user->competence_coins = ($user->competence_coins ?? 0) + $amount;
+                $balanceAfter = $user->competence_coins;
+            } else {
+                $user->coins = ($user->coins ?? 0) + $amount;
+                $balanceAfter = $user->coins;
+            }
             $user->save();
 
             return CoinLedger::create([
@@ -22,21 +28,30 @@ class CoinLedgerService
                 'reason' => $reason,
                 'ref_type' => $refType,
                 'ref_id' => $refId,
-                'balance_after' => $user->coins,
+                'balance_after' => $balanceAfter,
             ]);
         });
     }
 
-    public function debit(User $user, int $amount, string $reason, ?string $refType = null, ?int $refId = null): CoinLedger
+    public function debit(User $user, int $amount, string $reason, ?string $refType = null, ?int $refId = null, string $coinType = 'intelligence'): CoinLedger
     {
-        return DB::transaction(function () use ($user, $amount, $reason, $refType, $refId) {
+        return DB::transaction(function () use ($user, $amount, $reason, $refType, $refId, $coinType) {
             $user->lockForUpdate()->find($user->id);
             
-            if ($user->coins < $amount) {
-                throw new \Exception("Insufficient coins");
+            if ($coinType === 'competence') {
+                $currentBalance = $user->competence_coins ?? 0;
+                if ($currentBalance < $amount) {
+                    throw new \Exception("Insufficient competence coins");
+                }
+                $user->competence_coins = $currentBalance - $amount;
+                $balanceAfter = $user->competence_coins;
+            } else {
+                if ($user->coins < $amount) {
+                    throw new \Exception("Insufficient coins");
+                }
+                $user->coins -= $amount;
+                $balanceAfter = $user->coins;
             }
-
-            $user->coins -= $amount;
             $user->save();
 
             return CoinLedger::create([
@@ -45,7 +60,7 @@ class CoinLedgerService
                 'reason' => $reason,
                 'ref_type' => $refType,
                 'ref_id' => $refId,
-                'balance_after' => $user->coins,
+                'balance_after' => $balanceAfter,
             ]);
         });
     }
