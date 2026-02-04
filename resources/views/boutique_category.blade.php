@@ -318,7 +318,7 @@ audio { width: 100%; }
 .coin-pack { text-align: center; padding: 24px; position: relative; }
 .coin-pack.popular { border: 2px solid #fbbf24; box-shadow: 0 0 20px rgba(251,191,36,0.3); }
 .coin-amount { font-size: 2.5rem; font-weight: 900; color: #fbbf24; text-shadow: 0 2px 8px rgba(251,191,36,0.3); }
-.coin-price { font-size: 1.5rem; font-weight: 800; margin-top: 12px; }
+.coin-price { font-size: 1.5rem; font-weight: 800; margin-top: 12px; color: #22c55e; text-shadow: 0 2px 6px rgba(34,197,94,0.4); }
 .coin-icon-display { margin-bottom: 12px; }
 .popular-badge { position: absolute; top: -10px; right: -10px; background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
 
