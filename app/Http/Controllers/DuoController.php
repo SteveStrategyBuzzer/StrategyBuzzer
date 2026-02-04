@@ -1713,11 +1713,33 @@ class DuoController extends Controller
             $opponentAvatar = '/' . $opponentAvatar;
         }
         
-        return view('duo_question', [
+        // Strategic avatar system - use shared AvatarSkillService
+        $strategicAvatar = data_get($profileSettings, 'strategic_avatar.name', 'Aucun');
+        $avatarSkillsFull = \App\Services\AvatarSkillService::getAvatarSkills($strategicAvatar, $user->id);
+        $strategicAvatarPath = \App\Services\AvatarSkillService::getStrategicAvatarPath($strategicAvatar);
+        
+        // Use unified game_question layout (same as Solo)
+        return view('game_question', [
             'params' => [
+                'mode' => 'duo',
                 'match_id' => $match->id,
                 'room_code' => $match->room_id ?? null,
                 'lobby_code' => $match->lobby_code ?? null,
+                'avatar' => $strategicAvatar,
+                'avatar_skills_full' => $avatarSkillsFull,
+                'niveau' => $stats->level,
+                'score' => $playerScore,
+                'opponent_score' => $opponentScore,
+                'current_question' => $currentQuestion,
+                'current' => $currentQuestion,
+                'nb_questions' => 10,
+                'question' => [
+                    'id' => $questionData['id'] ?? null,
+                    'text' => $questionData['text'] ?? '',
+                    'theme' => $questionData['theme'] ?? 'Culture générale',
+                    'answers' => $questionData['answers'] ?? [],
+                ],
+                'chrono_time' => 8,
                 'player_info' => [
                     'id' => $user->id,
                     'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
@@ -1731,14 +1753,8 @@ class DuoController extends Controller
                     'avatar' => $opponentAvatar,
                     'score' => $opponentScore,
                     'level' => $opponentStats->level,
+                    'is_boss' => false,
                 ],
-                'question' => [
-                    'text' => $questionData['text'] ?? '',
-                    'theme' => $questionData['theme'] ?? 'Culture générale',
-                    'answers' => $questionData['answers'] ?? [],
-                ],
-                'current_question' => $currentQuestion,
-                'total_questions' => 10,
             ],
         ]);
     }

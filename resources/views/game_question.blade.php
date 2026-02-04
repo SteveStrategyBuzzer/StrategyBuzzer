@@ -4,9 +4,12 @@
 @php
 // Mode de jeu (solo, duo, league_individual, master)
 $mode = $params['mode'] ?? 'solo';
-$isFirebaseMode = in_array($mode, ['duo', 'league_individual', 'master']);
+$isMultiplayer = in_array($mode, ['duo', 'league_individual', 'master']);
+$isFirebaseMode = $isMultiplayer; // Alias pour compatibilité
 $matchId = $params['match_id'] ?? null;
 $roomCode = $params['room_code'] ?? null;
+$lobbyCode = $params['lobby_code'] ?? null;
+$totalQuestions = $params['nb_questions'] ?? $params['total_questions'] ?? 10;
 
 // Récupérer la structure complète des skills depuis le contrôleur
 $avatarSkillsFull = $params['avatar_skills_full'] ?? ['rarity' => null, 'skills' => []];
@@ -137,28 +140,44 @@ if ($isStratege) {
     }
 }
 
-// Prénoms pour le joueur
-$playerNames = ['Hugo', 'Léa', 'Lucas', 'Emma', 'Nathan', 'Chloé', 'Louis', 'Jade', 'Arthur', 'Inès', 'Raphaël', 'Camille', 'Gabriel', 'Zoé', 'Thomas', 'Alice'];
-$playerName = $playerNames[array_rand($playerNames)];
+// Prénoms pour le joueur (Solo uniquement)
+$playerInfo = $params['player_info'] ?? [];
+$opponentInfo = $params['opponent_info'] ?? [];
+$niveau = $params['niveau'];
+$playerLevel = $isMultiplayer ? ($playerInfo['level'] ?? $niveau) : $niveau;
+$opponentLevel = $isMultiplayer ? ($opponentInfo['level'] ?? $niveau) : $niveau;
+$opponentScore = $params['opponent_score'] ?? 0;
 
-// Avatar du joueur - normalize path handling for all formats (PHP 7.x compatible)
-$selectedAvatar = session('selected_avatar', 'default');
-if (strpos($selectedAvatar, 'http://') === 0 || strpos($selectedAvatar, 'https://') === 0 || strpos($selectedAvatar, '//') === 0) {
-    $playerAvatarPath = $selectedAvatar;
-} elseif (strpos($selectedAvatar, 'images/') === 0) {
-    $playerAvatarPath = asset($selectedAvatar);
-} elseif (strpos($selectedAvatar, '/') !== false && strpos($selectedAvatar, '.png') === false) {
-    $playerAvatarPath = asset("images/avatars/{$selectedAvatar}.png");
-} elseif (strpos($selectedAvatar, '/') !== false) {
-    $playerAvatarPath = asset($selectedAvatar);
+// Mode Duo/Multiplayer: utiliser les infos passées par le contrôleur
+if ($isMultiplayer && !empty($playerInfo)) {
+    $playerName = $playerInfo['name'] ?? 'Joueur';
+    $playerAvatarPath = $playerInfo['avatar'] ?? asset('images/avatars/standard/standard1.png');
+    if ($playerAvatarPath && !str_starts_with($playerAvatarPath, 'http') && !str_starts_with($playerAvatarPath, '/')) {
+        $playerAvatarPath = '/' . $playerAvatarPath;
+    }
 } else {
-    $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");
+    // Mode Solo: génération aléatoire
+    $playerNames = ['Hugo', 'Léa', 'Lucas', 'Emma', 'Nathan', 'Chloé', 'Louis', 'Jade', 'Arthur', 'Inès', 'Raphaël', 'Camille', 'Gabriel', 'Zoé', 'Thomas', 'Alice'];
+    $playerName = $playerNames[array_rand($playerNames)];
+    
+    // Avatar du joueur depuis session
+    $selectedAvatar = session('selected_avatar', 'default');
+    if (strpos($selectedAvatar, 'http://') === 0 || strpos($selectedAvatar, 'https://') === 0 || strpos($selectedAvatar, '//') === 0) {
+        $playerAvatarPath = $selectedAvatar;
+    } elseif (strpos($selectedAvatar, 'images/') === 0) {
+        $playerAvatarPath = asset($selectedAvatar);
+    } elseif (strpos($selectedAvatar, '/') !== false && strpos($selectedAvatar, '.png') === false) {
+        $playerAvatarPath = asset("images/avatars/{$selectedAvatar}.png");
+    } elseif (strpos($selectedAvatar, '/') !== false) {
+        $playerAvatarPath = asset($selectedAvatar);
+    } else {
+        $playerAvatarPath = asset("images/avatars/standard/{$selectedAvatar}.png");
+    }
 }
 
 // Avatar stratégique - les avatars sont dans public/images/avatars/
 $strategicAvatarPath = '';
 if ($currentAvatar !== 'Aucun') {
-    // Enlever les accents et normaliser
     $strategicAvatarSlug = strtolower($currentAvatar);
     $strategicAvatarSlug = str_replace(['é', 'è', 'ê'], 'e', $strategicAvatarSlug);
     $strategicAvatarSlug = str_replace(['à', 'â'], 'a', $strategicAvatarSlug);
@@ -166,13 +185,16 @@ if ($currentAvatar !== 'Aucun') {
     $strategicAvatarPath = asset("images/avatars/{$strategicAvatarSlug}.png");
 }
 
-// Info de l'adversaire - récupéré depuis les params
-$niveau = $params['niveau'];
-$opponentInfo = $params['opponent_info'] ?? [];
-$opponentScore = $params['opponent_score'] ?? 0;
-
 // Déterminer l'avatar et le nom de l'adversaire
-if ($opponentInfo['is_boss'] ?? false) {
+if ($isMultiplayer && !empty($opponentInfo)) {
+    // Mode Duo/Multiplayer: utiliser les infos de l'adversaire réel
+    $opponentName = $opponentInfo['name'] ?? 'Adversaire';
+    $opponentAvatar = $opponentInfo['avatar'] ?? asset('images/avatars/standard/standard1.png');
+    if ($opponentAvatar && !str_starts_with($opponentAvatar, 'http') && !str_starts_with($opponentAvatar, '/')) {
+        $opponentAvatar = '/' . $opponentAvatar;
+    }
+    $opponentDescription = '';
+} elseif ($opponentInfo['is_boss'] ?? false) {
     $opponentName = $opponentInfo['name'];
     $opponentAvatar = asset("images/avatars/bosses/{$opponentInfo['avatar']}.png");
     $opponentDescription = '';
@@ -837,7 +859,7 @@ if ($opponentInfo['is_boss'] ?? false) {
             <div class="player-circle">
                 <img src="{{ $playerAvatarPath }}" alt="Avatar joueur" class="player-avatar">
                 <div class="player-name">{{ $playerName }}</div>
-                <div class="player-level">{{ __('Niveau') }} {{ $niveau }}</div>
+                <div class="player-level">{{ __('Niveau') }} {{ $playerLevel }}</div>
                 <div class="player-score" id="playerScore">{{ $params['score'] }}</div>
             </div>
             
@@ -851,7 +873,7 @@ if ($opponentInfo['is_boss'] ?? false) {
                         {{ $opponentDescription }}
                     </div>
                 @endif
-                <div class="opponent-level">{{ __('Niveau') }} {{ $niveau }}</div>
+                <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel }}</div>
                 <div class="opponent-score" id="opponentScore">{{ $opponentScore }}</div>
             </div>
         </div>
@@ -1912,6 +1934,92 @@ document.addEventListener('DOMContentLoaded', async function() {
     } catch (error) {
         console.error('[QuestionPage] Firebase init error:', error);
     }
+});
+</script>
+@endif
+
+@if($mode === 'duo')
+{{-- Socket.IO integration for Duo mode --}}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const GAME_SERVER_URL = '{{ config("game.server_url", "http://localhost:3001") }}';
+    const ROOM_ID = '{{ $matchId ?? "" }}';
+    const LOBBY_CODE = '{{ $lobbyCode ?? "" }}';
+    const JWT_TOKEN = '{{ session("duo_jwt_token") ?? "" }}';
+    const PLAYER_ID = '{{ auth()->id() }}';
+    const IS_HOST = {{ ($params['is_host'] ?? false) ? 'true' : 'false' }};
+    
+    if (!ROOM_ID || !LOBBY_CODE) {
+        console.warn('[Duo] Missing room or lobby code');
+        return;
+    }
+    
+    // Reference to buzz button
+    const buzzButton = document.getElementById('buzzButton');
+    let duoSocket = null;
+    
+    async function initializeSocket() {
+        duoSocket = new DuoSocketClient();
+        
+        duoSocket.onConnect = () => {
+            console.log('[Duo] Socket connected');
+            duoSocket.joinRoom(ROOM_ID, LOBBY_CODE, {
+                laravelUserId: PLAYER_ID,
+                isHost: IS_HOST
+            });
+        };
+        
+        duoSocket.onDisconnect = (reason) => {
+            console.log('[Duo] Disconnected:', reason);
+        };
+        
+        duoSocket.onBuzzWinner = (data) => {
+            console.log('[Duo] Buzz winner:', data);
+            const isMyBuzz = data.playerId === PLAYER_ID;
+            window.location.href = '{{ route("game.answers", ["mode" => "duo"]) }}?buzz_time=' + data.buzzTime + '&buzz_winner=' + (isMyBuzz ? 'player' : 'opponent');
+        };
+        
+        duoSocket.onPhaseChanged = (phase, data) => {
+            console.log('[Duo] Phase changed:', phase);
+            if (phase === 'answering') {
+                window.location.href = '{{ route("game.answers", ["mode" => "duo"]) }}';
+            }
+        };
+        
+        duoSocket.onScoreUpdate = (scores) => {
+            console.log('[Duo] Score update:', scores);
+            const myScore = scores[PLAYER_ID];
+            const opponentScore = Object.entries(scores).find(([id]) => id !== PLAYER_ID)?.[1] ?? 0;
+            document.getElementById('playerScore').textContent = myScore;
+            document.getElementById('opponentScore').textContent = opponentScore;
+        };
+        
+        try {
+            await duoSocket.connect(GAME_SERVER_URL, JWT_TOKEN);
+        } catch (error) {
+            console.error('[Duo] Connection error:', error);
+        }
+    }
+    
+    // Override buzz button for Socket.IO
+    if (buzzButton) {
+        buzzButton.addEventListener('click', function(e) {
+            e.stopImmediatePropagation();
+            if (duoSocket && duoSocket.isConnected()) {
+                duoSocket.buzz(Date.now());
+            }
+        }, true);
+    }
+    
+    initializeSocket();
+    
+    window.addEventListener('beforeunload', () => {
+        if (duoSocket && duoSocket.isConnected()) {
+            duoSocket.disconnect();
+        }
+    });
 });
 </script>
 @endif
