@@ -845,6 +845,58 @@ if ($isMultiplayer && !empty($opponentInfo)) {
     }
 </style>
 
+@if($isMultiplayer)
+<button id="voiceMicButton" class="voice-mic-button" title="{{ __('Activer/désactiver le micro') }}">
+    <span id="micIcon">🎤</span>
+</button>
+<style>
+    .voice-mic-button {
+        position: fixed;
+        bottom: 200px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid rgba(78, 205, 196, 0.5);
+        background: rgba(15, 32, 39, 0.9);
+        color: white;
+        font-size: 1.4rem;
+        cursor: pointer;
+        z-index: 1000;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .voice-mic-button:hover {
+        background: rgba(78, 205, 196, 0.3);
+        transform: scale(1.1);
+    }
+    .voice-mic-button.active {
+        background: linear-gradient(135deg, #2ECC71, #27AE60);
+        border-color: #2ECC71;
+        animation: pulse-mic 1.5s infinite;
+    }
+    .voice-mic-button.muted {
+        background: rgba(60, 60, 60, 0.9);
+        border-color: rgba(150, 150, 150, 0.5);
+    }
+    @keyframes pulse-mic {
+        0%, 100% { box-shadow: 0 0 10px rgba(46, 204, 113, 0.5); }
+        50% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.8); }
+    }
+    @media (max-width: 768px) {
+        .voice-mic-button {
+            width: 45px;
+            height: 45px;
+            font-size: 1.2rem;
+            bottom: 180px;
+            right: 15px;
+        }
+    }
+</style>
+@endif
+
 <div class="game-container">
     <!-- Question en haut -->
     <div class="question-header">
@@ -1948,7 +2000,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const GAME_SERVER_URL = '{{ config("game.server_url", "http://localhost:3001") }}';
     const ROOM_ID = '{{ $matchId ?? "" }}';
     const LOBBY_CODE = '{{ $lobbyCode ?? "" }}';
-    const JWT_TOKEN = '{{ session("duo_jwt_token") ?? "" }}';
+    const JWT_TOKEN = '{{ $params["jwt_token"] ?? session("game_state.jwt_token") ?? "" }}';
     const PLAYER_ID = '{{ auth()->id() }}';
     const PLAYER_NAME = '{{ $playerName ?? "Joueur" }}';
     const IS_HOST = {{ ($params['is_host'] ?? false) ? 'true' : 'false' }};
@@ -2058,6 +2110,116 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 });
+</script>
+@endif
+
+@if($isMultiplayer)
+{{-- VoiceChat WebRTC - Firebase Signaling --}}
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "{{ config('services.firebase.api_key', 'AIzaSyC2D2lVq3D_lRFM3kvbLmLUFJpv8Dh35qU') }}",
+    authDomain: "{{ config('services.firebase.project_id', 'strategybuzzer') }}.firebaseapp.com",
+    projectId: "{{ config('services.firebase.project_id', 'strategybuzzer') }}",
+    storageBucket: "{{ config('services.firebase.project_id', 'strategybuzzer') }}.appspot.com",
+    messagingSenderId: "{{ config('services.firebase.messaging_sender_id', '681234567890') }}",
+    appId: "{{ config('services.firebase.app_id', '1:681234567890:web:abc123') }}"
+};
+
+const app = initializeApp(firebaseConfig, 'voice-chat-game-question');
+const db = getFirestore(app);
+window.voiceChatDb = db;
+window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp };
+</script>
+
+<script src="{{ asset('js/VoiceChat.js') }}"></script>
+
+<script>
+(function() {
+    'use strict';
+
+    let voiceChat = null;
+    let isMicActive = false;
+    const VOICE_LOBBY_CODE = '{{ $lobbyCode ?? "" }}';
+    const CURRENT_PLAYER_ID = {{ auth()->id() ?? 0 }};
+    const GAME_MODE = '{{ $mode ?? "duo" }}';
+
+    const micButton = document.getElementById('voiceMicButton');
+    const micIcon = document.getElementById('micIcon');
+
+    function updateMicButtonState(active) {
+        isMicActive = active;
+        if (!micButton) return;
+        if (active) {
+            micButton.classList.add('active');
+            micButton.classList.remove('muted');
+            micIcon.textContent = '🎤';
+        } else {
+            micButton.classList.remove('active');
+            micButton.classList.add('muted');
+            micIcon.textContent = '🔇';
+        }
+    }
+
+    async function toggleMicrophone() {
+        if (!voiceChat) {
+            console.log('[VoiceChat] Voice chat not initialized');
+            return;
+        }
+        try {
+            const newState = await voiceChat.toggleMicrophone();
+            updateMicButtonState(newState);
+            console.log('[VoiceChat] Mic toggled:', newState ? 'ON' : 'OFF');
+        } catch (error) {
+            console.error('[VoiceChat] Toggle mic error:', error);
+        }
+    }
+
+    async function initVoiceChat() {
+        if (!VOICE_LOBBY_CODE || !window.voiceChatDb) {
+            console.log('[VoiceChat] Missing lobby code or Firebase - hiding mic button');
+            if (micButton) micButton.style.display = 'none';
+            return;
+        }
+
+        try {
+            voiceChat = new VoiceChat({
+                sessionId: VOICE_LOBBY_CODE,
+                localUserId: CURRENT_PLAYER_ID,
+                mode: GAME_MODE,
+                db: window.voiceChatDb,
+                onConnectionChange: (state) => {
+                    console.log('[VoiceChat] State:', state);
+                    if (state.muted !== undefined) {
+                        updateMicButtonState(!state.muted);
+                    }
+                },
+                onError: (error) => console.error('[VoiceChat] Error:', error)
+            });
+
+            await voiceChat.initialize();
+            console.log('[VoiceChat] Initialized on game_question page');
+
+            if (micButton) {
+                micButton.addEventListener('click', toggleMicrophone);
+                updateMicButtonState(false);
+            }
+        } catch (error) {
+            console.error('[VoiceChat] Init error:', error);
+            if (micButton) micButton.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initVoiceChat, 1000);
+    });
+
+    window.addEventListener('beforeunload', () => {
+        if (voiceChat) voiceChat.cleanup();
+    });
+})();
 </script>
 @endif
 

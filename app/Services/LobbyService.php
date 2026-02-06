@@ -149,18 +149,55 @@ class LobbyService
         
         $hostDisplayName = $this->getPlayerDisplayName($host);
         
+        $mergedSettings = array_merge([
+            'max_players' => $this->getMaxPlayers($mode),
+            'min_players' => $this->getMinPlayers($mode),
+            'teams_enabled' => in_array($mode, ['league_team', 'master']),
+            'theme' => __('Culture générale'),
+            'nb_questions' => 10,
+        ], $settings);
+
+        $matchId = $settings['match_id'] ?? null;
+        $playerIds = $this->resolvePlayerIds($host, $mode, $matchId);
+
+        $gameServerData = [];
+        try {
+            $result = $this->gameServerService->createRoomAndGenerateTokens(
+                $mode,
+                $host->id,
+                $playerIds,
+                [
+                    'match_id' => $matchId,
+                    'nb_questions' => $mergedSettings['nb_questions'],
+                    'lobby_code' => $lobbyCode,
+                ]
+            );
+
+            if (isset($result['roomId'])) {
+                $gameServerData = [
+                    'roomId' => $result['roomId'],
+                    'player_tokens' => $result['player_tokens'] ?? [],
+                    'socket_url' => $this->gameServerService->getSocketUrl(),
+                ];
+                Log::info('LobbyService: Room created at lobby creation', [
+                    'lobbyCode' => $lobbyCode,
+                    'roomId' => $result['roomId'],
+                    'tokenCount' => count($result['player_tokens'] ?? []),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('LobbyService: Could not create room at lobby creation, will retry later', [
+                'lobbyCode' => $lobbyCode,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $lobby = [
             'code' => $lobbyCode,
             'host_id' => $host->id,
             'host_name' => $hostDisplayName,
             'mode' => $mode,
-            'settings' => array_merge([
-                'max_players' => $this->getMaxPlayers($mode),
-                'min_players' => $this->getMinPlayers($mode),
-                'teams_enabled' => in_array($mode, ['league_team', 'master']),
-                'theme' => __('Culture générale'),
-                'nb_questions' => 10,
-            ], $settings),
+            'settings' => $mergedSettings,
             'players' => [
                 $host->id => [
                     'id' => $host->id,
@@ -173,9 +210,11 @@ class LobbyService
                     'is_host' => true,
                     'joined_at' => now()->toISOString(),
                     'competence_coins' => $host->competence_coins ?? 0,
+                    'jwt_token' => $gameServerData['player_tokens'][$host->id] ?? null,
                 ],
             ],
             'teams' => [],
+            'game_server' => $gameServerData,
             'created_at' => now()->toISOString(),
             'status' => 'waiting',
         ];
@@ -184,6 +223,25 @@ class LobbyService
         $this->addPlayerToLobbyList($host->id, $lobbyCode, $mode);
         
         return $lobby;
+    }
+
+    protected function resolvePlayerIds(User $host, string $mode, ?int $matchId = null): array
+    {
+        $playerIds = [$host->id];
+
+        if ($matchId) {
+            $match = \App\Models\DuoMatch::find($matchId);
+            if ($match) {
+                if ($match->player1_id && $match->player1_id != $host->id) {
+                    $playerIds[] = $match->player1_id;
+                }
+                if ($match->player2_id && $match->player2_id != $host->id) {
+                    $playerIds[] = $match->player2_id;
+                }
+            }
+        }
+
+        return array_unique($playerIds);
     }
     
     public function joinLobby(string $code, User $player): array
@@ -212,6 +270,17 @@ class LobbyService
         
         $playerDisplayName = $this->getPlayerDisplayName($player);
         
+        $jwtToken = $lobby['game_server']['player_tokens'][$player->id] ?? null;
+
+        if (!$jwtToken && !empty($lobby['game_server']['roomId'])) {
+            $jwtToken = $this->gameServerService->generatePlayerToken($player->id, $lobby['game_server']['roomId']);
+            $lobby['game_server']['player_tokens'][$player->id] = $jwtToken;
+            Log::info('LobbyService: Generated token on-the-fly for joining player', [
+                'lobbyCode' => $code,
+                'playerId' => $player->id,
+            ]);
+        }
+
         $lobby['players'][$player->id] = [
             'id' => $player->id,
             'name' => $playerDisplayName,
@@ -223,12 +292,13 @@ class LobbyService
             'is_host' => false,
             'joined_at' => now()->toISOString(),
             'competence_coins' => $player->competence_coins ?? 0,
+            'jwt_token' => $jwtToken,
         ];
         
         $this->saveLobby($code, $lobby);
         $this->addPlayerToLobbyList($player->id, $code, $lobby['mode'] ?? 'duo');
         
-        return ['success' => true, 'lobby' => $lobby];
+        return ['success' => true, 'lobby' => $lobby, 'jwt_token' => $jwtToken];
     }
     
     public function leaveLobby(string $code, User $player): array

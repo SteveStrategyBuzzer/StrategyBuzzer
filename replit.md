@@ -66,7 +66,47 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
 
-**WebRTC Voice Chat System:** Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling.
+**WebRTC Voice Chat System:** Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling. VoiceChat uses `lobby_code` as persistent `sessionId` across all game pages.
+
+#### Multiplayer Routing Map & Token Strategy
+
+**Token Pre-Generation (CRITICAL):** JWT tokens are generated at lobby creation time (when the host enters the lobby), NOT at game start. This eliminates synchronization delays between players.
+
+| Mode | Players | Tokens | Lobby Route | Gameplay Prefix | Controller |
+|------|---------|--------|-------------|-----------------|------------|
+| **Duo** | 2 | 2 | `/duo/lobby` | `/game/duo/*` | `DuoController` |
+| **League Individual** | 2 | 2 | `/league/individual/lobby` | `/game/league/*` | `LeagueIndividualController` |
+| **League Team** | 10 (5v5) | 10 | `/league/team/lobby/{teamId}` | (pending) | `LeagueTeamController` |
+| **Master** | 3-40 | variable | Via Firebase | `/game/master/*` | `MasterGameController` |
+
+**Duo Routes (`/duo/*` + `/game/duo/*`):**
+- Lobby & Matchmaking: `/duo/lobby`, `/duo/invite`, `/duo/matchmaking/random`, `/duo/matchmaking`
+- Queue: `/duo/queue/join`, `/duo/queue/leave`, `/duo/queue/opponents`
+- Match Management: `/duo/matches/{match}/accept`, `/duo/matches/{match}/decline`, `/duo/matches/{match}/create-room`
+- Gameplay Flow: `/game/duo/start` (POST) → `/game/duo/intro` → `/game/duo/question` → `/game/duo/answer` → `/game/duo/result` → `/game/duo/match-result`
+- Skills: `/game/duo/use-skill`, `/duo/match/{match}/skill`, `/duo/match/{match}/hint`, `/duo/match/{match}/ai-suggest`
+
+**League Individual Routes (`/league/individual/*` + `/game/league/*`):**
+- Lobby: `/league/individual/lobby`, `/league/individual/`
+- API: `/api/league/individual/initialize`, `/api/league/individual/create-match`, `/api/league/individual/rankings`
+- Gameplay Flow: `/game/league/start` (POST) → `/game/league/resume` → `/game/league/question` → `/game/league/answer` → `/game/league/result` → `/game/league/match-result`
+- Match API: `/api/league/individual/match/{match}/buzz`, `/api/league/individual/match/{match}/submit-answer`
+
+**League Team Routes (`/league/team/*`):**
+- Team Management: `/league/team/management/{teamId?}`, `/league/team/create`, `/league/team/search`, `/league/team/captain/{teamId?}`
+- Team Actions: `/league/team/invite`, `/league/team/leave`, `/league/team/kick`, `/league/team/transfer-captain`
+- Lobby & Gathering: `/league/team/lobby/{teamId}`, `/league/team/{teamId}/gathering/{sessionId}`
+- Match API: `/api/league/team/find-opponents`, `/api/league/team/start-match`
+
+**Master Routes (`/game/master/*`):**
+- Gameplay Flow: `/game/master/start` (POST) → `/game/master/resume` → `/game/master/question` → `/game/master/answer` → `/game/master/result` → `/game/master/match-result`
+- API: `/api/master/game/{gameId}/join`, `/api/master/game/{gameId}/start`, `/api/master/game/{gameId}/answer`
+
+**Token Flow (All Multiplayer Modes):**
+1. Host creates/enters lobby → Laravel creates Game Server room + generates ALL player tokens → Tokens stored in lobby cache
+2. Each player joins lobby → Token retrieved from cache instantly → Socket.IO connection established immediately
+3. GO button pressed → Game Server starts match → All players already connected, zero delay
+4. VoiceChat (WebRTC) active from lobby through entire gameplay using `lobby_code` as persistent sessionId
 
 #### Monorepo Architecture (Node.js Game Server)
 The project uses a monorepo with `shared`, `game-engine`, and `game-server` packages. The Game Server (Node.js/TypeScript) uses Socket.IO for real-time communication and Express for REST API. Game phases (INTRO, BUZZ_WINDOW, QUESTION_DISPLAY, ANSWER_SELECTION, REVEAL, ROUND_SCOREBOARD, TIEBREAKER_*, MATCH_END) are aligned with Solo mode.

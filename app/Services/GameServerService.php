@@ -296,6 +296,51 @@ class GameServerService
         }
     }
 
+    public function createRoomAndGenerateTokens(string $mode, int $hostPlayerId, array $playerIds, array $config = []): array
+    {
+        try {
+            $roomResult = $this->createRoom($mode, $hostPlayerId, $config);
+
+            $roomId = $roomResult['roomId'] ?? $roomResult['room_id'] ?? null;
+            if (!$roomId) {
+                Log::error('GameServerService: Room creation failed, cannot generate tokens', [
+                    'mode' => $mode,
+                    'hostPlayerId' => $hostPlayerId,
+                ]);
+                return [
+                    'success' => false,
+                    'error' => $roomResult['error'] ?? 'Failed to create room',
+                ];
+            }
+
+            $tokens = [];
+            foreach ($playerIds as $playerId) {
+                $tokens[$playerId] = $this->generatePlayerToken((int) $playerId, $roomId);
+            }
+
+            Log::info('GameServerService: Room created with pre-generated tokens', [
+                'roomId' => $roomId,
+                'mode' => $mode,
+                'tokenCount' => count($tokens),
+                'playerIds' => $playerIds,
+            ]);
+
+            return [
+                'success' => true,
+                'roomId' => $roomId,
+                'player_tokens' => $tokens,
+            ];
+        } catch (\Exception $e) {
+            Log::error('GameServerService: Exception in createRoomAndGenerateTokens', [
+                'message' => $e->getMessage(),
+            ]);
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
     public function getSocketUrl(): string
     {
         return $this->gameServerUrl;

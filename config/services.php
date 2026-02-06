@@ -43,4 +43,11 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
+    'firebase' => [
+        'api_key' => env('FIREBASE_API_KEY', 'AIzaSyC2D2lVq3D_lRFM3kvbLmLUFJpv8Dh35qU'),
+        'project_id' => env('FIREBASE_PROJECT_ID', 'strategybuzzer'),
+        'messaging_sender_id' => env('FIREBASE_MESSAGING_SENDER_ID', '681234567890'),
+        'app_id' => env('FIREBASE_APP_ID', '1:681234567890:web:abc123'),
+    ],
+
 ];
