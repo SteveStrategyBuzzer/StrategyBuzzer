@@ -24,3 +24,4 @@ storage/framework/views/*
 
 # Firebase credentials (never commit)
 storage/app/firebase-credentials.json
+export_strategybuzzer.sql
