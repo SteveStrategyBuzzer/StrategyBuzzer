@@ -1,0 +1,43 @@
+OBJECTIF (Étape 1) :
+Passer 100% des générations TEXTE via Gemini en utilisant UNIQUEMENT la Question API Node (question-api.js).
+Interdiction totale d’appeler OpenAI directement depuis Laravel.
+Ne touche pas aux fonctionnalités applicatives autres que la source IA (mêmes écrans, mêmes flux).
+
+CONTEXTE :
+- Backend Laravel appelle aujourd’hui OpenAI dans :
+  1) app/Http/Controllers/MasterGameController.php : OpenAI::chat()->create(...) (questions Master)
+  2) app/Http/Controllers/SoloController.php : \OpenAI::client(...)->... (faits "Le saviez-vous")
+- Node Question API (question-api.js) utilise déjà Gemini pour /generate-question et /generate-master-question (ou équivalent).
+- On veut un seul fournisseur IA : GEMINI.
+- OPENAI_API_KEY doit devenir inutilisé pour le texte (sera traité plus tard pour l’image).
+
+TRAVAIL À FAIRE (sans casser) :
+
+A) Master (questions maître du jeu)
+1) Localise l’endroit EXACT dans MasterGameController.php où OpenAI génère une question.
+2) Remplace l’appel OpenAI par un appel HTTP POST vers la Question API Node (QUESTION_API_URL) sur l’endpoint Master Gemini existant :
+   - Body doit inclure au minimum : language, theme/sujet, niveau/difficulté, et tout paramètre déjà utilisé par le flow Master.
+3) Garde le format de retour IDENTIQUE à ce que Laravel attend (mêmes champs JSON / mêmes clés), sinon adapte la Question API (pas le front) pour matcher.
+
+B) Solo (faits "Le saviez-vous")
+1) Localise l’endroit EXACT dans SoloController.php où OpenAI génère ces faits.
+2) Crée (si nécessaire) un nouvel endpoint Node dédié, par exemple POST /generate-fun-fact, qui :
+   - reçoit { language, theme, niveau } (ou sous-thème si dispo)
+   - retourne { factText } (ou le format exact attendu)
+   - utilise Gemini (même client GoogleGenAI) avec un prompt court, fiable, sans hallucinations extravagantes.
+3) Remplace l’appel OpenAI PHP par l’appel HTTP à ce nouvel endpoint Node.
+
+C) Nettoyage et conformité
+1) Après remplacement, aucun fichier PHP ne doit contenir : OpenAI::, \OpenAI::, OpenAI\Laravel\Facades\OpenAI.
+2) Ne supprime pas encore les packages OpenAI : juste rendre le code inutilisé pour le texte.
+3) Ajoute des logs sobres côté Node si l’appel échoue (status + message), et côté Laravel remonte une erreur propre sans planter la page.
+
+TESTS À FAIRE DANS REPLIT (obligatoire)
+1) Lancer une génération Master : vérifier que ça passe par Node (Gemini) et que la structure est OK.
+2) Lancer Solo : vérifier que "Le saviez-vous" s’affiche et est dans la bonne langue.
+3) Rechercher dans tout le repo : il ne doit plus rester d’appel OpenAI côté Laravel pour le texte.
+
+LIVRABLE
+- Donne-moi la liste des fichiers modifiés + le diff (ou résumé précis des changements).
+- Confirme les endpoints Node utilisés (noms exacts).
+- Confirme que la variable OPENAI_API_KEY n’est plus nécessaire pour TEXTE.

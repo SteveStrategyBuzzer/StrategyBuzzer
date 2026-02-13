@@ -1,0 +1,111 @@
+Bonjour, j’ai migré le code Laravel sur une VM Google Cloud et j’ai importé la base PostgreSQL, mais le gameplay temps réel (multi / buzz / lobby) ne fonctionne pas parce qu’il manque la partie “socket / firestore / services”.
+
+J’ai besoin d’une réponse ultra structurée sur l’architecture Replit actuelle, avec ce qui tourne et à quoi ça sert, par mode de jeu.
+
+Merci de répondre en sections :
+
+1) Processus / serveurs qui tournent sur Replit
+
+Liste exacte des process (ex: php artisan serve, npm run dev, node server.js, socket.io, queue worker, etc.)
+
+Pour chacun : commande exacte, dossier de lancement, port, et rôle (ex: WebSocket, API, worker, scheduler).
+
+Comment le projet est “démarré” sur Replit (Start command / run button / replit.nix / .replit).
+
+2) Temps réel : WebSocket / Socket.IO / Laravel WebSockets
+
+Quelle techno exacte ? (Socket.IO, Pusher, Laravel Echo, beyondcode/laravel-websockets, autre)
+
+Ports utilisés + URLs côté client
+
+Fichiers clés : noms + chemins (ex: server.js, socket.ts, resources/js/..., routes/channels.php, etc.)
+
+Événements principaux : lobby join/leave, buzz, answer submitted, score update, start game, next question.
+
+3) Firestore (si utilisé)
+
+Est-ce que Firestore est réellement utilisé en prod Replit ? OUI/NON
+
+Si OUI :
+
+Collections/documents exacts (chemins) utilisés pour :
+
+lobbies
+
+chat
+
+voice presence
+
+game sessions / state
+
+answers
+
+match history
+
+Quel SDK (Admin vs client) et où il est initialisé (chemins des fichiers)
+
+Variables d’environnement / secrets nécessaires (nom exact des secrets)
+
+Règles Firestore attendues (extraits importants ou logique d’accès)
+
+4) Base de données PostgreSQL (Neon)
+
+Confirmation : toutes les données gameplay sont dans Postgres ou une partie est dans Firestore ?
+
+Tables clés par mode (Solo / Duo / Ligue / Maître du jeu) : quelles tables sont lues/écrites pendant une partie ?
+
+5) Mapping par mode de jeu (hyper important)
+
+Pour chaque mode, expliquez le flux complet et quels “items” interviennent :
+
+Mode SOLO
+
+Quand je clique “Jouer”, qu’est-ce qui se passe ?
+
+Le timer / questions / scoring : géré où ? (client JS, Laravel, Node, Firestore)
+
+Si offline/HTTP only : quelles routes et quels fichiers ?
+
+Mode DUO
+
+Création de room / matchmaking : où ?
+
+Synchronisation buzz/answers : via socket ou Firestore ?
+
+Calcul score : où ?
+
+Quitter/rejoindre : où ?
+
+Mode LIGUE
+
+Lobby team / match : où ?
+
+Synchronisation 5 joueurs : où ?
+
+Stockage état de partie : où ?
+
+Mode MAÎTRE DU JEU
+
+Création quiz / codes : où ?
+
+Distribution questions aux joueurs : où ?
+
+Temps réel : via quoi ?
+
+6) Variables d’environnement indispensables (noms exacts)
+
+Tout ce qui est requis pour que ça fonctionne : sockets, Firestore, keys, URL, etc.
+
+Donnez uniquement les noms des secrets/env (pas les valeurs).
+
+7) Commandes exactes pour reproduire sur une VM Debian
+
+Les commandes d’installation (npm deps, build, artisan, queue, scheduler)
+
+Les services à lancer (systemd) et ports à ouvrir
+
+Tout ordre de démarrage recommandé
+
+Objectif : je veux reproduire à l’identique la stack Replit sur ma VM.
+
+Merci !
