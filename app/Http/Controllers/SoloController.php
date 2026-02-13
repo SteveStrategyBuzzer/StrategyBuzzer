@@ -4141,32 +4141,33 @@ class SoloController extends Controller
     }
     
     /**
-     * Génère un fait intéressant "Le saviez-vous" basé sur la question avec OpenAI
+     * Génère un fait intéressant "Le saviez-vous" basé sur la question via l'API Node (Gemini)
      */
     private function generateDidYouKnow($question, $isCorrect)
     {
         try {
             $correctAnswer = $question['answers'][$question['correct_index']] ?? '';
             $questionText = $question['text'] ?? '';
-            
-            $prompt = "Basé sur cette question de quiz : \"{$questionText}\" avec la bonne réponse \"{$correctAnswer}\", explique POURQUOI cette réponse est correcte ou donne le contexte qui permet de comprendre la réponse. Maximum 2 phrases (120 caractères). Exemple : si la question est 'Les flamants roses naissent-ils gris ?' et la réponse 'Oui', explique : 'C'est l'ingestion de pigments caroténoïdes qui leur donne cette couleur rose caractéristique.'";
-            
-            $client = \OpenAI::client(config('openai.api_key'));
-            
-            $response = $client->chat()->create([
-                'model' => 'gpt-3.5-turbo',
-                'messages' => [
-                    ['role' => 'system', 'content' => 'Tu es un expert en culture générale qui génère des faits intéressants courts et captivants.'],
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'max_tokens' => 80,
-                'temperature' => 0.7,
+            $language = $this->getUserLanguage();
+
+            $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-fun-fact';
+
+            $response = \Illuminate\Support\Facades\Http::timeout(15)->post($apiUrl, [
+                'questionText' => $questionText,
+                'correctAnswer' => $correctAnswer,
+                'language' => $language,
             ]);
-            
-            $didYouKnow = $response->choices[0]->message->content ?? 'Continuez à apprendre et vous découvrirez encore plus de choses fascinantes !';
-            
-            return trim($didYouKnow);
-            
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if (!empty($data['factText'])) {
+                    return trim($data['factText']);
+                }
+            }
+
+            \Log::warning('Fun fact: réponse API invalide', ['status' => $response->status()]);
+            return 'Chaque question est une opportunité d\'apprendre quelque chose de nouveau !';
+
         } catch (\Exception $e) {
             \Log::error('Erreur génération "Le saviez-vous": ' . $e->getMessage());
             return 'Chaque question est une opportunité d\'apprendre quelque chose de nouveau !';

@@ -1580,6 +1580,65 @@ app.post('/download-image', async (req, res) => {
   }
 });
 
+app.post('/generate-fun-fact', async (req, res) => {
+  const { questionText = '', correctAnswer = '', language = 'fr' } = req.body;
+
+  const languageNames = {
+    'fr': 'français', 'en': 'anglais', 'es': 'espagnol', 'it': 'italien',
+    'de': 'allemand', 'pt': 'portugais', 'ru': 'russe', 'ar': 'arabe',
+    'zh': 'chinois', 'el': 'grec'
+  };
+  const langName = languageNames[language] || 'français';
+
+  console.log(`\n💡 Génération fun fact (langue: ${language})`);
+
+  try {
+    const prompt = `Tu es un expert en culture générale. Basé sur cette question de quiz : "${questionText}" avec la bonne réponse "${correctAnswer}", explique POURQUOI cette réponse est correcte ou donne le contexte qui permet de comprendre la réponse. Maximum 2 phrases courtes. Réponds en ${langName}. Réponds UNIQUEMENT avec du JSON valide: {"factText": "ton explication ici"}`;
+
+    const geminiResponse = await gemini.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [
+        { role: 'user', parts: [{ text: prompt }] }
+      ],
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 150,
+        responseMimeType: 'application/json'
+      }
+    });
+
+    let content = '';
+    if (geminiResponse.candidates && geminiResponse.candidates[0]?.content?.parts) {
+      content = geminiResponse.candidates[0].content.parts.map(p => p.text || '').join('');
+    } else if (geminiResponse.text) {
+      content = geminiResponse.text;
+    }
+    content = content?.trim() || '';
+
+    let cleanContent = content;
+    if (cleanContent.startsWith('```json')) cleanContent = cleanContent.slice(7);
+    if (cleanContent.startsWith('```')) cleanContent = cleanContent.slice(3);
+    if (cleanContent.endsWith('```')) cleanContent = cleanContent.slice(0, -3);
+    cleanContent = cleanContent.trim();
+
+    const parsed = JSON.parse(cleanContent);
+    const factText = parsed.factText || parsed.fact_text || parsed.text || '';
+
+    console.log(`✅ Fun fact généré: "${factText.substring(0, 60)}..."`);
+
+    res.json({ success: true, factText });
+
+  } catch (error) {
+    console.error('❌ Erreur génération fun fact:', error.message);
+    res.json({
+      success: true,
+      factText: language === 'fr'
+        ? 'Chaque question est une opportunité d\'apprendre quelque chose de nouveau !'
+        : 'Every question is an opportunity to learn something new!'
+    });
+  }
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Question API server running on port ${PORT}`);

@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use OpenAI\Laravel\Facades\OpenAI;
+use Illuminate\Support\Facades\Http;
 
 class MasterGameController extends Controller
 {
@@ -217,46 +217,52 @@ class MasterGameController extends Controller
         $questionType = $this->getQuestionTypeForNumber($game, $questionNumber);
         $isImageQuestion = ($questionType === 'image');
         
-        $prompt = $this->buildQuestionPrompt($game, $questionType, $isImageQuestion, $existingQuestions, $questionNumber, $subTheme);
+        $language = strtolower($game->language ?? $game->languages[0] ?? 'fr');
+
+        if ($game->domain_type === 'theme') {
+            $theme = $game->theme ?? 'Culture générale';
+        } else {
+            $theme = ($game->school_subject ?? 'Culture générale') . ' - ' . ($game->school_level ?? 'Général');
+        }
+
+        $previousQuestions = array_values($existingQuestions);
 
         try {
-            $response = OpenAI::chat()->create([
-                'model' => 'gpt-3.5-turbo',
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'Tu es un expert en création de quiz éducatifs. Tu crées des questions pertinentes, variées et UNIQUES avec des réponses plausibles. Chaque question doit être différente des autres.'
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt
-                    ],
-                ],
-                'max_tokens' => 500,
-                'temperature' => 0.9,
+            $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
+
+            $response = Http::timeout(30)->post($apiUrl, [
+                'theme' => $theme,
+                'language' => $language,
+                'questionType' => $isImageQuestion ? 'multiple_choice' : $questionType,
+                'questionNumber' => (int) $questionNumber,
+                'previousQuestions' => $previousQuestions,
+                'gameSeed' => $game->id,
             ]);
 
-            $content = $response->choices[0]->message->content;
-            
-            // Parser la réponse JSON de l'IA
-            $data = json_decode($content, true);
-            
-            if (!$data || !isset($data['answers'])) {
-                throw new \Exception('Format de réponse invalide');
+            if (!$response->successful()) {
+                Log::warning('Master regenerate: API Node erreur HTTP', ['status' => $response->status()]);
+                throw new \Exception('API Node erreur HTTP ' . $response->status());
             }
 
-            return response()->json($data);
-            
+            $data = $response->json();
+
+            if (!$data || !($data['success'] ?? false) || !isset($data['question'])) {
+                throw new \Exception('Format de réponse API invalide');
+            }
+
+            $q = $data['question'];
+
+            return response()->json([
+                'question_text' => $q['text'] ?? 'Question générée',
+                'answers' => $q['answers'] ?? ['Réponse A', 'Réponse B', 'Réponse C', 'Réponse D'],
+                'correct_answer' => $q['correct_index'] ?? 0,
+            ]);
+
         } catch (\Exception $e) {
-            // En cas d'erreur, retourner des données par défaut
+            Log::error('Master regenerate: Exception', ['error' => $e->getMessage(), 'game_id' => $gameId]);
             return response()->json([
                 'question_text' => 'Question générée automatiquement',
-                'answers' => [
-                    'Réponse A',
-                    'Réponse B', 
-                    'Réponse C',
-                    'Réponse D',
-                ],
+                'answers' => ['Réponse A', 'Réponse B', 'Réponse C', 'Réponse D'],
                 'correct_answer' => 0,
                 'error' => $e->getMessage()
             ]);
@@ -772,7 +778,7 @@ class MasterGameController extends Controller
                     $this->createEmptyImageQuestionTemplate($game, $i);
                 }
             } else {
-                // Pour les questions texte (MC ou True/False) : générer avec OpenAI
+                // Pour les questions texte (MC ou True/False) : générer via API Node (Gemini)
                 $questionText = $this->generateTextQuestionWithAI($game, $i, $questionType, $generatedQuestions);
                 if ($questionText) {
                     $generatedQuestions[] = $questionText;
@@ -1098,7 +1104,7 @@ class MasterGameController extends Controller
         }
     }
     
-    // Construire le prompt pour OpenAI
+    // Construire le prompt pour la génération de question (legacy - utilisé par parseAIResponse)
     private function buildPromptForQuestion($game, $questionType)
     {
         $language = $game->language ?? 'FR';
@@ -1140,7 +1146,6 @@ class MasterGameController extends Controller
         }
     }
     
-    // Parser la réponse d'OpenAI
     private function parseAIResponse($content, $questionType)
     {
         $lines = explode("\n", $content);
