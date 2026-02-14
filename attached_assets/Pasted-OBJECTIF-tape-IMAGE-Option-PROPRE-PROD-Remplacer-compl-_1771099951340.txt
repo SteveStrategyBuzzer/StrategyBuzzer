@@ -1,0 +1,76 @@
+OBJECTIF (Étape IMAGE — Option PROPRE PROD) :
+- Remplacer complètement DALL·E/OpenAI par Gemini Imagen.
+- Garder le endpoint existant /generate-image-question.
+- Changer le contrat de réponse MINIMALEMENT :
+  - Ajouter image_base64 + image_mime
+  - Garder image_url en option pour backward-compat (mais ne plus l’utiliser)
+- Laravel doit enregistrer l’image dans storage/app/public/master_images/ et retourner une URL publique stable.
+- Après cette étape : AUCUN appel OpenAI (Node + Laravel) pour l’image.
+
+CONTEXTE ACTUEL :
+- question-api.js :
+  - OpenAI import + openaiDallE
+  - /generate-image-question appelle openaiDallE.images.generate() (DALL-E 3) → URL temporaire
+  - /download-image télécharge l’URL
+- Laravel app/Services/ImageGenerationService.php :
+  - appelle /generate-image-question
+  - récupère { success, image_url, question }
+  - télécharge via file_get_contents(image_url) puis save en local
+
+PROBLÈME :
+- Imagen renvoie des bytes base64 (pas d’URL externe).
+- On veut éviter que Node écrive dans le storage Laravel (permissions/chemins/sécurité).
+
+PLAN À IMPLÉMENTER :
+
+A) Node (question-api.js) — Endpoint Imagen
+1) SUPPRIMER totalement OpenAI côté Node :
+   - Retirer require('openai'), openaiDallE, et toute logique OPENAI_API_KEY liée à l’image.
+   - /download-image devient inutile : soit le supprimer, soit le laisser mais non utilisé (préféré: supprimer si aucune dépendance).
+2) Dans /generate-image-question :
+   - Utiliser @google/genai pour appeler Imagen (Gemini API Gen Media / Imagen).
+   - Modèle recommandé : imagen-4.0-generate-001 (prévoir param simple pour fast si besoin).
+3) Générer 1 image en base64.
+4) Réponse JSON (nouveau contrat minimal) :
+   - success: true
+   - question: { ... } (inchangé)
+   - image_base64: "<base64 sans préfixe>"
+   - image_mime: "image/png" (ou "image/jpeg" selon sortie)
+   - (optionnel) image_url: null (ou omis)
+5) Erreurs :
+   - Retourner HTTP 502 avec { success:false, error:"IMAGE_GENERATION_FAILED", details:"..." }
+   - Ne jamais logger les clés.
+
+B) Laravel (ImageGenerationService.php) — Sauvegarde base64
+1) Adapter la méthode qui appelle /generate-image-question :
+   - Si response contient image_base64 :
+       a) Décoder base64
+       b) Déterminer extension depuis image_mime (png/jpg)
+       c) Sauver dans storage/app/public/master_images/
+       d) Retourner/propager une URL publique stable : /storage/master_images/<filename>
+       e) Ne pas faire file_get_contents() / download
+   - Sinon fallback ancien :
+       - si image_url existe → download comme avant (compatibilité)
+2) S’assurer que "php artisan storage:link" est déjà en place (sinon mentionner).
+3) Garder le code robuste (vérifier base64 valide, taille max raisonnable).
+
+C) NETTOYAGE FINAL (dans ce même PR)
+1) Recherche globale :
+   - plus aucune référence OpenAI dans Laravel liée aux images
+   - plus aucune référence OpenAI dans question-api.js
+2) Mettre à jour commentaires/README si présents.
+
+TESTS OBLIGATOIRES
+1) Depuis le terminal Replit :
+   - curl POST /generate-image-question (avec un prompt test)
+   - vérifier JSON contient image_base64 + image_mime
+2) Lancer le flow Master/Laravel qui utilise l’image :
+   - vérifier que l’image apparaît via /storage/master_images/...
+3) Vérifier qu’OpenAI n’est plus utilisé :
+   - grep/ripgrep "openai" / "OpenAI" dans repo
+
+LIVRABLES À ME FOURNIR
+- Liste exacte des fichiers modifiés
+- Extrait du code du endpoint /generate-image-question (format réponse)
+- Extrait du code Laravel qui decode/save base64
+- Résultat des tests curl (status + champs retournés)

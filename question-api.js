@@ -6,18 +6,6 @@ const gemini = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY 
 });
 
-// Fallback OpenAI for DALL-E image generation only (if needed)
-let openaiDallE = null;
-try {
-  const OpenAI = require('openai').default;
-  if (process.env.OPENAI_API_KEY) {
-    openaiDallE = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
-  }
-} catch (e) {
-  console.log('OpenAI not available for DALL-E, using Gemini only');
-}
 
 const app = express();
 app.use(express.json());
@@ -1437,48 +1425,53 @@ function generateVisualScenario() {
     }
   }
   
-  // Construire la description pour DALL-E
   scenario.description = `A peaceful countryside scene with ${scenario.presentElements.join(', ')}. The style should be realistic and detailed, with good visibility of all elements. Natural lighting, clear day.`;
   
   return scenario;
 }
 
-// Endpoint pour générer une question image-mémoire
 app.post('/generate-image-question', async (req, res) => {
   const { questionNumber = 1, language = 'fr' } = req.body;
-  
+
   console.log(`\n🖼️ Génération question image-mémoire #${questionNumber} (langue: ${language})`);
-  
+
   try {
-    // 1. Générer le scénario visuel
     const scenario = generateVisualScenario();
     console.log(`📋 Scénario: ${scenario.presentElements.join(', ')}`);
     console.log(`❌ Éléments absents: ${scenario.absentElements.join(', ')}`);
-    
-    // 2. Générer l'image avec DALL-E (utilise le client OpenAI direct, pas l'intégration Replit)
-    console.log('🎨 Génération de l\'image avec DALL-E...');
-    
-    const imageResponse = await openaiDallE.images.generate({
-      model: "dall-e-3",
+
+    console.log('🎨 Génération de l\'image avec Imagen...');
+
+    const imageResponse = await gemini.models.generateImages({
+      model: 'imagen-4.0-generate-001',
       prompt: scenario.description,
-      n: 1,
-      size: "1024x1024",
-      quality: "standard",
-      style: "natural"
+      config: {
+        numberOfImages: 1,
+        aspectRatio: '1:1',
+        outputMimeType: 'image/png',
+      },
     });
-    
-    const imageUrl = imageResponse.data[0].url;
-    console.log('✅ Image générée avec succès');
-    
-    // 3. Créer la question et les réponses
-    // Choisir un élément présent comme bonne réponse
+
+    if (!imageResponse.generatedImages || imageResponse.generatedImages.length === 0) {
+      console.error('❌ Imagen: aucune image générée (filtrage sécurité possible)');
+      return res.status(502).json({
+        success: false,
+        error: 'IMAGE_GENERATION_FAILED',
+        details: 'Imagen returned no images (safety filter may have blocked the prompt)'
+      });
+    }
+
+    const generatedImage = imageResponse.generatedImages[0];
+    const imageBase64 = generatedImage.image.imageBytes;
+    const imageMime = 'image/png';
+
+    console.log(`✅ Image générée avec Imagen (${Math.round(imageBase64.length * 0.75 / 1024)} KB)`);
+
     const correctElement = scenario.presentElements[Math.floor(Math.random() * scenario.presentElements.length)];
-    
-    // Choisir 3 éléments absents comme mauvaises réponses
+
     const shuffledAbsent = scenario.absentElements.sort(() => Math.random() - 0.5);
     const wrongElements = shuffledAbsent.slice(0, 3);
-    
-    // Si pas assez d'éléments absents, en prendre d'autres catégories
+
     while (wrongElements.length < 3) {
       const allAbsent = Object.values(VISUAL_ELEMENTS).flatMap(cat => cat.absent);
       const randomWrong = allAbsent[Math.floor(Math.random() * allAbsent.length)];
@@ -1486,15 +1479,12 @@ app.post('/generate-image-question', async (req, res) => {
         wrongElements.push(randomWrong);
       }
     }
-    
-    // Traduire les éléments selon la langue
+
     const translatedCorrect = translateElement(correctElement, language);
     const translatedWrong = wrongElements.map(el => translateElement(el, language));
-    
-    // Mélanger les réponses (la bonne réponse à l'index 0 pour compatibilité)
+
     const answers = [translatedCorrect, ...translatedWrong];
-    
-    // Texte de la question selon la langue
+
     const questionTexts = {
       'fr': 'Quel élément était visible dans l\'image ?',
       'en': 'Which element was visible in the image?',
@@ -1507,14 +1497,15 @@ app.post('/generate-image-question', async (req, res) => {
       'zh': '图片中可见的是什么元素？',
       'el': 'Ποιο στοιχείο ήταν ορατό στην εικόνα;'
     };
-    
+
     const questionText = questionTexts[language] || questionTexts['fr'];
-    
-    // Retourner la question complète
+
     res.json({
       success: true,
       type: 'image_memory',
-      image_url: imageUrl,
+      image_base64: imageBase64,
+      image_mime: imageMime,
+      image_url: null,
       question: {
         text: questionText,
         type: 'image',
@@ -1527,55 +1518,15 @@ app.post('/generate-image-question', async (req, res) => {
         }
       }
     });
-    
+
     console.log(`✅ Question image-mémoire générée avec succès`);
-    
+
   } catch (error) {
     console.error('❌ Erreur génération image-mémoire:', error.message);
-    res.status(500).json({
+    res.status(502).json({
       success: false,
-      error: error.message
-    });
-  }
-});
-
-// Endpoint pour télécharger et sauvegarder une image générée
-app.post('/download-image', async (req, res) => {
-  const { imageUrl, filename } = req.body;
-  
-  if (!imageUrl || !filename) {
-    return res.status(400).json({ success: false, error: 'imageUrl and filename required' });
-  }
-  
-  try {
-    const fetch = (await import('node-fetch')).default;
-    const fs = await import('fs');
-    const path = await import('path');
-    
-    // Télécharger l'image
-    const response = await fetch(imageUrl);
-    const buffer = await response.buffer();
-    
-    // Créer le dossier si nécessaire
-    const uploadDir = path.join(process.cwd(), 'storage', 'app', 'public', 'master_images');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
-    // Sauvegarder l'image
-    const filepath = path.join(uploadDir, filename);
-    fs.writeFileSync(filepath, buffer);
-    
-    res.json({
-      success: true,
-      path: `master_images/${filename}`
-    });
-    
-  } catch (error) {
-    console.error('❌ Erreur téléchargement image:', error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message
+      error: 'IMAGE_GENERATION_FAILED',
+      details: error.message
     });
   }
 });

@@ -765,7 +765,7 @@ class MasterGameController extends Controller
             if ($questionType === 'image') {
                 // Vérifier si cette position doit avoir une image IA
                 if (in_array($i, $aiImagePositions) && $aiImagesGenerated < $aiImagesCount) {
-                    // Générer une question image-mémoire avec DALL-E
+                    // Générer une question image-mémoire via Imagen (Gemini API)
                     $success = $this->generateAIImageQuestion($game, $i);
                     if ($success) {
                         $aiImagesGenerated++;
@@ -931,7 +931,7 @@ class MasterGameController extends Controller
         ]);
     }
     
-    // Générer une question image-mémoire avec DALL-E
+    // Générer une question image-mémoire via Imagen (Gemini API)
     private function generateAIImageQuestion($game, $questionNumber)
     {
         try {

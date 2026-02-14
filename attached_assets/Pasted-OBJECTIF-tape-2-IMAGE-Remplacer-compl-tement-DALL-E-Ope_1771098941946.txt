@@ -1,0 +1,44 @@
+OBJECTIF (Étape 2 — IMAGE) :
+Remplacer complètement DALL·E/OpenAI par Google Imagen (Gemini/Gen Media API).
+Après cette étape, le endpoint Node /generate-image-question doit générer l’image via Imagen, et Laravel ne doit plus dépendre d’OpenAI pour les images.
+Ne change PAS le contrat de réponse attendu par Laravel (ImageGenerationService).
+
+CONTEXTE :
+- Actuellement question-api.js contient un fallback OpenAI (openaiDallE) utilisé uniquement dans /generate-image-question.
+- Laravel appelle /generate-image-question via app/Services/ImageGenerationService.php.
+- On veut: 100% Gemini/Imagen, puis suppression totale d’OpenAI.
+
+TÂCHES :
+
+A) Node: question-api.js
+1) Localise l’endpoint /generate-image-question et son format de réponse EXACT (JSON renvoyé, champs, etc.).
+2) Supprime l’import/initialisation OpenAI (require('openai'), openaiDallE, OPENAI_API_KEY usage).
+3) Implémente la génération d’image via Google Imagen (Gemini API “Gen Media APIs”).
+   - Utilise le SDK @google/genai si possible, sinon appel HTTP vers l’API Imagen (selon docs).
+   - Choisis un modèle Imagen de qualité par défaut (ex: imagen-4.0-generate-001). Prévois un switch "fast" si nécessaire (imagen-4.0-fast-generate-001).
+4) Convertis la sortie en EXACTEMENT le format utilisé avant (ex: base64 image + mimeType, ou URL locale, etc.).
+   - Si l’ancien système téléchargeait l’image et renvoyait une URL locale, reproduis la même mécanique.
+   - Si l’ancien système renvoyait du base64, renvoie du base64.
+5) Garde /download-image uniquement si Laravel l’utilise réellement; sinon, marque-le deprecated mais ne casse rien.
+
+B) Laravel: ImageGenerationService.php
+1) Vérifie le format attendu.
+2) Si nécessaire, ajuste uniquement la lecture du JSON (mapping) pour correspondre à la nouvelle réponse Imagen (mais essaie de garder strictement identique).
+3) S’assurer qu’aucun code Laravel n’appelle OpenAI directement pour l’image.
+
+C) Nettoyage & conformité
+1) Recherche globale : plus aucun require('openai') / OpenAI image generation dans question-api.js.
+2) OPENAI_API_KEY devient inutile (mais on la supprimera à l’étape suivante).
+3) Ajoute gestion d’erreur claire côté Node:
+   - logs: status, message, model, request id (si dispo), sans leak de clé.
+   - réponse HTTP 500/502 propre avec { success:false, error:"..." }.
+
+TESTS OBLIGATOIRES (Replit)
+1) Appel direct curl à /generate-image-question avec un prompt de test, vérifier code 200 et une image valide.
+2) Lancer le flow Laravel qui consomme une “question-image” (ou le mode qui l’utilise) et vérifier affichage.
+3) Confirmer que /generate-image-question ne fait AUCUN appel OpenAI.
+
+LIVRABLE
+- Liste des fichiers modifiés + diff.
+- Format exact de la réponse /generate-image-question (avant/après).
+- Modèle Imagen utilisé et paramètres (size, aspect, safety, etc.).

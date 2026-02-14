@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 class ImageGenerationService
 {
     /**
-     * Génère une question image-mémoire avec DALL-E
+     * Génère une question image-mémoire via Imagen (Gemini API)
      * Exclusif au mode Maître du Jeu
      * 
      * @param int $questionNumber Numéro de la question
@@ -24,7 +24,6 @@ class ImageGenerationService
                 'language' => $language
             ]);
             
-            // Appel à l'API Node.js pour générer l'image
             $response = Http::timeout(60)->post(env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-image-question', [
                 'questionNumber' => $questionNumber,
                 'language' => $language
@@ -40,16 +39,19 @@ class ImageGenerationService
             
             $data = $response->json();
             
-            if (!$data['success'] || !isset($data['image_url'])) {
+            if (empty($data['success'])) {
                 Log::error('ImageGenerationService: Réponse invalide', ['data' => $data]);
                 return null;
             }
             
-            // Télécharger et sauvegarder l'image localement
-            $imageUrl = $data['image_url'];
-            $filename = 'memory_' . uniqid() . '.png';
-            
-            $savedPath = $this->downloadAndSaveImage($imageUrl, $filename);
+            $savedPath = null;
+
+            if (!empty($data['image_base64'])) {
+                $savedPath = $this->saveBase64Image($data['image_base64'], $data['image_mime'] ?? 'image/png');
+            } elseif (!empty($data['image_url'])) {
+                $filename = 'memory_' . uniqid() . '.png';
+                $savedPath = $this->downloadAndSaveImage($data['image_url'], $filename);
+            }
             
             if (!$savedPath) {
                 Log::error('ImageGenerationService: Échec sauvegarde image');
@@ -79,7 +81,50 @@ class ImageGenerationService
     }
     
     /**
-     * Télécharge une image depuis une URL et la sauvegarde localement
+     * Décode une image base64 et la sauvegarde dans le storage public
+     * 
+     * @param string $base64Data Données base64 de l'image (sans préfixe data:...)
+     * @param string $mimeType Type MIME (image/png, image/jpeg)
+     * @return string|null Le chemin relatif de l'image sauvegardée ou null
+     */
+    private function saveBase64Image($base64Data, $mimeType = 'image/png')
+    {
+        try {
+            $imageContent = base64_decode($base64Data, true);
+            
+            if ($imageContent === false || strlen($imageContent) < 100) {
+                Log::error('ImageGenerationService: Données base64 invalides');
+                return null;
+            }
+
+            $extension = $mimeType === 'image/jpeg' ? 'jpg' : 'png';
+            $filename = 'memory_' . uniqid() . '.' . $extension;
+            $directory = 'master_images';
+            
+            if (!Storage::disk('public')->exists($directory)) {
+                Storage::disk('public')->makeDirectory($directory);
+            }
+            
+            $path = $directory . '/' . $filename;
+            Storage::disk('public')->put($path, $imageContent);
+            
+            Log::info('ImageGenerationService: Image base64 sauvegardée', [
+                'path' => $path,
+                'size_kb' => round(strlen($imageContent) / 1024)
+            ]);
+            
+            return $path;
+            
+        } catch (\Exception $e) {
+            Log::error('ImageGenerationService: Erreur sauvegarde base64', [
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+    
+    /**
+     * Télécharge une image depuis une URL et la sauvegarde localement (fallback)
      * 
      * @param string $imageUrl URL de l'image à télécharger
      * @param string $filename Nom du fichier de destination
@@ -88,21 +133,18 @@ class ImageGenerationService
     private function downloadAndSaveImage($imageUrl, $filename)
     {
         try {
-            // Télécharger l'image
             $imageContent = file_get_contents($imageUrl);
             
             if (!$imageContent) {
                 return null;
             }
             
-            // Créer le dossier si nécessaire
             $directory = 'master_images';
             
             if (!Storage::disk('public')->exists($directory)) {
                 Storage::disk('public')->makeDirectory($directory);
             }
             
-            // Sauvegarder l'image
             $path = $directory . '/' . $filename;
             Storage::disk('public')->put($path, $imageContent);
             
@@ -133,9 +175,8 @@ class ImageGenerationService
                 $questions[] = $question;
             }
             
-            // Petit délai entre les générations pour éviter le rate limiting
             if ($i < $count) {
-                usleep(500000); // 500ms
+                usleep(500000);
             }
         }
         
