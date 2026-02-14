@@ -34,7 +34,7 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - 2nd+ to buzz + wrong answer/timeout: -2 pts
 - Didn't buzz: 0 pt
 
-**Question Management:** A question cache uses file-based caching. `QuestionService` manages AI-ready, theme-based question generation with adaptive difficulty, anti-duplication, and language-specific spelling verification using Google Gemini 2.0 Flash. Multiplayer questions are generated in progressive blocks by `GenerateMultiplayerQuestionsJob`.
+**Question Management:** A question cache uses file-based caching. `QuestionService` manages AI-ready, theme-based question generation with adaptive difficulty, anti-duplication, and language-specific spelling verification using Google Gemini 2.0 Flash. Multiplayer questions are generated in progressive blocks by `GenerateMultiplayerQuestionsJob`. Image-memory questions use Google Imagen (imagen-4.0-generate-001) via the @google/genai SDK. All AI generation (text + images) runs exclusively through Gemini/Imagen — no OpenAI dependency.
 
 **Multiplayer Lobby Synchronization:** `LobbyPresenceManager` handles player registration in Firebase sessions with a "Synchronisé" indicator.
 
@@ -140,7 +140,7 @@ The project uses a monorepo with `shared`, `game-engine`, and `game-server` pack
 -   **Firebase**: Firebase PHP SDK, Firebase JavaScript SDK, Firebase Firestore (real-time data), Firebase Authentication (user auth).
 -   **Authentication**: Laravel Sanctum, Laravel Socialite.
 -   **Development Tools**: Vite, Laravel Vite Plugin, Tightenco Ziggy.
--   **HTTP/API**: Guzzle HTTP, openai-php/laravel (AI question generation).
+-   **HTTP/API**: Guzzle HTTP.
 -   **Payment**: Stripe PHP SDK.
 -   **Databases**: PostgreSQL (Replit Neon), Firebase Firestore.
 -   **Real-time Communication**: Socket.IO, Redis.
