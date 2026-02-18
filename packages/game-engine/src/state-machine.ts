@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import type { Phase, GameState } from "../../shared/dist/types.js";
-=======
 import type { Phase, GameState } from "@strategybuzzer/shared";
->>>>>>> 2df649ed (Update project to use module resolution and package imports)
 
 export type PhaseTransition = {
   from: Phase;
@@ -18,40 +14,40 @@ const PHASE_TRANSITIONS: PhaseTransition[] = [
   { from: "QUESTION_ACTIVE", to: "REVEAL" },
   { from: "ANSWER_SELECTION", to: "REVEAL" },
   { from: "REVEAL", to: "WAITING" },
-  { 
-    from: "REVEAL", 
+  {
+    from: "REVEAL",
     to: "QUESTION_ACTIVE",
     condition: (state) => state.questionIndex < state.config.questionsPerRound - 1
   },
-  { 
-    from: "REVEAL", 
+  {
+    from: "REVEAL",
     to: "ROUND_SCOREBOARD",
     condition: (state) => state.questionIndex >= state.config.questionsPerRound - 1
   },
   { from: "WAITING", to: "QUESTION_ACTIVE" },
-  { 
-    from: "ROUND_SCOREBOARD", 
+  {
+    from: "ROUND_SCOREBOARD",
     to: "INTRO",
     condition: (state) => {
-      const maxRoundsWon = Math.max(...Object.values(state.players).map(p => p.roundsWon));
+      const maxRoundsWon = Math.max(...Object.values(state.players).map((p) => p.roundsWon));
       return maxRoundsWon < state.config.roundsToWin && state.currentRound < state.config.maxRounds;
     }
   },
-  { 
-    from: "ROUND_SCOREBOARD", 
+  {
+    from: "ROUND_SCOREBOARD",
     to: "TIEBREAKER_CHOICE",
     condition: (state) => {
-      const roundsWonValues = Object.values(state.players).map(p => p.roundsWon);
+      const roundsWonValues = Object.values(state.players).map((p) => p.roundsWon);
       const maxRoundsWon = Math.max(...roundsWonValues);
-      const playersWithMax = roundsWonValues.filter(r => r === maxRoundsWon).length;
+      const playersWithMax = roundsWonValues.filter((r) => r === maxRoundsWon).length;
       return playersWithMax > 1 && state.currentRound >= state.config.maxRounds;
     }
   },
-  { 
-    from: "ROUND_SCOREBOARD", 
+  {
+    from: "ROUND_SCOREBOARD",
     to: "MATCH_END",
     condition: (state) => {
-      const maxRoundsWon = Math.max(...Object.values(state.players).map(p => p.roundsWon));
+      const maxRoundsWon = Math.max(...Object.values(state.players).map((p) => p.roundsWon));
       return maxRoundsWon >= state.config.roundsToWin;
     }
   },
@@ -60,22 +56,22 @@ const PHASE_TRANSITIONS: PhaseTransition[] = [
 ];
 
 export function canTransition(state: GameState, to: Phase): boolean {
-  const validTransitions = PHASE_TRANSITIONS.filter(t => t.from === state.phase && t.to === to);
-  
+  const validTransitions = PHASE_TRANSITIONS.filter((t) => t.from === state.phase && t.to === to);
+
   if (validTransitions.length === 0) return false;
-  
-  return validTransitions.some(t => !t.condition || t.condition(state));
+
+  return validTransitions.some((t) => !t.condition || t.condition(state));
 }
 
 export function getNextPhase(state: GameState): Phase | null {
-  const possibleTransitions = PHASE_TRANSITIONS.filter(t => t.from === state.phase);
-  
+  const possibleTransitions = PHASE_TRANSITIONS.filter((t) => t.from === state.phase);
+
   for (const transition of possibleTransitions) {
     if (!transition.condition || transition.condition(state)) {
       return transition.to;
     }
   }
-  
+
   return null;
 }
 

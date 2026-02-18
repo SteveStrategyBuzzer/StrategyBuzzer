@@ -3,31 +3,6 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Mapping Langue → Devise
-    |--------------------------------------------------------------------------
-    |
-    | Détermine la devise à utiliser selon la langue du joueur.
-    | Les langues européennes (fr, es, it, de, pt, el) utilisent l'EUR.
-    | L'anglais utilise USD. Les autres (ru, ar, zh) utilisent USD par défaut
-    | car les devises locales (RUB, SAR, CNY) sont moins stables.
-    |
-    */
-
-    'language_currency_map' => [
-        'fr' => 'eur',
-        'en' => 'usd',
-        'es' => 'eur',
-        'it' => 'eur',
-        'de' => 'eur',
-        'pt' => 'eur',
-        'el' => 'eur',
-        'ru' => 'usd',
-        'ar' => 'usd',
-        'zh' => 'usd',
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Symboles et formats de devises
     |--------------------------------------------------------------------------
     */
@@ -35,23 +10,21 @@ return [
     'currency_symbols' => [
         'usd' => '$',
         'eur' => '€',
+        'cad' => 'CA$',
+        'gbp' => '£',
     ],
 
     'currency_format' => [
         'usd' => ['symbol' => '$', 'position' => 'before', 'decimal' => '.'],
         'eur' => ['symbol' => '€', 'position' => 'after', 'decimal' => ','],
+        'cad' => ['symbol' => 'CA$', 'position' => 'before', 'decimal' => '.'],
+        'gbp' => ['symbol' => '£', 'position' => 'before', 'decimal' => '.'],
     ],
 
     /*
     |--------------------------------------------------------------------------
     | Packs de Pièces d'Intelligence
     |--------------------------------------------------------------------------
-    |
-    | Pièces gagnées en Multijoueur (Duo, Ligue, Master) car vous prouvez
-    | vos connaissances face à d'autres joueurs. Aussi achetables avec Stripe.
-    |
-    | Les prix sont harmonisés entre EUR et USD pour être équitables.
-    |
     */
 
     'intelligence_packs' => [
@@ -62,9 +35,9 @@ return [
             'prices' => [
                 'usd' => 999,
                 'eur' => 999,
+                'cad' => 1349,
+                'gbp' => 799,
             ],
-            'amount_cents' => 999,
-            'currency' => 'usd',
             'popular' => false,
         ],
         [
@@ -74,9 +47,9 @@ return [
             'prices' => [
                 'usd' => 1799,
                 'eur' => 1799,
+                'cad' => 2449,
+                'gbp' => 1449,
             ],
-            'amount_cents' => 1799,
-            'currency' => 'usd',
             'popular' => false,
         ],
         [
@@ -86,9 +59,9 @@ return [
             'prices' => [
                 'usd' => 3199,
                 'eur' => 3199,
+                'cad' => 4349,
+                'gbp' => 2599,
             ],
-            'amount_cents' => 3199,
-            'currency' => 'usd',
             'popular' => true,
         ],
         [
@@ -98,9 +71,9 @@ return [
             'prices' => [
                 'usd' => 6499,
                 'eur' => 6499,
+                'cad' => 8799,
+                'gbp' => 5249,
             ],
-            'amount_cents' => 6499,
-            'currency' => 'usd',
             'popular' => false,
         ],
     ],
@@ -109,13 +82,6 @@ return [
     |--------------------------------------------------------------------------
     | Packs de Pièces de Compétence
     |--------------------------------------------------------------------------
-    |
-    | Pièces gagnées en Solo et Quêtes car vous débloquez des skills/compétences.
-    | Utilisées pour acheter des avatars stratégiques dans la boutique.
-    | Aussi achetables avec Stripe. Prix progressifs avec économies sur les gros packs.
-    |
-    | Les prix sont harmonisés entre EUR et USD pour être équitables.
-    |
     */
 
     'competence_packs' => [
@@ -126,9 +92,9 @@ return [
             'prices' => [
                 'usd' => 99,
                 'eur' => 99,
+                'cad' => 129,
+                'gbp' => 79,
             ],
-            'amount_cents' => 99,
-            'currency' => 'usd',
             'popular' => false,
         ],
         [
@@ -138,9 +104,9 @@ return [
             'prices' => [
                 'usd' => 399,
                 'eur' => 399,
+                'cad' => 549,
+                'gbp' => 329,
             ],
-            'amount_cents' => 399,
-            'currency' => 'usd',
             'popular' => true,
         ],
         [
@@ -150,9 +116,9 @@ return [
             'prices' => [
                 'usd' => 899,
                 'eur' => 899,
+                'cad' => 1199,
+                'gbp' => 729,
             ],
-            'amount_cents' => 899,
-            'currency' => 'usd',
             'popular' => false,
         ],
         [
@@ -162,9 +128,9 @@ return [
             'prices' => [
                 'usd' => 1699,
                 'eur' => 1699,
+                'cad' => 2299,
+                'gbp' => 1379,
             ],
-            'amount_cents' => 1699,
-            'currency' => 'usd',
             'popular' => false,
         ],
         [
@@ -174,10 +140,37 @@ return [
             'prices' => [
                 'usd' => 2999,
                 'eur' => 2999,
+                'cad' => 3999,
+                'gbp' => 2399,
             ],
-            'amount_cents' => 2999,
-            'currency' => 'usd',
             'popular' => false,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prix des Modes de Jeu
+    |--------------------------------------------------------------------------
+    */
+
+    'mode_prices' => [
+        'duo' => [
+            'usd' => 1250,
+            'eur' => 1250,
+            'cad' => 1699,
+            'gbp' => 999,
+        ],
+        'league' => [
+            'usd' => 1575,
+            'eur' => 1575,
+            'cad' => 2149,
+            'gbp' => 1279,
+        ],
+        'master' => [
+            'usd' => 2999,
+            'eur' => 2999,
+            'cad' => 3999,
+            'gbp' => 2399,
         ],
     ],
 

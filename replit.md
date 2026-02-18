@@ -134,6 +134,12 @@ The project uses an npm workspaces monorepo with `packages/shared`, `packages/ga
 - **Boutique Logic:** ALL items (avatars stratégiques, packs, buzzers, music, lives) are purchased with Compétence coins.
 - **Stratège Bonus:** The Stratège avatar grants +20% coin bonus on multiplayer victories.
 
+**Multi-Currency Stripe Pricing (IP-Based):**
+- `CurrencyDetectionService.php` detects country via IP geolocation (ip-api.com), maps to currency (US→USD, CA→CAD, GB→GBP, EU 27 countries→EUR, other→USD), stores currency in session (never stores IP).
+- `config/coins.php` defines prices in all 4 currencies for every pack and game mode.
+- `StripeService.php` uses detected currency for Stripe Checkout sessions.
+- `BoutiqueController.php` passes currency + format to Blade templates for consistent display.
+
 ### External Dependencies
 
 -   **Core Frameworks**: Laravel Framework, React, Inertia.js

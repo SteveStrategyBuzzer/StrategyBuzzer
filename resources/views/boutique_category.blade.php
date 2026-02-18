@@ -593,10 +593,18 @@ audio { width: 100%; }
                 @if($duoPurchased ?? false)
                     <button class="btn success" disabled style="width:100%;padding:16px;font-size:1.1rem;">✓ {{ __('Mode débloqué') }}</button>
                 @else
+                    @php
+                        $cur = $currency ?? 'usd';
+                        $duoAmt = $modePrices['duo'][$cur] ?? $modePrices['duo']['usd'] ?? 1250;
+                        $fmt = $currencyFormat[$cur] ?? ['symbol' => '$', 'position' => 'before', 'decimal' => '.'];
+                        $duoFmt = $fmt['position'] === 'after'
+                            ? number_format($duoAmt / 100, 2, $fmt['decimal'], '') . $fmt['symbol']
+                            : $fmt['symbol'] . number_format($duoAmt / 100, 2, $fmt['decimal'], '');
+                    @endphp
                     <form method="POST" action="{{ route('modes.checkout', 'duo') }}" style="width:100%;">
                         @csrf
                         <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#3b82f6,#1d4ed8);">
-                            💳 {{ __('Acheter') }} - $12.50
+                            💳 {{ __('Acheter') }} - {{ $duoFmt }}
                         </button>
                     </form>
                 @endif
@@ -621,10 +629,18 @@ audio { width: 100%; }
                 @if($leaguePurchased ?? false)
                     <button class="btn success" disabled style="width:100%;padding:16px;font-size:1.1rem;">✓ {{ __('Mode débloqué') }}</button>
                 @else
+                    @php
+                        $cur = $currency ?? 'usd';
+                        $leagueAmt = $modePrices['league'][$cur] ?? $modePrices['league']['usd'] ?? 1575;
+                        $fmt = $currencyFormat[$cur] ?? ['symbol' => '$', 'position' => 'before', 'decimal' => '.'];
+                        $leagueFmt = $fmt['position'] === 'after'
+                            ? number_format($leagueAmt / 100, 2, $fmt['decimal'], '') . $fmt['symbol']
+                            : $fmt['symbol'] . number_format($leagueAmt / 100, 2, $fmt['decimal'], '');
+                    @endphp
                     <form method="POST" action="{{ route('modes.checkout', 'league') }}" style="width:100%;">
                         @csrf
                         <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#8b5cf6,#6d28d9);">
-                            💳 {{ __('Acheter') }} - $15.75
+                            💳 {{ __('Acheter') }} - {{ $leagueFmt }}
                         </button>
                     </form>
                 @endif
@@ -649,10 +665,18 @@ audio { width: 100%; }
                 @if($masterPurchased)
                     <button class="btn success" disabled style="width:100%;padding:16px;font-size:1.1rem;">✓ {{ __('Mode débloqué') }}</button>
                 @else
+                    @php
+                        $cur = $currency ?? 'usd';
+                        $masterAmt = $modePrices['master'][$cur] ?? $modePrices['master']['usd'] ?? 2999;
+                        $fmt = $currencyFormat[$cur] ?? ['symbol' => '$', 'position' => 'before', 'decimal' => '.'];
+                        $masterFmt = $fmt['position'] === 'after'
+                            ? number_format($masterAmt / 100, 2, $fmt['decimal'], '') . $fmt['symbol']
+                            : $fmt['symbol'] . number_format($masterAmt / 100, 2, $fmt['decimal'], '');
+                    @endphp
                     <form method="POST" action="{{ route('master.checkout') }}" style="width:100%;">
                         @csrf
                         <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#10b981,#059669);">
-                            💳 {{ __('Acheter') }} - $29.99
+                            💳 {{ __('Acheter') }} - {{ $masterFmt }}
                         </button>
                     </form>
                 @endif
@@ -672,13 +696,12 @@ audio { width: 100%; }
                     <div class="coin-amount">{{ number_format($pack['coins'] ?? 0) }}</div>
                     <div style="color:var(--muted);margin-top:8px;">{{ __("pièces d'intelligence") }}</div>
                     @php
-                        $lang = app()->getLocale() ?: 'fr';
-                        $cur = config('coins.language_currency_map.' . $lang, 'usd');
-                        $amt = $pack['prices'][$cur] ?? $pack['prices']['usd'] ?? $pack['amount_cents'] ?? 0;
-                        $sym = $cur === 'eur' ? '€' : '$';
-                        $fmtPrice = $cur === 'eur' 
-                            ? number_format($amt / 100, 2, ',', '') . '€'
-                            : '$' . number_format($amt / 100, 2, '.', '');
+                        $cur = $currency ?? 'usd';
+                        $amt = $pack['prices'][$cur] ?? $pack['prices']['usd'] ?? 0;
+                        $fmt = $currencyFormat[$cur] ?? ['symbol' => '$', 'position' => 'before', 'decimal' => '.'];
+                        $fmtPrice = $fmt['position'] === 'after'
+                            ? number_format($amt / 100, 2, $fmt['decimal'], '') . $fmt['symbol']
+                            : $fmt['symbol'] . number_format($amt / 100, 2, $fmt['decimal'], '');
                     @endphp
                     <div class="coin-price">{{ $fmtPrice }}</div>
                     <form method="POST" action="{{ route('coins.checkout') }}" style="margin-top:16px;">
@@ -711,12 +734,12 @@ audio { width: 100%; }
                     <div class="coin-amount">{{ number_format($pack['coins'] ?? 0) }}</div>
                     <div style="color:var(--muted);margin-top:8px;">{{ __("pièces de compétence") }}</div>
                     @php
-                        $lang = app()->getLocale() ?: 'fr';
-                        $cur = config('coins.language_currency_map.' . $lang, 'usd');
-                        $amt = $pack['prices'][$cur] ?? $pack['prices']['usd'] ?? $pack['amount_cents'] ?? 0;
-                        $fmtPrice = $cur === 'eur' 
-                            ? number_format($amt / 100, 2, ',', '') . '€'
-                            : '$' . number_format($amt / 100, 2, '.', '');
+                        $cur = $currency ?? 'usd';
+                        $amt = $pack['prices'][$cur] ?? $pack['prices']['usd'] ?? 0;
+                        $fmt = $currencyFormat[$cur] ?? ['symbol' => '$', 'position' => 'before', 'decimal' => '.'];
+                        $fmtPrice = $fmt['position'] === 'after'
+                            ? number_format($amt / 100, 2, $fmt['decimal'], '') . $fmt['symbol']
+                            : $fmt['symbol'] . number_format($amt / 100, 2, $fmt['decimal'], '');
                     @endphp
                     <div class="coin-price">{{ $fmtPrice }}</div>
                     <form method="POST" action="{{ route('coins.checkout') }}" style="margin-top:16px;">

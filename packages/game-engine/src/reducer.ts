@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-import type { GameState, Player } from "../../shared/dist/types.js";
-import type { GameEvent } from "../../shared/dist/events.js";
-=======
 import type { GameState, Player } from "@strategybuzzer/shared";
 import type { GameEvent } from "@strategybuzzer/shared";
->>>>>>> 2df649ed (Update project to use module resolution and package imports)
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`GameEngine: ${msg}`);
@@ -43,7 +38,7 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
         s.players[event.playerId].lastSeenMs = event.atMs;
         return s;
       }
-      
+
       s.players[event.playerId] = createDefaultPlayer(event.playerId, event.name, {
         avatarId: event.avatarId,
         strategicAvatarId: event.strategicAvatarId,
@@ -59,14 +54,14 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
 
     case "PLAYER_LEFT": {
       if (!s.players[event.playerId]) return s;
-      
+
       if (event.reason === "disconnect") {
         s.players[event.playerId].isConnected = false;
       } else {
         delete s.players[event.playerId];
         s.order = s.order.filter((id) => id !== event.playerId);
       }
-      
+
       s.buzzQueue = s.buzzQueue.filter((b) => b.playerId !== event.playerId);
       if (s.lockedAnswerPlayerId === event.playerId) {
         s.lockedAnswerPlayerId = undefined;
@@ -89,7 +84,7 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
       s.questionIndex = 0;
       s.buzzQueue = [];
       s.answeredPlayerIds = [];
-      
+
       for (const playerId of Object.keys(s.players)) {
         s.players[playerId].score = 0;
         s.players[playerId].roundScore = 0;
@@ -102,23 +97,23 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
       s.phase = event.toPhase;
       s.phaseStartedAtMs = event.atMs;
       s.phaseEndsAtMs = event.phaseEndsAtMs;
-      
+
       if (event.toPhase === "QUESTION_ACTIVE") {
         s.buzzQueue = [];
         s.lockedAnswerPlayerId = undefined;
         s.answeredPlayerIds = [];
         s.lastAnswer = undefined;
-        
+
         if (event.questionIndex !== undefined) {
           s.questionIndex = event.questionIndex;
           s.currentQuestion = s.questions[event.questionIndex];
         }
       }
-      
+
       if (event.toPhase === "ROUND_SCOREBOARD" && event.roundNumber !== undefined) {
         s.currentRound = event.roundNumber;
       }
-      
+
       return s;
     }
 
@@ -140,16 +135,16 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
     case "BUZZ_RECEIVED": {
       assert(s.phase === "QUESTION_ACTIVE", "Buzz not allowed in current phase");
       assert(!!s.players[event.playerId], "Unknown player");
-      
+
       if (s.buzzQueue.some((b) => b.playerId === event.playerId)) return s;
       if (s.answeredPlayerIds.includes(event.playerId)) return s;
-      
+
       s.buzzQueue.push({
         playerId: event.playerId,
         atMs: event.buzzTimeMs,
         latencyMs: event.latencyMs,
       });
-      
+
       if (s.buzzQueue.length === 1) {
         s.lockedAnswerPlayerId = event.playerId;
         s.phase = "ANSWER_SELECTION";
@@ -161,11 +156,10 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
 
     case "ANSWER_SUBMITTED": {
       assert(s.phase === "ANSWER_SELECTION", "Answer not allowed in current phase");
-      // Allow any player who buzzed (is in buzzQueue) to answer, not just first buzzer
-      const isInBuzzQueue = s.buzzQueue.some(b => b.playerId === event.playerId);
+      const isInBuzzQueue = s.buzzQueue.some((b) => b.playerId === event.playerId);
       assert(isInBuzzQueue, "Player did not buzz for this question");
       assert(!!s.players[event.playerId], "Unknown player");
-      
+
       if (!s.answeredPlayerIds.includes(event.playerId)) {
         s.answeredPlayerIds.push(event.playerId);
       }
@@ -180,12 +174,12 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
         pointsEarned: event.pointsEarned,
         buzzTimeMs: event.buzzTimeMs,
       };
-      
+
       if (s.players[event.playerId]) {
         s.players[event.playerId].score = event.totalScore;
         s.players[event.playerId].roundScore = event.roundScore;
       }
-      
+
       if (s.currentQuestion) {
         s.currentQuestion.funFact = event.funFact;
       }
@@ -199,7 +193,7 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
     case "SKILL_ACTIVATED": {
       const player = s.players[event.playerId];
       if (!player) return s;
-      
+
       const sid = event.skillId as unknown as keyof typeof player.skills;
       const skill = player.skills[sid];
       if (skill) {
@@ -218,7 +212,7 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
     case "SCORE_UPDATED": {
       const player = s.players[event.playerId];
       if (!player) return s;
-      
+
       player.score = event.newScore;
       player.roundScore = event.newRoundScore;
       return s;
@@ -231,7 +225,7 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
         winnerId: event.winnerId,
         isTie: event.isTie,
       });
-      
+
       for (const [playerId, roundsWon] of Object.entries(event.playerRoundsWon)) {
         if (s.players[playerId]) {
           s.players[playerId].roundsWon = roundsWon;
@@ -254,57 +248,17 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
       s.phase = "MATCH_END";
       s.endedAtMs = event.atMs;
       s.phaseEndsAtMs = undefined;
-      
+
       for (const [playerId, score] of Object.entries(event.finalScores)) {
         if (s.players[playerId]) {
           s.players[playerId].score = score;
         }
       }
-      
-      for (const [playerId, roundsWon] of Object.entries(event.roundsWon)) {
-        if (s.players[playerId]) {
-          s.players[playerId].roundsWon = roundsWon;
-        }
-      }
+
       return s;
     }
 
-    case "VOICE_CHANNEL_JOINED": {
-      s.voiceChannelId = event.channelId;
+    default:
       return s;
-    }
-
-    case "VOICE_CHANNEL_LEFT": {
-      return s;
-    }
-
-    default: {
-      const _exhaustiveCheck: never = event;
-      return s;
-    }
   }
-}
-
-export function createInitialState(
-  sessionId: string,
-  lobbyCode: string,
-  config: GameState["config"]
-): GameState {
-  return {
-    sessionId,
-    lobbyCode,
-    createdAtMs: Date.now(),
-    phase: "LOBBY",
-    config,
-    players: {},
-    order: [],
-    currentRound: 0,
-    questionIndex: 0,
-    questions: [],
-    roundResults: [],
-    buzzQueue: [],
-    answeredPlayerIds: [],
-    lastEventId: 0,
-    version: 0,
-  };
 }
