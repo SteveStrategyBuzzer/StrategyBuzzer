@@ -63,3 +63,11 @@ packages/*/src/*.js
 packages/*/src/*.js.map
 packages/*/src/*.d.ts
 packages/*/src/*.d.ts.map
+
+# ===============================
+# PRODUCTION SAFETY (NEVER CLEAN)
+# ===============================
+!storage/
+!storage/**
+
+# Optionnel: garder le dump local ignoré mais éviter clean massif (on le protège aussi)
