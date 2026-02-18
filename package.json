@@ -2,10 +2,17 @@
   "name": "strategybuzzer",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "dev:game-server": "cd apps/game-server && npm run dev",
-    "build:game-server": "cd apps/game-server && npm run build",
-    "start:game-server": "cd apps/game-server && npm start"
+    "build:shared": "npm -w @strategybuzzer/shared run build",
+    "build:game-engine": "npm -w @strategybuzzer/game-engine run build",
+    "build:game-server": "npm -w @strategybuzzer/game-server run build",
+    "build:all": "npm run build:shared && npm run build:game-engine && npm run build:game-server",
+    "dev:game-server": "npm -w @strategybuzzer/game-server run dev",
+    "start:game-server": "npm -w @strategybuzzer/game-server run start"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",

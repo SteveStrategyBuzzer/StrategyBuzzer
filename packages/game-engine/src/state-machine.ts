@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import type { Phase, GameState } from "../../shared/dist/types.js";
+=======
+import type { Phase, GameState } from "@strategybuzzer/shared";
+>>>>>>> 2df649ed (Update project to use module resolution and package imports)
 
 export type PhaseTransition = {
   from: Phase;

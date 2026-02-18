@@ -1,8 +1,8 @@
 import type { Server as SocketIOServer, Socket } from "socket.io";
 import type { RoomManager } from "../services/RoomManager.js";
 import type { GameOrchestrator } from "../services/GameOrchestrator.js";
-import type { GameState, Player } from "../../../../packages/shared/src/types.js";
-import type { GameEvent } from "../../../../packages/shared/src/events.js";
+import type { GameState, Player } from "@strategybuzzer/shared";
+import type { GameEvent } from "@strategybuzzer/shared";
 import { verifyJWT, type PlayerTokenPayload } from "../middleware/auth.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
 import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";

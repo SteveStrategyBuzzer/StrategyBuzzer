@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
-import type { GameState, GameConfig, DEFAULT_DUO_CONFIG } from "../../../../packages/shared/src/types.js";
-import type { GameEvent, PlayerJoinedEvent, GameStartedEvent, PhaseChangedEvent, BuzzReceivedEvent } from "../../../../packages/shared/src/events.js";
-import { createInitialState, applyEvent } from "../../../../packages/game-engine/src/reducer.js";
-import { getPhaseTimeout, getNextPhase } from "../../../../packages/game-engine/src/state-machine.js";
+import type { GameState, GameConfig } from "@strategybuzzer/shared";
+import type { GameEvent, PlayerJoinedEvent, GameStartedEvent, PhaseChangedEvent, BuzzReceivedEvent } from "@strategybuzzer/shared";
+import { createInitialState, applyEvent } from "@strategybuzzer/game-engine";
+import { getPhaseTimeout, getNextPhase } from "@strategybuzzer/game-engine";
 
 export type RoomPipelineConfig = {
   theme: string;

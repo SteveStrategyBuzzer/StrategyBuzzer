@@ -109,7 +109,7 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 4. VoiceChat (WebRTC) active from lobby through entire gameplay using `lobby_code` as persistent sessionId
 
 #### Monorepo Architecture (Node.js Game Server)
-The project uses a monorepo with `shared`, `game-engine`, and `game-server` packages. The Game Server (Node.js/TypeScript) uses Socket.IO for real-time communication and Express for REST API. Game phases (INTRO, BUZZ_WINDOW, QUESTION_DISPLAY, ANSWER_SELECTION, REVEAL, ROUND_SCOREBOARD, TIEBREAKER_*, MATCH_END) are aligned with Solo mode.
+The project uses an npm workspaces monorepo with `packages/shared`, `packages/game-engine`, and `apps/game-server`. All packages use `type: "module"` with NodeNext module resolution. Imports use `@strategybuzzer/shared` and `@strategybuzzer/game-engine` package names (no relative paths). Build order: `npm run build:all` (shared → game-engine → game-server). The Game Server (Node.js/TypeScript) uses Socket.IO for real-time communication and Express for REST API. Game phases (INTRO, BUZZ_WINDOW, QUESTION_DISPLAY, ANSWER_SELECTION, REVEAL, ROUND_SCOREBOARD, TIEBREAKER_*, MATCH_END) are aligned with Solo mode.
 
 **Scalable Architecture (Production):**
 - **Redis:** Real-time state (buzzer, timers, room state, event log) with 2-hour TTL.

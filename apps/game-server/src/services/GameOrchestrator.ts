@@ -1,9 +1,9 @@
 import type { Server as SocketIOServer } from "socket.io";
 import type { RoomManager, Room } from "./RoomManager.js";
-import type { Question, Mode, Phase } from "../../../../packages/shared/src/types.js";
-import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent, BuzzReceivedEvent, GameStartedEvent } from "../../../../packages/shared/src/events.js";
-import { applyEvent } from "../../../../packages/game-engine/src/reducer.js";
-import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "../../../../packages/game-engine/src/state-machine.js";
+import type { Question, Mode, Phase } from "@strategybuzzer/shared";
+import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent, BuzzReceivedEvent, GameStartedEvent } from "@strategybuzzer/shared";
+import { applyEvent } from "@strategybuzzer/game-engine";
+import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
 import { appendEventLog, setRoomState } from "./RedisService.js";
 import { saveRoomSnapshot } from "./RoomRecovery.js";

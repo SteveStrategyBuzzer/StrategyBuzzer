@@ -1,18 +1,13 @@
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-
-// ioredis est souvent CommonJS; en ESM, on le charge via require()
-const IORedisPkg = require("ioredis");
-const RedisCtor = (IORedisPkg?.default ?? IORedisPkg) as any;
+import Redis from "ioredis";
+const RedisConstructor = (Redis as any).default || Redis;
 
 const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 const TTL_SECONDS = Number(process.env.ROOM_STATE_TTL_SECONDS || 7200); // 2h par défaut
 
 // Clients Redis
-export const redisPub = new RedisCtor(REDIS_URL);
-export const redisSub = new RedisCtor(REDIS_URL);
-export const redisClient = new RedisCtor(REDIS_URL);
+export const redisPub = new RedisConstructor(REDIS_URL);
+export const redisSub = new RedisConstructor(REDIS_URL);
+export const redisClient = new RedisConstructor(REDIS_URL);
 
 // Helpers de clés
 function kState(roomId: string) {

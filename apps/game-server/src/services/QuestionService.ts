@@ -1,4 +1,4 @@
-import type { Question } from "../../../../packages/shared/src/types.js";
+import type { Question } from "@strategybuzzer/shared";
 
 const LARAVEL_BASE = "http://localhost:5000/api/game-server";
 

@@ -1,8 +1,8 @@
 import type { Express, Request, Response } from "express";
 import type { RoomManager } from "../services/RoomManager.js";
 import type { GameOrchestrator } from "../services/GameOrchestrator.js";
-import { DEFAULT_DUO_CONFIG, DEFAULT_LEAGUE_INDIVIDUAL_CONFIG, DEFAULT_LEAGUE_TEAM_CONFIG, DEFAULT_MASTER_CONFIG } from "../../../../packages/shared/src/types.js";
-import type { GameConfig, Mode } from "../../../../packages/shared/src/types.js";
+import { DEFAULT_DUO_CONFIG, DEFAULT_LEAGUE_INDIVIDUAL_CONFIG, DEFAULT_LEAGUE_TEAM_CONFIG, DEFAULT_MASTER_CONFIG } from "@strategybuzzer/shared";
+import type { GameConfig, Mode } from "@strategybuzzer/shared";
 import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";
 import { MetricsService } from "../services/MetricsService.js";
 

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import type { ScoringConfig } from "../../shared/dist/types.js";
+=======
+import type { ScoringConfig } from "@strategybuzzer/shared";
+>>>>>>> 2df649ed (Update project to use module resolution and package imports)
 
 export type ScoreResult = {
   points: number;

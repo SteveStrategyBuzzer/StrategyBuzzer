@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import type { GameState, Player } from "../../shared/dist/types.js";
 import type { GameEvent } from "../../shared/dist/events.js";
+=======
+import type { GameState, Player } from "@strategybuzzer/shared";
+import type { GameEvent } from "@strategybuzzer/shared";
+>>>>>>> 2df649ed (Update project to use module resolution and package imports)
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`GameEngine: ${msg}`);

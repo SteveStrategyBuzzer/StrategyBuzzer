@@ -1,6 +1,6 @@
-import type { GameState, GameConfig, DEFAULT_DUO_CONFIG } from "../../../../packages/shared/src/types.js";
-import type { GameEvent } from "../../../../packages/shared/src/events.js";
-import { applyEvent, createInitialState } from "../../../../packages/game-engine/src/reducer.js";
+import type { GameState, GameConfig } from "@strategybuzzer/shared";
+import type { GameEvent } from "@strategybuzzer/shared";
+import { applyEvent, createInitialState } from "@strategybuzzer/game-engine";
 import { getEventLog, getRoomState, setRoomState, cleanupRoom } from "./RedisService.js";
 import type { RoomManager, Room, RoomPipelineConfig } from "./RoomManager.js";
 
@@ -69,12 +69,12 @@ export async function rehydrateRoom(
     const event = rawEvent as GameEvent;
     
     if (event.type === "PLAYER_JOINED" && !state) {
-      const { DEFAULT_DUO_CONFIG } = await import("../../../../packages/shared/src/types.js");
+      const { DEFAULT_DUO_CONFIG } = await import("@strategybuzzer/shared");
       state = createRecoveryInitialState(roomId, "", DEFAULT_DUO_CONFIG);
     }
     
     if (event.type === "GAME_STARTED" && !state) {
-      const { DEFAULT_DUO_CONFIG } = await import("../../../../packages/shared/src/types.js");
+      const { DEFAULT_DUO_CONFIG } = await import("@strategybuzzer/shared");
       state = createRecoveryInitialState(roomId, "", DEFAULT_DUO_CONFIG);
     }
     
