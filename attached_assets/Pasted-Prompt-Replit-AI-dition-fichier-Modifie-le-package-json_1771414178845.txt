@@ -1,0 +1,94 @@
+Prompt Replit AI (édition fichier)
+
+Modifie le package.json racine en ajoutant :
+
+"workspaces": ["packages/*","apps/*"]
+
+scripts workspace:
+
+"build:shared": "npm -w @strategybuzzer/shared run build"
+
+"build:game-engine": "npm -w @strategybuzzer/game-engine run build"
+
+"build:game-server": "npm -w @strategybuzzer/game-server run build"
+
+"build:all": "npm run build:shared && npm run build:game-engine && npm run build:game-server"
+
+"dev:game-server": "npm -w @strategybuzzer/game-server run dev"
+Garde le reste inchangé.
+
+Ensuite terminal :
+
+npm install
+
+Étape 2 — Mettre “exports” + “type: module” + deps workspace (1 seul bloc)
+
+Prompt Replit AI
+
+Mets à jour :
+
+packages/shared/package.json :
+
+ajoute "type": "module"
+
+ajoute "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } }
+
+packages/game-engine/package.json :
+
+ajoute "type": "module"
+
+ajoute "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } }
+
+ajoute "dependencies": { "@strategybuzzer/shared": "workspace:*" } (ou merge si dependencies existe)
+Ne change pas main, types, scripts existants.
+
+Ensuite terminal :
+
+npm install
+
+Étape 3 — Corriger les 16 imports relatifs (1 action IA, puis un grep)
+
+Prompt Replit AI
+
+Remplace les imports relatifs vers packages/shared/... et packages/game-engine/... :
+
+Dans apps/game-server/src/**/*.ts :
+
+../../../../packages/shared/... -> @strategybuzzer/shared
+
+../../../../packages/game-engine/... -> @strategybuzzer/game-engine
+
+Dans packages/game-engine/src/*.ts :
+
+../../shared/... -> @strategybuzzer/shared
+Assure-toi que les imports pointent vers les exports de index.ts (barrel). Si un export manque dans packages/game-engine/src/index.ts ou packages/shared/src/index.ts, ajoute-le.
+
+Ensuite terminal (validation rapide) :
+
+grep -R "packages/shared/" -n apps/game-server/src packages/game-engine/src || true
+grep -R "packages/game-engine/" -n apps/game-server/src packages/game-engine/src || true
+grep -R "../../shared/" -n packages/game-engine/src || true
+
+Étape 4 — Build clean + build:all (1 seul bloc)
+rm -rf packages/shared/dist packages/game-engine/dist apps/game-server/dist
+
+npm run build:all
+
+
+Si ça échoue, colle l’erreur brute et on corrige (souvent c’est juste un export manquant, ou un import qui pointe encore vers .js au lieu du package).
+
+Étape 5 — .gitignore + commit/push (1 bloc)
+
+Décision standard : on ignore dist/ (recommandé).
+Terminal :
+
+cat >> .gitignore <<'EOF'
+
+# build outputs
+**/dist/
+EOF
+
+git status --short
+git add -A
+git commit -m "Monorepo: npm workspaces + package exports + switch to @strategybuzzer/* imports"
+git push

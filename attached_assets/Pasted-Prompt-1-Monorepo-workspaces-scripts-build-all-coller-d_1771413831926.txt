@@ -1,0 +1,81 @@
+Prompt 1 — “Monorepo workspaces + scripts build:all”
+
+À coller dans Replit :
+
+Tu es dans le repo StrategyBuzzer (monorepo) avec apps/game-server, packages/shared, packages/game-engine.
+Objectif: activer npm workspaces et un build orchestré.
+Actions:
+
+Modifier le package.json racine pour ajouter "workspaces": ["packages/*","apps/*"] et scripts: build:shared, build:game-engine, build:game-server, build:all, dev:game-server (npm -w).
+
+Ne pas casser les scripts existants, mais tu peux les remplacer par la version workspace.
+
+Exécuter npm install à la racine, puis npm run build:all.
+
+Me donner le résultat des commandes + si erreur, proposer un correctif minimal.
+
+Prompt 2 — “Rendre shared et game-engine des vrais packages importables”
+
+À coller dans Replit :
+
+Objectif: rendre @strategybuzzer/shared et @strategybuzzer/game-engine importables via import ... from "@strategybuzzer/shared" et import ... from "@strategybuzzer/game-engine".
+Actions:
+
+Mettre à jour packages/shared/package.json et packages/game-engine/package.json avec type: "module", main/types pointant sur dist, et un champ "exports" minimal (".").
+
+Ajouter dans packages/game-engine/package.json la dépendance "@strategybuzzer/shared": "workspace:*".
+
+Vérifier que packages/*/tsconfig.json sortent dans dist (outDir) et que rootDir = src.
+
+Lancer npm install puis npm run build:all.
+
+Me montrer les fichiers modifiés et le résultat du build.
+
+Prompt 3 — “Switch imports: plus de ../../../../packages/* dans le code”
+
+À coller dans Replit :
+
+Objectif: supprimer tous les imports relatifs vers packages/shared/... et packages/game-engine/... dans apps/game-server/src et packages/game-engine/src.
+Actions:
+
+Dans packages/game-engine/src/*.ts, remplacer les imports ../../shared/... par @strategybuzzer/shared.
+
+Dans apps/game-server/src/**/*.ts, remplacer les imports ../../../../packages/shared/... par @strategybuzzer/shared et ../../../../packages/game-engine/... par @strategybuzzer/game-engine.
+
+Vérifier que packages/game-engine/src/index.ts exporte bien ce que le game-server utilise (ex: applyEvent, createInitialState, getNextPhase, getPhaseTimeout, isTerminalPhase, etc.). Si un export manque, l’ajouter.
+
+Build complet npm run build:all et corriger toute erreur TypeScript.
+
+Me donner une liste des fichiers changés + le statut du build.
+
+Prompt 4 — “Fix TypeScript/Node types + structuredClone”
+
+À coller dans Replit :
+
+Si TypeScript échoue sur structuredClone ou sur des types Node, corrige proprement.
+Actions:
+
+Assurer que @types/node est installé au root et/ou dans le bon scope workspace.
+
+Mettre types:["node"] dans tsconfig.base.json (ou équivalent) et s’assurer que lib inclut ES2022 (ou plus si nécessaire).
+
+Rebuild npm run build:all.
+
+Me montrer le diff des fichiers tsconfig + résultat.
+
+Prompt 5 — “Commit (Replit bible) + Push”
+
+À coller dans Replit :
+
+Objectif: Replit est la source de vérité.
+Actions:
+
+Afficher git status --short.
+
+Ajouter uniquement les fichiers nécessaires (pas de backups .bak.*, pas de outputs inutiles si on veut les ignorer).
+
+Proposer un .gitignore si besoin (dist, *.map selon choix, etc.).
+
+Faire git add -A, git commit -m "Monorepo: workspaces + @strategybuzzer imports + build all", puis git push.
+
+Me donner le hash du commit + les commandes VM à faire (git pull, npm install, npm run build:all, restart services).
