@@ -259,8 +259,8 @@ class BoutiqueController extends Controller
                         $unitPrice = (int) $strategique['price'];
                     } else {
                         $tier = $strategique['tier'] ?? 'Rare';
-                        $map  = ['Rare' => 500, 'Épique' => 1000, 'Légendaire' => 1500];
-                        $unitPrice = $map[$tier] ?? 500;
+                        $map  = ['Rare' => 1000, 'Épique' => 2000, 'Légendaire' => 3000];
+                        $unitPrice = $map[$tier] ?? 1000;
                     }
 
                     $currentStrategicAvatar = $user->strategic_avatar ?? null;

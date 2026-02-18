@@ -162,7 +162,8 @@ public function redirectToGoogle()
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'coins' => 1000,
+            'coins' => 30,
+            'competence_coins' => 250,
         ]);
 
         Auth::login($user);

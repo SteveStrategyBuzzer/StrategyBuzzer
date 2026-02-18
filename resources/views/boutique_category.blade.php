@@ -31,7 +31,7 @@
     
     $packs = [];
     foreach ($catalog as $slug => $entry) {
-        if (is_array($entry) && isset($entry['price']) && !in_array($slug, ['buzzers', 'stratégiques', 'musiques'])) {
+        if (is_array($entry) && isset($entry['price']) && !in_array($slug, ['buzzers', 'stratégiques', 'musiques', 'standards'])) {
             $packs[] = array_merge($entry, ['slug' => $slug]);
         }
     }

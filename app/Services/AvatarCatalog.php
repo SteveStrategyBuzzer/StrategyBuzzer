@@ -33,7 +33,7 @@ class AvatarCatalog
         }
 
         // ---- Stratégiques (skills raccourcis corrigés)
-        $TIER_PRICE = ['Rare' => 500, 'Épique' => 1000, 'Légendaire' => 1500];
+        $TIER_PRICE = ['Rare' => 1000, 'Épique' => 2000, 'Légendaire' => 3000];
 
         $stratégiques = [
             // Rare 🎯
@@ -146,7 +146,7 @@ class AvatarCatalog
         foreach ($stratégiques as $slug => &$a) {
             $a['slug']  = $slug;
             $a['path']  = "images/avatars/{$slug}.png";
-            $a['price'] = $TIER_PRICE[$a['tier']] ?? 500;
+            $a['price'] = $TIER_PRICE[$a['tier']] ?? 1000;
             $a['quest'] = 'Débloquer via boutique';
         }
 
