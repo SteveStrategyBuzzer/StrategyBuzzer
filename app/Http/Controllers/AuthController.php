@@ -232,7 +232,13 @@ public function redirectToGoogle()
         // ]);
         
         // Vérifier le code SMS et trouver/créer l'utilisateur
-        // $user = User::where('phone', $validated['phone'])->first();
+        // $user = User::updateOrCreate(
+        //     ['phone' => $validated['phone']],
+        //     [
+        //         'coins' => 30,
+        //         'competence_coins' => 250,
+        //     ]
+        // );
         
         // if ($user) {
         //     Auth::login($user);
