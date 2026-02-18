@@ -394,7 +394,7 @@ audio { width: 100%; }
                     <div class="head">
                         <div class="title">{{ $p['label'] ?? $p['name'] ?? ucfirst($p['slug']) }}</div>
                         @unless($isUnlockedPack)
-                            <div class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">{{ $p['price'] ?? 300 }}</div>
+                            <div class="price"><img src="{{ asset('images/skill_coin.png') }}" alt="" class="coin-icon--price">{{ $p['price'] ?? 300 }}</div>
                         @endunless
                     </div>
                     <div class="avatar-row">
@@ -470,7 +470,7 @@ audio { width: 100%; }
                             @csrf
                             <input type="hidden" name="kind" value="music">
                             <input type="hidden" name="target" value="{{ $track['id'] }}">
-                            <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">{{ $track['price'] }}</span>
+                            <span class="price"><img src="{{ asset('images/skill_coin.png') }}" alt="" class="coin-icon--price">{{ $track['price'] }}</span>
                             <button class="btn danger" type="submit">{{ __('Acheter') }}</button>
                         </form>
                     @endif
@@ -526,7 +526,7 @@ audio { width: 100%; }
                                 $finalPrice = $hasStrategeDiscount ? round($originalPrice * 0.8) : $originalPrice;
                             @endphp
                             <div class="price">
-                                <img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">
+                                <img src="{{ asset('images/skill_coin.png') }}" alt="" class="coin-icon--price">
                                 @if($hasStrategeDiscount)
                                     <span style="text-decoration: line-through; opacity: 0.5; margin-right: 5px;">{{ $originalPrice }}</span>
                                     <span style="color: #22c55e;">{{ $finalPrice }}</span>
@@ -773,7 +773,7 @@ audio { width: 100%; }
                     <div class="life-amount">{{ $lp['lives'] }}</div>
                     <div style="color:var(--muted);margin-top:8px;">{{ $lp['lives'] > 1 ? __('vies') : __('vie') }}</div>
                     <div class="price" style="justify-content:center;margin-top:16px;font-size:1.2rem;">
-                        <img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon">
+                        <img src="{{ asset('images/skill_coin.png') }}" alt="" class="coin-icon">
                         {{ $lp['price'] }}
                     </div>
                     <form method="POST" action="{{ $purchaseUrl }}" style="margin-top:16px;">
@@ -853,7 +853,7 @@ function openPackModal(slug, label, price, isUnlocked) {
     } else {
         footer.innerHTML = `
             <div class="price-tag">
-                <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:28px;height:28px;">
+                <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:28px;height:28px;">
                 <span>${price}</span>
             </div>
             <form method="POST" action="{{ $purchaseUrl }}" style="margin:0;">

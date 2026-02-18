@@ -272,7 +272,7 @@ audio { display: none; }
                         @csrf
                         <input type="hidden" name="kind" value="buzzer">
                         <input type="hidden" name="target" value="{{ $slug }}">
-                        <span class="price"><img src="{{ asset('images/coin-intelligence.png') }}" alt="" class="coin-icon--price">{{ $bz['price'] ?? 120 }}</span>
+                        <span class="price"><img src="{{ asset('images/skill_coin.png') }}" alt="" class="coin-icon--price">{{ $bz['price'] ?? 120 }}</span>
                         <button class="btn danger" type="submit">{{ __('Acheter') }}</button>
                     </form>
                 @endif
