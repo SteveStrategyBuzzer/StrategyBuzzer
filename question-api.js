@@ -8,6 +8,12 @@ const gemini = new GoogleGenAI({
 
 
 const app = express();
+
+// Healthcheck (Nginx + monitoring)
+app.get("/health", (req, res) => {
+  res.status(200).json({ ok: true, ts: Date.now() });
+});
+
 app.use(express.json());
 
 // Mapping des langues supportées avec traductions vrai/faux

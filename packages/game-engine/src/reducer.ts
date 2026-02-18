@@ -1,5 +1,5 @@
-import type { GameState, Player } from "../../shared/src/types.js";
-import type { GameEvent } from "../../shared/src/events.js";
+import type { GameState, Player } from "../../shared/dist/types.js";
+import type { GameEvent } from "../../shared/dist/events.js";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`GameEngine: ${msg}`);
@@ -195,7 +195,8 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
       const player = s.players[event.playerId];
       if (!player) return s;
       
-      const skill = player.skills[event.skillId];
+      const sid = event.skillId as unknown as keyof typeof player.skills;
+      const skill = player.skills[sid];
       if (skill) {
         skill.usesLeft = Math.max(0, skill.usesLeft - 1);
         if (event.duration) {

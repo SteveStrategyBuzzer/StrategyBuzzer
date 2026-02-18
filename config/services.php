@@ -50,4 +50,16 @@ return [
         'app_id' => env('FIREBASE_APP_ID', '1:681234567890:web:abc123'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Stripe
+    |--------------------------------------------------------------------------
+    | STRIPE_SECRET = clé secrète (sk_live_...)
+    | STRIPE_WEBHOOK_SECRET = secret webhook (whsec_...)
+    */
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
 ];

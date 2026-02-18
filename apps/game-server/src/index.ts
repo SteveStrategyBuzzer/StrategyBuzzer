@@ -10,7 +10,11 @@ import { setupHttpRoutes } from "./http/routes.js";
 import { verifyJWT } from "./middleware/auth.js";
 import { redisPub, redisSub, ping as redisPing } from "./services/RedisService.js";
 
-const PORT = process.env.GAME_SERVER_PORT || 3001;
+const PORT = Number(process.env.PORT);
+if (!PORT || Number.isNaN(PORT)) {
+  console.error("[FATAL] Missing PORT env. Refusing to start.");
+  process.exit(1);
+}
 const LARAVEL_ORIGIN = process.env.LARAVEL_ORIGIN || "http://localhost:5000";
 
 const app = express();
@@ -72,6 +76,8 @@ app.get("/health/redis", async (_req, res) => {
     res.status(503).json({ status: "error", redis: "disconnected" });
   }
 });
+
+app.get("/", (_req, res) => res.status(200).send("ok"));
 
 httpServer.listen(PORT, () => {
   console.log(`[GameServer] Running on port ${PORT}`);

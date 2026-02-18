@@ -1,4 +1,4 @@
-import type { Phase, GameState } from "../../shared/src/types.js";
+import type { Phase, GameState } from "../../shared/dist/types.js";
 
 export type PhaseTransition = {
   from: Phase;

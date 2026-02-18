@@ -1,4 +1,4 @@
-import type { ScoringConfig } from "../../shared/src/types.js";
+import type { ScoringConfig } from "../../shared/dist/types.js";
 
 export type ScoreResult = {
   points: number;

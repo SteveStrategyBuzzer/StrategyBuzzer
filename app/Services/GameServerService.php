@@ -15,7 +15,11 @@ class GameServerService
     public function __construct()
     {
         $this->gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
-        $this->jwtSecret = env('GAME_SERVER_JWT_SECRET', env('APP_KEY', ''));
+        $this->jwtSecret = env('GAME_SERVER_JWT_SECRET');
+
+        if (!$this->jwtSecret || strlen(trim($this->jwtSecret)) < 16) {
+            throw new \RuntimeException("Missing or weak GAME_SERVER_JWT_SECRET (mirror strict Replit)");
+        }
     }
 
     public function createRoom(string $mode, int $hostPlayerId, array $config = []): array

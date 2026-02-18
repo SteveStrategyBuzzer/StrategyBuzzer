@@ -1,4 +1,4 @@
-import type { UUID, Phase, SkillId, Mode } from "./types";
+import type { UUID, Phase, SkillId, Mode } from "./types.js";
 
 export type BaseEvent = {
   id: number;

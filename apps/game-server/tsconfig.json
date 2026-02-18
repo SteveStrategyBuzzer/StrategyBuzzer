@@ -2,17 +2,23 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
     "declaration": true,
+
     "moduleResolution": "NodeNext",
     "module": "NodeNext",
     "target": "ES2022",
+
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "paths": {
-      "@strategybuzzer/shared": ["../../packages/shared/src"],
-      "@strategybuzzer/game-engine": ["../../packages/game-engine/src"]
-    }
+
+    "types": ["node"],
+    "lib": ["ES2022", "DOM"]
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*",
+    "../../packages/shared/src/**/*",
+    "../../packages/game-engine/src/**/*"
+  ],
+  "exclude": ["node_modules", "dist", "**/*.test.*", "**/*.spec.*"]
 }

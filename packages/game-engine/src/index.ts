@@ -1,3 +1,3 @@
-export * from "./reducer";
-export * from "./state-machine";
-export * from "./scoring";
+export * from "./reducer.js";
+export * from "./state-machine.js";
+export * from "./scoring.js";

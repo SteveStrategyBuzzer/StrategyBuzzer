@@ -25,3 +25,41 @@ storage/framework/views/*
 # Firebase credentials (never commit)
 storage/app/firebase-credentials.json
 export_strategybuzzer.sql
+
+# ===============================
+# Laravel Core (obligatoire)
+# ===============================
+/vendor/
+/bootstrap/cache/*.php
+
+# ===============================
+# Node / Game Server
+# ===============================
+/node_modules/
+apps/game-server/node_modules/
+apps/game-server/dist/
+/dist/
+
+# ===============================
+# Fichiers temporaires / backup
+# ===============================
+*.bak
+*.backup
+*.old
+*.tmp
+
+
+# backups
+*.bak.*
+*.bak
+*.tmp
+
+# node/ts build
+**/dist/
+**/*.tsbuildinfo
+
+# si tsc a déjà généré des fichiers dans src par erreur
+packages/*/src/*.js
+packages/*/src/*.js.map
+packages/*/src/*.d.ts
+packages/*/src/*.d.ts.map

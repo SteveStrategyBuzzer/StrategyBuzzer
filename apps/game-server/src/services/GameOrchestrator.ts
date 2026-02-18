@@ -50,7 +50,8 @@ export class GameOrchestrator {
     }
 
     room.state.questions = [pipelineResult.firstQuestion];
-    room.usedQuestionIds.add(pipelineResult.firstQuestion.id);
+    room.usedQuestionIds ??= new Set();
+      room.usedQuestionIds.add(pipelineResult.firstQuestion.id);
     console.log(`[GameOrchestrator] Pipeline initialized with first question for room ${roomId}`);
 
     const event = this.roomManager.startGame(roomId);
@@ -95,6 +96,7 @@ export class GameOrchestrator {
     room.state.questions = [...room.state.questions, ...questions];
     
     for (const q of questions) {
+      room.usedQuestionIds ??= new Set();
       room.usedQuestionIds.add(q.id);
     }
     
@@ -401,7 +403,7 @@ export class GameOrchestrator {
         break;
 
       case "WAITING":
-        this.handleWaitingTimeout(roomId).catch(err => {
+        this.handleWaitingTimeout(roomId).catch((err: unknown) => {
           console.error(`[GameOrchestrator] Error in handleWaitingTimeout:`, err);
         });
         break;
@@ -711,7 +713,7 @@ export class GameOrchestrator {
     if (isLastQuestion) {
       this.endRound(roomId);
     } else if (this.shouldShowWaiting(room.state.questionIndex)) {
-      this.transitionToWaiting(roomId).catch(err => {
+      this.transitionToWaiting(roomId).catch((err: unknown) => {
         console.error(`[GameOrchestrator] Error in transitionToWaiting:`, err);
       });
     } else {
@@ -806,11 +808,11 @@ export class GameOrchestrator {
     const maxRoundsWon = Math.max(...Object.values(room.state.players).map(p => p.roundsWon));
 
     if (maxRoundsWon >= room.state.config.roundsToWin) {
-      this.endMatch(roomId).catch(err => {
+      this.endMatch(roomId).catch((err: unknown) => {
         console.error(`[GameOrchestrator] Error in endMatch:`, err);
       });
     } else if (room.state.currentRound >= room.state.config.maxRounds) {
-      this.endMatch(roomId).catch(err => {
+      this.endMatch(roomId).catch((err: unknown) => {
         console.error(`[GameOrchestrator] Error in endMatch:`, err);
       });
     } else {
@@ -947,11 +949,11 @@ export class GameOrchestrator {
 
     this.io.to(roomId).emit("phase_changed", phaseEvent);
 
-    appendEventLog(roomId, { type: "phase_changed", ...phaseEvent, atMs: Date.now() }).catch(err => {
+    appendEventLog(roomId, { type: "phase_changed", ...phaseEvent, atMs: Date.now() }).catch((err: unknown) => {
       console.error(`[GameOrchestrator] Failed to append event log:`, err);
     });
 
-    setRoomState(roomId, room.state).catch(err => {
+    setRoomState(roomId, room.state).catch((err: unknown) => {
       console.error(`[GameOrchestrator] Failed to persist room state:`, err);
     });
   }
@@ -1000,7 +1002,7 @@ export class GameOrchestrator {
   }
 
   private logEventToRedis(roomId: string, event: GameEvent): void {
-    appendEventLog(roomId, event).catch(err => {
+    appendEventLog(roomId, event).catch((err: unknown) => {
       console.error(`[GameOrchestrator] Failed to append event log for ${event.type}:`, err);
     });
 
@@ -1010,7 +1012,7 @@ export class GameOrchestrator {
         pipelineConfig: room.pipelineConfig,
         usedQuestionIds: room.usedQuestionIds ? Array.from(room.usedQuestionIds) : [],
       };
-      saveRoomSnapshot(roomId, room.state, room.events, metadata).catch(err => {
+      saveRoomSnapshot(roomId, room.state, room.events, metadata).catch((err: unknown) => {
         console.error(`[GameOrchestrator] Failed to save room snapshot:`, err);
       });
     }
