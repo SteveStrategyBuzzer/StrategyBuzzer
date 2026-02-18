@@ -671,7 +671,16 @@ audio { width: 100%; }
                     </div>
                     <div class="coin-amount">{{ number_format($pack['coins'] ?? 0) }}</div>
                     <div style="color:var(--muted);margin-top:8px;">{{ __("pièces d'intelligence") }}</div>
-                    <div class="coin-price">${{ number_format(($pack['amount_cents'] ?? 0) / 100, 2) }}</div>
+                    @php
+                        $lang = app()->getLocale() ?: 'fr';
+                        $cur = config('coins.language_currency_map.' . $lang, 'usd');
+                        $amt = $pack['prices'][$cur] ?? $pack['prices']['usd'] ?? $pack['amount_cents'] ?? 0;
+                        $sym = $cur === 'eur' ? '€' : '$';
+                        $fmtPrice = $cur === 'eur' 
+                            ? number_format($amt / 100, 2, ',', '') . '€'
+                            : '$' . number_format($amt / 100, 2, '.', '');
+                    @endphp
+                    <div class="coin-price">{{ $fmtPrice }}</div>
                     <form method="POST" action="{{ route('coins.checkout') }}" style="margin-top:16px;">
                         @csrf
                         <input type="hidden" name="product_key" value="{{ $pack['key'] ?? '' }}">
@@ -701,7 +710,15 @@ audio { width: 100%; }
                     </div>
                     <div class="coin-amount">{{ number_format($pack['coins'] ?? 0) }}</div>
                     <div style="color:var(--muted);margin-top:8px;">{{ __("pièces de compétence") }}</div>
-                    <div class="coin-price">${{ number_format(($pack['amount_cents'] ?? 0) / 100, 2) }}</div>
+                    @php
+                        $lang = app()->getLocale() ?: 'fr';
+                        $cur = config('coins.language_currency_map.' . $lang, 'usd');
+                        $amt = $pack['prices'][$cur] ?? $pack['prices']['usd'] ?? $pack['amount_cents'] ?? 0;
+                        $fmtPrice = $cur === 'eur' 
+                            ? number_format($amt / 100, 2, ',', '') . '€'
+                            : '$' . number_format($amt / 100, 2, '.', '');
+                    @endphp
+                    <div class="coin-price">{{ $fmtPrice }}</div>
                     <form method="POST" action="{{ route('coins.checkout') }}" style="margin-top:16px;">
                         @csrf
                         <input type="hidden" name="product_key" value="{{ $pack['key'] ?? '' }}">
@@ -756,6 +773,7 @@ function toggleDetails(slug) {
     }
 }
 
+<<<<<<< HEAD
 // Devise côté serveur (session) injectée dans le layout
 // window.SB_CURRENCY_SYMBOL ex: "$", "€", "£", "฿"
 document.addEventListener('DOMContentLoaded', function() {
@@ -775,6 +793,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const html = btn.innerHTML || '';
         btn.innerHTML = html.replace(/\$([\d.,]+)/g, currencySymbol + '$1');
     });
+=======
+document.addEventListener('DOMContentLoaded', function() {
+>>>>>>> ce718c17 (Align currency display and processing with user's language settings)
 });
     
 

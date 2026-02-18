@@ -3,11 +3,54 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Mapping Langue → Devise
+    |--------------------------------------------------------------------------
+    |
+    | Détermine la devise à utiliser selon la langue du joueur.
+    | Les langues européennes (fr, es, it, de, pt, el) utilisent l'EUR.
+    | L'anglais utilise USD. Les autres (ru, ar, zh) utilisent USD par défaut
+    | car les devises locales (RUB, SAR, CNY) sont moins stables.
+    |
+    */
+
+    'language_currency_map' => [
+        'fr' => 'eur',
+        'en' => 'usd',
+        'es' => 'eur',
+        'it' => 'eur',
+        'de' => 'eur',
+        'pt' => 'eur',
+        'el' => 'eur',
+        'ru' => 'usd',
+        'ar' => 'usd',
+        'zh' => 'usd',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Symboles et formats de devises
+    |--------------------------------------------------------------------------
+    */
+
+    'currency_symbols' => [
+        'usd' => '$',
+        'eur' => '€',
+    ],
+
+    'currency_format' => [
+        'usd' => ['symbol' => '$', 'position' => 'before', 'decimal' => '.'],
+        'eur' => ['symbol' => '€', 'position' => 'after', 'decimal' => ','],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Packs de Pièces d'Intelligence
     |--------------------------------------------------------------------------
     |
     | Pièces gagnées en Multijoueur (Duo, Ligue, Master) car vous prouvez
     | vos connaissances face à d'autres joueurs. Aussi achetables avec Stripe.
+    |
+    | Les prix sont harmonisés entre EUR et USD pour être équitables.
     |
     */
 
@@ -16,7 +59,11 @@ return [
             'key' => 'intelligence_starter',
             'name' => 'Pack Starter',
             'coins' => 50,
-            'amount_cents' => 1000,  // $10.00 - Pièces précieuses (Multijoueur)
+            'prices' => [
+                'usd' => 999,
+                'eur' => 999,
+            ],
+            'amount_cents' => 999,
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -24,7 +71,11 @@ return [
             'key' => 'intelligence_standard',
             'name' => 'Pack Standard',
             'coins' => 100,
-            'amount_cents' => 1800,  // $18.00 (10% économie)
+            'prices' => [
+                'usd' => 1799,
+                'eur' => 1799,
+            ],
+            'amount_cents' => 1799,
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -32,7 +83,11 @@ return [
             'key' => 'intelligence_pro',
             'name' => 'Pack Pro',
             'coins' => 200,
-            'amount_cents' => 3200,  // $32.00 (20% économie)
+            'prices' => [
+                'usd' => 3199,
+                'eur' => 3199,
+            ],
+            'amount_cents' => 3199,
             'currency' => 'usd',
             'popular' => true,
         ],
@@ -40,7 +95,11 @@ return [
             'key' => 'intelligence_mega',
             'name' => 'Pack Mega',
             'coins' => 500,
-            'amount_cents' => 6500,  // $65.00 (35% économie)
+            'prices' => [
+                'usd' => 6499,
+                'eur' => 6499,
+            ],
+            'amount_cents' => 6499,
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -55,6 +114,8 @@ return [
     | Utilisées pour acheter des avatars stratégiques dans la boutique.
     | Aussi achetables avec Stripe. Prix progressifs avec économies sur les gros packs.
     |
+    | Les prix sont harmonisés entre EUR et USD pour être équitables.
+    |
     */
 
     'competence_packs' => [
@@ -62,7 +123,11 @@ return [
             'key' => 'competence_starter',
             'name' => 'Pack Débutant',
             'coins' => 100,
-            'amount_cents' => 99,  // $0.99 - Pièces abordables (Solo/Quêtes/Boutique)
+            'prices' => [
+                'usd' => 99,
+                'eur' => 99,
+            ],
+            'amount_cents' => 99,
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -70,7 +135,11 @@ return [
             'key' => 'competence_popular',
             'name' => 'Pack Populaire',
             'coins' => 500,
-            'amount_cents' => 399,  // $3.99
+            'prices' => [
+                'usd' => 399,
+                'eur' => 399,
+            ],
+            'amount_cents' => 399,
             'currency' => 'usd',
             'popular' => true,
         ],
@@ -78,7 +147,11 @@ return [
             'key' => 'competence_pro',
             'name' => 'Pack Pro',
             'coins' => 1200,
-            'amount_cents' => 899,  // $8.99
+            'prices' => [
+                'usd' => 899,
+                'eur' => 899,
+            ],
+            'amount_cents' => 899,
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -86,7 +159,11 @@ return [
             'key' => 'competence_mega',
             'name' => 'Pack Mega',
             'coins' => 2500,
-            'amount_cents' => 1699,  // $16.99
+            'prices' => [
+                'usd' => 1699,
+                'eur' => 1699,
+            ],
+            'amount_cents' => 1699,
             'currency' => 'usd',
             'popular' => false,
         ],
@@ -94,7 +171,11 @@ return [
             'key' => 'competence_ultimate',
             'name' => 'Pack Ultimate',
             'coins' => 5000,
-            'amount_cents' => 2999,  // $29.99
+            'prices' => [
+                'usd' => 2999,
+                'eur' => 2999,
+            ],
+            'amount_cents' => 2999,
             'currency' => 'usd',
             'popular' => false,
         ],
