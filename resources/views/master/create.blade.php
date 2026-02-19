@@ -608,7 +608,7 @@ body {
         </div>
         
         <!-- Domaine -->
-        <div class="section">
+        <div class="section section-full">
             <div class="section-title">Domaine</div>
             
             <div class="form-group">
