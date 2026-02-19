@@ -1,0 +1,128 @@
+Nous travaillons sur StrategyBuzzer (Laravel sur VM Debian, Nginx, prod). Objectif : harmonisation multi-devises (USD/EUR/CAD/GBP) + Stripe, niveau production internationale.
+
+Décision officielle (VALIDÉE)
+
+✅ Modèle 1:1 nominal par devise
+Ex : un pack “10.00” = 10 USD (US), 10 CAD (Canada), 10 EUR (Europe), 10 GBP (UK).
+Même chiffre, même quantité de pièces, pas de conversion par taux de change.
+
+Règles business
+
+On supporte 4 devises : USD / CAD / EUR / GBP
+
+Tout pays hors mapping => fallback USD
+
+La devise est déterminée par IP (GeoLite2 Country) et stockée en session
+
+On interdit toute devise envoyée par le client (plus de detected_currency en POST)
+
+Stripe facture dans la devise choisie, même montant numérique (ex: 1000 cents = 10.00 dans la devise)
+
+État actuel (déjà fait)
+
+Nginx envoie X-Real-IP + X-Forwarded-For. Laravel TrustProxies = *
+
+Route debug /__ip et /__currency existent (token = STRIPE_WEBHOOK_TOKEN ou “debug”)
+
+MaxMind GeoLite2 Country installé et placé ici :
+storage/app/private/geoip/GeoLite2-Country.mmdb
+
+Composer : geoip2/geoip2 installé
+
+Nouveau fichier config : config/currency.php contient :
+
+default USD
+
+supported USD/CAD/EUR/GBP
+
+country_map (CA->CAD, US->USD, GB->GBP, + Eurozone list)
+
+geoip_country_db = chemin vers mmdb
+
+Service : app/Services/CurrencyResolver.php
+
+Middleware : app/Http/Middleware/DetectCurrency.php ajouté au groupe web juste après StartSession
+
+/__currency retourne bien country=CA currency=CAD source=country_map
+
+Stripe (état actuel)
+
+config/coins.php : packs en USD avec amount_cents fixes; stripe secret via env
+
+StripeService crée des Checkout Sessions via price_data (currency + unit_amount)
+
+CoinsController et BoutiqueController acceptent actuellement detected_currency et font une liste “supported currencies” => à supprimer pour passer en 1:1 contrôlé serveur.
+
+Objectif du nouveau chat
+
+Mettre en place la logique finale 1:1 : devise uniquement via session (GeoIP), pas via client
+
+Ajuster CoinsController + BoutiqueController + éventuellement StripeService pour utiliser session('currency') (ou $request->session()->get('currency'))
+
+Ajouter un helper clair pour l’affichage du symbole (USD $, CAD $, EUR €, GBP £)
+
+Garder un fallback robuste + logs/trace minimal
+
+Finir par un test via /__currency + un test checkout (sans exposer de secrets)
+
+🧱 BLOC DE COMMANDES (à exécuter dans le nouveau chat)
+
+But : capturer l’état complet avant modifications + prouver où detected_currency est utilisé.
+
+cd /home/stevegroupe/StrategyBuzzer
+
+echo "=== 1) Currency config / middleware / debug routes (proof) ==="
+php -v | head -n 2
+composer show | grep -E 'geoip2/geoip2|maxmind-db/reader' || true
+ls -la storage/app/private/geoip/GeoLite2-Country.mmdb
+php artisan route:list | grep -E '__ip|__currency' || true
+
+echo
+echo "=== 2) Current currency detection result (server-side truth) ==="
+curl -sS "https://strategybuzzer.com/__currency?t=debug" ; echo
+
+echo
+echo "=== 3) Where detected_currency is used (must be removed for 1:1) ==="
+grep -RIn "detected_currency" app/Http/Controllers routes resources config | sed -n '1,120p' || true
+
+echo
+echo "=== 4) Full files we will modify (capture) ==="
+echo "--- CoinsController.php ---"
+nl -ba app/Http/Controllers/CoinsController.php | sed -n '1,260p'
+echo
+echo "--- BoutiqueController.php (show 520 lines, then we'll ask for more if needed) ---"
+nl -ba app/Http/Controllers/BoutiqueController.php | sed -n '1,520p'
+echo
+echo "--- StripeService.php ---"
+nl -ba app/Services/StripeService.php | sed -n '1,220p'
+
+echo
+echo "=== 5) config/coins.php packs (reference) ==="
+nl -ba config/coins.php | sed -n '1,220p'
+
+✅ Résultat attendu (ce que tu devrais voir)
+
+/__currency retourne un JSON du style :
+
+country: CA
+
+currency: CAD
+
+source: country_map
+
+session_currency: CAD
+
+Le grep detected_currency te sort au moins :
+
+CoinsController (validate + lower + whitelist)
+
+BoutiqueController (même logique)
+➡️ Et c’est exactement ce qu’on va enlever pour verrouiller le 1:1 nominal.
+
+Quand tu lances ces commandes et que tu colles la sortie, je te donne immédiatement :
+
+le plan d’implémentation sans bricolage
+
+les fichiers complets à remplacer (CoinsController + BoutiqueController + (option) helper affichage symbole)
+
+et les commandes de validation finale (checkout + logs).
