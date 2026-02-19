@@ -2,71 +2,91 @@
 
 @section('content')
 <style>
+* { box-sizing: border-box; }
+
 body {
     background-color: #003DA5;
     color: #fff;
     min-height: 100vh;
-    padding: 20px;
+    padding: 12px;
+    margin: 0;
 }
 
 .create-container {
-    max-width: 600px;
+    max-width: 480px;
     margin: 0 auto;
-    padding: 1rem;
+    padding: 0;
 }
 
 .create-title {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
     font-weight: 900;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     text-align: center;
     color: #FFD700;
+}
+
+.form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
 }
 
 .section {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 1.2rem;
-    margin-bottom: 1rem;
+    padding: 1rem;
+    margin-bottom: 0;
 }
 
 .section-title {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.6rem;
     color: #FFD700;
     text-align: center;
 }
 
 .form-group {
-    margin-bottom: 1.2rem;
+    margin-bottom: 0.8rem;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
 }
 
 .form-label {
     display: block;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.9rem;
 }
 
 .form-input {
     width: 100%;
-    padding: 0.8rem;
+    padding: 0.7rem;
     border-radius: 8px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .form-select {
     width: 100%;
-    padding: 0.8rem;
+    padding: 0.7rem;
     border-radius: 8px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ffffff' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    padding-right: 2rem;
 }
 
 .form-select option {
@@ -77,39 +97,42 @@ body {
 
 .checkbox-group, .radio-group {
     display: flex;
-    gap: 1.5rem;
+    gap: 1rem;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .checkbox-label, .radio-label {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     cursor: pointer;
+    font-size: 0.9rem;
 }
 
 .checkbox-input, .radio-input {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
 }
 
 .buttons {
     display: flex;
-    gap: 1rem;
+    gap: 0.8rem;
     justify-content: center;
-    margin-top: 2rem;
+    margin-top: 1.2rem;
 }
 
 .btn-continue {
     background: linear-gradient(135deg, #FFD700, #FFA500);
     color: #003DA5;
-    padding: 1rem 3rem;
+    padding: 0.9rem 1.5rem;
     border-radius: 10px;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 700;
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
+    flex: 1;
 }
 
 .btn-continue:hover {
@@ -120,9 +143,9 @@ body {
 .btn-cancel {
     background: rgba(255, 255, 255, 0.2);
     color: #fff;
-    padding: 1rem 3rem;
+    padding: 0.9rem 1.5rem;
     border-radius: 10px;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 600;
     border: none;
     cursor: pointer;
@@ -135,17 +158,18 @@ body {
 }
 
 .header-back {
-    position: absolute;
-    top: 20px;
-    left: 20px;
+    position: fixed;
+    top: 10px;
+    left: 10px;
     background: white;
     color: #003DA5;
-    padding: 8px 16px;
+    padding: 6px 12px;
     border-radius: 8px;
     text-decoration: none;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     transition: all 0.3s ease;
+    z-index: 100;
 }
 
 .header-back:hover {
@@ -153,30 +177,111 @@ body {
     box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
 }
 
-@media (max-width: 768px) {
-    .header-back {
-        top: 10px;
-        left: 10px;
-        padding: 6px 12px;
-        font-size: 0.9rem;
-    }
-}
-
 .input-with-label {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    font-size: 0.9rem;
 }
 
 .input-number {
-    width: 60px;
-    padding: 0.5rem;
+    width: 55px;
+    padding: 0.4rem;
     border-radius: 6px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
-    font-size: 1rem;
+    font-size: 0.95rem;
     text-align: center;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.2);
+    border-radius: 24px;
+    transition: .3s;
+}
+
+.toggle-slider:before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: .3s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: #4CAF50;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    gap: 0.8rem;
+    font-size: 0.9rem;
+}
+
+.tier-checkbox-group {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+}
+
+.tier-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.05);
+}
+
+.tier-checkbox-label:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.tier-checkbox-label input {
+    width: 16px;
+    height: 16px;
+}
+
+.subsection-hidden {
+    display: none;
+}
+
+.section-full {
+    margin-bottom: 0;
 }
 
 /* Modal */
@@ -191,131 +296,183 @@ body {
     background-color: rgba(0, 0, 0, 0.7);
     justify-content: center;
     align-items: center;
+    padding: 1rem;
 }
 
 .modal-content {
     background: linear-gradient(135deg, #003DA5, #0055CC);
     border: 3px solid #FFD700;
     border-radius: 15px;
-    padding: 2rem;
-    max-width: 500px;
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 100%;
     text-align: center;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .modal-title {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 900;
     color: #FFD700;
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
 }
 
 .modal-text {
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    margin-bottom: 1.2rem;
     line-height: 1.5;
 }
 
 .modal-btn {
     background: linear-gradient(135deg, #FFD700, #FFA500);
     color: #003DA5;
-    padding: 0.8rem 2rem;
+    padding: 0.7rem 1.5rem;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     border: none;
     cursor: pointer;
 }
 
-/* Paysage : 2 colonnes */
-@media (orientation: landscape) and (min-width: 768px) {
-    .create-container {
-        max-width: 900px;
+.sound-divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    margin: 0.8rem 0;
+}
+
+/* ========== TABLET (min-width: 600px) ========== */
+@media (min-width: 600px) {
+    body {
+        padding: 20px;
     }
-    
+
+    .create-container {
+        max-width: 700px;
+        padding: 0.5rem;
+    }
+
+    .create-title {
+        font-size: 1.8rem;
+        margin-bottom: 1.2rem;
+    }
+
     .form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 1rem;
+        gap: 0.8rem;
     }
-    
+
     .section-full {
         grid-column: 1 / -1;
     }
+
+    .section {
+        padding: 1.2rem;
+    }
+
+    .section-title {
+        font-size: 1.05rem;
+    }
+
+    .form-label, .checkbox-label, .radio-label, .toggle-row, .tier-checkbox-label {
+        font-size: 0.95rem;
+    }
+
+    .form-input, .form-select {
+        padding: 0.8rem;
+        font-size: 1rem;
+    }
+
+    .btn-continue {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+    }
+
+    .header-back {
+        top: 15px;
+        left: 15px;
+        padding: 8px 14px;
+        font-size: 0.9rem;
+    }
+
+    .modal-content {
+        max-width: 450px;
+        padding: 2rem;
+    }
 }
 
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 26px;
-}
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255,255,255,0.2);
-    border-radius: 26px;
-    transition: .3s;
-}
-.toggle-slider:before {
-    content: "";
-    position: absolute;
-    height: 20px;
-    width: 20px;
-    left: 3px;
-    bottom: 3px;
-    background: #fff;
-    border-radius: 50%;
-    transition: .3s;
-}
-.toggle-switch input:checked + .toggle-slider {
-    background: #4CAF50;
-}
-.toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(24px);
+/* ========== DESKTOP / LARGE TABLET (min-width: 900px) ========== */
+@media (min-width: 900px) {
+    .create-container {
+        max-width: 860px;
+        padding: 1rem;
+    }
+
+    .create-title {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .section {
+        padding: 1.4rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+    }
+
+    .header-back {
+        top: 20px;
+        left: 20px;
+        padding: 8px 16px;
+        font-size: 0.95rem;
+    }
+
+    .tier-checkbox-group {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
 }
 
-.toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-}
+/* ========== LANDSCAPE on small devices ========== */
+@media (orientation: landscape) and (max-height: 500px) {
+    body {
+        padding: 8px;
+    }
 
-.tier-checkbox-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    margin-top: 0.8rem;
-}
+    .create-container {
+        max-width: 95%;
+    }
 
-.tier-checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    cursor: pointer;
-    padding: 0.4rem 0.6rem;
-    border-radius: 8px;
-    transition: background 0.2s;
-}
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+    }
 
-.tier-checkbox-label:hover {
-    background: rgba(255,255,255,0.08);
-}
+    .section-full {
+        grid-column: 1 / -1;
+    }
 
-.tier-checkbox-label input {
-    width: 18px;
-    height: 18px;
-}
+    .section {
+        padding: 0.8rem;
+        margin-bottom: 0;
+    }
 
-.subsection-hidden {
-    display: none;
+    .section-title {
+        font-size: 0.9rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .create-title {
+        font-size: 1.3rem;
+        margin-bottom: 0.6rem;
+    }
 }
 </style>
 
@@ -549,7 +706,7 @@ body {
                 </div>
             </div>
             
-            <div style="border-top: 1px solid rgba(255,255,255,0.12); margin: 1rem 0;"></div>
+            <hr class="sound-divider">
             
             <div class="form-group">
                 <label class="form-label" style="text-align: center;">{{ __('Sons des Buzzers') }}</label>
@@ -603,13 +760,12 @@ body {
         </div>
         </div>
         
-        <!-- Boutons de création (pleine largeur) -->
-        <div class="section-full" style="margin-top: 2rem;">
-            <div class="buttons" style="gap: 1rem;">
-                <button type="submit" name="creation_mode" value="automatique" id="automatiqueBtn" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #FFD700, #FFA500); font-size: 1.1rem;">
+        <div class="section-full" style="margin-top: 1rem;">
+            <div class="buttons">
+                <button type="submit" name="creation_mode" value="automatique" id="automatiqueBtn" class="btn-continue" style="background: linear-gradient(135deg, #FFD700, #FFA500);">
                     {{ __('Automatique') }}
                 </button>
-                <button type="button" id="personnaliseBtn" class="btn-continue" style="flex: 1; background: linear-gradient(135deg, #00D4FF, #0099CC); font-size: 1.1rem;">
+                <button type="button" id="personnaliseBtn" class="btn-continue" style="background: linear-gradient(135deg, #00D4FF, #0099CC);">
                     {{ __('Personnalisé') }}
                 </button>
             </div>
