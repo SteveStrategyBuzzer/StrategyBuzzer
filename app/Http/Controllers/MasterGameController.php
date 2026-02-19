@@ -46,7 +46,7 @@ class MasterGameController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'language' => 'required|string|in:FR,EN,ES,DE',
-            'participants_expected' => 'required|integer|min:3|max:40',
+            'participants_expected' => 'required|integer|min:2|max:40',
             'mode' => 'required|in:face_to_face,one_vs_all,podium,groups',
             'total_questions' => 'required|in:10,20,30,40',
             'question_types' => 'required|array',
@@ -57,7 +57,15 @@ class MasterGameController extends Controller
             'school_grade' => 'nullable|string',
             'school_subject' => 'nullable|string',
             'creation_mode' => 'required|in:automatique,personnalise',
-            'ai_images_count' => 'nullable|integer|min:0|max:3'
+            'ai_images_count' => 'nullable|integer|min:0|max:3',
+            'tiebreaker_mode' => 'nullable|string|in:bonus,efficiency,sudden_death',
+            'gameplay_ambiance_enabled' => 'nullable',
+            'ambiance_music_choice' => 'nullable|string|in:master,player',
+            'ambiance_music_id' => 'nullable|string',
+            'buzzer_sound_choice' => 'nullable|string|in:master,player',
+            'buzzer_sound_id' => 'nullable|string',
+            'strategic_avatars_enabled' => 'nullable',
+            'strategic_avatars_tiers' => 'nullable|array',
         ]);
 
         // Générer un code unique
@@ -80,6 +88,14 @@ class MasterGameController extends Controller
             'school_subject' => $validated['school_subject'] ?? null,
             'creation_mode' => $validated['creation_mode'],
             'ai_images_count' => $validated['ai_images_count'] ?? 0,
+            'tiebreaker_mode' => $validated['tiebreaker_mode'] ?? 'bonus',
+            'gameplay_ambiance_enabled' => isset($validated['gameplay_ambiance_enabled']),
+            'ambiance_music_choice' => $validated['ambiance_music_choice'] ?? 'master',
+            'ambiance_music_id' => $validated['ambiance_music_id'] ?? 'strategybuzzer',
+            'buzzer_sound_choice' => $validated['buzzer_sound_choice'] ?? 'master',
+            'buzzer_sound_id' => $validated['buzzer_sound_id'] ?? 'default',
+            'strategic_avatars_enabled' => isset($validated['strategic_avatars_enabled']),
+            'strategic_avatars_tiers' => $validated['strategic_avatars_tiers'] ?? [],
             'status' => 'draft'
         ]);
 

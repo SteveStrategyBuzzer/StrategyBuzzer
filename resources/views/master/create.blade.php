@@ -243,6 +243,118 @@ body {
         grid-column: 1 / -1;
     }
 }
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.2);
+    border-radius: 26px;
+    transition: .3s;
+}
+.toggle-slider:before {
+    content: "";
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: .3s;
+}
+.toggle-switch input:checked + .toggle-slider {
+    background: #4CAF50;
+}
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+}
+
+.music-list {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 0.8rem;
+    padding: 0.5rem;
+    background: rgba(0,0,0,0.15);
+    border-radius: 8px;
+}
+
+.music-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.music-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.music-item.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.music-item.selected {
+    background: rgba(255,215,0,0.2);
+    border: 1px solid rgba(255,215,0,0.4);
+}
+
+.music-item input[type="radio"] {
+    width: 16px;
+    height: 16px;
+}
+
+.tier-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+}
+
+.tier-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.tier-checkbox-label:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+.tier-checkbox-label input {
+    width: 18px;
+    height: 18px;
+}
+
+.subsection-hidden {
+    display: none;
+}
 </style>
 
 <a href="{{ route('menu') }}" class="header-back">Menu</a>
@@ -273,8 +385,8 @@ body {
             </div>
             <div class="form-group" style="margin-top: 1rem;">
                 <div class="input-with-label" style="justify-content: center;">
-                    <label>Participants (3-40)</label>
-                    <input type="number" name="participants_expected" class="input-number" value="10" min="3" max="40" required>
+                    <label>Participants (2-40)</label>
+                    <input type="number" name="participants_expected" class="input-number" value="10" min="2" max="40" required>
                     <span>/40</span>
                 </div>
             </div>
@@ -447,6 +559,133 @@ body {
                 <select name="school_subject" id="schoolSubject" class="form-select" style="margin-top: 0.8rem; text-align: center;">
                     <option value="">-- Matière --</option>
                 </select>
+            </div>
+        </div>
+        
+        <!-- Sons -->
+        <div class="section section-full">
+            <div class="section-title">{{ __('Sons') }}</div>
+            
+            <div class="toggle-row">
+                <span>{{ __('Ambiance Gameplay') }}</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="gameplay_ambiance_enabled" value="1" checked id="gameplayAmbianceToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            
+            <div id="ambianceOptions">
+                <div class="form-group" style="margin-top: 0.8rem;">
+                    <label class="form-label" style="text-align: center;">{{ __('Musique d\'ambiance - Choix') }}</label>
+                    <div class="radio-group" style="justify-content: center; gap: 2rem;">
+                        <label class="radio-label">
+                            <input type="radio" name="ambiance_music_choice" value="master" class="radio-input" checked>
+                            <span>{{ __('Maître') }}</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="ambiance_music_choice" value="player" class="radio-input">
+                            <span>{{ __('Joueur') }}</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="masterMusicSelect">
+                    <div class="music-list">
+                        @php
+                            $user = Auth::user();
+                            $settings = is_array($user->profile_settings) ? $user->profile_settings : json_decode($user->profile_settings ?? '{}', true);
+                            $unlockedMusic = $settings['unlocked']['music'] ?? [['id' => 'strategybuzzer', 'label' => 'StrategyBuzzer']];
+                            $unlockedMusicIds = collect($unlockedMusic)->pluck('id')->toArray();
+                            $allMusic = [
+                                'strategybuzzer' => 'StrategyBuzzer',
+                                'fun_01' => 'Fun 01',
+                                'chill' => 'Chill',
+                                'punchy' => 'Punchy',
+                            ];
+                        @endphp
+                        @foreach($allMusic as $musicId => $musicLabel)
+                            @php $isUnlocked = in_array($musicId, $unlockedMusicIds); @endphp
+                            <label class="music-item {{ !$isUnlocked ? 'locked' : '' }}" title="{{ !$isUnlocked ? __('Non débloqué') : '' }}">
+                                <input type="radio" name="ambiance_music_id" value="{{ $musicId }}" 
+                                    {{ $musicId === 'strategybuzzer' ? 'checked' : '' }}
+                                    {{ !$isUnlocked ? 'disabled' : '' }}>
+                                <span style="{{ $isUnlocked ? 'font-weight:700;' : '' }}">{{ $musicLabel }}</span>
+                                @if(!$isUnlocked)
+                                    <span style="font-size:0.75rem; opacity:0.6;">🔒</span>
+                                @endif
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            
+            <hr style="border-color: rgba(255,255,255,0.15); margin: 1rem 0;">
+            
+            <div class="form-group">
+                <label class="form-label" style="text-align: center;">{{ __('Sons des Buzzers - Choix') }}</label>
+                <div class="radio-group" style="justify-content: center; gap: 2rem;">
+                    <label class="radio-label">
+                        <input type="radio" name="buzzer_sound_choice" value="master" class="radio-input" checked>
+                        <span>{{ __('Maître') }}</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="buzzer_sound_choice" value="player" class="radio-input">
+                        <span>{{ __('Joueur') }}</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div id="masterBuzzerSelect">
+                <div class="music-list">
+                    @php
+                        $defaultBuzzers = [
+                            'default' => 'Buzzer Classique',
+                            'buzzer_default_1' => 'Buzzer 1',
+                            'buzzer_default_2' => 'Buzzer 2',
+                        ];
+                    @endphp
+                    @foreach($defaultBuzzers as $buzzerId => $buzzerLabel)
+                        <label class="music-item">
+                            <input type="radio" name="buzzer_sound_id" value="{{ $buzzerId }}" 
+                                {{ $buzzerId === 'default' ? 'checked' : '' }}>
+                            <span style="font-weight:700;">{{ $buzzerLabel }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        
+        <!-- Avatars Stratégiques -->
+        <div class="section section-full">
+            <div class="section-title">{{ __('Avatars Stratégiques') }}</div>
+            
+            <div class="toggle-row">
+                <span>{{ __('Activer les avatars stratégiques') }}</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="strategic_avatars_enabled" value="1" id="strategicAvatarsToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            
+            <div id="strategicAvatarsOptions" class="subsection-hidden">
+                <div class="tier-checkbox-group">
+                    <label class="tier-checkbox-label">
+                        <input type="checkbox" id="tierAll" class="tier-checkbox">
+                        <span style="font-weight:700; color:#FFD700;">{{ __('Tous') }}</span>
+                    </label>
+                    <label class="tier-checkbox-label">
+                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Rare" class="tier-checkbox tier-individual" id="tierRare">
+                        <span>🎯 {{ __('Rare') }}</span>
+                    </label>
+                    <label class="tier-checkbox-label">
+                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Épique" class="tier-checkbox tier-individual" id="tierEpic">
+                        <span>🔮 {{ __('Épique') }}</span>
+                    </label>
+                    <label class="tier-checkbox-label">
+                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Légendaire" class="tier-checkbox tier-individual" id="tierLegendary">
+                        <span>👑 {{ __('Légendaire') }}</span>
+                    </label>
+                </div>
             </div>
         </div>
         </div>
@@ -698,5 +937,70 @@ if (personnaliseBtn) {
         document.getElementById('createForm').submit();
     });
 }
+
+// === Sound section logic ===
+const gameplayAmbianceToggle = document.getElementById('gameplayAmbianceToggle');
+const ambianceOptions = document.getElementById('ambianceOptions');
+
+if (gameplayAmbianceToggle && ambianceOptions) {
+    gameplayAmbianceToggle.addEventListener('change', function() {
+        ambianceOptions.style.display = this.checked ? 'block' : 'none';
+    });
+}
+
+// Show/hide master music select based on ambiance choice
+const ambianceMusicRadios = document.querySelectorAll('input[name="ambiance_music_choice"]');
+const masterMusicSelect = document.getElementById('masterMusicSelect');
+
+ambianceMusicRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (masterMusicSelect) {
+            masterMusicSelect.style.display = this.value === 'master' ? 'block' : 'none';
+        }
+    });
+});
+
+// Show/hide master buzzer select based on buzzer choice
+const buzzerSoundRadios = document.querySelectorAll('input[name="buzzer_sound_choice"]');
+const masterBuzzerSelect = document.getElementById('masterBuzzerSelect');
+
+buzzerSoundRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (masterBuzzerSelect) {
+            masterBuzzerSelect.style.display = this.value === 'master' ? 'block' : 'none';
+        }
+    });
+});
+
+// === Strategic Avatars section logic ===
+const strategicAvatarsToggle = document.getElementById('strategicAvatarsToggle');
+const strategicAvatarsOptions = document.getElementById('strategicAvatarsOptions');
+
+if (strategicAvatarsToggle && strategicAvatarsOptions) {
+    strategicAvatarsToggle.addEventListener('change', function() {
+        if (this.checked) {
+            strategicAvatarsOptions.classList.remove('subsection-hidden');
+        } else {
+            strategicAvatarsOptions.classList.add('subsection-hidden');
+        }
+    });
+}
+
+// Tier checkbox logic: Tous ↔ individual tiers
+const tierAll = document.getElementById('tierAll');
+const tierIndividuals = document.querySelectorAll('.tier-individual');
+
+if (tierAll) {
+    tierAll.addEventListener('change', function() {
+        tierIndividuals.forEach(cb => { cb.checked = this.checked; });
+    });
+}
+
+tierIndividuals.forEach(cb => {
+    cb.addEventListener('change', function() {
+        const allChecked = Array.from(tierIndividuals).every(c => c.checked);
+        tierAll.checked = allChecked;
+    });
+});
 </script>
 @endsection

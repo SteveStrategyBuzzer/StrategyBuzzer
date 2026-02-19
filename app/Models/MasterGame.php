@@ -35,7 +35,15 @@ class MasterGame extends Model
         'team_count',
         'team_size_cap',
         'skill_policy',
-        'buzz_rule'
+        'buzz_rule',
+        'tiebreaker_mode',
+        'gameplay_ambiance_enabled',
+        'ambiance_music_choice',
+        'ambiance_music_id',
+        'buzzer_sound_choice',
+        'buzzer_sound_id',
+        'strategic_avatars_enabled',
+        'strategic_avatars_tiers',
     ];
 
     protected $casts = [
@@ -43,7 +51,10 @@ class MasterGame extends Model
         'question_types' => 'array',
         'quiz_validated' => 'boolean',
         'started_at' => 'datetime',
-        'ended_at' => 'datetime'
+        'ended_at' => 'datetime',
+        'gameplay_ambiance_enabled' => 'boolean',
+        'strategic_avatars_enabled' => 'boolean',
+        'strategic_avatars_tiers' => 'array',
     ];
 
     // Relations
