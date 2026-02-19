@@ -288,44 +288,6 @@ body {
     padding: 0.5rem 0;
 }
 
-.music-list {
-    max-height: 150px;
-    overflow-y: auto;
-    margin-top: 0.8rem;
-    padding: 0.5rem;
-    background: rgba(0,0,0,0.15);
-    border-radius: 8px;
-}
-
-.music-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.music-item:hover {
-    background: rgba(255,255,255,0.1);
-}
-
-.music-item.locked {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.music-item.selected {
-    background: rgba(255,215,0,0.2);
-    border: 1px solid rgba(255,215,0,0.4);
-}
-
-.music-item input[type="radio"] {
-    width: 16px;
-    height: 16px;
-}
-
 .tier-checkbox-group {
     display: flex;
     flex-direction: column;
@@ -469,44 +431,23 @@ body {
         
         <!-- Mode de Jeu -->
         <div class="section">
-            <div class="section-title">Mode de Jeu</div>
-            <div class="radio-group" style="flex-direction: column; gap: 0.8rem; align-items: flex-start;">
-                <label class="radio-label">
-                    <input type="radio" name="mode" value="face_to_face" class="radio-input">
-                    <span>Face à Face</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="mode" value="groups" class="radio-input">
-                    <span>En Groupe</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="mode" value="one_vs_all" class="radio-input" checked>
-                    <span>1 contre Tous</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="mode" value="podium" class="radio-input">
-                    <span>Podium</span>
-                </label>
-            </div>
+            <div class="section-title">{{ __('Mode de Jeu') }}</div>
+            <select name="mode" class="form-select" style="text-align: center; font-weight: 600;">
+                <option value="one_vs_all" selected>{{ __('1 contre Tous') }}</option>
+                <option value="face_to_face">{{ __('Face à Face') }}</option>
+                <option value="groups">{{ __('En Groupe') }}</option>
+                <option value="podium">{{ __('Podium') }}</option>
+            </select>
         </div>
         
         <!-- Manche Ultime (Tiebreaker) -->
         <div class="section">
             <div class="section-title">{{ __('Manche Ultime') }}</div>
-            <div class="radio-group" style="flex-direction: column; gap: 0.8rem; align-items: flex-start;">
-                <label class="radio-label">
-                    <input type="radio" name="tiebreaker_mode" value="bonus" class="radio-input" checked>
-                    <span>{{ __('Bonus') }}</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="tiebreaker_mode" value="efficiency" class="radio-input">
-                    <span>{{ __('Efficacité') }}</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="tiebreaker_mode" value="sudden_death" class="radio-input">
-                    <span>{{ __('Mort Subite') }}</span>
-                </label>
-            </div>
+            <select name="tiebreaker_mode" class="form-select" style="text-align: center; font-weight: 600;">
+                <option value="bonus" selected>{{ __('Bonus') }}</option>
+                <option value="efficiency">{{ __('Efficacité') }}</option>
+                <option value="sudden_death">{{ __('Mort Subite') }}</option>
+            </select>
         </div>
         
         <!-- Domaine -->
@@ -574,84 +515,56 @@ body {
                 </label>
             </div>
             
-            <div id="ambianceOptions">
-                <div class="form-group" style="margin-top: 0.8rem;">
-                    <label class="form-label" style="text-align: center;">{{ __('Musique d\'ambiance - Choix') }}</label>
-                    <div class="radio-group" style="justify-content: center; gap: 2rem;">
-                        <label class="radio-label">
-                            <input type="radio" name="ambiance_music_choice" value="master" class="radio-input" checked>
-                            <span>{{ __('Maître') }}</span>
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="ambiance_music_choice" value="player" class="radio-input">
-                            <span>{{ __('Joueur') }}</span>
-                        </label>
-                    </div>
+            <div id="ambianceOptions" style="margin-top: 0.8rem;">
+                @php
+                    $user = Auth::user();
+                    $settings = is_array($user->profile_settings) ? $user->profile_settings : json_decode($user->profile_settings ?? '{}', true);
+                    $unlockedMusic = $settings['unlocked']['music'] ?? [['id' => 'strategybuzzer', 'label' => 'StrategyBuzzer']];
+                    $unlockedMusicIds = collect($unlockedMusic)->pluck('id')->toArray();
+                    $allMusic = [
+                        'strategybuzzer' => 'StrategyBuzzer',
+                        'fun_01' => 'Fun 01',
+                        'chill' => 'Chill',
+                        'punchy' => 'Punchy',
+                    ];
+                @endphp
+                
+                <div class="form-group">
+                    <label class="form-label" style="text-align: center;">{{ __('Musique d\'ambiance') }}</label>
+                    <select name="ambiance_music_choice" class="form-select" style="text-align: center; font-weight: 600;" id="ambianceMusicChoiceSelect">
+                        <option value="master">{{ __('Choix du Maître') }}</option>
+                        <option value="player">{{ __('Choix du Joueur') }}</option>
+                    </select>
                 </div>
                 
-                <div id="masterMusicSelect">
-                    <div class="music-list">
-                        @php
-                            $user = Auth::user();
-                            $settings = is_array($user->profile_settings) ? $user->profile_settings : json_decode($user->profile_settings ?? '{}', true);
-                            $unlockedMusic = $settings['unlocked']['music'] ?? [['id' => 'strategybuzzer', 'label' => 'StrategyBuzzer']];
-                            $unlockedMusicIds = collect($unlockedMusic)->pluck('id')->toArray();
-                            $allMusic = [
-                                'strategybuzzer' => 'StrategyBuzzer',
-                                'fun_01' => 'Fun 01',
-                                'chill' => 'Chill',
-                                'punchy' => 'Punchy',
-                            ];
-                        @endphp
+                <div class="form-group" id="masterMusicSelect" style="margin-top: 0.6rem;">
+                    <select name="ambiance_music_id" class="form-select" style="text-align: center;">
                         @foreach($allMusic as $musicId => $musicLabel)
                             @php $isUnlocked = in_array($musicId, $unlockedMusicIds); @endphp
-                            <label class="music-item {{ !$isUnlocked ? 'locked' : '' }}" title="{{ !$isUnlocked ? __('Non débloqué') : '' }}">
-                                <input type="radio" name="ambiance_music_id" value="{{ $musicId }}" 
-                                    {{ $musicId === 'strategybuzzer' ? 'checked' : '' }}
-                                    {{ !$isUnlocked ? 'disabled' : '' }}>
-                                <span style="{{ $isUnlocked ? 'font-weight:700;' : '' }}">{{ $musicLabel }}</span>
-                                @if(!$isUnlocked)
-                                    <span style="font-size:0.75rem; opacity:0.6;">🔒</span>
-                                @endif
-                            </label>
+                            <option value="{{ $musicId }}" {{ $musicId === 'strategybuzzer' ? 'selected' : '' }} {{ !$isUnlocked ? 'disabled' : '' }}>
+                                {{ $musicLabel }}{{ !$isUnlocked ? ' 🔒' : '' }}
+                            </option>
                         @endforeach
-                    </div>
+                    </select>
                 </div>
             </div>
             
-            <hr style="border-color: rgba(255,255,255,0.15); margin: 1rem 0;">
+            <div style="border-top: 1px solid rgba(255,255,255,0.12); margin: 1rem 0;"></div>
             
             <div class="form-group">
-                <label class="form-label" style="text-align: center;">{{ __('Sons des Buzzers - Choix') }}</label>
-                <div class="radio-group" style="justify-content: center; gap: 2rem;">
-                    <label class="radio-label">
-                        <input type="radio" name="buzzer_sound_choice" value="master" class="radio-input" checked>
-                        <span>{{ __('Maître') }}</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="buzzer_sound_choice" value="player" class="radio-input">
-                        <span>{{ __('Joueur') }}</span>
-                    </label>
-                </div>
+                <label class="form-label" style="text-align: center;">{{ __('Sons des Buzzers') }}</label>
+                <select name="buzzer_sound_choice" class="form-select" style="text-align: center; font-weight: 600;" id="buzzerSoundChoiceSelect">
+                    <option value="master">{{ __('Choix du Maître') }}</option>
+                    <option value="player">{{ __('Choix du Joueur') }}</option>
+                </select>
             </div>
             
-            <div id="masterBuzzerSelect">
-                <div class="music-list">
-                    @php
-                        $defaultBuzzers = [
-                            'default' => 'Buzzer Classique',
-                            'buzzer_default_1' => 'Buzzer 1',
-                            'buzzer_default_2' => 'Buzzer 2',
-                        ];
-                    @endphp
-                    @foreach($defaultBuzzers as $buzzerId => $buzzerLabel)
-                        <label class="music-item">
-                            <input type="radio" name="buzzer_sound_id" value="{{ $buzzerId }}" 
-                                {{ $buzzerId === 'default' ? 'checked' : '' }}>
-                            <span style="font-weight:700;">{{ $buzzerLabel }}</span>
-                        </label>
-                    @endforeach
-                </div>
+            <div class="form-group" id="masterBuzzerSelect" style="margin-top: 0.6rem;">
+                <select name="buzzer_sound_id" class="form-select" style="text-align: center;">
+                    <option value="default" selected>Buzzer Classique</option>
+                    <option value="buzzer_default_1">Buzzer 1</option>
+                    <option value="buzzer_default_2">Buzzer 2</option>
+                </select>
             </div>
         </div>
         
@@ -949,28 +862,24 @@ if (gameplayAmbianceToggle && ambianceOptions) {
 }
 
 // Show/hide master music select based on ambiance choice
-const ambianceMusicRadios = document.querySelectorAll('input[name="ambiance_music_choice"]');
+const ambianceMusicChoiceSelect = document.getElementById('ambianceMusicChoiceSelect');
 const masterMusicSelect = document.getElementById('masterMusicSelect');
 
-ambianceMusicRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-        if (masterMusicSelect) {
-            masterMusicSelect.style.display = this.value === 'master' ? 'block' : 'none';
-        }
+if (ambianceMusicChoiceSelect && masterMusicSelect) {
+    ambianceMusicChoiceSelect.addEventListener('change', function() {
+        masterMusicSelect.style.display = this.value === 'master' ? 'block' : 'none';
     });
-});
+}
 
 // Show/hide master buzzer select based on buzzer choice
-const buzzerSoundRadios = document.querySelectorAll('input[name="buzzer_sound_choice"]');
+const buzzerSoundChoiceSelect = document.getElementById('buzzerSoundChoiceSelect');
 const masterBuzzerSelect = document.getElementById('masterBuzzerSelect');
 
-buzzerSoundRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-        if (masterBuzzerSelect) {
-            masterBuzzerSelect.style.display = this.value === 'master' ? 'block' : 'none';
-        }
+if (buzzerSoundChoiceSelect && masterBuzzerSelect) {
+    buzzerSoundChoiceSelect.addEventListener('change', function() {
+        masterBuzzerSelect.style.display = this.value === 'master' ? 'block' : 'none';
     });
-});
+}
 
 // === Strategic Avatars section logic ===
 const strategicAvatarsToggle = document.getElementById('strategicAvatarsToggle');
