@@ -346,6 +346,24 @@
             width: 64px;
             height: 64px;
         }
+
+        /* Quêtes Quotidiennes centré sur toute la largeur (tablette portrait) */
+        .menu-link:nth-of-type(10) {
+            grid-column: 1 / -1;
+            justify-self: center;
+        }
+    }
+
+    /* Desktop / Laptop (≥ 901px) */
+    @media (min-width: 901px) {
+        .menu-container {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        /* Quêtes Quotidiennes dans la colonne du milieu */
+        .menu-link:nth-of-type(10) {
+            grid-column: 2;
+        }
     }
 
     /* Tablettes Paysage - Grille 3×3 + Quêtes Quotidiennes centré */
@@ -447,13 +465,13 @@
         </a>
 
         <a class="menu-link"
-           href="{{ \Illuminate\Support\Facades\Route::has('boutique') ? route('boutique') : url('/boutique') }}">
-            {{ __('BOUTIQUE') }}
+           href="{{ route('guide.index') }}">
+            {{ __('GUIDE DU JOUEUR') }}
         </a>
 
         <a class="menu-link"
-           href="{{ route('guide.index') }}">
-            {{ __('GUIDE DU JOUEUR') }}
+           href="{{ \Illuminate\Support\Facades\Route::has('boutique') ? route('boutique') : url('/boutique') }}">
+            {{ __('BOUTIQUE') }}
         </a>
 
         <a class="menu-link"
