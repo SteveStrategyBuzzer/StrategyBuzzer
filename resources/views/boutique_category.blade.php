@@ -756,98 +756,27 @@ function toggleDetails(slug) {
     }
 }
 
-// Détection de devise basée sur la localisation du navigateur
-function detectUserCurrency() {
-    const locale = navigator.language || navigator.userLanguage || 'en-US';
-    const countryCode = locale.split('-')[1] || locale.split('_')[1] || '';
-    
-    // Mapping pays -> devise (devises supportées par Stripe et le backend)
-    const currencyMap = {
-        // Amérique du Nord
-        'CA': 'cad',
-        'US': 'usd',
-        'MX': 'mxn',
-        // Europe (Zone Euro)
-        'FR': 'eur', 'DE': 'eur', 'ES': 'eur', 'IT': 'eur', 'NL': 'eur',
-        'BE': 'eur', 'AT': 'eur', 'PT': 'eur', 'IE': 'eur', 'FI': 'eur',
-        'GR': 'eur', 'LU': 'eur', 'SK': 'eur', 'SI': 'eur', 'EE': 'eur',
-        'LV': 'eur', 'LT': 'eur', 'MT': 'eur', 'CY': 'eur',
-        // Europe (Autres devises)
-        'GB': 'gbp', 'UK': 'gbp',
-        'CH': 'chf',
-        'PL': 'pln',
-        'SE': 'sek',
-        'DK': 'dkk',
-        'NO': 'nok',
-        'CZ': 'czk',
-        // Asie (devises supportées - exclut JPY pour éviter problème décimales)
-        'SG': 'sgd',
-        'HK': 'hkd',
-        'IN': 'inr',
-        // Océanie
-        'AU': 'aud',
-        'NZ': 'nzd',
-        // Amérique du Sud
-        'BR': 'brl',
-        // Afrique
-        'ZA': 'zar',
-    };
-    
-    return currencyMap[countryCode.toUpperCase()] || 'usd';
-}
-
-function getCurrencySymbol(currency) {
-    const symbols = {
-        'usd': '$', 'cad': '$', 'aud': '$', 'nzd': '$', 'sgd': 'S$', 'hkd': 'HK$', 'mxn': 'MX$',
-        'eur': '€',
-        'gbp': '£',
-        'chf': 'CHF ',
-        'sek': 'kr ', 'nok': 'kr ', 'dkk': 'kr ',
-        'pln': 'zł',
-        'czk': 'Kč ',
-        'inr': '₹',
-        'brl': 'R$',
-        'zar': 'R',
-    };
-    return symbols[currency] || '$';
-}
-
-// Au chargement de la page
+// Devise côté serveur (session) injectée dans le layout
+// window.SB_CURRENCY_SYMBOL ex: "$", "€", "£", "฿"
 document.addEventListener('DOMContentLoaded', function() {
-    const detectedCurrency = detectUserCurrency();
-    const currencySymbol = getCurrencySymbol(detectedCurrency);
-    
-    // Ajouter la devise détectée à tous les formulaires de paiement Stripe
-    document.querySelectorAll('form[action*="checkout"], form[action*="modes"]').forEach(form => {
-        if (!form.querySelector('input[name="detected_currency"]')) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'detected_currency';
-            input.value = detectedCurrency;
-            form.appendChild(input);
-        }
-    });
-    
-    // Mettre à jour l'affichage des prix avec le symbole de devise correct
+    const currencySymbol = (window.SB_CURRENCY_SYMBOL || '$');
+
+    // Packs de coins (affichage)
     document.querySelectorAll('.coin-price').forEach(el => {
-        const priceText = el.textContent.trim();
+        const priceText = (el.textContent || '').trim();
         const match = priceText.match(/[\d.,]+/);
         if (match) {
-            const amount = match[0];
-            el.textContent = currencySymbol + amount;
+            el.textContent = currencySymbol + match[0];
         }
     });
-    
-    // Mettre à jour les boutons d'achat des modes de jeu
-    document.querySelectorAll('.master-card .btn[type="submit"]').forEach(btn => {
-        const text = btn.textContent.trim();
-        const match = text.match(/[\d.,]+/);
-        if (match) {
-            const amount = match[0];
-            btn.innerHTML = btn.innerHTML.replace(/\$[\d.,]+/, currencySymbol + amount);
-        }
+
+    // Boutons des modes de jeu (si un prix $xx.xx est affiché)
+    document.querySelectorAll('.master-card button').forEach(btn => {
+        const html = btn.innerHTML || '';
+        btn.innerHTML = html.replace(/\$([\d.,]+)/g, currencySymbol + '$1');
     });
 });
+    
 
 let currentPackSlug = null;
 

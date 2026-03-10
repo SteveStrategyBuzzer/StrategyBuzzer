@@ -437,3 +437,62 @@ Route::get('/quetes-quotidiennes', [App\Http\Controllers\DailyQuestsController::
 
 // (Optionnel) Fallback 404 propre
 // Route::fallback(fn() => response()->view('notfound', [], 404));
+
+/*
+|--------------------------------------------------------------------------
+| DEBUG ONLY (REMOVE AFTER TEST)
+|--------------------------------------------------------------------------
+| GET /__ip?t=TOKEN
+*/
+Route::get('/__ip', function (\Illuminate\Http\Request $request) {
+    $token = env("STRIPE_WEBHOOK_TOKEN") ?: "debug";
+    if ($request->query('t') !== $token) {
+        abort(403);
+    }
+
+    return response()->json([
+        'remote_addr' => $_SERVER['REMOTE_ADDR'] ?? null,
+        'ip' => $request->ip(),
+        'ips' => $request->ips(),
+        'headers' => [
+            'host' => $request->header('host'),
+            'x-real-ip' => $request->header('x-real-ip'),
+            'x-forwarded-for' => $request->header('x-forwarded-for'),
+            'x-forwarded-proto' => $request->header('x-forwarded-proto'),
+            'x-forwarded-host' => $request->header('x-forwarded-host'),
+            'cf-connecting-ip' => $request->header('cf-connecting-ip'),
+            'cf-ipcountry' => $request->header('cf-ipcountry'),
+        ],
+    ]);
+});
+
+/*
+|-------------------------------------------------------------------------- 
+| DEBUG ONLY (REMOVE AFTER TEST)
+|-------------------------------------------------------------------------- 
+| GET /__currency?t=TOKEN
+*/
+Route::get('/__currency', function (\Illuminate\Http\Request $request) {
+    $token = env("STRIPE_WEBHOOK_TOKEN") ?: "debug";
+    if ($request->query('t') !== $token) {
+        abort(403);
+    }
+
+    return response()->json([
+        'ip' => $request->attributes->get('geo_ip'),
+        'country' => $request->attributes->get('geo_country'),
+        'currency' => $request->attributes->get('geo_currency'),
+        'source' => $request->attributes->get('geo_source'),
+        'session_currency' => $request->session()->get('currency'),
+        'headers' => [
+            'x-real-ip' => $request->header('x-real-ip'),
+            'x-forwarded-for' => $request->header('x-forwarded-for'),
+        ],
+    ]);
+});
+
+Route::get('/privacy-policy', function () {
+    return view('privacy');
+});
+
+Route::view('/data-deletion', 'data-deletion')->name('data.deletion');

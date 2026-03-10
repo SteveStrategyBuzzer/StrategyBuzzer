@@ -1,5 +1,6 @@
-
-# --- Security hardening (ajouts StrategyBuzzer) ---
+# ===============================
+# Security hardening
+# ===============================
 client_secret*.json
 *.p12
 *.pem
@@ -10,64 +11,68 @@ client_secret*.json
 *.keystore
 *.jks
 
-# Logs et caches volumineux
-storage/logs/*.log
-storage/logs/*.gz
-storage/framework/cache/*
-storage/framework/sessions/*
-storage/framework/views/*
-
-# .env déjà ignoré par défaut mais on redéclare par sûreté
+# ===============================
+# Environment
+# ===============================
 .env
 .env.*
 !.env.example
 
-# Firebase credentials (never commit)
-storage/app/firebase-credentials.json
-export_strategybuzzer.sql
-
 # ===============================
-# Laravel Core (obligatoire)
+# Laravel
 # ===============================
 /vendor/
 /bootstrap/cache/*.php
+/node_modules/
+public/hot
+public/storage
+/storage/*.key
+
+# Logs / cache / sessions / views
+/storage/logs/*.log
+/storage/logs/*.gz
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/debugbar/*
+/storage/app/private/*
+
+# Garder les dossiers Laravel nécessaires
+!/storage/app/.gitignore
+!/storage/framework/.gitignore
+!/storage/logs/.gitignore
 
 # ===============================
-# Node / Game Server
+# Node / TS / builds
 # ===============================
-/node_modules/
 apps/game-server/node_modules/
 apps/game-server/dist/
 /dist/
-
-# ===============================
-# Fichiers temporaires / backup
-# ===============================
-*.bak
-*.backup
-*.old
-*.tmp
-
-
-# backups
-*.bak.*
-*.bak
-*.tmp
-
-# node/ts build
 **/dist/
 **/*.tsbuildinfo
 
-# si tsc a déjà généré des fichiers dans src par erreur
+# si tsc a déjà généré dans src par erreur
 packages/*/src/*.js
 packages/*/src/*.js.map
 packages/*/src/*.d.ts
 packages/*/src/*.d.ts.map
 
 # ===============================
-# PRODUCTION SAFETY (NEVER CLEAN)
+# Temporary / backup files
 # ===============================
-!storage/
-!storage/**
+*.bak
+*.bak.*
+*.backup
+*.old
+*.tmp
 
-# Optionnel: garder le dump local ignoré mais éviter clean massif (on le protège aussi)
+# backup local nettoyage
+.backup_cleaning_2026-03-10/
+
+# dumps locaux
+export_strategybuzzer.sql
+
+# Firebase credentials
+storage/app/firebase-credentials.json
+
+.trash_root_files_2026-03-10/

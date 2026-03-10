@@ -6,20 +6,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CoinLedger extends Model
+class PurchaseIntent extends Model
 {
     use HasFactory;
 
-    protected $table = 'coin_ledger';
-
     protected $fillable = [
         'user_id',
-        'delta',
+        'product_key',
+        'product_type',
         'coin_type',
-        'reason',
-        'ref_type',
-        'ref_id',
-        'balance_after',
+        'coins_to_deliver',
+        'amount_cents',
+        'currency',
+        'stripe_session_id',
+        'status',
+        'fulfilled_at',
+        'metadata',
+    ];
+
+    protected $casts = [
+        'fulfilled_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     public function user(): BelongsTo

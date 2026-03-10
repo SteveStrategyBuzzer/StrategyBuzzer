@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\Payment;
+use App\Models\PurchaseIntent;
 use App\Services\StripeService;
+use App\Support\Currency;
 
 class CoinsController extends Controller
 {
@@ -13,12 +16,15 @@ class CoinsController extends Controller
         private StripeService $stripeService
     ) {}
 
+    /**
+     * POST /coins/checkout
+     * Currency is server-only (session based).
+     */
     public function checkout(Request $request)
     {
         $request->validate([
             'product_key' => 'required|string',
-            'coin_type' => 'required|string|in:intelligence,competence',
-            'detected_currency' => 'nullable|string|size:3',
+            'coin_type'   => 'required|string|in:intelligence,competence',
         ]);
 
         $user = Auth::user();
@@ -26,60 +32,102 @@ class CoinsController extends Controller
             return back()->with('error', 'Veuillez vous connecter.');
         }
 
-        $productKey = $request->input('product_key');
-        $coinType = $request->input('coin_type');
-        $detectedCurrency = strtolower($request->input('detected_currency', 'usd'));
-        
-        // Liste des devises supportées par Stripe
-        $supportedCurrencies = [
-            'usd', 'cad', 'eur', 'gbp', 'aud', 'nzd', 'chf', 'jpy', 'cny',
-            'sek', 'nok', 'dkk', 'pln', 'czk', 'huf', 'ron', 'inr', 'krw',
-            'sgd', 'hkd', 'twd', 'brl', 'mxn', 'zar'
-        ];
-        
-        // Utiliser USD par défaut si la devise n'est pas supportée
-        $currency = in_array($detectedCurrency, $supportedCurrencies) ? $detectedCurrency : 'usd';
-        
-        $packs = $coinType === 'intelligence' 
-            ? config('coins.intelligence_packs') 
-            : config('coins.competence_packs');
-        
+        $productKey = (string) $request->input('product_key');
+        $coinType   = (string) $request->input('coin_type');
+
+        $currency = Currency::fromSession($request->session());
+        $currencyLower = strtolower($currency);
+
+        $packs = $coinType === 'intelligence'
+            ? config('coins.intelligence_packs', [])
+            : config('coins.competence_packs', []);
+
         $pack = collect($packs)->firstWhere('key', $productKey);
 
         if (!$pack) {
             return back()->with('error', 'Pack invalide.');
         }
 
-        // Utiliser la devise détectée au lieu de celle du pack (même montant numérique)
-        $pack['currency'] = $currency;
+        $baseCents = (int) ($pack['amount_cents'] ?? 0);
+        if ($baseCents <= 0) {
+            return back()->with('error', 'Pack invalide (prix).');
+        }
+
+        $coinsToDeliver = (int) ($pack['coins'] ?? 0);
+        if ($coinsToDeliver <= 0) {
+            return back()->with('error', 'Pack invalide (coins).');
+        }
+
+        $amountCents = Currency::convertBaseCentsTo($currency, $baseCents);
 
         try {
-            $session = $this->stripeService->createCheckoutSession($pack, $user->id, null, null, $coinType);
+            $purchaseIntent = PurchaseIntent::create([
+                'user_id'          => $user->id,
+                'product_key'      => $pack['key'],
+                'product_type'     => 'coins_pack',
+                'coin_type'        => $coinType,
+                'coins_to_deliver' => $coinsToDeliver,
+                'amount_cents'     => $amountCents,
+                'currency'         => $currencyLower,
+                'status'           => 'created',
+                'metadata'         => [
+                    'pack_name'      => $pack['name'] ?? null,
+                    'base_cents'     => $baseCents,
+                    'catalog_source' => 'config/coins.php',
+                ],
+            ]);
+
+            $pack['currency'] = $currencyLower;
+            $pack['amount_cents'] = $amountCents;
+
+            $session = $this->stripeService->createCheckoutSession(
+                $pack,
+                (int) $user->id,
+                null,
+                null,
+                $coinType,
+                (int) $purchaseIntent->id
+            );
+
+            $purchaseIntent->update([
+                'stripe_session_id' => $session->id,
+                'status' => 'checkout_created',
+            ]);
 
             Payment::create([
-                'user_id' => $user->id,
+                'user_id'           => $user->id,
                 'stripe_session_id' => $session->id,
-                'product_key' => $pack['key'],
-                'amount_cents' => $pack['amount_cents'],
-                'currency' => $currency,
-                'status' => 'pending',
-                'metadata' => [
-                    'coins' => $pack['coins'],
-                    'pack_name' => $pack['name'],
-                    'coin_type' => $coinType,
+                'product_key'       => $pack['key'],
+                'amount_cents'      => $amountCents,
+                'currency'          => $currencyLower,
+                'status'            => 'pending',
+                'metadata'          => [
+                    'coins'               => $coinsToDeliver,
+                    'pack_name'           => $pack['name'] ?? null,
+                    'coin_type'           => $coinType,
+                    'purchase_intent_id'  => $purchaseIntent->id,
                 ],
             ]);
 
             return redirect($session->url);
+
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la création de la session de paiement: ' . $e->getMessage());
+            Log::warning('Coins checkout failed', [
+                'user_id'  => $user->id ?? null,
+                'product'  => $productKey,
+                'coinType' => $coinType,
+                'currency' => $currencyLower,
+                'err'      => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Erreur lors de la création de la session de paiement.');
         }
     }
 
     public function success(Request $request)
     {
         $sessionId = $request->query('session_id');
-        
+
         if (!$sessionId) {
             return redirect()->route('boutique')->with('error', 'Session invalide.');
         }
@@ -87,20 +135,18 @@ class CoinsController extends Controller
         $payment = Payment::where('stripe_session_id', $sessionId)->first();
 
         if (!$payment) {
-            return redirect()->route('boutique')->with('info', 'Paiement en cours de traitement. Vos pièces seront ajoutées sous peu.');
+            return redirect()->route('boutique')->with('info', 'Paiement en cours de traitement.');
         }
 
         if ($payment->status === 'completed') {
-            $coinType = $payment->metadata['coin_type'] ?? 'intelligence';
-            $coinName = $coinType === 'competence' ? 'pièces de compétence' : "pièces d'intelligence";
-            return redirect()->route('boutique')->with('success', "Paiement réussi ! {$payment->coins_awarded} {$coinName} ont été ajoutées à votre compte.");
+            return redirect()->route('boutique')->with('success', 'Paiement réussi !');
         }
 
         if ($payment->status === 'failed') {
-            return redirect()->route('boutique')->with('error', 'Le paiement a échoué. Veuillez réessayer.');
+            return redirect()->route('boutique')->with('error', 'Le paiement a échoué.');
         }
 
-        return redirect()->route('boutique')->with('info', 'Votre paiement est en cours de traitement. Vos pièces seront ajoutées automatiquement dans quelques instants.');
+        return redirect()->route('boutique')->with('info', 'Paiement en cours de traitement.');
     }
 
     public function cancel()

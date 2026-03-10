@@ -14,8 +14,8 @@ class GameServerService
 
     public function __construct()
     {
-        $this->gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
-        $this->jwtSecret = env('GAME_SERVER_JWT_SECRET');
+        $this->gameServerUrl = config('app.game_server_url', 'http://localhost:3001');
+        $this->jwtSecret = config('app.game_server_jwt_secret');
 
         if (!$this->jwtSecret || strlen(trim($this->jwtSecret)) < 16) {
             throw new \RuntimeException("Missing or weak GAME_SERVER_JWT_SECRET (mirror strict Replit)");
