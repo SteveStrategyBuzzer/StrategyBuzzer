@@ -194,6 +194,30 @@ class LeagueIndividualService
             $user->coins = ($user->coins ?? 0) + $coinsEarned;
             $user->save();
         }
+
+        // Quêtes fin de match Ligue Individuelle
+        try {
+            $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
+            app(\App\Services\QuestService::class)->fireMatchEndQuests($user, 'league_individual', [
+                'match_completed' => true,
+                'won'             => $won,
+                'total_questions' => 10,
+                'user_correct'    => 0,
+                'player_score'    => max(0, $pointsEarned),
+                'opponent_score'  => 0,
+                'theme'           => 'Général',
+                'skills_used'     => 0,
+                'lives_remaining' => 3,
+                'had_timeout'     => false,
+                'boss_defeated'   => false,
+                'division'        => strtolower($division->division ?? 'bronze'),
+                'user_level'      => $currentLevel,
+                'user_coins'      => $user->competence_coins ?? 0,
+                'action_done'     => true, // league_participate
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Quest hook error in LeagueIndividualService: ' . $e->getMessage());
+        }
     }
 
     /**

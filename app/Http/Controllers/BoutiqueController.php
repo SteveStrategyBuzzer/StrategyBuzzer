@@ -350,6 +350,35 @@ class BoutiqueController extends Controller
             $user->profile_settings = $settings;
             $user->save();
 
+            // Quêtes liées à l'achat
+            try {
+                $questService = app(\App\Services\QuestService::class);
+                if ($kind === 'buzzer') {
+                    $questService->checkAndCompleteQuests($user, 'buy_buzzer_sound', [
+                        'action_done' => true,
+                        'kind'        => 'buzzer',
+                    ]);
+                }
+                // Quête avatars_unlocked_10 / 25
+                $freshSettings      = (array) ($user->profile_settings ?? []);
+                $unlockedAvatars    = (array) ($freshSettings['unlocked_avatars'] ?? []);
+                $unlockedAvatarsCnt = count($unlockedAvatars);
+                $questService->checkAndCompleteQuests($user, 'avatars_unlocked_10', [
+                    'unlocked_avatars_count' => $unlockedAvatarsCnt,
+                ]);
+                $questService->checkAndCompleteQuests($user, 'avatars_unlocked_25', [
+                    'unlocked_avatars_count' => $unlockedAvatarsCnt,
+                ]);
+                // Coins threshold (après débit)
+                $freshUser = \App\Models\User::find($user->id);
+                if ($freshUser) {
+                    $questService->checkAndCompleteQuests($user, 'coins_1000', ['user_coins' => $freshUser->competence_coins ?? 0]);
+                    $questService->checkAndCompleteQuests($user, 'coins_5000', ['user_coins' => $freshUser->competence_coins ?? 0]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Quest hook error in BoutiqueController: ' . $e->getMessage());
+            }
+
             return back()->with('success', "Achat réussi, élément débloqué !");
         });
     }

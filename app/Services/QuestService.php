@@ -11,192 +11,745 @@ use Carbon\Carbon;
 class QuestService
 {
     /**
-     * Vérifier et compléter les quêtes basées sur un événement
-     * TOUT dans une transaction atomique pour éviter les race conditions
-     * 
-     * @param User $user
-     * @param string $eventCode - Code de l'événement (ex: 'first_match_10q', 'perfect_score', etc.)
-     * @param array $context - Données contextuelles pour la validation
-     * @return array - Liste des quêtes complétées lors de cet appel
+     * Point d'entrée unifié pour les événements de fin de match.
+     * Charge toutes les quêtes auto_complete=true non complétées en une seule requête
+     * et les vérifie contre le contexte fourni.
+     *
+     * @param User   $user
+     * @param string $mode    'solo' | 'duo' | 'league_individual'
+     * @param array  $context Données du match :
+     *   - won                (bool)   victoire ?
+     *   - total_questions    (int)    questions jouées
+     *   - user_correct       (int)    bonnes réponses joueur
+     *   - opponent_score     (int)    score adversaire (pour perfect_10_0, comeback)
+     *   - theme              (string) thème joué
+     *   - skills_used        (int)    compétences utilisées dans ce match
+     *   - lives_remaining    (int)    vies restantes (Solo)
+     *   - had_timeout        (bool)   y-a-t-il eu des questions non répondues ?
+     *   - boss_defeated      (bool)   boss vaincu ce match ?
+     *   - division           (string) division actuelle après le match
+     *   - user_level         (int)    niveau actuel
+     *   - user_coins         (int)    solde actuel de pièces de Compétence
+     *   - themes_played      (array)  thèmes uniques joués (pour themes_5/10)
+     *   - player_score       (int)    score joueur dans ce match
+     * @return array  Quêtes complétées
      */
-    public function checkAndCompleteQuests(User $user, string $eventCode, array $context = []): array
+    public function fireMatchEndQuests(User $user, string $mode, array $context): array
     {
-        $completedQuests = [];
-        
-        // Récupérer toutes les quêtes correspondant à cet événement
-        $quests = Quest::where('detection_code', $eventCode)
-            ->where('auto_complete', true)
+        $context['mode'] = $mode;
+
+        $alreadyCompleted = UserQuestProgress::where('user_id', $user->id)
+            ->whereNotNull('completed_at')
+            ->where('rewarded', true)
+            ->pluck('quest_id')
+            ->toArray();
+
+        $quests = Quest::where('auto_complete', true)
+            ->whereNotIn('id', empty($alreadyCompleted) ? [0] : $alreadyCompleted)
             ->get();
-        
+
+        $completedQuests = [];
+
         foreach ($quests as $quest) {
-            // Traiter chaque quête dans une transaction atomique
             $completed = DB::transaction(function () use ($user, $quest, $context) {
-                // Récupérer ou créer la progression, puis la verrouiller
                 $progress = UserQuestProgress::firstOrCreate(
                     ['user_id' => $user->id, 'quest_id' => $quest->id],
                     ['progress' => [], 'rewarded' => false]
                 );
-                
-                // Recharger avec verrouillage
                 $progress = UserQuestProgress::where('id', $progress->id)->lockForUpdate()->first();
-                
-                // Si déjà complétée et récompensée, skip
+
                 if ($progress->completed_at !== null && $progress->rewarded) {
                     return false;
                 }
-                
-                // Vérifier si la quête est remplie (avec mutation atomique de la progression)
+
                 $isCompleted = $this->isQuestConditionMet($quest, $progress, $context);
-                
+
                 if ($isCompleted) {
-                    // Marquer comme complétée
                     $progress->completed_at = now();
                     $progress->rewarded = true;
                     $progress->save();
-                    
-                    // Verrouiller l'utilisateur et attribuer les pièces de Compétence (Solo/Quêtes)
+
                     $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
                     if ($lockedUser) {
                         $lockedUser->competence_coins = ($lockedUser->competence_coins ?? 0) + $quest->reward_coins;
                         $lockedUser->save();
                     }
-                    
+
                     return true;
                 }
-                
+
                 return false;
             });
-            
+
             if ($completed) {
                 $completedQuests[] = $quest;
             }
         }
-        
+
         return $completedQuests;
     }
-    
+
     /**
-     * Vérifier si les conditions de la quête sont remplies
+     * Vérifier et compléter les quêtes basées sur un événement spécifique.
+     * Utilisé pour les événements par action (achat, changement d'avatar, etc.)
+     * et pour les hooks par réponse (buzz rapide, streak correct, etc.)
+     */
+    public function checkAndCompleteQuests(User $user, string $eventCode, array $context = []): array
+    {
+        $completedQuests = [];
+
+        $quests = Quest::where('detection_code', $eventCode)
+            ->where('auto_complete', true)
+            ->get();
+
+        foreach ($quests as $quest) {
+            $completed = DB::transaction(function () use ($user, $quest, $context) {
+                $progress = UserQuestProgress::firstOrCreate(
+                    ['user_id' => $user->id, 'quest_id' => $quest->id],
+                    ['progress' => [], 'rewarded' => false]
+                );
+
+                $progress = UserQuestProgress::where('id', $progress->id)->lockForUpdate()->first();
+
+                if ($progress->completed_at !== null && $progress->rewarded) {
+                    return false;
+                }
+
+                $isCompleted = $this->isQuestConditionMet($quest, $progress, $context);
+
+                if ($isCompleted) {
+                    $progress->completed_at = now();
+                    $progress->rewarded = true;
+                    $progress->save();
+
+                    $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
+                    if ($lockedUser) {
+                        $lockedUser->competence_coins = ($lockedUser->competence_coins ?? 0) + $quest->reward_coins;
+                        $lockedUser->save();
+                    }
+
+                    return true;
+                }
+
+                return false;
+            });
+
+            if ($completed) {
+                $completedQuests[] = $quest;
+            }
+        }
+
+        return $completedQuests;
+    }
+
+    /**
+     * Vérifier si les conditions de la quête sont remplies.
+     * Toutes les mises à jour de progression (compteurs JSON) se font ici,
+     * à l'intérieur de la transaction atomique de l'appelant.
      */
     protected function isQuestConditionMet(Quest $quest, UserQuestProgress $progress, array $context): bool
     {
-        $params = $quest->detection_params ?? [];
-        $detectionCode = $quest->detection_code;
-        
-        switch ($detectionCode) {
+        $params = is_array($quest->detection_params) ? $quest->detection_params : [];
+        $code   = $quest->detection_code;
+
+        switch ($code) {
+
+            // ─────────────────────────────────────────────────────────────
+            // ONE-SHOT : première fois / condition unique du match
+            // ─────────────────────────────────────────────────────────────
+
             case 'first_match_10q':
-                return $this->checkFirstMatch10Q($context);
-            
+                return ($context['match_completed'] ?? false) === true
+                    && ($context['total_questions'] ?? 0) >= 10;
+
             case 'perfect_score':
-                return $this->checkPerfectScore($context);
-            
+                return isset($context['user_correct'], $context['total_questions'])
+                    && $context['total_questions'] >= 10
+                    && $context['user_correct'] === $context['total_questions']
+                    && ($context['won'] ?? false);
+
+            case 'win_with_1_life':
+                return ($context['won'] ?? false)
+                    && ($context['lives_remaining'] ?? 99) === 1;
+
+            case 'lose_3_win_4th':
+                $data   = $progress->progress ?? [];
+                $losses = $data['consecutive_losses'] ?? 0;
+
+                if (!($context['won'] ?? false)) {
+                    $data['consecutive_losses'] = $losses + 1;
+                    $progress->progress = $data;
+                    $progress->save();
+                    return false;
+                }
+
+                $eligible = $losses >= 3;
+                $data['consecutive_losses'] = 0;
+                $progress->progress = $data;
+                $progress->save();
+                return $eligible;
+
+            case 'round_no_timeout':
+                return ($context['won'] ?? false)
+                    && ($context['had_timeout'] ?? true) === false;
+
+            case 'win_no_sound':
+                return ($context['won'] ?? false)
+                    && ($context['sound_disabled'] ?? false) === true;
+
+            case 'play_early_morning':
+                $hour = (int) Carbon::now()->format('G');
+                return ($context['match_completed'] ?? ($context['won'] ?? false))
+                    && $hour >= 6 && $hour < 9;
+
+            case 'play_late_night':
+                $hour = (int) Carbon::now()->format('G');
+                return ($context['match_completed'] ?? ($context['won'] ?? false))
+                    && ($hour >= 22 || $hour < 0);
+
+            case 'night_owl':
+                $hour = (int) Carbon::now()->format('G');
+                return ($context['match_completed'] ?? ($context['won'] ?? false))
+                    && ($hour >= 0 && $hour < 6);
+
+            case 'perfect_10_0':
+                $playerScore   = $context['player_score'] ?? 0;
+                $opponentScore = $context['opponent_score'] ?? 1;
+                return ($context['won'] ?? false)
+                    && $opponentScore === 0
+                    && $playerScore > 0;
+
+            case 'comeback_0_5':
+                $deficit = (int) ($params['deficit'] ?? 5);
+                return ($context['won'] ?? false)
+                    && ($context['max_deficit_recovered'] ?? 0) >= $deficit;
+
+            case 'win_40q_no_skill':
+                return ($context['won'] ?? false)
+                    && ($context['total_questions'] ?? 0) >= 40
+                    && ($context['skills_used'] ?? 1) === 0;
+
+            case 'foreign_language_60':
+                $theme = strtolower($context['theme'] ?? '');
+                if (strpos($theme, 'langue') === false && strpos($theme, 'language') === false) {
+                    return false;
+                }
+                $total   = $context['total_questions'] ?? 0;
+                $correct = $context['user_correct'] ?? 0;
+                return $total > 0 && ($correct / $total) >= 0.60;
+
+            case 'play_geography':
+                $theme = strtolower($context['theme'] ?? '');
+                return ($context['match_completed'] ?? ($context['won'] ?? false))
+                    && (strpos($theme, 'géo') !== false || strpos($theme, 'geo') !== false);
+
+            case 'play_history':
+                $theme = strtolower($context['theme'] ?? '');
+                return ($context['match_completed'] ?? ($context['won'] ?? false))
+                    && (strpos($theme, 'histo') !== false);
+
+            case 'win_cuisine':
+                $theme = strtolower($context['theme'] ?? '');
+                return ($context['won'] ?? false)
+                    && (strpos($theme, 'cuisine') !== false || strpos($theme, 'gastrono') !== false);
+
+            case 'league_participate':
+                return ($context['mode'] ?? '') === 'league_individual'
+                    && ($context['match_completed'] ?? ($context['action_done'] ?? false));
+
+            case 'view_history_1':
+                return ($context['action_done'] ?? false) === true;
+
+            case 'chat_participate':
+                return ($context['action_done'] ?? false) === true;
+
+            case 'buy_buzzer_sound':
+                return ($context['action_done'] ?? false) === true
+                    && ($context['kind'] ?? '') === 'buzzer';
+
+            case 'avatars_different_2':
+                return ($context['different_avatars_count'] ?? 0) >= 2;
+
+            // Stubs sociaux — systèmes non encore implémentés
+            case 'invite_friend':
+            case 'join_team':
+            case 'help_teammate_1':
+            case 'help_teammate_3':
+            case 'socialize_5':
+            case 'share_result':
+            case 'receive_help_1':
+                return false;
+
+            // Thèmes impossibles à détecter sans tag par question
+            case 'all_themes_completed':
+            case 'monuments_10':
+            case 'oceans_3':
+            case 'trick_question_1':
+                return false;
+
+            // ─────────────────────────────────────────────────────────────
+            // SEUILS PONCTUELS : niveau, pièces, division
+            // ─────────────────────────────────────────────────────────────
+
+            case 'level_25':
+            case 'level_50':
+            case 'level_75':
+            case 'level_100':
+                $required = (int) ($params['level'] ?? 1);
+                return ($context['user_level'] ?? 0) >= $required;
+
+            case 'coins_1000':
+            case 'coins_5000':
+                $required = (int) ($params['coins'] ?? 0);
+                return ($context['user_coins'] ?? 0) >= $required;
+
+            case 'division_silver':
+                $division = strtolower($context['division'] ?? '');
+                return in_array($division, ['argent', 'silver', 'or', 'gold', 'platine', 'diamant', 'legende'], true);
+
+            case 'division_gold':
+                $division = strtolower($context['division'] ?? '');
+                return in_array($division, ['or', 'gold', 'platine', 'diamant', 'legende'], true);
+
+            case 'division_legend':
+                $division = strtolower($context['division'] ?? '');
+                return in_array($division, ['legende', 'legend', 'légende'], true);
+
+            // ─────────────────────────────────────────────────────────────
+            // COMPTEURS CUMULATIFS (progression JSON cross-sessions)
+            // ─────────────────────────────────────────────────────────────
+
+            case 'win_streak_3':
+            case 'win_streak_5':
+            case 'win_streak_10':
+                $target = (int) ($params['streak'] ?? 3);
+                return $this->handleWinStreak($progress, $context, $target);
+
+            case 'play_50_matches':
+            case 'play_100_matches':
+            case 'play_250_matches':
+            case 'play_500_matches':
+                $target = (int) ($params['matches'] ?? 50);
+                return $this->handleMatchCount($progress, $context, $target);
+
+            case 'correct_streak_25':
+            case 'correct_streak_50':
+                $target = (int) ($params['streak'] ?? 25);
+                return $this->handleCorrectStreak($progress, $context, $target);
+
+            case 'ultra_fast_answers_10':
+                $threshold = (float) ($params['threshold'] ?? 1.0);
+                $target    = (int) ($params['count'] ?? 10);
+                return $this->handleFastAnswerCount($progress, $context, $threshold, $target, 'ultra_fast');
+
+            case 'ultra_fast_buzz_20':
+                $threshold = (float) ($params['threshold'] ?? 1.0);
+                $target    = (int) ($params['count'] ?? 20);
+                return $this->handleFastAnswerCount($progress, $context, $threshold, $target, 'ultra_fast_buzz');
+
             case 'fast_answers_10':
-                return $this->checkFastAnswers10($progress, $context);
-            
+                $threshold = (float) ($params['time'] ?? 2.0);
+                $target    = (int) ($params['count'] ?? 10);
+                return $this->handleFastAnswerCount($progress, $context, $threshold, $target, 'fast_answers');
+
+            case 'buzz_fast_10':
+                $threshold = (float) ($params['time'] ?? 1.0);
+                $target    = (int) ($params['count'] ?? 10);
+                return $this->handleFastAnswerCount($progress, $context, $threshold, $target, 'buzz_fast');
+
             case 'first_buzz_10':
                 return $this->checkFirstBuzz10($progress, $context);
-            
+
+            case 'perfect_score_3':
+            case 'perfect_score_10':
+            case 'perfect_score_25':
+                $target = (int) ($params['count'] ?? 3);
+                return $this->handlePerfectScoreCount($progress, $context, $target);
+
+            case 'themes_5':
+            case 'themes_10':
+                $target = (int) ($params['themes'] ?? 5);
+                return $this->handleThemeCount($progress, $context, $target);
+
+            case 'duo_wins_10':
+                $target = (int) ($params['wins'] ?? 10);
+                return $this->handleDuoWinCount($progress, $context, $target);
+
+            case 'skills_used_50':
+                $target = (int) ($params['count'] ?? 50);
+                return $this->handleSkillsUsedCount($progress, $context, $target);
+
             case 'skill_used':
-                return $this->checkSkillUsed($context);
-            
+                return $this->handleSkillUsedOnce($progress, $context);
+
+            case 'avatars_unlocked_10':
+            case 'avatars_unlocked_25':
+                $target = (int) ($params['count'] ?? 10);
+                return ($context['unlocked_avatars_count'] ?? 0) >= $target;
+
+            case 'boss_defeats_5':
+            case 'boss_defeats_10':
+                $target = (int) ($params['count'] ?? 5);
+                return $this->handleBossDefeatCount($progress, $context, $target);
+
+            case 'correct_no_buzz':
+                $target = (int) ($params['count'] ?? 3);
+                return $this->handleCorrectNoBuzzCount($progress, $context, $target);
+
+            case 'math_streak':
+                $target = (int) ($params['count'] ?? 5);
+                return $this->handleMathStreak($progress, $context, $target);
+
             default:
                 return false;
         }
     }
-    
-    protected function checkFirstMatch10Q(array $context): bool
+
+    // ─────────────────────────────────────────────────────────────────────
+    // HELPERS — compteurs JSON cumulatifs
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Gère les win streaks. Incrémente si won=true, remet à 0 sinon.
+     * La clé 'win_streak' dans le JSON progress est partagée entre
+     * win_streak_3, win_streak_5, win_streak_10 — chacun lit le même compteur.
+     */
+    protected function handleWinStreak(UserQuestProgress $progress, array $context, int $target): bool
     {
-        return isset($context['match_completed']) 
-            && $context['match_completed'] === true
-            && isset($context['total_questions'])
-            && $context['total_questions'] >= 10;
-    }
-    
-    protected function checkPerfectScore(array $context): bool
-    {
-        return isset($context['user_correct_answers']) 
-            && isset($context['total_questions'])
-            && $context['user_correct_answers'] == $context['total_questions']
-            && $context['total_questions'] >= 10;
-    }
-    
-    protected function checkFastAnswers10(UserQuestProgress $progress, array $context): bool
-    {
-        if (!isset($context['answer_time']) || $context['answer_time'] >= 2) {
-            return false;
-        }
-        
-        // Ne pas incrémenter si déjà complété
         if ($progress->completed_at !== null) {
             return false;
         }
-        
-        $progressData = $progress->progress ?? [];
-        $fastAnswers = $progressData['fast_answers'] ?? 0;
-        
-        // Ne pas dépasser 10
-        if ($fastAnswers >= 10) {
-            return true;
+
+        $data    = $progress->progress ?? [];
+        $current = $data['win_streak'] ?? 0;
+
+        if ($context['won'] ?? false) {
+            $current++;
+        } else {
+            $current = 0;
         }
-        
-        $fastAnswers++;
-        
-        $progress->progress = array_merge($progressData, ['fast_answers' => $fastAnswers]);
+
+        $data['win_streak'] = $current;
+        $progress->progress = $data;
         $progress->save();
-        
-        return $fastAnswers >= 10;
+
+        return $current >= $target;
     }
-    
+
+    /**
+     * Incrémente le compteur de matchs joués (toutes modes confondues).
+     */
+    protected function handleMatchCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        if (!($context['match_completed'] ?? ($context['won'] ?? false)) && !isset($context['won'])) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = ($data['match_count'] ?? 0) + 1;
+        $data['match_count'] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Gère le streak de bonnes réponses consécutives (cross-sessions).
+     * Remet à 0 si la réponse est incorrecte (context answer_wrong = true).
+     */
+    protected function handleCorrectStreak(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = $data['correct_streak'] ?? 0;
+
+        if ($context['answer_correct'] ?? false) {
+            $current++;
+        } elseif ($context['answer_wrong'] ?? false) {
+            $current = 0;
+        } else {
+            return $current >= $target;
+        }
+
+        $data['correct_streak'] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Compteur de réponses rapides (ultra_fast_answers, fast_answers, buzz_fast).
+     */
+    protected function handleFastAnswerCount(
+        UserQuestProgress $progress,
+        array $context,
+        float $threshold,
+        int $target,
+        string $progressKey
+    ): bool {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $answerTime = $context['answer_time'] ?? $context['buzz_time'] ?? null;
+        if ($answerTime === null || (float) $answerTime >= $threshold) {
+            $data    = $progress->progress ?? [];
+            $current = $data[$progressKey] ?? 0;
+            return $current >= $target;
+        }
+
+        if (!($context['is_correct'] ?? $context['answer_correct'] ?? false)) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = ($data[$progressKey] ?? 0) + 1;
+        $data[$progressKey] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Compteur de scores parfaits (toutes bonnes réponses).
+     */
+    protected function handlePerfectScoreCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $total   = $context['total_questions'] ?? 0;
+        $correct = $context['user_correct'] ?? 0;
+        $won     = $context['won'] ?? false;
+
+        $isPerfect = $won && $total >= 10 && $correct === $total;
+        if (!$isPerfect) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = ($data['perfect_score_count'] ?? 0) + 1;
+        $data['perfect_score_count'] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Compteur de thèmes uniques joués.
+     */
+    protected function handleThemeCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $currentTheme = trim($context['theme'] ?? '');
+        if ($currentTheme === '' || $currentTheme === 'Général') {
+            return false;
+        }
+
+        $data   = $progress->progress ?? [];
+        $played = $data['themes_played'] ?? [];
+
+        if (!in_array($currentTheme, $played, true)) {
+            $played[] = $currentTheme;
+        }
+
+        $data['themes_played'] = $played;
+        $progress->progress = $data;
+        $progress->save();
+
+        return count($played) >= $target;
+    }
+
+    /**
+     * Victoires en mode Duo.
+     */
+    protected function handleDuoWinCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        if (($context['mode'] ?? '') !== 'duo' || !($context['won'] ?? false)) {
+            $data    = $progress->progress ?? [];
+            $current = $data['duo_win_count'] ?? 0;
+            return $current >= $target;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = ($data['duo_win_count'] ?? 0) + 1;
+        $data['duo_win_count'] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Compétences d'avatar utilisées (compteur global).
+     */
+    protected function handleSkillsUsedCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        if (!($context['skill_used'] ?? false)) {
+            $data    = $progress->progress ?? [];
+            $current = $data['skills_used_count'] ?? 0;
+            return $current >= $target;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = ($data['skills_used_count'] ?? 0) + 1;
+        $data['skills_used_count'] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Première utilisation de compétence (one-shot).
+     */
+    protected function handleSkillUsedOnce(UserQuestProgress $progress, array $context): bool
+    {
+        return ($context['skill_used'] ?? false) === true;
+    }
+
+    /**
+     * Défaites de boss (Solo).
+     */
+    protected function handleBossDefeatCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        if (!($context['boss_defeated'] ?? false)) {
+            $data    = $progress->progress ?? [];
+            $current = $data['boss_defeat_count'] ?? 0;
+            return $current >= $target;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = ($data['boss_defeat_count'] ?? 0) + 1;
+        $data['boss_defeat_count'] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Bonnes réponses sans avoir buzzé (second à buzzer ou sans buzz).
+     */
+    protected function handleCorrectNoBuzzCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $isCorrectNoBuzz = ($context['answer_correct'] ?? false)
+            && !($context['player_buzzed'] ?? true);
+
+        if (!$isCorrectNoBuzz) {
+            $data    = $progress->progress ?? [];
+            $current = $data['correct_no_buzz'] ?? 0;
+            return $current >= $target;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = ($data['correct_no_buzz'] ?? 0) + 1;
+        $data['correct_no_buzz'] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Streak de bonnes réponses consécutives en Math.
+     */
+    protected function handleMathStreak(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $isMathTheme  = strpos(strtolower($context['theme'] ?? ''), 'math') !== false;
+        $isCorrect    = $context['answer_correct'] ?? false;
+        $isWrong      = $context['answer_wrong'] ?? false;
+
+        $data    = $progress->progress ?? [];
+        $current = $data['math_streak'] ?? 0;
+
+        if ($isMathTheme && $isCorrect) {
+            $current++;
+        } elseif ($isWrong || (!$isMathTheme && ($isCorrect || $isWrong))) {
+            $current = 0;
+        }
+
+        $data['math_streak'] = $current;
+        $progress->progress = $data;
+        $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Legacy — checkFirstBuzz10 (gardé pour compatibilité).
+     */
     protected function checkFirstBuzz10(UserQuestProgress $progress, array $context): bool
     {
-        // Vérifier que le joueur est le premier à buzzer
-        if (!isset($context['first_buzz']) || $context['first_buzz'] !== true) {
+        if (!($context['first_buzz'] ?? false)) {
             return false;
         }
-        
-        // Ne pas incrémenter si déjà complété
+
         if ($progress->completed_at !== null) {
             return false;
         }
-        
+
         $progressData = $progress->progress ?? [];
-        
-        // Migrer les anciennes données : lire depuis first_buzzes OU fast_buzzes (legacy)
-        $firstBuzzes = $progressData['first_buzzes'] ?? $progressData['fast_buzzes'] ?? 0;
-        
-        // Ne pas dépasser 10
+        $firstBuzzes  = $progressData['first_buzzes'] ?? $progressData['fast_buzzes'] ?? 0;
+
         if ($firstBuzzes >= 10) {
             return true;
         }
-        
+
         $firstBuzzes++;
-        
-        // Sauvegarder dans la nouvelle clé et nettoyer l'ancienne
-        unset($progressData['fast_buzzes']); // Supprimer l'ancienne clé pour éviter confusion
+        unset($progressData['fast_buzzes']);
         $progress->progress = array_merge($progressData, ['first_buzzes' => $firstBuzzes]);
         $progress->save();
-        
+
         return $firstBuzzes >= 10;
     }
-    
-    protected function checkSkillUsed(array $context): bool
-    {
-        return isset($context['skill_used']) && $context['skill_used'] === true;
-    }
-    
-    /**
-     * Calculer la progression d'une quête selon ses paramètres
-     * @return array ['current' => int, 'max' => int]
-     */
+
+    // ─────────────────────────────────────────────────────────────────────
+    // PROGRESSION — affichage quêtes
+    // ─────────────────────────────────────────────────────────────────────
+
     protected function getQuestProgression(Quest $quest, $progressRecord, bool $isCompleted): array
     {
         $params = is_array($quest->detection_params) ? $quest->detection_params : [];
-        
-        // Par défaut : quête one-shot
-        $max = 1;
+
+        $max     = 1;
         $current = $isCompleted ? 1 : 0;
-        
-        // Extraire max depuis detection_params si disponible
+
         if (isset($params['count'])) {
             $max = $params['count'];
         } elseif (isset($params['wins'])) {
@@ -209,191 +762,149 @@ class QuestService
             $max = $params['level'];
         } elseif (isset($params['coins'])) {
             $max = $params['coins'];
+        } elseif (isset($params['streak'])) {
+            $max = $params['streak'];
         }
-        
-        // Extraire current depuis progress si disponible
+
         if ($progressRecord && $progressRecord->progress) {
-            $progressData = $progressRecord->progress;
-            
-            // Essayer différentes clés selon le type de quête
-            if (isset($progressData['current'])) {
-                $current = $progressData['current'];
-            } elseif (isset($progressData['fast_answers'])) {
-                $current = $progressData['fast_answers'];
-            } elseif (isset($progressData['first_buzzes'])) {
-                $current = $progressData['first_buzzes'];
-            } elseif (isset($progressData['fast_buzzes'])) {
-                // Fallback pour anciennes progressions
-                $current = $progressData['fast_buzzes'];
-            } elseif (isset($progressData['count'])) {
-                $current = $progressData['count'];
+            $data = $progressRecord->progress;
+            foreach ([
+                'current', 'win_streak', 'match_count', 'correct_streak',
+                'ultra_fast', 'ultra_fast_buzz', 'fast_answers', 'buzz_fast',
+                'first_buzzes', 'fast_buzzes', 'perfect_score_count',
+                'duo_win_count', 'skills_used_count', 'boss_defeat_count',
+                'correct_no_buzz', 'math_streak', 'count',
+            ] as $key) {
+                if (isset($data[$key])) {
+                    $current = $data[$key];
+                    break;
+                }
+            }
+
+            if (isset($data['themes_played']) && is_array($data['themes_played'])) {
+                $current = count($data['themes_played']);
             }
         }
-        
+
         return [
-            'current' => min($current, $max), // Ne jamais dépasser max
-            'max' => $max
+            'current' => min($current, $max),
+            'max'     => $max,
         ];
     }
-    
-    /**
-     * Récupérer toutes les quêtes avec progression pour un utilisateur
-     * 
-     * @param User $user
-     * @param string $rarity - Filtrer par rareté (optionnel)
-     * @return array
-     */
+
     public function getUserQuests(User $user, ?string $rarity = null)
     {
         $query = Quest::query();
-        
+
         if ($rarity) {
             $query->where('rarity', $rarity);
         }
-        
+
         $quests = $query->get();
-        
-        // Ajouter la progression pour chaque quête
+
         return $quests->map(function ($quest) use ($user) {
             $progressRecord = $quest->getUserProgress($user->id);
-            $isCompleted = $quest->isCompletedBy($user->id);
-            
-            // Extraire la progression depuis detection_params et progress
-            $progression = $this->getQuestProgression($quest, $progressRecord, $isCompleted);
+            $isCompleted    = $quest->isCompletedBy($user->id);
+
+            $progression     = $this->getQuestProgression($quest, $progressRecord, $isCompleted);
             $currentProgress = $progression['current'];
-            $totalProgress = $progression['max'];
-            
+            $totalProgress   = $progression['max'];
+
             if ($isCompleted) {
                 $currentProgress = $totalProgress;
             }
-            
+
             return [
-                'quest' => $quest,
-                'is_completed' => $isCompleted,
-                'has_progress' => $currentProgress > 0 && !$isCompleted,
+                'quest'            => $quest,
+                'is_completed'     => $isCompleted,
+                'has_progress'     => $currentProgress > 0 && !$isCompleted,
                 'progress_current' => $currentProgress,
-                'progress_total' => $totalProgress,
-                'completed_at' => $progressRecord ? $progressRecord->completed_at : null,
+                'progress_total'   => $totalProgress,
+                'completed_at'     => $progressRecord ? $progressRecord->completed_at : null,
             ];
         });
     }
-    
-    /**
-     * Obtenir les quêtes récemment complétées non notifiées
-     */
+
     public function getUnnotifiedCompletedQuests(User $user): array
     {
-        // Retourner les quêtes complétées mais pas encore notifiées
-        // Pour afficher la popup de notification
-        
-        // Pour l'instant, retourner vide
-        // TODO: Implémenter un système de notification
         return [];
     }
-    
-    /**
-     * Obtenir les 3 quêtes quotidiennes actives pour aujourd'hui
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
+
     public function getDailyQuests()
     {
         $today = now()->toDateString();
-        
-        // Vérifier s'il y a une rotation pour aujourd'hui
+
         $rotation = DB::table('daily_quest_rotation')
             ->where('rotation_date', $today)
             ->first();
-        
-        // Si pas de rotation ou date périmée, en créer une nouvelle
+
         if (!$rotation) {
             $this->rotateDailyQuests();
             $rotation = DB::table('daily_quest_rotation')
                 ->where('rotation_date', $today)
                 ->first();
         }
-        
+
         if (!$rotation) {
-            return collect([]); // Retourner une Collection vide
+            return collect([]);
         }
-        
-        // Récupérer les quêtes depuis les IDs
+
         $questIds = json_decode($rotation->quest_ids, true);
         return Quest::whereIn('id', $questIds)->get();
     }
-    
-    /**
-     * Rotation des quêtes quotidiennes : sélectionner 3 quêtes aléatoires
-     * @return void
-     */
+
     public function rotateDailyQuests()
     {
         $today = now()->toDateString();
-        
-        // Récupérer toutes les quêtes quotidiennes disponibles
-        $availableQuests = Quest::where('rarity', 'Quotidienne')->get();
-        
+
+        $availableQuests = Quest::where('rarity', 'Quotidiennes')->get();
+
         if ($availableQuests->count() < 3) {
-            return; // Pas assez de quêtes quotidiennes
+            return;
         }
-        
-        // Sélectionner 3 quêtes aléatoires
+
         $selectedQuests = $availableQuests->random(min(3, $availableQuests->count()));
-        $questIds = $selectedQuests->pluck('id')->toArray();
-        
-        // Supprimer l'ancienne rotation et créer la nouvelle
+        $questIds       = $selectedQuests->pluck('id')->toArray();
+
         DB::table('daily_quest_rotation')->where('rotation_date', $today)->delete();
         DB::table('daily_quest_rotation')->insert([
             'rotation_date' => $today,
-            'quest_ids' => json_encode($questIds),
-            'created_at' => now(),
-            'updated_at' => now()
+            'quest_ids'     => json_encode($questIds),
+            'created_at'    => now(),
+            'updated_at'    => now(),
         ]);
     }
-    
-    /**
-     * Scanner l'historique de jeu et débloquer automatiquement les quêtes déjà accomplies
-     * 
-     * @param User $user
-     * @return array - Quêtes débloquées
-     */
+
     public function scanAndUnlockRetroactiveQuests(User $user): array
     {
         $unlockedQuests = [];
-        
-        // Récupérer toutes les quêtes non complétées pour cet utilisateur
+
         $allQuests = Quest::all();
-        
+
         foreach ($allQuests as $quest) {
-            // Ignorer les quêtes déjà complétées
             if ($quest->isCompletedBy($user->id)) {
                 continue;
             }
-            
-            // Vérifier si la condition rétroactive est remplie
+
             $isMet = $this->checkRetroactiveCondition($user, $quest);
-            
+
             if ($isMet) {
                 $this->completeQuestRetroactive($user, $quest);
                 $unlockedQuests[] = $quest;
             }
         }
-        
+
         return $unlockedQuests;
     }
-    
-    /**
-     * Vérifier si une quête est complétée rétroactivement selon son detection_code
-     */
+
     protected function checkRetroactiveCondition(User $user, Quest $quest): bool
     {
-        $code = $quest->detection_code;
+        $code   = $quest->detection_code;
         $params = is_array($quest->detection_params) ? $quest->detection_params : [];
-        
-        // Compter les parties totales
+
         $totalMatches = $this->getTotalMatchesCount($user);
-        
+
         switch ($code) {
-            // Parties jouées
             case 'first_match_10q':
             case 'play_50_matches':
             case 'play_100_matches':
@@ -401,235 +912,148 @@ class QuestService
             case 'play_500_matches':
                 $required = $params['matches'] ?? 1;
                 return $totalMatches >= $required;
-            
-            // Séries de victoires (impossible à détecter rétroactivement de manière fiable)
+
             case 'win_streak_3':
             case 'win_streak_5':
             case 'win_streak_10':
-                return false; // Nécessite tracking en temps réel
-            
-            // Scores parfaits
+                return false;
+
             case 'perfect_score':
             case 'perfect_score_3':
             case 'perfect_score_10':
             case 'perfect_score_25':
                 $required = $params['count'] ?? 1;
-                $perfectScores = $this->getPerfectScoresCount($user);
-                return $perfectScores >= $required;
-            
-            // Niveaux
+                return $this->getPerfectScoresCount($user) >= $required;
+
             case 'level_25':
             case 'level_50':
             case 'level_75':
             case 'level_100':
-                $requiredLevel = $params['level'] ?? 1;
-                return ($user->level ?? 0) >= $requiredLevel;
-            
-            // Pièces accumulées
+                $required = $params['level'] ?? 1;
+                return ($user->level ?? 0) >= $required;
+
             case 'coins_1000':
             case 'coins_5000':
-                $requiredCoins = $params['coins'] ?? 0;
-                return ($user->coins ?? 0) >= $requiredCoins;
-            
-            // Divisions (Duo/Ligue)
+                $required = $params['coins'] ?? 0;
+                return ($user->competence_coins ?? 0) >= $required;
+
             case 'division_silver':
             case 'division_gold':
             case 'division_legend':
                 return $this->checkDivisionReached($user, $code);
-            
-            // Victoires Duo
+
             case 'duo_wins_10':
                 $required = $params['wins'] ?? 10;
-                $duoWins = $this->getDuoWinsCount($user);
-                return $duoWins >= $required;
-            
-            // Boss defeats (Solo mode) - Table non disponible
+                return $this->getDuoWinsCount($user) >= $required;
+
             case 'boss_defeats_5':
             case 'boss_defeats_10':
-                return false; // Aucune table solo_boss_history dans la base
-            
-            // Avatars débloqués
+                return false;
+
             case 'avatars_unlocked_10':
             case 'avatars_unlocked_25':
                 $required = $params['count'] ?? 1;
-                $avatarsUnlocked = DB::table('user_avatars')
-                    ->where('user_id', $user->id)
-                    ->count();
-                return $avatarsUnlocked >= $required;
-            
-            // Thèmes joués
+                $settings = (array) ($user->profile_settings ?? []);
+                $unlocked = array_merge(
+                    (array) ($settings['unlocked_avatars'] ?? []),
+                    (array) ($settings['unlocked'] ?? [])
+                );
+                return count(array_unique($unlocked)) >= $required;
+
             case 'themes_5':
             case 'themes_10':
                 $required = $params['themes'] ?? 1;
-                $themesPlayed = $this->getUniqueThemesCount($user);
-                return $themesPlayed >= $required;
-            
-            // Compétences utilisées
-            case 'skill_used':
-            case 'skills_used_50':
-                $required = $params['count'] ?? 1;
-                // Compter depuis game_history ou équivalent
-                return false; // Nécessite tracking spécifique
-            
-            // Réponses rapides (nécessite tracking temps réel)
-            case 'fast_answers_10':
-            case 'ultra_fast_answers_10':
-            case 'buzz_fast_10':
-            case 'ultra_fast_buzz_20':
-            case 'correct_streak_25':
-            case 'correct_streak_50':
-                return false; // Impossible à détecter rétroactivement de manière fiable
-            
-            // Quêtes spéciales
-            case 'comeback_0_5':
-            case 'perfect_10_0':
-            case 'night_owl':
-                return false; // Nécessite tracking en temps réel
-            
+                return $this->getUniqueThemesCount($user) >= $required;
+
             default:
                 return false;
         }
     }
-    
-    /**
-     * Compter le nombre total de parties jouées
-     */
+
     protected function getTotalMatchesCount(User $user): int
     {
-        $duoMatches = DB::table('duo_matches')
-            ->where(function($query) use ($user) {
-                $query->where('player1_id', $user->id)
-                      ->orWhere('player2_id', $user->id);
-            })
+        $duo = DB::table('duo_matches')
+            ->where(fn ($q) => $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id))
             ->where('status', 'completed')
             ->count();
-        
-        $leagueMatches = DB::table('league_individual_matches')
-            ->where(function($query) use ($user) {
-                $query->where('player1_id', $user->id)
-                      ->orWhere('player2_id', $user->id);
-            })
+
+        $league = DB::table('league_individual_matches')
+            ->where(fn ($q) => $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id))
             ->where('status', 'completed')
             ->count();
-        
-        return $duoMatches + $leagueMatches;
+
+        return $duo + $league;
     }
-    
-    /**
-     * Compter les scores parfaits (10/10 bonnes réponses pour le joueur)
-     * Note: Seuls les matchs Duo stockent les scores, pas les matchs Ligue
-     */
+
     protected function getPerfectScoresCount(User $user): int
     {
-        $duoPerfect = DB::table('duo_matches')
-            ->where(function($query) use ($user) {
-                $query->where(function($q) use ($user) {
-                    $q->where('player1_id', $user->id)
-                      ->whereRaw('player1_score >= 10');
-                })
-                ->orWhere(function($q) use ($user) {
-                    $q->where('player2_id', $user->id)
-                      ->whereRaw('player2_score >= 10');
-                });
-            })
+        return DB::table('duo_matches')
+            ->where(fn ($q) => $q
+                ->where(fn ($q2) => $q2->where('player1_id', $user->id)->whereRaw('player1_score >= 10'))
+                ->orWhere(fn ($q2) => $q2->where('player2_id', $user->id)->whereRaw('player2_score >= 10'))
+            )
             ->where('status', 'completed')
             ->count();
-        
-        return $duoPerfect;
     }
-    
-    /**
-     * Compter les victoires Duo
-     */
+
     protected function getDuoWinsCount(User $user): int
     {
         return DB::table('duo_matches')
-            ->where(function($query) use ($user) {
-                $query->where(function($q) use ($user) {
-                    $q->where('player1_id', $user->id)
-                      ->whereRaw('player1_score > player2_score');
-                })
-                ->orWhere(function($q) use ($user) {
-                    $q->where('player2_id', $user->id)
-                      ->whereRaw('player2_score > player1_score');
-                });
-            })
+            ->where(fn ($q) => $q
+                ->where(fn ($q2) => $q2->where('player1_id', $user->id)->whereRaw('player1_score > player2_score'))
+                ->orWhere(fn ($q2) => $q2->where('player2_id', $user->id)->whereRaw('player2_score > player1_score'))
+            )
             ->where('status', 'completed')
             ->count();
     }
-    
-    /**
-     * Vérifier si une division a été atteinte
-     */
+
     protected function checkDivisionReached(User $user, string $code): bool
     {
         $divisionMap = [
-            'division_silver' => ['Argent', 'Or', 'Platine', 'Diamant', 'Légende'],
-            'division_gold' => ['Or', 'Platine', 'Diamant', 'Légende'],
-            'division_legend' => ['Légende'],
+            'division_silver' => ['argent', 'or', 'platine', 'diamant', 'legende'],
+            'division_gold'   => ['or', 'platine', 'diamant', 'legende'],
+            'division_legend' => ['legende'],
         ];
-        
-        $requiredDivisions = $divisionMap[$code] ?? [];
-        
-        // Vérifier division Duo
-        if (in_array($user->duo_division ?? 'Bronze', $requiredDivisions)) {
-            return true;
-        }
-        
-        // Vérifier division Ligue
-        if (in_array($user->league_division ?? 'Bronze', $requiredDivisions)) {
-            return true;
-        }
-        
-        return false;
+
+        $required = $divisionMap[$code] ?? [];
+
+        $duoDivision    = strtolower($user->duo_division ?? 'bronze');
+        $leagueDivision = strtolower($user->league_division ?? 'bronze');
+
+        return in_array($duoDivision, $required, true) || in_array($leagueDivision, $required, true);
     }
-    
-    /**
-     * Compter les thèmes uniques joués
-     * Note: duo_matches stocke 'theme' (string), league n'a pas de thèmes
-     */
+
     protected function getUniqueThemesCount(User $user): int
     {
-        // Récupérer tous les thèmes uniques depuis Duo (colonne 'theme' pas 'theme_id')
-        $duoThemes = DB::table('duo_matches')
-            ->where(function($query) use ($user) {
-                $query->where('player1_id', $user->id)
-                      ->orWhere('player2_id', $user->id);
-            })
+        $themes = DB::table('duo_matches')
+            ->where(fn ($q) => $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id))
             ->where('status', 'completed')
             ->whereNotNull('theme')
             ->distinct()
             ->pluck('theme')
             ->toArray();
-        
-        return count($duoThemes);
+
+        return count($themes);
     }
-    
-    /**
-     * Compléter une quête de manière rétroactive avec transaction atomique
-     */
+
     protected function completeQuestRetroactive(User $user, Quest $quest): void
     {
         DB::transaction(function () use ($user, $quest) {
-            // Créer ou récupérer la progression avec verrouillage
             $progress = UserQuestProgress::firstOrCreate(
                 ['user_id' => $user->id, 'quest_id' => $quest->id],
                 ['progress' => [], 'rewarded' => false]
             );
-            
+
             $progress = UserQuestProgress::where('id', $progress->id)->lockForUpdate()->first();
-            
-            // Si déjà complétée, skip
-            if ($progress->completed_at !== null && $progress->rewarded) {
+
+            if ($progress->completed_at !== null) {
                 return;
             }
-            
-            // Marquer comme complétée
+
             $progress->completed_at = now();
-            $progress->rewarded = true;
+            $progress->rewarded     = true;
             $progress->save();
-            
-            // Attribuer les pièces de Compétence (Solo/Quêtes)
+
             $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
             if ($lockedUser) {
                 $lockedUser->competence_coins = ($lockedUser->competence_coins ?? 0) + $quest->reward_coins;

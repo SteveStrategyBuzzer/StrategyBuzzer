@@ -1644,25 +1644,72 @@ class SoloController extends Controller
         $user = auth()->user();
         if ($user) {
             $questService = new QuestService();
-            
-            // Quête : Buzz rapides (first_buzz_10)
-            // Le joueur est premier si : il a buzzé ET (l'adversaire n'a pas buzzé OU l'adversaire était plus lent)
+            $theme = session('theme', 'Général');
+
+            // Buzz rapides : premier à buzzer
             $playerWasFirst = $playerBuzzed && (!$opponentBehavior['buzzes'] || $opponentBehavior['is_faster'] === false);
             if ($playerWasFirst) {
                 $questService->checkAndCompleteQuests($user, 'first_buzz_10', [
                     'first_buzz' => true,
                 ]);
+                // Buzz ultra-rapide (< 1 s)
+                if ($buzzTime < 1) {
+                    $questService->checkAndCompleteQuests($user, 'ultra_fast_buzz_20', [
+                        'buzz_time'  => $buzzTime,
+                        'is_correct' => $isCorrect,
+                    ]);
+                }
             }
-            
-            // Quêtes nécessitant une réponse correcte
-            if ($isCorrect && $playerBuzzed) {
-                // Quête : Réponses rapides (fast_answers_10)
-                // Si le joueur a répondu rapidement (< 2 secondes)
+
+            // Réponses correctes
+            if ($isCorrect) {
+                // Streak correct (cross-sessions)
+                $questService->checkAndCompleteQuests($user, 'correct_streak_25', [
+                    'answer_correct' => true,
+                    'answer_time'    => $buzzTime,
+                ]);
+                $questService->checkAndCompleteQuests($user, 'correct_streak_50', [
+                    'answer_correct' => true,
+                    'answer_time'    => $buzzTime,
+                ]);
+                // Réponse rapide (< 2 s)
                 if ($buzzTime < 2) {
                     $questService->checkAndCompleteQuests($user, 'fast_answers_10', [
                         'answer_time' => $buzzTime,
+                        'is_correct'  => true,
                     ]);
                 }
+                // Réponse ultra-rapide (< 1 s)
+                if ($buzzTime < 1) {
+                    $questService->checkAndCompleteQuests($user, 'ultra_fast_answers_10', [
+                        'answer_time' => $buzzTime,
+                        'is_correct'  => true,
+                    ]);
+                }
+                // Math streak
+                $questService->checkAndCompleteQuests($user, 'math_streak', [
+                    'theme'          => $theme,
+                    'answer_correct' => true,
+                ]);
+                // Correct sans avoir buzzé (réponse après mauvais buzz adverse)
+                if (!$playerBuzzed) {
+                    $questService->checkAndCompleteQuests($user, 'correct_no_buzz', [
+                        'answer_correct' => true,
+                        'player_buzzed'  => false,
+                    ]);
+                }
+            } else {
+                // Réponse incorrecte : réinitialiser les streaks
+                $questService->checkAndCompleteQuests($user, 'correct_streak_25', [
+                    'answer_wrong' => true,
+                ]);
+                $questService->checkAndCompleteQuests($user, 'correct_streak_50', [
+                    'answer_wrong' => true,
+                ]);
+                $questService->checkAndCompleteQuests($user, 'math_streak', [
+                    'theme'        => $theme,
+                    'answer_wrong' => true,
+                ]);
             }
         }
         
@@ -2190,24 +2237,43 @@ class SoloController extends Controller
         // Calculer l'efficacité globale basée sur les points
         $globalEfficiency = $this->calculateEfficiency($globalStats);
         
-        // Vérifier et compléter les quêtes
+        // Vérifier et compléter les quêtes (victoire Solo)
         $user = auth()->user();
         if ($user) {
-            $questService = new QuestService();
-            
-            // Quête : Première partie de 10 questions
-            $questService->checkAndCompleteQuests($user, 'first_match_10q', [
-                'match_completed' => true,
-                'total_questions' => $totalQuestionsPlayed,
-            ]);
-            
-            // Quête : Score parfait
-            if ($totalCorrect == $totalQuestionsPlayed && $totalQuestionsPlayed >= 10) {
-                $questService->checkAndCompleteQuests($user, 'perfect_score', [
-                    'user_correct_answers' => $totalCorrect,
-                    'total_questions' => $totalQuestionsPlayed,
-                ]);
+            $questService  = new QuestService();
+            $bossDefeated  = $this->getBossForLevel($currentLevel) !== null;
+            $livesRemaining = (int) session('vies_restantes', $user->lives ?? 3);
+            $skillsRestants = (int) session('skills_restants', 3);
+            $skillsUsed     = max(0, 3 - $skillsRestants);
+
+            // Scores globaux du match (somme des manches)
+            $totalPlayerScore   = 0;
+            $totalOpponentScore = 0;
+            foreach (session('round_summaries', []) as $rs) {
+                $totalPlayerScore   += $rs['player_score']   ?? $rs['points_earned'] ?? 0;
+                $totalOpponentScore += $rs['opponent_score'] ?? 0;
             }
+
+            // Contexte unifié envoyé à fireMatchEndQuests
+            $questContext = [
+                'match_completed'  => true,
+                'won'              => true,
+                'total_questions'  => $totalQuestionsPlayed,
+                'user_correct'     => $totalCorrect,
+                'player_score'     => $totalPlayerScore,
+                'opponent_score'   => $totalOpponentScore,
+                'theme'            => $theme,
+                'skills_used'      => $skillsUsed,
+                'lives_remaining'  => $livesRemaining,
+                'had_timeout'      => $totalUnanswered > 0,
+                'boss_defeated'    => $bossDefeated,
+                'sound_disabled'   => (bool) session('sound_disabled', false),
+                'user_level'       => $user->level ?? 0,
+                'user_coins'       => $user->competence_coins ?? 0,
+                'division'         => 'bronze', // Solo n'a pas de division
+            ];
+
+            $questService->fireMatchEndQuests($user, 'solo', $questContext);
         }
         
         // Enregistrer les statistiques de match (victoire)
@@ -2441,7 +2507,26 @@ class SoloController extends Controller
                 $gameId
             );
         }
-        
+
+        // Quêtes défaite : réinitialiser win streaks + incrémenter compteur de défaites consécutives
+        if ($user) {
+            $questService = new QuestService();
+            $questService->fireMatchEndQuests($user, 'solo', [
+                'match_completed' => true,
+                'won'             => false,
+                'total_questions' => $totalQuestionsPlayed,
+                'user_correct'    => $totalCorrect,
+                'theme'           => $theme,
+                'skills_used'     => 0,
+                'lives_remaining' => $user->lives ?? 0,
+                'had_timeout'     => $totalUnanswered > 0,
+                'boss_defeated'   => false,
+                'user_level'      => $user->level ?? 0,
+                'user_coins'      => $user->competence_coins ?? 0,
+                'division'        => 'bronze',
+            ]);
+        }
+
         // Calculer l'efficacité moyenne de la partie
         $roundEfficiencies = session('round_efficiencies', []);
         $partyEfficiency = null;
