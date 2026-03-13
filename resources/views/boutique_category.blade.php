@@ -961,9 +961,6 @@ function toggleDetails(slug) {
     }
 }
 
-<<<<<<< HEAD
-// Devise côté serveur (session) injectée dans le layout
-// window.SB_CURRENCY_SYMBOL ex: "$", "€", "£", "฿"
 document.addEventListener('DOMContentLoaded', function() {
     const currencySymbol = (window.SB_CURRENCY_SYMBOL || '$');
 
@@ -981,9 +978,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const html = btn.innerHTML || '';
         btn.innerHTML = html.replace(/\$([\d.,]+)/g, currencySymbol + '$1');
     });
-=======
-document.addEventListener('DOMContentLoaded', function() {
->>>>>>> ce718c17 (Align currency display and processing with user's language settings)
 });
     
 
