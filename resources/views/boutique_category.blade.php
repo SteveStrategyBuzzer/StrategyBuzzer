@@ -303,16 +303,129 @@ audio { width: 100%; }
     .cols-3 { grid-template-columns: repeat(3, 1fr); }
 }
 
-.master-card {
-    background: linear-gradient(135deg, #1a1a4a, #2d1b69);
-    border-color: #6366f1;
-    padding: 24px;
+.mode-card {
+    border-radius: 20px;
+    padding: 28px 24px 24px;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
 }
 
-.master-features { text-align: left; margin: 16px 0; padding: 16px; background: rgba(0,0,0,.2); border-radius: 12px; }
-.master-features ul { margin: 8px 0 0; padding-left: 20px; }
-.master-features li { margin: 6px 0; color: var(--muted); }
+.duo-card {
+    background: linear-gradient(160deg, #0d1f5c, #1a3a8a);
+    border: 1px solid #3b82f6;
+    box-shadow: 0 0 30px rgba(59,130,246,0.15);
+}
+
+.ligue-card {
+    background: linear-gradient(160deg, #1a0a4a, #3b1fa0);
+    border: 1px solid #8b5cf6;
+    box-shadow: 0 0 30px rgba(139,92,246,0.15);
+}
+
+.master-top-card {
+    background: linear-gradient(160deg, #0a2a1a, #0d5c3a);
+    border: 1px solid #10b981;
+    box-shadow: 0 0 30px rgba(16,185,129,0.15);
+}
+
+.mode-unlock-badge {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: 0.72rem;
+    color: #c7d9ff;
+    margin-bottom: 16px;
+    line-height: 1.3;
+}
+
+.mode-icon {
+    font-size: 3.2rem;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.mode-title {
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin: 0 0 8px;
+    letter-spacing: 0.5px;
+}
+
+.duo-title   { color: #60a5fa; }
+.ligue-title { color: #a78bfa; }
+.master-title{ color: #34d399; }
+
+.mode-punch {
+    font-size: 1rem;
+    color: #e0eaff;
+    margin: 0 0 18px;
+    font-style: italic;
+}
+
+.mode-features {
+    list-style: none;
+    margin: 0 0 20px;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mode-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.88rem;
+    color: #d0e0ff;
+    line-height: 1.4;
+}
+
+.feat-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.feat-tip {
+    color: #93c5fd;
+    font-size: 0.8rem;
+    display: block;
+    margin-top: 2px;
+}
+
+.btn-mode {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    color: #fff;
+    margin-top: auto;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    letter-spacing: 0.3px;
+}
+
+.btn-mode:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+
+.btn-mode.unlocked {
+    background: linear-gradient(135deg, #166534, #15803d);
+    cursor: default;
+}
+.btn-mode.unlocked:hover { transform: none; box-shadow: none; }
+
+.buy-duo   { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
+.buy-ligue { background: linear-gradient(135deg, #6d28d9, #8b5cf6); }
+.buy-master{ background: linear-gradient(135deg, #065f46, #10b981); }
 
 .coins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
 .coin-pack { text-align: center; padding: 24px; position: relative; }
@@ -574,24 +687,46 @@ audio { width: 100%; }
 
     @elseif($category === 'master')
         <div class="grid cols-3">
-            <!-- Mode Duo -->
-            <div class="card master-card">
-                <div style="font-size:3rem;margin-bottom:16px;">👥</div>
-                <h2>{{ __('Mode Duo') }}</h2>
-                <p style="color:var(--muted);margin-bottom:16px;">{{ __('Affrontez vos amis en 1v1 !') }}</p>
-                
-                <div class="master-features">
-                    <strong>✨ {{ __('Fonctionnalités incluses') }} :</strong>
-                    <ul>
-                        <li>{{ __('Matchs 1 contre 1') }}</li>
-                        <li>{{ __('Invitations par code') }}</li>
-                        <li>{{ __('Classement ELO') }}</li>
-                        <li>{{ __('Carnet de contacts') }}</li>
-                    </ul>
-                </div>
-                
+
+            <!-- MODE DUO -->
+            <div class="mode-card duo-card">
+                <div class="mode-unlock-badge">🔓 {{ __('Se débloque après avoir battu le Boss du niveau 10 en Solo') }}</div>
+                <div class="mode-icon">👥</div>
+                <h2 class="mode-title duo-title">{{ __('Mode Duo') }}</h2>
+                <p class="mode-punch">{{ __('Affrontez un rival en duel direct !') }}</p>
+
+                <ul class="mode-features">
+                    <li>
+                        <span class="feat-icon">⚔️</span>
+                        <span>{{ __('Duel 1 contre 1 en temps réel contre un vrai joueur') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🔍</span>
+                        <span>
+                            {{ __('Le jeu te trouve un adversaire de ta force automatiquement') }}
+                            <em class="feat-tip">{{ __('Ton score de compétition monte quand tu gagnes et descend quand tu perds') }}</em>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">📨</span>
+                        <span>{{ __('Joue contre un ami via code d\'invitation') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">💰</span>
+                        <span>{{ __('Mise des Pièces de Compétence sur le match — double si tu gagnes') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🏅</span>
+                        <span>{{ __('Monte dans le classement de ta division') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">📒</span>
+                        <span>{{ __('Carnet de contacts pour retrouver tes adversaires préférés') }}</span>
+                    </li>
+                </ul>
+
                 @if($duoPurchased ?? false)
-                    <button class="btn success" disabled style="width:100%;padding:16px;font-size:1.1rem;">✓ {{ __('Mode débloqué') }}</button>
+                    <button class="btn-mode unlocked" disabled>✓ {{ __('Mode débloqué') }}</button>
                 @else
                     @php
                         $cur = $currency ?? 'usd';
@@ -603,35 +738,51 @@ audio { width: 100%; }
                     @endphp
                     <form method="POST" action="{{ route('modes.checkout', 'duo') }}" style="width:100%;">
                         @csrf
-                        <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#3b82f6,#1d4ed8);">
-                            💳 {{ __('Acheter') }} - {{ $duoFmt }}
-                        </button>
+                        <button class="btn-mode buy-duo" type="submit">💳 {{ __('Acheter') }} — {{ $duoFmt }}</button>
                     </form>
                 @endif
             </div>
 
-            <!-- Mode Ligue -->
-            <div class="card master-card">
-                <div style="font-size:3rem;margin-bottom:16px;">🏆</div>
-                <h2>{{ __('Mode Ligue') }}</h2>
-                <p style="color:var(--muted);margin-bottom:16px;">{{ __('Compétition classée entre joueurs !') }}</p>
-                
-                <div class="master-features">
-                    <strong>✨ {{ __('Fonctionnalités incluses') }} :</strong>
-                    <ul>
-                        <li>{{ __('Matchmaking automatique') }}</li>
-                        <li>{{ __('Classement mondial') }}</li>
-                        <li>{{ __('Saisons compétitives') }}</li>
-                        <li>{{ __('Récompenses exclusives') }}</li>
-                    </ul>
-                </div>
-                
+            <!-- MODE LIGUE -->
+            <div class="mode-card ligue-card">
+                <div class="mode-unlock-badge">🔓 {{ __('Se débloque après 25 matchs Duo joués') }}</div>
+                <div class="mode-icon">🏆</div>
+                <h2 class="mode-title ligue-title">{{ __('Mode Ligue') }}</h2>
+                <p class="mode-punch">{{ __('Prouve ta valeur dans la compétition officielle !') }}</p>
+
+                <ul class="mode-features">
+                    <li>
+                        <span class="feat-icon">🤖</span>
+                        <span>{{ __('Trouve automatiquement un adversaire sans code d\'invitation') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🌍</span>
+                        <span>{{ __('Classement mondial divisé en saisons — chaque saison repart à zéro') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">📈</span>
+                        <span>{{ __('Monte les divisions : Bronze → Argent → Or → Diamant → Légende') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🎁</span>
+                        <span>{{ __('Récompenses exclusives distribuées en fin de saison') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">👥</span>
+                        <span>{{ __('Mode Individuel (1v1) et Mode Équipe (5 contre 5)') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🪙</span>
+                        <span>{{ __('Gagne des Pièces d\'Intelligence sur chaque victoire') }}</span>
+                    </li>
+                </ul>
+
                 @if($leaguePurchased ?? false)
-                    <button class="btn success" disabled style="width:100%;padding:16px;font-size:1.1rem;">✓ {{ __('Mode débloqué') }}</button>
+                    <button class="btn-mode unlocked" disabled>✓ {{ __('Mode débloqué') }}</button>
                 @else
                     @php
                         $cur = $currency ?? 'usd';
-                        $leagueAmt = $modePrices['league'][$cur] ?? $modePrices['league']['usd'] ?? 1575;
+                        $leagueAmt = $modePrices['league'][$cur] ?? $modePrices['league']['usd'] ?? 1250;
                         $fmt = $currencyFormat[$cur] ?? ['symbol' => '$', 'position' => 'before', 'decimal' => '.'];
                         $leagueFmt = $fmt['position'] === 'after'
                             ? number_format($leagueAmt / 100, 2, $fmt['decimal'], '') . $fmt['symbol']
@@ -639,35 +790,50 @@ audio { width: 100%; }
                     @endphp
                     <form method="POST" action="{{ route('modes.checkout', 'league') }}" style="width:100%;">
                         @csrf
-                        <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#8b5cf6,#6d28d9);">
-                            💳 {{ __('Acheter') }} - {{ $leagueFmt }}
-                        </button>
+                        <button class="btn-mode buy-ligue" type="submit">💳 {{ __('Acheter') }} — {{ $leagueFmt }}</button>
                     </form>
                 @endif
             </div>
 
-            <!-- Mode Maître du Jeu -->
-            <div class="card master-card">
-                <div style="font-size:3rem;margin-bottom:16px;">🎮</div>
-                <h2>{{ __('Maître du Jeu') }}</h2>
-                <p style="color:var(--muted);margin-bottom:16px;">{{ __('Créez vos propres parties personnalisées !') }}</p>
-                
-                <div class="master-features">
-                    <strong>✨ {{ __('Fonctionnalités incluses') }} :</strong>
-                    <ul>
-                        <li>{{ __("Jusqu'à 40 joueurs par partie") }}</li>
-                        <li>{{ __('Questions personnalisées') }}</li>
-                        <li>{{ __('Animation en temps réel') }}</li>
-                        <li>{{ __('Contrôle total de la partie') }}</li>
-                    </ul>
-                </div>
-                
+            <!-- MODE MAÎTRE DU JEU -->
+            <div class="mode-card master-top-card">
+                <div class="mode-icon">🎮</div>
+                <h2 class="mode-title master-title">{{ __('Maître du Jeu') }}</h2>
+                <p class="mode-punch">{{ __('Organise tes propres tournois jusqu\'à 40 joueurs !') }}</p>
+
+                <ul class="mode-features">
+                    <li>
+                        <span class="feat-icon">🎲</span>
+                        <span>{{ __('Crée ton quiz avec tes propres questions et thèmes') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">👥</span>
+                        <span>{{ __('Invite jusqu\'à 40 joueurs dans la même partie simultanément') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🕹️</span>
+                        <span>{{ __('4 formats : Classique, Survie, Équipes et Ultimate') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">⚡</span>
+                        <span>{{ __('Scores et classement affichés en temps réel pendant la partie') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🎛️</span>
+                        <span>{{ __('Tu contrôles le rythme, les thèmes et tous les paramètres') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🎉</span>
+                        <span>{{ __('Idéal pour soirées, cours et tournois') }}</span>
+                    </li>
+                </ul>
+
                 @if($masterPurchased)
-                    <button class="btn success" disabled style="width:100%;padding:16px;font-size:1.1rem;">✓ {{ __('Mode débloqué') }}</button>
+                    <button class="btn-mode unlocked" disabled>✓ {{ __('Mode débloqué') }}</button>
                 @else
                     @php
                         $cur = $currency ?? 'usd';
-                        $masterAmt = $modePrices['master'][$cur] ?? $modePrices['master']['usd'] ?? 2999;
+                        $masterAmt = $modePrices['master'][$cur] ?? $modePrices['master']['usd'] ?? 1500;
                         $fmt = $currencyFormat[$cur] ?? ['symbol' => '$', 'position' => 'before', 'decimal' => '.'];
                         $masterFmt = $fmt['position'] === 'after'
                             ? number_format($masterAmt / 100, 2, $fmt['decimal'], '') . $fmt['symbol']
@@ -675,12 +841,11 @@ audio { width: 100%; }
                     @endphp
                     <form method="POST" action="{{ route('master.checkout') }}" style="width:100%;">
                         @csrf
-                        <button class="btn" type="submit" style="width:100%;padding:16px;font-size:1.1rem;background:linear-gradient(135deg,#10b981,#059669);">
-                            💳 {{ __('Acheter') }} - {{ $masterFmt }}
-                        </button>
+                        <button class="btn-mode buy-master" type="submit">💳 {{ __('Acheter') }} — {{ $masterFmt }}</button>
                     </form>
                 @endif
             </div>
+
         </div>
 
     @elseif($category === 'coins_intelligence')
