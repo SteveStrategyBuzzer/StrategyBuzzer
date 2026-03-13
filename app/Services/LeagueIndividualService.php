@@ -164,56 +164,63 @@ class LeagueIndividualService
         $this->updatePlayerStats($player2, !$player1Won, $player2PointsEarned, $match->player2_level, $p2CoinReward['coins']);
 
         // Quêtes fin de match Ligue Individuelle (contexte réel depuis game_state)
-        try {
-            $gameState    = is_array($match->game_state) ? $match->game_state : (json_decode($match->game_state ?? '{}', true) ?? []);
-            $theme        = $gameState['theme'] ?? $gameState['currentTheme'] ?? 'Général';
-            $totalQ       = (int) ($gameState['nb_questions'] ?? $gameState['total_questions'] ?? 10);
-            $questService = app(\App\Services\QuestService::class);
+        $gameState    = is_array($match->game_state) ? $match->game_state : (json_decode($match->game_state ?? '{}', true) ?? []);
+        $theme        = $gameState['theme'] ?? $gameState['currentTheme'] ?? 'Général';
+        $totalQ       = (int) ($gameState['nb_questions'] ?? $gameState['total_questions'] ?? 10);
+        $questService = app(\App\Services\QuestService::class);
+        $matchHour    = (int) \Carbon\Carbon::now()->format('G');
 
-            $div1 = $this->divisionService->getOrCreateDivision($player1, 'league_individual');
-            $div2 = $this->divisionService->getOrCreateDivision($player2, 'league_individual');
+        // Scores réels de la partie (player_stats_map ou total_scores de matchResult)
+        $totalScores = $matchResult['total_scores'] ?? [];
+        $p1GameScore = (int) ($totalScores[$player1->id] ?? $matchResult['player_total_score'] ?? 0);
+        $p2GameScore = (int) ($totalScores[$player2->id] ?? $matchResult['opponent_total_score'] ?? 0);
 
-            $p1Correct = (int) ($matchResult['player1_correct'] ?? $matchResult['correct_answers'] ?? 0);
-            $p2Correct = (int) ($matchResult['player2_correct'] ?? 0);
+        $globalStats    = $gameState['global_stats'] ?? [];
+        $hadTimeout     = (int) ($globalStats['totalUnanswered'] ?? 0) > 0;
 
-            $questService->fireMatchEndQuests($player1, 'league_individual', [
-                'match_completed' => true,
-                'won'             => $player1Won,
-                'total_questions' => $totalQ,
-                'user_correct'    => $p1Correct,
-                'player_score'    => max(0, $player1PointsEarned),
-                'opponent_score'  => max(0, $player2PointsEarned),
-                'theme'           => $theme,
-                'skills_used'     => (int) ($matchResult['player1_skills_used'] ?? 0),
-                'lives_remaining' => 3,
-                'had_timeout'     => (bool) ($matchResult['had_timeout'] ?? false),
-                'boss_defeated'   => false,
-                'division'        => strtolower($div1->division ?? 'bronze'),
-                'user_level'      => $match->player1_level ?? 0,
-                'user_coins'      => $player1->competence_coins ?? 0,
-                'action_done'     => true,
-            ]);
+        $div1 = $this->divisionService->getOrCreateDivision($player1, 'league_individual');
+        $div2 = $this->divisionService->getOrCreateDivision($player2, 'league_individual');
 
-            $questService->fireMatchEndQuests($player2, 'league_individual', [
-                'match_completed' => true,
-                'won'             => !$player1Won,
-                'total_questions' => $totalQ,
-                'user_correct'    => $p2Correct,
-                'player_score'    => max(0, $player2PointsEarned),
-                'opponent_score'  => max(0, $player1PointsEarned),
-                'theme'           => $theme,
-                'skills_used'     => (int) ($matchResult['player2_skills_used'] ?? 0),
-                'lives_remaining' => 3,
-                'had_timeout'     => (bool) ($matchResult['had_timeout'] ?? false),
-                'boss_defeated'   => false,
-                'division'        => strtolower($div2->division ?? 'bronze'),
-                'user_level'      => $match->player2_level ?? 0,
-                'user_coins'      => $player2->competence_coins ?? 0,
-                'action_done'     => true,
-            ]);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Quest hook error in LeagueIndividualService::finishMatch: ' . $e->getMessage());
-        }
+        $p1Correct = (int) ($matchResult['player1_correct'] ?? 0);
+        $p2Correct = (int) ($matchResult['player2_correct'] ?? 0);
+
+        $questService->fireMatchEndQuests($player1, 'league_individual', [
+            'match_completed' => true,
+            'won'             => $player1Won,
+            'total_questions' => $totalQ,
+            'user_correct'    => $p1Correct,
+            'player_score'    => $p1GameScore,
+            'opponent_score'  => $p2GameScore,
+            'theme'           => $theme,
+            'skills_used'     => (int) ($matchResult['player1_skills_used'] ?? 0),
+            'lives_remaining' => 3,
+            'had_timeout'     => $hadTimeout,
+            'boss_defeated'   => false,
+            'match_hour'      => $matchHour,
+            'division'        => strtolower($div1->division ?? 'bronze'),
+            'user_level'      => $match->player1_level ?? 0,
+            'user_coins'      => $player1->competence_coins ?? 0,
+            'action_done'     => true,
+        ]);
+
+        $questService->fireMatchEndQuests($player2, 'league_individual', [
+            'match_completed' => true,
+            'won'             => !$player1Won,
+            'total_questions' => $totalQ,
+            'user_correct'    => $p2Correct,
+            'player_score'    => $p2GameScore,
+            'opponent_score'  => $p1GameScore,
+            'theme'           => $theme,
+            'skills_used'     => (int) ($matchResult['player2_skills_used'] ?? 0),
+            'lives_remaining' => 3,
+            'had_timeout'     => $hadTimeout,
+            'boss_defeated'   => false,
+            'match_hour'      => $matchHour,
+            'division'        => strtolower($div2->division ?? 'bronze'),
+            'user_level'      => $match->player2_level ?? 0,
+            'user_coins'      => $player2->competence_coins ?? 0,
+            'action_done'     => true,
+        ]);
 
         $this->divisionService->clearCurrentMatch($player1);
         $this->divisionService->clearCurrentMatch($player2);

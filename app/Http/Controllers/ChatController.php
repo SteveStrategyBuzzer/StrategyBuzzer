@@ -45,13 +45,9 @@ class ChatController extends Controller
         // Quête chat_participate
         $sender = Auth::user();
         if ($sender) {
-            try {
-                app(\App\Services\QuestService::class)->checkAndCompleteQuests($sender, 'chat_participate', [
-                    'action_done' => true,
-                ]);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Quest hook error in ChatController: ' . $e->getMessage());
-            }
+            app(\App\Services\QuestService::class)->checkAndCompleteQuests($sender, 'chat_participate', [
+                'action_done' => true,
+            ]);
         }
 
         return response()->json([

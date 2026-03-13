@@ -11,13 +11,9 @@ class HistoriqueController extends Controller
     {
         $user = Auth::user();
         if ($user) {
-            try {
-                app(\App\Services\QuestService::class)->checkAndCompleteQuests($user, 'view_history_1', [
-                    'action_done' => true,
-                ]);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Quest hook error in HistoriqueController: ' . $e->getMessage());
-            }
+            app(\App\Services\QuestService::class)->checkAndCompleteQuests($user, 'view_history_1', [
+                'action_done' => true,
+            ]);
         }
 
         return view('historique');

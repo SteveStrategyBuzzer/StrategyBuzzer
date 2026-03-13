@@ -222,23 +222,19 @@ class AvatarController extends Controller
             session()->flash('avatar_updated', true);
 
             // Quête avatars_different_2 : changer d'avatar au moins 2 fois
-            try {
-                $freshSettings = (array) ($user->profile_settings ?? []);
-                $data = json_decode(json_encode($freshSettings), true);
-                $usedAvatars = $data['avatars_used_history'] ?? [];
-                $newAvatar = $value;
-                if (!in_array($newAvatar, $usedAvatars, true)) {
-                    $usedAvatars[] = $newAvatar;
-                    $freshSettings['avatars_used_history'] = $usedAvatars;
-                    $user->profile_settings = $freshSettings;
-                    $user->save();
-                }
-                app(\App\Services\QuestService::class)->checkAndCompleteQuests($user, 'avatars_different_2', [
-                    'different_avatars_count' => count($usedAvatars),
-                ]);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Quest hook error in AvatarController::select: ' . $e->getMessage());
+            $freshSettings = (array) ($user->profile_settings ?? []);
+            $data = json_decode(json_encode($freshSettings), true);
+            $usedAvatars = $data['avatars_used_history'] ?? [];
+            $newAvatar = $value;
+            if (!in_array($newAvatar, $usedAvatars, true)) {
+                $usedAvatars[] = $newAvatar;
+                $freshSettings['avatars_used_history'] = $usedAvatars;
+                $user->profile_settings = $freshSettings;
+                $user->save();
             }
+            app(\App\Services\QuestService::class)->checkAndCompleteQuests($user, 'avatars_different_2', [
+                'different_avatars_count' => count($usedAvatars),
+            ]);
         }
 
         // Redirection douce
@@ -294,19 +290,15 @@ class AvatarController extends Controller
         $user->save();
 
         // Quêtes avatars débloqués
-        try {
-            $freshSettings   = (array) ($user->profile_settings ?? []);
-            $unlockedCount   = count((array) ($freshSettings['unlocked_avatars'] ?? []));
-            $questService    = app(\App\Services\QuestService::class);
-            $questService->checkAndCompleteQuests($user, 'avatars_unlocked_10', [
-                'unlocked_avatars_count' => $unlockedCount,
-            ]);
-            $questService->checkAndCompleteQuests($user, 'avatars_unlocked_25', [
-                'unlocked_avatars_count' => $unlockedCount,
-            ]);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Quest hook error in AvatarController::buy: ' . $e->getMessage());
-        }
+        $freshSettings = (array) ($user->profile_settings ?? []);
+        $unlockedCount = count((array) ($freshSettings['unlocked_avatars'] ?? []));
+        $questService  = app(\App\Services\QuestService::class);
+        $questService->checkAndCompleteQuests($user, 'avatars_unlocked_10', [
+            'unlocked_avatars_count' => $unlockedCount,
+        ]);
+        $questService->checkAndCompleteQuests($user, 'avatars_unlocked_25', [
+            'unlocked_avatars_count' => $unlockedCount,
+        ]);
 
         return back()->with('success', self::STRATEGIQUE_NAMES[$slug] . " débloqué !");
     }

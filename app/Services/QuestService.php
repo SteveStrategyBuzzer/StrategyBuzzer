@@ -198,17 +198,17 @@ class QuestService
                     && ($context['sound_disabled'] ?? false) === true;
 
             case 'play_early_morning':
-                $hour = (int) Carbon::now()->format('G');
+                $hour = $context['match_hour'] ?? (int) Carbon::now()->format('G');
                 return ($context['match_completed'] ?? ($context['won'] ?? false))
                     && $hour >= 6 && $hour < 9;
 
             case 'play_late_night':
-                $hour = (int) Carbon::now()->format('G');
+                $hour = $context['match_hour'] ?? (int) Carbon::now()->format('G');
                 return ($context['match_completed'] ?? ($context['won'] ?? false))
-                    && ($hour >= 22 || $hour < 0);
+                    && ($hour >= 22 || $hour < 2);
 
             case 'night_owl':
-                $hour = (int) Carbon::now()->format('G');
+                $hour = $context['match_hour'] ?? (int) Carbon::now()->format('G');
                 return ($context['match_completed'] ?? ($context['won'] ?? false))
                     && ($hour >= 0 && $hour < 6);
 

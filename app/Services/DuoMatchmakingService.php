@@ -274,11 +274,14 @@ class DuoMatchmakingService
         $this->seasonService->recordMatchResult($player2, 'duo', $player2Points > 0);
 
         // Quêtes fin de match Duo (les deux joueurs)
-        $questService = app(\App\Services\QuestService::class);
-        $p1Division   = strtolower($player1Division->division ?? 'bronze');
-        $p2Division   = strtolower($player2Division->division ?? 'bronze');
-        $theme        = $gameState['theme'] ?? $match->theme ?? 'Général';
-        $totalQ       = $gameState['total_questions'] ?? 10;
+        $questService  = app(\App\Services\QuestService::class);
+        $p1Division    = strtolower($player1Division->division ?? 'bronze');
+        $p2Division    = strtolower($player2Division->division ?? 'bronze');
+        $theme         = $gameState['theme'] ?? $match->theme ?? 'Général';
+        $totalQ        = $gameState['total_questions'] ?? 10;
+        $matchHour     = (int) \Carbon\Carbon::now()->format('G');
+        $globalStats   = $gameState['global_stats'] ?? [];
+        $hadTimeout    = (int) ($globalStats['totalUnanswered'] ?? 0) > 0;
 
         $questService->fireMatchEndQuests($player1, 'duo', [
             'match_completed' => true,
@@ -290,11 +293,13 @@ class DuoMatchmakingService
             'theme'           => $theme,
             'skills_used'     => $gameState['player1_skills_used'] ?? 0,
             'lives_remaining' => 3,
-            'had_timeout'     => false,
+            'had_timeout'     => $hadTimeout,
             'boss_defeated'   => false,
+            'match_hour'      => $matchHour,
             'division'        => $p1Division,
             'user_level'      => $player1Stats->level ?? 0,
             'user_coins'      => $player1->competence_coins ?? 0,
+            'action_done'     => true,
         ]);
 
         $questService->fireMatchEndQuests($player2, 'duo', [
@@ -307,11 +312,13 @@ class DuoMatchmakingService
             'theme'           => $theme,
             'skills_used'     => $gameState['player2_skills_used'] ?? 0,
             'lives_remaining' => 3,
-            'had_timeout'     => false,
+            'had_timeout'     => $hadTimeout,
             'boss_defeated'   => false,
+            'match_hour'      => $matchHour,
             'division'        => $p2Division,
             'user_level'      => $player2Stats->level ?? 0,
             'user_coins'      => $player2->competence_coins ?? 0,
+            'action_done'     => true,
         ]);
         
         // Multijoueur gagne des pièces d'Intelligence (car vous prouvez vos connaissances)

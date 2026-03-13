@@ -43,13 +43,9 @@ class PlayerGroupController extends Controller
         );
 
         // Quête join_team : créer/rejoindre une équipe
-        try {
-            app(\App\Services\QuestService::class)->checkAndCompleteQuests($user, 'join_team', [
-                'action_done' => true,
-            ]);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Quest hook error in PlayerGroupController::store: ' . $e->getMessage());
-        }
+        app(\App\Services\QuestService::class)->checkAndCompleteQuests($user, 'join_team', [
+            'action_done' => true,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -136,17 +132,13 @@ class PlayerGroupController extends Controller
         $this->groupService->addMembers($groupId, $request->member_ids);
 
         // Quête join_team pour chaque membre ajouté
-        try {
-            $questService = app(\App\Services\QuestService::class);
-            $memberIds    = (array) $request->member_ids;
-            foreach ($memberIds as $memberId) {
-                $member = \App\Models\User::find($memberId);
-                if ($member) {
-                    $questService->checkAndCompleteQuests($member, 'join_team', ['action_done' => true]);
-                }
+        $questService = app(\App\Services\QuestService::class);
+        $memberIds    = (array) $request->member_ids;
+        foreach ($memberIds as $memberId) {
+            $member = \App\Models\User::find($memberId);
+            if ($member) {
+                $questService->checkAndCompleteQuests($member, 'join_team', ['action_done' => true]);
             }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Quest hook error in PlayerGroupController::addMembers: ' . $e->getMessage());
         }
 
         return response()->json([
