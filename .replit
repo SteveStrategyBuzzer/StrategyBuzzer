@@ -74,13 +74,12 @@ outputType = "console"
 name = "Game Server"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd apps/game-server && npx tsx src/index.ts"
-waitForPort = 3001
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/game-server && PORT=3001 npx tsx src/index.ts"
 
 [[workflows.workflow]]
 name = "Redis Server"
