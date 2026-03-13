@@ -1691,6 +1691,25 @@ class SoloController extends Controller
                     'theme'          => $theme,
                     'answer_correct' => true,
                 ]);
+                // Monuments (approximation par thème)
+                $questService->checkAndCompleteQuests($user, 'monuments_10', [
+                    'theme'          => $theme,
+                    'answer_correct' => true,
+                ]);
+                // Océans (approximation par thème)
+                $questService->checkAndCompleteQuests($user, 'oceans_3', [
+                    'theme'          => $theme,
+                    'answer_correct' => true,
+                ]);
+                // Question piège (nécessite tagging futur — infrastructure prête)
+                $currentQuestion = session('current_question_data', []);
+                $isTrickQuestion = ($currentQuestion['type'] ?? $currentQuestion['category'] ?? '') === 'trick';
+                if ($isTrickQuestion) {
+                    $questService->checkAndCompleteQuests($user, 'trick_question_1', [
+                        'is_trick_question' => true,
+                        'answer_correct'    => true,
+                    ]);
+                }
                 // Correct sans avoir buzzé (réponse après mauvais buzz adverse)
                 if (!$playerBuzzed) {
                     $questService->checkAndCompleteQuests($user, 'correct_no_buzz', [

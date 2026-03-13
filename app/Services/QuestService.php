@@ -272,7 +272,6 @@ class QuestService
 
             // Stubs sociaux — systèmes non encore implémentés
             case 'invite_friend':
-            case 'join_team':
             case 'help_teammate_1':
             case 'help_teammate_3':
             case 'socialize_5':
@@ -280,12 +279,40 @@ class QuestService
             case 'receive_help_1':
                 return false;
 
-            // Thèmes impossibles à détecter sans tag par question
-            case 'all_themes_completed':
-            case 'monuments_10':
-            case 'oceans_3':
+            // join_team : hook action_done depuis PlayerGroupController
+            case 'join_team':
+                return ($context['action_done'] ?? false) === true;
+
+            // trick_question_1 : répondre correctement à une question piège
             case 'trick_question_1':
-                return false;
+                return ($context['is_trick_question'] ?? false) === true
+                    && ($context['answer_correct'] ?? false) === true;
+
+            // Détection par mots-clés thème (approximation — sans tag par question)
+            case 'monuments_10':
+                $target = (int) ($params['count'] ?? 10);
+                return $this->handleThemeKeywordCount($progress, $context, $target, 'monuments', [
+                    'monument', 'patrimoine', 'architecture', 'musée', 'musee', 'château', 'chateau',
+                ]);
+
+            case 'oceans_3':
+                $target = (int) ($params['count'] ?? 3);
+                return $this->handleThemeKeywordCount($progress, $context, $target, 'oceans', [
+                    'océan', 'ocean', 'mer', 'maritime', 'marin', 'sous-marin',
+                ]);
+
+            case 'all_themes_completed':
+                // Complétée quand le joueur a joué dans 20 thèmes différents
+                $data   = $progress->progress ?? [];
+                $played = $data['themes_played'] ?? [];
+                $currentTheme = trim($context['theme'] ?? '');
+                if ($currentTheme !== '' && $currentTheme !== 'Général' && !in_array($currentTheme, $played, true)) {
+                    $played[] = $currentTheme;
+                    $data['themes_played'] = $played;
+                    $progress->progress = $data;
+                    $progress->save();
+                }
+                return count($played) >= 20;
 
             // ─────────────────────────────────────────────────────────────
             // SEUILS PONCTUELS : niveau, pièces, division
@@ -651,6 +678,45 @@ class QuestService
         $data['boss_defeat_count'] = $current;
         $progress->progress = $data;
         $progress->save();
+
+        return $current >= $target;
+    }
+
+    /**
+     * Compteur de bonnes réponses sur des thèmes contenant des mots-clés.
+     * Détection approximative par le nom du thème.
+     */
+    protected function handleThemeKeywordCount(
+        UserQuestProgress $progress,
+        array $context,
+        int $target,
+        string $progressKey,
+        array $keywords
+    ): bool {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $theme   = strtolower($context['theme'] ?? '');
+        $correct = $context['answer_correct'] ?? false;
+
+        $matches = false;
+        foreach ($keywords as $kw) {
+            if (strpos($theme, strtolower($kw)) !== false) {
+                $matches = true;
+                break;
+            }
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = $data[$progressKey . '_count'] ?? 0;
+
+        if ($matches && $correct) {
+            $current++;
+            $data[$progressKey . '_count'] = $current;
+            $progress->progress = $data;
+            $progress->save();
+        }
 
         return $current >= $target;
     }
