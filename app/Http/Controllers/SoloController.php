@@ -1611,7 +1611,16 @@ class SoloController extends Controller
         
         session(['score' => $currentScore + $playerPoints]);
         session(['opponent_score' => $currentOpponentScore + $opponentBehavior['points']]);
-        
+
+        // Tracker le pire différentiel de score pour comeback_0_5
+        $newScore         = $currentScore + $playerPoints;
+        $newOpponentScore = $currentOpponentScore + $opponentBehavior['points'];
+        $scoreDiff        = $newScore - $newOpponentScore;
+        $prevMinDiff      = (int) session('min_score_differential', 0);
+        if ($scoreDiff < $prevMinDiff) {
+            session(['min_score_differential' => $scoreDiff]);
+        }
+
         // Sauvegarder la réponse avec détails complets
         $answeredQuestions = session('answered_questions', []);
         $answeredQuestions[] = [
@@ -1645,6 +1654,19 @@ class SoloController extends Controller
         if ($user) {
             $questService = new QuestService();
             $theme = session('theme', 'Général');
+
+            // Compétence utilisée dans cette réponse → skills_used_50
+            $anySkillUsed = $featherSkillUsed
+                || ($illuminateSkillUsed ?? false)
+                || ($acidifySkillUsed ?? false)
+                || ($seeOpponentSkillUsed ?? false)
+                || ($replaySkillUsed ?? false)
+                || ($aiSuggestionSkillUsed ?? false)
+                || ($eliminateTwoSkillUsed ?? false);
+            if ($anySkillUsed) {
+                $questService->checkAndCompleteQuests($user, 'skills_used_50', ['skill_used' => true]);
+                $questService->checkAndCompleteQuests($user, 'skill_used', ['skill_used' => true]);
+            }
 
             // Buzz rapides : premier à buzzer
             $playerWasFirst = $playerBuzzed && (!$opponentBehavior['buzzes'] || $opponentBehavior['is_faster'] === false);
@@ -2274,22 +2296,24 @@ class SoloController extends Controller
             }
 
             // Contexte unifié envoyé à fireMatchEndQuests
+            $maxDeficitRecovered = abs(min(0, (int) session('min_score_differential', 0)));
             $questContext = [
-                'match_completed'  => true,
-                'won'              => true,
-                'total_questions'  => $totalQuestionsPlayed,
-                'user_correct'     => $totalCorrect,
-                'player_score'     => $totalPlayerScore,
-                'opponent_score'   => $totalOpponentScore,
-                'theme'            => $theme,
-                'skills_used'      => $skillsUsed,
-                'lives_remaining'  => $livesRemaining,
-                'had_timeout'      => $totalUnanswered > 0,
-                'boss_defeated'    => $bossDefeated,
-                'sound_disabled'   => (bool) session('sound_disabled', false),
-                'user_level'       => $user->level ?? 0,
-                'user_coins'       => $user->competence_coins ?? 0,
-                'division'         => 'bronze', // Solo n'a pas de division
+                'match_completed'       => true,
+                'won'                   => true,
+                'total_questions'       => $totalQuestionsPlayed,
+                'user_correct'          => $totalCorrect,
+                'player_score'          => $totalPlayerScore,
+                'opponent_score'        => $totalOpponentScore,
+                'theme'                 => $theme,
+                'skills_used'           => $skillsUsed,
+                'lives_remaining'       => $livesRemaining,
+                'had_timeout'           => $totalUnanswered > 0,
+                'boss_defeated'         => $bossDefeated,
+                'sound_disabled'        => (bool) session('sound_disabled', false),
+                'max_deficit_recovered' => $maxDeficitRecovered,
+                'user_level'            => $user->level ?? 0,
+                'user_coins'            => $user->competence_coins ?? 0,
+                'division'              => 'bronze',
             ];
 
             $questService->fireMatchEndQuests($user, 'solo', $questContext);

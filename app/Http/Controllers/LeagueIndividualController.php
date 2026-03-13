@@ -70,6 +70,16 @@ class LeagueIndividualController extends Controller
 
         $seasonInfo = $this->seasonService->getPlayerSeasonInfo($user, 'league_individual');
 
+        // Quête league_participate : visite du lobby Ligue Individuelle
+        try {
+            app(\App\Services\QuestService::class)->checkAndCompleteQuests($user, 'league_participate', [
+                'action_done' => true,
+                'mode'        => 'league_individual',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Quest hook error in LeagueIndividualController::index: ' . $e->getMessage());
+        }
+
         return view('league_individual_lobby', [
             'stats' => $stats,
             'division' => $division,
