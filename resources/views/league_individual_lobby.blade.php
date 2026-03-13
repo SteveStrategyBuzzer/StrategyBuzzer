@@ -42,15 +42,16 @@
 
     @if(!empty($seasonInfo['active_season']))
     @php
-        $sInfo = $seasonInfo;
-        $sPts  = $sInfo['season_points'] ?? 0;
-        $sThreshold = $sInfo['threshold'] ?? 50;
+        $sInfo      = $seasonInfo;
+        $sWins      = $sInfo['matches_won'] ?? 0;
+        $sThreshold = $sInfo['wins_threshold'] ?? 10;
         $sProgress  = $sInfo['progress_percent'] ?? 0;
-        $sCoins     = $sInfo['coins_reward'] ?? 0;
-        $sFrame     = $sInfo['exclusive_frame'] ?? false;
+        $sPrizes    = $sInfo['prizes'] ?? [];
+        $sEligible  = $sInfo['eligible'] ?? false;
         $sDays      = $sInfo['active_season']['days_remaining'] ?? 0;
         $sName      = $sInfo['active_season']['name'] ?? '';
-        $sReached   = $sInfo['threshold_reached'] ?? false;
+        $sFirstPrize = collect($sPrizes)->firstWhere('rank', 1);
+        $sHasFrame  = $sFirstPrize['exclusive_frame'] ?? false;
     @endphp
     <div class="season-progress-card">
         <div class="season-header">
@@ -66,40 +67,58 @@
         </div>
 
         <div class="season-two-layers">
-            <!-- Layer 1: Universal coin reward -->
-            <div class="season-layer {{ $sReached ? 'reached' : '' }}">
-                <div class="layer-label">{{ __('Récompense universelle') }}</div>
+            <!-- Éligibilité : seuil de victoires -->
+            <div class="season-layer {{ $sEligible ? 'reached' : '' }}">
+                <div class="layer-label">{{ __('Seuil d\'accès aux récompenses') }}</div>
                 <div class="layer-details">
                     <div class="layer-progress-wrap">
                         <div class="layer-progress-bar">
                             <div class="layer-progress-fill" style="width: {{ $sProgress }}%"></div>
                         </div>
-                        <div class="layer-progress-text">{{ $sPts }} / {{ $sThreshold }} pts</div>
-                    </div>
-                    <div class="layer-reward">
-                        @if($sReached)
-                            <span class="reward-check">✅</span>
-                        @endif
-                        <img src="/images/coin-intelligence.png" alt="coins" class="reward-coin-img">
-                        <span class="reward-amount">{{ number_format($sCoins) }}</span>
-                        @if($sFrame)
-                            <span class="reward-frame-badge" title="{{ __('Cadre de profil exclusif') }}">🖼️</span>
-                        @endif
+                        <div class="layer-progress-text">{{ $sWins }} / {{ $sThreshold }} {{ __('victoires') }}</div>
                     </div>
                 </div>
-                @if($sReached)
-                    <div class="reached-text">{{ __('Seuil atteint — récompense garantie en fin de saison') }}</div>
+                @if($sEligible)
+                    <div class="reached-text">✅ {{ __('Éligible — classé parmi les joueurs en lice') }}</div>
                 @else
-                    <div class="missing-text">{{ __('Il vous manque') }} {{ max(0, $sThreshold - $sPts) }} pts {{ __('pour débloquer la récompense') }}</div>
+                    <div class="missing-text">{{ __('Encore') }} {{ max(0, $sThreshold - $sWins) }} {{ __('victoire(s) pour être éligible') }}</div>
                 @endif
             </div>
 
-            <!-- Layer 2: Promotion -->
+            <!-- Palmarès des prix -->
+            @if(!empty($sPrizes))
+            <div class="season-layer prizes-layer">
+                <div class="layer-label">{{ __('Classement des récompenses') }}</div>
+                <div class="prizes-list">
+                    @foreach($sPrizes as $prize)
+                    <div class="prize-row">
+                        <span class="prize-rank">
+                            @if($prize['rank'] === 1) 🥇
+                            @elseif($prize['rank'] === 2) 🥈
+                            @else 🥉
+                            @endif
+                        </span>
+                        <span class="prize-label">{{ $prize['rank'] === 1 ? __('1er(s)') : ($prize['rank'] === 2 ? __('2e(s)') : __('3e(s)')) }}</span>
+                        <span class="prize-coins">
+                            <img src="/images/coin-intelligence.png" alt="coins" class="reward-coin-img-sm">
+                            {{ number_format($prize['coins']) }}
+                        </span>
+                        @if($prize['exclusive_frame'] ?? false)
+                            <span class="reward-frame-badge" title="{{ __('Cadre de profil exclusif') }}">🖼️</span>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+                <div class="prizes-note">{{ __('Ex-æquo : tous partagent le même rang et reçoivent le même prix') }}</div>
+            </div>
+            @endif
+
+            <!-- Promotion de division -->
             <div class="season-layer promotion-layer">
                 <div class="layer-label">{{ __('Promotion de division') }}</div>
                 <div class="promotion-info">
                     <span class="promotion-icon">🆙</span>
-                    <span>{{ __('Top 10 (+ ex-æquo) de votre division montent de niveau en fin de saison') }}</span>
+                    <span>{{ __('Top 10 (+ ex-æquo) parmi les éligibles montent de division en fin de saison') }}</span>
                 </div>
             </div>
         </div>
@@ -391,6 +410,14 @@
 .reward-frame-badge { font-size: 1.1rem; }
 .reached-text { font-size: 0.78rem; color: #50dc64; margin-top: 6px; }
 .missing-text { font-size: 0.78rem; color: rgba(255,255,255,0.45); margin-top: 6px; }
+.prizes-layer { border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.05); }
+.prizes-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.prize-row { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; }
+.prize-rank { font-size: 1.1rem; width: 24px; text-align: center; }
+.prize-label { flex: 1; color: rgba(255,255,255,0.75); }
+.prize-coins { display: flex; align-items: center; gap: 4px; font-weight: 700; color: #FFD700; }
+.reward-coin-img-sm { width: 16px; height: 16px; object-fit: contain; }
+.prizes-note { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-top: 6px; font-style: italic; }
 .promotion-layer { border-color: rgba(100,149,237,0.4); background: rgba(100,149,237,0.07); }
 .promotion-info { display: flex; align-items: flex-start; gap: 8px; font-size: 0.84rem; color: rgba(255,255,255,0.7); line-height: 1.4; }
 .promotion-icon { font-size: 1.1rem; flex-shrink: 0; }

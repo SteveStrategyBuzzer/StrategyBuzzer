@@ -187,7 +187,7 @@ class LeagueIndividualService
         $this->divisionService->updateDivisionPointsWithFloor($division, $pointsEarned);
 
         // Suivi des points de saison
-        $this->seasonService->recordMatchPoints($user, 'league_individual', $pointsEarned);
+        $this->seasonService->recordMatchResult($user, 'league_individual', $pointsEarned > 0);
 
         // Ligue gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
         if ($coinsEarned > 0) {

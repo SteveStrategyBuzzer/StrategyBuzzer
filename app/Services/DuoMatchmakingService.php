@@ -265,13 +265,13 @@ class DuoMatchmakingService
         $player1Division->level = $player1Stats->level;
         $player1Division->save();
 
-        $this->seasonService->recordMatchPoints($player1, 'duo', $player1Points);
+        $this->seasonService->recordMatchResult($player1, 'duo', $player1Points > 0);
         
         $this->divisionService->updateDivisionPointsWithFloor($player2Division, $player2Points);
         $player2Division->level = $player2Stats->level;
         $player2Division->save();
 
-        $this->seasonService->recordMatchPoints($player2, 'duo', $player2Points);
+        $this->seasonService->recordMatchResult($player2, 'duo', $player2Points > 0);
         
         // Multijoueur gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
         if ($player1Reward['coins'] > 0) {

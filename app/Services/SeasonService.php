@@ -17,15 +17,12 @@ class SeasonService
     }
 
     /**
-     * Record points earned during a match into the active season.
-     * Called after each league/duo match finish.
+     * Record the result of a match into the active season.
+     * Only wins are counted toward the season threshold.
+     * Losses increment matches_played but not matches_won.
      */
-    public function recordMatchPoints(User $user, string $mode, int $pointsEarned): void
+    public function recordMatchResult(User $user, string $mode, bool $won): void
     {
-        if ($pointsEarned <= 0) {
-            return;
-        }
-
         $season = $this->activeSeason($mode) ?? $this->activeSeason('all');
         if (!$season) {
             return;
@@ -45,15 +42,20 @@ class SeasonService
                 'division_at_start' => $division,
                 'season_points'     => 0,
                 'matches_played'    => 0,
+                'matches_won'       => 0,
             ]
         );
 
-        $stat->increment('season_points', $pointsEarned);
         $stat->increment('matches_played');
+
+        if ($won) {
+            $stat->increment('matches_won');
+        }
     }
 
     /**
-     * Get the current season stats for a user and mode.
+     * Get the current season info for a user and mode.
+     * Returns wins count, threshold, and prize tiers for their division.
      */
     public function getPlayerSeasonInfo(User $user, string $mode): array
     {
@@ -71,78 +73,116 @@ class SeasonService
             ->where('mode', $mode)
             ->value('division') ?? 'bronze';
 
-        $config = config("seasons.divisions.{$division}");
-        $seasonPoints = $stat?->season_points ?? 0;
-        $threshold = $config['points_threshold'] ?? 50;
-        $reward = $config['coins_reward'] ?? 0;
+        $divConfig      = config("seasons.divisions.{$division}");
+        $winsThreshold  = $divConfig['wins_threshold'] ?? 10;
+        $prizes         = $divConfig['prizes'] ?? [];
+        $matchesWon     = $stat?->matches_won ?? 0;
+        $eligible       = $matchesWon >= $winsThreshold;
 
         return [
-            'active_season'   => [
+            'active_season' => [
                 'id'             => $season->id,
                 'name'           => $season->name,
                 'ends_at'        => $season->ends_at->toIso8601String(),
                 'days_remaining' => $season->daysRemaining(),
             ],
-            'season_points'       => $seasonPoints,
-            'division'            => $division,
-            'threshold'           => $threshold,
-            'threshold_reached'   => $seasonPoints >= $threshold,
-            'coins_reward'        => $reward,
-            'exclusive_frame'     => $config['exclusive_frame'] ?? false,
-            'progress_percent'    => min(100, $threshold > 0 ? round(($seasonPoints / $threshold) * 100) : 0),
+            'matches_won'      => $matchesWon,
+            'division'         => $division,
+            'wins_threshold'   => $winsThreshold,
+            'eligible'         => $eligible,
+            'prizes'           => $prizes,
+            'progress_percent' => min(100, $winsThreshold > 0 ? round(($matchesWon / $winsThreshold) * 100) : 0),
         ];
     }
 
     /**
-     * Distribute season-end rewards:
-     *   Layer 1: coins for everyone above threshold
-     *   Layer 2: promote top 10 (+ ties) per division
+     * Distribute season-end rewards based on wins ranking within each division.
      *
-     * Returns a summary array for logging.
+     * Eligibility: matches_won >= wins_threshold
+     * Ranking: sorted by matches_won DESC, ties share the same rank
+     * Prizes: 1st/2nd/3rd place (or fewer tiers in lower divisions) per division config
+     * Also promotes top 10 + ties to the next division.
+     *
+     * Returns summary array for logging.
      */
     public function distributeRewards(Season $season): array
     {
-        $topCount = config('seasons.top_promotion_count', 10);
-        $summary  = ['coins_distributed' => 0, 'promotions' => 0, 'frames_awarded' => 0];
+        $summary = ['coins_distributed' => 0, 'promotions' => 0, 'frames_awarded' => 0];
 
         $modes = $season->mode === 'all'
             ? ['duo', 'league_individual', 'league_team']
             : [$season->mode];
 
+        $divisionOrder = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+
         foreach ($modes as $mode) {
-            $divisionOrder = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
-
             foreach ($divisionOrder as $divisionKey) {
-                $divConfig  = config("seasons.divisions.{$divisionKey}");
-                $threshold  = $divConfig['points_threshold'];
-                $coinsReward = $divConfig['coins_reward'];
-                $hasFrame   = $divConfig['exclusive_frame'];
+                $divConfig      = config("seasons.divisions.{$divisionKey}");
+                $winsThreshold  = $divConfig['wins_threshold'];
+                $prizes         = $divConfig['prizes'] ?? [];
 
-                $stats = SeasonPlayerStat::where('season_id', $season->id)
+                // Fetch all eligible players sorted by wins descending
+                $eligibleStats = SeasonPlayerStat::where('season_id', $season->id)
                     ->where('mode', $mode)
-                    ->where('season_points', '>=', $threshold)
-                    ->orderByDesc('season_points')
+                    ->where('division_at_start', $divisionKey)
+                    ->where('matches_won', '>=', $winsThreshold)
+                    ->orderByDesc('matches_won')
                     ->get();
 
-                // Layer 1: Give coins to everyone above threshold
-                foreach ($stats as $stat) {
+                if ($eligibleStats->isEmpty()) {
+                    continue;
+                }
+
+                // Build dense rank: players with the same wins count share the same rank
+                $currentRank     = 1;
+                $previousWins    = null;
+                $rankCounter     = 0;
+
+                foreach ($eligibleStats as $stat) {
                     if ($stat->reward_coins_distributed) {
                         continue;
                     }
 
-                    $user = $stat->user;
+                    $wins = $stat->matches_won;
+
+                    if ($previousWins !== null && $wins < $previousWins) {
+                        $currentRank = $rankCounter + 1;
+                    }
+
+                    $rankCounter++;
+                    $previousWins = $wins;
+
+                    // Find prize for this rank (null = no prize beyond the tiers defined)
+                    $prize = collect($prizes)->firstWhere('rank', $currentRank);
+                    if (!$prize) {
+                        // Still mark as processed so we don't retry
+                        $stat->reward_coins_distributed = true;
+                        $stat->coins_awarded = 0;
+                        $stat->prize_rank = null;
+                        $stat->division_at_end = PlayerDivision::where('user_id', $stat->user_id)
+                            ->where('mode', $mode)
+                            ->value('division');
+                        $stat->save();
+                        continue;
+                    }
+
+                    $coinsReward = $prize['coins'];
+                    $hasFrame    = $prize['exclusive_frame'] ?? false;
+                    $user        = $stat->user;
+
                     if (!$user) {
                         continue;
                     }
 
-                    DB::transaction(function () use ($user, $stat, $coinsReward, $hasFrame, &$summary) {
+                    DB::transaction(function () use ($user, $stat, $coinsReward, $hasFrame, $currentRank, $mode, &$summary) {
                         $user->coins = ($user->coins ?? 0) + $coinsReward;
                         $user->save();
 
                         $stat->reward_coins_distributed = true;
                         $stat->coins_awarded = $coinsReward;
+                        $stat->prize_rank    = $currentRank;
                         $stat->division_at_end = PlayerDivision::where('user_id', $user->id)
-                            ->where('mode', $stat->mode)
+                            ->where('mode', $mode)
                             ->value('division');
 
                         if ($hasFrame) {
@@ -154,37 +194,27 @@ class SeasonService
                         $summary['coins_distributed']++;
                     });
 
-                    Log::info("[Season] Coins distributed", [
-                        'user_id'  => $user->id,
-                        'division' => $divisionKey,
-                        'coins'    => $coinsReward,
-                        'mode'     => $stat->mode,
+                    Log::info('[Season] Prize distributed', [
+                        'user_id'   => $user->id,
+                        'division'  => $divisionKey,
+                        'rank'      => $currentRank,
+                        'coins'     => $coinsReward,
+                        'wins'      => $wins,
+                        'mode'      => $mode,
                     ]);
                 }
 
-                // Layer 2: Promote top 10 + ties
+                // Promote top 10 (+ ties) to the next division
                 if ($divisionKey === 'legende') {
                     continue;
                 }
 
                 $nextDivision  = $divisionOrder[array_search($divisionKey, $divisionOrder) + 1];
-                $eligibleStats = SeasonPlayerStat::where('season_id', $season->id)
-                    ->where('mode', $mode)
-                    ->where('season_points', '>=', $threshold)
-                    ->orderByDesc('season_points')
-                    ->get();
-
-                if ($eligibleStats->isEmpty()) {
-                    continue;
-                }
-
-                // Find the score at position topCount (cutoff)
-                $cutoffScore = $eligibleStats->count() >= $topCount
-                    ? $eligibleStats->values()[$topCount - 1]->season_points
-                    : $eligibleStats->last()->season_points;
+                $topTen        = $eligibleStats->take(10);
+                $cutoffWins    = $topTen->count() >= 10 ? $topTen->last()->matches_won : ($eligibleStats->last()->matches_won);
 
                 foreach ($eligibleStats as $stat) {
-                    if ($stat->season_points < $cutoffScore || $stat->promoted) {
+                    if ($stat->matches_won < $cutoffWins || $stat->promoted) {
                         continue;
                     }
 
@@ -205,12 +235,12 @@ class SeasonService
                         $summary['promotions']++;
                     });
 
-                    Log::info("[Season] Player promoted", [
-                        'user_id'        => $stat->user_id,
-                        'from_division'  => $divisionKey,
-                        'to_division'    => $nextDivision,
-                        'season_points'  => $stat->season_points,
-                        'mode'           => $mode,
+                    Log::info('[Season] Player promoted', [
+                        'user_id'       => $stat->user_id,
+                        'from_division' => $divisionKey,
+                        'to_division'   => $nextDivision,
+                        'wins'          => $stat->matches_won,
+                        'mode'          => $mode,
                     ]);
                 }
             }
@@ -233,11 +263,11 @@ class SeasonService
         Season::where('mode', $mode)->where('status', 'active')->update(['status' => 'ended']);
 
         return Season::create([
-            'name'       => $name,
-            'mode'       => $mode,
-            'starts_at'  => now(),
-            'ends_at'    => now()->addDays($durationDays),
-            'status'     => 'active',
+            'name'      => $name,
+            'mode'      => $mode,
+            'starts_at' => now(),
+            'ends_at'   => now()->addDays($durationDays),
+            'status'    => 'active',
         ]);
     }
 }

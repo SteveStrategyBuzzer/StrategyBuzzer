@@ -65,7 +65,7 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Challenger Skills (Socket.IO Implementation):** `reduce_time` reduces the target's Question page timer for specific questions. `shuffle_answers` (pending) shuffles target's answer options.
 
-**Season Reward System:** A two-layer end-of-season reward system for League and Duo modes. Layer 1 grants Intelligence coins based on division-specific point thresholds. Layer 2 promotes top players to the next division.
+**Season Reward System (Wins-Based):** Players must reach a win-count threshold to be eligible. Among eligible players, rankings by total wins determine prize tiers (1st/2nd/3rd, ties share ranks). Bronze:10W→100coins. Argent:10W→150/100. Or:10W→200/150/100. Platine:12W→500/200/100. Diamant:15W→1000/500/200. Légende:20W→2000+🖼️/500/100. Promotion layer: top 10 + ties advance to next division. Service: `SeasonService.recordMatchResult(user, mode, bool $won)`. Commands: `season:start`, `season:distribute-rewards`. Season 1 active: Printemps 2026.
 
 **Currency System (Two Types of Coins):**
 - **Pièces d'Intelligence (Intelligence Coins):** Earned in Multiplayer modes.
