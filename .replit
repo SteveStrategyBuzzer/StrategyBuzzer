@@ -44,7 +44,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "php -S 0.0.0.0:5000 -t public"
+args = "composer install --no-interaction --prefer-dist -q && php -S 0.0.0.0:5000 -t public"
 waitForPort = 5000
 
 [[workflows.workflow]]
