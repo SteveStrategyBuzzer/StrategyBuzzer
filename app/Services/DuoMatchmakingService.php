@@ -11,7 +11,8 @@ use Illuminate\Support\Collection;
 class DuoMatchmakingService
 {
     public function __construct(
-        private DivisionService $divisionService
+        private DivisionService $divisionService,
+        private SeasonService $seasonService
     ) {}
 
     public function hasPendingInvitation(int $inviterId, int $invitedId): bool
@@ -263,10 +264,14 @@ class DuoMatchmakingService
         $this->divisionService->updateDivisionPointsWithFloor($player1Division, $player1Points);
         $player1Division->level = $player1Stats->level;
         $player1Division->save();
+
+        $this->seasonService->recordMatchPoints($player1, 'duo', $player1Points);
         
         $this->divisionService->updateDivisionPointsWithFloor($player2Division, $player2Points);
         $player2Division->level = $player2Stats->level;
         $player2Division->save();
+
+        $this->seasonService->recordMatchPoints($player2, 'duo', $player2Points);
         
         // Multijoueur gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
         if ($player1Reward['coins'] > 0) {

@@ -40,6 +40,72 @@
         </div>
     </div>
 
+    @if(!empty($seasonInfo['active_season']))
+    @php
+        $sInfo = $seasonInfo;
+        $sPts  = $sInfo['season_points'] ?? 0;
+        $sThreshold = $sInfo['threshold'] ?? 50;
+        $sProgress  = $sInfo['progress_percent'] ?? 0;
+        $sCoins     = $sInfo['coins_reward'] ?? 0;
+        $sFrame     = $sInfo['exclusive_frame'] ?? false;
+        $sDays      = $sInfo['active_season']['days_remaining'] ?? 0;
+        $sName      = $sInfo['active_season']['name'] ?? '';
+        $sReached   = $sInfo['threshold_reached'] ?? false;
+    @endphp
+    <div class="season-progress-card">
+        <div class="season-header">
+            <span class="season-icon">🏆</span>
+            <div class="season-title-group">
+                <div class="season-title">{{ __('Récompenses de saison') }}</div>
+                <div class="season-name">{{ $sName }}</div>
+            </div>
+            <div class="season-days-left">
+                <span class="days-count">{{ $sDays }}</span>
+                <span class="days-label">{{ __('jours restants') }}</span>
+            </div>
+        </div>
+
+        <div class="season-two-layers">
+            <!-- Layer 1: Universal coin reward -->
+            <div class="season-layer {{ $sReached ? 'reached' : '' }}">
+                <div class="layer-label">{{ __('Récompense universelle') }}</div>
+                <div class="layer-details">
+                    <div class="layer-progress-wrap">
+                        <div class="layer-progress-bar">
+                            <div class="layer-progress-fill" style="width: {{ $sProgress }}%"></div>
+                        </div>
+                        <div class="layer-progress-text">{{ $sPts }} / {{ $sThreshold }} pts</div>
+                    </div>
+                    <div class="layer-reward">
+                        @if($sReached)
+                            <span class="reward-check">✅</span>
+                        @endif
+                        <img src="/images/coin-intelligence.png" alt="coins" class="reward-coin-img">
+                        <span class="reward-amount">{{ number_format($sCoins) }}</span>
+                        @if($sFrame)
+                            <span class="reward-frame-badge" title="{{ __('Cadre de profil exclusif') }}">🖼️</span>
+                        @endif
+                    </div>
+                </div>
+                @if($sReached)
+                    <div class="reached-text">{{ __('Seuil atteint — récompense garantie en fin de saison') }}</div>
+                @else
+                    <div class="missing-text">{{ __('Il vous manque') }} {{ max(0, $sThreshold - $sPts) }} pts {{ __('pour débloquer la récompense') }}</div>
+                @endif
+            </div>
+
+            <!-- Layer 2: Promotion -->
+            <div class="season-layer promotion-layer">
+                <div class="layer-label">{{ __('Promotion de division') }}</div>
+                <div class="promotion-info">
+                    <span class="promotion-icon">🆙</span>
+                    <span>{{ __('Top 10 (+ ex-æquo) de votre division montent de niveau en fin de saison') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Division Selector -->
     <div class="division-selector-section">
         <h3>🎯 Sélectionner une division</h3>
@@ -279,6 +345,55 @@
     padding: 8px 20px;
     border-radius: 20px;
 }
+
+/* Season Progress Card */
+.season-progress-card {
+    background: linear-gradient(135deg, rgba(255,180,0,0.12) 0%, rgba(255,120,0,0.08) 100%);
+    border: 1px solid rgba(255,180,0,0.35);
+    border-radius: 16px;
+    padding: 18px 22px;
+    margin-bottom: 22px;
+}
+.season-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.season-icon { font-size: 1.8rem; }
+.season-title-group { flex: 1; }
+.season-title { font-weight: 700; color: #FFD700; font-size: 1rem; }
+.season-name { font-size: 0.8rem; color: rgba(255,255,255,0.6); }
+.season-days-left { text-align: center; }
+.days-count { display: block; font-size: 1.5rem; font-weight: 800; color: #FFD700; line-height: 1; }
+.days-label { font-size: 0.7rem; color: rgba(255,255,255,0.5); }
+.season-two-layers { display: flex; flex-direction: column; gap: 10px; }
+.season-layer {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.season-layer.reached {
+    border-color: rgba(80,220,100,0.5);
+    background: rgba(80,220,100,0.08);
+}
+.layer-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.45); margin-bottom: 8px; }
+.layer-details { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.layer-progress-wrap { flex: 1; min-width: 120px; }
+.layer-progress-bar { height: 8px; background: rgba(255,255,255,0.12); border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
+.layer-progress-fill { height: 100%; background: linear-gradient(90deg, #FFD700, #FF8C00); border-radius: 4px; transition: width 0.6s ease; }
+.season-layer.reached .layer-progress-fill { background: linear-gradient(90deg, #50dc64, #00c853); }
+.layer-progress-text { font-size: 0.78rem; color: rgba(255,255,255,0.6); }
+.layer-reward { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.reward-coin-img { width: 22px; height: 22px; object-fit: contain; }
+.reward-amount { font-size: 1.1rem; font-weight: 700; color: #FFD700; }
+.reward-frame-badge { font-size: 1.1rem; }
+.reached-text { font-size: 0.78rem; color: #50dc64; margin-top: 6px; }
+.missing-text { font-size: 0.78rem; color: rgba(255,255,255,0.45); margin-top: 6px; }
+.promotion-layer { border-color: rgba(100,149,237,0.4); background: rgba(100,149,237,0.07); }
+.promotion-info { display: flex; align-items: flex-start; gap: 8px; font-size: 0.84rem; color: rgba(255,255,255,0.7); line-height: 1.4; }
+.promotion-icon { font-size: 1.1rem; flex-shrink: 0; }
 
 .division-emoji {
     font-size: 1.5rem;

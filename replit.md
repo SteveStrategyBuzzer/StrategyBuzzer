@@ -1,7 +1,7 @@
 # StrategyBuzzer
 
 ### Overview
-StrategyBuzzer is a real-time quiz buzzer game application designed to offer an immersive and competitive experience. It features interactive quiz sessions, a strategic avatar system with boss battles, and comprehensive gameplay across Solo, Duo, League, and Master modes. The project's main purpose is to be a dynamic platform for competition, question answering, and score tracking in a game show-style environment, with ambitions for international expansion through multi-language support.
+StrategyBuzzer is a real-time quiz buzzer game application offering an immersive and competitive experience. It features interactive quiz sessions, a strategic avatar system with boss battles, and comprehensive gameplay across Solo, Duo, League, and Master modes. The project's main purpose is to be a dynamic platform for competition, question answering, and score tracking in a game show-style environment, with ambitions for international expansion through multi-language support.
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
@@ -19,13 +19,13 @@ The frontend uses React 19 with Vite, employing a component-based architecture f
 #### Technical Implementations
 The backend is built with Laravel 10, following an MVC pattern and integrated with Inertia.js for an SPA-like experience. It utilizes an API-first, service-oriented design with an event-driven system for real-time game state broadcasting.
 
-**Unified Game Layout:** The `game_question.blade.php` template is shared between Solo and Duo modes for visual consistency. The template uses `$isMultiplayer` flag to detect multiplayer modes and adapt data sources (player_info/opponent_info vs random AI names). Firebase is used for League/Master modes while Duo uses Socket.IO for lower latency.
+**Unified Game Layout:** The `game_question.blade.php` template is shared between Solo and Duo modes using an `$isMultiplayer` flag.
 
-**Real-Time Multiplayer Synchronization:** Multiplayer modes (Duo, League, Master) are migrated from Firestore to Socket.IO for lower latency. The architecture uses a Socket.IO Game Server for real-time events, `DuoSocketClient.js` (singleton pattern) for frontend-server communication, JWT tokens for player authentication, and Redis for game state persistence with a 2-hour TTL. Solo mode uses AI opponents with traditional page redirects.
+**Real-Time Multiplayer Synchronization:** Multiplayer modes (Duo, League, Master) use Socket.IO for low-latency communication via a Socket.IO Game Server. `DuoSocketClient.js` handles frontend communication, JWT tokens for authentication, and Redis for game state persistence. Solo mode uses AI opponents.
 
-**Avatar Skills Service:** `AvatarSkillService.php` provides a centralized static service for managing 12 avatars and 30+ skills across all game modes. The service handles skill retrieval, teammate bonuses (Stratège), and avatar path resolution.
+**Avatar Skills Service:** `AvatarSkillService.php` centrally manages 12 avatars and 30+ skills across all game modes.
 
-**Gameplay Flow (Socket.IO):** Multiplayer games follow a 3-page-per-round structure: Question page, Answer page, and Result page. Solo mode dictates the strict sequence of game phases.
+**Gameplay Flow (Socket.IO):** Multiplayer games follow a 3-page-per-round structure: Question, Answer, and Result.
 
 **Scoring System (Universal - All Modes):**
 - 1st to buzz + correct answer: +2 pts
@@ -34,43 +34,23 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - 2nd+ to buzz + wrong answer/timeout: -2 pts
 - Didn't buzz: 0 pt
 
-**Question Management:** A question cache uses file-based caching. `QuestionService` manages AI-ready, theme-based question generation with adaptive difficulty, anti-duplication, and language-specific spelling verification using Google Gemini 2.0 Flash. Multiplayer questions are generated in progressive blocks by `GenerateMultiplayerQuestionsJob`. Image-memory questions use Google Imagen (imagen-4.0-generate-001) via the @google/genai SDK. All AI generation (text + images) runs exclusively through Gemini/Imagen — no OpenAI dependency.
+**Question Management:** A file-based question cache is used. `QuestionService` manages AI-ready, theme-based question generation with adaptive difficulty and anti-duplication, using Google Gemini 2.0 Flash. Image-memory questions use Google Imagen (imagen-4.0-generate-001) via `@google/genai SDK`. Multiplayer questions are generated in progressive blocks by `GenerateMultiplayerQuestionsJob`.
 
-**Multiplayer Lobby Synchronization:** `LobbyPresenceManager` handles player registration in Firebase sessions with a "Synchronisé" indicator.
+**Multiplayer Lobby Synchronization:** `LobbyPresenceManager` handles player registration in Firebase sessions.
 
-**Firestore Structure & Authentication:** All game modes use a unified `/gameSessions/{sessionId}` Firestore collection. Firebase Firestore security rules validate operations against `request.auth.uid`.
+**Firestore Structure & Authentication:** All game modes use a unified `/gameSessions/{sessionId}` Firestore collection with security rules validating `request.auth.uid`.
 
 **Game Modes:** Solo (90 opponents, 10 boss battles), Duo (division-based), League Individual (1v1 career), League Team (5v5 with 3 sub-modes), and Master (real-time hosting for 3-40 players with four distinct game structures).
 
-**Avatar System:** User-specific avatars (12 across 3 tiers) offer 25+ unique skills. Attack skills target opponents based on their score ranking.
-
-**Skill Specifications (All 12 Avatars):**
-
-**Rare Tier (4 avatars, 500 coins):**
-- **Mathématicien:** `illuminate_numbers` - highlights correct answer if it contains a number (passive).
-- **Scientifique:** `acidify_error` - after buzzing, visually marks 2 wrong answers (manual, 1 use).
-- **Explorateur:** `see_opponent_choice` - displays opponent's/AI's choice (manual, 1 use).
-- **Défenseur:** `shield` - blocks the next opponent attack skill (passive).
-
-**Epic Tier (4 avatars, 1000 coins):**
-- **Comédienne:** `fake_score` - displays a reduced score to opponent (passive); `invert_answers` - makes correct answer appear wrong to opponent (attack, manual, 1 use).
-- **Magicienne:** `bonus_question` - adds an extra question to score points (manual, 1 use); `cancel_penalty` - cancels points lost on an error (manual, 1 use).
-- **Challenger:** `reduce_time` - reduces opponent's Question page chrono (8s → 6s for buzzing); `shuffle_answers` - shuffles opponent's answer options every 1.5s (attack, manual, 1 use each, affects 5/3/1 questions based on round).
-- **Historien:** `knowledge_without_time` - allows answering after timeout for +1 pt; `history_corrects` - cancels -2 penalty and awards points after incorrect buzz (manual, 1 use each).
-
-**Legendary Tier (4 avatars, 1500 coins):**
-- **IA Junior:** `ai_suggestion` - AI suggests an answer with 90% accuracy (manual, 1 use); `eliminate_two` - removes 2 wrong answers (manual, 1 use); `retry_answer` - allows retrying an answer after an error (manual, 1 use).
-- **Stratège:** `coin_bonus` - +25% intelligence and skill coins on victories (passive); `create_team` - add 1 rare avatar as teammate in all modes (passive); `avatar_discount` - unlock cost reduction: Rare -40%, Epic -30%, Legendary -20% (passive).
-- **Sprinteur:** `faster_buzz` - first 5 questions show buzzer at 0.75s of real time (passive); `time_bonus` - +3 seconds extra thinking time (manual, 1 use per round); `skill_recharge` - all skills auto-reactivate after each round (passive).
-- **Visionnaire:** `premonition` - preview a thematic summary of the next question from Result page (manual, 5 uses shown as 👁️ 5/5 → 4/5 → etc., disabled on Q10 except Ultimate round); `fortress` - immunity against Challenger's attacks (passive); `secure_answer` - when on 2 pts, only correct answer becomes clickable with highlight effect, wrong answers fade on click (manual, uses within chrono time).
+**Avatar System:** User-specific avatars (12 across 3 tiers) offer 25+ unique skills.
 
 **Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
 
-**WebRTC Voice Chat System:** Real-time voice communication for Duo, League Individual, and League Team modes using peer-to-peer WebRTC with Firebase Firestore signaling. VoiceChat uses `lobby_code` as persistent `sessionId` across all game pages.
+**WebRTC Voice Chat System:** Real-time peer-to-peer voice communication for Duo, League Individual, and League Team modes using Firebase Firestore signaling.
 
 #### Multiplayer Routing Map & Token Strategy
 
-**Token Pre-Generation (CRITICAL):** JWT tokens are generated at lobby creation time (when the host enters the lobby), NOT at game start. This eliminates synchronization delays between players.
+**Token Pre-Generation (CRITICAL):** JWT tokens are generated at lobby creation time and stored in a lobby cache, eliminating synchronization delays.
 
 | Mode | Players | Tokens | Lobby Route | Gameplay Prefix | Controller |
 |------|---------|--------|-------------|-----------------|------------|
@@ -79,71 +59,24 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 | **League Team** | 10 (5v5) | 10 | `/league/team/lobby/{teamId}` | (pending) | `LeagueTeamController` |
 | **Master** | 3-40 | variable | Via Firebase | `/game/master/*` | `MasterGameController` |
 
-**Duo Routes (`/duo/*` + `/game/duo/*`):**
-- Lobby & Matchmaking: `/duo/lobby`, `/duo/invite`, `/duo/matchmaking/random`, `/duo/matchmaking`
-- Queue: `/duo/queue/join`, `/duo/queue/leave`, `/duo/queue/opponents`
-- Match Management: `/duo/matches/{match}/accept`, `/duo/matches/{match}/decline`, `/duo/matches/{match}/create-room`
-- Gameplay Flow: `/game/duo/start` (POST) → `/game/duo/intro` → `/game/duo/question` → `/game/duo/answer` → `/game/duo/result` → `/game/duo/match-result`
-- Skills: `/game/duo/use-skill`, `/duo/match/{match}/skill`, `/duo/match/{match}/hint`, `/duo/match/{match}/ai-suggest`
+**Monorepo Architecture (Node.js Game Server):** An npm workspaces monorepo is used with `packages/shared`, `packages/game-engine`, and `apps/game-server`. The Game Server (Node.js/TypeScript) uses Socket.IO for real-time communication and Express for REST API.
 
-**League Individual Routes (`/league/individual/*` + `/game/league/*`):**
-- Lobby: `/league/individual/lobby`, `/league/individual/`
-- API: `/api/league/individual/initialize`, `/api/league/individual/create-match`, `/api/league/individual/rankings`
-- Gameplay Flow: `/game/league/start` (POST) → `/game/league/resume` → `/game/league/question` → `/game/league/answer` → `/game/league/result` → `/game/league/match-result`
-- Match API: `/api/league/individual/match/{match}/buzz`, `/api/league/individual/match/{match}/submit-answer`
+**Scalable Architecture (Production):** Redis is used for real-time state with a 2-hour TTL. Firestore is the source of truth for questions, accelerated by Laravel Cache (30-minute TTL). PostgreSQL Queue handles AI question generation jobs. Event-sourcing logs canonical events to Redis. Socket.IO Redis adapter enables horizontal scaling. Correct answer metadata is never sent before reveal for security.
 
-**League Team Routes (`/league/team/*`):**
-- Team Management: `/league/team/management/{teamId?}`, `/league/team/create`, `/league/team/search`, `/league/team/captain/{teamId?}`
-- Team Actions: `/league/team/invite`, `/league/team/leave`, `/league/team/kick`, `/league/team/transfer-captain`
-- Lobby & Gathering: `/league/team/lobby/{teamId}`, `/league/team/{teamId}/gathering/{sessionId}`
-- Match API: `/api/league/team/find-opponents`, `/api/league/team/start-match`
+**Challenger Skills (Socket.IO Implementation):** `reduce_time` reduces the target's Question page timer for specific questions. `shuffle_answers` (pending) shuffles target's answer options.
 
-**Master Routes (`/game/master/*`):**
-- Gameplay Flow: `/game/master/start` (POST) → `/game/master/resume` → `/game/master/question` → `/game/master/answer` → `/game/master/result` → `/game/master/match-result`
-- API: `/api/master/game/{gameId}/join`, `/api/master/game/{gameId}/start`, `/api/master/game/{gameId}/answer`
-
-**Token Flow (All Multiplayer Modes):**
-1. Host creates/enters lobby → Laravel creates Game Server room + generates ALL player tokens → Tokens stored in lobby cache
-2. Each player joins lobby → Token retrieved from cache instantly → Socket.IO connection established immediately
-3. GO button pressed → Game Server starts match → All players already connected, zero delay
-4. VoiceChat (WebRTC) active from lobby through entire gameplay using `lobby_code` as persistent sessionId
-
-#### Monorepo Architecture (Node.js Game Server)
-The project uses an npm workspaces monorepo with `packages/shared`, `packages/game-engine`, and `apps/game-server`. All packages use `type: "module"` with NodeNext module resolution. Imports use `@strategybuzzer/shared` and `@strategybuzzer/game-engine` package names (no relative paths). Build order: `npm run build:all` (shared → game-engine → game-server). The Game Server (Node.js/TypeScript) uses Socket.IO for real-time communication and Express for REST API. Game phases (INTRO, BUZZ_WINDOW, QUESTION_DISPLAY, ANSWER_SELECTION, REVEAL, ROUND_SCOREBOARD, TIEBREAKER_*, MATCH_END) are aligned with Solo mode.
-
-**Scalable Architecture (Production):**
-- **Redis:** Real-time state (buzzer, timers, room state, event log) with 2-hour TTL.
-- **Firestore:** Source of truth for questions.
-- **Laravel Cache:** Accelerator for Firestore reads with 30-minute TTL.
-- **PostgreSQL Queue:** Used exclusively for AI question generation jobs.
-- **Event-Sourcing:** All canonical events are logged to Redis for crash recovery.
-- **Multi-Instance Synchronization:** Socket.IO Redis adapter for horizontal scaling.
-- **Security (Anti-Cheat):** Correct answer metadata is never sent before reveal.
-
-**Challenger Skills (Socket.IO Implementation):**
-- **reduce_time:** Reduces target's Question page timer (8s → 6s) for 5/3/1 questions based on round.
-  - Activated via `skill` event with `skillId: 'reduce_time'`
-  - Dynamic targeting: highest scorer above attacker, or closest below if leader
-  - Per-player `question_published` events with personalized `timeLimitMs`
-  - Stored in `room.skillEffects` per player with decrement on each question
-- **shuffle_answers:** (Pending implementation) Shuffles target's answer options every 1.5s.
+**Season Reward System:** A two-layer end-of-season reward system for League and Duo modes. Layer 1 grants Intelligence coins based on division-specific point thresholds. Layer 2 promotes top players to the next division.
 
 **Currency System (Two Types of Coins):**
-- **Pièces d'Intelligence (Intelligence Coins):** Earned in Multiplayer modes (Duo, League, Master) as you prove your knowledge against other players.
-- **Pièces de Compétence (Skill Coins):** Earned in Solo mode and Quests as you unlock skills/abilities. Used for ALL purchases in the boutique.
-- **Boutique Logic:** ALL items (avatars stratégiques, packs, buzzers, music, lives) are purchased with Compétence coins.
-- **Stratège Bonus:** The Stratège avatar grants +20% coin bonus on multiplayer victories.
+- **Pièces d'Intelligence (Intelligence Coins):** Earned in Multiplayer modes.
+- **Pièces de Compétence (Skill Coins):** Earned in Solo mode and Quests, used for ALL boutique purchases.
 
-**Multi-Currency Stripe Pricing (IP-Based):**
-- `CurrencyDetectionService.php` detects country via IP geolocation (ip-api.com), maps to currency (US→USD, CA→CAD, GB→GBP, EU 27 countries→EUR, other→USD), stores currency in session (never stores IP).
-- `config/coins.php` defines prices in all 4 currencies for every pack and game mode.
-- `StripeService.php` uses detected currency for Stripe Checkout sessions.
-- `BoutiqueController.php` passes currency + format to Blade templates for consistent display.
+**Multi-Currency Stripe Pricing (IP-Based):** `CurrencyDetectionService.php` detects country via IP geolocation to set currency (USD, CAD, GBP, EUR) for Stripe Checkout sessions.
 
 ### External Dependencies
 
 -   **Core Frameworks**: Laravel Framework, React, Inertia.js
--   **Firebase**: Firebase PHP SDK, Firebase JavaScript SDK, Firebase Firestore (real-time data), Firebase Authentication (user auth).
+-   **Firebase**: Firebase PHP SDK, Firebase JavaScript SDK, Firebase Firestore, Firebase Authentication.
 -   **Authentication**: Laravel Sanctum, Laravel Socialite.
 -   **Development Tools**: Vite, Laravel Vite Plugin, Tightenco Ziggy.
 -   **HTTP/API**: Guzzle HTTP.

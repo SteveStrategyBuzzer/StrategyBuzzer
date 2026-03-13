@@ -12,7 +12,8 @@ class LeagueIndividualService
 {
     public function __construct(
         private DivisionService $divisionService,
-        private GameStateService $gameStateService
+        private GameStateService $gameStateService,
+        private SeasonService $seasonService
     ) {}
 
     /**
@@ -184,6 +185,9 @@ class LeagueIndividualService
 
         $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
         $this->divisionService->updateDivisionPointsWithFloor($division, $pointsEarned);
+
+        // Suivi des points de saison
+        $this->seasonService->recordMatchPoints($user, 'league_individual', $pointsEarned);
 
         // Ligue gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
         if ($coinsEarned > 0) {

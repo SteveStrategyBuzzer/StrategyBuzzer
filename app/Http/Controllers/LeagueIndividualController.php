@@ -12,6 +12,7 @@ use App\Services\GameStateService;
 use App\Services\BuzzManagerService;
 use App\Services\DivisionService;
 use App\Services\GameServerService;
+use App\Services\SeasonService;
 
 class LeagueIndividualController extends Controller
 {
@@ -20,7 +21,8 @@ class LeagueIndividualController extends Controller
         private GameStateService $gameStateService,
         private BuzzManagerService $buzzManager,
         private DivisionService $divisionService,
-        private GameServerService $gameServerService
+        private GameServerService $gameServerService,
+        private SeasonService $seasonService
     ) {}
 
     public function index()
@@ -66,6 +68,8 @@ class LeagueIndividualController extends Controller
             ->with(['player1', 'player2'])
             ->first();
 
+        $seasonInfo = $this->seasonService->getPlayerSeasonInfo($user, 'league_individual');
+
         return view('league_individual_lobby', [
             'stats' => $stats,
             'division' => $division,
@@ -74,6 +78,7 @@ class LeagueIndividualController extends Controller
             'efficiency' => $efficiency,
             'divisionEmoji' => $divisionEmoji,
             'activeMatch' => $activeMatch,
+            'seasonInfo' => $seasonInfo,
         ]);
     }
 
