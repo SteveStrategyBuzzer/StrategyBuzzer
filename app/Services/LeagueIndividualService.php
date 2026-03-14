@@ -7,12 +7,14 @@ use App\Models\LeagueIndividualStat;
 use App\Models\LeagueIndividualMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\PlayerDivision;
+use Illuminate\Support\Facades\DB;
 
 class LeagueIndividualService
 {
     public function __construct(
         private DivisionService $divisionService,
-        private GameStateService $gameStateService
+        private GameStateService $gameStateService,
+        private CoinLedgerService $coinLedgerService
     ) {}
 
     /**
@@ -57,7 +59,7 @@ class LeagueIndividualService
     public function findRandomOpponent(User $user): ?User
     {
         $userDivision = $this->divisionService->getOrCreateDivision($user, 'league_individual');
-        
+
         return User::whereHas('playerDivisions', function ($query) use ($userDivision, $user) {
             $query->where('mode', 'league_individual')
                   ->where('division', $userDivision->division)
@@ -105,74 +107,103 @@ class LeagueIndividualService
      */
     public function finishMatch(LeagueIndividualMatch $match, array $matchResult): void
     {
-        $player1 = $match->player1;
-        $player2 = $match->player2;
+        DB::transaction(function () use ($match, $matchResult) {
+            $match->refresh();
 
-        $player1Won = $matchResult['player_won'] ?? false;
-        $winnerId = $player1Won ? $player1->id : $player2->id;
+            if ($match->status === 'finished') {
+                throw new \RuntimeException('MATCH_ALREADY_FINISHED');
+            }
 
-        $div1 = $this->divisionService->getOrCreateDivision($player1, 'league_individual');
-        $div2 = $this->divisionService->getOrCreateDivision($player2, 'league_individual');
+            $player1 = $match->player1()->lockForUpdate()->first();
+            $player2 = $match->player2()->lockForUpdate()->first();
 
-        $p1IsTemp = $this->divisionService->hasActiveTemporaryAccess($player1, $div1->division);
-        $p2IsTemp = $this->divisionService->hasActiveTemporaryAccess($player2, $div2->division);
+            $player1Won = $matchResult['player_won'] ?? false;
+            $winnerId = $player1Won ? $player1->id : $player2->id;
 
-        $p1Strength = $this->divisionService->determineOpponentStrength(
-            $div1->division,
-            $div2->division,
-            $div1->initial_efficiency ?? 0,
-            $div2->initial_efficiency ?? 0,
-            $p1IsTemp
-        );
+            $div1 = $this->divisionService->getOrCreateDivision($player1, 'league_individual');
+            $div2 = $this->divisionService->getOrCreateDivision($player2, 'league_individual');
 
-        $p2Strength = $this->divisionService->determineOpponentStrength(
-            $div2->division,
-            $div1->division,
-            $div2->initial_efficiency ?? 0,
-            $div1->initial_efficiency ?? 0,
-            $p2IsTemp
-        );
+            $p1IsTemp = $this->divisionService->hasActiveTemporaryAccess($player1, $div1->division);
+            $p2IsTemp = $this->divisionService->hasActiveTemporaryAccess($player2, $div2->division);
 
-        $player1PointsEarned = $this->divisionService->calculatePoints($p1Strength, $player1Won);
-        $player2PointsEarned = $this->divisionService->calculatePoints($p2Strength, !$player1Won);
+            $p1Strength = $this->divisionService->determineOpponentStrength(
+                $div1->division,
+                $div2->division,
+                $div1->initial_efficiency ?? 0,
+                $div2->initial_efficiency ?? 0,
+                $p1IsTemp
+            );
 
-        $p1CoinReward = $this->divisionService->calculateVictoryReward(
-            $div1->division,
-            $p1Strength,
-            $player1Won,
-            $p1IsTemp
-        );
+            $p2Strength = $this->divisionService->determineOpponentStrength(
+                $div2->division,
+                $div1->division,
+                $div2->initial_efficiency ?? 0,
+                $div1->initial_efficiency ?? 0,
+                $p2IsTemp
+            );
 
-        $p2CoinReward = $this->divisionService->calculateVictoryReward(
-            $div2->division,
-            $p2Strength,
-            !$player1Won,
-            $p2IsTemp
-        );
+            $player1PointsEarned = $this->divisionService->calculatePoints($p1Strength, $player1Won);
+            $player2PointsEarned = $this->divisionService->calculatePoints($p2Strength, !$player1Won);
 
-        $match->update([
-            'status' => 'finished',
-            'winner_id' => $winnerId,
-            'player1_points_earned' => $player1PointsEarned,
-            'player2_points_earned' => $player2PointsEarned,
-            'player1_coins_earned' => $p1CoinReward['coins'],
-            'player2_coins_earned' => $p2CoinReward['coins'],
-        ]);
+            $p1CoinReward = $this->divisionService->calculateVictoryReward(
+                $div1->division,
+                $p1Strength,
+                $player1Won,
+                $p1IsTemp
+            );
 
-        $this->updatePlayerStats($player1, $player1Won, $player1PointsEarned, $match->player1_level, $p1CoinReward['coins']);
-        $this->updatePlayerStats($player2, !$player1Won, $player2PointsEarned, $match->player2_level, $p2CoinReward['coins']);
+            $p2CoinReward = $this->divisionService->calculateVictoryReward(
+                $div2->division,
+                $p2Strength,
+                !$player1Won,
+                $p2IsTemp
+            );
 
-        $this->divisionService->clearCurrentMatch($player1);
-        $this->divisionService->clearCurrentMatch($player2);
+            $match->update([
+                'status' => 'finished',
+                'winner_id' => $winnerId,
+                'player1_points_earned' => $player1PointsEarned,
+                'player2_points_earned' => $player2PointsEarned,
+                'player1_coins_earned' => $p1CoinReward['coins'],
+                'player2_coins_earned' => $p2CoinReward['coins'],
+            ]);
+
+            $this->updatePlayerStats(
+                $player1,
+                $match,
+                $player1Won,
+                $player1PointsEarned,
+                $match->player1_level,
+                (int) $p1CoinReward['coins']
+            );
+
+            $this->updatePlayerStats(
+                $player2,
+                $match,
+                !$player1Won,
+                $player2PointsEarned,
+                $match->player2_level,
+                (int) $p2CoinReward['coins']
+            );
+
+            $this->divisionService->clearCurrentMatch($player1);
+            $this->divisionService->clearCurrentMatch($player2);
+        });
     }
 
     /**
      * Met à jour les statistiques d'un joueur après un match
      */
-    private function updatePlayerStats(User $user, bool $won, int $pointsEarned, int $currentLevel, int $coinsEarned = 0): void
-    {
+    private function updatePlayerStats(
+        User $user,
+        LeagueIndividualMatch $match,
+        bool $won,
+        int $pointsEarned,
+        int $currentLevel,
+        int $coinsEarned = 0
+    ): void {
         $stats = $this->getOrCreateStats($user);
-        
+
         $stats->matches_played++;
         if ($won) {
             $stats->matches_won++;
@@ -185,10 +216,16 @@ class LeagueIndividualService
         $division = $this->divisionService->getOrCreateDivision($user, 'league_individual');
         $this->divisionService->updateDivisionPointsWithFloor($division, $pointsEarned);
 
-        // Ligue gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
+        // Ligue gagne des pièces d'Intelligence
         if ($coinsEarned > 0) {
-            $user->coins = ($user->coins ?? 0) + $coinsEarned;
-            $user->save();
+            $this->coinLedgerService->credit(
+                $user,
+                $coinsEarned,
+                'league_individual_reward',
+                'LeagueIndividualMatch',
+                $match->id,
+                'intelligence'
+            );
         }
     }
 

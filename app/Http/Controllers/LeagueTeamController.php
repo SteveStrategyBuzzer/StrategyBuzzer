@@ -21,7 +21,7 @@ class LeagueTeamController extends Controller
     private LeagueTeamFirestoreService $firestoreService;
 
     public function __construct(
-        TeamService $teamService, 
+        TeamService $teamService,
         LeagueTeamService $leagueTeamService,
         LeagueTeamFirestoreService $firestoreService
     ) {
@@ -58,7 +58,7 @@ class LeagueTeamController extends Controller
         $contacts = \App\Models\PlayerContact::where('user_id', $user->id)
             ->with(['contact'])
             ->get()
-            ->map(function($pc) {
+            ->map(function ($pc) {
                 $contact = $pc->contact;
                 return [
                     'id' => $contact->id,
@@ -77,9 +77,9 @@ class LeagueTeamController extends Controller
     public function showTeamManagement($teamId = null)
     {
         $user = Auth::user();
-        
+
         $eagerLoad = ['captain', 'members'];
-        
+
         if ($teamId) {
             $team = $user->teams()->with($eagerLoad)->where('teams.id', $teamId)->first();
             if (!$team) {
@@ -88,25 +88,25 @@ class LeagueTeamController extends Controller
         } else {
             $team = $user->teams()->with($eagerLoad)->first();
         }
-        
+
         $pendingInvitations = TeamInvitation::where('user_id', $user->id)
             ->with(['team.captain'])
             ->where('status', 'pending')
             ->get();
-        
+
         $pendingRequestsCount = 0;
         if ($team && $team->captain_id === $user->id) {
             $pendingRequestsCount = TeamJoinRequest::where('team_id', $team->id)
                 ->where('status', 'pending')
                 ->count();
         }
-        
+
         $selectedTeamId = $team ? $team->id : null;
-        
-        $duoMatchesPlayed = \App\Models\DuoMatch::where(function($q) use ($user) {
+
+        $duoMatchesPlayed = \App\Models\DuoMatch::where(function ($q) use ($user) {
             $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id);
         })->where('status', 'completed')->count();
-        
+
         $canCreateTeam = $duoMatchesPlayed >= 25;
 
         return view('league_team_management', compact('user', 'team', 'pendingInvitations', 'pendingRequestsCount', 'selectedTeamId', 'duoMatchesPlayed', 'canCreateTeam'));
@@ -116,22 +116,22 @@ class LeagueTeamController extends Controller
     {
         $user = Auth::user();
         $search = $request->get('q', '');
-        
+
         $teamsQuery = Team::where('is_recruiting', true)
             ->withCount('members')
             ->with(['captain', 'members']);
-        
+
         if ($search) {
-            $teamsQuery->where(function($q) use ($search) {
+            $teamsQuery->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('tag', 'ilike', "%{$search}%");
+                    ->orWhere('tag', 'ilike', "%{$search}%");
             });
         }
-        
+
         $teams = $teamsQuery->orderBy('points', 'desc')->limit(50)->get()
             ->filter(fn($team) => $team->members_count < 5)
             ->take(20);
-        
+
         foreach ($teams as $team) {
             $team->member_count = $team->members_count;
         }
@@ -143,24 +143,24 @@ class LeagueTeamController extends Controller
     {
         $search = $request->get('q', '');
         $recruiting = $request->has('recruiting') && $request->get('recruiting') !== '0';
-        
+
         $teamsQuery = Team::withCount('members');
-        
+
         if ($recruiting) {
             $teamsQuery->where('is_recruiting', true);
         }
-        
+
         if ($search) {
-            $teamsQuery->where(function($q) use ($search) {
+            $teamsQuery->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                  ->orWhere('tag', 'ilike', "%{$search}%");
+                    ->orWhere('tag', 'ilike', "%{$search}%");
             });
         }
-        
+
         $teams = $teamsQuery->orderBy('points', 'desc')->limit(50)->get()
             ->filter(fn($team) => $team->members_count < 5)
             ->take(20);
-        
+
         $teamsData = $teams->map(fn($team) => [
             'id' => $team->id,
             'name' => $team->name,
@@ -172,7 +172,7 @@ class LeagueTeamController extends Controller
             'member_count' => $team->members_count,
             'is_recruiting' => $team->is_recruiting,
         ]);
-        
+
         return response()->json(['teams' => $teamsData]);
     }
 
@@ -181,75 +181,81 @@ class LeagueTeamController extends Controller
         $user = Auth::user();
         $team = Team::with(['captain', 'members'])->findOrFail($teamId);
         $userTeam = $user->teams()->first();
-        
+
         $hasPendingRequest = TeamJoinRequest::where('team_id', $teamId)
             ->where('user_id', $user->id)
             ->where('status', 'pending')
             ->exists();
-        
+
         $isOwnTeam = $userTeam && $userTeam->id === $team->id;
         $isMember = $team->isMember($user->id);
-        
+
         $teamStrengths = $this->calculateTeamStrengths($team);
-        
+
         $themeLabels = [
             __('Géographie'), __('Histoire'), __('Sports'), __('Sciences'),
             __('Cinéma'), __('Art'), __('Animaux'), __('Cuisine')
         ];
         $themeKeys = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
-        
+
         $formattedStrengths = [];
         foreach ($themeKeys as $i => $key) {
             $formattedStrengths[$themeLabels[$i]] = $teamStrengths[$key] ?? 50;
         }
-        
+
         $memberStats = [];
         $memberContributions = [];
-        
+
         foreach ($team->members as $member) {
             $memberStrengths = [];
             $contributions = [];
-            
+
             foreach ($themeKeys as $i => $theme) {
                 $strength = 50;
                 $memberStrengths[$themeLabels[$i]] = $strength;
             }
-            
+
             $memberStats[$member->id] = $memberStrengths;
             $memberContributions[$member->id] = [];
         }
 
         return view('league_team_details', compact(
-            'user', 'team', 'userTeam', 'hasPendingRequest', 'isOwnTeam', 'isMember',
-            'memberStats', 'memberContributions'
+            'user',
+            'team',
+            'userTeam',
+            'hasPendingRequest',
+            'isOwnTeam',
+            'isMember',
+            'memberStats',
+            'memberContributions'
         ))->with('teamStrengths', $formattedStrengths);
     }
 
     public function showCaptainPanel($teamId = null)
     {
         $user = Auth::user();
-        
+
         if ($teamId) {
             $team = $user->teams()->with(['captain', 'members'])->where('teams.id', $teamId)->first();
         } else {
             $team = $user->teams()->with(['captain', 'members'])->first();
         }
-        
+
         if (!$team || !$team->isCaptain($user->id)) {
             return redirect()->route('league.team.management')
                 ->with('error', __('Vous devez être capitaine pour accéder à cette page.'));
         }
-        
+
         $pendingRequests = TeamJoinRequest::where('team_id', $team->id)
             ->where('status', 'pending')
             ->with(['user'])
             ->get();
-        
+
         $sentInvitations = TeamInvitation::where('team_id', $team->id)
             ->where('status', 'pending')
             ->with('user')
             ->get();
-        
+
         $selectedTeamId = $team->id;
 
         return view('league_team_captain', compact('user', 'team', 'pendingRequests', 'sentInvitations', 'selectedTeamId'));
@@ -259,52 +265,52 @@ class LeagueTeamController extends Controller
     {
         $user = Auth::user();
         $team = Team::findOrFail($teamId);
-        
+
         if ($user->teams()->exists()) {
             return response()->json([
                 'success' => false,
                 'error' => __('Vous êtes déjà dans une équipe.')
             ], 400);
         }
-        
+
         if ($team->isFull()) {
             return response()->json([
                 'success' => false,
                 'error' => __('Cette équipe est complète.')
             ], 400);
         }
-        
+
         $existingRequest = TeamJoinRequest::where('team_id', $teamId)
             ->where('user_id', $user->id)
             ->where('status', 'pending')
             ->first();
-        
+
         if ($existingRequest) {
             return response()->json([
                 'success' => false,
                 'error' => __('Vous avez déjà une demande en attente pour cette équipe.')
             ], 400);
         }
-        
+
         TeamJoinRequest::create([
             'team_id' => $teamId,
             'user_id' => $user->id,
             'message' => $request->get('message', ''),
             'status' => 'pending',
         ]);
-        
+
         return response()->json(['success' => true]);
     }
 
     public function cancelRequest($teamId)
     {
         $user = Auth::user();
-        
+
         TeamJoinRequest::where('team_id', $teamId)
             ->where('user_id', $user->id)
             ->where('status', 'pending')
             ->delete();
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -313,29 +319,29 @@ class LeagueTeamController extends Controller
         $user = Auth::user();
         $joinRequest = TeamJoinRequest::with('user')->findOrFail($requestId);
         $team = Team::findOrFail($joinRequest->team_id);
-        
+
         if (!$team->isCaptain($user->id)) {
             return response()->json([
                 'success' => false,
                 'error' => __('Seul le capitaine peut accepter les demandes.')
             ], 403);
         }
-        
+
         if ($team->isFull()) {
             return response()->json([
                 'success' => false,
                 'error' => __('L\'équipe est complète.')
             ], 400);
         }
-        
+
         $this->teamService->addMember($team, $joinRequest->user);
         $joinRequest->update(['status' => 'accepted']);
-        
+
         TeamJoinRequest::where('user_id', $joinRequest->user_id)
             ->where('status', 'pending')
             ->where('id', '!=', $requestId)
             ->update(['status' => 'cancelled']);
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -344,16 +350,16 @@ class LeagueTeamController extends Controller
         $user = Auth::user();
         $joinRequest = TeamJoinRequest::findOrFail($requestId);
         $team = Team::findOrFail($joinRequest->team_id);
-        
+
         if (!$team->isCaptain($user->id)) {
             return response()->json([
                 'success' => false,
                 'error' => __('Seul le capitaine peut refuser les demandes.')
             ], 403);
         }
-        
+
         $joinRequest->update(['status' => 'rejected']);
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -361,16 +367,16 @@ class LeagueTeamController extends Controller
     {
         $user = Auth::user();
         $team = $user->teams()->first();
-        
+
         if (!$team || !$team->isCaptain($user->id)) {
             return response()->json([
                 'success' => false,
                 'error' => __('Seul le capitaine peut modifier ce paramètre.')
             ], 403);
         }
-        
+
         $team->update(['is_recruiting' => !$team->is_recruiting]);
-        
+
         return response()->json([
             'success' => true,
             'is_recruiting' => $team->is_recruiting
@@ -392,14 +398,14 @@ class LeagueTeamController extends Controller
                 'cuisine' => 0,
             ];
         }
-        
+
         $themes = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
         $strengths = [];
-        
+
         foreach ($themes as $theme) {
             $strengths[$theme] = 50;
         }
-        
+
         return $strengths;
     }
 
@@ -407,9 +413,9 @@ class LeagueTeamController extends Controller
     {
         $themes = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
         $contribution = [];
-        
+
         $teamStrengths = $this->calculateTeamStrengths($team);
-        
+
         foreach ($themes as $theme) {
             $userStrength = 50;
             $diff = $userStrength - ($teamStrengths[$theme] ?? 50);
@@ -419,14 +425,14 @@ class LeagueTeamController extends Controller
                 'diff' => round($diff, 1),
             ];
         }
-        
+
         return $contribution;
     }
 
     public function showLobby($teamId = null)
     {
         $user = Auth::user();
-        
+
         if ($teamId) {
             $team = $user->teams()->with(['captain', 'members'])->where('teams.id', $teamId)->first();
         } else {
@@ -440,7 +446,6 @@ class LeagueTeamController extends Controller
         $rankings = $this->leagueTeamService->getTeamRankings($team->division);
         $selectedTeamId = $team->id;
 
-        // Check for active gathering session
         $activeGathering = null;
         $activeSessionId = \Illuminate\Support\Facades\Cache::get('team_active_gathering:' . $team->id);
         if ($activeSessionId) {
@@ -453,7 +458,6 @@ class LeagueTeamController extends Controller
                     'total' => count($gatheringData['members'] ?? []),
                 ];
             } else {
-                // Session expired, clean up
                 \Illuminate\Support\Facades\Cache::forget('team_active_gathering:' . $team->id);
             }
         }
@@ -472,29 +476,28 @@ class LeagueTeamController extends Controller
 
         try {
             $customEmblemPath = null;
-            
-            // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
+
             if ($request->custom_emblem && strpos($request->custom_emblem, 'data:image/') === 0) {
                 $imageData = $request->custom_emblem;
                 $imageData = preg_replace('/^data:image\/\w+;base64,/', '', $imageData);
                 $imageData = base64_decode($imageData);
-                
+
                 $fileName = 'team_emblems/' . uniqid() . '_' . time() . '.png';
                 $storagePath = storage_path('app/public/' . $fileName);
-                
+
                 if (!is_dir(dirname($storagePath))) {
                     mkdir(dirname($storagePath), 0755, true);
                 }
-                
+
                 file_put_contents($storagePath, $imageData);
                 $customEmblemPath = $fileName;
             }
-            
+
             $team = $this->teamService->createTeam(
                 Auth::user(),
                 $request->name,
                 $request->emblem_category ?: 'animals',
-                (int)($request->emblem_index ?: 1),
+                (int) ($request->emblem_index ?: 1),
                 $customEmblemPath
             );
 
@@ -524,7 +527,7 @@ class LeagueTeamController extends Controller
         }
 
         $playerIdentifier = $request->player_code ?? $request->player_name;
-        
+
         if (!$playerIdentifier) {
             return response()->json(['success' => false, 'error' => __('Veuillez entrer un code ou nom de joueur.')], 400);
         }
@@ -558,7 +561,7 @@ class LeagueTeamController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['success' => true]);
             }
-            
+
             return redirect()->route('league.team.management', $invitation->team_id)
                 ->with('success', __('Vous avez rejoint l\'équipe avec succès !'));
         } catch (\Exception $e) {
@@ -568,7 +571,7 @@ class LeagueTeamController extends Controller
                     'error' => $e->getMessage(),
                 ], 400);
             }
-            
+
             return redirect()->route('ligue')->with('error', $e->getMessage());
         }
     }
@@ -583,7 +586,7 @@ class LeagueTeamController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['success' => true]);
             }
-            
+
             return redirect()->route('ligue')->with('success', __('Invitation refusée.'));
         } catch (\Exception $e) {
             if ($request->expectsJson()) {
@@ -592,7 +595,7 @@ class LeagueTeamController extends Controller
                     'error' => $e->getMessage(),
                 ], 400);
             }
-            
+
             return redirect()->route('ligue')->with('error', $e->getMessage());
         }
     }
@@ -703,7 +706,7 @@ class LeagueTeamController extends Controller
                 'id' => $m->user_id,
                 'name' => $m->user->name ?? 'Player',
             ])->toArray();
-            
+
             $team2Players = $match->team2->teamMembers->map(fn($m) => [
                 'id' => $m->user_id,
                 'name' => $m->user->name ?? 'Player',
@@ -736,7 +739,7 @@ class LeagueTeamController extends Controller
         $match = LeagueTeamMatch::with(['team1.teamMembers.user', 'team2.teamMembers.user'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) ||
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
@@ -751,7 +754,7 @@ class LeagueTeamController extends Controller
         $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) ||
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
@@ -776,7 +779,7 @@ class LeagueTeamController extends Controller
         $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) ||
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
@@ -804,7 +807,7 @@ class LeagueTeamController extends Controller
         $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) ||
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
@@ -840,7 +843,7 @@ class LeagueTeamController extends Controller
         $match = LeagueTeamMatch::with(['team1.teamMembers.user', 'team2.teamMembers.user', 'winner'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) ||
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
@@ -864,7 +867,7 @@ class LeagueTeamController extends Controller
         $match = LeagueTeamMatch::with(['team1.teamMembers', 'team2.teamMembers'])->findOrFail($matchId);
         $user = Auth::user();
 
-        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) || 
+        $isPlayer = $match->team1->teamMembers->contains('user_id', $user->id) ||
                     $match->team2->teamMembers->contains('user_id', $user->id);
 
         if (!$isPlayer) {
@@ -932,10 +935,10 @@ class LeagueTeamController extends Controller
         }
 
         $opponentData = $opponents->map(function ($opp) {
-            $winRate = $opp->matches_played > 0 
-                ? round(($opp->matches_won / $opp->matches_played) * 100, 1) 
+            $winRate = $opp->matches_played > 0
+                ? round(($opp->matches_won / $opp->matches_played) * 100, 1)
                 : 0;
-            
+
             $emblems = Team::EMBLEM_CATEGORIES;
             $category = $opp->emblem_category ?? 'animals';
             $index = ($opp->emblem_index ?? 1) - 1;
@@ -1005,23 +1008,36 @@ class LeagueTeamController extends Controller
             return response()->json(['success' => false, 'error' => __('Les équipes doivent être dans la même division.')], 400);
         }
 
-        $divisions = ['bronze' => 0, 'argent' => 1, 'silver' => 1, 'or' => 2, 'gold' => 2, 'platine' => 3, 'platinum' => 3, 'diamant' => 4, 'diamond' => 4];
-        $divisionCoins = ['bronze' => 10, 'argent' => 20, 'silver' => 20, 'or' => 40, 'gold' => 40, 'platine' => 80, 'platinum' => 80, 'diamant' => 160, 'diamond' => 160];
-        
+        $divisions = [
+            'bronze' => 0,
+            'argent' => 1, 'silver' => 1,
+            'or' => 2, 'gold' => 2,
+            'platine' => 3, 'platinum' => 3,
+            'diamant' => 4, 'diamond' => 4
+        ];
+
+        $divisionCoins = [
+            'bronze' => 10,
+            'argent' => 20, 'silver' => 20,
+            'or' => 40, 'gold' => 40,
+            'platine' => 80, 'platinum' => 80,
+            'diamant' => 160, 'diamond' => 160
+        ];
+
         $teamDivision = strtolower($team->division ?? 'bronze');
         $matchDivision = strtolower($level);
-        
+
         $teamIndex = $divisions[$teamDivision] ?? 0;
         $matchIndex = $divisions[$matchDivision] ?? 0;
-        
+
         if ($matchIndex > $teamIndex + 2) {
             return response()->json(['success' => false, 'error' => __('Vous ne pouvez jouer que jusqu\'à 2 niveaux au-dessus de votre division.')], 400);
         }
-        
+
         $accessCost = 0;
         $hasTimedAccess = false;
         $accessCacheKey = "league_team_access:{$user->id}:{$matchDivision}";
-        
+
         if ($matchIndex > $teamIndex) {
             $existingAccess = \Illuminate\Support\Facades\Cache::get($accessCacheKey);
             if ($existingAccess && now()->lt($existingAccess)) {
@@ -1032,15 +1048,23 @@ class LeagueTeamController extends Controller
         }
 
         if ($accessCost > 0 && ($user->competence_coins ?? 0) < $accessCost) {
-            return response()->json(['success' => false, 'error' => __('Vous n\'avez pas assez de pièces de compétence. Coût: ') . $accessCost], 400);
+            return response()->json([
+                'success' => false,
+                'error' => __('Vous n\'avez pas assez de pièces de compétence. Coût: ') . $accessCost
+            ], 400);
         }
 
         try {
             \DB::beginTransaction();
 
             $shouldGrantTimedAccess = $accessCost > 0;
+
             if ($accessCost > 0) {
-                $user->decrement('competence_coins', $accessCost);
+                $paid = $this->leagueTeamService->deductAccessCost($user, $matchDivision, $teamDivision);
+
+                if (!$paid) {
+                    throw new \Exception(__('Paiement d\'accès temporaire impossible.'));
+                }
             }
 
             $relayIndices = null;
@@ -1077,7 +1101,6 @@ class LeagueTeamController extends Controller
 
             \DB::commit();
 
-            // Clear active gathering cache since match is starting
             \Illuminate\Support\Facades\Cache::forget('team_active_gathering:' . $team->id);
 
             if ($shouldGrantTimedAccess) {
@@ -1121,7 +1144,6 @@ class LeagueTeamController extends Controller
             'connected' => [$user->id],
         ], now()->addHours(2));
 
-        // Store active gathering session ID for this team (for return-to-lobby feature)
         \Illuminate\Support\Facades\Cache::put('team_active_gathering:' . $teamId, $sessionId, now()->addHours(2));
 
         return response()->json([
@@ -1218,7 +1240,7 @@ class LeagueTeamController extends Controller
         }
 
         $team = Team::with('members')->find($gatheringData['team_id']);
-        
+
         $membersWithStats = $team->members->map(function ($member) use ($gatheringData) {
             $stats = \App\Models\PlayerDuoStat::where('user_id', $member->id)->first();
 
@@ -1275,7 +1297,7 @@ class LeagueTeamController extends Controller
         foreach ($divisions as $division) {
             $cacheKey = "league_team_access:{$user->id}:{$division}";
             $expiresAt = \Illuminate\Support\Facades\Cache::get($cacheKey);
-            
+
             if ($expiresAt && now()->lt($expiresAt)) {
                 $remainingMinutes = now()->diffInMinutes($expiresAt, false);
                 $hours = floor($remainingMinutes / 60);

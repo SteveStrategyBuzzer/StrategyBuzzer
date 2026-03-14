@@ -13,15 +13,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Jobs\GenerateMultiplayerQuestionsJob;
+use App\Services\CoinLedgerService;
 
 class LobbyService
 {
     protected ?DuoFirestoreService $duoFirestoreService = null;
     private GameServerService $gameServerService;
+    private CoinLedgerService $coinLedgerService;
     
-    public function __construct(GameServerService $gameServerService)
-    {
+    public function __construct(
+        GameServerService $gameServerService,
+        CoinLedgerService $coinLedgerService
+    ) {
         $this->gameServerService = $gameServerService;
+        $this->coinLedgerService = $coinLedgerService;
     }
     
     protected function getDuoFirestoreService(): DuoFirestoreService
@@ -677,9 +682,19 @@ class LobbyService
                                 throw new \Exception(__(':name n\'a pas assez de pièces pour la mise', ['name' => $playerName]));
                             }
                         }
-                        
+                       
                         foreach ($playerIds as $playerId) {
-                            User::where('id', $playerId)->decrement('competence_coins', $betAmount);
+                            $player = $players->get($playerId);
+
+                            $this->coinLedgerService->debit(
+                                $player,
+                                $betAmount,
+                                'duo_bet_stake',
+                                'lobby',
+                                null,
+                                'competence'
+                            );
+
                             $playerBets[$playerId] = $betAmount;
                         }
                     });
@@ -963,7 +978,7 @@ class LobbyService
                         'lobby_code' => $code,
                         'roomId' => $roomId,
                     ]);
-                    
+                  
                 } catch (\Exception $e) {
                     Log::error("[LobbyService] Exception during Game Server Duo start", [
                         'lobby_code' => $code,
@@ -1078,8 +1093,20 @@ class LobbyService
                     }
                     
                     foreach ($betInfo['player_bets'] as $playerId => $amount) {
-                        User::where('id', $playerId)->increment('competence_coins', $amount);
-                        $refundedPlayers[$playerId] = $amount;
+                        $player = User::find($playerId);
+
+                        if ($player) {
+                            $this->coinLedgerService->credit(
+                                $player,
+                                $amount,
+                                'duo_bet_refund',
+                                'lobby',
+                                null,
+                                'competence'
+                            );
+
+                            $refundedPlayers[$playerId] = $amount;
+                        }
                     }
                 });
             } catch (\Exception $e) {
@@ -1141,7 +1168,7 @@ class LobbyService
             'can_start' => $isHost && $this->canStartGame($lobby),
         ];
     }
-    
+   
     protected function saveLobby(string $code, array $lobby): void
     {
         Cache::put(self::LOBBY_PREFIX . strtoupper($code), $lobby, self::LOBBY_TTL);
@@ -1343,7 +1370,7 @@ class LobbyService
                 $onlineThreshold = 90; // Increased to 90 seconds for more tolerance
                 $now = time(); // Use seconds instead of microtime for consistency with Firebase timestamps
                 $connectedPlayers = [];
-                
+               
                 foreach ($presenceData as $playerId => $data) {
                     $lastSeen = $data['lastSeen'] ?? null;
                     $online = $data['online'] ?? false;
