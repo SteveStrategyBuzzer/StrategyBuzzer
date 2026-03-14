@@ -1655,7 +1655,7 @@ class SoloController extends Controller
             $questService = new QuestService();
             $theme = session('theme', 'Général');
 
-            // Compétence utilisée dans cette réponse → skills_used_50
+            // Compétence utilisée dans cette réponse → skills_used_50 / skill_usage / unique_skills / all_skills
             $anySkillUsed = $featherSkillUsed
                 || ($illuminateSkillUsed ?? false)
                 || ($acidifySkillUsed ?? false)
@@ -1666,12 +1666,32 @@ class SoloController extends Controller
             if ($anySkillUsed) {
                 $questService->checkAndCompleteQuests($user, 'skills_used_50', ['skill_used' => true]);
                 $questService->checkAndCompleteQuests($user, 'skill_used', ['skill_used' => true]);
+                $questService->checkAndCompleteQuests($user, 'skill_usage', ['skill_used' => true]);
+                // Identifier le slug de la compétence utilisée pour unique_skills_used et all_skills_used
+                $usedSlug = null;
+                if ($featherSkillUsed)                     $usedSlug = 'feather';
+                elseif ($illuminateSkillUsed ?? false)     $usedSlug = 'illuminate_numbers';
+                elseif ($acidifySkillUsed ?? false)        $usedSlug = 'acidify_error';
+                elseif ($seeOpponentSkillUsed ?? false)    $usedSlug = 'see_opponent_choice';
+                elseif ($replaySkillUsed ?? false)         $usedSlug = 'replay';
+                elseif ($aiSuggestionSkillUsed ?? false)   $usedSlug = 'ai_suggestion';
+                elseif ($eliminateTwoSkillUsed ?? false)   $usedSlug = 'eliminate_two';
+                if ($usedSlug) {
+                    $questService->checkAndCompleteQuests($user, 'unique_skills_used', ['skill_slug' => $usedSlug]);
+                    $questService->checkAndCompleteQuests($user, 'all_skills_used', ['skill_slug' => $usedSlug]);
+                }
             }
 
             // Buzz rapides : premier à buzzer
             $playerWasFirst = $playerBuzzed && (!$opponentBehavior['buzzes'] || $opponentBehavior['is_faster'] === false);
             if ($playerWasFirst) {
                 $questService->checkAndCompleteQuests($user, 'first_buzz_10', [
+                    'first_buzz' => true,
+                ]);
+                $questService->checkAndCompleteQuests($user, 'first_buzz_total', [
+                    'first_buzz' => true,
+                ]);
+                $questService->checkAndCompleteQuests($user, 'first_buzz_total_legendaire', [
                     'first_buzz' => true,
                 ]);
                 // Buzz ultra-rapide (< 1 s)
@@ -1685,18 +1705,18 @@ class SoloController extends Controller
 
             // Réponses correctes
             if ($isCorrect) {
-                // Streak correct (cross-sessions)
-                $questService->checkAndCompleteQuests($user, 'correct_streak_25', [
-                    'answer_correct' => true,
-                    'answer_time'    => $buzzTime,
-                ]);
-                $questService->checkAndCompleteQuests($user, 'correct_streak_50', [
-                    'answer_correct' => true,
-                    'answer_time'    => $buzzTime,
-                ]);
+                // Streak correct (cross-sessions) — quêtes existantes + nouvelles variantes
+                $correctContext = ['answer_correct' => true, 'answer_time' => $buzzTime];
+                foreach (['correct_streak_25', 'correct_streak_50', 'consecutive_correct', 'perfect_accuracy_epique', 'perfect_accuracy_legendaire'] as $code) {
+                    $questService->checkAndCompleteQuests($user, $code, $correctContext);
+                }
                 // Réponse rapide (< 2 s)
                 if ($buzzTime < 2) {
                     $questService->checkAndCompleteQuests($user, 'fast_answers_10', [
+                        'answer_time' => $buzzTime,
+                        'is_correct'  => true,
+                    ]);
+                    $questService->checkAndCompleteQuests($user, 'fast_answers', [
                         'answer_time' => $buzzTime,
                         'is_correct'  => true,
                     ]);
@@ -1704,6 +1724,17 @@ class SoloController extends Controller
                 // Réponse ultra-rapide (< 1 s)
                 if ($buzzTime < 1) {
                     $questService->checkAndCompleteQuests($user, 'ultra_fast_answers_10', [
+                        'answer_time' => $buzzTime,
+                        'is_correct'  => true,
+                    ]);
+                    $questService->checkAndCompleteQuests($user, 'ultra_fast_answers_epique', [
+                        'answer_time' => $buzzTime,
+                        'is_correct'  => true,
+                    ]);
+                }
+                // Réponse ultra-rapide (< 0,5 s) — Légendaire
+                if ($buzzTime < 0.5) {
+                    $questService->checkAndCompleteQuests($user, 'ultra_fast_answers_legendaire', [
                         'answer_time' => $buzzTime,
                         'is_correct'  => true,
                     ]);
@@ -1740,13 +1771,11 @@ class SoloController extends Controller
                     ]);
                 }
             } else {
-                // Réponse incorrecte : réinitialiser les streaks
-                $questService->checkAndCompleteQuests($user, 'correct_streak_25', [
-                    'answer_wrong' => true,
-                ]);
-                $questService->checkAndCompleteQuests($user, 'correct_streak_50', [
-                    'answer_wrong' => true,
-                ]);
+                // Réponse incorrecte : réinitialiser les streaks correct
+                $wrongContext = ['answer_wrong' => true];
+                foreach (['correct_streak_25', 'correct_streak_50', 'consecutive_correct', 'perfect_accuracy_epique', 'perfect_accuracy_legendaire'] as $code) {
+                    $questService->checkAndCompleteQuests($user, $code, $wrongContext);
+                }
                 $questService->checkAndCompleteQuests($user, 'math_streak', [
                     'theme'        => $theme,
                     'answer_wrong' => true,

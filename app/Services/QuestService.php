@@ -427,6 +427,160 @@ class QuestService
                 $target = (int) ($params['count'] ?? 5);
                 return $this->handleMathStreak($progress, $context, $target);
 
+            // ─────────────────────────────────────────────────────────────
+            // NOUVELLES QUÊTES RARE / ÉPIQUE / LÉGENDAIRE / MAÎTRE
+            // ─────────────────────────────────────────────────────────────
+
+            // Win-streak variants (helpers existants, seuils différents)
+            case 'consecutive_wins':       // ID 96 – 3 victoires consécutives
+            case 'undefeated_streak':      // ID 102 – 10 matchs sans perdre
+            case 'win_streak_epique':      // ID 148 – 25 victoires
+            case 'win_streak_legendaire':  // ID 161 – 100 victoires
+            case 'win_streak_titan':       // ID 183 – 200 victoires
+                $target = (int) ($params['count'] ?? 3);
+                return $this->handleWinStreak($progress, $context, $target);
+
+            // Streak correct variants
+            case 'consecutive_correct':          // ID 99 – 20 consécutives
+            case 'perfect_accuracy_epique':      // ID 140 – 100 % sur 50
+            case 'perfect_accuracy_legendaire':  // ID 163 – 100 % sur 500
+                $target = (int) ($params['count'] ?? 20);
+                return $this->handleCorrectStreak($progress, $context, $target);
+
+            // Réponses rapides variants
+            case 'fast_answers':  // ID 97 – 5 réponses < 2 s
+                $threshold = (float) ($params['max_time'] ?? 2.0);
+                $target    = (int) ($params['count'] ?? 5);
+                return $this->handleFastAnswerCount($progress, $context, $threshold, $target, 'fast_answers_5');
+
+            case 'ultra_fast_answers_epique':  // ID 147 – 20 réponses < 1 s (partage le compteur 'ultra_fast')
+                $threshold = (float) ($params['max_time'] ?? 1.0);
+                $target    = (int) ($params['count'] ?? 20);
+                return $this->handleFastAnswerCount($progress, $context, $threshold, $target, 'ultra_fast');
+
+            case 'ultra_fast_answers_legendaire':  // ID 168 – 100 réponses < 0,5 s
+                $threshold = (float) ($params['max_time'] ?? 0.5);
+                $target    = (int) ($params['count'] ?? 100);
+                return $this->handleFastAnswerCount($progress, $context, $threshold, $target, 'ultra_fast_0_5');
+
+            // Match count variant
+            case 'total_matches_legendaire':  // ID 169 – 5000 matchs
+                $target = (int) ($params['count'] ?? 5000);
+                return $this->handleMatchCount($progress, $context, $target);
+
+            // Duo wins variant
+            case 'duo_wins':  // ID 100 – 5 victoires Duo
+                $target = (int) ($params['count'] ?? 5);
+                return $this->handleDuoWinCount($progress, $context, $target);
+
+            // Skills used variant
+            case 'skill_usage':  // ID 107 – 20 compétences (total)
+                $target = (int) ($params['count'] ?? 20);
+                return $this->handleSkillsUsedCount($progress, $context, $target);
+
+            // Boss defeat variant
+            case 'boss_defeat':  // ID 110 – 1 boss
+                $target = (int) ($params['count'] ?? 1);
+                return $this->handleBossDefeatCount($progress, $context, $target);
+
+            // Avatars unlocked variants
+            case 'avatar_collection_epique':  // ID 146 – 30 avatars
+                $target = (int) ($params['count'] ?? 30);
+                return ($context['unlocked_avatars_count'] ?? 0) >= $target;
+
+            case 'all_avatars_unlocked':  // ID 165 – tous les avatars (90)
+                $target = (int) ($params['count'] ?? 90);
+                return ($context['unlocked_avatars_count'] ?? 0) >= $target;
+
+            // Coins thresholds
+            case 'coins_accumulated':           // ID 155 – 1 000 000 pièces
+            case 'coins_accumulated_legendaire': // ID 166 – 10 000 000 pièces
+                $required = (int) ($params['amount'] ?? 1000000);
+                return ($context['user_coins'] ?? 0) >= $required;
+
+            // Division diamond (Duo)
+            case 'duo_rank_diamond':  // ID 143
+                $division = strtolower($context['division'] ?? '');
+                return ($context['mode'] ?? '') === 'duo'
+                    && in_array($division, ['diamant', 'diamond'], true);
+
+            // Tous les thèmes joués
+            case 'all_themes_played':  // ID 142
+                return $this->handleAllThemesPlayed($progress, $context);
+
+            // Matchs nocturnes
+            case 'night_matches':   // ID 111 – 5 matchs entre 0h et 6h
+            case 'night_marathon':  // ID 145 – 50 matchs entre 22h et 6h
+                $target    = (int) ($params['count'] ?? 5);
+                $startHour = (int) ($params['start_hour'] ?? 0);
+                $endHour   = (int) ($params['end_hour'] ?? 6);
+                return $this->handleNightMatchCount($progress, $context, $target, $startHour, $endHour);
+
+            // Victoires dans un même thème
+            case 'theme_wins':  // ID 101 – 10 victoires même thème
+                $target = (int) ($params['count'] ?? 10);
+                return $this->handleThemeWinCount($progress, $context, $target);
+
+            // Maîtrise multi-thèmes : N victoires × M thèmes
+            case 'multi_theme_mastery':  // ID 153 – 50 victoires × 5 thèmes
+                $winsPerTheme = (int) ($params['wins_per_theme'] ?? 50);
+                $targetThemes = (int) ($params['themes'] ?? 5);
+                return $this->handleMultiThemeMastery($progress, $context, $winsPerTheme, $targetThemes);
+
+            case 'multi_theme_wins_rare':  // ID 181 – 100 victoires réparties sur 10 thèmes
+                $totalWins    = (int) ($params['wins'] ?? 100);
+                $targetThemes = (int) ($params['themes'] ?? 10);
+                return $this->handleMultiThemeWins($progress, $context, $totalWins, $targetThemes);
+
+            // Matchs dans un même thème
+            case 'theme_dedication':  // ID 112 – 50 matchs même thème
+                $target = (int) ($params['matches'] ?? 50);
+                return $this->handlePerThemeMatchCount($progress, $context, $target);
+
+            // Achats boutique
+            case 'shop_purchases':        // ID 109 – 5 achats
+            case 'shop_purchases_epique': // ID 149 – 20 achats
+                $target = (int) ($params['count'] ?? 5);
+                return $this->handleShopPurchaseCount($progress, $context, $target);
+
+            // Victoires comeback
+            case 'comeback_victory':              // ID 113 – 1 comeback
+            case 'comeback_victories_epique':     // ID 157 – 10 comebacks
+            case 'comeback_victories_legendaire': // ID 174 – 50 comebacks
+                $target = (int) ($params['count'] ?? 1);
+                return $this->handleComebackWinCount($progress, $context, $target);
+
+            // Premier à buzzer (total cumulatif)
+            case 'first_buzz_total':            // ID 160 – 500
+            case 'first_buzz_total_legendaire': // ID 182 – 1000
+                $target = (int) ($params['count'] ?? 500);
+                return $this->handleFirstBuzzTotalCount($progress, $context, $target);
+
+            // Victoires en Ligue Individuelle
+            case 'league_wins':  // ID 152 – 50 victoires Ligue
+                $target = (int) ($params['count'] ?? 50);
+                return $this->handleLeagueWinCount($progress, $context, $target);
+
+            // Parties organisées Maître du Jeu
+            case 'master_games_hosted_epique':    // ID 158 – 50
+            case 'master_games_hosted_legendaire': // ID 171 – 500
+            case 'master_games_hosted_maitre':    // ID 179 – 1000
+                $target = (int) ($params['count'] ?? 50);
+                return $this->handleMasterGamesHostedCount($progress, $context, $target);
+
+            // Compétences uniques utilisées
+            case 'unique_skills_used':  // ID 150 – 10 compétences distinctes
+                $target = (int) ($params['count'] ?? 10);
+                return $this->handleUniqueSkillsUsed($progress, $context, $target);
+
+            // Toutes les compétences utilisées
+            case 'all_skills_used':  // ID 173
+                return $this->handleAllSkillsUsed($progress, $context);
+
+            // Méta-quête : toutes les quêtes complétées
+            case 'all_quests_completed':  // ID 176
+                return $this->handleAllQuestsCompleted($progress, $context);
+
             default:
                 return false;
         }
@@ -806,6 +960,309 @@ class QuestService
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // NOUVEAUX HELPERS — quêtes Rare / Épique / Légendaire / Maître
+    // ─────────────────────────────────────────────────────────────────────
+
+    protected function handleNightMatchCount(UserQuestProgress $progress, array $context, int $target, int $startHour = 0, int $endHour = 6): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        if (!($context['match_completed'] ?? false) && !isset($context['won'])) {
+            return false;
+        }
+
+        $hour = (int) ($context['match_hour'] ?? (int) Carbon::now()->format('G'));
+        $isNight = $startHour < $endHour
+            ? ($hour >= $startHour && $hour < $endHour)
+            : ($hour >= $startHour || $hour < $endHour);
+
+        $data    = $progress->progress ?? [];
+        $current = $data['night_match_count'] ?? 0;
+
+        if ($isNight) {
+            $current++;
+            $data['night_match_count'] = $current;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return $current >= $target;
+    }
+
+    protected function handleThemeWinCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $theme = trim($context['theme'] ?? '');
+        $data  = $progress->progress ?? [];
+        $wins  = $data['theme_wins'] ?? [];
+
+        if ($theme !== '' && ($context['won'] ?? false)) {
+            $wins[$theme] = ($wins[$theme] ?? 0) + 1;
+            $data['theme_wins'] = $wins;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return !empty($wins) && max($wins) >= $target;
+    }
+
+    protected function handleMultiThemeMastery(UserQuestProgress $progress, array $context, int $winsPerTheme, int $targetThemes): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $theme = trim($context['theme'] ?? '');
+        $data  = $progress->progress ?? [];
+        $wins  = $data['theme_wins_mastery'] ?? [];
+
+        if ($theme !== '' && ($context['won'] ?? false)) {
+            $wins[$theme] = ($wins[$theme] ?? 0) + 1;
+            $data['theme_wins_mastery'] = $wins;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        $qualified = count(array_filter($wins, fn($w) => $w >= $winsPerTheme));
+        return $qualified >= $targetThemes;
+    }
+
+    protected function handleMultiThemeWins(UserQuestProgress $progress, array $context, int $totalWinsTarget, int $targetThemes): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $theme = trim($context['theme'] ?? '');
+        $data  = $progress->progress ?? [];
+        $wins  = $data['theme_wins_spread'] ?? [];
+
+        if ($theme !== '' && ($context['won'] ?? false)) {
+            $wins[$theme] = ($wins[$theme] ?? 0) + 1;
+            $data['theme_wins_spread'] = $wins;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return count($wins) >= $targetThemes && array_sum($wins) >= $totalWinsTarget;
+    }
+
+    protected function handlePerThemeMatchCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $theme = trim($context['theme'] ?? '');
+        if ($theme === '') {
+            return false;
+        }
+
+        if (!($context['match_completed'] ?? false) && !isset($context['won'])) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $matches = $data['theme_matches'] ?? [];
+        $matches[$theme] = ($matches[$theme] ?? 0) + 1;
+        $data['theme_matches'] = $matches;
+        $progress->progress = $data;
+        $progress->save();
+
+        return max($matches) >= $target;
+    }
+
+    protected function handleShopPurchaseCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = $data['shop_purchase_count'] ?? 0;
+
+        if ($context['shop_purchase'] ?? false) {
+            $current++;
+            $data['shop_purchase_count'] = $current;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return $current >= $target;
+    }
+
+    protected function handleComebackWinCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = $data['comeback_win_count'] ?? 0;
+
+        if ($context['comeback_win'] ?? false) {
+            $current++;
+            $data['comeback_win_count'] = $current;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return $current >= $target;
+    }
+
+    protected function handleFirstBuzzTotalCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = $data['first_buzz_total'] ?? 0;
+
+        if ($context['first_buzz'] ?? false) {
+            $current++;
+            $data['first_buzz_total'] = $current;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return $current >= $target;
+    }
+
+    protected function handleLeagueWinCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = $data['league_win_count'] ?? 0;
+
+        $isLeague = in_array($context['mode'] ?? '', ['league_individual', 'league_team'], true);
+        if ($isLeague && ($context['won'] ?? false)) {
+            $current++;
+            $data['league_win_count'] = $current;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return $current >= $target;
+    }
+
+    protected function handleMasterGamesHostedCount(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $data    = $progress->progress ?? [];
+        $current = $data['master_games_hosted'] ?? 0;
+
+        if ($context['master_game_hosted'] ?? false) {
+            $current++;
+            $data['master_games_hosted'] = $current;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return $current >= $target;
+    }
+
+    protected function handleUniqueSkillsUsed(UserQuestProgress $progress, array $context, int $target): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $skillSlug = $context['skill_slug'] ?? null;
+        $data      = $progress->progress ?? [];
+        $skills    = $data['unique_skill_slugs'] ?? [];
+
+        if ($skillSlug !== null && !in_array($skillSlug, $skills, true)) {
+            $skills[] = $skillSlug;
+            $data['unique_skill_slugs'] = $skills;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return count($skills) >= $target;
+    }
+
+    protected function handleAllSkillsUsed(UserQuestProgress $progress, array $context): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $allSlugs = [
+            'feather', 'illuminate_numbers', 'acidify_error', 'see_opponent_choice',
+            'replay', 'ai_suggestion', 'eliminate_two', 'knowledge_without_time',
+            'reduce_time', 'shuffle_answers', 'freeze_time', 'double_points',
+            'second_chance', 'time_bomb', 'mirror', 'shield',
+            'steal_points', 'fog_of_war', 'lucky_guess', 'oracle',
+            'turbo_buzz', 'blind', 'nullify', 'swap',
+            'hint', 'critical_buzz', 'reversal', 'echo',
+            'sabotage', 'dodge',
+        ];
+
+        $skillSlug = $context['skill_slug'] ?? null;
+        $data      = $progress->progress ?? [];
+        $skills    = $data['all_skill_slugs'] ?? [];
+
+        if ($skillSlug !== null && !in_array($skillSlug, $skills, true)) {
+            $skills[] = $skillSlug;
+            $data['all_skill_slugs'] = $skills;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return empty(array_diff($allSlugs, $skills));
+    }
+
+    protected function handleAllThemesPlayed(UserQuestProgress $progress, array $context): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $allThemes = ['general', 'geographie', 'histoire', 'art', 'cinema', 'sport', 'cuisine', 'faune', 'sciences'];
+        $theme     = strtolower(trim($context['theme'] ?? ''));
+        $data      = $progress->progress ?? [];
+        $played    = $data['all_themes_played'] ?? [];
+
+        if ($theme !== '' && !in_array($theme, $played, true)) {
+            $played[] = $theme;
+            $data['all_themes_played'] = $played;
+            $progress->progress = $data;
+            $progress->save();
+        }
+
+        return empty(array_diff($allThemes, $played));
+    }
+
+    protected function handleAllQuestsCompleted(UserQuestProgress $progress, array $context): bool
+    {
+        if ($progress->completed_at !== null) {
+            return false;
+        }
+
+        $userId   = $progress->user_id;
+        $totalAC  = Quest::where('auto_complete', true)->where('id', '!=', $progress->quest_id)->count();
+        $completed = UserQuestProgress::where('user_id', $userId)
+            ->whereNotNull('completed_at')
+            ->where('rewarded', true)
+            ->where('quest_id', '!=', $progress->quest_id)
+            ->count();
+
+        return $completed >= $totalAC;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // PROGRESSION — affichage quêtes
     // ─────────────────────────────────────────────────────────────────────
 
@@ -828,8 +1285,12 @@ class QuestService
             $max = $params['level'];
         } elseif (isset($params['coins'])) {
             $max = $params['coins'];
+        } elseif (isset($params['amount'])) {
+            $max = $params['amount'];
         } elseif (isset($params['streak'])) {
             $max = $params['streak'];
+        } elseif (isset($params['wins_per_theme'])) {
+            $max = $params['wins_per_theme'];
         }
 
         if ($progressRecord && $progressRecord->progress) {
@@ -837,9 +1298,13 @@ class QuestService
             foreach ([
                 'current', 'win_streak', 'match_count', 'correct_streak',
                 'ultra_fast', 'ultra_fast_buzz', 'fast_answers', 'buzz_fast',
+                'fast_answers_5', 'ultra_fast_0_5',
                 'first_buzzes', 'fast_buzzes', 'perfect_score_count',
                 'duo_win_count', 'skills_used_count', 'boss_defeat_count',
-                'correct_no_buzz', 'math_streak', 'count',
+                'correct_no_buzz', 'math_streak',
+                'night_match_count', 'shop_purchase_count', 'comeback_win_count',
+                'first_buzz_total', 'league_win_count', 'master_games_hosted',
+                'count',
             ] as $key) {
                 if (isset($data[$key])) {
                     $current = $data[$key];
@@ -849,6 +1314,27 @@ class QuestService
 
             if (isset($data['themes_played']) && is_array($data['themes_played'])) {
                 $current = count($data['themes_played']);
+            }
+            if (isset($data['all_themes_played']) && is_array($data['all_themes_played'])) {
+                $current = count($data['all_themes_played']);
+            }
+            if (isset($data['theme_wins']) && is_array($data['theme_wins']) && !empty($data['theme_wins'])) {
+                $current = max($data['theme_wins']);
+            }
+            if (isset($data['theme_wins_mastery']) && is_array($data['theme_wins_mastery'])) {
+                $current = count(array_filter($data['theme_wins_mastery'], fn($w) => $w >= 1));
+            }
+            if (isset($data['theme_wins_spread']) && is_array($data['theme_wins_spread'])) {
+                $current = array_sum($data['theme_wins_spread']);
+            }
+            if (isset($data['theme_matches']) && is_array($data['theme_matches']) && !empty($data['theme_matches'])) {
+                $current = max($data['theme_matches']);
+            }
+            if (isset($data['unique_skill_slugs']) && is_array($data['unique_skill_slugs'])) {
+                $current = count($data['unique_skill_slugs']);
+            }
+            if (isset($data['all_skill_slugs']) && is_array($data['all_skill_slugs'])) {
+                $current = count($data['all_skill_slugs']);
             }
         }
 

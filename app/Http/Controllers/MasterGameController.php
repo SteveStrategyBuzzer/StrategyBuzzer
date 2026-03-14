@@ -1541,7 +1541,20 @@ class MasterGameController extends Controller
         $game->status = 'finished';
         $game->ended_at = now();
         $game->save();
-        
+
+        // Quêtes Maître du Jeu (organisateur)
+        try {
+            $host = Auth::user();
+            if ($host) {
+                $questService = app(\App\Services\QuestService::class);
+                foreach (['master_games_hosted_epique', 'master_games_hosted_legendaire', 'master_games_hosted_maitre'] as $code) {
+                    $questService->checkAndCompleteQuests($host, $code, ['master_game_hosted' => true]);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Quest hook error in MasterGameController::finishGame: ' . $e->getMessage());
+        }
+
         // Terminer dans Firestore
         $this->firestoreService->finishGame($game->id, $winner?->user_id);
         

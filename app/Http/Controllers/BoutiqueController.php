@@ -359,21 +359,26 @@ class BoutiqueController extends Controller
                         'kind'        => 'buzzer',
                     ]);
                 }
-                // Quête avatars_unlocked_10 / 25
+                // Quête avatars_unlocked_10 / 25 / 30 / tous
                 $freshSettings      = (array) ($user->profile_settings ?? []);
                 $unlockedAvatars    = (array) ($freshSettings['unlocked_avatars'] ?? []);
                 $unlockedAvatarsCnt = count($unlockedAvatars);
-                $questService->checkAndCompleteQuests($user, 'avatars_unlocked_10', [
-                    'unlocked_avatars_count' => $unlockedAvatarsCnt,
-                ]);
-                $questService->checkAndCompleteQuests($user, 'avatars_unlocked_25', [
-                    'unlocked_avatars_count' => $unlockedAvatarsCnt,
-                ]);
+                foreach (['avatars_unlocked_10', 'avatars_unlocked_25', 'avatar_collection_epique', 'all_avatars_unlocked'] as $code) {
+                    $questService->checkAndCompleteQuests($user, $code, [
+                        'unlocked_avatars_count' => $unlockedAvatarsCnt,
+                    ]);
+                }
+                // Achats boutique cumulatifs
+                foreach (['shop_purchases', 'shop_purchases_epique'] as $code) {
+                    $questService->checkAndCompleteQuests($user, $code, ['shop_purchase' => true]);
+                }
                 // Coins threshold (après débit)
                 $freshUser = \App\Models\User::find($user->id);
                 if ($freshUser) {
-                    $questService->checkAndCompleteQuests($user, 'coins_1000', ['user_coins' => $freshUser->competence_coins ?? 0]);
-                    $questService->checkAndCompleteQuests($user, 'coins_5000', ['user_coins' => $freshUser->competence_coins ?? 0]);
+                    $freshCoins = $freshUser->competence_coins ?? 0;
+                    foreach (['coins_1000', 'coins_5000', 'coins_accumulated', 'coins_accumulated_legendaire'] as $code) {
+                        $questService->checkAndCompleteQuests($user, $code, ['user_coins' => $freshCoins]);
+                    }
                 }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('Quest hook error in BoutiqueController: ' . $e->getMessage());
