@@ -2,104 +2,108 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Quest;
-use App\Models\UserQuestProgress;
-use Illuminate\Support\Facades\Auth;
+use App\Models\UserDailyQuest;
+use App\Services\DailyQuestService;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DailyQuestsController extends Controller
 {
+    public function __construct(private DailyQuestService $dailyQuestService) {}
+
+    /**
+     * Page principale : /quetes-quotidiennes
+     * Remplace l'ancienne approche profile_settings par la table user_daily_quests.
+     */
     public function index()
     {
         $user = Auth::user();
-        
-        // Récupérer toutes les quêtes quotidiennes
-        $allDailyQuests = Quest::where('rarity', 'Quotidiennes')->get();
-        
-        // Gérer la rotation des 3 quêtes actives (24h)
-        $activeDailyQuestIds = $this->getActiveDailyQuests($user, $allDailyQuests);
-        
-        // Séparer les quêtes actives et inactives
-        $activeQuests = collect();
-        $inactiveQuests = collect();
-        
-        foreach ($allDailyQuests as $quest) {
-            // Attacher le progrès de l'utilisateur
-            $quest->progress = UserQuestProgress::where('user_id', $user->id)
-                ->where('quest_id', $quest->id)
-                ->first();
-            
-            if (in_array($quest->id, $activeDailyQuestIds)) {
-                $activeQuests->push($quest);
-            } else {
-                $inactiveQuests->push($quest);
-            }
-        }
-        
-        // Calculer le temps restant avant réinitialisation
-        $resetTime = $this->getResetTime($user);
-        $timeRemaining = Carbon::now()->diffInSeconds($resetTime, false);
-        
+
+        // Assigner/récupérer les 3 quêtes du jour via DailyQuestService
+        $activeQuestData = $this->dailyQuestService->getOrAssignDailyQuests($user);
+        $today           = Carbon::today()->toDateString();
+        $activeIds       = array_column($activeQuestData, 'quest_id');
+
+        // Toutes les quêtes quotidiennes
+        $allDailyQuests = Quest::whereBetween('id', [76, 95])->get();
+
+        // Enrichir les quêtes actives avec les données de progression
+        $activeQuests = collect($activeQuestData)->map(function ($data) {
+            $q = Quest::find($data['quest_id']);
+            if (!$q) return null;
+            $q->user_progress_data = $data;
+            $q->progress_current   = $data['current'];
+            $q->progress_max       = $data['max'];
+            $q->is_completed       = $data['completed'];
+            return $q;
+        })->filter()->values();
+
+        // Quêtes inactives du jour (les autres)
+        $inactiveQuests = $allDailyQuests->whereNotIn('id', $activeIds)->values();
+
+        // Temps restant avant prochain reset (minuit)
+        $midnight      = Carbon::tomorrow()->startOfDay();
+        $timeRemaining = max(0, Carbon::now()->diffInSeconds($midnight, false));
+
         return view('daily_quests', compact('activeQuests', 'inactiveQuests', 'timeRemaining', 'user'));
     }
-    
+
     /**
-     * Récupère les IDs des 3 quêtes quotidiennes actives
-     * Rotation automatique toutes les 24h
+     * POST /quetes-quotidiennes/action
+     * Déclenchement d'actions manuelles (visite boutique, changement avatar, etc.)
      */
-    private function getActiveDailyQuests($user, $allDailyQuests)
+    public function triggerAction(Request $request)
     {
-        // Récupérer les données de rotation depuis profile_settings
-        $profileSettings = $user->profile_settings ?? [];
-        $dailyQuestsData = $profileSettings['daily_quests_rotation'] ?? null;
-        
-        $now = Carbon::now();
-        
-        // Vérifier si rotation nécessaire (pas de données ou 24h écoulées)
-        if (!$dailyQuestsData || 
-            !isset($dailyQuestsData['reset_at']) || 
-            Carbon::parse($dailyQuestsData['reset_at'])->isPast()) {
-            
-            // Sélectionner 3 nouvelles quêtes aléatoires
-            $count = min(3, $allDailyQuests->count());
-            $selected = $allDailyQuests->random($count);
-            // Normaliser en Collection (random retourne Collection si count > 1, sinon un modèle unique)
-            $selectedCollection = ($selected instanceof \Illuminate\Support\Collection) ? $selected : collect([$selected]);
-            $selectedIds = $selectedCollection->pluck('id')->toArray();
-            
-            // Calculer le prochain reset (24h)
-            $resetAt = $now->copy()->addHours(24);
-            
-            // Sauvegarder dans profile_settings
-            $profileSettings['daily_quests_rotation'] = [
-                'quest_ids' => $selectedIds,
-                'reset_at' => $resetAt->toDateTimeString()
-            ];
-            
-            $user->profile_settings = $profileSettings;
-            $user->save();
-            
-            return $selectedIds;
+        $user   = Auth::user();
+        $action = $request->input('action');
+
+        $actionCodeMap = [
+            'visited_shop'        => 'daily_visit_shop',
+            'avatar_changed'      => 'daily_change_avatar',
+            'result_shared'       => 'daily_share_result',
+            'avatar_desc_read'    => 'daily_read_avatar_desc',
+            'player_invited'      => 'daily_invite_player',
+            'ai_question_created' => 'daily_create_ai_question',
+            'helped_player'       => 'daily_help_player',
+            'shop_purchase'       => 'daily_buy_item',
+        ];
+
+        if ($user && isset($actionCodeMap[$action])) {
+            try {
+                $this->dailyQuestService->checkAndCompleteDailyQuest(
+                    $user,
+                    $actionCodeMap[$action],
+                    [$action => true]
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('DailyQuestsController::triggerAction: ' . $e->getMessage());
+            }
         }
-        
-        // Retourner les quêtes actives existantes
-        return $dailyQuestsData['quest_ids'] ?? [];
+
+        return response()->json(['ok' => true]);
     }
-    
+
     /**
-     * Retourne l'heure de réinitialisation des quêtes quotidiennes
+     * GET /api/daily-quests
+     * API JSON : retourne les 3 quêtes du jour avec progression.
      */
-    private function getResetTime($user)
+    public function apiIndex()
     {
-        $profileSettings = $user->profile_settings ?? [];
-        $dailyQuestsData = $profileSettings['daily_quests_rotation'] ?? null;
-        
-        if ($dailyQuestsData && isset($dailyQuestsData['reset_at'])) {
-            return Carbon::parse($dailyQuestsData['reset_at']);
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
         }
-        
-        // Par défaut, reset dans 24h
-        return Carbon::now()->addHours(24);
+
+        $quests        = $this->dailyQuestService->getOrAssignDailyQuests($user);
+        $midnight      = Carbon::tomorrow()->startOfDay();
+        $timeRemaining = max(0, Carbon::now()->diffInSeconds($midnight, false));
+
+        return response()->json([
+            'quests'        => $quests,
+            'date'          => now()->toDateString(),
+            'reset_in_secs' => $timeRemaining,
+        ]);
     }
 }

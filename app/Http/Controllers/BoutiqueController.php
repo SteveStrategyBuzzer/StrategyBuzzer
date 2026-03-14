@@ -86,6 +86,17 @@ class BoutiqueController extends Controller
             }
         }
 
+        // Quête quotidienne : visite de la boutique
+        if ($user) {
+            try {
+                app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
+                    $user, 'daily_visit_shop', ['visited_shop' => true]
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Daily quest hook (visit_shop) error: ' . $e->getMessage());
+            }
+        }
+
         return response()
             ->view('boutique', $context)
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
@@ -382,6 +393,15 @@ class BoutiqueController extends Controller
                 }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('Quest hook error in BoutiqueController: ' . $e->getMessage());
+            }
+
+            // Quête quotidienne : acheter un article
+            try {
+                app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
+                    $user, 'daily_buy_item', ['shop_purchase' => true]
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Daily quest hook (buy_item) error: ' . $e->getMessage());
             }
 
             return back()->with('success', "Achat réussi, élément débloqué !");

@@ -240,8 +240,15 @@
         <h2 class="section-header">🎯 {{ __('Quêtes actives du jour') }}</h2>
         <div class="quests-grid">
             @foreach($activeQuests as $quest)
-                <div class="quest-card active">
-                    @if($quest->progress && $quest->progress->completed)
+                @php
+                    $isCompleted  = $quest->is_completed ?? false;
+                    $currentValue = (int) ($quest->progress_current ?? 0);
+                    $targetValue  = (int) ($quest->progress_max ?? 1);
+                    $percentage   = $targetValue > 0 ? min(100, round($currentValue / $targetValue * 100)) : 0;
+                @endphp
+                <div class="quest-card active{{ $isCompleted ? ' completed' : '' }}"
+                     style="{{ $isCompleted ? 'border: 2px solid #4CAF50;' : '' }}">
+                    @if($isCompleted)
                         <div class="completed-badge">✓ {{ __('Complétée') }}</div>
                     @endif
                     
@@ -256,14 +263,10 @@
                     <div class="quest-desc">{{ $quest->condition ?? __('Quête quotidienne') }}</div>
                     
                     <div class="quest-progress">
-                        @php
-                            $currentValue = $quest->progress->current_value ?? 0;
-                            $targetValue = $quest->detection_params['target_value'] ?? 1;
-                            $percentage = $targetValue > 0 ? min(100, ($currentValue / $targetValue) * 100) : 0;
-                        @endphp
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: {{ $percentage }}%">
-                                {{ number_format($percentage, 0) }}%
+                            <div class="progress-fill"
+                                 style="width: {{ $percentage }}%; {{ $isCompleted ? 'background: linear-gradient(90deg, #4CAF50, #66BB6A);' : '' }}">
+                                {{ $percentage }}%
                             </div>
                         </div>
                         <div style="text-align: center; font-size: 0.8rem; color: #ddd;">

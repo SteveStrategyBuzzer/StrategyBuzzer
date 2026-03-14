@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
     {
         // Régénération des vies chaque minute
         $schedule->command('lives:regen')->everyMinute();
+
+        // Rotation des quêtes quotidiennes à minuit (nettoyage des anciens enregistrements)
+        $schedule->command('daily:rotate --prune')->dailyAt('00:00');
     }
 
     /**

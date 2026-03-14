@@ -434,6 +434,7 @@ Route::prefix('game/master')->name('game.master.')->middleware('auth')->group(fu
 Route::get('/quetes', [App\Http\Controllers\QuestesController::class, 'index'])->middleware('auth')->name('quetes');
 Route::post('/quetes/claim/{questId}', [App\Http\Controllers\QuestesController::class, 'claim'])->middleware('auth')->name('quetes.claim');
 Route::get('/quetes-quotidiennes', [App\Http\Controllers\DailyQuestsController::class, 'index'])->middleware('auth')->name('quetes-quotidiennes');
+Route::post('/quetes-quotidiennes/action', [App\Http\Controllers\DailyQuestsController::class, 'triggerAction'])->middleware('auth')->name('quetes-quotidiennes.action');
 
 // (Optionnel) Fallback 404 propre
 // Route::fallback(fn() => response()->view('notfound', [], 404));

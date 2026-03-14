@@ -222,6 +222,27 @@ class LeagueIndividualService
             'action_done'     => true,
         ]);
 
+        // Quêtes quotidiennes — fin de match Ligue Individuelle
+        try {
+            $dailyQuestService = app(\App\Services\DailyQuestService::class);
+            $dailyMatchCtx = [
+                'match_completed' => true,
+                'won'             => $player1Won,
+                'mode'            => 'league_individual',
+                'theme'           => strtolower($theme ?? ''),
+                'match_hour'      => (int) \Carbon\Carbon::now()->format('G'),
+                'perfect_score'   => false,
+                'total_buzzes'    => $p1Correct,
+                'themes_count'    => 1,
+            ];
+            $dailyQuestService->fireDailyQuestChecks($player1, $dailyMatchCtx);
+            $dailyMatchCtx['won']         = !$player1Won;
+            $dailyMatchCtx['total_buzzes'] = $p2Correct;
+            $dailyQuestService->fireDailyQuestChecks($player2, $dailyMatchCtx);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Daily quest hook (league_individual match-end) error: ' . $e->getMessage());
+        }
+
         $this->divisionService->clearCurrentMatch($player1);
         $this->divisionService->clearCurrentMatch($player2);
     }

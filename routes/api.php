@@ -116,3 +116,9 @@ Route::prefix('game-server')->group(function () {
     Route::get('/status/{roomId}', [GameServerController::class, 'status']);
     Route::post('/cleanup/{roomId}', [GameServerController::class, 'cleanup']);
 });
+
+// Quêtes quotidiennes — API JSON
+Route::middleware('auth:sanctum')->prefix('daily-quests')->group(function () {
+    Route::get('/', [App\Http\Controllers\DailyQuestsController::class, 'apiIndex']);
+    Route::post('/action', [App\Http\Controllers\DailyQuestsController::class, 'triggerAction']);
+});

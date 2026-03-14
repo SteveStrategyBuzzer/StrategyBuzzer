@@ -1652,7 +1652,8 @@ class SoloController extends Controller
         // Vérifier et compléter les quêtes (si connecté)
         $user = auth()->user();
         if ($user) {
-            $questService = new QuestService();
+            $questService      = new QuestService();
+            $dailyQuestService = app(\App\Services\DailyQuestService::class);
             $theme = session('theme', 'Général');
 
             // Compétence utilisée dans cette réponse → skills_used_50 / skill_usage / unique_skills / all_skills
@@ -1780,6 +1781,20 @@ class SoloController extends Controller
                     'theme'        => $theme,
                     'answer_wrong' => true,
                 ]);
+            }
+
+            // ── Quêtes quotidiennes — événements par réponse ──────────────
+            try {
+                $dailyCtx = [
+                    'first_buzz'  => $playerWasFirst,
+                    'is_correct'  => $isCorrect,
+                    'answer_time' => $buzzTime,
+                    'skill_used'  => $anySkillUsed,
+                    'theme'       => strtolower($theme),
+                ];
+                $dailyQuestService->fireDailyQuestChecks($user, $dailyCtx);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Daily quest hook (per-answer) error: ' . $e->getMessage());
             }
         }
         
@@ -2346,6 +2361,36 @@ class SoloController extends Controller
             ];
 
             $questService->fireMatchEndQuests($user, 'solo', $questContext);
+
+            // ── Quêtes quotidiennes — fin de match (victoire Solo) ────────
+            try {
+                $dailyQuestService = app(\App\Services\DailyQuestService::class);
+
+                // Détection comeback : 2 premières manches perdues puis victoire
+                $roundSummariesSnap = session('round_summaries', []);
+                $isComeback = count($roundSummariesSnap) >= 3
+                    && ($roundSummariesSnap[0]['won'] ?? true) === false
+                    && ($roundSummariesSnap[1]['won'] ?? true) === false;
+
+                // Nombre de thèmes joués dans cette session
+                $sessionThemes = array_unique(array_filter(array_column($roundSummariesSnap, 'theme')));
+                $themesCount   = count($sessionThemes);
+
+                $dailyMatchCtx = array_merge($questContext, [
+                    'match_completed' => true,
+                    'won'             => true,
+                    'mode'            => 'solo',
+                    'match_hour'      => (int) now()->format('G'),
+                    'perfect_score'   => $totalCorrect > 0 && $totalUnanswered === 0 && ($totalIncorrect ?? 0) === 0,
+                    'total_buzzes'    => $totalCorrect + ($totalIncorrect ?? 0),
+                    'themes_count'    => $themesCount,
+                    'comeback_win'    => $isComeback,
+                    'theme'           => strtolower($questContext['theme'] ?? ''),
+                ]);
+                $dailyQuestService->fireDailyQuestChecks($user, $dailyMatchCtx);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Daily quest hook (match-end win) error: ' . $e->getMessage());
+            }
         }
         
         // Enregistrer les statistiques de match (victoire)
