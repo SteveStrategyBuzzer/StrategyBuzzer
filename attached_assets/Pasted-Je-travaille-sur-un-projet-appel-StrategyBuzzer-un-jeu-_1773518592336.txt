@@ -1,0 +1,193 @@
+Je travaille sur un projet appelé StrategyBuzzer, un jeu de trivia multijoueur en ligne.
+
+IMPORTANT :
+Replit est l’environnement principal, le plus avancé, et la source de vérité absolue du projet.
+Toute nouvelle configuration, structure ou intégration doit être pensée d’abord pour Replit.
+GitHub doit refléter Replit.
+La VM de production devra ensuite être adaptée pour reproduire correctement ce qui fonctionne dans Replit.
+Tu ne dois jamais raisonner comme si la VM était la référence.
+La référence ultime, c’est Replit.
+
+Je veux que tu agisses comme un architecte senior Laravel + Blade + Node.js + monetization web game, et que tu prépares une architecture publicitaire propre, évolutive et sûre pour StrategyBuzzer.
+
+OBJECTIF
+Je ne veux pas juste ajouter des pubs.
+Je veux construire sur Replit une base publicitaire propre, modulaire, désactivable et maintenable, qui pourra ensuite être synchronisée vers GitHub puis adaptée à la VM sans casser :
+- le gameplay
+- l’expérience utilisateur
+- l’économie du jeu
+- la conformité pub
+- la structure globale du projet
+
+CONTEXTE DU PROJET
+StrategyBuzzer est un jeu de quiz multijoueur avec :
+- Solo
+- Duo
+- Ligue
+- Maître du jeu
+
+Stack principale :
+- Laravel
+- Blade
+- Node.js
+- Socket.io
+- Redis
+- PostgreSQL
+- Firestore
+- Stripe
+- Gemini
+
+RÈGLE DE TRAVAIL CRITIQUE
+Toute proposition doit être pensée dans cet ordre :
+1. Replit
+2. GitHub
+3. VM de production
+
+Donc :
+- tu proposes d’abord une architecture propre pour Replit
+- tu identifies ensuite ce qui devra être synchronisé dans GitHub
+- tu signales enfin les adaptations éventuelles pour la VM
+
+RÈGLES IMPORTANTES
+- Ne casse jamais le gameplay.
+- Aucune pub dans les écrans de jeu actifs :
+  - question
+  - réponses
+  - buzzer
+  - chrono
+- Les pubs doivent être placées uniquement dans des zones sûres :
+  - menu
+  - lobby
+  - résultats
+  - éventuellement boutique
+- Toute récompense liée à une pub doit rester compatible avec l’économie ledger du jeu.
+- Ne jamais proposer une récompense pub qui rende le jeu pay-to-win ou watch-to-win.
+- Toujours prévoir une architecture modulaire et désactivable.
+- Toujours utiliser une configuration centralisée.
+- Toujours séparer la logique pub de la logique gameplay.
+
+CE QUE JE VEUX
+Analyse le projet Replit réel et propose une architecture future pour les pubs avec :
+
+1. Une configuration centralisée
+Je veux une proposition de fichier propre, par exemple :
+- config/ads.php
+ou une meilleure structure
+
+Cette config doit permettre de contrôler :
+- activation globale des pubs
+- activation selon environnement
+- provider pub
+- placements autorisés
+- placements interdits
+- types de pub par page
+- activation des rewarded ads
+- activation des bannières
+- activation des interstitiels
+- récompenses associées
+- limites par jour
+
+2. Une structure Blade propre
+Je veux que tu identifies dans Replit :
+- le layout principal
+- les pages où les pubs peuvent apparaître
+- les pages où elles sont interdites
+
+Je veux une recommandation claire pour :
+- bannière menu
+- bannière lobby
+- bannière résultats
+- zéro pub dans gameplay
+
+3. Une structure réutilisable
+Je veux éviter le code dupliqué.
+Propose une structure avec composants ou partials, par exemple :
+- resources/views/components/ad-banner.blade.php
+- resources/views/components/ad-reward.blade.php
+ou meilleure structure selon le projet réel
+
+4. Une logique backend propre pour les rewarded ads
+Je veux une structure sûre pour :
+- valider un reward
+- empêcher le double reward
+- passer par CoinLedgerService
+- limiter les récompenses par jour
+- tracer la récompense avec un reason canonique
+- empêcher la fraude simple côté client
+
+5. Une logique de sécurité
+Je veux que tu anticipes :
+- double clic
+- retry navigateur
+- double reward
+- appel direct à l’endpoint
+- inflation économique
+- abus via automation simple
+- récompense sans validation réelle
+
+6. Une logique compatible avec l’économie ledger
+Je veux que les rewarded ads soient compatibles avec :
+- CoinLedgerService
+- coin_ledger
+- reasons canoniques
+- futures contraintes d’idempotence
+
+7. Un plan de placement par page
+Je veux un tableau clair :
+- page
+- pub autorisée
+- pub interdite
+- justification UX
+- justification économique
+
+8. Une stratégie de récompense prudente
+Je veux une proposition chiffrée pour les rewarded ads :
+- combien de pièces max
+- quel type de pièce
+- fréquence maximale
+- limite par jour
+- pourquoi ce choix ne casse pas l’économie
+
+9. Une convention officielle de reason
+Je veux des reasons canoniques pour les pubs, par exemple :
+- ad_reward_intelligence
+- ad_reward_competence
+ou une convention plus propre si tu juges mieux
+
+10. Une checklist avant activation
+Je veux une checklist claire pour Replit, puis pour GitHub, puis pour la VM :
+- config
+- env vars
+- composants Blade
+- endpoint reward
+- sécurité
+- logs
+- analytics
+- limites économiques
+- pages autorisées/interdites
+- adaptations VM éventuelles
+
+IMPORTANT
+Ne me donne pas une réponse vague ou théorique.
+Je veux une réponse basée sur la vraie structure du projet dans Replit.
+
+Je ne veux pas que tu modifies tout de suite le code.
+Je veux d’abord :
+1. l’analyse
+2. l’architecture recommandée
+3. les fichiers à créer ou modifier dans Replit
+4. l’ordre de mise en place
+5. ce qui ira ensuite dans GitHub
+6. ce qui devra être adapté sur la VM
+
+FORMAT DE RÉPONSE ATTENDU
+1. Résumé exécutif
+2. Architecture recommandée sur Replit
+3. Fichiers à créer/modifier sur Replit
+4. Emplacements autorisés/interdits
+5. Sécurité et anti-abus
+6. Impact économique
+7. Convention de reason ledger
+8. Ce qui devra être sync vers GitHub
+9. Ce qui devra être adapté sur la VM
+10. Checklist avant activation
