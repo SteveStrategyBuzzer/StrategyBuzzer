@@ -51,7 +51,7 @@ class MaitreQuestsSeeder extends Seeder
                 'name' => 'Architecte de légendes',
                 'category' => 'Ultime',
                 'condition' => 'Organiser 1000 quiz en mode Maître du jeu',
-                'reward_coins' => 11000,
+                'reward_coins' => 5000,
                 'rarity' => 'Maître',
                 'badge_emoji' => '🎯',
                 'badge_description' => 'Cible absolue',
