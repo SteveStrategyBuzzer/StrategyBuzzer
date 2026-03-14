@@ -92,6 +92,15 @@ class DuoController extends Controller
         $match->lobby_code = $lobby['code'];
         $match->save();
 
+        // Quête quotidienne : inviter un joueur
+        try {
+            app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
+                $user, 'daily_invite_player', ['player_invited' => true]
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('DailyQuest player_invited (Duo) failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
             'match' => $match->load(['player1', 'player2']),

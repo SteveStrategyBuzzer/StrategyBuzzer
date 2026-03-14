@@ -121,6 +121,17 @@ class AvatarController extends Controller
             ];
         }
 
+        // Quête quotidienne : lire la description d'un avatar stratégique
+        if ($user) {
+            try {
+                app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
+                    $user, 'daily_read_avatar_desc', ['avatar_desc_read' => true]
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('DailyQuest avatar_desc_read failed: ' . $e->getMessage());
+            }
+        }
+
         // Vue avatars
         return view('avatars', [
             'coins'          => $coins,

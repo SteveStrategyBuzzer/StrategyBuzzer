@@ -536,6 +536,15 @@ class LeagueTeamController extends Controller
                 $playerIdentifier
             );
 
+            // Quête quotidienne : inviter un joueur
+            try {
+                app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
+                    $user, 'daily_invite_player', ['player_invited' => true]
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('DailyQuest player_invited (LeagueTeam) failed: ' . $e->getMessage());
+            }
+
             return response()->json([
                 'success' => true,
                 'invitation' => $invitation,

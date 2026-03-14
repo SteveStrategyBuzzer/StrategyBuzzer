@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 use App\Services\AvatarCatalog;
+use App\Services\DailyQuestService;
 
 class ProfileController extends Controller
 {
@@ -156,6 +157,10 @@ class ProfileController extends Controller
             unset($data['options']);
         }
         
+        // Capturer l'avatar actuel avant modification (pour détecter un changement)
+        $oldAvatarUrl  = data_get($this->buildSettings(), 'avatar.url');
+        $oldStratSlug  = data_get($this->buildSettings(), 'strategic_avatar.id');
+
         $settings = array_replace_recursive($this->buildSettings(), $data);
 
         try {
@@ -179,6 +184,29 @@ class ProfileController extends Controller
             $user->profile_completed = $hasAvatar && $hasPseudonym;
             
             $user->save();
+
+            // Quête quotidienne : changer d'avatar (condition : avoir joué au moins 1 match aujourd'hui)
+            $newAvatarUrl = data_get($settings, 'avatar.url');
+            $newStratSlug = data_get($settings, 'strategic_avatar.id');
+            $avatarChanged = ($newAvatarUrl !== $oldAvatarUrl) || ($newStratSlug !== $oldStratSlug);
+            if ($avatarChanged) {
+                try {
+                    $playedToday = \App\Models\DuoMatch::where(function ($q) use ($user) {
+                            $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id);
+                        })->where('status', 'completed')->whereDate('updated_at', today())->exists()
+                        || \App\Models\LeagueIndividualMatch::where(function ($q) use ($user) {
+                            $q->where('player1_id', $user->id)->orWhere('player2_id', $user->id);
+                        })->where('status', 'completed')->whereDate('updated_at', today())->exists();
+
+                    if ($playedToday) {
+                        app(DailyQuestService::class)->checkAndCompleteDailyQuest(
+                            $user, 'daily_change_avatar', ['avatar_changed' => true]
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('DailyQuest avatar_changed failed: ' . $e->getMessage());
+                }
+            }
             
             // Réponse AJAX si requête AJAX
             if ($request->ajax() || $request->wantsJson()) {

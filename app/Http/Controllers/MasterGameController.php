@@ -205,6 +205,15 @@ class MasterGameController extends Controller
             ]
         );
 
+        // Quête quotidienne : créer une question IA (via édition manuelle)
+        try {
+            app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
+                Auth::user(), 'daily_create_ai_question', ['ai_question_created' => true]
+            );
+        } catch (\Throwable $e) {
+            Log::warning('DailyQuest ai_question_created (saveQuestion) failed: ' . $e->getMessage());
+        }
+
         return redirect()->route('master.compose', $gameId)
             ->with('success', 'Question sauvegardée !');
     }
@@ -267,6 +276,15 @@ class MasterGameController extends Controller
             }
 
             $q = $data['question'];
+
+            // Quête quotidienne : créer/régénérer une question IA
+            try {
+                app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
+                    Auth::user(), 'daily_create_ai_question', ['ai_question_created' => true]
+                );
+            } catch (\Throwable $qe) {
+                Log::warning('DailyQuest ai_question_created (regenerate) failed: ' . $qe->getMessage());
+            }
 
             return response()->json([
                 'question_text' => $q['text'] ?? 'Question générée',
@@ -1790,6 +1808,18 @@ class MasterGameController extends Controller
             }
         }
         
+        // Quête quotidienne : inviter un joueur (une fois par action sendInvites si ≥1 invité)
+        if ($invitedCount > 0) {
+            try {
+                $host = Auth::user();
+                app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
+                    $host, 'daily_invite_player', ['player_invited' => true]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('DailyQuest player_invited (Master) failed: ' . $e->getMessage());
+            }
+        }
+
         return back()->with('success', __(':count joueurs ont été invités', ['count' => $invitedCount]));
     }
     
