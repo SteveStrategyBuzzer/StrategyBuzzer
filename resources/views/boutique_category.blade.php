@@ -964,8 +964,35 @@ audio { width: 100%; }
     @elseif($category === 'rewarded')
         <style>
         @@keyframes sb-coin-spin {
-            from { transform: rotateY(0deg); }
-            to   { transform: rotateY(360deg); }
+            0%   { transform: perspective(400px) rotateY(0deg); }
+            100% { transform: perspective(400px) rotateY(360deg); }
+        }
+        .sb-coin-wrap {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: sb-coin-spin 3s linear infinite;
+            flex-shrink: 0;
+        }
+        .sb-coin-wrap-comp {
+            box-shadow:
+                0 0 0 7px #b8860b,
+                0 0 0 9px rgba(255,200,50,0.25),
+                0 8px 28px rgba(0,0,0,0.55);
+        }
+        .sb-coin-wrap-intel {
+            box-shadow:
+                0 0 0 7px #5b21b6,
+                0 0 0 9px rgba(139,92,246,0.25),
+                0 8px 28px rgba(0,0,0,0.55);
+        }
+        .sb-coin-wrap img {
+            border-radius: 50%;
+            object-fit: contain;
         }
         </style>
         @php
@@ -1005,8 +1032,10 @@ audio { width: 100%; }
 
         <div class="grid cols-2" style="max-width:600px;margin:0 auto;">
             <div class="card" style="text-align:center;padding:28px 20px;">
-                <div style="height:130px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-                    <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:120px;height:120px;object-fit:contain;animation:sb-coin-spin 4s linear infinite;">
+                <div style="height:140px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+                    <div class="sb-coin-wrap sb-coin-wrap-comp">
+                        <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:116px;height:116px;">
+                    </div>
                 </div>
                 <div style="font-size:2rem;font-weight:900;color:#fbbf24;margin-bottom:4px;">+{{ $compReward }}</div>
                 <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __('Pièces de Compétence') }}</div>
@@ -1018,8 +1047,10 @@ audio { width: 100%; }
             </div>
 
             <div class="card" style="text-align:center;padding:28px 20px;">
-                <div style="height:130px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-                    <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:120px;height:120px;object-fit:contain;animation:sb-coin-spin 4s linear infinite;">
+                <div style="height:140px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+                    <div class="sb-coin-wrap sb-coin-wrap-intel">
+                        <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:150px;height:150px;">
+                    </div>
                 </div>
                 <div style="font-size:2rem;font-weight:900;color:#a78bfa;margin-bottom:4px;">+{{ $intelReward }}</div>
                 <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __("Pièces d'Intelligence") }}</div>

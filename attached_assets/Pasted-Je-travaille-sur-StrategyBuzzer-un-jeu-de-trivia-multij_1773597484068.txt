@@ -1,0 +1,194 @@
+Je travaille sur StrategyBuzzer, un jeu de trivia multijoueur en ligne.
+
+IMPORTANT :
+Replit est la source de vérité absolue du projet.
+Toute nouvelle logique de matchmaking, bots, invitations ou ligues doit être pensée d’abord pour Replit.
+GitHub devra refléter Replit ensuite.
+La VM sera adaptée après validation.
+
+Je veux que tu agisses comme un architecte senior Laravel + Node.js + Socket.io + game backend + matchmaking temps réel, et que tu analyses l’architecture actuelle du projet pour proposer une structure propre, scalable et maintenable pour le matchmaking multijoueur.
+
+OBJECTIF
+Je veux une logique multijoueur solide pour StrategyBuzzer qui :
+- privilégie toujours les vrais joueurs humains en ligne
+- utilise des bots seulement comme remplissage intelligent dans certains modes
+- ne casse pas l’économie ni l’équité
+- garde les parties rapides même avec une petite communauté
+- prépare la croissance future du jeu
+- permet aussi des affrontements programmés par invitation différée
+
+RÈGLES DE MATCHMAKING À RESPECTER
+
+1. Priorité absolue aux humains connectés
+Quand un joueur lance une recherche de partie :
+- chercher d’abord un joueur humain en ligne
+- ne pas injecter un bot immédiatement
+- attendre un délai raisonnable avant de combler
+
+2. Bots autorisés seulement dans :
+- Duo
+- Ligue individuelle
+
+3. Bots interdits dans :
+- Ligue équipe 5 joueurs
+- tout mode équipe réel à 5 joueurs
+- tout affrontement organisé d’équipe
+
+4. Les bots doivent servir uniquement à :
+- réduire les temps d’attente
+- garder une expérience fluide
+- soutenir le lancement initial du jeu
+
+5. Les bots ne doivent jamais :
+- polluer l’économie
+- avoir de wallet
+- avoir de pièces d’intelligence
+- avoir d’avatars stratégiques
+- créer de fausses récompenses premium
+- exister comme entités économiques réelles
+
+6. Les bots peuvent être présentés comme :
+- “Bot de [pseudo]”
+- “Simulation de [pseudo]”
+- ou autre formulation transparente
+mais le joueur ne doit pas croire qu’il s’agit d’un humain en direct
+
+LOGIQUE PAR MODE
+
+A. DUO
+- chercher un humain d’abord
+- si aucun humain dans le délai prévu, combler avec bot
+- le bot peut être basé sur un profil simulé d’un vrai joueur
+- le bot peut reprendre :
+  - vitesse moyenne de buzz
+  - taux de bonnes réponses
+  - style de jeu
+  - rythme de réaction
+- la récompense du joueur peut être ajustée selon la difficulté relative du bot simulé
+- le bot n’a jamais de wallet ni progression économique réelle
+
+B. LIGUE INDIVIDUELLE
+- même logique que Duo
+- priorité aux humains
+- bot possible en remplissage si délai dépassé
+- récompenses ajustées selon difficulté relative
+- bot sans wallet, sans avatar stratégique, sans économie réelle
+
+C. LIGUE ÉQUIPE 5 JOUEURS
+- aucun bot
+- aucun remplissage artificiel
+- aucune équipe fictive
+- seulement des équipes humaines
+- prévoir un système de saison weekend
+- prévoir des affrontements programmés
+- prévoir des invitations d’équipe
+
+LOGIQUE SAISON WEEKEND
+Je veux que la structure prépare des saisons d’équipe qui se déroulent surtout les weekends.
+
+Je veux que tu proposes une architecture pour :
+- créer une fenêtre de saison
+- ouvrir les matchs équipe pendant certaines périodes
+- permettre aux équipes de se déclarer disponibles
+- permettre des affrontements organisés et planifiés
+
+INVITATIONS DIFFÉRÉES / AFFRONTEMENTS PROGRAMMÉS
+Je veux un système permettant ce genre de logique :
+
+- équipe A défie équipe B
+- équipe B reçoit l’invitation
+- équipe B peut répondre :
+  - disponible maintenant
+  - disponible dans 30 min
+  - disponible dans 1h
+  - disponible ce soir
+  - refuser
+- le système doit pouvoir enregistrer un créneau proposé
+- le système doit pouvoir réserver ou confirmer un affrontement futur
+- le système doit pouvoir notifier les équipes au bon moment
+
+Exemple d’usage :
+“Équipe disponible dans 1h”
+
+Je veux que tu proposes la structure backend et temps réel pour supporter ça proprement.
+
+POINTS À ANALYSER
+Je veux que tu analyses le projet réel et que tu proposes une architecture pour :
+
+1. matchmaking humain prioritaire
+2. fallback bot contrôlé pour Duo
+3. fallback bot contrôlé pour Ligue individuelle
+4. aucun bot en équipe 5
+5. invitations différées entre équipes
+6. disponibilité programmée
+7. fenêtres de saison weekend
+8. stockage des états de matchmaking
+9. stockage des invitations et créneaux
+10. gestion des timeouts
+11. gestion des confirmations
+12. gestion temps réel avec Socket.io / Redis si pertinent
+13. compatibilité avec Laravel backend
+14. compatibilité avec PostgreSQL
+15. compatibilité avec Firestore si utile pour synchro
+16. protection contre les abus
+
+BOTS — CONTRAINTES
+Les bots doivent :
+- être des entités de gameplay uniquement
+- ne jamais être des entités économiques
+- ne jamais avoir de pièces
+- ne jamais avoir d’avatar stratégique
+- ne jamais gagner de récompenses
+- ne jamais écrire dans le ledger comme de vrais joueurs
+
+Je veux aussi que tu proposes si les récompenses du joueur humain contre bot simulé doivent être :
+- normales
+- réduites
+- ajustées selon difficulté relative
+et pourquoi
+
+SÉCURITÉ / ÉQUITÉ
+Je veux que tu vérifies les risques suivants :
+- farming de bots
+- exploitation matchmaking
+- recherche volontaire de bots faibles
+- ligue faussée
+- récompenses trop faciles
+- abuse d’invitations équipe
+- spam de créneaux
+- conflits de planification
+- timeouts non gérés
+
+STRUCTURE ATTENDUE
+Je ne veux pas que tu codes tout d’un coup.
+Je veux d’abord :
+1. analyser le projet réel
+2. me dire ce qui existe déjà
+3. me dire ce qui manque
+4. proposer l’architecture recommandée
+5. lister les fichiers/services à créer ou modifier
+6. proposer le flux logique par mode
+7. proposer la structure des invitations d’équipe
+8. proposer la logique de saison weekend
+9. proposer les protections anti-abus
+
+FORMAT DE RÉPONSE ATTENDU
+1. Résumé exécutif
+2. Architecture recommandée du matchmaking
+3. Logique par mode :
+   - Duo
+   - Ligue individuelle
+   - Ligue équipe 5 joueurs
+4. Logique des bots
+5. Logique des invitations différées
+6. Logique des saisons weekend
+7. Fichiers/services à créer ou modifier
+8. Risques d’exploitation à éviter
+9. Récompenses et équité
+10. Plan de mise en place progressif
+
+IMPORTANT FINAL
+Ne propose jamais de bots pour les équipes 5 joueurs.
+Privilégie toujours les humains.
+Les bots ne sont qu’un filet de sécurité pour Duo et Ligue individuelle.
+Le système doit être pensé pour grandir avec la communauté sans devoir être refait plus tard.
