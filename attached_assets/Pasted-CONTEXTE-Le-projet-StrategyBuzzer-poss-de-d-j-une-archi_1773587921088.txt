@@ -1,0 +1,181 @@
+CONTEXTE
+
+Le projet StrategyBuzzer possède déjà une architecture Laravel + Blade + Node + Socket + PostgreSQL + Stripe + Gemini.
+
+Une première logique publicitaire a déjà été pensée.  
+Je ne veux PAS que tu recrées tout le système.
+
+Je veux que tu agisses comme un **architecte senior backend + monétisation jeu web** et que tu effectues uniquement :
+
+• un audit
+• des correctifs
+• des compléments
+• des sécurisations
+• des validations
+
+IMPORTANT
+Ne réécris pas toute l’architecture si elle est déjà bonne.
+Corrige uniquement ce qui doit l’être.
+
+
+---------------------------------------------------
+
+OBJECTIF
+
+Vérifier que la logique publicitaire actuelle respecte ces règles :
+
+1. Le gameplay ne doit JAMAIS être perturbé
+2. Les pubs ne doivent jamais apparaître :
+   - près du bouton Buzz
+   - près des réponses
+   - sur le chrono
+   - dans une page avec timer actif
+   - dans une page où une décision rapide est requise
+3. Les pubs doivent être limitées à des zones sûres
+4. Les rewarded ads doivent être volontaires
+5. Les rewarded ads doivent être plafonnées
+6. Les rewarded ads doivent être sécurisées côté serveur
+7. Les rewarded ads doivent être compatibles avec le ledger économique
+8. L’achat **Maître du jeu** doit supprimer les pubs
+9. Le système doit être modulaire et désactivable
+10. Le système doit être sécurisé contre les abus
+
+
+---------------------------------------------------
+
+POINTS À VÉRIFIER DANS LE CODE ACTUEL
+
+Vérifie si les éléments suivants existent déjà dans le projet :
+
+1. Une configuration centralisée (ex: config/ads.php)
+2. Une séparation claire entre :
+   - logique pub
+   - logique gameplay
+3. Une bannière affichée uniquement en bas d’écran
+4. Un système rewarded ads volontaire
+5. Une limite quotidienne des rewarded ads
+6. Une validation serveur des récompenses pub
+7. Une protection contre double récompense
+8. Une traçabilité des récompenses
+9. Une logique de suppression des pubs pour les comptes premium
+10. Une compatibilité avec CoinLedgerService
+
+
+---------------------------------------------------
+
+REWARDED ADS — À VÉRIFIER
+
+Vérifie que :
+
+• le client ne peut pas s’auto-créditer
+• le serveur valide la récompense
+• chaque récompense possède un identifiant unique
+• une récompense ne peut pas être donnée deux fois
+• les récompenses sont plafonnées par jour
+
+
+Si ce n’est pas le cas, propose uniquement :
+
+• les correctifs nécessaires
+• la structure minimale à ajouter
+
+
+---------------------------------------------------
+
+SÉCURITÉ À VÉRIFIER
+
+Vérifie si le système protège contre :
+
+• double clic
+• refresh exploit
+• appel direct API
+• automation simple
+• farming de récompenses
+
+Si ce n’est pas sécurisé, propose :
+
+• les correctifs nécessaires
+• sans casser la structure existante
+
+
+---------------------------------------------------
+
+SUPPRESSION DES PUBS
+
+Vérifie si le système gère correctement :
+
+• suppression des pubs si achat **Maître du jeu**
+• bannière désactivée
+• rewarded ads désactivées
+• logique centralisée de vérification premium
+
+
+Si ce n’est pas le cas, propose le correctif minimal.
+
+
+---------------------------------------------------
+
+STRUCTURE BLADE
+
+Vérifie si les pubs sont :
+
+• dans un composant Blade
+• dans un layout
+• dans un partial propre
+
+Si elles sont copiées dans plusieurs vues, propose :
+
+• une centralisation propre
+
+
+---------------------------------------------------
+
+UX
+
+Vérifie que :
+
+• les pubs ne cassent pas le responsive
+• les pubs ne déplacent pas les boutons gameplay
+• les pubs ne créent pas de clic accidentel
+
+
+---------------------------------------------------
+
+RÉCOMPENSES PUB
+
+Vérifie que les rewarded ads :
+
+• ne cassent pas l’économie
+• ne remplacent pas la boutique
+• ne permettent pas de débloquer trop vite les avatars stratégiques
+
+
+Si les récompenses sont trop fortes, propose un ajustement.
+
+
+---------------------------------------------------
+
+FORMAT DE RÉPONSE ATTENDU
+
+1. Ce qui est déjà correct
+2. Ce qui doit être corrigé
+3. Ce qui manque
+4. Les risques détectés
+5. Les correctifs recommandés
+6. Les fichiers à modifier
+7. Les fichiers à créer (si nécessaire)
+8. Les modifications minimales recommandées
+
+
+IMPORTANT
+
+Je ne veux pas de refactor complet.
+
+Je veux uniquement :
+
+• vérification
+• sécurisation
+• corrections ciblées
+• améliorations légères
+
+Le gameplay de StrategyBuzzer est prioritaire et ne doit jamais être affecté.

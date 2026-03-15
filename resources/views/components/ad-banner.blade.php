@@ -33,5 +33,4 @@
             style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:16px;line-height:1;"
             aria-label="Fermer">✕</button>
 </div>
-<div style="height:60px;"></div>
 @endif

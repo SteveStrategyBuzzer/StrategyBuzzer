@@ -7,6 +7,13 @@
     @php
         $sbCurrency = \App\Support\Currency::fromSession(request()->session());
         $sbCurrencySymbol = \App\Support\Currency::symbol($sbCurrency);
+
+        $sbUser = auth()->user();
+        $sbAdsEnabled = config('ads.enabled', false)
+            && config('ads.banner.enabled', false)
+            && !($sbUser?->master_purchased ?? false);
+        $sbCurrentRoute = request()->route()?->getName() ?? '';
+        $sbBannerActive = $sbAdsEnabled && in_array($sbCurrentRoute, config('ads.allowed_banner_routes', []));
     @endphp
     <script>
       window.SB_CURRENCY = @json($sbCurrency);
@@ -22,7 +29,7 @@
 </head>
 <body>
 
-    <main class="container">
+    <main class="container" @if($sbBannerActive) style="padding-bottom:68px;" @endif>
         @yield('content')
     </main>
 
