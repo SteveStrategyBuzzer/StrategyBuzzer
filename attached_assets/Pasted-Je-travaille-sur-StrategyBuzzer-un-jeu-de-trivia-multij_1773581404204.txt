@@ -1,0 +1,247 @@
+Je travaille sur StrategyBuzzer, un jeu de trivia multijoueur en ligne.
+
+IMPORTANT :
+Replit est la source de vérité absolue du projet.
+Toute nouvelle structure, configuration ou logique pub doit être pensée d’abord pour Replit.
+GitHub doit ensuite refléter Replit.
+La VM devra ensuite s’adapter à ce qui est validé dans Replit.
+
+Je veux que tu agisses comme un architecte senior Laravel + Blade + monetization web game + UX gameplay, et que tu m’aides à préparer une architecture publicitaire propre, modulaire, sécurisée et future-proof pour StrategyBuzzer.
+
+OBJECTIF
+Je veux intégrer une logique de pubs qui :
+- ne casse jamais le gameplay
+- ne gêne jamais le buzzer ni les réponses
+- reste propre visuellement
+- soit monétisable intelligemment
+- permette aussi une suppression des pubs via achat premium
+- s’intègre à la boutique du jeu
+- reste compatible avec l’économie du projet
+
+CONTEXTE DU JEU
+StrategyBuzzer est un jeu avec :
+- Solo
+- Duo
+- Ligue
+- Maître du jeu
+
+Le jeu inclut :
+- avatars stratégiques
+- pièces d’intelligence
+- pièces de compétence
+- vies
+- packs de vies
+- boutique
+- thèmes visuels
+- sons
+- buzzers
+- quêtes
+- progression joueur
+
+STACK
+- Laravel
+- Blade
+- Node.js
+- Socket.io
+- Redis
+- PostgreSQL
+- Firestore
+- Stripe
+- Gemini
+
+RÈGLES CRITIQUES À RESPECTER
+1. Ne jamais afficher de pub dans une zone qui nuit au gameplay.
+2. Aucune pub ne doit apparaître :
+   - près du bouton Buzz
+   - près des réponses
+   - sur le chrono
+   - sur une zone cliquable de jeu
+   - au centre pendant une manche
+3. Les pubs doivent être limitées à des zones sûres.
+4. La bannière pub doit être en bas de l’écran uniquement, dans les pages autorisées.
+5. Les pubs ne doivent jamais rendre le jeu frustrant.
+6. Les rewarded ads ne doivent jamais rendre le jeu pay-to-win.
+7. Toute récompense pub doit être faible, contrôlée, plafonnée, traçable.
+8. Il doit exister une option premium pour supprimer les pubs.
+9. Le pack “Maître du jeu” doit supprimer les pubs.
+10. Toute logique pub doit être séparée du gameplay.
+11. Toute logique d’économie doit rester compatible avec CoinLedgerService et la structure future du ledger.
+
+LOGIQUE PUB VOULUE
+Je veux la structure suivante :
+
+A. BANNIÈRES
+- bannière en bas de l’écran uniquement
+- jamais en haut
+- jamais au milieu
+- jamais flottante sur les éléments de jeu
+- jamais dans le gameplay actif
+
+B. PAGES AUTORISÉES POUR LES BANNIÈRES
+- menu principal
+- lobby / attente
+- écran résultats
+- boutique
+- éventuellement profil
+
+C. PAGES INTERDITES POUR LES PUBS
+- gameplay solo
+- réponses solo
+- gameplay duo
+- réponses duo
+- toute page où le joueur doit buzzer ou répondre vite
+- toute page avec chrono actif
+
+D. REWARDED ADS
+Je veux une logique optionnelle :
+- voir une pub volontairement
+- recevoir une petite récompense contrôlée
+
+Exemples acceptables :
+- petite quantité de pièces d’intelligence
+- petite quantité de pièces de compétence
+- 1 petite relance limitée
+- 1 petite aide non compétitive
+
+Exemples non acceptables :
+- grosse récompense cassant l’économie
+- bonus garantissant une victoire
+- avantage trop fort en Duo ou Ligue
+- logique pay-to-win ou watch-to-win
+
+E. SUPPRESSION DES PUBS
+Je veux que l’achat du mode “Maître du jeu” supprime les pubs.
+Cette suppression doit être :
+- globale
+- propre
+- facile à vérifier dans le code
+- future-proof
+
+Je veux que la boutique puisse aussi afficher clairement :
+- pubs actives
+- sans pub inclus avec Maître du jeu
+- éventuellement une option “supprimer les pubs” séparée plus tard si souhaité
+
+F. BOUTIQUE
+Je veux que la logique pub soit intégrée proprement à la boutique :
+- affichage du statut pub
+- affichage du bonus “sans pub”
+- cohérence avec les packs et achats premium
+- pas de code bricolé dans tous les fichiers
+
+CE QUE JE VEUX DE TOI
+Analyse le vrai projet Replit et propose une architecture propre avec :
+
+1. CONFIG CENTRALISÉE
+Je veux un fichier de config pub clair, par exemple :
+- config/ads.php
+ou meilleure proposition
+
+Je veux y contrôler :
+- activation globale des pubs
+- activation par environnement
+- type de provider
+- bannières activées oui/non
+- rewarded ads activées oui/non
+- interstitial activées oui/non
+- pages autorisées
+- pages interdites
+- récompenses rewarded
+- plafonds par jour
+- suppression pub si achat premium
+- compatibilité avec achat Maître du jeu
+
+2. STRUCTURE BLADE PROPRE
+Je veux que tu identifies :
+- le layout principal
+- les vues où mettre une bannière bas d’écran
+- les vues où la pub est interdite
+
+Je veux une intégration propre, par composant ou partial, par exemple :
+- resources/views/components/ad-banner.blade.php
+- resources/views/components/ad-reward.blade.php
+ou meilleure structure selon le projet réel
+
+3. LOGIQUE BACKEND
+Je veux une structure backend propre pour :
+- savoir si un joueur doit voir des pubs
+- savoir si un joueur possède Maître du jeu
+- désactiver automatiquement les pubs si Maître du jeu est acheté
+- enregistrer proprement les rewarded ads
+- éviter le double reward
+- limiter les pubs reward par jour
+- préparer la traçabilité économique
+
+4. LOGIQUE ÉCONOMIQUE
+Je veux une proposition prudente de récompenses pub.
+Je veux que tu tiennes compte de :
+- boutique
+- pièces d’intelligence
+- pièces de compétence
+- vies
+- avatars stratégiques
+- équilibre du jeu
+
+Je veux une proposition de récompense faible et saine.
+
+5. MONÉTISATION
+Je veux que tu m’expliques comment intégrer la pub dans le modèle économique global :
+- pub bannière
+- rewarded ads
+- suppression des pubs avec Maître du jeu
+- cohérence avec la boutique
+- cohérence avec les autres achats
+
+6. SÉCURITÉ ET UX
+Je veux que tu vérifies :
+- qu’aucune pub ne gêne le gameplay
+- qu’aucune pub ne pousse au clic accidentel
+- que la bannière du bas reste propre sur mobile
+- que l’interface reste responsive
+- que la pub ne casse pas la lisibilité
+- que le système est désactivable facilement
+
+7. PLAN PAR PAGE
+Je veux un tableau clair :
+- page
+- bannière autorisée ou non
+- rewarded autorisée ou non
+- justification UX
+- justification économique
+
+8. PACK MAÎTRE DU JEU
+Je veux que tu tiennes compte de cette logique :
+- le pack Maître du jeu supprime les pubs
+- il est premium
+- il doit apparaître comme une vraie valeur dans la boutique
+- l’architecture doit être prête pour ça
+
+IMPORTANT
+Je ne veux pas que tu modifies immédiatement tous les fichiers.
+Je veux d’abord :
+1. analyse du projet réel sur Replit
+2. architecture recommandée
+3. fichiers à créer ou modifier
+4. logique de config
+5. logique UX
+6. logique économique
+7. logique boutique
+8. plan d’implantation étape par étape
+
+FORMAT DE RÉPONSE ATTENDU
+1. Résumé exécutif
+2. Architecture pub recommandée
+3. Fichiers à créer/modifier
+4. Pages autorisées/interdites
+5. Logique rewarded ads
+6. Logique suppression pubs avec Maître du jeu
+7. Intégration boutique
+8. Risques UX / gameplay à éviter
+9. Risques économiques à éviter
+10. Plan de mise en place progressif
+
+IMPORTANT FINAL
+Ne fais aucune proposition qui place une pub dans une zone de gameplay actif.
+Le gameplay doit rester sacré.
+La bannière doit être uniquement en bas des écrans autorisés.
+La suppression des pubs avec l’achat Maître du jeu doit être prévue proprement dès l’architecture.
