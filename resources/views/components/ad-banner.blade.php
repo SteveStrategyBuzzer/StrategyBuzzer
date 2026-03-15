@@ -29,8 +29,27 @@
     <div style="color:rgba(255,255,255,0.3);font-size:11px;letter-spacing:1px;">
         {{ __('Publicité') }}
     </div>
-    <button onclick="document.getElementById('sb-ad-banner').style.display='none'"
+    {{-- X dismiss: per-visit only, no localStorage/sessionStorage — banner reappears on every navigation --}}
+    <button id="sb-ad-banner-close"
             style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:16px;line-height:1;"
-            aria-label="Fermer">✕</button>
+            aria-label="{{ __('Fermer') }}">✕</button>
 </div>
+
+<script>
+(function() {
+    var banner = document.getElementById('sb-ad-banner');
+    var closeBtn = document.getElementById('sb-ad-banner-close');
+    if (!banner || !closeBtn) return;
+
+    closeBtn.addEventListener('click', function() {
+        banner.style.display = 'none';
+    });
+
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted && banner) {
+            banner.style.display = 'flex';
+        }
+    });
+})();
+</script>
 @endif
