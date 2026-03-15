@@ -13,17 +13,20 @@ class LeagueTeamService
     private BuzzManagerService $buzzManagerService;
     private DivisionService $divisionService;
     private QuestionService $questionService;
+    private CoinLedgerService $coinLedgerService;
 
     public function __construct(
         GameStateService $gameStateService,
         BuzzManagerService $buzzManagerService,
         DivisionService $divisionService,
-        QuestionService $questionService
+        QuestionService $questionService,
+        CoinLedgerService $coinLedgerService
     ) {
         $this->gameStateService = $gameStateService;
         $this->buzzManagerService = $buzzManagerService;
         $this->divisionService = $divisionService;
         $this->questionService = $questionService;
+        $this->coinLedgerService = $coinLedgerService;
     }
 
     public function initializeTeamMatch(Team $team, string $gameMode = 'classique', array $options = []): LeagueTeamMatch
@@ -40,9 +43,16 @@ class LeagueTeamService
         if ($opponent->teamMembers()->count() < 5) {
             throw new \Exception('L\'équipe adverse n\'a pas assez de joueurs.');
         }
-        
+
         $matchDivision = $options['match_division'] ?? strtolower($team->division ?? 'bronze');
-        $divisionIndexes = ['bronze' => 0, 'argent' => 1, 'silver' => 1, 'or' => 2, 'gold' => 2, 'platine' => 3, 'platinum' => 3, 'diamant' => 4, 'diamond' => 4];
+        $divisionIndexes = [
+            'bronze' => 0,
+            'argent' => 1, 'silver' => 1,
+            'or' => 2, 'gold' => 2,
+            'platine' => 3, 'platinum' => 3,
+            'diamant' => 4, 'diamond' => 4
+        ];
+
         $team1Level = $divisionIndexes[strtolower($team->division ?? 'bronze')] ?? 0;
         $team2Level = $divisionIndexes[strtolower($opponent->division ?? 'bronze')] ?? 0;
 
@@ -62,10 +72,10 @@ class LeagueTeamService
         $gameState = $this->gameStateService->initializeGame($allPlayers, 'league_team');
         $gameState['game_mode'] = $gameMode;
         $gameState['skills_free_for_all'] = ($gameMode === 'classique');
-        
+
         $duelPairings = null;
         $playerOrder = null;
-        
+
         if ($gameMode === 'bataille') {
             $duelPairings = $options['duel_pairings'] ?? $this->createDuelPairings($team1Members, $team2Members);
             $gameState['duel_pairings'] = $duelPairings;
@@ -77,7 +87,7 @@ class LeagueTeamService
                 'current_question' => 0,
             ], $duelPairings);
         }
-        
+
         $relayIndices = null;
         if ($gameMode === 'relais') {
             $playerOrder = [
@@ -105,15 +115,15 @@ class LeagueTeamService
             'game_state' => $gameState,
         ]);
     }
-    
+
     private function createDuelPairings($team1Members, $team2Members): array
     {
         $team1Sorted = $team1Members->sortByDesc(fn($u) => $u->duoStats?->level ?? 1)->values();
         $team2Sorted = $team2Members->sortByDesc(fn($u) => $u->duoStats?->level ?? 1)->values();
-        
+
         $pairings = [];
         $minCount = min($team1Sorted->count(), $team2Sorted->count());
-        
+
         for ($i = 0; $i < $minCount; $i++) {
             $p1 = $team1Sorted[$i];
             $p2 = $team2Sorted[$i];
@@ -131,66 +141,72 @@ class LeagueTeamService
                 ],
             ];
         }
-        
+
         return $pairings;
     }
-    
+
     public function canPlayerUseSkill(LeagueTeamMatch $match, int $userId): bool
     {
         $gameMode = $match->game_mode;
-        
+
         if ($gameMode === 'classique') {
             return true;
         }
-        
+
         if ($gameMode === 'bataille') {
             return true;
         }
-        
+
         if ($gameMode === 'relais') {
             $gameState = $match->game_state;
             $activePlayer = $gameState['active_player'] ?? [];
             return in_array($userId, $activePlayer);
         }
-        
+
         return false;
     }
-    
+
     public function advanceRelayPlayer(LeagueTeamMatch $match, int $teamIndex): void
     {
-        if ($match->game_mode !== 'relais') return;
-        
+        if ($match->game_mode !== 'relais') {
+            return;
+        }
+
         $gameState = $match->game_state;
         $relayIndices = $match->relay_indices ?? ['team1' => 0, 'team2' => 0];
         $teamKey = "team{$teamIndex}";
         $currentIndex = $relayIndices[$teamKey] ?? 0;
         $playerOrder = $match->player_order[$teamKey] ?? [];
-        
-        if (empty($playerOrder)) return;
-        
+
+        if (empty($playerOrder)) {
+            return;
+        }
+
         $nextIndex = ($currentIndex + 1) % count($playerOrder);
         $relayIndices[$teamKey] = $nextIndex;
-        
+
         $gameState['active_player'][$teamKey] = $playerOrder[$nextIndex] ?? null;
-        
+
         $match->update([
             'game_state' => $gameState,
             'relay_indices' => $relayIndices,
         ]);
     }
-    
+
     public function getDuelForPlayer(LeagueTeamMatch $match, int $userId): ?array
     {
-        if ($match->game_mode !== 'bataille') return null;
-        
+        if ($match->game_mode !== 'bataille') {
+            return null;
+        }
+
         $pairings = $match->duel_pairings ?? [];
-        
+
         foreach ($pairings as $duel) {
             if (($duel['player1']['id'] ?? 0) === $userId || ($duel['player2']['id'] ?? 0) === $userId) {
                 return $duel;
             }
         }
-        
+
         return null;
     }
 
@@ -215,7 +231,7 @@ class LeagueTeamService
 
         $theme = $this->selectTheme($match);
         $difficulty = $this->calculateDifficulty($match);
-        
+
         $question = $this->questionService->getQuestion($theme, $difficulty);
 
         $gameState['questions'][$currentRound][$currentQuestion] = [
@@ -246,7 +262,7 @@ class LeagueTeamService
     private function calculateDifficulty(LeagueTeamMatch $match): int
     {
         $avgLevel = ($match->team1_level + $match->team2_level) / 2;
-        
+
         if ($avgLevel <= 10) return 1;
         if ($avgLevel <= 30) return 2;
         if ($avgLevel <= 60) return 3;
@@ -256,7 +272,7 @@ class LeagueTeamService
     public function processBuzz(LeagueTeamMatch $match, User $user, float $buzzTime): array
     {
         $gameState = $match->game_state;
-        
+
         $result = $this->buzzManagerService->registerBuzz(
             $gameState,
             $user->id,
@@ -323,17 +339,17 @@ class LeagueTeamService
         $team2Points = 0;
 
         $matchDivision = $match->match_division ?? 'bronze';
-        
+
         if ($team1Score > $team2Score) {
             $winnerTeamId = $match->team1_id;
             $team1Points = $this->calculatePointsEarned($match->team1_level, $match->team2_level, true);
             $team2Points = -3;
-            $this->awardCoinsToTeam($match->team1_id, $matchDivision);
+            $this->awardCoinsToTeam($match->team1_id, $matchDivision, $match->id);
         } elseif ($team2Score > $team1Score) {
             $winnerTeamId = $match->team2_id;
             $team2Points = $this->calculatePointsEarned($match->team2_level, $match->team1_level, true);
             $team1Points = -3;
-            $this->awardCoinsToTeam($match->team2_id, $matchDivision);
+            $this->awardCoinsToTeam($match->team2_id, $matchDivision, $match->id);
         }
 
         $match->update([
@@ -349,21 +365,25 @@ class LeagueTeamService
 
     private function calculatePointsEarned(int $myLevel, int $opponentLevel, bool $won): int
     {
-        if (!$won) return -3;
+        if (!$won) {
+            return -3;
+        }
 
         $levelDiff = $opponentLevel - $myLevel;
-        
+
         if ($levelDiff >= 2) return 20;
         if ($levelDiff === 1) return 15;
         if ($levelDiff === 0) return 10;
         if ($levelDiff === -1) return 5;
         return 3;
     }
-    
+
     public function calculateCoinsEarned(string $matchDivision, bool $won): int
     {
-        if (!$won) return 0;
-        
+        if (!$won) {
+            return 0;
+        }
+
         $divisionCoins = [
             'bronze' => 10,
             'argent' => 20, 'silver' => 20,
@@ -371,48 +391,77 @@ class LeagueTeamService
             'platine' => 80, 'platinum' => 80,
             'diamant' => 160, 'diamond' => 160,
         ];
-        
+
         return $divisionCoins[strtolower($matchDivision)] ?? 10;
     }
-    
-    private function awardCoinsToTeam(int $teamId, string $matchDivision): void
+
+    private function awardCoinsToTeam(int $teamId, string $matchDivision, ?int $matchId = null): void
     {
         $coinsEarned = $this->calculateCoinsEarned($matchDivision, true);
         $team = Team::with('members')->find($teamId);
-        
-        if ($team) {
-            foreach ($team->members as $member) {
-                $member->increment('competence_coins', $coinsEarned);
-            }
+
+        if (!$team || $coinsEarned <= 0) {
+            return;
+        }
+
+        foreach ($team->members as $member) {
+            $this->coinLedgerService->credit(
+                $member,
+                $coinsEarned,
+                'league_team_reward',
+                'league_team_match',
+                $matchId,
+                'competence'
+            );
         }
     }
-    
+
     public function deductAccessCost(User $user, string $targetDivision, string $teamDivision): bool
     {
-        $divisions = ['bronze' => 0, 'argent' => 1, 'silver' => 1, 'or' => 2, 'gold' => 2, 'platine' => 3, 'platinum' => 3, 'diamant' => 4, 'diamond' => 4];
-        $divisionCoins = ['bronze' => 10, 'argent' => 20, 'silver' => 20, 'or' => 40, 'gold' => 40, 'platine' => 80, 'platinum' => 80, 'diamant' => 160, 'diamond' => 160];
-        
+        $divisions = [
+            'bronze' => 0,
+            'argent' => 1, 'silver' => 1,
+            'or' => 2, 'gold' => 2,
+            'platine' => 3, 'platinum' => 3,
+            'diamant' => 4, 'diamond' => 4
+        ];
+
+        $divisionCoins = [
+            'bronze' => 10,
+            'argent' => 20, 'silver' => 20,
+            'or' => 40, 'gold' => 40,
+            'platine' => 80, 'platinum' => 80,
+            'diamant' => 160, 'diamond' => 160
+        ];
+
         $teamIndex = $divisions[strtolower($teamDivision)] ?? 0;
         $targetIndex = $divisions[strtolower($targetDivision)] ?? 0;
-        
+
         if ($targetIndex <= $teamIndex) {
             return true;
         }
-        
+
         $accessCost = ($divisionCoins[strtolower($targetDivision)] ?? 10) * 2;
-        
-        if ($user->competence_coins >= $accessCost) {
-            $user->decrement('competence_coins', $accessCost);
+
+        try {
+            $this->coinLedgerService->debit(
+                $user,
+                $accessCost,
+                'league_team_temp_access',
+                'league_team_division',
+                null,
+                'competence'
+            );
             return true;
+        } catch (\Throwable $e) {
+            return false;
         }
-        
-        return false;
     }
 
     private function updateTeamStats(int $teamId, bool $won, int $pointsEarned): void
     {
         $team = Team::find($teamId);
-        
+
         $newPoints = max(0, $team->points + $pointsEarned);
         $newDivision = $this->divisionService->getDivisionFromPoints($newPoints);
 
@@ -436,7 +485,7 @@ class LeagueTeamService
                 return [
                     'rank' => $index + 1,
                     'team' => $team,
-                    'win_rate' => $team->matches_played > 0 
+                    'win_rate' => $team->matches_played > 0
                         ? round(($team->matches_won / $team->matches_played) * 100, 1)
                         : 0,
                 ];

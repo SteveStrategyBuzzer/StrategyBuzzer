@@ -7,12 +7,14 @@ use App\Models\LeagueIndividualStat;
 use App\Models\LeagueIndividualMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\PlayerDivision;
+use Illuminate\Support\Facades\DB;
 
 class LeagueIndividualService
 {
     public function __construct(
         private DivisionService $divisionService,
         private GameStateService $gameStateService,
+        private CoinLedgerService $coinLedgerService,
         private SeasonService $seasonService
     ) {}
 
@@ -58,7 +60,7 @@ class LeagueIndividualService
     public function findRandomOpponent(User $user): ?User
     {
         $userDivision = $this->divisionService->getOrCreateDivision($user, 'league_individual');
-        
+
         return User::whereHas('playerDivisions', function ($query) use ($userDivision, $user) {
             $query->where('mode', 'league_individual')
                   ->where('division', $userDivision->division)
@@ -106,154 +108,180 @@ class LeagueIndividualService
      */
     public function finishMatch(LeagueIndividualMatch $match, array $matchResult): void
     {
-        $player1 = $match->player1;
-        $player2 = $match->player2;
+        DB::transaction(function () use ($match, $matchResult) {
+            $match->refresh();
 
-        $player1Won = $matchResult['player_won'] ?? false;
-        $winnerId = $player1Won ? $player1->id : $player2->id;
+            if ($match->status === 'finished') {
+                throw new \RuntimeException('MATCH_ALREADY_FINISHED');
+            }
 
-        $div1 = $this->divisionService->getOrCreateDivision($player1, 'league_individual');
-        $div2 = $this->divisionService->getOrCreateDivision($player2, 'league_individual');
+            $player1 = $match->player1()->lockForUpdate()->first();
+            $player2 = $match->player2()->lockForUpdate()->first();
 
-        $p1IsTemp = $this->divisionService->hasActiveTemporaryAccess($player1, $div1->division);
-        $p2IsTemp = $this->divisionService->hasActiveTemporaryAccess($player2, $div2->division);
+            $player1Won = $matchResult['player_won'] ?? false;
+            $winnerId = $player1Won ? $player1->id : $player2->id;
 
-        $p1Strength = $this->divisionService->determineOpponentStrength(
-            $div1->division,
-            $div2->division,
-            $div1->initial_efficiency ?? 0,
-            $div2->initial_efficiency ?? 0,
-            $p1IsTemp
-        );
+            $div1 = $this->divisionService->getOrCreateDivision($player1, 'league_individual');
+            $div2 = $this->divisionService->getOrCreateDivision($player2, 'league_individual');
 
-        $p2Strength = $this->divisionService->determineOpponentStrength(
-            $div2->division,
-            $div1->division,
-            $div2->initial_efficiency ?? 0,
-            $div1->initial_efficiency ?? 0,
-            $p2IsTemp
-        );
+            $p1IsTemp = $this->divisionService->hasActiveTemporaryAccess($player1, $div1->division);
+            $p2IsTemp = $this->divisionService->hasActiveTemporaryAccess($player2, $div2->division);
 
-        $player1PointsEarned = $this->divisionService->calculatePoints($p1Strength, $player1Won);
-        $player2PointsEarned = $this->divisionService->calculatePoints($p2Strength, !$player1Won);
+            $p1Strength = $this->divisionService->determineOpponentStrength(
+                $div1->division,
+                $div2->division,
+                $div1->initial_efficiency ?? 0,
+                $div2->initial_efficiency ?? 0,
+                $p1IsTemp
+            );
 
-        $p1CoinReward = $this->divisionService->calculateVictoryReward(
-            $div1->division,
-            $p1Strength,
-            $player1Won,
-            $p1IsTemp
-        );
+            $p2Strength = $this->divisionService->determineOpponentStrength(
+                $div2->division,
+                $div1->division,
+                $div2->initial_efficiency ?? 0,
+                $div1->initial_efficiency ?? 0,
+                $p2IsTemp
+            );
 
-        $p2CoinReward = $this->divisionService->calculateVictoryReward(
-            $div2->division,
-            $p2Strength,
-            !$player1Won,
-            $p2IsTemp
-        );
+            $player1PointsEarned = $this->divisionService->calculatePoints($p1Strength, $player1Won);
+            $player2PointsEarned = $this->divisionService->calculatePoints($p2Strength, !$player1Won);
 
-        $match->update([
-            'status' => 'finished',
-            'winner_id' => $winnerId,
-            'player1_points_earned' => $player1PointsEarned,
-            'player2_points_earned' => $player2PointsEarned,
-            'player1_coins_earned' => $p1CoinReward['coins'],
-            'player2_coins_earned' => $p2CoinReward['coins'],
-        ]);
+            $p1CoinReward = $this->divisionService->calculateVictoryReward(
+                $div1->division,
+                $p1Strength,
+                $player1Won,
+                $p1IsTemp
+            );
 
-        $this->updatePlayerStats($player1, $player1Won, $player1PointsEarned, $match->player1_level, $p1CoinReward['coins']);
-        $this->updatePlayerStats($player2, !$player1Won, $player2PointsEarned, $match->player2_level, $p2CoinReward['coins']);
+            $p2CoinReward = $this->divisionService->calculateVictoryReward(
+                $div2->division,
+                $p2Strength,
+                !$player1Won,
+                $p2IsTemp
+            );
 
-        // Quêtes fin de match Ligue Individuelle (contexte réel depuis game_state)
-        $gameState    = is_array($match->game_state) ? $match->game_state : (json_decode($match->game_state ?? '{}', true) ?? []);
-        $theme        = $gameState['theme'] ?? $gameState['currentTheme'] ?? 'Général';
-        $totalQ       = (int) ($gameState['nb_questions'] ?? $gameState['total_questions'] ?? 10);
-        $questService = app(\App\Services\QuestService::class);
-        $matchHour    = (int) \Carbon\Carbon::now()->format('G');
+            $match->update([
+                'status' => 'finished',
+                'winner_id' => $winnerId,
+                'player1_points_earned' => $player1PointsEarned,
+                'player2_points_earned' => $player2PointsEarned,
+                'player1_coins_earned' => $p1CoinReward['coins'],
+                'player2_coins_earned' => $p2CoinReward['coins'],
+            ]);
 
-        // Scores réels de la partie (player_stats_map ou total_scores de matchResult)
-        $totalScores = $matchResult['total_scores'] ?? [];
-        $p1GameScore = (int) ($totalScores[$player1->id] ?? $matchResult['player_total_score'] ?? 0);
-        $p2GameScore = (int) ($totalScores[$player2->id] ?? $matchResult['opponent_total_score'] ?? 0);
+            $this->updatePlayerStats(
+                $player1,
+                $match,
+                $player1Won,
+                $player1PointsEarned,
+                $match->player1_level,
+                (int) $p1CoinReward['coins']
+            );
 
-        $globalStats    = $gameState['global_stats'] ?? [];
-        $hadTimeout     = (int) ($globalStats['totalUnanswered'] ?? 0) > 0;
+            $this->updatePlayerStats(
+                $player2,
+                $match,
+                !$player1Won,
+                $player2PointsEarned,
+                $match->player2_level,
+                (int) $p2CoinReward['coins']
+            );
 
-        $div1 = $this->divisionService->getOrCreateDivision($player1, 'league_individual');
-        $div2 = $this->divisionService->getOrCreateDivision($player2, 'league_individual');
+            // Quêtes fin de match Ligue Individuelle (contexte réel depuis game_state)
+            $gameState    = is_array($match->game_state) ? $match->game_state : (json_decode($match->game_state ?? '{}', true) ?? []);
+            $theme        = $gameState['theme'] ?? $gameState['currentTheme'] ?? 'Général';
+            $totalQ       = (int) ($gameState['nb_questions'] ?? $gameState['total_questions'] ?? 10);
+            $questService = app(\App\Services\QuestService::class);
+            $matchHour    = (int) \Carbon\Carbon::now()->format('G');
 
-        $p1Correct = (int) ($matchResult['player1_correct'] ?? 0);
-        $p2Correct = (int) ($matchResult['player2_correct'] ?? 0);
+            // Scores réels de la partie (player_stats_map ou total_scores de matchResult)
+            $totalScores = $matchResult['total_scores'] ?? [];
+            $p1GameScore = (int) ($totalScores[$player1->id] ?? $matchResult['player_total_score'] ?? 0);
+            $p2GameScore = (int) ($totalScores[$player2->id] ?? $matchResult['opponent_total_score'] ?? 0);
 
-        $questService->fireMatchEndQuests($player1, 'league_individual', [
-            'match_completed' => true,
-            'won'             => $player1Won,
-            'total_questions' => $totalQ,
-            'user_correct'    => $p1Correct,
-            'player_score'    => $p1GameScore,
-            'opponent_score'  => $p2GameScore,
-            'theme'           => $theme,
-            'skills_used'     => (int) ($matchResult['player1_skills_used'] ?? 0),
-            'lives_remaining' => 3,
-            'had_timeout'     => $hadTimeout,
-            'boss_defeated'   => false,
-            'match_hour'      => $matchHour,
-            'division'        => strtolower($div1->division ?? 'bronze'),
-            'user_level'      => $match->player1_level ?? 0,
-            'user_coins'      => $player1->competence_coins ?? 0,
-            'action_done'     => true,
-        ]);
+            $globalStats    = $gameState['global_stats'] ?? [];
+            $hadTimeout     = (int) ($globalStats['totalUnanswered'] ?? 0) > 0;
 
-        $questService->fireMatchEndQuests($player2, 'league_individual', [
-            'match_completed' => true,
-            'won'             => !$player1Won,
-            'total_questions' => $totalQ,
-            'user_correct'    => $p2Correct,
-            'player_score'    => $p2GameScore,
-            'opponent_score'  => $p1GameScore,
-            'theme'           => $theme,
-            'skills_used'     => (int) ($matchResult['player2_skills_used'] ?? 0),
-            'lives_remaining' => 3,
-            'had_timeout'     => $hadTimeout,
-            'boss_defeated'   => false,
-            'match_hour'      => $matchHour,
-            'division'        => strtolower($div2->division ?? 'bronze'),
-            'user_level'      => $match->player2_level ?? 0,
-            'user_coins'      => $player2->competence_coins ?? 0,
-            'action_done'     => true,
-        ]);
+            $p1Correct = (int) ($matchResult['player1_correct'] ?? 0);
+            $p2Correct = (int) ($matchResult['player2_correct'] ?? 0);
 
-        // Quêtes quotidiennes — fin de match Ligue Individuelle
-        try {
-            $dailyQuestService = app(\App\Services\DailyQuestService::class);
-            $dailyMatchCtx = [
+            $questService->fireMatchEndQuests($player1, 'league_individual', [
                 'match_completed' => true,
                 'won'             => $player1Won,
-                'mode'            => 'league_individual',
-                'theme'           => strtolower($theme ?? ''),
-                'match_hour'      => (int) \Carbon\Carbon::now()->format('G'),
-                'perfect_score'   => false,
-                'total_buzzes'    => $p1Correct,
-                'themes_count'    => 1,
-            ];
-            $dailyQuestService->fireDailyQuestChecks($player1, $dailyMatchCtx);
-            $dailyMatchCtx['won']         = !$player1Won;
-            $dailyMatchCtx['total_buzzes'] = $p2Correct;
-            $dailyQuestService->fireDailyQuestChecks($player2, $dailyMatchCtx);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Daily quest hook (league_individual match-end) error: ' . $e->getMessage());
-        }
+                'total_questions' => $totalQ,
+                'user_correct'    => $p1Correct,
+                'player_score'    => $p1GameScore,
+                'opponent_score'  => $p2GameScore,
+                'theme'           => $theme,
+                'skills_used'     => (int) ($matchResult['player1_skills_used'] ?? 0),
+                'lives_remaining' => 3,
+                'had_timeout'     => $hadTimeout,
+                'boss_defeated'   => false,
+                'match_hour'      => $matchHour,
+                'division'        => strtolower($div1->division ?? 'bronze'),
+                'user_level'      => $match->player1_level ?? 0,
+                'user_coins'      => $player1->competence_coins ?? 0,
+                'action_done'     => true,
+            ]);
 
-        $this->divisionService->clearCurrentMatch($player1);
-        $this->divisionService->clearCurrentMatch($player2);
+            $questService->fireMatchEndQuests($player2, 'league_individual', [
+                'match_completed' => true,
+                'won'             => !$player1Won,
+                'total_questions' => $totalQ,
+                'user_correct'    => $p2Correct,
+                'player_score'    => $p2GameScore,
+                'opponent_score'  => $p1GameScore,
+                'theme'           => $theme,
+                'skills_used'     => (int) ($matchResult['player2_skills_used'] ?? 0),
+                'lives_remaining' => 3,
+                'had_timeout'     => $hadTimeout,
+                'boss_defeated'   => false,
+                'match_hour'      => $matchHour,
+                'division'        => strtolower($div2->division ?? 'bronze'),
+                'user_level'      => $match->player2_level ?? 0,
+                'user_coins'      => $player2->competence_coins ?? 0,
+                'action_done'     => true,
+            ]);
+
+            // Quêtes quotidiennes — fin de match Ligue Individuelle
+            try {
+                $dailyQuestService = app(\App\Services\DailyQuestService::class);
+                $dailyMatchCtx = [
+                    'match_completed' => true,
+                    'won'             => $player1Won,
+                    'mode'            => 'league_individual',
+                    'theme'           => strtolower($theme ?? ''),
+                    'match_hour'      => (int) \Carbon\Carbon::now()->format('G'),
+                    'perfect_score'   => false,
+                    'total_buzzes'    => $p1Correct,
+                    'themes_count'    => 1,
+                ];
+                $dailyQuestService->fireDailyQuestChecks($player1, $dailyMatchCtx);
+                $dailyMatchCtx['won']         = !$player1Won;
+                $dailyMatchCtx['total_buzzes'] = $p2Correct;
+                $dailyQuestService->fireDailyQuestChecks($player2, $dailyMatchCtx);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Daily quest hook (league_individual match-end) error: ' . $e->getMessage());
+            }
+
+            $this->divisionService->clearCurrentMatch($player1);
+            $this->divisionService->clearCurrentMatch($player2);
+        });
     }
 
     /**
      * Met à jour les statistiques d'un joueur après un match
      */
-    private function updatePlayerStats(User $user, bool $won, int $pointsEarned, int $currentLevel, int $coinsEarned = 0): void
-    {
+    private function updatePlayerStats(
+        User $user,
+        LeagueIndividualMatch $match,
+        bool $won,
+        int $pointsEarned,
+        int $currentLevel,
+        int $coinsEarned = 0
+    ): void {
         $stats = $this->getOrCreateStats($user);
-        
+
         $stats->matches_played++;
         if ($won) {
             $stats->matches_won++;
@@ -271,8 +299,14 @@ class LeagueIndividualService
 
         // Ligue gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
         if ($coinsEarned > 0) {
-            $user->coins = ($user->coins ?? 0) + $coinsEarned;
-            $user->save();
+            $this->coinLedgerService->credit(
+                $user,
+                $coinsEarned,
+                'league_individual_reward',
+                'LeagueIndividualMatch',
+                $match->id,
+                'intelligence'
+            );
         }
     }
 

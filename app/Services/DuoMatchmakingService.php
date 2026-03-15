@@ -7,11 +7,13 @@ use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\PlayerDivision;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DuoMatchmakingService
 {
     public function __construct(
         private DivisionService $divisionService,
+        private CoinLedgerService $coinLedgerService,
         private SeasonService $seasonService
     ) {}
 
@@ -30,7 +32,7 @@ class DuoMatchmakingService
             ->where('status', 'waiting')
             ->where('match_type', 'invitation')
             ->count();
-        
+
         $received = DuoMatch::where('player2_id', $userId)
             ->where('status', 'waiting')
             ->where('match_type', 'invitation')
@@ -42,12 +44,12 @@ class DuoMatchmakingService
     public function createInvitation(User $inviter, int $invitedUserId): DuoMatch
     {
         $invited = User::findOrFail($invitedUserId);
-        
+
         $inviterStats = PlayerDuoStat::firstOrCreate(
             ['user_id' => $inviter->id],
             ['level' => 0]
         );
-        
+
         $invitedStats = PlayerDuoStat::firstOrCreate(
             ['user_id' => $invited->id],
             ['level' => 0]
@@ -75,7 +77,7 @@ class DuoMatchmakingService
         $candidates = User::whereHas('playerDuoStat', function ($query) use ($playerStats) {
                 $minLevel = max(1, $playerStats->level - 10);
                 $maxLevel = $playerStats->level + 10;
-                
+
                 $query->whereBetween('level', [$minLevel, $maxLevel]);
             })
             ->whereHas('playerDivisions', function ($query) use ($playerDivision) {
@@ -104,7 +106,7 @@ class DuoMatchmakingService
         $candidates = User::whereHas('playerDuoStat', function ($query) use ($playerStats) {
                 $minLevel = max(1, $playerStats->level - 10);
                 $maxLevel = $playerStats->level + 10;
-                
+
                 $query->whereBetween('level', [$minLevel, $maxLevel]);
             })
             ->where('id', '!=', $player->id)
@@ -126,7 +128,7 @@ class DuoMatchmakingService
             ['user_id' => $player1->id],
             ['level' => 0]
         );
-        
+
         $player2Stats = PlayerDuoStat::firstOrCreate(
             ['user_id' => $player2->id],
             ['level' => 0]
@@ -167,175 +169,202 @@ class DuoMatchmakingService
             throw new \Exception('Tie games are not allowed. Match must have a clear winner.');
         }
 
-        $winnerId = $player1Score > $player2Score ? $match->player1_id : $match->player2_id;
-        
-        $player1Won = $winnerId === $match->player1_id;
-        $player2Won = $winnerId === $match->player2_id;
+        return DB::transaction(function () use ($match, $player1Score, $player2Score, $gameState) {
+            $match->refresh();
 
-        $player1 = $match->player1;
-        $player2 = $match->player2;
-        
-        $player1Division = $this->divisionService->getOrCreateDivision($player1, 'duo');
-        $player2Division = $this->divisionService->getOrCreateDivision($player2, 'duo');
-        
-        $player1Efficiency = $player1Division->initial_efficiency ?? 0;
-        $player2Efficiency = $player2Division->initial_efficiency ?? 0;
-        
-        $player1TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player1, $player2Division->division);
-        $player2TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player2, $player1Division->division);
-        
-        $player1Strength = $this->divisionService->determineOpponentStrength(
-            $player1Division->division,
-            $player2Division->division,
-            $player1Efficiency,
-            $player2Efficiency,
-            $player1TempAccess
-        );
-        
-        $player2Strength = $this->divisionService->determineOpponentStrength(
-            $player2Division->division,
-            $player1Division->division,
-            $player2Efficiency,
-            $player1Efficiency,
-            $player2TempAccess
-        );
+            if ($match->status === 'finished') {
+                throw new \RuntimeException('MATCH_ALREADY_FINISHED');
+            }
 
-        $player1Points = $this->divisionService->calculatePoints($player1Strength, $player1Won);
-        $player2Points = $this->divisionService->calculatePoints($player2Strength, $player2Won);
-        
-        $playingDivision1 = $player1TempAccess ? $player1->temp_access_division : $player1Division->division;
-        $playingDivision2 = $player2TempAccess ? $player2->temp_access_division : $player2Division->division;
-        
-        $player1Reward = $this->divisionService->calculateVictoryReward(
-            $playingDivision1,
-            $player1Strength,
-            $player1Won,
-            $player1TempAccess
-        );
-        
-        $player2Reward = $this->divisionService->calculateVictoryReward(
-            $playingDivision2,
-            $player2Strength,
-            $player2Won,
-            $player2TempAccess
-        );
+            $winnerId = $player1Score > $player2Score ? $match->player1_id : $match->player2_id;
 
-        // Apply passive skills bonuses (coin_bonus from Stratege avatar)
-        $player1Reward['coins'] = $this->applyCoinBonus($player1, $player1Reward['coins']);
-        $player2Reward['coins'] = $this->applyCoinBonus($player2, $player2Reward['coins']);
+            $player1Won = $winnerId === $match->player1_id;
+            $player2Won = $winnerId === $match->player2_id;
 
-        // Mises Duo : le gagnant récupère le pot en pièces d'Intelligence
-        $betInfo = $gameState['bet_info'] ?? null;
-        if ($betInfo && ($betInfo['total_pot'] ?? 0) > 0) {
-            $totalPot = $betInfo['total_pot'];
-            $winner = $winnerId === $match->player1_id ? $player1 : $player2;
-            $winner->coins = ($winner->coins ?? 0) + $totalPot;
-            $winner->save();
-            
-            $gameState['bet_info']['winner_id'] = $winnerId;
-            $gameState['bet_info']['awarded_at'] = now()->toISOString();
-        }
+            $player1 = $match->player1()->lockForUpdate()->first();
+            $player2 = $match->player2()->lockForUpdate()->first();
 
-        $match->update([
-            'status' => 'finished',
-            'player1_score' => $player1Score,
-            'player2_score' => $player2Score,
-            'winner_id' => $winnerId,
-            'player1_points_earned' => $player1Points,
-            'player2_points_earned' => $player2Points,
-            'player1_coins_earned' => $player1Reward['coins'],
-            'player2_coins_earned' => $player2Reward['coins'],
-            'game_state' => $gameState,
-            'finished_at' => now(),
-        ]);
+            $player1Division = $this->divisionService->getOrCreateDivision($player1, 'duo');
+            $player2Division = $this->divisionService->getOrCreateDivision($player2, 'duo');
 
-        $player1Stats = PlayerDuoStat::firstOrCreate(
-            ['user_id' => $match->player1_id],
-            ['level' => 0]
-        );
-        $player1Stats->updateAfterMatch($player1Won);
+            $player1Efficiency = $player1Division->initial_efficiency ?? 0;
+            $player2Efficiency = $player2Division->initial_efficiency ?? 0;
 
-        $player2Stats = PlayerDuoStat::firstOrCreate(
-            ['user_id' => $match->player2_id],
-            ['level' => 0]
-        );
-        $player2Stats->updateAfterMatch($player2Won);
+            $player1TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player1, $player2Division->division);
+            $player2TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player2, $player1Division->division);
 
-        $this->divisionService->updateDivisionPointsWithFloor($player1Division, $player1Points);
-        $player1Division->level = $player1Stats->level;
-        $player1Division->save();
+            $player1Strength = $this->divisionService->determineOpponentStrength(
+                $player1Division->division,
+                $player2Division->division,
+                $player1Efficiency,
+                $player2Efficiency,
+                $player1TempAccess
+            );
 
-        $this->seasonService->recordMatchResult($player1, 'duo', $player1Points > 0);
+            $player2Strength = $this->divisionService->determineOpponentStrength(
+                $player2Division->division,
+                $player1Division->division,
+                $player2Efficiency,
+                $player1Efficiency,
+                $player2TempAccess
+            );
 
-        $this->divisionService->updateDivisionPointsWithFloor($player2Division, $player2Points);
-        $player2Division->level = $player2Stats->level;
-        $player2Division->save();
+            $player1Points = $this->divisionService->calculatePoints($player1Strength, $player1Won);
+            $player2Points = $this->divisionService->calculatePoints($player2Strength, $player2Won);
 
-        $this->seasonService->recordMatchResult($player2, 'duo', $player2Points > 0);
+            $playingDivision1 = $player1TempAccess ? $player1->temp_access_division : $player1Division->division;
+            $playingDivision2 = $player2TempAccess ? $player2->temp_access_division : $player2Division->division;
 
-        // Quêtes fin de match Duo (les deux joueurs)
-        $questService  = app(\App\Services\QuestService::class);
-        $p1Division    = strtolower($player1Division->division ?? 'bronze');
-        $p2Division    = strtolower($player2Division->division ?? 'bronze');
-        $theme         = $gameState['theme'] ?? $match->theme ?? 'Général';
-        $totalQ        = $gameState['total_questions'] ?? 10;
-        $matchHour     = (int) \Carbon\Carbon::now()->format('G');
-        $globalStats   = $gameState['global_stats'] ?? [];
-        $hadTimeout    = (int) ($globalStats['totalUnanswered'] ?? 0) > 0;
+            $player1Reward = $this->divisionService->calculateVictoryReward(
+                $playingDivision1,
+                $player1Strength,
+                $player1Won,
+                $player1TempAccess
+            );
 
-        $questService->fireMatchEndQuests($player1, 'duo', [
-            'match_completed' => true,
-            'won'             => $player1Won,
-            'total_questions' => $totalQ,
-            'user_correct'    => $gameState['player1_correct'] ?? 0,
-            'player_score'    => $player1Score,
-            'opponent_score'  => $player2Score,
-            'theme'           => $theme,
-            'skills_used'     => $gameState['player1_skills_used'] ?? 0,
-            'lives_remaining' => 3,
-            'had_timeout'     => $hadTimeout,
-            'boss_defeated'   => false,
-            'match_hour'      => $matchHour,
-            'division'        => $p1Division,
-            'user_level'      => $player1Stats->level ?? 0,
-            'user_coins'      => $player1->competence_coins ?? 0,
-            'action_done'     => true,
-        ]);
+            $player2Reward = $this->divisionService->calculateVictoryReward(
+                $playingDivision2,
+                $player2Strength,
+                $player2Won,
+                $player2TempAccess
+            );
 
-        $questService->fireMatchEndQuests($player2, 'duo', [
-            'match_completed' => true,
-            'won'             => $player2Won,
-            'total_questions' => $totalQ,
-            'user_correct'    => $gameState['player2_correct'] ?? 0,
-            'player_score'    => $player2Score,
-            'opponent_score'  => $player1Score,
-            'theme'           => $theme,
-            'skills_used'     => $gameState['player2_skills_used'] ?? 0,
-            'lives_remaining' => 3,
-            'had_timeout'     => $hadTimeout,
-            'boss_defeated'   => false,
-            'match_hour'      => $matchHour,
-            'division'        => $p2Division,
-            'user_level'      => $player2Stats->level ?? 0,
-            'user_coins'      => $player2->competence_coins ?? 0,
-            'action_done'     => true,
-        ]);
-        
-        // Multijoueur gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
-        if ($player1Reward['coins'] > 0) {
-            $player1->coins = ($player1->coins ?? 0) + $player1Reward['coins'];
-            $player1->save();
-        }
-        
-        if ($player2Reward['coins'] > 0) {
-            $player2->coins = ($player2->coins ?? 0) + $player2Reward['coins'];
-            $player2->save();
-        }
-        
-        $this->divisionService->clearCurrentMatch($player1);
-        $this->divisionService->clearCurrentMatch($player2);
+            // Apply passive skills bonuses (coin_bonus from Stratege avatar)
+            $player1Reward['coins'] = $this->applyCoinBonus($player1, $player1Reward['coins']);
+            $player2Reward['coins'] = $this->applyCoinBonus($player2, $player2Reward['coins']);
 
-        return $match;
+            // Mises Duo : le gagnant récupère le pot en pièces d'Intelligence
+            $betInfo = $gameState['bet_info'] ?? null;
+            if ($betInfo && ($betInfo['total_pot'] ?? 0) > 0) {
+                $totalPot = (int) $betInfo['total_pot'];
+                $winner = $winnerId === $match->player1_id ? $player1 : $player2;
+
+                $this->coinLedgerService->credit(
+                    $winner,
+                    $totalPot,
+                    'duo_bet_pot_win',
+                    'DuoMatch',
+                    $match->id,
+                    'intelligence'
+                );
+
+                $gameState['bet_info']['winner_id'] = $winnerId;
+                $gameState['bet_info']['awarded_at'] = now()->toISOString();
+            }
+
+            $match->update([
+                'status' => 'finished',
+                'player1_score' => $player1Score,
+                'player2_score' => $player2Score,
+                'winner_id' => $winnerId,
+                'player1_points_earned' => $player1Points,
+                'player2_points_earned' => $player2Points,
+                'player1_coins_earned' => $player1Reward['coins'],
+                'player2_coins_earned' => $player2Reward['coins'],
+                'game_state' => $gameState,
+                'finished_at' => now(),
+            ]);
+
+            $player1Stats = PlayerDuoStat::firstOrCreate(
+                ['user_id' => $match->player1_id],
+                ['level' => 0]
+            );
+            $player1Stats->updateAfterMatch($player1Won);
+
+            $player2Stats = PlayerDuoStat::firstOrCreate(
+                ['user_id' => $match->player2_id],
+                ['level' => 0]
+            );
+            $player2Stats->updateAfterMatch($player2Won);
+
+            $this->divisionService->updateDivisionPointsWithFloor($player1Division, $player1Points);
+            $player1Division->level = $player1Stats->level;
+            $player1Division->save();
+
+            $this->divisionService->updateDivisionPointsWithFloor($player2Division, $player2Points);
+            $player2Division->level = $player2Stats->level;
+            $player2Division->save();
+
+            // Record match results for seasons
+            $this->seasonService->recordMatchResult($player1, 'duo', $player1Points > 0);
+            $this->seasonService->recordMatchResult($player2, 'duo', $player2Points > 0);
+
+            // Quêtes fin de match Duo (les deux joueurs)
+            $questService = app(\App\Services\QuestService::class);
+            $p1Division = strtolower($player1Division->division ?? 'bronze');
+            $p2Division = strtolower($player2Division->division ?? 'bronze');
+            $theme = $gameState['theme'] ?? $match->theme ?? 'Général';
+            $totalQ = $gameState['total_questions'] ?? 10;
+            $matchHour = (int) \Carbon\Carbon::now()->format('G');
+            $globalStats = $gameState['global_stats'] ?? [];
+            $hadTimeout = (int) ($globalStats['totalUnanswered'] ?? 0) > 0;
+
+            $questService->fireMatchEndQuests($player1, 'duo', [
+                'match_completed' => true,
+                'won' => $player1Won,
+                'total_questions' => $totalQ,
+                'user_correct' => $gameState['player1_correct'] ?? 0,
+                'player_score' => $player1Score,
+                'opponent_score' => $player2Score,
+                'theme' => $theme,
+                'skills_used' => $gameState['player1_skills_used'] ?? 0,
+                'lives_remaining' => 3,
+                'had_timeout' => $hadTimeout,
+                'boss_defeated' => false,
+                'match_hour' => $matchHour,
+                'division' => $p1Division,
+                'user_level' => $player1Stats->level ?? 0,
+                'user_coins' => $player1->competence_coins ?? 0,
+                'action_done' => true,
+            ]);
+
+            $questService->fireMatchEndQuests($player2, 'duo', [
+                'match_completed' => true,
+                'won' => $player2Won,
+                'total_questions' => $totalQ,
+                'user_correct' => $gameState['player2_correct'] ?? 0,
+                'player_score' => $player2Score,
+                'opponent_score' => $player1Score,
+                'theme' => $theme,
+                'skills_used' => $gameState['player2_skills_used'] ?? 0,
+                'lives_remaining' => 3,
+                'had_timeout' => $hadTimeout,
+                'boss_defeated' => false,
+                'match_hour' => $matchHour,
+                'division' => $p2Division,
+                'user_level' => $player2Stats->level ?? 0,
+                'user_coins' => $player2->competence_coins ?? 0,
+                'action_done' => true,
+            ]);
+
+            // Multijoueur gagne des pièces d'Intelligence
+            if ($player1Reward['coins'] > 0) {
+                $this->coinLedgerService->credit(
+                    $player1,
+                    (int) $player1Reward['coins'],
+                    'duo_match_reward',
+                    'DuoMatch',
+                    $match->id,
+                    'intelligence'
+                );
+            }
+
+            if ($player2Reward['coins'] > 0) {
+                $this->coinLedgerService->credit(
+                    $player2,
+                    (int) $player2Reward['coins'],
+                    'duo_match_reward',
+                    'DuoMatch',
+                    $match->id,
+                    'intelligence'
+                );
+            }
+
+            $this->divisionService->clearCurrentMatch($player1);
+            $this->divisionService->clearCurrentMatch($player2);
+
+            return $match->fresh();
+        });
     }
 
     /**
@@ -349,7 +378,7 @@ class DuoMatchmakingService
 
         $profileSettings = (array) ($player->profile_settings ?? []);
         $avatarData = data_get($profileSettings, 'strategic_avatar');
-        
+
         $avatarName = null;
         if (is_array($avatarData)) {
             $avatarName = strtolower($avatarData['name'] ?? '');

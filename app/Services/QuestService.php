@@ -10,6 +10,10 @@ use Carbon\Carbon;
 
 class QuestService
 {
+    public function __construct(
+        private CoinLedgerService $coinLedgerService
+    ) {}
+
     /**
      * Point d'entrée unifié pour les événements de fin de match.
      * Charge toutes les quêtes auto_complete=true non complétées en une seule requête
@@ -69,10 +73,15 @@ class QuestService
                     $progress->rewarded = true;
                     $progress->save();
 
-                    $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
-                    if ($lockedUser) {
-                        $lockedUser->competence_coins = ($lockedUser->competence_coins ?? 0) + $quest->reward_coins;
-                        $lockedUser->save();
+                    if (($quest->reward_coins ?? 0) > 0) {
+                        $this->coinLedgerService->credit(
+                            $user,
+                            (int) $quest->reward_coins,
+                            'quest_reward',
+                            'quest',
+                            $quest->id,
+                            'competence'
+                        );
                     }
 
                     return true;
@@ -122,10 +131,15 @@ class QuestService
                     $progress->rewarded = true;
                     $progress->save();
 
-                    $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
-                    if ($lockedUser) {
-                        $lockedUser->competence_coins = ($lockedUser->competence_coins ?? 0) + $quest->reward_coins;
-                        $lockedUser->save();
+                    if (($quest->reward_coins ?? 0) > 0) {
+                        $this->coinLedgerService->credit(
+                            $user,
+                            (int) $quest->reward_coins,
+                            'quest_reward',
+                            'quest',
+                            $quest->id,
+                            'competence'
+                        );
                     }
 
                     return true;
@@ -1606,10 +1620,15 @@ class QuestService
             $progress->rewarded     = true;
             $progress->save();
 
-            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
-            if ($lockedUser) {
-                $lockedUser->competence_coins = ($lockedUser->competence_coins ?? 0) + $quest->reward_coins;
-                $lockedUser->save();
+            if (($quest->reward_coins ?? 0) > 0) {
+                $this->coinLedgerService->credit(
+                    $user,
+                    (int) $quest->reward_coins,
+                    'quest_reward',
+                    'quest',
+                    $quest->id,
+                    'competence'
+                );
             }
         });
     }

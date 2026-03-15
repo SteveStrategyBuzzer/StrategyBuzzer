@@ -25,6 +25,9 @@ return [
     |--------------------------------------------------------------------------
     | Packs de Pièces d'Intelligence
     |--------------------------------------------------------------------------
+    |
+    | Même valeur nominale dans toutes les devises.
+    |
     */
 
     'intelligence_packs' => [
@@ -35,8 +38,8 @@ return [
             'prices' => [
                 'usd' => 999,
                 'eur' => 999,
-                'cad' => 1349,
-                'gbp' => 799,
+                'cad' => 999,
+                'gbp' => 999,
             ],
             'popular' => false,
         ],
@@ -47,8 +50,8 @@ return [
             'prices' => [
                 'usd' => 1799,
                 'eur' => 1799,
-                'cad' => 2449,
-                'gbp' => 1449,
+                'cad' => 1799,
+                'gbp' => 1799,
             ],
             'popular' => false,
         ],
@@ -59,8 +62,8 @@ return [
             'prices' => [
                 'usd' => 3199,
                 'eur' => 3199,
-                'cad' => 4349,
-                'gbp' => 2599,
+                'cad' => 3199,
+                'gbp' => 3199,
             ],
             'popular' => true,
         ],
@@ -71,8 +74,8 @@ return [
             'prices' => [
                 'usd' => 6499,
                 'eur' => 6499,
-                'cad' => 8799,
-                'gbp' => 5249,
+                'cad' => 6499,
+                'gbp' => 6499,
             ],
             'popular' => false,
         ],
@@ -82,6 +85,9 @@ return [
     |--------------------------------------------------------------------------
     | Packs de Pièces de Compétence
     |--------------------------------------------------------------------------
+    |
+    | Même valeur nominale dans toutes les devises.
+    |
     */
 
     'competence_packs' => [
@@ -92,8 +98,8 @@ return [
             'prices' => [
                 'usd' => 99,
                 'eur' => 99,
-                'cad' => 129,
-                'gbp' => 79,
+                'cad' => 99,
+                'gbp' => 99,
             ],
             'popular' => false,
         ],
@@ -104,8 +110,8 @@ return [
             'prices' => [
                 'usd' => 399,
                 'eur' => 399,
-                'cad' => 549,
-                'gbp' => 329,
+                'cad' => 399,
+                'gbp' => 399,
             ],
             'popular' => true,
         ],
@@ -116,8 +122,8 @@ return [
             'prices' => [
                 'usd' => 899,
                 'eur' => 899,
-                'cad' => 1199,
-                'gbp' => 729,
+                'cad' => 899,
+                'gbp' => 899,
             ],
             'popular' => false,
         ],
@@ -128,8 +134,8 @@ return [
             'prices' => [
                 'usd' => 1699,
                 'eur' => 1699,
-                'cad' => 2299,
-                'gbp' => 1379,
+                'cad' => 1699,
+                'gbp' => 1699,
             ],
             'popular' => false,
         ],
@@ -140,8 +146,8 @@ return [
             'prices' => [
                 'usd' => 2999,
                 'eur' => 2999,
-                'cad' => 3999,
-                'gbp' => 2399,
+                'cad' => 2999,
+                'gbp' => 2999,
             ],
             'popular' => false,
         ],
@@ -151,26 +157,29 @@ return [
     |--------------------------------------------------------------------------
     | Prix des Modes de Jeu
     |--------------------------------------------------------------------------
+    |
+    | Même valeur nominale dans toutes les devises.
+    |
     */
 
     'mode_prices' => [
         'duo' => [
             'usd' => 1250,
             'eur' => 1250,
-            'cad' => 1699,
-            'gbp' => 999,
+            'cad' => 1250,
+            'gbp' => 1250,
         ],
         'league' => [
-            'usd' => 1250,
-            'eur' => 1250,
-            'cad' => 1699,
-            'gbp' => 999,
+            'usd' => 1575,
+            'eur' => 1575,
+            'cad' => 1575,
+            'gbp' => 1575,
         ],
         'master' => [
-            'usd' => 1500,
-            'eur' => 1500,
-            'cad' => 1999,
-            'gbp' => 1199,
+            'usd' => 2999,
+            'eur' => 2999,
+            'cad' => 2999,
+            'gbp' => 2999,
         ],
     ],
 
