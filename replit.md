@@ -44,6 +44,8 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Avatar System:** User-specific avatars (12 across 3 tiers) offer 25+ unique skills.
 
+**Bot Profile System:** Each player has a bot twin built from their real stats (`bot_profiles`, `bot_qualification_events`, `player_avatar_stats` tables). Qualification requires 10+ unique game events (Solo levels count once each; Duo/League matches always count). Tiers: Bronze (≥10), Silver (≥50), Gold (≥200). Players configure their bot in the profile page: assign a strategic avatar (bot uses that avatar's specific stats), enable staking (intelligence coins), and set max stake per match (0-500). `BotEngine` provides simulation parameters; `BotQualificationService` handles event tracking. Bot stats (selections, wins, losses, coins earned) display with `coin-intelligence.png` icon.
+
 **Authentication:** Firebase Authentication (with social providers) and Laravel Sanctum for API token management, integrated with a Player Code System.
 
 **WebRTC Voice Chat System:** Real-time peer-to-peer voice communication for Duo, League Individual, and League Team modes using Firebase Firestore signaling.

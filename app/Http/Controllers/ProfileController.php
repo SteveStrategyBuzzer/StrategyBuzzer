@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 use App\Services\AvatarCatalog;
 use App\Services\DailyQuestService;
+use App\Models\BotProfile;
+use App\Models\BotQualificationEvent;
+use App\Services\BotQualificationService;
 
 class ProfileController extends Controller
 {
@@ -108,9 +111,19 @@ class ProfileController extends Controller
         // Vérifier si un avatar est sélectionné
         $hasAvatar = !empty(data_get($settings, 'avatar.url'));
 
+        $botProfile = BotProfile::find($player?->id);
+        $botQualifyCount = $player ? BotQualificationEvent::where('user_id', $player->id)->count() : 0;
+        $botTier = 'none';
+        if ($botQualifyCount >= 200) $botTier = 'gold';
+        elseif ($botQualifyCount >= 50) $botTier = 'silver';
+        elseif ($botQualifyCount >= 10) $botTier = 'bronze';
+
+        $unlockedStrategicAvatars = $this->getUnlockedStrategicAvatars($player);
+
         return view('profile', compact(
             'settings','routes','currentCountry',
-            'stratName','stratUrl','stratTier','stratSkills','player','hasAvatar'
+            'stratName','stratUrl','stratTier','stratSkills','player','hasAvatar',
+            'botProfile','botQualifyCount','botTier','unlockedStrategicAvatars'
         ));
     }
 
@@ -145,6 +158,10 @@ class ProfileController extends Controller
             'strategic_avatar.id' => 'nullable|string|max:64',
             'strategic_avatar.name' => 'nullable|string|max:64',
             'strategic_avatar.url' => 'nullable|url',
+            'bot_active' => 'nullable|boolean',
+            'bot_avatar_slug' => 'nullable|string|max:64',
+            'bot_stake_enabled' => 'nullable|boolean',
+            'bot_max_stake' => 'nullable|integer|min:0|max:500',
         ]);
 
         $data['show_online'] = $request->boolean('show_online');
@@ -184,6 +201,28 @@ class ProfileController extends Controller
             $user->profile_completed = $hasAvatar && $hasPseudonym;
             
             $user->save();
+
+            $botProfile = BotProfile::firstOrCreate(
+                ['user_id' => $user->id],
+                ['is_active' => false]
+            );
+
+            $wantsActive = $request->boolean('bot_active');
+            $qualifyCount = BotQualificationEvent::where('user_id', $user->id)->count();
+            $botProfile->is_active = $wantsActive && $qualifyCount >= 10;
+
+            $botProfile->stake_enabled = $request->boolean('bot_stake_enabled');
+            $botProfile->max_stake_per_match = max(0, min(500, (int) $request->input('bot_max_stake', 0)));
+
+            $slugInput = $request->input('bot_avatar_slug') ?: null;
+            if ($slugInput) {
+                $unlockedSlugs = array_keys($this->getUnlockedStrategicAvatars($user));
+                $botProfile->bot_avatar_slug = in_array($slugInput, $unlockedSlugs, true) ? $slugInput : null;
+            } else {
+                $botProfile->bot_avatar_slug = null;
+            }
+
+            $botProfile->save();
 
             // Quête quotidienne : changer d'avatar (condition : avoir joué au moins 1 match aujourd'hui)
             $newAvatarUrl = data_get($settings, 'avatar.url');
@@ -228,5 +267,20 @@ class ProfileController extends Controller
         }
 
         return redirect()->route('profile.show')->with('status', 'Profil mis à jour.');
+    }
+
+    private function getUnlockedStrategicAvatars($user): array
+    {
+        if (!$user) return [];
+        $settings = $user->profile_settings ?? [];
+        $catalog = AvatarCatalog::getStrategiques();
+        $userUnlocked = (array) data_get($settings, 'unlocked_avatars', []);
+        $result = [];
+        foreach ($catalog as $slug => $avatar) {
+            if (in_array($slug, $userUnlocked)) {
+                $result[$slug] = $avatar;
+            }
+        }
+        return $result;
     }
 }

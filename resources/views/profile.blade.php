@@ -1094,6 +1094,180 @@
   </div>
 </div>
 
+{{-- =================== BULLE BOT (Pleine largeur) =================== --}}
+@php
+    $bp = $botProfile ?? null;
+    $bpActive = $bp ? (bool) $bp->is_active : false;
+    $bpAvatarSlug = $bp->bot_avatar_slug ?? null;
+    $bpStakeEnabled = $bp ? (bool) $bp->stake_enabled : false;
+    $bpMaxStake = $bp->max_stake_per_match ?? 0;
+    $bpTimesUsed = $bp->times_used_as_bot ?? 0;
+    $bpWins = $bp->bot_wins ?? 0;
+    $bpLosses = $bp->bot_losses ?? 0;
+    $bpCoinsEarned = $bp->coins_earned_for_owner ?? 0;
+    $bqCount = $botQualifyCount ?? 0;
+    $bTier = $botTier ?? 'none';
+    $bIsQualified = $bqCount >= 10;
+
+    $tierLabelsBot = [
+        'none'   => __('Non qualifié'),
+        'bronze' => 'Bronze',
+        'silver' => 'Silver',
+        'gold'   => 'Gold',
+    ];
+    $tierColorsBot = [
+        'none'   => '#888',
+        'bronze' => '#CD7F32',
+        'silver' => '#C0C0C0',
+        'gold'   => '#FFD700',
+    ];
+    $tierEmojis = [
+        'none'   => '❌',
+        'bronze' => '🥉',
+        'silver' => '🥈',
+        'gold'   => '🥇',
+    ];
+    $remainingForQualify = max(0, 10 - $bqCount);
+
+    $unlockedStrats = $unlockedStrategicAvatars ?? [];
+@endphp
+
+<div class="sb-panel" style="margin-top:12px;">
+  <div class="sb-title" style="text-align:center; margin-bottom:16px;">🤖 {{ __('Votre Bot') }}</div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+
+    {{-- STATS BOT --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px;">
+      <div style="font-size:15px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        <span>{{ __('Statut') }}</span>
+        <span style="display:inline-block; background:#fff; color:{{ $tierColorsBot[$bTier] }};
+                      padding:3px 12px; border-radius:6px; font-size:12px; font-weight:bold;
+                      border:2px solid {{ $tierColorsBot[$bTier] }};">
+          {{ $tierEmojis[$bTier] }} {{ $tierLabelsBot[$bTier] }}
+          @if($bIsQualified) · {{ $bqCount }} {{ __('parties') }} @endif
+        </span>
+      </div>
+
+      @if(!$bIsQualified)
+        <div style="font-size:13px; opacity:.85; margin-bottom:10px; padding:8px; background:rgba(255,200,0,.1); border-radius:8px;">
+          {{ __('Jouez encore :count parties pour qualifier votre bot', ['count' => $remainingForQualify]) }}
+        </div>
+      @endif
+
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">{{ __('Sélectionné') }}</span>
+          <span style="font-weight:700;">{{ $bpTimesUsed }} {{ __('fois') }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">{{ __('Victoires') }}</span>
+          <span style="font-weight:700; color:#4CAF50;">{{ $bpWins }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.85;">{{ __('Défaites') }}</span>
+          <span style="font-weight:700; color:#F44336;">{{ $bpLosses }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:6px; border-top:1px solid rgba(255,255,255,.1);">
+          <span style="opacity:.85;">{{ __('Pièces gagnées pour vous') }}</span>
+          <span style="font-weight:700; color:#FFD700; display:flex; align-items:center; gap:4px;">
+            <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:20px; height:20px;">
+            {{ $bpCoinsEarned }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    {{-- CONFIG BOT --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px;">
+      <div style="font-size:15px; font-weight:700; margin-bottom:12px;">{{ __('Configuration du Bot') }}</div>
+
+      <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+
+        {{-- Toggle activer --}}
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span>{{ __('Activer mon bot') }}</span>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" name="bot_active" value="1" form="profileForm"
+                   id="bot-active-toggle" {{ $bpActive ? 'checked' : '' }}>
+            <span>{{ __('Oui') }}</span>
+          </label>
+        </div>
+
+        {{-- Avatar du bot --}}
+        <div>
+          <div style="margin-bottom:6px; font-weight:600;">{{ __('Avatar de votre bot') }}</div>
+          @if(count($unlockedStrats) > 0)
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;
+                            padding:4px 10px; border-radius:8px; font-size:12px;
+                            border:2px solid {{ empty($bpAvatarSlug) ? '#fff' : 'rgba(255,255,255,.2)' }};
+                            background:{{ empty($bpAvatarSlug) ? 'rgba(255,255,255,.15)' : 'transparent' }};">
+                <input type="radio" name="bot_avatar_slug" value="" form="profileForm"
+                       {{ empty($bpAvatarSlug) ? 'checked' : '' }} style="display:none;">
+                {{ __('Aucun') }}
+              </label>
+              @foreach($unlockedStrats as $slug => $av)
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;
+                              padding:4px 10px; border-radius:8px; font-size:12px;
+                              border:2px solid {{ $bpAvatarSlug === $slug ? '#FFD700' : 'rgba(255,255,255,.2)' }};
+                              background:{{ $bpAvatarSlug === $slug ? 'rgba(255,215,0,.15)' : 'transparent' }};">
+                  <input type="radio" name="bot_avatar_slug" value="{{ $slug }}" form="profileForm"
+                         {{ $bpAvatarSlug === $slug ? 'checked' : '' }} style="display:none;">
+                  @if(!empty($av['path']))
+                    <img src="{{ asset($av['path']) }}" alt="{{ $av['name'] ?? $slug }}" style="width:24px; height:24px; border-radius:4px;">
+                  @endif
+                  {{ $av['name'] ?? $slug }}
+                </label>
+              @endforeach
+            </div>
+            <div style="font-size:11px; opacity:.7; margin-top:4px;">
+              {{ __('Votre bot jouera avec le style et la vitesse que vous avez avec cet avatar') }}
+            </div>
+          @else
+            <div style="font-size:12px; opacity:.7;">{{ __('Débloquez des avatars stratégiques pour les assigner à votre bot') }}</div>
+          @endif
+        </div>
+
+        {{-- Mise --}}
+        <div style="padding-top:8px; border-top:1px solid rgba(255,255,255,.1);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+            <span style="font-weight:600;">{{ __('Mon bot peut miser') }}</span>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" name="bot_stake_enabled" value="1" form="profileForm"
+                     id="bot-stake-toggle" {{ $bpStakeEnabled ? 'checked' : '' }}>
+              <span>{{ __('Oui') }}</span>
+            </label>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;" id="bot-stake-amount-row">
+            <span style="font-size:12px; opacity:.85;">{{ __('Mise max par match') }}</span>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" name="bot_max_stake" form="profileForm" id="bot-max-stake-input"
+                     value="{{ $bpMaxStake }}" min="0" max="500" step="5"
+                     style="width:70px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.22);
+                            border-radius:8px; padding:4px 8px; color:#fff; font-size:13px; text-align:center;">
+              <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:18px; height:18px;">
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  {{-- Tooltip "Comment votre Bot fonctionne" --}}
+  <div style="margin-top:14px;">
+    <button type="button" onclick="document.getElementById('bot-info-tooltip').style.display = document.getElementById('bot-info-tooltip').style.display === 'none' ? 'block' : 'none';"
+            style="background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.22); border-radius:8px; padding:8px 16px; color:#fff; font-size:13px; cursor:pointer; font-weight:600;">
+      ❓ {{ __('Comment votre Bot fonctionne') }}
+    </button>
+    <div id="bot-info-tooltip" style="display:none; margin-top:8px; padding:14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:10px; font-size:13px; line-height:1.6; opacity:.9;">
+      {{ __('bot_tooltip_text') }}
+    </div>
+  </div>
+</div>
+
   </div> {{-- Fin de sb-wrap --}}
 </div> {{-- Fin de sb-page --}}
 

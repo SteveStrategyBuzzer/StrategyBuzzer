@@ -114,6 +114,16 @@ class User extends Authenticatable
         return $this->hasMany(TeamInvitation::class);
     }
 
+    public function botProfile()
+    {
+        return $this->hasOne(BotProfile::class);
+    }
+
+    public function playerAvatarStats()
+    {
+        return $this->hasMany(PlayerAvatarStat::class);
+    }
+
     public function getDuoStats()
     {
         return $this->playerDuoStat ?? PlayerDuoStat::create([
