@@ -973,15 +973,17 @@ audio { width: 100%; }
 
         <div style="text-align:center;margin-bottom:20px;">
             <div style="font-size:1.1rem;color:var(--ink);font-weight:700;margin-bottom:6px;">{{ __('Comment ça marche ?') }}</div>
-            <div style="color:var(--muted);font-size:0.95rem;">{{ __('Regardez une courte vidéo et gagnez des pièces gratuitement !') }}</div>
+            <div style="color:var(--muted);font-size:0.95rem;">{{ __('Regardez une publicité volontaire et recevez des pièces instantanément.') }}</div>
         </div>
 
         <div style="text-align:center;margin-bottom:8px;font-size:0.9rem;color:var(--muted);font-weight:600;">{{ __('Vos gains du jour') }}</div>
         <div id="rewarded-slots" style="display:flex;justify-content:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;">
             @for($i = 1; $i <= $rMax; $i++)
+                @php $isUsedSlot = $i <= $rUsed; @endphp
                 <div class="rewarded-slot" data-index="{{ $i }}" style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;
-                    {{ $i <= $rUsed ? 'background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;' : 'background:rgba(255,255,255,0.06);color:var(--muted);border:2px dashed rgba(255,255,255,0.2);' }}">
-                    {{ $i <= $rUsed ? '✓' : '○' }}
+                    {{ $isUsedSlot ? 'background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;' : 'background:rgba(255,255,255,0.06);color:var(--muted);border:2px dashed rgba(255,255,255,0.2);' }}"
+                    title="{{ $isUsedSlot ? __('Visionnement utilisé') : __('Visionnement disponible') }}">
+                    {{ $isUsedSlot ? '✓' : '○' }}
                 </div>
             @endfor
         </div>
@@ -991,7 +993,7 @@ audio { width: 100%; }
             @if($rRemaining > 0)
                 {{ $rRemaining }} / {{ $rMax }} {{ __('visionnements restants aujourd\'hui') }}
             @else
-                {{ __('Revenez demain pour gagner à nouveau !') }}
+                {{ __('Limite atteinte pour aujourd\'hui') }}
             @endif
         </div>
 
@@ -1005,7 +1007,7 @@ audio { width: 100%; }
                 <button class="btn rewarded-claim-btn" data-coin-type="competence" data-reward-amount="{{ $compReward }}"
                     style="width:100%;padding:14px;font-size:1rem;background:linear-gradient(135deg,#f59e0b,#d97706);{{ $rRemaining <= 0 ? 'opacity:0.5;cursor:not-allowed;' : '' }}"
                     {{ $rRemaining <= 0 ? 'disabled' : '' }}>
-                    📺 {{ __('Regarder pour +') }}{{ $compReward }} {{ __('Compétence') }}
+                    📺 {{ __('Regarder pour +10 Compétence') }}
                 </button>
             </div>
 
@@ -1018,7 +1020,7 @@ audio { width: 100%; }
                 <button class="btn rewarded-claim-btn" data-coin-type="intelligence" data-reward-amount="{{ $intelReward }}"
                     style="width:100%;padding:14px;font-size:1rem;background:linear-gradient(135deg,#8b5cf6,#6d28d9);{{ $rRemaining <= 0 ? 'opacity:0.5;cursor:not-allowed;' : '' }}"
                     {{ $rRemaining <= 0 ? 'disabled' : '' }}>
-                    📺 {{ __('Regarder pour +') }}{{ $intelReward }} {{ __('Intelligence') }}
+                    📺 {{ __('Regarder pour +5 Intelligence') }}
                 </button>
             </div>
         </div>
@@ -1030,6 +1032,8 @@ audio { width: 100%; }
             var usedCount = {{ $rUsed }};
             var maxCount = {{ $rMax }};
             var buttons = document.querySelectorAll('.rewarded-claim-btn');
+            var usedLabel = '{{ __("Visionnement utilisé") }}';
+            var availLabel = '{{ __("Visionnement disponible") }}';
 
             function updateSlots(newUsed) {
                 usedCount = newUsed;
@@ -1041,11 +1045,13 @@ audio { width: 100%; }
                         slot.style.background = 'linear-gradient(135deg,#22c55e,#16a34a)';
                         slot.style.color = '#fff';
                         slot.style.border = 'none';
+                        slot.title = usedLabel;
                     } else {
                         slot.textContent = '○';
                         slot.style.background = 'rgba(255,255,255,0.06)';
                         slot.style.color = 'var(--muted)';
                         slot.style.border = '2px dashed rgba(255,255,255,0.2)';
+                        slot.title = availLabel;
                     }
                 });
             }
@@ -1057,7 +1063,7 @@ audio { width: 100%; }
                     counter.textContent = remaining + ' / ' + maxCount + ' {{ __("visionnements restants aujourd\'hui") }}';
                 } else {
                     counter.style.color = '#ef4444';
-                    counter.textContent = '{{ __("Revenez demain pour gagner à nouveau !") }}';
+                    counter.textContent = '{{ __("Revenez demain pour de nouveaux gains") }}';
                 }
             }
 
