@@ -1205,7 +1205,7 @@
                             background:{{ empty($bpAvatarSlug) ? 'rgba(255,255,255,.15)' : 'transparent' }};">
                 <input type="radio" name="bot_avatar_slug" value="" form="profileForm"
                        {{ empty($bpAvatarSlug) ? 'checked' : '' }} style="display:none;">
-                {{ __('Aucun') }}
+                {{ __('Aucun avatar') }}
               </label>
               @foreach($unlockedStrats as $slug => $av)
                 <label style="display:flex; align-items:center; gap:4px; cursor:pointer;
