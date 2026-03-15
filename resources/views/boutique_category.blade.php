@@ -999,7 +999,7 @@ audio { width: 100%; }
 
         <div class="grid cols-2" style="max-width:600px;margin:0 auto;">
             <div class="card" style="text-align:center;padding:28px 20px;">
-                <div style="margin-bottom:12px;">
+                <div style="height:90px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
                     <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:64px;height:64px;object-fit:contain;">
                 </div>
                 <div style="font-size:2rem;font-weight:900;color:#fbbf24;margin-bottom:4px;">+{{ $compReward }}</div>
@@ -1012,8 +1012,8 @@ audio { width: 100%; }
             </div>
 
             <div class="card" style="text-align:center;padding:28px 20px;">
-                <div style="margin-bottom:12px;">
-                    <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:64px;height:64px;object-fit:contain;">
+                <div style="height:90px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                    <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:90px;height:90px;object-fit:contain;">
                 </div>
                 <div style="font-size:2rem;font-weight:900;color:#a78bfa;margin-bottom:4px;">+{{ $intelReward }}</div>
                 <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __("Pièces d'Intelligence") }}</div>
