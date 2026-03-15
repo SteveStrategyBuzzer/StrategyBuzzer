@@ -34,35 +34,54 @@ class AdRewardService
 
     public function reward(User $user): array
     {
-        if (!$this->canWatch($user)) {
-            return ['success' => false, 'reason' => 'limit_reached'];
+        if ($user->master_purchased ?? false) {
+            return ['success' => false, 'reason' => 'premium'];
         }
 
-        $coinType = config('ads.rewarded.reward.type', 'competence');
-        $amount   = (int) config('ads.rewarded.reward.amount', 10);
+        if (!config('ads.rewarded.enabled', false)) {
+            return ['success' => false, 'reason' => 'disabled'];
+        }
 
-        DB::table('ad_rewards')->insert([
-            'user_id'     => $user->id,
-            'coin_type'   => $coinType,
-            'coin_amount' => $amount,
-            'rewarded_at' => now(),
-            'ip_address'  => request()->ip(),
-        ]);
+        $coinType  = config('ads.rewarded.reward.type', 'competence');
+        $amount    = (int) config('ads.rewarded.reward.amount', 10);
+        $maxPerDay = (int) config('ads.rewarded.max_per_day', 3);
+        $today     = now()->toDateString();
 
-        $this->coinLedgerService->credit(
-            $user,
-            $amount,
-            'ad_reward_competence',
-            'ad',
-            null,
-            $coinType
-        );
+        return DB::transaction(function () use ($user, $coinType, $amount, $maxPerDay, $today) {
+            $count = DB::table('ad_rewards')
+                ->where('user_id', $user->id)
+                ->whereDate('rewarded_at', $today)
+                ->lockForUpdate()
+                ->count();
 
-        return [
-            'success'   => true,
-            'coins'     => $amount,
-            'coin_type' => $coinType,
-        ];
+            if ($count >= $maxPerDay) {
+                return ['success' => false, 'reason' => 'limit_reached'];
+            }
+
+            DB::table('ad_rewards')->insert([
+                'user_id'     => $user->id,
+                'coin_type'   => $coinType,
+                'coin_amount' => $amount,
+                'rewarded_at' => now(),
+                'ip_address'  => request()->ip(),
+            ]);
+
+            $this->coinLedgerService->credit(
+                $user,
+                $amount,
+                'ad_reward_competence',
+                'ad',
+                null,
+                $coinType
+            );
+
+            return [
+                'success'   => true,
+                'coins'     => $amount,
+                'coin_type' => $coinType,
+                'remaining' => max(0, $maxPerDay - $count - 1),
+            ];
+        });
     }
 
     public function remainingToday(User $user): int

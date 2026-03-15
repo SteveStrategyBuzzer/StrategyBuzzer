@@ -42,10 +42,22 @@ async function sbWatchRewardedAd() {
         if (data.success) {
             msg.style.color = '#34d399';
             msg.textContent = '✓ {{ __("+:amount pièces de compétence reçues !", ["amount" => config("ads.rewarded.reward.amount", 10)]) }}';
+            if (data.remaining > 0) {
+                btn.style.display = '';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.textContent = '📺 {{ __("Voir une pub") }} (+{{ config("ads.rewarded.reward.amount", 10) }} — ' + data.remaining + ' restante' + (data.remaining > 1 ? 's' : '') + ')';
+            } else {
+                btn.style.display = 'none';
+            }
+        } else if (data.reason === 'limit_reached') {
+            msg.style.color = 'rgba(255,120,80,0.8)';
+            msg.textContent = '{{ __("Limite atteinte pour aujourd\'hui.") }}';
             btn.style.display = 'none';
         } else {
             msg.style.color = 'rgba(255,120,80,0.8)';
-            msg.textContent = '{{ __("Limite atteinte pour aujourd\'hui.") }}';
+            msg.textContent = '{{ __("Indisponible.") }}';
+            btn.style.display = 'none';
         }
     } catch(e) {
         btn.disabled = false;

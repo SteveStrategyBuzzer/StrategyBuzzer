@@ -432,8 +432,8 @@ Route::prefix('game/master')->name('game.master.')->middleware('auth')->group(fu
 
 /* ===== PUBLICITÉS (REWARDED ADS) ===== */
 Route::middleware('auth')->group(function () {
-    Route::post('/ads/reward', [App\Http\Controllers\AdController::class, 'reward'])->name('ads.reward');
-    Route::get('/ads/status', [App\Http\Controllers\AdController::class, 'status'])->name('ads.status');
+    Route::post('/ads/reward', [App\Http\Controllers\AdController::class, 'reward'])->name('ads.reward')->middleware('throttle:5,1');
+    Route::get('/ads/status', [App\Http\Controllers\AdController::class, 'status'])->name('ads.status')->middleware('throttle:20,1');
 });
 
 /* ===== QUÊTES & QUÊTES QUOTIDIENNES ===== */
