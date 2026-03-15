@@ -12,7 +12,10 @@ class BotEngine
     public function getSimulationParams(User $user): array
     {
         $botProfile = BotProfile::find($user->id);
-        $avatarSlug = $botProfile->bot_avatar_slug ?? null;
+        if (!$botProfile) {
+            return array_merge($this->getGlobalStats($user), ['source' => 'global']);
+        }
+        $avatarSlug = $botProfile->bot_avatar_slug;
 
         $globalStats = $this->getGlobalStats($user);
 

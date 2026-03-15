@@ -1256,15 +1256,19 @@
 
   </div>
 
-  {{-- Tooltip "Comment votre Bot fonctionne" --}}
-  <div style="margin-top:14px;">
+  {{-- Tooltip + Save --}}
+  <div style="margin-top:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <button type="submit" form="profileForm"
+            style="background:linear-gradient(135deg, #4CAF50, #45a049); border:none; border-radius:8px; padding:10px 24px; color:#fff; font-size:14px; font-weight:700; cursor:pointer;">
+      ✅ {{ __('Enregistrer') }}
+    </button>
     <button type="button" onclick="document.getElementById('bot-info-tooltip').style.display = document.getElementById('bot-info-tooltip').style.display === 'none' ? 'block' : 'none';"
             style="background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.22); border-radius:8px; padding:8px 16px; color:#fff; font-size:13px; cursor:pointer; font-weight:600;">
       ❓ {{ __('Comment votre Bot fonctionne') }}
     </button>
-    <div id="bot-info-tooltip" style="display:none; margin-top:8px; padding:14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:10px; font-size:13px; line-height:1.6; opacity:.9;">
-      {{ __('bot_tooltip_text') }}
-    </div>
+  </div>
+  <div id="bot-info-tooltip" style="display:none; margin-top:8px; padding:14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:10px; font-size:13px; line-height:1.6; opacity:.9;">
+    {{ __('bot_tooltip_text') }}
   </div>
 </div>
 
