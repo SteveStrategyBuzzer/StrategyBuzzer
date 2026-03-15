@@ -20,7 +20,14 @@ class AdController extends Controller
             return response()->json(['success' => false, 'reason' => 'unauthenticated'], 401);
         }
 
-        $result = $this->adRewardService->reward($user);
+        $coinType = $request->input('coin_type', 'competence');
+
+        $validTypes = array_keys(config('ads.rewarded.rewards', []));
+        if (!in_array($coinType, $validTypes, true)) {
+            return response()->json(['success' => false, 'reason' => 'invalid_type'], 422);
+        }
+
+        $result = $this->adRewardService->reward($user, $coinType);
 
         return response()->json($result);
     }
@@ -33,11 +40,12 @@ class AdController extends Controller
             return response()->json(['can_watch' => false, 'remaining' => 0]);
         }
 
+        $rewards = config('ads.rewarded.rewards', []);
+
         return response()->json([
             'can_watch' => $this->adRewardService->canWatch($user),
             'remaining' => $this->adRewardService->remainingToday($user),
-            'reward_amount' => (int) config('ads.rewarded.reward.amount', 10),
-            'reward_type'   => config('ads.rewarded.reward.type', 'competence'),
+            'rewards'   => $rewards,
         ]);
     }
 }

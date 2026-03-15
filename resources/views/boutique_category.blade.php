@@ -16,6 +16,7 @@
         'coins_intelligence' => __("Pièces d'Intelligence"),
         'coins_competence' => __('Pièces de Compétence'),
         'vies' => __('Vies'),
+        'rewarded' => __('Gain par Visionnement'),
     ];
     
     $categoryIcons = [
@@ -27,6 +28,7 @@
         'coins_intelligence' => '<img src="' . asset('images/coin-intelligence.png') . '" alt="' . __("Pièce d'Intelligence") . '" style="width:32px;height:32px;vertical-align:middle;">',
         'coins_competence' => '<img src="' . asset('images/skill_coin.png') . '" alt="' . __('Pièce de Compétence') . '" style="width:32px;height:32px;vertical-align:middle;">',
         'vies' => '❤️',
+        'rewarded' => '🎬',
     ];
     
     $packs = [];
@@ -958,6 +960,139 @@ audio { width: 100%; }
                 </div>
             @endforeach
         </div>
+
+    @elseif($category === 'rewarded')
+        @php
+            $rUsed      = $rewardedUsed ?? 0;
+            $rRemaining = $rewardedRemaining ?? 0;
+            $rMax       = $rewardedMax ?? 3;
+            $rTypes     = $rewardedTypes ?? [];
+            $compReward = $rTypes['competence']['amount'] ?? 10;
+            $intelReward = $rTypes['intelligence']['amount'] ?? 5;
+        @endphp
+
+        <div style="text-align:center;margin-bottom:24px;color:var(--muted);font-size:0.95rem;">
+            {{ __('Regardez une courte vidéo et gagnez des pièces gratuitement !') }}
+        </div>
+
+        <div style="display:flex;justify-content:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+            @for($i = 1; $i <= $rMax; $i++)
+                <div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;
+                    {{ $i <= $rUsed ? 'background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;' : 'background:rgba(255,255,255,0.08);color:var(--muted);border:2px dashed rgba(255,255,255,0.2);' }}">
+                    @if($i <= $rUsed)
+                        ✓
+                    @else
+                        {{ $i }}
+                    @endif
+                </div>
+            @endfor
+        </div>
+
+        <div style="text-align:center;margin-bottom:28px;font-size:1rem;font-weight:700;
+            {{ $rRemaining > 0 ? 'color:#22c55e;' : 'color:#ef4444;' }}">
+            {{ $rRemaining }} / {{ $rMax }} {{ __('visionnements restants aujourd\'hui') }}
+        </div>
+
+        <div class="grid cols-2" style="max-width:600px;margin:0 auto;">
+            <div class="card" style="text-align:center;padding:28px 20px;">
+                <div style="margin-bottom:12px;">
+                    <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:64px;height:64px;object-fit:contain;">
+                </div>
+                <div style="font-size:2rem;font-weight:900;color:#fbbf24;margin-bottom:4px;">+{{ $compReward }}</div>
+                <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __('Pièces de Compétence') }}</div>
+                <button class="btn rewarded-claim-btn" data-coin-type="competence"
+                    style="width:100%;padding:14px;font-size:1rem;background:linear-gradient(135deg,#f59e0b,#d97706);{{ $rRemaining <= 0 ? 'opacity:0.5;cursor:not-allowed;' : '' }}"
+                    {{ $rRemaining <= 0 ? 'disabled' : '' }}>
+                    🎬 {{ __('Regarder et gagner') }}
+                </button>
+            </div>
+
+            <div class="card" style="text-align:center;padding:28px 20px;">
+                <div style="margin-bottom:12px;">
+                    <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:64px;height:64px;object-fit:contain;">
+                </div>
+                <div style="font-size:2rem;font-weight:900;color:#a78bfa;margin-bottom:4px;">+{{ $intelReward }}</div>
+                <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __("Pièces d'Intelligence") }}</div>
+                <button class="btn rewarded-claim-btn" data-coin-type="intelligence"
+                    style="width:100%;padding:14px;font-size:1rem;background:linear-gradient(135deg,#8b5cf6,#6d28d9);{{ $rRemaining <= 0 ? 'opacity:0.5;cursor:not-allowed;' : '' }}"
+                    {{ $rRemaining <= 0 ? 'disabled' : '' }}>
+                    🎬 {{ __('Regarder et gagner') }}
+                </button>
+            </div>
+        </div>
+
+        <div id="rewarded-result" style="display:none;margin-top:20px;text-align:center;padding:16px;border-radius:12px;"></div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('.rewarded-claim-btn');
+            buttons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (btn.disabled) return;
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    const coinType = btn.getAttribute('data-coin-type');
+                    const resultDiv = document.getElementById('rewarded-result');
+
+                    fetch('/ads/reward', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ coin_type: coinType })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            resultDiv.style.display = 'block';
+                            resultDiv.style.background = 'rgba(34,197,94,0.15)';
+                            resultDiv.style.border = '1px solid rgba(34,197,94,0.4)';
+                            resultDiv.style.color = '#22c55e';
+                            const label = coinType === 'intelligence'
+                                ? '{{ __("Pièces d\'Intelligence") }}'
+                                : '{{ __("Pièces de Compétence") }}';
+                            resultDiv.innerHTML = '✅ +' + data.coins + ' ' + label + '<br><small style="color:var(--muted);">' + data.remaining + ' {{ __("visionnements restants") }}</small>';
+
+                            if (data.remaining <= 0) {
+                                buttons.forEach(function(b) {
+                                    b.disabled = true;
+                                    b.style.opacity = '0.5';
+                                    b.style.cursor = 'not-allowed';
+                                });
+                            } else {
+                                btn.disabled = false;
+                                btn.style.opacity = '1';
+                            }
+                        } else {
+                            resultDiv.style.display = 'block';
+                            resultDiv.style.background = 'rgba(239,68,68,0.15)';
+                            resultDiv.style.border = '1px solid rgba(239,68,68,0.4)';
+                            resultDiv.style.color = '#ef4444';
+                            if (data.reason === 'limit_reached') {
+                                resultDiv.textContent = '{{ __("Limite quotidienne atteinte. Revenez demain !") }}';
+                                buttons.forEach(function(b) { b.disabled = true; b.style.opacity = '0.5'; });
+                            } else {
+                                resultDiv.textContent = '{{ __("Erreur lors de la réclamation.") }}';
+                                btn.disabled = false;
+                                btn.style.opacity = '1';
+                            }
+                        }
+                    })
+                    .catch(function() {
+                        resultDiv.style.display = 'block';
+                        resultDiv.style.background = 'rgba(239,68,68,0.15)';
+                        resultDiv.style.border = '1px solid rgba(239,68,68,0.4)';
+                        resultDiv.style.color = '#ef4444';
+                        resultDiv.textContent = '{{ __("Erreur de connexion. Réessayez.") }}';
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    });
+                });
+            });
+        });
+        </script>
     @endif
 </div>
 

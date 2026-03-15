@@ -13,9 +13,9 @@ return [
     'rewarded' => [
         'enabled' => true,
         'max_per_day' => 3,
-        'reward' => [
-            'type'   => 'competence',
-            'amount' => 10,
+        'rewards' => [
+            'competence'   => ['type' => 'competence',   'amount' => 10],
+            'intelligence' => ['type' => 'intelligence', 'amount' => 5],
         ],
     ],
 

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\AvatarCatalog;
 use App\Services\StripeService;
 use App\Services\CoinLedgerService;
+use App\Services\AdRewardService;
 use App\Models\Payment;
 use App\Models\PurchaseIntent;
 use App\Support\Currency;
@@ -17,7 +18,8 @@ class BoutiqueController extends Controller
 {
     public function __construct(
         private StripeService $stripeService,
-        private CoinLedgerService $coinLedgerService
+        private CoinLedgerService $coinLedgerService,
+        private AdRewardService $adRewardService
     ) {}
 
     /**
@@ -149,7 +151,7 @@ class BoutiqueController extends Controller
      */
     public function category(Request $request, string $category)
     {
-        $validCategories = ['packs', 'musiques', 'buzzers', 'strategiques', 'master', 'coins_intelligence', 'coins_competence', 'vies'];
+        $validCategories = ['packs', 'musiques', 'buzzers', 'strategiques', 'master', 'coins_intelligence', 'coins_competence', 'vies', 'rewarded'];
 
         if (!in_array($category, $validCategories, true)) {
             return redirect()->route('boutique');
@@ -199,6 +201,14 @@ class BoutiqueController extends Controller
             if (isset($a['price'])) {
                 $context['pricing']['stratégique'][$slug] = (int) $a['price'];
             }
+        }
+
+        if ($category === 'rewarded' && $user) {
+            $maxPerDay = (int) config('ads.rewarded.max_per_day', 3);
+            $context['rewardedUsed']      = $this->adRewardService->usedToday($user);
+            $context['rewardedRemaining'] = $this->adRewardService->remainingToday($user);
+            $context['rewardedMax']       = $maxPerDay;
+            $context['rewardedTypes']     = config('ads.rewarded.rewards', []);
         }
 
         return response()

@@ -13,10 +13,6 @@ class AdRewardService
 
     public function canWatch(User $user): bool
     {
-        if ($user->master_purchased ?? false) {
-            return false;
-        }
-
         if (!config('ads.rewarded.enabled', false)) {
             return false;
         }
@@ -32,18 +28,19 @@ class AdRewardService
         return $count < $maxPerDay;
     }
 
-    public function reward(User $user): array
+    public function reward(User $user, string $coinType = 'competence'): array
     {
-        if ($user->master_purchased ?? false) {
-            return ['success' => false, 'reason' => 'premium'];
-        }
-
         if (!config('ads.rewarded.enabled', false)) {
             return ['success' => false, 'reason' => 'disabled'];
         }
 
-        $coinType  = config('ads.rewarded.reward.type', 'competence');
-        $amount    = (int) config('ads.rewarded.reward.amount', 10);
+        $rewards = config('ads.rewarded.rewards', []);
+        if (!isset($rewards[$coinType])) {
+            return ['success' => false, 'reason' => 'invalid_type'];
+        }
+
+        $rewardConfig = $rewards[$coinType];
+        $amount    = (int) $rewardConfig['amount'];
         $maxPerDay = (int) config('ads.rewarded.max_per_day', 3);
         $today     = now()->toDateString();
 
@@ -66,10 +63,12 @@ class AdRewardService
                 'ip_address'  => request()->ip(),
             ]);
 
+            $reason = $coinType === 'intelligence' ? 'ad_reward_intelligence' : 'ad_reward_competence';
+
             $this->coinLedgerService->credit(
                 $user,
                 $amount,
-                'ad_reward_competence',
+                $reason,
                 'ad',
                 null,
                 $coinType
@@ -84,20 +83,19 @@ class AdRewardService
         });
     }
 
-    public function remainingToday(User $user): int
+    public function usedToday(User $user): int
     {
-        if ($user->master_purchased ?? false) {
-            return 0;
-        }
-
-        $maxPerDay = (int) config('ads.rewarded.max_per_day', 3);
         $today = now()->toDateString();
 
-        $used = DB::table('ad_rewards')
+        return DB::table('ad_rewards')
             ->where('user_id', $user->id)
             ->whereDate('rewarded_at', $today)
             ->count();
+    }
 
-        return max(0, $maxPerDay - $used);
+    public function remainingToday(User $user): int
+    {
+        $maxPerDay = (int) config('ads.rewarded.max_per_day', 3);
+        return max(0, $maxPerDay - $this->usedToday($user));
     }
 }
