@@ -233,6 +233,15 @@ class StripeWebhookController extends Controller
                         $user->master_purchased = true;
                         $user->save();
 
+                        $this->coinLedgerService->credit(
+                            $user,
+                            5000,
+                            'achat_mode_maitre',
+                            'mode',
+                            'master',
+                            'competence'
+                        );
+
                         $purchaseIntent->update([
                             'status' => 'fulfilled',
                             'fulfilled_at' => now(),

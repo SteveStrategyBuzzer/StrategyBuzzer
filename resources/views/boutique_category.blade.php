@@ -797,7 +797,7 @@ audio { width: 100%; }
 
             <!-- MODE MAÎTRE DU JEU -->
             <div class="mode-card master-top-card">
-                <div class="mode-icon">🎮</div>
+                <div class="mode-icon">👑</div>
                 <h2 class="mode-title master-title">{{ __('Maître du Jeu') }}</h2>
                 <p class="mode-punch">{{ __('Organise tes propres tournois jusqu\'à 40 joueurs !') }}</p>
 
@@ -826,6 +826,14 @@ audio { width: 100%; }
                         <span class="feat-icon">🎉</span>
                         <span>{{ __('Idéal pour soirées, cours et tournois') }}</span>
                     </li>
+                    <li>
+                        <span class="feat-icon">🎁</span>
+                        <span>{{ __('5 000 pièces de compétence offertes à l\'achat') }}</span>
+                    </li>
+                    <li>
+                        <span class="feat-icon">🚫</span>
+                        <span>{{ __('Supprime toutes les publicités') }}</span>
+                    </li>
                 </ul>
 
                 @if($masterPurchased)
@@ -833,7 +841,7 @@ audio { width: 100%; }
                 @else
                     @php
                         $cur = $currency ?? 'usd';
-                        $masterAmt = $modePrices['master'][$cur] ?? $modePrices['master']['usd'] ?? 1500;
+                        $masterAmt = $modePrices['master'][$cur] ?? $modePrices['master']['usd'] ?? 1999;
                         $fmt = $currencyFormat[$cur] ?? ['symbol' => '$', 'position' => 'before', 'decimal' => '.'];
                         $masterFmt = $fmt['position'] === 'after'
                             ? number_format($masterAmt / 100, 2, $fmt['decimal'], '') . $fmt['symbol']

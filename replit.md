@@ -65,6 +65,9 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Challenger Skills (Socket.IO Implementation):** `reduce_time` reduces the target's Question page timer for specific questions. `shuffle_answers` (pending) shuffles target's answer options.
 
+**Advertising System (Non-Gameplay Only):**
+Ads are strictly forbidden in all `game.blade.php` pages (gameplay, buzz, answers, timers). Allowed only in `app.blade.php` pages (menu, lobby, boutique, results, profile). Config: `config/ads.php`. Banner: fixed bottom, `resources/views/components/ad-banner.blade.php` included in `app.blade.php`. Rewarded ads: `AdRewardService` + `AdController` + `/ads/reward` route, 3×/day max, +10 compétence coins per view, tracked in `ad_rewards` table. Purchasing Maître du Jeu (`master_purchased = true`) globally disables all ads. Maître mode price: $19.99 (1999 cents). Buying Maître mode also credits 5,000 compétence coins via CoinLedgerService.
+
 **Season Reward System (Wins-Based):** Players must reach a win-count threshold to be eligible. Among eligible players, rankings by total wins determine prize tiers (1st/2nd/3rd, ties share ranks). Bronze:10W→100coins. Argent:10W→150/100. Or:10W→200/150/100. Platine:12W→500/200/100. Diamant:15W→1000/500/200. Légende:20W→2000+🖼️/500/100. Promotion layer: top 10 + ties advance to next division. Service: `SeasonService.recordMatchResult(user, mode, bool $won)`. Commands: `season:start`, `season:distribute-rewards`. Season 1 active: Printemps 2026.
 
 **Currency System (Two Types of Coins):**

@@ -430,6 +430,12 @@ Route::prefix('game/master')->name('game.master.')->middleware('auth')->group(fu
     Route::get('/match-result', [App\Http\Controllers\MasterGameController::class, 'showMatchResultPage'])->name('match-result');
 });
 
+/* ===== PUBLICITÉS (REWARDED ADS) ===== */
+Route::middleware('auth')->group(function () {
+    Route::post('/ads/reward', [App\Http\Controllers\AdController::class, 'reward'])->name('ads.reward');
+    Route::get('/ads/status', [App\Http\Controllers\AdController::class, 'status'])->name('ads.status');
+});
+
 /* ===== QUÊTES & QUÊTES QUOTIDIENNES ===== */
 Route::get('/quetes', [App\Http\Controllers\QuestesController::class, 'index'])->middleware('auth')->name('quetes');
 Route::post('/quetes/claim/{questId}', [App\Http\Controllers\QuestesController::class, 'claim'])->middleware('auth')->name('quetes.claim');

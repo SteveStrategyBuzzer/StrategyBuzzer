@@ -424,7 +424,7 @@ class BoutiqueController extends Controller
         }
 
         $currency = Currency::fromSession($request->session());
-        $baseCents = 2999;
+        $baseCents = 1999;
         $amountCents = Currency::convertBaseCentsTo($currency, $baseCents);
 
         try {

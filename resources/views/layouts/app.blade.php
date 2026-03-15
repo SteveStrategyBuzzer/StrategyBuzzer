@@ -26,6 +26,8 @@
         @yield('content')
     </main>
 
+    @include('components.ad-banner')
+
     <!-- Musique d'ambiance StrategyBuzzer -->
     <audio id="ambientMusic" preload="auto" loop></audio>
 
