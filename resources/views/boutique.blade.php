@@ -407,9 +407,9 @@
 
         <!-- Gain par Visionnement -->
         <a href="{{ route('boutique.category', 'rewarded') }}" class="category-card" style="background:linear-gradient(135deg, #1a2344, #0d3320); border-color: #22c55e;">
-            <div class="category-icon">🎬</div>
+            <div class="category-icon">📺</div>
             <div class="category-name">{{ __('Gain par Visionnement') }}</div>
-            <div class="category-desc">{{ __('Regardez et gagnez des pièces') }}</div>
+            <div class="category-desc">{{ __('Regardez et gagnez des pièces gratuitement') }}</div>
         </a>
     </div>
 </div>

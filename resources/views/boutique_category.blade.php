@@ -28,7 +28,7 @@
         'coins_intelligence' => '<img src="' . asset('images/coin-intelligence.png') . '" alt="' . __("Pièce d'Intelligence") . '" style="width:32px;height:32px;vertical-align:middle;">',
         'coins_competence' => '<img src="' . asset('images/skill_coin.png') . '" alt="' . __('Pièce de Compétence') . '" style="width:32px;height:32px;vertical-align:middle;">',
         'vies' => '❤️',
-        'rewarded' => '🎬',
+        'rewarded' => '📺',
     ];
     
     $packs = [];
@@ -971,26 +971,28 @@ audio { width: 100%; }
             $intelReward = $rTypes['intelligence']['amount'] ?? 5;
         @endphp
 
-        <div style="text-align:center;margin-bottom:24px;color:var(--muted);font-size:0.95rem;">
-            {{ __('Regardez une courte vidéo et gagnez des pièces gratuitement !') }}
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:1.1rem;color:var(--ink);font-weight:700;margin-bottom:6px;">{{ __('Comment ça marche ?') }}</div>
+            <div style="color:var(--muted);font-size:0.95rem;">{{ __('Regardez une courte vidéo et gagnez des pièces gratuitement !') }}</div>
         </div>
 
-        <div style="display:flex;justify-content:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+        <div style="text-align:center;margin-bottom:8px;font-size:0.9rem;color:var(--muted);font-weight:600;">{{ __('Vos gains du jour') }}</div>
+        <div id="rewarded-slots" style="display:flex;justify-content:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;">
             @for($i = 1; $i <= $rMax; $i++)
-                <div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;
-                    {{ $i <= $rUsed ? 'background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;' : 'background:rgba(255,255,255,0.08);color:var(--muted);border:2px dashed rgba(255,255,255,0.2);' }}">
-                    @if($i <= $rUsed)
-                        ✓
-                    @else
-                        {{ $i }}
-                    @endif
+                <div class="rewarded-slot" data-index="{{ $i }}" style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;
+                    {{ $i <= $rUsed ? 'background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;' : 'background:rgba(255,255,255,0.06);color:var(--muted);border:2px dashed rgba(255,255,255,0.2);' }}">
+                    {{ $i <= $rUsed ? '✓' : '○' }}
                 </div>
             @endfor
         </div>
 
-        <div style="text-align:center;margin-bottom:28px;font-size:1rem;font-weight:700;
+        <div id="rewarded-counter" style="text-align:center;margin-bottom:28px;font-size:1rem;font-weight:700;
             {{ $rRemaining > 0 ? 'color:#22c55e;' : 'color:#ef4444;' }}">
-            {{ $rRemaining }} / {{ $rMax }} {{ __('visionnements restants aujourd\'hui') }}
+            @if($rRemaining > 0)
+                {{ $rRemaining }} / {{ $rMax }} {{ __('visionnements restants aujourd\'hui') }}
+            @else
+                {{ __('Revenez demain pour gagner à nouveau !') }}
+            @endif
         </div>
 
         <div class="grid cols-2" style="max-width:600px;margin:0 auto;">
@@ -1000,10 +1002,10 @@ audio { width: 100%; }
                 </div>
                 <div style="font-size:2rem;font-weight:900;color:#fbbf24;margin-bottom:4px;">+{{ $compReward }}</div>
                 <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __('Pièces de Compétence') }}</div>
-                <button class="btn rewarded-claim-btn" data-coin-type="competence"
+                <button class="btn rewarded-claim-btn" data-coin-type="competence" data-reward-amount="{{ $compReward }}"
                     style="width:100%;padding:14px;font-size:1rem;background:linear-gradient(135deg,#f59e0b,#d97706);{{ $rRemaining <= 0 ? 'opacity:0.5;cursor:not-allowed;' : '' }}"
                     {{ $rRemaining <= 0 ? 'disabled' : '' }}>
-                    🎬 {{ __('Regarder et gagner') }}
+                    📺 {{ __('Regarder pour +') }}{{ $compReward }} {{ __('Compétence') }}
                 </button>
             </div>
 
@@ -1013,10 +1015,10 @@ audio { width: 100%; }
                 </div>
                 <div style="font-size:2rem;font-weight:900;color:#a78bfa;margin-bottom:4px;">+{{ $intelReward }}</div>
                 <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __("Pièces d'Intelligence") }}</div>
-                <button class="btn rewarded-claim-btn" data-coin-type="intelligence"
+                <button class="btn rewarded-claim-btn" data-coin-type="intelligence" data-reward-amount="{{ $intelReward }}"
                     style="width:100%;padding:14px;font-size:1rem;background:linear-gradient(135deg,#8b5cf6,#6d28d9);{{ $rRemaining <= 0 ? 'opacity:0.5;cursor:not-allowed;' : '' }}"
                     {{ $rRemaining <= 0 ? 'disabled' : '' }}>
-                    🎬 {{ __('Regarder et gagner') }}
+                    📺 {{ __('Regarder pour +') }}{{ $intelReward }} {{ __('Intelligence') }}
                 </button>
             </div>
         </div>
@@ -1025,14 +1027,72 @@ audio { width: 100%; }
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const buttons = document.querySelectorAll('.rewarded-claim-btn');
+            var usedCount = {{ $rUsed }};
+            var maxCount = {{ $rMax }};
+            var buttons = document.querySelectorAll('.rewarded-claim-btn');
+
+            function updateSlots(newUsed) {
+                usedCount = newUsed;
+                var slots = document.querySelectorAll('.rewarded-slot');
+                slots.forEach(function(slot) {
+                    var idx = parseInt(slot.getAttribute('data-index'));
+                    if (idx <= usedCount) {
+                        slot.textContent = '✓';
+                        slot.style.background = 'linear-gradient(135deg,#22c55e,#16a34a)';
+                        slot.style.color = '#fff';
+                        slot.style.border = 'none';
+                    } else {
+                        slot.textContent = '○';
+                        slot.style.background = 'rgba(255,255,255,0.06)';
+                        slot.style.color = 'var(--muted)';
+                        slot.style.border = '2px dashed rgba(255,255,255,0.2)';
+                    }
+                });
+            }
+
+            function updateCounter(remaining) {
+                var counter = document.getElementById('rewarded-counter');
+                if (remaining > 0) {
+                    counter.style.color = '#22c55e';
+                    counter.textContent = remaining + ' / ' + maxCount + ' {{ __("visionnements restants aujourd\'hui") }}';
+                } else {
+                    counter.style.color = '#ef4444';
+                    counter.textContent = '{{ __("Revenez demain pour gagner à nouveau !") }}';
+                }
+            }
+
+            function updateCoinBalance(coinType, addedAmount) {
+                var pills = document.querySelectorAll('.pill');
+                pills.forEach(function(pill) {
+                    var img = pill.querySelector('img');
+                    var bEl = pill.querySelector('b');
+                    if (!img || !bEl) return;
+                    var src = img.getAttribute('src') || '';
+                    var isComp = src.indexOf('skill_coin') !== -1;
+                    var isIntel = src.indexOf('coin-intelligence') !== -1;
+                    if ((coinType === 'competence' && isComp) || (coinType === 'intelligence' && isIntel)) {
+                        var current = parseInt((bEl.textContent || '0').replace(/[^0-9]/g, '')) || 0;
+                        bEl.textContent = (current + addedAmount).toLocaleString();
+                    }
+                });
+            }
+
+            function disableAll() {
+                buttons.forEach(function(b) {
+                    b.disabled = true;
+                    b.style.opacity = '0.5';
+                    b.style.cursor = 'not-allowed';
+                });
+            }
+
             buttons.forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     if (btn.disabled) return;
                     btn.disabled = true;
                     btn.style.opacity = '0.5';
-                    const coinType = btn.getAttribute('data-coin-type');
-                    const resultDiv = document.getElementById('rewarded-result');
+                    var coinType = btn.getAttribute('data-coin-type');
+                    var rewardAmount = parseInt(btn.getAttribute('data-reward-amount')) || 0;
+                    var resultDiv = document.getElementById('rewarded-result');
 
                     fetch('/ads/reward', {
                         method: 'POST',
@@ -1046,21 +1106,22 @@ audio { width: 100%; }
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         if (data.success) {
+                            var newUsed = maxCount - data.remaining;
+                            updateSlots(newUsed);
+                            updateCounter(data.remaining);
+                            updateCoinBalance(data.coin_type, data.coins);
+
                             resultDiv.style.display = 'block';
                             resultDiv.style.background = 'rgba(34,197,94,0.15)';
                             resultDiv.style.border = '1px solid rgba(34,197,94,0.4)';
                             resultDiv.style.color = '#22c55e';
-                            const label = coinType === 'intelligence'
+                            var label = coinType === 'intelligence'
                                 ? '{{ __("Pièces d\'Intelligence") }}'
                                 : '{{ __("Pièces de Compétence") }}';
-                            resultDiv.innerHTML = '✅ +' + data.coins + ' ' + label + '<br><small style="color:var(--muted);">' + data.remaining + ' {{ __("visionnements restants") }}</small>';
+                            resultDiv.innerHTML = '✅ +' + data.coins + ' ' + label;
 
                             if (data.remaining <= 0) {
-                                buttons.forEach(function(b) {
-                                    b.disabled = true;
-                                    b.style.opacity = '0.5';
-                                    b.style.cursor = 'not-allowed';
-                                });
+                                disableAll();
                             } else {
                                 btn.disabled = false;
                                 btn.style.opacity = '1';
@@ -1072,7 +1133,8 @@ audio { width: 100%; }
                             resultDiv.style.color = '#ef4444';
                             if (data.reason === 'limit_reached') {
                                 resultDiv.textContent = '{{ __("Limite quotidienne atteinte. Revenez demain !") }}';
-                                buttons.forEach(function(b) { b.disabled = true; b.style.opacity = '0.5'; });
+                                disableAll();
+                                updateCounter(0);
                             } else {
                                 resultDiv.textContent = '{{ __("Erreur lors de la réclamation.") }}';
                                 btn.disabled = false;
