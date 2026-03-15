@@ -1636,7 +1636,7 @@ class QuestService
                     'quest_reward',
                     'quest',
                     $quest->id,
-                    'competence'
+                    $quest->coin_type ?? 'competence'
                 );
             }
         });
