@@ -962,6 +962,12 @@ audio { width: 100%; }
         </div>
 
     @elseif($category === 'rewarded')
+        <style>
+        @@keyframes sb-coin-spin {
+            from { transform: rotateY(0deg); }
+            to   { transform: rotateY(360deg); }
+        }
+        </style>
         @php
             $rUsed      = $rewardedUsed ?? 0;
             $rRemaining = $rewardedRemaining ?? 0;
@@ -999,8 +1005,8 @@ audio { width: 100%; }
 
         <div class="grid cols-2" style="max-width:600px;margin:0 auto;">
             <div class="card" style="text-align:center;padding:28px 20px;">
-                <div style="height:90px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-                    <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:64px;height:64px;object-fit:contain;">
+                <div style="height:130px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                    <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:120px;height:120px;object-fit:contain;animation:sb-coin-spin 4s linear infinite;">
                 </div>
                 <div style="font-size:2rem;font-weight:900;color:#fbbf24;margin-bottom:4px;">+{{ $compReward }}</div>
                 <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __('Pièces de Compétence') }}</div>
@@ -1012,8 +1018,8 @@ audio { width: 100%; }
             </div>
 
             <div class="card" style="text-align:center;padding:28px 20px;">
-                <div style="height:90px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-                    <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:90px;height:90px;object-fit:contain;">
+                <div style="height:130px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                    <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:120px;height:120px;object-fit:contain;animation:sb-coin-spin 4s linear infinite;">
                 </div>
                 <div style="font-size:2rem;font-weight:900;color:#a78bfa;margin-bottom:4px;">+{{ $intelReward }}</div>
                 <div style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">{{ __("Pièces d'Intelligence") }}</div>
