@@ -80,7 +80,7 @@ class QuestService
                             'quest_reward',
                             'quest',
                             $quest->id,
-                            'competence'
+                            $quest->coin_type ?? 'competence'
                         );
                     }
 
@@ -138,7 +138,7 @@ class QuestService
                             'quest_reward',
                             'quest',
                             $quest->id,
-                            'competence'
+                            $quest->coin_type ?? 'competence'
                         );
                     }
 
@@ -594,6 +594,15 @@ class QuestService
             // Méta-quête : toutes les quêtes complétées
             case 'all_quests_completed':  // ID 176
                 return $this->handleAllQuestsCompleted($progress, $context);
+
+            // ─────────────────────────────────────────────────────────────
+            // BOT QUESTS (programmatic trigger, auto_complete = false)
+            // ─────────────────────────────────────────────────────────────
+            case 'bot_first_selection':
+                return ($context['action_done'] ?? false) === true;
+
+            case 'bot_first_win':
+                return ($context['action_done'] ?? false) === true;
 
             default:
                 return false;

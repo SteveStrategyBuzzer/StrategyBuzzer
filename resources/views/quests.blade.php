@@ -499,6 +499,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
              'emoji' => $quest->badge_emoji,
              'description' => $quest->condition,
              'reward' => $quest->reward_coins,
+             'coin_type' => $quest->coin_type ?? 'competence',
              'completed' => $isCompleted,
              'progress' => $progressCurrent,
              'total' => $progressTotal,
@@ -533,10 +534,7 @@ a.clean{ color:var(--muted); text-decoration:none; }
       <div class="reward-box">
         <div class="reward-label">{{ __('Récompense') }}</div>
         <div class="reward-amount">
-          <svg class="coin-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px">
-            <circle cx="12" cy="12" r="10" fill="#fbbf24"/>
-            <text x="12" y="16" text-anchor="middle" font-size="12" font-weight="bold" fill="#0b1020">C</text>
-          </svg>
+          <img id="modalCoinIcon" src="{{ asset('images/skill_coin.png') }}" alt="" style="width:32px;height:32px;">
           <span id="modalReward"></span>
         </div>
       </div>
@@ -567,6 +565,8 @@ function openModal(data) {
   document.getElementById('modalTitle').textContent = data.name;
   document.getElementById('modalDesc').textContent = data.description;
   document.getElementById('modalReward').textContent = '+' + data.reward;
+  var coinIcon = document.getElementById('modalCoinIcon');
+  coinIcon.src = data.coin_type === 'intelligence' ? '{{ asset("images/coin-intelligence.png") }}' : '{{ asset("images/skill_coin.png") }}';
   document.getElementById('progressValue').textContent = data.progress + ' / ' + data.total;
   document.getElementById('progressBar').style.width = data.progressPercent + '%';
   

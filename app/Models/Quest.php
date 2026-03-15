@@ -14,6 +14,7 @@ class Quest extends Model
         'category',
         'condition',
         'reward_coins',
+        'coin_type',
         'rarity',
         'badge_emoji',
         'badge_description',

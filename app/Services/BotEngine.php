@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\BotProfile;
 use App\Models\PlayerAvatarStat;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\App;
 
 class BotEngine
 {
@@ -62,6 +63,19 @@ class BotEngine
         $botProfile = BotProfile::find($selectedUserId);
         $params = $this->getSimulationParams($user);
 
+        $wasFirstSelection = $botProfile->times_used_as_bot === 0;
+        $botProfile->increment('times_used_as_bot');
+
+        if ($wasFirstSelection) {
+            try {
+                App::make(QuestService::class)->checkAndCompleteQuests(
+                    $user, 'bot_first_selection', ['action_done' => true]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Bot quest trigger failed (bot_first_selection)', ['error' => $e->getMessage()]);
+            }
+        }
+
         return [
             'owner_id'      => $user->id,
             'display_name'  => 'Bot · ' . ($user->display_name ?? 'Joueur'),
@@ -79,7 +93,21 @@ class BotEngine
         if (!$botProfile) return;
 
         if ($won) {
+            $wasFirstWin = $botProfile->bot_wins === 0;
             $botProfile->increment('bot_wins');
+
+            if ($wasFirstWin) {
+                try {
+                    $owner = User::find($ownerUserId);
+                    if ($owner) {
+                        App::make(QuestService::class)->checkAndCompleteQuests(
+                            $owner, 'bot_first_win', ['action_done' => true]
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Bot quest trigger failed (bot_first_win)', ['error' => $e->getMessage()]);
+                }
+            }
         } else {
             $botProfile->increment('bot_losses');
         }
