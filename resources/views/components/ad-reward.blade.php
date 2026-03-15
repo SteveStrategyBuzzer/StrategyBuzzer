@@ -2,8 +2,8 @@
     $user = auth()->user();
     $rewardedEnabled = config('ads.enabled', false)
         && config('ads.rewarded.enabled', false)
-        && !($user?->master_purchased ?? false)
         && $user !== null;
+    $compAmount = config('ads.rewarded.rewards.competence.amount', 10);
 @endphp
 
 @if($rewardedEnabled)
@@ -14,7 +14,7 @@
         style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;"
         onclick="sbWatchRewardedAd()"
     >
-        📺 {{ __('Voir une pub (+:amount pièces)', ['amount' => config('ads.rewarded.reward.amount', 10)]) }}
+        📺 {{ __('Voir une pub (+:amount pièces)', ['amount' => $compAmount]) }}
     </button>
     <div id="sb-ad-reward-msg" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px;"></div>
 </div>
@@ -35,18 +35,19 @@ async function sbWatchRewardedAd() {
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''
-            }
+            },
+            body: JSON.stringify({ coin_type: 'competence' })
         });
         const data = await res.json();
 
         if (data.success) {
             msg.style.color = '#34d399';
-            msg.textContent = '✓ {{ __("+:amount pièces de compétence reçues !", ["amount" => config("ads.rewarded.reward.amount", 10)]) }}';
+            msg.textContent = '✓ {{ __("+:amount pièces de compétence reçues !", ["amount" => $compAmount]) }}';
             if (data.remaining > 0) {
                 btn.style.display = '';
                 btn.disabled = false;
                 btn.style.opacity = '1';
-                btn.textContent = '📺 {{ __("Voir une pub") }} (+{{ config("ads.rewarded.reward.amount", 10) }} — ' + data.remaining + ' restante' + (data.remaining > 1 ? 's' : '') + ')';
+                btn.textContent = '📺 {{ __("Voir une pub") }} (+{{ $compAmount }} — ' + data.remaining + ' restante' + (data.remaining > 1 ? 's' : '') + ')';
             } else {
                 btn.style.display = 'none';
             }

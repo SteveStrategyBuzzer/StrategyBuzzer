@@ -1007,7 +1007,7 @@ audio { width: 100%; }
                 <button class="btn rewarded-claim-btn" data-coin-type="competence" data-reward-amount="{{ $compReward }}"
                     style="width:100%;padding:14px;font-size:1rem;background:linear-gradient(135deg,#f59e0b,#d97706);{{ $rRemaining <= 0 ? 'opacity:0.5;cursor:not-allowed;' : '' }}"
                     {{ $rRemaining <= 0 ? 'disabled' : '' }}>
-                    📺 {{ __('Regarder pour +10 Compétence') }}
+                    📺 {{ __('Regarder pour +:amount Compétence', ['amount' => $compReward]) }}
                 </button>
             </div>
 
@@ -1020,7 +1020,7 @@ audio { width: 100%; }
                 <button class="btn rewarded-claim-btn" data-coin-type="intelligence" data-reward-amount="{{ $intelReward }}"
                     style="width:100%;padding:14px;font-size:1rem;background:linear-gradient(135deg,#8b5cf6,#6d28d9);{{ $rRemaining <= 0 ? 'opacity:0.5;cursor:not-allowed;' : '' }}"
                     {{ $rRemaining <= 0 ? 'disabled' : '' }}>
-                    📺 {{ __('Regarder pour +5 Intelligence') }}
+                    📺 {{ __('Regarder pour +:amount Intelligence', ['amount' => $intelReward]) }}
                 </button>
             </div>
         </div>
