@@ -690,6 +690,7 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
     const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
     const GAME_SERVER_URL = '{{ config("app.game_server_url", "") }}';
+    const PLAYER_ID = {{ auth()->id() ?? 0 }};
     const IS_BUZZ_WINNER = {{ $isBuzzWinner ? 'true' : 'false' }};
     const HAS_HISTORIAN_SKILL = {{ ($hasHistorianSkill ?? false) ? 'true' : 'false' }};
     let historianSkillActivated = false;
@@ -1014,6 +1015,10 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
             console.log('[LeagueAnswer] Historian skill activated');
         });
     }
+
+    window.addEventListener('beforeunload', function() {
+        GameEffectsRuntime.dispose();
+    });
 })();
 </script>
 @endsection

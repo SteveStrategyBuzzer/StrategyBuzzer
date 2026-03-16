@@ -1436,6 +1436,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     } else {
         waitingOverlay.style.display = 'flex';
     }
+
+    window.addEventListener('beforeunload', function() {
+        GameEffectsRuntime.dispose();
+    });
 })();
 </script>
 
