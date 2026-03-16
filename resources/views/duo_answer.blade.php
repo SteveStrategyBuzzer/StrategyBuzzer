@@ -831,6 +831,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+<script src="{{ asset('js/GameEffectsRuntime.js') }}"></script>
 
 <script>
 (function() {
@@ -1390,11 +1391,37 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
     };
     
+    GameEffectsRuntime.registerEffect('shuffle_answers', {
+        onStart: function() {
+            var container = document.getElementById('answersContainer');
+            if (container) container.classList.add('shuffle-active');
+            var ind = document.getElementById('shuffleIndicator');
+            if (!ind && container) {
+                ind = document.createElement('div');
+                ind.id = 'shuffleIndicator';
+                ind.className = 'shuffle-indicator';
+                ind.textContent = '🔀 {{ __("Réponses mélangées !") }}';
+                container.insertBefore(ind, container.firstChild);
+            }
+            if (ind) ind.style.display = '';
+            shuffleAnswers();
+            shuffleInterval = setInterval(shuffleAnswers, 1500);
+        },
+        onStop: function() {
+            stopShuffleInterval();
+            var container = document.getElementById('answersContainer');
+            if (container) container.classList.remove('shuffle-active');
+            var ind = document.getElementById('shuffleIndicator');
+            if (ind) ind.style.display = 'none';
+        }
+    });
+
     if (GAME_SERVER_URL) {
         updateConnectionStatus('connecting');
         DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN)
             .then(function() {
                 console.log('[DuoAnswer] Connected to game server');
+                GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
             })
             .catch(function(error) {
                 console.error('[DuoAnswer] Failed to connect:', error);

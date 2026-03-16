@@ -324,6 +324,25 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         cursor: not-allowed;
     }
     
+    .answers-container.shuffle-active .answer-button {
+        transition: all 0.3s ease, transform 0.3s ease;
+    }
+    .answers-container.shuffle-active .answer-button.shuffling {
+        transform: scale(0.95);
+        opacity: 0.7;
+    }
+    .shuffle-indicator {
+        grid-column: 1 / -1;
+        text-align: center;
+        color: #FF6B6B;
+        font-weight: bold;
+        padding: 8px;
+        background: rgba(255, 107, 107, 0.15);
+        border-radius: 10px;
+        border: 1px solid rgba(255, 107, 107, 0.3);
+        font-size: 0.95rem;
+    }
+    
     .result-overlay {
         position: fixed;
         top: 50%;
@@ -660,6 +679,7 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+<script src="{{ asset('js/GameEffectsRuntime.js') }}"></script>
 
 <script>
 (function() {
@@ -680,6 +700,33 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     let answered = false;
     let selectedIndex = null;
     let isRedirecting = false;
+    let shuffleInterval = null;
+    
+    function shuffleAnswers() {
+        if (answered) return;
+        var container = document.getElementById('answersContainer');
+        var buttons = Array.from(container.querySelectorAll('.answer-button'));
+        var indicator = container.querySelector('.shuffle-indicator');
+        for (var i = buttons.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = buttons[i];
+            buttons[i] = buttons[j];
+            buttons[j] = tmp;
+        }
+        buttons.forEach(function(btn) { btn.classList.add('shuffling'); });
+        buttons.forEach(function(btn) { container.appendChild(btn); });
+        if (indicator) { container.insertBefore(indicator, container.firstChild); }
+        setTimeout(function() {
+            buttons.forEach(function(btn) { btn.classList.remove('shuffling'); });
+        }, 300);
+    }
+
+    function stopShuffleInterval() {
+        if (shuffleInterval) {
+            clearInterval(shuffleInterval);
+            shuffleInterval = null;
+        }
+    }
     
     const chronoTimer = document.getElementById('chronoTimer');
     const connectionStatus = document.getElementById('connectionStatus');
@@ -734,6 +781,7 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     function handleTimeout() {
         if (answered) return;
         answered = true;
+        stopShuffleInterval();
         
         answerButtons.forEach(function(btn) {
             btn.classList.add('disabled');
@@ -766,6 +814,7 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     }
     
     function showResult(isCorrect, correctIndex, pointsEarned) {
+        stopShuffleInterval();
         resultOverlay.className = 'result-overlay ' + (isCorrect ? 'correct' : 'incorrect');
         resultText.textContent = isCorrect ? '{{ __("Bonne réponse !") }}' : '{{ __("Mauvaise réponse !") }}';
         pointsText.textContent = isCorrect ? '+' + pointsEarned + ' {{ __("points") }}' : '{{ __("0 point") }}';
@@ -889,14 +938,40 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
         }
     };
     
+    GameEffectsRuntime.registerEffect('shuffle_answers', {
+        onStart: function() {
+            var container = document.getElementById('answersContainer');
+            if (container) container.classList.add('shuffle-active');
+            var ind = document.getElementById('shuffleIndicator');
+            if (!ind && container) {
+                ind = document.createElement('div');
+                ind.id = 'shuffleIndicator';
+                ind.className = 'shuffle-indicator';
+                ind.textContent = '🔀 {{ __("Réponses mélangées !") }}';
+                container.insertBefore(ind, container.firstChild);
+            }
+            if (ind) ind.style.display = '';
+            shuffleAnswers();
+            shuffleInterval = setInterval(shuffleAnswers, 1500);
+        },
+        onStop: function() {
+            stopShuffleInterval();
+            var container = document.getElementById('answersContainer');
+            if (container) container.classList.remove('shuffle-active');
+            var ind = document.getElementById('shuffleIndicator');
+            if (ind) ind.style.display = 'none';
+        }
+    });
+
     if (GAME_SERVER_URL) {
         updateConnectionStatus('connecting');
         DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN)
             .then(function() {
-                console.log('[DuoAnswer] Connected to game server');
+                console.log('[LeagueAnswer] Connected to game server');
+                GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
             })
             .catch(function(error) {
-                console.error('[DuoAnswer] Failed to connect:', error);
+                console.error('[LeagueAnswer] Failed to connect:', error);
                 updateConnectionStatus('disconnected');
             });
     }
