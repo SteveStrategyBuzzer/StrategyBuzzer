@@ -19,6 +19,7 @@ const GameEffectsRuntime = {
     _playerId: null,
     _handlers: {},
     _running: {},
+    _listeners: [],
     _initialized: false,
 
     registerEffect(effectId, handlers) {
@@ -36,31 +37,36 @@ const GameEffectsRuntime = {
         this._socket = socket;
         this._playerId = String(playerId);
 
-        socket.on('skill_activated', (data) => {
-            var target = String(data.targetId || data.targetPlayerId || '');
-            if (target !== this._playerId) return;
-            var effectId = data.skillId || data.effectId || data.effect;
-            if (effectId) this._startEffect(effectId);
-        });
+        var self = this;
 
-        socket.on('game_state', (data) => {
+        var onSkill = function(data) {
+            var eff = data.effect || {};
+            var target = String(data.targetId || data.targetPlayerId || eff.targetPlayerId || '');
+            if (target !== self._playerId) return;
+            var effectId = data.skillId || data.effectId || eff.effectId || data.effect;
+            if (typeof effectId === 'string') self._startEffect(effectId);
+        };
+        socket.on('skill_activated', onSkill);
+        self._listeners.push(['skill_activated', onSkill]);
+
+        var onGameState = function(data) {
             var state = data.state || data;
-            if (state.activeEffects) {
-                this._syncFromActiveEffects(state.activeEffects);
-            }
-        });
+            if (state.activeEffects) self._syncFromActiveEffects(state.activeEffects);
+        };
+        socket.on('game_state', onGameState);
+        self._listeners.push(['game_state', onGameState]);
 
-        socket.on('phase_changed', (data) => {
-            if (data.activeEffects) {
-                this._syncFromActiveEffects(data.activeEffects);
-            }
-        });
+        var onPhase = function(data) {
+            if (data.activeEffects) self._syncFromActiveEffects(data.activeEffects);
+        };
+        socket.on('phase_changed', onPhase);
+        self._listeners.push(['phase_changed', onPhase]);
 
-        socket.on('question_published', (data) => {
-            if (data.activeEffects) {
-                this._syncFromActiveEffects(data.activeEffects);
-            }
-        });
+        var onQuestion = function(data) {
+            if (data.activeEffects) self._syncFromActiveEffects(data.activeEffects);
+        };
+        socket.on('question_published', onQuestion);
+        self._listeners.push(['question_published', onQuestion]);
 
         console.log('[GameEffectsRuntime] Initialized for player', this._playerId,
             'with effects:', Object.keys(this._handlers).join(', ') || '(none)');
@@ -122,6 +128,13 @@ const GameEffectsRuntime = {
                 this._stopEffect(effectId);
             }
         }
+        if (this._socket) {
+            for (var i = 0; i < this._listeners.length; i++) {
+                var pair = this._listeners[i];
+                this._socket.off(pair[0], pair[1]);
+            }
+        }
+        this._listeners = [];
         this._running = {};
         this._handlers = {};
         this._initialized = false;
