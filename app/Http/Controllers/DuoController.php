@@ -630,6 +630,13 @@ class DuoController extends Controller
     
     public function activateSkill(Request $request, DuoMatch $match)
     {
+        \Log::warning('[DEPRECATED] DuoController::activateSkill() called via HTTP. Skills must be activated via Socket.IO skill_activate event. This route will be removed in a future release.', [
+            'user_id' => Auth::id(),
+            'match_id' => $match->id,
+            'skill_id' => $request->input('skill_id'),
+            'ip' => $request->ip(),
+        ]);
+
         $user = Auth::user();
         
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
@@ -2487,6 +2494,12 @@ class DuoController extends Controller
      */
     public function useSkill(Request $request)
     {
+        \Log::warning('[DEPRECATED] DuoController::useSkill() called via HTTP. Skills must be activated via Socket.IO skill_activate event. This route will be removed in a future release.', [
+            'user_id' => Auth::id(),
+            'skill_id' => $request->input('skill_id'),
+            'ip' => $request->ip(),
+        ]);
+
         $user = Auth::user();
         $skillId = $request->input('skill_id');
         

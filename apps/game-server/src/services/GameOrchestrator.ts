@@ -2,7 +2,7 @@ import type { Server as SocketIOServer } from "socket.io";
 import type { RoomManager, Room } from "./RoomManager.js";
 import type { Question, Mode, Phase } from "@strategybuzzer/shared";
 import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent, BuzzReceivedEvent, GameStartedEvent } from "@strategybuzzer/shared";
-import { applyEvent } from "@strategybuzzer/game-engine";
+import { applyEvent, hasActiveEffect, expireEffects } from "@strategybuzzer/game-engine";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
 import { appendEventLog, setRoomState } from "./RedisService.js";
@@ -324,6 +324,7 @@ export class GameOrchestrator {
         totalScore: newTotalScore,
         roundScore: newRoundScore,
         funFact: question?.funFact,
+        didYouKnow: question?.funFact,
       };
 
       room.state = applyEvent(room.state, revealEvent);
@@ -346,6 +347,7 @@ export class GameOrchestrator {
         totalScore: newTotalScore,
         roundScore: newRoundScore,
         funFact: question?.funFact,
+        didYouKnow: question?.funFact,
       });
 
       this.io.to(roomId).emit("score_update", {
@@ -486,8 +488,10 @@ export class GameOrchestrator {
     const rawChoices = (question as Record<string, unknown>).choices || (question as Record<string, unknown>).answers;
     const sanitizedChoices = this.sanitizeChoices(rawChoices as unknown[] | undefined);
 
+    // Expire any effects that have reached their question limit (formal skill-engine)
+    room.state = expireEffects(room.state);
+
     const baseTimeLimit = question.timeLimitMs || room.state.config.timers.questionActive;
-    const reducedTimeLimit = baseTimeLimit - 2000;
 
     const publishEvent: QuestionPublishedEvent = {
       id: room.state.lastEventId + 1,
@@ -511,8 +515,10 @@ export class GameOrchestrator {
     this.logEventToRedis(roomId, publishEvent);
     
     for (const playerId of Object.keys(room.state.players)) {
-      const isReduceTimeActive = this.roomManager.isReduceTimeActive(roomId, playerId);
-      const playerTimeLimit = isReduceTimeActive ? reducedTimeLimit : baseTimeLimit;
+      // Check active reduce_time effect via formal skill-engine
+      const isReduceTimeActive = hasActiveEffect(room.state, playerId, "reduce_time");
+      const reductionMs = isReduceTimeActive ? 2000 : 0;
+      const playerTimeLimit = Math.max(1000, baseTimeLimit - reductionMs);
       
       this.io.to(`player:${playerId}`).emit("question_published", {
         questionIndex: room.state.questionIndex,
@@ -525,11 +531,11 @@ export class GameOrchestrator {
         timeLimitMs: playerTimeLimit,
         totalQuestions: room.state.questions.length,
         reduceTimeActive: isReduceTimeActive,
+        activeEffects: room.state.activeEffects.filter(e => e.targetPlayerId === playerId),
       });
       
       if (isReduceTimeActive) {
-        const stillActive = this.roomManager.decrementReduceTime(roomId, playerId);
-        console.log(`[GameOrchestrator] Player ${playerId} has reduced time (${playerTimeLimit}ms), remaining: ${stillActive ? 'active' : 'expired'}`);
+        console.log(`[GameOrchestrator] Player ${playerId} has reduce_time active (−${reductionMs}ms → ${playerTimeLimit}ms)`);
       }
     }
 
@@ -583,6 +589,7 @@ export class GameOrchestrator {
       roundScore: 0,
       timeout: true,
       funFact: fullQuestion?.funFact,
+      didYouKnow: fullQuestion?.funFact,
     });
 
     this.schedulePhaseTimeout(roomId);
@@ -941,10 +948,12 @@ export class GameOrchestrator {
 
     const phaseEvent = {
       phase: room.state.phase,
+      phaseStartedAtMs: room.state.phaseStartedAtMs ?? Date.now(),
       phaseEndsAtMs: room.state.phaseEndsAtMs,
       questionIndex: room.state.questionIndex,
       roundNumber: room.state.currentRound,
       lockedPlayerId: room.state.lockedAnswerPlayerId,
+      activeEffects: room.state.activeEffects,
     };
 
     this.io.to(roomId).emit("phase_changed", phaseEvent);

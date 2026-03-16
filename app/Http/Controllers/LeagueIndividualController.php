@@ -674,6 +674,12 @@ class LeagueIndividualController extends Controller
 
     public function useSkill(Request $request)
     {
+        \Log::warning('[DEPRECATED] LeagueIndividualController::useSkill() called via HTTP. Skills must be activated via Socket.IO skill_activate event. This route will be removed in a future release.', [
+            'user_id' => Auth::id(),
+            'skill_id' => $request->input('skill_id'),
+            'ip' => $request->ip(),
+        ]);
+
         $user = Auth::user();
         $gameState = session('game_state');
         

@@ -141,6 +141,68 @@ export type RoundResult = {
   isTie: boolean;
 };
 
+// ─── Skill System ─────────────────────────────────────────────────────────────
+
+export type SkillTargetType =
+  | "self"
+  | "opponent"
+  | "all_opponents"
+  | "room";
+
+export type SkillUiSlot =
+  | "pre_question"
+  | "during_question"
+  | "post_question"
+  | "passive";
+
+export type SkillActivationCondition =
+  | "always"
+  | "if_behind"
+  | "if_first_buzz"
+  | "if_question_index_gt"
+  | "if_opponent_score_gt";
+
+export type SkillEffectType =
+  | "reduce_time"
+  | "shuffle_answers"
+  | "faster_buzz"
+  | "score_shield"
+  | "reveal_correct"
+  | "double_points"
+  | "skill_recharge";
+
+export type SkillDefinition = {
+  id: SkillEffectType;
+  name: string;
+  description: string;
+  targetType: SkillTargetType;
+  allowedPhases: Phase[];
+  uiSlot: SkillUiSlot;
+  activationConditions: SkillActivationCondition[];
+  maxUses: number;
+  passive: boolean;
+  effectParams?: Record<string, unknown>;
+};
+
+export type ActiveEffect = {
+  effectId: SkillEffectType;
+  sourcePlayerId: UUID;
+  targetPlayerId: UUID;
+  appliedAtPhase: Phase;
+  appliedAtQuestionIndex: number;
+  expiresAtQuestionIndex: number;
+  params: Record<string, unknown>;
+};
+
+export type SkillInventoryEntry = {
+  skillId: SkillEffectType;
+  usesLeft: number;
+  lastUsedPhase: Phase | null;
+  lastUsedQuestionIndex: number | null;
+};
+
+// ─── Game State ───────────────────────────────────────────────────────────────
+
 export type GameState = {
   sessionId: UUID;
   lobbyCode: string;
@@ -179,6 +241,9 @@ export type GameState = {
   tiebreakerMode?: "quick_question" | "speed_round" | "sudden_death";
 
   voiceChannelId?: string;
+
+  activeEffects: ActiveEffect[];
+  skillInventory: Record<UUID, SkillInventoryEntry[]>;
 
   lastEventId: number;
   version: number;

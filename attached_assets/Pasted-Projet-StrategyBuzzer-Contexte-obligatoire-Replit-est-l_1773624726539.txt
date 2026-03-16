@@ -1,0 +1,239 @@
+Projet : StrategyBuzzer
+
+Contexte obligatoire
+- Replit est la SOURCE DE VÉRITÉ
+- GitHub est un miroir
+- La VM reçoit les changements ensuite via Git
+- Ne jamais proposer comme solution principale de modifier la VM directement
+- Conserver l’architecture 3 couches :
+  1. Domaine
+  2. Orchestration
+  3. Présentation
+
+Stack actuelle
+- Backend web : Laravel
+- Temps réel : Node.js + Socket.IO
+- Base principale : PostgreSQL
+- IA contenu : Gemini
+- Le serveur doit rester autoritaire
+- Aucune logique gameplay critique ne doit être pilotée par Blade ou JS
+
+Objectif principal
+Refondre la structure gameplay pour que Duo, Ligue, Solo et plus tard Maître du jeu reposent sur une base commune premium, au lieu d’avoir plusieurs implémentations parallèles.
+
+Constat déjà validé
+1. Les vues gameplay premium les plus riches sont dans la famille :
+- resources/views/game_question.blade.php
+- resources/views/game_answer.blade.php
+- resources/views/game_result.blade.php
+- resources/views/game_transition.blade.php
+- resources/views/game_match_result.blade.php
+- resources/views/unified_tiebreaker_choice.blade.php
+- resources/views/unified_tiebreaker_bonus.blade.php
+- resources/views/unified_tiebreaker_efficiency.blade.php
+- resources/views/unified_tiebreaker_sudden_death.blade.php
+- resources/views/unified_tiebreaker_waiting.blade.php
+
+2. Les vues spécifiques Duo existent déjà :
+- resources/views/duo_game.blade.php
+- resources/views/duo_lobby.blade.php
+- resources/views/duo_matchmaking.blade.php
+- resources/views/duo_question.blade.php
+- resources/views/duo_answer.blade.php
+- resources/views/duo_result.blade.php
+- resources/views/duo_resume.blade.php
+- resources/views/duo_splash.blade.php
+
+3. Les vues Ligue existent aussi :
+- resources/views/league_individual_game.blade.php
+- resources/views/league_individual_lobby.blade.php
+- resources/views/league_team_game.blade.php
+- resources/views/league_team_lobby.blade.php
+
+4. Les services et structures backend déjà présents montrent que Duo, Ligue et Solo partagent déjà partiellement une logique commune :
+- app/Http/Controllers/DuoController.php
+- app/Http/Controllers/SoloController.php
+- app/Http/Controllers/LobbyController.php
+- app/Http/Controllers/Api/GameController.php
+- app/Http/Controllers/Api/GameServerController.php
+
+- app/Services/DuoGameProvider.php
+- app/Services/SoloGameProvider.php
+- app/Services/LeagueGameProvider.php
+- app/Services/GameStateService.php
+- app/Services/LobbyService.php
+- app/Services/DuoMatchmakingService.php
+- app/Services/GameServerService.php
+- app/Services/GameServerQuestionPipeline.php
+- app/Services/DuoFirestoreService.php
+
+- app/Models/DuoMatch.php
+- app/Models/LeagueIndividualMatch.php
+- app/Models/LeagueTeamMatch.php
+- app/Models/MatchPerformance.php
+- app/Models/PlayerDuoStat.php
+
+5. Le vrai moteur temps réel / state machine existe déjà :
+- apps/game-server/src/services/GameOrchestrator.ts
+- packages/game-engine/src/state-machine.ts
+- packages/game-engine/test/state-machine.test.ts
+
+Décision d’architecture à respecter
+Ne pas copier la structure Solo 4 fois.
+Ne pas maintenir un gameplay dupliqué entre Duo et Ligue.
+Construire une base commune unique.
+
+Cible
+1 moteur commun
+1 famille d’écrans commune
+4 variantes spécialisées :
+- Solo
+- Duo
+- Ligue
+- Maître du jeu
+
+Objectif de structure
+A. Base commune de présentation
+Utiliser la famille `game_*` et `unified_tiebreaker_*` comme base premium commune pour :
+- question
+- réponse
+- résultat
+- saviez-vous
+- transition
+- fin de match
+- avant tiebreaker
+- tiebreaker
+
+B. Spécificités de mode
+Conserver des wrappers / extensions propres pour :
+- Duo : adversaire, buzz adverse, chat, audio live, skills adverses, synchronisation temps réel, mise
+- Ligue : classement, divisions, rewards saison, logique compétitive, équipe/individuel
+- Solo : progression, niveau, vies, IA, boss
+- Maître du jeu : contrôle manuel des phases, grand lobby, animation de groupe
+
+C. Runtime commun
+Le moteur gameplay ne doit pas être dans Blade.
+Le runtime doit être piloté par :
+- apps/game-server/src/services/GameOrchestrator.ts
+- packages/game-engine/src/state-machine.ts
+
+D. Providers de mode
+Les différences de mode doivent être portées par une couche de provider/configuration, pas par dupliquer tout le gameplay :
+- app/Services/SoloGameProvider.php
+- app/Services/DuoGameProvider.php
+- app/Services/LeagueGameProvider.php
+- plus tard un provider Maître du jeu si nécessaire
+
+Boucle gameplay commune à supporter
+Tous les modes doivent pouvoir partager ce squelette :
+- MATCH_INTRO
+- ROUND_INTRO
+- QUESTION_DISPLAY
+- BUZZ_OPEN
+- ANSWER_WINDOW
+- ANSWER_LOCKED
+- ROUND_RESULT
+- ROUND_TRANSITION
+- TIEBREAKER_INTRO
+- TIEBREAKER_QUESTION
+- MATCH_RESULT
+- MATCH_FINISHED
+
+Règles produit obligatoires
+1. Le “Saviez-vous ?” est obligatoire après chaque question dans la page résultat
+2. Les avatars stratégiques sont choisis avant le match
+3. Les skills doivent être pris en compte dès la première question
+4. Les skills sont contextuels à la phase
+5. Une icône de skill peut apparaître à des emplacements différents selon la page
+6. Une icône peut s’illuminer seulement quand la condition serveur devient vraie
+7. Le client n’envoie qu’une intention d’activation de skill
+8. Le serveur valide et applique
+9. Le serveur décide seul :
+   - buzz
+   - score
+   - réponse acceptée
+   - activation de skill
+   - effet adverse
+   - tiebreaker
+   - transitions
+   - fin de match
+10. Les entre-manches doivent être synchronisées
+11. Le tiebreaker doit être piloté côté serveur
+12. Le chat et l’audio ne doivent jamais casser la synchro
+
+Demandes concrètes
+Je veux un audit structuré de l’existant avec les sections suivantes :
+
+1. Cartographie des équivalences de fichiers
+Identifier clairement les correspondances entre :
+- Duo
+- Ligue individuelle
+- Ligue équipe
+- Solo
+- famille `game_*`
+
+Exemple attendu :
+- “duo_question.blade.php” correspond structurellement à “game_question.blade.php”
+- “league_individual_game.blade.php” et “league_team_game.blade.php” jouent le rôle de wrappers de gameplay
+- etc.
+
+2. Base commune recommandée
+Dire quels fichiers doivent devenir la base commune officielle.
+
+3. Fichiers à garder comme spécifiques de mode
+Dire lesquels doivent rester spécifiques :
+- lobby
+- matchmaking
+- splash
+- classement
+- contrôles maître du jeu
+- etc.
+
+4. Fichiers à refactorer
+Dire quels fichiers doivent être :
+- absorbés par la base commune
+- transformés en wrappers
+- simplifiés
+- supprimés à terme
+
+5. Refactor backend
+Expliquer comment répartir proprement :
+- Controllers Laravel
+- Services Laravel
+- Providers de mode
+- GameOrchestrator.ts
+- state-machine.ts
+
+6. Runtime cible
+Décrire clairement le runtime commun pour Duo/Ligue/Solo :
+- match state
+- player state
+- phase state
+- skill state
+- active effects
+- reconnect snapshot
+
+7. Plan d’exécution fichier par fichier
+Je veux un plan exact avec :
+- fichiers à créer
+- fichiers à modifier
+- fichiers à fusionner
+- fichiers à déprécier
+- ordre recommandé
+
+Contraintes impératives
+- Ne pas dupliquer massivement le gameplay dans Blade
+- Ne pas créer 4 flows parallèles indépendants
+- Ne pas casser la logique économique actuelle
+- Préserver la logique ledger actuelle
+- Préserver QuestService, DuoMatchmakingService, LeagueIndividualService, BoutiqueController dans leur logique économique actuelle
+- Ne pas inventer des fichiers qui n’existent pas sans le préciser
+- Identifier clairement ce qui existe déjà et ce qui manque réellement
+
+Résultat attendu
+Je veux une vraie proposition de structure de production pour que :
+- Duo et Ligue partagent le même cœur
+- Solo reste la référence premium visuelle
+- Maître du jeu puisse être branché plus tard sur la même base
+- le projet soit maintenable à long terme
+- les modes cessent d’évoluer comme des copies divergentes

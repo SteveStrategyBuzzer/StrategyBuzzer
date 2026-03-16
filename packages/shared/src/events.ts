@@ -43,6 +43,7 @@ export type PhaseChangedEvent = BaseEvent & {
   type: "PHASE_CHANGED";
   fromPhase: Phase;
   toPhase: Phase;
+  phaseStartedAtMs?: number;
   phaseEndsAtMs?: number;
   questionIndex?: number;
   roundNumber?: number;
@@ -87,6 +88,7 @@ export type AnswerRevealedEvent = BaseEvent & {
   totalScore: number;
   roundScore: number;
   funFact?: string;
+  didYouKnow?: string;
 };
 
 export type TimeoutEvent = BaseEvent & {

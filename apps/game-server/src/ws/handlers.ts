@@ -3,11 +3,14 @@ import type { RoomManager } from "../services/RoomManager.js";
 import type { GameOrchestrator } from "../services/GameOrchestrator.js";
 import type { GameState, Player } from "@strategybuzzer/shared";
 import type { GameEvent } from "@strategybuzzer/shared";
+import { buildInitialInventory } from "@strategybuzzer/shared";
 import { verifyJWT, type PlayerTokenPayload } from "../middleware/auth.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
 import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";
 import { validateEvent } from "../validation/validate.js";
 import { MetricsService } from "../services/MetricsService.js";
+import { canActivateSkill, applySkillEffect } from "@strategybuzzer/game-engine";
+import { getAvatarSkillIds } from "../services/AvatarSkillsMap.js";
 import {
   JoinRoomSchema,
   BuzzSchema,
@@ -18,6 +21,7 @@ import {
   VoiceAnswerSchema,
   VoiceCandidateSchema,
   PingCheckSchema,
+  TimeSyncSchema,
   type JoinRoomPayload,
   type BuzzPayload,
   type AnswerPayload,
@@ -27,7 +31,9 @@ import {
   type VoiceAnswerPayload,
   type VoiceCandidatePayload,
   type PingCheckPayload,
+  type TimeSyncPayload,
 } from "../validation/schemas.js";
+import { timeSyncService } from "../services/TimeSyncService.js";
 
 function extractScores(players: Record<string, Player>): Record<string, number> {
   const scores: Record<string, number> = {};
@@ -125,6 +131,16 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           socket.emit("error", { code: "JOIN_FAILED", message: "Could not join room" });
           return;
         }
+
+        // Initialize skill inventory from the player's strategic avatar
+        const room = roomManager.getRoom(roomId);
+        if (room) {
+          const skillIds = getAvatarSkillIds(payload.strategicAvatarId);
+          if (skillIds.length > 0 && !room.state.skillInventory[playerId]) {
+            room.state.skillInventory[playerId] = buildInitialInventory(skillIds);
+            console.log(`[WS] Initialized skill inventory for ${playerId} (${payload.strategicAvatarId}): ${skillIds.join(", ")}`);
+          }
+        }
         
         currentRoomId = roomId;
         currentPlayerId = playerId;
@@ -138,9 +154,11 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         if (state) {
           socket.emit("phase_changed", {
             phase: state.phase,
+            phaseStartedAtMs: state.phaseStartedAtMs ?? Date.now(),
             phaseEndsAtMs: state.phaseEndsAtMs,
             questionIndex: state.questionIndex,
             roundNumber: state.currentRound,
+            activeEffects: state.activeEffects,
           });
           
           // Emit comprehensive game_state for initial hydration
@@ -366,67 +384,64 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         }
         
         console.log(`[WS] Skill ${payload.skillId} from ${currentPlayerId}`);
-        
-        if (payload.skillId === 'reduce_time') {
-          const room = roomManager.getRoom(payload.roomId);
-          if (!room) {
-            socket.emit("error", { code: "ROOM_NOT_FOUND", message: "Room not found" });
-            MetricsService.incrementEventsFailed();
-            return;
-          }
-          
-          let targetId = payload.targetPlayerId;
-          if (!targetId) {
-            targetId = roomManager.findAttackTarget(payload.roomId, currentPlayerId) || undefined;
-          }
-          
-          if (!targetId) {
-            socket.emit("error", { code: "NO_TARGET", message: "No valid target found" });
-            MetricsService.incrementEventsFailed();
-            return;
-          }
-          
-          const currentRound = room.state.currentRound;
-          let questionsAffected = 5;
-          if (currentRound === 3) {
-            questionsAffected = 3;
-          } else if (currentRound >= 4) {
-            questionsAffected = 1;
-          }
-          
-          const activateResult = roomManager.activateReduceTime(
-            payload.roomId,
-            currentPlayerId,
-            targetId,
-            questionsAffected
-          );
-          
-          if (!activateResult.success) {
-            socket.emit("skill_failed", { 
-              skillId: 'reduce_time',
-              reason: activateResult.error 
-            });
-            MetricsService.incrementEventsFailed();
-            return;
-          }
-          
-          const targetPlayer = room.state.players[targetId];
-          const attackerPlayer = room.state.players[currentPlayerId];
-          
-          io.to(payload.roomId).emit("skill_activated", {
-            skillId: 'reduce_time',
-            attackerId: currentPlayerId,
-            attackerName: attackerPlayer?.name,
-            targetId,
-            targetName: targetPlayer?.name,
-            questionsAffected,
-            effect: 'question_timer_reduced',
-            timeReduction: 2000,
-          });
-          
-          console.log(`[WS] Skill reduce_time: ${attackerPlayer?.name} → ${targetPlayer?.name} for ${questionsAffected} questions`);
+
+        const room = roomManager.getRoom(payload.roomId);
+        if (!room) {
+          socket.emit("error", { code: "ROOM_NOT_FOUND", message: "Room not found" });
+          MetricsService.incrementEventsFailed();
+          return;
         }
-        
+
+        // Validate via formal skill-engine
+        const canActivate = canActivateSkill(room.state, currentPlayerId, payload.skillId);
+        if (!canActivate.allowed) {
+          socket.emit("skill_failed", {
+            skillId: payload.skillId,
+            reason: canActivate.reason ?? "activation_denied",
+          });
+          MetricsService.incrementEventsFailed();
+          return;
+        }
+
+        // Determine target
+        let targetId = payload.targetPlayerId;
+        if (!targetId) {
+          targetId = roomManager.findAttackTarget(payload.roomId, currentPlayerId) || undefined;
+        }
+        if (!targetId) {
+          // Self-targeting skill or fallback to self
+          targetId = currentPlayerId;
+        }
+
+        // Compute questionsAffected based on round (for reduce_time)
+        const currentRound = room.state.currentRound;
+        let questionsAffected = 5;
+        if (currentRound === 3) questionsAffected = 3;
+        else if (currentRound >= 4) questionsAffected = 1;
+
+        // Apply effect via skill-engine — updates activeEffects and skillInventory
+        room.state = applySkillEffect(
+          room.state,
+          currentPlayerId,
+          targetId,
+          payload.skillId,
+          { questionsAffected }
+        );
+
+        const targetPlayer = room.state.players[targetId];
+        const attackerPlayer = room.state.players[currentPlayerId];
+
+        io.to(payload.roomId).emit("skill_activated", {
+          skillId: payload.skillId,
+          attackerId: currentPlayerId,
+          attackerName: attackerPlayer?.name,
+          targetId,
+          targetName: targetPlayer?.name,
+          questionsAffected,
+          activeEffects: room.state.activeEffects,
+        });
+
+        console.log(`[WS] Skill ${payload.skillId}: ${attackerPlayer?.name} → ${targetPlayer?.name} (${questionsAffected} questions)`);
         MetricsService.incrementEventsProcessed();
         
       } catch (error) {
@@ -557,6 +572,17 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         clientTime: payload.clientTime,
         serverTime: Date.now(),
       });
+    });
+
+    socket.on("time_sync_ping", (data: unknown) => {
+      const result = validateEvent(TimeSyncSchema, data);
+      if (!result.success) {
+        socket.emit("error", { code: "VALIDATION_ERROR", message: "Invalid time_sync_ping payload" });
+        return;
+      }
+      const payload = result.data;
+      const response = timeSyncService.handlePing(payload.clientSentAtMs);
+      socket.emit("time_sync_pong", response);
     });
   });
 }

@@ -54,6 +54,10 @@ export const PingCheckSchema = z.object({
   clientTime: z.number(),
 });
 
+export const TimeSyncSchema = z.object({
+  clientSentAtMs: z.number(),
+});
+
 export type JoinRoomPayload = z.infer<typeof JoinRoomSchema>;
 export type BuzzPayload = z.infer<typeof BuzzSchema>;
 export type AnswerPayload = z.infer<typeof AnswerSchema>;
@@ -63,3 +67,4 @@ export type VoiceOfferPayload = z.infer<typeof VoiceOfferSchema>;
 export type VoiceAnswerPayload = z.infer<typeof VoiceAnswerSchema>;
 export type VoiceCandidatePayload = z.infer<typeof VoiceCandidateSchema>;
 export type PingCheckPayload = z.infer<typeof PingCheckSchema>;
+export type TimeSyncPayload = z.infer<typeof TimeSyncSchema>;

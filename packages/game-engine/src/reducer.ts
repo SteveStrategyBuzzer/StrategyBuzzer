@@ -1,5 +1,27 @@
-import type { GameState, Player } from "@strategybuzzer/shared";
+import type { GameState, GameConfig, Player } from "@strategybuzzer/shared";
 import type { GameEvent } from "@strategybuzzer/shared";
+
+export function createInitialState(sessionId: string, lobbyCode: string, config: GameConfig): GameState {
+  return {
+    sessionId,
+    lobbyCode,
+    createdAtMs: Date.now(),
+    phase: "LOBBY",
+    config,
+    players: {},
+    order: [],
+    currentRound: 0,
+    questionIndex: 0,
+    questions: [],
+    roundResults: [],
+    buzzQueue: [],
+    answeredPlayerIds: [],
+    activeEffects: [],
+    skillInventory: {},
+    lastEventId: 0,
+    version: 0,
+  };
+}
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`GameEngine: ${msg}`);
