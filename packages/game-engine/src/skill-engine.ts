@@ -128,3 +128,57 @@ export function rechargeInventory(
   });
   return s;
 }
+
+/**
+ * Consomme (supprime) un effet actif pour un joueur donné.
+ * À appeler après qu'un effet ponctuel (score_shield, double_points) a été déclenché.
+ */
+export function consumeEffect(
+  state: GameState,
+  playerId: UUID,
+  effectId: SkillEffectType
+): GameState {
+  const remaining = state.activeEffects.filter(
+    (e) => !(e.targetPlayerId === playerId && e.effectId === effectId)
+  );
+  if (remaining.length === state.activeEffects.length) return state;
+  const s: GameState = structuredClone(state);
+  s.activeEffects = remaining;
+  return s;
+}
+
+export type ScoreEffectResult = {
+  pointsEarned: number;
+  skillsTriggered: Array<{ skillId: string; playerId: string }>;
+  newState: GameState;
+};
+
+/**
+ * Applique les effets de skills actifs sur les points d'un joueur.
+ * - score_shield : annule les pertes (−2 → 0). Consommé après usage.
+ * - double_points : double les gains. Consommé après usage.
+ * Retourne les points finaux, la liste des skills déclenchés, et le nouvel état.
+ */
+export function applyScoreEffects(
+  state: GameState,
+  playerId: UUID,
+  rawPoints: number
+): ScoreEffectResult {
+  let pointsEarned = rawPoints;
+  let newState = state;
+  const skillsTriggered: Array<{ skillId: string; playerId: string }> = [];
+
+  if (pointsEarned < 0 && hasActiveEffect(newState, playerId, "score_shield")) {
+    pointsEarned = 0;
+    newState = consumeEffect(newState, playerId, "score_shield");
+    skillsTriggered.push({ skillId: "score_shield", playerId });
+  }
+
+  if (pointsEarned > 0 && hasActiveEffect(newState, playerId, "double_points")) {
+    pointsEarned = pointsEarned * 2;
+    newState = consumeEffect(newState, playerId, "double_points");
+    skillsTriggered.push({ skillId: "double_points", playerId });
+  }
+
+  return { pointsEarned, skillsTriggered, newState };
+}

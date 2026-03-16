@@ -45,8 +45,15 @@ const DuoSocketClient = {
     onRoundEnded: null,
     onMatchEnded: null,
     onSkillUsed: null,
+    onSkillActivated: null,
+    onSkillFailed: null,
+    onRateLimited: null,
     onWaitingBlock: null,
     onGameState: null,
+
+    // Time sync state (for corrected timer display — server remains authoritative)
+    _clockOffsetMs: 0,
+    _timeSyncInterval: null,
 
     _log(message, data = null) {
         if (data) {
@@ -82,6 +89,10 @@ const DuoSocketClient = {
                 this.socket.on('connect', () => {
                     this._log('Connected', { id: this.socket.id });
                     this._reconnectAttempts = 0;
+                    // Calibrate clock offset immediately, then every 30s
+                    this.syncTime();
+                    if (this._timeSyncInterval) clearInterval(this._timeSyncInterval);
+                    this._timeSyncInterval = setInterval(() => this.syncTime(), 30000);
                     if (this.onConnect) this.onConnect();
                     resolve();
                 });
@@ -205,6 +216,28 @@ const DuoSocketClient = {
                     if (this.onSkillUsed) this.onSkillUsed(data);
                 });
 
+                this.socket.on('skill_activated', (data) => {
+                    this._log('Skill activated', data);
+                    if (this.onSkillActivated) this.onSkillActivated(data);
+                });
+
+                this.socket.on('skill_failed', (data) => {
+                    this._log('Skill failed', data);
+                    if (this.onSkillFailed) this.onSkillFailed(data);
+                });
+
+                this.socket.on('rate_limited', (data) => {
+                    this._log('Rate limited', data);
+                    if (this.onRateLimited) this.onRateLimited(data);
+                });
+
+                this.socket.on('time_sync_pong', (data) => {
+                    const clientNowMs = Date.now();
+                    const roundtripMs = clientNowMs - data.clientSentAtMs;
+                    this._clockOffsetMs = data.serverSentAtMs - data.clientSentAtMs - Math.round(roundtripMs / 2);
+                    this._log('Time sync', { offsetMs: this._clockOffsetMs, roundtripMs });
+                });
+
                 this.socket.on('waiting_block', (data) => {
                     this._log('Waiting block', data);
                     if (this.onWaitingBlock) this.onWaitingBlock(data);
@@ -223,6 +256,10 @@ const DuoSocketClient = {
     },
 
     disconnect() {
+        if (this._timeSyncInterval) {
+            clearInterval(this._timeSyncInterval);
+            this._timeSyncInterval = null;
+        }
         if (this.socket) {
             this._log('Disconnecting...');
             this.socket.disconnect();
@@ -404,6 +441,25 @@ const DuoSocketClient = {
             this.socket.once('pong_check', handler);
             this.socket.emit('ping_check', { clientTime: startTime });
         });
+    },
+
+    /**
+     * Envoie un time_sync_ping au serveur pour calculer l'offset d'horloge.
+     * Le résultat est stocké dans _clockOffsetMs et utilisé par getServerTime().
+     * À appeler à la connexion et périodiquement (ex: toutes les 30s).
+     */
+    syncTime() {
+        if (!this.isConnected()) return;
+        this.socket.emit('time_sync_ping', { clientSentAtMs: Date.now() });
+    },
+
+    /**
+     * Retourne l'heure estimée du serveur à cet instant.
+     * Usage: calcul du temps restant d'une phase → Math.max(0, phaseEndsAtMs - duoSocket.getServerTime())
+     * Le serveur reste l'arbitre; ceci est uniquement pour l'affichage côté client.
+     */
+    getServerTime() {
+        return Date.now() + this._clockOffsetMs;
     },
 
     getLatestPing() {

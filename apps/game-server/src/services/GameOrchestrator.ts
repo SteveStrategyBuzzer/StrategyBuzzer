@@ -2,7 +2,7 @@ import type { Server as SocketIOServer } from "socket.io";
 import type { RoomManager, Room } from "./RoomManager.js";
 import type { Question, Mode, Phase } from "@strategybuzzer/shared";
 import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent, BuzzReceivedEvent, GameStartedEvent } from "@strategybuzzer/shared";
-import { applyEvent, hasActiveEffect, expireEffects } from "@strategybuzzer/game-engine";
+import { applyEvent, hasActiveEffect, expireEffects, applyScoreEffects, rechargeInventory } from "@strategybuzzer/game-engine";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
 import { appendEventLog, setRoomState } from "./RedisService.js";
@@ -304,6 +304,14 @@ export class GameOrchestrator {
         console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) timed out (no answer): ${pointsEarned} pts`);
       }
 
+      // Apply active skill effects (score_shield, double_points) — server is sole arbiter
+      const scoreEffectResult = applyScoreEffects(room.state, buzzer.playerId, pointsEarned);
+      pointsEarned = scoreEffectResult.pointsEarned;
+      room.state = scoreEffectResult.newState;
+      if (scoreEffectResult.skillsTriggered.length > 0) {
+        console.log(`[GameOrchestrator] Skill effects on ${buzzer.playerId}: ${scoreEffectResult.skillsTriggered.map(s => s.skillId).join(", ")}`);
+      }
+
       // Calculate expected scores for event payload (reducer will apply the actual update)
       const newRoundScore = (player.roundScore || 0) + pointsEarned;
       const newTotalScore = (player.score || 0) + pointsEarned;
@@ -348,6 +356,7 @@ export class GameOrchestrator {
         roundScore: newRoundScore,
         funFact: question?.funFact,
         didYouKnow: question?.funFact,
+        skillsTriggered: scoreEffectResult.skillsTriggered,
       });
 
       this.io.to(roomId).emit("score_update", {
@@ -355,6 +364,7 @@ export class GameOrchestrator {
         score: newTotalScore,
         roundScore: newRoundScore,
         delta: pointsEarned,
+        skillsTriggered: scoreEffectResult.skillsTriggered,
       });
     }
   }
@@ -828,6 +838,16 @@ export class GameOrchestrator {
 
       for (const player of Object.values(room.state.players)) {
         player.roundScore = 0;
+      }
+
+      // skill_recharge passive: restore full inventory for players who have this skill
+      for (const playerId of Object.keys(room.state.players)) {
+        const inventory = room.state.skillInventory[playerId] ?? [];
+        const hasRecharge = inventory.some(e => e.skillId === "skill_recharge");
+        if (hasRecharge) {
+          room.state = rechargeInventory(room.state, playerId);
+          console.log(`[GameOrchestrator] skill_recharge applied for ${playerId} at round ${room.state.currentRound}`);
+        }
       }
 
       const phaseEvent: PhaseChangedEvent = {

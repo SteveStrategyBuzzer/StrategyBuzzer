@@ -1202,6 +1202,16 @@ $mode = 'duo';
             syncTimerWithServer(data.phaseEndsAtMs);
         }
         
+        // If reduce_time is active against us, the server already shortened phaseEndsAtMs
+        if (data.reduceTimeActive) {
+            showSkillMessage('{{ __("Temps réduit par un skill adverse!") }}', 'warning', 3000);
+        }
+
+        // Render any active skill effects for this round
+        if (data.activeEffects && data.activeEffects.length > 0) {
+            renderActiveEffects(data.activeEffects);
+        }
+        
         buzzed = false;
         isRedirecting = false;
         tryShowGameLayout();
@@ -1231,6 +1241,25 @@ $mode = 'duo';
         }
         if (data.opponentScore !== undefined) {
             updateScores(undefined, data.opponentScore);
+        }
+
+        // Skill effects that triggered on this answer
+        if (data.skillsTriggered && data.skillsTriggered.length > 0) {
+            const myId = '{{ auth()->id() ?? "" }}';
+            data.skillsTriggered.forEach(function(triggered) {
+                if (triggered.effect === 'score_shield') {
+                    const isMe = String(triggered.playerId) === myId;
+                    showSkillMessage(isMe ? '{{ __("Bouclier: pénalité bloquée!") }}' : '{{ __("Bouclier adversaire: pénalité bloquée!") }}', 'info', 4000);
+                } else if (triggered.effect === 'double_points') {
+                    const isMe = String(triggered.playerId) === myId;
+                    showSkillMessage(isMe ? '{{ __("Points doublés!") }}' : '{{ __("Double points adversaire!") }}', 'success', 4000);
+                }
+            });
+        }
+
+        // "Le saviez-vous?" after answer reveal
+        if (data.didYouKnow) {
+            showDidYouKnow(data.didYouKnow);
         }
     }
     
@@ -1265,19 +1294,103 @@ $mode = 'duo';
         }, 2000);
     }
     
-    function handleSkillUsed(data) {
-        console.log('[DuoQuestion] {{ __("Skill utilisé") }}:', data);
-        
-        if (data.effect === 'time_bonus' && data.extraSeconds) {
-            timeLeft += data.extraSeconds;
-            if (phaseEndsAtMs) {
-                phaseEndsAtMs += data.extraSeconds * 1000;
-            }
-            chronoTimer.textContent = timeLeft;
-            showSkillMessage('⏰ +' + data.extraSeconds + ' {{ __("secondes") }}!', 'success');
+    function handleSkillActivated(data) {
+        console.log('[DuoQuestion] {{ __("Skill activé") }}:', data);
+        const myId = '{{ auth()->id() ?? "" }}';
+        const isMe = String(data.activatedBy) === myId;
+        const isTarget = String(data.targetPlayerId) === myId;
+
+        switch (data.effect) {
+            case 'reduce_time':
+                showSkillMessage(isTarget ? '{{ __("Temps réduit par l\'adversaire!") }}' : '{{ __("Temps de l\'adversaire réduit!") }}', isTarget ? 'warning' : 'success', 3000);
+                break;
+            case 'score_shield':
+                if (isMe) showSkillMessage('{{ __("Bouclier de score activé!") }}', 'info', 3000);
+                break;
+            case 'double_points':
+                if (isMe) showSkillMessage('{{ __("Points doublés pour ce round!") }}', 'success', 3000);
+                break;
+            case 'reveal_correct':
+                if (isMe) showSkillMessage('{{ __("Réponse correcte révélée!") }}', 'info', 3000);
+                break;
+            case 'shuffle_answers':
+                showSkillMessage(isTarget ? '{{ __("Réponses mélangées!") }}' : '{{ __("Réponses adversaire mélangées!") }}', isTarget ? 'warning' : 'success', 3000);
+                break;
+        }
+
+        // Update skill charge display
+        if (isMe && data.skillId !== undefined && data.charges !== undefined) {
+            updateSkillChargeUI(data.skillId, data.charges);
         }
     }
-    
+
+    function handleSkillFailed(data) {
+        console.log('[DuoQuestion] {{ __("Skill échoué") }}:', data);
+        const msgs = {
+            'no_charges': '{{ __("Plus de charges!") }}',
+            'not_applicable': '{{ __("Skill non applicable ici.") }}',
+            'cooldown': '{{ __("Skill en recharge.") }}',
+            'invalid_target': '{{ __("Cible invalide.") }}'
+        };
+        showSkillMessage(msgs[data.reason] || '{{ __("Impossible d\'activer ce skill.") }}', 'error', 3000);
+    }
+
+    function handleRateLimited(data) {
+        console.log('[DuoQuestion] {{ __("Limité") }}:', data);
+        showSkillMessage('{{ __("Action trop rapide – réessayez.") }}', 'warning', 2000);
+    }
+
+    function updateSkillChargeUI(skillId, charges) {
+        const skillEl = document.querySelector('[data-skill-id="' + skillId + '"]');
+        if (!skillEl) return;
+        const chargeEl = skillEl.querySelector('.skill-charges, .charge-count');
+        if (chargeEl) chargeEl.textContent = charges;
+        if (charges <= 0) {
+            skillEl.classList.remove('active');
+            skillEl.classList.add('depleted');
+            skillEl.style.opacity = '0.4';
+        }
+    }
+
+    function renderActiveEffects(activeEffects) {
+        let panel = document.getElementById('active-effects-panel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'active-effects-panel';
+            panel.style.cssText = 'position:fixed;top:10px;right:10px;z-index:8000;display:flex;flex-direction:column;gap:6px;';
+            document.body.appendChild(panel);
+        }
+        panel.innerHTML = '';
+        const myId = '{{ auth()->id() ?? "" }}';
+        activeEffects.forEach(function(eff) {
+            const isMe = String(eff.activatedBy) === myId;
+            const labels = {
+                'score_shield': '{{ __("Bouclier") }}',
+                'double_points': '{{ __("x2 Points") }}',
+                'reduce_time': '{{ __("Temps réduit") }}',
+                'reveal_correct': '{{ __("Oracle") }}',
+                'shuffle_answers': '{{ __("Chaos") }}'
+            };
+            const colors = { 'score_shield':'#3498DB','double_points':'#2ECC71','reduce_time':'#E74C3C','reveal_correct':'#9B59B6','shuffle_answers':'#E67E22' };
+            const badge = document.createElement('div');
+            badge.style.cssText = 'padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold;color:#fff;background:' + (colors[eff.effect] || '#555') + ';opacity:' + (isMe ? '1' : '0.7') + ';';
+            badge.textContent = (isMe ? '' : '⚔ ') + (labels[eff.effect] || eff.effect);
+            panel.appendChild(badge);
+        });
+        // Auto-hide panel when empty
+        if (activeEffects.length === 0) panel.style.display = 'none';
+        else panel.style.display = 'flex';
+    }
+
+    function showDidYouKnow(text) {
+        const div = document.createElement('div');
+        div.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);max-width:600px;width:90%;padding:14px 20px;border-radius:12px;background:linear-gradient(135deg,#8E44AD,#6C3483);color:#fff;font-size:14px;z-index:9998;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
+        div.innerHTML = '<strong>{{ __("Le saviez-vous?") }}</strong> ' + text;
+        document.body.appendChild(div);
+        setTimeout(function() { div.style.transition = 'opacity 0.5s'; div.style.opacity = '0'; }, 5500);
+        setTimeout(function() { div.remove(); }, 6100);
+    }
+
     function showSkillMessage(message, type, duration = 3000) {
         const msgDiv = document.createElement('div');
         msgDiv.className = 'skill-message skill-message-' + type;
@@ -1380,7 +1493,9 @@ $mode = 'duo';
         duoSocket.onAnswerRevealed = handleAnswerRevealed;
         duoSocket.onScoreUpdate = handleScoreUpdate;
         duoSocket.onMatchEnded = handleMatchEnded;
-        duoSocket.onSkillUsed = handleSkillUsed;
+        duoSocket.onSkillActivated = handleSkillActivated;
+        duoSocket.onSkillFailed = handleSkillFailed;
+        duoSocket.onRateLimited = handleRateLimited;
         
         try {
             await duoSocket.connect(GAME_SERVER_URL, JWT_TOKEN);
