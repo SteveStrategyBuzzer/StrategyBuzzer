@@ -642,10 +642,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     }
     
     /* Shuffle Answers Animation (Challenger Skill) */
+    .answers-container.shuffle-active .answer-button,
     .answers-grid.shuffle-active .answer-button {
         transition: transform 0.3s ease, opacity 0.3s ease;
     }
     
+    .answers-container.shuffle-active .answer-button.shuffling,
     .answers-grid.shuffle-active .answer-button.shuffling {
         animation: shuffleBounce 0.3s ease;
     }

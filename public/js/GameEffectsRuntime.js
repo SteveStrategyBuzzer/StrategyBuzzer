@@ -37,8 +37,9 @@ const GameEffectsRuntime = {
         this._playerId = String(playerId);
 
         socket.on('skill_activated', (data) => {
-            if (String(data.targetPlayerId) !== this._playerId) return;
-            var effectId = data.effect || data.effectId || data.skillId;
+            var target = String(data.targetId || data.targetPlayerId || '');
+            if (target !== this._playerId) return;
+            var effectId = data.skillId || data.effectId || data.effect;
             if (effectId) this._startEffect(effectId);
         });
 
