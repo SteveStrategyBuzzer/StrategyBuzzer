@@ -73,6 +73,7 @@ const GameEffectsRuntime = {
     },
 
     _syncFromActiveEffects(activeEffects) {
+        if (!Array.isArray(activeEffects)) return;
         var myEffects = {};
         for (var i = 0; i < activeEffects.length; i++) {
             var e = activeEffects[i];
