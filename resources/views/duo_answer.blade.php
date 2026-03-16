@@ -1395,14 +1395,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     
     GameEffectsRuntime.registerEffect('shuffle_answers', {
         onStart: function() {
+            stopShuffleInterval();
             var container = document.getElementById('answersContainer');
             if (container) container.classList.add('shuffle-active');
-            var ind = document.getElementById('shuffleIndicator');
+            var ind = container ? container.querySelector('.shuffle-indicator') : null;
             if (!ind && container) {
                 ind = document.createElement('div');
-                ind.id = 'shuffleIndicator';
                 ind.className = 'shuffle-indicator';
-                ind.textContent = '🔀 {{ __("Réponses mélangées !") }}';
+                ind.textContent = '🔀 {{ __("Réponses mélangées!") }}';
                 container.insertBefore(ind, container.firstChild);
             }
             if (ind) ind.style.display = '';
@@ -1413,7 +1413,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             stopShuffleInterval();
             var container = document.getElementById('answersContainer');
             if (container) container.classList.remove('shuffle-active');
-            var ind = document.getElementById('shuffleIndicator');
+            var ind = container ? container.querySelector('.shuffle-indicator') : null;
             if (ind) ind.style.display = 'none';
         }
     });
