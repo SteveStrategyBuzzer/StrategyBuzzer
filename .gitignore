@@ -77,3 +77,9 @@ storage/app/firebase-credentials.json
 
 .trash_root_files_2026-03-10/
 attached_assets/Pasted-Je-travaille-sur-un-projet-appel-StrategyBuzzer-un-jeu-_1773518592336.txt
+
+# backups
+*.bak
+*.save
+*.bak_*
+*.bak.*
