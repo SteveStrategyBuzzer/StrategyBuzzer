@@ -275,12 +275,12 @@ class LobbyService
         
         $playerDisplayName = $this->getPlayerDisplayName($player);
         
-        $jwtToken = $lobby['game_server']['player_tokens'][$player->id] ?? null;
+        $jwtToken = null;
 
-        if (!$jwtToken && !empty($lobby['game_server']['roomId'])) {
+        if (!empty($lobby['game_server']['roomId'])) {
             $jwtToken = $this->gameServerService->generatePlayerToken($player->id, $lobby['game_server']['roomId']);
             $lobby['game_server']['player_tokens'][$player->id] = $jwtToken;
-            Log::info('LobbyService: Generated token on-the-fly for joining player', [
+            Log::info('LobbyService: Refreshed token for joining player', [
                 'lobbyCode' => $code,
                 'playerId' => $player->id,
             ]);

@@ -880,13 +880,7 @@ $mode = 'duo';
     };
     
     function getGameServerUrl() {
-        const configUrl = '{{ config("app.game_server_url", "") }}';
-        if (configUrl && !configUrl.includes('localhost')) {
-            return configUrl;
-        }
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const hostname = window.location.hostname;
-        return `${protocol}//${hostname}:3001`;
+        return window.location.origin;
     }
     const GAME_SERVER_URL = getGameServerUrl();
     

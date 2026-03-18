@@ -1330,15 +1330,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const byId = id => document.getElementById(id);
   const setTxt = (id, v) => { const n = byId(id); if(n) n.textContent = v; };
 
-  // ===== Fix clavier mobile - détection focus =====
-  const inputs = document.querySelectorAll('input, textarea, select');
-  inputs.forEach(input => {
-    input.addEventListener('focus', () => {
+  // ===== Fix clavier mobile - uniquement pour les champs texte =====
+  const keyboardFields = document.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea');
+  keyboardFields.forEach(field => {
+    field.addEventListener('focus', () => {
       document.body.classList.add('keyboard-open');
     });
-    input.addEventListener('blur', () => {
+    field.addEventListener('blur', () => {
       setTimeout(() => {
-        if (!document.activeElement || !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+        const active = document.activeElement;
+        const isKeyboardField = active && (
+          active.tagName === 'TEXTAREA' ||
+          (active.tagName === 'INPUT' && !['checkbox', 'radio', 'hidden'].includes((active.type || '').toLowerCase()))
+        );
+        if (!isKeyboardField) {
           document.body.classList.remove('keyboard-open');
         }
       }, 100);

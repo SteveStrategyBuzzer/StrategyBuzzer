@@ -146,8 +146,8 @@ class DuoMatchmakingService
 
     public function acceptMatch(DuoMatch $match): DuoMatch
     {
-        $match->status = 'playing';
-        $match->started_at = now();
+        $match->status = 'lobby';
+        $match->started_at = null;
         $match->save();
 
         return $match;

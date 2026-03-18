@@ -1990,12 +1990,12 @@ function showVisionnairePreview() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success && data.next_question) {
-            questionText.innerHTML = data.next_question.text || '{{ __("Question non disponible") }}';
+        if (data.success && data.preview) {
+            questionText.innerHTML = data.preview.text || data.preview.hint || '{{ __("Question non disponible") }}';
             
-            if (data.next_question.theme) {
+            if (data.preview.theme) {
                 themeDiv.style.display = 'block';
-                themeDiv.innerHTML = '{{ __("Thème") }}: <strong>' + data.next_question.theme + '</strong>';
+                themeDiv.innerHTML = '{{ __("Thème") }}: <strong>' + data.preview.theme + '</strong>';
             }
             
             // Mettre à jour le compteur

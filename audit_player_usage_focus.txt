@@ -1,0 +1,1049 @@
+18:app/Models/User.php:119:        return $this->hasOne(BotProfile::class);
+26:app/Models/DuoMatch.php:21:        'theme',
+27:app/Models/BotProfile.php:7:class BotProfile extends Model
+28:app/Models/BotProfile.php:15:        'bot_avatar_slug',
+29:app/Models/BotProfile.php:19:        'bot_wins',
+30:app/Models/BotProfile.php:20:        'bot_losses',
+90:app/Http/Controllers/DuoController.php:56:            'player_code' => 'required|string',
+91:app/Http/Controllers/DuoController.php:61:        $opponent = \App\Services\PlayerCodeService::findByCode($request->player_code);
+92:app/Http/Controllers/DuoController.php:87:            'theme' => __('Culture générale'),
+93:app/Http/Controllers/DuoController.php:456:        $profileSettings = $user->profile_settings ?? [];
+94:app/Http/Controllers/DuoController.php:457:        $choixNiveau = is_array($profileSettings) ? ($profileSettings['choix_niveau'] ?? 1) : 1;
+95:app/Http/Controllers/DuoController.php:514:        $profileSettings = $user->profile_settings ?? [];
+96:app/Http/Controllers/DuoController.php:521:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+97:app/Http/Controllers/DuoController.php:526:        $opponentSettings = $opponent->profile_settings ?? [];
+98:app/Http/Controllers/DuoController.php:531:        $opponentAvatarPath = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+99:app/Http/Controllers/DuoController.php:533:        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+100:app/Http/Controllers/DuoController.php:535:        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+101:app/Http/Controllers/DuoController.php:537:        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+102:app/Http/Controllers/DuoController.php:540:            foreach ($strategicAvatars as $avatar) {
+103:app/Http/Controllers/DuoController.php:541:                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+104:app/Http/Controllers/DuoController.php:542:                    $strategicAvatarPath = $avatar['image'] ?? null;
+105:app/Http/Controllers/DuoController.php:550:        $theme = 'Culture générale';
+106:app/Http/Controllers/DuoController.php:551:        $themeDisplay = '🧠 Culture générale';
+107:app/Http/Controllers/DuoController.php:564:            'strategic_avatar' => $strategicAvatar,
+108:app/Http/Controllers/DuoController.php:566:            'avatarName' => $avatarName,
+109:app/Http/Controllers/DuoController.php:575:            'theme' => $theme,
+110:app/Http/Controllers/DuoController.php:576:            'themeDisplay' => $themeDisplay,
+111:app/Http/Controllers/DuoController.php:584:        $profileSettings = $user->profile_settings;
+112:app/Http/Controllers/DuoController.php:589:        $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
+113:app/Http/Controllers/DuoController.php:591:        if ($avatarName === 'Aucun' || empty($avatarName)) {
+114:app/Http/Controllers/DuoController.php:597:        $avatarInfo = null;
+115:app/Http/Controllers/DuoController.php:599:        foreach ($strategicAvatars as $avatar) {
+116:app/Http/Controllers/DuoController.php:600:            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+117:app/Http/Controllers/DuoController.php:601:                $avatarInfo = $avatar;
+118:app/Http/Controllers/DuoController.php:606:        if (!$avatarInfo || empty($avatarInfo['skills'])) {
+119:app/Http/Controllers/DuoController.php:611:        foreach ($avatarInfo['skills'] as $skillId) {
+120:app/Http/Controllers/DuoController.php:776:                    'theme' => $allQuestions[$i]['theme'] ?? '',
+121:app/Http/Controllers/DuoController.php:777:                    'subtheme' => $allQuestions[$i]['subtheme'] ?? '',
+122:app/Http/Controllers/DuoController.php:784:            $themes = ['Histoire', 'Sciences', 'Géographie', 'Sport', 'Culture'];
+123:app/Http/Controllers/DuoController.php:787:                    'theme' => $themes[array_rand($themes)],
+124:app/Http/Controllers/DuoController.php:788:                    'subtheme' => '',
+125:app/Http/Controllers/DuoController.php:925:                        'theme' => $lobby['settings']['theme'] ?? 'Culture générale',
+126:app/Http/Controllers/DuoController.php:1024:        $profileSettings = $user->profile_settings ?? [];
+127:app/Http/Controllers/DuoController.php:1029:        $opponentSettings = $opponent->profile_settings ?? [];
+128:app/Http/Controllers/DuoController.php:1035:        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/default.png');
+129:app/Http/Controllers/DuoController.php:1041:        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/default.png');
+130:app/Http/Controllers/DuoController.php:1052:        $theme = $gameState['theme'] ?? 'Culture générale';
+131:app/Http/Controllers/DuoController.php:1073:                'theme' => $theme,
+132:app/Http/Controllers/DuoController.php:1076:                'player_avatar' => $playerAvatar,
+133:app/Http/Controllers/DuoController.php:1078:                'opponent_avatar' => $opponentAvatar,
+134:app/Http/Controllers/DuoController.php:1379:        $profileSettings = $user->profile_settings ?? [];
+135:app/Http/Controllers/DuoController.php:1386:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+136:app/Http/Controllers/DuoController.php:1391:        $opponentSettings = $opponent->profile_settings ?? [];
+137:app/Http/Controllers/DuoController.php:1396:        $opponentAvatarPath = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+138:app/Http/Controllers/DuoController.php:1397:        // Ensure avatar paths are absolute for question view
+139:app/Http/Controllers/DuoController.php:1402:        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+140:app/Http/Controllers/DuoController.php:1403:        // Ensure avatar paths are absolute for question view
+141:app/Http/Controllers/DuoController.php:1408:        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+142:app/Http/Controllers/DuoController.php:1410:        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+143:app/Http/Controllers/DuoController.php:1413:            foreach ($strategicAvatars as $avatar) {
+144:app/Http/Controllers/DuoController.php:1414:                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+145:app/Http/Controllers/DuoController.php:1415:                    $strategicAvatarPath = $avatar['image'] ?? null;
+146:app/Http/Controllers/DuoController.php:1423:        $theme = 'Culture générale';
+147:app/Http/Controllers/DuoController.php:1424:        $themeDisplay = '🧠 Culture générale';
+148:app/Http/Controllers/DuoController.php:1436:            'strategic_avatar' => $strategicAvatar,
+149:app/Http/Controllers/DuoController.php:1438:            'avatarName' => $avatarName,
+150:app/Http/Controllers/DuoController.php:1447:            'theme' => $theme,
+151:app/Http/Controllers/DuoController.php:1448:            'themeDisplay' => $themeDisplay,
+152:app/Http/Controllers/DuoController.php:1459:        $profileSettings = $user->profile_settings ?? [];
+153:app/Http/Controllers/DuoController.php:1464:        $opponentSettings = $opponent->profile_settings ?? [];
+154:app/Http/Controllers/DuoController.php:1512:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+155:app/Http/Controllers/DuoController.php:1514:        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+156:app/Http/Controllers/DuoController.php:1516:        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+157:app/Http/Controllers/DuoController.php:1519:            foreach ($strategicAvatars as $avatar) {
+158:app/Http/Controllers/DuoController.php:1520:                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+159:app/Http/Controllers/DuoController.php:1521:                    $strategicAvatarPath = $avatar['image'] ?? null;
+160:app/Http/Controllers/DuoController.php:1527:        // Ensure avatar paths are absolute for answer view
+161:app/Http/Controllers/DuoController.php:1528:        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+162:app/Http/Controllers/DuoController.php:1532:        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+163:app/Http/Controllers/DuoController.php:1592:            'avatarName' => $avatarName,
+164:app/Http/Controllers/DuoController.php:1602:                'avatar' => $playerAvatar,
+165:app/Http/Controllers/DuoController.php:1609:                'avatar' => $opponentAvatar,
+166:app/Http/Controllers/DuoController.php:1621:        $profileSettings = $user->profile_settings ?? [];
+167:app/Http/Controllers/DuoController.php:1626:        $opponentSettings = $opponent->profile_settings ?? [];
+168:app/Http/Controllers/DuoController.php:1663:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+169:app/Http/Controllers/DuoController.php:1665:        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+170:app/Http/Controllers/DuoController.php:1667:        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+171:app/Http/Controllers/DuoController.php:1670:            foreach ($strategicAvatars as $avatar) {
+172:app/Http/Controllers/DuoController.php:1671:                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+173:app/Http/Controllers/DuoController.php:1672:                    $strategicAvatarPath = $avatar['image'] ?? null;
+174:app/Http/Controllers/DuoController.php:1678:        // Ensure avatar paths are absolute for result view
+175:app/Http/Controllers/DuoController.php:1679:        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+176:app/Http/Controllers/DuoController.php:1683:        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+177:app/Http/Controllers/DuoController.php:1700:            'avatarName' => $avatarName,
+178:app/Http/Controllers/DuoController.php:1705:                'avatar' => $playerAvatar,
+179:app/Http/Controllers/DuoController.php:1712:                'avatar' => $opponentAvatar,
+180:app/Http/Controllers/DuoController.php:1732:        $profileSettings = $user->profile_settings ?? [];
+181:app/Http/Controllers/DuoController.php:1737:        $opponentSettings = $opponent->profile_settings ?? [];
+182:app/Http/Controllers/DuoController.php:1757:        // Ensure avatar paths are absolute
+183:app/Http/Controllers/DuoController.php:1758:        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+184:app/Http/Controllers/DuoController.php:1762:        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+185:app/Http/Controllers/DuoController.php:1767:        // Strategic avatar system - use shared AvatarSkillService
+186:app/Http/Controllers/DuoController.php:1768:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar.name', 'Aucun');
+187:app/Http/Controllers/DuoController.php:1769:        $avatarSkillsFull = \App\Services\AvatarSkillService::getAvatarSkills($strategicAvatar, $user->id);
+188:app/Http/Controllers/DuoController.php:1779:                'avatar' => $strategicAvatar,
+189:app/Http/Controllers/DuoController.php:1780:                'avatar_skills_full' => $avatarSkillsFull,
+190:app/Http/Controllers/DuoController.php:1790:                    'theme' => $questionData['theme'] ?? 'Culture générale',
+191:app/Http/Controllers/DuoController.php:1797:                    'avatar' => $playerAvatar,
+192:app/Http/Controllers/DuoController.php:1804:                    'avatar' => $opponentAvatar,
+193:app/Http/Controllers/DuoController.php:1824:        $profileSettings = $user->profile_settings ?? [];
+194:app/Http/Controllers/DuoController.php:1829:        $opponentSettings = $opponent->profile_settings ?? [];
+195:app/Http/Controllers/DuoController.php:1878:                    'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+196:app/Http/Controllers/DuoController.php:1885:                    'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+197:app/Http/Controllers/DuoController.php:1917:        $profileSettings = $user->profile_settings ?? [];
+198:app/Http/Controllers/DuoController.php:1922:        $opponentSettings = $opponent->profile_settings ?? [];
+199:app/Http/Controllers/DuoController.php:1957:            'playerAvatarPath' => asset(data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png')),
+200:app/Http/Controllers/DuoController.php:1960:            'opponentAvatarPath' => asset(data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png')),
+201:app/Http/Controllers/DuoController.php:1971:            'avatarName' => $gameState['avatar_name'] ?? '',
+202:app/Http/Controllers/DuoController.php:2049:            'player_code' => 'required|string|max:20',
+203:app/Http/Controllers/DuoController.php:2053:        $contact = $this->contactService->addContactByCode($user->id, $request->player_code);
+204:app/Http/Controllers/DuoController.php:2127:            'avatar_url' => $user->avatar_url ?? '',
+205:app/Http/Controllers/DuoController.php:2327:            'theme' => __('Culture générale'),
+206:app/Http/Controllers/DuoController.php:2517:        $profileSettings = $user->profile_settings;
+207:app/Http/Controllers/DuoController.php:2522:        $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
+208:app/Http/Controllers/DuoController.php:2525:        if ($avatarName !== 'Challenger') {
+209:app/Http/Controllers/DuoController.php:2528:                'message' => __('Skill non disponible pour cet avatar'),
+295:app/Http/Controllers/LeagueIndividualController.php:154:            'opponent' => $opponent->only(['id', 'name', 'avatar_url']),
+296:app/Http/Controllers/LeagueIndividualController.php:501:                        'theme' => $lobby['settings']['theme'] ?? 'Culture générale',
+297:app/Http/Controllers/LeagueIndividualController.php:831:        $profileSettings = $user->profile_settings ?? [];
+298:app/Http/Controllers/LeagueIndividualController.php:838:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+299:app/Http/Controllers/LeagueIndividualController.php:843:        $opponentSettings = $opponent->profile_settings ?? [];
+300:app/Http/Controllers/LeagueIndividualController.php:848:        $opponentAvatarPath = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+301:app/Http/Controllers/LeagueIndividualController.php:850:        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+302:app/Http/Controllers/LeagueIndividualController.php:852:        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+303:app/Http/Controllers/LeagueIndividualController.php:854:        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+304:app/Http/Controllers/LeagueIndividualController.php:857:            foreach ($strategicAvatars as $avatar) {
+305:app/Http/Controllers/LeagueIndividualController.php:858:                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+306:app/Http/Controllers/LeagueIndividualController.php:859:                    $strategicAvatarPath = $avatar['image'] ?? null;
+307:app/Http/Controllers/LeagueIndividualController.php:867:        $theme = 'Culture générale';
+308:app/Http/Controllers/LeagueIndividualController.php:868:        $themeDisplay = '🧠 Culture générale';
+309:app/Http/Controllers/LeagueIndividualController.php:880:            'strategic_avatar' => $strategicAvatar,
+310:app/Http/Controllers/LeagueIndividualController.php:882:            'avatarName' => $avatarName,
+311:app/Http/Controllers/LeagueIndividualController.php:891:            'theme' => $theme,
+312:app/Http/Controllers/LeagueIndividualController.php:892:            'themeDisplay' => $themeDisplay,
+313:app/Http/Controllers/LeagueIndividualController.php:903:        $profileSettings = $user->profile_settings ?? [];
+314:app/Http/Controllers/LeagueIndividualController.php:908:        $opponentSettings = $opponent->profile_settings ?? [];
+315:app/Http/Controllers/LeagueIndividualController.php:931:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+316:app/Http/Controllers/LeagueIndividualController.php:944:                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+317:app/Http/Controllers/LeagueIndividualController.php:951:                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+318:app/Http/Controllers/LeagueIndividualController.php:956:            'strategic_avatar' => $strategicAvatar,
+319:app/Http/Controllers/LeagueIndividualController.php:966:        $profileSettings = $user->profile_settings ?? [];
+320:app/Http/Controllers/LeagueIndividualController.php:971:        $opponentSettings = $opponent->profile_settings ?? [];
+321:app/Http/Controllers/LeagueIndividualController.php:998:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+322:app/Http/Controllers/LeagueIndividualController.php:1011:                'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+323:app/Http/Controllers/LeagueIndividualController.php:1018:                'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
+324:app/Http/Controllers/LeagueIndividualController.php:1029:            'strategic_avatar' => $strategicAvatar,
+325:app/Http/Controllers/LeagueIndividualController.php:1035:        $profileSettings = $user->profile_settings;
+326:app/Http/Controllers/LeagueIndividualController.php:1040:        $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
+327:app/Http/Controllers/LeagueIndividualController.php:1042:        if ($avatarName === 'Aucun' || empty($avatarName)) {
+328:app/Http/Controllers/LeagueIndividualController.php:1048:        $avatarInfo = null;
+329:app/Http/Controllers/LeagueIndividualController.php:1050:        foreach ($strategicAvatars as $avatar) {
+330:app/Http/Controllers/LeagueIndividualController.php:1051:            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+331:app/Http/Controllers/LeagueIndividualController.php:1052:                $avatarInfo = $avatar;
+332:app/Http/Controllers/LeagueIndividualController.php:1057:        if (!$avatarInfo || empty($avatarInfo['skills'])) {
+333:app/Http/Controllers/LeagueIndividualController.php:1062:        foreach ($avatarInfo['skills'] as $skillId) {
+334:app/Http/Controllers/LeagueIndividualController.php:1099:        $profileSettings = $user->profile_settings ?? [];
+335:app/Http/Controllers/LeagueIndividualController.php:1106:        $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
+336:app/Http/Controllers/LeagueIndividualController.php:1111:        $opponentSettings = $opponent->profile_settings ?? [];
+337:app/Http/Controllers/LeagueIndividualController.php:1116:        $opponentAvatarPath = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+338:app/Http/Controllers/LeagueIndividualController.php:1118:        $playerAvatarPath = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
+339:app/Http/Controllers/LeagueIndividualController.php:1120:        $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
+340:app/Http/Controllers/LeagueIndividualController.php:1122:        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+341:app/Http/Controllers/LeagueIndividualController.php:1125:            foreach ($strategicAvatars as $avatar) {
+342:app/Http/Controllers/LeagueIndividualController.php:1126:                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+343:app/Http/Controllers/LeagueIndividualController.php:1127:                    $strategicAvatarPath = $avatar['image'] ?? null;
+344:app/Http/Controllers/LeagueIndividualController.php:1135:        $theme = 'Culture générale';
+345:app/Http/Controllers/LeagueIndividualController.php:1136:        $themeDisplay = '🧠 Culture générale';
+346:app/Http/Controllers/LeagueIndividualController.php:1149:            'strategic_avatar' => $strategicAvatar,
+347:app/Http/Controllers/LeagueIndividualController.php:1151:            'avatarName' => $avatarName,
+348:app/Http/Controllers/LeagueIndividualController.php:1160:            'theme' => $theme,
+349:app/Http/Controllers/LeagueIndividualController.php:1161:            'themeDisplay' => $themeDisplay,
+371:app/Http/Controllers/LeagueTeamController.php:13:use App\Models\ProfileStat;
+372:app/Http/Controllers/LeagueTeamController.php:66:                    'player_code' => $contact->player_code ?? 'SB-XXXX',
+373:app/Http/Controllers/LeagueTeamController.php:67:                    'avatar_url' => $contact->avatar_url,
+374:app/Http/Controllers/LeagueTeamController.php:195:        $themeLabels = [
+375:app/Http/Controllers/LeagueTeamController.php:199:        $themeKeys = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
+376:app/Http/Controllers/LeagueTeamController.php:202:        foreach ($themeKeys as $i => $key) {
+377:app/Http/Controllers/LeagueTeamController.php:203:            $formattedStrengths[$themeLabels[$i]] = $teamStrengths[$key] ?? 50;
+378:app/Http/Controllers/LeagueTeamController.php:213:            foreach ($themeKeys as $i => $theme) {
+379:app/Http/Controllers/LeagueTeamController.php:215:                $memberStrengths[$themeLabels[$i]] = $strength;
+380:app/Http/Controllers/LeagueTeamController.php:402:        $themes = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
+381:app/Http/Controllers/LeagueTeamController.php:405:        foreach ($themes as $theme) {
+382:app/Http/Controllers/LeagueTeamController.php:406:            $strengths[$theme] = 50;
+383:app/Http/Controllers/LeagueTeamController.php:414:        $themes = ['geography', 'history', 'sports', 'sciences', 'cinema', 'art', 'animals', 'cuisine'];
+384:app/Http/Controllers/LeagueTeamController.php:419:        foreach ($themes as $theme) {
+385:app/Http/Controllers/LeagueTeamController.php:421:            $diff = $userStrength - ($teamStrengths[$theme] ?? 50);
+386:app/Http/Controllers/LeagueTeamController.php:422:            $contribution[$theme] = [
+387:app/Http/Controllers/LeagueTeamController.php:424:                'team_strength' => $teamStrengths[$theme] ?? 50,
+388:app/Http/Controllers/LeagueTeamController.php:529:        $playerIdentifier = $request->player_code ?? $request->player_name;
+389:app/Http/Controllers/LeagueTeamController.php:1219:                'avatar_url' => $member->avatar_url,
+390:app/Http/Controllers/LeagueTeamController.php:1284:                'avatar_url' => $member->avatar_url,
+486:app/Http/Controllers/SoloController.php.bak:11:        $choix_niveau = session('choix_niveau', 10);
+487:app/Http/Controllers/SoloController.php.bak:12:        $avatar = session('avatar', 'Aucun');
+488:app/Http/Controllers/SoloController.php.bak:13:        $niveau_selectionne = session('niveau_selectionne', $choix_niveau);
+489:app/Http/Controllers/SoloController.php.bak:16:            'choix_niveau' => $choix_niveau,
+490:app/Http/Controllers/SoloController.php.bak:17:            'avatar_stratégique' => $avatar,
+491:app/Http/Controllers/SoloController.php.bak:26:            'theme' => 'required|string',
+492:app/Http/Controllers/SoloController.php.bak:30:        $theme = $validated['theme'];
+493:app/Http/Controllers/SoloController.php.bak:35:        $avatar = session('avatar', 'Aucun');
+494:app/Http/Controllers/SoloController.php.bak:51:        $themeIcons = [
+495:app/Http/Controllers/SoloController.php.bak:63:            'theme' => $theme,
+496:app/Http/Controllers/SoloController.php.bak:64:            'theme_icon' => $themeIcons[$theme] ?? '❓',
+497:app/Http/Controllers/SoloController.php.bak:65:            'avatar' => $avatar,
+498:app/Http/Controllers/SoloController.php.bak:66:            'avatar_skills' => $this->getAvatarSkills($avatar),
+499:app/Http/Controllers/SoloController.php.bak:83:    private function getAvatarSkills($avatar)
+500:app/Http/Controllers/SoloController.php.bak:92:        return $skills[$avatar] ?? [];
+501:app/Http/Controllers/SoloController.php.bak:107:            'theme' => session('theme', '?'),
+502:app/Http/Controllers/SoloController.php.bak:108:            'avatar' => session('avatar', 'Aucun'),
+519:app/Http/Controllers/SoloController.php:11:use App\Services\ProfileStatsService;
+520:app/Http/Controllers/SoloController.php:20:        return $user?->preferred_language ?? config('languages.default', 'fr');
+521:app/Http/Controllers/SoloController.php:25:        // Restaurer le niveau et l'avatar depuis profile_settings pour les utilisateurs authentifiés
+522:app/Http/Controllers/SoloController.php:28:            $settings = (array) ($user->profile_settings ?? []);
+523:app/Http/Controllers/SoloController.php:30:            // Restaurer depuis choix_niveau (source de vérité unique)
+524:app/Http/Controllers/SoloController.php:31:            $savedLevel = (int) data_get($settings, 'choix_niveau', 1);
+525:app/Http/Controllers/SoloController.php:34:            if ($savedLevel > session('choix_niveau', 1)) {
+526:app/Http/Controllers/SoloController.php:35:                session(['choix_niveau' => $savedLevel]);
+527:app/Http/Controllers/SoloController.php:38:            // Restaurer l'avatar stratégique depuis profile_settings
+528:app/Http/Controllers/SoloController.php:39:            $savedAvatar = (string) data_get($settings, 'strategic_avatar.name', '');
+529:app/Http/Controllers/SoloController.php:41:                session(['avatar' => $savedAvatar]);
+530:app/Http/Controllers/SoloController.php:46:        if (!session()->has('choix_niveau')) {
+531:app/Http/Controllers/SoloController.php:47:            session(['choix_niveau' => 1]);
+532:app/Http/Controllers/SoloController.php:50:        $choix_niveau       = session('choix_niveau', 1);            // niveau max débloqué
+533:app/Http/Controllers/SoloController.php:51:        $niveau_selectionne = session('niveau_selectionne', $choix_niveau); // par défaut le max débloqué
+534:app/Http/Controllers/SoloController.php:52:        $avatar             = session('avatar', 'Aucun');            // avatar optionnel
+535:app/Http/Controllers/SoloController.php:55:        // Skill Stratège: Coéquipier - récupérer TOUS les avatars rares avec leur état
+536:app/Http/Controllers/SoloController.php:57:        $isStratege = in_array(strtolower($avatar), ['stratège', 'stratege']);
+537:app/Http/Controllers/SoloController.php:63:                $settings = (array) ($user->profile_settings ?? []);
+538:app/Http/Controllers/SoloController.php:64:                $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+539:app/Http/Controllers/SoloController.php:67:            // Récupérer TOUS les avatars rares avec leur état (débloqué ou non)
+540:app/Http/Controllers/SoloController.php:68:            $avatarCatalog = \App\Services\AvatarCatalog::getStrategiques();
+541:app/Http/Controllers/SoloController.php:69:            foreach ($avatarCatalog as $slug => $avatarData) {
+542:app/Http/Controllers/SoloController.php:70:                if (($avatarData['tier'] ?? '') === 'Rare') {
+543:app/Http/Controllers/SoloController.php:71:                    $rareAvatarsData[$slug] = array_merge($avatarData, [
+544:app/Http/Controllers/SoloController.php:82:            'choix_niveau'       => $choix_niveau,
+545:app/Http/Controllers/SoloController.php:84:            'avatar_stratégique'      => $avatar,
+546:app/Http/Controllers/SoloController.php:87:            'rare_avatars_data'  => $rareAvatarsData,
+547:app/Http/Controllers/SoloController.php:101:        $playerLevel = session('choix_niveau', 1);
+548:app/Http/Controllers/SoloController.php:116:        // Valider que c'est un avatar rare valide ET débloqué (si non vide)
+549:app/Http/Controllers/SoloController.php:118:            $avatarCatalog = \App\Services\AvatarCatalog::getStrategiques();
+550:app/Http/Controllers/SoloController.php:119:            if (!isset($avatarCatalog[$teammate]) || ($avatarCatalog[$teammate]['tier'] ?? '') !== 'Rare') {
+551:app/Http/Controllers/SoloController.php:123:            // Vérifier que l'avatar est débloqué pour cet utilisateur
+552:app/Http/Controllers/SoloController.php:126:                $settings = (array) ($user->profile_settings ?? []);
+553:app/Http/Controllers/SoloController.php:127:                $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+554:app/Http/Controllers/SoloController.php:142:        $maxLevel = session('choix_niveau', 1);
+555:app/Http/Controllers/SoloController.php:166:            'theme'         => 'required|string',
+556:app/Http/Controllers/SoloController.php:170:        $theme        = $validated['theme'];
+557:app/Http/Controllers/SoloController.php:175:        $max = session('choix_niveau', 1);
+558:app/Http/Controllers/SoloController.php:192:            'theme'              => $theme,
+559:app/Http/Controllers/SoloController.php:214:        // Avatar vraiment optionnel - tenter de restaurer depuis profile_settings
+560:app/Http/Controllers/SoloController.php:216:        if (!session()->has('avatar') || empty(session('avatar'))) {
+561:app/Http/Controllers/SoloController.php:218:                $settings = (array) ($user->profile_settings ?? []);
+562:app/Http/Controllers/SoloController.php:219:                $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
+563:app/Http/Controllers/SoloController.php:220:                session(['avatar' => $strategicName ?: 'Aucun']);
+564:app/Http/Controllers/SoloController.php:222:                session(['avatar' => 'Aucun']);
+565:app/Http/Controllers/SoloController.php:226:        // Synchroniser l'avatar joueur depuis profile_settings (normaliser 'default' et valeurs vides)
+566:app/Http/Controllers/SoloController.php:227:        $currentAvatar = session('selected_avatar', '');
+567:app/Http/Controllers/SoloController.php:231:                $settings = (array) ($user->profile_settings ?? []);
+568:app/Http/Controllers/SoloController.php:232:                $playerAvatarUrl = (string) data_get($settings, 'avatar.url', '');
+569:app/Http/Controllers/SoloController.php:233:                // Normaliser aussi 'default' dans profile_settings
+570:app/Http/Controllers/SoloController.php:235:                    session(['selected_avatar' => $playerAvatarUrl]);
+571:app/Http/Controllers/SoloController.php:237:                    // Utiliser standard1 comme avatar par défaut
+572:app/Http/Controllers/SoloController.php:238:                    session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+573:app/Http/Controllers/SoloController.php:241:                // Invités : utiliser standard1 comme avatar par défaut
+574:app/Http/Controllers/SoloController.php:242:                session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+575:app/Http/Controllers/SoloController.php:246:        $avatar = session('avatar', 'Aucun');
+576:app/Http/Controllers/SoloController.php:263:        $themeIcons = [
+577:app/Http/Controllers/SoloController.php:277:        $playerAvatar = session('selected_avatar', 'images/avatars/standard/standard1.png');
+578:app/Http/Controllers/SoloController.php:279:        // Récupérer le pseudonyme du joueur depuis profile_settings
+579:app/Http/Controllers/SoloController.php:282:            $settings = (array) ($user->profile_settings ?? []);
+580:app/Http/Controllers/SoloController.php:286:        // Vérifier conflit d'avatar seulement s'il y a un boss
+581:app/Http/Controllers/SoloController.php:287:        $avatarConflict = false;
+582:app/Http/Controllers/SoloController.php:292:            // Vérifier si l'avatar stratégique du joueur est le même que le boss
+583:app/Http/Controllers/SoloController.php:293:            if ($avatar !== 'Aucun' && $avatar === $bossNameClean) {
+584:app/Http/Controllers/SoloController.php:294:                $avatarConflict = true;
+585:app/Http/Controllers/SoloController.php:295:                $avatar = 'Aucun'; // Reset l'avatar si conflit
+586:app/Http/Controllers/SoloController.php:296:                session(['avatar' => 'Aucun']);
+587:app/Http/Controllers/SoloController.php:300:        $avatarSkillsData = $this->getAvatarSkills($avatar);
+588:app/Http/Controllers/SoloController.php:302:            'theme'           => $theme,
+589:app/Http/Controllers/SoloController.php:303:            'theme_icon'      => $themeIcons[$theme] ?? '❓',
+590:app/Http/Controllers/SoloController.php:304:            'avatar'          => $avatar,
+591:app/Http/Controllers/SoloController.php:305:            'avatar_skills'   => $this->getAvatarSkillsSimple($avatar),
+592:app/Http/Controllers/SoloController.php:306:            'avatar_skills_full' => $avatarSkillsData,
+593:app/Http/Controllers/SoloController.php:309:            'niveau_progression' => session('choix_niveau', 1),
+594:app/Http/Controllers/SoloController.php:315:            'boss_avatar'     => $bossInfo['avatar'] ?? null,
+595:app/Http/Controllers/SoloController.php:318:            'player_avatar'   => $playerAvatar,
+596:app/Http/Controllers/SoloController.php:320:            'avatar_conflict' => $avatarConflict,
+597:app/Http/Controllers/SoloController.php:338:        // Synchroniser l'avatar stratégique depuis profile_settings si absent ou 'Aucun'
+598:app/Http/Controllers/SoloController.php:340:        if ($user && (!session()->has('avatar') || session('avatar') === 'Aucun')) {
+599:app/Http/Controllers/SoloController.php:341:            $settings = (array) ($user->profile_settings ?? []);
+600:app/Http/Controllers/SoloController.php:342:            $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
+601:app/Http/Controllers/SoloController.php:344:                session(['avatar' => $strategicName]);
+602:app/Http/Controllers/SoloController.php:348:        // Synchroniser l'avatar joueur depuis profile_settings (normaliser 'default' et valeurs vides)
+603:app/Http/Controllers/SoloController.php:349:        $currentAvatar = session('selected_avatar', '');
+604:app/Http/Controllers/SoloController.php:353:                $settings = (array) ($user->profile_settings ?? []);
+605:app/Http/Controllers/SoloController.php:354:                $playerAvatarUrl = (string) data_get($settings, 'avatar.url', '');
+606:app/Http/Controllers/SoloController.php:355:                // Normaliser aussi 'default' dans profile_settings
+607:app/Http/Controllers/SoloController.php:357:                    session(['selected_avatar' => $playerAvatarUrl]);
+608:app/Http/Controllers/SoloController.php:359:                    // Utiliser standard1 comme avatar par défaut
+609:app/Http/Controllers/SoloController.php:360:                    session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+610:app/Http/Controllers/SoloController.php:363:                // Invités : utiliser standard1 comme avatar par défaut
+611:app/Http/Controllers/SoloController.php:364:                session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+612:app/Http/Controllers/SoloController.php:369:        $theme = session('theme', 'general');
+613:app/Http/Controllers/SoloController.php:371:        $niveau = session('niveau_selectionne', session('choix_niveau', 1));
+614:app/Http/Controllers/SoloController.php:372:        $avatar = session('avatar', 'Aucun');
+615:app/Http/Controllers/SoloController.php:373:        $playerAvatar = session('selected_avatar', 'images/avatars/standard/standard1.png');
+616:app/Http/Controllers/SoloController.php:375:        $themeIcons = [
+617:app/Http/Controllers/SoloController.php:390:        // Récupérer le pseudonyme du joueur depuis profile_settings
+618:app/Http/Controllers/SoloController.php:393:            $settings = (array) ($user->profile_settings ?? []);
+619:app/Http/Controllers/SoloController.php:397:        // Vérifier conflit d'avatar seulement s'il y a un boss
+620:app/Http/Controllers/SoloController.php:398:        $avatarConflict = false;
+621:app/Http/Controllers/SoloController.php:401:            if ($avatar !== 'Aucun' && $avatar === $bossNameClean) {
+622:app/Http/Controllers/SoloController.php:402:                $avatarConflict = true;
+623:app/Http/Controllers/SoloController.php:403:                $avatar = 'Aucun';
+624:app/Http/Controllers/SoloController.php:404:                session(['avatar' => 'Aucun']);
+625:app/Http/Controllers/SoloController.php:408:        // Construire le chemin de l'image de l'avatar stratégique
+626:app/Http/Controllers/SoloController.php:410:        if ($avatar !== 'Aucun') {
+627:app/Http/Controllers/SoloController.php:411:            $strategicAvatarSlug = strtolower($avatar);
+628:app/Http/Controllers/SoloController.php:415:            $strategicAvatarPath = 'images/avatars/' . $strategicAvatarSlug . '.png';
+629:app/Http/Controllers/SoloController.php:418:        $avatarSkillsData = $this->getAvatarSkills($avatar);
+630:app/Http/Controllers/SoloController.php:420:            'theme'           => $theme,
+631:app/Http/Controllers/SoloController.php:421:            'theme_icon'      => $themeIcons[$theme] ?? '❓',
+632:app/Http/Controllers/SoloController.php:422:            'avatar'          => $avatar,
+633:app/Http/Controllers/SoloController.php:423:            'avatar_image'    => $strategicAvatarPath,
+634:app/Http/Controllers/SoloController.php:424:            'avatar_skills'   => $this->getAvatarSkillsSimple($avatar),
+635:app/Http/Controllers/SoloController.php:425:            'avatar_skills_full' => $avatarSkillsData,
+636:app/Http/Controllers/SoloController.php:428:            'niveau_progression' => session('choix_niveau', 1),
+637:app/Http/Controllers/SoloController.php:430:            'boss_avatar'     => $bossInfo['avatar'] ?? null,
+638:app/Http/Controllers/SoloController.php:433:            'player_avatar'   => $playerAvatar,
+639:app/Http/Controllers/SoloController.php:435:            'avatar_conflict' => $avatarConflict,
+640:app/Http/Controllers/SoloController.php:473:        // Synchroniser l'avatar stratégique depuis profile_settings si absent ou 'Aucun'
+641:app/Http/Controllers/SoloController.php:475:        if ($user && (!session()->has('avatar') || session('avatar') === 'Aucun')) {
+642:app/Http/Controllers/SoloController.php:476:            $settings = (array) ($user->profile_settings ?? []);
+643:app/Http/Controllers/SoloController.php:477:            $strategicName = (string) data_get($settings, 'strategic_avatar.name', '');
+644:app/Http/Controllers/SoloController.php:479:                session(['avatar' => $strategicName]);
+645:app/Http/Controllers/SoloController.php:483:        // Synchroniser l'avatar joueur depuis profile_settings (normaliser 'default' et valeurs vides)
+646:app/Http/Controllers/SoloController.php:484:        $currentAvatar = session('selected_avatar', '');
+647:app/Http/Controllers/SoloController.php:488:                $settings = (array) ($user->profile_settings ?? []);
+648:app/Http/Controllers/SoloController.php:489:                $playerAvatarUrl = (string) data_get($settings, 'avatar.url', '');
+649:app/Http/Controllers/SoloController.php:490:                // Normaliser aussi 'default' dans profile_settings
+650:app/Http/Controllers/SoloController.php:492:                    session(['selected_avatar' => $playerAvatarUrl]);
+651:app/Http/Controllers/SoloController.php:494:                    // Utiliser standard1 comme avatar par défaut
+652:app/Http/Controllers/SoloController.php:495:                    session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+653:app/Http/Controllers/SoloController.php:498:                // Invités : utiliser standard1 comme avatar par défaut
+654:app/Http/Controllers/SoloController.php:499:                session(['selected_avatar' => 'images/avatars/standard/standard1.png']);
+655:app/Http/Controllers/SoloController.php:506:        $theme = session('theme', 'general');
+656:app/Http/Controllers/SoloController.php:509:        $avatar = session('avatar', 'Aucun');
+657:app/Http/Controllers/SoloController.php:553:                $question = $questionService->generateQuestion($theme, $niveau, $currentQuestion, $usedQuestionIds, [], $sessionUsedAllAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
+658:app/Http/Controllers/SoloController.php:667:            'avatar' => $avatar,
+659:app/Http/Controllers/SoloController.php:668:            'avatar_skills_full' => $this->getAvatarSkills($avatar),
+660:app/Http/Controllers/SoloController.php:669:            'theme' => $theme,
+661:app/Http/Controllers/SoloController.php:679:            'theme' => $theme,
+662:app/Http/Controllers/SoloController.php:712:        $avatar = session('avatar', 'Aucun');
+663:app/Http/Controllers/SoloController.php:713:        $avatarSkills = $this->getAvatarSkills($avatar);
+664:app/Http/Controllers/SoloController.php:715:        // Vérifier que le skill existe pour cet avatar
+665:app/Http/Controllers/SoloController.php:717:        foreach ($avatarSkills['skills'] ?? [] as $skill) {
+666:app/Http/Controllers/SoloController.php:975:                $theme = $nextQuestion['theme'] ?? '';
+667:app/Http/Controllers/SoloController.php:978:                $thematicHint = $this->generateThematicHint($questionText, $theme);
+668:app/Http/Controllers/SoloController.php:984:                        'theme' => $theme
+669:app/Http/Controllers/SoloController.php:992:                    'theme' => $theme
+670:app/Http/Controllers/SoloController.php:1026:                $result['available_avatars'] = $this->getAvailableRareAvatars();
+671:app/Http/Controllers/SoloController.php:1030:            case 'avatar_discount':
+672:app/Http/Controllers/SoloController.php:1034:                $result['message'] = 'Réduction avatars: Rare -40%, Épique -30%, Légendaire -20%';
+673:app/Http/Controllers/SoloController.php:1112:    private function generateThematicHint(string $questionText, string $theme): string
+674:app/Http/Controllers/SoloController.php:1148:        if (!empty($theme)) {
+675:app/Http/Controllers/SoloController.php:1149:            $themeHints = [
+676:app/Http/Controllers/SoloController.php:1162:            return $themeHints[$theme] ?? "thème : {$theme}.";
+677:app/Http/Controllers/SoloController.php:1170:     * Si aucun teammate n'est sélectionné mais qu'un avatar Rare est débloqué,
+678:app/Http/Controllers/SoloController.php:1181:        // Sinon, chercher le premier avatar Rare débloqué
+679:app/Http/Controllers/SoloController.php:1187:        $settings = (array) ($user->profile_settings ?? []);
+680:app/Http/Controllers/SoloController.php:1188:        $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+681:app/Http/Controllers/SoloController.php:1190:        // Liste ordonnée des avatars Rares (ordre de priorité pour auto-sélection)
+682:app/Http/Controllers/SoloController.php:1201:        // Aucun avatar Rare débloqué
+683:app/Http/Controllers/SoloController.php:1206:     * Vérifier si l'utilisateur a au moins un avatar Rare débloqué
+684:app/Http/Controllers/SoloController.php:1215:        $settings = (array) ($user->profile_settings ?? []);
+685:app/Http/Controllers/SoloController.php:1216:        $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
+686:app/Http/Controllers/SoloController.php:1273:        // Liste des avatars rares disponibles pour le mode équipe
+687:app/Http/Controllers/SoloController.php:1329:        $avatar = session('avatar', 'Aucun');
+688:app/Http/Controllers/SoloController.php:1375:        $isStratege = in_array(strtolower($avatar), ['stratège', 'stratege']);
+689:app/Http/Controllers/SoloController.php:1379:        // Vérifier si l'avatar principal OU le coéquipier est Mathématicien
+690:app/Http/Controllers/SoloController.php:1380:        $hasMathSkill = ($avatar === 'Mathématicien') || ($isStratege && $teammateIsMathematicien);
+691:app/Http/Controllers/SoloController.php:1395:        // Vérifier si l'avatar principal OU le coéquipier est Explorateur
+692:app/Http/Controllers/SoloController.php:1396:        $hasExplorateurSkill = ($avatar === 'Explorateur') || ($isStratege && $teammateIsExplorateur);
+693:app/Http/Controllers/SoloController.php:1415:            'avatar' => $avatar,  // Avatar stratégique pour les skills
+694:app/Http/Controllers/SoloController.php:1416:            'avatar_skills' => $this->getAvatarSkillsSimple($avatar),  // Skills de l'avatar (descriptions)
+695:app/Http/Controllers/SoloController.php:1417:            'avatar_skills_full' => $this->getAvatarSkills($avatar),  // Structure complète des skills
+696:app/Http/Controllers/SoloController.php:1657:            $theme = session('theme', 'Général');
+697:app/Http/Controllers/SoloController.php:1745:                    'theme'          => $theme,
+698:app/Http/Controllers/SoloController.php:1750:                    'theme'          => $theme,
+699:app/Http/Controllers/SoloController.php:1755:                    'theme'          => $theme,
+700:app/Http/Controllers/SoloController.php:1781:                    'theme'        => $theme,
+701:app/Http/Controllers/SoloController.php:1793:                    'theme'       => strtolower($theme),
+702:app/Http/Controllers/SoloController.php:1896:            'theme' => session('theme', 'Général'),
+703:app/Http/Controllers/SoloController.php:1909:        $avatar = session('avatar', 'Aucun');
+704:app/Http/Controllers/SoloController.php:1913:        if ($avatar === 'Historien') {
+705:app/Http/Controllers/SoloController.php:1914:            $avatarSkills = $this->getAvatarSkills($avatar);
+706:app/Http/Controllers/SoloController.php:1915:            foreach ($avatarSkills['skills'] ?? [] as $skill) {
+707:app/Http/Controllers/SoloController.php:1999:                    $currentChoixNiveau = session('choix_niveau', 1);
+708:app/Http/Controllers/SoloController.php:2003:                    session(['choix_niveau' => $newChoixNiveau]);
+709:app/Http/Controllers/SoloController.php:2005:                    // Sauvegarder dans profile_settings pour les utilisateurs authentifiés
+710:app/Http/Controllers/SoloController.php:2008:                        $settings = (array) ($user->profile_settings ?? []);
+711:app/Http/Controllers/SoloController.php:2015:                        // Mettre à jour le niveau solo (choix_niveau = source unique de vérité)
+712:app/Http/Controllers/SoloController.php:2016:                        $settings['choix_niveau'] = $newChoixNiveau;
+713:app/Http/Controllers/SoloController.php:2019:                        $currentXP = (int) data_get($settings, 'gm.xp', 0);
+714:app/Http/Controllers/SoloController.php:2020:                        $totalVictories = (int) data_get($settings, 'gm.total_victories', 0);
+715:app/Http/Controllers/SoloController.php:2028:                        $user->profile_settings = $settings;
+716:app/Http/Controllers/SoloController.php:2050:                            $settings = (array) ($user->profile_settings ?? []);
+717:app/Http/Controllers/SoloController.php:2057:                            $totalDefeats = (int) data_get($settings, 'gm.total_defeats', 0);
+718:app/Http/Controllers/SoloController.php:2061:                            $user->profile_settings = $settings;
+719:app/Http/Controllers/SoloController.php:2168:        $theme = session('theme', 'Général');
+720:app/Http/Controllers/SoloController.php:2169:        $avatar = session('avatar', 'Aucun');
+721:app/Http/Controllers/SoloController.php:2208:            $currentLevel = session('choix_niveau', 1);
+722:app/Http/Controllers/SoloController.php:2212:            session(['choix_niveau' => $newLevel]);
+723:app/Http/Controllers/SoloController.php:2214:            // Sauvegarder dans profile_settings si utilisateur connecté
+724:app/Http/Controllers/SoloController.php:2217:                $settings = (array) ($user->profile_settings ?? []);
+725:app/Http/Controllers/SoloController.php:2219:                $settings['choix_niveau'] = $newLevel; // Source unique de vérité pour le niveau solo
+726:app/Http/Controllers/SoloController.php:2220:                $user->profile_settings = $settings;
+727:app/Http/Controllers/SoloController.php:2269:            'theme' => $theme,                     // Thème joué
+728:app/Http/Controllers/SoloController.php:2270:            'avatar' => $avatar,                   // Avatar stratégique
+729:app/Http/Controllers/SoloController.php:2292:        $newLevel = session('choix_niveau', 1);
+730:app/Http/Controllers/SoloController.php:2293:        $theme = session('theme', 'Général');
+731:app/Http/Controllers/SoloController.php:2351:                'theme'                 => $theme,
+732:app/Http/Controllers/SoloController.php:2356:                'sound_disabled'        => (bool) session('sound_disabled', false),
+733:app/Http/Controllers/SoloController.php:2376:                $sessionThemes = array_unique(array_filter(array_column($roundSummariesSnap, 'theme')));
+734:app/Http/Controllers/SoloController.php:2377:                $themesCount   = count($sessionThemes);
+735:app/Http/Controllers/SoloController.php:2386:                    'themes_count'    => $themesCount,
+736:app/Http/Controllers/SoloController.php:2388:                    'theme'           => strtolower($questContext['theme'] ?? ''),
+737:app/Http/Controllers/SoloController.php:2427:            ProfileStatsService::updateSoloStats(
+738:app/Http/Controllers/SoloController.php:2446:            // Bonus Stratège: +25% si l'avatar est "Stratège"
+739:app/Http/Controllers/SoloController.php:2447:            $avatar = session('avatar', 'Aucun');
+740:app/Http/Controllers/SoloController.php:2448:            if ($avatar === 'Stratège') {
+741:app/Http/Controllers/SoloController.php:2513:            'theme' => $theme,
+742:app/Http/Controllers/SoloController.php:2542:        $theme = session('theme', 'Général');
+743:app/Http/Controllers/SoloController.php:2618:            ProfileStatsService::updateSoloStats(
+744:app/Http/Controllers/SoloController.php:2636:                'theme'           => $theme,
+745:app/Http/Controllers/SoloController.php:2685:            'theme' => $theme,
+746:app/Http/Controllers/SoloController.php:2764:                    'avatar' => $bossData['slug'],
+747:app/Http/Controllers/SoloController.php:2778:                    'avatar' => $opponentData['avatar'],
+748:app/Http/Controllers/SoloController.php:2789:            'avatar' => 'default',
+749:app/Http/Controllers/SoloController.php:2796:    private function getAvatarSkills($avatar)
+750:app/Http/Controllers/SoloController.php:3036:                        'description' => 'Ajouter 1 avatar rare comme coéquipier dans tous les modes',
+751:app/Http/Controllers/SoloController.php:3043:                        'id' => 'avatar_discount',
+752:app/Http/Controllers/SoloController.php:3044:                        'name' => 'Réduction avatars',
+753:app/Http/Controllers/SoloController.php:3130:        // Normalisation des noms d'avatar (slug -> nom complet)
+754:app/Http/Controllers/SoloController.php:3147:        // Si l'avatar est un slug, le convertir en nom complet
+755:app/Http/Controllers/SoloController.php:3148:        $normalizedAvatar = $slugToName[strtolower($avatar)] ?? $avatar;
+756:app/Http/Controllers/SoloController.php:3152:        // Skill Stratège: Ajouter les skills du coéquipier (avatar rare)
+757:app/Http/Controllers/SoloController.php:3173:            // Indiquer si aucun avatar Rare n'est débloqué
+758:app/Http/Controllers/SoloController.php:3180:    private function getAvatarSkillsSimple($avatar)
+759:app/Http/Controllers/SoloController.php:3182:        $fullData = $this->getAvatarSkills($avatar);
+760:app/Http/Controllers/SoloController.php:3205:                'avatar' => "images/avatars/bosses/{$bossData['slug']}.png"
+761:app/Http/Controllers/SoloController.php:3417:        $avatar = session('avatar', 'Aucun');
+762:app/Http/Controllers/SoloController.php:3419:        if ($avatar !== 'Magicienne') {
+763:app/Http/Controllers/SoloController.php:3420:            return response()->json(['success' => false, 'message' => 'Skill non disponible pour cet avatar'], 403);
+764:app/Http/Controllers/SoloController.php:3505:        $avatar = session('avatar', 'Aucun');
+765:app/Http/Controllers/SoloController.php:3507:        if ($avatar !== 'Challenger') {
+766:app/Http/Controllers/SoloController.php:3508:            return response()->json(['success' => false, 'message' => 'Skill non disponible pour cet avatar'], 403);
+767:app/Http/Controllers/SoloController.php:3555:        $avatar = session('avatar', 'Aucun');
+768:app/Http/Controllers/SoloController.php:3557:        if ($avatar !== 'Challenger') {
+769:app/Http/Controllers/SoloController.php:3558:            return response()->json(['success' => false, 'message' => 'Skill non disponible pour cet avatar'], 403);
+770:app/Http/Controllers/SoloController.php:3603:        $avatar = session('avatar', 'Aucun');
+771:app/Http/Controllers/SoloController.php:3605:        if ($avatar !== 'Historien') {
+772:app/Http/Controllers/SoloController.php:3606:            return response()->json(['success' => false, 'message' => __('Skill non disponible pour cet avatar')], 403);
+773:app/Http/Controllers/SoloController.php:3680:        $avatar = session('avatar', 'Aucun');
+774:app/Http/Controllers/SoloController.php:3682:        if ($avatar !== 'Magicienne') {
+775:app/Http/Controllers/SoloController.php:3683:            return redirect()->route('solo.game')->with('error', 'Skill non disponible pour cet avatar');
+776:app/Http/Controllers/SoloController.php:3695:        $theme = session('theme', 'Général');
+777:app/Http/Controllers/SoloController.php:3708:        $question = $questionService->generateQuestion($theme, $niveau, 999, $usedQuestionIds, [], $sessionUsedAllAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
+778:app/Http/Controllers/SoloController.php:3742:            'avatar' => $avatar,
+779:app/Http/Controllers/SoloController.php:3750:        $avatar = session('avatar', 'Aucun');
+780:app/Http/Controllers/SoloController.php:3752:        if ($avatar !== 'Magicienne') {
+781:app/Http/Controllers/SoloController.php:3753:            return redirect()->route('solo.game')->with('error', 'Skill non disponible pour cet avatar');
+782:app/Http/Controllers/SoloController.php:3856:            $theme = session('theme', 'general');
+783:app/Http/Controllers/SoloController.php:3905:                    $theme, 
+784:app/Http/Controllers/SoloController.php:3987:            $theme = session('theme', 'general');
+785:app/Http/Controllers/SoloController.php:3989:            $avatar = session('avatar', 'Aucun');
+786:app/Http/Controllers/SoloController.php:4003:            // Si avatar Magicienne, générer 11 questions (10 + 1 bonus)
+787:app/Http/Controllers/SoloController.php:4004:            $questionsToGenerate = ($avatar === 'Magicienne') ? $nbQuestions + 1 : $nbQuestions;
+788:app/Http/Controllers/SoloController.php:4016:                    $theme, 
+789:app/Http/Controllers/SoloController.php:4063:                'avatar' => $avatar,
+790:app/Http/Controllers/SoloController.php:4098:            $theme = session('theme', 'general');
+791:app/Http/Controllers/SoloController.php:4100:            $avatar = session('avatar', 'Aucun');
+792:app/Http/Controllers/SoloController.php:4104:                'theme' => $theme,
+793:app/Http/Controllers/SoloController.php:4106:                'avatar' => $avatar
+794:app/Http/Controllers/SoloController.php:4111:                'theme' => $theme,
+795:app/Http/Controllers/SoloController.php:4113:                'avatar' => $avatar,
+796:app/Http/Controllers/SoloController.php:4449:        $theme = session('theme', 'Général');
+797:app/Http/Controllers/SoloController.php:4464:            'theme' => $theme,
+798:app/Http/Controllers/SoloController.php:4496:        $theme = session('theme', 'Général');
+799:app/Http/Controllers/SoloController.php:4500:            'theme' => $theme,
+800:app/Http/Controllers/SoloController.php:4536:        $theme = session('theme', 'general');
+801:app/Http/Controllers/SoloController.php:4558:                $theme, $niveau, $currentQuestion, $usedQuestionIds, [], 
+802:app/Http/Controllers/SoloController.php:4585:                'theme' => $question['theme'] ?? $theme,
+803:app/Http/Controllers/SoloController.php:4586:                'sub_theme' => $question['sub_theme'] ?? '',
+868:app/Http/Controllers/ProfileController.php:11:use App\Models\BotProfile;
+887:app/Http/Controllers/ProfileController.php:114:        $botProfile = BotProfile::find($player?->id);
+901:app/Http/Controllers/ProfileController.php:161:            'bot_active' => 'nullable|boolean',
+902:app/Http/Controllers/ProfileController.php:162:            'bot_avatar_slug' => 'nullable|string|max:64',
+903:app/Http/Controllers/ProfileController.php:163:            'bot_stake_enabled' => 'nullable|boolean',
+904:app/Http/Controllers/ProfileController.php:164:            'bot_max_stake' => 'nullable|integer|min:0|max:500',
+917:app/Http/Controllers/ProfileController.php:205:            $botProfile = BotProfile::firstOrCreate(
+918:app/Http/Controllers/ProfileController.php:210:            $wantsActive = $request->boolean('bot_active');
+919:app/Http/Controllers/ProfileController.php:214:            $botProfile->stake_enabled = $request->boolean('bot_stake_enabled');
+920:app/Http/Controllers/ProfileController.php:215:            $botProfile->max_stake_per_match = max(0, min(500, (int) $request->input('bot_max_stake', 0)));
+921:app/Http/Controllers/ProfileController.php:217:            $slugInput = $request->input('bot_avatar_slug') ?: null;
+922:app/Http/Controllers/ProfileController.php:220:                $botProfile->bot_avatar_slug = in_array($slugInput, $unlockedSlugs, true) ? $slugInput : null;
+923:app/Http/Controllers/ProfileController.php:222:                $botProfile->bot_avatar_slug = null;
+956:app/Services/LeagueIndividualService.php:86:            'theme' => 'culture',
+957:app/Services/LeagueIndividualService.php:192:            $theme        = $gameState['theme'] ?? $gameState['currentTheme'] ?? 'Général';
+958:app/Services/LeagueIndividualService.php:215:                'theme'           => $theme,
+959:app/Services/LeagueIndividualService.php:234:                'theme'           => $theme,
+960:app/Services/LeagueIndividualService.php:253:                    'theme'           => strtolower($theme ?? ''),
+961:app/Services/LeagueIndividualService.php:257:                    'themes_count'    => 1,
+964:app/Services/DuoGameProvider.php:41:        // Get avatar - prioritize lobby avatar, then stored avatar, then extract from profile_settings
+965:app/Services/DuoGameProvider.php:42:        $avatar = $lobbyAvatar ?? $this->gameState['opponent_avatar'] ?? null;
+966:app/Services/DuoGameProvider.php:44:        if (!$avatar) {
+967:app/Services/DuoGameProvider.php:45:            // Extract avatar URL from profile_settings properly
+968:app/Services/DuoGameProvider.php:47:            $profileSettings = $opponent->profile_settings;
+969:app/Services/DuoGameProvider.php:54:            if (is_array($profileSettings) && isset($profileSettings['avatar'])) {
+970:app/Services/DuoGameProvider.php:55:                $avatarData = $profileSettings['avatar'];
+971:app/Services/DuoGameProvider.php:56:                if (is_object($avatarData)) {
+972:app/Services/DuoGameProvider.php:57:                    $avatarData = (array) $avatarData;
+973:app/Services/DuoGameProvider.php:59:                if (is_array($avatarData)) {
+974:app/Services/DuoGameProvider.php:60:                    $avatar = $avatarData['url'] ?? $avatarData['id'] ?? 'default';
+975:app/Services/DuoGameProvider.php:61:                } elseif (is_string($avatarData)) {
+976:app/Services/DuoGameProvider.php:62:                    $avatar = $avatarData;
+977:app/Services/DuoGameProvider.php:64:                    $avatar = 'default';
+978:app/Services/DuoGameProvider.php:67:                $avatar = 'default';
+979:app/Services/DuoGameProvider.php:75:            'player_code' => $opponent->player_code,
+980:app/Services/DuoGameProvider.php:76:            'avatar' => $avatar,
+981:app/Services/DuoGameProvider.php:95:            if (isset($this->gameState['opponent_avatar']) && $this->opponentInfo['avatar'] === 'default') {
+982:app/Services/DuoGameProvider.php:96:                $this->opponentInfo['avatar'] = $this->gameState['opponent_avatar'];
+983:app/Services/DuoGameProvider.php:105:                $lobbyAvatar = $this->gameState['opponent_avatar'] ?? null;
+984:app/Services/DuoGameProvider.php:115:            'avatar' => $this->gameState['opponent_avatar'] ?? 'default',
+985:app/Services/LeagueIndividualFirestoreService.php:301:                'theme' => $questionData['theme'] ?? 'Général',
+986:app/Services/LeagueIndividualFirestoreService.php:302:                'sub_theme' => $questionData['sub_theme'] ?? '',
+987:app/Services/LeagueIndividualFirestoreService.php:352:            'sub_theme' => $questionData['sub_theme'] ?? '',
+997:app/Services/DuoMatchmakingService.php:232:            // Apply passive skills bonuses (coin_bonus from Stratege avatar)
+998:app/Services/DuoMatchmakingService.php:296:            $theme = $gameState['theme'] ?? $match->theme ?? 'Général';
+999:app/Services/DuoMatchmakingService.php:309:                'theme' => $theme,
+1000:app/Services/DuoMatchmakingService.php:328:                'theme' => $theme,
+1001:app/Services/DuoMatchmakingService.php:371:     * Apply coin bonus from Stratege avatar skill (+20% coins)
+1002:app/Services/DuoMatchmakingService.php:379:        $profileSettings = (array) ($player->profile_settings ?? []);
+1003:app/Services/DuoMatchmakingService.php:380:        $avatarData = data_get($profileSettings, 'strategic_avatar');
+1004:app/Services/DuoMatchmakingService.php:382:        $avatarName = null;
+1005:app/Services/DuoMatchmakingService.php:383:        if (is_array($avatarData)) {
+1006:app/Services/DuoMatchmakingService.php:384:            $avatarName = strtolower($avatarData['name'] ?? '');
+1007:app/Services/DuoMatchmakingService.php:385:        } elseif (is_string($avatarData)) {
+1008:app/Services/DuoMatchmakingService.php:386:            $avatarName = strtolower($avatarData);
+1009:app/Services/DuoMatchmakingService.php:389:        // Stratege avatar has coin_bonus skill (+20% coins)
+1010:app/Services/DuoMatchmakingService.php:390:        if ($avatarName === 'stratège' || $avatarName === 'stratege') {
+1065:app/Services/LeagueTeamFirestoreService.php:312:                'theme' => $questionData['theme'] ?? 'Général',
+1066:app/Services/LeagueTeamFirestoreService.php:313:                'sub_theme' => $questionData['sub_theme'] ?? '',
+1067:app/Services/LeagueTeamFirestoreService.php:361:            'sub_theme' => $questionData['sub_theme'] ?? '',
+1090:app/Services/DuoFirestoreService.php:451:                'theme' => $questionData['theme'] ?? 'Général',
+1091:app/Services/DuoFirestoreService.php:452:                'sub_theme' => $questionData['sub_theme'] ?? '',
+1092:app/Services/DuoFirestoreService.php:531:            'sub_theme' => $questionData['sub_theme'] ?? '',
+1099:app/Services/SoloGameProvider.php:36:        $niveau = $this->gameState['niveau'] ?? session('choix_niveau', 1);
+1100:app/Services/SoloGameProvider.php:48:                'avatar' => $boss['avatar'],
+1101:app/Services/SoloGameProvider.php:74:                'avatar' => $studentAvatars[array_rand($studentAvatars)],
+1102:app/Services/SoloGameProvider.php:86:            ['name' => 'Le Stratège', 'avatar' => 'boss_stratege', 'title' => 'Maître de la tactique', 'competencies' => ['strategie' => 90, 'reflexion' => 85]],
+1103:app/Services/SoloGameProvider.php:87:            ['name' => 'La Savante', 'avatar' => 'boss_savante', 'title' => 'Génie des sciences', 'competencies' => ['sciences' => 95, 'logique' => 88]],
+1104:app/Services/SoloGameProvider.php:88:            ['name' => 'L\'Explorateur', 'avatar' => 'boss_explorateur', 'title' => 'Globe-trotter légendaire', 'competencies' => ['geographie' => 92, 'culture' => 80]],
+1105:app/Services/SoloGameProvider.php:89:            ['name' => 'L\'Historien', 'avatar' => 'boss_historien', 'title' => 'Gardien du passé', 'competencies' => ['histoire' => 94, 'memoire' => 87]],
+1106:app/Services/SoloGameProvider.php:90:            ['name' => 'Le Champion', 'avatar' => 'boss_champion', 'title' => 'Athlète suprême', 'competencies' => ['sport' => 93, 'rapidite' => 90]],
+1107:app/Services/SoloGameProvider.php:91:            ['name' => 'L\'Artiste', 'avatar' => 'boss_artiste', 'title' => 'Maître des arts', 'competencies' => ['art' => 91, 'creativite' => 89]],
+1108:app/Services/SoloGameProvider.php:92:            ['name' => 'Le Naturaliste', 'avatar' => 'boss_naturaliste', 'title' => 'Ami des animaux', 'competencies' => ['animaux' => 96, 'nature' => 84]],
+1109:app/Services/SoloGameProvider.php:93:            ['name' => 'Le Chef Étoilé', 'avatar' => 'boss_chef', 'title' => 'Maître cuisinier', 'competencies' => ['cuisine' => 94, 'gastronomie' => 88]],
+1110:app/Services/SoloGameProvider.php:94:            ['name' => 'Le Cinéphile', 'avatar' => 'boss_cinephile', 'title' => 'Expert du 7ème art', 'competencies' => ['cinema' => 95, 'culture_pop' => 86]],
+1111:app/Services/SoloGameProvider.php:95:            ['name' => 'Le Grand Maître', 'avatar' => 'boss_grand_maitre', 'title' => 'Boss final ultime', 'competencies' => ['all' => 97, 'speed' => 92]],
+1159:app/Services/QuestService.php:601:            case 'bot_first_selection':
+1160:app/Services/QuestService.php:604:            case 'bot_first_win':
+1216:app/Services/QuestService.php:1603:        $themes = DB::table('duo_matches')
+1249:app/Services/ProfileStatsService.php:95:        // Mettre à jour le niveau Solo dans profile_settings si fourni
+1251:app/Services/ProfileStatsService.php:99:            $settings['choix_niveau'] = $newLevel; // Source unique de vérité pour le niveau solo
+1268:app/Services/BotQualificationService.php:6:use App\Models\BotProfile;
+1269:app/Services/BotQualificationService.php:22:            $this->ensureBotProfile($user);
+1270:app/Services/BotQualificationService.php:46:            $this->ensureBotProfile($user);
+1271:app/Services/BotQualificationService.php:73:    private function ensureBotProfile(User $user): BotProfile
+1272:app/Services/BotQualificationService.php:75:        return BotProfile::firstOrCreate(
+1283:app/Services/LeagueGameProvider.php:48:            'player_code' => $opponent->player_code,
+1284:app/Services/LeagueGameProvider.php:49:            'avatar' => $opponent->profile_settings['avatar'] ?? 'default',
+1285:app/Services/LeagueGameProvider.php:67:            'avatar' => 'default',
+1311:app/Services/LeagueTeamService.php:66:                'avatar' => $user->strategic_avatar ?? null,
+1312:app/Services/LeagueTeamService.php:232:        $theme = $this->selectTheme($match);
+1313:app/Services/LeagueTeamService.php:235:        $question = $this->questionService->getQuestion($theme, $difficulty);
+1314:app/Services/LeagueTeamService.php:242:            'theme' => $theme,
+1315:app/Services/LeagueTeamService.php:252:            'theme' => $theme,
+1316:app/Services/LeagueTeamService.php:258:        $themes = ['culture', 'sport', 'science', 'histoire', 'geographie', 'divertissement', 'art'];
+1317:app/Services/LeagueTeamService.php:259:        return $themes[array_rand($themes)];
+1328:app/Services/BotEngine.php:6:use App\Models\BotProfile;
+1329:app/Services/BotEngine.php:15:        $botProfile = BotProfile::find($user->id);
+1330:app/Services/BotEngine.php:19:        $avatarSlug = $botProfile->bot_avatar_slug;
+1331:app/Services/BotEngine.php:23:        if ($avatarSlug) {
+1332:app/Services/BotEngine.php:24:            $avatarStats = PlayerAvatarStat::where('user_id', $user->id)
+1333:app/Services/BotEngine.php:25:                ->where('avatar_slug', $avatarSlug)
+1334:app/Services/BotEngine.php:28:            if ($avatarStats && $avatarStats->matches_played > 0) {
+1335:app/Services/BotEngine.php:30:                    'avg_buzz_ms'   => $avatarStats->avg_buzz_ms,
+1336:app/Services/BotEngine.php:31:                    'accuracy_rate' => $avatarStats->accuracy_rate,
+1337:app/Services/BotEngine.php:32:                    'avatar_slug'   => $avatarSlug,
+1338:app/Services/BotEngine.php:33:                    'source'        => 'avatar',
+1339:app/Services/BotEngine.php:43:        $query = BotProfile::where('is_active', true)
+1340:app/Services/BotEngine.php:44:            ->join('bot_qualification_events', 'bot_profiles.user_id', '=', 'bot_qualification_events.user_id')
+1341:app/Services/BotEngine.php:45:            ->select('bot_profiles.user_id')
+1342:app/Services/BotEngine.php:46:            ->groupBy('bot_profiles.user_id')
+1343:app/Services/BotEngine.php:50:            $query->where('bot_profiles.user_id', '!=', $excludeUserId);
+1344:app/Services/BotEngine.php:63:        $botProfile = BotProfile::find($selectedUserId);
+1345:app/Services/BotEngine.php:72:                    $user, 'bot_first_selection', ['action_done' => true]
+1346:app/Services/BotEngine.php:75:                Log::warning('Bot quest trigger failed (bot_first_selection)', ['error' => $e->getMessage()]);
+1347:app/Services/BotEngine.php:82:            'avatar_slug'   => $botProfile->bot_avatar_slug,
+1348:app/Services/BotEngine.php:83:            'avatar_url'    => $user->avatar_url,
+1349:app/Services/BotEngine.php:92:        $botProfile = BotProfile::find($ownerUserId);
+1350:app/Services/BotEngine.php:96:            $wasFirstWin = $botProfile->bot_wins === 0;
+1351:app/Services/BotEngine.php:97:            $botProfile->increment('bot_wins');
+1352:app/Services/BotEngine.php:104:                            $owner, 'bot_first_win', ['action_done' => true]
+1353:app/Services/BotEngine.php:108:                    Log::warning('Bot quest trigger failed (bot_first_win)', ['error' => $e->getMessage()]);
+1354:app/Services/BotEngine.php:112:            $botProfile->increment('bot_losses');
+1355:app/Services/BotEngine.php:116:    public static function updateAvatarStats(User $user, string $avatarSlug, int $buzzMs, bool $correct): void
+1356:app/Services/BotEngine.php:119:            ['user_id' => $user->id, 'avatar_slug' => $avatarSlug],
+1357:app/Services/BotEngine.php:140:                'avatar_slug'   => null,
+1358:app/Services/BotEngine.php:151:            'avatar_slug'   => null,
+1424:resources/views/boutique_category.blade.php.bak.2026-02-27_232733:213:.avatar-actions { position: absolute; bottom: 8px; right: 8px; }
+1456:resources/views/solo.blade.php:7:    'défenseur' => 'Cet avatar ne sera pas nécessaire en mode Solo car il n\'y aura pas d\'attaque des joueurs adverses.',
+1457:resources/views/solo.blade.php:8:    'defenseur' => 'Cet avatar ne sera pas nécessaire en mode Solo car il n\'y aura pas d\'attaque des joueurs adverses.',
+1458:resources/views/solo.blade.php:9:    'comédienne' => 'Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.',
+1459:resources/views/solo.blade.php:10:    'comedienne' => 'Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.',
+1460:resources/views/solo.blade.php:12:$currentStrategicAvatar = strtolower($avatar_stratégique ?? 'aucun');
+1461:resources/views/solo.blade.php:23:  .btn-theme{ display:block; width:100%; padding:14px 16px; border-radius:10px; background:#1E90FF; color:#fff; border:0; cursor:pointer;  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+1462:resources/views/solo.blade.php:24:  .btn-theme:disabled{ opacity:.4; cursor:not-allowed; }
+1463:resources/views/solo.blade.php:29:  .btn-theme{display:flex;align-items:center;justify-content:center;gap:10px;min-height:58px;box-shadow:2px 2px 6px rgba(0,0,0,.3);} 
+1464:resources/views/solo.blade.php:30:  .btn-theme:hover{transform:translateY(-1px);} 
+1465:resources/views/solo.blade.php:31:  .btn-theme:active{transform:translateY(0);} 
+1466:resources/views/solo.blade.php:46:  /* Popup avertissement avatar non-avantageux en Solo */
+1467:resources/views/solo.blade.php:254:  <p class="lead text-center" style="margin-top:6px">{{ __('Votre Niveau') }} : <strong>{{ $choix_niveau }}</strong></p>
+1468:resources/views/solo.blade.php:275:        <input type="hidden" name="niveau_joueur" id="niveau_joueur" value="{{ $niveau_selectionne ?? $choix_niveau }}">
+1469:resources/views/solo.blade.php:277:          <span class="lbl">{{ __('Niveau sélectionné') }} : <strong>{{ $niveau_selectionne ?? $choix_niveau }}</strong></span>
+1470:resources/views/solo.blade.php:286:        <span id="avatar_name_display">{{ $avatar_stratégique ?? __('Aucun') }}</span>
+1471:resources/views/solo.blade.php:300:            @foreach($rare_avatars_data ?? [] as $slug => $avatarData)
+1472:resources/views/solo.blade.php:302:                $isUnlocked = $avatarData['unlocked'] ?? false;
+1473:resources/views/solo.blade.php:304:                $avatarIcon = $avatarData['icon'] ?? '🎯';
+1474:resources/views/solo.blade.php:305:                $skillName = $avatarData['skills'][0]['name'] ?? '';
+1475:resources/views/solo.blade.php:306:                $skillIcon = $avatarData['skills'][0]['icon'] ?? '✨';
+1476:resources/views/solo.blade.php:310:                <span class="teammate-icon">{{ $avatarIcon }}</span>
+1477:resources/views/solo.blade.php:312:                  <span class="teammate-name">{{ $avatarData['name'] }} @if(!$isUnlocked) 🔒 @endif</span>
+1478:resources/views/solo.blade.php:323:        <a href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}"
+1479:resources/views/solo.blade.php:330:      <button type="submit" class="btn-theme" name="theme" value="general">🧠 {{ __('Général') }}</button>
+1480:resources/views/solo.blade.php:331:      <button type="submit" class="btn-theme" name="theme" value="geographie">🌐 {{ __('Géographie') }}</button>
+1481:resources/views/solo.blade.php:332:      <button type="submit" class="btn-theme" name="theme" value="histoire">📜 {{ __('Histoire') }}</button>
+1482:resources/views/solo.blade.php:333:      <button type="submit" class="btn-theme" name="theme" value="art">🎨 {{ __('Art') }}</button>
+1483:resources/views/solo.blade.php:334:      <button type="submit" class="btn-theme" name="theme" value="cinema">🎬 {{ __('Cinéma') }}</button>
+1484:resources/views/solo.blade.php:335:      <button type="submit" class="btn-theme" name="theme" value="sport">🏅 {{ __('Sport') }}</button>
+1485:resources/views/solo.blade.php:336:      <button type="submit" class="btn-theme" name="theme" value="faune">🦁 {{ __('Faune') }}</button>
+1486:resources/views/solo.blade.php:337:      <button type="submit" class="btn-theme" name="theme" value="cuisine">🍳 {{ __('Cuisine') }}</button>
+1487:resources/views/solo.blade.php:338:      <button type="submit" name="theme" value="sciences" class="btn-theme">🔬 {{ __('Sciences') }}</button>
+1488:resources/views/solo.blade.php:359:  // Fonction pour fermer le popup d'avertissement avatar
+1489:resources/views/solo.blade.php:420:        if (option.dataset.locked === '1') return; // Ignorer les avatars verrouillés
+1490:resources/views/solo.blade.php:455:  document.querySelectorAll('.btn-theme').forEach(btn => {
+1491:resources/views/solo.blade.php:476:  .btn-theme{display:block;width:100%;padding:14px 18px;border-radius:12px;font-size:1.1rem;box-shadow:2px 2px 6px rgba(0,0,0,.3);}
+1492:resources/views/solo.blade.php:477:  .btn-theme:hover{transform:translateY(-1px);}
+1493:resources/views/solo.blade.php:478:  .btn-theme:active{transform:translateY(0);}
+1543:resources/views/avatars.blade.php:701:        border-bottom: ${idx === avatarData.skills.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.1)'};
+1569:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:48:            <span class="fw-bold">Choix de l’Avatar Stratégique : {{ $avatar_stratégique ?? 'non choisi' }}</span>
+1570:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:49:            <a href="{{ route('avatar') }}" class="btn btn-sm btn-outline-secondary ms-2">Sélectionner</a>
+1571:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:55:                <button type="submit" name="theme" value="general" class="btn btn-primary w-100 mb-2">🧠 Général</button>
+1572:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:56:                <button type="submit" name="theme" value="histoire" class="btn btn-primary w-100 mb-2">📜 Histoire</button>
+1573:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:57:                <button type="submit" name="theme" value="cinema" class="btn btn-primary w-100 mb-2">🎬 Cinéma</button>
+1574:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:58:                <button type="submit" name="theme" value="faune" class="btn btn-primary w-100 mb-2">🦁 Faune</button>
+1575:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:61:                <button type="submit" name="theme" value="geographie" class="btn btn-primary w-100 mb-2">🌐 Géographie</button>
+1576:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:62:                <button type="submit" name="theme" value="art" class="btn btn-primary w-100 mb-2">🎨 Art</button>
+1577:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:63:                <button type="submit" name="theme" value="sport" class="btn btn-primary w-100 mb-2">🏅 Sport</button>
+1578:resources/views/lame_solo.backup.2025-08-20-202124.blade.php:64:                <button type="submit" name="theme" value="cuisine" class="btn btn-primary w-100 mb-2">🍳 Cuisine</button>
+1579:resources/views/duo_result.blade.php:134:    .player-avatar-small {
+1580:resources/views/duo_result.blade.php:142:    .opponent-avatar-small {
+1581:resources/views/duo_result.blade.php:150:    .opponent-avatar-empty {
+1582:resources/views/duo_result.blade.php:641:        .player-avatar-small, .opponent-avatar-small, .opponent-avatar-empty {
+1583:resources/views/duo_result.blade.php:676:        .player-avatar-small, .opponent-avatar-small, .opponent-avatar-empty {
+1584:resources/views/duo_result.blade.php:728:        .player-avatar-small, .opponent-avatar-small, .opponent-avatar-empty {
+1585:resources/views/duo_result.blade.php:788:            <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar-small">
+1586:resources/views/duo_result.blade.php:797:                <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar-small">
+1587:resources/views/duo_result.blade.php:799:                <div class="opponent-avatar-empty">?</div>
+1588:resources/views/duo_result.blade.php:889:        <div class="skills-title">✨ {{ __('Compétences') }} {{ $avatarName ?? '' }} ✨</div>
+1589:resources/views/duo_result.blade.php:912:    @if(($avatarName ?? '') === 'Challenger')
+1661:resources/views/boutique_category.blade.php.bak.2026-02-27_194439:213:.avatar-actions { position: absolute; bottom: 8px; right: 8px; }
+1690:resources/views/boutique_category.blade.php.bak.2026-02-27_232330:213:.avatar-actions { position: absolute; bottom: 8px; right: 8px; }
+1717:resources/views/league_team_captain.blade.php:39:                                <div class="player-avatar">
+1718:resources/views/league_team_captain.blade.php:40:                                    @if($request->user->avatar_url ?? null)
+1719:resources/views/league_team_captain.blade.php:41:                                        <img src="{{ $request->user->avatar_url }}" alt="Avatar">
+1720:resources/views/league_team_captain.blade.php:43:                                        <div class="default-avatar">{{ strtoupper(substr($request->user->name, 0, 1)) }}</div>
+1721:resources/views/league_team_captain.blade.php:48:                                    <p class="player-code">{{ $request->user->player_code ?? 'SB-XXXX' }}</p>
+1722:resources/views/league_team_captain.blade.php:226:.player-avatar {
+1723:resources/views/league_team_captain.blade.php:233:.player-avatar img {
+1724:resources/views/league_team_captain.blade.php:239:.default-avatar {
+1728:resources/views/boutique_category.blade.php.bak.2026-02-27_194512:213:.avatar-actions { position: absolute; bottom: 8px; right: 8px; }
+1811:resources/views/resume.blade.php:550:          <div style="font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; color: #FFD700;">⚔️ {{ $params['avatar'] }}</div>
+1839:resources/views/profil/_form-fields-readonly.blade.php:4:        <label class="block text-sm font-medium mb-2">Afficher mon avatar dans la ligue :</label>
+1841:resources/views/profil/_form-fields.blade.php:4:        <label class="block text-sm font-medium mb-2">Afficher mon avatar dans la ligue :</label>
+1916:resources/views/boutique_category.blade.php.bak.2026-02-27_232637:213:.avatar-actions { position: absolute; bottom: 8px; right: 8px; }
+1940:resources/views/league_individual_lobby.blade.php:193:                <div class="player-avatar">
+1941:resources/views/league_individual_lobby.blade.php:194:                    @if(Auth::user()->avatar_url)
+1942:resources/views/league_individual_lobby.blade.php:195:                        <img src="{{ Auth::user()->avatar_url }}" alt="Avatar">
+1943:resources/views/league_individual_lobby.blade.php:197:                        <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
+1944:resources/views/league_individual_lobby.blade.php:263:            <div class="modal-avatar" id="modalAvatar"></div>
+1945:resources/views/league_individual_lobby.blade.php:606:.player-avatar {
+1946:resources/views/league_individual_lobby.blade.php:614:.player-avatar img {
+1947:resources/views/league_individual_lobby.blade.php:620:.default-avatar {
+1948:resources/views/league_individual_lobby.blade.php:856:.modal-avatar {
+1949:resources/views/league_individual_lobby.blade.php:864:.modal-avatar img {
+1950:resources/views/league_individual_lobby.blade.php:1068:    avatar_url: "{{ Auth::user()->avatar_url ?? '' }}",
+1951:resources/views/league_individual_lobby.blade.php:1115:        avatar_url: currentUser.avatar_url,
+1952:resources/views/league_individual_lobby.blade.php:1186:            <div class="player-avatar">
+1953:resources/views/league_individual_lobby.blade.php:1187:                ${opp.avatar_url ? 
+1954:resources/views/league_individual_lobby.blade.php:1188:                    `<img src="${opp.avatar_url}" alt="Avatar">` : 
+1955:resources/views/league_individual_lobby.blade.php:1189:                    `<div class="default-avatar">${opp.name.charAt(0).toUpperCase()}</div>`
+1956:resources/views/league_individual_lobby.blade.php:1231:    // Set avatar
+1957:resources/views/league_individual_lobby.blade.php:1233:    if (playerData.avatar_url) {
+1958:resources/views/league_individual_lobby.blade.php:1234:        modalAvatar.innerHTML = `<img src="${playerData.avatar_url}" alt="Avatar">`;
+1959:resources/views/league_individual_lobby.blade.php:1236:        modalAvatar.innerHTML = `<div class="default-avatar" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;">${playerData.name.charAt(0).toUpperCase()}</div>`;
+2011:resources/views/game_intro.blade.php:26:    'defenseur' => 'Cet avatar ne sera pas nécessaire en mode Solo car il n\'y aura pas d\'attaque des joueurs adverses.',
+2012:resources/views/game_intro.blade.php:27:    'comedienne' => 'Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.',
+2023:resources/views/game_intro.blade.php:329:/* Popup avertissement avatar non-avantageux en Solo */
+2031:resources/views/league_question.blade.php:51:    .question-theme {
+2032:resources/views/league_question.blade.php:88:    .player-avatar {
+2033:resources/views/league_question.blade.php:117:    .opponent-avatar {
+2034:resources/views/league_question.blade.php:126:    .opponent-avatar-empty {
+2035:resources/views/league_question.blade.php:218:    .strategic-avatar-circle {
+2036:resources/views/league_question.blade.php:231:    .strategic-avatar-circle.empty {
+2037:resources/views/league_question.blade.php:237:    .strategic-avatar-image {
+2038:resources/views/league_question.blade.php:244:    .strategic-avatar-name {
+2039:resources/views/league_question.blade.php:485:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2040:resources/views/league_question.blade.php:490:        .strategic-avatar-circle {
+2041:resources/views/league_question.blade.php:516:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2042:resources/views/league_question.blade.php:521:        .strategic-avatar-circle {
+2043:resources/views/league_question.blade.php:556:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2044:resources/views/league_question.blade.php:561:        .strategic-avatar-circle {
+2045:resources/views/league_question.blade.php:618:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2046:resources/views/league_question.blade.php:623:        .strategic-avatar-circle {
+2047:resources/views/league_question.blade.php:663:        @if(!empty($themeDisplay))
+2048:resources/views/league_question.blade.php:664:            <div class="question-theme">{{ $themeDisplay }}</div>
+2049:resources/views/league_question.blade.php:665:        @elseif(!empty($theme))
+2050:resources/views/league_question.blade.php:666:            <div class="question-theme">{{ $theme }}</div>
+2051:resources/views/league_question.blade.php:674:                <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
+2052:resources/views/league_question.blade.php:681:                    <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar">
+2053:resources/views/league_question.blade.php:683:                    <div class="opponent-avatar-empty">?</div>
+2054:resources/views/league_question.blade.php:697:            @if(!empty($strategic_avatar))
+2055:resources/views/league_question.blade.php:698:                <div class="strategic-avatar-circle">
+2056:resources/views/league_question.blade.php:699:                    <img src="{{ $strategic_avatar }}" alt="{{ __('Avatar stratégique') }}" class="strategic-avatar-image">
+2057:resources/views/league_question.blade.php:701:                @if(!empty($avatarName))
+2058:resources/views/league_question.blade.php:702:                    <div class="strategic-avatar-name">{{ $avatarName }}</div>
+2059:resources/views/league_question.blade.php:705:                <div class="strategic-avatar-circle empty"></div>
+2060:resources/views/league_question.blade.php:755:    <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
+2061:resources/views/league_team_lobby.blade.php:50:                            <div class="member-avatar-small">
+2062:resources/views/league_team_lobby.blade.php:51:                                @if($member->user->avatar_url)
+2063:resources/views/league_team_lobby.blade.php:52:                                    <img src="{{ $member->user->avatar_url }}" alt="Avatar">
+2064:resources/views/league_team_lobby.blade.php:54:                                    <div class="default-avatar-small">{{ substr($member->user->name, 0, 1) }}</div>
+2065:resources/views/league_team_lobby.blade.php:264:.member-avatar-small {
+2066:resources/views/league_team_lobby.blade.php:272:.member-avatar-small img {
+2067:resources/views/league_team_lobby.blade.php:278:.default-avatar-small {
+2121:resources/views/guide/content/duo_outils.blade.php:3:    <li>{{ __('Choisissez votre avatar avant le match') }}</li>
+2122:resources/views/guide/content/duo_outils.blade.php:4:    <li>{{ __('Les deux joueurs voient les avatars de l\'adversaire') }}</li>
+2126:resources/views/guide/content/ligue-equipe_outils.blade.php:17:    <li>{{ __('Chaque joueur choisit son avatar') }}</li>
+2131:resources/views/guide/content/solo_outils.blade.php:3:    <li>{{ __('Chaque avatar possède des compétences uniques') }}</li>
+2132:resources/views/guide/content/solo_outils.blade.php:18:    <li>{{ __('Certains avatars offrent des vies supplémentaires') }}</li>
+2133:resources/views/guide/content/ligue-individuelle_outils.blade.php:4:    <li>{{ __('Débloquez des avatars rares avec plus de compétences') }}</li>
+2134:resources/views/guide/content/ligue-individuelle_outils.blade.php:5:    <li>{{ __('Adaptez votre avatar selon votre style de jeu') }}</li>
+2145:resources/views/boutique_category.blade.php.bak.2026-02-27_231607:213:.avatar-actions { position: absolute; bottom: 8px; right: 8px; }
+2216:resources/views/duo_rankings.blade.php:44:            <div class="player-avatar-small">
+2217:resources/views/duo_rankings.blade.php:45:                @if($player['user']['avatar_url'] ?? null)
+2218:resources/views/duo_rankings.blade.php:46:                    <img src="{{ $player['user']['avatar_url'] }}" alt="{{ $player['user']['name'] }}">
+2219:resources/views/duo_rankings.blade.php:48:                    <div class="default-avatar-small">{{ substr($player['user']['name'], 0, 1) }}</div>
+2220:resources/views/duo_rankings.blade.php:226:.player-avatar-small {
+2221:resources/views/duo_rankings.blade.php:233:.player-avatar-small img {
+2222:resources/views/duo_rankings.blade.php:239:.default-avatar-small {
+2223:resources/views/duo_lobby.blade.php:34:                    <div style="font-size: 0.9rem; color: rgba(255,255,255,0.8);">{{ count($activeLobby['players'] ?? []) }}/2 {{ __('joueurs') }} - {{ $activeLobby['settings']['theme'] ?? 'Général' }}</div>
+2224:resources/views/duo_lobby.blade.php:252:    <source src="{{ asset('sounds/message_notification.mp3') }}" type="audio/mpeg">
+2225:resources/views/duo_lobby.blade.php:286:            <div class="player-card-avatar">
+2226:resources/views/duo_lobby.blade.php:287:                @if(Auth::user()->avatar_url)
+2227:resources/views/duo_lobby.blade.php:288:                    <img src="/{{ Auth::user()->avatar_url }}" alt="Avatar">
+2228:resources/views/duo_lobby.blade.php:290:                    <div class="default-avatar" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); font-size: 2rem;">
+2229:resources/views/duo_lobby.blade.php:296:            <div style="font-size: 0.9rem; opacity: 0.9;">{{ Auth::user()->player_code ?? 'SB-XXXX' }}</div>
+2230:resources/views/duo_lobby.blade.php:307:                $userSettings = Auth::user()->profile_settings ?? [];
+2231:resources/views/duo_lobby.blade.php:311:                $strategicAvatarData = $userSettings['strategic_avatar'] ?? null;
+2232:resources/views/duo_lobby.blade.php:317:            <div class="player-card-item" onclick="window.location.href='{{ route('avatars') }}?tab=strategic&return_to=duo_lobby'">
+2233:resources/views/duo_lobby.blade.php:331:            <div class="player-card-item" onclick="window.location.href='{{ route('avatars') }}?tab=player&return_to=duo_lobby'">
+2234:resources/views/duo_lobby.blade.php:373:.header-avatar {
+2235:resources/views/duo_lobby.blade.php:383:.header-avatar img {
+2236:resources/views/duo_lobby.blade.php:389:.header-avatar .default-avatar {
+2237:resources/views/duo_lobby.blade.php:456:.player-card-avatar {
+2238:resources/views/duo_lobby.blade.php:465:.player-card-avatar img {
+2239:resources/views/duo_lobby.blade.php:808:.opponent-card .player-avatar {
+2240:resources/views/duo_lobby.blade.php:980:.player-avatar {
+2241:resources/views/duo_lobby.blade.php:988:.player-avatar img {
+2242:resources/views/duo_lobby.blade.php:994:.default-avatar {
+2243:resources/views/duo_lobby.blade.php:1383:    .header-avatar {
+2244:resources/views/duo_lobby.blade.php:1389:    .header-avatar .default-avatar {
+2245:resources/views/duo_lobby.blade.php:1404:    .player-avatar {
+2246:resources/views/duo_lobby.blade.php:2582:                body: JSON.stringify({ player_code: playerCode })
+2247:resources/views/duo_lobby.blade.php:2645:                        <button onclick="addToCarnet('${inv.from_player.player_code || ''}')" class="btn-add-contact">📒 ${t('Ajouter au carnet')}</button>
+2248:resources/views/duo_lobby.blade.php:2685:                    <span class="lobby-details">${lobby.player_count}/${lobby.max_players} ${t('joueurs')} • ${lobby.theme}</span>
+2249:resources/views/duo_lobby.blade.php:2950:                <span class="group-member-code">${member.player_code}</span>
+2250:resources/views/duo_lobby.blade.php:3108:        body: JSON.stringify({ player_code: playerCode })
+2251:resources/views/duo_lobby.blade.php:3280:                        <span class="contact-code">${contact.player_code}</span>
+2252:resources/views/duo_lobby.blade.php:3359:        body: JSON.stringify({ player_code: playerCode })
+2253:resources/views/duo_lobby.blade.php:3530:        audio.play().catch(e => console.log('Notification sound blocked:', e));
+2254:resources/views/duo_lobby.blade.php:3593:    avatar_url: "{{ Auth::user()->avatar_url ?? '' }}",
+2255:resources/views/duo_lobby.blade.php:3773:            <div class="player-avatar">
+2256:resources/views/duo_lobby.blade.php:3774:                ${opp.avatar_url ? 
+2257:resources/views/duo_lobby.blade.php:3775:                    `<img src="${opp.avatar_url}" alt="Avatar">` : 
+2258:resources/views/duo_lobby.blade.php:3776:                    `<div class="default-avatar">${opp.name.charAt(0).toUpperCase()}</div>`
+2259:resources/views/duo_question.blade.php:51:    .question-theme {
+2260:resources/views/duo_question.blade.php:88:    .player-avatar {
+2261:resources/views/duo_question.blade.php:117:    .opponent-avatar {
+2262:resources/views/duo_question.blade.php:126:    .opponent-avatar-empty {
+2263:resources/views/duo_question.blade.php:218:    .strategic-avatar-circle {
+2264:resources/views/duo_question.blade.php:231:    .strategic-avatar-circle.empty {
+2265:resources/views/duo_question.blade.php:237:    .strategic-avatar-image {
+2266:resources/views/duo_question.blade.php:244:    .strategic-avatar-name {
+2267:resources/views/duo_question.blade.php:485:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2268:resources/views/duo_question.blade.php:490:        .strategic-avatar-circle {
+2269:resources/views/duo_question.blade.php:516:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2270:resources/views/duo_question.blade.php:521:        .strategic-avatar-circle {
+2271:resources/views/duo_question.blade.php:556:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2272:resources/views/duo_question.blade.php:561:        .strategic-avatar-circle {
+2273:resources/views/duo_question.blade.php:618:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2274:resources/views/duo_question.blade.php:623:        .strategic-avatar-circle {
+2275:resources/views/duo_question.blade.php:770:        @if(!empty($themeDisplay))
+2276:resources/views/duo_question.blade.php:771:            <div class="question-theme">{{ $themeDisplay }}</div>
+2277:resources/views/duo_question.blade.php:772:        @elseif(!empty($theme))
+2278:resources/views/duo_question.blade.php:773:            <div class="question-theme">{{ $theme }}</div>
+2279:resources/views/duo_question.blade.php:781:                <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
+2280:resources/views/duo_question.blade.php:788:                    <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar">
+2281:resources/views/duo_question.blade.php:790:                    <div class="opponent-avatar-empty">?</div>
+2282:resources/views/duo_question.blade.php:805:                <div class="strategic-avatar-circle">
+2283:resources/views/duo_question.blade.php:806:                    <img src="{{ $strategicAvatarPath }}" alt="{{ __('Avatar stratégique') }}" class="strategic-avatar-image">
+2284:resources/views/duo_question.blade.php:808:                @if(!empty($avatarName))
+2285:resources/views/duo_question.blade.php:809:                    <div class="strategic-avatar-name">{{ $avatarName }}</div>
+2286:resources/views/duo_question.blade.php:812:                <div class="strategic-avatar-circle empty"></div>
+2287:resources/views/duo_question.blade.php:862:    <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
+2288:resources/views/duo_question.blade.php:879:        theme: '{{ addslashes($themeDisplay ?? $theme ?? "Culture générale") }}'
+2310:resources/views/profile.blade.php.bak_2026-03-18_1107:121:    $soloLevel    = max(1, (int) data_get($s, 'choix_niveau', session('choix_niveau', 1))); // Minimum niveau 1, synchronisé avec session
+2311:resources/views/profile.blade.php.bak_2026-03-18_1107:122:    $duoLevel     = max(0, (int) data_get($s, 'gm.duo_level', 0)); // Niveau Duo
+2312:resources/views/profile.blade.php.bak_2026-03-18_1107:123:    $leagueLevel  = max(0, (int) data_get($s, 'gm.league_level', 0));
+2343:resources/views/profile.blade.php.bak_2026-03-18_1107:1101:    $bpAvatarSlug = $bp->bot_avatar_slug ?? null;
+2344:resources/views/profile.blade.php.bak_2026-03-18_1107:1105:    $bpWins = $bp->bot_wins ?? 0;
+2345:resources/views/profile.blade.php.bak_2026-03-18_1107:1106:    $bpLosses = $bp->bot_losses ?? 0;
+2346:resources/views/profile.blade.php.bak_2026-03-18_1107:1191:            <input type="checkbox" name="bot_active" value="1" form="profileForm"
+2347:resources/views/profile.blade.php.bak_2026-03-18_1107:1206:                <input type="radio" name="bot_avatar_slug" value="" form="profileForm"
+2349:resources/views/profile.blade.php.bak_2026-03-18_1107:1215:                  <input type="radio" name="bot_avatar_slug" value="{{ $slug }}" form="profileForm"
+2350:resources/views/profile.blade.php.bak_2026-03-18_1107:1225:              {{ __('Votre bot jouera avec le style et la vitesse que vous avez avec cet avatar') }}
+2351:resources/views/profile.blade.php.bak_2026-03-18_1107:1228:            <div style="font-size:12px; opacity:.7;">{{ __('Débloquez des avatars stratégiques pour les assigner à votre bot') }}</div>
+2352:resources/views/profile.blade.php.bak_2026-03-18_1107:1237:              <input type="checkbox" name="bot_stake_enabled" value="1" form="profileForm"
+2353:resources/views/profile.blade.php.bak_2026-03-18_1107:1245:              <input type="number" name="bot_max_stake" form="profileForm" id="bot-max-stake-input"
+2354:resources/views/profile.blade.php.bak_2026-03-18_1107:1271:    {{ __('bot_tooltip_text') }}
+2367:resources/views/duo_matchmaking.blade.php:14:                <div class="player-avatar">
+2368:resources/views/duo_matchmaking.blade.php:15:                    @if(Auth::user()->avatar_url)
+2369:resources/views/duo_matchmaking.blade.php:16:                        <img src="{{ Auth::user()->avatar_url }}" alt="Vous">
+2370:resources/views/duo_matchmaking.blade.php:18:                        <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
+2371:resources/views/duo_matchmaking.blade.php:28:                <div class="opponent-avatar" id="opponentAvatar">
+2372:resources/views/duo_matchmaking.blade.php:47:                <span class="value" id="themeValue">Culture Générale</span>
+2373:resources/views/duo_matchmaking.blade.php:122:.player-avatar, .opponent-avatar {
+2374:resources/views/duo_matchmaking.blade.php:131:.player-avatar img, .opponent-avatar img {
+2375:resources/views/duo_matchmaking.blade.php:137:.default-avatar {
+2376:resources/views/duo_matchmaking.blade.php:265:    if (opponent.avatar_url) {
+2377:resources/views/duo_matchmaking.blade.php:266:        opponentAvatar.innerHTML = `<img src="${opponent.avatar_url}" alt="${opponent.name}">`;
+2378:resources/views/duo_matchmaking.blade.php:268:        opponentAvatar.innerHTML = `<div class="default-avatar">${opponent.name.charAt(0)}</div>`;
+2379:resources/views/league_individual_rankings.blade.php:286:.ranking-avatar {
+2380:resources/views/league_individual_rankings.blade.php:431:                <div class="ranking-avatar">
+2381:resources/views/league_individual_results.blade.php:20:                <div class="player-avatar">
+2382:resources/views/league_individual_results.blade.php:21:                    @if(Auth::user()->avatar_url)
+2383:resources/views/league_individual_results.blade.php:22:                        <img src="{{ Auth::user()->avatar_url }}" alt="Vous">
+2384:resources/views/league_individual_results.blade.php:24:                        <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
+2385:resources/views/league_individual_results.blade.php:40:                <div class="player-avatar">
+2386:resources/views/league_individual_results.blade.php:41:                    <div class="default-avatar">{{ substr($match->player2->name, 0, 1) }}</div>
+2387:resources/views/league_individual_results.blade.php:241:.player-avatar {
+2388:resources/views/league_individual_results.blade.php:248:.player-avatar img {
+2389:resources/views/league_individual_results.blade.php:254:.default-avatar {
+2411:resources/views/profile.blade.php:121:    $soloLevel    = max(1, (int) data_get($s, 'choix_niveau', session('choix_niveau', 1))); // Minimum niveau 1, synchronisé avec session
+2412:resources/views/profile.blade.php:122:    $duoLevel     = max(0, (int) data_get($s, 'gm.duo_level', 0)); // Niveau Duo
+2413:resources/views/profile.blade.php:123:    $leagueLevel  = max(0, (int) data_get($s, 'gm.league_level', 0));
+2444:resources/views/profile.blade.php:1101:    $bpAvatarSlug = $bp->bot_avatar_slug ?? null;
+2445:resources/views/profile.blade.php:1105:    $bpWins = $bp->bot_wins ?? 0;
+2446:resources/views/profile.blade.php:1106:    $bpLosses = $bp->bot_losses ?? 0;
+2447:resources/views/profile.blade.php:1191:            <input type="checkbox" name="bot_active" value="1" form="profileForm"
+2448:resources/views/profile.blade.php:1206:                <input type="radio" name="bot_avatar_slug" value="" form="profileForm"
+2450:resources/views/profile.blade.php:1215:                  <input type="radio" name="bot_avatar_slug" value="{{ $slug }}" form="profileForm"
+2451:resources/views/profile.blade.php:1225:              {{ __('Votre bot jouera avec le style et la vitesse que vous avez avec cet avatar') }}
+2452:resources/views/profile.blade.php:1228:            <div style="font-size:12px; opacity:.7;">{{ __('Débloquez des avatars stratégiques pour les assigner à votre bot') }}</div>
+2453:resources/views/profile.blade.php:1237:              <input type="checkbox" name="bot_stake_enabled" value="1" form="profileForm"
+2454:resources/views/profile.blade.php:1245:              <input type="number" name="bot_max_stake" form="profileForm" id="bot-max-stake-input"
+2455:resources/views/profile.blade.php:1271:    {{ __('bot_tooltip_text') }}
+2490:resources/views/league_team_gathering.blade.php:29:                <div class="player-avatar-wrapper {{ in_array($member['id'], $gatheringData['connected']) ? 'glow-active' : '' }}">
+2491:resources/views/league_team_gathering.blade.php:30:                    @if($member['avatar_url'])
+2492:resources/views/league_team_gathering.blade.php:31:                        <img src="{{ $member['avatar_url'] }}" alt="Avatar" class="player-avatar">
+2493:resources/views/league_team_gathering.blade.php:33:                        <div class="player-avatar default-avatar">{{ strtoupper(substr($member['name'], 0, 1)) }}</div>
+2494:resources/views/league_team_gathering.blade.php:224:.player-avatar-wrapper {
+2495:resources/views/league_team_gathering.blade.php:234:.player-avatar-wrapper.glow-active {
+2496:resources/views/league_team_gathering.blade.php:237:    animation: avatarGlow 2s ease-in-out infinite;
+2497:resources/views/league_team_gathering.blade.php:240:@keyframes avatarGlow {
+2498:resources/views/league_team_gathering.blade.php:245:.player-avatar {
+2499:resources/views/league_team_gathering.blade.php:253:.default-avatar {
+2500:resources/views/league_team_gathering.blade.php:922:        const wrapper = card.querySelector('.player-avatar-wrapper');
+2514:resources/views/league_team_results.blade.php:76:                            <div class="player-avatar-stat">
+2515:resources/views/league_team_results.blade.php:77:                                @if($user && $user->avatar_url)
+2516:resources/views/league_team_results.blade.php:78:                                    <img src="{{ $user->avatar_url }}" alt="">
+2517:resources/views/league_team_results.blade.php:80:                                    <div class="avatar-letter-stat">{{ substr($player['name'], 0, 1) }}</div>
+2518:resources/views/league_team_results.blade.php:113:                            <div class="player-avatar-stat">
+2519:resources/views/league_team_results.blade.php:114:                                @if($user && $user->avatar_url)
+2520:resources/views/league_team_results.blade.php:115:                                    <img src="{{ $user->avatar_url }}" alt="">
+2521:resources/views/league_team_results.blade.php:117:                                    <div class="avatar-letter-stat">{{ substr($player['name'], 0, 1) }}</div>
+2522:resources/views/league_team_results.blade.php:338:.player-avatar-stat {
+2523:resources/views/league_team_results.blade.php:345:.player-avatar-stat img {
+2524:resources/views/league_team_results.blade.php:351:.avatar-letter-stat {
+2545:resources/views/league_team_game.blade.php:28:                        <div class="member-avatar-mini">
+2546:resources/views/league_team_game.blade.php:29:                            @if($member->user->avatar_url)
+2547:resources/views/league_team_game.blade.php:30:                                <img src="{{ $member->user->avatar_url }}" alt="">
+2548:resources/views/league_team_game.blade.php:32:                                <div class="avatar-letter">{{ substr($member->user->name, 0, 1) }}</div>
+2549:resources/views/league_team_game.blade.php:55:                        <div class="member-avatar-mini">
+2550:resources/views/league_team_game.blade.php:56:                            @if($member->user->avatar_url)
+2551:resources/views/league_team_game.blade.php:57:                                <img src="{{ $member->user->avatar_url }}" alt="">
+2552:resources/views/league_team_game.blade.php:59:                                <div class="avatar-letter">{{ substr($member->user->name, 0, 1) }}</div>
+2553:resources/views/league_team_game.blade.php:219:.member-avatar-mini {
+2554:resources/views/league_team_game.blade.php:227:.member-avatar-mini img {
+2555:resources/views/league_team_game.blade.php:233:.avatar-letter {
+2556:resources/views/league_team_game.blade.php:746:    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
+2557:resources/views/league_team_game.blade.php:749:    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
+2569:resources/views/boutique_category.blade.php:215:.avatar-actions { position: absolute; bottom: 8px; right: 8px; }
+2596:resources/views/boutique_category.blade.php.bak.2026-02-19_214918:213:.avatar-actions { position: absolute; bottom: 8px; right: 8px; }
+2622:resources/views/duo_resume.blade.php:6:$theme = $params['theme'] ?? 'Culture générale';
+2623:resources/views/duo_resume.blade.php:9:$playerAvatar = $params['player_avatar'] ?? 'default';
+2624:resources/views/duo_resume.blade.php:11:$opponentAvatar = $params['opponent_avatar'] ?? 'default';
+2625:resources/views/duo_resume.blade.php:22:$themeIcons = [
+2626:resources/views/duo_resume.blade.php:33:$themeIcon = $themeIcons[$theme] ?? '❓';
+2627:resources/views/duo_resume.blade.php:34:$themeDisplay = $theme === 'Culture générale' ? __('Général') : __($theme);
+2628:resources/views/duo_resume.blade.php:74:.theme-badge {
+2629:resources/views/duo_resume.blade.php:113:.player-avatar {
+2630:resources/views/duo_resume.blade.php:122:.player-card.left .player-avatar {
+2631:resources/views/duo_resume.blade.php:126:.player-card.right .player-avatar {
+2632:resources/views/duo_resume.blade.php:244:    .theme-badge {
+2633:resources/views/duo_resume.blade.php:268:    .player-avatar {
+2634:resources/views/duo_resume.blade.php:329:    .player-avatar {
+2635:resources/views/duo_resume.blade.php:635:        <div class="theme-badge">
+2636:resources/views/duo_resume.blade.php:636:            <span>{{ $themeIcon }}</span> {{ $themeDisplay }}
+2637:resources/views/duo_resume.blade.php:647:            <img src="{{ $playerAvatarSrc }}" alt="{{ $playerName }}" class="player-avatar">
+2638:resources/views/duo_resume.blade.php:660:            <img src="{{ $opponentAvatarSrc }}" alt="{{ $opponentName }}" class="player-avatar">
+2639:resources/views/duo_resume.blade.php:745:    <source src="{{ asset('sounds/ready_announcement.mp3') }}" type="audio/mpeg">
+2640:resources/views/duo_resume.blade.php:843:                avatarId: @json($playerAvatar),
+2666:resources/views/lobby.blade.php:1269:                            <div id="strategic-avatar-name" style="font-weight: bold; font-size: 1.1rem; color: #ffc107; text-shadow: 0 1px 3px rgba(0,0,0,0.3); margin-bottom: 8px;"></div>
+2739:resources/views/league_team_details.blade.php:51:                @foreach($teamStrengths as $theme => $value)
+2740:resources/views/league_team_details.blade.php:53:                        <span class="theme-name">{{ $theme }}</span>
+2741:resources/views/league_team_details.blade.php:57:                        <span class="theme-value">{{ $value }}%</span>
+2742:resources/views/league_team_details.blade.php:69:                            <div class="member-avatar">
+2743:resources/views/league_team_details.blade.php:70:                                @if($member->avatar_url ?? null)
+2744:resources/views/league_team_details.blade.php:71:                                    <img src="{{ $member->avatar_url }}" alt="Avatar">
+2745:resources/views/league_team_details.blade.php:73:                                    <div class="default-avatar">{{ strtoupper(substr($member->name, 0, 1)) }}</div>
+2746:resources/views/league_team_details.blade.php:83:                                <p class="member-code">{{ $member->player_code ?? '' }}</p>
+2747:resources/views/league_team_details.blade.php:253:.theme-name {
+2748:resources/views/league_team_details.blade.php:274:.theme-value {
+2749:resources/views/league_team_details.blade.php:329:.member-avatar {
+2750:resources/views/league_team_details.blade.php:336:.member-avatar img {
+2751:resources/views/league_team_details.blade.php:342:.default-avatar {
+2752:resources/views/league_team_details.blade.php:480:    const themes = Object.keys(teamStrengths);
+2753:resources/views/league_team_details.blade.php:488:                labels: themes,
+2754:resources/views/league_team_details.blade.php:535:                labels: themes,
+2755:resources/views/league_team_details.blade.php:538:                    data: themes.map(t => stats[t] || 50),
+2795:resources/views/league_team_management.blade.php:198:                                    <div class="member-avatar">
+2796:resources/views/league_team_management.blade.php:199:                                        @if($member->avatar_url ?? null)
+2797:resources/views/league_team_management.blade.php:200:                                            <img src="{{ $member->avatar_url }}" alt="Avatar">
+2798:resources/views/league_team_management.blade.php:202:                                            <div class="default-avatar">{{ strtoupper(substr($member->name, 0, 1)) }}</div>
+2799:resources/views/league_team_management.blade.php:342:                            <div class="transfer-member-avatar">
+2800:resources/views/league_team_management.blade.php:343:                                @if($member->avatar_url ?? null)
+2801:resources/views/league_team_management.blade.php:344:                                    <img src="{{ $member->avatar_url }}" alt="Avatar">
+2802:resources/views/league_team_management.blade.php:816:.contact-avatar {
+2803:resources/views/league_team_management.blade.php:830:.contact-avatar img {
+2804:resources/views/league_team_management.blade.php:1079:.member-avatar {
+2805:resources/views/league_team_management.blade.php:1086:.member-avatar img {
+2806:resources/views/league_team_management.blade.php:1092:.default-avatar {
+2807:resources/views/league_team_management.blade.php:1281:.transfer-member-avatar {
+2808:resources/views/league_team_management.blade.php:1294:.transfer-member-avatar img {
+2809:resources/views/league_team_management.blade.php:1682:    .member-avatar {
+2810:resources/views/league_team_management.blade.php:1687:    .default-avatar {
+2811:resources/views/league_team_management.blade.php:2151:                player_code: playerName,
+2812:resources/views/league_team_management.blade.php:2405:            <div class="contact-card" onclick="selectContact('${escapeHtml(contact.player_code)}')">
+2813:resources/views/league_team_management.blade.php:2407:                    <div class="contact-avatar">
+2814:resources/views/league_team_management.blade.php:2408:                        ${contact.avatar_url 
+2815:resources/views/league_team_management.blade.php:2409:                            ? `<img src="${contact.avatar_url}" alt="Avatar">` 
+2816:resources/views/league_team_management.blade.php:2415:                        <p class="contact-code">${contact.player_code}</p>
+2817:resources/views/league_answer.blade.php:122:    .player-avatar {
+2818:resources/views/league_answer.blade.php:151:    .opponent-avatar {
+2819:resources/views/league_answer.blade.php:160:    .opponent-avatar-empty {
+2820:resources/views/league_answer.blade.php:472:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2821:resources/views/league_answer.blade.php:504:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2822:resources/views/league_answer.blade.php:538:        .player-avatar, .opponent-avatar, .opponent-avatar-empty {
+2823:resources/views/league_answer.blade.php:596:                <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
+2824:resources/views/league_answer.blade.php:603:                    <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar">
+2825:resources/views/league_answer.blade.php:605:                    <div class="opponent-avatar-empty">?</div>
+2850:resources/views/league_result.blade.php:134:    .player-avatar-small {
+2851:resources/views/league_result.blade.php:142:    .opponent-avatar-small {
+2852:resources/views/league_result.blade.php:150:    .opponent-avatar-empty {
+2853:resources/views/league_result.blade.php:480:        .player-avatar-small, .opponent-avatar-small, .opponent-avatar-empty {
+2854:resources/views/league_result.blade.php:515:        .player-avatar-small, .opponent-avatar-small, .opponent-avatar-empty {
+2855:resources/views/league_result.blade.php:567:        .player-avatar-small, .opponent-avatar-small, .opponent-avatar-empty {
+2856:resources/views/league_result.blade.php:604:            <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar-small">
+2857:resources/views/league_result.blade.php:613:                <img src="{{ $opponentAvatarPath }}" alt="{{ __('Avatar adversaire') }}" class="opponent-avatar-small">
+2858:resources/views/league_result.blade.php:615:                <div class="opponent-avatar-empty">?</div>
+2859:resources/views/league_individual_game.blade.php:17:            <div class="player-avatar">
+2860:resources/views/league_individual_game.blade.php:18:                @if(Auth::user()->avatar_url)
+2861:resources/views/league_individual_game.blade.php:19:                    <img src="{{ Auth::user()->avatar_url }}" alt="Vous">
+2862:resources/views/league_individual_game.blade.php:21:                    <div class="default-avatar">{{ substr(Auth::user()->name, 0, 1) }}</div>
+2863:resources/views/league_individual_game.blade.php:38:            <div class="player-avatar">
+2864:resources/views/league_individual_game.blade.php:39:                <div class="default-avatar" id="opponentAvatarLetter">?</div>
+2865:resources/views/league_individual_game.blade.php:148:.player-avatar {
+2866:resources/views/league_individual_game.blade.php:156:.player-avatar img {
+2867:resources/views/league_individual_game.blade.php:162:.default-avatar {
+2868:resources/views/league_individual_game.blade.php:858:    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
+2869:resources/views/league_individual_game.blade.php:861:    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
+2870:resources/views/solo.blade.php.bak:10:  .btn-theme{ display:block; width:100%; padding:14px 16px; border-radius:10px; background:#1E90FF; color:#fff; border:0; cursor:pointer;  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+2871:resources/views/solo.blade.php.bak:11:  .btn-theme:disabled{ opacity:.4; cursor:not-allowed; }
+2872:resources/views/solo.blade.php.bak:16:  .btn-theme{display:flex;align-items:center;justify-content:center;gap:10px;min-height:58px;box-shadow:2px 2px 6px rgba(0,0,0,.3);} 
+2873:resources/views/solo.blade.php.bak:17:  .btn-theme:hover{transform:translateY(-1px);} 
+2874:resources/views/solo.blade.php.bak:18:  .btn-theme:active{transform:translateY(0);} 
+2875:resources/views/solo.blade.php.bak:47:  <p class="lead text-center" style="margin-top:6px">Votre Niveau : <strong>{{ $choix_niveau }}</strong></p>
+2876:resources/views/solo.blade.php.bak:68:        <input type="hidden" name="niveau_joueur" id="niveau_joueur" value="{{ $niveau_selectionne ?? $choix_niveau }}">
+2877:resources/views/solo.blade.php.bak:70:          <span class="lbl">Niveau sélectionné : <strong>{{ $niveau_selectionne ?? $choix_niveau }}</strong></span>
+2878:resources/views/solo.blade.php.bak:79:        <span>{{ $avatar_stratégique ?? 'Aucun' }}</span>
+2879:resources/views/solo.blade.php.bak:80:        <a href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}"
+2880:resources/views/solo.blade.php.bak:86:      <button type="submit" class="btn-theme" name="theme" value="general">🧠 Général</button>
+2881:resources/views/solo.blade.php.bak:87:      <button type="submit" class="btn-theme" name="theme" value="geographie">🌐 Géographie</button>
+2882:resources/views/solo.blade.php.bak:88:      <button type="submit" class="btn-theme" name="theme" value="histoire">📜 Histoire</button>
+2883:resources/views/solo.blade.php.bak:89:      <button type="submit" class="btn-theme" name="theme" value="art">🎨 Art</button>
+2884:resources/views/solo.blade.php.bak:90:      <button type="submit" class="btn-theme" name="theme" value="cinema">🎬 Cinéma</button>
+2885:resources/views/solo.blade.php.bak:91:      <button type="submit" class="btn-theme" name="theme" value="sport">🏅 Sport</button>
+2886:resources/views/solo.blade.php.bak:92:      <button type="submit" class="btn-theme" name="theme" value="faune">🦁 Faune</button>
+2887:resources/views/solo.blade.php.bak:93:      <button type="submit" class="btn-theme" name="theme" value="cuisine">🍳 Cuisine</button>
+2888:resources/views/solo.blade.php.bak:94:                  <button type="submit" name="theme" value="sciences" class="btn-theme">🔬 Sciences</button>
+2889:resources/views/solo.blade.php.bak:102:  document.querySelectorAll('.btn-theme').forEach(btn => {
+2890:resources/views/solo.blade.php.bak:122:  .btn-theme{display:block;width:100%;padding:14px 18px;border-radius:12px;font-size:1.1rem;box-shadow:2px 2px 6px rgba(0,0,0,.3);}
+2891:resources/views/solo.blade.php.bak:123:  .btn-theme:hover{transform:translateY(-1px);}
+2892:resources/views/solo.blade.php.bak:124:  .btn-theme:active{transform:translateY(0);}
+2932:resources/views/profile/_form-fields-readonly.blade.php:4:        <label class="block text-sm font-medium mb-2">Afficher mon avatar dans la ligue :</label>
+2934:resources/views/profile/_form-fields.blade.php:4:        <label class="block text-sm font-medium mb-2">Afficher mon avatar dans la ligue :</label>
+2951:public/js/DuoSocketClient.js:286:            avatarId: playerInfo.avatarId,

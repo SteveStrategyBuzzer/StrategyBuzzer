@@ -763,7 +763,7 @@ foreach ($colors as $color) {
     window.matchRoomId = '{{ $match->room_id }}';
     window.matchLobbyCode = '{{ $match->lobby_code }}';
     window.matchPlayerToken = '{{ $playerToken ?? "" }}';
-    window.gameServerUrl = '{{ $gameServerUrl ?? config("services.game_server.url", "ws://localhost:3001") }}';
+    window.gameServerUrl = window.location.origin;
     window.useSocketIO = true;
 </script>
 @else

@@ -1652,7 +1652,7 @@ class SoloController extends Controller
         // Vérifier et compléter les quêtes (si connecté)
         $user = auth()->user();
         if ($user) {
-            $questService      = new QuestService();
+            $questService      = app(\App\Services\QuestService::class);
             $dailyQuestService = app(\App\Services\DailyQuestService::class);
             $theme = session('theme', 'Général');
 

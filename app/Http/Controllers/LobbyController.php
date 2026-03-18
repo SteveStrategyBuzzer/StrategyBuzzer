@@ -69,7 +69,7 @@ class LobbyController extends Controller
         }
         
         $duoMatch = DuoMatch::where('lobby_code', $code)
-            ->whereIn('status', ['pending', 'waiting', 'lobby', 'in_progress', 'active'])
+            ->whereIn('status', ['pending', 'waiting', 'lobby', 'in_progress', 'active', 'playing'])
             ->first();
         
         $playerToken = null;
