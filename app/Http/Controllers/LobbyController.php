@@ -5,615 +5,187 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\LobbyService;
-use App\Services\PlayerContactService;
-use App\Services\DivisionService;
 use App\Models\DuoMatch;
-use App\Models\User;
-use App\Models\PlayerContact;
-use App\Models\PlayerDuoStat;
 
 class LobbyController extends Controller
 {
     protected LobbyService $lobbyService;
-    
+
     public function __construct(LobbyService $lobbyService)
     {
         $this->lobbyService = $lobbyService;
     }
-    
-    public function create(Request $request)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'mode' => 'required|string|in:duo,league_individual,league_team,master',
-            'theme' => 'nullable|string',
-            'nb_questions' => 'nullable|integer|min:5|max:20',
-            'teams_enabled' => 'nullable|boolean',
-        ]);
-        
-        $settings = [
-            'theme' => $validated['theme'] ?? __('Culture générale'),
-            'nb_questions' => $validated['nb_questions'] ?? 10,
-        ];
-        
-        if (isset($validated['teams_enabled'])) {
-            $settings['teams_enabled'] = $validated['teams_enabled'];
-        }
-        
-        $lobby = $this->lobbyService->createLobby($user, $validated['mode'], $settings);
-        
-        session(['current_lobby_code' => $lobby['code']]);
-        
-        return redirect()->route('lobby.show', ['code' => $lobby['code']]);
-    }
-    
+
     public function show(string $code)
     {
         $user = Auth::user();
-        
+
         $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
-        
-        if (!$lobbyState['exists']) {
+
+        if (!($lobbyState['exists'] ?? false)) {
             return redirect()->route('home')->with('error', __('Salon introuvable'));
         }
-        
-        if (!$lobbyState['in_lobby']) {
-            $result = $this->lobbyService->joinLobby($code, $user);
-            
-            if (!$result['success']) {
-                return redirect()->route('home')->with('error', $result['error']);
-            }
-            
+
+        if (!($lobbyState['in_lobby'] ?? false)) {
+            $this->lobbyService->joinLobby($code, $user);
             $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
         }
-        
-        $duoMatch = DuoMatch::where('lobby_code', $code)
-            ->whereIn('status', ['pending', 'waiting', 'lobby', 'in_progress', 'active', 'playing'])
-            ->first();
-        
-        $playerToken = null;
-        $gameServerUrl = null;
-        if ($duoMatch && $duoMatch->room_id) {
-            $gameServerService = app(\App\Services\GameServerService::class);
-            $playerToken = $gameServerService->generatePlayerToken($user->id, $duoMatch->room_id);
-            $gameServerUrl = $gameServerService->getSocketUrl();
-        }
-        
-        $settings = (array) ($user->profile_settings ?? []);
-        $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
-        $activeStrategicAvatar = $settings['active_strategic_avatar'] ?? null;
-        
-        $catalog = \App\Services\AvatarCatalog::get();
-        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
-        
-        $unlockedStrategic = [];
-        foreach ($strategicAvatars as $slug => $avatar) {
-            if (in_array($slug, $unlockedAvatars)) {
-                $unlockedStrategic[$slug] = $avatar;
-            }
-        }
-        
+
+        $duoMatch = DuoMatch::where('lobby_code', $code)->first();
+
+        $gameServerService = app(\App\Services\GameServerService::class);
+        $gameServerUrl = $gameServerService->getSocketUrl();
+
+        $lobby = $lobbyState['lobby'] ?? [];
+        $colors = $lobbyState['colors'] ?? [];
+        $isHost = $lobbyState['is_host'] ?? false;
+        $allReady = $lobbyState['all_ready'] ?? false;
+        $canStart = $lobbyState['can_start'] ?? false;
+
+        $roomId = $lobby['game_server']['roomId'] ?? null;
+        $playerToken = $roomId ? $gameServerService->generatePlayerToken($user->id, $roomId) : null;
+
         return view('lobby', [
-            'lobby' => $lobbyState['lobby'],
-            'colors' => $lobbyState['colors'],
-            'isHost' => $lobbyState['is_host'],
+            'lobby' => $lobby,
+            'colors' => $colors,
+            'isHost' => $isHost,
             'currentPlayerId' => $user->id,
-            'allReady' => $lobbyState['all_ready'],
-            'canStart' => $lobbyState['can_start'],
+            'allReady' => $allReady,
+            'canStart' => $canStart,
             'matchId' => $duoMatch?->id,
             'match' => $duoMatch,
             'playerToken' => $playerToken,
             'gameServerUrl' => $gameServerUrl,
-            'userCompetenceCoins' => $user->competence_coins ?? 0,
-            'unlockedStrategicAvatars' => $unlockedStrategic,
-            'activeStrategicAvatar' => $activeStrategicAvatar,
         ]);
     }
-    
-    public function join(Request $request)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'code' => 'required|string|size:6',
-        ]);
-        
-        $code = strtoupper($validated['code']);
-        
-        $result = $this->lobbyService->joinLobby($code, $user);
-        
-        if (!$result['success']) {
-            if ($request->expectsJson()) {
-                return response()->json($result, 400);
-            }
-            return back()->with('error', $result['error']);
-        }
-        
-        session(['current_lobby_code' => $code]);
-        
-        if ($request->expectsJson()) {
-            return response()->json($result);
-        }
-        
-        return redirect()->route('lobby.show', ['code' => $code]);
-    }
-    
-    public function leave(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $result = $this->lobbyService->leaveLobby($code, $user);
-        
-        session()->forget('current_lobby_code');
-        
-        if ($request->expectsJson()) {
-            return response()->json($result);
-        }
-        
-        if ($result['lobby_closed'] ?? false) {
-            return redirect()->route('home')->with('info', __('Le salon a été fermé'));
-        }
-        
-        return redirect()->route('home');
-    }
-    
-    public function removePlayer(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'player_id' => 'required|integer',
-        ]);
-        
-        $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
-        
-        if (!$lobbyState['exists']) {
-            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
-        }
-        
-        if (!$lobbyState['is_host']) {
-            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut retirer des joueurs')], 403);
-        }
-        
-        $result = $this->lobbyService->removePlayerFromLobby($code, $validated['player_id']);
-        
-        return response()->json($result);
-    }
-    
-    public function setReady(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'ready' => 'required|boolean',
-        ]);
-        
-        $result = $this->lobbyService->setPlayerReady($code, $user, $validated['ready']);
-        
-        return response()->json($result);
-    }
-    
-    public function setColor(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'color' => 'required|string',
-        ]);
-        
-        $result = $this->lobbyService->setPlayerColor($code, $user, $validated['color']);
-        
-        return response()->json($result);
-    }
-    
-    public function setTeam(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'team_id' => 'nullable|string',
-        ]);
-        
-        $result = $this->lobbyService->setPlayerTeam($code, $user, $validated['team_id']);
-        
-        return response()->json($result);
-    }
-    
-    public function createTeam(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'name' => 'required|string|max:30',
-            'color' => 'required|string',
-        ]);
-        
-        $result = $this->lobbyService->createTeam($code, $user, $validated['name'], $validated['color']);
-        
-        return response()->json($result);
-    }
-    
-    public function updateSettings(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'theme' => 'nullable|string',
-            'nb_questions' => 'nullable|integer|min:5|max:20',
-            'teams_enabled' => 'nullable|boolean',
-            'bet_amount' => 'nullable|integer|min:0|max:100',
-        ]);
-        
-        if (isset($validated['bet_amount']) && $validated['bet_amount'] > 0) {
-            if ($user->competence_coins < $validated['bet_amount']) {
-                return response()->json([
-                    'success' => false,
-                    'error' => __('Vous n\'avez pas assez de pièces de Compétence pour cette mise')
-                ], 400);
-            }
-        }
-        
-        $result = $this->lobbyService->updateLobbySettings($code, $user, $validated);
-        
-        return response()->json($result);
-    }
-    
-    public function proposeBet(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'amount' => 'required|integer|min:1|max:100',
-        ]);
-        
-        $result = $this->lobbyService->proposeBet($code, $user, $validated['amount']);
-        
-        if (!$result['success']) {
-            return response()->json($result, 400);
-        }
-        
-        return response()->json($result);
-    }
-    
-    public function respondToBet(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'action' => 'required|string|in:accept,raise,refuse',
-            'amount' => 'nullable|integer|min:1|max:100',
-        ]);
-        
-        $result = $this->lobbyService->respondToBet(
-            $code, 
-            $user, 
-            $validated['action'], 
-            $validated['amount'] ?? null
-        );
-        
-        if (!$result['success']) {
-            return response()->json($result, 400);
-        }
-        
-        return response()->json($result);
-    }
-    
-    public function cancelBet(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $result = $this->lobbyService->cancelBet($code, $user);
-        
-        if (!$result['success']) {
-            return response()->json($result, 400);
-        }
-        
-        return response()->json($result);
-    }
-    
-    public function refundBets(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $lobby = $this->lobbyService->getLobby($code);
-        
-        if (!$lobby) {
-            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
-        }
-        
-        if ($lobby['host_id'] !== $user->id) {
-            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut demander un remboursement')], 403);
-        }
-        
-        $reason = $request->input('reason', 'match_cancelled');
-        $result = $this->lobbyService->refundBets($code, $reason);
-        
-        if (!$result['success']) {
-            return response()->json($result, 400);
-        }
-        
-        return response()->json($result);
-    }
-    
-    public function start(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $result = $this->lobbyService->startGame($code, $user);
-        
-        if (!$result['success']) {
-            return response()->json($result, 400);
-        }
-        
-        return response()->json($result);
-    }
-    
+
     public function getState(string $code)
     {
         $user = Auth::user();
-        
+
         $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
-        
-        return response()->json($lobbyState);
-    }
-    
-    public function getPlayerStats(int $playerId)
-    {
-        $currentUser = Auth::user();
-        
-        $player = User::find($playerId);
-        if (!$player) {
-            return response()->json([
-                'success' => false,
-                'error' => __('Joueur non trouvé'),
-            ], 404);
-        }
-        
-        $duoStats = PlayerDuoStat::where('user_id', $playerId)->first();
-        
-        $divisionService = app(DivisionService::class);
-        $division = $divisionService->getOrCreateDivision($player, 'duo');
-        
-        $contact = PlayerContact::where('user_id', $currentUser->id)
-            ->where('contact_user_id', $playerId)
-            ->first();
-        
-        $wins = $duoStats->matches_won ?? 0;
-        $losses = $duoStats->matches_lost ?? 0;
-        $totalDuoMatches = $wins + $losses;
-        $duoWinRate = $totalDuoMatches > 0 
-            ? round(($wins / $totalDuoMatches) * 100, 1) 
-            : 0;
-        $correctAnswers = $duoStats->correct_answers ?? 0;
-        $totalAnswers = $duoStats->total_answers ?? 0;
-        $duoEfficiency = $totalAnswers > 0
-            ? round(($correctAnswers / $totalAnswers) * 100, 1)
-            : 0;
-        $playerLevel = $duoStats->level ?? 1;
-        
-        $radarData = [
-            'Victoires' => min($duoWinRate, 100),
-            'Précision' => $duoEfficiency,
-            'Expérience' => min(($totalDuoMatches / 50) * 100, 100),
-            'Niveau' => min(($playerLevel / 50) * 100, 100),
-            'Régularité' => min((($contact->matches_played_together ?? 0) / 20) * 100, 100),
-        ];
-        
-        $playerAvatar = $player->avatar_url ?? 'default';
-        // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
-        if ($playerAvatar && $playerAvatar !== 'default' && strpos($playerAvatar, '/') !== 0 && strpos($playerAvatar, 'http') !== 0) {
-            $playerAvatar = '/' . $playerAvatar;
-        }
-        
+
         return response()->json([
             'success' => true,
-            'player' => [
-                'id' => $player->id,
-                'name' => $player->name,
-                'player_code' => $player->player_code,
-                'avatar' => $playerAvatar,
-            ],
-            'stats' => [
-                'level' => $playerLevel,
-                'division' => $division['name'] ?? 'Bronze',
-                'division_rank' => $division['rank'] ?? 0,
-                'total_matches' => $totalDuoMatches,
-                'wins' => $wins,
-                'losses' => $losses,
-                'win_rate' => $duoWinRate,
-                'efficiency' => $duoEfficiency,
-                'correct_answers' => $correctAnswers,
-                'total_answers' => $totalAnswers,
-            ],
-            'history' => [
-                'matches_together' => $contact->matches_played_together ?? 0,
-                'wins_against' => $contact->matches_won ?? 0,
-                'losses_against' => $contact->matches_lost ?? 0,
-                'last_played' => $contact?->last_played_at?->diffForHumans() ?? __('Jamais'),
-            ],
-            'radar_data' => $radarData,
+            'exists' => $lobbyState['exists'] ?? false,
+            'lobby' => $lobbyState['lobby'] ?? [],
+            'colors' => $lobbyState['colors'] ?? [],
+            'isHost' => $lobbyState['is_host'] ?? false,
+            'allReady' => $lobbyState['all_ready'] ?? false,
+            'canStart' => $lobbyState['can_start'] ?? false,
+            'inLobby' => $lobbyState['in_lobby'] ?? false,
         ]);
     }
-    
-    public function setStrategicAvatar(Request $request)
+
+    public function getOpenLobbies()
     {
         $user = Auth::user();
-        
-        $validated = $request->validate([
-            'avatar_slug' => 'required|string|max:50',
-        ]);
-        
-        $slug = $validated['avatar_slug'];
-        
-        $settings = (array) ($user->profile_settings ?? []);
-        $unlockedAvatars = $settings['unlocked_avatars'] ?? [];
-        
-        if (!in_array($slug, $unlockedAvatars)) {
-            return response()->json([
-                'success' => false,
-                'error' => __('Cet avatar n\'est pas débloqué')
-            ], 400);
-        }
-        
-        $settings['active_strategic_avatar'] = $slug;
-        $user->profile_settings = $settings;
-        $user->save();
-        
-        return response()->json([
-            'success' => true,
-            'message' => __('Avatar stratégique mis à jour')
-        ]);
-    }
-    
-    public function setGameMode(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'game_mode' => 'required|string|in:classique,bataille,relais',
-        ]);
-        
-        $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
-        
-        if (!$lobbyState['exists']) {
-            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
-        }
-        
-        if (!$lobbyState['is_host']) {
-            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut changer le mode de jeu')], 403);
-        }
-        
-        $result = $this->lobbyService->updateLobbySettings($code, $user, [
-            'game_mode' => $validated['game_mode']
-        ]);
-        
-        return response()->json($result);
-    }
-    
-    public function matchPlayersByLevel(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
-        
-        if (!$lobbyState['exists']) {
-            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
-        }
-        
-        if (!$lobbyState['is_host']) {
-            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut matcher les joueurs')], 403);
-        }
-        
-        $lobby = $lobbyState['lobby'];
-        $players = $lobby['players'] ?? [];
-        $teams = $lobby['teams'] ?? [];
-        
-        if (count($teams) < 2) {
-            return response()->json(['success' => false, 'error' => __('Il faut 2 équipes pour le mode Bataille')], 400);
-        }
-        
-        $team1Id = array_key_first($teams);
-        $team2Id = array_key_last($teams);
-        
-        $team1Players = collect($players)->filter(fn($p) => ($p['team'] ?? null) === $team1Id)->values();
-        $team2Players = collect($players)->filter(fn($p) => ($p['team'] ?? null) === $team2Id)->values();
-        
-        $team1Sorted = $team1Players->sortByDesc(fn($p) => $p['level'] ?? 1)->values();
-        $team2Sorted = $team2Players->sortByDesc(fn($p) => $p['level'] ?? 1)->values();
-        
-        $pairings = [];
-        $minCount = min($team1Sorted->count(), $team2Sorted->count());
-        
-        for ($i = 0; $i < $minCount; $i++) {
-            $p1 = $team1Sorted[$i];
-            $p2 = $team2Sorted[$i];
-            $pairings[] = [
-                'rank' => $i + 1,
-                'player1' => [
-                    'id' => $p1['user_id'] ?? $p1['id'] ?? 0,
-                    'name' => $p1['name'] ?? 'Joueur',
-                    'level' => $p1['level'] ?? 1,
-                ],
-                'player2' => [
-                    'id' => $p2['user_id'] ?? $p2['id'] ?? 0,
-                    'name' => $p2['name'] ?? 'Joueur',
-                    'level' => $p2['level'] ?? 1,
-                ],
-            ];
-        }
-        
-        $this->lobbyService->updateLobbySettings($code, $user, [
-            'duel_pairings' => $pairings
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'pairings' => $pairings
-        ]);
-    }
-    
-    public function setPlayerOrder(Request $request, string $code)
-    {
-        $user = Auth::user();
-        
-        $validated = $request->validate([
-            'player_order' => 'required|array',
-            'player_order.team1' => 'sometimes|array',
-            'player_order.team1.*' => 'integer',
-            'player_order.team2' => 'sometimes|array',
-            'player_order.team2.*' => 'integer',
-        ]);
-        
-        $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
-        
-        if (!$lobbyState['exists']) {
-            return response()->json(['success' => false, 'error' => __('Salon introuvable')], 404);
-        }
-        
-        if (!$lobbyState['is_host']) {
-            return response()->json(['success' => false, 'error' => __('Seul l\'hôte peut définir l\'ordre des joueurs')], 403);
-        }
-        
-        $playerOrder = $validated['player_order'];
-        if (isset($playerOrder['team1']) && isset($playerOrder['team2'])) {
-            $playerOrder = [
-                'team1' => array_values(array_map('intval', $playerOrder['team1'])),
-                'team2' => array_values(array_map('intval', $playerOrder['team2'])),
-            ];
-        }
-        
-        $result = $this->lobbyService->updateLobbySettings($code, $user, [
-            'player_order' => $playerOrder
-        ]);
-        
-        return response()->json($result);
-    }
-    
-    public function getOpenLobbies(Request $request)
-    {
-        $user = Auth::user();
-        $mode = $request->query('mode');
-        
+
         $lobbies = $this->lobbyService->getPlayerOpenLobbies($user->id);
-        
-        if ($mode) {
-            $lobbies = array_filter($lobbies, fn($l) => $l['mode'] === $mode);
-            $lobbies = array_values($lobbies);
-        }
-        
+
         return response()->json([
             'success' => true,
             'lobbies' => $lobbies,
         ]);
     }
-    
-    public function closeLobby(Request $request, string $code)
+
+    public function setReady(Request $request, string $code)
     {
         $user = Auth::user();
-        
-        $result = $this->lobbyService->closeLobbyForPlayer($code, $user->id);
-        
+
+        $validated = $request->validate([
+            'ready' => 'required|boolean',
+        ]);
+
+        $result = $this->lobbyService->setPlayerReady($code, $user, $validated['ready']);
+
         return response()->json($result);
+    }
+
+    public function setColor(Request $request, string $code)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'color' => 'required|string',
+        ]);
+
+        $result = $this->lobbyService->setPlayerColor($code, $user, $validated['color']);
+
+        return response()->json($result);
+    }
+
+    public function setTeam(Request $request, string $code)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'team_id' => 'nullable|string',
+        ]);
+
+        $result = $this->lobbyService->setPlayerTeam($code, $user, $validated['team_id']);
+
+        return response()->json($result);
+    }
+
+    public function createTeam(Request $request, string $code)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:30',
+            'color' => 'required|string',
+        ]);
+
+        $result = $this->lobbyService->createTeam($code, $user, $validated['name'], $validated['color']);
+
+        return response()->json($result);
+    }
+
+    public function closeLobby(string $code)
+    {
+        $user = Auth::user();
+
+        return response()->json(
+            $this->lobbyService->closeLobbyForPlayer($code, $user->id)
+        );
+    }
+
+    public function getPlayerStats(int $playerId)
+    {
+        return response()->json([
+            'success' => true,
+            'playerId' => $playerId,
+            'stats' => null,
+        ]);
+    }
+
+    public function leave(string $code)
+    {
+        $user = Auth::user();
+
+        return response()->json(
+            $this->lobbyService->leaveLobby($code, $user)
+        );
+    }
+
+    public function removePlayer(Request $request, string $code)
+    {
+        $validated = $request->validate([
+            'player_id' => 'required|integer',
+        ]);
+
+        return response()->json(
+            $this->lobbyService->removePlayerFromLobby($code, $validated['player_id'])
+        );
+    }
+
+    public function start(string $code)
+    {
+        $user = Auth::user();
+
+        return response()->json(
+            $this->lobbyService->startGame($code, $user)
+        );
     }
 }

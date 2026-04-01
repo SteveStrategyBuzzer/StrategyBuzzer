@@ -1997,7 +1997,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
-    const GAME_SERVER_URL = '{{ config("game.server_url", "http://localhost:3001") }}';
+    const GAME_SERVER_URL = window.location.origin;
     const ROOM_ID = '{{ $matchId ?? "" }}';
     const LOBBY_CODE = '{{ $lobbyCode ?? "" }}';
     const JWT_TOKEN = '{{ $params["jwt_token"] ?? session("game_state.jwt_token") ?? "" }}';

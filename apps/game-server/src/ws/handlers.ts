@@ -172,6 +172,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             roundScore: number;
             roundsWon: number;
             isConnected: boolean;
+            isReady: boolean;
             isHost?: boolean;
           }> = {};
           
@@ -180,12 +181,13 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
               id: player.id,
               name: player.name,
               avatarId: player.avatarId,
-              avatarUrl: player.avatarUrl,
+              avatarUrl: player.avatarId,
               strategicAvatarId: player.strategicAvatarId,
               score: player.score,
               roundScore: player.roundScore,
               roundsWon: player.roundsWon,
               isConnected: player.isConnected,
+              isReady: ((player as Player & { isReady?: boolean }).isReady) === true,
               isHost: player.isHost,
             };
           }
@@ -200,12 +202,12 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             let sanitizedChoices: string[] | undefined = undefined;
             if (rawChoices && Array.isArray(rawChoices)) {
               sanitizedChoices = rawChoices.map((choice: unknown) => {
-                if (typeof choice === 'string') return choice;
-                if (choice && typeof choice === 'object') {
+                if (typeof choice === "string") return choice;
+                if (choice && typeof choice === "object") {
                   const obj = choice as Record<string, unknown>;
-                  if (typeof obj.text === 'string') return obj.text;
-                  if (typeof obj.answer === 'string') return obj.answer;
-                  if (typeof obj.label === 'string') return obj.label;
+                  if (typeof obj.text === "string") return obj.text;
+                  if (typeof obj.answer === "string") return obj.answer;
+                  if (typeof obj.label === "string") return obj.label;
                 }
                 return String(choice);
               });
@@ -218,7 +220,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
               difficulty: q.difficulty,
               category: q.category,
               subCategory: q.subCategory,
-              theme: q.category || q.subCategory || 'Culture générale',
+              theme: q.category || q.subCategory || "Culture générale",
               timeLimitMs: q.timeLimitMs || state.config.timers.questionActive,
               buzzWindowDurationMs: state.config.timers.questionActive,
               answerDurationMs: state.config.timers.answerSelection,
@@ -251,6 +253,14 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         }
         
         socket.to(roomId).emit("event", { event });
+
+        const updatedState = roomManager.getState(roomId);
+
+// envoyer à tous
+io.to(roomId).emit("state", { state: updatedState });
+
+// envoyer AUSSI directement au joueur qui vient de join
+socket.emit("state", { state: updatedState });
         MetricsService.incrementEventsProcessed();
         
         console.log(`[WS] Player ${playerName} joined room ${roomId}`);
@@ -382,7 +392,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           socket.emit("rate_limited", { event: "skill", reason: rateLimitResult.reason });
           return;
         }
-        
+       
         console.log(`[WS] Skill ${payload.skillId} from ${currentPlayerId}`);
 
         const room = roomManager.getRoom(payload.roomId);
@@ -451,7 +461,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
       }
     });
 
-    socket.on("ready", (data: unknown) => {
+    socket.on("ready", async (data: unknown) => {
       MetricsService.incrementEventReceived("ready");
       const result = validateEvent(ReadySchema, data);
       if (!result.success) {
@@ -464,18 +474,46 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
       const payload = result.data;
       
       try {
-        if (!currentPlayerId) {
+        if (!currentPlayerId || !currentRoomId || currentRoomId !== payload.roomId) {
           MetricsService.incrementEventsFailed();
           socket.emit("error", { code: "NOT_IN_ROOM", message: "Not in a room" });
           return;
         }
+
+        const room = roomManager.getRoom(payload.roomId);
+        if (!room) {
+          MetricsService.incrementRoomNotFoundError();
+          MetricsService.incrementEventsFailed();
+          socket.emit("error", { code: "ROOM_NOT_FOUND", message: "Room not found" });
+          return;
+        }
+
+        const player = room.state.players[currentPlayerId];
+        if (!player) {
+          MetricsService.incrementEventsFailed();
+          socket.emit("error", { code: "PLAYER_NOT_FOUND", message: "Player not found in room" });
+          return;
+        }
         
+        (player as Player & { isReady?: boolean }).isReady = payload.isReady;
+
         console.log(`[WS] Player ${currentPlayerId} ready: ${payload.isReady}`);
         
         io.to(payload.roomId).emit("player_ready", {
           playerId: currentPlayerId,
           isReady: payload.isReady,
         });
+
+        const updatedState = roomManager.getState(payload.roomId);
+        io.to(payload.roomId).emit("state", { state: updatedState });
+        const players = Object.values(room.state.players); 
+        if (room.state.config.mode === "DUO" && room.state.phase === "LOBBY" && players.length === room.state.config.maxPlayers && players.every(p => p.isConnected && ((p as Player & { isReady?: boolean }).isReady) === true)) { 
+          console.log("[WS] AUTO START DUO"); 
+          await gameOrchestrator.startGame(payload.roomId); 
+        } 
+
+
+
         MetricsService.incrementEventsProcessed();
       } catch (error) {
         console.error("[WS] Error processing ready:", error);
@@ -496,7 +534,8 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         socket.emit("error", { code: "UNAUTHORIZED", message: "Not authenticated or not in a room" });
         return;
       }
-      socket.to(currentRoomId).emit("voice_offer", {
+
+      io.to(`player:${payload.targetId}`).emit("voice_offer", {
         from: currentPlayerId,
         offer: payload.offer,
       });
@@ -515,7 +554,8 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         socket.emit("error", { code: "UNAUTHORIZED", message: "Not authenticated or not in a room" });
         return;
       }
-      socket.to(currentRoomId).emit("voice_answer", {
+
+      io.to(`player:${payload.targetId}`).emit("voice_answer", {
         from: currentPlayerId,
         answer: payload.answer,
       });
@@ -534,7 +574,8 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         socket.emit("error", { code: "UNAUTHORIZED", message: "Not authenticated or not in a room" });
         return;
       }
-      socket.to(currentRoomId).emit("voice_ice_candidate", {
+
+      io.to(`player:${payload.targetId}`).emit("voice_ice_candidate", {
         from: currentPlayerId,
         candidate: payload.candidate,
       });

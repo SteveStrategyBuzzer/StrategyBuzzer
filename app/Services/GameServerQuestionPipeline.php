@@ -121,6 +121,7 @@ class GameServerQuestionPipeline
         $this->storeQuestionToFirestore($roomId, 1, $formattedQuestion);
         
         Cache::put($this->getCacheKey($roomId, 'questions'), [$formattedQuestion], self::CACHE_TTL);
+        Cache::put($this->getCacheKey($roomId, 'delivered_count'), 1, self::CACHE_TTL);
 
         Log::info('[GameServerQuestionPipeline] First question generated, dispatching block job', [
             'room_id' => $roomId,
@@ -232,8 +233,13 @@ class GameServerQuestionPipeline
     public function getNextQuestions(string $roomId, int $count = 4): array
     {
         $questions = $this->getAllQuestionsFromStore($roomId);
-        
-        return array_slice($questions, 0, $count);
+        $deliveredKey = $this->getCacheKey($roomId, 'delivered_count');
+        $deliveredCount = (int) Cache::get($deliveredKey, 1);
+        $slice = array_slice($questions, $deliveredCount, $count);
+
+        Cache::put($deliveredKey, $deliveredCount + count($slice), self::CACHE_TTL);
+
+        return $slice;
     }
 
     public function getQuestionByIndex(string $roomId, int $index): ?array
@@ -311,6 +317,7 @@ class GameServerQuestionPipeline
         Cache::forget($this->getCacheKey($roomId, 'used_ids'));
         Cache::forget($this->getCacheKey($roomId, 'used_texts'));
         Cache::forget($this->getCacheKey($roomId, 'questions'));
+        Cache::forget($this->getCacheKey($roomId, 'delivered_count'));
         Cache::forget($this->getCacheKey($roomId, 'next_index'));
         Cache::forget($this->getCacheKey($roomId, 'config'));
     }

@@ -1,4 +1,15 @@
 import { z } from "zod";
+import type { SkillEffectType } from "@strategybuzzer/shared";
+
+const SKILL_EFFECT_IDS = [
+  "reduce_time",
+  "shuffle_answers",
+  "faster_buzz",
+  "score_shield",
+  "reveal_correct",
+  "double_points",
+  "skill_recharge",
+] as const satisfies readonly SkillEffectType[];
 
 export const JoinRoomSchema = z.object({
   roomId: z.string().optional(),
@@ -23,7 +34,7 @@ export const AnswerSchema = z.object({
 
 export const SkillSchema = z.object({
   roomId: z.string(),
-  skillId: z.string(),
+  skillId: z.enum(SKILL_EFFECT_IDS),
   targetPlayerId: z.string().optional(),
 });
 

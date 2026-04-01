@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { GameState, GameConfig } from "@strategybuzzer/shared";
 import type { GameEvent, PlayerJoinedEvent, GameStartedEvent, PhaseChangedEvent, BuzzReceivedEvent } from "@strategybuzzer/shared";
 import { createInitialState, applyEvent } from "@strategybuzzer/game-engine";
-import { getPhaseTimeout, getNextPhase } from "@strategybuzzer/game-engine";
+import { getPhaseTimeout } from "@strategybuzzer/game-engine";
 
 export type RoomPipelineConfig = {
   theme: string;
@@ -33,20 +33,22 @@ export class RoomManager {
   private rooms: Map<string, Room> = new Map();
   private playerToRoom: Map<string, string> = new Map();
 
-  createRoom(config: GameConfig, hostId?: string): { roomId: string; lobbyCode: string } {
+  createRoom(config: GameConfig, hostId?: string, lobbyCode?: string): { roomId: string; lobbyCode: string } {
+    if (!lobbyCode) {
+      throw new Error("Missing lobbyCode from Laravel");
+    }
+
     const roomId = uuidv4();
-    const lobbyCode = this.generateLobbyCode();
-    
     const state = createInitialState(roomId, lobbyCode, config);
-    
+
     const room: Room = {
       state,
       events: [],
     };
-    
+
     this.rooms.set(roomId, room);
     console.log(`[RoomManager] Created room ${roomId} with code ${lobbyCode}`);
-    
+
     return { roomId, lobbyCode };
   }
 
@@ -79,17 +81,46 @@ export class RoomManager {
   joinRoom(roomId: string, playerId: string, name: string, options: Partial<PlayerJoinedEvent> = {}): GameEvent | null {
     const room = this.rooms.get(roomId);
     if (!room) return null;
-    
+
+    const existingPlayer = room.state.players[playerId];
+
+    // IMPORTANT:
+    // A player already known by the room must be allowed to reconnect
+    // even if the game already started or the room is full.
+    if (existingPlayer) {
+      const reconnectEvent: PlayerJoinedEvent = {
+        id: room.state.lastEventId + 1,
+        type: "PLAYER_JOINED",
+        atMs: Date.now(),
+        sessionId: roomId,
+        playerId,
+        name: name || existingPlayer.name,
+        avatarId: options.avatarId ?? existingPlayer.avatarId,
+        strategicAvatarId: options.strategicAvatarId ?? existingPlayer.strategicAvatarId,
+        isBot: options.isBot ?? existingPlayer.isBot,
+        isHost: existingPlayer.isHost ?? false,
+        teamId: options.teamId ?? existingPlayer.teamId,
+        division: options.division ?? existingPlayer.division,
+      };
+
+      room.state = applyEvent(room.state, reconnectEvent);
+      room.events.push(reconnectEvent);
+      this.playerToRoom.set(playerId, roomId);
+
+      console.log(`[RoomManager] Player ${name || existingPlayer.name} (${playerId}) reconnected to room ${roomId}`);
+      return reconnectEvent;
+    }
+
     if (room.state.phase !== "LOBBY") {
       console.log(`[RoomManager] Cannot join room ${roomId}: game already started`);
       return null;
     }
-    
+
     if (Object.keys(room.state.players).length >= room.state.config.maxPlayers) {
       console.log(`[RoomManager] Cannot join room ${roomId}: room is full`);
       return null;
     }
-    
+
     const event: PlayerJoinedEvent = {
       id: room.state.lastEventId + 1,
       type: "PLAYER_JOINED",
@@ -104,11 +135,11 @@ export class RoomManager {
       teamId: options.teamId,
       division: options.division,
     };
-    
+
     room.state = applyEvent(room.state, event);
     room.events.push(event);
     this.playerToRoom.set(playerId, roomId);
-    
+
     console.log(`[RoomManager] Player ${name} (${playerId}) joined room ${roomId}`);
     return event;
   }
@@ -116,7 +147,7 @@ export class RoomManager {
   leaveRoom(roomId: string, playerId: string): GameEvent | null {
     const room = this.rooms.get(roomId);
     if (!room) return null;
-    
+
     const event: GameEvent = {
       id: room.state.lastEventId + 1,
       type: "PLAYER_LEFT",
@@ -125,35 +156,35 @@ export class RoomManager {
       playerId,
       reason: "disconnect",
     };
-    
+
     room.state = applyEvent(room.state, event);
     room.events.push(event);
     this.playerToRoom.delete(playerId);
-    
+
     console.log(`[RoomManager] Player ${playerId} left room ${roomId}`);
-    
+
     if (Object.keys(room.state.players).length === 0) {
       this.destroyRoom(roomId);
     }
-    
+
     return event;
   }
 
   startGame(roomId: string): GameEvent | null {
     const room = this.rooms.get(roomId);
     if (!room) return null;
-    
+
     if (room.state.phase !== "LOBBY") {
       console.log(`[RoomManager] Cannot start game: not in LOBBY phase`);
       return null;
     }
-    
+
     const playerCount = Object.keys(room.state.players).length;
     if (playerCount < 2) {
       console.log(`[RoomManager] Cannot start game: need at least 2 players`);
       return null;
     }
-    
+
     const event: GameStartedEvent = {
       id: room.state.lastEventId + 1,
       type: "GAME_STARTED",
@@ -165,10 +196,10 @@ export class RoomManager {
         roundsToWin: room.state.config.roundsToWin,
       },
     };
-    
+
     room.state = applyEvent(room.state, event);
     room.events.push(event);
-    
+
     console.log(`[RoomManager] Game started in room ${roomId}`);
     return event;
   }
@@ -176,20 +207,20 @@ export class RoomManager {
   registerBuzz(roomId: string, playerId: string, clientBuzzTimeMs: number): GameEvent | null {
     const room = this.rooms.get(roomId);
     if (!room) return null;
-    
+
     if (room.state.phase !== "QUESTION_ACTIVE") {
       console.log(`[RoomManager] Cannot buzz: not in QUESTION_ACTIVE phase`);
       return null;
     }
-    
+
     if (room.state.buzzQueue.some(b => b.playerId === playerId)) {
       console.log(`[RoomManager] Player ${playerId} already buzzed`);
       return null;
     }
-    
+
     const serverTimeMs = Date.now();
     const latencyMs = serverTimeMs - clientBuzzTimeMs;
-    
+
     const event: BuzzReceivedEvent = {
       id: room.state.lastEventId + 1,
       type: "BUZZ_RECEIVED",
@@ -201,10 +232,10 @@ export class RoomManager {
       latencyMs,
       position: room.state.buzzQueue.length + 1,
     };
-    
+
     room.state = applyEvent(room.state, event);
     room.events.push(event);
-    
+
     console.log(`[RoomManager] Buzz from ${playerId} at position ${event.position}, latency: ${latencyMs}ms`);
     return event;
   }
@@ -212,7 +243,7 @@ export class RoomManager {
   transitionPhase(roomId: string, toPhase: GameState["phase"]): GameEvent | null {
     const room = this.rooms.get(roomId);
     if (!room) return null;
-    
+
     const event: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
       type: "PHASE_CHANGED",
@@ -224,10 +255,10 @@ export class RoomManager {
       questionIndex: toPhase === "QUESTION_ACTIVE" ? room.state.questionIndex : undefined,
       roundNumber: room.state.currentRound,
     };
-    
+
     room.state = applyEvent(room.state, event);
     room.events.push(event);
-    
+
     console.log(`[RoomManager] Phase changed: ${event.fromPhase} -> ${event.toPhase}`);
     return event;
   }
@@ -248,11 +279,11 @@ export class RoomManager {
     if (room) {
       if (room.phaseTimer) clearTimeout(room.phaseTimer);
       if (room.questionGenerationTimer) clearTimeout(room.questionGenerationTimer);
-      
+
       for (const playerId of Object.keys(room.state.players)) {
         this.playerToRoom.delete(playerId);
       }
-      
+
       this.rooms.delete(roomId);
       console.log(`[RoomManager] Destroyed room ${roomId}`);
     }
@@ -293,13 +324,13 @@ export class RoomManager {
       console.log(`[RoomManager] Room ${roomId} already exists, skipping restore`);
       return;
     }
-    
+
     this.rooms.set(roomId, room);
-    
+
     for (const playerId of Object.keys(room.state.players)) {
       this.playerToRoom.set(playerId, roomId);
     }
-    
+
     console.log(`[RoomManager] Restored room ${roomId} with ${Object.keys(room.state.players).length} players`);
   }
 
@@ -310,11 +341,11 @@ export class RoomManager {
   initializeSkillEffects(roomId: string, playerId: string): void {
     const room = this.rooms.get(roomId);
     if (!room) return;
-    
+
     if (!room.skillEffects) {
       room.skillEffects = {};
     }
-    
+
     if (!room.skillEffects[playerId]) {
       room.skillEffects[playerId] = {
         reduceTimeActive: false,
@@ -335,22 +366,22 @@ export class RoomManager {
   activateReduceTime(roomId: string, attackerId: string, targetId: string, questionsAffected: number): { success: boolean; error?: string } {
     const room = this.rooms.get(roomId);
     if (!room) return { success: false, error: "Room not found" };
-    
+
     this.initializeSkillEffects(roomId, attackerId);
     this.initializeSkillEffects(roomId, targetId);
-    
+
     const attackerEffects = room.skillEffects![attackerId];
-    
-    if (attackerEffects.usedSkills.includes('reduce_time')) {
+
+    if (attackerEffects.usedSkills.includes("reduce_time")) {
       return { success: false, error: "Skill already used this match" };
     }
-    
-    attackerEffects.usedSkills.push('reduce_time');
-    
+
+    attackerEffects.usedSkills.push("reduce_time");
+
     const targetEffects = room.skillEffects![targetId];
     targetEffects.reduceTimeActive = true;
     targetEffects.reduceTimeQuestionsLeft = questionsAffected;
-    
+
     console.log(`[RoomManager] Skill reduce_time activated: ${attackerId} → ${targetId}, ${questionsAffected} questions`);
     return { success: true };
   }
@@ -358,16 +389,16 @@ export class RoomManager {
   decrementReduceTime(roomId: string, playerId: string): boolean {
     const room = this.rooms.get(roomId);
     if (!room || !room.skillEffects || !room.skillEffects[playerId]) return false;
-    
+
     const effects = room.skillEffects[playerId];
     if (!effects.reduceTimeActive || effects.reduceTimeQuestionsLeft <= 0) return false;
-    
+
     effects.reduceTimeQuestionsLeft--;
     if (effects.reduceTimeQuestionsLeft <= 0) {
       effects.reduceTimeActive = false;
       console.log(`[RoomManager] Skill reduce_time expired for ${playerId}`);
     }
-    
+
     return effects.reduceTimeActive;
   }
 
@@ -380,31 +411,31 @@ export class RoomManager {
   findAttackTarget(roomId: string, attackerId: string): string | null {
     const room = this.rooms.get(roomId);
     if (!room) return null;
-    
+
     const players = Object.entries(room.state.players)
       .filter(([id]) => id !== attackerId)
       .map(([id, player]) => ({ id, score: player.score }));
-    
+
     if (players.length === 0) return null;
-    
+
     const attackerScore = room.state.players[attackerId]?.score ?? 0;
-    
+
     const higherScorePlayers = players
       .filter(p => p.score > attackerScore)
       .sort((a, b) => b.score - a.score);
-    
+
     if (higherScorePlayers.length > 0) {
       return higherScorePlayers[0].id;
     }
-    
+
     const closestBelowPlayers = players
       .filter(p => p.score <= attackerScore)
       .sort((a, b) => b.score - a.score);
-    
+
     if (closestBelowPlayers.length > 0) {
       return closestBelowPlayers[0].id;
     }
-    
+
     return players[0].id;
   }
 

@@ -756,13 +756,13 @@ foreach ($colors as $color) {
     }
 </style>
 
-@if(isset($match) && $match && $match->room_id)
+@if(!empty($gameServerUrl) && !empty($lobby['game_server']['roomId']))
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 <script>
-    window.matchRoomId = '{{ $match->room_id }}';
-    window.matchLobbyCode = '{{ $match->lobby_code }}';
-    window.matchPlayerToken = '{{ $playerToken ?? "" }}';
+    window.matchRoomId = @json($lobby['game_server']['roomId'] ?? '');
+    window.matchLobbyCode = @json($lobby['code'] ?? '');
+    window.matchPlayerToken = @json($playerToken ?? null);
     window.gameServerUrl = window.location.origin;
     window.useSocketIO = true;
 </script>
@@ -981,7 +981,7 @@ foreach ($colors as $color) {
                 @php
                     $playerColor = $colorMap[$player['color']] ?? $colorMap['blue'];
                     $isCurrentPlayer = $playerId == $currentPlayerId;
-                    $avatarRaw = $player['avatar'] ?? 'default';
+                    $avatarRaw = $player['avatarUrl'] ?? $player['avatarId'] ?? $player['avatar'] ?? 'default';
                     if (str_contains($avatarRaw, '/') || str_contains($avatarRaw, '.png')) {
                         $avatarSrc = '/' . ltrim(preg_replace('/\.png$/', '', $avatarRaw), '/') . '.png';
                     } else {
@@ -1654,7 +1654,7 @@ foreach ($colors as $color) {
             const data = await response.json();
             
             if (data.success) {
-                let avatar = data.player.avatar || 'default';
+                let avatar = data.player.avatarUrl || data.player.avatarId || data.player.avatar_url || data.player.avatar || 'default';
                 let avatarSrc;
                 
                 if (avatar === 'default' || avatar === null) {
@@ -1836,7 +1836,7 @@ foreach ($colors as $color) {
                 const avatarEl = document.getElementById('chat-avatar');
                 if (data.contact && data.contact.avatar_url) {
                     const avatar = data.contact.avatar_url;
-                    const avatarSrc = avatar.includes('/') ? `/${avatar}` : `/images/avatars/standard/${avatar}.png`;
+                    const avatarSrc = avatar.startsWith('http') ? avatar : avatar.startsWith('/') ? avatar : avatar.includes('/') ? `/${avatar.replace(/^\/+/, '')}` : `/images/avatars/standard/${avatar.replace(/\\.png$/, '')}.png`;
                     avatarEl.src = avatarSrc;
                 } else {
                     avatarEl.src = '/images/avatars/standard/default.png';
@@ -2454,36 +2454,15 @@ foreach ($colors as $color) {
     async function toggleReady() {
         try {
             const newReadyState = !isReady;
-            
-            const response = await fetch(`/lobby/${lobbyCode}/ready`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({ ready: newReadyState })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                isReady = newReadyState;
-                updateReadyButton();
-                
-                if (window.lobbyPresenceManager) {
-                    await window.lobbyPresenceManager.updateReady(newReadyState);
-                }
-                
-                if (window.useSocketIO && window.duoSocketConnected && typeof DuoSocketClient !== 'undefined') {
-                    DuoSocketClient.setReady(newReadyState);
-                    console.log('[Socket.IO] Ready state sent:', newReadyState);
-                }
-            } else {
-                showToast(data.error || '{{ __("Erreur") }}');
+            isReady = newReadyState;
+            updateReadyButton();
+            if (window.useSocketIO && window.duoSocketConnected && typeof DuoSocketClient !== 'undefined') {
+                DuoSocketClient.setReady(newReadyState);
+                console.log('[Socket.IO] Ready state sent:', newReadyState);
             }
         } catch (error) {
             console.error('Error toggling ready:', error);
-            showToast('{{ __("Erreur de connexion") }}');
+            showToast('Erreur de connexion');
         }
     }
     
@@ -2979,11 +2958,18 @@ foreach ($colors as $color) {
     
     let lastPlayersHash = '';
     
-    function updatePlayersUI(players) {
+    window.updatePlayersUI = function updatePlayersUI(players) {
         const playersGrid = document.querySelector('.players-grid');
         if (!playersGrid) return;
         
         const playerEntries = Object.entries(players || {});
+
+        // Sort current player first
+        playerEntries.sort(([idA], [idB]) => {
+            if (parseInt(idA) === currentPlayerId) return -1;
+            if (parseInt(idB) === currentPlayerId) return 1;
+            return 0;
+        });
         
         const currentHash = JSON.stringify(playerEntries.map(([id, p]) => ({
             id, name: p.name, avatar: p.avatar, ready: p.ready, is_host: p.is_host, color: p.color
@@ -3012,13 +2998,35 @@ foreach ($colors as $color) {
                 statusHtml = '<div class="player-status status-waiting">⏳</div>';
             }
             
-            let avatarRaw = player.avatar || 'default';
+            let avatarRaw = player.avatarUrl || player.avatarId || player.avatar_url || player.avatar || 'default';
             let avatarSrc;
-            if (avatarRaw.includes('/') || avatarRaw.includes('.png')) {
-                avatarSrc = '/' + avatarRaw.replace(/^\//, '').replace(/\.png$/, '') + '.png';
+
+            if (!avatarRaw || avatarRaw === 'default') {
+                avatarSrc = '/images/avatars/standard/default.png';
+
+            } else if (typeof avatarRaw === 'string' && avatarRaw.startsWith('http')) {
+                avatarSrc = avatarRaw;
+
+            } else if (typeof avatarRaw === 'string' && avatarRaw.startsWith('/images/')) {
+                avatarSrc = avatarRaw;
+
+            } else if (typeof avatarRaw === 'string' && avatarRaw.includes('/')) {
+                avatarSrc = '/' + avatarRaw.replace(/^\//, '');
+
             } else {
-                avatarSrc = '/images/avatars/standard/' + avatarRaw + '.png';
+                avatarSrc = '/images/avatars/standard/' + avatarRaw.replace(/\.png$/, '') + '.png';
             }
+
+            console.debug('[AvatarDebug][updatePlayersUI]', {
+                playerId,
+                avatarUrl: player.avatarUrl ?? null,
+                avatarId: player.avatarId ?? null,
+                avatar_url: player.avatar_url ?? null,
+                avatar: player.avatar ?? null,
+                avatarRaw,
+                avatarSrc
+            });
+
             const safeName = escapeHtml(player.name);
             const safeCode = escapeHtml(player.player_code || 'SB-????');
             const youLabel = isCurrentPlayer ? `<span style="font-size: 0.8rem; opacity: 0.7;">(${translations.you})</span>` : '';
@@ -3177,16 +3185,36 @@ foreach ($colors as $color) {
     }
     
     async function refreshLobbyState() {
+        if (window.duoSocketConnected === true) {
+            console.log('[Lobby] Polling skipped (Socket.IO active)');
+            return;
+        }
+
         try {
             const response = await fetch(`/lobby/${lobbyCode}/state`);
             const data = await response.json();
             
-            if (!data.exists) {
-                showToast(translations.lobbyClosed);
-                setTimeout(() => window.location.href = '/duo', 2000);
-                return;
-            }
-            
+if (!response.ok) {
+    console.error("[Lobby] State fetch failed:", response.status);
+    return;
+}
+
+if (!data || data.success !== true) {
+    console.error("[Lobby] Invalid state response:", data);
+    return;
+}
+
+if (!data.lobby) {
+    console.warn("[Lobby] No lobby data received");
+    return;
+}
+
+if (data.exists === false) {
+    showToast(translations.lobbyClosed);
+    setTimeout(() => window.location.href = "/duo", 2000);
+    return;
+}
+
             if (data.lobby?.status === 'starting') {
                 const mode = data.lobby?.mode || 'duo';
                 const settings = data.lobby?.settings || {};
@@ -3194,8 +3222,8 @@ foreach ($colors as $color) {
                 return;
             }
             
-            updatePlayersUI(data.lobby?.players);
-            
+            // Players UI is authoritative from Socket.IO state only.
+            // Keep Laravel polling for non-player UI only.
             updateBetNegotiationUI(data.lobby?.bet_negotiation, data.lobby?.settings);
             
             if (isHost) {
@@ -3207,8 +3235,8 @@ foreach ($colors as $color) {
                     startBtn.dataset.backendDisabled = data.can_start ? 'false' : 'true';
                     
                     // Only enable if BOTH backend allows AND Firebase confirms connection
-                    const firebaseConnected = startBtn.dataset.firebaseConnected === 'true';
-                    if (data.can_start && firebaseConnected) {
+                    const realtimeReady = startBtn.dataset.socketLobbyReady === 'true';
+                    if (mode !== 'duo' && data.can_start && realtimeReady) {
                         startBtn.removeAttribute('disabled');
                     } else {
                         startBtn.setAttribute('disabled', 'disabled');
@@ -3431,7 +3459,6 @@ class LobbyPresenceManager {
                 avatar: this.currentPlayerData.avatar || null,
                 color: this.currentPlayerData.color || 'blue',
                 team: this.currentPlayerData.team || null,
-                ready: readyState,
                 is_host: this.isHost,
                 online: true,
                 lastSeen: serverTimestamp(),
@@ -3512,7 +3539,6 @@ class LobbyPresenceManager {
                         avatar: data.avatar,
                         color: data.color,
                         team: data.team,
-                        ready: data.ready,
                         is_host: data.is_host,
                         online: true
                     };
@@ -3560,15 +3586,8 @@ class LobbyPresenceManager {
                             await setDoc(presenceRef, { online: false }, { merge: true });
                             console.log('[Presence] Marked player offline:', playerId);
                             
-                            await fetch(`/lobby/${this.lobbyCode}/remove-player`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                                },
-                                body: JSON.stringify({ player_id: parseInt(playerId) })
-                            });
-                            console.log('[Presence] Removed offline player from backend:', playerId);
+                            console.warn("[LobbyPresence] Auto-remove disabled on client");
+                            // Client-side remove-player intentionally disabled.
                             delete this.offlineCounts[playerId];
                         } catch (error) {
                             console.error('[Presence] Error marking offline:', error);
@@ -3584,18 +3603,6 @@ class LobbyPresenceManager {
         console.log('[Presence] Cleanup check started');
     }
     
-    async updateReady(ready) {
-        try {
-            const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
-            console.log('[Presence] Updating ready state to:', ready, 'for player:', this.currentPlayerId);
-            await setDoc(presenceRef, { ready: ready === true, lastSeen: serverTimestamp() }, { merge: true });
-            console.log('[Presence] Ready updated successfully:', ready);
-            return true;
-        } catch (error) {
-            console.error('[Presence] Error updating ready:', error);
-            return false;
-        }
-    }
     
     async updateColor(color) {
         try {
@@ -3625,7 +3632,7 @@ class LobbyPresenceManager {
             }
             
             const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
-            await deleteDoc(presenceRef);
+            // removed Firebase countdown delete
             console.log('[Presence] Left lobby');
         } catch (error) {
             console.error('[Presence] Error leaving lobby:', error);
@@ -3969,7 +3976,7 @@ class WebRTCManager {
                 
                 const docTime = data.createdAt?.toMillis ? data.createdAt.toMillis() : 0;
                 if (docTime && docTime < startTime - 5000) {
-                    await deleteDoc(change.doc.ref);
+                    // removed Firebase countdown delete
                     return;
                 }
                 
@@ -3982,7 +3989,7 @@ class WebRTCManager {
                         await this.handleCandidate(fromId, data.candidate);
                     }
                 } finally {
-                    await deleteDoc(change.doc.ref);
+                    // removed Firebase countdown delete
                 }
             });
         });
@@ -4245,7 +4252,7 @@ class WebRTCManager {
         
         try {
             const presenceRef = doc(db, this.getPresencePath(), String(this.currentPlayerId));
-            await deleteDoc(presenceRef);
+            // removed Firebase countdown delete
             
             const signalingRef = collection(db, this.getSignalingPath());
             const fromQuery = query(signalingRef, where('from', '==', this.currentPlayerId));
@@ -4275,7 +4282,6 @@ const currentPlayerData = @json($players[$currentPlayerId] ?? ['name' => 'Joueur
 const minPlayersFirebase = {{ $minPlayers }};
 const firebaseMatchId = {{ $matchId ?? 'null' }};
 
-window.countdownInitiated = false;
 window.countdownUnsubscriber = null;
 window.countdownAnimationFrame = null;
 window.serverTimeOffset = 0; // Server time - Client time (ms)
@@ -4322,116 +4328,9 @@ function getServerTime() {
     return Date.now() + window.serverTimeOffset;
 }
 
-async function startDuoCountdown(presencePlayers) {
-    if (!db) {
-        console.error('[Countdown] Firebase not initialized');
-        return;
-    }
-    
-    // Measure clock offset before starting countdown (if not already done)
-    if (!window.offsetMeasured) {
-        window.serverTimeOffset = await measureServerOffset();
-        window.offsetMeasured = true;
-    }
-    
-    const countdownDocRef = doc(db, 'lobbies', lobbyCode, 'countdown', 'current');
-    
-    try {
-        const existingDoc = await getDoc(countdownDocRef);
-        
-        if (!existingDoc.exists()) {
-            console.log('[Countdown] Creating countdown document...');
-            await setDoc(countdownDocRef, {
-                startAt: serverTimestamp(),
-                durationMs: 3000,
-                initiatedBy: currentPlayerId
-            });
-            console.log('[Countdown] Countdown document created');
-        } else {
-            console.log('[Countdown] Countdown already exists, waiting for it...');
-        }
-        
-        listenToCountdown(countdownDocRef);
-        
-    } catch (error) {
-        console.error('[Countdown] Error creating countdown:', error);
-        window.countdownInitiated = false;
-    }
-}
 
-function listenToCountdown(countdownDocRef) {
-    if (window.countdownUnsubscriber) return;
-    
-    window.countdownUnsubscriber = onSnapshot(countdownDocRef, async (docSnap) => {
-        if (!docSnap.exists()) return;
-        
-        const data = docSnap.data();
-        if (!data.startAt) return;
-        
-        // Both clients receive the same serverTimestamp from Firebase
-        // This is the authoritative time reference
-        const serverStartTime = data.startAt.toMillis ? data.startAt.toMillis() : Date.now();
-        const durationMs = data.durationMs || 3000;
-        
-        // Calculate end time based on server start time
-        const serverEndTime = serverStartTime + durationMs;
-        
-        // Calculate how much time has already passed since countdown started
-        // Use synchronized server time for accurate calculation
-        const syncedNow = getServerTime();
-        const elapsedSinceStart = syncedNow - serverStartTime;
-        const remainingAtStart = durationMs - elapsedSinceStart;
-        
-        console.log('[Countdown] Starting visual countdown', { 
-            serverStartTime,
-            syncedNow,
-            elapsedSinceStart,
-            remainingAtStart,
-            durationMs,
-            serverTimeOffset: window.serverTimeOffset
-        });
-        
-        // If countdown already finished (late joiner), clean up and start game immediately
-        if (remainingAtStart <= 0) {
-            console.log('[Countdown] Already finished, starting game immediately');
-            
-            // Clean up countdown document
-            try {
-                await deleteDoc(countdownDocRef);
-                console.log('[Countdown] Stale countdown document deleted');
-            } catch (err) {
-                console.error('[Countdown] Failed to delete stale countdown:', err);
-            }
-            
-            if (window.countdownUnsubscriber) {
-                window.countdownUnsubscriber();
-                window.countdownUnsubscriber = null;
-            }
-            window.countdownInitiated = false;
-            
-            submitGameStart(mode, @json($settings ?? []));
-            return;
-        }
-        
-        showCountdownOverlay();
-        // Pass server times so all clients use the same reference point
-        runCountdownAnimation(serverEndTime, durationMs, countdownDocRef, serverStartTime);
-        
-    }, (error) => {
-        console.error('[Countdown] Listener error:', error);
-    });
-}
 
-function showCountdownOverlay() {
-    const overlay = document.getElementById('countdown-overlay');
-    const label = document.getElementById('countdown-label');
-    if (overlay) {
-        overlay.classList.add('show');
-    }
-    if (label) {
-        label.textContent = translations.gameStarting;
-    }
-}
+
 
 function hideCountdownOverlay() {
     const overlay = document.getElementById('countdown-overlay');
@@ -4541,7 +4440,6 @@ function runCountdownAnimation(serverEndTime, totalDuration, countdownDocRef, se
                     if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
                     if (window.webrtcManager) window.webrtcManager.cleanup();
                     
-                    window.countdownInitiated = false; // Reset for future lobbies
                     
                     const settings = @json($settings ?? []);
                     submitGameStart(mode, settings);
@@ -4588,96 +4486,9 @@ initFirebase().then(async (authenticated) => {
         // Only update online status indicators for existing players
         
         // Update online/ready status indicators for each player card
-        document.querySelectorAll('.player-card').forEach(card => {
-            const playerId = parseInt(card.dataset.playerId);
-            const presenceData = presencePlayers[playerId];
-            
-            if (presenceData) {
-                // Player is online in Firebase
-                card.classList.remove('player-offline');
-                card.classList.add('player-online');
-                
-                // Update ready status if changed
-                if (presenceData.ready) {
-                    card.classList.add('is-ready');
-                } else {
-                    card.classList.remove('is-ready');
-                }
-            } else {
-                // Player not in presence data - may be temporarily disconnected
-                // Don't remove them from UI, just show offline indicator
-                card.classList.add('player-offline');
-                card.classList.remove('player-online');
-            }
-        });
         
-        const playerCount = Object.keys(presencePlayers).length;
-        const readyCount = Object.values(presencePlayers).filter(p => p.ready).length;
-        const allReady = readyCount === playerCount && playerCount >= minPlayersFirebase;
-        const allConnected = playerCount >= minPlayersFirebase;
+        // Firebase presence only: no lobby UI authority, no start-button authority.
         
-        // Update ready count display
-        const readyCountEl = document.getElementById('ready-count');
-        if (readyCountEl) {
-            const displayDenominator = Math.max(playerCount, minPlayersFirebase);
-            readyCountEl.textContent = `${readyCount}/${displayDenominator}`;
-        }
-        
-        // Find players who are connected but not ready
-        const notReadyPlayers = Object.values(presencePlayers).filter(p => !p.ready);
-        
-        // Sync status indicator - only show when synchronized (green checkmark)
-        const syncStatus = document.getElementById('sync-status');
-        const syncStatusText = document.getElementById('sync-status-text');
-        if (syncStatus && syncStatusText) {
-            if (allReady && allConnected) {
-                syncStatus.style.display = 'block';
-                syncStatus.style.background = 'rgba(76, 175, 80, 0.2)';
-                syncStatus.style.border = '1px solid rgba(76, 175, 80, 0.5)';
-                syncStatus.style.color = '#4CAF50';
-                syncStatusText.textContent = '✓ ' + translations.synchronized;
-            } else {
-                // Hide status messages - player cards show ready state via icons
-                syncStatus.style.display = 'none';
-            }
-        }
-        
-        // Update start button - Firebase provides visual feedback, backend polling is authoritative
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.dataset.firebaseConnected = allConnected ? 'true' : 'false';
-            startBtn.dataset.allReady = allReady ? 'true' : 'false';
-            
-            // Backend polling updates backendDisabled state (see polling handler line ~3133)
-            // Firebase only upgrades to enabled, never downgrades
-            const backendDisabled = startBtn.dataset.backendDisabled === 'true';
-            const backendCanStart = startBtn.dataset.backendCanStart === 'true';
-            
-            if (backendDisabled) {
-                // Backend explicitly revoked permission - always disable
-                startBtn.disabled = true;
-            } else if (allReady && allConnected) {
-                // Firebase confirms all ready - enable button
-                startBtn.disabled = false;
-            } else if (backendCanStart) {
-                // Backend approved but Firebase not yet synced - keep enabled
-                startBtn.disabled = false;
-            } else {
-                // Neither approved - keep disabled
-                startBtn.disabled = true;
-            }
-        }
-        
-        // Waiting message removed - status is shown via player cards with ready indicators
-        
-        // For Duo mode: Auto-start countdown when all ready
-        if (mode === 'duo' && allReady && allConnected && !window.countdownInitiated) {
-            window.countdownInitiated = true;
-            console.log('[Countdown] All players ready! Starting countdown...');
-            startDuoCountdown(presencePlayers);
-        }
-        
-        window.dispatchEvent(new CustomEvent('lobbyPlayersUpdated', { detail: { players: presencePlayers, allReady, allConnected } }));
     };
     
     await window.lobbyPresenceManager.joinLobby();
@@ -4724,74 +4535,63 @@ initFirebase().then(async (authenticated) => {
     
     console.log('[Firebase] Listening for game start signal on:', `games/duo-match-${normalizedId}`, '(lobbyCode:', lobbyCode, ')');
     
-    onSnapshot(gameDocRef, (docSnap) => {
-        if (!docSnap.exists() || gameStartHandled) return;
-        
-        const data = docSnap.data();
-        
-        if (data.gameStarted === true) {
-            gameStartHandled = true;
-            console.log('[Firebase] Game start signal received! Navigating to game...');
-            
-            // Arrêter le polling et les managers
-            if (pollingInterval) clearInterval(pollingInterval);
-            if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
-            if (window.webrtcManager) window.webrtcManager.cleanup();
-            
-            // Naviguer vers la page de jeu avec les paramètres
-            const settings = @json($settings ?? []);
-            submitGameStart(mode, settings);
-        }
-    }, (error) => {
-        console.error('[Firebase] Game start listener error:', error);
-    });
+    // Firebase game start listener removed
+    // Start is now handled exclusively by Socket (phase_changed)
 });
 
 if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'undefined') {
     (async function initSocketIO() {
         console.log('[Socket.IO] Initializing connection to Game Server...');
         window.duoSocketConnected = false;
+        window.socketLobbyReady = false;
         
         DuoSocketClient.onConnect = () => {
             console.log('[Socket.IO] Connected to Game Server');
             window.duoSocketConnected = true;
             
             DuoSocketClient.joinRoom(window.matchRoomId, window.matchLobbyCode, {
-                playerId: currentPlayerId,
-                playerName: currentPlayerData.name || '',
+                playerId: String(currentPlayerId),
+                playerName: currentPlayerData.name || "",
                 avatarId: currentPlayerData.avatar || null,
                 token: window.matchPlayerToken
             });
+
         };
         
         DuoSocketClient.onDisconnect = (reason) => {
             console.log('[Socket.IO] Disconnected:', reason);
             window.duoSocketConnected = false;
+            window.socketLobbyReady = false;
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.dataset.socketLobbyReady = 'false';
+            }
         };
         
         DuoSocketClient.onError = (error) => {
             console.error('[Socket.IO] Error:', error);
-        };
-        
-        DuoSocketClient.onPlayerJoined = (event) => {
-            console.log('[Socket.IO] Player joined:', event);
-            const card = document.querySelector(`.player-card[data-player-id="${event.playerId}"]`);
-            if (card) {
-                card.classList.remove('player-offline');
-                card.classList.add('player-online');
+            window.socketLobbyReady = false;
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.dataset.socketLobbyReady = 'false';
             }
         };
         
-        DuoSocketClient.onPlayerLeft = (event) => {
+        DuoSocketClient.on('player_joined', (event) => {
+            console.log('[Socket.IO] Player joined:', event);
+            // refresh disabled - handled by socket state
+        });
+        
+        DuoSocketClient.on('player_left', (event) => {
             console.log('[Socket.IO] Player left:', event);
             const card = document.querySelector(`.player-card[data-player-id="${event.playerId}"]`);
             if (card) {
                 card.classList.add('player-offline');
                 card.classList.remove('player-online');
             }
-        };
+        });
         
-        DuoSocketClient.onPlayerReady = (data) => {
+        DuoSocketClient.on('player_ready', (data) => {
             console.log('[Socket.IO] Player ready state changed:', data);
             const card = document.querySelector(`.player-card[data-player-id="${data.playerId}"]`);
             if (card) {
@@ -4801,46 +4601,71 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
                     card.classList.remove('is-ready');
                 }
             }
-        };
+        });
         
-        DuoSocketClient.onLobbyState = (state) => {
-            console.log('[Socket.IO] Lobby state received:', state);
-            
-            if (state && state.players) {
-                const playerCount = Object.keys(state.players).length;
-                const readyCount = Object.values(state.players).filter(p => p.isReady).length;
-                const allReady = readyCount === playerCount && playerCount >= minPlayersFirebase;
-                
-                const readyCountEl = document.getElementById('ready-count');
-                if (readyCountEl) {
-                    const displayDenominator = Math.max(playerCount, minPlayersFirebase);
-                    readyCountEl.textContent = `${readyCount}/${displayDenominator}`;
-                }
-                
-                Object.entries(state.players).forEach(([playerId, playerData]) => {
-                    const card = document.querySelector(`.player-card[data-player-id="${playerId}"]`);
-                    if (card) {
-                        card.classList.remove('player-offline');
-                        card.classList.add('player-online');
-                        if (playerData.isReady) {
-                            card.classList.add('is-ready');
-                        } else {
-                            card.classList.remove('is-ready');
-                        }
-                    }
-                });
-                
-                if (mode === 'duo' && allReady && !window.countdownInitiated) {
-                    window.countdownInitiated = true;
-                    console.log('[Socket.IO] All players ready! Starting countdown...');
-                    startDuoCountdown(state.players);
-                }
+        DuoSocketClient.on('state', (payload) => {
+            console.log('[Socket.IO] Lobby state received:', payload);
+
+            const lobbyState = payload?.state ?? payload;
+            const players = lobbyState?.players ?? {};
+
+            window.socketLobbyReady = true;
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.dataset.socketLobbyReady = 'true';
             }
-        };
+
+            window.updatePlayersUI(players);
+
+            const playerCount = Object.keys(players).length;
+            const readyCount = Object.values(players).filter(p => p?.isReady).length;
+            const allReady = readyCount === playerCount && playerCount >= minPlayersFirebase;
+
+            const readyCountEl = document.getElementById('ready-count');
+            if (readyCountEl) {
+                const displayDenominator = Math.max(playerCount, minPlayersFirebase);
+                readyCountEl.textContent = `${readyCount}/${displayDenominator}`;
+            }
+
+            Object.entries(players).forEach(([playerId, playerData]) => {
+                const card = document.querySelector(`.player-card[data-player-id="${playerId}"]`);
+                if (card) {
+                    card.classList.remove('player-offline');
+                    card.classList.add('player-online');
+                    if (playerData?.isReady) {
+                        card.classList.add('is-ready');
+                    } else {
+                        card.classList.remove('is-ready');
+                    }
+                }
+            });
+
+            if (mode === 'duo' && allReady) {
+                console.log('[Socket.IO] All players ready (Socket authoritative).');
+            }
+        });
         
-        DuoSocketClient.onPhaseChanged = (data) => {
+        DuoSocketClient.on('phase_changed', (data) => {
             console.log('[Socket.IO] Phase changed:', data);
-            if (data.phase === 'playing' || data.phase === 'question') {
+            if (data.phase === 'INTRO') {
+                const overlay = document.getElementById('countdown-overlay');
+                const label = document.getElementById('countdown-label');
+                const numberEl = document.getElementById('countdown-number');
+                const precisionEl = document.getElementById('countdown-precision');
+
+                if (overlay) overlay.classList.add('show');
+                if (label) label.textContent = '🎮 Ladies and Gentlemen 🎮';
+                if (numberEl) {
+                    numberEl.textContent = '3';
+                    numberEl.classList.remove('go');
+                }
+                if (precisionEl) {
+                    precisionEl.textContent = '';
+                }
+                return;
+            }
+
+            if (data.phase === 'QUESTION_ACTIVE') {
                 console.log('[Socket.IO] Game started! Navigating to game...');
                 
                 if (pollingInterval) clearInterval(pollingInterval);
@@ -4850,7 +4675,7 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
                 const settings = @json($settings ?? []);
                 submitGameStart(mode, settings);
             }
-        };
+        });
         
         try {
             await DuoSocketClient.connect(window.gameServerUrl, window.matchPlayerToken);
@@ -4859,14 +4684,16 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
             console.error('[Socket.IO] Failed to connect:', error);
             console.log('[Socket.IO] Falling back to Firebase-only mode');
             window.duoSocketConnected = false;
+            window.socketLobbyReady = false;
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.dataset.socketLobbyReady = 'false';
+            }
         }
     })();
 }
 
 window.addEventListener('beforeunload', () => {
-    if (window.lobbyPresenceManager) {
-        window.lobbyPresenceManager.cleanup();
-    }
     if (window.webrtcManager) {
         window.webrtcManager.cleanup();
     }
@@ -4896,9 +4723,6 @@ document.addEventListener('visibilitychange', () => {
 });
 
 window.addEventListener('pagehide', () => {
-    if (window.lobbyPresenceManager) {
-        window.lobbyPresenceManager.cleanup();
-    }
     if (window.webrtcManager) {
         window.webrtcManager.cleanup();
     }
@@ -4913,70 +4737,8 @@ window.addEventListener('pagehide', () => {
 @endif
 
 @if(isset($matchId) && $matchId)
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-const firebaseConfig = {
-    apiKey: "AIzaSyAB5-A0NsX9I9eFX76ZBYQQG_bagWp_dHw",
-    authDomain: "strategybuzzergame.firebaseapp.com",
-    projectId: "strategybuzzergame",
-    storageBucket: "strategybuzzergame.appspot.com",
-    messagingSenderId: "68047817391",
-    appId: "1:68047817391:web:ba6b3bc148ef187bfeae9a"
-};
-
-const app = initializeApp(firebaseConfig, 'match-watcher');
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-const matchId = {{ $matchId }};
-const currentUserId = {{ $currentPlayerId }};
-const isHost = {{ $isHost ? 'true' : 'false' }};
-const defaultGuestName = @json(__('Invité'));
-const declinedMessage = @json(__('a refusé votre invitation'));
-
-function startMatchListener() {
-    const matchRef = doc(db, 'duo_matches', String(matchId));
-    let declineHandled = false;
-
-    onSnapshot(matchRef, (docSnap) => {
-        if (!docSnap.exists()) return;
-        
-        const data = docSnap.data();
-        
-        if (data.status === 'declined' && isHost && !declineHandled) {
-            declineHandled = true;
-            const declinedByName = data.declinedByName || defaultGuestName;
-            
-            const toast = document.getElementById('toast');
-            toast.textContent = declinedByName + ' ' + declinedMessage;
-            toast.classList.add('show');
-            toast.style.background = '#E53935';
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-                window.location.href = '/duo/lobby';
-            }, 3000);
-        }
-        
-        if (data.player2Joined && isHost) {
-            location.reload();
-        }
-    }, (error) => {
-        console.error('[Firebase] Match listener error:', error);
-    });
-}
-
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        console.log('[Firebase] Match watcher authenticated');
-        startMatchListener();
-    }
-});
-
-signInAnonymously(auth).catch(e => console.error('[Firebase] Auth error:', e));
+<script>
+console.log('[Firebase] Match watcher disabled on lobby - Firebase presence only');
 </script>
 @endif
 @endsection

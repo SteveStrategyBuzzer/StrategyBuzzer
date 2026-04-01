@@ -28,6 +28,7 @@ class DuoController extends Controller
         private LobbyService $lobbyService,
         private GameServerService $gameServerService
     ) {}
+
     private function getPlayerSnapshot(User $user): array
     {
         return PlayerProfileSnapshotService::build($user);
@@ -78,6 +79,16 @@ class DuoController extends Controller
         return null;
     }
 
+    private function generateFreshGameplayToken(?string $roomId, int $userId): ?string
+    {
+        if (!$roomId) {
+            return null;
+        }
+
+        return $this->gameServerService->generatePlayerToken($userId, $roomId);
+    }
+
+
     public function showSplash()
     {
         $redirectUrl = route('duo.lobby');
@@ -107,16 +118,16 @@ class DuoController extends Controller
         ]);
 
         $user = Auth::user();
-        
+
         $opponent = \App\Services\PlayerCodeService::findByCode($request->player_code);
-        
+
         if (!$opponent) {
             return response()->json([
                 'success' => false,
                 'message' => __('Joueur introuvable avec ce code'),
             ], 404);
         }
-        
+
         if ($opponent->id === $user->id) {
             return response()->json([
                 'success' => false,
@@ -142,10 +153,11 @@ class DuoController extends Controller
         $match->lobby_code = $lobby['code'];
         $match->save();
 
-        // Quête quotidienne : inviter un joueur
         try {
             app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
-                $user, 'daily_invite_player', ['player_invited' => true]
+                $user,
+                'daily_invite_player',
+                ['player_invited' => true]
             );
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('DailyQuest player_invited (Duo) failed: ' . $e->getMessage());
@@ -246,7 +258,7 @@ class DuoController extends Controller
         }
 
         $this->matchmaking->cancelMatch($match);
-        
+
         session()->forget(['game_state', 'game_mode', 'used_skills', 'skill_usage_counts']);
 
         return response()->json([
@@ -404,17 +416,17 @@ class DuoController extends Controller
             );
 
             $wasDecisiveRound = ($gameState['current_round'] ?? 1) === 3;
-            
+
             $player1Won = $matchResult['winner'] === 'player1' ? true : ($matchResult['winner'] === 'player2' ? false : null);
             $player2Won = $matchResult['winner'] === 'player2' ? true : ($matchResult['winner'] === 'player1' ? false : null);
-            
+
             $this->contactService->addOrUpdateContact(
                 $match->player1_id,
                 $match->player2_id,
                 $player1Won,
                 $wasDecisiveRound
             );
-            
+
             $this->contactService->addOrUpdateContact(
                 $match->player2_id,
                 $match->player1_id,
@@ -502,10 +514,9 @@ class DuoController extends Controller
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
         $rankings = $this->divisionService->getRankingsForDivision('duo', $division->division, 10);
 
-        // Vérifier le niveau d'accès Duo (partiel vs complet)
         $profileSettings = $user->profile_settings ?? [];
         $choixNiveau = is_array($profileSettings) ? ($profileSettings['choix_niveau'] ?? 1) : 1;
-        $duoFullUnlocked = $choixNiveau >= 11; // Accès complet après boss niveau 10
+        $duoFullUnlocked = $choixNiveau >= 11;
 
         $activeLobbyCode = null;
         $activeLobby = null;
@@ -546,20 +557,15 @@ class DuoController extends Controller
     public function game(DuoMatch $match)
     {
         $user = Auth::user();
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             abort(403, 'Unauthorized');
         }
 
-        $gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
         $roomId = $match->room_id ?? null;
         $lobbyCode = $match->lobby_code ?? null;
-        
-        $jwtToken = null;
-        if ($roomId) {
-            $gameServerService = app(\App\Services\GameServerService::class);
-            $jwtToken = $gameServerService->generatePlayerToken($user->id, $roomId);
-        }
+        $jwtToken = $this->generateFreshGameplayToken($roomId, $user->id);
+
 
         $profileSettings = $user->profile_settings ?? [];
         if (is_string($profileSettings)) {
@@ -569,7 +575,7 @@ class DuoController extends Controller
             $profileSettings = [];
         }
         $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
-        
+
         $skills = $this->getPlayerSkillsWithTriggers($user);
 
         $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
@@ -606,7 +612,7 @@ class DuoController extends Controller
         return response()->view('duo_question', [
             'match_id' => $match->id,
             'match' => $match->load(['player1', 'player2']),
-            'game_server_url' => $gameServerUrl,
+
             'room_id' => $roomId,
             'lobby_code' => $lobbyCode,
             'jwt_token' => $jwtToken,
@@ -628,51 +634,51 @@ class DuoController extends Controller
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');
     }
-    
-protected function getPlayerSkillsWithTriggers($user): array
-{
-    $snapshot = $this->getPlayerSnapshot($user);
-    $avatarName = $this->getSnapshotStrategicAvatarName($snapshot);
 
-    if ($avatarName === 'Aucun' || empty($avatarName)) {
-        return [];
-    }
+    protected function getPlayerSkillsWithTriggers($user): array
+    {
+        $snapshot = $this->getPlayerSnapshot($user);
+        $avatarName = $this->getSnapshotStrategicAvatarName($snapshot);
 
-    $catalog = \App\Services\AvatarCatalog::get();
-    $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
-    $avatarInfo = null;
-
-    foreach ($strategicAvatars as $avatar) {
-        if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
-            $avatarInfo = $avatar;
-            break;
+        if ($avatarName === 'Aucun' || empty($avatarName)) {
+            return [];
         }
-    }
 
-    if (!$avatarInfo || empty($avatarInfo['skills'])) {
-        return [];
-    }
+        $catalog = \App\Services\AvatarCatalog::get();
+        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
+        $avatarInfo = null;
 
-    $skills = [];
-    foreach ($avatarInfo['skills'] as $skillId) {
-        $skillData = \App\Services\SkillCatalog::getSkill($skillId);
-        if ($skillData) {
-            $skills[] = [
-                'id' => $skillData['id'],
-                'name' => $skillData['name'],
-                'icon' => $skillData['icon'],
-                'description' => $skillData['description'],
-                'trigger' => $skillData['trigger'],
-                'type' => $skillData['type'],
-                'auto' => $skillData['auto'] ?? false,
-                'uses_per_match' => $skillData['uses_per_match'] ?? 1,
-                'used' => false,
-            ];
+        foreach ($strategicAvatars as $avatar) {
+            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                $avatarInfo = $avatar;
+                break;
+            }
         }
-    }
 
-    return $skills;
-}
+        if (!$avatarInfo || empty($avatarInfo['skills'])) {
+            return [];
+        }
+
+        $skills = [];
+        foreach ($avatarInfo['skills'] as $skillId) {
+            $skillData = \App\Services\SkillCatalog::getSkill($skillId);
+            if ($skillData) {
+                $skills[] = [
+                    'id' => $skillData['id'],
+                    'name' => $skillData['name'],
+                    'icon' => $skillData['icon'],
+                    'description' => $skillData['description'],
+                    'trigger' => $skillData['trigger'],
+                    'type' => $skillData['type'],
+                    'auto' => $skillData['auto'] ?? false,
+                    'uses_per_match' => $skillData['uses_per_match'] ?? 1,
+                    'used' => false,
+                ];
+            }
+        }
+
+        return $skills;
+    }
 
     public function activateSkill(Request $request, DuoMatch $match)
     {
@@ -684,45 +690,45 @@ protected function getPlayerSkillsWithTriggers($user): array
         ]);
 
         $user = Auth::user();
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
-        
+
         $skillId = $request->input('skill_id');
         $skillData = \App\Services\SkillCatalog::getSkill($skillId);
-        
+
         if (!$skillData) {
             return response()->json(['success' => false, 'error' => 'Skill not found']);
         }
-        
+
         return response()->json([
             'success' => true,
             'skill_id' => $skillId,
             'affects_opponent' => $skillData['affects_opponent'] ?? false,
         ]);
     }
-    
+
     public function getHint(Request $request, DuoMatch $match)
     {
         $user = Auth::user();
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
-        
+
         $question = $request->input('question', '');
-        
+
         if (empty($question)) {
             return response()->json(['hint' => 'Aucune question disponible']);
         }
-        
+
         try {
             $apiKey = env('GEMINI_API_KEY');
             if (!$apiKey) {
                 return response()->json(['hint' => 'Réfléchissez bien à cette question...']);
             }
-            
+
             $client = new \GuzzleHttp\Client();
             $response = $client->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}", [
                 'json' => [
@@ -738,41 +744,41 @@ protected function getPlayerSkillsWithTriggers($user): array
                 ],
                 'timeout' => 5,
             ]);
-            
+
             $result = json_decode($response->getBody(), true);
             $hint = $result['candidates'][0]['content']['parts'][0]['text'] ?? 'Réfléchissez bien...';
-            
+
             return response()->json(['hint' => trim($hint)]);
         } catch (\Exception $e) {
             return response()->json(['hint' => 'Cherchez dans vos connaissances...']);
         }
     }
-    
+
     public function getAISuggestion(Request $request, DuoMatch $match)
     {
         $user = Auth::user();
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
-        
+
         $question = $request->input('question', '');
         $answers = $request->input('answers', []);
-        
+
         if (empty($question) || empty($answers)) {
             $randomIndex = rand(0, 3);
             return response()->json(['suggestion' => $randomIndex, 'confidence' => 50]);
         }
-        
+
         try {
             $apiKey = env('GEMINI_API_KEY');
             if (!$apiKey) {
                 $randomIndex = rand(0, count($answers) - 1);
                 return response()->json(['suggestion' => $randomIndex, 'confidence' => 60]);
             }
-            
+
             $answersText = implode("\n", array_map(fn($a, $i) => ($i + 1) . ". " . $a, $answers, array_keys($answers)));
-            
+
             $client = new \GuzzleHttp\Client();
             $response = $client->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}", [
                 'json' => [
@@ -788,33 +794,33 @@ protected function getPlayerSkillsWithTriggers($user): array
                 ],
                 'timeout' => 5,
             ]);
-            
+
             $result = json_decode($response->getBody(), true);
             $answerText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '1';
             $answerNum = (int) preg_replace('/[^0-9]/', '', $answerText);
-            
+
             $suggestion = max(0, min(count($answers) - 1, $answerNum - 1));
             $confidence = rand(75, 90);
-            
+
             return response()->json(['suggestion' => $suggestion, 'confidence' => $confidence]);
         } catch (\Exception $e) {
             $randomIndex = rand(0, count($answers) - 1);
             return response()->json(['suggestion' => $randomIndex, 'confidence' => 55]);
         }
     }
-    
+
     public function getPreviewQuestions(Request $request, DuoMatch $match)
     {
         $user = Auth::user();
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
-        
+
         $gameState = $match->game_state;
         $currentQuestion = $gameState['question_number'] ?? 1;
         $allQuestions = $gameState['questions'] ?? [];
-        
+
         $futureQuestions = [];
         for ($i = $currentQuestion; $i < min($currentQuestion + 5, count($allQuestions)); $i++) {
             if (isset($allQuestions[$i])) {
@@ -825,7 +831,7 @@ protected function getPlayerSkillsWithTriggers($user): array
                 ];
             }
         }
-        
+
         if (empty($futureQuestions)) {
             $themes = ['Histoire', 'Sciences', 'Géographie', 'Sport', 'Culture'];
             for ($i = 0; $i < 5; $i++) {
@@ -836,28 +842,28 @@ protected function getPlayerSkillsWithTriggers($user): array
                 ];
             }
         }
-        
+
         return response()->json(['questions' => $futureQuestions]);
     }
 
     public function result(DuoMatch $match)
     {
         $user = Auth::user();
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             abort(403, 'Unauthorized');
         }
 
         $gameState = $match->game_state;
         $matchResult = $this->gameStateService->getMatchResult($gameState);
-        
+
         $isPlayer1 = $match->player1_id == $user->id;
         $opponent = $isPlayer1 ? $match->player2 : $match->player1;
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
         $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'duo');
-        
+
         $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
-        
+
         $accuracy = 0;
         $total = ($gameState['global_stats']['correct'] ?? 0) + ($gameState['global_stats']['incorrect'] ?? 0);
         if ($total > 0) {
@@ -866,7 +872,7 @@ protected function getPlayerSkillsWithTriggers($user): array
 
         $pointsEarned = $isPlayer1 ? ($match->player1_points_earned ?? 0) : ($match->player2_points_earned ?? 0);
         $coinsEarned = $isPlayer1 ? ($match->player1_coins_earned ?? 0) : ($match->player2_coins_earned ?? 0);
-        
+
         $myEfficiency = $division->initial_efficiency ?? 0;
         $oppEfficiency = $opponentDivision->initial_efficiency ?? 0;
         $opponentStrength = $this->divisionService->determineOpponentStrength(
@@ -875,7 +881,7 @@ protected function getPlayerSkillsWithTriggers($user): array
             $myEfficiency,
             $oppEfficiency
         );
-        
+
         $baseCoins = $this->divisionService->getVictoryCoins($division->division);
         $coinsBonus = $coinsEarned - $baseCoins;
 
@@ -908,7 +914,7 @@ protected function getPlayerSkillsWithTriggers($user): array
     {
         $user = Auth::user();
         $division = $request->input('division');
-        
+
         if (!$division) {
             $userDivision = $this->divisionService->getOrCreateDivision($user, 'duo');
             $division = $userDivision->division;
@@ -929,42 +935,38 @@ protected function getPlayerSkillsWithTriggers($user): array
         $user = Auth::user();
         $gameState = session('game_state');
         $lobbyCode = $request->input('lobby_code');
-        
-        // If no game_state but lobby_code provided, try to get match from lobby
+
         if ((!$gameState || !isset($gameState['match_id'])) && $lobbyCode) {
             $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
-            
+
             if ($lobby) {
                 $matchId = $lobby['match_id'] ?? null;
-                
-                // If no match_id in lobby, find or create match from lobby players
+
                 if (!$matchId) {
                     $playerIds = array_keys($lobby['players'] ?? []);
                     if (count($playerIds) >= 2) {
-                        $match = DuoMatch::where(function($query) use ($playerIds) {
+                        $match = DuoMatch::where(function ($query) use ($playerIds) {
                             $query->where('player1_id', $playerIds[0])
                                   ->where('player2_id', $playerIds[1]);
-                        })->orWhere(function($query) use ($playerIds) {
+                        })->orWhere(function ($query) use ($playerIds) {
                             $query->where('player1_id', $playerIds[1])
                                   ->where('player2_id', $playerIds[0]);
                         })
                         ->whereIn('status', ['pending', 'accepted', 'starting'])
                         ->orderBy('created_at', 'desc')
                         ->first();
-                        
+
                         if ($match) {
                             $matchId = $match->id;
                         }
                     }
                 }
-                
+
                 if ($matchId) {
-                    // Get game server data from lobby
                     $gameServer = $lobby['game_server'] ?? [];
                     $roomId = $gameServer['roomId'] ?? null;
-                    $playerTokens = $gameServer['player_tokens'] ?? [];
-                    $jwtToken = $playerTokens[$user->id] ?? null;
-                    
+                    $freshJwtToken = $this->generateFreshGameplayToken($roomId, $user->id);
+
                     $gameState = [
                         'match_id' => $matchId,
                         'lobby_code' => $lobbyCode,
@@ -972,35 +974,35 @@ protected function getPlayerSkillsWithTriggers($user): array
                         'nb_questions' => $lobby['settings']['nb_questions'] ?? 10,
                         'current_round' => 1,
                         'room_id' => $roomId,
-                        'jwt_token' => $jwtToken,
+                        'jwt_token' => $freshJwtToken,
                     ];
                     session(['game_state' => $gameState]);
                 }
             }
         }
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
-        
+
         $match->status = 'in_progress';
         $match->started_at = now();
-        
+
         $lobbyCode = $gameState['lobby_code'] ?? $request->input('lobby_code');
-        $jwtToken = $gameState['jwt_token'] ?? null;
         $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
+        $lobby = null;
 
         if ($lobbyCode) {
             $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
@@ -1009,29 +1011,18 @@ protected function getPlayerSkillsWithTriggers($user): array
                 if (!$roomId && isset($gameServer['roomId'])) {
                     $roomId = $gameServer['roomId'];
                 }
-                if (!$jwtToken && isset($gameServer['player_tokens'][$user->id])) {
-                    $jwtToken = $gameServer['player_tokens'][$user->id];
-                }
             }
         }
 
         if (!$roomId) {
-            $roomResult = $this->gameServerService->createRoom('duo', $user->id, [
-                'match_id' => $match->id,
-                'nb_questions' => $gameState['nb_questions'] ?? 10,
-            ]);
-            if (isset($roomResult['roomId']) || isset($roomResult['room_id'])) {
-                $roomId = $roomResult['roomId'] ?? $roomResult['room_id'];
-            }
+            return redirect()->route('duo.lobby')->with('error', __('Room introuvable pour cette partie'));
         }
 
-        if (!$jwtToken && $roomId) {
-            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
-        }
+        $jwtToken = $this->generateFreshGameplayToken($roomId, $user->id);
 
         $match->room_id = $roomId;
         $match->save();
-        
+
         session(['game_state' => array_merge($gameState, [
             'started' => true,
             'started_at' => now()->timestamp,
@@ -1039,80 +1030,69 @@ protected function getPlayerSkillsWithTriggers($user): array
             'jwt_token' => $jwtToken,
             'lobby_code' => $lobbyCode,
         ])]);
-        
+
         return redirect()->route('game.duo.intro');
     }
-    
+
     public function showIntro()
     {
         $user = Auth::user();
         $gameState = session('game_state');
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
-        
+
         $isPlayer1 = $match->player1_id == $user->id;
         $opponent = $isPlayer1 ? $match->player2 : $match->player1;
-        
+
         $profileSettings = $user->profile_settings ?? [];
         if (is_string($profileSettings)) {
             $profileSettings = json_decode($profileSettings, true) ?? [];
         }
-        
+
         $opponentSettings = $opponent->profile_settings ?? [];
         if (is_string($opponentSettings)) {
             $opponentSettings = json_decode($opponentSettings, true) ?? [];
         }
-        
+
         $playerName = data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur');
         $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/default.png');
-        if ($playerAvatar && !str_starts_with($playerAvatar, '/') && !str_starts_with($playerAvatar, 'http')) {
-            $playerAvatar = $playerAvatar;
-        }
-        
+
         $opponentName = data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire');
         $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/default.png');
-        if ($opponentAvatar && !str_starts_with($opponentAvatar, '/') && !str_starts_with($opponentAvatar, 'http')) {
-            $opponentAvatar = $opponentAvatar;
-        }
-        
+
         $playerStats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
         $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
-        
+
         $playerDivision = $this->divisionService->getOrCreateDivision($user, 'duo')->division ?? 'Bronze';
         $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'duo')->division ?? 'Bronze';
-        
+
         $theme = $gameState['theme'] ?? 'Culture générale';
         $nbQuestions = $gameState['nb_questions'] ?? 10;
-        
+
         $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
-        $jwtToken = $gameState['jwt_token'] ?? null;
         $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
+        $jwtToken = $this->generateFreshGameplayToken($roomId, $user->id);
 
-        if (!$jwtToken && $lobbyCode) {
-            $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
-            if ($lobby && isset($lobby['game_server']['player_tokens'][$user->id])) {
-                $jwtToken = $lobby['game_server']['player_tokens'][$user->id];
-            }
-        }
+        session(['game_state' => array_merge($gameState, [
+            'room_id' => $roomId,
+            'jwt_token' => $jwtToken,
+            'lobby_code' => $lobbyCode,
+        ])]);
 
-        if (!$jwtToken && $roomId) {
-            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
-        }
-        
         return view('game_intro', [
             'params' => [
                 'mode' => 'duo',
@@ -1133,6 +1113,7 @@ protected function getPlayerSkillsWithTriggers($user): array
                 'lobby_code' => $lobbyCode,
                 'jwt_token' => $jwtToken,
             ],
+
         ]);
     }
 
@@ -1140,23 +1121,23 @@ protected function getPlayerSkillsWithTriggers($user): array
     {
         $user = Auth::user();
         $gameState = session('game_state');
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
-        
+
         return $this->renderQuestionView($match, $user);
     }
 
@@ -1164,28 +1145,28 @@ protected function getPlayerSkillsWithTriggers($user): array
     {
         $user = Auth::user();
         $gameState = session('game_state');
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
-        
+
         $phaseRedirect = $this->validatePhaseAccess($match, $user, 'question');
         if ($phaseRedirect) {
             return $phaseRedirect;
         }
-        
+
         return $this->renderQuestionView($match, $user);
     }
 
@@ -1193,44 +1174,40 @@ protected function getPlayerSkillsWithTriggers($user): array
     {
         $user = Auth::user();
         $gameState = session('game_state');
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
-        
+
         $phaseRedirect = $this->validatePhaseAccess($match, $user, 'answer');
         if ($phaseRedirect) {
             return $phaseRedirect;
         }
-        
-        // Determine buzz_winner from query params
+
         if ($request->has('buzzed') && $request->buzzed === 'true') {
             $gameState['buzz_winner'] = 'player';
         } elseif ($request->has('opponent_buzzed') && $request->opponent_buzzed === 'true') {
             $gameState['buzz_winner'] = 'opponent';
         } elseif ($request->has('timeout') && $request->timeout === 'true') {
-            // On timeout, neither buzzed - opponent wins by default in Duo
             $gameState['buzz_winner'] = 'opponent';
         } else {
-            // Default to opponent if no indicator (safer default)
             $gameState['buzz_winner'] = $gameState['buzz_winner'] ?? 'opponent';
         }
-        
-        // Update session with buzz_winner
+
         session(['game_state' => $gameState]);
-        
+
         return $this->renderAnswerView($match, $user, $gameState);
     }
 
@@ -1238,28 +1215,28 @@ protected function getPlayerSkillsWithTriggers($user): array
     {
         $user = Auth::user();
         $gameState = session('game_state');
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
-        
+
         $phaseRedirect = $this->validatePhaseAccess($match, $user, 'result');
         if ($phaseRedirect) {
             return $phaseRedirect;
         }
-        
+
         return $this->renderResultView($match, $user, $gameState);
     }
 
@@ -1267,25 +1244,25 @@ protected function getPlayerSkillsWithTriggers($user): array
     {
         $user = Auth::user();
         $gameState = session('game_state');
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return response()->json(['success' => false, 'error' => 'No active game'], 400);
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             return response()->json(['success' => false, 'error' => 'Match not found'], 404);
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
-        
+
         $matchGameState = $match->game_state ?? [];
         $currentQuestion = $matchGameState['current_question_number'] ?? 1;
         $questions = $matchGameState['questions'] ?? [];
-        
+
         if ($currentQuestion > count($questions)) {
             return response()->json([
                 'success' => false,
@@ -1293,13 +1270,12 @@ protected function getPlayerSkillsWithTriggers($user): array
                 'message' => 'No more questions'
             ]);
         }
-        
+
         $questionData = $questions[$currentQuestion - 1] ?? null;
-        
+
         return response()->json([
             'success' => true,
             'question' => $questionData,
-            'current_question' => $currentQuestion,
             'total_questions' => count($questions),
         ]);
     }
@@ -1308,33 +1284,33 @@ protected function getPlayerSkillsWithTriggers($user): array
     {
         $user = Auth::user();
         $gameState = session('game_state');
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
-        
+
         $matchGameState = $match->game_state ?? [];
         $matchResult = $this->gameStateService->getMatchResult($matchGameState);
-        
+
         $isPlayer1 = $match->player1_id == $user->id;
         $opponent = $isPlayer1 ? $match->player2 : $match->player1;
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
         $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'duo');
-        
+
         $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
-        
+
         $accuracy = 0;
         $total = ($matchGameState['global_stats']['correct'] ?? 0) + ($matchGameState['global_stats']['incorrect'] ?? 0);
         if ($total > 0) {
@@ -1343,10 +1319,10 @@ protected function getPlayerSkillsWithTriggers($user): array
 
         $pointsEarned = $isPlayer1 ? ($match->player1_points_earned ?? 0) : ($match->player2_points_earned ?? 0);
         $coinsEarned = $isPlayer1 ? ($match->player1_coins_earned ?? 0) : ($match->player2_coins_earned ?? 0);
-        
+
         session()->forget('game_state');
-        
-        return view('duo_result', [
+
+        return view('duo_match_result', [
             'match_result' => $matchResult,
             'opponent' => $opponent,
             'opponent_id' => $opponent->id ?? null,
@@ -1368,33 +1344,33 @@ protected function getPlayerSkillsWithTriggers($user): array
     {
         $user = Auth::user();
         $gameState = session('game_state');
-        
+
         if (!$gameState || !isset($gameState['match_id'])) {
             return response()->json(['success' => false, 'error' => 'No active game'], 400);
         }
-        
+
         $match = DuoMatch::find($gameState['match_id']);
-        
+
         if (!$match) {
             session()->forget('game_state');
             return response()->json(['success' => false, 'error' => 'Match not found'], 404);
         }
-        
+
         if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
-        
+
         $isPlayer1 = $match->player1_id == $user->id;
         $winnerId = $isPlayer1 ? $match->player2_id : $match->player1_id;
-        
+
         $match->status = 'completed';
         $match->winner_id = $winnerId;
         $match->finished_at = now();
         $match->forfeit_by = $user->id;
         $match->save();
-        
+
         session()->forget('game_state');
-        
+
         return response()->json([
             'success' => true,
             'message' => __('Vous avez abandonné la partie'),
@@ -1404,23 +1380,17 @@ protected function getPlayerSkillsWithTriggers($user): array
 
     protected function renderQuestionView(DuoMatch $match, $user)
     {
-        $gameServerUrl = env('GAME_SERVER_URL', 'http://localhost:3001');
         $roomId = $match->room_id ?? null;
         $lobbyCode = $match->lobby_code ?? null;
         $gameState = session('game_state', []);
-        
-        $jwtToken = $gameState['jwt_token'] ?? null;
 
-        if (!$jwtToken && $lobbyCode) {
-            $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
-            if ($lobby && isset($lobby['game_server']['player_tokens'][$user->id])) {
-                $jwtToken = $lobby['game_server']['player_tokens'][$user->id];
-            }
-        }
+        $jwtToken = $this->generateFreshGameplayToken($roomId, $user->id);
 
-        if (!$jwtToken && $roomId) {
-            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
-        }
+        session(['game_state' => array_merge($gameState, [
+            'room_id' => $roomId,
+            'jwt_token' => $jwtToken,
+            'lobby_code' => $lobbyCode,
+        ])]);
 
         $playerSnapshot = $this->getPlayerSnapshot($user);
         $strategicAvatar = data_get($playerSnapshot, 'strategic_avatar', ['name' => 'Aucun']);
@@ -1438,7 +1408,6 @@ protected function getPlayerSkillsWithTriggers($user): array
         $avatarName = $this->getSnapshotStrategicAvatarName($playerSnapshot);
         $strategicAvatarPath = $this->getSnapshotStrategicAvatarPath($playerSnapshot);
 
-
         $totalQuestions = 10;
         $currentQuestion = 1;
         $theme = 'Culture générale';
@@ -1449,7 +1418,6 @@ protected function getPlayerSkillsWithTriggers($user): array
         return response()->view('duo_question', [
             'match_id' => $match->id,
             'match' => $match->load(['player1', 'player2']),
-            'game_server_url' => $gameServerUrl,
             'room_id' => $roomId,
             'lobby_code' => $lobbyCode,
             'jwt_token' => $jwtToken,
@@ -1472,7 +1440,7 @@ protected function getPlayerSkillsWithTriggers($user): array
           ->header('Expires', '0');
     }
 
-protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
+    protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
     {
         $isPlayer1 = $match->player1_id == $user->id;
         $opponent = $isPlayer1 ? $match->player2 : $match->player1;
@@ -1510,18 +1478,13 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
 
         $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
         $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
-        $jwtToken = $gameState['jwt_token'] ?? null;
+        $jwtToken = $this->generateFreshGameplayToken($roomId, $user->id);
 
-        if (!$jwtToken && $lobbyCode) {
-            $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
-            if ($lobby && isset($lobby['game_server']['player_tokens'][$user->id])) {
-                $jwtToken = $lobby['game_server']['player_tokens'][$user->id];
-            }
-        }
-
-        if (!$jwtToken && $roomId) {
-            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
-        }
+        session(['game_state' => array_merge($gameState, [
+            'room_id' => $roomId,
+            'jwt_token' => $jwtToken,
+            'lobby_code' => $lobbyCode,
+        ])]);
 
         $strategicAvatar = data_get($playerSnapshot, 'strategic_avatar', ['name' => 'Aucun']);
         $skills = $this->getPlayerSkillsWithTriggers($user);
@@ -1533,7 +1496,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
 
         $opponentName = $this->getSnapshotDisplayName($opponentSnapshot, $opponent, 'Adversaire');
 
-        // Skills Challenger scopés au match
         $skillsKey = "duo_skills_{$match->id}";
         $matchSkills = session($skillsKey, [
             'used_skills' => [],
@@ -1544,9 +1506,7 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             'last_question_decremented' => 0,
         ]);
 
-        // Éviter de décrémenter plusieurs fois sur la même question (protection reload)
         if ($matchSkills['last_question_decremented'] < $currentQuestionNumber) {
-            // Décrémenter shuffle_answers si actif
             if ($matchSkills['shuffle_answers_active'] && $matchSkills['shuffle_answers_questions_left'] > 0) {
                 $matchSkills['shuffle_answers_questions_left']--;
                 if ($matchSkills['shuffle_answers_questions_left'] <= 0) {
@@ -1555,7 +1515,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
                 }
             }
 
-            // Décrémenter reduce_time si actif
             if ($matchSkills['reduce_time_active'] && $matchSkills['reduce_time_questions_left'] > 0) {
                 $matchSkills['reduce_time_questions_left']--;
                 if ($matchSkills['reduce_time_questions_left'] <= 0) {
@@ -1568,7 +1527,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             session([$skillsKey => $matchSkills]);
         }
 
-        // Passer les états des skills à la vue
         $shuffleAnswersActive = $matchSkills['shuffle_answers_active'];
         $shuffleQuestionsLeft = $matchSkills['shuffle_answers_questions_left'];
 
@@ -1637,18 +1595,13 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
 
         $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
         $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
-        $jwtToken = $gameState['jwt_token'] ?? null;
+        $jwtToken = $this->generateFreshGameplayToken($roomId, $user->id);
 
-        if (!$jwtToken && $lobbyCode) {
-            $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
-            if ($lobby && isset($lobby['game_server']['player_tokens'][$user->id])) {
-                $jwtToken = $lobby['game_server']['player_tokens'][$user->id];
-            }
-        }
-
-        if (!$jwtToken && $roomId) {
-            $jwtToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
-        }
+        session(['game_state' => array_merge($gameState, [
+            'room_id' => $roomId,
+            'jwt_token' => $jwtToken,
+            'lobby_code' => $lobbyCode,
+        ])]);
 
         $strategicAvatar = data_get($playerSnapshot, 'strategic_avatar', ['name' => 'Aucun']);
         $skills = $this->getPlayerSkillsWithTriggers($user);
@@ -1667,7 +1620,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             'points_earned' => $pointsEarned,
             'player_score' => $playerScore,
             'opponent_score' => $opponentScore,
-            'current_question' => $currentQuestion,
             'total_questions' => 10,
             'skills' => $skills,
             'avatarName' => $avatarName,
@@ -1699,88 +1651,7 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             abort(403, 'Unauthorized');
         }
 
-        $isPlayer1 = $match->player1_id == $user->id;
-        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
-
-        $profileSettings = $user->profile_settings ?? [];
-        if (is_string($profileSettings)) {
-            $profileSettings = json_decode($profileSettings, true) ?? [];
-        }
-
-        $opponentSettings = $opponent->profile_settings ?? [];
-        if (is_string($opponentSettings)) {
-            $opponentSettings = json_decode($opponentSettings, true) ?? [];
-        }
-
-        $gameState = $match->game_state ?? [];
-        $currentQuestion = $gameState['current_question_number'] ?? 1;
-
-        $playerScore = $isPlayer1
-            ? ($gameState['player_scores_map']['player'] ?? 0)
-            : ($gameState['player_scores_map']['opponent'] ?? 0);
-        $opponentScore = $isPlayer1
-            ? ($gameState['player_scores_map']['opponent'] ?? 0)
-            : ($gameState['player_scores_map']['player'] ?? 0);
-
-        $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
-        $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
-
-        $questionData = $gameState['questions'][$currentQuestion - 1] ?? [];
-
-        // Ensure avatar paths are absolute
-        $playerAvatar = data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
-        if ($playerAvatar && !str_starts_with($playerAvatar, '/') && !str_starts_with($playerAvatar, 'http')) {
-            $playerAvatar = '/' . $playerAvatar;
-        }
-        $opponentAvatar = data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png');
-        if ($opponentAvatar && !str_starts_with($opponentAvatar, '/') && !str_starts_with($opponentAvatar, 'http')) {
-            $opponentAvatar = '/' . $opponentAvatar;
-        }
-
-        // Strategic avatar system - use shared AvatarSkillService
-        $strategicAvatar = data_get($profileSettings, 'strategic_avatar.name', 'Aucun');
-        $avatarSkillsFull = \App\Services\AvatarSkillService::getAvatarSkills($strategicAvatar, $user->id);
-        $strategicAvatarPath = \App\Services\AvatarSkillService::getStrategicAvatarPath($strategicAvatar);
-
-        // Use unified game_question layout (same as Solo)
-        return view('game_question', [
-            'params' => [
-                'mode' => 'duo',
-                'match_id' => $match->id,
-                'room_code' => $match->room_id ?? null,
-                'lobby_code' => $match->lobby_code ?? null,
-                'avatar' => $strategicAvatar,
-                'avatar_skills_full' => $avatarSkillsFull,
-                'niveau' => $stats->level,
-                'score' => $playerScore,
-                'opponent_score' => $opponentScore,
-                'current_question' => $currentQuestion,
-                'current' => $currentQuestion,
-                'nb_questions' => 10,
-                'question' => [
-                    'id' => $questionData['id'] ?? null,
-                    'text' => $questionData['text'] ?? '',
-                    'theme' => $questionData['theme'] ?? 'Culture générale',
-                    'answers' => $questionData['answers'] ?? [],
-                ],
-                'chrono_time' => 8,
-                'player_info' => [
-                    'id' => $user->id,
-                    'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                    'avatar' => $playerAvatar,
-                    'score' => $playerScore,
-                    'level' => $stats->level,
-                ],
-                'opponent_info' => [
-                    'id' => $opponent->id,
-                    'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                    'avatar' => $opponentAvatar,
-                    'score' => $opponentScore,
-                    'level' => $opponentStats->level,
-                    'is_boss' => false,
-                ],
-            ],
-        ]);
+        return $this->renderQuestionView($match, $user);
     }
 
     public function answer(DuoMatch $match, Request $request)
@@ -1791,88 +1662,30 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             abort(403, 'Unauthorized');
         }
 
-        $isPlayer1 = $match->player1_id == $user->id;
-        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
 
-        $profileSettings = $user->profile_settings ?? [];
-        if (is_string($profileSettings)) {
-            $profileSettings = json_decode($profileSettings, true) ?? [];
-        }
-
-        $opponentSettings = $opponent->profile_settings ?? [];
-        if (is_string($opponentSettings)) {
-            $opponentSettings = json_decode($opponentSettings, true) ?? [];
-        }
-
-        $gameState = $match->game_state ?? [];
-        $currentQuestion = $request->input('question_number', $gameState['current_question_number'] ?? 1);
-
-        $playerScore = $isPlayer1
-            ? ($gameState['player_scores_map']['player'] ?? 0)
-            : ($gameState['player_scores_map']['opponent'] ?? 0);
-        $opponentScore = $isPlayer1
-            ? ($gameState['player_scores_map']['opponent'] ?? 0)
-            : ($gameState['player_scores_map']['player'] ?? 0);
-
-        $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
-        $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
+        $currentQuestion = $request->input('question_number', $match->game_state['current_question_number'] ?? 1);
 
         $playerBuzzed = $request->input('buzzed', false);
         $opponentBuzzed = $request->input('opponent_buzzed', false);
         $timeout = $request->input('timeout', false);
 
-        $buzzOrder = 0;
-        if ($playerBuzzed && !$opponentBuzzed) {
-            $buzzOrder = 1;
-        } elseif ($playerBuzzed && $opponentBuzzed) {
-            $buzzOrder = 2;
-        }
-
-        $potentialPoints = 0;
-        if ($buzzOrder === 1) {
-            $potentialPoints = 2;
-        } elseif ($buzzOrder === 2) {
-            $potentialPoints = 1;
-        }
 
         $questionData = $request->input('question', []);
         $questionText = $questionData['text'] ?? '';
         $answers = $questionData['answers'] ?? [];
         $correctIndex = $questionData['correct_index'] ?? 0;
 
-        return view('duo_answer', [
-            'params' => [
-                'match_id' => $match->id,
-                'room_code' => $match->room_id ?? null,
-                'lobby_code' => $match->lobby_code ?? null,
-                'player_info' => [
-                    'id' => $user->id,
-                    'name' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
-                    'avatar' => data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
-                    'score' => $playerScore,
-                    'level' => $stats->level,
-                ],
-                'opponent_info' => [
-                    'id' => $opponent->id,
-                    'name' => data_get($opponentSettings, 'pseudonym', $opponent->name ?? 'Adversaire'),
-                    'avatar' => data_get($opponentSettings, 'avatar.url', 'images/avatars/standard/standard1.png'),
-                    'score' => $opponentScore,
-                    'level' => $opponentStats->level,
-                ],
-                'current_question' => $currentQuestion,
-                'total_questions' => 10,
-                'question' => [
-                    'text' => $questionText,
-                    'answers' => $answers,
-                ],
-                'player_buzzed' => $playerBuzzed,
-                'buzz_order' => $buzzOrder,
-                'potential_points' => $potentialPoints,
+        return $this->renderAnswerView($match, $user, [
+            'current_question_number' => $currentQuestion,
+            'current_question' => [
+                'text' => $questionText,
+                'answers' => $answers,
+                'choices' => $answers,
                 'correct_index' => $correctIndex,
-                'score' => $playerScore,
-                'opponent_score' => $opponentScore,
-                'timeout' => $timeout,
             ],
+            'buzz_winner' => $playerBuzzed ? 'player' : (($timeout || !$playerBuzzed) ? 'opponent' : 'opponent'),
+            'buzz_time' => 0,
+            'no_buzz' => (bool) $timeout,
         ]);
     }
 
@@ -1915,16 +1728,17 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             $nextQuestionNumber = 10;
         }
 
-        // Données pour le skill Parchemin de l'Historien
         $playerBuzzed = $gameState['last_player_buzzed'] ?? false;
         $buzzOrder = $gameState['last_buzz_order'] ?? 0;
-        $opponentFaster = ($buzzOrder === 2); // 2 = joueur était 2ème
+        $opponentFaster = ($buzzOrder === 2);
         $playerPoints = $gameState['last_points_earned'] ?? 0;
+        $jwtToken = $this->generateFreshGameplayToken($match->room_id ?? null, $user->id);
 
-        return view('duo_result', [
+        return view('duo_waiting', [
             'match_id' => $match->id,
             'room_id' => $match->room_id ?? null,
             'lobby_code' => $match->lobby_code ?? null,
+            'jwt_token' => $jwtToken,
             'playerId' => $user->id,
             'playerName' => data_get($profileSettings, 'pseudonym', $user->name ?? 'Joueur'),
             'playerAvatarPath' => asset(data_get($profileSettings, 'avatar.url', 'images/avatars/standard/standard1.png')),
@@ -1942,7 +1756,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             'question' => $gameState['last_question'] ?? [],
             'skills' => $gameState['player_skills'] ?? [],
             'avatarName' => $gameState['avatar_name'] ?? '',
-            // Données pour le skill Parchemin (Historien)
             'playerBuzzed' => $playerBuzzed,
             'playerPoints' => $playerPoints,
             'opponentFaster' => $opponentFaster,
@@ -1960,26 +1773,37 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             ->map(function ($match) {
                 return [
                     'match_id' => $match->id,
+                    'id' => $match->id,
+                    'status' => $match->status,
+                    'lobby_code' => $match->lobby_code,
+                    'room_id' => $match->room_id,
                     'from_player' => $match->player1,
                 ];
-            });
+            })
+            ->values();
 
         $sentInvitations = DuoMatch::where('player1_id', $user->id)
-            ->where('status', 'waiting')
+            ->whereIn('status', ['waiting', 'accepted', 'lobby', 'in_progress', 'active', 'playing'])
             ->with('player2')
             ->get()
             ->map(function ($match) {
                 return [
                     'match_id' => $match->id,
-                    'to_player' => $match->player2,
+                    'id' => $match->id,
+                    'status' => $match->status,
                     'lobby_code' => $match->lobby_code,
+                    'room_id' => $match->room_id,
+                    'to_player' => $match->player2,
                 ];
-            });
+            })
+            ->values();
 
         return response()->json([
             'success' => true,
             'invitations' => $receivedInvitations,
+            'received_invitations' => $receivedInvitations,
             'sent_invitations' => $sentInvitations,
+            'pending_invitations' => $sentInvitations,
             'counts' => [
                 'received' => $receivedInvitations->count(),
                 'sent' => $sentInvitations->count(),
@@ -2039,9 +1863,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         ]);
     }
 
-    /**
-     * Join the matchmaking queue (validate entry fee for higher divisions)
-     */
     public function joinQueue(Request $request)
     {
         $request->validate([
@@ -2120,9 +1941,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         ]);
     }
 
-    /**
-     * Leave the matchmaking queue
-     */
     public function leaveQueue(Request $request)
     {
         $user = Auth::user();
@@ -2141,9 +1959,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         ]);
     }
 
-    /**
-     * Get available opponents in the queue
-     */
     public function getQueueOpponents(Request $request)
     {
         $request->validate([
@@ -2160,13 +1975,21 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
 
         $opponents = [];
         foreach ($queueIndex as $userId => $division) {
-            if ($userId == $user->id) continue;
-            if ($division !== $targetDivision) continue;
+            if ($userId == $user->id) {
+                continue;
+            }
+            if ($division !== $targetDivision) {
+                continue;
+            }
 
             $entry = Cache::get("duo_queue:{$userId}");
-            if (!$entry) continue;
+            if (!$entry) {
+                continue;
+            }
 
-            if (($now - ($entry['timestamp'] ?? 0)) >= 120) continue;
+            if (($now - ($entry['timestamp'] ?? 0)) >= 120) {
+                continue;
+            }
 
             $levelDiff = abs(($entry['level'] ?? 1) - $userLevel);
             if ($levelDiff <= 10) {
@@ -2183,9 +2006,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         ]);
     }
 
-    /**
-     * Create a match from queue selection
-     */
     public function createQueueMatch(Request $request)
     {
         $request->validate([
@@ -2197,7 +2017,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         $opponentId = $request->opponent_id;
         $targetDivision = $request->target_division;
 
-        // Validate opponent exists
         $opponent = User::find($opponentId);
         if (!$opponent) {
             return response()->json([
@@ -2213,7 +2032,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             ], 400);
         }
 
-        // Load both players' DuoStats for level validation
         $userStats = PlayerDuoStat::firstOrCreate(
             ['user_id' => $user->id],
             ['level' => 0]
@@ -2223,7 +2041,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             ['level' => 0]
         );
 
-        // Validate level difference is within ±10
         $levelDiff = abs($userStats->level - $opponentStats->level);
         if ($levelDiff > 10) {
             return response()->json([
@@ -2235,11 +2052,9 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             ], 400);
         }
 
-        // Get user's current division
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
         $currentDivision = $division->division ?? 'bronze';
 
-        // Division hierarchy and fees
         $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
         $divisionFees = [
             'bronze' => 0,
@@ -2253,7 +2068,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         $currentIndex = array_search($currentDivision, $divisions);
         $targetIndex = array_search($targetDivision, $divisions);
 
-        // Validate target division is within allowed range (current to current+2)
         if ($targetIndex < $currentIndex) {
             return response()->json([
                 'success' => false,
@@ -2268,13 +2082,11 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             ], 400);
         }
 
-        // Calculate entry fee (only if playing in higher division)
         $entryFee = 0;
         if ($targetIndex > $currentIndex) {
             $entryFee = $divisionFees[$targetDivision];
         }
 
-        // Deduct entry fee if applicable
         if ($entryFee > 0) {
             if ($user->coins < $entryFee) {
                 return response()->json([
@@ -2286,7 +2098,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             $user->save();
         }
 
-        // Create the match with target division info
         $match = DuoMatch::create([
             'player1_id' => $user->id,
             'player2_id' => $opponentId,
@@ -2295,7 +2106,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             'division' => $targetDivision,
         ]);
 
-        // Create lobby for the match
         $lobby = $this->lobbyService->createLobby($user, 'duo', [
             'theme' => __('Culture générale'),
             'nb_questions' => 10,
@@ -2355,7 +2165,7 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         }
         $match->save();
 
-        $playerToken = $this->gameServerService->generatePlayerToken($user->id, $roomId);
+        $playerToken = $this->generateFreshGameplayToken($roomId, $user->id);
 
         $socketUrl = $this->gameServerService->getSocketUrl();
 
@@ -2450,7 +2260,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
                     }
                     break;
             }
-
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning('Phase validation failed', [
                 'match_id' => $match->id,
@@ -2462,9 +2271,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         return null;
     }
 
-    /**
-     * Activer un skill Challenger (reduce_time ou shuffle_answers) depuis la page Result
-     */
     public function useSkill(Request $request)
     {
         \Log::warning('[DEPRECATED] DuoController::useSkill() called via HTTP. Skills must be activated via Socket.IO skill_activate event. This route will be removed in a future release.', [
@@ -2476,7 +2282,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
         $user = Auth::user();
         $skillId = $request->input('skill_id');
 
-        // Récupérer le game_state pour valider le contexte du match
         $gameState = session('game_state');
         if (!$gameState || !isset($gameState['match_id'])) {
             return response()->json([
@@ -2494,7 +2299,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
 
         $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
 
-        // Vérifier que c'est un Challenger
         if ($avatarName !== 'Challenger') {
             return response()->json([
                 'success' => false,
@@ -2502,7 +2306,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             ]);
         }
 
-        // Clé de session scopée au match
         $skillsKey = "duo_skills_{$matchId}";
         $matchSkills = session($skillsKey, [
             'used_skills' => [],
@@ -2513,7 +2316,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             'last_question_decremented' => 0,
         ]);
 
-        // Vérifier si le skill a déjà été utilisé
         if (in_array($skillId, $matchSkills['used_skills'])) {
             return response()->json([
                 'success' => false,
@@ -2521,11 +2323,8 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             ]);
         }
 
-        // Récupérer le numéro de question actuel pour calculer les questions affectées
         $currentQuestion = $gameState['current_question_number'] ?? 1;
 
-        // Calculer le nombre de questions affectées selon la manche
-        // Manche 1: Q1-5 (5 questions), Manche 2: Q6-10 (5 questions)
         if ($currentQuestion <= 5) {
             $questionsAffected = 5;
         } elseif ($currentQuestion <= 8) {
@@ -2534,9 +2333,7 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
             $questionsAffected = 1;
         }
 
-        // Traiter le skill
         if ($skillId === 'reduce_time') {
-            // Skill: Chrono Réduit (-2 sec pour l'adversaire)
             $matchSkills['reduce_time_active'] = true;
             $matchSkills['reduce_time_questions_left'] = $questionsAffected;
             $matchSkills['used_skills'][] = 'reduce_time';
@@ -2546,7 +2343,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
                 'user_id' => $user->id,
                 'match_id' => $matchId,
                 'questions_affected' => $questionsAffected,
-                'current_question' => $currentQuestion,
             ]);
 
             return response()->json([
@@ -2555,9 +2351,7 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
                 'skill_id' => 'reduce_time',
                 'questions_affected' => $questionsAffected,
             ]);
-
         } elseif ($skillId === 'shuffle_answers') {
-            // Skill: Mélange Réponses
             $matchSkills['shuffle_answers_active'] = true;
             $matchSkills['shuffle_answers_questions_left'] = $questionsAffected;
             $matchSkills['used_skills'][] = 'shuffle_answers';
@@ -2567,7 +2361,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
                 'user_id' => $user->id,
                 'match_id' => $matchId,
                 'questions_affected' => $questionsAffected,
-                'current_question' => $currentQuestion,
             ]);
 
             return response()->json([
@@ -2576,7 +2369,6 @@ protected function renderAnswerView(DuoMatch $match, $user, array $gameState)
                 'skill_id' => 'shuffle_answers',
                 'questions_affected' => $questionsAffected,
             ]);
-
         } else {
             return response()->json([
                 'success' => false,

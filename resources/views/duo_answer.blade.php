@@ -1311,23 +1311,20 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         historianSkillBtn.addEventListener('click', activateHistorianSkill);
     }
     
-    DuoSocketClient.onConnect = function() {
-        updateConnectionStatus('connected');
-        
-        DuoSocketClient.joinRoom(ROOM_ID, LOBBY_CODE, {
-            token: JWT_TOKEN
-        });
-    };
+    DuoSocketClient.on('connect', function() {
+        console.log('[DuoAnswer] Connected - ensuring room join');
+        DuoSocketClient.joinRoom(ROOM_ID, LOBBY_CODE, { playerId: PLAYER_ID, token: JWT_TOKEN });
+    });
     
-    DuoSocketClient.onDisconnect = function(reason) {
+    DuoSocketClient.on('disconnect', function(reason) {
         updateConnectionStatus('disconnected');
-    };
+    });
     
-    DuoSocketClient.onError = function(error) {
+    DuoSocketClient.on('error', function(error) {
         console.error('[DuoAnswer] Socket error:', error);
-    };
+    });
     
-    DuoSocketClient.onAnswerRevealed = function(data) {
+    DuoSocketClient.on('answer_revealed', function(data) {
         if (isRedirecting) return;
         
         waitingOverlay.style.display = 'none';
@@ -1351,7 +1348,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }, 3000);
     };
     
-    DuoSocketClient.onRoundEnded = function(data) {
+    DuoSocketClient.on('round_ended', function(data) {
         if (isRedirecting) return;
         
         setTimeout(function() {
@@ -1366,7 +1363,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }, 2000);
     };
     
-    DuoSocketClient.onMatchEnded = function(data) {
+    DuoSocketClient.on('match_ended', function(data) {
         if (isRedirecting) return;
         isRedirecting = true;
         
@@ -1375,7 +1372,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }, 2000);
     };
     
-    DuoSocketClient.onScoreUpdate = function(data) {
+    DuoSocketClient.on('score_update', function(data) {
         console.log('[DuoAnswer] Score update received:', data);
         const playerScoreEl = document.getElementById('playerScoreValue');
         if (playerScoreEl && data.score !== undefined) {
@@ -1414,15 +1411,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
     if (GAME_SERVER_URL) {
         updateConnectionStatus('connecting');
-        DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN)
-            .then(function() {
-                console.log('[DuoAnswer] Connected to game server');
-                GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
-            })
-            .catch(function(error) {
-                console.error('[DuoAnswer] Failed to connect:', error);
-                updateConnectionStatus('disconnected');
-            });
+        GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
     }
     
     initSkillButtons();

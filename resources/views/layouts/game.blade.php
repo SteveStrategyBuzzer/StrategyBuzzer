@@ -88,8 +88,8 @@
                 const wasPlaying = !ambientMusic.paused;
                 const savedTime = parseFloat(localStorage.getItem('ambientMusicTime_' + musicId) || '0');
                 
-                ambientMusic.src = musicFile;
-                ambientMusic.load();
+                if (ambientMusic.src !== window.location.origin + musicFile) ambientMusic.src = musicFile;
+                /* disabled reload to preserve playback */
                 
                 ambientMusic.addEventListener('loadedmetadata', function onLoaded() {
                     if (savedTime > 0 && savedTime < ambientMusic.duration) {

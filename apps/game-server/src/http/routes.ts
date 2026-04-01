@@ -47,7 +47,7 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
       const baseConfig = getConfigForMode(mode as Mode);
       const config: GameConfig = customConfig ? { ...baseConfig, ...customConfig } : baseConfig;
       
-      const { roomId, lobbyCode } = roomManager.createRoom(config, hostId);
+      const { roomId, lobbyCode } = roomManager.createRoom(config, hostId, req.body.lobbyCode);
       
       const room = roomManager.getRoom(roomId);
       if (room) {

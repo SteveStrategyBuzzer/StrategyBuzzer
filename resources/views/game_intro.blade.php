@@ -566,30 +566,32 @@ function closeSoloWarning() {
         }
         
         try {
-            function getGameServerUrl() {
-                const hostname = window.location.hostname;
-                const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-                return `${protocol}//${hostname}:3001`;
-            }
-            
-            const serverUrl = getGameServerUrl();
+            let serverUrl = window.location.origin;
+
             console.log('[Intro] Socket warmup starting...', serverUrl);
             
             if (typeof DuoSocketClient !== 'undefined') {
-                const warmupSocket = new DuoSocketClient();
+                const warmupSocket = DuoSocketClient;
                 
                 warmupSocket.onConnect = () => {
                     socketConnected = true;
                     console.log('[Intro] Socket connected - joining room...');
-                    warmupSocket.joinRoom(roomId, lobbyCode, { token: jwtToken });
-                    
-                    sessionStorage.setItem('duo_socket_warmed', 'true');
-                    sessionStorage.setItem('duo_socket_timestamp', Date.now().toString());
+                    warmupSocket.joinRoom(roomId, lobbyCode, {
+                        playerId: String(playerId),
+                        token: jwtToken
+                    });
                 };
                 
                 warmupSocket.onGameState = (data) => {
                     console.log('[Intro] Game state received from server');
                     sessionStorage.setItem('duo_game_state', JSON.stringify(data));
+                    sessionStorage.setItem('duo_socket_warmed', 'true');
+                    sessionStorage.setItem('duo_socket_timestamp', Date.now().toString());
+
+                    if (data && data.phase === 'QUESTION_ACTIVE' && !redirected) {
+                        redirected = true;
+                        window.location.href = redirectUrl;
+                    }
                 };
                 
                 await warmupSocket.connect(serverUrl, jwtToken);
@@ -628,9 +630,8 @@ function closeSoloWarning() {
                 const syncTimeout = setTimeout(() => {
                     if (!syncResolved) {
                         syncResolved = true;
-                        console.log('[Intro] Sync timeout - starting anyway');
+                        console.log('[Intro] Sync timeout - waiting for server phase');
                         if (unsubscribe) unsubscribe();
-                        startCountdownSequence();
                     }
                 }, SYNC_TIMEOUT);
                 
@@ -650,20 +651,15 @@ function closeSoloWarning() {
                         
                         if (countdownText) countdownText.textContent = "{{ __('Joueurs synchronisés') }}!";
                         
-                        setTimeout(() => {
-                            startCountdownSequence();
-                        }, 500);
+                        console.log('[Intro] Players synchronized - waiting for server phase');
                     }
                 });
                 
             } catch (err) {
                 console.warn('Ready sync failed:', err.message);
-                startCountdownSequence();
             }
         } else {
-            setTimeout(() => {
-                startCountdownSequence();
-            }, VS_DISPLAY_TIME);
+            console.log('[Intro] Firebase sync unavailable - waiting for server phase');
         }
     }
     
@@ -686,10 +682,7 @@ function closeSoloWarning() {
                 if (countdownEl) countdownEl.textContent = '🚀';
                 
                 setTimeout(() => {
-                    if (!redirected) {
-                        redirected = true;
-                        window.location.href = redirectUrl;
-                    }
+                    console.log("[Intro] Countdown finished - waiting for server phase");
                 }, 500);
             }
         }

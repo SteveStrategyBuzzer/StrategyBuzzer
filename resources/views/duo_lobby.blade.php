@@ -285,7 +285,7 @@
             <button class="close-btn" onclick="closePlayerCardModal()">&times;</button>
             <div class="player-card-avatar">
                 @if(Auth::user()->avatar_url)
-                    <img src="/{{ Auth::user()->avatar_url }}" alt="Avatar">
+                    <img src="{{ preg_match('/^(https?:)?\/\//', Auth::user()->avatar_url) ? Auth::user()->avatar_url : '/' . ltrim(Auth::user()->avatar_url, '/') }}" alt="Avatar">
                 @else
                     <div class="default-avatar" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); font-size: 2rem;">
                         {{ substr(Auth::user()->name, 0, 1) }}
@@ -3772,7 +3772,7 @@ function renderOpponents(opponents) {
         <div class="opponent-card" onclick="window.selectOpponent(${JSON.stringify(opp).replace(/"/g, '&quot;')})">
             <div class="player-avatar">
                 ${opp.avatar_url ? 
-                    `<img src="${opp.avatar_url}" alt="Avatar">` : 
+                    `<img src="${(/^(https?:)?\/\//.test(opp.avatar_url) ? opp.avatar_url : '/' + String(opp.avatar_url).replace(/^\/+/, ''))}" alt="Avatar">` : 
                     `<div class="default-avatar">${opp.name.charAt(0).toUpperCase()}</div>`
                 }
             </div>

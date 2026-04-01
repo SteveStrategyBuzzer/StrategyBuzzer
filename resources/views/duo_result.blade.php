@@ -1007,7 +1007,6 @@ $mode = 'duo';
     const ROOM_ID = '{{ $room_id ?? "" }}';
     const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
     const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
-    const GAME_SERVER_URL = '{{ config("app.game_server_url", "") }}';
     const CURRENT_QUESTION = {{ $currentQuestion ?? 1 }};
     const TOTAL_QUESTIONS = {{ $totalQuestions ?? 10 }};
     const CURRENT_PLAYER_ID = {{ $playerId ?? auth()->id() ?? 0 }};
@@ -1022,6 +1021,10 @@ $mode = 'duo';
     const opponentScoreEl = document.getElementById('opponentScore');
     const playerStatus = document.getElementById('playerStatus');
     const opponentStatus = document.getElementById('opponentStatus');
+    
+    function getGameServerUrl() {
+        return window.location.origin;
+    }
     
     function updateConnectionStatus(status) {
         connectionStatus.className = 'connection-status ' + status;
@@ -1101,115 +1104,108 @@ $mode = 'duo';
     function navigateToNextQuestion() {
         if (isRedirecting) return;
         isRedirecting = true;
-        
-        const nextQuestion = CURRENT_QUESTION + 1;
-        
-        if (nextQuestion > TOTAL_QUESTIONS) {
-            window.location.href = '/duo/match/' + MATCH_ID + '/final';
-        } else {
-            window.location.href = '/duo/match/' + MATCH_ID + '/question/' + nextQuestion;
-        }
+        window.location.href = "{{ route('game.duo.question') }}";
     }
     
-    function navigateToRoundScoreboard(data) {
+    function navigateToRoundScoreboard() {
         if (isRedirecting) return;
         isRedirecting = true;
-        
-        window.location.href = '/duo/match/' + MATCH_ID + '/round-scoreboard';
+        window.location.href = "{{ route('game.duo.result') }}";
     }
     
-    function navigateToFinalResults(data) {
+    function navigateToFinalResults() {
         if (isRedirecting) return;
         isRedirecting = true;
-        
-        window.location.href = '/duo/match/' + MATCH_ID + '/final';
+        window.location.href = "{{ route('game.duo.match-result') }}";
     }
     
     btnGo.addEventListener('click', setPlayerReady);
     
-    if (GAME_SERVER_URL) {
-        updateConnectionStatus('connecting');
-        
-        DuoSocketClient.onConnect = function() {
-            updateConnectionStatus('connected');
-            
-            DuoSocketClient.joinRoom(ROOM_ID, LOBBY_CODE, {
-                token: JWT_TOKEN,
-                matchId: MATCH_ID
-            });
-        };
-        
-        DuoSocketClient.onDisconnect = function(reason) {
-            updateConnectionStatus('disconnected');
-            console.log('[DuoResult] Disconnected:', reason);
-        };
-        
-        DuoSocketClient.onError = function(error) {
-            console.error('[DuoResult] Socket error:', error);
-        };
-        
-        DuoSocketClient.onRoundEnded = function(data) {
-            console.log('[DuoResult] Round ended', data);
-            navigateToRoundScoreboard(data);
-        };
-        
-        DuoSocketClient.onMatchEnded = function(data) {
-            console.log('[DuoResult] Match ended', data);
-            navigateToFinalResults(data);
-        };
-        
-        DuoSocketClient.onScoreUpdate = function(data) {
-            console.log('[DuoResult] Score update', data);
-            if (data.playerScore !== undefined) {
-                playerScoreEl.textContent = data.playerScore;
-            }
-            if (data.opponentScore !== undefined) {
-                opponentScoreEl.textContent = data.opponentScore;
-            }
-        };
-        
-        DuoSocketClient.onPlayerReady = function(data) {
-            console.log('[DuoResult] Player ready received', data);
-            if (data && data.playerId && data.playerId !== CURRENT_PLAYER_ID) {
-                setOpponentReady();
-            }
-        };
-        
-        DuoSocketClient.onPhaseChanged = function(data) {
-            console.log('[DuoResult] Phase changed', data);
-            if (data && (data.phase === 'BUZZ_WINDOW' || data.phase === 'QUESTION_DISPLAY')) {
-                resetReadyStatus();
-            }
-        };
-        
-        DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN)
-            .then(function() {
-                console.log('[DuoResult] Connected to game server');
-                
-                DuoSocketClient.socket.on('both_ready', function(data) {
-                    console.log('[DuoResult] Both players ready', data);
-                    navigateToNextQuestion();
-                });
-            })
-            .catch(function(error) {
-                console.error('[DuoResult] Failed to connect:', error);
-                updateConnectionStatus('disconnected');
-            });
-    } else {
-        console.warn('[DuoResult] No game server URL configured');
+    if (!ROOM_ID || !JWT_TOKEN) {
+        console.warn('[DuoResult] Missing ROOM_ID or JWT_TOKEN');
         updateConnectionStatus('disconnected');
-        
-        btnGo.addEventListener('click', function() {
-            if (!isReady) {
-                setPlayerReady();
-                setTimeout(navigateToNextQuestion, 2000);
-            }
-        });
+        return;
     }
+    
+    updateConnectionStatus('connecting');
+    
+    (async () => {
+        try {
+            const gameServerUrl = getGameServerUrl();
+            console.log('[DuoResult] Connecting to game server:', gameServerUrl);
+            
+            await DuoSocketClient.connect(gameServerUrl, JWT_TOKEN);
+            console.log('[DuoResult] Connected to game server:', ROOM_ID);
+            updateConnectionStatus('connected');
+            DuoSocketClient.on('disconnect', function(reason) {
+                updateConnectionStatus('disconnected');
+                console.log('[DuoResult] Disconnected:', reason);
+            });
+            
+            DuoSocketClient.on('error', function(error) {
+                console.error('[DuoResult] Socket error:', error);
+            });
+            
+            DuoSocketClient.on('round_ended', function(data) {
+                console.log('[DuoResult] Round ended', data);
+                navigateToRoundScoreboard();
+            });
+            
+            DuoSocketClient.on('match_ended', function(data) {
+                console.log('[DuoResult] Match ended', data);
+                navigateToFinalResults();
+            });
+            
+            DuoSocketClient.on('score_update', function(data) {
+                console.log('[DuoResult] Score update', data);
+                if (data.playerScore !== undefined) {
+                    playerScoreEl.textContent = data.playerScore;
+                }
+                if (data.opponentScore !== undefined) {
+                    opponentScoreEl.textContent = data.opponentScore;
+                }
+            });
+            
+            DuoSocketClient.on('player_ready', function(data) {
+                console.log('[DuoResult] Player ready received', data);
+                if (data && data.playerId && String(data.playerId) !== String(CURRENT_PLAYER_ID)) {
+                    setOpponentReady();
+                }
+            });
+            
+            DuoSocketClient.on('phase_changed', function(data) {
+                console.log('[DuoResult] Phase changed', data);
+                if (!data || !data.phase) {
+                    return;
+                }
+                
+                if (data.phase === 'QUESTION_DISPLAY' || data.phase === 'BUZZ_WINDOW' || data.phase === 'question') {
+                    navigateToNextQuestion();
+                    return;
+                }
+                
+                if (data.phase === 'MATCH_RESULT' || data.phase === 'match_result') {
+                    navigateToFinalResults();
+                    return;
+                }
+                
+                resetReadyStatus();
+            });
+            
+            DuoSocketClient.on('both_ready', function(data) {
+                console.log('[DuoResult] Both players ready', data);
+                navigateToNextQuestion();
+            });
+            DuoSocketClient.joinRoom(ROOM_ID, null, { playerId: PLAYER_ID, token: JWT_TOKEN });
+        } catch (error) {
+            updateConnectionStatus('disconnected');
+            console.error('[DuoResult] Socket init failed:', error);
+        }
+    })();
     
     window.addEventListener('beforeunload', function() {
         if (DuoSocketClient.isConnected()) {
-            DuoSocketClient.disconnect();
+            // keep shared lifecycle behavior
         }
     });
     
@@ -1219,11 +1215,7 @@ $mode = 'duo';
         console.log('[DuoResult] Activating skill:', skillId);
         
         if (DuoSocketClient.isConnected()) {
-            DuoSocketClient.socket.emit('activate_skill', {
-                roomId: ROOM_ID || LOBBY_CODE,
-                matchId: MATCH_ID,
-                skillId: skillId
-            });
+            DuoSocketClient.useSkill(skillId);
         }
         
         const btn = event.target;

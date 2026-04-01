@@ -267,6 +267,7 @@ $mode = 'duo';
         background: rgba(255, 255, 255, 0.1);
         transition: all 0.3s ease;
         cursor: pointer;
+        position: relative;
     }
     
     .skill-circle.active {
@@ -290,7 +291,8 @@ $mode = 'duo';
         cursor: default;
     }
     
-    .skill-circle.used {
+    .skill-circle.used,
+    .skill-circle.depleted {
         opacity: 0.5;
         cursor: not-allowed;
     }
@@ -432,7 +434,7 @@ $mode = 'duo';
         background: rgba(78, 205, 196, 0.3);
         color: #4ECDC4;
     }
-    
+  
     .connection-status.disconnected {
         background: rgba(255, 107, 107, 0.3);
         color: #FF6B6B;
@@ -653,7 +655,7 @@ $mode = 'duo';
             bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         }
     }
-    
+   
     .loading-overlay {
         position: fixed;
         top: 0;
@@ -696,7 +698,6 @@ $mode = 'duo';
         color: #4ECDC4;
         font-weight: 600;
     }
-    
 </style>
 
 <div id="loadingOverlay" class="loading-overlay">
@@ -766,12 +767,16 @@ $mode = 'duo';
 
 <div class="game-container" id="gameContainer" style="display: none;">
     <div class="question-header">
-        <div class="question-number">{{ __('Question') }} {{ $currentQuestion ?? 1 }}/{{ $totalQuestions ?? 10 }}</div>
-        @if(!empty($themeDisplay))
-            <div class="question-theme">{{ $themeDisplay }}</div>
-        @elseif(!empty($theme))
-            <div class="question-theme">{{ $theme }}</div>
-        @endif
+        <div class="question-number">{{ __('Question') }} <span id="questionCounter">{{ $currentQuestion ?? 1 }}</span>/{{ $totalQuestions ?? 10 }}</div>
+        <div class="question-theme" id="questionTheme">
+            @if(!empty($themeDisplay))
+                {{ $themeDisplay }}
+            @elseif(!empty($theme))
+                {{ $theme }}
+            @else
+                {{ __('En attente du thème...') }}
+            @endif
+        </div>
         <div class="question-text" id="questionText">{{ __('En attente de la question...') }}</div>
     </div>
     
@@ -803,7 +808,7 @@ $mode = 'duo';
         <div class="right-column">
             @if(!empty($strategicAvatarPath))
                 <div class="strategic-avatar-circle">
-                    <img src="{{ $strategicAvatarPath }}" alt="{{ __('Avatar stratégique') }}" class="strategic-avatar-image">
+                      <img src="{{ Str::startsWith($strategicAvatarPath, ['http://', 'https://', '/']) ? $strategicAvatarPath : asset($strategicAvatarPath) }}" alt="{{ __('Avatar stratégique') }}" class="strategic-avatar-image">
                 </div>
                 @if(!empty($avatarName))
                     <div class="strategic-avatar-name">{{ $avatarName }}</div>
@@ -855,7 +860,7 @@ $mode = 'duo';
 </div>
 
 <audio id="buzzerSound" preload="auto">
-    <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
+      <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="noBuzzSound" preload="auto">
@@ -869,34 +874,40 @@ $mode = 'duo';
 (function() {
     'use strict';
     
-    const MATCH_ID = '{{ $match_id ?? "" }}';
-    const ROOM_ID = '{{ $room_id ?? "" }}';
-    const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
-    const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
+    const MATCH_ID = @json((string) ($match_id ?? ''));
+    const ROOM_ID = @json((string) ($room_id ?? ''));
+    const LOBBY_CODE = @json((string) ($lobby_code ?? ''));
+    const JWT_TOKEN = @json((string) ($jwt_token ?? ''));
+    const GAME_SERVER_URL = window.location.origin;
+    let duoSocket = null;
+    
+    const ANSWER_URL = @json(route('game.duo.answer'));
+    const RESULT_URL = @json(route('game.duo.result'));
+    const MATCH_RESULT_URL = @json(route('game.duo.match-result'));
+    
+    const DEFAULT_THEME = @json($themeDisplay ?? $theme ?? 'Culture générale');
+    const DEFAULT_TOTAL_QUESTIONS = {{ (int) ($totalQuestions ?? 10) }};
+    const CURRENT_USER_ID = @json((string) (auth()->id() ?? ''));
+    
+    const PLACEHOLDER_QUESTION_TEXT = @json(__('En attente de la question...'));
     
     const FALLBACK_QUESTION = {
-        text: '{{ addslashes($questionText ?? __("Question en cours de chargement...")) }}',
-        theme: '{{ addslashes($themeDisplay ?? $theme ?? "Culture générale") }}'
+        text: PLACEHOLDER_QUESTION_TEXT,
+        theme: DEFAULT_THEME
     };
-    
-    function getGameServerUrl() {
-        return window.location.origin;
-    }
-    const GAME_SERVER_URL = getGameServerUrl();
     
     const TOTAL_TIME = 8;
     let timeLeft = TOTAL_TIME;
     let timerInterval = null;
     let buzzed = false;
     let phaseEndsAtMs = null;
-    let currentPhase = 'QUESTION_ACTIVE';
-    let currentQuestion = FALLBACK_QUESTION;
+    let currentPhase = 'LOBBY';
+    let currentQuestion = null;
     let isRedirecting = false;
     let gameLayoutReady = false;
     let socketConnected = false;
-    let questionReceived = (FALLBACK_QUESTION.text && FALLBACK_QUESTION.text !== '{{ __("Question en cours de chargement...") }}');
+    let questionReceived = false;
     
-    // Sprinteur passive skill: faster_buzz reduces delay
     @php
         $hasFasterBuzz = false;
         if (isset($skills) && is_array($skills)) {
@@ -916,6 +927,8 @@ $mode = 'duo';
     const buzzContainer = document.getElementById('buzzContainer');
     const connectionStatus = document.getElementById('connectionStatus');
     const questionText = document.getElementById('questionText');
+    const questionTheme = document.getElementById('questionTheme');
+    const questionCounter = document.getElementById('questionCounter');
     const playerScoreEl = document.getElementById('playerScore');
     const opponentScoreEl = document.getElementById('opponentScore');
     const resultOverlay = document.getElementById('resultOverlay');
@@ -928,30 +941,50 @@ $mode = 'duo';
     const loadingText = document.getElementById('loadingText');
     const gameContainer = document.getElementById('gameContainer');
     
+    function isQuestionUsable(question) {
+        return !!(question && typeof question.text === 'string' && question.text.trim() !== '' && question.text.trim() !== PLACEHOLDER_QUESTION_TEXT.trim());
+    }
+    
+    function updateQuestionUI(question, questionIndex = null, totalQuestions = null) {
+        if (!question) return;
+        
+        if (questionText && question.text) {
+            questionText.textContent = question.text;
+        }
+        
+        const themeValue =
+            question.theme ||
+            question.category ||
+            question.subCategory ||
+            DEFAULT_THEME;
+        
+        if (questionTheme) {
+            questionTheme.textContent = themeValue;
+        }
+        
+        if (questionCounter && questionIndex !== null && questionIndex !== undefined) {
+            const displayIndex = Number(questionIndex) + 1;
+            questionCounter.textContent = Number.isFinite(displayIndex) ? displayIndex : 1;
+        }
+        
+        currentQuestion = question;
+        questionReceived = isQuestionUsable(question);
+    }
+    
     function showGameLayout() {
         if (gameLayoutReady) return;
         gameLayoutReady = true;
         
         loadingOverlay.classList.add('hidden');
         gameContainer.style.display = 'flex';
-        
         chronoTimer.textContent = TOTAL_TIME;
-        
-        setBuzzerState('ready');
-        
-        console.log('[DuoQuestion] {{ __("Interface de jeu prête - buzzer activé") }}');
+       
+        console.log('[DuoQuestion] Interface de jeu prête');
     }
     
     function updateLoadingText(text) {
         if (loadingText) {
             loadingText.textContent = text;
-        }
-    }
-    
-    function tryShowGameLayout() {
-        if (questionReceived) {
-            showGameLayout();
-            startTimer();
         }
     }
     
@@ -964,7 +997,7 @@ $mode = 'duo';
             case 'disconnected':
                 connectionStatus.textContent = '{{ __("Déconnecté") }}';
                 break;
-            case 'connecting':
+            default:
                 connectionStatus.textContent = '{{ __("Connexion...") }}';
                 break;
         }
@@ -977,7 +1010,11 @@ $mode = 'duo';
         const now = Date.now();
         const remainingMs = Math.max(0, phaseEndsAtMs - now);
         timeLeft = Math.ceil(remainingMs / 1000);
-        chronoTimer.textContent = timeLeft;
+        chronoTimer.textContent = Math.max(0, timeLeft);
+    }
+    
+    function resetTimerColor() {
+        chronoTimer.style.color = '';
     }
     
     function setBuzzerState(state) {
@@ -991,6 +1028,7 @@ $mode = 'duo';
             clearInterval(timerInterval);
         }
         
+        resetTimerColor();
         setBuzzerState('ready');
         
         timerInterval = setInterval(() => {
@@ -1011,11 +1049,11 @@ $mode = 'duo';
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 timerInterval = null;
-                if (!buzzed) {
+                if (!buzzed && !isRedirecting) {
                     handleNoBuzz();
                 }
             }
-        }, 1000);
+        }, 250);
     }
     
     function stopTimer() {
@@ -1025,14 +1063,39 @@ $mode = 'duo';
         }
     }
     
+    function ensureQuestionPhaseReady() {
+        if (!isQuestionUsable(currentQuestion)) {
+            return false;
+        }
+        
+        if (!gameLayoutReady) {
+            showGameLayout();
+        }
+        
+        if (!buzzed && !isRedirecting) {
+            startTimer();
+        }
+        
+        return true;
+    }
+    
+    function redirectOnce(url, delay = 0) {
+        if (isRedirecting) return;
+        isRedirecting = true;
+        
+        setTimeout(() => {
+            window.location.href = url;
+        }, delay);
+    }
+    
     function handleBuzz() {
-        if (buzzed || isRedirecting) return;
+        if (buzzed || isRedirecting || currentPhase !== 'QUESTION_ACTIVE') return;
         
         buzzed = true;
         stopTimer();
         
         buzzerSound.currentTime = 0;
-        buzzerSound.play().catch(e => console.log('{{ __("Erreur audio") }}:', e));
+        buzzerSound.play().catch(e => console.log('Erreur audio:', e));
         
         buzzButton.disabled = true;
         setBuzzerState('hidden');
@@ -1041,38 +1104,29 @@ $mode = 'duo';
             duoSocket.buzz(Date.now());
         }
         
-        isRedirecting = true;
-        setTimeout(() => {
-            window.location.href = '/game/duo/answer?buzzed=true&match_id=' + MATCH_ID;
-        }, BUZZ_REDIRECT_DELAY);
+        redirectOnce(ANSWER_URL + '?buzzed=true&match_id=' + encodeURIComponent(MATCH_ID), BUZZ_REDIRECT_DELAY);
     }
     
     function handleNoBuzz() {
         if (isRedirecting) return;
         
         noBuzzSound.currentTime = 0;
-        noBuzzSound.play().catch(e => console.log('{{ __("Erreur audio") }}:', e));
+        noBuzzSound.play().catch(e => console.log('Erreur audio:', e));
         
         buzzButton.disabled = true;
         setBuzzerState('waiting');
         
-        isRedirecting = true;
-        setTimeout(() => {
-            window.location.href = '/game/duo/answer?timeout=true&match_id=' + MATCH_ID;
-        }, 500);
+        redirectOnce(ANSWER_URL + '?timeout=true&match_id=' + encodeURIComponent(MATCH_ID), 500);
     }
     
-    function handleOpponentBuzz(data) {
+    function handleOpponentBuzz() {
         if (buzzed || isRedirecting) return;
         
         stopTimer();
         setBuzzerState('hidden');
         opponentBuzzedOverlay.style.display = 'flex';
         
-        isRedirecting = true;
-        setTimeout(() => {
-            window.location.href = '/game/duo/answer?opponent_buzzed=true&match_id=' + MATCH_ID;
-        }, 1500);
+        redirectOnce(ANSWER_URL + '?opponent_buzzed=true&match_id=' + encodeURIComponent(MATCH_ID), 1200);
     }
     
     function showResult(isCorrect, points) {
@@ -1087,16 +1141,72 @@ $mode = 'duo';
     }
     
     function updateScores(playerScore, opponentScore) {
-        if (playerScoreEl && playerScore !== undefined) {
+        if (playerScoreEl && playerScore !== undefined && playerScore !== null) {
             playerScoreEl.textContent = playerScore;
         }
-        if (opponentScoreEl && opponentScore !== undefined) {
+        if (opponentScoreEl && opponentScore !== undefined && opponentScore !== null) {
             opponentScoreEl.textContent = opponentScore;
         }
     }
     
+    function applyPhaseVisualState() {
+        switch (currentPhase) {
+            case 'QUESTION_ACTIVE':
+                opponentBuzzedOverlay.style.display = 'none';
+                ensureQuestionPhaseReady();
+                break;
+                
+            case 'ANSWER_SELECTION':
+                stopTimer();
+                setBuzzerState('hidden');
+                if (!isRedirecting && gameLayoutReady) {
+                    updateLoadingText('{{ __("Passage à la réponse...") }}');
+                }
+                break;
+                
+            case 'REVEAL':
+                stopTimer();
+                setBuzzerState('hidden');
+                if (!isRedirecting && gameLayoutReady) {
+                    updateLoadingText('{{ __("Révélation de la réponse...") }}');
+                }
+                break;
+                
+            case 'ROUND_SCOREBOARD':
+            case 'MATCH_END':
+            case 'FINISHED':
+                stopTimer();
+                setBuzzerState('hidden');
+                break;
+                
+            case 'INTRO':
+                stopTimer();
+                setBuzzerState('waiting');
+                updateLoadingText('🎮 ' + Math.max(1, Math.ceil(Math.max(0, phaseEndsAtMs - Date.now()) / 1000)) + ' 🎮');
+                setInterval(() => {
+                    if (!phaseEndsAtMs) return;
+                    const seconds = Math.max(1, Math.ceil(Math.max(0, phaseEndsAtMs - Date.now()) / 1000));
+                    updateLoadingText('🎮 ' + seconds + ' 🎮');
+                }, 250);
+                break;
+                
+            case 'WAITING':
+                stopTimer();
+                setBuzzerState('waiting');
+                updateLoadingText('{{ __("En attente des joueurs...") }}');
+                break;
+                
+            case 'LOBBY':
+            default:
+                stopTimer();
+                setBuzzerState('waiting');
+                updateLoadingText('{{ __("En attente du démarrage de la question...") }}');
+                break;
+        }
+    }
+    
     function handleGameState(data) {
-        console.log('[DuoQuestion] {{ __("État du jeu reçu") }}:', data);
+        console.log('[DuoQuestion] État du jeu reçu:', data);
         
         if (data.phase) {
             currentPhase = data.phase;
@@ -1107,124 +1217,131 @@ $mode = 'duo';
         }
         
         if (data.currentQuestion) {
-            currentQuestion = data.currentQuestion;
-            if (questionText && currentQuestion.text) {
-                questionText.textContent = currentQuestion.text;
-            }
-            questionReceived = true;
+            updateQuestionUI(data.currentQuestion, data.questionIndex, data.totalQuestions);
         }
         
         if (data.players) {
-            const currentUserId = String('{{ auth()->id() ?? "" }}');
             let myScore = undefined;
-            let opponentScore = undefined;
+            let enemyScore = undefined;
             
-            if (currentUserId) {
-                Object.entries(data.players).forEach(([playerId, player]) => {
-                    const pId = String(playerId);
-                    const playerIdFromObj = player.id !== undefined ? String(player.id) : null;
-                    
-                    if (pId === currentUserId || playerIdFromObj === currentUserId) {
-                        myScore = player.score;
-                    } else {
-                        opponentScore = player.score;
-                    }
-                });
-            }
+            Object.entries(data.players).forEach(([playerId, player]) => {
+                const pid = String(playerId);
+                const objectId = player && player.id !== undefined ? String(player.id) : null;
+                
+                if (pid === CURRENT_USER_ID || objectId === CURRENT_USER_ID) {
+                    myScore = player.score;
+                } else {
+                    enemyScore = player.score;
+                }
+            });
             
-            if (myScore !== undefined || opponentScore !== undefined) {
-                updateScores(myScore, opponentScore);
-            }
+            updateScores(myScore, enemyScore);
         }
         
-        if (currentPhase === 'QUESTION_ACTIVE') {
-            if (questionReceived) {
-                tryShowGameLayout();
-            }
-            if (gameLayoutReady && !buzzed && !isRedirecting && !timerInterval) {
-                startTimer();
-            }
-        } else if (currentPhase !== 'QUESTION_ACTIVE') {
-            stopTimer();
-            if (gameLayoutReady) {
-                setBuzzerState('waiting');
-            }
+        if (currentPhase === 'ANSWER_SELECTION' && data.lockedAnswerPlayerId && String(data.lockedAnswerPlayerId) === CURRENT_USER_ID) {
+            redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            return;
         }
+        
+        if (currentPhase === 'REVEAL') {
+            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            return;
+        }
+        
+        if (currentPhase === 'ROUND_SCOREBOARD' || currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
+            redirectOnce(MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            return;
+        }
+        
+        applyPhaseVisualState();
     }
     
     function handlePhaseChanged(data) {
-        console.log('[DuoQuestion] {{ __("Phase changée") }}:', data);
+        console.log('[DuoQuestion] Phase changée:', data);
         
-        currentPhase = data.phase;
+        if (data.phase) {
+            currentPhase = data.phase;
+        }
         
         if (data.phaseEndsAtMs) {
             syncTimerWithServer(data.phaseEndsAtMs);
         }
         
         if (data.question) {
-            currentQuestion = data.question;
-            if (questionText && currentQuestion.text) {
-                questionText.textContent = currentQuestion.text;
-            }
-            questionReceived = true;
+            updateQuestionUI(data.question, data.questionIndex, data.totalQuestions);
         }
-        
+       
         if (currentPhase === 'QUESTION_ACTIVE') {
             buzzed = false;
             isRedirecting = false;
-            if (questionReceived) {
-                tryShowGameLayout();
-            }
-        } else if (currentPhase === 'ANSWER_SELECTION') {
-            stopTimer();
-        } else if (currentPhase === 'REVEAL') {
-            stopTimer();
+            opponentBuzzedOverlay.style.display = 'none';
+            applyPhaseVisualState();
+            return;
         }
+        
+        if (currentPhase === 'ANSWER_SELECTION') {
+            if (String(data.lockedAnswerPlayerId || '') === CURRENT_USER_ID) {
+                redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            } else {
+                handleOpponentBuzz();
+            }
+            return;
+        }
+        
+        if (currentPhase === 'REVEAL') {
+            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            return;
+        }
+        
+        if (currentPhase === 'ROUND_SCOREBOARD' || currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
+            redirectOnce(MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            return;
+        }
+        
+        applyPhaseVisualState();
     }
     
     function handleQuestionPublished(data) {
-        console.log('[DuoQuestion] {{ __("Question publiée") }}:', data);
+        console.log('[DuoQuestion] Question publiée:', data);
         
-        if (data.question && questionText) {
-            questionText.textContent = data.question.text;
-            currentQuestion = data.question;
+        if (data.question) {
+            updateQuestionUI(data.question, data.questionIndex, data.totalQuestions);
         }
-        
-        questionReceived = true;
         
         if (data.phaseEndsAtMs) {
             syncTimerWithServer(data.phaseEndsAtMs);
         }
         
-        // If reduce_time is active against us, the server already shortened phaseEndsAtMs
         if (data.reduceTimeActive) {
             showSkillMessage('{{ __("Temps réduit par un skill adverse!") }}', 'warning', 3000);
         }
 
-        // Render any active skill effects for this round
         if (data.activeEffects && data.activeEffects.length > 0) {
             renderActiveEffects(data.activeEffects);
         }
         
+        currentPhase = 'QUESTION_ACTIVE';
         buzzed = false;
         isRedirecting = false;
-        tryShowGameLayout();
+        opponentBuzzedOverlay.style.display = 'none';
+        
+        applyPhaseVisualState();
     }
     
     function handleBuzzWinner(data) {
-        console.log('[DuoQuestion] {{ __("Gagnant du buzz") }}:', data);
+        console.log('[DuoQuestion] Gagnant du buzz:', data);
         
         stopTimer();
         buzzButton.disabled = true;
         setBuzzerState('hidden');
         
-        if (data.playerId && data.playerId !== '{{ auth()->id() ?? "" }}') {
-            handleOpponentBuzz(data);
+        if (String(data.playerId || '') !== CURRENT_USER_ID) {
+            handleOpponentBuzz();
         }
     }
     
     function handleAnswerRevealed(data) {
-        console.log('[DuoQuestion] {{ __("Réponse révélée") }}:', data);
+        console.log('[DuoQuestion] Réponse révélée:', data);
         
         if (data.isCorrect !== undefined && data.pointsEarned !== undefined) {
             showResult(data.isCorrect, data.pointsEarned);
@@ -1237,38 +1354,34 @@ $mode = 'duo';
             updateScores(undefined, data.opponentScore);
         }
 
-        // Skill effects that triggered on this answer
         if (data.skillsTriggered && data.skillsTriggered.length > 0) {
-            const myId = '{{ auth()->id() ?? "" }}';
             data.skillsTriggered.forEach(function(triggered) {
+                const isMe = String(triggered.playerId) === CURRENT_USER_ID;
                 if (triggered.effect === 'score_shield') {
-                    const isMe = String(triggered.playerId) === myId;
-                    showSkillMessage(isMe ? '{{ __("Bouclier: pénalité bloquée!") }}' : '{{ __("Bouclier adversaire: pénalité bloquée!") }}', 'info', 4000);
+                    showSkillMessage(isMe ? '{{ __("Bouclier: pénalité bloquée!") }}' : '{{ __("Bouclier adverse: pénalité bloquée!") }}', 'info', 4000);
                 } else if (triggered.effect === 'double_points') {
-                    const isMe = String(triggered.playerId) === myId;
-                    showSkillMessage(isMe ? '{{ __("Points doublés!") }}' : '{{ __("Double points adversaire!") }}', 'success', 4000);
+                    showSkillMessage(isMe ? '{{ __("Points doublés!") }}' : '{{ __("Double points adverse!") }}', 'success', 4000);
                 }
             });
         }
 
-        // "Le saviez-vous?" after answer reveal
         if (data.didYouKnow) {
             showDidYouKnow(data.didYouKnow);
         }
     }
     
     function handleScoreUpdate(data) {
-        console.log('[DuoQuestion] {{ __("Mise à jour des scores") }}:', data);
+        console.log('[DuoQuestion] Mise à jour des scores:', data);
         
         if (data.playerId && data.score !== undefined) {
-            if (String(data.playerId) === '{{ auth()->id() ?? "" }}') {
+            if (String(data.playerId) === CURRENT_USER_ID) {
                 updateScores(data.score, undefined);
             } else {
                 updateScores(undefined, data.score);
             }
         } else if (data.scores) {
             Object.entries(data.scores).forEach(([playerId, score]) => {
-                if (playerId === '{{ auth()->id() ?? "" }}') {
+                if (String(playerId) === CURRENT_USER_ID) {
                     updateScores(score, undefined);
                 } else {
                     updateScores(undefined, score);
@@ -1278,21 +1391,16 @@ $mode = 'duo';
     }
     
     function handleMatchEnded(data) {
-        console.log('[DuoQuestion] {{ __("Match terminé") }}:', data);
+        console.log('[DuoQuestion] Match terminé:', data);
         
         stopTimer();
-        
-        isRedirecting = true;
-        setTimeout(() => {
-            window.location.href = '/duo/results?match_id=' + MATCH_ID;
-        }, 2000);
+        redirectOnce(MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 600);
     }
     
     function handleSkillActivated(data) {
-        console.log('[DuoQuestion] {{ __("Skill activé") }}:', data);
-        const myId = '{{ auth()->id() ?? "" }}';
-        const isMe = String(data.activatedBy) === myId;
-        const isTarget = String(data.targetPlayerId) === myId;
+        console.log('[DuoQuestion] Skill activé:', data);
+        const isMe = String(data.activatedBy) === CURRENT_USER_ID;
+        const isTarget = String(data.targetPlayerId) === CURRENT_USER_ID;
 
         switch (data.effect) {
             case 'reduce_time':
@@ -1308,37 +1416,34 @@ $mode = 'duo';
                 if (isMe) showSkillMessage('{{ __("Réponse correcte révélée!") }}', 'info', 3000);
                 break;
             case 'shuffle_answers':
-                showSkillMessage(isTarget ? '{{ __("Réponses mélangées!") }}' : '{{ __("Réponses adversaire mélangées!") }}', isTarget ? 'warning' : 'success', 3000);
+                showSkillMessage(isTarget ? '{{ __("Réponses mélangées!") }}' : '{{ __("Réponses adverses mélangées!") }}', isTarget ? 'warning' : 'success', 3000);
                 break;
         }
 
-        // Update skill charge display
         if (isMe && data.skillId !== undefined && data.charges !== undefined) {
             updateSkillChargeUI(data.skillId, data.charges);
         }
     }
 
     function handleSkillFailed(data) {
-        console.log('[DuoQuestion] {{ __("Skill échoué") }}:', data);
+        console.log('[DuoQuestion] Skill échoué:', data);
         const msgs = {
-            'no_charges': '{{ __("Plus de charges!") }}',
-            'not_applicable': '{{ __("Skill non applicable ici.") }}',
-            'cooldown': '{{ __("Skill en recharge.") }}',
-            'invalid_target': '{{ __("Cible invalide.") }}'
+            no_charges: '{{ __("Plus de charges!") }}',
+            not_applicable: '{{ __("Skill non applicable ici.") }}',
+            cooldown: '{{ __("Skill en recharge.") }}',
+            invalid_target: '{{ __("Cible invalide.") }}'
         };
         showSkillMessage(msgs[data.reason] || '{{ __("Impossible d\'activer ce skill.") }}', 'error', 3000);
     }
 
     function handleRateLimited(data) {
-        console.log('[DuoQuestion] {{ __("Limité") }}:', data);
+        console.log('[DuoQuestion] Limité:', data);
         showSkillMessage('{{ __("Action trop rapide – réessayez.") }}', 'warning', 2000);
     }
 
     function updateSkillChargeUI(skillId, charges) {
         const skillEl = document.querySelector('[data-skill-id="' + skillId + '"]');
         if (!skillEl) return;
-        const chargeEl = skillEl.querySelector('.skill-charges, .charge-count');
-        if (chargeEl) chargeEl.textContent = charges;
         if (charges <= 0) {
             skillEl.classList.remove('active');
             skillEl.classList.add('depleted');
@@ -1355,25 +1460,22 @@ $mode = 'duo';
             document.body.appendChild(panel);
         }
         panel.innerHTML = '';
-        const myId = '{{ auth()->id() ?? "" }}';
         activeEffects.forEach(function(eff) {
-            const isMe = String(eff.activatedBy) === myId;
+            const isMe = String(eff.activatedBy) === CURRENT_USER_ID;
             const labels = {
-                'score_shield': '{{ __("Bouclier") }}',
-                'double_points': '{{ __("x2 Points") }}',
-                'reduce_time': '{{ __("Temps réduit") }}',
-                'reveal_correct': '{{ __("Oracle") }}',
-                'shuffle_answers': '{{ __("Chaos") }}'
+                score_shield: '{{ __("Bouclier") }}',
+                double_points: '{{ __("x2 Points") }}',
+                reduce_time: '{{ __("Temps réduit") }}',
+                reveal_correct: '{{ __("Oracle") }}',
+                shuffle_answers: '{{ __("Chaos") }}'
             };
-            const colors = { 'score_shield':'#3498DB','double_points':'#2ECC71','reduce_time':'#E74C3C','reveal_correct':'#9B59B6','shuffle_answers':'#E67E22' };
+            const colors = { score_shield:'#3498DB', double_points:'#2ECC71', reduce_time:'#E74C3C', reveal_correct:'#9B59B6', shuffle_answers:'#E67E22' };
             const badge = document.createElement('div');
             badge.style.cssText = 'padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold;color:#fff;background:' + (colors[eff.effect] || '#555') + ';opacity:' + (isMe ? '1' : '0.7') + ';';
             badge.textContent = (isMe ? '' : '⚔ ') + (labels[eff.effect] || eff.effect);
             panel.appendChild(badge);
         });
-        // Auto-hide panel when empty
-        if (activeEffects.length === 0) panel.style.display = 'none';
-        else panel.style.display = 'flex';
+        panel.style.display = activeEffects.length === 0 ? 'none' : 'flex';
     }
 
     function showDidYouKnow(text) {
@@ -1389,7 +1491,7 @@ $mode = 'duo';
         const msgDiv = document.createElement('div');
         msgDiv.className = 'skill-message skill-message-' + type;
         msgDiv.innerHTML = message;
-        msgDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 15px 30px; border-radius: 10px; font-weight: bold; z-index: 9999; animation: fadeInOut ' + (duration/1000) + 's ease-in-out;';
+        msgDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 15px 30px; border-radius: 10px; font-weight: bold; z-index: 9999; animation: fadeInOut ' + (duration / 1000) + 's ease-in-out;';
         
         if (type === 'success') {
             msgDiv.style.background = 'linear-gradient(135deg, #2ECC71, #27AE60)';
@@ -1418,93 +1520,57 @@ $mode = 'duo';
             const data = await response.json();
             
             if (data.success && data.question) {
-                currentQuestion = data.question;
-                if (questionText && currentQuestion.text) {
-                    questionText.textContent = currentQuestion.text;
-                }
+                updateQuestionUI(data.question, data.current_question ? (Number(data.current_question) - 1) : null, data.total_questions);
                 return true;
             }
         } catch (fetchError) {
-            console.error('[DuoQuestion] {{ __("Erreur chargement question") }}:', fetchError);
+            console.error('[DuoQuestion] Erreur chargement question:', fetchError);
         }
         return false;
     }
     
     async function initializeSocket() {
-        if (questionReceived) {
-            console.log('[DuoQuestion] {{ __("Question PHP disponible - démarrage immédiat") }}');
-            showGameLayout();
-            startTimer();
-        }
-        
         if (!GAME_SERVER_URL || !JWT_TOKEN) {
-            console.warn('[DuoQuestion] {{ __("Mode partie locale - pas de serveur en temps réel") }}');
+            console.warn('[DuoQuestion] Token ou URL absents');
             updateConnectionStatus('disconnected');
-            
-            if (!questionReceived) {
-                updateLoadingText('{{ __("Chargement de la question...") }}');
-                await loadQuestionFromServer();
-                questionReceived = true;
-                showGameLayout();
-                startTimer();
-            }
+            updateLoadingText('{{ __("Chargement de la question...") }}');
+            await loadQuestionFromServer();
+            applyPhaseVisualState();
             return;
         }
         
         updateConnectionStatus('connecting');
-        if (!gameLayoutReady) {
-            updateLoadingText('{{ __("Connexion au serveur...") }}');
-        }
+        updateLoadingText('{{ __("Connexion au serveur...") }}');
         
-        duoSocket.onConnect = () => {
-            updateConnectionStatus('connected');
-            socketConnected = true;
-            
-            if (!gameLayoutReady) {
-                updateLoadingText('{{ __("En attente de la question...") }}');
-            }
-            
-            duoSocket.joinRoom(ROOM_ID, LOBBY_CODE, {
-                token: JWT_TOKEN
-            });
-        };
+        await DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN);
+        duoSocket = DuoSocketClient;
+        updateConnectionStatus('connected');
+        socketConnected = true;
+        updateLoadingText('{{ __("Synchronisation de la partie...") }}');
         
-        duoSocket.onDisconnect = (reason) => {
+        duoSocket.on('disconnect', (reason) => {
             updateConnectionStatus('disconnected');
-            console.log('[DuoQuestion] {{ __("Déconnecté") }}:', reason);
-        };
+            socketConnected = false;
+            console.log('[DuoQuestion] Déconnecté:', reason);
+        });
         
-        duoSocket.onError = (error) => {
-            console.error('[DuoQuestion] {{ __("Erreur Socket") }}:', error);
+        duoSocket.on('error', (error) => {
+            console.error('[DuoQuestion] Erreur Socket:', error);
             updateConnectionStatus('disconnected');
-        };
+        });
         
-        duoSocket.onGameState = handleGameState;
-        duoSocket.onPhaseChanged = handlePhaseChanged;
-        duoSocket.onQuestionPublished = handleQuestionPublished;
-        duoSocket.onBuzzWinner = handleBuzzWinner;
-        duoSocket.onBuzzResult = handleBuzzWinner;
-        duoSocket.onAnswerRevealed = handleAnswerRevealed;
-        duoSocket.onScoreUpdate = handleScoreUpdate;
-        duoSocket.onMatchEnded = handleMatchEnded;
-        duoSocket.onSkillActivated = handleSkillActivated;
-        duoSocket.onSkillFailed = handleSkillFailed;
-        duoSocket.onRateLimited = handleRateLimited;
-        
-        try {
-            await duoSocket.connect(GAME_SERVER_URL, JWT_TOKEN);
-        } catch (error) {
-            console.error('[DuoQuestion] {{ __("Échec de la connexion") }}:', error);
-            updateConnectionStatus('disconnected');
-            
-            if (!gameLayoutReady) {
-                updateLoadingText('{{ __("Chargement de la question...") }}');
-                await loadQuestionFromServer();
-                questionReceived = true;
-                showGameLayout();
-                startTimer();
-            }
-        }
+        duoSocket.on('game_state', handleGameState);
+        duoSocket.on('phase_changed', handlePhaseChanged);
+        duoSocket.on('question_published', handleQuestionPublished);
+        duoSocket.on('buzz_winner', handleBuzzWinner);
+        duoSocket.on('buzz_result', handleBuzzWinner);
+        duoSocket.on('answer_revealed', handleAnswerRevealed);
+        duoSocket.on('score_update', handleScoreUpdate);
+        duoSocket.on('match_ended', handleMatchEnded);
+        duoSocket.on('skill_activated', handleSkillActivated);
+        duoSocket.on('skill_failed', handleSkillFailed);
+        duoSocket.on('rate_limited', handleRateLimited);
+        duoSocket.joinRoom(ROOM_ID, LOBBY_CODE, { playerId: CURRENT_USER_ID, token: JWT_TOKEN });
     }
     
     buzzButton.addEventListener('click', handleBuzz);
@@ -1512,7 +1578,7 @@ $mode = 'duo';
     document.addEventListener('keydown', function(e) {
         if (e.code === 'Space' || e.key === ' ') {
             e.preventDefault();
-            if (!buzzButton.disabled && !buzzed && !isRedirecting) {
+            if (!buzzButton.disabled && !buzzed && !isRedirecting && currentPhase === 'QUESTION_ACTIVE') {
                 handleBuzz();
             }
         }
@@ -1523,34 +1589,31 @@ $mode = 'duo';
             const skillId = this.getAttribute('data-skill-id');
             if (!skillId) return;
             
-            if (this.classList.contains('used')) {
+            if (this.classList.contains('used') || this.classList.contains('depleted')) {
                 showSkillMessage('⚪ {{ __("Skill déjà utilisé") }}', 'error');
                 return;
             }
             
             if (duoSocket && duoSocket.isConnected()) {
                 duoSocket.useSkill(skillId);
-                
-                this.classList.remove('active');
-                this.classList.add('used');
-                this.textContent = '⚪';
             } else {
                 showSkillMessage('❌ {{ __("Non connecté au serveur") }}', 'error');
             }
         });
     });
     
+    applyPhaseVisualState();
     initializeSocket();
     
     window.addEventListener('beforeunload', () => {
         if (duoSocket && duoSocket.isConnected()) {
-            duoSocket.disconnect();
+            // REMOVED disconnect (shared socket lifecycle)
         }
     });
 })();
 </script>
 
-<script type="module">
+<script type="text/plain" id="voice-firebase-module-disabled">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
@@ -1569,9 +1632,9 @@ window.voiceChatDb = db;
 window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp };
 </script>
 
-<script src="{{ asset('js/VoiceChat.js') }}"></script>
+<script type="text/plain" id="voicechat-script-disabled" src="{{ asset('js/VoiceChat.js') }}"></script>
 
-<script>
+<script type="text/plain" id="voicechat-inline-disabled">
 (function() {
     'use strict';
     
@@ -1601,58 +1664,4 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
             console.log('[VoiceChat] Voice chat not initialized');
             return;
         }
-        
-        try {
-            const newState = await voiceChat.toggleMicrophone();
-            updateMicButtonState(newState);
-            console.log('[VoiceChat] Mic toggled:', newState ? 'ON' : 'OFF');
-        } catch (error) {
-            console.error('[VoiceChat] Toggle mic error:', error);
-        }
-    }
-    
-    async function initVoiceChat() {
-        if (!VOICE_LOBBY_CODE || !window.voiceChatDb) {
-            console.log('[VoiceChat] Missing lobby code or Firebase - hiding mic button');
-            if (micButton) micButton.style.display = 'none';
-            return;
-        }
-        
-        try {
-            voiceChat = new VoiceChat({
-                sessionId: VOICE_LOBBY_CODE,
-                localUserId: CURRENT_PLAYER_ID,
-                mode: 'duo',
-                db: window.voiceChatDb,
-                onConnectionChange: (state) => {
-                    console.log('[VoiceChat] State:', state);
-                    if (state.muted !== undefined) {
-                        updateMicButtonState(!state.muted);
-                    }
-                },
-                onError: (error) => console.error('[VoiceChat] Error:', error)
-            });
-            
-            await voiceChat.initialize();
-            console.log('[VoiceChat] Background audio initialized successfully');
-            
-            if (micButton) {
-                micButton.addEventListener('click', toggleMicrophone);
-                updateMicButtonState(false);
-            }
-        } catch (error) {
-            console.error('[VoiceChat] Init error:', error);
-            if (micButton) micButton.style.display = 'none';
-        }
-    }
-    
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(initVoiceChat, 1000);
-    });
-    
-    window.addEventListener('beforeunload', () => {
-        if (voiceChat) voiceChat.cleanup();
-    });
-})();
-</script>
-@endsection
+       

@@ -789,10 +789,7 @@ body {
     
     // Get game server URL from environment or construct from current host
     function getGameServerUrl() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        // Game server runs on port 3001
-        return `${protocol}//${host.replace(/:\d+$/, '')}:3001`;
+        return window.location.origin;
     }
     
     // Initialize Socket.IO for ready synchronization

@@ -65,22 +65,35 @@ class LobbyService
     protected function normalizeAvatar(?string $avatar): string
     {
         if (!$avatar) {
-            return 'default';
+            return 'images/avatars/standard/default.png';
         }
-        
-        // Use strpos for PHP 7.x compatibility
-        // Skip normalization for full URLs and protocol-relative URLs - return as-is
+
+        // URLs complètes
         if (strpos($avatar, 'http://') === 0 || strpos($avatar, 'https://') === 0 || strpos($avatar, '//') === 0) {
             return $avatar;
         }
-        
-        // For relative paths, normalize to just the base name
-        if (strpos($avatar, '/') !== false || strpos($avatar, '.png') !== false) {
-            $avatar = preg_replace('/\.png$/', '', $avatar);
-            $avatar = basename($avatar);
+
+        $avatar = ltrim($avatar, '/');
+
+        // Si déjà un vrai chemin images → on le garde
+        if (strpos($avatar, 'images/') === 0) {
+            if (substr($avatar, -4) !== '.png') {
+                $avatar .= '.png';
+            }
+            return $avatar;
         }
-        
-        return $avatar ?: 'default';
+
+        // Si contient un chemin mais pas images → on force dans avatars
+        if (strpos($avatar, '/') !== false) {
+            if (substr($avatar, -4) !== '.png') {
+                $avatar .= '.png';
+            }
+            return 'images/avatars/' . $avatar;
+        }
+
+        // Cas ID simple → standard
+        $avatar = preg_replace('/\.png$/', '', $avatar);
+        return 'images/avatars/standard/' . $avatar . '.png';
     }
     
     protected function getPlayerDisplayName(User $user): string
@@ -104,15 +117,12 @@ class LobbyService
         $avatarUrl = $settings['avatar']['url'] ?? null;
         
         if ($avatarUrl && is_string($avatarUrl) && strlen($avatarUrl) > 0) {
-            // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
-            // Handle full URLs and protocol-relative URLs - return as-is
             if (strpos($avatarUrl, 'http://') === 0 || strpos($avatarUrl, 'https://') === 0 || strpos($avatarUrl, '//') === 0) {
                 return $avatarUrl;
             }
             
             $avatarUrl = ltrim($avatarUrl, '/');
             
-            // Already has images/ prefix - use as-is
             if (strpos($avatarUrl, 'images/') === 0) {
                 if (substr($avatarUrl, -4) !== '.png') {
                     $avatarUrl .= '.png';
@@ -120,24 +130,20 @@ class LobbyService
                 return $avatarUrl;
             }
             
-            // Category/slug format like "animal/lynx" - needs prefix and suffix
             if (strpos($avatarUrl, '/') !== false && substr($avatarUrl, -4) !== '.png') {
                 return 'images/avatars/' . $avatarUrl . '.png';
             }
             
-            // Already has extension - use as relative path
             if (strpos($avatarUrl, '/') !== false) {
                 return $avatarUrl;
             }
             
-            // Simple name - add standard folder and extension
             $avatarUrl = preg_replace('/\.png$/', '', $avatarUrl);
             return 'images/avatars/standard/' . $avatarUrl . '.png';
         }
         
         $avatarId = $settings['avatar']['id'] ?? $settings['avatar'] ?? null;
         if ($avatarId && is_string($avatarId)) {
-            // Handle full URLs in avatar id too
             if (strpos($avatarId, 'http://') === 0 || strpos($avatarId, 'https://') === 0 || strpos($avatarId, '//') === 0) {
                 return $avatarId;
             }
@@ -181,13 +187,11 @@ class LobbyService
             if (isset($result['roomId'])) {
                 $gameServerData = [
                     'roomId' => $result['roomId'],
-                    'player_tokens' => $result['player_tokens'] ?? [],
                     'socket_url' => $this->gameServerService->getSocketUrl(),
                 ];
                 Log::info('LobbyService: Room created at lobby creation', [
                     'lobbyCode' => $lobbyCode,
                     'roomId' => $result['roomId'],
-                    'tokenCount' => count($result['player_tokens'] ?? []),
                 ]);
             }
         } catch (\Exception $e) {
@@ -215,10 +219,8 @@ class LobbyService
                     'is_host' => true,
                     'joined_at' => now()->toISOString(),
                     'competence_coins' => $host->competence_coins ?? 0,
-                    'jwt_token' => $gameServerData['player_tokens'][$host->id] ?? null,
                 ],
             ],
-            'teams' => [],
             'game_server' => $gameServerData,
             'created_at' => now()->toISOString(),
             'status' => 'waiting',
@@ -274,18 +276,6 @@ class LobbyService
         $assignedColor = !empty($availableColors) ? $availableColors[0]['id'] : 'blue';
         
         $playerDisplayName = $this->getPlayerDisplayName($player);
-        
-        $jwtToken = null;
-
-        if (!empty($lobby['game_server']['roomId'])) {
-            $jwtToken = $this->gameServerService->generatePlayerToken($player->id, $lobby['game_server']['roomId']);
-            $lobby['game_server']['player_tokens'][$player->id] = $jwtToken;
-            Log::info('LobbyService: Refreshed token for joining player', [
-                'lobbyCode' => $code,
-                'playerId' => $player->id,
-            ]);
-        }
-
         $lobby['players'][$player->id] = [
             'id' => $player->id,
             'name' => $playerDisplayName,
@@ -297,13 +287,12 @@ class LobbyService
             'is_host' => false,
             'joined_at' => now()->toISOString(),
             'competence_coins' => $player->competence_coins ?? 0,
-            'jwt_token' => $jwtToken,
         ];
-        
+
         $this->saveLobby($code, $lobby);
         $this->addPlayerToLobbyList($player->id, $code, $lobby['mode'] ?? 'duo');
-        
-        return ['success' => true, 'lobby' => $lobby, 'jwt_token' => $jwtToken];
+
+        return ['success' => true, 'lobby' => $lobby];
     }
     
     public function leaveLobby(string $code, User $player): array
@@ -600,7 +589,7 @@ class LobbyService
         if ($lobby['bet_negotiation']['proposer_id'] !== $player->id) {
             return ['success' => false, 'error' => __('Seul le proposeur peut annuler la mise')];
         }
-        
+       
         unset($lobby['bet_negotiation']);
         $lobby['settings']['bet_amount'] = 0;
         $lobby['settings']['bet_accepted'] = false;
@@ -720,7 +709,6 @@ class LobbyService
             $mode = $lobby['mode'] ?? 'duo';
             $playerIds = array_keys($lobby['players']);
             
-            // Mode Duo: Utiliser le Game Server Node.js
             if ($mode === 'duo') {
                 try {
                     Log::info("[LobbyService] Starting Duo game via Game Server", [
@@ -728,34 +716,27 @@ class LobbyService
                         'host_id' => $host->id,
                         'player_count' => count($playerIds),
                     ]);
-                    
-                    // 1. Créer une room sur le Game Server
-                    $roomResult = $this->gameServerService->createRoom('DUO', $host->id, [
-                        'lobbyCode' => $code,
-                        'playerCount' => count($playerIds),
-                    ]);
-                    
-                    if (!isset($roomResult['roomId'])) {
-                        Log::error("[LobbyService] Failed to create Game Server room", [
-                            'result' => $roomResult,
+
+                    $roomId = $lobby['game_server']['roomId'] ?? null;
+                    $gsLobbyCode = $lobby['game_server']['lobbyCode'] ?? $code;
+                    $socketUrl = $lobby['game_server']['socket_url'] ?? $this->gameServerService->getSocketUrl();
+
+                    if (!$roomId) {
+                        Log::error("[LobbyService] Missing existing Game Server room in lobby cache", [
+                            'lobby_code' => $code,
                         ]);
                         return [
                             'success' => false,
-                            'error' => $roomResult['error'] ?? __('Erreur lors de la création de la room'),
+                            'error' => __('Room Game Server introuvable dans le lobby'),
                         ];
                     }
                     
-                    $roomId = $roomResult['roomId'];
-                    $gsLobbyCode = $roomResult['lobbyCode'] ?? $code;
-                    $wsUrl = $this->gameServerService->getSocketUrl();
-                    
-                    Log::info("[LobbyService] Game Server room created", [
+                    Log::info("[LobbyService] Reusing existing Game Server room", [
                         'roomId' => $roomId,
                         'gsLobbyCode' => $gsLobbyCode,
-                        'wsUrl' => $wsUrl,
+                        'socketUrl' => $socketUrl,
                     ]);
                     
-                    // 2. Générer seulement la question 1 de manière synchrone (les autres en arrière-plan)
                     $questionService = app(QuestionService::class);
                     $questions = [];
                     $nbQuestions = $lobby['settings']['nb_questions'] ?? 10;
@@ -800,19 +781,14 @@ class LobbyService
                         'count' => count($questions),
                     ]);
                     
-                    // 2.5. Créer session Firestore, stocker et publier Q1, mettre les flags
-                    // NOTE: We use $code (lobby code) as the canonical identifier for Firestore
-                    // This must match what UnifiedGameController uses (gameState['lobby_code'])
                     if (!empty($questions) && count($playerIds) >= 2) {
                         $firestoreService = $this->getDuoFirestoreService();
                         
-                        // Get player information for Firestore session
                         $player1Id = $playerIds[0] ?? $host->id;
                         $player2Id = $playerIds[1];
                         $player1Name = $lobby['players'][$player1Id]['name'] ?? 'Player 1';
                         $player2Name = $lobby['players'][$player2Id]['name'] ?? 'Player 2';
                         
-                        // Create Firestore match session document first
                         $firestoreService->createMatchSession($code, [
                             'player1_id' => $player1Id,
                             'player2_id' => $player2Id,
@@ -831,10 +807,8 @@ class LobbyService
                         $q1Data['theme'] = $theme;
                         $q1Data['question_number'] = 1;
                         
-                        // Store Q1 in preGeneratedQuestions subcollection
                         $firestoreService->storePreGeneratedQuestion($code, 1, $q1Data);
                         
-                        // Publish Q1 to main document so clients receive it immediately
                         $questionForPublish = [
                             'id' => $q1Data['id'] ?? uniqid(),
                             'text' => $q1Data['text'] ?? '',
@@ -847,7 +821,6 @@ class LobbyService
                         ];
                         $firestoreService->publishQuestion($code, $questionForPublish, 1);
                         
-                        // Set questionsGenerated flag so UnifiedGameController skips regeneration
                         $firestoreService->updateGameState($code, [
                             'questionsGenerated' => true,
                             'questions_generated' => true,
@@ -861,7 +834,6 @@ class LobbyService
                         ]);
                     }
                     
-                    // 3. Envoyer les questions au Game Server
                     $sendResult = $this->gameServerService->sendQuestions($roomId, $questions);
                     
                     if (!($sendResult['success'] ?? false)) {
@@ -875,7 +847,6 @@ class LobbyService
                         ];
                     }
                     
-                    // Générer les questions 2-N en arrière-plan avec QuestionPlanBuilder
                     $usedQuestionIds = array_map(fn($q) => $q['id'], $questions);
                     $usedAnswers = [];
                     $usedQuestionTexts = [];
@@ -889,8 +860,6 @@ class LobbyService
                         }
                     }
                     
-                    // Initialiser le cache anti-doublon avec Q1 (nettoie les anciennes données)
-                    // Use $code (lobby code) as canonical identifier to match Firestore and job dispatch
                     $antiDuplicationCache = new AntiDuplicationCacheService();
                     if (!empty($questions)) {
                         $antiDuplicationCache->initialize($code, $questions[0]);
@@ -918,7 +887,7 @@ class LobbyService
                     
                     if ($totalQuestions > 1) {
                         GenerateMultiplayerQuestionsJob::dispatch(
-                            $code, // Use lobby code for Firestore storage (normalized internally)
+                            $code,
                             'duo',
                             $theme,
                             $niveau,
@@ -939,17 +908,6 @@ class LobbyService
                         ]);
                     }
                     
-                    // 4. Générer les tokens JWT pour chaque joueur
-                    $playerTokens = [];
-                    foreach ($playerIds as $playerId) {
-                        $playerTokens[$playerId] = $this->gameServerService->generatePlayerToken($playerId, $roomId);
-                    }
-                    
-                    Log::info("[LobbyService] Generated player tokens", [
-                        'player_count' => count($playerTokens),
-                    ]);
-                    
-                    // 5. Démarrer le jeu sur le Game Server AVANT de sauvegarder les métadonnées
                     $startResult = $this->gameServerService->startGame($roomId, (string) $host->id);
                     
                     if (!($startResult['success'] ?? false)) {
@@ -962,14 +920,9 @@ class LobbyService
                             'error' => $startResult['error'] ?? __('Erreur lors du démarrage du jeu'),
                         ];
                     }
-                    
-                    // 6. APRÈS succès: Stocker les informations Game Server et marquer comme démarré
-                    $lobby['game_server'] = [
-                        'roomId' => $roomId,
-                        'lobbyCode' => $gsLobbyCode,
-                        'wsUrl' => $wsUrl,
-                        'player_tokens' => $playerTokens,
-                    ];
+
+                    $lobby['game_server']['roomId'] = $roomId;
+                    $lobby['game_server']['socket_url'] = $socketUrl;
                     $lobby['status'] = 'started';
                     $lobby['started_at'] = now()->toISOString();
                     $this->saveLobby($code, $lobby);
@@ -990,9 +943,7 @@ class LobbyService
                         'error' => __('Erreur lors du démarrage du jeu: :error', ['error' => $e->getMessage()]),
                     ];
                 }
-            }
-            // Modes League: Utiliser Firebase
-            elseif (in_array($mode, ['league_individual', 'league_team'])) {
+            } elseif (in_array($mode, ['league_individual', 'league_team'])) {
                 $lobby['status'] = 'starting';
                 $lobby['started_at'] = now()->toISOString();
                 $this->saveLobby($code, $lobby);
@@ -1339,7 +1290,7 @@ class LobbyService
         $minPlayers = $lobby['settings']['min_players'] ?? 2;
         $playerIds = array_keys($lobby['players']);
         $maxRetries = 3;
-        $retryDelay = 500000; // 500ms in microseconds
+        $retryDelay = 500000;
         
         Log::info("[VerifyPresence] Starting for lobby {$code}, mode: {$mode}, minPlayers: {$minPlayers}");
         
@@ -1359,7 +1310,6 @@ class LobbyService
                         usleep($retryDelay);
                         continue;
                     }
-                    // Empty Firebase presence after all retries - cannot verify players
                     Log::warning("[VerifyPresence] All retries exhausted with empty Firebase data for lobby {$code}");
                     return [
                         'success' => false,
@@ -1367,8 +1317,8 @@ class LobbyService
                     ];
                 }
                 
-                $onlineThreshold = 90; // Increased to 90 seconds for more tolerance
-                $now = time(); // Use seconds instead of microtime for consistency with Firebase timestamps
+                $onlineThreshold = 90;
+                $now = time();
                 $connectedPlayers = [];
                
                 foreach ($presenceData as $playerId => $data) {
@@ -1376,13 +1326,9 @@ class LobbyService
                     $online = $data['online'] ?? false;
                     $lastSeenTime = null;
                     
-                    // Handle different timestamp formats from Firebase
-                    // FirebaseService::extractValue() returns timestamps as float (Unix seconds with microseconds)
                     if (is_float($lastSeen) || is_int($lastSeen)) {
-                        // Float/int timestamp in seconds (from FirebaseService)
                         $lastSeenTime = (int)$lastSeen;
                     } elseif (is_numeric($lastSeen)) {
-                        // Numeric string - could be seconds or milliseconds
                         $numericVal = (float)$lastSeen;
                         $lastSeenTime = $numericVal > 9999999999 ? (int)($numericVal / 1000) : (int)$numericVal;
                     } elseif ($lastSeen && is_array($lastSeen) && isset($lastSeen['_seconds'])) {
@@ -1394,7 +1340,6 @@ class LobbyService
                     Log::debug("[VerifyPresence] Player {$playerId}: online={$online}, lastSeenTime={$lastSeenTime}, rawLastSeen=" . json_encode($lastSeen));
                     
                     if ($lastSeenTime === null) {
-                        // If online flag is true and we can't parse timestamp, assume they're connected
                         if ($online) {
                             $connectedPlayers[] = (int)$playerId;
                             Log::debug("[VerifyPresence] Player {$playerId} added (online flag, no timestamp)");
@@ -1419,15 +1364,11 @@ class LobbyService
                     return ['success' => true];
                 }
                 
-                // Not enough players connected, try again if we have retries left
                 if ($attempt < $maxRetries) {
                     usleep($retryDelay);
                     continue;
                 }
                 
-                // Final attempt failed - report actual disconnects
-                // Only fail-open on exceptions, not on genuine disconnects
-                $missingCount = $minPlayers - count($connectedPlayers);
                 Log::warning("[VerifyPresence] FAILED for lobby {$code}: only " . count($connectedPlayers) . " of {$minPlayers} verified");
                 
                 return [
@@ -1441,13 +1382,11 @@ class LobbyService
                     usleep($retryDelay);
                     continue;
                 }
-                // On final exception, allow the game to start (fail-open for better UX)
                 Log::warning("[VerifyPresence] All retries exhausted with exceptions, allowing game start for lobby {$code}");
                 return ['success' => true];
             }
         }
         
-        // Should not reach here, but fail-open if we do
         return ['success' => true];
     }
     

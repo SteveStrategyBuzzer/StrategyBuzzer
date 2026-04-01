@@ -18,6 +18,9 @@ const DuoSocketClient = {
     latestPing: 0,
     _reconnectAttempts: 0,
     _maxReconnectAttempts: 5,
+    _timeSyncInterval: null,
+    _clockOffsetMs: 0,
+    _handlers: {},
 
     onConnect: null,
     onDisconnect: null,
@@ -51,16 +54,34 @@ const DuoSocketClient = {
     onWaitingBlock: null,
     onGameState: null,
 
-    // Time sync state (for corrected timer display — server remains authoritative)
-    _clockOffsetMs: 0,
-    _timeSyncInterval: null,
-
     _log(message, data = null) {
         if (data) {
             console.log(`[DuoSocket] ${message}`, data);
         } else {
             console.log(`[DuoSocket] ${message}`);
         }
+    },
+
+    _dispatch(eventName, payload) {
+        const handlers = this._handlers[eventName] || [];
+        handlers.forEach((handler) => {
+            try {
+                handler(payload);
+            } catch (error) {
+                console.error(`[DuoSocket] Handler error for ${eventName}:`, error);
+            }
+        });
+    },
+
+    _bindSocketEvent(eventName, socketHandler) {
+        if (!this.socket) {
+            return;
+        }
+
+        this.socket.on(eventName, (payload) => {
+            socketHandler(payload);
+            this._dispatch(eventName, payload);
+        });
     },
 
     connect(url, token = null) {
@@ -89,62 +110,72 @@ const DuoSocketClient = {
                 this.socket.on('connect', () => {
                     this._log('Connected', { id: this.socket.id });
                     this._reconnectAttempts = 0;
-                    // Calibrate clock offset immediately, then every 30s
+
                     this.syncTime();
                     if (this._timeSyncInterval) clearInterval(this._timeSyncInterval);
                     this._timeSyncInterval = setInterval(() => this.syncTime(), 30000);
+
                     if (this.onConnect) this.onConnect();
+                    this._dispatch('connect', { id: this.socket.id });
+
                     resolve();
                 });
 
                 this.socket.on('disconnect', (reason) => {
                     this._log('Disconnected', { reason });
                     if (this.onDisconnect) this.onDisconnect(reason);
+                    this._dispatch('disconnect', reason);
                 });
 
                 this.socket.on('connect_error', (error) => {
                     this._log('Connection error', { message: error.message });
                     this._reconnectAttempts++;
-                    if (this.onError) this.onError({ code: 'CONNECT_ERROR', message: error.message });
+                    const errorPayload = { code: 'CONNECT_ERROR', message: error.message };
+                    if (this.onError) this.onError(errorPayload);
+                    this._dispatch('error', errorPayload);
+
                     if (this._reconnectAttempts >= this._maxReconnectAttempts) {
                         reject(error);
                     }
                 });
 
-                this.socket.on('error', (data) => {
+                this._bindSocketEvent('error', (data) => {
                     this._log('Server error', data);
                     if (this.onError) this.onError(data);
                 });
 
-                this.socket.on('state', (data) => {
+                this._bindSocketEvent('state', (data) => {
                     this._log('State received', data);
                     if (this.onState) this.onState(data.state);
                     if (this.onLobbyState) this.onLobbyState(data.state);
                 });
 
-                this.socket.on('phase_changed', (data) => {
+                this._bindSocketEvent('phase_changed', (data) => {
                     this._log('Phase changed', data);
                     if (this.onPhaseChanged) this.onPhaseChanged(data);
                 });
 
-                this.socket.on('score_update', (data) => {
+                this._bindSocketEvent('score_update', (data) => {
                     this._log('Score update', data);
                     if (this.onScoreUpdate) this.onScoreUpdate(data);
                 });
 
-                this.socket.on('event', (data) => {
+                this._bindSocketEvent('event', (data) => {
                     this._log('Game event', data);
                     if (data.event) {
                         const event = data.event;
                         switch (event.type) {
                             case 'PLAYER_JOINED':
                                 if (this.onPlayerJoined) this.onPlayerJoined(event);
+                                this._dispatch('player_joined', event);
                                 break;
                             case 'PLAYER_LEFT':
                                 if (this.onPlayerLeft) this.onPlayerLeft(event);
+                                this._dispatch('player_left', event);
                                 break;
                             case 'BUZZ':
                                 if (this.onBuzzResult) this.onBuzzResult(event);
+                                this._dispatch('buzz', event);
                                 break;
                             default:
                                 this._log('Unhandled event type', event.type);
@@ -152,98 +183,98 @@ const DuoSocketClient = {
                     }
                 });
 
-                this.socket.on('player_ready', (data) => {
+                this._bindSocketEvent('player_ready', (data) => {
                     this._log('Player ready', data);
                     if (this.onPlayerReady) this.onPlayerReady(data);
                 });
 
-                this.socket.on('answer_received', (data) => {
+                this._bindSocketEvent('answer_received', (data) => {
                     this._log('Answer received', data);
                     if (this.onAnswerResult) this.onAnswerResult(data);
                 });
 
-                this.socket.on('voice_offer', (data) => {
+                this._bindSocketEvent('voice_offer', (data) => {
                     this._log('Voice offer received', data);
                     if (this.onVoiceOffer) this.onVoiceOffer(data.from, data.offer);
                 });
 
-                this.socket.on('voice_answer', (data) => {
+                this._bindSocketEvent('voice_answer', (data) => {
                     this._log('Voice answer received', data);
                     if (this.onVoiceAnswer) this.onVoiceAnswer(data.from, data.answer);
                 });
 
-                this.socket.on('voice_ice_candidate', (data) => {
+                this._bindSocketEvent('voice_ice_candidate', (data) => {
                     this._log('ICE candidate received', data);
                     if (this.onIceCandidate) this.onIceCandidate(data.from, data.candidate);
                 });
 
-                this.socket.on('pong_check', (data) => {
+                this._bindSocketEvent('pong_check', (data) => {
                     this._log('Pong received', data);
                 });
 
-                this.socket.on('game_started', (data) => {
+                this._bindSocketEvent('game_started', (data) => {
                     this._log('Game started', data);
                     if (this.onGameStarted) this.onGameStarted(data);
                 });
 
-                this.socket.on('question_published', (data) => {
+                this._bindSocketEvent('question_published', (data) => {
                     this._log('Question published', data);
                     if (this.onQuestionPublished) this.onQuestionPublished(data);
                 });
 
-                this.socket.on('buzz_winner', (data) => {
+                this._bindSocketEvent('buzz_winner', (data) => {
                     this._log('Buzz winner', data);
                     if (this.onBuzzWinner) this.onBuzzWinner(data);
                 });
 
-                this.socket.on('answer_revealed', (data) => {
+                this._bindSocketEvent('answer_revealed', (data) => {
                     this._log('Answer revealed', data);
                     if (this.onAnswerRevealed) this.onAnswerRevealed(data);
                 });
 
-                this.socket.on('round_ended', (data) => {
+                this._bindSocketEvent('round_ended', (data) => {
                     this._log('Round ended', data);
                     if (this.onRoundEnded) this.onRoundEnded(data);
                 });
 
-                this.socket.on('match_ended', (data) => {
+                this._bindSocketEvent('match_ended', (data) => {
                     this._log('Match ended', data);
                     if (this.onMatchEnded) this.onMatchEnded(data);
                 });
 
-                this.socket.on('skill_used', (data) => {
+                this._bindSocketEvent('skill_used', (data) => {
                     this._log('Skill used', data);
                     if (this.onSkillUsed) this.onSkillUsed(data);
                 });
 
-                this.socket.on('skill_activated', (data) => {
+                this._bindSocketEvent('skill_activated', (data) => {
                     this._log('Skill activated', data);
                     if (this.onSkillActivated) this.onSkillActivated(data);
                 });
 
-                this.socket.on('skill_failed', (data) => {
+                this._bindSocketEvent('skill_failed', (data) => {
                     this._log('Skill failed', data);
                     if (this.onSkillFailed) this.onSkillFailed(data);
                 });
 
-                this.socket.on('rate_limited', (data) => {
+                this._bindSocketEvent('rate_limited', (data) => {
                     this._log('Rate limited', data);
                     if (this.onRateLimited) this.onRateLimited(data);
                 });
 
-                this.socket.on('time_sync_pong', (data) => {
+                this._bindSocketEvent('time_sync_pong', (data) => {
                     const clientNowMs = Date.now();
                     const roundtripMs = clientNowMs - data.clientSentAtMs;
                     this._clockOffsetMs = data.serverSentAtMs - data.clientSentAtMs - Math.round(roundtripMs / 2);
                     this._log('Time sync', { offsetMs: this._clockOffsetMs, roundtripMs });
                 });
 
-                this.socket.on('waiting_block', (data) => {
+                this._bindSocketEvent('waiting_block', (data) => {
                     this._log('Waiting block', data);
                     if (this.onWaitingBlock) this.onWaitingBlock(data);
                 });
 
-                this.socket.on('game_state', (data) => {
+                this._bindSocketEvent('game_state', (data) => {
                     this._log('Game state received', data);
                     if (this.onGameState) this.onGameState(data);
                 });
@@ -260,6 +291,7 @@ const DuoSocketClient = {
             clearInterval(this._timeSyncInterval);
             this._timeSyncInterval = null;
         }
+
         if (this.socket) {
             this._log('Disconnecting...');
             this.socket.disconnect();
@@ -423,7 +455,7 @@ const DuoSocketClient = {
             }
 
             const startTime = Date.now();
-            
+
             const timeout = setTimeout(() => {
                 this.socket.off('pong_check', handler);
                 reject(new Error('Ping timeout'));
@@ -443,21 +475,11 @@ const DuoSocketClient = {
         });
     },
 
-    /**
-     * Envoie un time_sync_ping au serveur pour calculer l'offset d'horloge.
-     * Le résultat est stocké dans _clockOffsetMs et utilisé par getServerTime().
-     * À appeler à la connexion et périodiquement (ex: toutes les 30s).
-     */
     syncTime() {
         if (!this.isConnected()) return;
         this.socket.emit('time_sync_ping', { clientSentAtMs: Date.now() });
     },
 
-    /**
-     * Retourne l'heure estimée du serveur à cet instant.
-     * Usage: calcul du temps restant d'une phase → Math.max(0, phaseEndsAtMs - duoSocket.getServerTime())
-     * Le serveur reste l'arbitre; ceci est uniquement pour l'affichage côté client.
-     */
     getServerTime() {
         return Date.now() + this._clockOffsetMs;
     },
@@ -467,15 +489,21 @@ const DuoSocketClient = {
     },
 
     on(eventName, callback) {
-        if (this.socket) {
-            this.socket.on(eventName, callback);
+        if (!this._handlers[eventName]) {
+            this._handlers[eventName] = [];
         }
+
+        this._handlers[eventName].push(callback);
+        return true;
     },
 
     off(eventName, callback) {
-        if (this.socket) {
-            this.socket.off(eventName, callback);
+        if (!this._handlers[eventName]) {
+            return false;
         }
+
+        this._handlers[eventName] = this._handlers[eventName].filter((handler) => handler !== callback);
+        return true;
     }
 };
 
@@ -489,3 +517,4 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { DuoSocketClient, duoSocket };
 }
+
