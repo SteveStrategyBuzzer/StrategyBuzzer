@@ -28,9 +28,7 @@
     if (window.__GR_INITIALIZED) return;
     window.__GR_INITIALIZED = true;
 
-    // ─────────────────────────────────────────────────────────────
     // UI helpers
-    // ─────────────────────────────────────────────────────────────
 
     function showBrainSpin(msg) {
         var overlay = document.getElementById('brainOverlay');
@@ -65,9 +63,7 @@
         if (msg) el.textContent = msg;
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Game header score/counter update
-    // ─────────────────────────────────────────────────────────────
 
     function updateHeaderScores(playerScore, opponentScore) {
         var pEl = document.getElementById('ghPlayerScore');
@@ -93,9 +89,7 @@
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Phase → brain table
-    // ─────────────────────────────────────────────────────────────
+    // Phase → brain overlay mapping
 
     var PHASE_BRAIN = {
         INTRO:            { show: true,  msg: null }, // msg set below from labels
@@ -122,9 +116,7 @@
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Expose global API for view scripts
-    // ─────────────────────────────────────────────────────────────
 
     window.showBrainSpin       = showBrainSpin;
     window.hideBrainSpin       = hideBrainSpin;
@@ -135,9 +127,7 @@
     window.GRUpdateCounter     = updateHeaderCounter;
     window.GRUpdateRound       = updateHeaderRound;
 
-    // ─────────────────────────────────────────────────────────────
     // Socket initialization — only if ROOM_ID + JWT_TOKEN present
-    // ─────────────────────────────────────────────────────────────
 
     var ROOM_ID         = window.ROOM_ID || null;
     var JWT_TOKEN       = window.JWT_TOKEN || null;
@@ -178,7 +168,6 @@
         setConnectionStatus('disconnected', 'Déconnecté');
     });
 
-    // ─── connect ────────────────────────────────────────────────
     socket.on('connect', function () {
         if (!NO_OVERLAY) hideLoading();
         setConnectionStatus('connected', window.GR_LABELS && window.GR_LABELS.connected ? window.GR_LABELS.connected : 'Connecté');
@@ -193,13 +182,12 @@
         console.log('[GameplayRuntime] Joined room:', ROOM_ID);
     });
 
-    // ─── disconnect ─────────────────────────────────────────────
     socket.on('disconnect', function (reason) {
         setConnectionStatus('disconnected', window.GR_LABELS && window.GR_LABELS.disconnected ? window.GR_LABELS.disconnected : 'Déconnecté');
         console.warn('[GameplayRuntime] Disconnected:', reason);
     });
 
-    // ─── game_state (initial hydration & reconnect) ─────────────
+    // game_state: initial hydration and reconnect
     socket.on('game_state', function (data) {
         if (!data) return;
 
@@ -230,7 +218,6 @@
         }
     });
 
-    // ─── phase_changed ──────────────────────────────────────────
     socket.on('phase_changed', function (data) {
         if (!data || !data.phase) return;
         handleBrainForPhase(data.phase);
@@ -244,7 +231,6 @@
         }
     });
 
-    // ─── score_update ────────────────────────────────────────────
     socket.on('score_update', function (data) {
         if (!data || !USER_ID) return;
 

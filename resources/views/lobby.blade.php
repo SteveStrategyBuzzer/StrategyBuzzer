@@ -4568,7 +4568,7 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
             window.duoSocketConnected = true;
         });
         
-        DuoSocketClient.onDisconnect = (reason) => {
+        DuoSocketClient.on('disconnect', (reason) => {
             console.log('[Socket.IO] Disconnected:', reason);
             window.duoSocketConnected = false;
             window.socketLobbyReady = false;
@@ -4576,16 +4576,16 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
             if (startBtn) {
                 startBtn.dataset.socketLobbyReady = 'false';
             }
-        };
+        });
         
-        DuoSocketClient.onError = (error) => {
+        DuoSocketClient.on('error', (error) => {
             console.error('[Socket.IO] Error:', error);
             window.socketLobbyReady = false;
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
                 startBtn.dataset.socketLobbyReady = 'false';
             }
-        };
+        });
         
         DuoSocketClient.on('player_joined', (event) => {
             console.log('[Socket.IO] Player joined:', event);

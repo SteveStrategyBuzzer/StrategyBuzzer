@@ -12,7 +12,7 @@
     @stack('head')
     @yield('styles')
     <style>
-    /* ─── Brain Overlay ─────────────────────────────────────────── */
+    /* Brain overlay */
     #brainOverlay {
         position: fixed;
         inset: 0;
@@ -48,7 +48,7 @@
         50%       { filter: drop-shadow(0 0 22px rgba(78,205,196,0.9)); }
     }
 
-    /* ─── Loading Overlay ───────────────────────────────────────── */
+    /* Loading overlay */
     #loadingOverlay {
         position: fixed;
         inset: 0;
@@ -74,7 +74,7 @@
     #loadingOverlay .loading-text { color: #4ECDC4; font-size: 1.1rem; font-weight: 600; }
     @keyframes grSpin { to { transform: rotate(360deg); } }
 
-    /* ─── Connection Status Badge ───────────────────────────────── */
+    /* Connection status badge */
     #connectionStatus {
         position: fixed;
         top: 10px;
@@ -90,7 +90,7 @@
     #connectionStatus.connected     { background: rgba(40,167,69,0.9);   color: #fff; display: block; }
     #connectionStatus.disconnected  { background: rgba(220,53,69,0.9);   color: #fff; display: block; }
 
-    /* ─── Voice Mic Button ──────────────────────────────────────── */
+    /* Voice mic button */
     #voiceMicButton {
         position: fixed;
         bottom: 200px;
@@ -125,7 +125,7 @@
         50%      { box-shadow: 0 0 20px rgba(46,204,113,0.8); }
     }
 
-    /* ─── Game Header ───────────────────────────────────────────── */
+    /* Game header */
     #gameHeader {
         display: flex;
         align-items: center;
@@ -156,17 +156,14 @@
         .gh-center  { padding: 0 3px; font-size: 0.62rem; }
     }
 
-    /* ─── Body baseline ─────────────────────────────────────────── */
     body { background: #0f2027; color: #fff; margin: 0; padding: 0; }
     </style>
 </head>
 <body>
 
-<!-- ╔══════════════════════════════════════════════════════════════╗ -->
-<!-- ║  SHARED OVERLAYS — controlled by GameplayRuntime.js         ║ -->
-<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+<!-- Shared overlays — controlled by GameplayRuntime.js -->
 
-<!-- Brain Overlay: shows during INTRO / WAITING phases -->
+<!-- Brain overlay: shows during INTRO/WAITING phases -->
 <div id="brainOverlay" class="hidden">
     <img src="{{ asset('images/brain.png') }}" alt="" class="brain-spin-img" onerror="this.style.fontSize='4rem';this.outerHTML='<div style=\'font-size:4rem\'>🧠</div>'">
     <div class="brain-msg" id="brainMessage">{{ __('Préparation...') }}</div>
@@ -188,17 +185,13 @@
     <span id="micIcon">🎤</span>
 </button>
 
-@if(!empty($playerName))
-<!-- ╔══════════════════════════════════════════════════════════════╗ -->
-<!-- ║  GAME HEADER — Blade-rendered initial data                  ║ -->
-<!-- ║  Updated in real-time by GameplayRuntime.js                 ║ -->
-<!-- ╚══════════════════════════════════════════════════════════════╝ -->
-<header id="gameHeader">
+<!-- Game header — always rendered; hidden by CSS when no player data, updated live by GameplayRuntime -->
+<header id="gameHeader" style="{{ empty($playerName) ? 'display:none;' : '' }}">
     <div class="gh-player gh-left">
         <img id="ghPlayerAvatar"
              src="{{ asset($playerAvatarPath ?? 'images/avatars/standard/default.png') }}"
              class="gh-avatar" alt="">
-        <div class="gh-name" id="ghPlayerName">{{ $playerName }}</div>
+        <div class="gh-name" id="ghPlayerName">{{ $playerName ?? '' }}</div>
         <div class="gh-score" id="ghPlayerScore">{{ $playerScore ?? 0 }}</div>
     </div>
     <div class="gh-center">
@@ -213,7 +206,6 @@
         <div class="gh-score" id="ghOpponentScore">{{ $opponentScore ?? 0 }}</div>
     </div>
 </header>
-@endif
 
 <!-- Main game content (no container wrapper — game views are full-width) -->
 @yield('content')
