@@ -1,4 +1,13 @@
-@extends('layouts.app')
+@extends('layouts.game')
+
+@section('game-data')
+<script>
+{{-- Lobby manages its own socket lifecycle; prevent GameplayRuntime from connecting --}}
+window.ROOM_ID = null;
+window.JWT_TOKEN = null;
+window.NO_SOCKET_OVERLAY = true;
+</script>
+@endsection
 
 @section('content')
 @php
@@ -756,21 +765,18 @@ foreach ($colors as $color) {
     }
 </style>
 
-@if(!empty($gameServerUrl) && !empty($lobby['game_server']['roomId']))
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 <script>
+{{-- Socket.IO + DuoSocketClient.js already loaded by layouts.game --}}
+@if(!empty($gameServerUrl) && !empty($lobby['game_server']['roomId']))
     window.matchRoomId = @json($lobby['game_server']['roomId'] ?? '');
     window.matchLobbyCode = @json($lobby['code'] ?? '');
     window.matchPlayerToken = @json($playerToken ?? null);
     window.gameServerUrl = window.location.origin;
     window.useSocketIO = true;
-</script>
 @else
-<script>
     window.useSocketIO = false;
-</script>
 @endif
+</script>
 
 <div class="lobby-container">
     <div class="lobby-header">

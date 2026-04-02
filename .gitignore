@@ -84,3 +84,4 @@ attached_assets/Pasted-Je-travaille-sur-un-projet-appel-StrategyBuzzer-un-jeu-_1
 *.bak_*
 *.bak.*
 firebase/firebase-service-account.json
+dump.rdb

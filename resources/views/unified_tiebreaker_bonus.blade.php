@@ -1,5 +1,12 @@
 @extends('layouts.game')
 
+@section('game-data')
+<script>
+window.NO_SOCKET_OVERLAY = true;
+window.PHASE_ENDS_AT_MS = {{ isset($phaseEndsAt) ? (int)$phaseEndsAt : 'null' }};
+</script>
+@endsection
+
 @section('content')
 <style>
     body {
@@ -251,7 +258,10 @@ const matchId = "{{ $match_id ?? '' }}";
 const isMultiplayer = {{ $is_multiplayer ? 'true' : 'false' }};
 const correctIndex = {{ $question['correct_index'] ?? 0 }};
 
-let timeLeft = 15;
+const _BONUS_DURATION_MS = 15000;
+let timeLeft = window.PHASE_ENDS_AT_MS
+    ? Math.max(0, (window.PHASE_ENDS_AT_MS - Date.now()) / 1000)
+    : _BONUS_DURATION_MS / 1000;
 let buzzTime = null;
 let hasBuzzed = false;
 let hasAnswered = false;
@@ -264,11 +274,12 @@ const i18n = {
     timeUp: "{{ __('Temps écoulé !') }}"
 };
 
+const _BONUS_TOTAL = timeLeft; // capture initial value for progress bar calculation
 function startTimer() {
     timerInterval = setInterval(() => {
         timeLeft -= 0.1;
         document.getElementById('timerDisplay').textContent = Math.ceil(timeLeft);
-        document.getElementById('timerFill').style.width = (timeLeft / 15 * 100) + '%';
+        document.getElementById('timerFill').style.width = (timeLeft / _BONUS_TOTAL * 100) + '%';
         
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
@@ -283,7 +294,7 @@ function handleBuzz() {
     if (hasBuzzed) return;
     
     hasBuzzed = true;
-    buzzTime = 15 - timeLeft;
+    buzzTime = _BONUS_TOTAL - timeLeft;
     
     document.getElementById('buzzBtn').classList.add('disabled');
     document.getElementById('buzzBtn').textContent = '✓ BUZZÉ';

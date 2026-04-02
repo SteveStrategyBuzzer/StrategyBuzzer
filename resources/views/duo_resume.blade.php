@@ -164,25 +164,6 @@ body {
     animation: pulse 1.5s ease infinite;
 }
 
-.countdown-section {
-    margin-top: 40px;
-    animation: fadeIn 1s ease 1s both;
-}
-
-.countdown-text {
-    font-size: 1.5rem;
-    margin-bottom: 15px;
-    color: rgba(255,255,255,0.8);
-}
-
-.countdown-number {
-    font-size: 6rem;
-    font-weight: 900;
-    color: #ffd700;
-    text-shadow: 0 0 30px rgba(255,215,0,0.6);
-    animation: countdownPulse 1s ease infinite;
-}
-
 .info-row {
     display: flex;
     gap: 20px;
@@ -228,12 +209,6 @@ body {
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.1); }
-}
-
-@keyframes countdownPulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.15); opacity: 0.8; }
-    100% { transform: scale(1); opacity: 1; }
 }
 
 /* Mobile portrait - keep players side by side */
@@ -290,14 +265,6 @@ body {
         padding: 4px 10px;
     }
     
-    .countdown-section {
-        margin-top: 20px;
-    }
-    
-    .countdown-number {
-        font-size: 5rem;
-    }
-    
     .info-row {
         margin-top: 15px;
         gap: 10px;
@@ -344,10 +311,6 @@ body {
     
     .player-name {
         font-size: 1rem;
-    }
-    
-    .countdown-number {
-        font-size: 4rem;
     }
     
     .title-section h1 {
@@ -707,17 +670,10 @@ body {
             {{ __('En attente de l\'autre joueur...') }}
         </div>
         
-        <div class="countdown-section" id="countdownSection" style="display: none;">
-            <div class="countdown-text">{{ __('La partie commence dans') }}...</div>
-            <div class="countdown-number" id="countdown">9</div>
-        </div>
+        {{-- countdown-section replaced by brain overlay (controlled by GameplayRuntime/startCountdown) --}}
     </div>
     @else
-    <!-- Simple countdown for Solo/other modes - 9 seconds "Ladies and Gentlemen" -->
-    <div class="countdown-section">
-        <div class="countdown-text">{{ __('La partie commence dans') }}...</div>
-        <div class="countdown-number" id="countdown">9</div>
-    </div>
+    {{-- non-sync mode: brain overlay shown via JS; no local countdown HTML needed --}}
     @endif
 </div>
 
@@ -886,29 +842,24 @@ body {
     window.addEventListener('beforeunload', cleanup);
     window.addEventListener('pagehide', cleanup);
     
-    // Simple countdown for non-sync modes (Solo, etc) - 9 seconds like "Ladies and Gentlemen"
+    // Non-sync mode (Solo): show brain overlay then redirect after 9s
     if (!needsSyncGo) {
-        let count = 9;
-        const countdownEl = document.getElementById('countdown');
-        
-        if (countdownEl && redirectUrl) {
+        if (redirectUrl) {
+            if (window.showBrainSpin) window.showBrainSpin('{{ __("La partie commence dans...") }}');
+            let count = 9;
             const interval = setInterval(() => {
                 count--;
                 if (count > 0) {
-                    countdownEl.textContent = count;
+                    if (window.showBrainSpin) window.showBrainSpin(count + '...');
                 } else {
-                    countdownEl.textContent = '🚀';
+                    if (window.showBrainSpin) window.showBrainSpin('🚀');
                     clearInterval(interval);
-                    
                     if (!redirected) {
                         redirected = true;
-                        setTimeout(() => {
-                            window.location.href = redirectUrl;
-                        }, 500);
+                        setTimeout(() => { window.location.href = redirectUrl; }, 500);
                     }
                 }
             }, 1000);
-            
             window.addEventListener('beforeunload', () => clearInterval(interval));
         }
     }
@@ -955,17 +906,17 @@ body {
         // PRE-LOAD QUESTIONS IN BACKGROUND (bloc 1 = questions 1-4)
         preloadQuestions();
         
-        const countdownSection = document.getElementById('countdownSection');
         const waitingMessage = document.getElementById('waitingMessage');
         const goButton = document.getElementById('goButton');
         const goStatus = document.querySelector('.go-status');
-        const countdownEl = document.getElementById('countdown');
         const audio = document.getElementById('readyAudio');
         
         if (waitingMessage) waitingMessage.style.display = 'none';
         if (goButton) goButton.style.display = 'none';
         if (goStatus) goStatus.style.display = 'none';
-        if (countdownSection) countdownSection.style.display = 'block';
+        
+        // Show brain overlay instead of local countdown
+        if (window.showBrainSpin) window.showBrainSpin('{{ __("La partie commence dans...") }}');
         
         // Play audio and sync countdown to audio duration (like Solo mode)
         if (audio) {
@@ -977,16 +928,16 @@ body {
             // When audio metadata is loaded, start countdown synced to audio
             const startAudioCountdown = () => {
                 audioDuration = audio.duration || 5;
-                if (countdownEl) countdownEl.textContent = Math.ceil(audioDuration);
+                if (window.showBrainSpin) window.showBrainSpin(Math.ceil(audioDuration) + '...');
                 
                 audio.play().then(() => {
-                    // Sync countdown to audio.currentTime
+                    // Update brain overlay message with remaining seconds
                     updateInterval = setInterval(() => {
                         const remaining = audioDuration - audio.currentTime;
                         if (remaining > 0) {
-                            if (countdownEl) countdownEl.textContent = Math.ceil(remaining);
+                            if (window.showBrainSpin) window.showBrainSpin(Math.ceil(remaining) + '...');
                         } else {
-                            if (countdownEl) countdownEl.textContent = '🚀';
+                            if (window.showBrainSpin) window.showBrainSpin('🚀');
                         }
                     }, 100);
                 }).catch(e => {
@@ -1019,24 +970,20 @@ body {
             fallbackCountdown();
         }
         
-        // Fallback countdown without audio - 9 seconds like "Ladies and Gentlemen"
+        // Fallback: 9s brain overlay spin before redirect
         function fallbackCountdown() {
             let count = 9;
-            if (countdownEl) countdownEl.textContent = count;
-            
+            if (window.showBrainSpin) window.showBrainSpin(count + '...');
             const interval = setInterval(() => {
                 count--;
                 if (count > 0) {
-                    if (countdownEl) countdownEl.textContent = count;
+                    if (window.showBrainSpin) window.showBrainSpin(count + '...');
                 } else {
-                    if (countdownEl) countdownEl.textContent = '🚀';
+                    if (window.showBrainSpin) window.showBrainSpin('🚀');
                     clearInterval(interval);
-                    
                     if (!redirected) {
                         redirected = true;
-                        setTimeout(() => {
-                            window.location.href = redirectUrl;
-                        }, 500);
+                        setTimeout(() => { window.location.href = redirectUrl; }, 500);
                     }
                 }
             }, 1000);

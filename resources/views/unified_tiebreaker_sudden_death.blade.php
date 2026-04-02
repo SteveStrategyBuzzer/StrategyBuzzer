@@ -1,5 +1,12 @@
 @extends('layouts.game')
 
+@section('game-data')
+<script>
+window.NO_SOCKET_OVERLAY = true;
+window.PHASE_ENDS_AT_MS = {{ isset($phaseEndsAt) ? (int)$phaseEndsAt : 'null' }};
+</script>
+@endsection
+
 @section('content')
 <style>
     body {
@@ -257,7 +264,10 @@ const isMultiplayer = {{ $is_multiplayer ? 'true' : 'false' }};
 const correctIndex = {{ $question['correct_index'] ?? 0 }};
 const questionNumber = {{ $question_number }};
 
-let timeLeft = 10;
+const _SD_DURATION_MS = 10000;
+let timeLeft = window.PHASE_ENDS_AT_MS
+    ? Math.max(0, (window.PHASE_ENDS_AT_MS - Date.now()) / 1000)
+    : _SD_DURATION_MS / 1000;
 let hasAnswered = false;
 let timerInterval = null;
 
@@ -268,12 +278,13 @@ const i18n = {
     timeUp: "{{ __('Temps écoulé !') }}"
 };
 
+const _SD_TOTAL = timeLeft; // capture initial value for progress bar
 function startTimer() {
     timerInterval = setInterval(() => {
         timeLeft -= 0.1;
         const display = document.getElementById('timerDisplay');
         display.textContent = Math.ceil(timeLeft);
-        document.getElementById('timerFill').style.width = (timeLeft / 10 * 100) + '%';
+        document.getElementById('timerFill').style.width = (timeLeft / _SD_TOTAL * 100) + '%';
         
         if (timeLeft <= 3) {
             display.classList.add('warning');
@@ -294,7 +305,7 @@ function selectAnswer(index) {
     hasAnswered = true;
     clearInterval(timerInterval);
     
-    const buzzTime = 10 - timeLeft;
+    const buzzTime = _SD_TOTAL - timeLeft;
     
     document.querySelectorAll('.answer-btn').forEach(btn => {
         btn.classList.add('disabled');

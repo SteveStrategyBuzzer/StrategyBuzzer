@@ -260,6 +260,9 @@
 <!-- Skill effects runtime -->
 <script src="{{ asset('js/GameEffectsRuntime.js') }}"></script>
 
+<!-- View-specific overlays (game-specific modals, sheets, etc.) -->
+@yield('overlay')
+
 <!-- View-specific scripts -->
 @yield('scripts')
 
