@@ -142,6 +142,14 @@ class DuoController extends Controller
             ], 400);
         }
 
+        $pendingCounts = $this->matchmaking->getPendingInvitationCounts($user->id);
+        if ($pendingCounts['sent'] >= 5) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous avez atteint la limite de 5 invitations en attente'),
+            ], 400);
+        }
+
         $match = $this->matchmaking->createInvitation($user, $opponent->id);
 
         $lobby = $this->lobbyService->createLobby($user, 'duo', [
