@@ -1404,6 +1404,7 @@ class DuoController extends Controller
         $opponentAvatarPath = $this->getSnapshotAvatarPath($opponentSnapshot);
 
         $playerAvatarPath = $this->getSnapshotAvatarPath($playerSnapshot);
+        $playerName = $this->getSnapshotDisplayName($playerSnapshot, $user, 'Joueur');
 
         $avatarName = $this->getSnapshotStrategicAvatarName($playerSnapshot);
         $strategicAvatarPath = $this->getSnapshotStrategicAvatarPath($playerSnapshot);
@@ -1424,6 +1425,7 @@ class DuoController extends Controller
             'skills' => $skills,
             'strategic_avatar' => $strategicAvatar,
             'currentUser' => $user,
+            'playerName' => $playerName,
             'avatarName' => $avatarName,
             'strategicAvatarPath' => $strategicAvatarPath,
             'playerAvatarPath' => $playerAvatarPath,
@@ -1495,6 +1497,7 @@ class DuoController extends Controller
         $opponentAvatar = $this->getSnapshotAvatarPath($opponentSnapshot);
 
         $opponentName = $this->getSnapshotDisplayName($opponentSnapshot, $opponent, 'Adversaire');
+        $playerName = $this->getSnapshotDisplayName($playerSnapshot, $user, 'Joueur');
 
         $skillsKey = "duo_skills_{$match->id}";
         $matchSkills = session($skillsKey, [
@@ -1548,6 +1551,7 @@ class DuoController extends Controller
             'strategicAvatarPath' => $strategicAvatarPath,
             'playerAvatarPath' => $playerAvatar,
             'opponentAvatarPath' => $opponentAvatar,
+            'playerName' => $playerName,
             'opponentName' => $opponentName,
             'shuffleAnswersActive' => $shuffleAnswersActive,
             'shuffleQuestionsLeft' => $shuffleQuestionsLeft,

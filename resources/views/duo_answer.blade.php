@@ -1,4 +1,16 @@
-@extends('layouts.app')
+@extends('layouts.game')
+
+@section('game-data')
+<script>
+window.MATCH_ID        = @json((string)($match_id ?? ''));
+window.ROOM_ID         = @json((string)($room_id ?? ''));
+window.LOBBY_CODE      = @json((string)($lobby_code ?? ''));
+window.JWT_TOKEN       = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
+window.TOTAL_QUESTIONS = {{ (int)($totalQuestions ?? 10) }};
+window.GAME_SERVER_URL = window.location.origin;
+</script>
+@endsection
 
 @section('content')
 @php
@@ -570,45 +582,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         opacity: 0.9;
     }
     
-    .voice-mic-button {
-        position: fixed;
-        bottom: 30px;
-        right: 20px;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        border: 2px solid rgba(78, 205, 196, 0.5);
-        background: rgba(15, 32, 39, 0.9);
-        color: white;
-        font-size: 1.4rem;
-        cursor: pointer;
-        z-index: 1000;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .voice-mic-button:hover {
-        background: rgba(78, 205, 196, 0.3);
-        transform: scale(1.1);
-    }
-    
-    .voice-mic-button.active {
-        background: linear-gradient(135deg, #2ECC71, #27AE60);
-        border-color: #2ECC71;
-        animation: pulse-mic 1.5s infinite;
-    }
-    
-    .voice-mic-button.muted {
-        background: rgba(60, 60, 60, 0.9);
-        border-color: rgba(150, 150, 150, 0.5);
-    }
-    
-    @keyframes pulse-mic {
-        0%, 100% { box-shadow: 0 0 10px rgba(46, 204, 113, 0.5); }
-        50% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.8); }
-    }
+    /* voice-mic-button styles: provided by layouts.game */
     
     @media (max-width: 480px) {
         .game-container {
@@ -677,11 +651,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     }
 </style>
 
-<div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
-
-<button id="voiceMicButton" class="voice-mic-button" title="{{ __('Activer/désactiver le micro') }}">
-    <span id="micIcon">🎤</span>
-</button>
+{{-- connection-status, voice-mic-button: provided by layouts.game --}}
 
 <div class="game-container">
     <div class="header-row">
@@ -831,9 +801,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     <source src="{{ asset('audio/buzzers/incorrect/incorrect1.mp3') }}" type="audio/mpeg">
 </audio>
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
-<script src="{{ asset('js/GameEffectsRuntime.js') }}"></script>
+{{-- socket.io, DuoSocketClient, GameEffectsRuntime: loaded by layouts.game --}}
 
 <script>
 (function() {
@@ -1312,8 +1280,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     }
     
     DuoSocketClient.on('connect', function() {
-        console.log('[DuoAnswer] Connected - ensuring room join');
-        DuoSocketClient.joinRoom(ROOM_ID, LOBBY_CODE, { playerId: PLAYER_ID, token: JWT_TOKEN });
+        console.log('[DuoAnswer] Socket connected (room join handled by GameplayRuntime)');
     });
     
     DuoSocketClient.on('disconnect', function(reason) {

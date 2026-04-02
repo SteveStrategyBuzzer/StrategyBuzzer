@@ -1,4 +1,15 @@
-@extends('layouts.app')
+@extends('layouts.game')
+
+@section('game-data')
+<script>
+window.ROOM_ID         = @json((string)($params['session_id'] ?? $params['match_id'] ?? ''));
+window.LOBBY_CODE      = @json(null);
+window.JWT_TOKEN       = @json((string)($params['jwt_token'] ?? ''));
+window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
+window.GAME_SERVER_URL = window.location.origin;
+window.NO_SOCKET_OVERLAY = true;
+</script>
+@endsection
 
 @section('content')
 @php
@@ -745,11 +756,7 @@ body {
     <source src="{{ asset('sounds/ready_announcement.mp3') }}" type="audio/mpeg">
 </audio>
 
-<!-- Socket.IO for ready synchronization -->
-@if($needsSyncGo)
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="/js/DuoSocketClient.js"></script>
-@endif
+{{-- socket.io + DuoSocketClient: loaded by layouts.game (no conditional needed) --}}
 
 <!-- Firebase SDK for chat and voice (if needed) -->
 @if($needsChat || $needsMic)
@@ -792,20 +799,13 @@ body {
         return window.location.origin;
     }
     
-    // Initialize Socket.IO for ready synchronization
-    async function initSocket() {
+    // connect() + joinRoom() handled by GameplayRuntime — register callbacks only
+    function initSocket() {
         if (socketInitialized || typeof DuoSocketClient === 'undefined') return false;
-        
         try {
-            const gameServerUrl = getGameServerUrl();
-            console.log('[Socket] Connecting to game server:', gameServerUrl);
-            
-            await DuoSocketClient.connect(gameServerUrl);
-            
             // Set up ready event handler for opponent
             DuoSocketClient.onPlayerReady = (data) => {
                 console.log('[Socket] Player ready event received:', data);
-                // Check if this is the opponent (not us)
                 if (data.playerId && String(data.playerId) !== String(playerId)) {
                     if (!opponentReady) {
                         opponentReady = true;
@@ -815,8 +815,6 @@ body {
                     }
                 }
             };
-            
-            // Also handle state updates which may contain ready status
             DuoSocketClient.onLobbyState = (state) => {
                 console.log('[Socket] Lobby state received:', state);
                 if (state && state.players) {
@@ -832,17 +830,8 @@ body {
                     });
                 }
             };
-            
-            // Join the room
-            DuoSocketClient.joinRoom(sessionId, null, {
-                playerId: String(playerId),
-                playerName: @json($playerName),
-                avatarId: @json($playerAvatar),
-                division: @json($playerDivision)
-            });
-            
             socketInitialized = true;
-            console.log('[Socket] Connected and joined room:', sessionId);
+            console.log('[Socket] Handlers registered (connect+joinRoom by GameplayRuntime)');
             return true;
         } catch (err) {
             console.warn('[Socket] Init failed:', err.message);
@@ -1058,8 +1047,8 @@ body {
     async function startReadyListener() {
         if (!needsSyncGo || !hasValidSession) return;
         
-        // Initialize Socket.IO connection (event handlers are set up in initSocket())
-        if (!await initSocket()) {
+        // Register socket handlers (connect+joinRoom handled by GameplayRuntime)
+        if (!initSocket()) {
             // Fallback: auto-proceed after 10s if Socket.IO fails
             console.warn('[Socket] Fallback: auto-proceed after 10s');
             setTimeout(() => {

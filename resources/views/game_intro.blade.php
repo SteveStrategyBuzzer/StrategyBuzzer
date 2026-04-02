@@ -1,4 +1,15 @@
-@extends('layouts.app')
+@extends('layouts.game')
+
+@section('game-data')
+<script>
+window.ROOM_ID         = @json($params['room_id'] ?? null);
+window.JWT_TOKEN       = @json($params['jwt_token'] ?? null);
+window.LOBBY_CODE      = @json($params['lobby_code'] ?? null);
+window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
+window.GAME_SERVER_URL = window.location.origin;
+window.NO_SOCKET_OVERLAY = true;
+</script>
+@endsection
 
 @push('head')
 {{-- Préchargement des ressources critiques de la page question --}}
@@ -452,10 +463,7 @@ body {
         </div>
     </div>
     
-    <div class="countdown-section">
-        <div class="countdown-text" id="countdownText">{{ __('Préparation') }}...</div>
-        <div class="countdown-number" id="countdown">VS</div>
-    </div>
+{{-- countdown-section removed: brain overlay from layouts.game shows during INTRO phase --}}
 </div>
 
 @if($showSoloWarning)
@@ -476,8 +484,7 @@ body {
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+{{-- socket.io and DuoSocketClient loaded by layouts.game --}}
 
 <script>
 // Fonction pour fermer le popup d'avertissement
@@ -559,48 +566,7 @@ function closeSoloWarning() {
         }
     }
     
-    async function warmupSocketConnection() {
-        if (socketConnected || !jwtToken || !roomId) {
-            console.log('[Intro] Socket warmup skipped - missing credentials');
-            return;
-        }
-        
-        try {
-            let serverUrl = window.location.origin;
-
-            console.log('[Intro] Socket warmup starting...', serverUrl);
-            
-            if (typeof DuoSocketClient !== 'undefined') {
-                const warmupSocket = DuoSocketClient;
-                
-                warmupSocket.onConnect = () => {
-                    socketConnected = true;
-                    console.log('[Intro] Socket connected - joining room...');
-                    warmupSocket.joinRoom(roomId, lobbyCode, {
-                        playerId: String(playerId),
-                        token: jwtToken
-                    });
-                };
-                
-                warmupSocket.onGameState = (data) => {
-                    console.log('[Intro] Game state received from server');
-                    sessionStorage.setItem('duo_game_state', JSON.stringify(data));
-                    sessionStorage.setItem('duo_socket_warmed', 'true');
-                    sessionStorage.setItem('duo_socket_timestamp', Date.now().toString());
-
-                    if (data && data.phase === 'QUESTION_ACTIVE' && !redirected) {
-                        redirected = true;
-                        window.location.href = redirectUrl;
-                    }
-                };
-                
-                await warmupSocket.connect(serverUrl, jwtToken);
-                console.log('[Intro] Socket warmup complete');
-            }
-        } catch (err) {
-            console.warn('[Intro] Socket warmup failed:', err.message);
-        }
-    }
+    // warmupSocketConnection removed — GameplayRuntime.js handles connect + joinRoom
     
     async function syncReadyAndStart() {
         const countdownEl = document.getElementById('countdown');
@@ -608,7 +574,7 @@ function closeSoloWarning() {
         const audio = document.getElementById('readyAudio');
         
         prefetchFirstQuestion();
-        warmupSocketConnection();
+        // warmupSocketConnection() removed — GameplayRuntime.js handles socket connect + joinRoom
         
         if (audio) {
             audio.volume = 1.0;
@@ -663,33 +629,24 @@ function closeSoloWarning() {
         }
     }
     
-    function startCountdownSequence() {
-        const countdownText = document.getElementById('countdownText');
-        if (countdownText) countdownText.textContent = "{{ __('La partie commence dans') }}...";
-        runCountdown();
-    }
-    
-    function runCountdown() {
-        const countdownEl = document.getElementById('countdown');
-        let index = 0;
-        
-        function tick() {
-            if (index < COUNTDOWN_NUMBERS.length) {
-                if (countdownEl) countdownEl.textContent = COUNTDOWN_NUMBERS[index];
-                index++;
-                setTimeout(tick, 1000);
-            } else {
-                if (countdownEl) countdownEl.textContent = '🚀';
-                
-                setTimeout(() => {
-                    console.log("[Intro] Countdown finished - waiting for server phase");
-                }, 500);
+    // startCountdownSequence + runCountdown removed — brain overlay handles INTRO phase
+
+    // Redirect to question page when server signals phase QUESTION_ACTIVE
+    if (typeof DuoSocketClient !== 'undefined') {
+        DuoSocketClient.on('phase_changed', function(data) {
+            if (!redirected && data && data.phase === 'QUESTION_ACTIVE') {
+                redirected = true;
+                window.location.href = redirectUrl;
             }
-        }
-        
-        tick();
+        });
+        DuoSocketClient.on('game_state', function(data) {
+            if (!redirected && data && data.phase === 'QUESTION_ACTIVE') {
+                redirected = true;
+                window.location.href = redirectUrl;
+            }
+        });
     }
-    
+
     document.addEventListener('DOMContentLoaded', () => {
         syncReadyAndStart();
     });

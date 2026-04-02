@@ -1,4 +1,16 @@
-@extends('layouts.app')
+@extends('layouts.game')
+
+@section('game-data')
+<script>
+window.MATCH_ID        = @json((string)($match_id ?? ''));
+window.ROOM_ID         = @json((string)($room_id ?? ''));
+window.LOBBY_CODE      = @json((string)($lobby_code ?? ''));
+window.JWT_TOKEN       = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
+window.TOTAL_QUESTIONS = {{ (int)($totalQuestions ?? 10) }};
+window.GAME_SERVER_URL = window.location.origin;
+</script>
+@endsection
 
 @section('content')
 @php
@@ -699,71 +711,7 @@ $mode = 'duo';
         font-weight: 600;
     }
 </style>
-
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <div class="loading-text" id="loadingText">{{ __('Connexion au serveur...') }}</div>
-    </div>
-</div>
-
-<div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
-
-<button id="voiceMicButton" class="voice-mic-button" title="{{ __('Activer/désactiver le micro') }}">
-    <span id="micIcon">🎤</span>
-</button>
-
-<style>
-    .voice-mic-button {
-        position: fixed;
-        bottom: 200px;
-        right: 20px;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        border: 2px solid rgba(78, 205, 196, 0.5);
-        background: rgba(15, 32, 39, 0.9);
-        color: white;
-        font-size: 1.4rem;
-        cursor: pointer;
-        z-index: 1000;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .voice-mic-button:hover {
-        background: rgba(78, 205, 196, 0.3);
-        transform: scale(1.1);
-    }
-    
-    .voice-mic-button.active {
-        background: linear-gradient(135deg, #2ECC71, #27AE60);
-        border-color: #2ECC71;
-        animation: pulse-mic 1.5s infinite;
-    }
-    
-    .voice-mic-button.muted {
-        background: rgba(60, 60, 60, 0.9);
-        border-color: rgba(150, 150, 150, 0.5);
-    }
-    
-    @keyframes pulse-mic {
-        0%, 100% { box-shadow: 0 0 10px rgba(46, 204, 113, 0.5); }
-        50% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.8); }
-    }
-    
-    @media (max-width: 768px) {
-        .voice-mic-button {
-            width: 45px;
-            height: 45px;
-            font-size: 1.2rem;
-            bottom: 180px;
-            right: 15px;
-        }
-    }
-</style>
+{{-- loading-overlay, connection-status, voice-mic-button: provided by layouts.game --}}
 
 <div class="game-container" id="gameContainer" style="display: none;">
     <div class="question-header">
@@ -867,19 +815,18 @@ $mode = 'duo';
     <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
 </audio>
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+{{-- socket.io + DuoSocketClient loaded by layouts.game --}}
 
 <script>
 (function() {
     'use strict';
     
-    const MATCH_ID = @json((string) ($match_id ?? ''));
-    const ROOM_ID = @json((string) ($room_id ?? ''));
-    const LOBBY_CODE = @json((string) ($lobby_code ?? ''));
-    const JWT_TOKEN = @json((string) ($jwt_token ?? ''));
-    const GAME_SERVER_URL = window.location.origin;
-    let duoSocket = null;
+    const MATCH_ID        = window.MATCH_ID        || @json((string)($match_id ?? ''));
+    const ROOM_ID         = window.ROOM_ID         || @json((string)($room_id ?? ''));
+    const LOBBY_CODE      = window.LOBBY_CODE      || @json((string)($lobby_code ?? ''));
+    const JWT_TOKEN       = window.JWT_TOKEN       || @json((string)($jwt_token ?? ''));
+    const GAME_SERVER_URL = window.GAME_SERVER_URL || window.location.origin;
+    const duoSocket = window.DuoSocketClient; // set by layouts.game; connect+joinRoom owned by GameplayRuntime
     
     const ANSWER_URL = @json(route('game.duo.answer'));
     const RESULT_URL = @json(route('game.duo.result'));
@@ -1529,36 +1476,9 @@ $mode = 'duo';
         return false;
     }
     
-    async function initializeSocket() {
-        if (!GAME_SERVER_URL || !JWT_TOKEN) {
-            console.warn('[DuoQuestion] Token ou URL absents');
-            updateConnectionStatus('disconnected');
-            updateLoadingText('{{ __("Chargement de la question...") }}');
-            await loadQuestionFromServer();
-            applyPhaseVisualState();
-            return;
-        }
-        
-        updateConnectionStatus('connecting');
-        updateLoadingText('{{ __("Connexion au serveur...") }}');
-        
-        await DuoSocketClient.connect(GAME_SERVER_URL, JWT_TOKEN);
-        duoSocket = DuoSocketClient;
-        updateConnectionStatus('connected');
-        socketConnected = true;
-        updateLoadingText('{{ __("Synchronisation de la partie...") }}');
-        
-        duoSocket.on('disconnect', (reason) => {
-            updateConnectionStatus('disconnected');
-            socketConnected = false;
-            console.log('[DuoQuestion] Déconnecté:', reason);
-        });
-        
-        duoSocket.on('error', (error) => {
-            console.error('[DuoQuestion] Erreur Socket:', error);
-            updateConnectionStatus('disconnected');
-        });
-        
+    // initializeSocket() replaced — GameplayRuntime.js owns connect() + joinRoom()
+    // Register game-specific handlers directly (safe to call before socket connects)
+    if (duoSocket) {
         duoSocket.on('game_state', handleGameState);
         duoSocket.on('phase_changed', handlePhaseChanged);
         duoSocket.on('question_published', handleQuestionPublished);
@@ -1570,9 +1490,17 @@ $mode = 'duo';
         duoSocket.on('skill_activated', handleSkillActivated);
         duoSocket.on('skill_failed', handleSkillFailed);
         duoSocket.on('rate_limited', handleRateLimited);
-        duoSocket.joinRoom(ROOM_ID, LOBBY_CODE, { playerId: CURRENT_USER_ID, token: JWT_TOKEN });
+        duoSocket.on('connect', function() {
+            socketConnected = true;
+        });
+        duoSocket.on('disconnect', function() {
+            socketConnected = false;
+        });
+    } else {
+        console.warn('[DuoQuestion] DuoSocketClient unavailable — falling back to HTTP question load');
+        loadQuestionFromServer();
     }
-    
+
     buzzButton.addEventListener('click', handleBuzz);
     
     document.addEventListener('keydown', function(e) {
@@ -1603,7 +1531,6 @@ $mode = 'duo';
     });
     
     applyPhaseVisualState();
-    initializeSocket();
     
     window.addEventListener('beforeunload', () => {
         if (duoSocket && duoSocket.isConnected()) {

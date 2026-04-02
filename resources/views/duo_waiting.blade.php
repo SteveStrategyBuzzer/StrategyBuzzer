@@ -1,4 +1,15 @@
-@extends('layouts.app')
+@extends('layouts.game')
+
+@section('game-data')
+<script>
+window.ROOM_ID         = @json((string)($room_id ?? ''));
+window.LOBBY_CODE      = @json(null);
+window.JWT_TOKEN       = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
+window.GAME_SERVER_URL = window.location.origin;
+window.NO_SOCKET_OVERLAY = true;
+</script>
+@endsection
 
 @section('content')
 @php
@@ -529,85 +540,43 @@
         {{ __('Phase d’attente dédiée au Duo. Aucune logique Firebase ne doit intervenir ici.') }}
     </div>
 </div>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+{{-- socket.io + DuoSocketClient: loaded by layouts.game --}}
 
 <script>
-document.addEventListener('DOMContentLoaded', async () => {
-    const roomId = @json($room_id ?? '');
-    const jwtToken = @json($jwt_token ?? '');
-    const playerId = @json($playerId ?? auth()->id() ?? '');
-    const playerName = @json($playerName ?? ($player_info['name'] ?? 'Joueur'));
-    const playerAvatar = @json($playerAvatarPath ?? ($player_info['avatar'] ?? ''));
-    const playerDivision = @json($playerDivision ?? null);
-
-    function getGameServerUrl() {
-        return window.location.origin;
-    }
-
-    if (!roomId || !jwtToken) {
-        console.warn('[DuoWaiting] Missing roomId or jwtToken');
-        return;
-    }
-
+// connect() + joinRoom() handled by GameplayRuntime — register view-specific handlers here
+document.addEventListener('DOMContentLoaded', () => {
     if (typeof DuoSocketClient === 'undefined') {
         console.error('[DuoWaiting] DuoSocketClient unavailable');
         return;
     }
 
-    try {
-        const gameServerUrl = getGameServerUrl();
-        console.log('[DuoWaiting] Connecting to game server:', gameServerUrl);
+    DuoSocketClient.on('phase_changed', (data) => {
+        console.log('[DuoWaiting] phase_changed:', data);
+        if (!data || !data.phase) { return; }
+        if (data.phase === 'QUESTION_DISPLAY' || data.phase === 'BUZZ_WINDOW' || data.phase === 'question') {
+            window.location.href = "{{ route('game.duo.question') }}";
+            return;
+        }
+        if (data.phase === 'ANSWER_REVEAL' || data.phase === 'answer') {
+            window.location.href = "{{ route('game.duo.answer') }}";
+            return;
+        }
+        if (data.phase === 'ROUND_RESULT' || data.phase === 'result') {
+            window.location.href = "{{ route('game.duo.result') }}";
+            return;
+        }
+        if (data.phase === 'MATCH_RESULT' || data.phase === 'match_result') {
+            window.location.href = "{{ route('game.duo.match-result') }}";
+        }
+    });
 
-        await DuoSocketClient.connect(gameServerUrl, jwtToken);
+    DuoSocketClient.on('error', (error) => {
+        console.error('[DuoWaiting] Socket error:', error);
+    });
 
-        DuoSocketClient.joinRoom(roomId, null, {
-            playerId: String(playerId),
-            playerName: playerName,
-            avatarId: playerAvatar,
-            division: playerDivision
-        });
-
-        console.log('[DuoWaiting] Connected and joined room:', roomId);
-
-        DuoSocketClient.on('phase_changed', (data) => {
-            console.log('[DuoWaiting] phase_changed:', data);
-
-            if (!data || !data.phase) {
-                return;
-            }
-
-            if (data.phase === 'QUESTION_DISPLAY' || data.phase === 'BUZZ_WINDOW' || data.phase === 'question') {
-                window.location.href = "{{ route('game.duo.question') }}";
-                return;
-            }
-
-            if (data.phase === 'ANSWER_REVEAL' || data.phase === 'answer') {
-                window.location.href = "{{ route('game.duo.answer') }}";
-                return;
-            }
-
-            if (data.phase === 'ROUND_RESULT' || data.phase === 'result') {
-                window.location.href = "{{ route('game.duo.result') }}";
-                return;
-            }
-
-            if (data.phase === 'MATCH_RESULT' || data.phase === 'match_result') {
-                window.location.href = "{{ route('game.duo.match-result') }}";
-            }
-        });
-
-        DuoSocketClient.on('error', (error) => {
-            console.error('[DuoWaiting] Socket error:', error);
-        });
-
-        DuoSocketClient.on('disconnect', (reason) => {
-            console.warn('[DuoWaiting] Disconnected:', reason);
-        });
-
-    } catch (err) {
-        console.error('[DuoWaiting] Socket init failed:', err.message);
-    }
+    DuoSocketClient.on('disconnect', (reason) => {
+        console.warn('[DuoWaiting] Disconnected:', reason);
+    });
 });
 </script>
 @endsection
