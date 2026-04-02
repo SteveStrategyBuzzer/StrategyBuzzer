@@ -1795,7 +1795,12 @@ class DuoController extends Controller
                         'name'        => $player->name,
                         'player_code' => $player->player_code ?? null,
                         'avatar_url'  => $player->avatar_url ?? null,
-                    ] : null,
+                    ] : [
+                        'id'          => null,
+                        'name'        => 'Joueur inconnu',
+                        'player_code' => null,
+                        'avatar_url'  => null,
+                    ],
                 ];
             })
             ->values();
@@ -1817,7 +1822,12 @@ class DuoController extends Controller
                         'name'        => $player->name,
                         'player_code' => $player->player_code ?? null,
                         'avatar_url'  => $player->avatar_url ?? null,
-                    ] : null,
+                    ] : [
+                        'id'          => null,
+                        'name'        => 'Joueur inconnu',
+                        'player_code' => null,
+                        'avatar_url'  => null,
+                    ],
                 ];
             })
             ->values();
