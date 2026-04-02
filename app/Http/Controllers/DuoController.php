@@ -217,11 +217,31 @@ class DuoController extends Controller
             ], 400);
         }
 
+        $lobbyExists = (bool) $this->lobbyService->getLobby($match->lobby_code);
+
+        if (!$lobbyExists) {
+            $host = \App\Models\User::find($match->player1_id);
+            if ($host) {
+                $this->lobbyService->recreateLobby($match->lobby_code, $host, 'duo', [
+                    'theme'        => $match->theme ?? __('Culture générale'),
+                    'nb_questions' => 10,
+                    'match_id'     => $match->id,
+                ]);
+            }
+        }
+
         $this->matchmaking->acceptMatch($match);
 
         $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
 
-        $this->lobbyService->joinLobby($match->lobby_code, $user);
+        $joinResult = $this->lobbyService->joinLobby($match->lobby_code, $user);
+
+        if (!($joinResult['success'] ?? false) && !($joinResult['already_joined'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Le salon n\'a pas pu être rejoint. Demandez à votre adversaire de renvoyer une invitation.'),
+            ], 400);
+        }
 
         return response()->json([
             'success' => true,

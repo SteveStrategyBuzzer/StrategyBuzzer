@@ -232,6 +232,51 @@ class LobbyService
         return $lobby;
     }
 
+    public function recreateLobby(string $code, User $host, string $mode, array $settings = []): array
+    {
+        $mergedSettings = array_merge([
+            'max_players' => $this->getMaxPlayers($mode),
+            'min_players' => $this->getMinPlayers($mode),
+            'teams_enabled' => false,
+            'theme' => __('Culture générale'),
+            'nb_questions' => 10,
+        ], $settings);
+
+        $hostDisplayName = $this->getPlayerDisplayName($host);
+
+        $lobby = [
+            'code'       => strtoupper($code),
+            'host_id'    => $host->id,
+            'host_name'  => $hostDisplayName,
+            'mode'       => $mode,
+            'settings'   => $mergedSettings,
+            'players'    => [
+                $host->id => [
+                    'id'               => $host->id,
+                    'name'             => $hostDisplayName,
+                    'player_code'      => $host->player_code,
+                    'avatar'           => $this->getUserAvatar($host),
+                    'color'            => 'blue',
+                    'team'             => null,
+                    'ready'            => false,
+                    'is_host'          => true,
+                    'joined_at'        => now()->toISOString(),
+                    'competence_coins' => $host->competence_coins ?? 0,
+                ],
+            ],
+            'game_server' => [],
+            'created_at'  => now()->toISOString(),
+            'status'      => 'waiting',
+        ];
+
+        $this->saveLobby($code, $lobby);
+        $this->addPlayerToLobbyList($host->id, $code, $mode);
+
+        Log::info('LobbyService: Lobby recreated from DB data', ['code' => $code, 'host_id' => $host->id]);
+
+        return $lobby;
+    }
+
     protected function resolvePlayerIds(User $host, string $mode, ?int $matchId = null): array
     {
         $playerIds = [$host->id];

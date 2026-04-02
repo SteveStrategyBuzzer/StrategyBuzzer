@@ -2483,7 +2483,10 @@ $duoTranslations = [
     'Salon fermé' => __('Salon fermé'),
     'Erreur lors de la fermeture' => __('Erreur lors de la fermeture'),
     'Êtes-vous sûr de vouloir fermer ce salon ?' => __('Êtes-vous sûr de vouloir fermer ce salon ?'),
-    'Entrer' => __('Entrer')
+    'Entrer' => __('Entrer'),
+    'Connexion perdue - réessai en cours...' => __('Connexion perdue - réessai en cours...'),
+    'Erreur lors de l\'acceptation' => __('Erreur lors de l\'acceptation'),
+    'Erreur lors du refus' => __('Erreur lors du refus'),
 ];
 @endphp
 <script>
@@ -2603,6 +2606,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    let _invitationsFetchFailed = false;
+
     // Vérifier les invitations reçues
     function checkInvitations() {
         fetch('{{ route("duo.invitations") }}')
@@ -2611,9 +2616,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
+                _invitationsFetchFailed = false;
                 displayInvitations(data.invitations || [], data.sent_invitations || []);
             })
-            .catch(err => console.error('[Invitations] fetch error:', err));
+            .catch(err => {
+                console.error('[Invitations] fetch error:', err);
+                if (!_invitationsFetchFailed) {
+                    _invitationsFetchFailed = true;
+                    const list = document.getElementById('invitationsList');
+                    if (list) {
+                        list.innerHTML = '<p class="no-invitations" style="color:#f59e0b;">⚠️ ' + t('Connexion perdue - réessai en cours...') + '</p>';
+                    }
+                }
+            });
     }
 
     function displayInvitations(receivedInvitations, sentInvitations) {
