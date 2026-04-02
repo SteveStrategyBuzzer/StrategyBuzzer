@@ -74,22 +74,6 @@
     #loadingOverlay .loading-text { color: #4ECDC4; font-size: 1.1rem; font-weight: 600; }
     @keyframes grSpin { to { transform: rotate(360deg); } }
 
-    /* Connection status badge */
-    #connectionStatus {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        z-index: 8000;
-        display: none;
-    }
-    #connectionStatus.connecting    { background: rgba(255,193,7,0.9);  color: #000; display: block; }
-    #connectionStatus.connected     { background: rgba(40,167,69,0.9);   color: #fff; display: block; }
-    #connectionStatus.disconnected  { background: rgba(220,53,69,0.9);   color: #fff; display: block; }
-
     /* Voice mic button */
     #voiceMicButton {
         position: fixed;
@@ -176,9 +160,6 @@
         <div class="loading-text" id="loadingText">{{ __('Connexion au serveur...') }}</div>
     </div>
 </div>
-
-<!-- Connection Status Badge -->
-<div id="connectionStatus"></div>
 
 <!-- Voice Mic Button (WebRTC — shown by VoiceChat init, hidden by default) -->
 <button id="voiceMicButton" title="{{ __('Activer/désactiver le micro') }}">
