@@ -1,0 +1,168 @@
+🔥 PROMPT REPLIT — SYNCHRO RÉELLE + BUG INTRO
+
+Je travaille sur StrategyBuzzer (mode Duo) avec une architecture stricte :
+
+🏗️ ARCHITECTURE (À RESPECTER À 100%)
+Node.js / Socket.IO = source de vérité du gameplay
+→ phases, question, reveal, score, sync
+Laravel = structure
+→ routes, Blade, tokens JWT
+Firebase = présence uniquement
+→ AUCUN rôle dans ready / start / gameplay
+✅ ÉTAT ACTUEL (IMPORTANT)
+
+Les logs montrent :
+
+Socket connecté ✔️
+join_room envoyé ✔️
+state reçu ✔️
+phase_changed reçu ✔️
+QUESTION_ACTIVE reçu ✔️
+QUESTION_PUBLISHED reçu ✔️
+
+👉 Donc le serveur fonctionne parfaitement.
+
+❌ PROBLÈME ACTUEL
+
+Le jeu reste bloqué sur “Ladies and Gentlemen” (page intro)
+
+Même si :
+
+QUESTION_ACTIVE est reçu
+QUESTION_PUBLISHED est reçu
+le gameplay continue côté serveur
+
+👉 Donc :
+
+👉 LE BUG EST 100% FRONT (intro / transition)
+🚨 PROBLÈMES IDENTIFIÉS
+1. Firebase casse le flow
+
+Erreur :
+
+Firebase: auth/api-key-not-valid
+
+Et log :
+
+Firebase sync unavailable - waiting for server phase
+
+👉 Conclusion :
+
+Firebase est encore utilisé dans intro
+Il ne doit PAS être utilisé pour start / sync
+Il introduit un comportement fallback instable
+2. Intro ne réagit pas aux events Socket.IO
+
+Logs :
+
+[DuoSocket] Phase changed QUESTION_ACTIVE
+[DuoSocket] Question published
+
+Mais :
+
+👉 aucune transition UI
+👉 pas de redirection vers duo_question
+
+3. Events non gérés côté client
+
+Logs critiques :
+
+Unhandled event type PHASE_CHANGED
+Unhandled event type QUESTION_PUBLISHED
+
+👉 Donc :
+
+le client reçoit les events
+mais aucun handler ne fait la transition
+🎯 OBJECTIF CLAIR
+
+👉 L’intro doit être pilotée uniquement par Socket.IO
+
+🔧 CE QUE TU DOIS FAIRE (OBLIGATOIRE)
+1. Supprimer Firebase du flow intro
+
+Dans :
+
+intro.blade.php
+game_intro.blade.php
+tout JS lié
+
+👉 Supprimer :
+
+initFirebase
+signInAnonymously
+syncReadyAndStart
+toute logique de start basée sur Firebase
+
+👉 Firebase = présence seulement, PAS gameplay
+
+2. Ajouter handler Socket obligatoire
+
+Dans l’intro :
+
+socket.on('phase_changed', (data) => {
+    if (data.phase === 'QUESTION_ACTIVE') {
+        window.location.href = '/duo/question';
+    }
+});
+3. Ajouter handler question_published
+socket.on('question_published', (data) => {
+    console.log('Question reçue:', data);
+
+    // sécurité fallback
+    window.location.href = '/duo/question';
+});
+4. Interdire toute logique de countdown locale
+
+❌ INTERDIT :
+
+countdown frontend autonome
+start basé sur timer JS
+start basé sur Firebase
+
+✅ SEULE SOURCE :
+
+phase_changed venant du serveur
+⚠️ RÈGLE CRITIQUE
+
+👉 Le client NE DOIT JAMAIS DÉCIDER DU MOMENT DU START
+
+Seul le serveur décide :
+
+INTRO → QUESTION_ACTIVE → REVEAL → WAITING
+💣 SI ON NE CORRIGE PAS
+désynchronisation entre joueurs
+bugs aléatoires (1 joueur voit question, l’autre non)
+gameplay injouable en prod
+🎯 RÉSULTAT ATTENDU
+dès QUESTION_ACTIVE → transition immédiate vers question
+aucun blocage sur intro
+aucun usage Firebase pour start
+100% piloté par Socket.IO
+🔍 BONUS
+
+Corriger aussi :
+
+Unhandled event type PHASE_CHANGED
+Unhandled event type QUESTION_PUBLISHED
+
+👉 Tous les events reçus doivent avoir un handler
+
+⚡ PRIORITÉ
+
+🔥 CRITIQUE — bloque le gameplay complet
+
+👉 Une fois corrigé, donne-moi :
+
+le code modifié de l’intro
+les handlers socket ajoutés
+🧠 (IMPORTANT)
+
+Tu dois respecter strictement :
+
+séparation des responsabilités
+Node = gameplay
+Laravel = structure
+Firebase = présence
+
+AUCUN mélange.
