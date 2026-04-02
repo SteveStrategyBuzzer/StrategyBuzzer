@@ -2606,14 +2606,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Vérifier les invitations reçues
     function checkInvitations() {
         fetch('{{ route("duo.invitations") }}')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
             .then(data => {
                 displayInvitations(data.invitations || [], data.sent_invitations || []);
-            });
+            })
+            .catch(err => console.error('[Invitations] fetch error:', err));
     }
 
     function displayInvitations(receivedInvitations, sentInvitations) {
         const list = document.getElementById('invitationsList');
+        if (!list) return;
         let html = '';
         
         if (sentInvitations.length > 0) {
@@ -2633,20 +2638,24 @@ document.addEventListener('DOMContentLoaded', function() {
             if (sentInvitations.length > 0) {
                 html += `<div class="invitations-section-title" style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1);">📥 ${t('Invitations reçues')}</div>`;
             }
-            html += receivedInvitations.map(inv => `
+            html += receivedInvitations.map(inv => {
+                const fromName = inv.from_player?.name || t('Joueur inconnu');
+                const fromId = inv.from_player?.id || 0;
+                const fromCode = inv.from_player?.player_code || '';
+                return `
                 <div class="invitation-item">
-                    <span>${inv.from_player.name} ${t('vous invite')}</span>
+                    <span>${fromName} ${t('vous invite')}</span>
                     <div class="invitation-actions">
                         <button onclick="declineInvitation(${inv.match_id})" class="btn-decline">${t('Refuser')}</button>
-                        <button onclick="openChat(${inv.from_player.id}, '${inv.from_player.name}')" class="btn-chat" title="${t('Envoyer un message')}">💬</button>
+                        ${fromId ? `<button onclick="openChat(${fromId}, '${fromName.replace(/'/g, "\\'")}')" class="btn-chat" title="${t('Envoyer un message')}">💬</button>` : ''}
                         <button onclick="acceptInvitation(${inv.match_id})" class="btn-accept">${t('Accepter')}</button>
                     </div>
                     <div class="invitation-group-actions">
-                        <button onclick="addToCarnet('${inv.from_player.player_code || ''}')" class="btn-add-contact">📒 ${t('Ajouter au carnet')}</button>
-                        <button onclick="createGroupFromInvitation(${inv.from_player.id}, '${inv.from_player.name}')" class="btn-create-group-invite">👥 ${t('Créer un groupe')}</button>
+                        ${fromCode ? `<button onclick="addToCarnet('${fromCode}')" class="btn-add-contact">📒 ${t('Ajouter au carnet')}</button>` : ''}
+                        ${fromId ? `<button onclick="createGroupFromInvitation(${fromId}, '${fromName.replace(/'/g, "\\'")}')" class="btn-create-group-invite">👥 ${t('Créer un groupe')}</button>` : ''}
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
         
         if (receivedInvitations.length === 0 && sentInvitations.length === 0) {
@@ -3600,11 +3609,14 @@ const currentUser = {
 
 let selectedDivision = currentUser.division;
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('[Queue] Initializing matchmaking queue system');
-    initQueueButtons();
-    startContactPolling();
-});
+if (!window._duoQueueInitialized) {
+    window._duoQueueInitialized = true;
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('[Queue] Initializing matchmaking queue system');
+        initQueueButtons();
+        startContactPolling();
+    });
+}
 
 function initQueueButtons() {
     const joinBtn = document.getElementById('randomMatchBtn');

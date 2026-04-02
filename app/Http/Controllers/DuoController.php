@@ -1783,13 +1783,19 @@ class DuoController extends Controller
             ->with('player1')
             ->get()
             ->map(function ($match) {
+                $player = $match->player1;
                 return [
-                    'match_id' => $match->id,
-                    'id' => $match->id,
-                    'status' => $match->status,
-                    'lobby_code' => $match->lobby_code,
-                    'room_id' => $match->room_id,
-                    'from_player' => $match->player1,
+                    'match_id'    => $match->id,
+                    'id'          => $match->id,
+                    'status'      => $match->status,
+                    'lobby_code'  => $match->lobby_code,
+                    'room_id'     => $match->room_id,
+                    'from_player' => $player ? [
+                        'id'          => $player->id,
+                        'name'        => $player->name,
+                        'player_code' => $player->player_code ?? null,
+                        'avatar_url'  => $player->avatar_url ?? null,
+                    ] : null,
                 ];
             })
             ->values();
@@ -1799,13 +1805,19 @@ class DuoController extends Controller
             ->with('player2')
             ->get()
             ->map(function ($match) {
+                $player = $match->player2;
                 return [
-                    'match_id' => $match->id,
-                    'id' => $match->id,
-                    'status' => $match->status,
+                    'match_id'   => $match->id,
+                    'id'         => $match->id,
+                    'status'     => $match->status,
                     'lobby_code' => $match->lobby_code,
-                    'room_id' => $match->room_id,
-                    'to_player' => $match->player2,
+                    'room_id'    => $match->room_id,
+                    'to_player'  => $player ? [
+                        'id'          => $player->id,
+                        'name'        => $player->name,
+                        'player_code' => $player->player_code ?? null,
+                        'avatar_url'  => $player->avatar_url ?? null,
+                    ] : null,
                 ];
             })
             ->values();
