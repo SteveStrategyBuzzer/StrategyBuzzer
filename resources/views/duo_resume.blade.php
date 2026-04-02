@@ -758,13 +758,12 @@ body {
         return window.location.origin;
     }
     
-    // connect() + joinRoom() handled by GameplayRuntime — register callbacks only
+    // connect() + joinRoom() handled by GameplayRuntime — subscribe to events only
     function initSocket() {
         if (socketInitialized || typeof DuoSocketClient === 'undefined') return false;
         try {
-            // Set up ready event handler for opponent
-            DuoSocketClient.onPlayerReady = (data) => {
-                console.log('[Socket] Player ready event received:', data);
+            DuoSocketClient.on('player_ready', (data) => {
+                console.log('[Socket] player_ready received:', data);
                 if (data.playerId && String(data.playerId) !== String(playerId)) {
                     if (!opponentReady) {
                         opponentReady = true;
@@ -773,9 +772,9 @@ body {
                         checkBothReady();
                     }
                 }
-            };
-            DuoSocketClient.onLobbyState = (state) => {
-                console.log('[Socket] Lobby state received:', state);
+            });
+            DuoSocketClient.on('state', (state) => {
+                console.log('[Socket] state received:', state);
                 if (state && state.players) {
                     Object.entries(state.players).forEach(([pid, player]) => {
                         if (String(pid) !== String(playerId) && player.isReady) {
@@ -788,7 +787,13 @@ body {
                         }
                     });
                 }
-            };
+            });
+            DuoSocketClient.on('phase_changed', (data) => {
+                if (data && data.phase === 'QUESTION_ACTIVE' && redirectUrl && !redirected) {
+                    redirected = true;
+                    window.location.href = redirectUrl;
+                }
+            });
             socketInitialized = true;
             console.log('[Socket] Handlers registered (connect+joinRoom by GameplayRuntime)');
             return true;
@@ -845,21 +850,10 @@ body {
     window.addEventListener('beforeunload', cleanup);
     window.addEventListener('pagehide', cleanup);
     
-    // Non-sync mode (Solo): show brain overlay then redirect — driven by server phase deadline
+    // Non-sync mode: show brain overlay, navigate on server phase_changed (QUESTION_ACTIVE)
     if (!needsSyncGo) {
         if (redirectUrl) {
-            const phaseDelay = window.PHASE_ENDS_AT_MS
-                ? Math.max(500, window.PHASE_ENDS_AT_MS - Date.now())
-                : 9000;
             if (window.showBrainSpin) window.showBrainSpin('{{ __("La partie commence dans...") }}');
-            const redirectTimer = setTimeout(() => {
-                if (window.showBrainSpin) window.showBrainSpin('🚀');
-                if (!redirected) {
-                    redirected = true;
-                    setTimeout(() => { window.location.href = redirectUrl; }, 400);
-                }
-            }, phaseDelay);
-            window.addEventListener('beforeunload', () => clearTimeout(redirectTimer));
         }
     }
     
@@ -900,85 +894,46 @@ body {
     }
     
     function startCountdown() {
-        cleanup(); // Stop listening once both ready
-        
-        // PRE-LOAD QUESTIONS IN BACKGROUND (bloc 1 = questions 1-4)
+        // Pre-load questions in background (bloc 1 = questions 1-4)
         preloadQuestions();
-        
+
         const waitingMessage = document.getElementById('waitingMessage');
         const goButton = document.getElementById('goButton');
         const goStatus = document.querySelector('.go-status');
         const audio = document.getElementById('readyAudio');
-        
+
         if (waitingMessage) waitingMessage.style.display = 'none';
         if (goButton) goButton.style.display = 'none';
         if (goStatus) goStatus.style.display = 'none';
-        
-        // Show brain overlay instead of local countdown
+
+        // Show brain overlay — navigation is driven by server phase_changed → QUESTION_ACTIVE
         if (window.showBrainSpin) window.showBrainSpin('{{ __("La partie commence dans...") }}');
-        
-        // Play audio and sync countdown to audio duration (like Solo mode)
+
+        // Play audio for UX countdown display only — does NOT decide navigation
         if (audio) {
             audio.volume = 1.0;
-            
-            let audioDuration = 0;
             let updateInterval = null;
-            
-            // When audio metadata is loaded, start countdown synced to audio
-            const startAudioCountdown = () => {
-                audioDuration = audio.duration || 5;
+            const startAudioPlayback = () => {
+                const audioDuration = audio.duration || 5;
                 if (window.showBrainSpin) window.showBrainSpin(Math.ceil(audioDuration) + '...');
-                
                 audio.play().then(() => {
-                    // Update brain overlay message with remaining seconds
                     updateInterval = setInterval(() => {
                         const remaining = audioDuration - audio.currentTime;
-                        if (remaining > 0) {
-                            if (window.showBrainSpin) window.showBrainSpin(Math.ceil(remaining) + '...');
-                        } else {
-                            if (window.showBrainSpin) window.showBrainSpin('🚀');
+                        if (window.showBrainSpin) {
+                            window.showBrainSpin(remaining > 0 ? Math.ceil(remaining) + '...' : '🚀');
                         }
                     }, 100);
-                }).catch(e => {
-                    console.warn('Audio play failed:', e);
-                    // Fallback to simple countdown if audio fails
-                    fallbackCountdown();
-                });
+                }).catch(() => { /* audio blocked — brain overlay already shown */ });
             };
-            
-            // When audio ends, redirect
-            audio.addEventListener('ended', function() {
+            audio.addEventListener('ended', function () {
                 if (updateInterval) clearInterval(updateInterval);
-                if (!redirected) {
-                    redirected = true;
-                    window.location.href = redirectUrl;
-                }
-            }, { once: true });
-            
-            // Start when metadata ready or immediately if already loaded
-            if (audio.readyState >= 1) {
-                startAudioCountdown();
-            } else {
-                audio.addEventListener('loadedmetadata', startAudioCountdown, { once: true });
-                // Fallback if metadata never loads
-                setTimeout(() => {
-                    if (!audio.duration) fallbackCountdown();
-                }, 3000);
-            }
-        } else {
-            fallbackCountdown();
-        }
-        
-        // Fallback: brain overlay + single timeout before redirect (no interval)
-        function fallbackCountdown() {
-            if (window.showBrainSpin) window.showBrainSpin('{{ __("La partie commence dans...") }}');
-            setTimeout(() => {
                 if (window.showBrainSpin) window.showBrainSpin('🚀');
-                if (!redirected) {
-                    redirected = true;
-                    setTimeout(() => { window.location.href = redirectUrl; }, 400);
-                }
-            }, 9000);
+            }, { once: true });
+            if (audio.readyState >= 1) {
+                startAudioPlayback();
+            } else {
+                audio.addEventListener('loadedmetadata', startAudioPlayback, { once: true });
+            }
         }
     }
     
@@ -988,19 +943,10 @@ body {
         
         // Register socket handlers (connect+joinRoom handled by GameplayRuntime)
         if (!initSocket()) {
-            // Fallback: auto-proceed after 10s if Socket.IO fails
-            console.warn('[Socket] Fallback: auto-proceed after 10s');
-            setTimeout(() => {
-                if (!opponentReady) {
-                    opponentReady = true;
-                    const opponentDot = document.getElementById('opponentDot');
-                    if (opponentDot) opponentDot.classList.add('ready');
-                    checkBothReady();
-                }
-            }, 10000);
+            console.warn('[Socket] Handler registration failed — waiting for server phase_changed event');
             return;
         }
-        
+
         console.log('[Socket] Ready listener initialized via Socket.IO');
     }
     
