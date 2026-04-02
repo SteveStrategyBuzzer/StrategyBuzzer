@@ -842,25 +842,21 @@ body {
     window.addEventListener('beforeunload', cleanup);
     window.addEventListener('pagehide', cleanup);
     
-    // Non-sync mode (Solo): show brain overlay then redirect after 9s
+    // Non-sync mode (Solo): show brain overlay then redirect — driven by server phase deadline
     if (!needsSyncGo) {
         if (redirectUrl) {
+            const phaseDelay = window.PHASE_ENDS_AT_MS
+                ? Math.max(500, window.PHASE_ENDS_AT_MS - Date.now())
+                : 9000;
             if (window.showBrainSpin) window.showBrainSpin('{{ __("La partie commence dans...") }}');
-            let count = 9;
-            const interval = setInterval(() => {
-                count--;
-                if (count > 0) {
-                    if (window.showBrainSpin) window.showBrainSpin(count + '...');
-                } else {
-                    if (window.showBrainSpin) window.showBrainSpin('🚀');
-                    clearInterval(interval);
-                    if (!redirected) {
-                        redirected = true;
-                        setTimeout(() => { window.location.href = redirectUrl; }, 500);
-                    }
+            const redirectTimer = setTimeout(() => {
+                if (window.showBrainSpin) window.showBrainSpin('🚀');
+                if (!redirected) {
+                    redirected = true;
+                    setTimeout(() => { window.location.href = redirectUrl; }, 400);
                 }
-            }, 1000);
-            window.addEventListener('beforeunload', () => clearInterval(interval));
+            }, phaseDelay);
+            window.addEventListener('beforeunload', () => clearTimeout(redirectTimer));
         }
     }
     
@@ -970,23 +966,16 @@ body {
             fallbackCountdown();
         }
         
-        // Fallback: 9s brain overlay spin before redirect
+        // Fallback: brain overlay + single timeout before redirect (no interval)
         function fallbackCountdown() {
-            let count = 9;
-            if (window.showBrainSpin) window.showBrainSpin(count + '...');
-            const interval = setInterval(() => {
-                count--;
-                if (count > 0) {
-                    if (window.showBrainSpin) window.showBrainSpin(count + '...');
-                } else {
-                    if (window.showBrainSpin) window.showBrainSpin('🚀');
-                    clearInterval(interval);
-                    if (!redirected) {
-                        redirected = true;
-                        setTimeout(() => { window.location.href = redirectUrl; }, 500);
-                    }
+            if (window.showBrainSpin) window.showBrainSpin('{{ __("La partie commence dans...") }}');
+            setTimeout(() => {
+                if (window.showBrainSpin) window.showBrainSpin('🚀');
+                if (!redirected) {
+                    redirected = true;
+                    setTimeout(() => { window.location.href = redirectUrl; }, 400);
                 }
-            }, 1000);
+            }, 9000);
         }
     }
     
