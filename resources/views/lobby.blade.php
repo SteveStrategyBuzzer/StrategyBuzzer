@@ -1,4 +1,23 @@
-@extends('layouts.app')
+@extends('layouts.game')
+
+@section('game-data')
+<script>
+@if(!empty($gameServerUrl) && !empty($lobby['game_server']['roomId']))
+window.ROOM_ID     = @json($lobby['game_server']['roomId']);
+window.JWT_TOKEN   = @json($playerToken ?? null);
+window.LOBBY_CODE  = @json($lobby['code'] ?? '');
+window.PLAYER_NAME = @json($players[$currentPlayerId]['name'] ?? 'Joueur');
+window.PLAYER_INFO = {
+    playerId: "{{ $currentPlayerId }}",
+    avatarId: @json($players[$currentPlayerId]['avatarId'] ?? $players[$currentPlayerId]['avatar'] ?? null)
+};
+@else
+window.ROOM_ID   = null;
+window.JWT_TOKEN = null;
+@endif
+window.NO_SOCKET_OVERLAY = true;
+</script>
+@endsection
 
 @section('content')
 @php
@@ -756,21 +775,18 @@ foreach ($colors as $color) {
     }
 </style>
 
-@if(!empty($gameServerUrl) && !empty($lobby['game_server']['roomId']))
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 <script>
-    window.matchRoomId = @json($lobby['game_server']['roomId'] ?? '');
+{{-- socket.io + DuoSocketClient.js already loaded by layouts.game --}}
+@if(!empty($gameServerUrl) && !empty($lobby['game_server']['roomId']))
+    window.matchRoomId    = @json($lobby['game_server']['roomId'] ?? '');
     window.matchLobbyCode = @json($lobby['code'] ?? '');
     window.matchPlayerToken = @json($playerToken ?? null);
-    window.gameServerUrl = window.location.origin;
-    window.useSocketIO = true;
-</script>
+    window.gameServerUrl  = window.location.origin;
+    window.useSocketIO    = true;
 @else
-<script>
     window.useSocketIO = false;
-</script>
 @endif
+</script>
 
 <div class="lobby-container">
     <div class="lobby-header">
@@ -4540,23 +4556,17 @@ initFirebase().then(async (authenticated) => {
 });
 
 if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'undefined') {
-    (async function initSocketIO() {
-        console.log('[Socket.IO] Initializing connection to Game Server...');
+    // Connect + joinRoom handled by GameplayRuntime (layouts.game); subscribe to events here only
+    (function initSocketListeners() {
+        console.log('[Socket.IO] Registering lobby event listeners...');
         window.duoSocketConnected = false;
         window.socketLobbyReady = false;
         
-        DuoSocketClient.onConnect = () => {
+        // Track connection state for UI logic (GameplayRuntime calls joinRoom on connect)
+        DuoSocketClient.on('connect', () => {
             console.log('[Socket.IO] Connected to Game Server');
             window.duoSocketConnected = true;
-            
-            DuoSocketClient.joinRoom(window.matchRoomId, window.matchLobbyCode, {
-                playerId: String(currentPlayerId),
-                playerName: currentPlayerData.name || "",
-                avatarId: currentPlayerData.avatar || null,
-                token: window.matchPlayerToken
-            });
-
-        };
+        });
         
         DuoSocketClient.onDisconnect = (reason) => {
             console.log('[Socket.IO] Disconnected:', reason);
@@ -4677,19 +4687,8 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
             }
         });
         
-        try {
-            await DuoSocketClient.connect(window.gameServerUrl, window.matchPlayerToken);
-            console.log('[Socket.IO] Connection established');
-        } catch (error) {
-            console.error('[Socket.IO] Failed to connect:', error);
-            console.log('[Socket.IO] Falling back to Firebase-only mode');
-            window.duoSocketConnected = false;
-            window.socketLobbyReady = false;
-            const startBtn = document.getElementById('start-btn');
-            if (startBtn) {
-                startBtn.dataset.socketLobbyReady = 'false';
-            }
-        }
+        // Connect + joinRoom are managed by GameplayRuntime (layouts.game)
+        console.log('[Socket.IO] Lobby event listeners ready; GameplayRuntime will connect.');
     })();
 }
 

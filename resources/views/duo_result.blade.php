@@ -2,14 +2,17 @@
 
 @section('game-data')
 <script>
-window.MATCH_ID        = @json((string)($match_id ?? ''));
-window.ROOM_ID         = @json((string)($room_id ?? ''));
-window.LOBBY_CODE      = @json((string)($lobby_code ?? ''));
-window.JWT_TOKEN       = @json((string)($jwt_token ?? ''));
-window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
-window.TOTAL_QUESTIONS = {{ (int)($totalQuestions ?? 10) }};
-window.GAME_SERVER_URL = window.location.origin;
+window.MATCH_ID          = @json((string)($match_id ?? ''));
+window.ROOM_ID           = @json((string)($room_id ?? ''));
+window.LOBBY_CODE        = @json((string)($lobby_code ?? ''));
+window.JWT_TOKEN         = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
+window.TOTAL_QUESTIONS   = {{ (int)($totalQuestions ?? 10) }};
+window.GAME_SERVER_URL   = window.location.origin;
 window.NO_SOCKET_OVERLAY = true;
+window.QUESTION_URL      = @json(route('game.duo.question'));
+window.RESULT_URL        = @json(route('game.duo.result'));
+window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
 </script>
 @endsection
 
@@ -1112,19 +1115,19 @@ $mode = 'duo';
     function navigateToNextQuestion() {
         if (isRedirecting) return;
         isRedirecting = true;
-        window.location.href = "{{ route('game.duo.question') }}";
+        window.location.href = window.QUESTION_URL || "{{ route('game.duo.question') }}";
     }
     
     function navigateToRoundScoreboard() {
         if (isRedirecting) return;
         isRedirecting = true;
-        window.location.href = "{{ route('game.duo.result') }}";
+        window.location.href = window.RESULT_URL || "{{ route('game.duo.result') }}";
     }
     
     function navigateToFinalResults() {
         if (isRedirecting) return;
         isRedirecting = true;
-        window.location.href = "{{ route('game.duo.match-result') }}";
+        window.location.href = window.MATCH_RESULT_URL || "{{ route('game.duo.match-result') }}";
     }
     
     btnGo.addEventListener('click', setPlayerReady);

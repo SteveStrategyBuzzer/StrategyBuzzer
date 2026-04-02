@@ -2,13 +2,16 @@
 
 @section('game-data')
 <script>
-window.MATCH_ID        = @json((string)($match_id ?? ''));
-window.ROOM_ID         = @json((string)($room_id ?? ''));
-window.LOBBY_CODE      = @json((string)($lobby_code ?? ''));
-window.JWT_TOKEN       = @json((string)($jwt_token ?? ''));
-window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
-window.TOTAL_QUESTIONS = {{ (int)($totalQuestions ?? 10) }};
-window.GAME_SERVER_URL = window.location.origin;
+window.MATCH_ID          = @json((string)($match_id ?? ''));
+window.ROOM_ID           = @json((string)($room_id ?? ''));
+window.LOBBY_CODE        = @json((string)($lobby_code ?? ''));
+window.JWT_TOKEN         = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
+window.TOTAL_QUESTIONS   = {{ (int)($totalQuestions ?? 10) }};
+window.GAME_SERVER_URL   = window.location.origin;
+window.ANSWER_URL        = @json(route('game.duo.answer'));
+window.RESULT_URL        = @json(route('game.duo.result'));
+window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
 </script>
 @endsection
 
@@ -828,9 +831,9 @@ $mode = 'duo';
     const GAME_SERVER_URL = window.GAME_SERVER_URL || window.location.origin;
     const duoSocket = window.DuoSocketClient; // set by layouts.game; connect+joinRoom owned by GameplayRuntime
     
-    const ANSWER_URL = @json(route('game.duo.answer'));
-    const RESULT_URL = @json(route('game.duo.result'));
-    const MATCH_RESULT_URL = @json(route('game.duo.match-result'));
+    const ANSWER_URL        = window.ANSWER_URL       || @json(route('game.duo.answer'));
+    const RESULT_URL        = window.RESULT_URL       || @json(route('game.duo.result'));
+    const MATCH_RESULT_URL  = window.MATCH_RESULT_URL || @json(route('game.duo.match-result'));
     
     const DEFAULT_THEME = @json($themeDisplay ?? $theme ?? 'Culture générale');
     const DEFAULT_TOTAL_QUESTIONS = {{ (int) ($totalQuestions ?? 10) }};

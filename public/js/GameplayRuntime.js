@@ -143,6 +143,8 @@
     var JWT_TOKEN       = window.JWT_TOKEN || null;
     var LOBBY_CODE      = window.LOBBY_CODE || null;
     var USER_ID         = window.CURRENT_USER_ID ? String(window.CURRENT_USER_ID) : null;
+    var PLAYER_NAME     = window.PLAYER_NAME || null;
+    var PLAYER_INFO     = window.PLAYER_INFO || {};
     var TOTAL_QUESTIONS = window.TOTAL_QUESTIONS || 10;
     var NO_OVERLAY      = !!window.NO_SOCKET_OVERLAY;
 
@@ -181,11 +183,13 @@
         if (!NO_OVERLAY) hideLoading();
         setConnectionStatus('connected', window.GR_LABELS && window.GR_LABELS.connected ? window.GR_LABELS.connected : 'Connecté');
 
-        // Join room — pass player metadata
-        socket.joinRoom(ROOM_ID, LOBBY_CODE, {
+        // Join room — pass player metadata (merge window.PLAYER_INFO for extra fields like avatarId)
+        var joinPayload = Object.assign({
             playerId: USER_ID || '',
             token: JWT_TOKEN
-        });
+        }, PLAYER_INFO);
+        if (PLAYER_NAME) joinPayload.playerName = PLAYER_NAME;
+        socket.joinRoom(ROOM_ID, LOBBY_CODE, joinPayload);
         console.log('[GameplayRuntime] Joined room:', ROOM_ID);
     });
 
