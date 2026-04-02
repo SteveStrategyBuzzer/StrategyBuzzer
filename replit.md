@@ -73,9 +73,9 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - `GameplayRuntime.js` — central singleton managing socket connect/joinRoom, brain animation for INTRO/WAITING phases, and game header score updates
 - `GameEffectsRuntime.js` — skill visual effects (shuffle_answers, etc.)
 - `@yield('game-data')` section — each view injects `window.ROOM_ID`, `window.JWT_TOKEN`, `window.CURRENT_USER_ID`, etc.
-- Game header (`#gameHeader`) — shown only when `$playerName` is passed, updated in real-time by GameplayRuntime
-- Migrated views: `game_intro`, `duo_question`, `duo_answer`, `duo_result`, `duo_waiting`, `duo_resume`, and all 6 tiebreaker views
-- Lobby/pre-game pages (`duo_lobby`, `lobby.blade.php`) remain on `layouts/app` (ads allowed per ad system rules)
+- Game header (`#gameHeader`) — always rendered in DOM, hidden via inline style when no player data; updated in real-time by GameplayRuntime
+- Migrated views: `game_intro`, `duo_question`, `duo_answer`, `duo_result`, `duo_waiting`, `duo_resume`, `lobby.blade.php`, and all 6 tiebreaker views
+- Pre-game/lobby pages on `layouts/app` (ads allowed): boutique, profile, match results pages — NOT `lobby.blade.php` which is now on `layouts/game`
 
 **Advertising System (Non-Gameplay Only):**
 Ads are strictly forbidden in all `game.blade.php` pages (gameplay, buzz, answers, timers). Allowed only in `app.blade.php` pages (menu, lobby, boutique, results, profile). Config: `config/ads.php`. Banner: fixed bottom, `resources/views/components/ad-banner.blade.php` included in `app.blade.php`. Rewarded ads: `AdRewardService` + `AdController` + `/ads/reward` route, 3×/day max, +10 compétence coins per view, tracked in `ad_rewards` table. Purchasing Maître du Jeu (`master_purchased = true`) globally disables all ads. Maître mode price: $19.99 (1999 cents). Buying Maître mode also credits 5,000 compétence coins via CoinLedgerService.

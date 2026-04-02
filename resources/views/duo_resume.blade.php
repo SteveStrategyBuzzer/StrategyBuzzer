@@ -917,8 +917,11 @@ body {
                 const audioDuration = audio.duration || 5;
                 if (window.showBrainSpin) window.showBrainSpin(Math.ceil(audioDuration) + '...');
                 audio.play().then(() => {
+                    const phaseEnd = window.PHASE_ENDS_AT_MS || null;
                     updateInterval = setInterval(() => {
-                        const remaining = audioDuration - audio.currentTime;
+                        const remaining = phaseEnd
+                            ? (phaseEnd - Date.now()) / 1000
+                            : audioDuration - audio.currentTime;
                         if (window.showBrainSpin) {
                             window.showBrainSpin(remaining > 0 ? Math.ceil(remaining) + '...' : '🚀');
                         }
