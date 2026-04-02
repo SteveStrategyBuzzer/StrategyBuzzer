@@ -1795,7 +1795,7 @@ class DuoController extends Controller
             ->values();
 
         $sentInvitations = DuoMatch::where('player1_id', $user->id)
-            ->whereIn('status', ['waiting', 'accepted', 'lobby', 'in_progress', 'active', 'playing'])
+            ->where('status', 'waiting')
             ->with('player2')
             ->get()
             ->map(function ($match) {
