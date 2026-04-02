@@ -481,9 +481,6 @@ body {
     <source src="{{ asset('sounds/ready_announcement.mp3') }}" type="audio/mpeg">
 </audio>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 {{-- socket.io and DuoSocketClient loaded by layouts.game --}}
 
 <script>
@@ -498,55 +495,14 @@ function closeSoloWarning() {
 
 (function() {
     const redirectUrl = @json($redirectUrl);
-    const sessionId = @json($sessionId);
-    const playerId = @json($playerId);
-    const isHost = @json($isHost);
     const mode = @json($mode);
     const matchId = @json($params['match_id'] ?? null);
-    const roomId = @json($params['room_id'] ?? null);
-    const lobbyCode = @json($params['lobby_code'] ?? null);
-    const jwtToken = @json($params['jwt_token'] ?? null);
-    
+
     let redirected = false;
-    let db = null;
-    let unsubscribe = null;
     let questionPrefetched = false;
-    let socketConnected = false;
-    
-    const VS_DISPLAY_TIME = 3000;
-    const COUNTDOWN_NUMBERS = [3, 2, 1];
-    const SYNC_TIMEOUT = 10000;
-    
-    async function initFirebase() {
-        if (typeof firebase === 'undefined') return false;
-        
-        try {
-            const firebaseConfig = {
-                projectId: @json(config('services.firebase.project_id')),
-                apiKey: "{{ config('services.firebase.api_key', '') }}"
-            };
-            
-            if (!firebaseConfig.projectId) return false;
-            
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            
-            if (!firebase.auth().currentUser) {
-                await firebase.auth().signInAnonymously();
-            }
-            
-            db = firebase.firestore();
-            return true;
-        } catch (err) {
-            console.warn('Firebase init failed:', err.message);
-            return false;
-        }
-    }
-    
+
     async function prefetchFirstQuestion() {
         if (questionPrefetched || !matchId) return;
-        
         try {
             const response = await fetch('/game/' + mode + '/fetch-question', {
                 method: 'POST',
@@ -556,7 +512,6 @@ function closeSoloWarning() {
                 },
                 body: JSON.stringify({ match_id: matchId, question_number: 1 })
             });
-            
             if (response.ok) {
                 questionPrefetched = true;
                 console.log('[Intro] First question prefetched');
@@ -565,90 +520,34 @@ function closeSoloWarning() {
             console.warn('[Intro] Question prefetch failed:', err.message);
         }
     }
-    
-    // warmupSocketConnection removed — GameplayRuntime.js handles connect + joinRoom
-    
-    async function syncReadyAndStart() {
-        const countdownEl = document.getElementById('countdown');
-        const countdownText = document.getElementById('countdownText');
-        const audio = document.getElementById('readyAudio');
-        
-        prefetchFirstQuestion();
-        // warmupSocketConnection() removed — GameplayRuntime.js handles socket connect + joinRoom
-        
-        if (audio) {
-            audio.volume = 1.0;
-            audio.play().catch(() => {});
-        }
-        
-        const firebaseReady = sessionId && await initFirebase();
-        
-        if (firebaseReady) {
-            try {
-                await db.collection('gameSessions').doc(sessionId).set({
-                    readyStatus: { [playerId]: true },
-                    lastActivity: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-                
-                if (countdownText) countdownText.textContent = "{{ __('Synchronisation des joueurs') }}...";
-                
-                let syncResolved = false;
-                const syncTimeout = setTimeout(() => {
-                    if (!syncResolved) {
-                        syncResolved = true;
-                        console.log('[Intro] Sync timeout - waiting for server phase');
-                        if (unsubscribe) unsubscribe();
-                    }
-                }, SYNC_TIMEOUT);
-                
-                unsubscribe = db.collection('gameSessions').doc(sessionId).onSnapshot((doc) => {
-                    if (syncResolved) return;
-                    
-                    const data = doc.data();
-                    const readyStatus = data?.readyStatus || {};
-                    const readyCount = Object.keys(readyStatus).filter(k => readyStatus[k] === true).length;
-                    
-                    console.log('[Intro] Ready status:', readyCount, '/ 2');
-                    
-                    if (readyCount >= 2) {
-                        syncResolved = true;
-                        clearTimeout(syncTimeout);
-                        if (unsubscribe) unsubscribe();
-                        
-                        if (countdownText) countdownText.textContent = "{{ __('Joueurs synchronisés') }}!";
-                        
-                        console.log('[Intro] Players synchronized - waiting for server phase');
-                    }
-                });
-                
-            } catch (err) {
-                console.warn('Ready sync failed:', err.message);
-            }
-        } else {
-            console.log('[Intro] Firebase sync unavailable - waiting for server phase');
+
+    function navigateToQuestion() {
+        if (!redirected && redirectUrl) {
+            redirected = true;
+            window.location.href = redirectUrl;
         }
     }
-    
-    // startCountdownSequence + runCountdown removed — brain overlay handles INTRO phase
 
-    // Redirect to question page when server signals phase QUESTION_ACTIVE
+    // Navigation driven exclusively by server Socket.IO events — no local timer authority
     if (typeof DuoSocketClient !== 'undefined') {
         DuoSocketClient.on('phase_changed', function(data) {
-            if (!redirected && data && data.phase === 'QUESTION_ACTIVE') {
-                redirected = true;
-                window.location.href = redirectUrl;
-            }
+            if (data && data.phase === 'QUESTION_ACTIVE') navigateToQuestion();
         });
         DuoSocketClient.on('game_state', function(data) {
-            if (!redirected && data && data.phase === 'QUESTION_ACTIVE') {
-                redirected = true;
-                window.location.href = redirectUrl;
-            }
+            if (data && data.phase === 'QUESTION_ACTIVE') navigateToQuestion();
+        });
+        DuoSocketClient.on('question_published', function() {
+            navigateToQuestion();
         });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        syncReadyAndStart();
+        prefetchFirstQuestion();
+        const audio = document.getElementById('readyAudio');
+        if (audio) {
+            audio.volume = 1.0;
+            audio.play().catch(() => {});
+        }
     });
 })();
 </script>

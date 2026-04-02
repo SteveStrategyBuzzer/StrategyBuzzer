@@ -177,6 +177,12 @@ const DuoSocketClient = {
                                 if (this.onBuzzResult) this.onBuzzResult(event);
                                 this._dispatch('buzz', event);
                                 break;
+                            case 'PHASE_CHANGED':
+                                this._dispatch('phase_changed', event);
+                                break;
+                            case 'QUESTION_PUBLISHED':
+                                this._dispatch('question_published', event);
+                                break;
                             default:
                                 this._log('Unhandled event type', event.type);
                         }

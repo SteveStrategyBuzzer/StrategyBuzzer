@@ -4412,32 +4412,6 @@ function runCountdownAnimation(serverEndTime, totalDuration, countdownDocRef, se
                 setTimeout(async () => {
                     console.log('[Countdown] Countdown finished! Starting game...');
                     
-                    // Calculate introEndTimestamp = countdown end time + 9 seconds intro
-                    // Use serverEndTime (synchronized) so all clients get the same value
-                    const introDurationMs = 9000;
-                    const introEndTimestamp = serverEndTime + introDurationMs;
-                    
-                    // Publish introEndTimestamp to Firebase for synchronized intro
-                    // Host publishes, all clients read the same value
-                    if (isHostFirebase && db) {
-                        try {
-                            const normalizedId = normalizeMatchIdJs(lobbyCode);
-                            const gameDocRef = doc(db, 'games', `duo-match-${normalizedId}`);
-                            await setDoc(gameDocRef, {
-                                introEndTimestamp: introEndTimestamp,
-                                gameStartTimeMs: serverEndTime,
-                                introDurationMs: introDurationMs
-                            }, { merge: true });
-                            console.log('[Countdown] Published intro sync timestamps:', {
-                                introEndTimestamp,
-                                gameStartTimeMs: serverEndTime,
-                                introDurationMs
-                            });
-                        } catch (err) {
-                            console.error('[Countdown] Failed to publish intro timestamps:', err);
-                        }
-                    }
-                    
                     // Clean up countdown document to allow future countdowns
                     if (countdownDocRef) {
                         try {
@@ -4521,38 +4495,6 @@ initFirebase().then(async (authenticated) => {
     window.dispatchEvent(new CustomEvent('webrtcReady'));
     console.log('[WebRTC] Manager initialized for lobby:', lobbyCode, '- Player:', currentPlayerId);
     
-    // Listener Firebase pour le signal de démarrage synchronisé
-    function normalizeMatchIdJs(matchId) {
-        if (typeof matchId === 'number' && matchId > 0) {
-            return matchId;
-        }
-        const matchIdStr = String(matchId);
-        const numericId = parseInt(matchIdStr.replace(/[^0-9]/g, ''), 10) || 0;
-        if (numericId === 0) {
-            // Utiliser CRC32 pour les codes purement alphabétiques
-            let crc = 0xFFFFFFFF;
-            for (let i = 0; i < matchIdStr.length; i++) {
-                crc ^= matchIdStr.charCodeAt(i);
-                for (let j = 0; j < 8; j++) {
-                    crc = (crc >>> 1) ^ (crc & 1 ? 0xEDB88320 : 0);
-                }
-            }
-            return ((crc ^ 0xFFFFFFFF) >>> 0) & 0x7FFFFFFF;
-        }
-        return numericId;
-    }
-    
-    // IMPORTANT: Toujours utiliser lobbyCode pour le chemin Firebase
-    // Le backend (DuoFirestoreService) publie avec lobbyCode, pas matchId
-    // Cela assure la cohérence entre lobby et gameplay
-    const normalizedId = normalizeMatchIdJs(lobbyCode);
-    const gameDocRef = doc(db, 'games', `duo-match-${normalizedId}`);
-    let gameStartHandled = false;
-    
-    console.log('[Firebase] Listening for game start signal on:', `games/duo-match-${normalizedId}`, '(lobbyCode:', lobbyCode, ')');
-    
-    // Firebase game start listener removed
-    // Start is now handled exclusively by Socket (phase_changed)
 });
 
 if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'undefined') {
