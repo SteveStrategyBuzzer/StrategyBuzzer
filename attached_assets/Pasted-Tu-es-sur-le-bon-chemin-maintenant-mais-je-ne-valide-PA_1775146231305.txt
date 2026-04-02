@@ -1,0 +1,333 @@
+Tu es sur le bon chemin maintenant, mais je ne valide PAS encore le build tant que tu n’as pas clarifié les 4 points ci-dessous avec précision d’architecture et de migration.
+
+Je veux une réponse d’architecture finale, pas encore une implémentation.
+
+========================================
+1. CONTEXTE À RESPECTER
+========================================
+
+Projet : StrategyBuzzer
+
+Pipeline officiel :
+- Replit = source de vérité
+- GitHub = miroir officiel
+- VM = exécution / production
+
+État actuel à préserver :
+- commit de base validé : 90d34f22
+- Duo stabilisé sur :
+  - auth lobby -> Node
+  - lobbyCode canonique Laravel
+  - RoomManager sans fallback lobbyCode
+  - résultat Duo corrigé
+  - Socket.IO lobby stabilisé
+  - Node / Firebase / Laravel réalignés
+
+Architecture non négociable :
+- Node / Socket.IO = seule source de vérité gameplay
+- Laravel = rendu Blade + injection des données
+- Firebase = présence lobby + heartbeat + WebRTC uniquement
+- Front = affichage + interaction, jamais source de vérité gameplay
+
+========================================
+2. CE QUE JE VALIDE DÉJÀ DANS TON PLAN
+========================================
+
+Je valide désormais les points suivants dans ta direction générale :
+
+- création d’un vrai layout gameplay centralisé
+- remplacement du countdown local 3,2,1 par le cerveau
+- migration progressive des vues
+- séparation layout / vue / runtime
+- création d’un runtime gameplay central
+- conservation de GameEffectsRuntime pour les effets
+- idée d’un ordre de migration par étapes
+
+Tu n’es plus dans la mauvaise direction.
+Mais je veux maintenant une V2 finale plus rigoureuse avant toute implémentation.
+
+========================================
+3. LES 4 POINTS À CLARIFIER OBLIGATOIREMENT
+========================================
+
+----------------------------------------
+POINT A — GAME HEADER : QUI CONSTRUIT QUOI
+----------------------------------------
+
+Je ne valide pas un header totalement vide rempli uniquement par JS.
+
+Je veux une règle claire :
+- Laravel rend la base
+- GameplayRuntime.js met à jour le temps réel
+
+Tu dois préciser noir sur blanc ce qui est injecté par Laravel au rendu initial, et ce qui est ensuite mis à jour par JS.
+
+### Données de base que Laravel doit continuer à injecter
+Je veux que tu raisonnes explicitement avec cette liste :
+
+#### Côté joueur courant
+- player id
+- player display name
+- player avatar path
+- score initial
+- strategic avatar name
+- strategic avatar path
+- skills disponibles
+- état initial utile déjà connu côté rendu
+
+#### Côté adversaire
+- opponent id
+- opponent display name
+- opponent avatar path
+- score initial
+- état initial utile déjà connu côté rendu
+
+#### Côté match / session
+- match_id
+- room_id
+- lobby_code
+- jwt_token
+- question index initial ou compteur initial si disponible
+- round initial si disponible
+- total_questions si disponible
+- URLs nécessaires (answer, result, waiting, resume, etc.)
+
+#### Côté phase
+- phase initiale déjà connue au rendu si disponible
+- flags initiaux nécessaires à l’affichage sécurisé
+
+### Ce que GameplayRuntime.js peut mettre à jour ensuite
+- score en temps réel
+- phase en temps réel
+- indicateurs de connexion
+- affichage cerveau / loading / transition
+- compteurs visuels liés à l’état Node
+- badges d’état joueur / adversaire
+- données dérivées d’un event Socket
+- changement de question/round lorsque Node les fournit
+
+### Ce que je ne veux pas
+Je ne veux pas que GameplayRuntime.js reconstruise toute l’identité de base du joueur/adversaire en partant de zéro, si Laravel peut déjà fournir ces données au rendu.
+Je veux une base Blade stable, enrichie et mise à jour par JS.
+
+Tu dois donc me donner un tableau précis :
+- élément
+- rendu initial par Blade
+- mis à jour ensuite par GameplayRuntime.js
+- jamais géré par JS seul au premier rendu
+
+----------------------------------------
+POINT B — SOCKET.IO CENTRAL : COMMENT ÉVITER LES DOUBLES CONNEXIONS
+----------------------------------------
+
+C’est un point critique.
+
+Si tu crées GameplayRuntime.js, je veux que tu expliques exactement comment tu évites :
+
+- double chargement Socket.IO
+- double connect()
+- double joinRoom()
+- double binding des handlers
+- handlers concurrents entre les vues existantes et le runtime central
+- redirections doublées
+- double mise à jour des scores / phase
+
+Je veux une stratégie explicite de migration.
+
+### Tu dois me dire précisément :
+1. Est-ce que GameplayRuntime.js remplace immédiatement les blocs Socket inline existants ?
+2. Ou est-ce qu’il coexiste temporairement avec eux ?
+3. Si coexistence temporaire :
+   - comment tu empêches le double branchement
+   - quel drapeau global tu utilises
+   - quelle vue reste encore autonome provisoirement
+4. Si remplacement progressif :
+   - quelles vues perdent leur logique socket en premier
+   - quelles vues gardent encore un JS spécifique temporaire
+5. Quel est le contrat exact entre :
+   - DuoSocketClient.js
+   - GameplayRuntime.js
+   - les scripts spécifiques de vue
+
+### Contrat attendu
+Je veux que tu définisses clairement :
+
+#### DuoSocketClient.js
+- transport pur
+- connect
+- joinRoom
+- buzz
+- send/receive low-level events
+- API d’abonnement propre
+
+#### GameplayRuntime.js
+- orchestration front commune
+- gestion du cerveau
+- gestion du header gameplay
+- gestion de la connexion / état connexion
+- gestion des transitions de phase
+- routing phase -> URL si nécessaire
+- synchronisation des données UI globales
+
+#### Scripts spécifiques de vue
+- uniquement logique propre à la phase
+- DOM spécifique à la vue
+- actions spécifiques (ex: valider réponse, buzz local UI, overlays spécifiques)
+- jamais réimplémenter la connexion commune
+
+Je veux que tu me dises comment tu évites que deux couches essaient de gérer la même chose.
+
+----------------------------------------
+POINT C — CERVEAU NODE-DRIVEN : PHASES EXACTES
+----------------------------------------
+
+Je veux une définition stricte.
+
+Le cerveau ne doit pas être affiché “quand ça semble opportun”.
+Il doit être lié à des phases Node explicites.
+
+Je veux que tu me dises exactement :
+
+1. Quelle phase serveur affiche le cerveau
+2. Quelle phase serveur masque le cerveau
+3. Quelle phase serveur remplace l’ancien countdown 3,2,1
+4. Quelle phase serveur remplace les countdowns intermédiaires de type reprise / resume
+5. Que se passe-t-il en reconnexion :
+   - si un joueur arrive au milieu d’une phase cerveau
+   - si un joueur arrive directement en QUESTION_ACTIVE
+6. Quelle est la source exacte utilisée :
+   - phase_changed
+   - game_state
+   - phaseStartedAtMs / phaseEndsAtMs
+   - autre
+
+### Règle stricte
+Je veux que tu formules noir sur blanc :
+
+- le cerveau est un AFFICHAGE pur
+- le cerveau n’a aucun timer autonome décisionnel
+- le front ne décide jamais seul quand il doit apparaître ou disparaître
+- il se contente d’appliquer l’état reçu de Node
+
+### Exemple de précision attendue
+Je veux que tu me dises quelque chose du type :
+
+- phase INTRO_SYNC -> showBrainSpin()
+- phase QUESTION_ACTIVE -> hideBrainSpin() + afficher la question
+- phase WAITING_SYNC -> showBrainSpin() avec message différent
+- etc.
+
+Je veux la table exacte phase -> comportement cerveau.
+
+----------------------------------------
+POINT D — TIMERS LOCAUX : INTERDICTION + EXCEPTIONS ÉVENTUELLES
+----------------------------------------
+
+Je ne valide pas la phrase “timers locaux tolérés”.
+C’est trop flou et trop dangereux.
+
+La règle doit être :
+
+### interdit par défaut
+Aucun timer local qui décide :
+- du démarrage réel d’une phase
+- de la fin réelle d’une phase
+- de la logique de transition gameplay
+- de la synchronisation entre joueurs
+
+### autorisé uniquement comme affichage local
+Un timer local peut servir à :
+- interpolation visuelle
+- animation UI
+- countdown purement visuel dérivé d’un phaseEndsAtMs serveur
+- micro-animation
+- CSS/JS d’habillage
+
+Mais jamais comme source décisionnelle.
+
+### Si tu veux une exception tiebreaker
+Tu dois la justifier précisément, phase par phase :
+- quelle vue
+- quel timer
+- pourquoi il n’entre pas en conflit avec Node
+- pourquoi il n’est qu’un affichage
+- pourquoi il ne recrée pas un désalignement
+
+Je veux donc une réponse explicite :
+- règle générale
+- exceptions éventuelles
+- pourquoi elles sont sûres
+- comment elles sont encadrées
+
+========================================
+4. RAPPEL DES CONSÉQUENCES SI CE N’EST PAS FAIT PROPREMENT
+========================================
+
+Je veux que tu prennes très au sérieux les conséquences si ces 4 points restent flous.
+
+### Si le header est trop JS-driven
+Conséquences :
+- flash de contenu vide au chargement
+- rechargements fragiles
+- dépendance excessive au runtime
+- régressions plus dures à diagnostiquer
+- plus de complexité inutile
+
+### Si Socket.IO n’est pas centralisé proprement
+Conséquences :
+- doubles connexions
+- doubles joinRoom
+- doubles handlers
+- score affiché deux fois
+- redirections incohérentes
+- bugs intermittents très difficiles à traquer
+- régression du Duo stabilisé
+
+### Si le cerveau n’est pas strictement Node-driven
+Conséquences :
+- décalages visuels entre joueurs
+- cerveau qui apparaît ou disparaît au mauvais moment
+- logique locale qui redevient maître au lieu de Node
+- retour du faux countdown déguisé
+- rupture de synchronisation
+
+### Si les timers locaux restent flous
+Conséquences :
+- phases désynchronisées
+- effets incohérents entre devices
+- comportement différent selon latence ou device
+- bugs tiebreaker difficiles à reproduire
+- dette technique immédiate
+
+========================================
+5. CE QUE JE VEUX DANS TA PROCHAINE RÉPONSE
+========================================
+
+Je ne veux pas encore du code final.
+
+Je veux une V2 finale d’architecture avec :
+
+1. La structure gameplay canonique finale
+2. Le contenu final conceptuel de layouts/game.blade.php
+3. Un tableau précis Blade vs GameplayRuntime.js pour le header et les données de base
+4. Une stratégie de migration anti-double Socket.IO
+5. Une table exacte phase Node -> comportement cerveau
+6. Une règle stricte sur les timers locaux + exceptions argumentées si nécessaires
+7. L’ordre de migration final sans régression :
+   - layouts/game.blade.php
+   - GameplayRuntime.js
+   - game_intro.blade.php
+   - duo_question.blade.php
+   - duo_answer.blade.php
+   - duo_result.blade.php
+   - duo_waiting.blade.php
+   - duo_resume.blade.php
+   - vues tiebreaker
+
+========================================
+6. INTERDICTION AVANT VALIDATION
+========================================
+
+Tu ne passes PAS en build tant que cette V2 d’architecture n’est pas validée.
+
+Aucune implémentation tant que ces 4 clarifications ne sont pas traitées proprement.

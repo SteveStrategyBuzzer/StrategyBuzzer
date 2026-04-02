@@ -1,0 +1,187 @@
+Ta V2 est globalement solide et couvre bien l’architecture attendue.
+
+On est très proche du build, mais il reste des ambiguïtés critiques à lever avant validation finale.
+
+Je veux une V3 courte, mais parfaitement claire sur les points suivants.
+
+---
+
+# 🔴 1. GAME HEADER — CONTRADICTION À CORRIGER
+
+Tu as deux logiques contradictoires actuellement :
+
+* header avec “données vides + IDs”
+* header “injecté par Blade via @section”
+
+Ces deux approches ne peuvent pas coexister.
+
+## 👉 Décision obligatoire
+
+Le header doit être :
+
+* structure HTML dans `layouts/game.blade.php`
+* **données initiales injectées par Blade**
+* **mises à jour ensuite par GameplayRuntime.js**
+
+## ❌ Interdit
+
+* header vide rempli uniquement par JS
+* mélange ambigu entre Blade et window.*
+* double source de vérité pour les mêmes données
+
+---
+
+# 🧾 2. DONNÉES INITIALES — RÈGLE UNIQUE À DÉFINIR
+
+Je ne veux plus de “via Blade ou via window”.
+
+Je veux une règle unique et claire.
+
+## Tu dois définir explicitement :
+
+### A. Données rendues DIRECTEMENT dans le HTML (Blade)
+
+Exemples attendus :
+
+* nom joueur
+* avatar joueur
+* score initial joueur
+* nom adversaire
+* avatar adversaire
+* score initial adversaire
+* compteur question initial
+* round initial
+
+### B. Données injectées uniquement via `window.*`
+
+Exemples attendus :
+
+* MATCH_ID
+* ROOM_ID
+* LOBBY_CODE
+* JWT_TOKEN
+* CURRENT_USER_ID
+* URLs (answer, result, waiting, etc.)
+* flags techniques
+
+### C. Données mises à jour ensuite par GameplayRuntime.js
+
+* score temps réel
+* phase
+* compteur question dynamique
+* état connexion
+* cerveau / overlay
+
+## 👉 Objectif
+
+Zéro ambiguïté sur :
+
+* qui injecte
+* qui met à jour
+* quand
+
+---
+
+# ⚠️ 3. SOCKET.IO — RÈGLE À RENDRE EXPLICITE
+
+Tu es dans la bonne direction, mais il manque une règle ferme.
+
+## 👉 Règle obligatoire
+
+Toute vue qui passe sur `layouts.game` :
+
+* ❌ ne doit plus contenir de `io(...)`
+* ❌ ne doit plus contenir de `connect()`
+* ❌ ne doit plus contenir de `joinRoom()`
+* ❌ ne doit plus contenir de logique de connexion globale
+
+## ✅ Tout passe par :
+
+* `GameplayRuntime.js` pour la connexion et orchestration
+* `DuoSocketClient.js` pour le transport
+
+## Les vues :
+
+* s’abonnent via `duoSocket.on()`
+* déclenchent des actions (buzz, answer, skill)
+* gèrent uniquement leur DOM local
+
+## 👉 Je veux que tu reformules cette règle clairement
+
+Pas implicite. Pas suggérée. Obligatoire.
+
+---
+
+# 🧠 4. CERVEAU — PRÉCISION FINALE
+
+Ta logique est bonne, mais je veux une formulation stricte.
+
+## 👉 Le cerveau doit être :
+
+* piloté uniquement par `phase_changed` et `game_state`
+* jamais déclenché par un timer local
+* jamais basé sur une estimation front
+
+## 👉 Tu dois me confirmer noir sur blanc :
+
+* quelle phase Node → showBrainSpin()
+* quelle phase Node → hideBrainSpin()
+* comportement en reconnexion
+
+## ❌ Interdit
+
+* logique opportuniste côté front
+* fallback visuel autonome
+
+---
+
+# ⛔ 5. TIMERS LOCAUX — CLARIFICATION FINALE
+
+Ta réponse est bonne, mais encore trop permissive.
+
+## 👉 Règle officielle
+
+### Interdit :
+
+* tout timer qui décide une transition gameplay
+* tout timer qui remplace Node
+
+### Autorisé :
+
+* timer purement visuel dérivé de `phaseEndsAtMs`
+
+## 👉 Pour le tiebreaker
+
+Aucune exception validée pour l’instant.
+
+Tu dois confirmer :
+
+* qu’aucun timer autonome n’est accepté sans audit spécifique
+* que toute exception devra être explicitement validée
+
+---
+
+# 🎯 OBJECTIF DE CETTE V3
+
+Je ne veux pas plus de contenu.
+
+Je veux :
+
+* des règles claires
+* aucune ambiguïté
+* aucune double interprétation possible
+
+---
+
+# 🚫 INTERDICTION
+
+Tu ne passes PAS en build tant que :
+
+* le header n’est pas clarifié
+* les données Blade vs window ne sont pas figées
+* la règle Socket.IO n’est pas explicitement verrouillée
+* la logique cerveau est strictement définie
+
+---
+
+Après cette V3, on passe en exécution.

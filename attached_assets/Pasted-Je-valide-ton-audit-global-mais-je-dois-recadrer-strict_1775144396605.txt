@@ -1,0 +1,185 @@
+Je valide ton audit global, mais je dois recadrer strictement l’implémentation avant de passer en build.
+
+Tu es sur le bon chemin côté analyse, mais ton plan actuel n’est pas encore assez structuré pour garantir zéro régression sur le Duo que nous venons de stabiliser.
+
+Voici les règles OBLIGATOIRES à respecter pour la suite.
+
+---
+
+# 🔒 RÈGLES ARCHITECTURE NON NÉGOCIABLES
+
+1. Node (Socket.IO) est la seule source de vérité gameplay.
+
+   * phases
+   * timing
+   * buzz
+   * score
+   * effets actifs
+
+2. Laravel ne décide pas du gameplay.
+
+   * il injecte les données (roomId, lobbyCode, token, player data)
+
+3. Firebase = présence + WebRTC uniquement
+
+   * aucune logique ready / start / gameplay
+
+4. Le front (Blade + JS) affiche uniquement
+
+   * aucun timer autonome critique
+   * aucun état gameplay inventé
+
+---
+
+# 🧠 POINT CRITIQUE : LE CERVEAU
+
+Le remplacement du countdown 3,2,1 doit respecter ceci :
+
+❌ INTERDIT :
+
+* setTimeout
+* runCountdown local
+* timer autonome JS
+
+✅ OBLIGATOIRE :
+
+* affichage purement visuel
+* déclenché par phase Node
+* arrêté par phase Node
+
+Le cerveau (brain.png) doit être :
+
+* un composant visuel global
+* contrôlé uniquement par Socket.IO (phase_changed)
+
+---
+
+# 🧱 PROBLÈME ACTUEL DE TON PLAN
+
+Tu es encore en train de raisonner comme :
+→ migration de vues
+
+Alors que le vrai chantier est :
+→ définition d’une structure gameplay canonique
+
+Si tu migres 11 vues directement, tu vas déplacer le désordre, pas le corriger.
+
+---
+
+# 🏗️ CE QUE TU DOIS FAIRE AVANT TOUT
+
+## 1. Définir la STRUCTURE GAMEPLAY CANONIQUE
+
+Je veux une structure unique utilisée par toutes les pages :
+
+* header gameplay (score, joueurs, avatars)
+* zone centrale (phase actuelle : intro / question / réponse / résultat)
+* zone action (buzz / réponses / skills)
+* zone feedback (résultat, effet actif, messages)
+* overlay global (cerveau, transitions, états)
+
+Aucune vue ne doit recréer sa propre structure.
+
+---
+
+## 2. Refactor de layouts/game.blade.php
+
+Actuellement incomplet.
+
+Tu dois ajouter :
+
+* @yield('styles')
+* @yield('game-data')
+* @yield('overlay')
+* @yield('scripts')
+
+Et surtout :
+
+* intégrer Socket.IO UNE SEULE FOIS ici
+* préparer un point d’entrée JS global gameplay
+
+---
+
+## 3. CENTRALISER LE JS GAMEPLAY
+
+❌ INTERDIT :
+
+* dupliquer Socket.IO dans chaque Blade
+* gérer des événements dans chaque page différemment
+
+✅ OBLIGATOIRE :
+
+* un point central (ex: DuoSocketClient ou runtime commun)
+* gestion globale :
+
+  * phase_changed
+  * game_state
+  * effets
+  * cerveau
+  * transitions
+
+Les vues deviennent passives.
+
+---
+
+# ⚠️ ORDRE DE MIGRATION OBLIGATOIRE
+
+Tu ne touches pas tout en même temps.
+
+Ordre strict :
+
+1. layouts/game.blade.php (structure + slots + socket central)
+2. game_intro.blade.php (remplacement countdown → cerveau Node-driven)
+3. duo_question.blade.php
+4. duo_answer.blade.php
+5. duo_result.blade.php
+6. duo_waiting.blade.php
+7. duo_resume.blade.php
+8. tiebreaker views
+
+Tu ne passes à l’étape suivante que si la précédente est stable.
+
+---
+
+# 🧠 SKILLS ET AVATARS STRATÉGIQUES
+
+Tu dois respecter :
+
+* Laravel fournit les skills et avatars
+* Node applique les effets gameplay
+* Front affiche les effets
+
+Aucune logique de skill ne doit être dupliquée dans les vues.
+
+---
+
+# 🔥 OBJECTIF FINAL
+
+On ne veut pas juste “nettoyer le code”.
+
+On veut :
+
+* une base gameplay unique
+* une synchro parfaite pilotée par Node
+* zéro duplication JS
+* zéro logique dispersée
+* une UI stable sur toutes les phases
+
+---
+
+# 🎯 PROCHAINE RÉPONSE ATTENDUE
+
+Avant toute implémentation, je veux :
+
+1. la structure gameplay canonique complète
+2. le contenu final de layouts/game.blade.php
+3. la répartition exacte :
+
+   * ce qui reste dans les vues
+   * ce qui monte dans le layout
+   * ce qui va dans le runtime JS
+4. le plan de migration étape par étape sans casser le Duo actuel
+
+Ensuite seulement on passe en build.
+
+Aucune implémentation avant validation de cette architecture.

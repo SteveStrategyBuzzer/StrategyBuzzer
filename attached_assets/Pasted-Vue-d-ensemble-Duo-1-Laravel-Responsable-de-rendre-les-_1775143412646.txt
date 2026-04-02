@@ -1,0 +1,333 @@
+Vue d’ensemble Duo
+1. Laravel
+
+Responsable de :
+
+rendre les pages Blade
+injecter les données de départ dans les vues
+préparer match_id, room_id, lobby_code, jwt_token
+préparer les snapshots joueur/adversaire
+fournir avatars, scores initiaux, noms, skills visibles
+
+Laravel ne doit pas décider du gameplay temps réel.
+
+2. Node / Socket.IO
+
+Responsable de :
+
+être la source de vérité temps réel
+gérer les phases
+gérer buzz, ordre de priorité, round, question active, reveal, score_update
+propager les effets actifs
+décider quand une phase commence et finit
+synchroniser les joueurs via timestamps serveur
+
+Node doit appliquer la logique de gameplay.
+
+3. Firebase
+
+Responsable de :
+
+présence lobby
+heartbeat
+signaling WebRTC
+état voix / micro / présence distante
+
+Firebase ne doit pas piloter ready, phase, score, buzz ou résultats gameplay.
+
+4. Blade / JS front
+
+Responsable de :
+
+afficher
+animer
+écouter Socket.IO
+refléter l’état décidé par Node
+afficher avatars, skills, score, overlays, messages, cerveau tournant, buzz
+
+Le front montre, il ne doit pas “inventer” les décisions gameplay.
+
+Fichiers Duo et responsabilités
+app/Http/Controllers/LobbyController.php
+
+Responsable de :
+
+rendre la page lobby
+récupérer l’état lobby Laravel
+injecter currentPlayerId, isHost, playerToken, gameServerUrl
+faire entrer le joueur dans le lobby Laravel si besoin
+
+Il prépare l’entrée dans le vrai flux gameplay.
+
+app/Services/LobbyService.php
+
+Responsable de :
+
+créer le lobby
+stocker la structure lobby Laravel
+gérer les joueurs présents côté Laravel
+gérer lobby_code
+gérer les infos de base des joueurs dans le lobby
+gérer host, ready, couleurs, équipe, liste de joueurs
+
+C’est la source Laravel du lobby structurel, pas la source du temps réel.
+
+app/Services/GameServerService.php
+
+Responsable de :
+
+parler au game-server Node
+créer la room Node
+générer les JWT joueurs
+transmettre le lobbyCode canonique à Node
+exposer l’URL socket
+
+C’est le pont Laravel → Node.
+
+apps/game-server/src/http/routes.ts
+
+Responsable de :
+
+recevoir les appels HTTP de Laravel vers Node
+créer les rooms Node
+recevoir lobbyCode de Laravel
+renvoyer roomId, lobbyCode, config
+
+C’est la porte d’entrée HTTP du game-server.
+
+apps/game-server/src/services/RoomManager.ts
+
+Responsable de :
+
+créer la room temps réel
+garder les joueurs de la room
+gérer join/reconnect/leave
+stocker state.lobbyCode
+rattacher playerId à une room
+distinguer nouveau joueur vs reconnexion
+
+C’est un gestionnaire de room, pas le moteur de phase.
+
+apps/game-server/src/ws/handlers.ts
+
+Responsable de :
+
+recevoir join_room
+vérifier le token
+brancher le socket dans la bonne room
+émettre state, phase_changed, score_update, buzz_winner, etc.
+relayer la logique temps réel aux clients
+
+C’est l’entrée Socket.IO du gameplay.
+
+public/js/DuoSocketClient.js
+
+Responsable de :
+
+connecter le navigateur à Node
+envoyer connect(token)
+envoyer joinRoom(...)
+gérer les événements socket côté client
+exposer une API front simple (connect, joinRoom, buzz, handlers)
+
+C’est le transport temps réel côté navigateur.
+
+Fichiers Blade gameplay Duo
+resources/views/lobby.blade.php
+
+Responsable de :
+
+afficher le lobby
+afficher joueurs, ready, présence visuelle
+lancer Socket.IO dès le lobby
+lancer Firebase présence / WebRTC
+préparer la synchro avant gameplay
+
+Il est la porte d’entrée gameplay, pas juste une salle d’attente.
+
+resources/views/game_intro.blade.php
+
+Responsable de :
+
+afficher la phase “Ladies and Gentlemen”
+écouter les phases Node
+afficher l’intro synchronisée
+servir de transition vers la question
+
+Cette page doit être pilotée par timestamps serveur, pas par chrono local autonome.
+
+resources/views/duo_question.blade.php
+
+Responsable de :
+
+afficher la question
+afficher les avatars joueurs et scores visibles
+afficher le chrono / bientôt cerveau tournant
+écouter QUESTION_ACTIVE
+permettre le buzz
+afficher effets actifs visibles
+rediriger vers answer si buzz ou si adversaire buzz
+
+C’est l’écran principal de jeu.
+
+resources/views/duo_answer.blade.php
+
+Responsable de :
+
+afficher les réponses
+afficher l’état du joueur après buzz
+gérer l’action de réponse
+afficher certains feedbacks visuels de skill / état
+relayer vers result
+
+Cette page reçoit le contexte de réponse, elle ne décide pas le score final seule.
+
+resources/views/duo_result.blade.php
+
+Responsable de :
+
+afficher si la réponse est bonne ou mauvaise
+afficher points gagnés/perdus
+afficher la bonne réponse
+afficher l’effet visuel du résultat
+préparer la suite vers attente / manche / prochaine question
+
+C’est l’écran de feedback immédiat, pas la logique de calcul principale.
+
+resources/views/duo_waiting.blade.php
+
+Responsable de :
+
+afficher l’attente / resynchronisation
+maintenir le lien vers Node
+attendre la prochaine phase serveur
+éviter les transitions brutales
+
+Cette page doit servir de tampon de resynchro piloté par Node.
+
+resources/views/duo_resume.blade.php
+
+Responsable de :
+
+afficher un résumé de progression / fin intermédiaire
+préparer l’enchaînement de manche ou de suite de partie
+resources/views/unified_tiebreaker_choice.blade.php
+
+Responsable de :
+
+afficher l’écran d’entente tiebreaker
+proposer le mode de départage
+resources/views/unified_tiebreaker_bonus.blade.php
+resources/views/unified_tiebreaker_sudden_death.blade.php
+
+Responsables de :
+
+afficher les variantes de jeu tiebreaker
+relayer l’état spécial de départage
+Avatars stratégiques : qui fait quoi
+Qui choisit / fournit l’avatar stratégique ?
+Laravel
+
+Principalement :
+
+DuoController.php
+méthodes snapshot / avatar
+getPlayerSkillsWithTriggers($user)
+
+Laravel lit le profil joueur, retrouve l’avatar stratégique choisi et injecte :
+
+avatarName
+strategicAvatarPath
+skills
+
+Donc Laravel fournit la fiche avatar stratégique au front.
+
+Qui affiche l’avatar stratégique ?
+Blade front
+
+Principalement :
+
+duo_question.blade.php
+probablement aussi answer/result selon page
+
+Le front affiche :
+
+image stratégique
+nom de l’avatar
+icônes / boutons de skills
+états visuels associés
+
+Donc le front montre l’avatar stratégique.
+
+Skills : qui les applique vraiment ?
+Qui connaît la liste des skills disponibles ?
+Laravel
+
+Via :
+
+DuoController
+getPlayerSkillsWithTriggers($user)
+
+Laravel injecte les skills visibles et les métadonnées de départ.
+
+Qui décide qu’un skill produit vraiment un effet gameplay ?
+Node
+
+C’est Node qui doit être maître pour :
+
+double points
+shield
+reduce time
+reveal correct
+shuffle answers
+effets actifs / durée / questions restantes
+
+Donc :
+Laravel décrit
+Node applique
+le front affiche
+
+Qui montre le résultat visuel du skill ?
+Front Blade / JS
+
+Exemples :
+
+messages “Bouclier activé”
+halo / badge / icône active
+réponses mélangées
+temps réduit affiché
+indicateur de bonus
+
+Donc :
+le front rend visible l’effet décidé par Node.
+
+Répartition finale ultra claire
+Avatars stratégiques
+Laravel : récupère et injecte
+Front : affiche
+Skills disponibles
+Laravel : fournit la liste et le contexte de base
+Node : décide l’effet réel en gameplay
+Front : montre l’effet
+Score / buzz / phase / temps
+Node uniquement
+Présence / voix / micro
+Firebase + WebRTC
+Layout / feedback visuel / écrans
+Blade + JS front
+Règle d’or à garder
+
+Si une question est :
+
+“Qui décide ?”
+
+Réponse la plupart du temps :
+
+Node pour gameplay
+Laravel pour structure et injection
+Firebase pour présence/voix
+“Qui montre ?”
+
+Réponse :
+
+Blade / JS front
