@@ -16,6 +16,7 @@ export class BotPlayerService {
   private socket: Socket;
   private botPlayerId: string;
   private roomId: string;
+  private introTimer: ReturnType<typeof setTimeout> | null = null;
   private buzzTimer: ReturnType<typeof setTimeout> | null = null;
   private answerTimer: ReturnType<typeof setTimeout> | null = null;
   private onCleanup: (() => void) | undefined;
@@ -97,7 +98,8 @@ export class BotPlayerService {
         case "LOBBY":
         case "WAITING": {
           const delay = randomBetween(BOT_TIMING.introReadyMs.min, BOT_TIMING.introReadyMs.max);
-          setTimeout(() => {
+          this.introTimer = setTimeout(() => {
+            this.introTimer = null;
             this.socket.emit("ready", { roomId: this.roomId, isReady: true });
             console.log(`[Bot] Sent ready (room ${this.roomId})`);
           }, delay);
@@ -166,6 +168,10 @@ export class BotPlayerService {
   }
 
   private clearTimers(): void {
+    if (this.introTimer) {
+      clearTimeout(this.introTimer);
+      this.introTimer = null;
+    }
     if (this.buzzTimer) {
       clearTimeout(this.buzzTimer);
       this.buzzTimer = null;
@@ -178,11 +184,8 @@ export class BotPlayerService {
 
   disconnect(): void {
     this.clearTimers();
-    if (this.socket.connected) {
-      this.socket.disconnect();
-    }
-    this.onCleanup?.();
-    this.onCleanup = undefined;
+    this.socket.disconnect();
+    // onCleanup is called by the socket 'disconnect' event listener
   }
 
   getBotPlayerId(): string {
