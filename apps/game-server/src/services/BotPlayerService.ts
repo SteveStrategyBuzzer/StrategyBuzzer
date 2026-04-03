@@ -64,6 +64,14 @@ export class BotPlayerService {
       });
     });
 
+    this.socket.on("state", (data: { state?: { phase?: string } } | null) => {
+      const phase = data?.state?.phase;
+      if (phase === "LOBBY") {
+        this.socket.emit("ready", { roomId: this.roomId, isReady: true });
+        console.log(`[Bot] Sent ready from state event (room ${this.roomId})`);
+      }
+    });
+
     this.socket.on("connect_error", (err: Error) => {
       console.error(`[Bot] Connection error for room ${this.roomId}: ${err.message}`);
     });

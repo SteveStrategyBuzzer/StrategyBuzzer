@@ -1192,7 +1192,7 @@ foreach ($colors as $color) {
         <button class="btn btn-ready {{ ($players[$currentPlayerId]['ready'] ?? false) ? 'is-ready' : '' }}" 
                 onclick="toggleReady()"
                 id="ready-btn">
-            <span id="ready-text">{{ ($players[$currentPlayerId]['ready'] ?? false) ? __('Annuler') : __('Je Suis Prêt!') }}</span> <span id="ready-count">0/{{ $minPlayers }}</span>
+            <span id="ready-text">{{ ($players[$currentPlayerId]['ready'] ?? false) ? __('Annuler') : __('Je Suis Prêt!') }}</span> <span id="ready-count">{{ count(array_filter($players, fn($p) => $p['ready'] ?? false)) }}/{{ $minPlayers }}</span>
         </button>
         
         @if($isHost && $mode !== 'duo')
@@ -2989,7 +2989,7 @@ foreach ($colors as $color) {
         });
         
         const currentHash = JSON.stringify(playerEntries.map(([id, p]) => ({
-            id, name: p.name, avatar: p.avatar, ready: p.ready, is_host: p.is_host, color: p.color
+            id, name: p.name, avatar: p.avatar, ready: p.ready ?? p.isReady, is_host: p.is_host, color: p.color
         })));
         
         if (currentHash === lastPlayersHash) {
@@ -3003,13 +3003,14 @@ foreach ($colors as $color) {
         playerEntries.forEach(([playerId, player]) => {
             const playerColor = colorMap[player.color] || colorMap['blue'];
             const isCurrentPlayer = parseInt(playerId) === currentPlayerId;
-            const readyClass = player.ready ? 'is-ready' : '';
+            const playerIsReady = player.ready ?? player.isReady ?? false;
+            const readyClass = playerIsReady ? 'is-ready' : '';
             const hostClass = player.is_host ? 'is-host' : '';
             
             let statusHtml = '';
             if (player.is_host) {
                 statusHtml = '<div class="player-status status-host">👑</div>';
-            } else if (player.ready) {
+            } else if (playerIsReady) {
                 statusHtml = '<div class="player-status status-ready">✓</div>';
             } else {
                 statusHtml = '<div class="player-status status-waiting">⏳</div>';
