@@ -35,6 +35,7 @@ class User extends Authenticatable
         'email',
         'password',
         'player_code',
+        'is_bot',
         'preferred_language',
         'coins',
         'competence_coins',
@@ -66,6 +67,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at'       => 'datetime',
         'password'                => 'hashed',
+        'is_bot'                  => 'boolean',
         'profile_settings'        => 'array',
         'infinite_lives_until'    => 'datetime',
         'temp_access_expires_at'  => 'datetime',

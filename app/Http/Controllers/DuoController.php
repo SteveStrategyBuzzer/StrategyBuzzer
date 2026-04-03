@@ -161,6 +161,13 @@ class DuoController extends Controller
         $match->lobby_code = $lobby['code'];
         $match->save();
 
+        // Bot opponents are auto-accepted so the host can play immediately
+        if ($opponent->is_bot) {
+            $this->matchmaking->acceptMatch($match);
+            $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
+            $this->lobbyService->joinLobby($lobby['code'], $opponent);
+        }
+
         try {
             app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
                 $user,
@@ -176,6 +183,7 @@ class DuoController extends Controller
             'match' => $match->load(['player1', 'player2']),
             'lobby_code' => $lobby['code'],
             'redirect_url' => route('lobby.show', ['code' => $lobby['code']]),
+            'is_bot_match' => (bool) $opponent->is_bot,
         ]);
     }
 
@@ -294,47 +302,42 @@ class DuoController extends Controller
         ]);
     }
 
-    public function spawnTestBot(Request $request, string $code)
+    public function autoSpawnBot(Request $request, string $code)
     {
         if (app()->environment('production')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Not available in production.',
-            ], 403);
+            return response()->json(['success' => false, 'message' => 'Not available.'], 404);
         }
 
+        $user = Auth::user();
         $lobby = $this->lobbyService->getLobby($code);
 
         if (!$lobby) {
-            return response()->json([
-                'success' => false,
-                'message' => __('Salon introuvable.'),
-            ], 404);
+            return response()->json(['success' => false, 'message' => __('Salon introuvable.')], 404);
         }
 
-        if (($lobby['mode'] ?? '') !== 'duo') {
-            return response()->json([
-                'success' => false,
-                'message' => __('Le bot de test est uniquement disponible en mode Duo.'),
-            ], 400);
-        }
-
-        $currentUserId = (string) $request->user()->id;
+        $currentUserId = (string) $user->id;
         $players = $lobby['players'] ?? [];
         if (!array_key_exists($currentUserId, $players)) {
-            return response()->json([
-                'success' => false,
-                'message' => __('Vous n\'êtes pas dans ce salon.'),
-            ], 403);
+            return response()->json(['success' => false, 'message' => __('Vous n\'êtes pas dans ce salon.')], 403);
+        }
+
+        // Verify there is a bot in this lobby
+        $hasBotPlayer = false;
+        foreach (array_keys($players) as $playerId) {
+            $candidate = User::find($playerId);
+            if ($candidate && $candidate->is_bot) {
+                $hasBotPlayer = true;
+                break;
+            }
+        }
+
+        if (!$hasBotPlayer) {
+            return response()->json(['success' => false, 'message' => 'No bot in this lobby.'], 400);
         }
 
         $roomId = $lobby['game_server']['roomId'] ?? null;
-
         if (!$roomId) {
-            return response()->json([
-                'success' => false,
-                'message' => __('La partie n\'a pas encore démarré sur le serveur de jeu.'),
-            ], 400);
+            return response()->json(['success' => false, 'message' => __('La partie n\'a pas encore démarré sur le serveur de jeu.')], 400);
         }
 
         $result = $this->gameServerService->spawnBot($roomId);
@@ -342,7 +345,7 @@ class DuoController extends Controller
         if (!($result['success'] ?? false)) {
             return response()->json([
                 'success' => false,
-                'message' => $result['error'] ?? __('Erreur lors de l\'invitation du bot'),
+                'message' => $result['error'] ?? 'Erreur lors du lancement du bot.',
             ], 500);
         }
 

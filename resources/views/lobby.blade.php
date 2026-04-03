@@ -15,6 +15,8 @@ window.PLAYER_INFO = {
 window.ROOM_ID   = null;
 window.JWT_TOKEN = null;
 @endif
+window.HAS_BOT = @json($hasBot ?? false);
+window.IS_HOST = @json($isHost ?? false);
 window.NO_SOCKET_OVERLAY = true;
 </script>
 @endsection
@@ -1208,14 +1210,6 @@ foreach ($colors as $color) {
         <!-- Hidden container for JS compatibility -->
         <div class="waiting-message" id="waiting-message-container" style="display: none;"></div>
 
-        @if(config('app.env') !== 'production' && $mode === 'duo' && count($players) < 2)
-        <button class="btn"
-                id="spawn-bot-btn"
-                onclick="spawnTestBot()"
-                style="background: linear-gradient(135deg, #546e7a, #37474f); color: white; width: 100%; max-width: 300px; font-size: 0.95rem;">
-            🤖 {{ __('Inviter un bot') }}
-        </button>
-        @endif
 
         <button class="btn btn-leave" onclick="leaveLobby()">
             {{ __('Quitter le salon') }}
@@ -2928,40 +2922,17 @@ foreach ($colors as $color) {
         });
     }
     
-    async function spawnTestBot() {
-        const btn = document.getElementById('spawn-bot-btn');
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = '🤖 ...';
-        }
-
+    async function autoSpawnBot() {
         try {
-            const response = await fetch(`/duo/lobby/${lobbyCode}/spawn-bot`, {
+            await fetch(`/duo/lobby/${lobbyCode}/auto-bot`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
             });
-
-            const data = await response.json();
-
-            if (data.success) {
-                showToast('{{ __("Bot connecté !") }}', 3000);
-                if (btn) btn.style.display = 'none';
-            } else {
-                showToast(data.message || '{{ __("Erreur lors de l\'invitation du bot") }}', 4000);
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '🤖 {{ __("Inviter un bot") }}';
-                }
-            }
         } catch (err) {
-            showToast('{{ __("Erreur lors de l\'invitation du bot") }}', 4000);
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '🤖 {{ __("Inviter un bot") }}';
-            }
+            console.warn('[Lobby] autoSpawnBot failed:', err);
         }
     }
 
@@ -4554,6 +4525,11 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
         DuoSocketClient.on('connect', () => {
             console.log('[Socket.IO] Connected to Game Server');
             window.duoSocketConnected = true;
+
+            // Auto-spawn bot after host's join_room completes (bot lobby only, non-production)
+            if (window.HAS_BOT && window.IS_HOST && window.ROOM_ID) {
+                setTimeout(() => autoSpawnBot(), 1500);
+            }
         });
         
         DuoSocketClient.on('disconnect', (reason) => {

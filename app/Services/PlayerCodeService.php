@@ -52,15 +52,18 @@ class PlayerCodeService
      */
     public static function findByCode(string $code): ?User
     {
-        // Nettoyer le code (enlever espaces, mettre en majuscules)
         $cleanCode = strtoupper(trim($code));
-        
-        // Ajouter le préfixe SB- s'il n'est pas présent
-        // Use strpos for PHP 7.x compatibility (str_starts_with is PHP 8+)
+
+        // Bot accounts use BT- prefix — never prepend SB-
+        if (strpos($cleanCode, 'BT-') === 0) {
+            return User::where('player_code', $cleanCode)->first();
+        }
+
+        // Standard player codes get SB- prefix if absent
         if (strpos($cleanCode, 'SB-') !== 0) {
             $cleanCode = 'SB-' . $cleanCode;
         }
-        
+
         return User::where('player_code', $cleanCode)->first();
     }
 }

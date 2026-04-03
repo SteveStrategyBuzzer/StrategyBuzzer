@@ -259,7 +259,7 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::post('/match/{match}/preview-questions', [App\Http\Controllers\DuoController::class, 'getPreviewQuestions'])->name('match.preview-questions');
 
     if (!app()->environment('production')) {
-        Route::post('/lobby/{code}/spawn-bot', [App\Http\Controllers\DuoController::class, 'spawnTestBot'])->name('lobby.spawn-bot');
+        Route::post('/lobby/{code}/auto-bot', [App\Http\Controllers\DuoController::class, 'autoSpawnBot'])->name('lobby.auto-bot');
     }
 });
 
