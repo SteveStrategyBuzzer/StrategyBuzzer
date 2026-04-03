@@ -181,6 +181,7 @@ class LobbyService
                     'match_id' => $matchId,
                     'nb_questions' => $mergedSettings['nb_questions'],
                     'lobby_code' => $lobbyCode,
+                    'hasBot' => (bool) ($mergedSettings['hasBot'] ?? false),
                 ]
             );
 

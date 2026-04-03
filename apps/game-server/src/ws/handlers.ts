@@ -11,6 +11,7 @@ import { validateEvent } from "../validation/validate.js";
 import { MetricsService } from "../services/MetricsService.js";
 import { canActivateSkill, applySkillEffect } from "@strategybuzzer/game-engine";
 import { getAvatarSkillIds } from "../services/AvatarSkillsMap.js";
+import { BotPlayerService } from "../services/BotPlayerService.js";
 import {
   JoinRoomSchema,
   BuzzSchema,
@@ -139,6 +140,26 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           if (skillIds.length > 0 && !room.state.skillInventory[playerId]) {
             room.state.skillInventory[playerId] = buildInitialInventory(skillIds);
             console.log(`[WS] Initialized skill inventory for ${playerId} (${payload.strategicAvatarId}): ${skillIds.join(", ")}`);
+          }
+
+          // Auto-spawn bot when the first human player joins a bot-flagged DUO room
+          if (
+            room.pipelineConfig?.hasBot === true &&
+            room.state.config.mode === "DUO"
+          ) {
+            const players = Object.values(room.state.players);
+            const humanCount = players.filter(p => !p.id.startsWith("bot_")).length;
+            const botAlready = players.some(p => p.id.startsWith("bot_"));
+            if (humanCount === 1 && !botAlready) {
+              setTimeout(() => {
+                try {
+                  new BotPlayerService(roomId);
+                  console.log(`[WS] Bot auto-spawned for room ${roomId}`);
+                } catch (err) {
+                  console.error(`[WS] Failed to auto-spawn bot for room ${roomId}:`, err);
+                }
+              }, 2000);
+            }
           }
         }
         

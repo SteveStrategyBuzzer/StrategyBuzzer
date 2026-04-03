@@ -9,6 +9,7 @@ export type RoomPipelineConfig = {
   niveau: number;
   language: string;
   maxRounds: number;
+  hasBot?: boolean;
 };
 
 export type ChallengerSkillEffect = {

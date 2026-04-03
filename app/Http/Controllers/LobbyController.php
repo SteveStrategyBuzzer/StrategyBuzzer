@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\LobbyService;
 use App\Models\DuoMatch;
-use App\Models\User;
 
 class LobbyController extends Controller
 {
@@ -46,16 +45,6 @@ class LobbyController extends Controller
         $roomId = $lobby['game_server']['roomId'] ?? null;
         $playerToken = $roomId ? $gameServerService->generatePlayerToken($user->id, $roomId) : null;
 
-        // Detect if any player in the lobby is a bot
-        $hasBot = false;
-        foreach (array_keys($lobby['players'] ?? []) as $playerId) {
-            $candidate = User::find($playerId);
-            if ($candidate && $candidate->is_bot) {
-                $hasBot = true;
-                break;
-            }
-        }
-
         return view('lobby', [
             'lobby' => $lobby,
             'colors' => $colors,
@@ -67,7 +56,6 @@ class LobbyController extends Controller
             'match' => $duoMatch,
             'playerToken' => $playerToken,
             'gameServerUrl' => $gameServerUrl,
-            'hasBot' => $hasBot,
         ]);
     }
 

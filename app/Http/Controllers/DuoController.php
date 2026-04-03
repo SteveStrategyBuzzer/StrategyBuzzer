@@ -156,6 +156,7 @@ class DuoController extends Controller
             'theme' => __('Culture générale'),
             'nb_questions' => 10,
             'match_id' => $match->id,
+            'hasBot' => $opponent->is_bot,
         ]);
 
         $match->lobby_code = $lobby['code'];
@@ -299,59 +300,6 @@ class DuoController extends Controller
 
         return response()->json([
             'success' => true,
-        ]);
-    }
-
-    public function autoSpawnBot(Request $request, string $code)
-    {
-        if (app()->environment('production')) {
-            return response()->json(['success' => false, 'message' => 'Not available.'], 404);
-        }
-
-        $user = Auth::user();
-        $lobby = $this->lobbyService->getLobby($code);
-
-        if (!$lobby) {
-            return response()->json(['success' => false, 'message' => __('Salon introuvable.')], 404);
-        }
-
-        $currentUserId = (string) $user->id;
-        $players = $lobby['players'] ?? [];
-        if (!array_key_exists($currentUserId, $players)) {
-            return response()->json(['success' => false, 'message' => __('Vous n\'êtes pas dans ce salon.')], 403);
-        }
-
-        // Verify there is a bot in this lobby
-        $hasBotPlayer = false;
-        foreach (array_keys($players) as $playerId) {
-            $candidate = User::find($playerId);
-            if ($candidate && $candidate->is_bot) {
-                $hasBotPlayer = true;
-                break;
-            }
-        }
-
-        if (!$hasBotPlayer) {
-            return response()->json(['success' => false, 'message' => 'No bot in this lobby.'], 400);
-        }
-
-        $roomId = $lobby['game_server']['roomId'] ?? null;
-        if (!$roomId) {
-            return response()->json(['success' => false, 'message' => __('La partie n\'a pas encore démarré sur le serveur de jeu.')], 400);
-        }
-
-        $result = $this->gameServerService->spawnBot($roomId);
-
-        if (!($result['success'] ?? false)) {
-            return response()->json([
-                'success' => false,
-                'message' => $result['error'] ?? 'Erreur lors du lancement du bot.',
-            ], 500);
-        }
-
-        return response()->json([
-            'success' => true,
-            'botPlayerId' => $result['botPlayerId'] ?? null,
         ]);
     }
 

@@ -15,8 +15,6 @@ window.PLAYER_INFO = {
 window.ROOM_ID   = null;
 window.JWT_TOKEN = null;
 @endif
-window.HAS_BOT = @json($hasBot ?? false);
-window.IS_HOST = @json($isHost ?? false);
 window.NO_SOCKET_OVERLAY = true;
 </script>
 @endsection
@@ -2922,20 +2920,6 @@ foreach ($colors as $color) {
         });
     }
     
-    async function autoSpawnBot() {
-        try {
-            await fetch(`/duo/lobby/${lobbyCode}/auto-bot`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-            });
-        } catch (err) {
-            console.warn('[Lobby] autoSpawnBot failed:', err);
-        }
-    }
-
     async function leaveLobby() {
         const confirmed = await showConfirmModal('{{ __("Voulez-vous vraiment quitter le salon ?") }}');
         if (!confirmed) {
@@ -4525,11 +4509,6 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
         DuoSocketClient.on('connect', () => {
             console.log('[Socket.IO] Connected to Game Server');
             window.duoSocketConnected = true;
-
-            // Auto-spawn bot after host's join_room completes (bot lobby only, non-production)
-            if (window.HAS_BOT && window.IS_HOST && window.ROOM_ID) {
-                setTimeout(() => autoSpawnBot(), 1500);
-            }
         });
         
         DuoSocketClient.on('disconnect', (reason) => {

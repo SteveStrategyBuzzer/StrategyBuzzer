@@ -69,6 +69,7 @@ class GameServerService
                 'niveau' => $niveau,
                 'language' => $language,
                 'customConfig' => $customConfig,
+                'hasBot' => (bool) ($config['hasBot'] ?? false),
             ];
 
             Log::info('GameServerService: Creating room', [
@@ -361,40 +362,6 @@ class GameServerService
                 'funFact' => $q['fun_fact'] ?? $q['funFact'] ?? null,
             ];
         }, $questions, array_keys($questions));
-    }
-
-    public function spawnBot(string $roomId): array
-    {
-        try {
-            $response = Http::timeout(10)
-                ->withHeaders(['X-Internal-Bot' => '1'])
-                ->post("{$this->gameServerUrl}/rooms/{$roomId}/bot");
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            Log::error('GameServerService: Failed to spawn bot', [
-                'roomId' => $roomId,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return [
-                'success' => false,
-                'error' => $response->json()['error'] ?? 'Failed to spawn bot',
-            ];
-        } catch (\Exception $e) {
-            Log::error('GameServerService: Exception spawning bot', [
-                'roomId' => $roomId,
-                'message' => $e->getMessage(),
-            ]);
-
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
     }
 
     public function notifyMatchEnd(string $roomId, array $results): void

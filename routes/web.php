@@ -258,9 +258,6 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::post('/match/{match}/ai-suggest', [App\Http\Controllers\DuoController::class, 'getAISuggestion'])->name('match.ai-suggest');
     Route::post('/match/{match}/preview-questions', [App\Http\Controllers\DuoController::class, 'getPreviewQuestions'])->name('match.preview-questions');
 
-    if (!app()->environment('production')) {
-        Route::post('/lobby/{code}/auto-bot', [App\Http\Controllers\DuoController::class, 'autoSpawnBot'])->name('lobby.auto-bot');
-    }
 });
 
 /* ===== CHAT (Messages entre joueurs) ===== */
