@@ -72,12 +72,6 @@ export class BotPlayerService {
       console.error(`[Bot] Socket error for room ${this.roomId}:`, err);
     });
 
-    this.socket.on("disconnect", () => {
-      this.clearTimers();
-      this.onCleanup?.();
-      this.onCleanup = undefined;
-    });
-
     this.socket.on("event", (data: { event?: { type: string; playerId?: string } }) => {
       if (
         data.event?.type === "PLAYER_LEFT" &&
@@ -151,6 +145,8 @@ export class BotPlayerService {
     this.socket.on("disconnect", () => {
       console.log(`[Bot] Disconnected (room ${this.roomId})`);
       this.clearTimers();
+      this.onCleanup?.();
+      this.onCleanup = undefined;
     });
   }
 
