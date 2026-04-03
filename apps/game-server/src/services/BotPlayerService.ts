@@ -69,8 +69,13 @@ export class BotPlayerService {
       console.error(`[Bot] Socket error for room ${this.roomId}:`, err);
     });
 
-    this.socket.on("state", () => {
-      // Ignore full state dumps — react only to targeted phase events
+    this.socket.on("state", (data: { state?: { players?: Record<string, unknown> } }) => {
+      const players = data.state?.players ?? {};
+      const humanIds = Object.keys(players).filter((id) => !id.startsWith("bot_"));
+      if (humanIds.length === 0) {
+        console.log(`[Bot] All humans left room ${this.roomId}, disconnecting`);
+        this.disconnect();
+      }
     });
 
     this.socket.on("phase_changed", (data: { phase: string; lockedPlayerId?: string }) => {

@@ -250,70 +250,81 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
     });
   });
 
-  app.post("/rooms/:roomId/bot", (req: Request, res: Response) => {
-    const internalHeader = req.headers["x-internal-bot"];
-    if (internalHeader !== "1") {
-      return res.status(403).json({ success: false, error: "Forbidden" });
-    }
-
-    const { roomId } = req.params;
-
-    const room = roomManager.getRoom(roomId);
-    if (!room) {
-      return res.status(404).json({ success: false, error: "Room not found" });
-    }
-
-    const humanPlayerCount = Object.values(room.state.players).filter(
-      (p) => !p.id.startsWith("bot_")
-    ).length;
-
-    if (humanPlayerCount >= room.state.config.maxPlayers) {
-      return res.status(400).json({ success: false, error: "Room is full" });
-    }
-
-    if (activeBots.has(roomId)) {
-      const existing = activeBots.get(roomId)!;
-      if (existing.isConnected()) {
-        return res.status(400).json({ success: false, error: "Bot already active in this room" });
+  if (process.env.APP_ENV !== "production") {
+    app.post("/rooms/:roomId/bot", (req: Request, res: Response) => {
+      const internalHeader = req.headers["x-internal-bot"];
+      if (internalHeader !== "1") {
+        return res.status(403).json({ success: false, error: "Forbidden" });
       }
-      activeBots.delete(roomId);
-    }
 
-    try {
-      const bot = new BotPlayerService(roomId);
-      activeBots.set(roomId, bot);
+      const { roomId } = req.params;
 
-      setTimeout(() => {
-        if (activeBots.has(roomId) && !activeBots.get(roomId)!.isConnected()) {
-          activeBots.delete(roomId);
+      const room = roomManager.getRoom(roomId);
+      if (!room) {
+        return res.status(404).json({ success: false, error: "Room not found" });
+      }
+
+      if (room.state.config.mode !== "DUO") {
+        return res.status(400).json({ success: false, error: "Bot only available in DUO mode" });
+      }
+
+      const humanPlayers = Object.values(room.state.players).filter(
+        (p) => !p.id.startsWith("bot_")
+      );
+
+      if (humanPlayers.length !== 1) {
+        return res.status(400).json({
+          success: false,
+          error: humanPlayers.length === 0
+            ? "No human player in room"
+            : "Room already has a second player",
+        });
+      }
+
+      if (activeBots.has(roomId)) {
+        const existing = activeBots.get(roomId)!;
+        if (existing.isConnected()) {
+          return res.status(400).json({ success: false, error: "Bot already active in this room" });
         }
-      }, 10000);
+        activeBots.delete(roomId);
+      }
 
-      res.status(201).json({
-        success: true,
-        botPlayerId: bot.getBotPlayerId(),
-      });
-    } catch (error) {
-      console.error("[HTTP] Error spawning bot:", error);
-      res.status(500).json({ success: false, error: "Failed to spawn bot" });
-    }
-  });
+      try {
+        const bot = new BotPlayerService(roomId);
+        activeBots.set(roomId, bot);
 
-  app.delete("/rooms/:roomId/bot", (req: Request, res: Response) => {
-    const internalHeader = req.headers["x-internal-bot"];
-    if (internalHeader !== "1") {
-      return res.status(403).json({ success: false, error: "Forbidden" });
-    }
+        setTimeout(() => {
+          if (activeBots.has(roomId) && !activeBots.get(roomId)!.isConnected()) {
+            activeBots.delete(roomId);
+          }
+        }, 10000);
 
-    const { roomId } = req.params;
-    const bot = activeBots.get(roomId);
-    if (bot) {
-      bot.disconnect();
-      activeBots.delete(roomId);
-    }
+        res.status(201).json({
+          success: true,
+          botPlayerId: bot.getBotPlayerId(),
+        });
+      } catch (error) {
+        console.error("[HTTP] Error spawning bot:", error);
+        res.status(500).json({ success: false, error: "Failed to spawn bot" });
+      }
+    });
 
-    res.json({ success: true });
-  });
+    app.delete("/rooms/:roomId/bot", (req: Request, res: Response) => {
+      const internalHeader = req.headers["x-internal-bot"];
+      if (internalHeader !== "1") {
+        return res.status(403).json({ success: false, error: "Forbidden" });
+      }
+
+      const { roomId } = req.params;
+      const bot = activeBots.get(roomId);
+      if (bot) {
+        bot.disconnect();
+        activeBots.delete(roomId);
+      }
+
+      res.json({ success: true });
+    });
+  }
 
   app.post("/webhook/match-complete", (req: Request, res: Response) => {
     const { sessionId, scores, events } = req.body;
