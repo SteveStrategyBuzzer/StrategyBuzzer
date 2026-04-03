@@ -18,10 +18,12 @@ export class BotPlayerService {
   private roomId: string;
   private buzzTimer: ReturnType<typeof setTimeout> | null = null;
   private answerTimer: ReturnType<typeof setTimeout> | null = null;
+  private onCleanup: (() => void) | undefined;
 
-  constructor(roomId: string) {
+  constructor(roomId: string, onCleanup?: () => void) {
     this.roomId = roomId;
     this.botPlayerId = `bot_${roomId}`;
+    this.onCleanup = onCleanup;
 
     const token = this.generateBotToken();
     const port = process.env.PORT || 3001;
@@ -67,6 +69,12 @@ export class BotPlayerService {
 
     this.socket.on("error", (err: unknown) => {
       console.error(`[Bot] Socket error for room ${this.roomId}:`, err);
+    });
+
+    this.socket.on("disconnect", () => {
+      this.clearTimers();
+      this.onCleanup?.();
+      this.onCleanup = undefined;
     });
 
     this.socket.on("event", (data: { event?: { type: string; playerId?: string } }) => {
@@ -173,6 +181,8 @@ export class BotPlayerService {
     if (this.socket.connected) {
       this.socket.disconnect();
     }
+    this.onCleanup?.();
+    this.onCleanup = undefined;
   }
 
   getBotPlayerId(): string {

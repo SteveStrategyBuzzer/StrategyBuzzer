@@ -319,6 +319,15 @@ class DuoController extends Controller
             ], 400);
         }
 
+        $currentUserId = (string) $request->user()->id;
+        $players = $lobby['players'] ?? [];
+        if (!array_key_exists($currentUserId, $players)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous n\'êtes pas dans ce salon.'),
+            ], 403);
+        }
+
         $roomId = $lobby['game_server']['roomId'] ?? null;
 
         if (!$roomId) {

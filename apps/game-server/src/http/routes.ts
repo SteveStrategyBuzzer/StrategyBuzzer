@@ -290,7 +290,7 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
       }
 
       try {
-        const bot = new BotPlayerService(roomId);
+        const bot = new BotPlayerService(roomId, () => activeBots.delete(roomId));
         activeBots.set(roomId, bot);
 
         setTimeout(() => {
