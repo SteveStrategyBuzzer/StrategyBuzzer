@@ -781,7 +781,7 @@ foreach ($colors as $color) {
     window.matchRoomId    = @json($lobby['game_server']['roomId'] ?? '');
     window.matchLobbyCode = @json($lobby['code'] ?? '');
     window.matchPlayerToken = @json($playerToken ?? null);
-    window.gameServerUrl  = window.location.origin;
+    window.GAME_SERVER_URL = window.location.protocol + '//' + window.location.hostname + ':3001';
     window.useSocketIO    = true;
 @else
     window.useSocketIO = false;
