@@ -69,12 +69,13 @@ export class BotPlayerService {
       console.error(`[Bot] Socket error for room ${this.roomId}:`, err);
     });
 
-    this.socket.on("state", (data: { state?: { players?: Record<string, unknown> } }) => {
-      const players = data.state?.players ?? {};
-      const humanIds = Object.keys(players).filter((id) => !id.startsWith("bot_"));
-      if (humanIds.length === 0) {
-        console.log(`[Bot] All humans left room ${this.roomId}, disconnecting`);
-        this.disconnect();
+    this.socket.on("event", (data: { event?: { type: string; playerId?: string } }) => {
+      if (
+        data.event?.type === "PLAYER_LEFT" &&
+        data.event?.playerId !== this.botPlayerId
+      ) {
+        console.log(`[Bot] Human player left room ${this.roomId}, disconnecting`);
+        setTimeout(() => this.disconnect(), 300);
       }
     });
 
