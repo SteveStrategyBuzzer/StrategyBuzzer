@@ -322,6 +322,7 @@ class LobbyService
         $assignedColor = !empty($availableColors) ? $availableColors[0]['id'] : 'blue';
         
         $playerDisplayName = $this->getPlayerDisplayName($player);
+        $isBot = (bool) ($player->is_bot ?? false);
         $lobby['players'][$player->id] = [
             'id' => $player->id,
             'name' => $playerDisplayName,
@@ -329,8 +330,9 @@ class LobbyService
             'avatar' => $this->getUserAvatar($player),
             'color' => $assignedColor,
             'team' => null,
-            'ready' => false,
+            'ready' => $isBot,
             'is_host' => false,
+            'is_bot' => $isBot,
             'joined_at' => now()->toISOString(),
             'competence_coins' => $player->competence_coins ?? 0,
         ];
@@ -1315,6 +1317,10 @@ class LobbyService
     {
         foreach ($lobby['players'] as $player) {
             if ($player['is_host']) {
+                continue;
+            }
+            // Bot players are always considered ready
+            if ($player['is_bot'] ?? false) {
                 continue;
             }
             if (!$player['ready']) {
