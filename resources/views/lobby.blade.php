@@ -1207,7 +1207,16 @@ foreach ($colors as $color) {
         
         <!-- Hidden container for JS compatibility -->
         <div class="waiting-message" id="waiting-message-container" style="display: none;"></div>
-        
+
+        @if(config('app.env') !== 'production' && $mode === 'duo' && count($players) < 2)
+        <button class="btn"
+                id="spawn-bot-btn"
+                onclick="spawnTestBot()"
+                style="background: linear-gradient(135deg, #546e7a, #37474f); color: white; width: 100%; max-width: 300px; font-size: 0.95rem;">
+            🤖 {{ __('Inviter un bot') }}
+        </button>
+        @endif
+
         <button class="btn btn-leave" onclick="leaveLobby()">
             {{ __('Quitter le salon') }}
         </button>
@@ -2919,6 +2928,43 @@ foreach ($colors as $color) {
         });
     }
     
+    async function spawnTestBot() {
+        const btn = document.getElementById('spawn-bot-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '🤖 ...';
+        }
+
+        try {
+            const response = await fetch(`/duo/lobby/${lobbyCode}/spawn-bot`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('{{ __("Bot connecté !") }}', 3000);
+                if (btn) btn.style.display = 'none';
+            } else {
+                showToast(data.message || '{{ __("Erreur lors de l\'invitation du bot") }}', 4000);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '🤖 {{ __("Inviter un bot") }}';
+                }
+            }
+        } catch (err) {
+            showToast('{{ __("Erreur lors de l\'invitation du bot") }}', 4000);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '🤖 {{ __("Inviter un bot") }}';
+            }
+        }
+    }
+
     async function leaveLobby() {
         const confirmed = await showConfirmModal('{{ __("Voulez-vous vraiment quitter le salon ?") }}');
         if (!confirmed) {

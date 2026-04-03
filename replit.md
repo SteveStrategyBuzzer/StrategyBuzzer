@@ -63,6 +63,8 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Monorepo Architecture (Node.js Game Server):** An npm workspaces monorepo is used with `packages/shared`, `packages/game-engine`, and `apps/game-server`. The Game Server (Node.js/TypeScript) uses Socket.IO for real-time communication and Express for REST API.
 
+**Dev-Only Bot Player (Task #19):** A test bot for Duo mode is available in non-production environments. Architecture: `BotPlayerService.ts` (game-server) connects as a socket.io-client, generates its own JWT, and auto-responds to phases (ready after 2s in INTRO, buzz after 3-7s in QUESTION_ACTIVE, random answer after 0.8-2s when winning buzz). HTTP endpoint `POST /rooms/:roomId/bot` (protected by `X-Internal-Bot: 1`). Laravel: `POST /duo/lobby/{code}/spawn-bot` in `DuoController::spawnTestBot()`. UI: "🤖 Inviter un bot" button in `lobby.blade.php` (hidden in production, hidden when room already full). Active bots tracked in `Map<roomId, BotPlayerService>` in `routes.ts`.
+
 **Scalable Architecture (Production):** Redis is used for real-time state with a 2-hour TTL. Firestore is the source of truth for questions, accelerated by Laravel Cache (30-minute TTL). PostgreSQL Queue handles AI question generation jobs. Event-sourcing logs canonical events to Redis. Socket.IO Redis adapter enables horizontal scaling. Correct answer metadata is never sent before reveal for security.
 
 **Challenger Skills (Socket.IO Implementation):** `reduce_time` reduces the target's Question page timer for specific questions. `shuffle_answers` (pending) shuffles target's answer options.

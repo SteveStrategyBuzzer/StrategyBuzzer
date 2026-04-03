@@ -5,6 +5,9 @@ import { DEFAULT_DUO_CONFIG, DEFAULT_LEAGUE_INDIVIDUAL_CONFIG, DEFAULT_LEAGUE_TE
 import type { GameConfig, Mode } from "@strategybuzzer/shared";
 import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";
 import { MetricsService } from "../services/MetricsService.js";
+import { BotPlayerService } from "../services/BotPlayerService.js";
+
+const activeBots = new Map<string, BotPlayerService>();
 
 function getConfigForMode(mode: Mode): GameConfig {
   switch (mode) {
@@ -245,6 +248,71 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
     res.json({
       success: true,
     });
+  });
+
+  app.post("/rooms/:roomId/bot", (req: Request, res: Response) => {
+    const internalHeader = req.headers["x-internal-bot"];
+    if (internalHeader !== "1") {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const { roomId } = req.params;
+
+    const room = roomManager.getRoom(roomId);
+    if (!room) {
+      return res.status(404).json({ success: false, error: "Room not found" });
+    }
+
+    const humanPlayerCount = Object.values(room.state.players).filter(
+      (p) => !p.id.startsWith("bot_")
+    ).length;
+
+    if (humanPlayerCount >= room.state.config.maxPlayers) {
+      return res.status(400).json({ success: false, error: "Room is full" });
+    }
+
+    if (activeBots.has(roomId)) {
+      const existing = activeBots.get(roomId)!;
+      if (existing.isConnected()) {
+        return res.status(400).json({ success: false, error: "Bot already active in this room" });
+      }
+      activeBots.delete(roomId);
+    }
+
+    try {
+      const bot = new BotPlayerService(roomId);
+      activeBots.set(roomId, bot);
+
+      setTimeout(() => {
+        if (activeBots.has(roomId) && !activeBots.get(roomId)!.isConnected()) {
+          activeBots.delete(roomId);
+        }
+      }, 10000);
+
+      res.status(201).json({
+        success: true,
+        botPlayerId: bot.getBotPlayerId(),
+      });
+    } catch (error) {
+      console.error("[HTTP] Error spawning bot:", error);
+      res.status(500).json({ success: false, error: "Failed to spawn bot" });
+    }
+  });
+
+  app.delete("/rooms/:roomId/bot", (req: Request, res: Response) => {
+    const internalHeader = req.headers["x-internal-bot"];
+    if (internalHeader !== "1") {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const { roomId } = req.params;
+    const bot = activeBots.get(roomId);
+    if (bot) {
+      bot.disconnect();
+      activeBots.delete(roomId);
+    }
+
+    res.json({ success: true });
   });
 
   app.post("/webhook/match-complete", (req: Request, res: Response) => {

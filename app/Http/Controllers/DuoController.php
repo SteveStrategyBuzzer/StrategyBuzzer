@@ -294,6 +294,55 @@ class DuoController extends Controller
         ]);
     }
 
+    public function spawnTestBot(Request $request, string $code)
+    {
+        if (app()->environment('production')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not available in production.',
+            ], 403);
+        }
+
+        $lobby = $this->lobbyService->getLobby($code);
+
+        if (!$lobby) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Salon introuvable.'),
+            ], 404);
+        }
+
+        if (($lobby['mode'] ?? '') !== 'duo') {
+            return response()->json([
+                'success' => false,
+                'message' => __('Le bot de test est uniquement disponible en mode Duo.'),
+            ], 400);
+        }
+
+        $roomId = $lobby['game_server']['roomId'] ?? null;
+
+        if (!$roomId) {
+            return response()->json([
+                'success' => false,
+                'message' => __('La partie n\'a pas encore démarré sur le serveur de jeu.'),
+            ], 400);
+        }
+
+        $result = $this->gameServerService->spawnBot($roomId);
+
+        if (!($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? __('Erreur lors de l\'invitation du bot'),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'botPlayerId' => $result['botPlayerId'] ?? null,
+        ]);
+    }
+
     public function buzz(Request $request, DuoMatch $match)
     {
         $request->validate([
