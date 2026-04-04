@@ -19,10 +19,10 @@ const LARAVEL_ORIGIN = process.env.LARAVEL_ORIGIN || "http://localhost:5000";
 
 const app = express();
 app.use(cors({
-  origin: [LARAVEL_ORIGIN, "http://localhost:5000", "http://0.0.0.0:5000"],
+  origin: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Internal-Bot"],
 }));
 app.use(express.json());
 
@@ -30,7 +30,7 @@ const httpServer = createServer(app);
 
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: [LARAVEL_ORIGIN, "http://localhost:5000", "http://0.0.0.0:5000", "*"],
+    origin: true,
     methods: ["GET", "POST"],
     credentials: true,
   },
