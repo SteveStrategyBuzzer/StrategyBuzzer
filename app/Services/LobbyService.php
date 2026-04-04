@@ -1339,8 +1339,19 @@ class LobbyService
             return ['success' => true];
         }
         
-        $minPlayers = $lobby['settings']['min_players'] ?? 2;
-        $playerIds = array_keys($lobby['players']);
+        // Only count human (non-bot) players for presence check — bots have no browser
+        $humanPlayerIds = array_keys(array_filter(
+            $lobby['players'],
+            fn($p) => !($p['is_bot'] ?? false)
+        ));
+        $minPlayers = count($humanPlayerIds);
+        
+        // If there are no human players to verify (all bots), skip the check
+        if ($minPlayers === 0) {
+            return ['success' => true];
+        }
+
+        $playerIds = $humanPlayerIds;
         $maxRetries = 3;
         $retryDelay = 500000;
         

@@ -3183,9 +3183,9 @@ if (data.exists === false) {
                     // Track backend state for combination with Firebase presence check
                     startBtn.dataset.backendDisabled = data.can_start ? 'false' : 'true';
                     
-                    // Only enable if BOTH backend allows AND Firebase confirms connection
+                    // Enable when backend allows AND socket is connected (all modes including Duo)
                     const realtimeReady = startBtn.dataset.socketLobbyReady === 'true';
-                    if (mode !== 'duo' && data.can_start && realtimeReady) {
+                    if (data.can_start && realtimeReady) {
                         startBtn.removeAttribute('disabled');
                     } else {
                         startBtn.setAttribute('disabled', 'disabled');
@@ -4409,6 +4409,12 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
                 startBtn.dataset.socketLobbyReady = 'true';
+                // If backend already confirmed can_start (via polling or initial page data), enable now
+                const backendOk = startBtn.dataset.backendDisabled === 'false'
+                    || startBtn.dataset.backendCanStart === 'true';
+                if (isHost && backendOk) {
+                    startBtn.removeAttribute('disabled');
+                }
             }
 
             window.updatePlayersUI(players);

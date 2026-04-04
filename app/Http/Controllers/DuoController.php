@@ -977,7 +977,7 @@ class DuoController extends Controller
             $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
 
             if ($lobby) {
-                $matchId = $lobby['match_id'] ?? null;
+                $matchId = $lobby['settings']['match_id'] ?? ($lobby['match_id'] ?? null);
 
                 if (!$matchId) {
                     $playerIds = array_keys($lobby['players'] ?? []);
