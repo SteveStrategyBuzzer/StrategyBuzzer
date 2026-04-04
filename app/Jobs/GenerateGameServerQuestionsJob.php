@@ -46,6 +46,15 @@ class GenerateGameServerQuestionsJob implements ShouldQueue
 
     public function handle(): void
     {
+        if ($this->startIndex > $this->totalNeeded) {
+            Log::info('[GenerateGameServerQuestionsJob] startIndex exceeds totalNeeded, chain complete', [
+                'room_id' => $this->roomId,
+                'start_index' => $this->startIndex,
+                'total_needed' => $this->totalNeeded,
+            ]);
+            return;
+        }
+
         Log::info('[GenerateGameServerQuestionsJob] Starting block generation', [
             'room_id' => $this->roomId,
             'theme' => $this->theme,

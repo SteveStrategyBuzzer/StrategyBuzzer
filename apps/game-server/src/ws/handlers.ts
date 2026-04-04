@@ -52,6 +52,8 @@ function extractRoundScores(players: Record<string, Player>): Record<string, num
   return roundScores;
 }
 
+const startingRooms = new Set<string>();
+
 export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager, gameOrchestrator: GameOrchestrator): void {
   io.on("connection", (socket: Socket) => {
     console.log(`[WS] Client connected: ${socket.id}`);
@@ -528,9 +530,18 @@ socket.emit("state", { state: updatedState });
         const updatedState = roomManager.getState(payload.roomId);
         io.to(payload.roomId).emit("state", { state: updatedState });
         const players = Object.values(room.state.players); 
-        if (room.state.config.mode === "DUO" && room.state.phase === "LOBBY" && players.length === room.state.config.maxPlayers && players.every(p => p.isConnected && ((p as Player & { isReady?: boolean }).isReady) === true)) { 
-          console.log("[WS] AUTO START DUO"); 
-          await gameOrchestrator.startGame(payload.roomId); 
+        if (room.state.config.mode === "DUO" && room.state.phase === "LOBBY" && players.length === room.state.config.maxPlayers && players.every(p => p.isConnected && ((p as Player & { isReady?: boolean }).isReady) === true)) {
+          if (!startingRooms.has(payload.roomId)) {
+            startingRooms.add(payload.roomId);
+            console.log("[WS] AUTO START DUO");
+            try {
+              await gameOrchestrator.startGame(payload.roomId);
+            } finally {
+              startingRooms.delete(payload.roomId);
+            }
+          } else {
+            console.log("[WS] startGame already in progress for room, skipping duplicate trigger", payload.roomId);
+          }
         } 
 
 
