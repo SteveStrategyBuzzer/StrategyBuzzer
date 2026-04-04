@@ -224,6 +224,11 @@
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 
+<!-- Game server URL — injected once from layout so all gameplay views get port 3001 -->
+<script>
+window.GAME_SERVER_URL = window.location.protocol + '//' + window.location.hostname + ':3001';
+</script>
+
 <!-- Window variables set by each game view (must come before GameplayRuntime) -->
 @yield('game-data')
 

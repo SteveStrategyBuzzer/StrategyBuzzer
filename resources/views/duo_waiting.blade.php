@@ -6,7 +6,6 @@ window.ROOM_ID         = @json((string)($room_id ?? ''));
 window.LOBBY_CODE      = @json(null);
 window.JWT_TOKEN       = @json((string)($jwt_token ?? ''));
 window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
-window.GAME_SERVER_URL = window.location.origin;
 window.NO_SOCKET_OVERLAY = true;
 </script>
 @endsection

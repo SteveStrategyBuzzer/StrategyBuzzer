@@ -321,11 +321,15 @@ const DuoSocketClient = {
             lobbyCode: lobbyCode || undefined,
             playerId: playerInfo.playerId || '',
             playerName: playerInfo.playerName || '',
-            avatarId: playerInfo.avatarId,
-            strategicAvatarId: playerInfo.strategicAvatarId,
             division: playerInfo.division,
             token: playerInfo.token
         };
+        if (playerInfo.avatarId && typeof playerInfo.avatarId === 'string') {
+            payload.avatarId = playerInfo.avatarId;
+        }
+        if (playerInfo.strategicAvatarId && typeof playerInfo.strategicAvatarId === 'string') {
+            payload.strategicAvatarId = playerInfo.strategicAvatarId;
+        }
 
         this._log('Joining room', payload);
         this.socket.emit('join_room', payload);

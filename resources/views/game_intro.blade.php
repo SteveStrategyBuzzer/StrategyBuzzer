@@ -6,7 +6,6 @@ window.ROOM_ID         = @json($params['room_id'] ?? null);
 window.JWT_TOKEN       = @json($params['jwt_token'] ?? null);
 window.LOBBY_CODE      = @json($params['lobby_code'] ?? null);
 window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
-window.GAME_SERVER_URL = window.location.origin;
 window.NO_SOCKET_OVERLAY = true;
 </script>
 @endsection
@@ -211,24 +210,6 @@ body {
     gap: 10px;
 }
 
-.countdown-section {
-    margin-top: 40px;
-    animation: fadeIn 1s ease 1s both;
-}
-
-.countdown-text {
-    font-size: 1.5rem;
-    margin-bottom: 15px;
-    color: rgba(255,255,255,0.8);
-}
-
-.countdown-number {
-    font-size: 6rem;
-    font-weight: 900;
-    color: #ffd700;
-    text-shadow: 0 0 30px rgba(255,215,0,0.6);
-    animation: countdownPulse 1s ease infinite;
-}
 
 @keyframes fadeInDown {
     from {
@@ -251,11 +232,6 @@ body {
     50% { transform: scale(1.1); }
 }
 
-@keyframes countdownPulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.15); opacity: 0.8; }
-    100% { transform: scale(1); opacity: 1; }
-}
 
 /* Mobile portrait */
 @media (max-width: 768px) and (orientation: portrait) {
@@ -303,9 +279,6 @@ body {
         font-size: 0.75rem;
     }
     
-    .countdown-number {
-        font-size: 5rem;
-    }
 }
 
 /* Mobile landscape */
@@ -326,10 +299,6 @@ body {
     .player-avatar {
         width: 60px;
         height: 60px;
-    }
-    
-    .countdown-number {
-        font-size: 4rem;
     }
     
     .title-section h1 {

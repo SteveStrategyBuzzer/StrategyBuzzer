@@ -711,68 +711,6 @@ foreach ($colors as $color) {
         background: rgba(255, 255, 255, 0.2);
     }
     
-    .countdown-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s ease;
-    }
-    
-    .countdown-overlay.show {
-        opacity: 1;
-        visibility: visible;
-    }
-    
-    .countdown-number {
-        font-size: 8rem;
-        font-weight: 900;
-        color: #fff;
-        text-shadow: 0 0 50px rgba(102, 126, 234, 0.8), 0 0 100px rgba(102, 126, 234, 0.5);
-        animation: countdownPulse 1s ease-in-out infinite;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    .countdown-number.go {
-        color: #4CAF50;
-        text-shadow: 0 0 50px rgba(76, 175, 80, 0.8), 0 0 100px rgba(76, 175, 80, 0.5);
-        animation: goZoom 0.5s ease-out;
-    }
-    
-    .countdown-label {
-        font-size: 1.5rem;
-        color: rgba(255, 255, 255, 0.7);
-        margin-bottom: 30px;
-        text-transform: uppercase;
-        letter-spacing: 4px;
-    }
-    
-    .countdown-precision {
-        font-size: 1.2rem;
-        color: rgba(255, 255, 255, 0.4);
-        margin-top: 20px;
-        font-family: monospace;
-    }
-    
-    @keyframes countdownPulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-    }
-    
-    @keyframes goZoom {
-        0% { transform: scale(0.5); opacity: 0; }
-        50% { transform: scale(1.3); }
-        100% { transform: scale(1); opacity: 1; }
-    }
 </style>
 
 <script>
@@ -1216,13 +1154,6 @@ foreach ($colors as $color) {
 </div>
 
 <div class="toast" id="toast"></div>
-
-<!-- Countdown Overlay for Duo Auto-Start -->
-<div class="countdown-overlay" id="countdown-overlay">
-    <div class="countdown-label" id="countdown-label"></div>
-    <div class="countdown-number" id="countdown-number">3</div>
-    <div class="countdown-precision" id="countdown-precision"></div>
-</div>
 
 <!-- Modal de confirmation personnalisée -->
 <div class="custom-modal-overlay" id="confirmModal">
@@ -4300,8 +4231,6 @@ const currentPlayerData = @json($players[$currentPlayerId] ?? ['name' => 'Joueur
 const minPlayersFirebase = {{ $minPlayers }};
 const firebaseMatchId = {{ $matchId ?? 'null' }};
 
-window.countdownUnsubscriber = null;
-window.countdownAnimationFrame = null;
 window.serverTimeOffset = 0; // Server time - Client time (ms)
 window.offsetMeasured = false;
 
@@ -4350,13 +4279,6 @@ function getServerTime() {
 
 
 
-function hideCountdownOverlay() {
-    const overlay = document.getElementById('countdown-overlay');
-    if (overlay) {
-        overlay.classList.remove('show');
-    }
-}
-
 // Normalize match ID for Firebase path - must match backend DuoFirestoreService::normalizeMatchId()
 function normalizeMatchIdJs(matchId) {
     if (typeof matchId === 'number' && matchId > 0) {
@@ -4375,86 +4297,6 @@ function normalizeMatchIdJs(matchId) {
         return ((crc ^ 0xFFFFFFFF) >>> 0) & 0x7FFFFFFF;
     }
     return numericId;
-}
-
-function runCountdownAnimation(serverEndTime, totalDuration, countdownDocRef, serverStartTime) {
-    const numberEl = document.getElementById('countdown-number');
-    const precisionEl = document.getElementById('countdown-precision');
-    const label = document.getElementById('countdown-label');
-    let gameNavigated = false;
-    
-    // Prefetch the game page during countdown to reduce load time
-    // This ensures the page is cached when we navigate after countdown
-    const prefetchLink = document.createElement('link');
-    prefetchLink.rel = 'prefetch';
-    prefetchLink.href = `/game/${mode}/question`;
-    prefetchLink.as = 'document';
-    document.head.appendChild(prefetchLink);
-    console.log('[Countdown] Prefetching game page:', prefetchLink.href);
-    
-    function updateCountdown() {
-        // Calculate remaining time using synchronized server time
-        // getServerTime() = Date.now() + serverTimeOffset (measured via /api/now)
-        // This ensures both clients compute the same remaining time
-        const syncedNow = getServerTime();
-        const remaining = serverEndTime - syncedNow;
-        
-        if (remaining <= 0) {
-            if (!gameNavigated) {
-                gameNavigated = true;
-                
-                if (numberEl) {
-                    numberEl.textContent = translations.go;
-                    numberEl.classList.add('go');
-                }
-                if (precisionEl) {
-                    precisionEl.textContent = '';
-                }
-                
-                setTimeout(async () => {
-                    console.log('[Countdown] Countdown finished! Starting game...');
-                    
-                    // Clean up countdown document to allow future countdowns
-                    if (countdownDocRef) {
-                        try {
-                            await deleteDoc(countdownDocRef);
-                            console.log('[Countdown] Countdown document deleted');
-                        } catch (err) {
-                            console.error('[Countdown] Failed to delete countdown doc:', err);
-                        }
-                    }
-                    
-                    if (window.countdownUnsubscriber) {
-                        window.countdownUnsubscriber();
-                        window.countdownUnsubscriber = null;
-                    }
-                    if (pollingInterval) clearInterval(pollingInterval);
-                    if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
-                    if (window.webrtcManager) window.webrtcManager.cleanup();
-                    
-                    
-                    const settings = @json($settings ?? []);
-                    submitGameStart(mode, settings);
-                }, 500);
-            }
-            return;
-        }
-        
-        const seconds = Math.ceil(remaining / 1000);
-        
-        if (numberEl) {
-            numberEl.textContent = seconds.toString();
-            numberEl.classList.remove('go');
-        }
-        if (precisionEl) {
-            // Show centiseconds precision (10ms = 0.01s)
-            precisionEl.textContent = `${(remaining / 1000).toFixed(2)}s`;
-        }
-        
-        window.countdownAnimationFrame = requestAnimationFrame(updateCountdown);
-    }
-    
-    window.countdownAnimationFrame = requestAnimationFrame(updateCountdown);
 }
 
 initFirebase().then(async (authenticated) => {
@@ -4602,32 +4444,20 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
         DuoSocketClient.on('phase_changed', (data) => {
             console.log('[Socket.IO] Phase changed:', data);
             if (data.phase === 'INTRO') {
-                const overlay = document.getElementById('countdown-overlay');
-                const label = document.getElementById('countdown-label');
-                const numberEl = document.getElementById('countdown-number');
-                const precisionEl = document.getElementById('countdown-precision');
-
-                if (overlay) overlay.classList.add('show');
-                if (label) label.textContent = '🎮 Ladies and Gentlemen 🎮';
-                if (numberEl) {
-                    numberEl.textContent = '3';
-                    numberEl.classList.remove('go');
-                }
-                if (precisionEl) {
-                    precisionEl.textContent = '';
-                }
+                console.log('[Socket.IO] INTRO received — navigating to game intro page.');
+                if (pollingInterval) clearInterval(pollingInterval);
+                if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
+                if (window.webrtcManager) window.webrtcManager.cleanup();
+                const settings = @json($settings ?? []);
+                submitGameStart(mode, settings);
                 return;
             }
 
             if (data.phase === 'QUESTION_ACTIVE') {
-                console.log('[Socket.IO] Game started! Navigating to game...');
-                
+                console.log('[Socket.IO] QUESTION_ACTIVE received in lobby — already navigating.');
                 if (pollingInterval) clearInterval(pollingInterval);
                 if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
                 if (window.webrtcManager) window.webrtcManager.cleanup();
-                
-                const settings = @json($settings ?? []);
-                submitGameStart(mode, settings);
             }
         });
         

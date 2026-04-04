@@ -8,7 +8,6 @@ window.LOBBY_CODE        = @json((string)($lobby_code ?? ''));
 window.JWT_TOKEN         = @json((string)($jwt_token ?? ''));
 window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
 window.TOTAL_QUESTIONS   = {{ (int)($totalQuestions ?? 10) }};
-window.GAME_SERVER_URL   = window.location.origin;
 window.NO_SOCKET_OVERLAY = true;
 window.QUESTION_URL      = @json(route('game.duo.question'));
 window.RESULT_URL        = @json(route('game.duo.result'));

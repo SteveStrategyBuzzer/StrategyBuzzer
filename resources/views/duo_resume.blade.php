@@ -6,7 +6,6 @@ window.ROOM_ID           = @json((string)($params['session_id'] ?? $params['matc
 window.LOBBY_CODE        = @json(null);
 window.JWT_TOKEN         = @json((string)($params['jwt_token'] ?? ''));
 window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
-window.GAME_SERVER_URL   = window.location.origin;
 window.NO_SOCKET_OVERLAY = true;
 window.PHASE_ENDS_AT_MS  = {{ isset($phaseEndsAt) ? (int)$phaseEndsAt : 'null' }};
 window.QUESTION_URL      = @json(route('game.duo.question'));
