@@ -1187,9 +1187,13 @@ $mode = 'duo';
             updateScores(myScore, enemyScore);
         }
         
-        if (currentPhase === 'ANSWER_SELECTION' && data.lockedAnswerPlayerId && String(data.lockedAnswerPlayerId) === CURRENT_USER_ID) {
-            redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
-            return;
+        if (currentPhase === 'ANSWER_SELECTION') {
+            // game_state uses lockedAnswerPlayerId (flat), phase_changed uses lockedPlayerId
+            const lockedId = data.lockedAnswerPlayerId || data.lockedPlayerId || '';
+            if (lockedId && String(lockedId) === CURRENT_USER_ID) {
+                redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 150);
+                return;
+            }
         }
         
         if (currentPhase === 'REVEAL') {
@@ -1229,8 +1233,10 @@ $mode = 'duo';
         }
         
         if (currentPhase === 'ANSWER_SELECTION') {
-            if (String(data.lockedAnswerPlayerId || '') === CURRENT_USER_ID) {
-                redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            // Server sends lockedPlayerId in phase_changed (lockedAnswerPlayerId in game_state)
+            const lockedId = data.lockedPlayerId || data.lockedAnswerPlayerId || '';
+            if (String(lockedId) === CURRENT_USER_ID) {
+                redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 150);
             } else {
                 handleOpponentBuzz();
             }
@@ -1284,7 +1290,10 @@ $mode = 'duo';
         buzzButton.disabled = true;
         setBuzzerState('hidden');
         
-        if (String(data.playerId || '') !== CURRENT_USER_ID) {
+        if (String(data.playerId || '') === CURRENT_USER_ID) {
+            // We won the buzz — navigate to answer page with buzzed=true flag
+            redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 150);
+        } else {
             handleOpponentBuzz();
         }
     }

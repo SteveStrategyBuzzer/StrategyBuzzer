@@ -1370,14 +1370,24 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     DuoSocketClient.on('score_update', function(data) {
         console.log('[DuoAnswer] Score update received:', data);
         const playerScoreEl = document.getElementById('playerScoreValue');
-        if (playerScoreEl && data.score !== undefined) {
-            const dataPlayerId = String(data.playerId).replace('player:', '');
-            const currentPlayerId = String(PLAYER_ID);
-            if (dataPlayerId === currentPlayerId || data.playerId == PLAYER_ID) {
+        if (!playerScoreEl) return;
+
+        // Server format: { scores: { playerId: score }, roundScores: {...} }
+        if (data.scores) {
+            const myScore = data.scores[String(PLAYER_ID)];
+            if (myScore !== undefined) {
+                playerScoreEl.textContent = myScore;
+            }
+            return;
+        }
+        // Legacy fallback: { playerId, score }
+        if (data.score !== undefined) {
+            const dataPlayerId = String(data.playerId || '').replace('player:', '');
+            if (dataPlayerId === String(PLAYER_ID) || data.playerId == PLAYER_ID) {
                 playerScoreEl.textContent = data.score;
             }
         }
-    };
+    });
     
     GameEffectsRuntime.registerEffect('shuffle_answers', {
         onStart: function() {

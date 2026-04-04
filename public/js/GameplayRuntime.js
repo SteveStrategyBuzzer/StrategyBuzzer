@@ -243,10 +243,45 @@
         }
     });
 
+    // game_state: flat hydration on join (totalQuestions, currentQuestion, etc.)
+    socket.on('game_state', function (data) {
+        if (!data) return;
+
+        if (data.players && USER_ID) {
+            var gsPE   = data.players[USER_ID];
+            var gsOpp  = null;
+            Object.keys(data.players).forEach(function (pid) {
+                if (pid !== USER_ID) gsOpp = data.players[pid];
+            });
+            if (gsPE)  updateHeaderScores(gsPE.score, undefined);
+            if (gsOpp) updateHeaderScores(undefined, gsOpp.score);
+        }
+        if (data.questionIndex !== undefined) {
+            updateHeaderCounter(data.questionIndex + 1, data.totalQuestions || TOTAL_QUESTIONS);
+        }
+        if (data.currentRound !== undefined) {
+            updateHeaderRound(data.currentRound);
+        }
+        if (data.phase && !HIDE_HEADER) {
+            handleBrainForPhase(data.phase);
+        }
+    });
+
     socket.on('score_update', function (data) {
         if (!data || !USER_ID) return;
 
-        // Format: { playerId, score, roundScore, delta }
+        // Server format: { scores: { playerId: score }, roundScores: {...} }
+        if (data.scores) {
+            Object.keys(data.scores).forEach(function (pid) {
+                if (String(pid) === USER_ID) {
+                    updateHeaderScores(data.scores[pid], undefined);
+                } else {
+                    updateHeaderScores(undefined, data.scores[pid]);
+                }
+            });
+            return;
+        }
+        // Legacy fallback: { playerId, score }
         if (data.playerId !== undefined) {
             if (String(data.playerId) === USER_ID) {
                 updateHeaderScores(data.score, undefined);
