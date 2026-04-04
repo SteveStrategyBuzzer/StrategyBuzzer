@@ -1515,6 +1515,14 @@ foreach ($colors as $color) {
     const isHost = {{ $isHost ? 'true' : 'false' }};
     let isReady = {{ ($players[$currentPlayerId]['ready'] ?? false) ? 'true' : 'false' }};
     let pollingInterval = null;
+
+    // Initialize backendDisabled from the PHP-rendered attribute so both paths share one source of truth
+    (function initStartBtnState() {
+        const btn = document.getElementById('start-btn');
+        if (btn) {
+            btn.dataset.backendDisabled = btn.dataset.backendCanStart === 'true' ? 'false' : 'true';
+        }
+    })();
     
     function showToast(message, duration = 3000) {
         const toast = document.getElementById('toast');
@@ -4409,10 +4417,8 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
                 startBtn.dataset.socketLobbyReady = 'true';
-                // If backend already confirmed can_start (via polling or initial page data), enable now
-                const backendOk = startBtn.dataset.backendDisabled === 'false'
-                    || startBtn.dataset.backendCanStart === 'true';
-                if (isHost && backendOk) {
+                // If backend already confirmed can_start (via backendDisabled, the single source of truth), enable now
+                if (isHost && startBtn.dataset.backendDisabled === 'false') {
                     startBtn.removeAttribute('disabled');
                 }
             }
