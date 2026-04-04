@@ -1,0 +1,186 @@
+🧠 ARCHITECTURE DUO — RÔLES DES FICHIERS (OBLIGATOIRE)
+⚠️ RÈGLE ABSOLUE
+
+👉 Node / Socket.IO = seule source de vérité gameplay
+👉 Aucune logique gameplay côté Blade ou Firebase
+
+🧱 1. LAYOUT GLOBAL
+resources/views/layouts/game.blade.php
+🎯 Rôle
+
+Layout unique pour toutes les pages gameplay
+
+Contient
+header joueurs (avatars, scores)
+structure UI globale
+overlay cerveau
+scripts globaux
+injection des variables window.*
+⚠️ Interdits
+❌ logique gameplay
+❌ timers de décision
+❌ duplication socket
+❌ badge connexion (déjà supprimé)
+⚙️ 2. TRANSPORT SOCKET
+public/js/DuoSocketClient.js
+🎯 Rôle
+
+👉 connexion pure Socket.IO
+
+Fait uniquement
+connect()
+joinRoom()
+emit()
+receive events
+⚠️ Interdits
+❌ logique gameplay
+❌ UI
+❌ redirections
+❌ timers
+
+👉 C’est un driver réseau uniquement
+
+🧠 3. ORCHESTRATION GAMEPLAY
+public/js/GameplayRuntime.js
+🎯 Rôle
+
+👉 cerveau client
+
+Fait
+écoute events Socket
+interprète phases
+déclenche UI
+met à jour scores
+déclenche transitions
+Exemple
+phase_changed → update UI
+question_published → afficher question
+⚠️ Interdits
+❌ décider du gameplay
+❌ timers autoritaires
+❌ fallback Firebase
+🧍 4. LOBBY
+resources/views/lobby.blade.php
+🎯 Rôle
+
+👉 préparation des joueurs
+
+Fait
+affiche joueurs
+affiche 1/2 → 2/2
+permet ready
+initialise Socket
+Source de vérité UI
+
+👉 Socket.IO (state)
+
+Firebase
+
+👉 présence uniquement
+
+⚠️ Interdits
+❌ start game via Firebase
+❌ logique gameplay
+❌ countdown
+🎬 5. INTRO (CRITIQUE)
+resources/views/game_intro.blade.php
+🎯 Rôle
+
+👉 écran de transition
+
+DOIT faire
+afficher animation (Ladies & Gentlemen)
+écouter Socket
+DOIT déclencher
+phase_changed → QUESTION_ACTIVE → redirect
+⚠️ Interdits
+❌ Firebase
+❌ initFirebase
+❌ signInAnonymously
+❌ syncReadyAndStart
+❌ logique de start locale
+❌ setTimeout pour démarrer la game
+
+👉 intro = écran passif piloté par Node
+
+❓ 6. QUESTION
+resources/views/duo_question.blade.php
+🎯 Rôle
+
+👉 afficher question
+
+Fait
+afficher texte
+afficher choix
+afficher chrono visuel
+bouton buzz
+Source
+
+👉 question_published
+
+⚠️ Interdits
+❌ décider du timing
+❌ générer question
+❌ fallback local
+✅ 7. ANSWER
+resources/views/duo_answer.blade.php
+🎯 Rôle
+
+👉 afficher réponses
+
+Fait
+afficher bonne/mauvaise réponse
+feedback visuel
+score
+Source
+
+👉 answer_revealed
+
+🏁 8. RESULT
+resources/views/duo_result.blade.php
+🎯 Rôle
+
+👉 fin de partie
+
+Fait
+score final
+gagnant
+stats
+🔥 9. PHASES (IMPORTANT)
+
+Node contrôle tout :
+
+LOBBY
+→ INTRO
+→ QUESTION_ACTIVE
+→ REVEAL
+→ WAITING
+→ QUESTION_ACTIVE...
+→ RESULT
+
+👉 Le client ne fait que réagir
+
+🚨 ERREURS À NE PLUS FAIRE
+
+❌ Firebase pour start
+❌ setTimeout pour synchronisation
+❌ duplication socket dans les vues
+❌ logique gameplay dans Blade
+❌ fallback local si serveur répond
+❌ badge connexion UI
+
+🎯 OBJECTIF FINAL
+synchronisation parfaite joueurs
+transitions 100% pilotées serveur
+aucune désynchronisation possible
+architecture scalable multi-joueurs
+💬 MESSAGE FINAL À REPLIT
+Je veux que chaque fichier respecte STRICTEMENT son rôle.
+
+Le système actuel fonctionne côté serveur.
+Le problème restant est 100% front (intro non pilotée par Socket).
+
+Corrige uniquement dans ce cadre, sans introduire de logique locale ou Firebase.
+
+Objectif :
+un flow entièrement piloté par Node, sans fallback.

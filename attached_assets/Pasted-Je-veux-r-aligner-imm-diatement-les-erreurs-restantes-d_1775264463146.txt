@@ -1,0 +1,131 @@
+Je veux réaligner immédiatement les erreurs restantes de Duo, sans refonte, sans nouvelle logique, en respectant STRICTEMENT l’architecture actuelle.
+
+# ARCHITECTURE OBLIGATOIRE
+
+- Node / Socket.IO = seule source de vérité gameplay
+- Laravel / Blade = structure + injection de données
+- Firebase = présence + WebRTC seulement
+- Front = affichage / réaction aux events serveur
+- AUCUN countdown local autoritaire
+- AUCUN start via Firebase
+- AUCUNE duplication socket dans les vues
+
+# ÉTAT ACTUEL
+
+Ce qui est déjà bon :
+- DuoSocketClient.js = transport pur
+- GameplayRuntime.js = cerveau client
+- game_intro.blade.php = structure visuelle correcte (Ladies & Gentlemen, avatars, thème)
+- QUESTION_ACTIVE est déjà écouté dans l’intro
+- Firebase gameplay a été retiré
+- le lobby Socket a été stabilisé
+- le bug join_room avatarId:null a été identifié et corrigé côté VM
+- le badge “connexion” global a été supprimé côté VM dans layouts/game.blade.php et devra être reproduit côté Replit
+
+# ERREURS RESTANTES À ALIGNER
+
+## 1. GAME_SERVER_URL incorrect dans les vues gameplay
+Bug systémique confirmé :
+plusieurs vues gameplay utilisent encore :
+
+window.GAME_SERVER_URL = window.location.origin
+
+C’est faux.
+Cela pointe vers Laravel/Nginx et non vers le game server Socket.IO.
+
+Conséquence :
+- l’intro ne reçoit pas correctement le gameplay live
+- la question/réponse ne peuvent pas se connecter correctement au game server
+- le flow reste bloqué même si le serveur avance
+
+À corriger dans toutes les vues gameplay concernées, au minimum :
+- resources/views/game_intro.blade.php
+- resources/views/duo_question.blade.php
+- resources/views/duo_answer.blade.php
+
+Je veux que ces vues utilisent la même logique correcte que le lobby, ou mieux :
+une injection centralisée propre provenant de Laravel / layout, sans duplication incohérente.
+
+## 2. Lobby contient encore un countdown overlay local
+Bug confirmé :
+le lobby contient encore un overlay avec “3”.
+
+C’est interdit dans l’architecture actuelle.
+
+Le lobby ne doit pas lancer un countdown local ni afficher un faux start local.
+Le serveur décide les phases.
+
+À faire :
+- supprimer le countdown overlay local du lobby
+- supprimer toute logique locale liée à ce countdown
+- conserver uniquement la navigation pilotée par phase serveur
+
+## 3. Navigation lobby → intro doit être Socket-driven
+Le comportement attendu est :
+
+phase_changed: INTRO
+→ redirection vers /game/duo/intro
+
+Je ne veux plus d’overlay local de remplacement.
+Je veux une vraie transition de page vers l’intro.
+
+## 4. Intro doit rester un écran passif piloté par Node
+game_intro.blade.php doit :
+- afficher Ladies & Gentlemen
+- afficher les avatars / thème / infos
+- écouter phase_changed / QUESTION_ACTIVE
+- rediriger vers la question quand le serveur le décide
+
+Il ne doit PAS :
+- utiliser Firebase pour le start
+- utiliser setTimeout pour décider du start
+- utiliser une logique autonome
+
+# IMPORTANT — MODIFICATIONS VM DÉJÀ FAITES À REPRODUIRE CÔTÉ REPLIT
+
+## A. Correction join_room payload
+Le bug suivant a été confirmé par test serveur :
+avatarId: null casse JoinRoomSchema
+
+Correction déjà faite côté VM :
+dans public/js/DuoSocketClient.js,
+avatarId ne doit être envoyé que si c’est une vraie string non vide.
+Il ne faut jamais envoyer avatarId: null.
+
+## B. Suppression du badge global de connexion
+Le badge global “Connexion / Connecté / Déconnecté” dans resources/views/layouts/game.blade.php a été supprimé côté VM.
+
+Suppression faite :
+- bloc CSS “Connection status badge”
+- <div id="connectionStatus"></div>
+
+Raison :
+ce visuel de debug pollue l’UI Duo.
+Le compteur 1/2 → 2/2 suffit déjà pour représenter l’état des joueurs dans le lobby.
+
+Cette suppression doit être reproduite côté Replit pour garder Replit = source de vérité.
+
+# CE QUE J’ATTENDS
+
+Je ne veux PAS une mise à jour de plan.
+Je veux passer directement en Build sur ces corrections précises.
+
+Ordre demandé :
+1. corriger GAME_SERVER_URL dans toutes les vues gameplay concernées
+2. retirer le countdown overlay local du lobby
+3. forcer la redirection lobby → intro sur phase INTRO
+4. vérifier que game_intro reste piloté uniquement par les events Socket
+5. reproduire les 2 correctifs VM déjà validés :
+   - avatarId null
+   - suppression du badge connexion
+
+# LIVRABLE ATTENDU
+
+Donne-moi :
+- la liste exacte des fichiers modifiés
+- le résumé précis de chaque correction
+- la confirmation qu’aucune logique Firebase gameplay n’a été réintroduite
+- et les diffs / contenus finaux prêts à valider
+
+Objectif :
+avoir un flux Duo strictement aligné sur l’architecture Node-driven existante, sans régression, sans duplication, sans visuel debug inutile.
