@@ -1164,15 +1164,25 @@ $mode = 'duo';
     DuoSocketClient.on('phase_changed', function(data) {
         console.log('[DuoResult] Phase changed', data);
         if (!data || !data.phase) { return; }
-        if (data.phase === 'QUESTION_DISPLAY' || data.phase === 'BUZZ_WINDOW' || data.phase === 'question') {
+        if (data.phase === 'QUESTION_ACTIVE' || data.phase === 'QUESTION_DISPLAY' || data.phase === 'BUZZ_WINDOW' || data.phase === 'question') {
             navigateToNextQuestion();
             return;
         }
-        if (data.phase === 'MATCH_RESULT' || data.phase === 'match_result') {
+        if (data.phase === 'MATCH_RESULT' || data.phase === 'match_result' || data.phase === 'MATCH_END' || data.phase === 'FINISHED') {
             navigateToFinalResults();
             return;
         }
         resetReadyStatus();
+    });
+    // state event: reconnect hydration — navigate if already past result phase
+    DuoSocketClient.on('state', function(payload) {
+        if (!payload) return;
+        var phase = payload.state ? payload.state.phase : payload.phase;
+        if (phase === 'QUESTION_ACTIVE' || phase === 'QUESTION_DISPLAY' || phase === 'BUZZ_WINDOW') {
+            navigateToNextQuestion();
+        } else if (phase === 'MATCH_END' || phase === 'FINISHED') {
+            navigateToFinalResults();
+        }
     });
     DuoSocketClient.on('both_ready', function(data) {
         console.log('[DuoResult] Both players ready', data);

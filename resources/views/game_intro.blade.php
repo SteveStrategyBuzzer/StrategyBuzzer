@@ -2,11 +2,12 @@
 
 @section('game-data')
 <script>
-window.ROOM_ID         = @json($params['room_id'] ?? null);
-window.JWT_TOKEN       = @json($params['jwt_token'] ?? null);
-window.LOBBY_CODE      = @json($params['lobby_code'] ?? null);
-window.CURRENT_USER_ID = @json((string)(auth()->id() ?? ''));
+window.ROOM_ID           = @json($params['room_id'] ?? null);
+window.JWT_TOKEN         = @json($params['jwt_token'] ?? null);
+window.LOBBY_CODE        = @json($params['lobby_code'] ?? null);
+window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
 window.NO_SOCKET_OVERLAY = true;
+window.GR_HIDE_HEADER    = true;
 </script>
 @endsection
 
@@ -97,16 +98,6 @@ body {
     font-size: 2.5rem;
     font-weight: 700;
     text-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    margin-bottom: 10px;
-}
-
-.mode-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-    padding: 8px 20px;
-    border-radius: 20px;
-    font-size: 1rem;
-    font-weight: 600;
     margin-bottom: 10px;
 }
 
@@ -390,7 +381,6 @@ body {
 
 <div class="intro-container">
     <div class="title-section">
-        <div class="mode-badge">{{ $modeLabel }}</div>
         <h1>🎮 {{ __('Ladies and Gentlemen') }} 🎮</h1>
         <div class="theme-badge">
             <span>{{ $themeIcon }}</span> {{ $themeDisplay }}
@@ -502,8 +492,10 @@ function closeSoloWarning() {
         DuoSocketClient.on('phase_changed', function(data) {
             if (data && data.phase === 'QUESTION_ACTIVE') navigateToQuestion();
         });
-        DuoSocketClient.on('game_state', function(data) {
-            if (data && data.phase === 'QUESTION_ACTIVE') navigateToQuestion();
+        // state event: { state: GameState } — used for reconnect hydration
+        DuoSocketClient.on('state', function(payload) {
+            var phase = payload && (payload.state ? payload.state.phase : payload.phase);
+            if (phase === 'QUESTION_ACTIVE') navigateToQuestion();
         });
         DuoSocketClient.on('question_published', function() {
             navigateToQuestion();

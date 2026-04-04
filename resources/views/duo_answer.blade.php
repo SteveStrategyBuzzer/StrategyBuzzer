@@ -1312,10 +1312,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 window.location.href = data.nextUrl;
             } else if (data.matchEnded) {
                 isRedirecting = true;
-                window.location.href = '/duo/result/' + MATCH_ID;
+                window.location.href = window.MATCH_RESULT_URL || ('/duo/result/' + MATCH_ID);
             }
         }, 3000);
-    };
+    });
     
     DuoSocketClient.on('round_ended', function(data) {
         if (isRedirecting) return;
@@ -1327,20 +1327,46 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             if (data.nextQuestionUrl) {
                 window.location.href = data.nextQuestionUrl;
             } else {
-                window.location.href = '/duo/question/' + MATCH_ID;
+                window.location.href = window.QUESTION_URL || ('/game/duo/question');
             }
         }, 2000);
-    };
+    });
     
     DuoSocketClient.on('match_ended', function(data) {
         if (isRedirecting) return;
         isRedirecting = true;
         
         setTimeout(function() {
-            window.location.href = '/duo/result/' + MATCH_ID;
+            window.location.href = window.MATCH_RESULT_URL || ('/duo/result/' + MATCH_ID);
         }, 2000);
-    };
+    });
     
+    // phase_changed: navigate away from answer page on server-driven phase transitions
+    DuoSocketClient.on('phase_changed', function(data) {
+        if (isRedirecting || !data || !data.phase) return;
+        var phase = data.phase;
+
+        if (phase === 'REVEAL') {
+            // Answer window closed — go to round result
+            isRedirecting = true;
+            var resultUrl = window.RESULT_URL || ('/game/duo/result');
+            window.location.href = resultUrl + '?match_id=' + encodeURIComponent(MATCH_ID);
+            return;
+        }
+        if (phase === 'QUESTION_ACTIVE') {
+            // Next question ready — go to question page
+            isRedirecting = true;
+            var questionUrl = window.QUESTION_URL || ('/game/duo/question');
+            window.location.href = questionUrl + '?match_id=' + encodeURIComponent(MATCH_ID);
+            return;
+        }
+        if (phase === 'MATCH_END' || phase === 'FINISHED') {
+            isRedirecting = true;
+            var matchResultUrl = window.MATCH_RESULT_URL || ('/game/duo/match-result');
+            window.location.href = matchResultUrl + '?match_id=' + encodeURIComponent(MATCH_ID);
+        }
+    });
+
     DuoSocketClient.on('score_update', function(data) {
         console.log('[DuoAnswer] Score update received:', data);
         const playerScoreEl = document.getElementById('playerScoreValue');

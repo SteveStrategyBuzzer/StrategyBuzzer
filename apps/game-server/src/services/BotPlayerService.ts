@@ -96,15 +96,19 @@ export class BotPlayerService {
       this.clearTimers();
 
       switch (phase) {
-        case "INTRO":
-        case "LOBBY":
-        case "WAITING": {
+        case "LOBBY": {
           const delay = randomBetween(BOT_TIMING.introReadyMs.min, BOT_TIMING.introReadyMs.max);
           this.introTimer = setTimeout(() => {
             this.introTimer = null;
             this.socket.emit("ready", { roomId: this.roomId, isReady: true });
-            console.log(`[Bot] Sent ready (room ${this.roomId})`);
+            console.log(`[Bot] Sent ready for LOBBY (room ${this.roomId})`);
           }, delay);
+          break;
+        }
+
+        case "INTRO":
+        case "WAITING": {
+          // Between rounds: no action needed from bot
           break;
         }
 

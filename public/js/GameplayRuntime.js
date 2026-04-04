@@ -92,13 +92,13 @@
     // Phase → brain overlay mapping
 
     var PHASE_BRAIN = {
-        INTRO:            { show: true,  msg: null }, // msg set below from labels
+        INTRO:            { show: true,  msg: null },
         WAITING:          { show: true,  msg: null },
+        ROUND_SCOREBOARD: { show: true,  msg: null },
         LOBBY:            { show: false },
         QUESTION_ACTIVE:  { show: false },
         ANSWER_SELECTION: { show: false },
         REVEAL:           { show: false },
-        ROUND_SCOREBOARD: { show: false },
         MATCH_END:        { show: false },
         FINISHED:         { show: false },
     };
@@ -107,9 +107,14 @@
         var cfg = PHASE_BRAIN[phase] || { show: false };
         if (cfg.show) {
             var labels = window.GR_LABELS || {};
-            var msg = (phase === 'INTRO')
-                ? (labels.preparing || 'Préparation...')
-                : (labels.nextQuestion || 'Prochaine question...');
+            var msg;
+            if (phase === 'INTRO') {
+                msg = labels.preparing || 'Préparation...';
+            } else if (phase === 'ROUND_SCOREBOARD') {
+                msg = labels.roundEnd || 'Fin du round...';
+            } else {
+                msg = labels.nextQuestion || 'Prochaine question...';
+            }
             showBrainSpin(msg);
         } else {
             hideBrainSpin();
@@ -137,6 +142,12 @@
     var PLAYER_INFO     = window.PLAYER_INFO || {};
     var TOTAL_QUESTIONS = window.TOTAL_QUESTIONS || 10;
     var NO_OVERLAY      = !!window.NO_SOCKET_OVERLAY;
+    var HIDE_HEADER     = !!window.GR_HIDE_HEADER;
+
+    if (HIDE_HEADER) {
+        var hdr = document.getElementById('gameHeader');
+        if (hdr) hdr.style.display = 'none';
+    }
 
     if (!ROOM_ID || !JWT_TOKEN) {
         // No gameplay session — overlays stay hidden, done.
@@ -187,9 +198,10 @@
         console.warn('[GameplayRuntime] Disconnected:', reason);
     });
 
-    // game_state: initial hydration and reconnect
-    socket.on('game_state', function (data) {
-        if (!data) return;
+    // state: initial hydration and reconnect (server emits { state: GameState })
+    socket.on('state', function (payload) {
+        if (!payload) return;
+        var data = payload.state || payload;
 
         // Score from players roster (keyed by player ID)
         if (data.players && USER_ID) {
@@ -212,8 +224,8 @@
             updateHeaderRound(data.currentRound);
         }
 
-        // Phase → brain
-        if (data.phase) {
+        // Phase → brain (skip on intro page to avoid covering content on first join)
+        if (data.phase && !HIDE_HEADER) {
             handleBrainForPhase(data.phase);
         }
     });

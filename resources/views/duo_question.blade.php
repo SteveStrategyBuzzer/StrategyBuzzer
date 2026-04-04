@@ -1197,7 +1197,7 @@ $mode = 'duo';
             return;
         }
         
-        if (currentPhase === 'ROUND_SCOREBOARD' || currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
+        if (currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
             redirectOnce(MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
             return;
         }
@@ -1242,7 +1242,7 @@ $mode = 'duo';
             return;
         }
         
-        if (currentPhase === 'ROUND_SCOREBOARD' || currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
+        if (currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
             redirectOnce(MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
             return;
         }
