@@ -2970,6 +2970,7 @@ foreach ($colors as $color) {
             if (data.success) {
                 const mode = data.lobby?.mode || 'duo';
                 const settings = data.lobby?.settings || {};
+                if (window.showBrainSpin) window.showBrainSpin();
                 submitGameStart(mode, settings);
             } else {
                 showToast(data.error || '{{ __("Impossible de lancer la partie") }}');
@@ -4511,10 +4512,8 @@ initFirebase().then(async (authenticated) => {
     
 });
 
-if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'undefined') {
-    // Connect + joinRoom handled by GameplayRuntime (layouts.game); subscribe to events here only
-    (function initSocketListeners() {
-        console.log('[Socket.IO] Registering lobby event listeners...');
+function initLobbySocketListeners() {
+    console.log('[Socket.IO] Registering lobby event listeners...');
         window.duoSocketConnected = false;
         window.socketLobbyReady = false;
         
@@ -4622,6 +4621,7 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
                 if (pollingInterval) clearInterval(pollingInterval);
                 if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
                 if (window.webrtcManager) window.webrtcManager.cleanup();
+                if (window.showBrainSpin) window.showBrainSpin();
                 const settings = @json($settings ?? []);
                 submitGameStart(mode, settings);
                 return;
@@ -4637,7 +4637,6 @@ if (window.useSocketIO && window.matchRoomId && typeof DuoSocketClient !== 'unde
         
         // Connect + joinRoom are managed by GameplayRuntime (layouts.game)
         console.log('[Socket.IO] Lobby event listeners ready; GameplayRuntime will connect.');
-    })();
 }
 
 window.addEventListener('beforeunload', () => {
@@ -5225,4 +5224,12 @@ function saveNouvelAmi() {
 </script>
 @endif
 
+@endsection
+
+@section('scripts')
+<script>
+if (window.useSocketIO && window.matchRoomId) {
+    initLobbySocketListeners();
+}
+</script>
 @endsection

@@ -443,7 +443,6 @@ body {
 {{-- socket.io and DuoSocketClient loaded by layouts.game --}}
 
 <script>
-// Fonction pour fermer le popup d'avertissement
 function closeSoloWarning() {
     const overlay = document.getElementById('soloWarningOverlay');
     if (overlay) {
@@ -452,64 +451,96 @@ function closeSoloWarning() {
     }
 }
 
-(function() {
-    const redirectUrl = @json($redirectUrl);
-    const mode = @json($mode);
-    const matchId = @json($params['match_id'] ?? null);
+document.addEventListener('DOMContentLoaded', function() {
+    var matchId = @json($params['match_id'] ?? null);
+    var mode = @json($mode);
+    if (matchId) {
+        fetch('/game/' + mode + '/fetch-question', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+            },
+            body: JSON.stringify({ match_id: matchId, question_number: 1 })
+        }).then(function(r) {
+            if (r.ok) console.log('[Intro] First question prefetched');
+        }).catch(function(e) {
+            console.warn('[Intro] Question prefetch failed:', e.message);
+        });
+    }
+    var audio = document.getElementById('readyAudio');
+    if (audio) {
+        audio.volume = 1.0;
+        audio.play().catch(function() {});
+    }
+});
+</script>
+@endsection
 
-    let redirected = false;
-    let questionPrefetched = false;
+@section('scripts')
+<script>
+(function initGameIntroRealtime() {
+    var redirectUrl = @json($redirectUrl);
+    var redirected = false;
+    var lastKnownPhase = null;
 
-    async function prefetchFirstQuestion() {
-        if (questionPrefetched || !matchId) return;
-        try {
-            const response = await fetch('/game/' + mode + '/fetch-question', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                },
-                body: JSON.stringify({ match_id: matchId, question_number: 1 })
-            });
-            if (response.ok) {
-                questionPrefetched = true;
-                console.log('[Intro] First question prefetched');
-            }
-        } catch (err) {
-            console.warn('[Intro] Question prefetch failed:', err.message);
-        }
+    var ACTIVE_PHASES = [
+        'QUESTION_ACTIVE', 'ANSWER_SELECTION', 'REVEAL',
+        'WAITING', 'ROUND_SCOREBOARD', 'MATCH_END', 'FINISHED'
+    ];
+
+    function isActivePhase(phase) {
+        return phase && ACTIVE_PHASES.indexOf(phase) !== -1;
     }
 
     function navigateToQuestion() {
         if (!redirected && redirectUrl) {
             redirected = true;
+            console.log('[Intro] Navigating to question page:', redirectUrl);
             window.location.href = redirectUrl;
         }
     }
 
-    // Navigation driven exclusively by server Socket.IO events — no local timer authority
-    if (typeof DuoSocketClient !== 'undefined') {
-        DuoSocketClient.on('phase_changed', function(data) {
-            if (data && data.phase === 'QUESTION_ACTIVE') navigateToQuestion();
-        });
-        // state event: { state: GameState } — used for reconnect hydration
-        DuoSocketClient.on('state', function(payload) {
-            var phase = payload && (payload.state ? payload.state.phase : payload.phase);
-            if (phase === 'QUESTION_ACTIVE') navigateToQuestion();
-        });
-        DuoSocketClient.on('question_published', function() {
-            navigateToQuestion();
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        prefetchFirstQuestion();
-        const audio = document.getElementById('readyAudio');
-        if (audio) {
-            audio.volume = 1.0;
-            audio.play().catch(() => {});
-        }
+    DuoSocketClient.on('phase_changed', function(data) {
+        if (!data) return;
+        var phase = data.phase || data.toPhase || null;
+        if (phase) lastKnownPhase = phase;
+        console.log('[Intro] phase_changed received:', phase);
+        if (isActivePhase(phase)) navigateToQuestion();
     });
+
+    DuoSocketClient.on('state', function(payload) {
+        if (!payload) return;
+        var data = payload.state || payload;
+        var phase = data ? (data.phase || null) : null;
+        if (phase) lastKnownPhase = phase;
+        console.log('[Intro] state received, phase:', phase);
+        if (isActivePhase(phase)) navigateToQuestion();
+    });
+
+    DuoSocketClient.on('game_state', function(data) {
+        if (!data) return;
+        var phase = data.phase || null;
+        if (phase) lastKnownPhase = phase;
+        console.log('[Intro] game_state received, phase:', phase);
+        if (isActivePhase(phase)) navigateToQuestion();
+    });
+
+    DuoSocketClient.on('question_published', function() {
+        console.log('[Intro] question_published received — navigating');
+        navigateToQuestion();
+    });
+
+    setTimeout(function() {
+        if (redirected) return;
+        console.log('[Intro] Rescue check (10s) — lastKnownPhase:', lastKnownPhase);
+        if (isActivePhase(lastKnownPhase)) {
+            console.log('[Intro] Rescue: server-confirmed active phase, navigating');
+            navigateToQuestion();
+        } else {
+            console.log('[Intro] Rescue: no active phase confirmed — staying on intro');
+        }
+    }, 10000);
 })();
 </script>
 @endsection
