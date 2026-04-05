@@ -482,16 +482,6 @@ document.addEventListener('DOMContentLoaded', function() {
 (function initGameIntroRealtime() {
     var redirectUrl = @json($redirectUrl);
     var redirected = false;
-    var lastKnownPhase = null;
-
-    var ACTIVE_PHASES = [
-        'QUESTION_ACTIVE', 'ANSWER_SELECTION', 'REVEAL',
-        'WAITING', 'ROUND_SCOREBOARD', 'MATCH_END', 'FINISHED'
-    ];
-
-    function isActivePhase(phase) {
-        return phase && ACTIVE_PHASES.indexOf(phase) !== -1;
-    }
 
     function navigateToQuestion() {
         if (!redirected && redirectUrl) {
@@ -501,45 +491,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Navigate only when server confirms QUESTION_ACTIVE
+    function onPhase(phase) {
+        console.log('[Intro] phase received:', phase);
+        if (phase === 'QUESTION_ACTIVE') navigateToQuestion();
+    }
+
     DuoSocketClient.on('phase_changed', function(data) {
         if (!data) return;
-        var phase = data.phase || data.toPhase || null;
-        if (phase) lastKnownPhase = phase;
-        console.log('[Intro] phase_changed received:', phase);
-        if (isActivePhase(phase)) navigateToQuestion();
+        onPhase(data.phase || data.toPhase || null);
     });
 
     DuoSocketClient.on('state', function(payload) {
         if (!payload) return;
         var data = payload.state || payload;
-        var phase = data ? (data.phase || null) : null;
-        if (phase) lastKnownPhase = phase;
-        console.log('[Intro] state received, phase:', phase);
-        if (isActivePhase(phase)) navigateToQuestion();
+        onPhase(data ? (data.phase || null) : null);
     });
 
     DuoSocketClient.on('game_state', function(data) {
         if (!data) return;
-        var phase = data.phase || null;
-        if (phase) lastKnownPhase = phase;
-        console.log('[Intro] game_state received, phase:', phase);
-        if (isActivePhase(phase)) navigateToQuestion();
+        onPhase(data.phase || null);
     });
 
     DuoSocketClient.on('question_published', function() {
-        console.log('[Intro] question_published received — navigating');
+        console.log('[Intro] question_published — navigating');
         navigateToQuestion();
     });
 
+    // 10-second rescue: re-request state from server (not a blind redirect).
+    // The server responds with game_state; our onPhase() handler navigates only
+    // if the server confirms QUESTION_ACTIVE. No navigation on cached state.
     setTimeout(function() {
         if (redirected) return;
-        console.log('[Intro] Rescue (10s): requesting fresh state from server...');
-
+        console.log('[Intro] Rescue (10s): re-requesting state from server...');
         var sock = DuoSocketClient.socket;
         if (sock && sock.connected && window.ROOM_ID) {
-            // Re-emit join_room so server sends back a fresh game_state event.
-            // Our registered game_state / phase_changed handlers will navigate
-            // if the server confirms an active phase — no blind navigation.
             sock.emit('join_room', {
                 roomId: window.ROOM_ID,
                 lobbyCode: window.LOBBY_CODE || null,
@@ -548,9 +534,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             console.log('[Intro] Rescue: join_room re-emitted — awaiting server game_state...');
         } else {
-            // Socket offline — do NOT navigate on cached state.
-            // Wait for the socket to reconnect; GameplayRuntime handles reconnect and
-            // will re-join the room, triggering fresh game_state events automatically.
             console.log('[Intro] Rescue: socket offline — waiting for reconnect, no blind redirect.');
         }
     }, 10000);
