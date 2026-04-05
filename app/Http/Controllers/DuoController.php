@@ -1038,17 +1038,18 @@ class DuoController extends Controller
         $match->started_at = now();
 
         $lobbyCode = $gameState['lobby_code'] ?? $request->input('lobby_code');
-        $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
         $lobby = null;
+        $roomId = null;
 
         if ($lobbyCode) {
             $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
-            if ($lobby && isset($lobby['game_server'])) {
-                $gameServer = $lobby['game_server'];
-                if (!$roomId && isset($gameServer['roomId'])) {
-                    $roomId = $gameServer['roomId'];
-                }
+            if ($lobby && isset($lobby['game_server']['roomId'])) {
+                $roomId = $lobby['game_server']['roomId'];
             }
+        }
+
+        if (!$roomId) {
+            $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
         }
 
         if (!$roomId) {

@@ -828,7 +828,6 @@ $mode = 'duo';
     const LOBBY_CODE      = window.LOBBY_CODE      || @json((string)($lobby_code ?? ''));
     const JWT_TOKEN       = window.JWT_TOKEN       || @json((string)($jwt_token ?? ''));
     const GAME_SERVER_URL = window.GAME_SERVER_URL || window.location.origin;
-    const duoSocket = window.DuoSocketClient; // set by layouts.game; connect+joinRoom owned by GameplayRuntime
     
     const ANSWER_URL        = window.ANSWER_URL       || @json(route('game.duo.answer'));
     const RESULT_URL        = window.RESULT_URL       || @json(route('game.duo.result'));
@@ -1049,8 +1048,8 @@ $mode = 'duo';
         buzzButton.disabled = true;
         setBuzzerState('hidden');
         
-        if (duoSocket && duoSocket.isConnected()) {
-            duoSocket.buzz(Date.now());
+        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+            window.DuoSocketClient.buzz(Date.now());
         }
         
         redirectOnce(ANSWER_URL + '?buzzed=true&match_id=' + encodeURIComponent(MATCH_ID), BUZZ_REDIRECT_DELAY);
@@ -1487,30 +1486,7 @@ $mode = 'duo';
         return false;
     }
     
-    // initializeSocket() replaced — GameplayRuntime.js owns connect() + joinRoom()
-    // Register game-specific handlers directly (safe to call before socket connects)
-    if (duoSocket) {
-        duoSocket.on('game_state', handleGameState);
-        duoSocket.on('phase_changed', handlePhaseChanged);
-        duoSocket.on('question_published', handleQuestionPublished);
-        duoSocket.on('buzz_winner', handleBuzzWinner);
-        duoSocket.on('buzz_result', handleBuzzWinner);
-        duoSocket.on('answer_revealed', handleAnswerRevealed);
-        duoSocket.on('score_update', handleScoreUpdate);
-        duoSocket.on('match_ended', handleMatchEnded);
-        duoSocket.on('skill_activated', handleSkillActivated);
-        duoSocket.on('skill_failed', handleSkillFailed);
-        duoSocket.on('rate_limited', handleRateLimited);
-        duoSocket.on('connect', function() {
-            socketConnected = true;
-        });
-        duoSocket.on('disconnect', function() {
-            socketConnected = false;
-        });
-    } else {
-        console.warn('[DuoQuestion] DuoSocketClient unavailable — falling back to HTTP question load');
-        loadQuestionFromServer();
-    }
+    // Socket handler registration deferred to @section('scripts') (after DuoSocketClient.js loads)
 
     buzzButton.addEventListener('click', handleBuzz);
     
@@ -1533,8 +1509,8 @@ $mode = 'duo';
                 return;
             }
             
-            if (duoSocket && duoSocket.isConnected()) {
-                duoSocket.useSkill(skillId);
+            if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+                window.DuoSocketClient.useSkill(skillId);
             } else {
                 showSkillMessage('❌ {{ __("Non connecté au serveur") }}', 'error');
             }
@@ -1603,3 +1579,29 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
             return;
         }
        
+
+@endsection
+
+@section('scripts')
+<script>
+(function() {
+    var ds = window.DuoSocketClient;
+    if (ds) {
+        ds.on('game_state', handleGameState);
+        ds.on('phase_changed', handlePhaseChanged);
+        ds.on('question_published', handleQuestionPublished);
+        ds.on('buzz_winner', handleBuzzWinner);
+        ds.on('buzz_result', handleBuzzWinner);
+        ds.on('answer_revealed', handleAnswerRevealed);
+        ds.on('score_update', handleScoreUpdate);
+        ds.on('match_ended', handleMatchEnded);
+        ds.on('skill_activated', handleSkillActivated);
+        ds.on('skill_failed', handleSkillFailed);
+        ds.on('rate_limited', handleRateLimited);
+    } else {
+        console.warn('[DuoQuestion] DuoSocketClient unavailable — falling back to HTTP question load');
+        if (typeof loadQuestionFromServer === 'function') loadQuestionFromServer();
+    }
+})();
+</script>
+@endsection
