@@ -548,14 +548,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             console.log('[Intro] Rescue: join_room re-emitted — awaiting server game_state...');
         } else {
-            // Socket offline — fall back to cached phase captured before disconnect
-            console.log('[Intro] Rescue: socket offline — cached lastKnownPhase:', lastKnownPhase);
-            if (isActivePhase(lastKnownPhase)) {
-                console.log('[Intro] Rescue offline fallback: navigating on cached active phase');
-                navigateToQuestion();
-            } else {
-                console.log('[Intro] Rescue: no active phase — staying on intro');
-            }
+            // Socket offline — do NOT navigate on cached state.
+            // Wait for the socket to reconnect; GameplayRuntime handles reconnect and
+            // will re-join the room, triggering fresh game_state events automatically.
+            console.log('[Intro] Rescue: socket offline — waiting for reconnect, no blind redirect.');
         }
     }, 10000);
 })();
