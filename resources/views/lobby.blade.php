@@ -1322,8 +1322,18 @@ foreach ($colors as $color) {
                 {{ __('INVITER LE JOUEUR SÉLECTIONNÉ') }}
             </button>
         </div>
-        <div id="carnetPlayersPanel" style="overflow-y:auto; flex:1; padding:0 25px 20px;">
-            <div id="contactsList">
+        <div id="carnetPlayersPanel" style="overflow-y:auto; flex:1; display:flex; flex-direction:column;">
+            <div class="carnet-multi-select-toolbar" id="carnetMultiSelectToolbar">
+                <span class="carnet-multi-select-count" id="carnetMultiSelectCount">0 {{ __('contacts sélectionnés') }}</span>
+                <div class="carnet-multi-select-actions">
+                    <button class="carnet-btn-multi-action" onclick="createGroupFromSelection()">👥 {{ __('Créer groupe avec sélection') }}</button>
+                    <button class="carnet-btn-multi-action cancel" onclick="cancelMultiSelect()">✕</button>
+                </div>
+            </div>
+            <div style="padding:8px 20px; text-align:right; flex-shrink:0;">
+                <button class="carnet-group-btn" id="carnetToggleMultiBtn" onclick="toggleMultiSelectMode()" style="background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); font-size:0.82em;">☑ {{ __('Sélection multiple') }}</button>
+            </div>
+            <div id="contactsList" style="padding:0 25px 20px; flex:1;">
                 <p style="text-align:center; color:#888; padding:40px 0;">{{ __('Chargement...') }}</p>
             </div>
         </div>
@@ -1341,6 +1351,21 @@ foreach ($colors as $color) {
 </div>
 
 <style>
+.carnet-multi-select-toolbar {
+    display: none; padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff; gap: 10px; align-items: center; justify-content: space-between;
+}
+.carnet-multi-select-toolbar.active { display: flex; }
+.carnet-multi-select-count { font-weight: 600; }
+.carnet-multi-select-actions { display: flex; gap: 8px; }
+.carnet-btn-multi-action {
+    padding: 8px 16px; background: rgba(255,255,255,0.2); color: #fff;
+    border: 1px solid rgba(255,255,255,0.4); border-radius: 8px;
+    font-size: 0.9em; cursor: pointer; font-weight: 500;
+}
+.carnet-btn-multi-action:hover { background: rgba(255,255,255,0.3); }
+.carnet-btn-multi-action.cancel { background: transparent; border-color: rgba(255,255,255,0.3); }
 .carnet-contact-card {
     border-bottom: 1px solid rgba(255,255,255,0.08);
     padding: 12px 0;
@@ -4637,6 +4662,8 @@ console.log('[Firebase] Match watcher disabled on lobby - Firebase presence only
 // ==========================================
 let carnetSelectedContactId = null;
 let carnetSelectedPlayerCode = null;
+let carnetSelectedContactIds = [];
+let carnetMultiSelectMode = false;
 
 function openContactsModal() {
     const modal = document.getElementById('contactsModal');
@@ -4647,6 +4674,8 @@ function openContactsModal() {
 }
 
 function closeContactsModal() {
+    carnetMultiSelectMode = false;
+    carnetSelectedContactIds = [];
     const modal = document.getElementById('contactsModal');
     if (!modal) return;
     modal.style.display = 'none';
@@ -4705,12 +4734,14 @@ function displayContacts(contacts) {
     if (!list) return;
 
     list.innerHTML = contacts.map(c => {
-        const isSelected = carnetSelectedContactId === c.id;
-        const checkmark  = isSelected ? '✓' : '';
+        const isSingleSelected = !carnetMultiSelectMode && carnetSelectedContactId === c.id;
+        const isMultiSelected  = carnetMultiSelectMode && carnetSelectedContactIds.includes(c.id);
+        const isSelected = isSingleSelected || isMultiSelected;
+        const checkmark  = isSelected ? (carnetMultiSelectMode ? '☑' : '✓') : (carnetMultiSelectMode ? '☐' : '');
         const divisionRank = c.division_rank ? ` #${c.division_rank}` : '';
         return `
-        <div class="carnet-contact-card" id="carnetCard-${c.id}" data-contact-id="${c.id}" data-player-code="${c.player_code || ''}">
-            <div class="carnet-contact-header" onclick="toggleCarnetContactSelection(${c.id}, '${(c.player_code || '').replace(/'/g,"\\'")}')">
+        <div class="carnet-contact-card" id="carnetCard-${c.id}" data-contact-id="${c.id}" data-player-code="${escapeHtml(c.player_code || '')}">
+            <div class="carnet-contact-header" data-action="${carnetMultiSelectMode ? 'multi' : 'single'}" data-id="${c.id}">
                 <div class="carnet-contact-checkbox ${isSelected ? 'selected' : ''}" id="carnetCheck-${c.id}">${checkmark}</div>
                 <div class="carnet-contact-info">
                     <div class="carnet-contact-name-code">
@@ -4721,7 +4752,7 @@ function displayContacts(contacts) {
                         ⭐ {{ __('Niv.') }} ${c.level || 0} &bull; 🏆 ${escapeHtml(c.division || '')}${divisionRank}
                     </div>
                 </div>
-                <button class="carnet-chat-btn" onclick="event.stopPropagation(); openChat(${c.id}, '${(c.name || '').replace(/'/g,"\\'")}');" title="{{ __('Envoyer un message') }}">💬</button>
+                <button class="carnet-chat-btn" data-cid="${c.id}" data-cname="${escapeHtml(c.name || '')}" title="{{ __('Envoyer un message') }}">💬</button>
             </div>
             <div class="carnet-contact-details" id="carnetDetails-${c.id}">
                 <h4>👤 {{ __('STATS DUO PERSONNELLES') }}</h4>
@@ -4737,7 +4768,28 @@ function displayContacts(contacts) {
     }).join('');
 
     list.querySelectorAll('.carnet-contact-card').forEach(card => {
+        const header = card.querySelector('.carnet-contact-header');
+        if (header) {
+            header.addEventListener('click', function(e) {
+                if (e.target.closest('.carnet-chat-btn')) return;
+                const id = parseInt(card.dataset.contactId);
+                const code = card.dataset.playerCode;
+                if (carnetMultiSelectMode) {
+                    toggleMultiContactSelection(id);
+                } else {
+                    toggleCarnetContactSelection(id, code);
+                }
+            });
+        }
+        const chatBtn = card.querySelector('.carnet-chat-btn');
+        if (chatBtn) {
+            chatBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openChat(parseInt(chatBtn.dataset.cid), chatBtn.dataset.cname);
+            });
+        }
         card.addEventListener('dblclick', (e) => {
+            if (e.target.closest('.carnet-chat-btn')) return;
             e.stopPropagation();
             const contactId = card.dataset.contactId;
             const details = document.getElementById(`carnetDetails-${contactId}`);
@@ -4747,6 +4799,77 @@ function displayContacts(contacts) {
             }
         });
     });
+}
+
+function toggleMultiSelectMode() {
+    carnetMultiSelectMode = !carnetMultiSelectMode;
+    carnetSelectedContactIds = [];
+    updateCarnetMultiSelectToolbar();
+    loadContacts();
+}
+
+function updateCarnetMultiSelectToolbar() {
+    const toolbar = document.getElementById('carnetMultiSelectToolbar');
+    if (!toolbar) return;
+    if (carnetMultiSelectMode && carnetSelectedContactIds.length > 0) {
+        toolbar.classList.add('active');
+        const count = document.getElementById('carnetMultiSelectCount');
+        if (count) count.textContent = carnetSelectedContactIds.length + ' {{ __("contacts sélectionnés") }}';
+    } else {
+        toolbar.classList.remove('active');
+    }
+}
+
+function toggleMultiContactSelection(contactId) {
+    const idx = carnetSelectedContactIds.indexOf(contactId);
+    if (idx > -1) {
+        carnetSelectedContactIds.splice(idx, 1);
+    } else {
+        carnetSelectedContactIds.push(contactId);
+    }
+    updateCarnetMultiSelectToolbar();
+    const checkbox = document.getElementById(`carnetCheck-${contactId}`);
+    if (checkbox) {
+        const isSelected = carnetSelectedContactIds.includes(contactId);
+        checkbox.classList.toggle('selected', isSelected);
+        checkbox.textContent = isSelected ? '☑' : '☐';
+    }
+}
+
+function createGroupFromSelection() {
+    if (carnetSelectedContactIds.length === 0) {
+        showToast('{{ __("Sélectionnez des contacts") }}', 'error');
+        return;
+    }
+    const groupName = prompt('{{ __("Entrez un nom de groupe") }}');
+    if (!groupName) return;
+    const csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    fetch('/duo/contacts/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+        credentials: 'same-origin',
+        body: JSON.stringify({ name: groupName, member_ids: carnetSelectedContactIds })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('{{ __("Groupe créé !") }}', 'success');
+            carnetMultiSelectMode = false;
+            carnetSelectedContactIds = [];
+            updateCarnetMultiSelectToolbar();
+            loadContacts();
+        } else {
+            showToast(data.message || '{{ __("Erreur.") }}', 'error');
+        }
+    })
+    .catch(() => showToast('{{ __("Erreur de connexion.") }}', 'error'));
+}
+
+function cancelMultiSelect() {
+    carnetMultiSelectMode = false;
+    carnetSelectedContactIds = [];
+    updateCarnetMultiSelectToolbar();
+    loadContacts();
 }
 
 function toggleCarnetContactSelection(contactId, playerCode) {
