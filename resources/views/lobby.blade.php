@@ -4879,7 +4879,7 @@ function showGroupMembers(groupId, groupName) {
     })
     .then(r => r.json())
     .then(data => {
-        const members = data.members || [];
+        const members = (data.group ? data.group.members : data.members) || [];
         if (members.length === 0) {
             showToast('{{ __("Ce groupe n\'a aucun membre.") }}', 'info');
             return;
@@ -4966,11 +4966,6 @@ function openChat(contactId, contactName) {
     if (typeof openPlayerChat === 'function') {
         openPlayerChat(contactId, contactName);
     }
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
