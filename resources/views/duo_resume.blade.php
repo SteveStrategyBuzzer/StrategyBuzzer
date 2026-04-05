@@ -1223,7 +1223,10 @@ body {
         }
     }
     
-    // Start listeners
+    // Expose initSocket so @section('scripts') can call it after DuoSocketClient.js loads
+    window._duoResumeInitSocket = initSocket;
+
+    // Start listeners (initSocket will fail gracefully here — called again from @section('scripts'))
     startReadyListener();
     startChatListener();
     
@@ -1234,5 +1237,14 @@ body {
         }, 1500);
     }
 })();
+</script>
+@endsection
+
+@section('scripts')
+<script>
+// DuoSocketClient.js is now loaded — initialize socket handlers for resume page
+if (typeof window._duoResumeInitSocket === 'function') {
+    window._duoResumeInitSocket();
+}
 </script>
 @endsection

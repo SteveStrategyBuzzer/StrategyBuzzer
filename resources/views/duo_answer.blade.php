@@ -1281,6 +1281,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         historianSkillBtn.addEventListener('click', activateHistorianSkill);
     }
     
+    // DuoSocketClient handlers deferred to @section('scripts') — loaded after DuoSocketClient.js
+    window._duoAnswerInitSocket = function() {
+
     DuoSocketClient.on('connect', function() {
         console.log('[DuoAnswer] Socket connected (room join handled by GameplayRuntime)');
     });
@@ -1418,7 +1421,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         updateConnectionStatus('connecting');
         GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
     }
-    
+
+    }; // end _duoAnswerInitSocket
+
     initSkillButtons();
     
     if (IS_BUZZ_WINNER || NO_BUZZ) {
@@ -1531,5 +1536,14 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         if (voiceChat) voiceChat.cleanup();
     });
 })();
+</script>
+@endsection
+
+@section('scripts')
+<script>
+// DuoSocketClient.js is now loaded — register answer page socket handlers
+if (typeof window._duoAnswerInitSocket === 'function') {
+    window._duoAnswerInitSocket();
+}
 </script>
 @endsection

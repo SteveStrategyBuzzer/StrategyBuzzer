@@ -1131,6 +1131,9 @@ $mode = 'duo';
     
     btnGo.addEventListener('click', setPlayerReady);
     
+    // DuoSocketClient handlers deferred to @section('scripts') — loaded after DuoSocketClient.js
+    window._duoResultInitSocket = function() {
+
     // connect() + joinRoom() handled by GameplayRuntime; register view-specific handlers directly
     DuoSocketClient.on('disconnect', function(reason) {
         console.log('[DuoResult] Disconnected:', reason);
@@ -1188,7 +1191,9 @@ $mode = 'duo';
         console.log('[DuoResult] Both players ready', data);
         navigateToNextQuestion();
     });
-    
+
+    }; // end _duoResultInitSocket
+
     window.addEventListener('beforeunload', function() {
         if (DuoSocketClient.isConnected()) {
             // keep shared lifecycle behavior
@@ -1396,5 +1401,14 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         if (voiceChat) voiceChat.cleanup();
     });
 })();
+</script>
+@endsection
+
+@section('scripts')
+<script>
+// DuoSocketClient.js is now loaded — register result page socket handlers
+if (typeof window._duoResultInitSocket === 'function') {
+    window._duoResultInitSocket();
+}
 </script>
 @endsection
