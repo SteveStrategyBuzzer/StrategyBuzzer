@@ -915,7 +915,7 @@ foreach ($colors as $color) {
         </div>
     </div>
 
-    @if($mode === 'duo')
+    @if($mode === 'duo' && $isHost)
     <div class="carnet-invite-section" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 20px; margin-bottom: 25px;">
         <div class="section-title" style="margin-bottom: 15px;">
             <span>👥</span>
@@ -1302,7 +1302,7 @@ foreach ($colors as $color) {
     <source src="{{ asset('sounds/message_notification.mp3') }}" type="audio/mpeg">
 </audio>
 
-@if($mode === 'duo')
+@if($mode === 'duo' && $isHost)
 <div id="contactsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1100; justify-content:center; align-items:center;">
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e); border-radius:15px; max-width:500px; width:95%; max-height:85vh; overflow:hidden; display:flex; flex-direction:column; border:2px solid #4fc3f7; box-shadow:0 0 30px rgba(79,195,247,0.3);">
         <div style="padding:20px 25px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
@@ -4627,7 +4627,7 @@ console.log('[Firebase] Match watcher disabled on lobby - Firebase presence only
 </script>
 @endif
 
-@if($mode === 'duo')
+@if($mode === 'duo' && $isHost)
 <script>
 // ==========================================
 // CARNET DE CONTACTS — Lobby Duo
@@ -4854,10 +4854,51 @@ function displayCarnetGroups(groups) {
             </div>
             ${preview ? `<div class="carnet-group-preview">${preview}${members.length > 3 ? '...' : ''}</div>` : ''}
             <div class="carnet-group-actions">
+                <button class="carnet-group-btn invite" onclick="showGroupMembers(${g.id}, '${escapeHtml(g.name || '')}')">📨 {{ __("Inviter depuis ce groupe") }}</button>
                 <button class="carnet-group-btn delete" onclick="deleteCarnetGroup(${g.id})">🗑️ {{ __("Supprimer") }}</button>
             </div>
         </div>`;
     }).join('');
+}
+
+function showGroupMembers(groupId, groupName) {
+    fetch(`/duo/contacts/groups/${groupId}`, {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    })
+    .then(r => r.json())
+    .then(data => {
+        const members = data.members || [];
+        if (members.length === 0) {
+            showToast('{{ __("Ce groupe n\'a aucun membre.") }}', 'info');
+            return;
+        }
+        switchCarnetTab('players');
+        const list = document.getElementById('contactsList');
+        if (!list) return;
+        list.innerHTML = `<div style="padding:6px 0 10px; color:rgba(255,255,255,0.5); font-size:0.82em;">👥 ${escapeHtml(groupName)}</div>` +
+            members.map(m => {
+                const displayName = escapeHtml(m.name || m.username || '');
+                const playerCode  = escapeHtml(m.player_code || '');
+                const isSelected  = carnetSelectedContactId === m.id;
+                return `<div class="carnet-contact-card ${isSelected ? 'selected' : ''}" id="cc-${m.id}" onclick="toggleCarnetContactSelection(${m.id}, '${playerCode}')">
+                    <div class="contact-checkbox">${isSelected ? '✓' : ''}</div>
+                    <div class="contact-details">
+                        <div class="contact-name">${displayName}</div>
+                        <div class="contact-code">${playerCode}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        const btn = document.getElementById('inviteSelectedBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+        }
+        carnetSelectedContactId = null;
+        carnetSelectedPlayerCode = null;
+    })
+    .catch(() => showToast('{{ __("Erreur de connexion.") }}', 'error'));
 }
 
 function createCarnetGroup() {
