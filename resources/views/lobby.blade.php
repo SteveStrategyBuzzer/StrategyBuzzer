@@ -1313,6 +1313,9 @@ foreach ($colors as $color) {
             <button id="carnetTabPlayers" onclick="switchCarnetTab('players')" style="flex:1; padding:12px; background:transparent; border:none; border-bottom:2px solid #4fc3f7; color:#fff; cursor:pointer; font-size:0.95em;">👤 {{ __('Joueurs') }}</button>
             <button id="carnetTabGroups" onclick="switchCarnetTab('groups')" style="flex:1; padding:12px; background:transparent; border:none; border-bottom:2px solid transparent; color:rgba(255,255,255,0.6); cursor:pointer; font-size:0.95em;">👥 {{ __('Groupes') }}</button>
         </div>
+        <div id="carnetSelectedCount" style="display:none; text-align:center; padding:6px 0; color:#4fc3f7; font-size:0.85em; flex-shrink:0;">
+            1 / 1 {{ __('sélectionné') }}
+        </div>
         <div style="flex-shrink:0; padding:10px 25px 0;">
             <button id="inviteSelectedBtn" disabled onclick="inviteSelectedContact()"
                     style="width:100%; padding:12px 24px; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:8px; font-size:1em; font-weight:bold; cursor:not-allowed; opacity:0.5; transition:opacity 0.2s;">
@@ -4738,7 +4741,10 @@ function displayContacts(contacts) {
             e.stopPropagation();
             const contactId = card.dataset.contactId;
             const details = document.getElementById(`carnetDetails-${contactId}`);
-            if (details) details.style.display = details.style.display === 'none' ? 'block' : 'none';
+            if (details) {
+                const isHidden = window.getComputedStyle(details).display === 'none';
+                details.style.display = isHidden ? 'block' : 'none';
+            }
         });
     });
 }
@@ -4772,6 +4778,8 @@ function updateCarnetInviteButton() {
     btn.disabled = !carnetSelectedContactId;
     btn.style.opacity = carnetSelectedContactId ? '1' : '0.5';
     btn.style.cursor  = carnetSelectedContactId ? 'pointer' : 'not-allowed';
+    const countEl = document.getElementById('carnetSelectedCount');
+    if (countEl) countEl.style.display = carnetSelectedContactId ? 'block' : 'none';
 }
 
 function inviteSelectedContact() {
@@ -4927,7 +4935,7 @@ function createCarnetGroup() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
         credentials: 'same-origin',
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, member_ids: carnetSelectedContactId ? [carnetSelectedContactId] : [] })
     })
     .then(r => r.json())
     .then(data => {
