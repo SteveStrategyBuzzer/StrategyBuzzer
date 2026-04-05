@@ -209,10 +209,63 @@
                     <button class="btn-multi-action cancel" onclick="cancelMultiSelect()">✕</button>
                 </div>
             </div>
-            <div style="padding: 10px 20px; text-align: right;">
-                <button class="btn-create-group" onclick="toggleMultiSelectMode()" style="font-size: 0.85em; padding: 8px 12px;">
-                    ☑ {{ __('Sélection multiple') }}
+            <div style="padding:8px 20px 0; display:flex; gap:8px; justify-content:flex-end; flex-shrink:0;">
+                <button disabled title="{{ __('Bientôt disponible') }}"
+                        style="opacity:0.4; cursor:not-allowed; background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.5); border:1px solid rgba(255,255,255,0.15); font-size:0.82em; padding:7px 14px; border-radius:8px;">
+                    👥 {{ __('Faire un Groupe') }}
                 </button>
+                <button id="nouvelAmiToggleBtn" onclick="toggleNouvelAmiPanel()"
+                        style="background:rgba(79,195,247,0.18); color:#4fc3f7; border:1px solid rgba(79,195,247,0.4); font-size:0.82em; padding:7px 14px; border-radius:8px; cursor:pointer;">
+                    ➕ {{ __('Nouvel Ami') }}
+                </button>
+            </div>
+            <div id="nouvelAmiPanel" style="display:none; margin:8px 20px 0; background:rgba(0,0,0,0.25); border:1px solid rgba(79,195,247,0.2); border-radius:10px; padding:14px;">
+                <div style="margin-bottom:10px; font-size:0.82em; color:rgba(255,255,255,0.55);">{{ __('Rechercher un joueur par code') }}</div>
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <input type="text" id="nouvelAmiCodeInput" placeholder="{{ __('Code#') }} (ex: SB-4X2K)"
+                           style="flex:1; padding:9px 12px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(255,255,255,0.07); color:#fff; font-size:0.88em;">
+                    <button onclick="lookupNouvelAmi()"
+                            style="padding:9px 14px; background:#4fc3f7; border:none; border-radius:8px; color:#000; font-weight:bold; cursor:pointer; font-size:0.82em; white-space:nowrap;">
+                        🔍 {{ __('Rechercher') }}
+                    </button>
+                </div>
+                <div id="nouvelAmiError" style="display:none; color:#f87171; font-size:0.82em; margin-bottom:8px;"></div>
+                <div id="nouvelAmiResult" style="display:none;">
+                    <div style="background:rgba(79,195,247,0.08); border:1px solid rgba(79,195,247,0.25); border-radius:8px; padding:12px; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                            <span style="color:rgba(255,255,255,0.5); font-size:0.8em; min-width:42px;">{{ __('Nom') }} :</span>
+                            <span id="nouvelAmiDisplayNom" style="color:#fff; font-size:0.9em; flex:1; font-weight:600;"></span>
+                            <div style="display:flex; gap:4px; flex-shrink:0;">
+                                <button id="nomChoiceName" onclick="setNomChoice('name')"
+                                        style="padding:3px 9px; border:1px solid #4fc3f7; background:#4fc3f7; color:#000; border-radius:4px; font-size:0.75em; cursor:pointer; font-weight:bold;">
+                                    {{ __('Nom') }}
+                                </button>
+                                <button id="nomChoiceCode" onclick="setNomChoice('code')"
+                                        style="padding:3px 9px; border:1px solid rgba(255,255,255,0.2); background:transparent; color:rgba(255,255,255,0.5); border-radius:4px; font-size:0.75em; cursor:pointer;">
+                                    {{ __('Code') }}
+                                </button>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="color:rgba(255,255,255,0.5); font-size:0.8em; min-width:42px;">ID :</span>
+                            <span id="nouvelAmiDisplayId" style="color:#fff; font-size:0.9em; flex:1;"></span>
+                            <div style="display:flex; gap:4px; flex-shrink:0;">
+                                <button id="idChoiceCode" onclick="setIdChoice('code')"
+                                        style="padding:3px 9px; border:1px solid #4fc3f7; background:#4fc3f7; color:#000; border-radius:4px; font-size:0.75em; cursor:pointer; font-weight:bold;">
+                                    {{ __('Code') }}
+                                </button>
+                                <button id="idChoiceId" onclick="setIdChoice('id')"
+                                        style="padding:3px 9px; border:1px solid rgba(255,255,255,0.2); background:transparent; color:rgba(255,255,255,0.5); border-radius:4px; font-size:0.75em; cursor:pointer;">
+                                    ID#
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="saveNouvelAmi()"
+                            style="width:100%; padding:10px; background:linear-gradient(135deg,#4CAF50,#45a049); border:none; color:#fff; border-radius:8px; font-weight:bold; font-size:0.9em; cursor:pointer;">
+                        ✅ {{ __('Ajouter au carnet') }}
+                    </button>
+                </div>
             </div>
             <div id="contactsList" class="contacts-list">
                 <p class="loading-contacts">{{ __('Chargement...') }}</p>
@@ -2867,6 +2920,9 @@ function closeContactsModal() {
         clearInterval(contactsRefreshInterval);
         contactsRefreshInterval = null;
     }
+    const panel = document.getElementById('nouvelAmiPanel');
+    if (panel) panel.style.display = 'none';
+    nouvelAmiData = null;
 }
 
 let allGroups = [];
@@ -3145,6 +3201,151 @@ function addToCarnet(playerCode) {
         showToast(t('Erreur'));
     });
 }
+
+// ==========================================
+// NOUVEL AMI — lookup + save
+// ==========================================
+let nouvelAmiData      = null;
+let nouvelAmiNomChoice = 'name';
+let nouvelAmiIdChoice  = 'code';
+
+function toggleNouvelAmiPanel() {
+    const panel = document.getElementById('nouvelAmiPanel');
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) {
+        const input = document.getElementById('nouvelAmiCodeInput');
+        if (input) input.value = '';
+        const result = document.getElementById('nouvelAmiResult');
+        const err    = document.getElementById('nouvelAmiError');
+        if (result) result.style.display = 'none';
+        if (err)    err.style.display    = 'none';
+        nouvelAmiData      = null;
+        nouvelAmiNomChoice = 'name';
+        nouvelAmiIdChoice  = 'code';
+    }
+    const btn = document.getElementById('nouvelAmiToggleBtn');
+    if (btn) {
+        btn.style.background = isOpen ? 'rgba(79,195,247,0.18)' : 'rgba(79,195,247,0.35)';
+    }
+}
+
+function lookupNouvelAmi() {
+    const input = document.getElementById('nouvelAmiCodeInput');
+    const code  = (input ? input.value : '').trim().toUpperCase();
+    if (!code) {
+        showToast(t('Veuillez saisir un code de joueur.'), 'error');
+        return;
+    }
+    const result = document.getElementById('nouvelAmiResult');
+    const err    = document.getElementById('nouvelAmiError');
+    if (result) result.style.display = 'none';
+    if (err)  { err.style.display = 'none'; err.textContent = ''; }
+
+    fetch(`/duo/contacts/lookup/${encodeURIComponent(code)}`, {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.player) {
+            nouvelAmiData      = data.player;
+            nouvelAmiNomChoice = 'name';
+            nouvelAmiIdChoice  = 'code';
+            updateNouvelAmiDisplay();
+            if (result) result.style.display = 'block';
+        } else {
+            if (err) {
+                err.textContent   = data.message || t('Joueur introuvable');
+                err.style.display = 'block';
+            }
+        }
+    })
+    .catch(() => {
+        if (err) {
+            err.textContent   = t('Erreur de connexion.');
+            err.style.display = 'block';
+        }
+    });
+}
+
+function updateNouvelAmiDisplay() {
+    if (!nouvelAmiData) return;
+    const nomEl = document.getElementById('nouvelAmiDisplayNom');
+    const idEl  = document.getElementById('nouvelAmiDisplayId');
+    if (nomEl) nomEl.textContent = nouvelAmiNomChoice === 'code' ? nouvelAmiData.player_code : nouvelAmiData.name;
+    if (idEl)  idEl.textContent  = nouvelAmiIdChoice  === 'id'   ? '#' + nouvelAmiData.id    : nouvelAmiData.player_code;
+}
+
+function setNomChoice(choice) {
+    nouvelAmiNomChoice = choice;
+    const btnName = document.getElementById('nomChoiceName');
+    const btnCode = document.getElementById('nomChoiceCode');
+    if (btnName) {
+        btnName.style.background  = choice === 'name' ? '#4fc3f7' : 'transparent';
+        btnName.style.color       = choice === 'name' ? '#000'    : 'rgba(255,255,255,0.5)';
+        btnName.style.borderColor = choice === 'name' ? '#4fc3f7' : 'rgba(255,255,255,0.2)';
+    }
+    if (btnCode) {
+        btnCode.style.background  = choice === 'code' ? '#4fc3f7' : 'transparent';
+        btnCode.style.color       = choice === 'code' ? '#000'    : 'rgba(255,255,255,0.5)';
+        btnCode.style.borderColor = choice === 'code' ? '#4fc3f7' : 'rgba(255,255,255,0.2)';
+    }
+    updateNouvelAmiDisplay();
+}
+
+function setIdChoice(choice) {
+    nouvelAmiIdChoice = choice;
+    const btnCode = document.getElementById('idChoiceCode');
+    const btnId   = document.getElementById('idChoiceId');
+    if (btnCode) {
+        btnCode.style.background  = choice === 'code' ? '#4fc3f7' : 'transparent';
+        btnCode.style.color       = choice === 'code' ? '#000'    : 'rgba(255,255,255,0.5)';
+        btnCode.style.borderColor = choice === 'code' ? '#4fc3f7' : 'rgba(255,255,255,0.2)';
+    }
+    if (btnId) {
+        btnId.style.background    = choice === 'id' ? '#4fc3f7' : 'transparent';
+        btnId.style.color         = choice === 'id' ? '#000'    : 'rgba(255,255,255,0.5)';
+        btnId.style.borderColor   = choice === 'id' ? '#4fc3f7' : 'rgba(255,255,255,0.2)';
+    }
+    updateNouvelAmiDisplay();
+}
+
+function saveNouvelAmi() {
+    if (!nouvelAmiData) return;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    fetch('/duo/contacts/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+            player_code:         nouvelAmiData.player_code,
+            display_name_choice: nouvelAmiNomChoice,
+            display_id_choice:   nouvelAmiIdChoice
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || t('Contact ajouté au carnet !'), 'success');
+            toggleNouvelAmiPanel();
+            loadContacts();
+        } else {
+            showToast(data.message || t('Erreur.'), 'error');
+        }
+    })
+    .catch(() => showToast(t('Erreur de connexion.'), 'error'));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('nouvelAmiCodeInput');
+    if (codeInput) {
+        codeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') lookupNouvelAmi();
+        });
+    }
+});
 
 function createGroupFromInvitation(playerId, playerName) {
     const groupName = prompt(t('Entrez un nom de groupe'), playerName);
