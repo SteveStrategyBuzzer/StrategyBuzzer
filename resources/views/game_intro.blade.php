@@ -533,12 +533,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     setTimeout(function() {
         if (redirected) return;
-        console.log('[Intro] Rescue check (10s) — lastKnownPhase:', lastKnownPhase);
-        if (isActivePhase(lastKnownPhase)) {
-            console.log('[Intro] Rescue: server-confirmed active phase, navigating');
-            navigateToQuestion();
+        console.log('[Intro] Rescue (10s): requesting fresh state from server...');
+
+        var sock = DuoSocketClient.socket;
+        if (sock && sock.connected && window.ROOM_ID) {
+            // Re-emit join_room so server sends back a fresh game_state event.
+            // Our registered game_state / phase_changed handlers will navigate
+            // if the server confirms an active phase — no blind navigation.
+            sock.emit('join_room', {
+                roomId: window.ROOM_ID,
+                lobbyCode: window.LOBBY_CODE || null,
+                playerId: String(window.CURRENT_USER_ID || ''),
+                token: window.JWT_TOKEN || null
+            });
+            console.log('[Intro] Rescue: join_room re-emitted — awaiting server game_state...');
         } else {
-            console.log('[Intro] Rescue: no active phase confirmed — staying on intro');
+            // Socket offline — fall back to cached phase captured before disconnect
+            console.log('[Intro] Rescue: socket offline — cached lastKnownPhase:', lastKnownPhase);
+            if (isActivePhase(lastKnownPhase)) {
+                console.log('[Intro] Rescue offline fallback: navigating on cached active phase');
+                navigateToQuestion();
+            } else {
+                console.log('[Intro] Rescue: no active phase — staying on intro');
+            }
         }
     }, 10000);
 })();
