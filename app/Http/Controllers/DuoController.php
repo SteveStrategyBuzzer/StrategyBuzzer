@@ -1903,14 +1903,39 @@ class DuoController extends Controller
         ]);
     }
 
+    public function contactLookup(string $playerCode)
+    {
+        $user   = Auth::user();
+        $player = $this->contactService->lookupByCode($user->id, $playerCode);
+
+        if (!$player) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Joueur introuvable'),
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'player'  => $player,
+        ]);
+    }
+
     public function addContact(Request $request)
     {
         $request->validate([
-            'player_code' => 'required|string|max:20',
+            'player_code'         => 'required|string|max:20',
+            'display_name_choice' => 'nullable|string|in:name,code',
+            'display_id_choice'   => 'nullable|string|in:code,id',
         ]);
 
-        $user = Auth::user();
-        $contact = $this->contactService->addContactByCode($user->id, $request->player_code);
+        $user    = Auth::user();
+        $contact = $this->contactService->addContactByCode(
+            $user->id,
+            $request->player_code,
+            $request->input('display_name_choice', 'name'),
+            $request->input('display_id_choice', 'code')
+        );
 
         if (!$contact) {
             return response()->json([
@@ -1922,7 +1947,7 @@ class DuoController extends Controller
         return response()->json([
             'success' => true,
             'contact' => $contact,
-            'message' => __('Contact ajouté'),
+            'message' => __('Contact ajouté au carnet !'),
         ]);
     }
 

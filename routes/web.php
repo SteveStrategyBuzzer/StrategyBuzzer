@@ -239,6 +239,7 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::get('/rankings', [App\Http\Controllers\DuoController::class, 'rankings'])->name('rankings');
     Route::get('/contacts', [App\Http\Controllers\DuoController::class, 'getContacts'])->name('contacts');
     Route::post('/contacts/add', [App\Http\Controllers\DuoController::class, 'addContact'])->name('contacts.add');
+    Route::get('/contacts/lookup/{playerCode}', [App\Http\Controllers\DuoController::class, 'contactLookup'])->name('contacts.lookup');
     Route::delete('/contacts/{contactId}', [App\Http\Controllers\DuoController::class, 'deleteContact'])->name('contacts.delete');
     Route::get('/contacts/groups', [App\Http\Controllers\PlayerGroupController::class, 'index'])->name('contacts.groups');
     Route::post('/contacts/groups', [App\Http\Controllers\PlayerGroupController::class, 'store'])->name('contacts.groups.store');

@@ -172,7 +172,20 @@ class PlayerContactService
         }
     }
 
-    public function addContactByCode(int $userId, string $playerCode): ?array
+    public function lookupByCode(int $userId, string $playerCode): ?array
+    {
+        $contactUser = User::where('player_code', $playerCode)->first();
+        if (!$contactUser || $contactUser->id === $userId) {
+            return null;
+        }
+        return [
+            'id'          => $contactUser->id,
+            'name'        => $contactUser->name,
+            'player_code' => $contactUser->player_code,
+        ];
+    }
+
+    public function addContactByCode(int $userId, string $playerCode, string $displayNameChoice = 'name', string $displayIdChoice = 'code'): ?array
     {
         try {
             $contactUser = User::where('player_code', $playerCode)->first();
@@ -184,19 +197,38 @@ class PlayerContactService
             if ($contactUser->id === $userId) {
                 return null;
             }
+
+            $contact = PlayerContact::firstOrCreate(
+                ['user_id' => $userId, 'contact_user_id' => $contactUser->id],
+                [
+                    'matches_played_together' => 0,
+                    'matches_won'             => 0,
+                    'matches_lost'            => 0,
+                    'decisive_rounds_played'  => 0,
+                    'decisive_rounds_won'     => 0,
+                    'display_name_choice'     => $displayNameChoice,
+                    'display_id_choice'       => $displayIdChoice,
+                ]
+            );
+
+            $contact->display_name_choice = $displayNameChoice;
+            $contact->display_id_choice   = $displayIdChoice;
+            $contact->save();
             
-            $this->ensureContactExists($userId, $contactUser->id);
-            
+            $displayName = $displayNameChoice === 'code' ? $contactUser->player_code : $contactUser->name;
+            $displayId   = $displayIdChoice   === 'id'   ? '#' . $contactUser->id   : $contactUser->player_code;
+
             return [
-                'id' => $contactUser->id,
-                'name' => $contactUser->name,
+                'id'          => $contactUser->id,
+                'name'        => $displayName,
+                'display_id'  => $displayId,
                 'player_code' => $contactUser->player_code,
             ];
         } catch (\Exception $e) {
             \Log::error('Failed to add contact by code', [
-                'user_id' => $userId,
-                'player_code' => $playerCode,
-                'error' => $e->getMessage(),
+                'user_id'      => $userId,
+                'player_code'  => $playerCode,
+                'error'        => $e->getMessage(),
             ]);
             return null;
         }
@@ -227,9 +259,15 @@ class PlayerContactService
                 ? round(($duoStats->correct_answers / max($duoStats->total_answers, 1)) * 100, 1)
                 : 0;
 
+            $displayNameChoice = $contact->display_name_choice ?? 'name';
+            $displayIdChoice   = $contact->display_id_choice   ?? 'code';
+            $displayName = $displayNameChoice === 'code' ? $contactUser->player_code : $contactUser->name;
+            $displayId   = $displayIdChoice   === 'id'   ? '#' . $contactUser->id   : $contactUser->player_code;
+
             return [
-                'id' => $contactUser->id,
-                'name' => $contactUser->name,
+                'id'         => $contactUser->id,
+                'name'       => $displayName,
+                'display_id' => $displayId,
                 'player_code' => $contactUser->player_code,
                 'level' => $duoStats ? $duoStats->level : 0,
                 'division' => $division['name'] ?? 'Bronze',

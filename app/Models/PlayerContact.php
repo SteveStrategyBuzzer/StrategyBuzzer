@@ -16,6 +16,8 @@ class PlayerContact extends Model
         'decisive_rounds_played',
         'decisive_rounds_won',
         'last_played_at',
+        'display_name_choice',
+        'display_id_choice',
     ];
 
     protected $casts = [
