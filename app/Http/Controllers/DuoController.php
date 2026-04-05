@@ -1037,7 +1037,7 @@ class DuoController extends Controller
         $match->status = 'in_progress';
         $match->started_at = now();
 
-        $lobbyCode = $gameState['lobby_code'] ?? $request->input('lobby_code');
+        $lobbyCode = $request->input('lobby_code') ?: ($gameState['lobby_code'] ?? null);
         $lobby = null;
         $roomId = null;
 
