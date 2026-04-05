@@ -4847,18 +4847,29 @@ function displayCarnetGroups(groups) {
         const members = g.members || [];
         const preview = members.slice(0, 3).map(m => escapeHtml(m.name || '')).join(', ');
         return `
-        <div class="carnet-group-card">
+        <div class="carnet-group-card" data-group-id="${g.id}" data-group-name="${escapeHtml(g.name || '')}">
             <div class="carnet-group-header">
                 <span class="carnet-group-name">👥 ${escapeHtml(g.name || '')}</span>
                 <span class="carnet-group-count">${members.length} {{ __("membre(s)") }}</span>
             </div>
             ${preview ? `<div class="carnet-group-preview">${preview}${members.length > 3 ? '...' : ''}</div>` : ''}
             <div class="carnet-group-actions">
-                <button class="carnet-group-btn invite" onclick="showGroupMembers(${g.id}, '${escapeHtml(g.name || '')}')">📨 {{ __("Inviter depuis ce groupe") }}</button>
-                <button class="carnet-group-btn delete" onclick="deleteCarnetGroup(${g.id})">🗑️ {{ __("Supprimer") }}</button>
+                <button class="carnet-group-btn invite" data-gid="${g.id}">📨 {{ __("Inviter depuis ce groupe") }}</button>
+                <button class="carnet-group-btn delete" data-gid="${g.id}">🗑️ {{ __("Supprimer") }}</button>
             </div>
         </div>`;
     }).join('');
+    list.querySelectorAll('.carnet-group-btn.invite').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const card = btn.closest('[data-group-id]');
+            showGroupMembers(parseInt(btn.dataset.gid), card ? card.dataset.groupName : '');
+        });
+    });
+    list.querySelectorAll('.carnet-group-btn.delete').forEach(btn => {
+        btn.addEventListener('click', function() {
+            deleteCarnetGroup(parseInt(btn.dataset.gid));
+        });
+    });
 }
 
 function showGroupMembers(groupId, groupName) {
@@ -4874,29 +4885,32 @@ function showGroupMembers(groupId, groupName) {
             return;
         }
         switchCarnetTab('players');
+        carnetSelectedContactId = null;
+        carnetSelectedPlayerCode = null;
+        updateCarnetInviteButton();
         const list = document.getElementById('contactsList');
         if (!list) return;
         list.innerHTML = `<div style="padding:6px 0 10px; color:rgba(255,255,255,0.5); font-size:0.82em;">👥 ${escapeHtml(groupName)}</div>` +
             members.map(m => {
                 const displayName = escapeHtml(m.name || m.username || '');
                 const playerCode  = escapeHtml(m.player_code || '');
-                const isSelected  = carnetSelectedContactId === m.id;
-                return `<div class="carnet-contact-card ${isSelected ? 'selected' : ''}" id="cc-${m.id}" onclick="toggleCarnetContactSelection(${m.id}, '${playerCode}')">
-                    <div class="contact-checkbox">${isSelected ? '✓' : ''}</div>
-                    <div class="contact-details">
-                        <div class="contact-name">${displayName}</div>
-                        <div class="contact-code">${playerCode}</div>
+                return `<div class="carnet-contact-card" id="carnetCard-${m.id}" data-contact-id="${m.id}" data-player-code="${playerCode}">
+                    <div class="carnet-contact-header">
+                        <div class="carnet-contact-checkbox" id="carnetCheck-${m.id}"></div>
+                        <div class="carnet-contact-info">
+                            <div class="carnet-contact-name-code">
+                                <span class="carnet-contact-name">${displayName}</span>
+                                <span class="carnet-contact-code">${playerCode}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>`;
             }).join('');
-        const btn = document.getElementById('inviteSelectedBtn');
-        if (btn) {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
-        }
-        carnetSelectedContactId = null;
-        carnetSelectedPlayerCode = null;
+        list.querySelectorAll('.carnet-contact-card').forEach(card => {
+            card.querySelector('.carnet-contact-header').addEventListener('click', function() {
+                toggleCarnetContactSelection(parseInt(card.dataset.contactId), card.dataset.playerCode);
+            });
+        });
     })
     .catch(() => showToast('{{ __("Erreur de connexion.") }}', 'error'));
 }
