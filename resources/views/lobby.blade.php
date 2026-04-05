@@ -4676,6 +4676,7 @@ function openContactsModal() {
 function closeContactsModal() {
     carnetMultiSelectMode = false;
     carnetSelectedContactIds = [];
+    updateCarnetMultiSelectToolbar();
     const modal = document.getElementById('contactsModal');
     if (!modal) return;
     modal.style.display = 'none';
