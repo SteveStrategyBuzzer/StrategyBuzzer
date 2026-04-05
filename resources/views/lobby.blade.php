@@ -1677,6 +1677,7 @@ foreach ($colors as $color) {
     const isHost = {{ $isHost ? 'true' : 'false' }};
     let isReady = {{ ($players[$currentPlayerId]['ready'] ?? false) ? 'true' : 'false' }};
     let pollingInterval = null;
+    window.pollingInterval = null;
 
     // Initialize backendDisabled from the PHP-rendered attribute so both paths share one source of truth
     (function initStartBtnState() {
@@ -2309,6 +2310,8 @@ foreach ($colors as $color) {
     }
     
     function submitGameStart(mode, settings) {
+        if (window.gameStartNavigating) return;
+        window.gameStartNavigating = true;
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/game/${mode}/start`;
@@ -3370,10 +3373,13 @@ if (data.exists === false) {
     }
     
     pollingInterval = setInterval(refreshLobbyState, 10000);
+    window.pollingInterval = pollingInterval;
     
     window.addEventListener('beforeunload', () => {
         if (pollingInterval) {
             clearInterval(pollingInterval);
+            pollingInterval = null;
+            window.pollingInterval = null;
         }
     });
     
@@ -4512,7 +4518,7 @@ initFirebase().then(async (authenticated) => {
     
 });
 
-function initLobbySocketListeners() {
+window.initLobbySocketListeners = function() {
     console.log('[Socket.IO] Registering lobby event listeners...');
         window.duoSocketConnected = false;
         window.socketLobbyReady = false;
@@ -4579,7 +4585,7 @@ function initLobbySocketListeners() {
             if (startBtn) {
                 startBtn.dataset.socketLobbyReady = 'true';
                 // If backend already confirmed can_start (via backendDisabled, the single source of truth), enable now
-                if (isHost && startBtn.dataset.backendDisabled === 'false') {
+                if (isHostFirebase && startBtn.dataset.backendDisabled === 'false') {
                     startBtn.removeAttribute('disabled');
                 }
             }
@@ -4618,7 +4624,7 @@ function initLobbySocketListeners() {
             console.log('[Socket.IO] Phase changed:', data);
             if (data.phase === 'INTRO') {
                 console.log('[Socket.IO] INTRO received — navigating to game intro page.');
-                if (pollingInterval) clearInterval(pollingInterval);
+                if (window.pollingInterval) { clearInterval(window.pollingInterval); window.pollingInterval = null; }
                 if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
                 if (window.webrtcManager) window.webrtcManager.cleanup();
                 if (window.showBrainSpin) window.showBrainSpin();
@@ -4629,7 +4635,7 @@ function initLobbySocketListeners() {
 
             if (data.phase === 'QUESTION_ACTIVE') {
                 console.log('[Socket.IO] QUESTION_ACTIVE received in lobby — already navigating.');
-                if (pollingInterval) clearInterval(pollingInterval);
+                if (window.pollingInterval) { clearInterval(window.pollingInterval); window.pollingInterval = null; }
                 if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
                 if (window.webrtcManager) window.webrtcManager.cleanup();
             }
@@ -4637,6 +4643,12 @@ function initLobbySocketListeners() {
         
         // Connect + joinRoom are managed by GameplayRuntime (layouts.game)
         console.log('[Socket.IO] Lobby event listeners ready; GameplayRuntime will connect.');
+};
+
+// Modules are deferred — by the time this runs, DuoSocketClient.js is already loaded.
+// Invoke immediately if this is a Socket.IO lobby.
+if (window.useSocketIO && window.matchRoomId) {
+    window.initLobbySocketListeners();
 }
 
 window.addEventListener('beforeunload', () => {
@@ -5226,10 +5238,3 @@ function saveNouvelAmi() {
 
 @endsection
 
-@section('scripts')
-<script>
-if (window.useSocketIO && window.matchRoomId) {
-    initLobbySocketListeners();
-}
-</script>
-@endsection
