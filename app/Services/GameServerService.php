@@ -17,7 +17,7 @@ class GameServerService
     {
         $this->gameServerUrl = rtrim(config('app.game_server_url', 'http://localhost:3001'), '/');
         $this->jwtSecret = config('app.game_server_jwt_secret');
-        $this->playerTokenTtlSeconds = 20 * 60;
+        $this->playerTokenTtlSeconds = 2 * 60 * 60; // 2 hours — covers full match duration
 
         if (!$this->jwtSecret || strlen(trim($this->jwtSecret)) < 16) {
             throw new \RuntimeException("Missing or weak GAME_SERVER_JWT_SECRET (mirror strict Replit)");

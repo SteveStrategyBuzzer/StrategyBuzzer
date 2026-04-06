@@ -534,9 +534,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             console.log('[Intro] Rescue: join_room re-emitted — awaiting server game_state...');
         } else {
-            console.log('[Intro] Rescue: socket offline — waiting for reconnect, no blind redirect.');
+            console.warn('[Intro] Rescue: socket offline — starting 30s fallback timer.');
         }
     }, 10000);
+
+    // 30-second hard fallback: if still stuck (disconnected + no navigation), go back to lobby.
+    // This prevents permanent freeze when JWT expired or server unreachable.
+    setTimeout(function() {
+        if (redirected) return;
+        var sock = DuoSocketClient.socket;
+        if (!sock || !sock.connected) {
+            console.warn('[Intro] Hard fallback (30s): socket offline, redirecting to lobby.');
+            window.location.href = window.LOBBY_CODE
+                ? '/lobby/' + window.LOBBY_CODE
+                : '/duo/lobby';
+        }
+    }, 30000);
 })();
 </script>
 @endsection
