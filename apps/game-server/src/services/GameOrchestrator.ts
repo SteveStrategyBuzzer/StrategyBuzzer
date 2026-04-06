@@ -541,6 +541,12 @@ export class GameOrchestrator {
       const reductionMs = isReduceTimeActive ? 2000 : 0;
       const playerTimeLimit = Math.max(1000, baseTimeLimit - reductionMs);
       
+      // phaseEndsAtMs: derive from the canonical room timestamp so client timer is accurate.
+      // For reduce_time players, subtract the reduction from the room's deadline.
+      const playerPhaseEndsAtMs = room.state.phaseEndsAtMs
+        ? room.state.phaseEndsAtMs - reductionMs
+        : Date.now() + playerTimeLimit;
+
       this.io.to(`player:${playerId}`).emit("question_published", {
         questionIndex: room.state.questionIndex,
         questionId: question.id,
@@ -550,6 +556,7 @@ export class GameOrchestrator {
         subCategory: question.subCategory,
         difficulty: question.difficulty,
         timeLimitMs: playerTimeLimit,
+        phaseEndsAtMs: playerPhaseEndsAtMs,
         totalQuestions: room.state.questions.length,
         reduceTimeActive: isReduceTimeActive,
         activeEffects: room.state.activeEffects.filter(e => e.targetPlayerId === playerId),

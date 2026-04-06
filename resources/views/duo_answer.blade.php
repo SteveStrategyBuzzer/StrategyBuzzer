@@ -1518,8 +1518,11 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         if (voiceChat) voiceChat.cleanup();
     });
 
-    // Register DuoSocketClient handlers after all scripts have loaded
-    setTimeout(function() {
+    // Register DuoSocketClient handlers after all scripts have loaded.
+    // DOMContentLoaded is guaranteed to fire after ALL blocking <script src=""> tags —
+    // including DuoSocketClient.js. setTimeout(0) is unreliable: it is a macrotask that
+    // can fire DURING a script fetch, before window.DuoSocketClient is set.
+    document.addEventListener('DOMContentLoaded', function() {
         var ds = window.DuoSocketClient;
         var h  = window._duoAnswerHandlers;
         if (!ds || !h) { console.error('[DuoAnswer] DuoSocketClient or handlers missing'); return; }
@@ -1532,7 +1535,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         ds.on('phase_changed',   h.phase_changed);
         ds.on('score_update',    h.score_update);
         h.initEffects();
-    }, 0);
+    });
 })();
 </script>
 @endsection

@@ -1239,8 +1239,11 @@ body {
         }, 1500);
     }
 
-    // Register DuoSocketClient handlers after all scripts have loaded
-    setTimeout(function() {
+    // Register DuoSocketClient handlers after all scripts have loaded.
+    // DOMContentLoaded is guaranteed to fire after ALL blocking <script src=""> tags —
+    // including DuoSocketClient.js. setTimeout(0) is unreliable: it is a macrotask that
+    // can fire DURING a script fetch, before window.DuoSocketClient is set.
+    document.addEventListener('DOMContentLoaded', function() {
         var ds = window.DuoSocketClient;
         var h  = window._duoResumeHandlers;
         if (!ds || !h) { console.error('[DuoResume] DuoSocketClient or handlers missing'); return; }
@@ -1248,7 +1251,7 @@ body {
         ds.on('state',         h.state);
         ds.on('phase_changed', h.phase_changed);
         h.setInitialized(); // sets IIFE-local socketInitialized = true via closure
-    }, 0);
+    });
 })();
 </script>
 @endsection

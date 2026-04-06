@@ -221,20 +221,23 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           const activeQuestion = state.questions[state.questionIndex] || state.currentQuestion;
           if (activeQuestion) {
             const q = activeQuestion;
-            // Sanitize choices to ensure they are plain strings (like question_published does)
+            // Sanitize choices to ensure they are plain strings (like question_published does).
+            // Also filter out "null"/"undefined" strings that appear in true/false questions.
             const rawChoices = q.choices || (q as any).answers;
             let sanitizedChoices: string[] | undefined = undefined;
             if (rawChoices && Array.isArray(rawChoices)) {
-              sanitizedChoices = rawChoices.map((choice: unknown) => {
-                if (typeof choice === "string") return choice;
-                if (choice && typeof choice === "object") {
-                  const obj = choice as Record<string, unknown>;
-                  if (typeof obj.text === "string") return obj.text;
-                  if (typeof obj.answer === "string") return obj.answer;
-                  if (typeof obj.label === "string") return obj.label;
-                }
-                return String(choice);
-              });
+              sanitizedChoices = rawChoices
+                .map((choice: unknown) => {
+                  if (typeof choice === "string") return choice;
+                  if (choice && typeof choice === "object") {
+                    const obj = choice as Record<string, unknown>;
+                    if (typeof obj.text === "string") return obj.text;
+                    if (typeof obj.answer === "string") return obj.answer;
+                    if (typeof obj.label === "string") return obj.label;
+                  }
+                  return String(choice);
+                })
+                .filter((c: string) => c !== "null" && c !== "undefined" && c.trim() !== "");
             }
             currentQuestionSanitized = {
               id: q.id,
@@ -280,11 +283,11 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
 
         const updatedState = roomManager.getState(roomId);
 
-// envoyer à tous
-io.to(roomId).emit("state", { state: updatedState });
+        // Broadcast updated state to all players in the room (including the joining player,
+        // since socket.join(roomId) was already called above). A second direct socket.emit()
+        // is unnecessary and causes the joining player to process the state event twice.
+        io.to(roomId).emit("state", { state: updatedState });
 
-// envoyer AUSSI directement au joueur qui vient de join
-socket.emit("state", { state: updatedState });
         MetricsService.incrementEventsProcessed();
         
         console.log(`[WS] Player ${playerName} joined room ${roomId}`);
