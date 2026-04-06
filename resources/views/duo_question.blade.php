@@ -1486,7 +1486,7 @@ $mode = 'duo';
         return false;
     }
     
-    // Socket handler registration deferred to @section('scripts') (after DuoSocketClient.js loads)
+    // Socket handler registration deferred to the scripts section (after DuoSocketClient.js loads)
 
     buzzButton.addEventListener('click', handleBuzz);
     

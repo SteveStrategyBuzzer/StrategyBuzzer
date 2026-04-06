@@ -791,7 +791,7 @@ body {
             window.location.href = redirectUrl;
         }
     }
-    // Expose for @section('scripts') — .on() bindings done there after DuoSocketClient.js loads
+    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
     // setInitialized() closes over the IIFE-local socketInitialized flag
     window._duoResumeHandlers = {
         player_ready:   _onResumePlayerReady,
@@ -804,7 +804,7 @@ body {
     function initSocket() {
         // Guard: only relevant if called before DuoSocketClient loads (will always fail gracefully)
         if (socketInitialized || typeof DuoSocketClient === 'undefined') return false;
-        return false; // binding moved to @section('scripts')
+        return false; // binding moved to the scripts section
     }
     
     // Initialize Firebase for chat/voice only (not for ready sync)

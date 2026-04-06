@@ -1182,7 +1182,7 @@ $mode = 'duo';
         console.log('[DuoResult] Both players ready', data);
         navigateToNextQuestion();
     }
-    // Expose for @section('scripts') — .on() bindings done there after DuoSocketClient.js loads
+    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
     window._duoResultHandlers = {
         disconnect:    _onResultDisconnect,
         error:         _onResultError,

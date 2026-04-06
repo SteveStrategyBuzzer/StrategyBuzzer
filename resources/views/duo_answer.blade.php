@@ -1393,7 +1393,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
         }
     }
-    // Expose for @section('scripts') — .on() bindings done there after DuoSocketClient.js loads
+    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
     window._duoAnswerHandlers = {
         connect:         _onAnswerConnect,
         disconnect:      _onAnswerDisconnect,
