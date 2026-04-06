@@ -1311,7 +1311,10 @@ $mode = 'duo';
     function handleAnswerRevealed(data) {
         console.log('[DuoQuestion] Réponse révélée:', data);
         
-        if (data.isCorrect !== undefined && data.pointsEarned !== undefined) {
+        // Only show result popup if the player actually buzzed (pointsEarned !== 0).
+        // Players who didn't buzz receive pointsEarned=0 — showing "Incorrect! +0 pts"
+        // would be wrong since they never buzzed. Only +2/+1 (correct) or -2 (wrong) get a popup.
+        if (data.isCorrect !== undefined && data.pointsEarned !== undefined && data.pointsEarned !== 0) {
             showResult(data.isCorrect, data.pointsEarned);
         }
         

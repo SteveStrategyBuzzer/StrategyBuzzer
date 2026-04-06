@@ -18,6 +18,21 @@ window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
 @section('content')
 @php
 $mode = 'duo';
+
+// Normalize variable names: the controller may pass either snake_case or camelCase.
+// These fallbacks ensure the view works regardless of which controller renders it.
+$wasCorrect      = $wasCorrect      ?? $is_correct    ?? false;
+$pointsEarned    = $pointsEarned    ?? $points_earned ?? 0;
+$playerScore     = $playerScore     ?? $player_score  ?? ($player_info['score'] ?? 0);
+$opponentScore   = $opponentScore   ?? $opponent_score ?? ($opponent_info['score'] ?? 0);
+$totalQuestions  = $totalQuestions  ?? $total_questions ?? 10;
+$playerAnswer    = $playerAnswer    ?? $player_answer  ?? '';
+$correctAnswer   = $correctAnswer   ?? $correct_answer ?? '';
+$playerAvatarPath   = $playerAvatarPath   ?? ($player_info['avatar'] ?? null);
+$opponentAvatarPath = $opponentAvatarPath ?? ($opponent_info['avatar'] ?? null);
+$opponentName    = $opponentName    ?? ($opponent_info['name'] ?? __('Adversaire'));
+// $question array used by the scroll-skill section — build from flat variables if not provided.
+$question        = $question        ?? ['correct_answer' => $correctAnswer, 'answer' => $correctAnswer];
 @endphp
 
 <style>

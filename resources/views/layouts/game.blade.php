@@ -109,37 +109,6 @@
         50%      { box-shadow: 0 0 20px rgba(46,204,113,0.8); }
     }
 
-    /* Game header */
-    #gameHeader {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: rgba(15,32,39,0.96);
-        border-bottom: 1px solid rgba(78,205,196,0.3);
-        padding: 8px 16px;
-        position: sticky;
-        top: 0;
-        z-index: 500;
-        min-height: 52px;
-    }
-    .gh-player { display: flex; align-items: center; gap: 8px; flex: 1; }
-    .gh-left  { justify-content: flex-start; }
-    .gh-right { justify-content: flex-end; flex-direction: row-reverse; }
-    .gh-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0; }
-    .gh-name  { font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.9); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .gh-score { font-size: 1.25rem; font-weight: 900; color: #4ECDC4; min-width: 26px; text-align: center; }
-    .gh-center { text-align: center; font-size: 0.72rem; color: rgba(255,255,255,0.6); flex-shrink: 0; padding: 0 8px; }
-    .gh-counter { display: block; font-weight: 700; color: rgba(255,255,255,0.85); font-size: 0.82rem; }
-    .gh-round   { display: block; font-size: 0.68rem; margin-top: 1px; }
-
-    @media (max-width: 375px) {
-        #gameHeader { padding: 5px 8px; min-height: 44px; }
-        .gh-avatar  { width: 26px; height: 26px; }
-        .gh-name    { max-width: 52px; font-size: 0.72rem; }
-        .gh-score   { font-size: 1.05rem; }
-        .gh-center  { padding: 0 3px; font-size: 0.62rem; }
-    }
-
     body { background: #0f2027; color: #fff; margin: 0; padding: 0; }
     </style>
 </head>
@@ -165,28 +134,6 @@
 <button id="voiceMicButton" title="{{ __('Activer/désactiver le micro') }}">
     <span id="micIcon">🎤</span>
 </button>
-
-<!-- Game header — always rendered; hidden by CSS when no player data, updated live by GameplayRuntime -->
-<header id="gameHeader" style="{{ empty($playerName) ? 'display:none;' : '' }}">
-    <div class="gh-player gh-left">
-        <img id="ghPlayerAvatar"
-             src="{{ asset($playerAvatarPath ?? 'images/avatars/standard/default.png') }}"
-             class="gh-avatar" alt="">
-        <div class="gh-name" id="ghPlayerName">{{ $playerName ?? '' }}</div>
-        <div class="gh-score" id="ghPlayerScore">{{ $playerScore ?? 0 }}</div>
-    </div>
-    <div class="gh-center">
-        <span class="gh-counter" id="ghQuestionCounter">{{ ($currentQuestion ?? 1) }}/{{ $totalQuestions ?? 10 }}</span>
-        <span class="gh-round" id="ghRound">{{ __('Manche') }} {{ $round ?? 1 }}</span>
-    </div>
-    <div class="gh-player gh-right">
-        <img id="ghOpponentAvatar"
-             src="{{ asset($opponentAvatarPath ?? 'images/avatars/standard/default.png') }}"
-             class="gh-avatar" alt="">
-        <div class="gh-name" id="ghOpponentName">{{ $opponentName ?? '' }}</div>
-        <div class="gh-score" id="ghOpponentScore">{{ $opponentScore ?? 0 }}</div>
-    </div>
-</header>
 
 <!-- Main game content (no container wrapper — game views are full-width) -->
 @yield('content')

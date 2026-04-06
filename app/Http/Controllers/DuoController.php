@@ -1653,19 +1653,32 @@ class DuoController extends Controller
         $playerAvatar = $this->getSnapshotAvatarPath($playerSnapshot);
         $opponentAvatar = $this->getSnapshotAvatarPath($opponentSnapshot);
 
+        $playerBuzzed = $gameState['last_player_buzzed'] ?? false;
+
         return view('duo_result', [
             'match_id' => $match->id,
             'room_id' => $roomId,
             'lobby_code' => $lobbyCode,
             'jwt_token' => $jwtToken,
             'is_correct' => $isCorrect,
+            'wasCorrect' => $isCorrect,
             'points_earned' => $pointsEarned,
+            'pointsEarned' => $pointsEarned,
+            'playerBuzzed' => $playerBuzzed,
+            'playerPoints' => $pointsEarned,
             'player_score' => $playerScore,
             'opponent_score' => $opponentScore,
             'total_questions' => 10,
             'skills' => $skills,
             'avatarName' => $avatarName,
             'strategicAvatarPath' => $strategicAvatarPath,
+            'playerAvatarPath' => $playerAvatar,
+            'opponentAvatarPath' => $opponentAvatar,
+            'opponentName' => $this->getSnapshotDisplayName($opponentSnapshot, $opponent, 'Adversaire'),
+            'correct_answer' => $lastAnswer['correct_answer'] ?? '',
+            'player_answer' => $lastAnswer['player_answer'] ?? '',
+            'playerAnswer' => $lastAnswer['player_answer'] ?? '',
+            'correctAnswer' => $lastAnswer['correct_answer'] ?? '',
             'player_info' => [
                 'id' => $user->id,
                 'name' => $this->getSnapshotDisplayName($playerSnapshot, $user, 'Joueur'),
@@ -1680,8 +1693,6 @@ class DuoController extends Controller
                 'score' => $opponentScore,
                 'level' => $opponentStats->level,
             ],
-            'correct_answer' => $lastAnswer['correct_answer'] ?? '',
-            'player_answer' => $lastAnswer['player_answer'] ?? '',
         ]);
     }
 
