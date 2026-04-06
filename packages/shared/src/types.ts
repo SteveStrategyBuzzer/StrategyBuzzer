@@ -258,7 +258,7 @@ export const DEFAULT_SCORING: ScoringConfig = {
 };
 
 export const DEFAULT_TIMERS: TimersConfig = {
-  intro: 9000,
+  intro: 13000, // audio ready_announcement.mp3 = 8.18s + ~2s page navigation + ~2.82s buffer
   questionActive: 8000,
   answerSelection: 10000,
   reveal: 3000,
@@ -270,7 +270,7 @@ export const DEFAULT_TIMERS: TimersConfig = {
 
 // Duo mode uses 8 seconds for question phase
 export const DEFAULT_DUO_TIMERS: TimersConfig = {
-  intro: 9000,
+  intro: 13000, // audio ready_announcement.mp3 = 8.18s + ~2s page navigation + ~2.82s buffer
   questionActive: 8000,
   answerSelection: 10000,
   reveal: 5000,
