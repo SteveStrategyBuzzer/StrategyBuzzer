@@ -270,7 +270,7 @@ export const DEFAULT_TIMERS: TimersConfig = {
 
 // Duo mode uses 8 seconds for question phase
 export const DEFAULT_DUO_TIMERS: TimersConfig = {
-  intro: 5000,
+  intro: 9000,
   questionActive: 8000,
   answerSelection: 10000,
   reveal: 5000,

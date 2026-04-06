@@ -477,21 +477,23 @@ export class GameOrchestrator {
     if (!choices || !Array.isArray(choices)) {
       return undefined;
     }
-    return choices.map((choice: unknown) => {
-      if (typeof choice === 'string') {
-        return choice;
-      }
-      if (choice && typeof choice === 'object') {
-        const obj = choice as Record<string, unknown>;
-        if (typeof obj.text === 'string') {
-          return obj.text;
+    return choices
+      .map((choice: unknown) => {
+        if (typeof choice === 'string') {
+          return choice;
         }
-        if (typeof obj.answer === 'string') {
-          return obj.answer;
+        if (choice && typeof choice === 'object') {
+          const obj = choice as Record<string, unknown>;
+          if (typeof obj.text === 'string') {
+            return obj.text;
+          }
+          if (typeof obj.answer === 'string') {
+            return obj.answer;
+          }
         }
-      }
-      return String(choice);
-    });
+        return String(choice);
+      })
+      .filter((c: string) => c !== 'null' && c !== 'undefined' && c.trim() !== '');
   }
 
   private broadcastQuestion(roomId: string): void {

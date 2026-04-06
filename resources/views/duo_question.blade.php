@@ -11,6 +11,10 @@ window.TOTAL_QUESTIONS   = {{ (int)($totalQuestions ?? 10) }};
 window.ANSWER_URL        = @json(route('game.duo.answer'));
 window.RESULT_URL        = @json(route('game.duo.result'));
 window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
+// Prevent brain overlay from covering question content on the question page.
+// If game_state briefly shows phase=INTRO during the intro→question transition,
+// the brain overlay must not obscure the question UI.
+window.NO_BRAIN_OVERLAY  = true;
 </script>
 @endsection
 
@@ -1493,9 +1497,12 @@ $mode = 'duo';
         return false;
     }
     
-    // Register DuoSocketClient handlers after all scripts have loaded (setTimeout 0 ensures
-    // DuoSocketClient.js is fully executed before we call ds.on())
-    setTimeout(function() {
+    // Register DuoSocketClient handlers after all scripts have loaded.
+    // DOMContentLoaded is guaranteed to fire after ALL blocking <script src=""> tags have
+    // fetched and executed — including DuoSocketClient.js (loaded later in the layout).
+    // setTimeout(0) was unreliable: it is a macrotask that can fire DURING a script fetch,
+    // before window.DuoSocketClient is set.
+    document.addEventListener('DOMContentLoaded', function() {
         var ds = window.DuoSocketClient;
         if (ds) {
             ds.on('game_state',         handleGameState);
@@ -1513,7 +1520,7 @@ $mode = 'duo';
             console.warn('[DuoQuestion] DuoSocketClient unavailable — falling back to HTTP question load');
             if (typeof loadQuestionFromServer === 'function') loadQuestionFromServer();
         }
-    }, 0);
+    });
 
     buzzButton.addEventListener('click', handleBuzz);
     

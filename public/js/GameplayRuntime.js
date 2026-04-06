@@ -104,6 +104,12 @@
     };
 
     function handleBrainForPhase(phase) {
+        // Some pages (e.g. duo_question) must never show the brain overlay —
+        // it would cover the question content. window.NO_BRAIN_OVERLAY opts out.
+        if (window.NO_BRAIN_OVERLAY) {
+            hideBrainSpin();
+            return;
+        }
         var cfg = PHASE_BRAIN[phase] || { show: false };
         if (cfg.show) {
             var labels = window.GR_LABELS || {};
