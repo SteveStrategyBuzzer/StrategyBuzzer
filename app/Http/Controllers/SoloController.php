@@ -2325,7 +2325,7 @@ class SoloController extends Controller
         // Vérifier et compléter les quêtes (victoire Solo)
         $user = auth()->user();
         if ($user) {
-            $questService  = new QuestService();
+            $questService  = app(QuestService::class);
             $bossDefeated  = $this->getBossForLevel($currentLevel) !== null;
             $livesRemaining = (int) session('vies_restantes', $user->lives ?? 3);
             $skillsRestants = (int) session('skills_restants', 3);
@@ -2627,7 +2627,7 @@ class SoloController extends Controller
 
         // Quêtes défaite : réinitialiser win streaks + incrémenter compteur de défaites consécutives
         if ($user) {
-            $questService = new QuestService();
+            $questService = app(QuestService::class);
             $questService->fireMatchEndQuests($user, 'solo', [
                 'match_completed' => true,
                 'won'             => false,
