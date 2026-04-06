@@ -1512,6 +1512,31 @@ class DuoController extends Controller
             $questionData['choices'] = $questionData['answers'];
         }
 
+        // Filtrer les valeurs null dans les choix (questions true_false ont ['Vrai', null, 'Faux', null])
+        if (isset($questionData['choices']) && is_array($questionData['choices'])) {
+            $originalChoices = $questionData['choices'];
+            $originalCorrectIndex = $questionData['correct_answer'] ?? $questionData['correct_index'] ?? null;
+            $filteredChoices = [];
+            $newCorrectIndex = $originalCorrectIndex;
+            $newIdx = 0;
+            foreach ($originalChoices as $oldIdx => $choice) {
+                if ($choice !== null && $choice !== '') {
+                    if ($oldIdx === $originalCorrectIndex) {
+                        $newCorrectIndex = $newIdx;
+                    }
+                    $filteredChoices[] = $choice;
+                    $newIdx++;
+                }
+            }
+            $questionData['choices'] = $filteredChoices;
+            if (isset($questionData['correct_answer'])) {
+                $questionData['correct_answer'] = $newCorrectIndex;
+            }
+            if (isset($questionData['correct_index'])) {
+                $questionData['correct_index'] = $newCorrectIndex;
+            }
+        }
+
         $buzzWinner = $gameState['buzz_winner'] ?? 'player';
         $buzzTime = $gameState['buzz_time'] ?? 0;
         $noBuzz = $gameState['no_buzz'] ?? false;

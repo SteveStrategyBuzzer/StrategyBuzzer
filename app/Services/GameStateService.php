@@ -283,13 +283,13 @@ class GameStateService
         
         // Mode Solo/Duo
         if ($mode === 'solo' || $mode === 'duo') {
-            $playerRoundsWon = $gameState['player_rounds_won'];
-            $opponentRoundsWon = $gameState['opponent_rounds_won'];
+            $playerRoundsWon = $gameState['player_rounds_won'] ?? 0;
+            $opponentRoundsWon = $gameState['opponent_rounds_won'] ?? 0;
             
             $result = [
                 'player_rounds_won' => $playerRoundsWon,
                 'opponent_rounds_won' => $opponentRoundsWon,
-                'global_stats' => $gameState['global_stats'],
+                'global_stats' => $gameState['global_stats'] ?? [],
                 'player_won' => false,
                 'decided_by' => 'rounds',
             ];

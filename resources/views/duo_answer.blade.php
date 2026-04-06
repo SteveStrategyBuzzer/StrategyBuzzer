@@ -19,6 +19,7 @@ window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
 $mode = 'duo';
 $choices = $question['choices'] ?? [];
 $questionText = $question['text'] ?? '';
+$correct_index = $question['correct_answer'] ?? $question['correct_index'] ?? null;
 $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
 $buzzTime = $buzz_time ?? 0;
 $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
