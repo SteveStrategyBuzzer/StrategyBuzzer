@@ -182,6 +182,10 @@ foreach ($colors as $color) {
         border-color: #4CAF50;
         box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
     }
+
+    .player-card.is-ready .player-color-indicator {
+        background: #4CAF50 !important;
+    }
     
     .player-card.is-host {
         background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));

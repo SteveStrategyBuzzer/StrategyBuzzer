@@ -31,6 +31,13 @@ class LobbyController extends Controller
             $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
         }
 
+        // Always reset human player's ready state on page load so the button starts green
+        $lobbyPlayers = $lobbyState['lobby']['players'] ?? [];
+        if (isset($lobbyPlayers[$user->id]) && !($lobbyPlayers[$user->id]['is_bot'] ?? false)) {
+            $this->lobbyService->setPlayerReady($code, $user, false);
+            $lobbyState = $this->lobbyService->getPlayerLobbyState($code, $user->id);
+        }
+
         $duoMatch = DuoMatch::where('lobby_code', $code)->first();
 
         $gameServerService = app(\App\Services\GameServerService::class);

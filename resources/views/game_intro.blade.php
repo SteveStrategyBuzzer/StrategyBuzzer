@@ -8,6 +8,7 @@ window.LOBBY_CODE        = @json($params['lobby_code'] ?? null);
 window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
 window.NO_SOCKET_OVERLAY = true;
 window.GR_HIDE_HEADER    = true;
+window.NO_BRAIN_OVERLAY  = true;
 </script>
 @endsection
 

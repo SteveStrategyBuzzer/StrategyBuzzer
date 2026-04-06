@@ -814,11 +814,19 @@ $mode = 'duo';
 </div>
 
 <audio id="buzzerSound" preload="auto">
-      <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
+    <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="noBuzzSound" preload="auto">
     <source src="{{ asset('sounds/fin_chrono.mp3') }}" type="audio/mpeg">
+</audio>
+
+<audio id="chronoBackgroundSound" preload="auto">
+    <source src="{{ asset('sounds/grenouille.mp3') }}" type="audio/mpeg">
+</audio>
+
+<audio id="gameplayAmbient" preload="auto" loop>
+    <source src="{{ asset('sounds/gameplay_ambient.mp3') }}" type="audio/mpeg">
 </audio>
 
 {{-- socket.io + DuoSocketClient loaded by layouts.game --}}
@@ -887,11 +895,21 @@ $mode = 'duo';
     const resultText = document.getElementById('resultText');
     const pointsText = document.getElementById('pointsText');
     const buzzerSound = document.getElementById('buzzerSound');
+    const buzzerSource = document.getElementById('buzzerSource');
     const noBuzzSound = document.getElementById('noBuzzSound');
+    const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
+    const gameplayAmbient = document.getElementById('gameplayAmbient');
     const opponentBuzzedOverlay = document.getElementById('opponentBuzzedOverlay');
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
     const gameContainer = document.getElementById('gameContainer');
+
+    // Load user's selected buzzer from localStorage (same as solo mode)
+    const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default_1';
+    if (buzzerSource) {
+        buzzerSource.src = `/sounds/${selectedBuzzer}.mp3`;
+        buzzerSound.load();
+    }
     
     function isQuestionUsable(question) {
         return !!(question && typeof question.text === 'string' && question.text.trim() !== '' && question.text.trim() !== PLACEHOLDER_QUESTION_TEXT.trim());
@@ -930,6 +948,12 @@ $mode = 'duo';
         loadingOverlay.classList.add('hidden');
         gameContainer.style.display = 'flex';
         chronoTimer.textContent = TOTAL_TIME;
+
+        // Start ambient background music (looping, like solo mode)
+        if (gameplayAmbient) {
+            gameplayAmbient.volume = 0.3;
+            gameplayAmbient.play().catch(() => {});
+        }
        
         console.log('[DuoQuestion] Interface de jeu prête');
     }
@@ -982,6 +1006,12 @@ $mode = 'duo';
         
         resetTimerColor();
         setBuzzerState('ready');
+
+        // Start chrono ticking sound (like solo mode)
+        if (chronoBackgroundSound) {
+            chronoBackgroundSound.currentTime = 0;
+            chronoBackgroundSound.play().catch(() => {});
+        }
         
         timerInterval = setInterval(() => {
             if (phaseEndsAtMs) {
@@ -1012,6 +1042,10 @@ $mode = 'duo';
         if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
+        }
+        if (chronoBackgroundSound) {
+            chronoBackgroundSound.pause();
+            chronoBackgroundSound.currentTime = 0;
         }
     }
     
