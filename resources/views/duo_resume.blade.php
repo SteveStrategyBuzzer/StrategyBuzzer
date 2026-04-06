@@ -757,13 +757,24 @@ body {
         return window.location.origin;
     }
     
-    // connect() + joinRoom() handled by GameplayRuntime — subscribe to events only
-    function initSocket() {
-        if (socketInitialized || typeof DuoSocketClient === 'undefined') return false;
-        try {
-            DuoSocketClient.on('player_ready', (data) => {
-                console.log('[Socket] player_ready received:', data);
-                if (data.playerId && String(data.playerId) !== String(playerId)) {
+    // ── Named socket handlers (closures over IIFE vars) ──────────────────────
+    // connect() + joinRoom() handled by GameplayRuntime — view-specific only
+    function _onResumePlayerReady(data) {
+        console.log('[Socket] player_ready received:', data);
+        if (data.playerId && String(data.playerId) !== String(playerId)) {
+            if (!opponentReady) {
+                opponentReady = true;
+                const opponentDot = document.getElementById('opponentDot');
+                if (opponentDot) opponentDot.classList.add('ready');
+                checkBothReady();
+            }
+        }
+    }
+    function _onResumeState(state) {
+        console.log('[Socket] state received:', state);
+        if (state && state.players) {
+            Object.entries(state.players).forEach(([pid, player]) => {
+                if (String(pid) !== String(playerId) && player.isReady) {
                     if (!opponentReady) {
                         opponentReady = true;
                         const opponentDot = document.getElementById('opponentDot');
@@ -772,34 +783,28 @@ body {
                     }
                 }
             });
-            DuoSocketClient.on('state', (state) => {
-                console.log('[Socket] state received:', state);
-                if (state && state.players) {
-                    Object.entries(state.players).forEach(([pid, player]) => {
-                        if (String(pid) !== String(playerId) && player.isReady) {
-                            if (!opponentReady) {
-                                opponentReady = true;
-                                const opponentDot = document.getElementById('opponentDot');
-                                if (opponentDot) opponentDot.classList.add('ready');
-                                checkBothReady();
-                            }
-                        }
-                    });
-                }
-            });
-            DuoSocketClient.on('phase_changed', (data) => {
-                if (data && data.phase === 'QUESTION_ACTIVE' && redirectUrl && !redirected) {
-                    redirected = true;
-                    window.location.href = redirectUrl;
-                }
-            });
-            socketInitialized = true;
-            console.log('[Socket] Handlers registered (connect+joinRoom by GameplayRuntime)');
-            return true;
-        } catch (err) {
-            console.warn('[Socket] Init failed:', err.message);
-            return false;
         }
+    }
+    function _onResumePhaseChanged(data) {
+        if (data && data.phase === 'QUESTION_ACTIVE' && redirectUrl && !redirected) {
+            redirected = true;
+            window.location.href = redirectUrl;
+        }
+    }
+    // Expose for @section('scripts') — .on() bindings done there after DuoSocketClient.js loads
+    // setInitialized() closes over the IIFE-local socketInitialized flag
+    window._duoResumeHandlers = {
+        player_ready:   _onResumePlayerReady,
+        state:          _onResumeState,
+        phase_changed:  _onResumePhaseChanged,
+        setInitialized: function() { socketInitialized = true; }
+    };
+
+    // connect() + joinRoom() handled by GameplayRuntime — subscribe to events only
+    function initSocket() {
+        // Guard: only relevant if called before DuoSocketClient loads (will always fail gracefully)
+        if (socketInitialized || typeof DuoSocketClient === 'undefined') return false;
+        return false; // binding moved to @section('scripts')
     }
     
     // Initialize Firebase for chat/voice only (not for ready sync)
@@ -1223,10 +1228,7 @@ body {
         }
     }
     
-    // Expose initSocket so @section('scripts') can call it after DuoSocketClient.js loads
-    window._duoResumeInitSocket = initSocket;
-
-    // Start listeners (initSocket will fail gracefully here — called again from @section('scripts'))
+    // Start listeners
     startReadyListener();
     startChatListener();
     
@@ -1242,9 +1244,15 @@ body {
 
 @section('scripts')
 <script>
-// DuoSocketClient.js is now loaded — initialize socket handlers for resume page
-if (typeof window._duoResumeInitSocket === 'function') {
-    window._duoResumeInitSocket();
-}
+// DuoSocketClient.js now loaded — bind resume page handlers (defined as named functions in content)
+(function() {
+    var ds = window.DuoSocketClient;
+    var h  = window._duoResumeHandlers;
+    if (!ds || !h) { console.error('[DuoResume] DuoSocketClient or handlers missing'); return; }
+    ds.on('player_ready',  h.player_ready);
+    ds.on('state',         h.state);
+    ds.on('phase_changed', h.phase_changed);
+    h.setInitialized(); // sets IIFE-local socketInitialized = true via closure
+})();
 </script>
 @endsection

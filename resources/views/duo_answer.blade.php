@@ -1281,35 +1281,26 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         historianSkillBtn.addEventListener('click', activateHistorianSkill);
     }
     
-    // DuoSocketClient handlers deferred to @section('scripts') — loaded after DuoSocketClient.js
-    window._duoAnswerInitSocket = function() {
-
-    DuoSocketClient.on('connect', function() {
+    // ── Named socket handlers (closures over IIFE vars) ──────────────────────
+    // connect() + joinRoom() handled by GameplayRuntime — view-specific only
+    function _onAnswerConnect() {
         console.log('[DuoAnswer] Socket connected (room join handled by GameplayRuntime)');
-    });
-    
-    DuoSocketClient.on('disconnect', function(reason) {
+    }
+    function _onAnswerDisconnect(reason) {
         updateConnectionStatus('disconnected');
-    });
-    
-    DuoSocketClient.on('error', function(error) {
+    }
+    function _onAnswerError(error) {
         console.error('[DuoAnswer] Socket error:', error);
-    });
-    
-    DuoSocketClient.on('answer_revealed', function(data) {
+    }
+    function _onAnswerRevealed(data) {
         if (isRedirecting) return;
-        
         waitingOverlay.style.display = 'none';
-        
-        const isCorrect = data.isCorrect || false;
+        const isCorrect   = data.isCorrect || false;
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
         const pointsEarned = data.points || data.pointsEarned || 0;
-        
         showResult(isCorrect, correctIndex, pointsEarned);
-        
         setTimeout(function() {
             if (isRedirecting) return;
-            
             if (data.nextUrl) {
                 isRedirecting = true;
                 window.location.href = data.nextUrl;
@@ -1318,111 +1309,102 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 window.location.href = window.MATCH_RESULT_URL || ('/duo/result/' + MATCH_ID);
             }
         }, 3000);
-    });
-    
-    DuoSocketClient.on('round_ended', function(data) {
+    }
+    function _onAnswerRoundEnded(data) {
         if (isRedirecting) return;
-        
         setTimeout(function() {
             if (isRedirecting) return;
             isRedirecting = true;
-            
             if (data.nextQuestionUrl) {
                 window.location.href = data.nextQuestionUrl;
             } else {
                 window.location.href = window.QUESTION_URL || ('/game/duo/question');
             }
         }, 2000);
-    });
-    
-    DuoSocketClient.on('match_ended', function(data) {
+    }
+    function _onAnswerMatchEnded(data) {
         if (isRedirecting) return;
         isRedirecting = true;
-        
         setTimeout(function() {
             window.location.href = window.MATCH_RESULT_URL || ('/duo/result/' + MATCH_ID);
         }, 2000);
-    });
-    
-    // phase_changed: navigate away from answer page on server-driven phase transitions
-    DuoSocketClient.on('phase_changed', function(data) {
+    }
+    function _onAnswerPhaseChanged(data) {
         if (isRedirecting || !data || !data.phase) return;
         var phase = data.phase;
-
         if (phase === 'REVEAL') {
-            // Answer window closed — go to round result
             isRedirecting = true;
-            var resultUrl = window.RESULT_URL || ('/game/duo/result');
-            window.location.href = resultUrl + '?match_id=' + encodeURIComponent(MATCH_ID);
+            window.location.href = (window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID);
             return;
         }
         if (phase === 'QUESTION_ACTIVE') {
-            // Next question ready — go to question page
             isRedirecting = true;
-            var questionUrl = window.QUESTION_URL || ('/game/duo/question');
-            window.location.href = questionUrl + '?match_id=' + encodeURIComponent(MATCH_ID);
+            window.location.href = (window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID);
             return;
         }
         if (phase === 'MATCH_END' || phase === 'FINISHED') {
             isRedirecting = true;
-            var matchResultUrl = window.MATCH_RESULT_URL || ('/game/duo/match-result');
-            window.location.href = matchResultUrl + '?match_id=' + encodeURIComponent(MATCH_ID);
+            window.location.href = (window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID);
         }
-    });
-
-    DuoSocketClient.on('score_update', function(data) {
+    }
+    function _onAnswerScoreUpdate(data) {
         console.log('[DuoAnswer] Score update received:', data);
         const playerScoreEl = document.getElementById('playerScoreValue');
         if (!playerScoreEl) return;
-
-        // Server format: { scores: { playerId: score }, roundScores: {...} }
         if (data.scores) {
             const myScore = data.scores[String(PLAYER_ID)];
-            if (myScore !== undefined) {
-                playerScoreEl.textContent = myScore;
-            }
+            if (myScore !== undefined) { playerScoreEl.textContent = myScore; }
             return;
         }
-        // Legacy fallback: { playerId, score }
         if (data.score !== undefined) {
             const dataPlayerId = String(data.playerId || '').replace('player:', '');
             if (dataPlayerId === String(PLAYER_ID) || data.playerId == PLAYER_ID) {
                 playerScoreEl.textContent = data.score;
             }
         }
-    });
-    
-    GameEffectsRuntime.registerEffect('shuffle_answers', {
-        onStart: function() {
-            stopShuffleInterval();
-            var container = document.getElementById('answersContainer');
-            if (container) container.classList.add('shuffle-active');
-            var ind = container ? container.querySelector('.shuffle-indicator') : null;
-            if (!ind && container) {
-                ind = document.createElement('div');
-                ind.className = 'shuffle-indicator';
-                ind.textContent = '🔀 {{ __("Réponses mélangées!") }}';
-                container.insertBefore(ind, container.firstChild);
-            }
-            if (ind) ind.style.display = '';
-            shuffleAnswers();
-            shuffleInterval = setInterval(shuffleAnswers, 1500);
-        },
-        onStop: function() {
-            stopShuffleInterval();
-            var container = document.getElementById('answersContainer');
-            if (container) container.classList.remove('shuffle-active');
-            var ind = container ? container.querySelector('.shuffle-indicator') : null;
-            if (ind) ind.style.display = 'none';
-        }
-    });
-
-    if (GAME_SERVER_URL) {
-        updateConnectionStatus('connecting');
-        GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
     }
-
-    }; // end _duoAnswerInitSocket
+    function _initAnswerEffects() {
+        GameEffectsRuntime.registerEffect('shuffle_answers', {
+            onStart: function() {
+                stopShuffleInterval();
+                var container = document.getElementById('answersContainer');
+                if (container) container.classList.add('shuffle-active');
+                var ind = container ? container.querySelector('.shuffle-indicator') : null;
+                if (!ind && container) {
+                    ind = document.createElement('div');
+                    ind.className = 'shuffle-indicator';
+                    ind.textContent = '🔀 {{ __("Réponses mélangées!") }}';
+                    container.insertBefore(ind, container.firstChild);
+                }
+                if (ind) ind.style.display = '';
+                shuffleAnswers();
+                shuffleInterval = setInterval(shuffleAnswers, 1500);
+            },
+            onStop: function() {
+                stopShuffleInterval();
+                var container = document.getElementById('answersContainer');
+                if (container) container.classList.remove('shuffle-active');
+                var ind = container ? container.querySelector('.shuffle-indicator') : null;
+                if (ind) ind.style.display = 'none';
+            }
+        });
+        if (GAME_SERVER_URL) {
+            updateConnectionStatus('connecting');
+            GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
+        }
+    }
+    // Expose for @section('scripts') — .on() bindings done there after DuoSocketClient.js loads
+    window._duoAnswerHandlers = {
+        connect:         _onAnswerConnect,
+        disconnect:      _onAnswerDisconnect,
+        error:           _onAnswerError,
+        answer_revealed: _onAnswerRevealed,
+        round_ended:     _onAnswerRoundEnded,
+        match_ended:     _onAnswerMatchEnded,
+        phase_changed:   _onAnswerPhaseChanged,
+        score_update:    _onAnswerScoreUpdate,
+        initEffects:     _initAnswerEffects
+    };
 
     initSkillButtons();
     
@@ -1541,9 +1523,20 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
 
 @section('scripts')
 <script>
-// DuoSocketClient.js is now loaded — register answer page socket handlers
-if (typeof window._duoAnswerInitSocket === 'function') {
-    window._duoAnswerInitSocket();
-}
+// DuoSocketClient.js now loaded — bind answer page handlers (defined as named functions in content)
+(function() {
+    var ds = window.DuoSocketClient;
+    var h  = window._duoAnswerHandlers;
+    if (!ds || !h) { console.error('[DuoAnswer] DuoSocketClient or handlers missing'); return; }
+    ds.on('connect',         h.connect);
+    ds.on('disconnect',      h.disconnect);
+    ds.on('error',           h.error);
+    ds.on('answer_revealed', h.answer_revealed);
+    ds.on('round_ended',     h.round_ended);
+    ds.on('match_ended',     h.match_ended);
+    ds.on('phase_changed',   h.phase_changed);
+    ds.on('score_update',    h.score_update);
+    h.initEffects();
+})();
 </script>
 @endsection
