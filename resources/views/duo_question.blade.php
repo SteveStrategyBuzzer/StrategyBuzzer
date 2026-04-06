@@ -29,11 +29,12 @@ $mode = 'duo';
         color: #fff;
         min-height: 100vh;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         padding: 10px;
         margin: 0;
         overflow-x: hidden;
+        overflow-y: auto;
     }
     
     .game-container {
