@@ -34,12 +34,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         color: #fff;
         min-height: 100vh;
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
-        padding: 20px 10px;
+        padding: 10px;
         margin: 0;
-        overflow-x: hidden;
-        overflow-y: auto;
+        overflow: hidden;
     }
     
     .game-container {
@@ -1230,34 +1229,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     }
     
     function showResult(isCorrect, correctIndex, pointsEarned) {
-        resultOverlay.className = 'result-overlay ' + (isCorrect ? 'correct' : 'incorrect');
-        resultText.textContent = isCorrect ? '{{ __("Bonne réponse !") }}' : '{{ __("Mauvaise réponse !") }}';
-        
-        if (isCorrect) {
-            pointsText.textContent = '+' + pointsEarned + ' {{ __("points") }}';
-        } else if (historianSkillUsed) {
-            pointsText.textContent = '{{ __("0 point") }}';
-        } else {
-            pointsText.textContent = '{{ __("-2 points") }}';
-        }
-        
-        if (!isCorrect && correctIndex !== undefined && correctIndex >= 0) {
-            const choices = @json($choices);
-            if (choices[correctIndex]) {
-                correctAnswerText.textContent = '{{ __("La bonne réponse était :") }} ' + choices[correctIndex];
-            }
-        } else {
-            correctAnswerText.textContent = '';
-        }
-        
-        resultOverlay.style.display = 'block';
-        
+        // Always: play sound
         if (isCorrect && correctSound) {
             correctSound.play().catch(function() {});
         } else if (!isCorrect && incorrectSound) {
             incorrectSound.play().catch(function() {});
         }
-        
+
+        // Always: highlight answer buttons
         answerButtons.forEach(function(btn, idx) {
             btn.classList.remove('selected');
             const indicator = document.getElementById('indicator' + idx);
@@ -1269,6 +1248,24 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 if (indicator) indicator.textContent = '✗';
             }
         });
+
+        // Popup overlay: ONLY for incorrect answers
+        if (!isCorrect) {
+            resultOverlay.className = 'result-overlay incorrect';
+            resultText.textContent = '{{ __("Mauvaise réponse !") }}';
+            if (historianSkillUsed) {
+                pointsText.textContent = '{{ __("0 point") }}';
+            } else {
+                pointsText.textContent = '{{ __("-2 points") }}';
+            }
+            if (correctIndex !== undefined && correctIndex >= 0) {
+                const choices = @json($choices);
+                if (choices[correctIndex]) {
+                    correctAnswerText.textContent = '{{ __("La bonne réponse était :") }} ' + choices[correctIndex];
+                }
+            }
+            resultOverlay.style.display = 'block';
+        }
     }
     
     answerButtons.forEach(function(btn, index) {
@@ -1296,10 +1293,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function _onAnswerRevealed(data) {
         if (isRedirecting) return;
         waitingOverlay.style.display = 'none';
-        const isCorrect   = data.isCorrect || false;
+        const isCorrect    = data.isCorrect || false;
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
         const pointsEarned = data.points || data.pointsEarned || 0;
         showResult(isCorrect, correctIndex, pointsEarned);
+        // Correct: navigate quickly after button highlight (1.2s) — no popup to read.
+        // Incorrect: give time to read the "Mauvaise réponse" popup (3s).
+        const delay = isCorrect ? 1200 : 3000;
         setTimeout(function() {
             if (isRedirecting) return;
             if (data.nextUrl) {
@@ -1309,7 +1309,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 isRedirecting = true;
                 window.location.href = window.MATCH_RESULT_URL || ('/duo/result/' + MATCH_ID);
             }
-        }, 3000);
+        }, delay);
     }
     function _onAnswerRoundEnded(data) {
         if (isRedirecting) return;
