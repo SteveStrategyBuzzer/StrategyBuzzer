@@ -270,7 +270,7 @@ export const DEFAULT_TIMERS: TimersConfig = {
 
 // Duo mode uses 8 seconds for question phase
 export const DEFAULT_DUO_TIMERS: TimersConfig = {
-  intro: 3000,
+  intro: 5000,
   questionActive: 8000,
   answerSelection: 10000,
   reveal: 5000,
@@ -283,7 +283,7 @@ export const DEFAULT_DUO_TIMERS: TimersConfig = {
 export const DEFAULT_DUO_CONFIG: GameConfig = {
   mode: "DUO",
   maxPlayers: 2,
-  questionsPerRound: 10,
+  questionsPerRound: 9,
   roundsToWin: 2,
   maxRounds: 3,
   buzzEnabled: true,
@@ -295,7 +295,7 @@ export const DEFAULT_DUO_CONFIG: GameConfig = {
 export const DEFAULT_LEAGUE_INDIVIDUAL_CONFIG: GameConfig = {
   mode: "LEAGUE_INDIVIDUAL",
   maxPlayers: 2,
-  questionsPerRound: 10,
+  questionsPerRound: 9,
   roundsToWin: 2,
   maxRounds: 3,
   buzzEnabled: true,
@@ -307,7 +307,7 @@ export const DEFAULT_LEAGUE_INDIVIDUAL_CONFIG: GameConfig = {
 export const DEFAULT_LEAGUE_TEAM_CONFIG: GameConfig = {
   mode: "LEAGUE_TEAM",
   maxPlayers: 10,
-  questionsPerRound: 10,
+  questionsPerRound: 9,
   roundsToWin: 2,
   maxRounds: 3,
   buzzEnabled: true,

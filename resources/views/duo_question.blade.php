@@ -1486,7 +1486,27 @@ $mode = 'duo';
         return false;
     }
     
-    // Socket handler registration deferred to the scripts section (after DuoSocketClient.js loads)
+    // Register DuoSocketClient handlers after all scripts have loaded (setTimeout 0 ensures
+    // DuoSocketClient.js is fully executed before we call ds.on())
+    setTimeout(function() {
+        var ds = window.DuoSocketClient;
+        if (ds) {
+            ds.on('game_state',         handleGameState);
+            ds.on('phase_changed',      handlePhaseChanged);
+            ds.on('question_published', handleQuestionPublished);
+            ds.on('buzz_winner',        handleBuzzWinner);
+            ds.on('buzz_result',        handleBuzzWinner);
+            ds.on('answer_revealed',    handleAnswerRevealed);
+            ds.on('score_update',       handleScoreUpdate);
+            ds.on('match_ended',        handleMatchEnded);
+            ds.on('skill_activated',    handleSkillActivated);
+            ds.on('skill_failed',       handleSkillFailed);
+            ds.on('rate_limited',       handleRateLimited);
+        } else {
+            console.warn('[DuoQuestion] DuoSocketClient unavailable — falling back to HTTP question load');
+            if (typeof loadQuestionFromServer === 'function') loadQuestionFromServer();
+        }
+    }, 0);
 
     buzzButton.addEventListener('click', handleBuzz);
     
@@ -1583,25 +1603,5 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
 @endsection
 
 @section('scripts')
-<script>
-(function() {
-    var ds = window.DuoSocketClient;
-    if (ds) {
-        ds.on('game_state', handleGameState);
-        ds.on('phase_changed', handlePhaseChanged);
-        ds.on('question_published', handleQuestionPublished);
-        ds.on('buzz_winner', handleBuzzWinner);
-        ds.on('buzz_result', handleBuzzWinner);
-        ds.on('answer_revealed', handleAnswerRevealed);
-        ds.on('score_update', handleScoreUpdate);
-        ds.on('match_ended', handleMatchEnded);
-        ds.on('skill_activated', handleSkillActivated);
-        ds.on('skill_failed', handleSkillFailed);
-        ds.on('rate_limited', handleRateLimited);
-    } else {
-        console.warn('[DuoQuestion] DuoSocketClient unavailable — falling back to HTTP question load');
-        if (typeof loadQuestionFromServer === 'function') loadQuestionFromServer();
-    }
-})();
-</script>
+{{-- Handlers registered via setTimeout(0) inside @section('content') IIFE above --}}
 @endsection

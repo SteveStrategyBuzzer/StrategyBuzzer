@@ -20,6 +20,7 @@ export class BotPlayerService {
   private buzzTimer: ReturnType<typeof setTimeout> | null = null;
   private answerTimer: ReturnType<typeof setTimeout> | null = null;
   private onCleanup: (() => void) | undefined;
+  private readySent = false;
 
   constructor(roomId: string, onCleanup?: () => void) {
     this.roomId = roomId;
@@ -66,7 +67,8 @@ export class BotPlayerService {
 
     this.socket.on("state", (data: { state?: { phase?: string } } | null) => {
       const phase = data?.state?.phase;
-      if (phase === "LOBBY") {
+      if (phase === "LOBBY" && !this.readySent) {
+        this.readySent = true;
         this.socket.emit("ready", { roomId: this.roomId, isReady: true });
         console.log(`[Bot] Sent ready from state event (room ${this.roomId})`);
       }
@@ -157,6 +159,7 @@ export class BotPlayerService {
     this.socket.on("disconnect", () => {
       console.log(`[Bot] Disconnected (room ${this.roomId})`);
       this.clearTimers();
+      this.readySent = false;
       this.onCleanup?.();
       this.onCleanup = undefined;
     });

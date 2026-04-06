@@ -442,6 +442,15 @@ export class GameOrchestrator {
       return;
     }
 
+    const currentQuestion = room.state.questions[room.state.questionIndex];
+    if (!currentQuestion) {
+      console.warn(
+        `[GameOrchestrator] No question at index ${room.state.questionIndex} for room ${roomId} — ending round early`
+      );
+      this.endRound(roomId);
+      return;
+    }
+
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
       type: "PHASE_CHANGED",
