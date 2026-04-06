@@ -1401,26 +1401,26 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
     window.addEventListener('beforeunload', () => {
         if (voiceChat) voiceChat.cleanup();
     });
+
+    // Register DuoSocketClient handlers after all scripts have loaded
+    setTimeout(function() {
+        var ds = window.DuoSocketClient;
+        var h  = window._duoResultHandlers;
+        if (!ds || !h) { console.error('[DuoResult] DuoSocketClient or handlers missing'); return; }
+        ds.on('disconnect',   h.disconnect);
+        ds.on('error',        h.error);
+        ds.on('round_ended',  h.round_ended);
+        ds.on('match_ended',  h.match_ended);
+        ds.on('score_update', h.score_update);
+        ds.on('player_ready', h.player_ready);
+        ds.on('phase_changed',h.phase_changed);
+        ds.on('state',        h.state);
+        ds.on('both_ready',   h.both_ready);
+    }, 0);
 })();
 </script>
 @endsection
 
 @section('scripts')
-<script>
-// DuoSocketClient.js now loaded — bind result page handlers (defined as named functions in content)
-(function() {
-    var ds = window.DuoSocketClient;
-    var h  = window._duoResultHandlers;
-    if (!ds || !h) { console.error('[DuoResult] DuoSocketClient or handlers missing'); return; }
-    ds.on('disconnect',   h.disconnect);
-    ds.on('error',        h.error);
-    ds.on('round_ended',  h.round_ended);
-    ds.on('match_ended',  h.match_ended);
-    ds.on('score_update', h.score_update);
-    ds.on('player_ready', h.player_ready);
-    ds.on('phase_changed',h.phase_changed);
-    ds.on('state',        h.state);
-    ds.on('both_ready',   h.both_ready);
-})();
-</script>
+{{-- Handlers registered via setTimeout(0) inside @section('content') IIFE above --}}
 @endsection

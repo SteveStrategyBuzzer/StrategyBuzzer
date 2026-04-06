@@ -1517,26 +1517,26 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
     window.addEventListener('beforeunload', () => {
         if (voiceChat) voiceChat.cleanup();
     });
+
+    // Register DuoSocketClient handlers after all scripts have loaded
+    setTimeout(function() {
+        var ds = window.DuoSocketClient;
+        var h  = window._duoAnswerHandlers;
+        if (!ds || !h) { console.error('[DuoAnswer] DuoSocketClient or handlers missing'); return; }
+        ds.on('connect',         h.connect);
+        ds.on('disconnect',      h.disconnect);
+        ds.on('error',           h.error);
+        ds.on('answer_revealed', h.answer_revealed);
+        ds.on('round_ended',     h.round_ended);
+        ds.on('match_ended',     h.match_ended);
+        ds.on('phase_changed',   h.phase_changed);
+        ds.on('score_update',    h.score_update);
+        h.initEffects();
+    }, 0);
 })();
 </script>
 @endsection
 
 @section('scripts')
-<script>
-// DuoSocketClient.js now loaded — bind answer page handlers (defined as named functions in content)
-(function() {
-    var ds = window.DuoSocketClient;
-    var h  = window._duoAnswerHandlers;
-    if (!ds || !h) { console.error('[DuoAnswer] DuoSocketClient or handlers missing'); return; }
-    ds.on('connect',         h.connect);
-    ds.on('disconnect',      h.disconnect);
-    ds.on('error',           h.error);
-    ds.on('answer_revealed', h.answer_revealed);
-    ds.on('round_ended',     h.round_ended);
-    ds.on('match_ended',     h.match_ended);
-    ds.on('phase_changed',   h.phase_changed);
-    ds.on('score_update',    h.score_update);
-    h.initEffects();
-})();
-</script>
+{{-- Handlers registered via setTimeout(0) inside @section('content') IIFE above --}}
 @endsection

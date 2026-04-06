@@ -1238,21 +1238,21 @@ body {
             initVoiceChat();
         }, 1500);
     }
+
+    // Register DuoSocketClient handlers after all scripts have loaded
+    setTimeout(function() {
+        var ds = window.DuoSocketClient;
+        var h  = window._duoResumeHandlers;
+        if (!ds || !h) { console.error('[DuoResume] DuoSocketClient or handlers missing'); return; }
+        ds.on('player_ready',  h.player_ready);
+        ds.on('state',         h.state);
+        ds.on('phase_changed', h.phase_changed);
+        h.setInitialized(); // sets IIFE-local socketInitialized = true via closure
+    }, 0);
 })();
 </script>
 @endsection
 
 @section('scripts')
-<script>
-// DuoSocketClient.js now loaded — bind resume page handlers (defined as named functions in content)
-(function() {
-    var ds = window.DuoSocketClient;
-    var h  = window._duoResumeHandlers;
-    if (!ds || !h) { console.error('[DuoResume] DuoSocketClient or handlers missing'); return; }
-    ds.on('player_ready',  h.player_ready);
-    ds.on('state',         h.state);
-    ds.on('phase_changed', h.phase_changed);
-    h.setInitialized(); // sets IIFE-local socketInitialized = true via closure
-})();
-</script>
+{{-- Handlers registered via setTimeout(0) inside @section('content') IIFE above --}}
 @endsection
