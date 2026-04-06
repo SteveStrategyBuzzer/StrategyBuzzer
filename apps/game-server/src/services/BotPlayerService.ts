@@ -99,9 +99,12 @@ export class BotPlayerService {
 
       switch (phase) {
         case "LOBBY": {
+          if (this.readySent) break;
           const delay = randomBetween(BOT_TIMING.introReadyMs.min, BOT_TIMING.introReadyMs.max);
           this.introTimer = setTimeout(() => {
             this.introTimer = null;
+            if (this.readySent) return;
+            this.readySent = true;
             this.socket.emit("ready", { roomId: this.roomId, isReady: true });
             console.log(`[Bot] Sent ready for LOBBY (room ${this.roomId})`);
           }, delay);
