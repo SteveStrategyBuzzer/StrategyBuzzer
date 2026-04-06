@@ -218,8 +218,9 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           // Sanitize current question (remove correct answer info)
           // Include timer metadata matching what question_published delivers
           let currentQuestionSanitized = null;
-          if (state.currentQuestion) {
-            const q = state.currentQuestion;
+          const activeQuestion = state.questions[state.questionIndex] || state.currentQuestion;
+          if (activeQuestion) {
+            const q = activeQuestion;
             // Sanitize choices to ensure they are plain strings (like question_published does)
             const rawChoices = q.choices || (q as any).answers;
             let sanitizedChoices: string[] | undefined = undefined;

@@ -1219,9 +1219,7 @@ $mode = 'duo';
             syncTimerWithServer(data.phaseEndsAtMs);
         }
         
-        if (data.question) {
-            updateQuestionUI(data.question, data.questionIndex, data.totalQuestions);
-        }
+        // phase_changed does not carry question data; question arrives via question_published
        
         if (currentPhase === 'QUESTION_ACTIVE') {
             buzzed = false;
@@ -1258,12 +1256,21 @@ $mode = 'duo';
     function handleQuestionPublished(data) {
         console.log('[DuoQuestion] Question publiée:', data);
         
-        if (data.question) {
-            updateQuestionUI(data.question, data.questionIndex, data.totalQuestions);
+        // The event data is flat: {text, choices, questionIndex, ...} — NOT data.question
+        var questionObj = data.question || (data.text ? {
+            text: data.text,
+            choices: data.choices,
+            theme: data.theme || data.category || data.subCategory || null
+        } : null);
+        if (questionObj) {
+            updateQuestionUI(questionObj, data.questionIndex, data.totalQuestions);
         }
         
         if (data.phaseEndsAtMs) {
             syncTimerWithServer(data.phaseEndsAtMs);
+        } else if (data.timeLimitMs) {
+            // fallback: compute phaseEndsAtMs from timeLimitMs
+            syncTimerWithServer(Date.now() + data.timeLimitMs);
         }
         
         if (data.reduceTimeActive) {
