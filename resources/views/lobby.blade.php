@@ -2581,6 +2581,18 @@ foreach ($colors as $color) {
                 DuoSocketClient.setReady(newReadyState);
                 console.log('[Socket.IO] Ready state sent:', newReadyState);
             }
+            // Si ce joueur vient de se marquer prêt, vérifier si tous les autres l'étaient déjà
+            // → afficher le cerveau immédiatement sans attendre la confirmation serveur
+            // (la carte du joueur actuel n'est pas encore mise à jour via socket, d'où +1)
+            if (newReadyState) {
+                const minNeeded = {{ $minPlayers }};
+                const totalCards = document.querySelectorAll('.player-card').length;
+                const readyCards = document.querySelectorAll('.player-card.is-ready').length;
+                if (totalCards >= minNeeded && (readyCards + 1) >= totalCards && totalCards > 0) {
+                    console.log('[Lobby] Ce joueur est le dernier prêt — cerveau affiché immédiatement.');
+                    if (window.showBrainSpin) window.showBrainSpin();
+                }
+            }
         } catch (error) {
             console.error('Error toggling ready:', error);
             showToast('Erreur de connexion');
@@ -4572,6 +4584,13 @@ window.initLobbySocketListeners = function() {
                     card.classList.remove('is-ready');
                 }
             }
+            // Afficher le cerveau immédiatement si tous les joueurs sont prêts
+            const totalCards = document.querySelectorAll('.player-card').length;
+            const readyCards = document.querySelectorAll('.player-card.is-ready').length;
+            if (totalCards >= minPlayersFirebase && readyCards === totalCards && readyCards > 0) {
+                console.log('[Socket.IO] All players ready via player_ready — showing brain immediately.');
+                if (window.showBrainSpin) window.showBrainSpin();
+            }
         });
         
         DuoSocketClient.on('state', (payload) => {
@@ -4616,7 +4635,8 @@ window.initLobbySocketListeners = function() {
             });
 
             if (mode === 'duo' && allReady) {
-                console.log('[Socket.IO] All players ready (Socket authoritative).');
+                console.log('[Socket.IO] All players ready (Socket authoritative) — showing brain immediately.');
+                if (window.showBrainSpin) window.showBrainSpin();
             }
         });
         
