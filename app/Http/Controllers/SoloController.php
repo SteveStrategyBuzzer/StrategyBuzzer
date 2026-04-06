@@ -1389,14 +1389,16 @@ class SoloController extends Controller
         }
         
         // Explorateur: see_opponent_choice - stocker le choix de l'adversaire et vérifier si skill disponible
-        $opponentAnswerChoice = $opponentBehavior['answer_choice'] ?? null;
-        session(['opponent_answer_choice' => $opponentAnswerChoice]);
+        // IMPORTANT: le skill ne peut être utilisé QUE si le joueur a buzzé ET l'adversaire a simulé un choix
+        $opponentAnswerChoice = $playerBuzzed ? ($opponentBehavior['answer_choice'] ?? null) : null;
+        session(['opponent_answer_choice' => $opponentAnswerChoice]); // null si joueur n'a pas buzzé = nettoyage automatique
         
         // Vérifier si l'avatar principal OU le coéquipier est Explorateur
         $hasExplorateurSkill = ($avatar === 'Explorateur') || ($isStratege && $teammateIsExplorateur);
         
         $seeOpponentSkillAvailable = false;
-        if ($hasExplorateurSkill && !in_array('see_opponent_choice', $usedSkills)) {
+        // Le skill n'est disponible que si le joueur a buzzé (sinon opponentAnswerChoice est null)
+        if ($hasExplorateurSkill && $playerBuzzed && !in_array('see_opponent_choice', $usedSkills)) {
             $seeOpponentSkillAvailable = true;
         }
         
