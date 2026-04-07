@@ -2344,7 +2344,7 @@ class DuoController extends Controller
                         return redirect()->route('game.duo.result');
                     }
                     if (in_array($currentPhase, $terminalPhases)) {
-                        return redirect()->route('game.duo.match_result');
+                        return redirect()->route('game.duo.match-result');
                     }
                     break;
 
@@ -2357,7 +2357,7 @@ class DuoController extends Controller
                             return redirect()->route('game.duo.result');
                         }
                         if (in_array($currentPhase, $terminalPhases)) {
-                            return redirect()->route('game.duo.match_result');
+                            return redirect()->route('game.duo.match-result');
                         }
                     }
 
@@ -2380,7 +2380,7 @@ class DuoController extends Controller
                             return redirect()->route('game.duo.question');
                         }
                         if (in_array($currentPhase, $terminalPhases)) {
-                            return redirect()->route('game.duo.match_result');
+                            return redirect()->route('game.duo.match-result');
                         }
                     }
                     break;
