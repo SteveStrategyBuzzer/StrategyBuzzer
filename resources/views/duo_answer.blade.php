@@ -526,32 +526,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         color: #FFD700;
     }
     
-    .connection-status {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        z-index: 1000;
-    }
-    
-    .connection-status.connected {
-        background: rgba(78, 205, 196, 0.3);
-        color: #4ECDC4;
-    }
-    
-    .connection-status.disconnected {
-        background: rgba(255, 107, 107, 0.3);
-        color: #FF6B6B;
-    }
-    
-    .connection-status.connecting {
-        background: rgba(255, 215, 0, 0.3);
-        color: #FFD700;
-    }
-    
     .waiting-overlay {
         position: fixed;
         top: 0;
