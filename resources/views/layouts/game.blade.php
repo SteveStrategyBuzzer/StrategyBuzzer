@@ -109,6 +109,34 @@
         50%      { box-shadow: 0 0 20px rgba(46,204,113,0.8); }
     }
 
+    /* Connection status badge */
+    #connectionStatus {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        z-index: 1000;
+        display: none;
+    }
+    #connectionStatus.connected {
+        display: block;
+        background: rgba(78, 205, 196, 0.3);
+        color: #4ECDC4;
+    }
+    #connectionStatus.disconnected {
+        display: block;
+        background: rgba(255, 107, 107, 0.3);
+        color: #FF6B6B;
+    }
+    #connectionStatus.connecting {
+        display: block;
+        background: rgba(255, 215, 0, 0.3);
+        color: #FFD700;
+    }
+
     body { background: #0f2027; color: #fff; margin: 0; padding: 0; }
     </style>
 </head>
@@ -129,6 +157,9 @@
         <div class="loading-text" id="loadingText">{{ __('Connexion au serveur...') }}</div>
     </div>
 </div>
+
+<!-- Connection Status Badge (shown/hidden by updateConnectionStatus() in game pages) -->
+<div id="connectionStatus" class="connection-status connecting">{{ __('Connexion...') }}</div>
 
 <!-- Voice Mic Button (WebRTC — shown by VoiceChat init, hidden by default) -->
 <button id="voiceMicButton" title="{{ __('Activer/désactiver le micro') }}">
