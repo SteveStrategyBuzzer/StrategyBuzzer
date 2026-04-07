@@ -484,6 +484,84 @@ class DuoController extends Controller
         }
     }
 
+    public function finishMatchSocketIO(Request $request, DuoMatch $match)
+    {
+        $user = Auth::user();
+
+        if ($match->player1_id !== $user->id && $match->player2_id !== $user->id) {
+            return response()->json(['success' => false, 'message' => 'Non autorisé.'], 403);
+        }
+
+        if ($match->status === 'finished') {
+            return response()->json(['success' => true, 'already_finished' => true]);
+        }
+
+        $winnerId  = $request->input('winner_id');
+        $finalScores = $request->input('final_scores', []);
+        $isTie     = $request->boolean('is_tie', false);
+
+        $player1Id = (string) $match->player1_id;
+        $player2Id = (string) $match->player2_id;
+
+        if ($isTie || !$winnerId) {
+            $player1Score = 0;
+            $player2Score = 0;
+        } else {
+            $player1Won = (string) $winnerId === $player1Id;
+
+            $p1 = isset($finalScores[$player1Id]) ? (int) $finalScores[$player1Id] : -1;
+            $p2 = isset($finalScores[$player2Id]) ? (int) $finalScores[$player2Id] : -1;
+
+            if ($p1 >= 0 && $p2 >= 0 && $p1 !== $p2) {
+                $player1Score = $p1;
+                $player2Score = $p2;
+            } else {
+                $player1Score = $player1Won ? 1 : 0;
+                $player2Score = $player1Won ? 0 : 1;
+            }
+        }
+
+        try {
+            if ($isTie || $player1Score === $player2Score) {
+                return response()->json(['success' => true, 'tie' => true]);
+            }
+
+            $gameState = $match->game_state ?? [];
+
+            $finishedMatch = $this->matchmaking->finishMatch(
+                $match,
+                $player1Score,
+                $player2Score,
+                $gameState
+            );
+
+            $player1Won = $player1Score > $player2Score;
+            $player2Won = !$player1Won;
+
+            $this->contactService->addOrUpdateContact(
+                $match->player1_id,
+                $match->player2_id,
+                $player1Won,
+                true
+            );
+            $this->contactService->addOrUpdateContact(
+                $match->player2_id,
+                $match->player1_id,
+                $player2Won,
+                true
+            );
+
+            return response()->json(['success' => true]);
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'MATCH_ALREADY_FINISHED') {
+                return response()->json(['success' => true, 'already_finished' => true]);
+            }
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
     public function getMatch(DuoMatch $match)
     {
         return response()->json([

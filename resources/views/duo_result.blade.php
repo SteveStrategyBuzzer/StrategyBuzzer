@@ -1134,9 +1134,41 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
         console.log('[DuoResult] Round ended', data);
         navigateToRoundScoreboard();
     }
+    function _callResultFinishSocketIO(data) {
+        var matchId = window.MATCH_ID;
+        var token   = window.JWT_TOKEN;
+        if (!matchId || !token) return Promise.resolve();
+        var effectiveData = data || {};
+        if (!effectiveData.winnerId && !effectiveData.isTie) return Promise.resolve();
+        var body = JSON.stringify({
+            winner_id:    effectiveData.winnerId    || null,
+            final_scores: effectiveData.finalScores || {},
+            is_tie:       effectiveData.isTie       || false,
+        });
+        var controller = new AbortController();
+        var tid = setTimeout(function() { controller.abort(); }, 3000);
+        return fetch('/api/duo/match/' + matchId + '/finish-socketio', {
+            method: 'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': 'Bearer ' + token,
+            },
+            body: body,
+            signal: controller.signal,
+        }).then(function(res) {
+            clearTimeout(tid);
+            console.log('[DuoResult] finishSocketIO OK:', res.status);
+        }).catch(function(err) {
+            clearTimeout(tid);
+            console.warn('[DuoResult] finishSocketIO failed (navigating anyway):', err.message);
+        });
+    }
+
     function _onResultMatchEnded(data) {
         console.log('[DuoResult] Match ended', data);
-        navigateToFinalResults();
+        _callResultFinishSocketIO(data).finally(function() {
+            navigateToFinalResults();
+        });
     }
     function _onResultScoreUpdate(data) {
         console.log('[DuoResult] Score update', data);

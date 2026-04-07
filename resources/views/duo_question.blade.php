@@ -1213,7 +1213,7 @@ $mode = 'duo';
         }
         
         if (currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
-            redirectOnce(MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            setTimeout(function() { navigateToMatchResult(_matchEndedData); }, 300);
             return;
         }
         
@@ -1258,7 +1258,7 @@ $mode = 'duo';
         }
         
         if (currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
-            redirectOnce(MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            setTimeout(function() { navigateToMatchResult(_matchEndedData); }, 300);
             return;
         }
         
@@ -1362,11 +1362,58 @@ $mode = 'duo';
         }
     }
     
+    var _matchEndedData = null;
+    var _isFinishingMatch = false;
+
+    function _callFinishSocketIO(data, logPrefix) {
+        var matchId = window.MATCH_ID;
+        var token   = window.JWT_TOKEN;
+        if (!matchId || !token) return Promise.resolve();
+        var effectiveData = data || {};
+        var body = JSON.stringify({
+            winner_id:    effectiveData.winnerId    || null,
+            final_scores: effectiveData.finalScores || {},
+            is_tie:       effectiveData.isTie       || false,
+        });
+        var controller = new AbortController();
+        var tid = setTimeout(function() { controller.abort(); }, 3000);
+        return fetch('/api/duo/match/' + matchId + '/finish-socketio', {
+            method: 'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': 'Bearer ' + token,
+            },
+            body: body,
+            signal: controller.signal,
+        }).then(function(res) {
+            clearTimeout(tid);
+            console.log(logPrefix + ' finishSocketIO OK:', res.status);
+        }).catch(function(err) {
+            clearTimeout(tid);
+            console.warn(logPrefix + ' finishSocketIO failed (navigating anyway):', err.message);
+        });
+    }
+
+    function navigateToMatchResult(data) {
+        if (_isFinishingMatch) return;
+        _isFinishingMatch = true;
+        stopTimer();
+        var effectiveData = data || _matchEndedData || {};
+        if (!effectiveData.winnerId && !effectiveData.isTie) {
+            isRedirecting = true;
+            window.location.href = MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID);
+            return;
+        }
+        _callFinishSocketIO(effectiveData, '[DuoQuestion]').finally(function() {
+            isRedirecting = true;
+            window.location.href = MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID);
+        });
+    }
+
     function handleMatchEnded(data) {
         console.log('[DuoQuestion] Match terminé:', data);
-        
-        stopTimer();
-        redirectOnce(MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 600);
+        _matchEndedData = data;
+        navigateToMatchResult(data);
     }
     
     function handleSkillActivated(data) {
