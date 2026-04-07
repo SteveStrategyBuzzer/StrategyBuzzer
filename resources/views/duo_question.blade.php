@@ -284,26 +284,53 @@ $mode = 'duo';
         font-size: 1.8rem;
         background: rgba(255, 255, 255, 0.1);
         transition: all 0.3s ease;
-        cursor: pointer;
+        cursor: default;
         position: relative;
     }
-    
+
+    /* On the question page, active skills are LOCKED — only usable on the result page.
+       They show in full colour but with a lock badge, no golden glow, no click. */
     .skill-circle.active {
-        border-color: #FFD700;
-        background: rgba(255, 215, 0, 0.2);
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
-        animation: golden-pulse 2s ease-in-out infinite;
+        border-color: rgba(255, 215, 0, 0.55);
+        background: rgba(255, 215, 0, 0.12);
+        opacity: 0.85;
+        cursor: default;
     }
-    
-    @keyframes golden-pulse {
-        0%, 100% {
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
-        }
-        50% {
-            box-shadow: 0 0 35px rgba(255, 215, 0, 0.9);
-        }
+
+    /* Lock badge in the top-right corner of each active skill */
+    .skill-circle.active::after {
+        content: '🔒';
+        font-size: 0.7rem;
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: rgba(0,0,0,0.75);
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
     }
-    
+
+    /* Passive skill (faster_buzz): shown as a soft green glow — no lock, auto-applied */
+    .skill-circle.passive {
+        border-color: rgba(72, 199, 116, 0.7);
+        background: rgba(72, 199, 116, 0.15);
+        opacity: 0.9;
+        cursor: default;
+    }
+
+    /* Tooltip hint label under the skills area */
+    .skills-phase-hint {
+        font-size: 0.65rem;
+        color: rgba(255,215,0,0.6);
+        text-align: center;
+        margin-top: 4px;
+        letter-spacing: 0.3px;
+    }
+
     .skill-circle.empty {
         opacity: 0.3;
         cursor: default;
@@ -786,10 +813,16 @@ $mode = 'duo';
             <div class="skills-container">
                 @if(!empty($skills) && is_array($skills))
                     @foreach($skills as $skill)
-                        <div class="skill-circle {{ ($skill['used'] ?? false) ? 'used' : 'active' }}" 
+                        @php
+                            $isPassive = in_array($skill['id'] ?? '', ['faster_buzz', 'skill_recharge']);
+                            $isUsed    = $skill['used'] ?? false;
+                            $circleClass = $isUsed ? 'used' : ($isPassive ? 'passive' : 'active');
+                        @endphp
+                        <div class="skill-circle {{ $circleClass }}" 
                              data-skill-id="{{ $skill['id'] ?? '' }}"
                              data-skill-trigger="{{ $skill['trigger'] ?? 'question' }}"
                              data-uses-left="{{ $skill['uses_left'] ?? 1 }}"
+                             data-passive="{{ $isPassive ? 'true' : 'false' }}"
                              title="{{ $skill['name'] ?? '' }}: {{ $skill['description'] ?? '' }}">
                             {{ $skill['icon'] ?? '⭐' }}
                         </div>
@@ -797,6 +830,10 @@ $mode = 'duo';
                     @for($i = count($skills); $i < 3; $i++)
                         <div class="skill-circle empty"></div>
                     @endfor
+                    {{-- Only show the hint if there are active (non-passive) skills --}}
+                    @if(collect($skills)->contains(fn($s) => !in_array($s['id'] ?? '', ['faster_buzz','skill_recharge'])))
+                        <div class="skills-phase-hint">{{ __('Après la question') }}</div>
+                    @endif
                 @else
                     <div class="skill-circle empty"></div>
                     <div class="skill-circle empty"></div>
@@ -1652,21 +1689,14 @@ $mode = 'duo';
         }
     });
     
+    // Skills are LOCKED during QUESTION_ACTIVE phase — they can only be activated
+    // on the Result page (REVEAL / ROUND_SCOREBOARD phases).
+    // Passive skills (faster_buzz) are auto-applied and need no click.
     document.querySelectorAll('.skill-circle.active').forEach(skill => {
         skill.addEventListener('click', function() {
-            const skillId = this.getAttribute('data-skill-id');
-            if (!skillId) return;
-            
-            if (this.classList.contains('used') || this.classList.contains('depleted')) {
-                showSkillMessage('⚪ {{ __("Skill déjà utilisé") }}', 'error');
-                return;
-            }
-            
-            if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
-                window.DuoSocketClient.useSkill(skillId);
-            } else {
-                showSkillMessage('❌ {{ __("Non connecté au serveur") }}', 'error');
-            }
+            const name = this.getAttribute('title') || '';
+            const label = name.split(':')[0] || '{{ __("Skill") }}';
+            showSkillMessage('🔒 ' + label + ' — {{ __("Disponible après la question") }}', 'info');
         });
     });
     
