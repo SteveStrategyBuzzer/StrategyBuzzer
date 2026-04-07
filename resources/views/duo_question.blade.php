@@ -1082,12 +1082,12 @@ $mode = 'duo';
             const display = Math.max(0, timeLeft);
             chronoTimer.textContent = display;
 
-            // Last 3 seconds: switch to frog ambiance
+            // Last 3 seconds: add frog ambiance on top (ambient keeps playing at lower volume)
             if (timeLeft <= FROG_THRESHOLD && !frogStarted) {
                 frogStarted = true;
-                // Stop ambient music
+                // Lower ambient (don't stop) — frog sounds layer on top
                 if (gameplayAmbient) {
-                    gameplayAmbient.pause();
+                    gameplayAmbient.volume = 0.08;
                 }
                 // Start frog sounds
                 if (chronoBackgroundSound) {
@@ -1114,10 +1114,13 @@ $mode = 'duo';
             clearInterval(timerInterval);
             timerInterval = null;
         }
-        // Stop frog sound, restore ambient
+        // Stop frog sound, restore ambient to full volume
         if (chronoBackgroundSound) {
             chronoBackgroundSound.pause();
             chronoBackgroundSound.currentTime = 0;
+        }
+        if (gameplayAmbient) {
+            gameplayAmbient.volume = 0.35;
         }
         const chronoCircle = document.querySelector('.chrono-circle');
         if (chronoCircle) chronoCircle.classList.remove('urgent');
@@ -1315,7 +1318,16 @@ $mode = 'duo';
         }
         
         if (currentPhase === 'REVEAL') {
-            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            // Pre-navigation: result page sent us here early during REVEAL.
+            // Show a waiting overlay; QUESTION_ACTIVE will arrive shortly.
+            stopTimer();
+            setBuzzerState('hidden');
+            updateLoadingText('{{ __("Révélation de la réponse...") }}');
+            return;
+        }
+        
+        if (currentPhase === 'ROUND_SCOREBOARD') {
+            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 200);
             return;
         }
         
@@ -1361,6 +1373,11 @@ $mode = 'duo';
         
         if (currentPhase === 'REVEAL') {
             redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            return;
+        }
+        
+        if (currentPhase === 'ROUND_SCOREBOARD') {
+            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 200);
             return;
         }
         

@@ -1183,23 +1183,65 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
             setOpponentReady();
         }
     }
+    var _earlyNavTimer = null;
+    function _cancelEarlyNav() {
+        if (_earlyNavTimer) { clearTimeout(_earlyNavTimer); _earlyNavTimer = null; }
+    }
     function _onResultPhaseChanged(data) {
         console.log('[DuoResult] Phase changed', data);
         if (!data || !data.phase) { return; }
+
+        if (data.phase === 'REVEAL') {
+            // Schedule early navigation so question page loads during REVEAL,
+            // giving it time to connect before QUESTION_ACTIVE fires.
+            _cancelEarlyNav();
+            if (data.phaseEndsAtMs) {
+                var msLeft = Math.max(0, data.phaseEndsAtMs - Date.now());
+                var earlyMs = Math.max(0, msLeft - 2000); // navigate 2s before REVEAL ends
+                console.log('[DuoResult] Scheduling early nav to question in', earlyMs, 'ms');
+                _earlyNavTimer = setTimeout(function() {
+                    _earlyNavTimer = null;
+                    navigateToNextQuestion();
+                }, earlyMs);
+            }
+            return;
+        }
+
         if (data.phase === 'QUESTION_ACTIVE' || data.phase === 'QUESTION_DISPLAY' || data.phase === 'BUZZ_WINDOW' || data.phase === 'question') {
+            _cancelEarlyNav();
             navigateToNextQuestion(); return;
         }
+        if (data.phase === 'ROUND_SCOREBOARD') {
+            _cancelEarlyNav(); return; // round_ended event handles this
+        }
         if (data.phase === 'MATCH_RESULT' || data.phase === 'match_result' || data.phase === 'MATCH_END' || data.phase === 'FINISHED') {
+            _cancelEarlyNav();
             navigateToFinalResults(); return;
         }
         resetReadyStatus();
     }
     function _onResultState(payload) {
         if (!payload) return;
-        var phase = payload.state ? payload.state.phase : payload.phase;
-        if (phase === 'QUESTION_ACTIVE' || phase === 'QUESTION_DISPLAY' || phase === 'BUZZ_WINDOW') {
+        var stateObj = payload.state || payload;
+        var phase = stateObj.phase;
+        var phaseEndsAtMs = stateObj.phaseEndsAtMs || payload.phaseEndsAtMs;
+        if (phase === 'REVEAL') {
+            // Schedule early nav (mirrors _onResultPhaseChanged logic)
+            _cancelEarlyNav();
+            if (phaseEndsAtMs) {
+                var msLeft = Math.max(0, phaseEndsAtMs - Date.now());
+                var earlyMs = Math.max(0, msLeft - 2000);
+                console.log('[DuoResult] State REVEAL — early nav in', earlyMs, 'ms');
+                _earlyNavTimer = setTimeout(function() {
+                    _earlyNavTimer = null;
+                    navigateToNextQuestion();
+                }, earlyMs);
+            }
+        } else if (phase === 'QUESTION_ACTIVE' || phase === 'QUESTION_DISPLAY' || phase === 'BUZZ_WINDOW') {
+            _cancelEarlyNav();
             navigateToNextQuestion();
         } else if (phase === 'MATCH_END' || phase === 'FINISHED') {
+            _cancelEarlyNav();
             navigateToFinalResults();
         }
     }
