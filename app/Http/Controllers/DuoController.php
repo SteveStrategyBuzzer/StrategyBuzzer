@@ -2439,7 +2439,14 @@ class DuoController extends Controller
                     break;
 
                 case 'answer':
-                    if (!in_array($currentPhase, $answerPhases)) {
+                    // Accept QUESTION_ACTIVE: buzz just registered, server transition in progress
+                    // Accept WAITING: both players valid on answer page during transition
+                    // Accept ANSWER_SELECTION: normal answer phase
+                    // QUESTION_ACTIVE and WAITING are added so a buzz navigating to answer
+                    // is never bounced back to question before the phase transitions
+                    $acceptedForAnswer = array_merge($answerPhases, ['QUESTION_ACTIVE', 'WAITING']);
+                    if (!in_array($currentPhase, $acceptedForAnswer)) {
+                        // INTRO is the only remaining question phase (QUESTION_ACTIVE/WAITING accepted above)
                         if (in_array($currentPhase, $questionPhases)) {
                             return redirect()->route('game.duo.question');
                         }
@@ -2449,11 +2456,6 @@ class DuoController extends Controller
                         if (in_array($currentPhase, $terminalPhases)) {
                             return redirect()->route('game.duo.match-result');
                         }
-                    }
-
-                    $playerId = (string) $user->id;
-                    if ($lockedAnswerPlayerId && $lockedAnswerPlayerId !== $playerId) {
-                        return redirect()->route('game.duo.question');
                     }
                     break;
 

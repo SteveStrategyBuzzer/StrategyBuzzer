@@ -1562,6 +1562,14 @@ $mode = 'duo';
 
     function handleRateLimited(data) {
         console.log('[DuoQuestion] Limité:', data);
+        const reason = (data.reason || '').toLowerCase();
+        if (reason.includes('already buzzed') || reason.includes('already_buzzed')) {
+            // Player already buzzed this question — navigate to answer page
+            if (!isRedirecting) {
+                redirectOnce(ANSWER_URL + '?buzzed=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), 100);
+            }
+            return;
+        }
         showSkillMessage('{{ __("Action trop rapide – réessayez.") }}', 'warning', 2000);
     }
 
