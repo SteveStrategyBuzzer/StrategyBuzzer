@@ -363,15 +363,47 @@ class GameServerQuestionPipeline
 
     private function formatQuestion(array $question, int $questionNumber): array
     {
+        // Map PHP/question-api type strings to game server constants
+        $phpType = $question['type'] ?? 'multiple';
+        $gsType  = match ($phpType) {
+            'true_false' => 'TRUE_FALSE',
+            'text'       => 'TEXT',
+            default      => 'MCQ',   // 'multiple' → 'MCQ'
+        };
+
+        // Filter null/empty answers and re-map correct index accordingly
+        $rawAnswers     = $question['answers'] ?? [];
+        $rawCorrectIdx  = (int) ($question['correct_id'] ?? $question['correct_index'] ?? 0);
+        $choices        = [];
+        $correctIndex   = 0;
+        $newIdx         = 0;
+        foreach ($rawAnswers as $oldIdx => $answer) {
+            if ($answer !== null && $answer !== '') {
+                if ((int) $oldIdx === $rawCorrectIdx) {
+                    $correctIndex = $newIdx;
+                }
+                $choices[] = $answer;
+                $newIdx++;
+            }
+        }
+
         return [
-            'id' => $question['id'] ?? uniqid('gsq_'),
-            'number' => $questionNumber,
-            'text' => $question['question_text'] ?? $question['text'] ?? '',
-            'answers' => $question['answers'] ?? [],
-            'correct_index' => $question['correct_id'] ?? $question['correct_index'] ?? 0,
-            'sub_theme' => $question['sub_theme'] ?? '',
-            'theme' => $question['theme'] ?? '',
-            'type' => $question['type'] ?? 'multiple',
+            'id'           => $question['id'] ?? uniqid('gsq_'),
+            'number'       => $questionNumber,
+            'text'         => $question['question_text'] ?? $question['text'] ?? '',
+            // camelCase for TypeScript/game-server consumption
+            'choices'      => $choices,
+            'correctIndex' => $correctIndex,
+            'type'         => $gsType,
+            'funFact'      => $question['explanation'] ?? null,
+            'subCategory'  => $question['sub_theme'] ?? '',
+            'category'     => $question['theme'] ?? '',
+            'difficulty'   => 3,
+            'timeLimitMs'  => 8000,
+            // snake_case aliases kept for any PHP consumers
+            'answers'      => $choices,
+            'correct_index' => $correctIndex,
+            'fun_fact'     => $question['explanation'] ?? null,
         ];
     }
 

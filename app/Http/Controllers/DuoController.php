@@ -1586,6 +1586,34 @@ class DuoController extends Controller
             $questionData = $questions[$currentQuestionNumber - 1] ?? [];
         }
 
+        // Final fallback: read live question from game-server Redis room state
+        if (empty($questionData) || empty($questionData['choices'])) {
+            $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
+            if ($roomId) {
+                try {
+                    $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
+                        ->get("room:{$roomId}:state");
+                    if ($rawState) {
+                        $roomState = json_decode($rawState, true);
+                        $qIdx      = $roomState['questionIndex'] ?? 0;
+                        $questions = $roomState['questions'] ?? [];
+                        if (isset($questions[$qIdx])) {
+                            $q = $questions[$qIdx];
+                            $questionData = [
+                                'text'    => $q['text'] ?? ($questionData['text'] ?? ''),
+                                'choices' => $q['choices'] ?? $q['answers'] ?? [],
+                                // Never expose correct_answer index before reveal
+                                'correct_answer' => null,
+                                'correct_index'  => null,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('[DUO-ANSWER] Redis question fallback failed', ['error' => $e->getMessage()]);
+                }
+            }
+        }
+
         if (!isset($questionData['choices']) && isset($questionData['answers'])) {
             $questionData['choices'] = $questionData['answers'];
         }
@@ -1748,6 +1776,29 @@ class DuoController extends Controller
             'lobby_code' => $lobbyCode,
         ])]);
 
+        // Read current question from Redis game-server room state to get fun_fact
+        $resultQuestion = $gameState['last_question'] ?? [];
+        if ($roomId && empty($resultQuestion['fun_fact'])) {
+            try {
+                $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
+                    ->get("room:{$roomId}:state");
+                if ($rawState) {
+                    $roomState = json_decode($rawState, true);
+                    $qIdx = $roomState['questionIndex'] ?? 0;
+                    $questions = $roomState['questions'] ?? [];
+                    if (isset($questions[$qIdx])) {
+                        $q = $questions[$qIdx];
+                        $resultQuestion = [
+                            'text'     => $q['text'] ?? '',
+                            'fun_fact' => $q['funFact'] ?? $q['fun_fact'] ?? null,
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('[DUO-RESULT] Redis question fallback failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         $strategicAvatar = data_get($playerSnapshot, 'strategic_avatar', ['name' => 'Aucun']);
         $skills = $this->getPlayerSkillsWithTriggers($user);
         $avatarName = $this->getSnapshotStrategicAvatarName($playerSnapshot);
@@ -1778,6 +1829,7 @@ class DuoController extends Controller
             'playerAvatarPath' => $playerAvatar,
             'opponentAvatarPath' => $opponentAvatar,
             'opponentName' => $this->getSnapshotDisplayName($opponentSnapshot, $opponent, 'Adversaire'),
+            'question' => $resultQuestion,
             'correct_answer' => $lastAnswer['correct_answer'] ?? '',
             'player_answer' => $lastAnswer['player_answer'] ?? '',
             'playerAnswer' => $lastAnswer['player_answer'] ?? '',

@@ -1087,9 +1087,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function calculatePotentialPoints(remainingTime) {
         if (historianSkillUsed) return 1;
         if (NO_BUZZ) return 0;
-        if (remainingTime > 3) return 2;
-        if (remainingTime >= 1) return 1;
-        return 0;
+        // Scoring is based on buzz ORDER only, not remaining time.
+        // 1st buzzer → always +2 if correct. 2nd buzzer → always +1.
+        return IS_BUZZ_WINNER ? 2 : 1;
     }
     
     function updatePotentialPointsDisplay(points) {
