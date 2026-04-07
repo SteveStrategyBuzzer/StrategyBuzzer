@@ -840,6 +840,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     let selectedIndex = null;
     let isRedirecting = false;
     let historianSkillUsed = false;
+    let phaseEndsAtMs = null;  // FIX: track server-side phase end time
     
     const CHOICES = @json($choices);
     const HAS_ILLUMINATE = {{ ($hasIlluminateNumbers ?? false) ? 'true' : 'false' }};
@@ -1115,6 +1116,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function startTimer() {
         if (timerInterval) clearInterval(timerInterval);
         
+        // FIX: sync starting timeLeft with server's remaining ANSWER_SELECTION time
+        if (phaseEndsAtMs) {
+            const remaining = Math.max(0, phaseEndsAtMs - Date.now());
+            timeLeft = Math.ceil(remaining / 1000);
+            if (timeLeft <= 0) timeLeft = 1; // at least 1 tick before auto-timeout
+        }
+        
         // Démarrer le shuffle des réponses si actif
         startShuffleInterval();
         
@@ -1281,6 +1289,20 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function _onAnswerConnect() {
         console.log('[DuoAnswer] Socket connected (room join handled by GameplayRuntime)');
     }
+    function _onAnswerGameState(data) {
+        // FIX: sync timer with server's remaining ANSWER_SELECTION time
+        if (!data || !data.phaseEndsAtMs) return;
+        var phase = data.phase || '';
+        if (phase !== 'ANSWER_SELECTION' && phase !== 'BUZZ_WINNER_ANSWERING') return;
+        phaseEndsAtMs = data.phaseEndsAtMs;
+        var remaining = Math.max(0, phaseEndsAtMs - Date.now());
+        var serverLeft = Math.ceil(remaining / 1000);
+        // Only correct if local timer is more than 1 second off from server
+        if (Math.abs(serverLeft - timeLeft) > 1) {
+            console.log('[DuoAnswer] Timer synced: local=' + timeLeft + 's server=' + serverLeft + 's');
+            timeLeft = serverLeft;
+        }
+    }
     function _onAnswerDisconnect(reason) {
         updateConnectionStatus('disconnected');
     }
@@ -1396,6 +1418,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         connect:         _onAnswerConnect,
         disconnect:      _onAnswerDisconnect,
         error:           _onAnswerError,
+        game_state:      _onAnswerGameState,
         answer_revealed: _onAnswerRevealed,
         round_ended:     _onAnswerRoundEnded,
         match_ended:     _onAnswerMatchEnded,
@@ -1527,6 +1550,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         ds.on('connect',         h.connect);
         ds.on('disconnect',      h.disconnect);
         ds.on('error',           h.error);
+        ds.on('game_state',      h.game_state);
         ds.on('answer_revealed', h.answer_revealed);
         ds.on('round_ended',     h.round_ended);
         ds.on('match_ended',     h.match_ended);

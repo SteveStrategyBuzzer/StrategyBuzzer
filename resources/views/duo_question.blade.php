@@ -908,6 +908,7 @@ $mode = 'duo';
     const TOTAL_TIME = 8;
     let timeLeft = TOTAL_TIME;
     let timerInterval = null;
+    let introInterval = null;   // FIX: stored so we can clear it
     let buzzed = false;
     let phaseEndsAtMs = null;
     let currentPhase = 'LOBBY';
@@ -998,7 +999,12 @@ $mode = 'duo';
         
         loadingOverlay.classList.add('hidden');
         gameContainer.style.display = 'flex';
-        chronoTimer.textContent = TOTAL_TIME;
+        // FIX: Don't overwrite the display if syncTimerWithServer already set it
+        if (phaseEndsAtMs) {
+            syncTimerWithServer(phaseEndsAtMs);
+        } else {
+            chronoTimer.textContent = TOTAL_TIME;
+        }
 
         // Start ambient background music (looping, like solo mode)
         if (gameplayAmbient) {
@@ -1113,6 +1119,11 @@ $mode = 'duo';
         if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
+        }
+        // FIX: also clear the INTRO countdown interval
+        if (introInterval) {
+            clearInterval(introInterval);
+            introInterval = null;
         }
         // Stop frog sound, restore ambient to full volume
         if (chronoBackgroundSound) {
@@ -1250,10 +1261,11 @@ $mode = 'duo';
                 break;
                 
             case 'INTRO':
-                stopTimer();
+                stopTimer();  // also clears introInterval
                 setBuzzerState('waiting');
                 updateLoadingText('🎮 ' + Math.max(1, Math.ceil(Math.max(0, phaseEndsAtMs - Date.now()) / 1000)) + ' 🎮');
-                setInterval(() => {
+                // FIX: store the interval so stopTimer() can clean it up on phase change
+                introInterval = setInterval(() => {
                     if (!phaseEndsAtMs) return;
                     const seconds = Math.max(1, Math.ceil(Math.max(0, phaseEndsAtMs - Date.now()) / 1000));
                     updateLoadingText('🎮 ' + seconds + ' 🎮');
@@ -1319,7 +1331,9 @@ $mode = 'duo';
         
         if (currentPhase === 'REVEAL') {
             // Pre-navigation: result page sent us here early during REVEAL.
-            // Show a waiting overlay; QUESTION_ACTIVE will arrive shortly.
+            // FIX: set isRedirecting so phase_changed:REVEAL can't send us back to result.
+            // QUESTION_ACTIVE handler resets isRedirecting when the next question starts.
+            isRedirecting = true;
             stopTimer();
             setBuzzerState('hidden');
             updateLoadingText('{{ __("Révélation de la réponse...") }}');
