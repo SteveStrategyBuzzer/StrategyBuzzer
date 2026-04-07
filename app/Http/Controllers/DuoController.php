@@ -771,37 +771,25 @@ class DuoController extends Controller
             return [];
         }
 
-        $catalog = \App\Services\AvatarCatalog::get();
-        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
-        $avatarInfo = null;
-
-        foreach ($strategicAvatars as $avatar) {
-            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
-                $avatarInfo = $avatar;
-                break;
-            }
-        }
-
-        if (!$avatarInfo || empty($avatarInfo['skills'])) {
-            return [];
-        }
+        $avatarData = \App\Services\AvatarSkillService::getAvatarSkills($avatarName, $user->id);
+        $rawSkills  = $avatarData['skills'] ?? [];
 
         $skills = [];
-        foreach ($avatarInfo['skills'] as $skillId) {
-            $skillData = \App\Services\SkillCatalog::getSkill($skillId);
-            if ($skillData) {
-                $skills[] = [
-                    'id' => $skillData['id'],
-                    'name' => $skillData['name'],
-                    'icon' => $skillData['icon'],
-                    'description' => $skillData['description'],
-                    'trigger' => $skillData['trigger'],
-                    'type' => $skillData['type'],
-                    'auto' => $skillData['auto'] ?? false,
-                    'uses_per_match' => $skillData['uses_per_match'] ?? 1,
-                    'used' => false,
-                ];
+        foreach ($rawSkills as $skillData) {
+            if (!is_array($skillData) || empty($skillData['id'])) {
+                continue;
             }
+            $skills[] = [
+                'id'            => $skillData['id'],
+                'name'          => $skillData['name'] ?? '',
+                'icon'          => $skillData['icon'] ?? '⭐',
+                'description'   => $skillData['description'] ?? '',
+                'trigger'       => $skillData['trigger'] ?? 'question',
+                'type'          => $skillData['type'] ?? 'unknown',
+                'auto'          => $skillData['auto'] ?? false,
+                'uses_per_match'=> $skillData['uses_per_match'] ?? 1,
+                'used'          => false,
+            ];
         }
 
         return $skills;
@@ -2430,9 +2418,9 @@ class DuoController extends Controller
                             return redirect()->route('game.duo.answer');
                         }
                     }
-                    if (in_array($currentPhase, $resultPhases)) {
-                        return redirect()->route('game.duo.result');
-                    }
+                    // Allow REVEAL phase on the question page: the result page navigates
+                    // here 2s early so the next question loads while the reveal is finishing.
+                    // JavaScript handles the waiting overlay for REVEAL state.
                     if (in_array($currentPhase, $terminalPhases)) {
                         return redirect()->route('game.duo.match-result');
                     }
