@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@push('head')
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+@endpush
+
 @php
 $playerWon    = $match_result['player_won'] ?? false;
 $isDraw       = !$playerWon && ($match_result['player_rounds_won'] ?? 0) === ($match_result['opponent_rounds_won'] ?? 0);
