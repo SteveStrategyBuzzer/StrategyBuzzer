@@ -626,6 +626,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         0%, 100% { opacity: 1; }
         50% { opacity: 0.7; }
     }
+
+    /* Hide connection badge when connected — only show when disconnected */
+    #connectionStatus.connected { display: none !important; }
+
+    /* Hide voice mic on answer page — only shown on result page */
+    #voiceMicButton { display: none !important; }
 </style>
 
 {{-- connection-status, voice-mic-button: provided by layouts.game --}}
@@ -789,7 +795,23 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
     const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
     const PLAYER_ID = {{ auth()->id() ?? 0 }};
-    
+
+    // Read real-time scores passed from Question page via URL params (ps=playerScore, os=opponentScore)
+    (function initScoresFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const ps = params.get('ps');
+        const os = params.get('os');
+        const scoreEl = document.getElementById('playerScoreValue');
+        if (ps !== null && scoreEl) {
+            const n = parseInt(ps, 10);
+            if (!isNaN(n)) scoreEl.textContent = n;
+        }
+        // Store opponent score for socket updates
+        if (os !== null) {
+            window._initOpponentScore = parseInt(os, 10) || 0;
+        }
+    })();
+
     function getGameServerUrl() {
         return window.location.origin;
     }

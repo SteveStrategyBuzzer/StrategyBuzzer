@@ -470,6 +470,44 @@ $mode = 'duo';
         font-size: 1.2rem;
         opacity: 0.9;
     }
+
+    /* Hide connection badge when connected — only show disconnected/connecting states */
+    #connectionStatus.connected { display: none !important; }
+
+    /* Chrono turns red during last 3 seconds */
+    .chrono-circle.urgent {
+        background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+        animation: pulse-urgent 0.5s ease-in-out infinite;
+    }
+    @keyframes pulse-urgent {
+        0%, 100% { box-shadow: 0 15px 50px rgba(231, 76, 60, 0.7); }
+        50%       { box-shadow: 0 15px 70px rgba(231, 76, 60, 1); }
+    }
+    .chrono-circle.urgent .chrono-time {
+        background: linear-gradient(180deg, #fff 0%, #FF6B6B 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+
+    /* Buzz order indicator */
+    .buzz-order-badge {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255,215,0,0.95);
+        color: #0f2027;
+        font-size: 1.2rem;
+        font-weight: 900;
+        padding: 14px 28px;
+        border-radius: 50px;
+        z-index: 500;
+        animation: fadeIn 0.2s ease;
+        display: none;
+    }
+
+    /* Voice mic: hide on question page */
+    #voiceMicButton { display: none !important; }
     
     @media (max-width: 1024px) {
         .game-layout {
@@ -712,7 +750,7 @@ $mode = 'duo';
         <div class="left-column">
             <div class="player-circle">
                 <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
-                <div class="player-name">{{ __('Vous') }}</div>
+                <div class="player-name">{{ $playerName ?? __('Vous') }}</div>
                 <div class="player-score" id="playerScore">{{ $playerScore ?? 0 }}</div>
             </div>
             
@@ -841,6 +879,8 @@ $mode = 'duo';
     let gameLayoutReady = false;
     let socketConnected = false;
     let questionReceived = false;
+    let frogStarted = false;
+    const FROG_THRESHOLD = 3; // Last 3 seconds = frog sounds
     
     @php
         $hasFasterBuzz = false;
@@ -974,19 +1014,25 @@ $mode = 'duo';
     }
     
     function startTimer() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
+        if (timerInterval) clearInterval(timerInterval);
+
+        frogStarted = false;
+        const chronoCircle = document.querySelector('.chrono-circle');
+        if (chronoCircle) chronoCircle.classList.remove('urgent');
+
+        // Ensure gameplay ambient is playing for the first 5 seconds
+        if (gameplayAmbient) {
+            gameplayAmbient.volume = 0.35;
+            gameplayAmbient.play().catch(() => {});
         }
-        
-        resetTimerColor();
+        // Make sure frog is silent
+        if (chronoBackgroundSound) {
+            chronoBackgroundSound.pause();
+            chronoBackgroundSound.currentTime = 0;
+        }
+
         setBuzzerState('ready');
 
-        // Start chrono ticking sound (like solo mode)
-        if (chronoBackgroundSound) {
-            chronoBackgroundSound.currentTime = 0;
-            chronoBackgroundSound.play().catch(() => {});
-        }
-        
         timerInterval = setInterval(() => {
             if (phaseEndsAtMs) {
                 const now = Date.now();
@@ -995,13 +1041,27 @@ $mode = 'duo';
             } else {
                 timeLeft--;
             }
-            
-            chronoTimer.textContent = Math.max(0, timeLeft);
-            
-            if (timeLeft <= 10) {
-                chronoTimer.style.color = '#FF6B6B';
+
+            const display = Math.max(0, timeLeft);
+            chronoTimer.textContent = display;
+
+            // Last 3 seconds: switch to frog ambiance
+            if (timeLeft <= FROG_THRESHOLD && !frogStarted) {
+                frogStarted = true;
+                // Stop ambient music
+                if (gameplayAmbient) {
+                    gameplayAmbient.pause();
+                }
+                // Start frog sounds
+                if (chronoBackgroundSound) {
+                    chronoBackgroundSound.currentTime = 0;
+                    chronoBackgroundSound.play().catch(() => {});
+                }
+                // Visual urgency
+                const cc = document.querySelector('.chrono-circle');
+                if (cc) cc.classList.add('urgent');
             }
-            
+
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 timerInterval = null;
@@ -1011,16 +1071,20 @@ $mode = 'duo';
             }
         }, 250);
     }
-    
+
     function stopTimer() {
         if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
         }
+        // Stop frog sound, restore ambient
         if (chronoBackgroundSound) {
             chronoBackgroundSound.pause();
             chronoBackgroundSound.currentTime = 0;
         }
+        const chronoCircle = document.querySelector('.chrono-circle');
+        if (chronoCircle) chronoCircle.classList.remove('urgent');
+        frogStarted = false;
     }
     
     function ensureQuestionPhaseReady() {
@@ -1048,6 +1112,12 @@ $mode = 'duo';
         }, delay);
     }
     
+    function getScoreParams() {
+        const ps = playerScoreEl ? playerScoreEl.textContent.trim() : '0';
+        const os = opponentScoreEl ? opponentScoreEl.textContent.trim() : '0';
+        return '&ps=' + encodeURIComponent(ps) + '&os=' + encodeURIComponent(os);
+    }
+
     function handleBuzz() {
         if (buzzed || isRedirecting || currentPhase !== 'QUESTION_ACTIVE') return;
         
@@ -1064,7 +1134,7 @@ $mode = 'duo';
             window.DuoSocketClient.buzz(Date.now());
         }
         
-        redirectOnce(ANSWER_URL + '?buzzed=true&match_id=' + encodeURIComponent(MATCH_ID), BUZZ_REDIRECT_DELAY);
+        redirectOnce(ANSWER_URL + '?buzzed=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), BUZZ_REDIRECT_DELAY);
     }
     
     function handleNoBuzz() {
@@ -1076,7 +1146,7 @@ $mode = 'duo';
         buzzButton.disabled = true;
         setBuzzerState('waiting');
         
-        redirectOnce(ANSWER_URL + '?timeout=true&match_id=' + encodeURIComponent(MATCH_ID), 500);
+        redirectOnce(ANSWER_URL + '?timeout=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), 500);
     }
     
     function handleOpponentBuzz() {
@@ -1086,7 +1156,7 @@ $mode = 'duo';
         setBuzzerState('hidden');
         opponentBuzzedOverlay.style.display = 'flex';
         
-        redirectOnce(ANSWER_URL + '?opponent_buzzed=true&match_id=' + encodeURIComponent(MATCH_ID), 1200);
+        redirectOnce(ANSWER_URL + '?opponent_buzzed=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), 1200);
     }
     
     function showResult(isCorrect, points) {
