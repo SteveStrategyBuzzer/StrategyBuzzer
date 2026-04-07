@@ -1134,30 +1134,32 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
         console.log('[DuoResult] Round ended', data);
         navigateToRoundScoreboard();
     }
-    function _callResultFinishSocketIO(data) {
+    function _callResultFinishSocketIO(retryCount) {
         var matchId = window.MATCH_ID;
         var token   = window.JWT_TOKEN;
         if (!matchId || !token) return Promise.resolve();
-        var effectiveData = data || {};
-        if (!effectiveData.winnerId && !effectiveData.isTie) return Promise.resolve();
-        var body = JSON.stringify({
-            winner_id:    effectiveData.winnerId    || null,
-            final_scores: effectiveData.finalScores || {},
-            is_tie:       effectiveData.isTie       || false,
-        });
+        retryCount = retryCount || 0;
         var controller = new AbortController();
-        var tid = setTimeout(function() { controller.abort(); }, 3000);
+        var tid = setTimeout(function() { controller.abort(); }, 4000);
         return fetch('/api/duo/match/' + matchId + '/finish-socketio', {
             method: 'POST',
             headers: {
                 'Content-Type':  'application/json',
                 'Authorization': 'Bearer ' + token,
             },
-            body: body,
+            body: JSON.stringify({}),
             signal: controller.signal,
         }).then(function(res) {
             clearTimeout(tid);
-            console.log('[DuoResult] finishSocketIO OK:', res.status);
+            if (res.status === 202 && retryCount < 3) {
+                console.log('[DuoResult] finishSocketIO pending, retry ' + (retryCount + 1));
+                return new Promise(function(resolve) {
+                    setTimeout(function() {
+                        _callResultFinishSocketIO(retryCount + 1).then(resolve);
+                    }, 1000);
+                });
+            }
+            console.log('[DuoResult] finishSocketIO status:', res.status);
         }).catch(function(err) {
             clearTimeout(tid);
             console.warn('[DuoResult] finishSocketIO failed (navigating anyway):', err.message);
@@ -1166,7 +1168,7 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
 
     function _onResultMatchEnded(data) {
         console.log('[DuoResult] Match ended', data);
-        _callResultFinishSocketIO(data).finally(function() {
+        _callResultFinishSocketIO().finally(function() {
             navigateToFinalResults();
         });
     }

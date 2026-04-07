@@ -1365,29 +1365,33 @@ $mode = 'duo';
     var _matchEndedData = null;
     var _isFinishingMatch = false;
 
-    function _callFinishSocketIO(data, logPrefix) {
+    function _callFinishSocketIO(logPrefix, retryCount) {
         var matchId = window.MATCH_ID;
         var token   = window.JWT_TOKEN;
         if (!matchId || !token) return Promise.resolve();
-        var effectiveData = data || {};
-        var body = JSON.stringify({
-            winner_id:    effectiveData.winnerId    || null,
-            final_scores: effectiveData.finalScores || {},
-            is_tie:       effectiveData.isTie       || false,
-        });
+        retryCount = retryCount || 0;
         var controller = new AbortController();
-        var tid = setTimeout(function() { controller.abort(); }, 3000);
+        var tid = setTimeout(function() { controller.abort(); }, 4000);
         return fetch('/api/duo/match/' + matchId + '/finish-socketio', {
             method: 'POST',
             headers: {
                 'Content-Type':  'application/json',
                 'Authorization': 'Bearer ' + token,
             },
-            body: body,
+            body: JSON.stringify({}),
             signal: controller.signal,
         }).then(function(res) {
             clearTimeout(tid);
-            console.log(logPrefix + ' finishSocketIO OK:', res.status);
+            if (res.status === 202 && retryCount < 3) {
+                // Game server hasn't written Redis result yet — retry after 1s
+                console.log(logPrefix + ' finishSocketIO pending, retry ' + (retryCount + 1));
+                return new Promise(function(resolve) {
+                    setTimeout(function() {
+                        _callFinishSocketIO(logPrefix, retryCount + 1).then(resolve);
+                    }, 1000);
+                });
+            }
+            console.log(logPrefix + ' finishSocketIO status:', res.status);
         }).catch(function(err) {
             clearTimeout(tid);
             console.warn(logPrefix + ' finishSocketIO failed (navigating anyway):', err.message);
@@ -1398,13 +1402,7 @@ $mode = 'duo';
         if (_isFinishingMatch) return;
         _isFinishingMatch = true;
         stopTimer();
-        var effectiveData = data || _matchEndedData || {};
-        if (!effectiveData.winnerId && !effectiveData.isTie) {
-            isRedirecting = true;
-            window.location.href = MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID);
-            return;
-        }
-        _callFinishSocketIO(effectiveData, '[DuoQuestion]').finally(function() {
+        _callFinishSocketIO('[DuoQuestion]').finally(function() {
             isRedirecting = true;
             window.location.href = MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID);
         });

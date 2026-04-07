@@ -5,7 +5,7 @@ import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerReveal
 import { applyEvent, hasActiveEffect, expireEffects, applyScoreEffects, rechargeInventory } from "@strategybuzzer/game-engine";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
-import { appendEventLog, setRoomState } from "./RedisService.js";
+import { appendEventLog, setRoomState, setMatchResult } from "./RedisService.js";
 import { saveRoomSnapshot } from "./RoomRecovery.js";
 
 export class GameOrchestrator {
@@ -945,6 +945,15 @@ export class GameOrchestrator {
 
     this.io.to(roomId).emit("event", { event: matchEndedEvent });
     this.logEventToRedis(roomId, matchEndedEvent);
+
+    // Persist authoritative result to Redis BEFORE notifying clients
+    // Laravel reads this to finalize stats without trusting client-provided data
+    await setMatchResult(roomId, {
+      winnerId: winnerId ?? null,
+      finalScores,
+      isTie,
+    });
+
     this.io.to(roomId).emit("match_ended", {
       winnerId,
       winnerName: winnerId ? room.state.players[winnerId]?.name : null,

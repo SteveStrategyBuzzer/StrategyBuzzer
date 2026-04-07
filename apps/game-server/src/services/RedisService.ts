@@ -66,6 +66,23 @@ export async function cleanupRoom(roomId: string): Promise<void> {
   await redisClient.del(kEvents(roomId));
 }
 
+// Match result (authoritative source for Laravel finalization)
+function kMatchResult(roomId: string) {
+  return `gs:match:${roomId}:result`;
+}
+
+export async function setMatchResult(
+  roomId: string,
+  result: { winnerId: string | null; finalScores: Record<string, number>; isTie: boolean }
+): Promise<void> {
+  await redisClient.set(kMatchResult(roomId), JSON.stringify(result), "EX", 7200);
+}
+
+export async function getMatchResult(roomId: string): Promise<{ winnerId: string | null; finalScores: Record<string, number>; isTie: boolean } | null> {
+  const data = await redisClient.get(kMatchResult(roomId));
+  return data ? JSON.parse(data) : null;
+}
+
 // Health check
 export async function ping(): Promise<boolean> {
   try {

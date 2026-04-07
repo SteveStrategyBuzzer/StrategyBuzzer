@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use App\Services\DuoMatchmakingService;
 use App\Services\DivisionService;
 use App\Services\GameStateService;
@@ -496,39 +497,50 @@ class DuoController extends Controller
             return response()->json(['success' => true, 'already_finished' => true]);
         }
 
-        $winnerId  = $request->input('winner_id');
-        $finalScores = $request->input('final_scores', []);
-        $isTie     = $request->boolean('is_tie', false);
+        // Read authoritative match result written by the game server to Redis.
+        // Client-provided winner data is intentionally ignored — only the game server writes this key.
+        $roomId = $match->room_id ?? $match->lobby_code;
+        if (!$roomId) {
+            return response()->json(['success' => false, 'message' => 'Room ID introuvable.'], 400);
+        }
+
+        $redisKey = 'gs:match:' . $roomId . ':result';
+        $raw = Redis::connection('game_server')->get($redisKey);
+
+        if (!$raw) {
+            // Game server hasn't written the result yet — tell client to retry
+            return response()->json(['success' => false, 'pending' => true, 'message' => 'Résultat pas encore disponible, réessayez.'], 202);
+        }
+
+        $result = json_decode($raw, true);
+        $winnerId    = $result['winnerId'] ?? null;
+        $finalScores = $result['finalScores'] ?? [];
+        $isTie       = $result['isTie'] ?? false;
 
         $player1Id = (string) $match->player1_id;
         $player2Id = (string) $match->player2_id;
 
-        if ($isTie || !$winnerId) {
+        // Determine scores: use actual final scores to compare, fallback to 1/0 differential
+        $p1 = isset($finalScores[$player1Id]) ? (int) $finalScores[$player1Id] : -1;
+        $p2 = isset($finalScores[$player2Id]) ? (int) $finalScores[$player2Id] : -1;
+
+        if ($p1 >= 0 && $p2 >= 0 && $p1 !== $p2) {
+            $player1Score = $p1;
+            $player2Score = $p2;
+        } elseif ($winnerId) {
+            $player1Won   = (string) $winnerId === $player1Id;
+            $player1Score = $player1Won ? 1 : 0;
+            $player2Score = $player1Won ? 0 : 1;
+        } else {
+            // Genuine tie — no winner; still persist via finishMatch but skip division ranking
             $player1Score = 0;
             $player2Score = 0;
-        } else {
-            $player1Won = (string) $winnerId === $player1Id;
-
-            $p1 = isset($finalScores[$player1Id]) ? (int) $finalScores[$player1Id] : -1;
-            $p2 = isset($finalScores[$player2Id]) ? (int) $finalScores[$player2Id] : -1;
-
-            if ($p1 >= 0 && $p2 >= 0 && $p1 !== $p2) {
-                $player1Score = $p1;
-                $player2Score = $p2;
-            } else {
-                $player1Score = $player1Won ? 1 : 0;
-                $player2Score = $player1Won ? 0 : 1;
-            }
         }
 
         try {
-            if ($isTie || $player1Score === $player2Score) {
-                return response()->json(['success' => true, 'tie' => true]);
-            }
-
             $gameState = $match->game_state ?? [];
 
-            $finishedMatch = $this->matchmaking->finishMatch(
+            $this->matchmaking->finishMatch(
                 $match,
                 $player1Score,
                 $player2Score,
@@ -536,7 +548,7 @@ class DuoController extends Controller
             );
 
             $player1Won = $player1Score > $player2Score;
-            $player2Won = !$player1Won;
+            $player2Won = $player2Score > $player1Score;
 
             $this->contactService->addOrUpdateContact(
                 $match->player1_id,
