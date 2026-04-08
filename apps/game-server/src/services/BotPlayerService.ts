@@ -85,26 +85,33 @@ export class BotPlayerService {
     });
 
     this.socket.on("event", (data: { event?: { type: string; playerId?: string } }) => {
+      // Human reconnected — cancel any pending disconnect timer
+      if (
+        data.event?.type === "PLAYER_JOINED" &&
+        data.event?.playerId !== this.botPlayerId &&
+        this.humanGraceTimer
+      ) {
+        clearTimeout(this.humanGraceTimer);
+        this.humanGraceTimer = null;
+        console.log(`[Bot] Human reconnected (room ${this.roomId}), grace timer cancelled`);
+      }
+
       if (
         data.event?.type === "PLAYER_LEFT" &&
         data.event?.playerId !== this.botPlayerId
       ) {
-        // During LOBBY the human browser disconnects/reconnects naturally on
-        // each page load. Give a 15-second grace period so the bot stays alive.
-        if (this.currentPhase === 'LOBBY') {
-          console.log(`[Bot] Human left during LOBBY (room ${this.roomId}) — waiting for reconnect (15s grace)`);
-          if (this.humanGraceTimer) clearTimeout(this.humanGraceTimer);
-          this.humanGraceTimer = setTimeout(() => {
-            this.humanGraceTimer = null;
-            if (this.currentPhase === 'LOBBY') {
-              console.log(`[Bot] Human never came back after LOBBY grace period (room ${this.roomId}), disconnecting`);
-              this.disconnect();
-            }
-          }, 15000);
-          return;
-        }
-        console.log(`[Bot] Human player left room ${this.roomId}, disconnecting`);
-        setTimeout(() => this.disconnect(), 300);
+        // The human browser disconnects on every page navigation (question →
+        // answer → result → question). Give a generous grace period during ALL
+        // phases so the bot stays alive through normal page-load reconnects.
+        // Grace period: 15s in LOBBY (fast reconnect), 30s during gameplay.
+        const graceMs = this.currentPhase === 'LOBBY' ? 15000 : 30000;
+        console.log(`[Bot] Human left during ${this.currentPhase} (room ${this.roomId}) — ${graceMs / 1000}s grace period`);
+        if (this.humanGraceTimer) clearTimeout(this.humanGraceTimer);
+        this.humanGraceTimer = setTimeout(() => {
+          this.humanGraceTimer = null;
+          console.log(`[Bot] Human never came back after grace period (room ${this.roomId}), disconnecting`);
+          this.disconnect();
+        }, graceMs);
       }
     });
 

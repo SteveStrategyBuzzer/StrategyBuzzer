@@ -2517,7 +2517,9 @@ class DuoController extends Controller
                     break;
 
                 case 'result':
-                    if (!in_array($currentPhase, $resultPhases)) {
+                    // ROUND_SCOREBOARD and REVEAL are both valid on the result/scoreboard page.
+                    $validForResult = array_merge($resultPhases, ['ROUND_SCOREBOARD']);
+                    if (!in_array($currentPhase, $validForResult)) {
                         if (in_array($currentPhase, $questionPhases)) {
                             return redirect()->route('game.duo.question');
                         }
@@ -2528,7 +2530,8 @@ class DuoController extends Controller
                             }
                             return redirect()->route('game.duo.question');
                         }
-                        if (in_array($currentPhase, $terminalPhases)) {
+                        // Only MATCH_END / FINISHED redirect to final results — not ROUND_SCOREBOARD.
+                        if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
                             return redirect()->route('game.duo.match-result');
                         }
                     }

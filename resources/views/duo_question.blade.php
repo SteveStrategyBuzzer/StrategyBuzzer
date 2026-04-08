@@ -1477,9 +1477,7 @@ $mode = 'duo';
             });
         }
 
-        if (data.didYouKnow) {
-            showDidYouKnow(data.didYouKnow);
-        }
+        // didYouKnow is displayed on the answer page and round scoreboard — not here.
     }
     
     function handleScoreUpdate(data) {
