@@ -183,9 +183,8 @@ foreach ($colors as $color) {
         box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
     }
 
-    .player-card.is-ready .player-color-indicator {
-        background: #4CAF50 !important;
-    }
+    /* Ready state: color indicator keeps the player's own color.
+       The is-ready state is visible via the green border + ✓ checkmark. */
     
     .player-card.is-host {
         background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
@@ -3182,14 +3181,15 @@ foreach ($colors as $color) {
             });
 
             const safeName = escapeHtml(player.name);
-            const safeCode = escapeHtml(player.player_code || 'SB-????');
+            const isBotEntry = String(playerId).startsWith('bot_');
+            const safeCode = isBotEntry ? '' : escapeHtml(player.player_code || 'SB-????');
             const youLabel = isCurrentPlayer ? `<span style="font-size: 0.8rem; opacity: 0.7;">(${translations.you})</span>` : '';
             
             const otherMicEnabled = voicePresence[playerId]?.micEnabled ?? false;
             const otherSpeaking = voicePresence[playerId]?.speaking ?? false;
             
             let micBtnHtml = '';
-            if (isVoiceSupported && !isCurrentPlayer) {
+            if (isVoiceSupported && !isCurrentPlayer && !isBotEntry) {
                 const isLocallyMuted = locallyMutedPlayers.has(playerId);
                 let micClass, micIcon, micTitle;
                 
@@ -3311,8 +3311,12 @@ foreach ($colors as $color) {
         if (playerCard && !e.target.closest('.player-actions')) {
             const playerId = playerCard.dataset.playerId;
             const playerName = playerCard.dataset.playerName;
-            if (playerId && playerName) {
-                showPlayerStats(parseInt(playerId), playerName);
+            // Bots have no DB record — skip stats modal for bot players
+            if (playerId && playerName && !String(playerId).startsWith('bot_')) {
+                const playerIdInt = parseInt(playerId);
+                if (!isNaN(playerIdInt)) {
+                    showPlayerStats(playerIdInt, playerName);
+                }
             }
         }
     });
@@ -3321,8 +3325,11 @@ foreach ($colors as $color) {
     function openLobbyChatWithOpponent() {
         const playerCards = document.querySelectorAll('.player-card');
         for (const card of playerCards) {
-            const playerId = parseInt(card.dataset.playerId);
-            if (playerId !== currentPlayerId) {
+            const rawId = card.dataset.playerId || '';
+            // Bots have no chat — skip them
+            if (String(rawId).startsWith('bot_')) continue;
+            const playerId = parseInt(rawId);
+            if (!isNaN(playerId) && playerId !== currentPlayerId) {
                 const playerName = card.dataset.playerName || 'Adversaire';
                 console.log('[Chat] Opening chat with opponent:', playerId, playerName);
                 openPlayerChat(playerId, playerName);
