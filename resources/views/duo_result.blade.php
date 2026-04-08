@@ -34,11 +34,12 @@ $opponentName    = $opponentName    ?? ($opponent_info['name'] ?? __('Adversaire
 // $question array used by the scroll-skill section — build from flat variables if not provided.
 $question        = $question        ?? ['correct_answer' => $correctAnswer, 'answer' => $correctAnswer];
 
-// Efficiency % for both players
-// Formula: normalized over [-2N, +2N] → [0%, 100%]
+// Efficiency % — official formula: (points earned / max possible points) × 100
+// Max possible = nb_questions × 2  (buzzer 1er + bonne réponse = +2 pts max/question)
+// Clamped to [0%, 100%] — negative scores show 0%
 $_effN = max(1, $currentQuestion ?? 1);
-$playerEfficiency   = max(0, min(100, (int) round((($playerScore   + 2 * $_effN) / (4 * $_effN)) * 100)));
-$opponentEfficiency = max(0, min(100, (int) round((($opponentScore + 2 * $_effN) / (4 * $_effN)) * 100)));
+$playerEfficiency   = max(0, min(100, (int) round(($playerScore   / (2 * $_effN)) * 100)));
+$opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)) * 100)));
 @endphp
 
 <style>
@@ -1431,7 +1432,8 @@ $opponentEfficiency = max(0, min(100, (int) round((($opponentScore + 2 * $_effN)
     }
     function _calcEfficiency(score, n) {
         n = Math.max(1, n || 1);
-        return Math.max(0, Math.min(100, Math.round(((score + 2 * n) / (4 * n)) * 100)));
+        // Official formula: (points / max_possible) × 100, max_possible = n × 2
+        return Math.max(0, Math.min(100, Math.round((score / (2 * n)) * 100)));
     }
     function _onResultScoreUpdate(data) {
         console.log('[DuoResult] Score update', data);
