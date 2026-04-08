@@ -3065,6 +3065,14 @@ foreach ($colors as $color) {
     
     const colorMap = @json($colorMap);
     const maxPlayers = {{ $maxPlayers }};
+
+    // Color cache: tracks each player's lobby color across socket updates.
+    // The game server never sends color in its state events, so we preserve
+    // the colors assigned by Laravel (from Redis) and inject them when rendering.
+    let playerColorCache = {};
+    @foreach($players as $pid => $pdata)
+        playerColorCache[{{ $pid }}] = @json($pdata['color'] ?? 'blue');
+    @endforeach
     
     function escapeHtml(text) {
         if (!text) return '';
@@ -3361,6 +3369,12 @@ if (data.exists === false) {
                 return;
             }
             
+            // Refresh color cache from Laravel (authoritative source for lobby colors)
+            const lobbyPlayers = data.lobby?.players ?? {};
+            Object.entries(lobbyPlayers).forEach(([id, p]) => {
+                if (p.color) playerColorCache[id] = p.color;
+            });
+
             // Players UI is authoritative from Socket.IO state only.
             // Keep Laravel polling for non-player UI only.
             updateBetNegotiationUI(data.lobby?.bet_negotiation, data.lobby?.settings);
@@ -4601,7 +4615,21 @@ window.initLobbySocketListeners = function() {
             console.log('[Socket.IO] Lobby state received:', payload);
 
             const lobbyState = payload?.state ?? payload;
-            const players = lobbyState?.players ?? {};
+            const socketPlayers = lobbyState?.players ?? {};
+
+            // Game server never sends lobby colors — inject them from our cache
+            // (colors are assigned by Laravel/Redis and cached in playerColorCache)
+            let hasNewPlayer = false;
+            const players = {};
+            Object.entries(socketPlayers).forEach(([id, p]) => {
+                if (!playerColorCache[id]) hasNewPlayer = true;
+                players[id] = Object.assign({}, p, {
+                    color: p.color || playerColorCache[id] || 'blue'
+                });
+            });
+            // If a new player appeared (e.g. bot just joined), fetch colors from
+            // Laravel immediately rather than waiting for the 10-second poll
+            if (hasNewPlayer) refreshLobbyState();
 
             window.socketLobbyReady = true;
             const startBtn = document.getElementById('start-btn');
