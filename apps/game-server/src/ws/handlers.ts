@@ -541,7 +541,23 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             startingRooms.add(payload.roomId);
             console.log("[WS] AUTO START DUO");
             try {
-              await gameOrchestrator.startGame(payload.roomId);
+              const startResult = await gameOrchestrator.startGame(payload.roomId);
+              if (!startResult.success) {
+                // Reset ready states so players can retry cleanly
+                const failedRoom = roomManager.getRoom(payload.roomId);
+                if (failedRoom) {
+                  for (const p of Object.values(failedRoom.state.players)) {
+                    (p as Player & { isReady?: boolean }).isReady = false;
+                  }
+                  io.to(payload.roomId).emit("game_start_error", {
+                    code: "QUESTION_INIT_FAILED",
+                    message: "Erreur lors du chargement des questions. Veuillez réessayer.",
+                  });
+                  const resetState = roomManager.getState(payload.roomId);
+                  io.to(payload.roomId).emit("state", { state: resetState });
+                  console.error(`[WS] startGame failed for room ${payload.roomId}: ${startResult.error}`);
+                }
+              }
             } finally {
               startingRooms.delete(payload.roomId);
             }

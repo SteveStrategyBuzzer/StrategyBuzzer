@@ -4711,6 +4711,15 @@ window.initLobbySocketListeners = function() {
                 if (window.webrtcManager) window.webrtcManager.cleanup();
             }
         });
+
+        DuoSocketClient.on('game_start_error', (data) => {
+            console.warn('[Socket.IO] Game start failed:', data);
+            if (window.hideBrainSpin) window.hideBrainSpin();
+            isReady = false;
+            updateReadyButton();
+            const msg = (data && data.message) ? data.message : "{{ __('Erreur lors du chargement. Veuillez réessayer.') }}";
+            showToast(msg, 5000);
+        });
         
         // Connect + joinRoom are managed by GameplayRuntime (layouts.game)
         console.log('[Socket.IO] Lobby event listeners ready; GameplayRuntime will connect.');
