@@ -194,8 +194,6 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
 /* ===== LOBBY (Salon d'attente multijoueur) ===== */
 Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
     Route::get('/open', [LobbyController::class, 'getOpenLobbies'])->name('open');
-    Route::post('/create', [LobbyController::class, 'create'])->name('create');
-    Route::post('/join', [LobbyController::class, 'join'])->name('join');
     Route::post('/{code}/close', [LobbyController::class, 'closeLobby'])->name('close');
     Route::get('/player-stats/{playerId}', [LobbyController::class, 'getPlayerStats'])->name('player-stats');
     Route::get('/{code}', [LobbyController::class, 'show'])->name('show');
@@ -212,9 +210,7 @@ Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
     Route::post('/{code}/start', [LobbyController::class, 'start'])->name('start');
     Route::post('/{code}/leave', [LobbyController::class, 'leave'])->name('leave');
     Route::post('/{code}/remove-player', [LobbyController::class, 'removePlayer'])->name('remove-player');
-    Route::post('/{code}/game-mode', [LobbyController::class, 'setGameMode'])->name('game-mode');
     Route::post('/{code}/match-players', [LobbyController::class, 'matchPlayersByLevel'])->name('match-players');
-    Route::post('/{code}/player-order', [LobbyController::class, 'setPlayerOrder'])->name('player-order');
 });
 
 Route::post('/api/strategic-avatar', [LobbyController::class, 'setStrategicAvatar'])->middleware('auth')->name('api.strategic-avatar');

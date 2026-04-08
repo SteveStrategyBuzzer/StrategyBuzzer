@@ -66,19 +66,20 @@ class LobbyController extends Controller
         $activeStrategicAvatar = data_get($settings, 'strategic_avatar.id') ?: null;
 
         return view('lobby', [
-            'lobby' => $lobby,
-            'colors' => $colors,
-            'isHost' => $isHost,
-            'currentPlayerId' => $user->id,
-            'allReady' => $allReady,
-            'canStart' => $canStart,
-            'matchId' => $duoMatch?->id,
-            'match' => $duoMatch,
-            'playerToken' => $playerToken,
-            'gameServerUrl' => $gameServerUrl,
+            'lobby'                    => $lobby,
+            'colors'                   => $colors,
+            'isHost'                   => $isHost,
+            'currentPlayerId'          => $user->id,
+            'allReady'                 => $allReady,
+            'canStart'                 => $canStart,
+            'matchId'                  => $duoMatch?->id,
+            'match'                    => $duoMatch,
+            'playerToken'              => $playerToken,
+            'gameServerUrl'            => $gameServerUrl,
             'unlockedStrategicAvatars' => $unlockedStrategicAvatars,
-            'activeStrategicAvatar' => $activeStrategicAvatar,
-            'currentUser' => $user,
+            'activeStrategicAvatar'    => $activeStrategicAvatar,
+            'currentUser'              => $user,
+            'userCompetenceCoins'      => $user->competence_coins ?? 0,
         ]);
     }
 
@@ -264,6 +265,85 @@ class LobbyController extends Controller
         $user->save();
 
         return response()->json(['success' => true, 'active' => $slug]);
+    }
+
+    public function updateSettings(Request $request, string $code)
+    {
+        $user = Auth::user();
+        $validated = $request->validate([
+            'theme'        => 'sometimes|string',
+            'nb_questions' => 'sometimes|integer|min:3|max:30',
+            'bet_amount'   => 'sometimes|integer|min:0',
+        ]);
+        return response()->json(
+            $this->lobbyService->updateLobbySettings($code, $user, $validated)
+        );
+    }
+
+    public function proposeBet(Request $request, string $code)
+    {
+        $user = Auth::user();
+        $validated = $request->validate(['amount' => 'required|integer|min:0']);
+        return response()->json(
+            $this->lobbyService->proposeBet($code, $user, $validated['amount'])
+        );
+    }
+
+    public function respondToBet(Request $request, string $code)
+    {
+        $user = Auth::user();
+        $validated = $request->validate([
+            'action' => 'required|in:accept,refuse,raise',
+            'amount' => 'sometimes|integer|min:1',
+        ]);
+        return response()->json(
+            $this->lobbyService->respondToBet($code, $user, $validated['action'], $validated['amount'] ?? null)
+        );
+    }
+
+    public function cancelBet(string $code)
+    {
+        $user = Auth::user();
+        return response()->json(
+            $this->lobbyService->cancelBet($code, $user)
+        );
+    }
+
+    public function refundBets(string $code)
+    {
+        $user = Auth::user();
+        $lobby = $this->lobbyService->getLobby($code);
+        if (!$lobby || ($lobby['host_id'] ?? null) !== $user->id) {
+            return response()->json(['success' => false, 'error' => __('Non autorisé')], 403);
+        }
+        return response()->json(
+            $this->lobbyService->refundBets($code, 'host_request')
+        );
+    }
+
+    public function matchPlayersByLevel(string $code)
+    {
+        $user = Auth::user();
+        $lobby = $this->lobbyService->getLobby($code);
+        if (!$lobby || ($lobby['host_id'] ?? null) !== $user->id) {
+            return response()->json(['success' => false, 'error' => __('Non autorisé')], 403);
+        }
+        $players = collect($lobby['players'] ?? [])
+            ->filter(fn($p) => !($p['is_bot'] ?? false))
+            ->sortBy(fn($p) => data_get(
+                User::find($p['id'])?->profile_settings ?? [],
+                'level', 0
+            ))
+            ->values();
+
+        $pairings = [];
+        for ($i = 0; $i + 1 < $players->count(); $i += 2) {
+            $pairings[] = [
+                'player1' => $players[$i],
+                'player2' => $players[$i + 1],
+            ];
+        }
+        return response()->json(['success' => true, 'pairings' => $pairings]);
     }
 
     public function leave(string $code)
