@@ -968,9 +968,15 @@ foreach ($colors as $color) {
                         <div class="player-code">{{ $player['player_code'] ?? 'SB-????' }}</div>
                     </div>
                     
-                    <div class="player-coins" style="display: flex; align-items: center; gap: 4px; margin-right: 8px;">
-                        <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 16px; height: 16px;">
-                        <span style="color: #ffc107; font-weight: bold; font-size: 0.85rem;">{{ $player['competence_coins'] ?? 0 }}</span>
+                    <div class="player-coins" style="display: flex; align-items: center; gap: 6px; margin-right: 8px; flex-wrap: wrap;">
+                        <span style="display: flex; align-items: center; gap: 3px;" title="{{ __('Pièces de Compétence') }}">
+                            <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width: 16px; height: 16px;">
+                            <span style="color: #ffc107; font-weight: bold; font-size: 0.85rem;">{{ $player['competence_coins'] ?? 0 }}</span>
+                        </span>
+                        <span style="display: flex; align-items: center; gap: 3px;" title="{{ __('Pièces d\'Intelligence') }}">
+                            <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width: 16px; height: 16px;" onerror="this.style.display='none'">
+                            <span style="color: #4fc3f7; font-weight: bold; font-size: 0.85rem;">{{ $player['intelligence_coins'] ?? 0 }}</span>
+                        </span>
                     </div>
                     
                     @if($player['is_host'])
@@ -1706,7 +1712,16 @@ foreach ($colors as $color) {
     
     function drawRadarChart(radarData) {
         const canvas = document.getElementById('stats-radar');
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        if (!radarData || typeof radarData !== 'object' || Object.keys(radarData).length === 0) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('{{ __("Pas encore de données") }}', canvas.width / 2, canvas.height / 2);
+            return;
+        }
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const radius = 80;

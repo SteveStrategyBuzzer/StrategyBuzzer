@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\LobbyService;
+use App\Services\AvatarCatalog;
 use App\Models\DuoMatch;
+use App\Models\User;
 
 class LobbyController extends Controller
 {
@@ -52,6 +54,17 @@ class LobbyController extends Controller
         $roomId = $lobby['game_server']['roomId'] ?? null;
         $playerToken = $roomId ? $gameServerService->generatePlayerToken($user->id, $roomId) : null;
 
+        $settings = $user->profile_settings ?? [];
+        $catalog = AvatarCatalog::getStrategiques();
+        $userUnlocked = (array) data_get($settings, 'unlocked_avatars', []);
+        $unlockedStrategicAvatars = [];
+        foreach ($catalog as $slug => $avatar) {
+            if (in_array($slug, $userUnlocked)) {
+                $unlockedStrategicAvatars[$slug] = $avatar;
+            }
+        }
+        $activeStrategicAvatar = data_get($settings, 'strategic_avatar.id') ?: null;
+
         return view('lobby', [
             'lobby' => $lobby,
             'colors' => $colors,
@@ -63,6 +76,9 @@ class LobbyController extends Controller
             'match' => $duoMatch,
             'playerToken' => $playerToken,
             'gameServerUrl' => $gameServerUrl,
+            'unlockedStrategicAvatars' => $unlockedStrategicAvatars,
+            'activeStrategicAvatar' => $activeStrategicAvatar,
+            'currentUser' => $user,
         ]);
     }
 
@@ -160,11 +176,94 @@ class LobbyController extends Controller
 
     public function getPlayerStats(int $playerId)
     {
+        $authUser = Auth::user();
+        $player = User::find($playerId);
+
+        if (!$player) {
+            return response()->json(['success' => false, 'error' => __('Joueur introuvable')]);
+        }
+
+        $playerSettings = $player->profile_settings ?? [];
+        $level = data_get($playerSettings, 'level', 0);
+        $division = $player->temp_access_division ?? data_get($playerSettings, 'division', __('Bronze'));
+
+        $wins   = DuoMatch::where('winner_id', $player->id)->count();
+        $total  = DuoMatch::where(function ($q) use ($player) {
+            $q->where('player1_id', $player->id)->orWhere('player2_id', $player->id);
+        })->whereNotNull('winner_id')->count();
+        $losses = max(0, $total - $wins);
+        $winRate = $total > 0 ? round(($wins / $total) * 100) : 0;
+        $efficiency = $total > 0 ? min(100, round(($wins / max(1, $total)) * 100)) : 0;
+
+        $history = ['matches_together' => 0, 'wins_against' => 0, 'losses_against' => 0, 'last_played' => '—'];
+        if ($authUser && $authUser->id !== $player->id) {
+            $together = DuoMatch::where(function ($q) use ($authUser, $player) {
+                $q->where(function ($q2) use ($authUser, $player) {
+                    $q2->where('player1_id', $authUser->id)->where('player2_id', $player->id);
+                })->orWhere(function ($q2) use ($authUser, $player) {
+                    $q2->where('player1_id', $player->id)->where('player2_id', $authUser->id);
+                });
+            })->whereNotNull('winner_id')->get();
+
+            $history['matches_together'] = $together->count();
+            $history['wins_against']     = $together->where('winner_id', $authUser->id)->count();
+            $history['losses_against']   = $together->where('winner_id', $player->id)->count();
+            $last = $together->sortByDesc('created_at')->first();
+            $history['last_played']      = $last ? $last->created_at->diffForHumans() : '—';
+        }
+
+        $avatarSrc = $this->lobbyService->getUserAvatarPublic($player);
+
         return response()->json([
             'success' => true,
-            'playerId' => $playerId,
-            'stats' => null,
+            'player' => [
+                'id'          => $player->id,
+                'name'        => $player->name,
+                'player_code' => $player->player_code,
+                'avatarUrl'   => $avatarSrc,
+                'coins'       => $player->coins ?? 0,
+                'competence_coins' => $player->competence_coins ?? 0,
+            ],
+            'stats' => [
+                'level'      => $level,
+                'division'   => $division ?: __('Bronze'),
+                'wins'       => $wins,
+                'losses'     => $losses,
+                'win_rate'   => $winRate,
+                'efficiency' => $efficiency,
+            ],
+            'history'    => $history,
+            'radar_data' => null,
         ]);
+    }
+
+    public function setStrategicAvatar(Request $request)
+    {
+        $user = Auth::user();
+        $slug = $request->input('avatar_slug');
+
+        if (!$slug) {
+            return response()->json(['success' => false, 'error' => __('Avatar invalide')]);
+        }
+
+        $settings = $user->profile_settings ?? [];
+        $catalog  = AvatarCatalog::getStrategiques();
+        $userUnlocked = (array) data_get($settings, 'unlocked_avatars', []);
+
+        if (!isset($catalog[$slug]) || !in_array($slug, $userUnlocked)) {
+            return response()->json(['success' => false, 'error' => __('Avatar non débloqué')]);
+        }
+
+        $avatar = $catalog[$slug];
+        data_set($settings, 'strategic_avatar', [
+            'id'   => $slug,
+            'name' => $avatar['name'] ?? $slug,
+            'url'  => $avatar['path'] ?? null,
+        ]);
+        $user->profile_settings = $settings;
+        $user->save();
+
+        return response()->json(['success' => true, 'active' => $slug]);
     }
 
     public function leave(string $code)

@@ -98,6 +98,11 @@ class LobbyService
         return $user->name ?? 'Joueur';
     }
     
+    public function getUserAvatarPublic(User $user): string
+    {
+        return $this->getUserAvatar($user);
+    }
+
     protected function getUserAvatar(User $user): string
     {
         $settings = is_string($user->profile_settings) 
@@ -210,6 +215,7 @@ class LobbyService
                     'is_host' => true,
                     'joined_at' => now()->toISOString(),
                     'competence_coins' => $host->competence_coins ?? 0,
+                    'intelligence_coins' => $host->coins ?? 0,
                 ],
             ],
             'game_server' => $gameServerData,
@@ -253,6 +259,7 @@ class LobbyService
                     'is_host'          => true,
                     'joined_at'        => now()->toISOString(),
                     'competence_coins' => $host->competence_coins ?? 0,
+                    'intelligence_coins' => $host->coins ?? 0,
                 ],
             ],
             'game_server' => [],
@@ -325,6 +332,7 @@ class LobbyService
             'is_bot' => $isBot,
             'joined_at' => now()->toISOString(),
             'competence_coins' => $player->competence_coins ?? 0,
+            'intelligence_coins' => $player->coins ?? 0,
         ];
 
         $this->saveLobby($code, $lobby);
