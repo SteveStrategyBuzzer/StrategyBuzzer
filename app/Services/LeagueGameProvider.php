@@ -9,7 +9,6 @@ class LeagueGameProvider extends GameModeProvider
     protected string $mode = 'league_individual';
     protected array $opponentInfo;
     protected ?LeagueIndividualService $leagueService = null;
-    protected ?LeagueIndividualFirestoreService $firestoreService = null;
     protected ?DivisionService $divisionService = null;
     
     public function __construct(User $player, array $gameState = [])
@@ -22,7 +21,6 @@ class LeagueGameProvider extends GameModeProvider
         }
         
         $this->leagueService = app(LeagueIndividualService::class);
-        $this->firestoreService = app(LeagueIndividualFirestoreService::class);
         $this->divisionService = app(DivisionService::class);
     }
     
@@ -73,12 +71,6 @@ class LeagueGameProvider extends GameModeProvider
     
     public function handleBuzz(float $buzzTime): array
     {
-        $matchId = $this->gameState['match_id'] ?? null;
-        
-        if ($matchId) {
-            $this->firestoreService->recordBuzz($matchId, $this->player->id, $buzzTime);
-        }
-        
         $this->gameState['player_buzzed'] = true;
         $this->gameState['player_buzz_time'] = $buzzTime;
         
@@ -100,7 +92,6 @@ class LeagueGameProvider extends GameModeProvider
     
     public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false, ?int $pointsValue = null): array
     {
-        $matchId = $this->gameState['match_id'] ?? null;
         // Use client-side points_value (2/1/0) if provided, otherwise fallback to buzz_time calculation
         if ($timedOut) {
             $points = 0;
@@ -109,10 +100,6 @@ class LeagueGameProvider extends GameModeProvider
         } else {
             $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
             $points = $this->calculatePoints($isCorrect, $buzzTime);
-        }
-        
-        if ($matchId) {
-            $this->firestoreService->recordAnswer($matchId, $this->player->id, $answerId, $isCorrect, $points);
         }
         
         $this->gameState['player_score'] = ($this->gameState['player_score'] ?? 0) + $points;
@@ -240,16 +227,6 @@ class LeagueGameProvider extends GameModeProvider
             $roundWinner = 'opponent';
         } else {
             $roundWinner = 'tie';
-        }
-        
-        $matchId = $this->gameState['match_id'] ?? null;
-        if ($matchId) {
-            $this->firestoreService->updateRoundResult($matchId, [
-                'round' => $this->gameState['current_round'] ?? 1,
-                'player_score' => $playerScore,
-                'opponent_score' => $opponentScore,
-                'round_winner' => $roundWinner,
-            ]);
         }
         
         return [

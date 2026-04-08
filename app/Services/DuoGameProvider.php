@@ -8,7 +8,6 @@ class DuoGameProvider extends GameModeProvider
 {
     protected string $mode = 'duo';
     protected array $opponentInfo = [];
-    protected ?DuoFirestoreService $firestoreService = null;
     protected ?DivisionService $divisionService = null;
     
     public function __construct(User $player, array $gameState = [])
@@ -19,7 +18,6 @@ class DuoGameProvider extends GameModeProvider
             $this->gameState = $this->initializeBaseState();
         }
         
-        $this->firestoreService = app(DuoFirestoreService::class);
         $this->divisionService = app(DivisionService::class);
     }
     
@@ -120,21 +118,6 @@ class DuoGameProvider extends GameModeProvider
     
     public function handleBuzz(float $buzzTime): array
     {
-        $matchId = $this->gameState['match_id'] ?? null;
-        $playerId = (string)$this->player->id;
-        $player1Id = (string)($this->gameState['player1_id'] ?? $this->player->id);
-        $player2Id = (string)($this->gameState['opponent_id'] ?? '');
-        
-        if ($matchId) {
-            $this->firestoreService->recordBuzz(
-                (int)$matchId, 
-                $playerId, 
-                microtime(true),
-                $player1Id,
-                $player2Id
-            );
-        }
-        
         $this->gameState['player_buzzed'] = true;
         $this->gameState['player_buzz_time'] = $buzzTime;
         
@@ -157,7 +140,6 @@ class DuoGameProvider extends GameModeProvider
     
     public function submitAnswer(int $answerId, bool $isCorrect, bool $timedOut = false, ?int $pointsValue = null): array
     {
-        $matchId = $this->gameState['match_id'] ?? null;
         // Use client-side points_value (2/1/0) if provided, otherwise fallback to buzz_time calculation
         // New unified scoring: correct = 2/1/0 pts based on answer speed, wrong = -2 pts
         if ($timedOut) {
@@ -169,12 +151,6 @@ class DuoGameProvider extends GameModeProvider
             // Fallback to legacy buzz_time calculation
             $buzzTime = $this->gameState['player_buzz_time'] ?? 5.0;
             $points = $this->calculatePoints($isCorrect, $buzzTime);
-        }
-        
-        if ($matchId) {
-            $player1Score = $this->gameState['player_score'] ?? 0;
-            $player2Score = $this->gameState['opponent_score'] ?? 0;
-            $this->firestoreService->updateScores((int)$matchId, $player1Score + $points, $player2Score);
         }
         
         $this->gameState['player_score'] = ($this->gameState['player_score'] ?? 0) + $points;
@@ -318,16 +294,6 @@ class DuoGameProvider extends GameModeProvider
             $roundWinner = 'tie';
         }
         
-        $matchId = $this->gameState['match_id'] ?? null;
-        if ($matchId) {
-            $this->firestoreService->finishRound(
-                (int)$matchId, 
-                ($this->gameState['current_round'] ?? 1) + 1,
-                $this->gameState['player_rounds_won'] ?? 0,
-                $this->gameState['opponent_rounds_won'] ?? 0
-            );
-        }
-        
         return [
             'round' => $this->gameState['current_round'] ?? 1,
             'player_score' => $playerScore,
@@ -339,9 +305,5 @@ class DuoGameProvider extends GameModeProvider
         ];
     }
     
-    public function getFirestoreMatchPath(): ?string
-    {
-        $matchId = $this->gameState['match_id'] ?? null;
-        return $matchId ? "duoMatches/{$matchId}" : null;
-    }
+
 }

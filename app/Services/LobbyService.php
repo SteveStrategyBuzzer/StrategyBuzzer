@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Services\DuoFirestoreService;
 use App\Services\GameServerService;
 use App\Services\QuestionPlanBuilder;
 use App\Services\QuestionService;
@@ -17,7 +16,6 @@ use App\Services\CoinLedgerService;
 
 class LobbyService
 {
-    protected ?DuoFirestoreService $duoFirestoreService = null;
     private GameServerService $gameServerService;
     private CoinLedgerService $coinLedgerService;
     
@@ -29,14 +27,6 @@ class LobbyService
         $this->coinLedgerService = $coinLedgerService;
     }
     
-    protected function getDuoFirestoreService(): DuoFirestoreService
-    {
-        if ($this->duoFirestoreService === null) {
-            $this->duoFirestoreService = new DuoFirestoreService();
-        }
-        return $this->duoFirestoreService;
-    }
-
     protected const LOBBY_PREFIX = 'lobby:';
     protected const LOBBY_TTL = 3600;
     protected const PLAYER_LOBBIES_PREFIX = 'player_lobbies:';
@@ -829,59 +819,6 @@ class LobbyService
                         'count' => count($questions),
                     ]);
                     
-                    if (!empty($questions) && count($playerIds) >= 2) {
-                        $firestoreService = $this->getDuoFirestoreService();
-                        
-                        $player1Id = $playerIds[0] ?? $host->id;
-                        $player2Id = $playerIds[1];
-                        $player1Name = $lobby['players'][$player1Id]['name'] ?? 'Player 1';
-                        $player2Name = $lobby['players'][$player2Id]['name'] ?? 'Player 2';
-                        
-                        $firestoreService->createMatchSession($code, [
-                            'player1_id' => $player1Id,
-                            'player2_id' => $player2Id,
-                            'player1_name' => $player1Name,
-                            'player2_name' => $player2Name,
-                            'theme' => $theme,
-                            'niveau' => $niveau,
-                            'total_questions' => $nbQuestions,
-                            'chrono_time' => $lobby['settings']['chrono_time'] ?? 8,
-                        ]);
-                        Log::info("[LobbyService] Firestore match session created", [
-                            'lobby_code' => $code,
-                        ]);
-                        
-                        $q1Data = $questions[0];
-                        $q1Data['theme'] = $theme;
-                        $q1Data['question_number'] = 1;
-                        
-                        $firestoreService->storePreGeneratedQuestion($code, 1, $q1Data);
-                        
-                        $questionForPublish = [
-                            'id' => $q1Data['id'] ?? uniqid(),
-                            'text' => $q1Data['text'] ?? '',
-                            'answers' => $q1Data['answers'] ?? [],
-                            'correct_index' => $q1Data['correct_index'] ?? 0,
-                            'sub_theme' => $q1Data['sub_theme'] ?? '',
-                            'question_number' => 1,
-                            'total_questions' => $nbQuestions,
-                            'theme' => $theme,
-                        ];
-                        $firestoreService->publishQuestion($code, $questionForPublish, 1);
-                        
-                        $firestoreService->updateGameState($code, [
-                            'questionsGenerated' => true,
-                            'questions_generated' => true,
-                            'questions_count' => 1,
-                            'batchingInProgress' => $nbQuestions > 1,
-                        ]);
-                        
-                        Log::info("[LobbyService] Q1 stored, published and flags set in Firestore", [
-                            'lobby_code' => $code,
-                            'question_id' => $q1Data['id'] ?? 'unknown',
-                        ]);
-                    }
-                    
                     $sendResult = $this->gameServerService->sendQuestions($roomId, $questions);
                     
                     if (!($sendResult['success'] ?? false)) {
@@ -995,34 +932,6 @@ class LobbyService
                 $lobby['status'] = 'starting';
                 $lobby['started_at'] = now()->toISOString();
                 $this->saveLobby($code, $lobby);
-                
-                try {
-                    $player1Id = $playerIds[0] ?? null;
-                    $player2Id = $playerIds[1] ?? null;
-                    
-                    $matchData = [
-                        'player1_id' => $player1Id,
-                        'player2_id' => $player2Id,
-                        'player1_name' => $lobby['players'][$player1Id]['name'] ?? 'Player 1',
-                        'player2_name' => $lobby['players'][$player2Id]['name'] ?? 'Player 2',
-                    ];
-                    
-                    $firestore = $this->getDuoFirestoreService();
-                    
-                    $firestore->prepareGameSession($code, $matchData);
-                    
-                    $gameData = [
-                        'total_questions' => $lobby['settings']['nb_questions'] ?? 10,
-                        'chrono_time' => $lobby['settings']['chrono_time'] ?? 8,
-                        'current_round' => 1,
-                    ];
-                    
-                    $firestore->sendGameStartSignal($code, $gameData);
-                    
-                    Log::info("[LobbyService] Firebase game start signal sent for lobby {$code}");
-                } catch (\Exception $e) {
-                    Log::error("[LobbyService] Failed to send Firebase game start signal: " . $e->getMessage());
-                }
             } else {
                 $this->saveLobby($code, $lobby);
             }

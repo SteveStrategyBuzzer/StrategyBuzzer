@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Services\FirebaseService;
-use App\Services\DuoFirestoreService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,13 +18,29 @@ class LeagueTeamFirestoreService
         $this->firebase = FirebaseService::getInstance();
     }
 
+    public static function normalizeMatchId($matchId): int
+    {
+        if (is_int($matchId) && $matchId > 0) {
+            return $matchId;
+        }
+
+        $matchIdStr = (string)$matchId;
+        $numericId = (int)preg_replace('/[^0-9]/', '', $matchIdStr);
+
+        if ($numericId === 0) {
+            $numericId = crc32($matchIdStr) & 0x7FFFFFFF;
+        }
+
+        return $numericId;
+    }
+
     /**
      * Crée une session Firestore pour un match League Team (5v5)
      * @param string|int $matchId Le code de lobby ou match_id brut (sera normalisé)
      */
     public function createMatchSession($matchId, array $matchData): bool
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $gameId = "league-team-{$normalizedId}";
         
         $sessionData = [
@@ -65,7 +80,7 @@ class LeagueTeamFirestoreService
      */
     public function recordBuzz($matchId, string $teamId, int $playerId, float $timestamp): bool
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $gameId = "league-team-{$normalizedId}";
         
         $buzzId = "{$teamId}_{$playerId}";
@@ -84,7 +99,7 @@ class LeagueTeamFirestoreService
      */
     public function getBuzzes($matchId): array
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $gameId = "league-team-{$normalizedId}";
         return $this->firebase->getBuzzes($gameId);
     }
@@ -95,7 +110,7 @@ class LeagueTeamFirestoreService
      */
     public function updateGameState($matchId, array $updates): bool
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $gameId = "league-team-{$normalizedId}";
         
         $updates['lastActivity'] = microtime(true);
@@ -152,7 +167,7 @@ class LeagueTeamFirestoreService
      */
     public function syncGameState($matchId): ?array
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $gameId = "league-team-{$normalizedId}";
         return $this->firebase->getGameState($gameId);
     }
@@ -163,7 +178,7 @@ class LeagueTeamFirestoreService
      */
     public function deleteMatchSession($matchId): bool
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $gameId = "league-team-{$normalizedId}";
         
         $result = $this->firebase->deleteGameSession($gameId);
@@ -183,7 +198,7 @@ class LeagueTeamFirestoreService
      */
     public function sessionExists($matchId): bool
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $gameId = "league-team-{$normalizedId}";
         return $this->firebase->gameSessionExists($gameId);
     }
@@ -335,7 +350,7 @@ class LeagueTeamFirestoreService
      */
     public function storePreGeneratedQuestion($matchId, int $questionNumber, array $questionData): bool
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $collectionPath = "games/league-team-{$normalizedId}/preGeneratedQuestions";
         $documentId = (string)$questionNumber;
         
@@ -380,7 +395,7 @@ class LeagueTeamFirestoreService
      */
     public function getPreGeneratedQuestion($matchId, int $questionNumber): ?array
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $collectionPath = "games/league-team-{$normalizedId}/preGeneratedQuestions";
         
         $questions = $this->firebase->getCollection($collectionPath);
@@ -400,7 +415,7 @@ class LeagueTeamFirestoreService
      */
     public function getAllPreGeneratedQuestions($matchId): array
     {
-        $normalizedId = DuoFirestoreService::normalizeMatchId($matchId);
+        $normalizedId = self::normalizeMatchId($matchId);
         $collectionPath = "games/league-team-{$normalizedId}/preGeneratedQuestions";
         
         return $this->firebase->getCollection($collectionPath);
