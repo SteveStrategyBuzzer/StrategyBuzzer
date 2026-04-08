@@ -1141,8 +1141,8 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
             <button class="mc-micro-btn" id="mcMicroBtn" title="{{ __('Liens rapides') }}">🎤</button>
             <div class="mc-micro-popup" id="mcMicroPopup">
                 <div class="mc-micro-popup-title">{{ __('Accès rapide') }}</div>
-                <a class="mc-micro-link" href="{{ route('duo.rankings') }}" target="_blank">🏆 {{ __('Classement Duo') }}</a>
-                <a class="mc-micro-link" href="{{ route('stats.index') }}" target="_blank">📊 {{ __('Mes Stats') }}</a>
+                <a class="mc-micro-link" href="{{ route('duo.rankings') }}" target="_blank" rel="noopener noreferrer">🏆 {{ __('Classement Duo') }}</a>
+                <a class="mc-micro-link" href="{{ route('stats.index') }}" target="_blank" rel="noopener noreferrer">📊 {{ __('Mes Stats') }}</a>
             </div>
         </div>
     </div>
