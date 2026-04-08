@@ -790,10 +790,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 (function() {
     'use strict';
     
-    const MATCH_ID = '{{ $match_id ?? "" }}';
-    const ROOM_ID = '{{ $room_id ?? "" }}';
-    const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
-    const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
+    const MATCH_ID   = window.MATCH_ID   || '';
+    const ROOM_ID    = window.ROOM_ID    || '';
+    const LOBBY_CODE = window.LOBBY_CODE || '';
+    const JWT_TOKEN  = window.JWT_TOKEN  || '';
     const PLAYER_ID = {{ auth()->id() ?? 0 }};
 
     // Read real-time scores passed from Question page via URL params (ps=playerScore, os=opponentScore)
@@ -1376,7 +1376,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             return;
         }
 
-        if (phase === 'MATCH_END' || phase === 'FINISHED') {
+        if (phase === 'MATCH_END') {
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;

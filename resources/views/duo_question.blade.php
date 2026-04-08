@@ -1255,7 +1255,6 @@ $mode = 'duo';
                 
             case 'ROUND_SCOREBOARD':
             case 'MATCH_END':
-            case 'FINISHED':
                 stopTimer();
                 setBuzzerState('hidden');
                 break;
@@ -1345,7 +1344,7 @@ $mode = 'duo';
             return;
         }
         
-        if (currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
+        if (currentPhase === 'MATCH_END') {
             setTimeout(function() { navigateToMatchResult(_matchEndedData); }, 300);
             return;
         }
@@ -1397,7 +1396,7 @@ $mode = 'duo';
             return;
         }
         
-        if (currentPhase === 'MATCH_END' || currentPhase === 'FINISHED') {
+        if (currentPhase === 'MATCH_END') {
             setTimeout(function() { navigateToMatchResult(_matchEndedData); }, 300);
             return;
         }
@@ -1704,7 +1703,6 @@ $mode = 'duo';
             ds.on('phase_changed',      handlePhaseChanged);
             ds.on('question_published', handleQuestionPublished);
             ds.on('buzz_winner',        handleBuzzWinner);
-            ds.on('buzz_result',        handleBuzzWinner);
             ds.on('answer_revealed',    handleAnswerRevealed);
             ds.on('score_update',       handleScoreUpdate);
             ds.on('match_ended',        handleMatchEnded);

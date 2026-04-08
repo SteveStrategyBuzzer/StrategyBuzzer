@@ -1180,10 +1180,10 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
 (function() {
     'use strict';
     
-    const MATCH_ID = '{{ $match_id ?? "" }}';
-    const ROOM_ID = '{{ $room_id ?? "" }}';
-    const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
-    const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
+    const MATCH_ID   = window.MATCH_ID   || '';
+    const ROOM_ID    = window.ROOM_ID    || '';
+    const LOBBY_CODE = window.LOBBY_CODE || '';
+    const JWT_TOKEN  = window.JWT_TOKEN  || '';
     const CURRENT_QUESTION = {{ $currentQuestion ?? 1 }};
     const TOTAL_QUESTIONS = {{ $totalQuestions ?? 10 }};
     const CURRENT_PLAYER_ID = {{ $playerId ?? auth()->id() ?? 0 }};
@@ -1471,14 +1471,14 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
             return;
         }
 
-        if (data.phase === 'QUESTION_ACTIVE' || data.phase === 'QUESTION_DISPLAY' || data.phase === 'BUZZ_WINDOW' || data.phase === 'question') {
+        if (data.phase === 'QUESTION_ACTIVE') {
             _cancelEarlyNav();
             navigateToNextQuestion(); return;
         }
         if (data.phase === 'ROUND_SCOREBOARD') {
             _cancelEarlyNav(); return; // round_ended event handles this
         }
-        if (data.phase === 'MATCH_RESULT' || data.phase === 'match_result' || data.phase === 'MATCH_END' || data.phase === 'FINISHED') {
+        if (data.phase === 'MATCH_END') {
             _cancelEarlyNav();
             navigateToFinalResults(); return;
         }
