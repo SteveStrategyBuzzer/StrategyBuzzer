@@ -33,6 +33,12 @@ $opponentAvatarPath = $opponentAvatarPath ?? ($opponent_info['avatar'] ?? null);
 $opponentName    = $opponentName    ?? ($opponent_info['name'] ?? __('Adversaire'));
 // $question array used by the scroll-skill section — build from flat variables if not provided.
 $question        = $question        ?? ['correct_answer' => $correctAnswer, 'answer' => $correctAnswer];
+
+// Efficiency % for both players
+// Formula: normalized over [-2N, +2N] → [0%, 100%]
+$_effN = max(1, $currentQuestion ?? 1);
+$playerEfficiency   = max(0, min(100, (int) round((($playerScore   + 2 * $_effN) / (4 * $_effN)) * 100)));
+$opponentEfficiency = max(0, min(100, (int) round((($opponentScore + 2 * $_effN) / (4 * $_effN)) * 100)));
 @endphp
 
 <style>
@@ -222,6 +228,21 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
         color: #FF6B6B;
         text-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
     }
+
+    .score-efficiency-label {
+        font-size: 0.62rem;
+        opacity: 0.5;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: -2px;
+    }
+    .score-efficiency {
+        font-size: 1rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+    }
+    .score-player .score-efficiency { color: #4ECDC4; }
+    .score-opponent .score-efficiency { color: #FF6B6B; }
     
     .vs-divider {
         font-size: 1.2rem;
@@ -918,6 +939,8 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
             <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar-small">
             <div class="score-label">{{ __('Vous') }}</div>
             <div class="score-number" id="playerScore">{{ $playerScore ?? 0 }}</div>
+            <div class="score-efficiency-label">{{ __('Efficacité') }}</div>
+            <div class="score-efficiency" id="playerEfficiency">{{ $playerEfficiency }}%</div>
         </div>
         
         <div class="vs-divider">VS</div>
@@ -930,6 +953,8 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
             @endif
             <div class="score-label">{{ $opponentName ?? __('Adversaire') }}</div>
             <div class="score-number" id="opponentScore">{{ $opponentScore ?? 0 }}</div>
+            <div class="score-efficiency-label">{{ __('Efficacité') }}</div>
+            <div class="score-efficiency" id="opponentEfficiency">{{ $opponentEfficiency }}%</div>
         </div>
     </div>
     
@@ -1128,13 +1153,13 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
             <div class="countdown-secs" id="countdownSecs">60s</div>
         </div>
 
-        <button class="btn-go" id="btnGo">{{ __('GO') }}</button>
+        <button class="btn-go" id="btnGo">{{ __('Go Mutuel') }}</button>
         <div class="waiting-message" id="waitingMessage">
             ⏳ {{ __('En attente de l\'autre joueur') }}<span class="waiting-dots"></span>
         </div>
 
-        {{-- Sortie Duo --}}
-        <button class="btn-exit" id="btnExit">🚪 {{ __('Sortie Duo') }}</button>
+        {{-- Retour Duo --}}
+        <button class="btn-exit" id="btnExit">🔙 {{ __('Retour Duo') }}</button>
 
         {{-- MC Micro mini nav --}}
         <div class="mc-micro-wrap" id="mcMicroWrap">
@@ -1237,7 +1262,7 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
         
         if (btnGo) {
             btnGo.disabled = false;
-            btnGo.textContent = '{{ __("GO") }}';
+            btnGo.textContent = '{{ __("Go Mutuel") }}';
         }
         
         if (waitingMessage) {
@@ -1314,7 +1339,7 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
     function resetExitButton() {
         exitConfirming = false;
         if (btnExit) {
-            btnExit.textContent = '🚪 {{ __("Sortie Duo") }}';
+            btnExit.textContent = '🔙 {{ __("Retour Duo") }}';
             btnExit.classList.remove('confirming');
         }
     }
@@ -1404,10 +1429,22 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
             navigateToFinalResults();
         });
     }
+    function _calcEfficiency(score, n) {
+        n = Math.max(1, n || 1);
+        return Math.max(0, Math.min(100, Math.round(((score + 2 * n) / (4 * n)) * 100)));
+    }
     function _onResultScoreUpdate(data) {
         console.log('[DuoResult] Score update', data);
-        if (data.playerScore !== undefined)  { playerScoreEl.textContent  = data.playerScore; }
-        if (data.opponentScore !== undefined) { opponentScoreEl.textContent = data.opponentScore; }
+        if (data.playerScore !== undefined) {
+            playerScoreEl.textContent = data.playerScore;
+            var pEff = document.getElementById('playerEfficiency');
+            if (pEff) { pEff.textContent = _calcEfficiency(data.playerScore, CURRENT_QUESTION) + '%'; }
+        }
+        if (data.opponentScore !== undefined) {
+            opponentScoreEl.textContent = data.opponentScore;
+            var oEff = document.getElementById('opponentEfficiency');
+            if (oEff) { oEff.textContent = _calcEfficiency(data.opponentScore, CURRENT_QUESTION) + '%'; }
+        }
     }
     function _onResultPlayerReady(data) {
         console.log('[DuoResult] Player ready received', data);
