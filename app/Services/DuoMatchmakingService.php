@@ -163,20 +163,24 @@ class DuoMatchmakingService
         DuoMatch $match,
         int $player1Score,
         int $player2Score,
-        array $gameState = []
+        array $gameState = [],
+        bool $isTie = false
     ): DuoMatch {
-        if ($player1Score === $player2Score) {
-            throw new \Exception('Tie games are not allowed. Match must have a clear winner.');
-        }
+        // A genuine tie (equal scores, no winner) is valid — no exception.
+        // Division points are simply 0 for both players in that case.
 
-        return DB::transaction(function () use ($match, $player1Score, $player2Score, $gameState) {
+        return DB::transaction(function () use ($match, $player1Score, $player2Score, $gameState, $isTie) {
             $match->refresh();
 
             if ($match->status === 'finished') {
                 throw new \RuntimeException('MATCH_ALREADY_FINISHED');
             }
 
-            $winnerId = $player1Score > $player2Score ? $match->player1_id : $match->player2_id;
+            // Determine winner — null on genuine tie (equal scores)
+            $geniueTie = $isTie && ($player1Score === $player2Score);
+            $winnerId = $geniueTie ? null : (
+                $player1Score > $player2Score ? $match->player1_id : $match->player2_id
+            );
 
             $player1Won = $winnerId === $match->player1_id;
             $player2Won = $winnerId === $match->player2_id;
@@ -187,51 +191,61 @@ class DuoMatchmakingService
             $player1Division = $this->divisionService->getOrCreateDivision($player1, 'duo');
             $player2Division = $this->divisionService->getOrCreateDivision($player2, 'duo');
 
-            $player1Efficiency = $player1Division->initial_efficiency ?? 0;
-            $player2Efficiency = $player2Division->initial_efficiency ?? 0;
+            if ($geniueTie) {
+                // Genuine tie: no ranking change, no coin reward
+                $player1Points = 0;
+                $player2Points = 0;
+                $player1Reward = ['coins' => 0];
+                $player2Reward = ['coins' => 0];
+                $playingDivision1 = $player1Division->division;
+                $playingDivision2 = $player2Division->division;
+            } else {
+                $player1Efficiency = $player1Division->initial_efficiency ?? 0;
+                $player2Efficiency = $player2Division->initial_efficiency ?? 0;
 
-            $player1TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player1, $player2Division->division);
-            $player2TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player2, $player1Division->division);
+                $player1TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player1, $player2Division->division);
+                $player2TempAccess = $this->divisionService->hasTemporaryAccessOrOngoingMatch($player2, $player1Division->division);
 
-            $player1Strength = $this->divisionService->determineOpponentStrength(
-                $player1Division->division,
-                $player2Division->division,
-                $player1Efficiency,
-                $player2Efficiency,
-                $player1TempAccess
-            );
+                $player1Strength = $this->divisionService->determineOpponentStrength(
+                    $player1Division->division,
+                    $player2Division->division,
+                    $player1Efficiency,
+                    $player2Efficiency,
+                    $player1TempAccess
+                );
 
-            $player2Strength = $this->divisionService->determineOpponentStrength(
-                $player2Division->division,
-                $player1Division->division,
-                $player2Efficiency,
-                $player1Efficiency,
-                $player2TempAccess
-            );
+                $player2Strength = $this->divisionService->determineOpponentStrength(
+                    $player2Division->division,
+                    $player1Division->division,
+                    $player2Efficiency,
+                    $player1Efficiency,
+                    $player2TempAccess
+                );
 
-            $player1Points = $this->divisionService->calculatePoints($player1Strength, $player1Won);
-            $player2Points = $this->divisionService->calculatePoints($player2Strength, $player2Won);
+                $player1Points = $this->divisionService->calculatePoints($player1Strength, $player1Won);
+                $player2Points = $this->divisionService->calculatePoints($player2Strength, $player2Won);
 
-            $playingDivision1 = $player1TempAccess ? $player1->temp_access_division : $player1Division->division;
-            $playingDivision2 = $player2TempAccess ? $player2->temp_access_division : $player2Division->division;
+                $playingDivision1 = $player1TempAccess ? $player1->temp_access_division : $player1Division->division;
+                $playingDivision2 = $player2TempAccess ? $player2->temp_access_division : $player2Division->division;
 
-            $player1Reward = $this->divisionService->calculateVictoryReward(
-                $playingDivision1,
-                $player1Strength,
-                $player1Won,
-                $player1TempAccess
-            );
+                $player1Reward = $this->divisionService->calculateVictoryReward(
+                    $playingDivision1,
+                    $player1Strength,
+                    $player1Won,
+                    $player1TempAccess
+                );
 
-            $player2Reward = $this->divisionService->calculateVictoryReward(
-                $playingDivision2,
-                $player2Strength,
-                $player2Won,
-                $player2TempAccess
-            );
+                $player2Reward = $this->divisionService->calculateVictoryReward(
+                    $playingDivision2,
+                    $player2Strength,
+                    $player2Won,
+                    $player2TempAccess
+                );
 
-            // Apply passive skills bonuses (coin_bonus from Stratege avatar)
-            $player1Reward['coins'] = $this->applyCoinBonus($player1, $player1Reward['coins']);
-            $player2Reward['coins'] = $this->applyCoinBonus($player2, $player2Reward['coins']);
+                // Apply passive skills bonuses (coin_bonus from Stratege avatar)
+                $player1Reward['coins'] = $this->applyCoinBonus($player1, $player1Reward['coins']);
+                $player2Reward['coins'] = $this->applyCoinBonus($player2, $player2Reward['coins']);
+            }
 
             // Mises Duo : le gagnant récupère le pot en pièces d'Intelligence
             $betInfo = $gameState['bet_info'] ?? null;
@@ -290,6 +304,8 @@ class DuoMatchmakingService
             $this->seasonService->recordMatchResult($player2, 'duo', $player2Points > 0);
 
             // Quêtes fin de match Duo (les deux joueurs)
+            // gameState enriched by DuoController::finishMatchSocketIO with Redis data:
+            // final_scores, rounds_won, duration_ms, player1_rounds, player2_rounds, is_tie
             $questService = app(\App\Services\QuestService::class);
             $p1Division = strtolower($player1Division->division ?? 'bronze');
             $p2Division = strtolower($player2Division->division ?? 'bronze');
@@ -298,6 +314,9 @@ class DuoMatchmakingService
             $matchHour = (int) \Carbon\Carbon::now()->format('G');
             $globalStats = $gameState['global_stats'] ?? [];
             $hadTimeout = (int) ($globalStats['totalUnanswered'] ?? 0) > 0;
+            $durationMs = (int) ($gameState['duration_ms'] ?? 0);
+            $p1Rounds = (int) ($gameState['player1_rounds'] ?? 0);
+            $p2Rounds = (int) ($gameState['player2_rounds'] ?? 0);
 
             $questService->fireMatchEndQuests($player1, 'duo', [
                 'match_completed' => true,
@@ -316,6 +335,9 @@ class DuoMatchmakingService
                 'user_level' => $player1Stats->level ?? 0,
                 'user_coins' => $player1->competence_coins ?? 0,
                 'action_done' => true,
+                'rounds_won' => $p1Rounds,
+                'duration_ms' => $durationMs,
+                'is_tie' => $isTie,
             ]);
 
             $questService->fireMatchEndQuests($player2, 'duo', [
@@ -335,6 +357,9 @@ class DuoMatchmakingService
                 'user_level' => $player2Stats->level ?? 0,
                 'user_coins' => $player2->competence_coins ?? 0,
                 'action_done' => true,
+                'rounds_won' => $p2Rounds,
+                'duration_ms' => $durationMs,
+                'is_tie' => $isTie,
             ]);
 
             // Multijoueur gagne des pièces d'Intelligence

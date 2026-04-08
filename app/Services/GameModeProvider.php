@@ -76,7 +76,6 @@ abstract class GameModeProvider
     {
         return match ($mode) {
             'solo' => new SoloGameProvider($player, $gameState),
-            'duo' => new DuoGameProvider($player, $gameState),
             'league_individual' => new LeagueGameProvider($player, $gameState),
             'master' => new MasterGameProvider($player, $gameState),
             default => throw new \InvalidArgumentException("Unknown game mode: {$mode}"),

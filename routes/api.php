@@ -36,9 +36,6 @@ Route::middleware('auth:sanctum')->prefix('duo')->group(function () {
     Route::get('/contacts', [DuoController::class, 'getContacts']);
     Route::post('/match/{match}/accept', [DuoController::class, 'acceptMatch']);
     Route::post('/match/{match}/cancel', [DuoController::class, 'cancelMatch']);
-    Route::post('/match/{match}/buzz', [DuoController::class, 'buzz']);
-    Route::post('/match/{match}/answer', [DuoController::class, 'submitAnswer']);
-    Route::post('/match/{match}/finish', [DuoController::class, 'finishMatch']);
     Route::post('/match/{match}/finish-socketio', [DuoController::class, 'finishMatchSocketIO']);
     Route::get('/match/{match}', [DuoController::class, 'getMatch']);
     Route::get('/match/{match}/sync', [DuoController::class, 'syncGameState']);

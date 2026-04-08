@@ -952,6 +952,8 @@ export class GameOrchestrator {
       winnerId: winnerId ?? null,
       finalScores,
       isTie,
+      roundsWon,
+      duration,
     });
 
     this.io.to(roomId).emit("match_ended", {
