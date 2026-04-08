@@ -132,8 +132,8 @@ body {
 }
 
 .player-card.left {
-    border-color: rgba(40, 167, 69, 0.5);
-    box-shadow: 0 0 30px rgba(40, 167, 69, 0.2);
+    border-color: rgba(78, 205, 196, 0.5);
+    box-shadow: 0 0 30px rgba(78, 205, 196, 0.2);
 }
 
 .player-card.right {
@@ -151,7 +151,7 @@ body {
 }
 
 .player-card.left .player-avatar {
-    border-color: #28a745;
+    border-color: #4ECDC4;
 }
 
 .player-card.right .player-avatar {

@@ -158,8 +158,8 @@
     </div>
 </div>
 
-<!-- Connection Status Badge (shown/hidden by updateConnectionStatus() in game pages) -->
-<div id="connectionStatus" class="connection-status connecting">{{ __('Connexion...') }}</div>
+<!-- Connection Status Badge — hidden by default; only appears on disconnect -->
+<div id="connectionStatus" class="connection-status">{{ __('Connexion...') }}</div>
 
 <!-- Voice Mic Button (WebRTC — shown by VoiceChat init, hidden by default) -->
 <button id="voiceMicButton" title="{{ __('Activer/désactiver le micro') }}">

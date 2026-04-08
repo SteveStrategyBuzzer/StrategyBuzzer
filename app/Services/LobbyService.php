@@ -49,11 +49,11 @@ class LobbyService
         ['id' => 'orange', 'name' => 'Orange', 'hex' => '#FB8C00', 'light' => '#FFE0B2'],
         ['id' => 'purple', 'name' => 'Violet', 'hex' => '#8E24AA', 'light' => '#E1BEE7'],
         ['id' => 'cyan', 'name' => 'Cyan', 'hex' => '#00ACC1', 'light' => '#B2EBF2'],
-        ['id' => 'pink', 'name' => 'Rose', 'hex' => '#D81B60', 'light' => '#F8BBD9'],
+        ['id' => 'pink', 'name' => 'Rose', 'hex' => '#F50057', 'light' => '#FF80AB'],
         ['id' => 'yellow', 'name' => 'Jaune', 'hex' => '#FDD835', 'light' => '#FFF9C4'],
-        ['id' => 'teal', 'name' => 'Turquoise', 'hex' => '#00897B', 'light' => '#B2DFDB'],
+        ['id' => 'teal', 'name' => 'Turquoise', 'hex' => '#0097A7', 'light' => '#B2EBF2'],
         ['id' => 'indigo', 'name' => 'Indigo', 'hex' => '#3949AB', 'light' => '#C5CAE9'],
-        ['id' => 'lime', 'name' => 'Lime', 'hex' => '#C0CA33', 'light' => '#F0F4C3'],
+        ['id' => 'lime', 'name' => 'Lime', 'hex' => '#76FF03', 'light' => '#CCFF90'],
         ['id' => 'brown', 'name' => 'Marron', 'hex' => '#6D4C41', 'light' => '#D7CCC8'],
     ];
     

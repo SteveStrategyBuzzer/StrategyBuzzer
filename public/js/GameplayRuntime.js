@@ -169,9 +169,6 @@
     // Show loading overlay while connecting (skip for pages that show their own content)
     if (!NO_OVERLAY) {
         showLoading();
-        setConnectionStatus('connecting', window.GR_LABELS && window.GR_LABELS.connecting ? window.GR_LABELS.connecting : 'Connexion...');
-    } else {
-        setConnectionStatus('connecting', window.GR_LABELS && window.GR_LABELS.connecting ? window.GR_LABELS.connecting : 'Connexion...');
     }
 
     // Connect — DuoSocketClient.connect() is idempotent (safe to call even if already connected)
@@ -187,7 +184,7 @@
 
     socket.on('connect', function () {
         if (!NO_OVERLAY) hideLoading();
-        setConnectionStatus('connected', window.GR_LABELS && window.GR_LABELS.connected ? window.GR_LABELS.connected : 'Connecté');
+        setConnectionStatus('', '');
 
         // Join room — pass player metadata (merge window.PLAYER_INFO for extra fields like avatarId)
         var joinPayload = Object.assign({
