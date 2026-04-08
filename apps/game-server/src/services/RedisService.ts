@@ -71,14 +71,23 @@ function kMatchResult(roomId: string) {
   return `gs:match:${roomId}:result`;
 }
 
+export interface MatchResultPayload {
+  winnerId: string | null;
+  finalScores: Record<string, number>;
+  isTie: boolean;
+  decidedBy: "rounds" | "total_score";
+  roundsWon?: Record<string, number>;
+  duration?: number;
+}
+
 export async function setMatchResult(
   roomId: string,
-  result: { winnerId: string | null; finalScores: Record<string, number>; isTie: boolean }
+  result: MatchResultPayload
 ): Promise<void> {
   await redisClient.set(kMatchResult(roomId), JSON.stringify(result), "EX", 7200);
 }
 
-export async function getMatchResult(roomId: string): Promise<{ winnerId: string | null; finalScores: Record<string, number>; isTie: boolean } | null> {
+export async function getMatchResult(roomId: string): Promise<MatchResultPayload | null> {
   const data = await redisClient.get(kMatchResult(roomId));
   return data ? JSON.parse(data) : null;
 }

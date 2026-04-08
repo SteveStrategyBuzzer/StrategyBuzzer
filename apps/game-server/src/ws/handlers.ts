@@ -124,9 +124,9 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         const avatarId = authenticatedPayload?.avatarId || payload.avatarId;
         
         const event = roomManager.joinRoom(roomId, playerId, playerName, {
-          avatarId: avatarId,
-          strategicAvatarId: payload.strategicAvatarId,
-          division: payload.division,
+          avatarId: avatarId ?? undefined,
+          strategicAvatarId: payload.strategicAvatarId ?? undefined,
+          division: payload.division ?? undefined,
         });
         
         if (!event) {

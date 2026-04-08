@@ -17,6 +17,9 @@ class Kernel extends ConsoleKernel
 
         // Rotation des quêtes quotidiennes à minuit (nettoyage des anciens enregistrements)
         $schedule->command('daily:rotate --prune')->dailyAt('00:00');
+
+        // Récupération des matchs Duo bloqués en état "playing" depuis +30 min
+        $schedule->command('matches:recover')->everyFiveMinutes();
     }
 
     /**

@@ -952,6 +952,7 @@ export class GameOrchestrator {
       winnerId: winnerId ?? null,
       finalScores,
       isTie,
+      decidedBy: isTie ? "total_score" : "rounds",
       roundsWon,
       duration,
     });

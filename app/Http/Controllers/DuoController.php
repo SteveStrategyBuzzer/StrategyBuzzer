@@ -333,6 +333,7 @@ class DuoController extends Controller
         $winnerId    = $result['winnerId']    ?? null;
         $finalScores = $result['finalScores'] ?? [];
         $isTie       = $result['isTie']       ?? false;
+        $decidedBy   = $result['decidedBy']   ?? ($isTie ? 'total_score' : 'rounds');
         $roundsWon   = $result['roundsWon']   ?? [];   // { playerId: roundsWon }
         $duration    = $result['duration']    ?? 0;    // total match duration in ms
 
@@ -362,10 +363,12 @@ class DuoController extends Controller
         $baseGameState = $match->game_state ?? [];
         $enrichedGameState = array_merge($baseGameState, [
             'source'         => 'socket_io',
+            'mode'           => 'duo',
             'final_scores'   => $finalScores,
             'rounds_won'     => $roundsWon,
             'duration_ms'    => $duration,
             'is_tie'         => $isTie,
+            'decided_by'     => $decidedBy,
             'player1_rounds' => (int) ($roundsWon[$player1Id] ?? 0),
             'player2_rounds' => (int) ($roundsWon[$player2Id] ?? 0),
         ]);
@@ -1276,8 +1279,12 @@ class DuoController extends Controller
             $playerMatchEfficiency = max(0, min(100, round($playerTotalScore / (2 * $totalQuestionsPlayed) * 100)));
         }
 
-        // Tiebreaker detection
-        $isTiebreaker = ($matchResult['decided_by'] ?? 'rounds') === 'total_score';
+        // Tiebreaker detection — prefer the authoritative 'decided_by' stored in
+        // enrichedGameState during finishMatchSocketIO (camelCase decidedBy written
+        // by the game server to Redis then mapped to snake_case decided_by in PHP).
+        // Fall back to getMatchResult() output for legacy solo/PHP-driven games.
+        $decidedBy = $matchGameState['decided_by'] ?? $matchResult['decided_by'] ?? 'rounds';
+        $isTiebreaker = $decidedBy === 'total_score';
         $tiebreakerWon = $isTiebreaker && ($matchResult['player_won'] ?? false);
 
         session()->forget('game_state');
