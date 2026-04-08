@@ -1436,6 +1436,18 @@ class DuoController extends Controller
         $pointsEarned = $isPlayer1 ? ($match->player1_points_earned ?? 0) : ($match->player2_points_earned ?? 0);
         $coinsEarned = $isPlayer1 ? ($match->player1_coins_earned ?? 0) : ($match->player2_coins_earned ?? 0);
 
+        // Match efficiency: player_total_score / (2 × N) × 100 where N = total questions played
+        $totalQuestionsPlayed = count($matchGameState['answered_questions'] ?? []);
+        $playerTotalScore = $matchGameState['player_total_score'] ?? 0;
+        $playerMatchEfficiency = 0;
+        if ($totalQuestionsPlayed > 0) {
+            $playerMatchEfficiency = max(0, min(100, round($playerTotalScore / (2 * $totalQuestionsPlayed) * 100)));
+        }
+
+        // Tiebreaker detection
+        $isTiebreaker = ($matchResult['decided_by'] ?? 'rounds') === 'total_score';
+        $tiebreakerWon = $isTiebreaker && ($matchResult['player_won'] ?? false);
+
         session()->forget('game_state');
 
         return view('duo_match_result', [
@@ -1453,6 +1465,10 @@ class DuoController extends Controller
             'round_details' => $matchGameState['answered_questions'] ?? [],
             'bet_info' => null,
             'bet_winnings' => 0,
+            'player_match_efficiency' => $playerMatchEfficiency,
+            'total_questions_played' => $totalQuestionsPlayed,
+            'is_tiebreaker' => $isTiebreaker,
+            'tiebreaker_won' => $tiebreakerWon,
         ]);
     }
 

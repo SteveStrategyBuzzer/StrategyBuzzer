@@ -21,6 +21,10 @@ $opponentNameDisplay = $opponent_name ?? ($opponent->name ?? __('Adversaire'));
 $coinsEarnedDisplay  = $coins_earned ?? 0;
 $accuracyDisplay     = $accuracy ?? 0;
 
+$matchEfficiency     = $player_match_efficiency ?? 0;
+$isTiebreaker        = $is_tiebreaker ?? false;
+$tiebreakerWon       = $tiebreaker_won ?? false;
+
 $resultClass = $playerWon ? 'victory' : ($isDraw ? 'draw' : 'defeat');
 $resultIcon  = $playerWon ? '🏆'      : ($isDraw ? '🤝'   : '😔');
 $resultTitle = $playerWon ? __('Victoire !') : ($isDraw ? __('Égalité') : __('Défaite'));
@@ -129,7 +133,7 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
     /* ── Stats grid ──────────────────────────────── */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 12px;
         margin-bottom: 22px;
     }
@@ -141,6 +145,26 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
     .stat-icon  { font-size: 1.6rem; margin-bottom: 4px; }
     .stat-value { font-size: 1.5rem; font-weight: 900; color: #222; }
     .stat-label { font-size: .75rem; color: #888; margin-top: 2px; }
+
+    /* ── Tiebreaker badge ──────────────────────────── */
+    .tiebreaker-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 20px;
+        border-radius: 30px;
+        font-size: .85rem;
+        font-weight: 700;
+        margin: 0 auto 18px;
+    }
+    .tiebreaker-badge.won {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        color: #fff;
+    }
+    .tiebreaker-badge.lost {
+        background: #ede9fe;
+        color: #6d28d9;
+    }
 
     /* ── Rewards ──────────────────────────────────── */
     .rewards-box {
@@ -185,7 +209,7 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
     @media (max-width: 520px) {
         .result-card { padding: 28px 20px; }
         .result-title { font-size: 2rem; }
-        .stats-grid { grid-template-columns: repeat(3, 1fr); }
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
         .rounds-row { gap: 14px; }
         .action-row { flex-direction: column; }
         .btn { width: 100%; text-align: center; }
@@ -220,8 +244,22 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
         </div>
     </div>
 
+    {{-- Tiebreaker badge --}}
+    @if($isTiebreaker)
+    <div style="text-align:center; margin-bottom:14px;">
+        <span class="tiebreaker-badge {{ $tiebreakerWon ? 'won' : 'lost' }}">
+            🏅 {{ $tiebreakerWon ? __('Victoire au tiebreaker') : __('Défaite au tiebreaker') }}
+        </span>
+    </div>
+    @endif
+
     {{-- Stats --}}
     <div class="stats-grid">
+        <div class="stat-box">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-value">{{ $matchEfficiency }}%</div>
+            <div class="stat-label">{{ __('Efficacité du Match') }}</div>
+        </div>
         <div class="stat-box">
             <div class="stat-icon">🎯</div>
             <div class="stat-value">{{ $accuracyDisplay }}%</div>
