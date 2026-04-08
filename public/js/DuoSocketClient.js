@@ -183,6 +183,12 @@ const DuoSocketClient = {
                             case 'QUESTION_PUBLISHED':
                                 this._dispatch('question_published', event);
                                 break;
+                            case 'ROUND_ENDED':
+                                this._dispatch('round_ended', event);
+                                break;
+                            case 'MATCH_ENDED':
+                                this._dispatch('match_ended', event);
+                                break;
                             default:
                                 this._log('Unhandled event type', event.type);
                         }

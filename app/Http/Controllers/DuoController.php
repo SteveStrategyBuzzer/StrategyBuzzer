@@ -13,6 +13,7 @@ use App\Services\PlayerContactService;
 use App\Services\LobbyService;
 use App\Services\GameServerService;
 use App\Services\BotQualificationService;
+use App\Services\GameStateService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
@@ -25,7 +26,8 @@ class DuoController extends Controller
         private PlayerContactService $contactService,
         private LobbyService $lobbyService,
         private GameServerService $gameServerService,
-        private BotQualificationService $botQualificationService
+        private BotQualificationService $botQualificationService,
+        private GameStateService $gameStateService
     ) {}
 
     private function getPlayerSnapshot(User $user): array

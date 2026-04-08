@@ -402,6 +402,7 @@ Route::prefix('game/duo')->name('game.duo.')->middleware('auth')->group(function
     Route::post('/use-skill', [App\Http\Controllers\DuoController::class, 'useSkill'])->name('use-skill');
     Route::get('/match-result', [App\Http\Controllers\DuoController::class, 'showMatchResult'])->name('match-result');
     Route::post('/forfeit', [App\Http\Controllers\DuoController::class, 'handleForfeit'])->name('forfeit');
+    Route::post('/match/{match}/finish-socketio', [App\Http\Controllers\DuoController::class, 'finishMatchSocketIO'])->name('finish-socketio');
 });
 
 /* ===== INTERFACE DE JEU LEAGUE (Socket.IO) ===== */

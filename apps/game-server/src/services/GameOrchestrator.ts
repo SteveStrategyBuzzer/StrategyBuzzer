@@ -6,6 +6,7 @@ import { applyEvent, hasActiveEffect, expireEffects, applyScoreEffects, recharge
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
 import { appendEventLog, setRoomState, setMatchResult } from "./RedisService.js";
+import { rateLimiter } from "../middleware/rateLimiter.js";
 import { saveRoomSnapshot } from "./RoomRecovery.js";
 
 export class GameOrchestrator {
@@ -469,6 +470,7 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event: phaseEvent });
     this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
+    rateLimiter.resetForQuestion(roomId).catch(e => console.warn(`[RateLimiter] Reset failed for ${roomId}:`, e));
     this.broadcastQuestion(roomId);
     this.schedulePhaseTimeout(roomId);
   }

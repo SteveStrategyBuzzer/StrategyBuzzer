@@ -1399,11 +1399,14 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         retryCount = retryCount || 0;
         var controller = new AbortController();
         var tid = setTimeout(function() { controller.abort(); }, 4000);
-        return fetch('/api/duo/match/' + matchId + '/finish-socketio', {
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        return fetch('/game/duo/match/' + matchId + '/finish-socketio', {
             method: 'POST',
             headers: {
                 'Content-Type':  'application/json',
-                'Authorization': 'Bearer ' + token,
+                'X-CSRF-TOKEN':  csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
             },
             body: JSON.stringify({}),
             signal: controller.signal,
@@ -1667,8 +1670,20 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig, 'voice-chat-app');
 const db = getFirestore(app);
-window.voiceChatDb = db;
 window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp };
+(function(_db, fn) {
+    function wrapDoc(ref) {
+        return { get: () => fn.getDoc(ref), set: (d, o) => fn.setDoc(ref, d, o||{}), delete: () => fn.deleteDoc(ref), onSnapshot: cb => fn.onSnapshot(ref, cb), collection: n => wrapCol(fn.collection(ref, n)) };
+    }
+    function wrapCol(ref) {
+        return { doc: id => wrapDoc(fn.doc(ref, id)), add: d => fn.addDoc(ref, d), where: (f,op,v) => wrapQ(fn.query(ref, fn.where(f,op,v))), onSnapshot: cb => fn.onSnapshot(ref, cb), get: () => fn.getDocs(ref) };
+    }
+    function wrapQ(ref) { return { get: () => fn.getDocs(ref), onSnapshot: cb => fn.onSnapshot(ref, cb) }; }
+    window.voiceChatDb = { collection: n => wrapCol(fn.collection(_db, n)) };
+    window.firebase = window.firebase || {};
+    window.firebase.firestore = window.firebase.firestore || {};
+    window.firebase.firestore.FieldValue = { serverTimestamp: () => fn.serverTimestamp() };
+})(db, window.voiceChatFirebase);
 </script>
 
 <script src="{{ asset('js/VoiceChat.js') }}"></script>
