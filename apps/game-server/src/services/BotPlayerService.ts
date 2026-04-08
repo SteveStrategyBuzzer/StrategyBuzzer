@@ -21,6 +21,8 @@ export class BotPlayerService {
   private answerTimer: ReturnType<typeof setTimeout> | null = null;
   private onCleanup: (() => void) | undefined;
   private readySent = false;
+  private currentPhase: string = 'LOBBY';
+  private humanGraceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(roomId: string, onCleanup?: () => void) {
     this.roomId = roomId;
@@ -87,6 +89,20 @@ export class BotPlayerService {
         data.event?.type === "PLAYER_LEFT" &&
         data.event?.playerId !== this.botPlayerId
       ) {
+        // During LOBBY the human browser disconnects/reconnects naturally on
+        // each page load. Give a 15-second grace period so the bot stays alive.
+        if (this.currentPhase === 'LOBBY') {
+          console.log(`[Bot] Human left during LOBBY (room ${this.roomId}) — waiting for reconnect (15s grace)`);
+          if (this.humanGraceTimer) clearTimeout(this.humanGraceTimer);
+          this.humanGraceTimer = setTimeout(() => {
+            this.humanGraceTimer = null;
+            if (this.currentPhase === 'LOBBY') {
+              console.log(`[Bot] Human never came back after LOBBY grace period (room ${this.roomId}), disconnecting`);
+              this.disconnect();
+            }
+          }, 15000);
+          return;
+        }
         console.log(`[Bot] Human player left room ${this.roomId}, disconnecting`);
         setTimeout(() => this.disconnect(), 300);
       }
@@ -94,6 +110,12 @@ export class BotPlayerService {
 
     this.socket.on("phase_changed", (data: { phase: string; lockedPlayerId?: string }) => {
       const { phase, lockedPlayerId } = data;
+      this.currentPhase = phase;
+      // If a grace timer was running and game has now started, cancel it
+      if (phase !== 'LOBBY' && this.humanGraceTimer) {
+        clearTimeout(this.humanGraceTimer);
+        this.humanGraceTimer = null;
+      }
       console.log(`[Bot] Phase changed to ${phase} (room ${this.roomId})`);
       this.clearTimers();
 
@@ -193,6 +215,10 @@ export class BotPlayerService {
     if (this.answerTimer) {
       clearTimeout(this.answerTimer);
       this.answerTimer = null;
+    }
+    if (this.humanGraceTimer) {
+      clearTimeout(this.humanGraceTimer);
+      this.humanGraceTimer = null;
     }
   }
 

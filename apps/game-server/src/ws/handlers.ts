@@ -151,7 +151,9 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           ) {
             const players = Object.values(room.state.players);
             const humanCount = players.filter(p => !p.id.startsWith("bot_")).length;
-            const botAlready = players.some(p => p.id.startsWith("bot_"));
+            // Only consider the bot as "already present" if it is actively connected.
+            // A disconnected bot record left in the state must not block re-spawning.
+            const botAlready = players.some(p => p.id.startsWith("bot_") && p.isConnected);
             if (humanCount === 1 && !botAlready) {
               setTimeout(() => {
                 try {
