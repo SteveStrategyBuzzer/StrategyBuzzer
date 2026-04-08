@@ -1386,7 +1386,9 @@ $mode = 'duo';
         }
         
         if (currentPhase === 'REVEAL') {
-            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
+            // REVEAL ≠ scoreboard — do not navigate here.
+            // duo_answer handles reveal display; ROUND_SCOREBOARD below drives navigation.
+            applyPhaseVisualState();
             return;
         }
         

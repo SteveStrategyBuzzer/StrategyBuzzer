@@ -1464,18 +1464,10 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         if (!data || !data.phase) { return; }
 
         if (data.phase === 'REVEAL') {
-            // Schedule early navigation so question page loads during REVEAL,
-            // giving it time to connect before QUESTION_ACTIVE fires.
+            // REVEAL ≠ scoreboard — if duo_result is loaded during REVEAL (reconnect or
+            // edge case), stay here. Navigation will fire when QUESTION_ACTIVE or
+            // ROUND_SCOREBOARD arrives. No early-nav that anticipates the server.
             _cancelEarlyNav();
-            if (data.phaseEndsAtMs) {
-                var msLeft = Math.max(0, data.phaseEndsAtMs - Date.now());
-                var earlyMs = Math.max(0, msLeft - 2000); // navigate 2s before REVEAL ends
-                console.log('[DuoResult] Scheduling early nav to question in', earlyMs, 'ms');
-                _earlyNavTimer = setTimeout(function() {
-                    _earlyNavTimer = null;
-                    navigateToNextQuestion();
-                }, earlyMs);
-            }
             return;
         }
 
@@ -1498,17 +1490,9 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         var phase = stateObj.phase;
         var phaseEndsAtMs = stateObj.phaseEndsAtMs || payload.phaseEndsAtMs;
         if (phase === 'REVEAL') {
-            // Schedule early nav (mirrors _onResultPhaseChanged logic)
+            // REVEAL ≠ scoreboard — no early-nav. Stay and wait for QUESTION_ACTIVE
+            // or ROUND_SCOREBOARD to drive navigation.
             _cancelEarlyNav();
-            if (phaseEndsAtMs) {
-                var msLeft = Math.max(0, phaseEndsAtMs - Date.now());
-                var earlyMs = Math.max(0, msLeft - 2000);
-                console.log('[DuoResult] State REVEAL — early nav in', earlyMs, 'ms');
-                _earlyNavTimer = setTimeout(function() {
-                    _earlyNavTimer = null;
-                    navigateToNextQuestion();
-                }, earlyMs);
-            }
         } else if (phase === 'QUESTION_ACTIVE' || phase === 'QUESTION_DISPLAY' || phase === 'BUZZ_WINDOW') {
             _cancelEarlyNav();
             navigateToNextQuestion();

@@ -1316,30 +1316,25 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
         const pointsEarned = data.points || data.pointsEarned || 0;
         showResult(isCorrect, correctIndex, pointsEarned);
-        // Correct: navigate quickly after button highlight (1.2s) — no popup to read.
-        // Incorrect: give time to read the "Mauvaise réponse" popup (3s).
-        const delay = isCorrect ? 1200 : 3000;
-        setTimeout(function() {
-            if (isRedirecting) return;
-            if (data.nextUrl) {
-                isRedirecting = true;
-                window.location.href = data.nextUrl;
-            } else if (data.matchEnded) {
+        // Visual feedback only — navigation is driven exclusively by phase_changed events
+        // (QUESTION_ACTIVE for next question, ROUND_SCOREBOARD for scoreboard, MATCH_END for final).
+        // Exception: matchEnded flag for immediate end-of-match redirect.
+        if (data.matchEnded) {
+            const delay = isCorrect ? 1200 : 3000;
+            setTimeout(function() {
+                if (isRedirecting) return;
                 isRedirecting = true;
                 window.location.href = window.MATCH_RESULT_URL || ('/duo/result/' + MATCH_ID);
-            }
-        }, delay);
+            }, delay);
+        }
     }
     function _onAnswerRoundEnded(data) {
+        // round_ended fires at end of a full round (set of questions) → scoreboard, not next question
         if (isRedirecting) return;
         setTimeout(function() {
             if (isRedirecting) return;
             isRedirecting = true;
-            if (data.nextQuestionUrl) {
-                window.location.href = data.nextQuestionUrl;
-            } else {
-                window.location.href = window.QUESTION_URL || ('/game/duo/question');
-            }
+            window.location.href = (window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID);
         }, 2000);
     }
     function _onAnswerMatchEnded(data) {
@@ -1352,19 +1347,41 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function _onAnswerPhaseChanged(data) {
         if (isRedirecting || !data || !data.phase) return;
         var phase = data.phase;
+
         if (phase === 'REVEAL') {
-            isRedirecting = true;
-            window.location.href = (window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            // REVEAL ≠ scoreboard — stay on page so answer_revealed can show visual feedback.
+            // Navigation will be driven by QUESTION_ACTIVE or ROUND_SCOREBOARD below.
             return;
         }
+
         if (phase === 'QUESTION_ACTIVE') {
-            isRedirecting = true;
-            window.location.href = (window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            // Non-last question of round — go to next question.
+            // Delay to let answer_revealed visual display complete (answer_revealed fires
+            // immediately after REVEAL, so the player has already seen it for ~REVEAL-timer ms).
+            setTimeout(function() {
+                if (isRedirecting) return;
+                isRedirecting = true;
+                window.location.href = (window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            }, 2500);
             return;
         }
+
+        if (phase === 'ROUND_SCOREBOARD') {
+            // Last question of round — go to round scoreboard.
+            setTimeout(function() {
+                if (isRedirecting) return;
+                isRedirecting = true;
+                window.location.href = (window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            }, 2500);
+            return;
+        }
+
         if (phase === 'MATCH_END' || phase === 'FINISHED') {
-            isRedirecting = true;
-            window.location.href = (window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            setTimeout(function() {
+                if (isRedirecting) return;
+                isRedirecting = true;
+                window.location.href = (window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            }, 1000);
         }
     }
     function _onAnswerScoreUpdate(data) {
