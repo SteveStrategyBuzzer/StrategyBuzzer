@@ -19,7 +19,7 @@ $currentAvatar = $params['avatar'] ?? 'Aucun';
 $usedSkills = session('used_skills', []);
 
 // Détection du Stratège
-$isStratege = in_array(strtolower($currentAvatar), ['stratège', 'stratege']);
+$isStratege = in_array(mb_strtolower($currentAvatar, 'UTF-8'), ['stratège', 'stratege']);
 $teammateInfo = $avatarSkillsFull['teammate'] ?? null;
 
 // Construire le tableau des skills pour l'affichage

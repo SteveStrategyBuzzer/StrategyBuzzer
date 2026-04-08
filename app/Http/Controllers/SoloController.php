@@ -564,26 +564,7 @@ class SoloController extends Controller
                 ]);
             }
             
-            // DEBUG Bug #1: Log la question fraîchement générée
-            \Log::info('[BUG#1 DEBUG] Question AFTER generation:', [
-                'id' => $question['id'] ?? 'no-id',
-                'text' => $question['text'] ?? 'no-text',
-                'answers' => $question['answers'] ?? [],
-                'correct_index' => $question['correct_index'] ?? -1,
-                'correct_answer' => isset($question['answers'], $question['correct_index']) ? $question['answers'][$question['correct_index']] : 'N/A',
-            ]);
-            
             session(['current_question' => $question]);
-            
-            // DEBUG Bug #1: Log ce qui est stocké en session
-            $stored = session('current_question');
-            \Log::info('[BUG#1 DEBUG] Question AFTER session write:', [
-                'id' => $stored['id'] ?? 'no-id',
-                'text' => $stored['text'] ?? 'no-text',
-                'answers' => $stored['answers'] ?? [],
-                'correct_index' => $stored['correct_index'] ?? -1,
-                'correct_answer' => isset($stored['answers'], $stored['correct_index']) ? $stored['answers'][$stored['correct_index']] : 'N/A',
-            ]);
             
             // Ajouter l'ID de la question aux questions utilisées
             $usedQuestionIds[] = $question['id'];
@@ -625,15 +606,6 @@ class SoloController extends Controller
             QuestionHistory::recordQuestion($user->id, $question);
         } else {
             $question = session('current_question');
-            
-            // DEBUG Bug #1: Log la question récupérée depuis session
-            \Log::info('[BUG#1 DEBUG] Question FROM session (already exists):', [
-                'id' => $question['id'] ?? 'no-id',
-                'text' => $question['text'] ?? 'no-text',
-                'answers' => $question['answers'] ?? [],
-                'correct_index' => $question['correct_index'] ?? -1,
-                'correct_answer' => isset($question['answers'], $question['correct_index']) ? $question['answers'][$question['correct_index']] : 'N/A',
-            ]);
         }
         
         // Calculer le temps de chrono de base (4-8 secondes selon niveau)
@@ -647,15 +619,6 @@ class SoloController extends Controller
         
         // Récupérer les informations complètes de l'adversaire
         $opponentInfo = $this->getOpponentInfo($niveau);
-        
-        // DEBUG Bug #1: Log la question AVANT passage à la vue
-        \Log::info('[BUG#1 DEBUG] Question BEFORE view render:', [
-            'id' => $question['id'] ?? 'no-id',
-            'text' => $question['text'] ?? 'no-text',
-            'answers' => $question['answers'] ?? [],
-            'correct_index' => $question['correct_index'] ?? -1,
-            'correct_answer' => isset($question['answers'], $question['correct_index']) ? $question['answers'][$question['correct_index']] : 'N/A',
-        ]);
         
         $params = [
             'question' => $question,
@@ -798,7 +761,7 @@ class SoloController extends Controller
             case 'acidify_error':
                 // Scientifique: Marque 2 mauvaises réponses en rouge (après avoir buzzé)
                 // Vérifier que le joueur a buzzé (validation côté serveur)
-                $hasBuzzed = session('player_has_buzzed', false);
+                $hasBuzzed = session('buzzed', false);
                 if (!$hasBuzzed) {
                     $result['effect'] = 'requires_buzz';
                     $result['message'] = 'Vous devez buzzer avant d\'utiliser ce skill!';
@@ -1951,15 +1914,6 @@ class SoloController extends Controller
         // BEST OF 3 : Utiliser le nombre de questions configuré par l'utilisateur
         $questionsPerRound = session('nb_questions', 10);
         
-        // DEBUG: Log pour diagnostiquer le problème des 11 questions au lieu de 10
-        \Log::info('[BUG#3 DEBUG] nextQuestion() appelé:', [
-            'current_question_number' => $currentQuestion,
-            'questions_per_round' => $questionsPerRound,
-            'will_end_round' => ($currentQuestion >= $questionsPerRound),
-            'global_stats_count' => count(session('global_stats', [])),
-            'answered_questions_count' => $answeredCount
-        ]);
-        
         // SYSTÈME BEST OF 3 : Vérifier si la manche est terminée (10 questions par manche)
         if ($currentQuestion >= $questionsPerRound) {
             // Fin de la manche - déterminer le gagnant de la manche
@@ -2655,17 +2609,6 @@ class SoloController extends Controller
         
         // Récupérer les stats par manche (toutes les manches complétées)
         $roundSummaries = session('round_summaries', []);
-        
-        // DEBUG : Log des efficacités pour comprendre le problème -30%
-        Log::info("EFFICACITÉ DEBUG (Defeat):", [
-            'round_efficiencies' => $roundEfficiencies,
-            'party_efficiency_calculated' => $partyEfficiency,
-            'global_efficiency' => $globalEfficiency,
-            'total_correct' => $totalCorrect,
-            'total_incorrect' => $totalIncorrect,
-            'total_unanswered' => $totalUnanswered,
-            'round_summaries' => $roundSummaries,
-        ]);
         
         $nextLifeRegen = null;
         if ($user && $user->next_life_regen) {
@@ -3449,16 +3392,6 @@ class SoloController extends Controller
         $newScore = $currentScore + $pointsToRecover;
         session(['score' => $newScore]);
         
-        // DEBUG BUG #4: Log AVANT modifications
-        \Log::info('[BUG#4 DEBUG] cancelError() AVANT:', [
-            'score_avant' => $currentScore,
-            'points_to_recover' => $pointsToRecover,
-            'new_score' => $newScore,
-            'last_stat_buzzed' => $lastStat['player_buzzed'],
-            'last_stat_correct' => $lastStat['is_correct'],
-            'last_stat_points' => $lastStat['player_points'],
-        ]);
-        
         // BUG FIX #9 & #14: Transformer l'échec en "sans réponse" (annuler complètement l'action)
         $answeredQuestions = session('answered_questions', []);
         $answeredLastIndex = count($answeredQuestions) - 1;
@@ -3476,15 +3409,6 @@ class SoloController extends Controller
         $globalStats[$lastIndex]['player_points'] = 0;
         $globalStats[$lastIndex]['skill_adjusted'] = true;
         session(['global_stats' => $globalStats]);
-        
-        // DEBUG BUG #4: Log APRÈS modifications
-        \Log::info('[BUG#4 DEBUG] cancelError() APRÈS:', [
-            'new_score_in_session' => session('score'),
-            'modified_stat_buzzed' => $globalStats[$lastIndex]['player_buzzed'],
-            'modified_stat_correct' => $globalStats[$lastIndex]['is_correct'],
-            'modified_stat_points' => $globalStats[$lastIndex]['player_points'],
-            'global_stats_count' => count($globalStats),
-        ]);
         
         $usedSkills[] = 'cancel_error';
         session(['used_skills' => $usedSkills]);
