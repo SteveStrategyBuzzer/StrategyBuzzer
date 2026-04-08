@@ -601,7 +601,7 @@ class DuoController extends Controller
 
     protected function getPlayerSkillsWithTriggers($user): array
     {
-        $snapshot = $this->getPlayerSnapshot($user);
+        $snapshot   = $this->getPlayerSnapshot($user);
         $avatarName = $this->getSnapshotStrategicAvatarName($snapshot);
 
         if ($avatarName === 'Aucun' || empty($avatarName)) {
@@ -611,25 +611,55 @@ class DuoController extends Controller
         $avatarData = \App\Services\AvatarSkillService::getAvatarSkills($avatarName, $user->id);
         $rawSkills  = $avatarData['skills'] ?? [];
 
+        $isStratege = in_array(mb_strtolower((string) $avatarName), ['stratège', 'stratege']);
+
         $skills = [];
-        foreach ($rawSkills as $skillData) {
-            if (!is_array($skillData) || empty($skillData['id'])) {
-                continue;
+
+        if ($isStratege) {
+            $strategeOwn    = ['coin_bonus', 'avatar_discount'];
+            $teammateAdded  = false;
+
+            foreach ($rawSkills as $skillData) {
+                if (!is_array($skillData) || empty($skillData['id'])) continue;
+                if (in_array($skillData['id'], $strategeOwn)) {
+                    $skills[] = $this->formatSkillForDisplay($skillData);
+                }
             }
-            $skills[] = [
-                'id'            => $skillData['id'],
-                'name'          => $skillData['name'] ?? '',
-                'icon'          => $skillData['icon'] ?? '⭐',
-                'description'   => $skillData['description'] ?? '',
-                'trigger'       => $skillData['trigger'] ?? 'question',
-                'type'          => $skillData['type'] ?? 'unknown',
-                'auto'          => $skillData['auto'] ?? false,
-                'uses_per_match'=> $skillData['uses_per_match'] ?? 1,
-                'used'          => false,
-            ];
+
+            foreach ($rawSkills as $skillData) {
+                if (!is_array($skillData) || empty($skillData['id'])) continue;
+                if (!in_array($skillData['id'], array_merge($strategeOwn, ['create_team']))) {
+                    $skills[] = $this->formatSkillForDisplay($skillData);
+                    $teammateAdded = true;
+                    break;
+                }
+            }
+        } else {
+            foreach ($rawSkills as $skillData) {
+                if (!is_array($skillData) || empty($skillData['id'])) continue;
+                if ($skillData['id'] === 'create_team') continue;
+                $skills[] = $this->formatSkillForDisplay($skillData);
+            }
         }
 
-        return $skills;
+        return array_slice($skills, 0, 3);
+    }
+
+    private function formatSkillForDisplay(array $skillData): array
+    {
+        $usesPerMatch = (int) ($skillData['uses_per_match'] ?? 1);
+        return [
+            'id'             => $skillData['id'],
+            'name'           => $skillData['name'] ?? '',
+            'icon'           => $skillData['icon'] ?? '⭐',
+            'description'    => $skillData['description'] ?? '',
+            'trigger'        => $skillData['trigger'] ?? 'question',
+            'type'           => $skillData['type'] ?? 'unknown',
+            'auto'           => $skillData['auto'] ?? false,
+            'uses_per_match' => $usesPerMatch,
+            'uses_left'      => $usesPerMatch > 0 ? $usesPerMatch : -1,
+            'used'           => false,
+        ];
     }
 
     public function activateSkill(Request $request, DuoMatch $match)

@@ -948,10 +948,10 @@ if ($isMultiplayer && !empty($opponentInfo)) {
                 <div class="strategic-avatar-circle empty"></div>
             @endif
             
-            <!-- Cercles de skills (jusqu'à 4 pour Stratège + coéquipier) -->
+            <!-- Cercles de skills (max 3 : 2 propres + 1 coéquipier pour Stratège) -->
             <div class="skills-container">
                 @php
-                    $maxSkills = min(count($skills), 4);
+                    $maxSkills = min(count($skills), 3);
                 @endphp
                 @for($i = 0; $i < $maxSkills; $i++)
                     @if(isset($skills[$i]))

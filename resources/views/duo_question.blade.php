@@ -464,39 +464,6 @@ $mode = 'duo';
         opacity: 0.9;
     }
     
-    .opponent-buzzed-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 107, 107, 0.2);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 200;
-        animation: fadeIn 0.3s ease;
-    }
-    
-    .opponent-buzzed-message {
-        background: rgba(0, 0, 0, 0.9);
-        padding: 40px 60px;
-        border-radius: 30px;
-        text-align: center;
-        border: 3px solid #FF6B6B;
-        box-shadow: 0 0 50px rgba(255, 107, 107, 0.8);
-    }
-    
-    .opponent-buzzed-message h2 {
-        font-size: 2rem;
-        color: #FF6B6B;
-        margin-bottom: 10px;
-    }
-    
-    .opponent-buzzed-message p {
-        font-size: 1.2rem;
-        opacity: 0.9;
-    }
 
     /* Hide connection badge when connected — only show disconnected/connecting states */
     #connectionStatus.connected { display: none !important; }
@@ -855,13 +822,6 @@ $mode = 'duo';
     <div class="points-text" id="pointsText"></div>
 </div>
 
-<div id="opponentBuzzedOverlay" class="opponent-buzzed-overlay">
-    <div class="opponent-buzzed-message">
-        <h2>🔔 {{ __('Adversaire a buzzé !') }}</h2>
-        <p>{{ __('En attente de sa réponse...') }}</p>
-    </div>
-</div>
-
 <audio id="buzzerSound" preload="auto">
     <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
 </audio>
@@ -951,7 +911,6 @@ $mode = 'duo';
     const noBuzzSound = document.getElementById('noBuzzSound');
     const chronoBackgroundSound = document.getElementById('chronoBackgroundSound');
     const gameplayAmbient = document.getElementById('gameplayAmbient');
-    const opponentBuzzedOverlay = document.getElementById('opponentBuzzedOverlay');
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
     const gameContainer = document.getElementById('gameContainer');
@@ -1205,9 +1164,7 @@ $mode = 'duo';
         
         stopTimer();
         setBuzzerState('hidden');
-        opponentBuzzedOverlay.style.display = 'flex';
-        
-        redirectOnce(ANSWER_URL + '?opponent_buzzed=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), 1200);
+        redirectOnce(ANSWER_URL + '?opponent_buzzed=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), 300);
     }
     
     function showResult(isCorrect, points) {
@@ -1233,7 +1190,6 @@ $mode = 'duo';
     function applyPhaseVisualState() {
         switch (currentPhase) {
             case 'QUESTION_ACTIVE':
-                opponentBuzzedOverlay.style.display = 'none';
                 ensureQuestionPhaseReady();
                 break;
                 
@@ -1368,7 +1324,6 @@ $mode = 'duo';
         if (currentPhase === 'QUESTION_ACTIVE') {
             buzzed = false;
             isRedirecting = false;
-            opponentBuzzedOverlay.style.display = 'none';
             applyPhaseVisualState();
             return;
         }
@@ -1435,7 +1390,6 @@ $mode = 'duo';
         currentPhase = 'QUESTION_ACTIVE';
         buzzed = false;
         isRedirecting = false;
-        opponentBuzzedOverlay.style.display = 'none';
         
         applyPhaseVisualState();
     }
