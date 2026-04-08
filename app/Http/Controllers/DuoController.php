@@ -1822,6 +1822,7 @@ class DuoController extends Controller
             'playerPoints' => $pointsEarned,
             'player_score' => $playerScore,
             'opponent_score' => $opponentScore,
+            'currentQuestion' => $currentQuestion,
             'total_questions' => 10,
             'skills' => $skills,
             'avatarName' => $avatarName,
