@@ -3069,9 +3069,16 @@ foreach ($colors as $color) {
     // Color cache: tracks each player's lobby color across socket updates.
     // The game server never sends color in its state events, so we preserve
     // the colors assigned by Laravel (from Redis) and inject them when rendering.
+    //
+    // Bot players have two IDs: a numeric DB id in Laravel/Redis (keyed here by integer)
+    // and a string "bot_<roomId>" in the Socket.IO state. We also store a sentinel
+    // key '__bot__' so the color can be looked up by any bot socket ID.
     let playerColorCache = {};
     @foreach($players as $pid => $pdata)
         playerColorCache[{{ $pid }}] = @json($pdata['color'] ?? 'blue');
+        @if(!empty($pdata['is_bot']))
+        playerColorCache['__bot__'] = @json($pdata['color'] ?? 'blue');
+        @endif
     @endforeach
     
     function escapeHtml(text) {
@@ -4618,13 +4625,18 @@ window.initLobbySocketListeners = function() {
             const socketPlayers = lobbyState?.players ?? {};
 
             // Game server never sends lobby colors — inject them from our cache
-            // (colors are assigned by Laravel/Redis and cached in playerColorCache)
+            // (colors are assigned by Laravel/Redis and cached in playerColorCache).
+            // Bot players use "bot_<roomId>" as their socket ID but their color is
+            // stored under their numeric DB id AND under '__bot__' sentinel key.
             let hasNewPlayer = false;
             const players = {};
             Object.entries(socketPlayers).forEach(([id, p]) => {
-                if (!playerColorCache[id]) hasNewPlayer = true;
+                const isBotPlayer = String(id).startsWith('bot_');
+                const cachedColor = playerColorCache[id]
+                    || (isBotPlayer ? playerColorCache['__bot__'] : null);
+                if (!cachedColor) hasNewPlayer = true;
                 players[id] = Object.assign({}, p, {
-                    color: p.color || playerColorCache[id] || 'blue'
+                    color: p.color || cachedColor || 'blue'
                 });
             });
             // If a new player appeared (e.g. bot just joined), fetch colors from
