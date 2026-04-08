@@ -529,7 +529,135 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
         gap: 12px;
         margin-top: 10px;
     }
-    
+
+    /* ── 60s countdown timer ── */
+    .countdown-wrap {
+        text-align: center;
+        padding: 8px 0 4px;
+    }
+    .countdown-label {
+        font-size: 0.75rem;
+        color: rgba(255,255,255,0.5);
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .countdown-bar-track {
+        width: 100%;
+        height: 7px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .countdown-bar-fill {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #4ECDC4, #2ECC71);
+        border-radius: 4px;
+        transition: width 1s linear;
+    }
+    .countdown-bar-fill.urgent {
+        background: linear-gradient(90deg, #FF6B6B, #ff4444);
+    }
+    .countdown-secs {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #4ECDC4;
+        margin-top: 4px;
+    }
+    .countdown-secs.urgent { color: #FF6B6B; }
+
+    /* ── Sortie Duo exit button ── */
+    .btn-exit {
+        width: 100%;
+        padding: 11px 20px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 2px solid rgba(255,107,107,0.35);
+        background: rgba(255,107,107,0.07);
+        color: rgba(255,107,107,0.8);
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .btn-exit:hover {
+        background: rgba(255,107,107,0.18);
+        border-color: rgba(255,107,107,0.6);
+        color: #FF6B6B;
+    }
+    .btn-exit.confirming {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        border-color: #e74c3c;
+        color: white;
+        box-shadow: 0 4px 15px rgba(231,76,60,0.35);
+        animation: pulse-confirming 1s ease-in-out infinite;
+    }
+    @keyframes pulse-confirming {
+        0%, 100% { box-shadow: 0 4px 15px rgba(231,76,60,0.35); }
+        50% { box-shadow: 0 4px 25px rgba(231,76,60,0.65); }
+    }
+
+    /* ── MC Micro mini nav ── */
+    .mc-micro-wrap {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        margin-top: 2px;
+    }
+    .mc-micro-btn {
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s, transform 0.2s;
+        color: rgba(255,255,255,0.7);
+    }
+    .mc-micro-btn:hover { background: rgba(255,255,255,0.18); transform: scale(1.1); }
+    .mc-micro-popup {
+        position: absolute;
+        bottom: 52px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(12,28,36,0.97);
+        border: 1px solid rgba(78,205,196,0.4);
+        border-radius: 14px;
+        padding: 10px;
+        display: none;
+        min-width: 190px;
+        z-index: 100;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.55);
+    }
+    .mc-micro-popup.open { display: block; }
+    .mc-micro-popup-title {
+        font-size: 0.68rem;
+        color: rgba(255,255,255,0.4);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 0 8px 6px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        margin-bottom: 6px;
+    }
+    .mc-micro-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        color: rgba(255,255,255,0.82);
+        text-decoration: none;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        transition: background 0.2s, color 0.2s;
+    }
+    .mc-micro-link:hover { background: rgba(78,205,196,0.15); color: #4ECDC4; }
+
     .btn-go {
         width: 100%;
         padding: 16px 30px;
@@ -991,9 +1119,31 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
     </div>
     
     <div class="result-actions">
+        {{-- 60s countdown --}}
+        <div class="countdown-wrap" id="countdownWrap">
+            <div class="countdown-label">{{ __('Prochaine question dans') }}</div>
+            <div class="countdown-bar-track">
+                <div class="countdown-bar-fill" id="countdownBarFill"></div>
+            </div>
+            <div class="countdown-secs" id="countdownSecs">60s</div>
+        </div>
+
         <button class="btn-go" id="btnGo">{{ __('GO') }}</button>
         <div class="waiting-message" id="waitingMessage">
             ⏳ {{ __('En attente de l\'autre joueur') }}<span class="waiting-dots"></span>
+        </div>
+
+        {{-- Sortie Duo --}}
+        <button class="btn-exit" id="btnExit">🚪 {{ __('Sortie Duo') }}</button>
+
+        {{-- MC Micro mini nav --}}
+        <div class="mc-micro-wrap" id="mcMicroWrap">
+            <button class="mc-micro-btn" id="mcMicroBtn" title="{{ __('Liens rapides') }}">🎤</button>
+            <div class="mc-micro-popup" id="mcMicroPopup">
+                <div class="mc-micro-popup-title">{{ __('Accès rapide') }}</div>
+                <a class="mc-micro-link" href="{{ route('duo.rankings') }}" target="_blank">🏆 {{ __('Classement Duo') }}</a>
+                <a class="mc-micro-link" href="{{ route('stats.index') }}" target="_blank">📊 {{ __('Mes Stats') }}</a>
+            </div>
         </div>
     </div>
 </div>
@@ -1014,6 +1164,9 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
     
     let isReady = false;
     let isRedirecting = false;
+    let countdownSecs = 60;
+    let countdownInterval = null;
+    let exitConfirming = false;
     
     const connectionStatus = document.getElementById('connectionStatus');
     const btnGo = document.getElementById('btnGo');
@@ -1022,6 +1175,10 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
     const opponentScoreEl = document.getElementById('opponentScore');
     const playerStatus = document.getElementById('playerStatus');
     const opponentStatus = document.getElementById('opponentStatus');
+    const btnExit = document.getElementById('btnExit');
+    const mcMicroBtn = document.getElementById('mcMicroBtn');
+    const mcMicroPopup = document.getElementById('mcMicroPopup');
+    const mcMicroWrap = document.getElementById('mcMicroWrap');
     
     function getGameServerUrl() {
         return window.location.origin;
@@ -1102,23 +1259,98 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
         }
     }
     
+    function cancelCountdown() {
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    }
+    
+    function startCountdown() {
+        cancelCountdown();
+        var fill = document.getElementById('countdownBarFill');
+        var secsEl = document.getElementById('countdownSecs');
+        if (!fill || !secsEl) return;
+        countdownSecs = 60;
+        fill.style.width = '100%';
+        fill.classList.remove('urgent');
+        secsEl.textContent = '60s';
+        secsEl.classList.remove('urgent');
+        countdownInterval = setInterval(function() {
+            countdownSecs--;
+            var pct = Math.max(0, (countdownSecs / 60) * 100);
+            fill.style.width = pct + '%';
+            secsEl.textContent = Math.max(0, countdownSecs) + 's';
+            if (countdownSecs <= 10) {
+                fill.classList.add('urgent');
+                secsEl.classList.add('urgent');
+            }
+            if (countdownSecs <= 0) {
+                cancelCountdown();
+                navigateToNextQuestion();
+            }
+        }, 1000);
+    }
+
     function navigateToNextQuestion() {
+        cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
         window.location.href = window.QUESTION_URL || "{{ route('game.duo.question') }}";
     }
     
     function navigateToRoundScoreboard() {
+        cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
         window.location.href = window.RESULT_URL || "{{ route('game.duo.result') }}";
     }
     
     function navigateToFinalResults() {
+        cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
         window.location.href = window.MATCH_RESULT_URL || "{{ route('game.duo.match-result') }}";
     }
+    
+    // ── Exit button: 2-click confirmation ────────────────────────────────────
+    function resetExitButton() {
+        exitConfirming = false;
+        if (btnExit) {
+            btnExit.textContent = '🚪 {{ __("Sortie Duo") }}';
+            btnExit.classList.remove('confirming');
+        }
+    }
+    
+    if (btnExit) {
+        btnExit.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (exitConfirming) {
+                window.location.href = '{{ route("duo.lobby") }}';
+            } else {
+                exitConfirming = true;
+                btnExit.textContent = '⚠️ {{ __("Confirmer la sortie ?") }}';
+                btnExit.classList.add('confirming');
+            }
+        });
+    }
+    
+    // ── MC Micro mini nav popup ───────────────────────────────────────────────
+    if (mcMicroBtn && mcMicroPopup) {
+        mcMicroBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            mcMicroPopup.classList.toggle('open');
+        });
+    }
+    
+    // Close popup and reset exit on outside click
+    document.addEventListener('click', function(e) {
+        if (mcMicroPopup && mcMicroPopup.classList.contains('open')) {
+            if (!mcMicroWrap || !mcMicroWrap.contains(e.target)) {
+                mcMicroPopup.classList.remove('open');
+            }
+        }
+        if (exitConfirming && btnExit && !btnExit.contains(e.target)) {
+            resetExitButton();
+        }
+    });
     
     btnGo.addEventListener('click', setPlayerReady);
     
@@ -1186,6 +1418,7 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
     var _earlyNavTimer = null;
     function _cancelEarlyNav() {
         if (_earlyNavTimer) { clearTimeout(_earlyNavTimer); _earlyNavTimer = null; }
+        cancelCountdown();
     }
     function _onResultPhaseChanged(data) {
         console.log('[DuoResult] Phase changed', data);
@@ -1263,10 +1496,14 @@ $question        = $question        ?? ['correct_answer' => $correctAnswer, 'ans
     };
 
     window.addEventListener('beforeunload', function() {
+        cancelCountdown();
         if (DuoSocketClient.isConnected()) {
             // keep shared lifecycle behavior
         }
     });
+    
+    // Start 60s countdown immediately on page load
+    startCountdown();
     
     window.activateSkill = function(skillId) {
         if (!skillId) return;
