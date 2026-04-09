@@ -224,7 +224,7 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
 <div class="result-card">
     <span class="result-icon">{{ $resultIcon }}</span>
     <h1 class="result-title">{{ $resultTitle }}</h1>
-    <span class="mode-badge">⚡ Duo</span>
+    <span class="mode-badge">⚡ {{ __('Duo') }}</span>
 
     {{-- Opponent --}}
     <div class="opponent-block">
@@ -241,7 +241,7 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
             <div class="round-number round-you">{{ $playerRoundsWon }}</div>
             <div class="round-label">{{ __('Vos manches') }}</div>
         </div>
-        <span class="round-vs">VS</span>
+        <span class="round-vs">{{ __('VS') }}</span>
         <div class="round-score">
             <div class="round-number round-opp">{{ $opponentRoundsWon }}</div>
             <div class="round-label">{{ __('Ses manches') }}</div>
