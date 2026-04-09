@@ -431,16 +431,16 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         filter: brightness(1.2);
     }
     
-    .answer-button.illuminated {
-        background: linear-gradient(135deg, rgba(147, 112, 219, 0.4) 0%, rgba(186, 85, 211, 0.4) 100%);
-        border-color: #B19CD9;
-        box-shadow: 0 0 20px rgba(147, 112, 219, 0.6);
+    .illuminated-number {
+        color: #FFD700;
+        font-weight: 700;
+        text-shadow: 0 0 8px rgba(255, 215, 0, 0.8), 0 0 16px rgba(255, 215, 0, 0.5);
         animation: pulse-illuminate 1.5s ease-in-out infinite;
     }
     
     @keyframes pulse-illuminate {
-        0%, 100% { box-shadow: 0 0 20px rgba(147, 112, 219, 0.6); }
-        50% { box-shadow: 0 0 35px rgba(147, 112, 219, 0.9); }
+        0%, 100% { text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); }
+        50% { text-shadow: 0 0 20px rgba(255, 215, 0, 1), 0 0 35px rgba(255, 215, 0, 0.7); }
     }
     
     .answer-button.acidified {
@@ -944,18 +944,18 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const incorrectSound = document.getElementById('incorrectSound');
     const answerButtons = document.querySelectorAll('.answer-button');
     
-    function containsNumber(str) {
-        return /\d/.test(str);
-    }
-    
     function _applyIlluminateEffect() {
-        answerButtons.forEach(function(button) {
-            const text = button.getAttribute('data-text') || '';
-            if (containsNumber(text)) {
-                button.classList.add('illuminated');
-            }
-        });
-        console.log('[Skills] Illuminate numbers visual applied');
+        // Highlight every digit sequence inside the question text, not answer options
+        var questionBox = document.querySelector('.question-text-box');
+        if (!questionBox) return;
+        var html = questionBox.textContent || '';
+        if (!/\d/.test(html)) return;
+        // Wrap digits in the raw innerHTML (preserve existing content)
+        questionBox.innerHTML = questionBox.innerHTML.replace(
+            /(\d+)/g,
+            '<span class="illuminated-number">$1</span>'
+        );
+        console.log('[Skills] Illuminate numbers applied to question text');
     }
 
     function _applyAcidifyEffect(wrongIndices) {
@@ -967,7 +967,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // Fallback: pick one random wrong answer client-side
             const available = [];
             answerButtons.forEach(function(button, idx) {
-                if (!button.classList.contains('correct') && !button.classList.contains('illuminated')) {
+                if (!button.classList.contains('correct')) {
                     available.push(idx);
                 }
             });
@@ -1055,7 +1055,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         
         const wrongAnswers = [];
         answerButtons.forEach(function(button, idx) {
-            if (!button.classList.contains('illuminated') && !button.classList.contains('ai-suggested')) {
+            if (!button.classList.contains('ai-suggested')) {
                 wrongAnswers.push(idx);
             }
         });

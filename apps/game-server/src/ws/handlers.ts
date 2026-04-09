@@ -444,9 +444,19 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
 
         // ── VISUAL-EFFECT ANSWER-PHASE SKILLS ───────────────────────────────────
         // These emit a targeted skill_effect only to the activating player.
+        // Guard: only the player who currently holds the buzz lock may use these.
         // The server computes answer-hint metadata; then consumes the skill use.
         const ANSWER_PHASE_VISUAL_SKILLS = ["illuminate_numbers", "acidify_error", "ai_suggestion"] as const;
         if ((ANSWER_PHASE_VISUAL_SKILLS as readonly string[]).includes(payload.skillId)) {
+          if (room.state.lockedAnswerPlayerId !== currentPlayerId) {
+            socket.emit("skill_error", {
+              skillId: payload.skillId,
+              reason: "not_your_turn",
+              message: "Answer-phase skills can only be used by the buzzing player",
+            });
+            console.log(`[WS] ${payload.skillId} rejected: ${currentPlayerId} is not the locked buzzer`);
+            return;
+          }
           const question = room.state.questions[room.state.questionIndex];
           const correctIndex = question?.correctIndex ?? -1;
           const qRaw = question as Record<string, unknown>;

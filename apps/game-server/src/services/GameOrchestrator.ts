@@ -16,8 +16,10 @@ export class GameOrchestrator {
   private pendingAnswers: Map<string, { playerId: string; answer: number | string | boolean; submittedAtMs: number }> = new Map();
   // Store answers from ALL buzzers (key = roomId, value = Map of playerId -> answer data)
   private allBuzzerAnswers: Map<string, Map<string, { answer: number | string | boolean; submittedAtMs: number; buzzOrder: number }>> = new Map();
-  // Track last score delta per player for cancel_error retroactive correction
-  private lastScoreDeltas: Map<string, Map<string, number>> = new Map();
+  // Track last score delta per player for cancel_error retroactive correction.
+  // Stores { questionIndex, delta } so cancel_error only applies to the
+  // question that was just scored (prevents stale cross-question corrections).
+  private lastScoreDeltas: Map<string, Map<string, { questionIndex: number; delta: number }>> = new Map();
 
   constructor(io: SocketIOServer, roomManager: RoomManager) {
     this.io = io;
@@ -323,11 +325,15 @@ export class GameOrchestrator {
         console.log(`[GameOrchestrator] Skill effects on ${buzzer.playerId}: ${scoreEffectResult.skillsTriggered.map(s => s.skillId).join(", ")}`);
       }
 
-      // Track last score delta per player (used by cancel_error retroactive correction)
+      // Track last score delta per player (used by cancel_error retroactive correction).
+      // Keyed by questionIndex so cancel_error can only correct the current question.
       if (!this.lastScoreDeltas.has(roomId)) {
         this.lastScoreDeltas.set(roomId, new Map());
       }
-      this.lastScoreDeltas.get(roomId)!.set(buzzer.playerId, pointsEarned);
+      this.lastScoreDeltas.get(roomId)!.set(buzzer.playerId, {
+        questionIndex: room.state.questionIndex,
+        delta: pointsEarned,
+      });
 
       // Calculate expected scores for event payload (reducer will apply the actual update)
       const newRoundScore = (player.roundScore || 0) + pointsEarned;
@@ -1082,14 +1088,20 @@ export class GameOrchestrator {
     if (!room) return false;
 
     const roomDeltas = this.lastScoreDeltas.get(roomId);
-    const lastDelta = roomDeltas?.get(playerId);
-    if (lastDelta === undefined || lastDelta >= 0) {
-      console.log(`[GameOrchestrator] cancel_error: no negative delta for ${playerId} (lastDelta=${lastDelta})`);
+    const entry = roomDeltas?.get(playerId);
+
+    // Guard: entry must exist, delta must be negative, AND must be from the
+    // current question (prevents stale corrections from earlier rounds)
+    if (!entry || entry.delta >= 0 || entry.questionIndex !== room.state.questionIndex) {
+      console.log(
+        `[GameOrchestrator] cancel_error: no valid negative delta for ${playerId} ` +
+        `(entry=${JSON.stringify(entry)}, currentQ=${room.state.questionIndex})`
+      );
       return false;
     }
 
     // Revert the negative delta (add back the absolute value)
-    const correction = Math.abs(lastDelta);
+    const correction = Math.abs(entry.delta);
     const player = room.state.players[playerId];
     if (!player) return false;
 
@@ -1097,7 +1109,7 @@ export class GameOrchestrator {
     player.roundScore += correction;
 
     // Mark delta as corrected so it can't be used again
-    roomDeltas!.set(playerId, 0);
+    roomDeltas!.set(playerId, { questionIndex: entry.questionIndex, delta: 0 });
 
     const newTotalScore = player.score;
     const newRoundScore = player.roundScore;
@@ -1110,7 +1122,7 @@ export class GameOrchestrator {
       skillsTriggered: [{ skillId: "cancel_error", playerId }],
     });
 
-    console.log(`[GameOrchestrator] cancel_error applied for ${playerId}: +${correction} pts (was ${lastDelta})`);
+    console.log(`[GameOrchestrator] cancel_error applied for ${playerId}: +${correction} pts (was ${entry.delta})`);
     return true;
   }
 

@@ -168,7 +168,8 @@ export function applyAnswerPhaseSkill(
   }
 
   if (skillId === "illuminate_numbers") {
-    // Client-side visual: highlight answers containing digits
+    // Client-side visual: the client wraps digit sequences in the question text.
+    // No additional server metadata needed — just the skill confirmation.
     return { skillId: "illuminate_numbers" };
   }
 
