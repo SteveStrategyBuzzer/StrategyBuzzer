@@ -9,7 +9,7 @@ import { rateLimiter } from "../middleware/rateLimiter.js";
 import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";
 import { validateEvent } from "../validation/validate.js";
 import { MetricsService } from "../services/MetricsService.js";
-import { canActivateSkill, applySkillEffect } from "@strategybuzzer/game-engine";
+import { canActivateSkill, applySkillEffect, applyAnswerPhaseSkill } from "@strategybuzzer/game-engine";
 import { getAvatarSkillIds } from "../services/AvatarSkillsMap.js";
 import { BotPlayerService } from "../services/BotPlayerService.js";
 import {
@@ -453,27 +453,9 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           const choicesArr = Array.isArray(qRaw?.choices) ? (qRaw.choices as unknown[]) : null;
           const answersArr = Array.isArray(qRaw?.answers) ? (qRaw.answers as unknown[]) : null;
           const totalAnswers = choicesArr ? choicesArr.length : (answersArr ? answersArr.length : 4);
-          const wrongIndices: number[] = [];
-          for (let i = 0; i < totalAnswers; i++) {
-            if (i !== correctIndex) wrongIndices.push(i);
-          }
 
-          let effectPayload: Record<string, unknown> = { skillId: payload.skillId };
-
-          if (payload.skillId === "illuminate_numbers") {
-            // Client-side highlight: no server data needed beyond skill confirmation
-            effectPayload = { skillId: "illuminate_numbers" };
-          } else if (payload.skillId === "acidify_error") {
-            // Pick 2 random wrong indices to mark as "acidified"
-            const shuffled = wrongIndices.sort(() => Math.random() - 0.5);
-            effectPayload = { skillId: "acidify_error", wrongIndices: shuffled.slice(0, 2) };
-          } else if (payload.skillId === "ai_suggestion") {
-            // 90% chance show correct, 10% show a random wrong one
-            const suggestedIndex = Math.random() < 0.9
-              ? correctIndex
-              : wrongIndices[Math.floor(Math.random() * wrongIndices.length)] ?? correctIndex;
-            effectPayload = { skillId: "ai_suggestion", suggestedIndex };
-          }
+          // Delegate answer-hint computation to game-engine (single source of truth)
+          const effectPayload = applyAnswerPhaseSkill(payload.skillId, correctIndex, totalAnswers) ?? { skillId: payload.skillId };
 
           // Consume the skill use from inventory (no activeEffect entry needed)
           room.state = applySkillEffect(

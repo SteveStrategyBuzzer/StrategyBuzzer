@@ -269,6 +269,11 @@ const DuoSocketClient = {
                     if (this.onSkillFailed) this.onSkillFailed(data);
                 });
 
+                this._bindSocketEvent('skill_effect', (data) => {
+                    this._log('Skill effect', data);
+                    if (this.onSkillEffect) this.onSkillEffect(data);
+                });
+
                 this._bindSocketEvent('rate_limited', (data) => {
                     this._log('Rate limited', data);
                     if (this.onRateLimited) this.onRateLimited(data);

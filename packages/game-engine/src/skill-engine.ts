@@ -147,6 +147,49 @@ export function consumeEffect(
   return s;
 }
 
+/**
+ * Computes the visual-effect payload for answer-phase skills.
+ * These skills (illuminate_numbers, acidify_error, ai_suggestion) emit a
+ * targeted hint to the buzzing player only; they do NOT add an activeEffect.
+ *
+ * @param skillId       - One of the three answer-phase visual skills
+ * @param correctIndex  - Server-known correct answer index (from question)
+ * @param totalAnswers  - Total number of answer choices
+ * @returns             - Effect payload to emit via socket, or null if skill unknown
+ */
+export function applyAnswerPhaseSkill(
+  skillId: SkillEffectType,
+  correctIndex: number,
+  totalAnswers: number
+): Record<string, unknown> | null {
+  const wrongIndices: number[] = [];
+  for (let i = 0; i < totalAnswers; i++) {
+    if (i !== correctIndex) wrongIndices.push(i);
+  }
+
+  if (skillId === "illuminate_numbers") {
+    // Client-side visual: highlight answers containing digits
+    return { skillId: "illuminate_numbers" };
+  }
+
+  if (skillId === "acidify_error") {
+    // Server picks 2 random wrong answer indices to mark as dangerous
+    const shuffled = [...wrongIndices].sort(() => Math.random() - 0.5);
+    return { skillId: "acidify_error", wrongIndices: shuffled.slice(0, 2) };
+  }
+
+  if (skillId === "ai_suggestion") {
+    // 90% chance show correct index, 10% show a random wrong one
+    const suggestedIndex =
+      Math.random() < 0.9
+        ? correctIndex
+        : (wrongIndices[Math.floor(Math.random() * wrongIndices.length)] ?? correctIndex);
+    return { skillId: "ai_suggestion", suggestedIndex };
+  }
+
+  return null;
+}
+
 export type ScoreEffectResult = {
   pointsEarned: number;
   skillsTriggered: Array<{ skillId: string; playerId: string }>;
