@@ -119,10 +119,9 @@ $mode = 'duo';
     }
 
     .player-level {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         color: #4ECDC4;
-        opacity: 0.75;
-        font-weight: 500;
+        opacity: 0.8;
     }
     
     .player-score {
@@ -170,10 +169,9 @@ $mode = 'duo';
     }
 
     .opponent-level {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         color: #FF6B6B;
-        opacity: 0.75;
-        font-weight: 500;
+        opacity: 0.8;
     }
     
     .opponent-score {

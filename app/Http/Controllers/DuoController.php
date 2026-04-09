@@ -80,6 +80,12 @@ class DuoController extends Controller
         return null;
     }
 
+    private function getPlayerDuoLevel(int $userId): int
+    {
+        $stats = \App\Models\PlayerDuoStat::where('user_id', $userId)->first();
+        return $stats->level ?? 0;
+    }
+
     private function generateFreshGameplayToken(?string $roomId, int $userId): ?string
     {
         if (!$roomId) {
@@ -541,12 +547,10 @@ class DuoController extends Controller
         $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
 
         $skills = $this->getPlayerSkillsWithTriggers($user);
-        $playerDuoStats = \App\Models\PlayerDuoStat::where('user_id', $user->id)->first();
-        $playerLevel = $playerDuoStats->level ?? 0;
+        $playerLevel = $this->getPlayerDuoLevel($user->id);
 
         $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
-        $opponentDuoStats = \App\Models\PlayerDuoStat::where('user_id', $opponent->id ?? 0)->first();
-        $opponentLevel = $opponentDuoStats->level ?? 0;
+        $opponentLevel = $this->getPlayerDuoLevel($opponent->id ?? 0);
         $opponentSettings = $opponent->profile_settings ?? [];
         if (is_string($opponentSettings)) {
             $opponentSettings = json_decode($opponentSettings, true) ?? [];
@@ -1425,10 +1429,8 @@ class DuoController extends Controller
         $playerScore = 0;
         $opponentScore = 0;
 
-        $playerStats   = \App\Models\PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
-        $opponentStats = \App\Models\PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
-        $playerLevel   = $playerStats->level ?? 0;
-        $opponentLevel = $opponentStats->level ?? 0;
+        $playerLevel   = $this->getPlayerDuoLevel($user->id);
+        $opponentLevel = $this->getPlayerDuoLevel($opponent->id ?? 0);
 
         return response()->view('duo_question', [
             'match_id' => $match->id,
