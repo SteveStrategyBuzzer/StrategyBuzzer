@@ -16,6 +16,8 @@ export class GameOrchestrator {
   private pendingAnswers: Map<string, { playerId: string; answer: number | string | boolean; submittedAtMs: number }> = new Map();
   // Store answers from ALL buzzers (key = roomId, value = Map of playerId -> answer data)
   private allBuzzerAnswers: Map<string, Map<string, { answer: number | string | boolean; submittedAtMs: number; buzzOrder: number }>> = new Map();
+  // Track last score delta per player for cancel_error retroactive correction
+  private lastScoreDeltas: Map<string, Map<string, number>> = new Map();
 
   constructor(io: SocketIOServer, roomManager: RoomManager) {
     this.io = io;
@@ -300,9 +302,17 @@ export class GameOrchestrator {
         
         console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) answered ${isCorrect ? 'correctly' : 'incorrectly'}: ${pointsEarned} pts`);
       } else {
-        // Player buzzed but did NOT answer (timeout) - penalized with -2
+        // Player buzzed but did NOT answer (timeout) - default penalty is -2
         pointsEarned = -2;
-        console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) timed out (no answer): ${pointsEarned} pts`);
+        // timeout_forgiveness passive: if the player has this skill, timeout = 0 pts
+        const playerInventory = room.state.skillInventory[buzzer.playerId] ?? [];
+        const hasTimeoutForgiveness = playerInventory.some(e => e.skillId === "timeout_forgiveness");
+        if (hasTimeoutForgiveness) {
+          pointsEarned = 0;
+          console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) timed out — timeout_forgiveness applied: 0 pts`);
+        } else {
+          console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) timed out (no answer): ${pointsEarned} pts`);
+        }
       }
 
       // Apply active skill effects (score_shield, double_points) — server is sole arbiter
@@ -312,6 +322,12 @@ export class GameOrchestrator {
       if (scoreEffectResult.skillsTriggered.length > 0) {
         console.log(`[GameOrchestrator] Skill effects on ${buzzer.playerId}: ${scoreEffectResult.skillsTriggered.map(s => s.skillId).join(", ")}`);
       }
+
+      // Track last score delta per player (used by cancel_error retroactive correction)
+      if (!this.lastScoreDeltas.has(roomId)) {
+        this.lastScoreDeltas.set(roomId, new Map());
+      }
+      this.lastScoreDeltas.get(roomId)!.set(buzzer.playerId, pointsEarned);
 
       // Calculate expected scores for event payload (reducer will apply the actual update)
       const newRoundScore = (player.roundScore || 0) + pointsEarned;
@@ -1056,9 +1072,67 @@ export class GameOrchestrator {
     }
   }
 
+  /**
+   * cancel_error: retroactively converts the player's last -2 score delta to 0.
+   * Called from the skill handler when the player activates cancel_error.
+   * Returns true if the correction was applied, false if last delta was not negative.
+   */
+  handleCancelError(roomId: string, playerId: string): boolean {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return false;
+
+    const roomDeltas = this.lastScoreDeltas.get(roomId);
+    const lastDelta = roomDeltas?.get(playerId);
+    if (lastDelta === undefined || lastDelta >= 0) {
+      console.log(`[GameOrchestrator] cancel_error: no negative delta for ${playerId} (lastDelta=${lastDelta})`);
+      return false;
+    }
+
+    // Revert the negative delta (add back the absolute value)
+    const correction = Math.abs(lastDelta);
+    const player = room.state.players[playerId];
+    if (!player) return false;
+
+    player.score += correction;
+    player.roundScore += correction;
+
+    // Mark delta as corrected so it can't be used again
+    roomDeltas!.set(playerId, 0);
+
+    const newTotalScore = player.score;
+    const newRoundScore = player.roundScore;
+
+    this.io.to(roomId).emit("score_update", {
+      playerId,
+      score: newTotalScore,
+      roundScore: newRoundScore,
+      delta: correction,
+      skillsTriggered: [{ skillId: "cancel_error", playerId }],
+    });
+
+    console.log(`[GameOrchestrator] cancel_error applied for ${playerId}: +${correction} pts (was ${lastDelta})`);
+    return true;
+  }
+
+  /**
+   * premonition: returns the category of the next question for the given room.
+   * Called from the skill handler to emit only to the activating player.
+   */
+  getNextQuestionCategory(roomId: string): string | null {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return null;
+
+    const nextIndex = room.state.questionIndex + 1;
+    const nextQuestion = room.state.questions[nextIndex];
+    if (!nextQuestion) return null;
+
+    return nextQuestion.category || nextQuestion.subCategory || null;
+  }
+
   cleanup(roomId: string): void {
     this.clearPhaseTimer(roomId);
     this.pendingAnswers.delete(roomId);
+    this.lastScoreDeltas.delete(roomId);
     console.log(`[GameOrchestrator] Cleaned up room ${roomId}`);
   }
 

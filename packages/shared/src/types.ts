@@ -152,6 +152,7 @@ export type SkillTargetType =
 export type SkillUiSlot =
   | "pre_question"
   | "during_question"
+  | "answer_action"
   | "post_question"
   | "passive";
 
@@ -169,7 +170,13 @@ export type SkillEffectType =
   | "score_shield"
   | "reveal_correct"
   | "double_points"
-  | "skill_recharge";
+  | "skill_recharge"
+  | "illuminate_numbers"
+  | "acidify_error"
+  | "ai_suggestion"
+  | "cancel_error"
+  | "premonition"
+  | "timeout_forgiveness";
 
 export type SkillDefinition = {
   id: SkillEffectType;

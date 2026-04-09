@@ -1508,6 +1508,25 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         console.log('[DuoResult] Both players ready', data);
         navigateToNextQuestion();
     }
+    function _onResultSkillEffect(data) {
+        const skillId = data && data.skillId;
+        if (!skillId) return;
+
+        if (skillId === 'cancel_error') {
+            if (data.applied) {
+                showSkillMessage('{{ __("Erreur annulée ! +2 points récupérés 🎉") }}', true);
+            } else {
+                showSkillMessage('{{ __("Aucune pénalité à annuler") }}', false);
+            }
+        } else if (skillId === 'premonition') {
+            const cat = data.nextCategory;
+            const msg = cat
+                ? '{{ __("Prochaine question :") }} ' + cat + ' 🔮'
+                : '{{ __("Prémonition : catégorie inconnue") }}';
+            showSkillMessage(msg, true);
+        }
+    }
+
     // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
     window._duoResultHandlers = {
         disconnect:    _onResultDisconnect,
@@ -1518,7 +1537,8 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         player_ready:  _onResultPlayerReady,
         phase_changed: _onResultPhaseChanged,
         state:         _onResultState,
-        both_ready:    _onResultBothReady
+        both_ready:    _onResultBothReady,
+        skill_effect:  _onResultSkillEffect
     };
 
     window.addEventListener('beforeunload', function() {
@@ -1761,6 +1781,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         ds.on('phase_changed',h.phase_changed);
         ds.on('state',        h.state);
         ds.on('both_ready',   h.both_ready);
+        ds.on('skill_effect', h.skill_effect);
     });
 })();
 </script>

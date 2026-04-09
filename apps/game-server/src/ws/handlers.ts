@@ -442,6 +442,101 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           return;
         }
 
+        // ── VISUAL-EFFECT ANSWER-PHASE SKILLS ───────────────────────────────────
+        // These emit a targeted skill_effect only to the activating player.
+        // The server computes answer-hint metadata; then consumes the skill use.
+        const ANSWER_PHASE_VISUAL_SKILLS = ["illuminate_numbers", "acidify_error", "ai_suggestion"] as const;
+        if ((ANSWER_PHASE_VISUAL_SKILLS as readonly string[]).includes(payload.skillId)) {
+          const question = room.state.questions[room.state.questionIndex];
+          const correctIndex = question?.correctIndex ?? -1;
+          const qRaw = question as Record<string, unknown>;
+          const choicesArr = Array.isArray(qRaw?.choices) ? (qRaw.choices as unknown[]) : null;
+          const answersArr = Array.isArray(qRaw?.answers) ? (qRaw.answers as unknown[]) : null;
+          const totalAnswers = choicesArr ? choicesArr.length : (answersArr ? answersArr.length : 4);
+          const wrongIndices: number[] = [];
+          for (let i = 0; i < totalAnswers; i++) {
+            if (i !== correctIndex) wrongIndices.push(i);
+          }
+
+          let effectPayload: Record<string, unknown> = { skillId: payload.skillId };
+
+          if (payload.skillId === "illuminate_numbers") {
+            // Client-side highlight: no server data needed beyond skill confirmation
+            effectPayload = { skillId: "illuminate_numbers" };
+          } else if (payload.skillId === "acidify_error") {
+            // Pick 2 random wrong indices to mark as "acidified"
+            const shuffled = wrongIndices.sort(() => Math.random() - 0.5);
+            effectPayload = { skillId: "acidify_error", wrongIndices: shuffled.slice(0, 2) };
+          } else if (payload.skillId === "ai_suggestion") {
+            // 90% chance show correct, 10% show a random wrong one
+            const suggestedIndex = Math.random() < 0.9
+              ? correctIndex
+              : wrongIndices[Math.floor(Math.random() * wrongIndices.length)] ?? correctIndex;
+            effectPayload = { skillId: "ai_suggestion", suggestedIndex };
+          }
+
+          // Consume the skill use from inventory (no activeEffect entry needed)
+          room.state = applySkillEffect(
+            room.state,
+            currentPlayerId,
+            currentPlayerId,
+            payload.skillId,
+            { questionsAffected: 1 }
+          );
+
+          // Send effect only to the activating player
+          socket.emit("skill_effect", effectPayload);
+          console.log(`[WS] ${payload.skillId} applied for ${currentPlayerId}: ${JSON.stringify(effectPayload)}`);
+          MetricsService.incrementEventsProcessed();
+          return;
+        }
+
+        // ── cancel_error (REVEAL / ROUND_SCOREBOARD) ───────────────────────────
+        if (payload.skillId === "cancel_error") {
+          const applied = gameOrchestrator.handleCancelError(payload.roomId, currentPlayerId);
+          if (!applied) {
+            socket.emit("skill_failed", {
+              skillId: "cancel_error",
+              reason: "no_negative_delta",
+            });
+            MetricsService.incrementEventsFailed();
+            return;
+          }
+          // Consume the skill use
+          room.state = applySkillEffect(
+            room.state,
+            currentPlayerId,
+            currentPlayerId,
+            "cancel_error",
+            { questionsAffected: 1 }
+          );
+          socket.emit("skill_effect", { skillId: "cancel_error", applied: true });
+          MetricsService.incrementEventsProcessed();
+          return;
+        }
+
+        // ── premonition (ROUND_SCOREBOARD) ──────────────────────────────────────
+        if (payload.skillId === "premonition") {
+          const category = gameOrchestrator.getNextQuestionCategory(payload.roomId);
+          // Consume the skill use
+          room.state = applySkillEffect(
+            room.state,
+            currentPlayerId,
+            currentPlayerId,
+            "premonition",
+            { questionsAffected: 1 }
+          );
+          // Send next question category only to the activating player
+          socket.emit("skill_effect", {
+            skillId: "premonition",
+            nextCategory: category ?? null,
+          });
+          console.log(`[WS] premonition for ${currentPlayerId}: next category = ${category}`);
+          MetricsService.incrementEventsProcessed();
+          return;
+        }
+
+        // ── STANDARD SKILLS (reduce_time, shuffle_answers, score_shield, etc.) ──
         // Determine target
         let targetId = payload.targetPlayerId;
         if (!targetId) {

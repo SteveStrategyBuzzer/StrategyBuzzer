@@ -416,6 +416,16 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         color: #DEB887;
     }
     
+    .skill-action-btn.pending {
+        opacity: 0.6;
+        cursor: wait;
+        pointer-events: none;
+        animation: pulse 0.8s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 0.9; }
+    }
     .skill-action-btn:not(:disabled):hover {
         transform: scale(1.05);
         filter: brightness(1.2);
@@ -938,43 +948,102 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         return /\d/.test(str);
     }
     
-    function activateIlluminateSkill() {
-        if (skillsUsed.illuminate || answered) return;
-        skillsUsed.illuminate = true;
-        
-        const btn = document.getElementById('skillIlluminate');
-        if (btn) btn.classList.add('used');
-        
+    function _applyIlluminateEffect() {
         answerButtons.forEach(function(button) {
             const text = button.getAttribute('data-text') || '';
             if (containsNumber(text)) {
                 button.classList.add('illuminated');
             }
         });
-        
-        console.log('[Skills] Illuminate numbers activated');
+        console.log('[Skills] Illuminate numbers visual applied');
+    }
+
+    function _applyAcidifyEffect(wrongIndices) {
+        if (Array.isArray(wrongIndices) && wrongIndices.length > 0) {
+            wrongIndices.forEach(function(idx) {
+                if (answerButtons[idx]) answerButtons[idx].classList.add('acidified');
+            });
+        } else {
+            // Fallback: pick one random wrong answer client-side
+            const available = [];
+            answerButtons.forEach(function(button, idx) {
+                if (!button.classList.contains('correct') && !button.classList.contains('illuminated')) {
+                    available.push(idx);
+                }
+            });
+            if (available.length > 0) {
+                const r = available[Math.floor(Math.random() * available.length)];
+                answerButtons[r].classList.add('acidified');
+            }
+        }
+        console.log('[Skills] Acidify error visual applied', wrongIndices);
+    }
+
+    function _applyAiSuggestionEffect(suggestedIndex) {
+        if (suggestedIndex !== undefined && suggestedIndex !== null && answerButtons[suggestedIndex]) {
+            answerButtons[suggestedIndex].classList.add('ai-suggested');
+        } else {
+            // Fallback: pick random available answer
+            const available = [];
+            answerButtons.forEach(function(button, idx) {
+                if (!button.classList.contains('eliminated') && !button.classList.contains('acidified')) {
+                    available.push(idx);
+                }
+            });
+            if (available.length > 0) {
+                const r = available[Math.floor(Math.random() * available.length)];
+                answerButtons[r].classList.add('ai-suggested');
+            }
+        }
+        console.log('[Skills] AI suggestion visual applied', suggestedIndex);
+    }
+
+    function _onSkillEffect(data) {
+        const skillId = data && data.skillId;
+        if (!skillId) return;
+
+        if (skillId === 'illuminate_numbers') {
+            const btn = document.getElementById('skillIlluminate');
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyIlluminateEffect();
+        } else if (skillId === 'acidify_error') {
+            const btn = document.getElementById('skillAcidify');
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyAcidifyEffect(data.wrongIndices);
+        } else if (skillId === 'ai_suggestion') {
+            const btn = document.getElementById('skillAiSuggest');
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyAiSuggestionEffect(data.suggestedIndex);
+        }
+    }
+
+    function activateIlluminateSkill() {
+        if (skillsUsed.illuminate || answered) return;
+        skillsUsed.illuminate = true;
+        const btn = document.getElementById('skillIlluminate');
+        if (btn) btn.classList.add('pending');
+        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+            window.DuoSocketClient.useSkill('illuminate_numbers');
+        } else {
+            // No server connection: apply effect immediately client-side
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyIlluminateEffect();
+        }
+        console.log('[Skills] Illuminate numbers requested');
     }
     
     function activateAcidifySkill() {
         if (skillsUsed.acidify || answered) return;
         skillsUsed.acidify = true;
-        
         const btn = document.getElementById('skillAcidify');
-        if (btn) btn.classList.add('used');
-        
-        const wrongAnswers = [];
-        answerButtons.forEach(function(button, idx) {
-            if (!button.classList.contains('correct') && !button.classList.contains('illuminated')) {
-                wrongAnswers.push(idx);
-            }
-        });
-        
-        if (wrongAnswers.length > 0) {
-            const randomIdx = wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
-            answerButtons[randomIdx].classList.add('acidified');
+        if (btn) btn.classList.add('pending');
+        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+            window.DuoSocketClient.useSkill('acidify_error');
+        } else {
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyAcidifyEffect(null);
         }
-        
-        console.log('[Skills] Acidify error activated');
+        console.log('[Skills] Acidify error requested');
     }
     
     function activateEliminateSkill() {
@@ -1011,23 +1080,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function activateAiSuggestSkill() {
         if (skillsUsed.aiSuggest || answered) return;
         skillsUsed.aiSuggest = true;
-        
         const btn = document.getElementById('skillAiSuggest');
-        if (btn) btn.classList.add('used');
-        
-        const availableAnswers = [];
-        answerButtons.forEach(function(button, idx) {
-            if (!button.classList.contains('eliminated') && !button.classList.contains('acidified')) {
-                availableAnswers.push(idx);
-            }
-        });
-        
-        if (availableAnswers.length > 0) {
-            const suggestedIdx = availableAnswers[Math.floor(Math.random() * availableAnswers.length)];
-            answerButtons[suggestedIdx].classList.add('ai-suggested');
+        if (btn) btn.classList.add('pending');
+        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+            window.DuoSocketClient.useSkill('ai_suggestion');
+        } else {
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyAiSuggestionEffect(null);
         }
-        
-        console.log('[Skills] AI Suggestion activated');
+        console.log('[Skills] AI suggestion requested');
     }
     
     function activateLockCorrectSkill() {
@@ -1465,6 +1526,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         match_ended:     _onAnswerMatchEnded,
         phase_changed:   _onAnswerPhaseChanged,
         score_update:    _onAnswerScoreUpdate,
+        skill_effect:    _onSkillEffect,
         initEffects:     _initAnswerEffects
     };
 
@@ -1609,6 +1671,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         ds.on('match_ended',     h.match_ended);
         ds.on('phase_changed',   h.phase_changed);
         ds.on('score_update',    h.score_update);
+        ds.on('skill_effect',    h.skill_effect);
         h.initEffects();
     });
 })();

@@ -9,6 +9,12 @@ const SKILL_EFFECT_IDS = [
   "reveal_correct",
   "double_points",
   "skill_recharge",
+  "illuminate_numbers",
+  "acidify_error",
+  "ai_suggestion",
+  "cancel_error",
+  "premonition",
+  "timeout_forgiveness",
 ] as const satisfies readonly SkillEffectType[];
 
 export const JoinRoomSchema = z.object({
