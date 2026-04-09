@@ -95,6 +95,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         font-weight: 600;
         color: #aaa;
     }
+
+    .efficiency-display {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #FFD700;
+        opacity: 0.85;
+    }
     
     .question-text-box {
         background: rgba(30, 50, 70, 0.6);
@@ -641,6 +648,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         <div class="question-label">{{ __('Question') }} #{{ $currentQuestion ?? 1 }}</div>
         <div class="potential-points points-2" id="potentialPoints">+2</div>
         <div class="score-display" id="scoreDisplay">{{ __('Score') }} <span id="playerScoreValue">{{ $playerScore ?? 0 }}</span></div>
+        <div class="efficiency-display" id="efficiencyDisplay">⚡ <span id="efficiencyValue">—</span></div>
     </div>
     
     <div class="question-text-box">
@@ -804,7 +812,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         const scoreEl = document.getElementById('playerScoreValue');
         if (ps !== null && scoreEl) {
             const n = parseInt(ps, 10);
-            if (!isNaN(n)) scoreEl.textContent = n;
+            if (!isNaN(n)) {
+                scoreEl.textContent = n;
+                // Init efficiency from URL score
+                const qNum = Math.max(1, parseInt('{{ $currentQuestion ?? 1 }}', 10));
+                const eff = Math.max(0, Math.min(100, Math.round(n / (2 * qNum) * 100)));
+                const effEl = document.getElementById('efficiencyValue');
+                if (effEl && n !== 0) effEl.textContent = eff + '%';
+            }
         }
         // Store opponent score for socket updates
         if (os !== null) {
@@ -1384,19 +1399,28 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             }, 1000);
         }
     }
+    function _updateEfficiencyDisplay(score) {
+        const qNum = Math.max(1, parseInt('{{ $currentQuestion ?? 1 }}', 10));
+        const eff = Math.max(0, Math.min(100, Math.round(score / (2 * qNum) * 100)));
+        const effEl = document.getElementById('efficiencyValue');
+        if (effEl) effEl.textContent = eff + '%';
+    }
     function _onAnswerScoreUpdate(data) {
-        console.log('[DuoAnswer] Score update received:', data);
         const playerScoreEl = document.getElementById('playerScoreValue');
         if (!playerScoreEl) return;
         if (data.scores) {
             const myScore = data.scores[String(PLAYER_ID)];
-            if (myScore !== undefined) { playerScoreEl.textContent = myScore; }
+            if (myScore !== undefined) {
+                playerScoreEl.textContent = myScore;
+                _updateEfficiencyDisplay(myScore);
+            }
             return;
         }
         if (data.score !== undefined) {
             const dataPlayerId = String(data.playerId || '').replace('player:', '');
             if (dataPlayerId === String(PLAYER_ID) || data.playerId == PLAYER_ID) {
                 playerScoreEl.textContent = data.score;
+                _updateEfficiencyDisplay(data.score);
             }
         }
     }

@@ -117,6 +117,13 @@ $mode = 'duo';
         font-weight: 600;
         color: #4ECDC4;
     }
+
+    .player-level {
+        font-size: 0.8rem;
+        color: #4ECDC4;
+        opacity: 0.75;
+        font-weight: 500;
+    }
     
     .player-score {
         font-size: 2rem;
@@ -160,6 +167,13 @@ $mode = 'duo';
         font-size: 1rem;
         font-weight: 600;
         color: #FF6B6B;
+    }
+
+    .opponent-level {
+        font-size: 0.8rem;
+        color: #FF6B6B;
+        opacity: 0.75;
+        font-weight: 500;
     }
     
     .opponent-score {
@@ -288,30 +302,12 @@ $mode = 'duo';
         position: relative;
     }
 
-    /* On the question page, active skills are LOCKED — only usable on the result page.
-       They show in full colour but with a lock badge, no golden glow, no click. */
+    /* Active skills glow gold — available after the question on the answer/result page */
     .skill-circle.active {
-        border-color: rgba(255, 215, 0, 0.55);
-        background: rgba(255, 215, 0, 0.12);
-        opacity: 0.85;
+        border-color: rgba(255, 215, 0, 0.7);
+        background: rgba(255, 215, 0, 0.15);
+        box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
         cursor: default;
-    }
-
-    /* Lock badge in the top-right corner of each active skill */
-    .skill-circle.active::after {
-        content: '🔒';
-        font-size: 0.7rem;
-        position: absolute;
-        top: -4px;
-        right: -4px;
-        background: rgba(0,0,0,0.75);
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1;
     }
 
     /* Passive skill (faster_buzz): shown as a soft green glow — no lock, auto-applied */
@@ -745,6 +741,7 @@ $mode = 'duo';
             <div class="player-circle">
                 <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
                 <div class="player-name">{{ $playerName ?? __('Vous') }}</div>
+                <div class="player-level">{{ __('Niveau') }} {{ $playerLevel ?? 0 }} Duo</div>
                 <div class="player-score" id="playerScore">{{ $playerScore ?? 0 }}</div>
             </div>
             
@@ -755,6 +752,7 @@ $mode = 'duo';
                     <div class="opponent-avatar-empty">?</div>
                 @endif
                 <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
+                <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel ?? 0 }} Duo</div>
                 <div class="opponent-score" id="opponentScore">{{ $opponentScore ?? 0 }}</div>
             </div>
         </div>

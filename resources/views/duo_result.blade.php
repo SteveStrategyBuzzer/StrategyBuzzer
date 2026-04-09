@@ -170,31 +170,31 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
     }
     
     .player-avatar-small {
-        width: 60px;
-        height: 60px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
         border: 3px solid #4ECDC4;
         object-fit: cover;
     }
     
     .opponent-avatar-small {
-        width: 60px;
-        height: 60px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
         border: 3px solid #FF6B6B;
         object-fit: cover;
     }
     
     .opponent-avatar-empty {
-        width: 60px;
-        height: 60px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
         border: 3px solid #FF6B6B;
         display: flex;
         align-items: center;
         justify-content: center;
         background: rgba(255, 107, 107, 0.2);
-        font-size: 1.5rem;
+        font-size: 2rem;
         font-weight: 900;
         color: #FF6B6B;
     }

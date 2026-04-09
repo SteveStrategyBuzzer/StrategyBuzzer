@@ -541,8 +541,12 @@ class DuoController extends Controller
         $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
 
         $skills = $this->getPlayerSkillsWithTriggers($user);
+        $playerDuoStats = \App\Models\PlayerDuoStat::where('user_id', $user->id)->first();
+        $playerLevel = $playerDuoStats->level ?? 0;
 
         $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
+        $opponentDuoStats = \App\Models\PlayerDuoStat::where('user_id', $opponent->id ?? 0)->first();
+        $opponentLevel = $opponentDuoStats->level ?? 0;
         $opponentSettings = $opponent->profile_settings ?? [];
         if (is_string($opponentSettings)) {
             $opponentSettings = json_decode($opponentSettings, true) ?? [];
@@ -590,6 +594,8 @@ class DuoController extends Controller
             'opponentName' => $opponentName,
             'playerScore' => $playerScore,
             'opponentScore' => $opponentScore,
+            'playerLevel' => $playerLevel,
+            'opponentLevel' => $opponentLevel,
             'totalQuestions' => $totalQuestions,
             'currentQuestion' => $currentQuestion,
             'theme' => $theme,

@@ -277,6 +277,58 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
         </div>
     </div>
 
+    {{-- Per-round breakdown --}}
+    @php
+        $roundBreakdown = [];
+        foreach ($round_details ?? [] as $q) {
+            $r = $q['round'] ?? 1;
+            if (!isset($roundBreakdown[$r])) {
+                $roundBreakdown[$r] = ['correct' => 0, 'incorrect' => 0, 'unanswered' => 0, 'points' => 0, 'total' => 0];
+            }
+            $roundBreakdown[$r]['total']++;
+            if ($q['is_correct'] ?? false) {
+                $roundBreakdown[$r]['correct']++;
+            } elseif (($q['player_answer'] ?? null) === null || ($q['points_earned'] ?? 0) === 0 && !($q['is_correct'] ?? false) && ($q['buzz_time'] ?? null) === null) {
+                $roundBreakdown[$r]['unanswered']++;
+            } else {
+                $roundBreakdown[$r]['incorrect']++;
+            }
+            $roundBreakdown[$r]['points'] += $q['points_earned'] ?? 0;
+        }
+        ksort($roundBreakdown);
+    @endphp
+
+    @if(!empty($roundBreakdown))
+    <div style="margin-bottom:22px;">
+        <div style="font-size:.9rem;font-weight:700;color:#555;margin-bottom:10px;text-align:left;">{{ __('Statistiques par Manche') }}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem;text-align:center;">
+            <thead>
+                <tr style="color:#888;border-bottom:1px solid #e5e5e5;">
+                    <th style="padding:6px 4px;text-align:left;">{{ __('Manche') }}</th>
+                    <th style="padding:6px 4px;">✅ {{ __('Réussi') }}</th>
+                    <th style="padding:6px 4px;">❌ {{ __('Échec') }}</th>
+                    <th style="padding:6px 4px;">⏸️ {{ __('Sans réponse') }}</th>
+                    <th style="padding:6px 4px;">⚡ {{ __('Efficacité') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($roundBreakdown as $rNum => $rData)
+                @php
+                    $rEff = $rData['total'] > 0 ? max(0, min(100, round($rData['points'] / (2 * $rData['total']) * 100))) : 0;
+                @endphp
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                    <td style="padding:7px 4px;text-align:left;font-weight:700;color:#333;">{{ __('Manche') }} {{ $rNum }}</td>
+                    <td style="padding:7px 4px;color:#11998e;font-weight:600;">{{ $rData['correct'] }}</td>
+                    <td style="padding:7px 4px;color:#e74c3c;font-weight:600;">{{ $rData['incorrect'] }}</td>
+                    <td style="padding:7px 4px;color:#888;">{{ $rData['unanswered'] }}</td>
+                    <td style="padding:7px 4px;font-weight:700;color:{{ $rEff >= 50 ? '#11998e' : '#e74c3c' }};">{{ $rEff }}%</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endif
+
     {{-- Rewards --}}
     @if($coinsEarnedDisplay > 0)
     <div class="rewards-box">
