@@ -1017,6 +1017,26 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
     }
 
+    function _onSkillFailed(data) {
+        const skillId = data && data.skillId;
+        if (!skillId) return;
+        // Restore the button and clear the "used" guard so the player can retry
+        if (skillId === 'illuminate_numbers') {
+            skillsUsed.illuminate = false;
+            const btn = document.getElementById('skillIlluminate');
+            if (btn) { btn.classList.remove('pending'); }
+        } else if (skillId === 'acidify_error') {
+            skillsUsed.acidify = false;
+            const btn = document.getElementById('skillAcidify');
+            if (btn) { btn.classList.remove('pending'); }
+        } else if (skillId === 'ai_suggestion') {
+            skillsUsed.aiSuggest = false;
+            const btn = document.getElementById('skillAiSuggest');
+            if (btn) { btn.classList.remove('pending'); }
+        }
+        console.log('[Skills] Skill activation failed:', skillId, data.reason || '');
+    }
+
     function activateIlluminateSkill() {
         if (skillsUsed.illuminate || answered) return;
         skillsUsed.illuminate = true;
@@ -1527,6 +1547,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         phase_changed:   _onAnswerPhaseChanged,
         score_update:    _onAnswerScoreUpdate,
         skill_effect:    _onSkillEffect,
+        skill_failed:    _onSkillFailed,
         initEffects:     _initAnswerEffects
     };
 
@@ -1672,6 +1693,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         ds.on('phase_changed',   h.phase_changed);
         ds.on('score_update',    h.score_update);
         ds.on('skill_effect',    h.skill_effect);
+        ds.on('skill_failed',    h.skill_failed);
         h.initEffects();
     });
 })();

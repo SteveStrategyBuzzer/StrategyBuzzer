@@ -449,7 +449,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         const ANSWER_PHASE_VISUAL_SKILLS = ["illuminate_numbers", "acidify_error", "ai_suggestion"] as const;
         if ((ANSWER_PHASE_VISUAL_SKILLS as readonly string[]).includes(payload.skillId)) {
           if (room.state.lockedAnswerPlayerId !== currentPlayerId) {
-            socket.emit("skill_error", {
+            socket.emit("skill_failed", {
               skillId: payload.skillId,
               reason: "not_your_turn",
               message: "Answer-phase skills can only be used by the buzzing player",
