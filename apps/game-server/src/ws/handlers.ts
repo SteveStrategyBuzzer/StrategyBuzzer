@@ -9,7 +9,7 @@ import { rateLimiter } from "../middleware/rateLimiter.js";
 import { rehydrateRoom, canRecoverRoom } from "../services/RoomRecovery.js";
 import { validateEvent } from "../validation/validate.js";
 import { MetricsService } from "../services/MetricsService.js";
-import { canActivateSkill, applySkillEffect, applyAnswerPhaseSkill } from "@strategybuzzer/game-engine";
+import { canActivateSkill, applySkillEffect, applyAnswerPhaseSkill, consumeSkillUse } from "@strategybuzzer/game-engine";
 import { getAvatarSkillIds } from "../services/AvatarSkillsMap.js";
 import { BotPlayerService } from "../services/BotPlayerService.js";
 import {
@@ -467,14 +467,10 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           // Delegate answer-hint computation to game-engine (single source of truth)
           const effectPayload = applyAnswerPhaseSkill(payload.skillId, correctIndex, totalAnswers) ?? { skillId: payload.skillId };
 
-          // Consume the skill use from inventory (no activeEffect entry needed)
-          room.state = applySkillEffect(
-            room.state,
-            currentPlayerId,
-            currentPlayerId,
-            payload.skillId,
-            { questionsAffected: 1 }
-          );
+          // Consume the skill use from inventory WITHOUT adding an activeEffect entry.
+          // Visual one-shot skills deliver their effect via socket emit; no need to
+          // persist them in game state as an activeEffect.
+          room.state = consumeSkillUse(room.state, currentPlayerId, payload.skillId);
 
           // Send effect only to the activating player
           socket.emit("skill_effect", effectPayload);

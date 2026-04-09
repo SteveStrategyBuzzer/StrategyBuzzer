@@ -1508,23 +1508,61 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         console.log('[DuoResult] Both players ready', data);
         navigateToNextQuestion();
     }
+    // Track pending skill buttons by skillId waiting for server confirmation
+    var _pendingSkillBtns = {};
+
     function _onResultSkillEffect(data) {
         const skillId = data && data.skillId;
         if (!skillId) return;
 
+        const btn = _pendingSkillBtns[skillId];
+
         if (skillId === 'cancel_error') {
             if (data.applied) {
                 showSkillMessage('{{ __("Erreur annulée ! +2 points récupérés 🎉") }}', true);
+                // Confirm the button as used
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = '{{ __("Activé") }}';
+                    btn.closest('.skill-item').classList.add('used');
+                }
             } else {
                 showSkillMessage('{{ __("Aucune pénalité à annuler") }}', false);
+                // Restore button — no penalty to cancel
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '{{ __("Activer") }}';
+                    btn.classList.remove('pending');
+                }
             }
+            delete _pendingSkillBtns[skillId];
         } else if (skillId === 'premonition') {
             const cat = data.nextCategory;
             const msg = cat
                 ? '{{ __("Prochaine question :") }} ' + cat + ' 🔮'
                 : '{{ __("Prémonition : catégorie inconnue") }}';
             showSkillMessage(msg, true);
+            // Confirm the button as used
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '{{ __("Activé") }}';
+                btn.closest('.skill-item').classList.add('used');
+            }
+            delete _pendingSkillBtns[skillId];
         }
+    }
+
+    function _onResultSkillFailed(data) {
+        const skillId = data && data.skillId;
+        if (!skillId) return;
+        const btn = _pendingSkillBtns[skillId];
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '{{ __("Activer") }}';
+            btn.classList.remove('pending');
+            delete _pendingSkillBtns[skillId];
+        }
+        showSkillMessage(data.message || '{{ __("Activation impossible") }}', false);
     }
 
     // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
@@ -1538,7 +1576,8 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         phase_changed: _onResultPhaseChanged,
         state:         _onResultState,
         both_ready:    _onResultBothReady,
-        skill_effect:  _onResultSkillEffect
+        skill_effect:  _onResultSkillEffect,
+        skill_failed:  _onResultSkillFailed
     };
 
     window.addEventListener('beforeunload', function() {
@@ -1556,14 +1595,22 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         
         console.log('[DuoResult] Activating skill:', skillId);
         
+        const btn = event.target;
+        // Set pending state — wait for server confirmation before marking used
+        btn.disabled = true;
+        btn.classList.add('pending');
+        btn.textContent = '⏳';
+        _pendingSkillBtns[skillId] = btn;
+
         if (DuoSocketClient.isConnected()) {
             DuoSocketClient.useSkill(skillId);
+        } else {
+            // Offline fallback — restore button
+            btn.disabled = false;
+            btn.classList.remove('pending');
+            btn.textContent = '{{ __("Activer") }}';
+            delete _pendingSkillBtns[skillId];
         }
-        
-        const btn = event.target;
-        btn.disabled = true;
-        btn.textContent = '{{ __("Activé") }}';
-        btn.closest('.skill-item').classList.add('used');
     };
     
     // Skill Challenger - reduce_time et shuffle_answers
@@ -1782,6 +1829,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         ds.on('state',        h.state);
         ds.on('both_ready',   h.both_ready);
         ds.on('skill_effect', h.skill_effect);
+        ds.on('skill_failed', h.skill_failed);
     });
 })();
 </script>

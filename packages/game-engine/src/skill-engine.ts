@@ -148,6 +148,32 @@ export function consumeEffect(
 }
 
 /**
+ * Consumes one use of a skill from the player's inventory WITHOUT creating an
+ * activeEffect entry. Use this for purely visual / one-shot skills whose effect
+ * is delivered via a direct socket emit and does not need to persist in game state.
+ * (illuminate_numbers, acidify_error, ai_suggestion)
+ */
+export function consumeSkillUse(
+  state: GameState,
+  playerId: UUID,
+  skillId: SkillEffectType
+): GameState {
+  const inventory = state.skillInventory[playerId] ?? [];
+  const entryIdx = inventory.findIndex((e) => e.skillId === skillId);
+  if (entryIdx === -1 || inventory[entryIdx].usesLeft <= 0) return state;
+
+  const s: GameState = structuredClone(state);
+  const inv = s.skillInventory[playerId];
+  inv[entryIdx] = {
+    ...inv[entryIdx],
+    usesLeft: Math.max(0, inv[entryIdx].usesLeft - 1),
+    lastUsedPhase: s.phase,
+    lastUsedQuestionIndex: s.questionIndex,
+  };
+  return s;
+}
+
+/**
  * Computes the visual-effect payload for answer-phase skills.
  * These skills (illuminate_numbers, acidify_error, ai_suggestion) emit a
  * targeted hint to the buzzing player only; they do NOT add an activeEffect.
