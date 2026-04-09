@@ -16,6 +16,10 @@ $totalPoints  = $globalStats['total_points'] ?? 0;
 $correctCount = $globalStats['correct']      ?? 0;
 $incorrectCount = $globalStats['incorrect']  ?? 0;
 $totalAnswered  = $correctCount + $incorrectCount;
+$unansweredCount = $globalStats['unanswered'] ?? (function() use ($round_details, $correctCount, $incorrectCount) {
+    $total = count($round_details ?? []);
+    return max(0, $total - $correctCount - $incorrectCount);
+})();
 
 $opponentNameDisplay = $opponent_name ?? ($opponent->name ?? __('Adversaire'));
 $coinsEarnedDisplay  = $coins_earned ?? 0;
@@ -269,6 +273,16 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
             <div class="stat-icon">✅</div>
             <div class="stat-value">{{ $correctCount }}</div>
             <div class="stat-label">{{ __('Correctes') }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-icon">❌</div>
+            <div class="stat-value">{{ $incorrectCount }}</div>
+            <div class="stat-label">{{ __('Incorrectes') }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-icon">⏸️</div>
+            <div class="stat-value">{{ $unansweredCount }}</div>
+            <div class="stat-label">{{ __('Sans réponse') }}</div>
         </div>
         <div class="stat-box">
             <div class="stat-icon">⭐</div>
