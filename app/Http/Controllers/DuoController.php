@@ -64,7 +64,7 @@ class DuoController extends Controller
     {
         $avatarName = $this->getSnapshotStrategicAvatarName($snapshot);
 
-        if ($avatarName === 'Aucun') {
+        if ($this->normalizeAvatarName($avatarName) === 'aucun') {
             return null;
         }
 
@@ -72,7 +72,7 @@ class DuoController extends Controller
         $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
 
         foreach ($strategicAvatars as $avatar) {
-            if (($avatar['name'] ?? null) === $avatarName) {
+            if ($this->normalizeAvatarName($avatar['name'] ?? '') === $this->normalizeAvatarName($avatarName)) {
                 return $avatar['image'] ?? $avatar['path'] ?? null;
             }
         }
@@ -84,6 +84,11 @@ class DuoController extends Controller
     {
         $stats = \App\Models\PlayerDuoStat::where('user_id', $userId)->first();
         return $stats->level ?? 0;
+    }
+
+    private function normalizeAvatarName(mixed $name): string
+    {
+        return mb_strtolower(trim((string) $name), 'UTF-8');
     }
 
     private function generateFreshGameplayToken(?string $roomId, int $userId): ?string
@@ -562,11 +567,11 @@ class DuoController extends Controller
 
         $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
         $strategicAvatarPath = null;
-        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+        if ($this->normalizeAvatarName($avatarName) !== 'aucun' && !empty($avatarName)) {
             $catalog = \App\Services\AvatarCatalog::get();
             $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
             foreach ($strategicAvatars as $avatar) {
-                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                if (isset($avatar['name']) && $this->normalizeAvatarName($avatar['name']) === $this->normalizeAvatarName($avatarName)) {
                     $strategicAvatarPath = $avatar['image'] ?? null;
                     break;
                 }
@@ -614,14 +619,15 @@ class DuoController extends Controller
         $snapshot   = $this->getPlayerSnapshot($user);
         $avatarName = $this->getSnapshotStrategicAvatarName($snapshot);
 
-        if ($avatarName === 'Aucun' || empty($avatarName)) {
+        if ($this->normalizeAvatarName($avatarName) === 'aucun' || empty($avatarName)) {
             return [];
         }
 
         $avatarData = \App\Services\AvatarSkillService::getAvatarSkills($avatarName, $user->id);
         $rawSkills  = $avatarData['skills'] ?? [];
 
-        $isStratege = in_array(mb_strtolower((string) $avatarName, 'UTF-8'), ['stratège', 'stratege']);
+        $normalizedAvatarName = $this->normalizeAvatarName($avatarName);
+        $isStratege = in_array($normalizedAvatarName, ['stratège', 'stratege']);
 
         $skills = [];
 
@@ -2462,7 +2468,7 @@ class DuoController extends Controller
 
         $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
 
-        if ($avatarName !== 'Challenger') {
+        if ($this->normalizeAvatarName($avatarName) !== 'challenger') {
             return response()->json([
                 'success' => false,
                 'message' => __('Skill non disponible pour cet avatar'),
