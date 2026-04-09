@@ -1056,7 +1056,7 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
                 @if($skill['used'] ?? false)
                     <span class="skill-used-badge">{{ __('Utilisé') }}</span>
                 @else
-                    <button class="skill-btn" onclick="activateSkill('{{ $skill['id'] ?? '' }}')">{{ __('Activer') }}</button>
+                    <button class="skill-btn" onclick="activateSkill('{{ $skill['id'] ?? '' }}', event)">{{ __('Activer') }}</button>
                 @endif
             </div>
             @endforeach
@@ -1590,8 +1590,8 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
     // Start 60s countdown immediately on page load
     startCountdown();
     
-    window.activateSkill = function(skillId) {
-        if (!skillId) return;
+    window.activateSkill = function(skillId, event) {
+        if (!skillId || !event) return;
         
         console.log('[DuoResult] Activating skill:', skillId);
         
