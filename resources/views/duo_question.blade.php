@@ -741,7 +741,7 @@ $mode = 'duo';
             <div class="player-circle">
                 <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
                 <div class="player-name">{{ $playerName ?? __('Vous') }}</div>
-                <div class="player-level">{{ __('Niveau') }} {{ $playerLevel ?? 0 }} Duo</div>
+                <div class="player-level">{{ __('Niveau') }} {{ $playerLevel ?? 0 }} {{ __('Duo') }}</div>
                 <div class="player-score" id="playerScore">{{ $playerScore ?? 0 }}</div>
             </div>
             
@@ -752,7 +752,7 @@ $mode = 'duo';
                     <div class="opponent-avatar-empty">?</div>
                 @endif
                 <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
-                <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel ?? 0 }} Duo</div>
+                <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel ?? 0 }} {{ __('Duo') }}</div>
                 <div class="opponent-score" id="opponentScore">{{ $opponentScore ?? 0 }}</div>
             </div>
         </div>
