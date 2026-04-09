@@ -617,7 +617,7 @@ class DuoController extends Controller
         $avatarData = \App\Services\AvatarSkillService::getAvatarSkills($avatarName, $user->id);
         $rawSkills  = $avatarData['skills'] ?? [];
 
-        $isStratege = in_array(mb_strtolower((string) $avatarName), ['stratège', 'stratege']);
+        $isStratege = in_array(mb_strtolower((string) $avatarName, 'UTF-8'), ['stratège', 'stratege']);
 
         $skills = [];
 
@@ -1425,6 +1425,11 @@ class DuoController extends Controller
         $playerScore = 0;
         $opponentScore = 0;
 
+        $playerStats   = \App\Models\PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
+        $opponentStats = \App\Models\PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
+        $playerLevel   = $playerStats->level ?? 0;
+        $opponentLevel = $opponentStats->level ?? 0;
+
         return response()->view('duo_question', [
             'match_id' => $match->id,
             'match' => $match->load(['player1', 'player2']),
@@ -1446,6 +1451,8 @@ class DuoController extends Controller
             'currentQuestion' => $currentQuestion,
             'theme' => $theme,
             'themeDisplay' => $themeDisplay,
+            'playerLevel' => $playerLevel,
+            'opponentLevel' => $opponentLevel,
         ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');
