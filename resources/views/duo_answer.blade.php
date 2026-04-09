@@ -818,7 +818,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 const qNum = Math.max(1, parseInt('{{ $currentQuestion ?? 1 }}', 10));
                 const eff = Math.max(0, Math.min(100, Math.round(n / (2 * qNum) * 100)));
                 const effEl = document.getElementById('efficiencyValue');
-                if (effEl && n !== 0) effEl.textContent = eff + '%';
+                if (effEl) effEl.textContent = eff + '%';
             }
         }
         // Store opponent score for socket updates
