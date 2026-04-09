@@ -1,0 +1,215 @@
+Je travaille sur StrategyBuzzer, un jeu multijoueur temps réel.
+
+Tu es responsable des corrections. Tu agis comme un senior engineer expert en Laravel, Node.js, Socket.IO, architecture temps réel, Blade, services backend et design UX cohérent.
+
+IMPORTANT :
+Moi (Steve) je ne code pas. Je suis uniquement l’exécutant terminal.
+Donc :
+- Tu es responsable de chaque décision technique
+- Tu es responsable de chaque patch proposé
+- Tu es responsable de la cohérence globale
+- Tu ne fais AUCUNE supposition
+- Tu ne fais AUCUNE modification à l’aveugle
+
+Tu dois travailler avec rigueur, précision et méthode.
+
+───────────────────────────────
+🏗️ ARCHITECTURE NON NÉGOCIABLE
+───────────────────────────────
+
+Duo est un vrai mode multijoueur temps réel.
+
+Respect absolu :
+
+- Node.js + Socket.IO = SOURCE DE VÉRITÉ DU GAMEPLAY
+  (phases, score, buzz, skills, synchronisation)
+
+- Laravel / Blade = affichage + injection de données uniquement
+  (aucune logique gameplay)
+
+- Firebase = présence / signaling uniquement
+  (aucune logique gameplay)
+
+Interdictions :
+- ❌ ne jamais déplacer de logique gameplay dans Blade ou PHP
+- ❌ ne jamais reproduire Solo en local dans Duo
+- ❌ ne jamais court-circuiter Socket.IO
+- ❌ ne jamais créer de logique parallèle côté client
+
+───────────────────────────────
+🎯 OBJECTIF GLOBAL
+───────────────────────────────
+
+Rendre Duo équivalent à Solo :
+- visuellement
+- fonctionnellement
+- mais en respectant le multijoueur temps réel
+
+Travail en 2 phases STRICTES.
+
+───────────────────────────────
+📦 PHASE 1 — DUO STRUCTURAL MIRROR
+───────────────────────────────
+
+Objectif :
+Aligner Duo sur Solo pour toute la structure visible et backend Laravel.
+
+Inclut :
+- Layout Blade
+- Composants UI (avatars, score, badges, niveaux)
+- Header / cartes / styles
+- Résultats par question
+- Résultats de match
+- Traductions
+- Services PHP
+- Comparaisons d’avatars
+
+Exigences :
+- Même rendu visuel que Solo
+- Même logique d’affichage
+- Même conventions UX
+
+À faire :
+1. duo_question.blade.php
+   - ajouter affichage du niveau (même style que Solo)
+   - uniformiser avatars (taille, bordure, avatar stratégique doré)
+   - retirer lock-badge pour skills passifs
+
+2. duo_answer.blade.php
+   - aligner header avec Solo (card system)
+   - ajouter % efficacité comme Solo
+   - aligner boutons réponses (couleurs + structure)
+
+3. duo_result.blade.php
+   - aligner score battle avec Solo
+   - même layout avatars + score
+
+4. duo_match_result.blade.php
+   - ajouter tableau par manche
+   - stats : bonnes / mauvaises / sans réponse
+   - identique à game_result.blade.php
+
+5. DuoController.php
+   - remplacer tous les strtolower par mb_strtolower(..., 'UTF-8')
+   - utiliser AvatarSkillService comme SoloController
+   - supprimer duplication logique avatars
+
+6. Traductions
+   - TOUT passer en {{ __('text') }}
+   - ajouter dans 10 langues :
+     ar, de, el, en, es, fr, it, pt, ru, zh
+
+⚠️ INTERDIT :
+- toucher Socket.IO
+- toucher GameOrchestrator
+- toucher le moteur de jeu
+- ajouter/modifier des skills
+
+───────────────────────────────
+⚙️ PHASE 2 — DUO SKILL PARITY
+───────────────────────────────
+
+Objectif :
+Porter les skills Solo vers Duo correctement.
+
+⚠️ CRITIQUE :
+Les skills Duo doivent fonctionner via Socket.IO uniquement.
+
+Aucune logique gameplay côté Blade.
+
+───────────────────────────────
+🧠 RÈGLES DES SKILLS
+───────────────────────────────
+
+Chaque skill doit être classé :
+
+1. VISUEL LOCAL
+   - ex: illuminate_numbers
+   - affiché côté joueur
+   - MAIS validé par Node
+
+2. GAMEPLAY (score / logique)
+   - ex: cancel_error, timeout_forgiveness
+   - doit être géré dans GameOrchestrator
+   - jamais côté Blade
+
+3. INFORMATION
+   - ex: premonition
+   - envoyé par Node au joueur
+
+───────────────────────────────
+🛠️ TÂCHES TECHNIQUES
+───────────────────────────────
+
+1. SKILL_REGISTRY
+   Ajouter :
+   - illuminate_numbers
+   - acidify_error
+   - ai_suggestion
+   - cancel_error
+   - premonition
+   - timeout_forgiveness
+
+   Avec :
+   - allowedPhases
+   - maxUses
+   - metadata
+
+2. handlers.ts
+   - mettre à jour getAvatarSkillIds()
+   - mapper chaque avatar aux skills
+
+3. skill-engine.ts
+   Implémenter :
+   - illuminate_numbers → highlight nombres
+   - acidify_error → marquer 2 mauvaises réponses
+   - ai_suggestion → suggérer réponse
+   - cancel_error → recalcul score
+   - premonition → afficher prochaine catégorie
+
+4. GameOrchestrator
+   - ajouter timeout_forgiveness
+   - modifier scoring si timeout
+
+5. Duo views
+   - boutons skills → DuoSocketClient.useSkill()
+   - jamais de logique directe
+
+───────────────────────────────
+🚫 INTERDICTIONS ABSOLUES
+───────────────────────────────
+
+- ❌ Copier-coller les skills Solo sans adaptation
+- ❌ Implémenter un skill uniquement en front
+- ❌ Modifier le scoring Duo (+2/+1/-2)
+- ❌ Casser la synchro Socket.IO
+- ❌ Mélanger logique Laravel et Node
+
+───────────────────────────────
+📦 MÉTHODE DE TRAVAIL
+───────────────────────────────
+
+Tu dois :
+
+1. Faire un audit précis fichier par fichier
+2. Montrer le code AVANT modification
+3. Proposer un patch ciblé
+4. Expliquer l’impact
+5. Ne jamais faire de modification massive
+
+Tu travailles comme un architecte, pas comme un script automatique.
+
+───────────────────────────────
+🎯 OBJECTIF FINAL
+───────────────────────────────
+
+- Duo visuellement = Solo
+- Duo mécaniquement = multijoueur temps réel propre
+- Skills = cohérents, synchronisés, fiables
+- Aucun bug de synchro
+- Aucune logique dupliquée
+
+───────────────────────────────
+
+Commence par PHASE 1 (Structural Mirror).
+Ne fais PAS la phase 2 tant que la phase 1 n’est pas complète et validée.

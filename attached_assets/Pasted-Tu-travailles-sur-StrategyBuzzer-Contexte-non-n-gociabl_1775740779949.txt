@@ -1,0 +1,215 @@
+Tu travailles sur StrategyBuzzer.
+
+Contexte non négociable :
+Duo est un vrai mode multijoueur temps réel.
+Tu ne dois jamais le traiter comme un simple clone Solo avec 2 joueurs affichés.
+
+Architecture non négociable :
+- Node.js + Socket.IO = source de vérité du gameplay
+- Laravel / Blade = affichage + injection de données
+- Firebase = présence / signaling uniquement
+- WebRTC = voix uniquement
+
+Interdictions absolues :
+- ne jamais déplacer de logique gameplay dans Blade ou PHP
+- ne jamais implémenter un skill uniquement côté front si son effet touche score / phase / réponse / état de match
+- ne jamais casser le scoring Duo (+2 / +1 / -2)
+- ne jamais modifier le protocole Socket.IO ou GameOrchestrator dans le ticket Structural Mirror
+- ne jamais mélanger Structural Mirror et Skill Parity dans un seul gros correctif
+
+Tu dois travailler en 2 phases strictes.
+
+==================================================
+PHASE 1 — TICKET #31 — DUO STRUCTURAL MIRROR
+==================================================
+
+Objectif :
+Aligner Duo sur Solo pour toute la structure visible, les services PHP, les conventions d’affichage, les traductions et les comparaisons d’avatars, sans toucher au moteur temps réel.
+
+Ce que tu dois faire :
+1. resources/views/duo_question.blade.php
+   - afficher le niveau du joueur dans le même style que Solo
+   - supprimer le lock-badge pendant la phase question pour les skills passifs
+   - aligner les tailles et bordures des avatars :
+     - 100px joueur / adversaire
+     - 120px avatar stratégique avec bordure dorée
+   - harmoniser complètement avec Solo d’un point de vue UX
+
+2. resources/views/duo_answer.blade.php
+   - refaire le header pour qu’il corresponde au système de cartes / couleurs de Solo
+   - afficher le pourcentage d’efficacité comme Solo
+   - aligner les boutons réponses avec Solo (palette, structure, hiérarchie visuelle)
+
+3. resources/views/duo_result.blade.php
+   - refaire la section score battle pour qu’elle soit visuellement identique à Solo
+   - mêmes tailles avatars
+   - mêmes bordures
+   - même style de police / score / hiérarchie
+
+4. resources/views/duo_match_result.blade.php
+   - ajouter un breakdown par manche identique à game_result.blade.php
+   - inclure :
+     - bonnes réponses
+     - mauvaises réponses
+     - unanswered
+     - efficacité par manche
+     - totaux
+
+5. app/Http/Controllers/DuoController.php
+   - remplacer tous les strtolower() de comparaison d’avatars par mb_strtolower(..., 'UTF-8')
+   - aligner la logique avec SoloController
+   - faire en sorte que DuoController::getPlayerSkillsWithTriggers() utilise AvatarSkillService comme SoloController
+   - consolider les comparaisons et la détection d’avatars dupliquées
+
+6. Traductions
+   - tous les textes visibles dans les vues Duo doivent passer par {{ __('text') }}
+   - ajouter les traductions dans :
+     - ar
+     - de
+     - el
+     - en
+     - es
+     - fr
+     - it
+     - pt
+     - ru
+     - zh
+
+Résultat attendu de la phase 1 :
+- Duo visuellement aligné sur Solo
+- même design system
+- même logique d’affichage
+- mêmes conventions PHP
+- aucune régression Socket.IO
+- aucune logique gameplay déplacée
+
+Important :
+Dans cette phase, tu ne touches pas :
+- au moteur des skills
+- au GameOrchestrator
+- au protocole Socket.IO
+- au scoring
+- à WebRTC
+- à Firebase
+
+Avant toute modification :
+- fais un audit fichier par fichier
+- montre les zones réellement concernées
+- travaille avec des diffs ciblés
+- pas de refonte sauvage
+
+Quand la phase 1 est terminée, tu dois produire :
+- liste précise des fichiers modifiés
+- résumé des alignements effectués
+- confirmation explicite qu’aucune logique multijoueur temps réel n’a été déplacée dans Blade/PHP
+
+==================================================
+PHASE 2 — TICKET #32 — DUO SKILL PARITY
+==================================================
+
+Cette phase ne commence que quand la phase 1 est complète.
+
+Objectif :
+Porter vers Duo les skills Solo techniquement faisables, mais en respectant que Duo est piloté par Node / Socket.IO.
+
+Règle centrale :
+Dans Duo, un skill peut être :
+1. un effet visuel local autorisé par Node
+2. un effet gameplay géré par Node
+3. une information contextuelle envoyée par Node
+
+Aucun skill ne doit être “front-only” si son effet touche au gameplay.
+
+Ce que tu dois faire :
+
+1. packages/shared/src/skills/registry.ts
+   Ajouter :
+   - illuminate_numbers
+   - acidify_error
+   - ai_suggestion
+   - cancel_error
+   - premonition
+   - timeout_forgiveness
+   Avec :
+   - allowedPhases
+   - maxUses
+   - metadata
+
+2. apps/game-server/src/ws/handlers.ts
+   - mettre à jour getAvatarSkillIds()
+   - mapper :
+     - Mathématicien → illuminate_numbers
+     - Scientifique → acidify_error
+     - IA Junior → ai_suggestion
+     - Magicienne → cancel_error
+     - Visionnaire → premonition
+     - Historien → timeout_forgiveness
+
+3. packages/game-engine/src/skill-engine.ts
+   Ajouter les handlers des skills answer-phase :
+   - illuminate_numbers
+   - acidify_error
+   - ai_suggestion
+   Effets envoyés uniquement au joueur concerné si nécessaire, mais toujours autorisés et pilotés par Node.
+
+4. apps/game-server/src/services/GameOrchestrator.ts
+   - ajouter timeout_forgiveness dans la logique de scoring
+   - si timeout + skill actif Historien :
+     - score = 0
+     - pas -2
+
+5. Result-phase skills
+   - cancel_error :
+     - au ROUND_SCOREBOARD
+     - transformer un mauvais résultat en 0 point
+     - recalcul de score côté serveur
+     - émission du score mis à jour aux 2 joueurs
+   - premonition :
+     - émettre la catégorie de la prochaine question au bon moment
+     - pas d’invention côté front
+
+6. resources/views/duo_answer.blade.php
+   - ajouter les boutons de skills answer-phase
+   - les boutons doivent appeler DuoSocketClient.useSkill()
+   - aucune logique gameplay locale
+
+7. resources/views/duo_result.blade.php
+   - ajouter les boutons cancel_error et premonition
+   - toujours via DuoSocketClient.useSkill()
+
+8. Traductions
+   - ajouter noms + descriptions des skills dans toutes les langues supportées
+
+Résultat attendu de la phase 2 :
+- les avatars Duo ont les mêmes skills utiles que Solo quand c’est techniquement faisable
+- les effets sont synchronisés correctement
+- les phases sont respectées
+- les scores restent cohérents
+- Duo reste un vrai mode temps réel
+
+Interdictions absolues pendant cette phase :
+- ne pas casser le scoring Duo spécifique
+- ne pas transformer des skills Duo en logique PHP / Blade
+- ne pas ajouter de skills nécessitant une génération IA temps réel lente
+- ne pas toucher League ou Master mode
+- ne pas toucher Stratège teammate inheritance si ce n’est pas requis
+
+==================================================
+MÉTHODE DE TRAVAIL
+==================================================
+
+Tu travailles comme un lead technique senior, pas comme un générateur de patchs automatiques.
+
+Obligatoire :
+1. Audit précis avant modification
+2. Diff ciblé fichier par fichier
+3. Aucun changement massif non justifié
+4. Respect strict des responsabilités architecture
+5. Structural Mirror d’abord
+6. Skill Parity ensuite
+7. Ne jamais faire semblant qu’un copier-coller Solo = solution Duo
+
+Ta mission immédiate :
+Commence par le ticket #31 uniquement.
+Fais un audit structuré des fichiers listés.
+Puis propose le plan d’exécution concret, fichier par fichier, sans encore toucher à la phase 2.
