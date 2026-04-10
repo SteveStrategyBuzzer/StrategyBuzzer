@@ -22,6 +22,7 @@ window.GR_SAVE_STATE_EXTRA  = {
     choices:       @json($choices ?? []),
     player_score:  {{ (int)($playerScore ?? 0) }},
     opponent_score: {{ (int)($opponentScore ?? 0) }},
+    phaseEndsAtMs: null,
 };
 </script>
 @endsection
@@ -955,6 +956,16 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const correctSound = document.getElementById('correctSound');
     const incorrectSound = document.getElementById('incorrectSound');
     let answerButtons = document.querySelectorAll('.answer-button');
+
+    // ── Bridge UI: warm restore — immediately render cached scores before socket arrives ──
+    (function() {
+        var rps = window.GR_RESTORED_PLAYER_SCORE;
+        var ros = window.GR_RESTORED_OPPONENT_SCORE;
+        var playerScoreEl   = document.getElementById('playerScore');
+        var opponentScoreEl = document.getElementById('opponentScore');
+        if (rps !== undefined && playerScoreEl)   { playerScoreEl.textContent   = String(rps); }
+        if (ros !== undefined && opponentScoreEl) { opponentScoreEl.textContent = String(ros); }
+    })();
     
     function _applyIlluminateEffect() {
         // Highlight every digit sequence inside the question text, not answer options
@@ -1312,6 +1323,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             potentialPoints: pointsToSend,
             historianSkillUsed: historianSkillUsed
         });
+
+        // Show waiting overlay until answer_revealed or RESULT phase
+        if (waitingOverlay) {
+            waitingOverlay.style.display = 'flex';
+        }
     }
     
     function activateHistorianSkill() {
@@ -1546,6 +1562,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         if (isRedirecting || !data || !data.phase) return;
         var phase = data.phase;
         var _nav  = window.duoNavigate || function(u) { window.location.href = u; };
+
+        if (phase === 'ANSWER_COLLECTION') {
+            // Grace period: all players have buzzed, server collecting answers.
+            // Ensure waiting overlay is visible if this player already submitted.
+            if (answered && waitingOverlay) {
+                waitingOverlay.style.display = 'flex';
+            }
+            return;
+        }
 
         if (phase === 'REVEAL') {
             // REVEAL ≠ scoreboard — stay on page so answer_revealed can show visual feedback.

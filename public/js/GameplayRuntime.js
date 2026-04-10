@@ -305,6 +305,11 @@
             // Map: page → { phase → window URL key }
             var _MAP = {
                 question: {
+                    // Answer phases: reconnecting buzz winner should go to answer page.
+                    // Non-buzz-winners are handled by the question page's handleGameState.
+                    ANSWER_SELECTION:       'ANSWER_URL',
+                    BUZZ_WINNER_ANSWERING:  'ANSWER_URL',
+                    ANSWER_COLLECTION:      'ANSWER_URL',
                     RESULT:           'RESULT_URL',
                     ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
                     MATCH_END:        'MATCH_RESULT_URL',

@@ -924,6 +924,16 @@ $mode = 'duo';
     const loadingText = document.getElementById('loadingText');
     const gameContainer = document.getElementById('gameContainer');
 
+    // ── Bridge UI: warm restore — immediately render cached state before socket arrives ──
+    (function() {
+        var rqt  = window.GR_RESTORED_QUESTION_TEXT;
+        var rps  = window.GR_RESTORED_PLAYER_SCORE;
+        var ros  = window.GR_RESTORED_OPPONENT_SCORE;
+        if (rqt  && questionText)     { questionText.textContent   = rqt; }
+        if (rps !== undefined && playerScoreEl)   { playerScoreEl.textContent   = String(rps); }
+        if (ros !== undefined && opponentScoreEl) { opponentScoreEl.textContent = String(ros); }
+    })();
+
     // Load user's selected buzzer from localStorage (same as solo mode)
     const selectedBuzzer = localStorage.getItem('selectedBuzzer') || 'buzzer_default_1';
     if (buzzerSource) {
@@ -1130,11 +1140,12 @@ $mode = 'duo';
         const _ps = playerScoreEl ? parseInt(playerScoreEl.textContent.trim(), 10) || 0 : 0;
         const _os = opponentScoreEl ? parseInt(opponentScoreEl.textContent.trim(), 10) || 0 : 0;
         window.GR_SAVE_STATE_EXTRA = {
-            phase:          'QUESTION_ACTIVE',
+            phase:          currentPhase || 'QUESTION_ACTIVE',
             current_page:   'question',
             question_text:  _qt ? _qt.textContent.trim() : '',
             player_score:   _ps,
             opponent_score: _os,
+            phaseEndsAtMs:  phaseEndsAtMs || undefined,
         };
         setTimeout(() => {
             (window.duoNavigate || function(u) { window.location.href = u; })(url);
@@ -1309,7 +1320,7 @@ $mode = 'duo';
             updateScores(myScore, enemyScore);
         }
         
-        if (currentPhase === 'ANSWER_SELECTION') {
+        if (currentPhase === 'ANSWER_SELECTION' || currentPhase === 'BUZZ_WINNER_ANSWERING') {
             // game_state uses lockedAnswerPlayerId (flat), phase_changed uses lockedPlayerId
             const lockedId = data.lockedAnswerPlayerId || data.lockedPlayerId || '';
             if (lockedId && String(lockedId) === CURRENT_USER_ID) {
@@ -1754,6 +1765,21 @@ $mode = 'duo';
             ds.on('connect', function() {
                 questionPageReadySent = false;
                 setTimeout(function() { sendQuestionPageReady(); }, 350);
+            });
+            // Handle raw 'state' event (emitted on join_room) in addition to 'game_state'.
+            // Normalizes the raw room state into the game_state format consumed by handleGameState.
+            ds.on('state', function(data) {
+                if (!data || !data.state) return;
+                var s = data.state;
+                handleGameState({
+                    phase:                s.phase,
+                    phaseEndsAtMs:        s.phaseEndsAtMs,
+                    lockedAnswerPlayerId: s.lockedAnswerPlayerId,
+                    currentQuestion:      s.currentQuestion,
+                    questionIndex:        s.questionIndex,
+                    totalQuestions:       s.questions ? s.questions.length : undefined,
+                    players:              s.players,
+                });
             });
             ds.on('game_state',         handleGameState);
             ds.on('phase_changed',      handlePhaseChanged);
