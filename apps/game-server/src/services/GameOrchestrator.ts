@@ -764,12 +764,43 @@ export class GameOrchestrator {
 
     if (isLastQuestion) {
       this.endRound(roomId);
-    } else if (this.shouldShowWaiting(room.state.questionIndex)) {
-      this.transitionToWaiting(roomId).catch((err: unknown) => {
-        console.error(`[GameOrchestrator] Error in transitionToWaiting:`, err);
-      });
     } else {
+      // V3: always go through SYNC for inter-question sync.
+      // If this is a block-boundary question, prefetch the next block in the background
+      // so it is ready by the time QUESTION_ACTIVE starts (non-blocking).
+      if (this.shouldShowWaiting(room.state.questionIndex)) {
+        this.prefetchQuestionBlock(roomId).catch((err: unknown) => {
+          console.error(`[GameOrchestrator] Background question prefetch failed:`, err);
+        });
+      }
       this.transitionToSync(roomId);
+    }
+  }
+
+  private async prefetchQuestionBlock(roomId: string): Promise<void> {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    console.log(`[GameOrchestrator] Background prefetch starting for room ${roomId}`);
+    const blockResult = await fetchNextBlock(roomId, 4);
+
+    const freshRoom = this.roomManager.getRoom(roomId);
+    if (!freshRoom) return;
+
+    if (blockResult.questions.length > 0) {
+      const newQuestions = blockResult.questions.filter(q => {
+        if (freshRoom.usedQuestionIds?.has(q.id)) {
+          console.log(`[GameOrchestrator] Skipping duplicate question ${q.id}`);
+          return false;
+        }
+        return true;
+      });
+      for (const q of newQuestions) {
+        freshRoom.usedQuestionIds ??= new Set();
+        freshRoom.usedQuestionIds.add(q.id);
+        freshRoom.state.questions.push(q);
+      }
+      console.log(`[GameOrchestrator] Background prefetched ${newQuestions.length} questions for room ${roomId}, total: ${freshRoom.state.questions.length}`);
     }
   }
 
