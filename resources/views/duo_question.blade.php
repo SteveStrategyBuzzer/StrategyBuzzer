@@ -682,48 +682,6 @@ $mode = 'duo';
         }
     }
    
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        transition: opacity 0.3s ease;
-    }
-    
-    .loading-overlay.hidden {
-        opacity: 0;
-        pointer-events: none;
-    }
-    
-    .loading-content {
-        text-align: center;
-    }
-    
-    .loading-spinner {
-        width: 80px;
-        height: 80px;
-        border: 4px solid rgba(78, 205, 196, 0.3);
-        border-top-color: #4ECDC4;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    .loading-text {
-        font-size: 1.2rem;
-        color: #4ECDC4;
-        font-weight: 600;
-    }
 </style>
 {{-- loading-overlay, connection-status, voice-mic-button: provided by layouts.game --}}
 
@@ -1362,9 +1320,13 @@ $mode = 'duo';
         }
 
         if (currentPhase === 'SYNC') {
-            // Reconnected during SYNC — send question_page_ready immediately
+            // V3: SYNC is the normal inter-question state. Both players must send
+            // question_page_ready before the server advances to QUESTION_ACTIVE.
+            // Explicitly lift NO_BRAIN_OVERLAY so the brain shows reliably,
+            // regardless of GameplayRuntime's handler execution order.
+            window.NO_BRAIN_OVERLAY = false;
             sendQuestionPageReady();
-            applyPhaseVisualState();
+            if (window.showBrainSpin) window.showBrainSpin('{{ __("Synchronisation...") }}');
             return;
         }
         
@@ -1777,6 +1739,14 @@ $mode = 'duo';
                 questionPageReadySent = false;
                 setTimeout(function() { sendQuestionPageReady(); }, 350);
             });
+
+            // Safety fallback: if the socket is already connected when this page loads
+            // (bridge navigation reuses an existing socket, so no 'connect' event fires),
+            // emit question_page_ready directly. The server will only act on it if the
+            // room is currently in SYNC — otherwise it is a no-op.
+            if (ds.isConnected && ds.isConnected()) {
+                setTimeout(function() { sendQuestionPageReady(); }, 350);
+            }
             // Handle raw 'state' event (emitted on join_room) in addition to 'game_state'.
             // Normalizes the raw room state into the game_state format consumed by handleGameState.
             ds.on('state', function(data) {
@@ -1839,59 +1809,6 @@ $mode = 'duo';
     });
 })();
 </script>
-
-<script type="text/plain" id="voice-firebase-module-disabled">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-const firebaseConfig = {
-    apiKey: "{{ config('services.firebase.api_key', 'AIzaSyC2D2lVq3D_lRFM3kvbLmLUFJpv8Dh35qU') }}",
-    authDomain: "{{ config('services.firebase.project_id', 'strategybuzzer') }}.firebaseapp.com",
-    projectId: "{{ config('services.firebase.project_id', 'strategybuzzer') }}",
-    storageBucket: "{{ config('services.firebase.project_id', 'strategybuzzer') }}.appspot.com",
-    messagingSenderId: "{{ config('services.firebase.messaging_sender_id', '681234567890') }}",
-    appId: "{{ config('services.firebase.app_id', '1:681234567890:web:abc123') }}"
-};
-
-const app = initializeApp(firebaseConfig, 'voice-chat-app');
-const db = getFirestore(app);
-window.voiceChatDb = db;
-window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp };
-</script>
-
-<script type="text/plain" id="voicechat-script-disabled" src="{{ asset('js/VoiceChat.js') }}"></script>
-
-<script type="text/plain" id="voicechat-inline-disabled">
-(function() {
-    'use strict';
-    
-    let voiceChat = null;
-    let isMicActive = false;
-    const VOICE_LOBBY_CODE = '{{ $lobby_code ?? "" }}';
-    const CURRENT_PLAYER_ID = {{ auth()->id() ?? 0 }};
-    
-    const micButton = document.getElementById('voiceMicButton');
-    const micIcon = document.getElementById('micIcon');
-    
-    function updateMicButtonState(active) {
-        isMicActive = active;
-        if (active) {
-            micButton.classList.add('active');
-            micButton.classList.remove('muted');
-            micIcon.textContent = '🎤';
-        } else {
-            micButton.classList.remove('active');
-            micButton.classList.add('muted');
-            micIcon.textContent = '🔇';
-        }
-    }
-    
-    async function toggleMicrophone() {
-        if (!voiceChat) {
-            console.log('[VoiceChat] Voice chat not initialized');
-            return;
-        }
-       
 
 @endsection
 
