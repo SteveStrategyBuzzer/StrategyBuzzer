@@ -15,8 +15,9 @@ window.MATCH_RESULT_URL     = @json(route('game.duo.match-result'));
 window.CURRENT_PAGE         = 'answer';
 window.NO_BRAIN_OVERLAY     = true;
 // Bridge UI: page-specific visual state saved on every navigation
+// phase is initialised to null and updated dynamically by _onAnswerPhaseChanged (F4)
 window.GR_SAVE_STATE_EXTRA  = {
-    phase:         'ANSWER_COLLECTION',
+    phase:         null,
     current_page:  'answer',
     question_text: @json($questionText ?? ''),
     choices:       @json($choices ?? []),
@@ -36,6 +37,20 @@ $correct_index = $question['correct_answer'] ?? $question['correct_index'] ?? nu
 $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
 $buzzTime = $buzz_time ?? 0;
 $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
+
+// V3: quadri-état buzzeur (rendu initial PHP — la source de vérité finale est le socket)
+// 'first'   = buzzé position 1 (IS_BUZZ_WINNER)
+// 'second'  = buzzé position 2+ (adversaire en premier, mais joueur a aussi buzzé)
+// 'no_buzz' = round explicitement sans buzz (timer expiré sans aucun buzz)
+// 'none'    = pas buzzé du tout, adversaire a buzzé → waiting overlay
+$playerBuzzPosition = 'none';
+if ($no_buzz ?? false) {
+    $playerBuzzPosition = 'no_buzz';
+} elseif ($isBuzzWinner) {
+    $playerBuzzPosition = 'first';
+} elseif ($buzzTime > 0) {
+    $playerBuzzPosition = 'second';
+}
 
 // Skills Challenger - passés par le contrôleur
 $shuffleAnswersActive = $shuffleAnswersActive ?? false;
@@ -693,10 +708,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         </div>
         @endif
         @foreach($choices as $index => $choice)
-            <button class="answer-button {{ (!$isBuzzWinner && !$noBuzz) ? 'waiting' : '' }}" 
+            <button class="answer-button {{ $playerBuzzPosition === 'none' ? 'waiting' : '' }}" 
                     data-index="{{ $index }}"
                     data-text="{{ $choice }}"
-                    {{ (!$isBuzzWinner && !$noBuzz) ? 'disabled' : '' }}>
+                    {{ $playerBuzzPosition === 'none' ? 'disabled' : '' }}>
                 <span class="answer-number">{{ $index + 1 }}</span>
                 <span class="answer-text">{{ $choice }}</span>
                 <span class="answer-indicator" id="indicator{{ $index }}"></span>
@@ -854,9 +869,68 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         return window.location.origin;
     }
     const GAME_SERVER_URL = getGameServerUrl();
+    // Legacy snapshot consts — kept for backward-compat in skill checks
     const IS_BUZZ_WINNER = {{ $isBuzzWinner ? 'true' : 'false' }};
     const NO_BUZZ = {{ ($noBuzz ?? false) ? 'true' : 'false' }};
     const HAS_HISTORIAN_SKILL = {{ ($hasHistorianSkill ?? false) ? 'true' : 'false' }};
+
+    // V3: quadri-état buzzeur — initialisé depuis PHP, mis à jour par socket (source de vérité finale)
+    // 'first'   → buzzé position 1 (+2 pts potentiels)
+    // 'second'  → buzzé position 2+ (+1 pt potentiel)
+    // 'no_buzz' → round sans buzz (0 pt, peut répondre)
+    // 'none'    → pas buzzé, adversaire a buzzé (waiting overlay, ne peut pas répondre)
+    let PLAYER_BUZZ_POSITION = @json($playerBuzzPosition ?? 'none');
+
+    function canAnswer() {
+        return PLAYER_BUZZ_POSITION === 'first' || PLAYER_BUZZ_POSITION === 'second' || PLAYER_BUZZ_POSITION === 'no_buzz';
+    }
+
+    /**
+     * Recalcule la position buzzeur depuis le buzzQueue serveur.
+     * Retourne null si le joueur n'est pas dans la queue (ne pas écraser 'no_buzz').
+     */
+    function _deriveBuzzPositionFromQueue(buzzQueue) {
+        if (!Array.isArray(buzzQueue) || buzzQueue.length === 0) return null;
+        var myId = String(PLAYER_ID);
+        var idx = buzzQueue.findIndex(function(b) {
+            var bid = String(b.playerId || '').replace('player:', '');
+            return bid === myId;
+        });
+        if (idx === 0) return 'first';
+        if (idx >= 1) return 'second';
+        return null; // pas dans la queue — ne pas override
+    }
+
+    /**
+     * Applique un nouveau quadri-état buzzeur depuis le serveur.
+     * Met à jour les boutons, l'overlay et le timer si nécessaire.
+     */
+    function applyBuzzPosition(newPosition) {
+        if (!newPosition || PLAYER_BUZZ_POSITION === newPosition) return;
+        console.log('[DuoAnswer] PLAYER_BUZZ_POSITION: ' + PLAYER_BUZZ_POSITION + ' → ' + newPosition);
+        PLAYER_BUZZ_POSITION = newPosition;
+        var isAnswerable = canAnswer();
+        // Mettre à jour les boutons
+        answerButtons.forEach(function(btn) {
+            if (isAnswerable && !answered) {
+                btn.classList.remove('waiting');
+                btn.disabled = false;
+            } else if (!isAnswerable && !answered) {
+                btn.classList.add('waiting');
+                btn.disabled = true;
+            }
+        });
+        // Mettre à jour l'overlay d'attente
+        if (!answered) {
+            if (isAnswerable) {
+                if (waitingOverlay) waitingOverlay.style.display = 'none';
+                if (!timerInterval) startTimer();
+            } else {
+                if (waitingOverlay) waitingOverlay.style.display = 'flex';
+            }
+        }
+        updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
+    }
     
     // Sprinteur passive skill: extra_reflection adds +3 seconds
     @php
@@ -1206,10 +1280,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     
     function calculatePotentialPoints(remainingTime) {
         if (historianSkillUsed) return 1;
-        if (NO_BUZZ) return 0;
-        // Scoring is based on buzz ORDER only, not remaining time.
-        // 1st buzzer → always +2 if correct. 2nd buzzer → always +1.
-        return IS_BUZZ_WINNER ? 2 : 1;
+        // V3: scoring is based on buzz order (PLAYER_BUZZ_POSITION), not remaining time
+        if (PLAYER_BUZZ_POSITION === 'first') return 2;
+        if (PLAYER_BUZZ_POSITION === 'second') return 1;
+        return 0; // 'no_buzz' or 'none' → 0 pts
     }
     
     function updatePotentialPointsDisplay(points) {
@@ -1245,9 +1319,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // Démarrer le shuffle des réponses si actif
         startShuffleInterval();
         
-        if (NO_BUZZ) {
-            updatePotentialPointsDisplay(0);
-        }
+        updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
         
         timerInterval = setInterval(function() {
             timeLeft--;
@@ -1261,15 +1333,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 timerSeconds.classList.add('warning');
             }
             
-            if (!NO_BUZZ) {
-                const points = calculatePotentialPoints(timeLeft);
-                updatePotentialPointsDisplay(points);
-            }
+            updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
             
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 timerInterval = null;
-                if (!answered && IS_BUZZ_WINNER) {
+                // V3: all buzzing players (first, second, no_buzz) send timeout
+                if (!answered && canAnswer()) {
                     handleTimeout();
                 }
             }
@@ -1291,7 +1361,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     }
     
     function selectAnswer(index) {
-        if (answered || (!IS_BUZZ_WINNER && !NO_BUZZ && !historianSkillUsed)) return;
+        // V3: canAnswer() vérifie PLAYER_BUZZ_POSITION (first/second/no_buzz) — 'none' bloqué
+        // Le skill Historien (historianSkillUsed) peut débloquer 'none' explicitement
+        if (answered || (!canAnswer() && !historianSkillUsed)) return;
         
         answered = true;
         selectedIndex = index;
@@ -1312,12 +1384,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         answerButtons[index].classList.add('selected');
         answerButtons[index].classList.remove('disabled');
         
-        let pointsToSend = 0;
-        if (historianSkillUsed) {
-            pointsToSend = 1;
-        } else if (!NO_BUZZ) {
-            pointsToSend = calculatePotentialPoints(timeLeft);
-        }
+        // V3: calculatePotentialPoints lit PLAYER_BUZZ_POSITION — correct pour tous les cas
+        let pointsToSend = historianSkillUsed ? 1 : calculatePotentialPoints(timeLeft);
         
         DuoSocketClient.answer(index, { 
             potentialPoints: pointsToSend,
@@ -1331,7 +1399,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     }
     
     function activateHistorianSkill() {
-        if (historianSkillUsed || answered || IS_BUZZ_WINNER) return;
+        // Historien disponible uniquement pour 'none' et 'no_buzz' (pas encore actif)
+        // 'first' et 'second' buzzeurs ont déjà accès aux boutons de réponse
+        if (historianSkillUsed || answered || PLAYER_BUZZ_POSITION === 'first' || PLAYER_BUZZ_POSITION === 'second') return;
         
         historianSkillUsed = true;
         
@@ -1414,16 +1484,24 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         console.log('[DuoAnswer] Socket connected (room join handled by GameplayRuntime)');
     }
     function _onAnswerGameState(data) {
-        // FIX: sync timer with server's remaining ANSWER_SELECTION time
-        if (!data || !data.phaseEndsAtMs) return;
+        if (!data) return;
         var phase = data.phase || '';
-        if (phase !== 'ANSWER_SELECTION' && phase !== 'BUZZ_WINNER_ANSWERING') return;
+        // V3: accept QUESTION_ACTIVE (nominal answer phase) in addition to legacy phases
+        var answerPhases = ['QUESTION_ACTIVE', 'ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'];
+        if (!answerPhases.includes(phase)) return;
+
+        // Verrou source de vérité: mettre à jour PLAYER_BUZZ_POSITION depuis buzzQueue serveur
+        if (data.buzzQueue) {
+            var derived = _deriveBuzzPositionFromQueue(data.buzzQueue);
+            if (derived) applyBuzzPosition(derived);
+        }
+
+        if (!data.phaseEndsAtMs) return;
         phaseEndsAtMs = data.phaseEndsAtMs;
         var remaining = Math.max(0, phaseEndsAtMs - Date.now());
         var serverLeft = Math.ceil(remaining / 1000);
-        // Only correct if local timer is more than 1 second off from server
         if (Math.abs(serverLeft - timeLeft) > 1) {
-            console.log('[DuoAnswer] Timer synced: local=' + timeLeft + 's server=' + serverLeft + 's');
+            console.log('[DuoAnswer] game_state timer resync: local=' + timeLeft + 's server=' + serverLeft + 's');
             timeLeft = serverLeft;
         }
     }
@@ -1454,10 +1532,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                     container.innerHTML = '';
                     serverChoices.forEach(function(choice, idx) {
                         var btn = document.createElement('button');
-                        btn.className = 'answer-button' + (IS_BUZZ_WINNER || NO_BUZZ ? '' : ' waiting');
+                        btn.className = 'answer-button' + (canAnswer() ? '' : ' waiting');
                         btn.dataset.index = idx;
                         btn.dataset.text  = choice;
-                        if (!IS_BUZZ_WINNER && !NO_BUZZ) btn.disabled = true;
+                        if (!canAnswer()) btn.disabled = true;
                         btn.innerHTML =
                             '<span class="answer-number">' + (idx + 1) + '</span>' +
                             '<span class="answer-text">' + _escapeHtml(choice) + '</span>' +
@@ -1477,10 +1555,19 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             }
         }
 
+        // ── Verrou source de vérité: PLAYER_BUZZ_POSITION depuis buzzQueue serveur ──
+        var bq = data.buzzQueue || (data.state && data.state.buzzQueue);
+        if (bq) {
+            var derived = _deriveBuzzPositionFromQueue(bq);
+            if (derived) applyBuzzPosition(derived);
+        }
+
         // ── Timer resync ─────────────────────────────────────────────────────
         if (data.phaseEndsAtMs) {
             var phase = data.phase || '';
-            if (phase === 'ANSWER_SELECTION' || phase === 'BUZZ_WINNER_ANSWERING' || phase === 'ANSWER_COLLECTION') {
+            // V3: QUESTION_ACTIVE is the nominal answer phase; include it with legacy phases
+            var timerPhases = ['QUESTION_ACTIVE', 'ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'];
+            if (timerPhases.includes(phase)) {
                 phaseEndsAtMs = data.phaseEndsAtMs;
                 var rem = Math.max(0, phaseEndsAtMs - Date.now());
                 var srvLeft = Math.ceil(rem / 1000);
@@ -1563,6 +1650,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         var phase = data.phase;
         var _nav  = window.duoNavigate || function(u) { window.location.href = u; };
 
+        // F4: mettre à jour GR_SAVE_STATE_EXTRA.phase dynamiquement
+        if (window.GR_SAVE_STATE_EXTRA) {
+            window.GR_SAVE_STATE_EXTRA.phase = phase;
+        }
+
         if (phase === 'ANSWER_COLLECTION') {
             // Grace period: all players have buzzed, server collecting answers.
             // Ensure waiting overlay is visible if this player already submitted.
@@ -1578,12 +1670,18 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         if (phase === 'RESULT') {
-            // V3: per-question result — navigate to result page after brief visual delay
+            // V3: per-question result — navigate to result page after visual feedback.
+            // F3: if an incorrect-answer overlay is visible, give 2500ms to read it;
+            //     otherwise 600ms is enough for a correct answer.
+            var hasIncorrectOverlay = resultOverlay &&
+                resultOverlay.style.display !== 'none' &&
+                resultOverlay.classList.contains('incorrect');
+            var resultDelay = hasIncorrectOverlay ? 2500 : 600;
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;
                 _nav((window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID));
-            }, 600);
+            }, resultDelay);
             return;
         }
 
@@ -1688,10 +1786,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
     initSkillButtons();
     
-    if (IS_BUZZ_WINNER || NO_BUZZ) {
+    // V3: canAnswer() dérive de PLAYER_BUZZ_POSITION (first/second/no_buzz = actif, none = attente)
+    if (canAnswer()) {
         startTimer();
     } else {
-        waitingOverlay.style.display = 'flex';
+        if (waitingOverlay) waitingOverlay.style.display = 'flex';
     }
 
     window.addEventListener('beforeunload', function() {
@@ -1836,6 +1935,3 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
 </script>
 @endsection
 
-@section('scripts')
-{{-- Handlers registered via setTimeout(0) inside @section('content') IIFE above --}}
-@endsection
