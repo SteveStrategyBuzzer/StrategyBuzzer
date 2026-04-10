@@ -2469,9 +2469,20 @@ class DuoController extends Controller
                     break;
 
                 case 'answer':
-                    if (in_array($currentPhase, $answerPhases)) {
-                        // Valid answer-page phases → allow
-                        break;
+                    // ANSWER_COLLECTION: grace period after all buzzes — allow everyone
+                    // QUESTION_ACTIVE: buzz just registered (phase transition in progress) — allow
+                    $answerUnrestricted = ['QUESTION_ACTIVE', 'ANSWER_COLLECTION'];
+                    if (in_array($currentPhase, $answerUnrestricted)) {
+                        break; // Valid for all players
+                    }
+                    // ANSWER_SELECTION / BUZZ_WINNER_ANSWERING: only the buzz winner may be here
+                    if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING'])) {
+                        $playerId = (string) $user->id;
+                        if (!$lockedAnswerPlayerId || $lockedAnswerPlayerId === $playerId) {
+                            break; // Buzz winner (or unknown) — allow
+                        }
+                        // Non-buzz winner arrived on answer page — send back to question
+                        return redirect()->route('game.duo.question');
                     }
                     // Server moved backwards or to a different page
                     if (in_array($currentPhase, ['INTRO', 'WAITING', 'SYNC'])) {

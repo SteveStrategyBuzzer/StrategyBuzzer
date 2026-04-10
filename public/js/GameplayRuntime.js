@@ -305,11 +305,10 @@
             // Map: page → { phase → window URL key }
             var _MAP = {
                 question: {
-                    // Answer phases: reconnecting buzz winner should go to answer page.
-                    // Non-buzz-winners are handled by the question page's handleGameState.
-                    ANSWER_SELECTION:       'ANSWER_URL',
-                    BUZZ_WINNER_ANSWERING:  'ANSWER_URL',
-                    ANSWER_COLLECTION:      'ANSWER_URL',
+                    // NOTE: answer phases (ANSWER_SELECTION, BUZZ_WINNER_ANSWERING,
+                    // ANSWER_COLLECTION) are NOT mapped here because only the buzz winner
+                    // should redirect to Answer — the role check requires lockedAnswerPlayerId
+                    // from socket state, handled by the question page's own handleGameState.
                     RESULT:           'RESULT_URL',
                     ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
                     MATCH_END:        'MATCH_RESULT_URL',
