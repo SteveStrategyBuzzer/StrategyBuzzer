@@ -15,12 +15,12 @@ const PHASE_TRANSITIONS: PhaseTransition[] = [
   { from: "QUESTION_ACTIVE", to: "REVEAL" },
   { from: "ANSWER_COLLECTION", to: "RESULT" },
   { from: "ANSWER_SELECTION", to: "REVEAL" },
-  { from: "RESULT", to: "SYNC" },
   {
     from: "RESULT",
     to: "ROUND_SCOREBOARD",
     condition: (state) => state.questionIndex >= state.config.questionsPerRound - 1
   },
+  { from: "RESULT", to: "SYNC" },
   { from: "SYNC", to: "QUESTION_ACTIVE" },
   { from: "REVEAL", to: "WAITING" },
   {

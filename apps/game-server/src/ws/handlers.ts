@@ -368,9 +368,13 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           return;
         }
         
-        if (room.state.lockedAnswerPlayerId !== currentPlayerId) {
+        // V3 non-blocking: any player who has buzzed (is in buzzQueue) can answer.
+        // Also accept if they hold the lockedAnswerPlayerId (legacy path).
+        const isInBuzzQueue = room.state.buzzQueue.some(b => b.playerId === currentPlayerId);
+        const isLocked = room.state.lockedAnswerPlayerId === currentPlayerId;
+        if (!isInBuzzQueue && !isLocked) {
           MetricsService.incrementEventsFailed();
-          socket.emit("error", { code: "NOT_YOUR_TURN", message: "Not your turn to answer" });
+          socket.emit("error", { code: "NOT_YOUR_TURN", message: "You have not buzzed for this question" });
           return;
         }
         
