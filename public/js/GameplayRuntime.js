@@ -155,6 +155,49 @@
     var NO_OVERLAY      = !!window.NO_SOCKET_OVERLAY;
     var HIDE_HEADER     = !!window.GR_HIDE_HEADER;
 
+    // ── Bridge UI: restoreState on load ─────────────────────────────────────
+    // On reconnect/cold-start, PHP may not have re-hydrated window globals.
+    // Pull them from sessionStorage (written by beforeunload below).
+    (function () {
+        var ds = window.DuoSocketClient;
+        if (!ds || !ds.restoreState) return;
+        var saved = ds.restoreState();
+        if (!saved) return;
+        if (!ROOM_ID    && saved.room_id)    { ROOM_ID = saved.room_id;       window.ROOM_ID    = ROOM_ID; }
+        if (!JWT_TOKEN  && saved.jwt_token)  { JWT_TOKEN = saved.jwt_token;   window.JWT_TOKEN  = JWT_TOKEN; }
+        if (!LOBBY_CODE && saved.lobby_code) { LOBBY_CODE = saved.lobby_code; window.LOBBY_CODE = LOBBY_CODE; }
+        if (!window.MATCH_ID && saved.match_id) { window.MATCH_ID = saved.match_id; }
+        console.log('[GameplayRuntime] restoreState applied from session storage');
+    })();
+
+    // ── Bridge UI: auto-save before any navigation ───────────────────────────
+    // Fires regardless of what triggers the redirect — single reliable hook.
+    window.addEventListener('beforeunload', function () {
+        var ds = window.DuoSocketClient;
+        if (ds && ds.saveState && (window.MATCH_ID || window.ROOM_ID)) {
+            ds.saveState({
+                match_id:   window.MATCH_ID   || '',
+                room_id:    window.ROOM_ID    || '',
+                lobby_code: window.LOBBY_CODE || '',
+                jwt_token:  window.JWT_TOKEN  || '',
+            });
+        }
+    });
+
+    // ── Shared navigation helper (save-then-redirect) ────────────────────────
+    window.duoNavigate = function (url) {
+        var ds = window.DuoSocketClient;
+        if (ds && ds.saveState && (window.MATCH_ID || window.ROOM_ID)) {
+            ds.saveState({
+                match_id:   window.MATCH_ID   || '',
+                room_id:    window.ROOM_ID    || '',
+                lobby_code: window.LOBBY_CODE || '',
+                jwt_token:  window.JWT_TOKEN  || '',
+            });
+        }
+        window.location.href = url;
+    };
+
     if (HIDE_HEADER) {
         var hdr = document.getElementById('gameHeader');
         if (hdr) hdr.style.display = 'none';
@@ -237,28 +280,51 @@
             handleBrainForPhase(data.phase);
         }
 
-        // Page/phase mismatch detection for reconnect handling
-        var page = window.CURRENT_PAGE;
-        var phase = data.phase;
-        if (page && phase && !window.__GR_MISMATCH_NAV) {
-            var matchId = window.MATCH_ID;
-            if (page === 'result' && (phase === 'SYNC' || phase === 'QUESTION_ACTIVE')) {
-                var qUrl = window.QUESTION_URL;
-                if (qUrl && matchId) {
+        // ── Canonical page/phase mismatch reconciliation ─────────────────────
+        // On reconnect the server may already be on a different phase than the
+        // current Blade page. Navigate to the correct page immediately.
+        var _page  = window.CURRENT_PAGE;
+        var _phase = data.phase;
+        if (_page && _phase && !window.__GR_MISMATCH_NAV) {
+            // Map: page → { phase → window URL key }
+            var _MAP = {
+                question: {
+                    RESULT:           'RESULT_URL',
+                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                    MATCH_END:        'MATCH_RESULT_URL',
+                    FINISHED:         'MATCH_RESULT_URL',
+                },
+                answer: {
+                    SYNC:             'QUESTION_URL',
+                    QUESTION_ACTIVE:  'QUESTION_URL',
+                    RESULT:           'RESULT_URL',
+                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                    MATCH_END:        'MATCH_RESULT_URL',
+                    FINISHED:         'MATCH_RESULT_URL',
+                },
+                result: {
+                    SYNC:             'QUESTION_URL',
+                    QUESTION_ACTIVE:  'QUESTION_URL',
+                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                    MATCH_END:        'MATCH_RESULT_URL',
+                    FINISHED:         'MATCH_RESULT_URL',
+                },
+                'round-scoreboard': {
+                    SYNC:             'QUESTION_URL',
+                    QUESTION_ACTIVE:  'QUESTION_URL',
+                    RESULT:           'RESULT_URL',
+                    MATCH_END:        'MATCH_RESULT_URL',
+                    FINISHED:         'MATCH_RESULT_URL',
+                },
+            };
+            var _pageMap = _MAP[_page];
+            if (_pageMap && _pageMap[_phase]) {
+                var _targetKey = _pageMap[_phase];
+                var _targetUrl = window[_targetKey];
+                var _matchId   = window.MATCH_ID;
+                if (_targetUrl) {
                     window.__GR_MISMATCH_NAV = true;
-                    window.location.href = qUrl + '?match_id=' + encodeURIComponent(matchId);
-                }
-            } else if (page === 'result' && phase === 'ROUND_SCOREBOARD') {
-                var sbUrl = window.ROUND_SCOREBOARD_URL;
-                if (sbUrl && matchId) {
-                    window.__GR_MISMATCH_NAV = true;
-                    window.location.href = sbUrl + '?match_id=' + encodeURIComponent(matchId);
-                }
-            } else if ((page === 'question' || page === 'answer') && phase === 'RESULT') {
-                var rUrl = window.RESULT_URL;
-                if (rUrl && matchId) {
-                    window.__GR_MISMATCH_NAV = true;
-                    window.location.href = rUrl + '?match_id=' + encodeURIComponent(matchId);
+                    window.duoNavigate(_targetUrl + (_matchId ? '?match_id=' + encodeURIComponent(_matchId) : ''));
                 }
             }
         }

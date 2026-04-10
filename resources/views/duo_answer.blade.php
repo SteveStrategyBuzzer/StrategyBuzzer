@@ -945,7 +945,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const answersContainer = document.getElementById('answersContainer');
     const correctSound = document.getElementById('correctSound');
     const incorrectSound = document.getElementById('incorrectSound');
-    const answerButtons = document.querySelectorAll('.answer-button');
+    let answerButtons = document.querySelectorAll('.answer-button');
     
     function _applyIlluminateEffect() {
         // Highlight every digit sequence inside the question text, not answer options
@@ -1402,6 +1402,90 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             timeLeft = serverLeft;
         }
     }
+
+    /**
+     * state — fires on (re)connect with full server state.
+     * If PHP rendered an empty choices list (cold reconnect), rebuild the UI from
+     * state.currentQuestion so the answer page is usable.
+     */
+    function _onAnswerState(payload) {
+        if (!payload) return;
+        var data = payload.state || payload;
+
+        // ── Reconnect choice hydration ───────────────────────────────────────
+        var container = document.getElementById('answersContainer');
+        if (container) {
+            var existingBtns = container.querySelectorAll('.answer-button');
+            var choicesEmpty = existingBtns.length === 0 ||
+                (existingBtns.length === 1 && existingBtns[0].querySelector('.answer-text') &&
+                 existingBtns[0].querySelector('.answer-text').textContent.trim() === '');
+
+            var cq = data.currentQuestion || (data.state && data.state.currentQuestion);
+            if (choicesEmpty && cq) {
+                var serverChoices = cq.choices || cq.answers || [];
+                if (serverChoices.length) {
+                    console.log('[DuoAnswer] Hydrating choices from state:', serverChoices);
+                    // Rebuild choice buttons
+                    container.innerHTML = '';
+                    serverChoices.forEach(function(choice, idx) {
+                        var btn = document.createElement('button');
+                        btn.className = 'answer-button' + (IS_BUZZ_WINNER || NO_BUZZ ? '' : ' waiting');
+                        btn.dataset.index = idx;
+                        btn.dataset.text  = choice;
+                        if (!IS_BUZZ_WINNER && !NO_BUZZ) btn.disabled = true;
+                        btn.innerHTML =
+                            '<span class="answer-number">' + (idx + 1) + '</span>' +
+                            '<span class="answer-text">' + _escapeHtml(choice) + '</span>' +
+                            '<span class="answer-indicator" id="indicator' + idx + '"></span>';
+                        container.appendChild(btn);
+                    });
+                    // Refresh the module-level answerButtons reference
+                    answerButtons = container.querySelectorAll('.answer-button');
+                    // Re-attach click listeners
+                    _attachAnswerBtnListeners();
+                }
+                // Rebuild question text if empty
+                var qtBox = document.querySelector('.question-text-box');
+                if (qtBox && !qtBox.textContent.trim() && cq.text) {
+                    qtBox.textContent = cq.text;
+                }
+            }
+        }
+
+        // ── Timer resync ─────────────────────────────────────────────────────
+        if (data.phaseEndsAtMs) {
+            var phase = data.phase || '';
+            if (phase === 'ANSWER_SELECTION' || phase === 'BUZZ_WINNER_ANSWERING' || phase === 'ANSWER_COLLECTION') {
+                phaseEndsAtMs = data.phaseEndsAtMs;
+                var rem = Math.max(0, phaseEndsAtMs - Date.now());
+                var srvLeft = Math.ceil(rem / 1000);
+                if (Math.abs(srvLeft - timeLeft) > 1) {
+                    console.log('[DuoAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
+                    timeLeft = srvLeft;
+                }
+            }
+        }
+    }
+
+    function _escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function _attachAnswerBtnListeners() {
+        var container = document.getElementById('answersContainer');
+        if (!container) return;
+        container.querySelectorAll('.answer-button').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (btn.disabled || answered) return;
+                var idx = parseInt(btn.dataset.index, 10);
+                selectAnswer(idx);
+            });
+        });
+    }
     function _onAnswerDisconnect(reason) {
         updateConnectionStatus('disconnected');
     }
@@ -1549,6 +1633,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         connect:         _onAnswerConnect,
         disconnect:      _onAnswerDisconnect,
         error:           _onAnswerError,
+        state:           _onAnswerState,
         game_state:      _onAnswerGameState,
         answer_revealed: _onAnswerRevealed,
         round_ended:     _onAnswerRoundEnded,
@@ -1695,6 +1780,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         ds.on('connect',         h.connect);
         ds.on('disconnect',      h.disconnect);
         ds.on('error',           h.error);
+        ds.on('state',           h.state);
         ds.on('game_state',      h.game_state);
         ds.on('answer_revealed', h.answer_revealed);
         ds.on('round_ended',     h.round_ended);
