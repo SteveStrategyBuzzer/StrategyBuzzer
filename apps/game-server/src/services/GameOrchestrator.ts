@@ -22,6 +22,8 @@ export class GameOrchestrator {
   private lastScoreDeltas: Map<string, Map<string, { questionIndex: number; delta: number }>> = new Map();
   // Track which players have sent question_page_ready during SYNC phase
   private syncReadyMaps: Map<string, Set<string>> = new Map();
+  // Snapshot of expected human players at SYNC entry (used for early-exit check)
+  private syncExpectedMaps: Map<string, Set<string>> = new Map();
 
   constructor(io: SocketIOServer, roomManager: RoomManager) {
     this.io = io;
@@ -811,8 +813,16 @@ export class GameOrchestrator {
     // Increment questionIndex before SYNC so the next question is ready on entry to QUESTION_ACTIVE
     room.state.questionIndex++;
 
-    // Initialize the ready map for this SYNC phase
+    // Snapshot the set of expected human players at SYNC entry.
+    // This snapshot is used for early-exit: we wait for ALL expected humans before advancing.
+    // Transient disconnects during page navigation do NOT update this snapshot.
+    const expectedHumans = new Set<string>(
+      Object.values(room.state.players)
+        .filter(p => !p.isBot)
+        .map(p => p.id)
+    );
     this.syncReadyMaps.set(roomId, new Set<string>());
+    this.syncExpectedMaps.set(roomId, expectedHumans);
 
     const syncTimer = room.state.config.timers.sync;
     const phaseEvent: PhaseChangedEvent = {
@@ -844,6 +854,7 @@ export class GameOrchestrator {
 
     console.log(`[GameOrchestrator] SYNC timeout for room ${roomId} — advancing to QUESTION_ACTIVE`);
     this.syncReadyMaps.delete(roomId);
+    this.syncExpectedMaps.delete(roomId);
     this.transitionToQuestionActive(roomId);
   }
 
@@ -857,28 +868,19 @@ export class GameOrchestrator {
     }
 
     const readyMap = this.syncReadyMaps.get(roomId);
-    if (!readyMap) return;
+    const expectedSet = this.syncExpectedMaps.get(roomId);
+    if (!readyMap || !expectedSet) return;
 
     readyMap.add(playerId);
-    console.log(`[GameOrchestrator] question_page_ready from ${playerId} in room ${roomId} (${readyMap.size} ready)`);
+    console.log(`[GameOrchestrator] question_page_ready from ${playerId} in room ${roomId} (${readyMap.size}/${expectedSet.size} expected humans ready)`);
 
-    // Count human players (non-bot) that are connected
-    const humanPlayers = Object.values(room.state.players).filter(
-      p => !p.isBot && p.isConnected
-    );
-
-    if (humanPlayers.length === 0) {
+    // Early exit only when ALL expected humans (snapshotted at SYNC entry) have signalled ready.
+    // Disconnected or slow humans are handled by the 8s fallback timer — do NOT fast-path here.
+    if (expectedSet.size > 0 && [...expectedSet].every(id => readyMap.has(id))) {
+      console.log(`[GameOrchestrator] All ${expectedSet.size} expected human(s) ready — early exit SYNC for room ${roomId}`);
       this.clearPhaseTimer(roomId);
       this.syncReadyMaps.delete(roomId);
-      this.transitionToQuestionActive(roomId);
-      return;
-    }
-
-    const allHumansReady = humanPlayers.every(p => readyMap.has(p.id));
-    if (allHumansReady) {
-      console.log(`[GameOrchestrator] All ${humanPlayers.length} human player(s) ready — early exit SYNC for room ${roomId}`);
-      this.clearPhaseTimer(roomId);
-      this.syncReadyMaps.delete(roomId);
+      this.syncExpectedMaps.delete(roomId);
       this.transitionToQuestionActive(roomId);
     }
   }
@@ -1248,6 +1250,7 @@ export class GameOrchestrator {
     this.pendingAnswers.delete(roomId);
     this.lastScoreDeltas.delete(roomId);
     this.syncReadyMaps.delete(roomId);
+    this.syncExpectedMaps.delete(roomId);
     this.allBuzzerAnswers.delete(roomId);
     console.log(`[GameOrchestrator] Cleaned up room ${roomId}`);
   }
