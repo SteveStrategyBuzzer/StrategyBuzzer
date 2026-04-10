@@ -1749,8 +1749,10 @@ $mode = 'duo';
     document.addEventListener('DOMContentLoaded', function() {
         var ds = window.DuoSocketClient;
         if (ds) {
-            // V3: emit question_page_ready after connect so server can advance from SYNC
+            // V3: emit question_page_ready after connect so server can advance from SYNC.
+            // Reset the one-shot flag on every new connection so reconnects re-emit.
             ds.on('connect', function() {
+                questionPageReadySent = false;
                 setTimeout(function() { sendQuestionPageReady(); }, 350);
             });
             ds.on('game_state',         handleGameState);

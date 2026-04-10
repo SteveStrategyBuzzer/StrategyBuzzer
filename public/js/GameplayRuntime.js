@@ -311,8 +311,9 @@
                     FINISHED:         'MATCH_RESULT_URL',
                 },
                 answer: {
+                    // QUESTION_ACTIVE intentionally omitted: server allows it on the
+                    // answer page (buzz winner navigated here while phase still QUESTION_ACTIVE).
                     SYNC:             'QUESTION_URL',
-                    QUESTION_ACTIVE:  'QUESTION_URL',
                     RESULT:           'RESULT_URL',
                     ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
                     MATCH_END:        'MATCH_RESULT_URL',
