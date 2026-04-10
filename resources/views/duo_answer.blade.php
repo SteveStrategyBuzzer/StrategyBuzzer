@@ -879,7 +879,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     // 'second'  → buzzé position 2+ (+1 pt potentiel)
     // 'no_buzz' → round sans buzz (0 pt, peut répondre)
     // 'none'    → pas buzzé, adversaire a buzzé (waiting overlay, ne peut pas répondre)
+    // Exposé globalement pour permettre l'inspection/debug et les helpers externes
     let PLAYER_BUZZ_POSITION = @json($playerBuzzPosition ?? 'none');
+    window.PLAYER_BUZZ_POSITION = PLAYER_BUZZ_POSITION;
 
     function canAnswer() {
         return PLAYER_BUZZ_POSITION === 'first' || PLAYER_BUZZ_POSITION === 'second' || PLAYER_BUZZ_POSITION === 'no_buzz';
@@ -903,12 +905,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
     /**
      * Applique un nouveau quadri-état buzzeur depuis le serveur.
-     * Met à jour les boutons, l'overlay et le timer si nécessaire.
+     * Met à jour PLAYER_BUZZ_POSITION (local + window), les boutons, l'overlay et le timer.
      */
     function applyBuzzPosition(newPosition) {
         if (!newPosition || PLAYER_BUZZ_POSITION === newPosition) return;
         console.log('[DuoAnswer] PLAYER_BUZZ_POSITION: ' + PLAYER_BUZZ_POSITION + ' → ' + newPosition);
         PLAYER_BUZZ_POSITION = newPosition;
+        window.PLAYER_BUZZ_POSITION = newPosition; // maintenir la copie globale synchronisée
         var isAnswerable = canAnswer();
         // Mettre à jour les boutons
         answerButtons.forEach(function(btn) {
@@ -1491,9 +1494,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         if (!answerPhases.includes(phase)) return;
 
         // Verrou source de vérité: mettre à jour PLAYER_BUZZ_POSITION depuis buzzQueue serveur
+        // Fallback: si buzzQueue absent, utiliser playerBuzzOrder si disponible
         if (data.buzzQueue) {
             var derived = _deriveBuzzPositionFromQueue(data.buzzQueue);
             if (derived) applyBuzzPosition(derived);
+        } else if (typeof data.playerBuzzOrder === 'number' && data.playerBuzzOrder > 0) {
+            applyBuzzPosition(data.playerBuzzOrder === 1 ? 'first' : 'second');
         }
 
         if (!data.phaseEndsAtMs) return;
@@ -1556,10 +1562,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         // ── Verrou source de vérité: PLAYER_BUZZ_POSITION depuis buzzQueue serveur ──
+        // Fallback: si buzzQueue absent, utiliser playerBuzzOrder si disponible
         var bq = data.buzzQueue || (data.state && data.state.buzzQueue);
         if (bq) {
-            var derived = _deriveBuzzPositionFromQueue(bq);
-            if (derived) applyBuzzPosition(derived);
+            var derivedBp = _deriveBuzzPositionFromQueue(bq);
+            if (derivedBp) applyBuzzPosition(derivedBp);
+        } else if (typeof data.playerBuzzOrder === 'number' && data.playerBuzzOrder > 0) {
+            applyBuzzPosition(data.playerBuzzOrder === 1 ? 'first' : 'second');
         }
 
         // ── Timer resync ─────────────────────────────────────────────────────
