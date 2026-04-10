@@ -331,9 +331,12 @@
                     WAITING:          'QUESTION_URL',
                     SYNC:             'QUESTION_URL',
                     QUESTION_ACTIVE:  'QUESTION_URL',
-                    ANSWER_SELECTION:      'ANSWER_URL',
-                    BUZZ_WINNER_ANSWERING: 'ANSWER_URL',
-                    ANSWER_COLLECTION:     'ANSWER_URL',
+                    // Answer phases: redirect to question; question page handleGameState
+                    // will then role-check lockedAnswerPlayerId and redirect buzz winner
+                    // to answer (avoids ping-pong for non-buzz-winners).
+                    ANSWER_SELECTION:      'QUESTION_URL',
+                    BUZZ_WINNER_ANSWERING: 'QUESTION_URL',
+                    ANSWER_COLLECTION:     'QUESTION_URL',
                     ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
                     MATCH_END:        'MATCH_RESULT_URL',
                     FINISHED:         'MATCH_RESULT_URL',

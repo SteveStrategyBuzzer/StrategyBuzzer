@@ -1140,16 +1140,22 @@ class DuoController extends Controller
         return $this->renderQuestionView($match, $user);
     }
 
-    public function showQuestion()
+    public function showQuestion(Request $request)
     {
         $user = Auth::user();
-        $gameState = session('game_state');
 
-        if (!$gameState || !isset($gameState['match_id'])) {
+        // Accept match_id from query param (reconnect path) with session as fallback
+        $matchId = $request->input('match_id');
+        if (!$matchId) {
+            $gameState = session('game_state');
+            $matchId = $gameState['match_id'] ?? null;
+        }
+
+        if (!$matchId) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
 
-        $match = DuoMatch::find($gameState['match_id']);
+        $match = DuoMatch::find($matchId);
 
         if (!$match) {
             session()->forget('game_state');
@@ -1166,19 +1172,26 @@ class DuoController extends Controller
             return $phaseRedirect;
         }
 
+        $gameState = session('game_state', []);
         return $this->renderQuestionView($match, $user);
     }
 
     public function showAnswer(Request $request)
     {
         $user = Auth::user();
-        $gameState = session('game_state');
 
-        if (!$gameState || !isset($gameState['match_id'])) {
+        // Accept match_id from query param (reconnect path) with session as fallback
+        $matchId = $request->input('match_id');
+        if (!$matchId) {
+            $gameState = session('game_state');
+            $matchId = $gameState['match_id'] ?? null;
+        }
+
+        if (!$matchId) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
 
-        $match = DuoMatch::find($gameState['match_id']);
+        $match = DuoMatch::find($matchId);
 
         if (!$match) {
             session()->forget('game_state');
@@ -1189,6 +1202,8 @@ class DuoController extends Controller
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
+
+        $gameState = session('game_state', []);
 
         $phaseRedirect = $this->validatePhaseAccess($match, $user, 'answer');
         if ($phaseRedirect) {
@@ -1210,16 +1225,22 @@ class DuoController extends Controller
         return $this->renderAnswerView($match, $user, $gameState);
     }
 
-    public function showResult()
+    public function showResult(Request $request)
     {
         $user = Auth::user();
-        $gameState = session('game_state');
 
-        if (!$gameState || !isset($gameState['match_id'])) {
+        // Accept match_id from query param (reconnect path) with session as fallback
+        $matchId = $request->input('match_id');
+        if (!$matchId) {
+            $gameState = session('game_state');
+            $matchId = $gameState['match_id'] ?? null;
+        }
+
+        if (!$matchId) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
 
-        $match = DuoMatch::find($gameState['match_id']);
+        $match = DuoMatch::find($matchId);
 
         if (!$match) {
             session()->forget('game_state');
@@ -1236,6 +1257,7 @@ class DuoController extends Controller
             return $phaseRedirect;
         }
 
+        $gameState = session('game_state', []);
         return $this->renderResultView($match, $user, $gameState);
     }
 
