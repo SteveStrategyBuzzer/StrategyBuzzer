@@ -10,9 +10,18 @@ export type PhaseTransition = {
 const PHASE_TRANSITIONS: PhaseTransition[] = [
   { from: "LOBBY", to: "INTRO" },
   { from: "INTRO", to: "QUESTION_ACTIVE" },
+  { from: "QUESTION_ACTIVE", to: "ANSWER_COLLECTION" },
   { from: "QUESTION_ACTIVE", to: "ANSWER_SELECTION" },
   { from: "QUESTION_ACTIVE", to: "REVEAL" },
+  { from: "ANSWER_COLLECTION", to: "RESULT" },
   { from: "ANSWER_SELECTION", to: "REVEAL" },
+  { from: "RESULT", to: "SYNC" },
+  {
+    from: "RESULT",
+    to: "ROUND_SCOREBOARD",
+    condition: (state) => state.questionIndex >= state.config.questionsPerRound - 1
+  },
+  { from: "SYNC", to: "QUESTION_ACTIVE" },
   { from: "REVEAL", to: "WAITING" },
   {
     from: "REVEAL",
@@ -85,8 +94,14 @@ export function getPhaseTimeout(state: GameState): number {
       return state.config.timers.questionActive;
     case "ANSWER_SELECTION":
       return state.config.timers.answerSelection;
+    case "ANSWER_COLLECTION":
+      return state.config.timers.answerCollection;
     case "REVEAL":
       return state.config.timers.reveal;
+    case "RESULT":
+      return state.config.timers.result;
+    case "SYNC":
+      return state.config.timers.sync;
     case "WAITING":
       return state.config.timers.waiting;
     case "ROUND_SCOREBOARD":

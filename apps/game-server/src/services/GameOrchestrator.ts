@@ -20,6 +20,8 @@ export class GameOrchestrator {
   // Stores { questionIndex, delta } so cancel_error only applies to the
   // question that was just scored (prevents stale cross-question corrections).
   private lastScoreDeltas: Map<string, Map<string, { questionIndex: number; delta: number }>> = new Map();
+  // Track which players have sent question_page_ready during SYNC phase
+  private syncReadyMaps: Map<string, Set<string>> = new Map();
 
   constructor(io: SocketIOServer, roomManager: RoomManager) {
     this.io = io;
@@ -124,29 +126,27 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event });
     this.logEventToRedis(roomId, event);
 
-    if (room.state.lockedAnswerPlayerId === playerId) {
-      this.clearPhaseTimer(roomId);
+    // V3 NON-BLOCKING: phase stays QUESTION_ACTIVE after buzz
+    // Emit buzz_winner with position but do NOT change phase or clear timer
+    const position = room.state.buzzQueue.length; // already includes this buzz
+    const player = room.state.players[playerId];
+    this.io.to(roomId).emit("buzz_winner", {
+      playerId,
+      playerName: player?.name,
+      position,
+    });
 
-      const player = room.state.players[playerId];
-      this.io.to(roomId).emit("buzz_winner", {
-        playerId,
-        playerName: player?.name,
-        position: 1,
-      });
-
-      this.emitPhaseChanged(roomId);
-      this.schedulePhaseTimeout(roomId);
-
-      console.log(`[GameOrchestrator] Buzz winner: ${player?.name} (${playerId})`);
-    }
+    console.log(`[GameOrchestrator] Buzz winner: ${player?.name} (${playerId}), position: ${position}`);
   }
 
   handleAnswer(roomId: string, playerId: string, answer: number | string | boolean): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    if (room.state.phase !== "ANSWER_SELECTION") {
-      console.log(`[GameOrchestrator] Answer rejected: not in ANSWER_SELECTION phase`);
+    // V3: Accept answers during QUESTION_ACTIVE, ANSWER_COLLECTION, and ANSWER_SELECTION (legacy)
+    const acceptablePhases = ["QUESTION_ACTIVE", "ANSWER_COLLECTION", "ANSWER_SELECTION"];
+    if (!acceptablePhases.includes(room.state.phase)) {
+      console.log(`[GameOrchestrator] Answer rejected: not in answer phase (${room.state.phase})`);
       return;
     }
 
@@ -192,15 +192,10 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event: submitEvent });
     this.logEventToRedis(roomId, submitEvent);
 
-
     console.log(`[GameOrchestrator] Player ${playerId} answered (buzz order: ${buzzOrder}). ${roomAnswers.size}/${room.state.buzzQueue.length} buzzers answered`);
 
-    // Check if all buzzers have answered
-    if (roomAnswers.size >= room.state.buzzQueue.length) {
-      console.log(`[GameOrchestrator] All ${roomAnswers.size} buzzers answered - revealing now`);
-      this.clearPhaseTimer(roomId);
-      this.revealAnswer(roomId);
-    }
+    // V3: Do NOT reveal early — let QUESTION_ACTIVE run its full timer.
+    // ANSWER_COLLECTION will catch any remaining answers after the timer expires.
   }
 
   private revealAnswer(roomId: string): void {
@@ -229,15 +224,16 @@ export class GameOrchestrator {
       }
     }
 
-    // Transition to REVEAL phase first
+    // V3: Transition to RESULT phase (replaces REVEAL)
+    const resultTimer = room.state.config.timers.result;
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
       type: "PHASE_CHANGED",
       atMs: Date.now(),
       sessionId: roomId,
       fromPhase: room.state.phase,
-      toPhase: "REVEAL",
-      phaseEndsAtMs: Date.now() + room.state.config.timers.reveal,
+      toPhase: "RESULT",
+      phaseEndsAtMs: Date.now() + resultTimer,
     };
 
     room.state = applyEvent(room.state, phaseEvent);
@@ -433,8 +429,20 @@ export class GameOrchestrator {
         this.handleAnswerTimeout(roomId);
         break;
 
+      case "ANSWER_COLLECTION":
+        this.handleAnswerTimeout(roomId);
+        break;
+
       case "REVEAL":
         this.transitionAfterReveal(roomId);
+        break;
+
+      case "RESULT":
+        this.transitionAfterResult(roomId);
+        break;
+
+      case "SYNC":
+        this.handleSyncTimeout(roomId);
         break;
 
       case "WAITING":
@@ -598,14 +606,23 @@ export class GameOrchestrator {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
+    // V3: QUESTION_ACTIVE timeout → ANSWER_COLLECTION (2-3s grace) then RESULT
+    // If no buzzers at all, skip ANSWER_COLLECTION and go straight to RESULT
+    if (room.state.buzzQueue.length === 0) {
+      console.log(`[GameOrchestrator] No buzzers in room ${roomId} — skipping ANSWER_COLLECTION`);
+      this.revealAnswer(roomId);
+      return;
+    }
+
+    const answerCollectionTimer = room.state.config.timers.answerCollection;
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
       type: "PHASE_CHANGED",
       atMs: Date.now(),
       sessionId: roomId,
       fromPhase: room.state.phase,
-      toPhase: "REVEAL",
-      phaseEndsAtMs: Date.now() + room.state.config.timers.reveal,
+      toPhase: "ANSWER_COLLECTION",
+      phaseEndsAtMs: Date.now() + answerCollectionTimer,
     };
 
     room.state = applyEvent(room.state, phaseEvent);
@@ -614,37 +631,9 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event: phaseEvent });
     this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
-
-    const fullQuestion = room.state.questions[room.state.questionIndex];
-    let correctAnswer: number | string | boolean = 0;
-    if (fullQuestion) {
-      if (fullQuestion.type === "MCQ" && fullQuestion.correctIndex !== undefined) {
-        correctAnswer = fullQuestion.correctIndex;
-      } else if (fullQuestion.type === "TRUE_FALSE" && fullQuestion.correctBool !== undefined) {
-        correctAnswer = fullQuestion.correctBool;
-      } else if (fullQuestion.type === "TEXT" && fullQuestion.correctText !== undefined) {
-        correctAnswer = fullQuestion.correctText;
-      }
-    }
-
-    this.io.to(roomId).emit("answer_revealed", {
-      playerId: null,
-      playerName: null,
-      answer: null,
-      isCorrect: false,
-      correctAnswer,
-      correctIndex: fullQuestion?.correctIndex,
-      correctBool: fullQuestion?.correctBool,
-      correctText: fullQuestion?.correctText,
-      pointsEarned: 0,
-      totalScore: 0,
-      roundScore: 0,
-      timeout: true,
-      funFact: fullQuestion?.funFact,
-      didYouKnow: fullQuestion?.funFact,
-    });
-
     this.schedulePhaseTimeout(roomId);
+
+    console.log(`[GameOrchestrator] ANSWER_COLLECTION phase (${answerCollectionTimer}ms) for room ${roomId} with ${room.state.buzzQueue.length} buzzer(s)`);
   }
 
   private handleAnswerTimeout(roomId: string): void {
@@ -653,7 +642,7 @@ export class GameOrchestrator {
 
     // All buzzers who didn't answer will be scored as timeout (-2 pts) in scoreAllBuzzers
     // We use allBuzzerAnswers as single source of truth - buzzers not in the map = timeout
-    console.log(`[GameOrchestrator] Answer timeout in room ${roomId} - revealing answers`);
+    console.log(`[GameOrchestrator] ANSWER_COLLECTION timeout in room ${roomId} - revealing answers`);
     this.revealAnswer(roomId);
   }
 
@@ -764,6 +753,10 @@ export class GameOrchestrator {
   }
 
   private transitionAfterReveal(roomId: string): void {
+    this.transitionAfterResult(roomId);
+  }
+
+  private transitionAfterResult(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
@@ -776,7 +769,85 @@ export class GameOrchestrator {
         console.error(`[GameOrchestrator] Error in transitionToWaiting:`, err);
       });
     } else {
-      room.state.questionIndex++;
+      this.transitionToSync(roomId);
+    }
+  }
+
+  private transitionToSync(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    // Increment questionIndex before SYNC so the next question is ready on entry to QUESTION_ACTIVE
+    room.state.questionIndex++;
+
+    // Initialize the ready map for this SYNC phase
+    this.syncReadyMaps.set(roomId, new Set<string>());
+
+    const syncTimer = room.state.config.timers.sync;
+    const phaseEvent: PhaseChangedEvent = {
+      id: room.state.lastEventId + 1,
+      type: "PHASE_CHANGED",
+      atMs: Date.now(),
+      sessionId: roomId,
+      fromPhase: room.state.phase,
+      toPhase: "SYNC",
+      phaseEndsAtMs: Date.now() + syncTimer,
+      questionIndex: room.state.questionIndex,
+      roundNumber: room.state.currentRound,
+    };
+
+    room.state = applyEvent(room.state, phaseEvent);
+    room.events.push(phaseEvent);
+
+    this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
+    this.emitPhaseChanged(roomId);
+    this.schedulePhaseTimeout(roomId);
+
+    console.log(`[GameOrchestrator] SYNC phase started for room ${roomId} (max ${syncTimer}ms), next question index: ${room.state.questionIndex}`);
+  }
+
+  private handleSyncTimeout(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    console.log(`[GameOrchestrator] SYNC timeout for room ${roomId} — advancing to QUESTION_ACTIVE`);
+    this.syncReadyMaps.delete(roomId);
+    this.transitionToQuestionActive(roomId);
+  }
+
+  handleQuestionPageReady(roomId: string, playerId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    if (room.state.phase !== "SYNC") {
+      console.log(`[GameOrchestrator] question_page_ready ignored: not in SYNC phase (${room.state.phase})`);
+      return;
+    }
+
+    const readyMap = this.syncReadyMaps.get(roomId);
+    if (!readyMap) return;
+
+    readyMap.add(playerId);
+    console.log(`[GameOrchestrator] question_page_ready from ${playerId} in room ${roomId} (${readyMap.size} ready)`);
+
+    // Count human players (non-bot) that are connected
+    const humanPlayers = Object.values(room.state.players).filter(
+      p => !p.isBot && p.isConnected
+    );
+
+    if (humanPlayers.length === 0) {
+      this.clearPhaseTimer(roomId);
+      this.syncReadyMaps.delete(roomId);
+      this.transitionToQuestionActive(roomId);
+      return;
+    }
+
+    const allHumansReady = humanPlayers.every(p => readyMap.has(p.id));
+    if (allHumansReady) {
+      console.log(`[GameOrchestrator] All ${humanPlayers.length} human player(s) ready — early exit SYNC for room ${roomId}`);
+      this.clearPhaseTimer(roomId);
+      this.syncReadyMaps.delete(roomId);
       this.transitionToQuestionActive(roomId);
     }
   }
@@ -1145,6 +1216,8 @@ export class GameOrchestrator {
     this.clearPhaseTimer(roomId);
     this.pendingAnswers.delete(roomId);
     this.lastScoreDeltas.delete(roomId);
+    this.syncReadyMaps.delete(roomId);
+    this.allBuzzerAnswers.delete(roomId);
     console.log(`[GameOrchestrator] Cleaned up room ${roomId}`);
   }
 

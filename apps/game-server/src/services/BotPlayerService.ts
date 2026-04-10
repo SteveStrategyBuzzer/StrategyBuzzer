@@ -6,6 +6,7 @@ const BOT_TIMING = {
   introReadyMs: { min: 1500, max: 2500 },
   buzzMs: { min: 3000, max: 7000 },
   answerMs: { min: 800, max: 2000 },
+  syncReadyMs: { min: 500, max: 1500 },
 };
 
 function randomBetween(min: number, max: number): number {
@@ -19,6 +20,7 @@ export class BotPlayerService {
   private introTimer: ReturnType<typeof setTimeout> | null = null;
   private buzzTimer: ReturnType<typeof setTimeout> | null = null;
   private answerTimer: ReturnType<typeof setTimeout> | null = null;
+  private syncReadyTimer: ReturnType<typeof setTimeout> | null = null;
   private onCleanup: (() => void) | undefined;
   private readySent = false;
   private currentPhase: string = 'LOBBY';
@@ -141,8 +143,21 @@ export class BotPlayerService {
         }
 
         case "INTRO":
-        case "WAITING": {
-          // Between rounds: no action needed from bot
+        case "WAITING":
+        case "ANSWER_COLLECTION":
+        case "RESULT": {
+          // Between rounds or phases: no action needed from bot
+          break;
+        }
+
+        case "SYNC": {
+          // V3: Bot signals it is on the question page after a short delay
+          const delay = randomBetween(BOT_TIMING.syncReadyMs.min, BOT_TIMING.syncReadyMs.max);
+          this.syncReadyTimer = setTimeout(() => {
+            this.syncReadyTimer = null;
+            this.socket.emit("question_page_ready", { roomId: this.roomId });
+            console.log(`[Bot] Sent question_page_ready for SYNC (room ${this.roomId})`);
+          }, delay);
           break;
         }
 
@@ -222,6 +237,10 @@ export class BotPlayerService {
     if (this.answerTimer) {
       clearTimeout(this.answerTimer);
       this.answerTimer = null;
+    }
+    if (this.syncReadyTimer) {
+      clearTimeout(this.syncReadyTimer);
+      this.syncReadyTimer = null;
     }
     if (this.humanGraceTimer) {
       clearTimeout(this.humanGraceTimer);

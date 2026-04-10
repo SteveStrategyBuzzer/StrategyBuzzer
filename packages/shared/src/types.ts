@@ -12,7 +12,10 @@ export type Phase =
   | "INTRO"               
   | "QUESTION_ACTIVE"     
   | "ANSWER_SELECTION"    
+  | "ANSWER_COLLECTION"   
   | "REVEAL"              
+  | "RESULT"              
+  | "SYNC"                
   | "WAITING"             
   | "ROUND_SCOREBOARD"    
   | "TIEBREAKER_CHOICE"   
@@ -107,7 +110,10 @@ export type TimersConfig = {
   intro: number;
   questionActive: number;
   answerSelection: number;
+  answerCollection: number;
   reveal: number;
+  result: number;
+  sync: number;
   waiting: number;
   roundScoreboard: number;
   tiebreakerChoice: number;
@@ -268,7 +274,10 @@ export const DEFAULT_TIMERS: TimersConfig = {
   intro: 13000, // audio ready_announcement.mp3 = 8.18s + ~2s page navigation + ~2.82s buffer
   questionActive: 8000,
   answerSelection: 10000,
+  answerCollection: 3000,
   reveal: 3000,
+  result: 30000,
+  sync: 8000,
   waiting: 5000,
   roundScoreboard: 5000,
   tiebreakerChoice: 10000,
@@ -280,7 +289,10 @@ export const DEFAULT_DUO_TIMERS: TimersConfig = {
   intro: 13000, // audio ready_announcement.mp3 = 8.18s + ~2s page navigation + ~2.82s buffer
   questionActive: 8000,
   answerSelection: 10000,
+  answerCollection: 2000,
   reveal: 5000,
+  result: 60000,
+  sync: 8000,
   waiting: 5000,
   roundScoreboard: 5000,
   tiebreakerChoice: 10000,

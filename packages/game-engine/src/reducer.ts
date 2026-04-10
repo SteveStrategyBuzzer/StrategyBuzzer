@@ -169,15 +169,15 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
 
       if (s.buzzQueue.length === 1) {
         s.lockedAnswerPlayerId = event.playerId;
-        s.phase = "ANSWER_SELECTION";
-        s.phaseStartedAtMs = event.atMs;
-        s.phaseEndsAtMs = event.atMs + s.config.timers.answerSelection;
       }
       return s;
     }
 
     case "ANSWER_SUBMITTED": {
-      assert(s.phase === "ANSWER_SELECTION", "Answer not allowed in current phase");
+      assert(
+        s.phase === "ANSWER_SELECTION" || s.phase === "QUESTION_ACTIVE" || s.phase === "ANSWER_COLLECTION",
+        "Answer not allowed in current phase"
+      );
       const isInBuzzQueue = s.buzzQueue.some((b) => b.playerId === event.playerId);
       assert(isInBuzzQueue, "Player did not buzz for this question");
       assert(!!s.players[event.playerId], "Unknown player");

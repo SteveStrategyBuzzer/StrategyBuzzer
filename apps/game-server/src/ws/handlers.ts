@@ -23,6 +23,7 @@ import {
   VoiceCandidateSchema,
   PingCheckSchema,
   TimeSyncSchema,
+  QuestionPageReadySchema,
   type JoinRoomPayload,
   type BuzzPayload,
   type AnswerPayload,
@@ -33,6 +34,7 @@ import {
   type VoiceCandidatePayload,
   type PingCheckPayload,
   type TimeSyncPayload,
+  type QuestionPageReadyPayload,
 } from "../validation/schemas.js";
 import { timeSyncService } from "../services/TimeSyncService.js";
 
@@ -716,6 +718,23 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         from: currentPlayerId,
         candidate: payload.candidate,
       });
+    });
+
+    socket.on("question_page_ready", (data: unknown) => {
+      const result = validateEvent(QuestionPageReadySchema, data);
+      if (!result.success) {
+        console.error("[WS] Validation error for question_page_ready:", result.error.issues);
+        socket.emit("error", { code: "VALIDATION_ERROR", message: "Invalid question_page_ready payload" });
+        return;
+      }
+      const payload = result.data as QuestionPageReadyPayload;
+
+      if (!currentPlayerId || !currentRoomId || currentRoomId !== payload.roomId) {
+        socket.emit("error", { code: "NOT_IN_ROOM", message: "Not in a room" });
+        return;
+      }
+
+      gameOrchestrator.handleQuestionPageReady(payload.roomId, currentPlayerId);
     });
 
     socket.on("disconnect", () => {
