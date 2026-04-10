@@ -1,0 +1,92 @@
+C’est beaucoup mieux. Vous êtes enfin sur la bonne architecture générale.
+
+Mais je ne valide pas encore, car il reste 3 corrections de cadrage importantes.
+
+========================================
+1) Path A n’est pas correctement défini
+========================================
+
+Ce que vous décrivez avec sessionStorage + restoreState + reconnect rapide n’est PAS un vrai socket persistant.
+C’est un reconnect/resync optimisé, donc Path B amélioré.
+
+Je veux que vous corrigiez la terminologie et la séparation :
+
+- Path A = vraie continuité temps réel normale
+- Path B = reconnect/resync complet après rupture
+
+sessionStorage peut être utilisé comme aide visuelle de continuité UI, mais ne doit pas être présenté comme un socket persistant.
+
+Donc :
+- ne pas appeler cela “Path A”
+- l’appeler “bridge UI / warm restore” ou équivalent
+- garder clair que le vrai fonctionnement actuel reste un modèle reconnect/resync
+
+========================================
+2) Vous avez réinterprété mes durées au lieu de les appliquer
+========================================
+
+Les durées officielles à respecter sont :
+
+- Question = 8 sec
+- Réponses = 10 sec
+- Résultat Solo = 30 sec
+- Résultat Duo = 60 sec
+
+Après la phase Résultat, le jeu entre dans une phase de synchronisation distincte.
+Pendant cette phase, on affiche le cerveau comme buffer visuel.
+
+En Duo, QUESTION_ACTIVE ne démarre que lorsque les joueurs ont envoyé `question_page_ready`, ou lorsqu’un timeout maximal de synchronisation est atteint.
+
+Le cerveau appartient à la phase de synchronisation, pas à la phase Résultat.
+
+Je ne veux donc pas que vous remplaciez cela par :
+- REVEAL = 10s
+- ROUND_SCOREBOARD = 15s
+- ou une autre réinterprétation
+
+Appliquez mes durées telles quelles, puis construisez l’architecture autour.
+
+========================================
+3) La logique serveur / vue doit être formulée plus proprement
+========================================
+
+Je veux une distinction stricte entre :
+- phase serveur
+- page affichée au joueur
+
+Exemple :
+- la phase serveur peut rester QUESTION_ACTIVE
+- un joueur ayant buzzé peut être affiché sur la page Réponses
+- l’autre joueur reste affiché sur la page Question
+- cela ne signifie PAS que la phase serveur a changé
+
+Je veux donc que vous reformuliez le mapping avec 2 colonnes séparées :
+1. phase serveur réelle
+2. vue/page possible selon l’état du joueur
+
+========================================
+LIVRABLE RÉVISÉ DEMANDÉ
+========================================
+
+Je veux une V2 de votre réponse avec :
+
+1) terminologie corrigée :
+   - vrai Path A
+   - vrai Path B
+   - bridge UI séparé si vous gardez sessionStorage
+
+2) mes durées officielles appliquées sans réinterprétation :
+   - Question 8
+   - Réponses 10
+   - Résultat Solo 30
+   - Résultat Duo 60
+   - puis phase SYNC distincte avec cerveau
+
+3) mapping corrigé :
+   - phase serveur réelle
+   - vue/page côté joueur selon son état
+
+4) plan technique ensuite seulement
+
+Je valide l’orientation générale.
+Je ne valide pas encore la formulation ni les durées.

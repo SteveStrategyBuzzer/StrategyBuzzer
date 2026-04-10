@@ -1,0 +1,138 @@
+On arrête les correctifs isolés. On change l’approche.
+
+Le problème actuel n’est pas un ensemble de bugs (timer, brain, réponses, navigation, bot).
+C’est un problème d’architecture temps réel.
+
+========================================
+ARCHITECTURE OFFICIELLE À APPLIQUER
+========================================
+
+1) Socket.IO = source de vérité du gameplay
+- phases
+- timers
+- buzz
+- réponses
+- score
+- progression
+
+Laravel/Blade ne doit PAS piloter le gameplay.
+Il affiche uniquement l’état reçu.
+
+========================================
+
+2) Socket persistant = fonctionnement normal (OBLIGATOIRE)
+- Le socket doit rester actif à travers les pages autant que possible
+- Le gameplay ne doit PAS dépendre du reload de page
+- Les timers ne doivent JAMAIS continuer pendant une déconnexion page
+- Le joueur ne doit jamais “arriver en retard” dans une phase
+
+C’est la base principale du système.
+
+========================================
+
+3) Reconnect + resync complet = filet de sécurité (OBLIGATOIRE)
+- Si le socket tombe OU si une page reload :
+    → reconnect automatique
+    → récupération complète du state :
+        - phase actuelle
+        - temps restant réel
+        - question courante
+        - buzzQueue
+        - statut du joueur
+    → redirection vers la bonne page
+
+IMPORTANT :
+- Ce mécanisme ne doit PAS être utilisé comme fonctionnement principal
+- Il sert uniquement en cas de perte de connexion ou reload
+
+Donc :
+A = fonctionnement normal
+B = récupération uniquement
+
+========================================
+
+4) Synchronisation obligatoire à chaque question
+- Avant QUESTION_ACTIVE :
+    → attendre signal "question_page_ready" de tous les joueurs
+- Le cerveau doit servir de buffer réel (pas juste visuel)
+- QUESTION_ACTIVE démarre seulement quand les joueurs sont prêts
+  OU lorsqu’un timeout maximal de synchronisation est atteint
+
+IMPORTANT :
+- Cette synchronisation est une phase distincte
+- Elle arrive APRÈS la phase Résultat
+- Le cerveau appartient à cette phase de synchronisation, pas à la phase Résultat
+- Son rôle est d’absorber la latence et de garantir que les joueurs entrent dans QUESTION_ACTIVE au bon moment
+
+========================================
+
+5) Durées officielles à respecter
+- Question = 8 sec
+- Réponses = 10 sec
+- Résultat Solo = 30 sec
+- Résultat Duo = 60 sec
+
+Après la phase Résultat, le jeu entre dans une phase de synchronisation distincte.
+Pendant cette phase, on affiche le cerveau comme buffer visuel.
+
+En Duo, QUESTION_ACTIVE ne démarre que lorsque les joueurs ont envoyé `question_page_ready`, ou lorsqu’un timeout maximal de synchronisation est atteint.
+
+========================================
+
+6) Phase QUESTION_ACTIVE NON bloquante
+- Le premier buzz NE change PAS la phase
+- Le joueur qui buzz va vers ANSWER_SELECTION
+- L’autre joueur reste sur QUESTION avec son timer
+- Il peut buzzer ensuite (2e position) ou laisser expirer
+
+========================================
+
+7) Scoring multi-buzz (déjà existant côté serveur)
+- 1er bon → +2
+- 2e bon → +1
+- pas buzz → 0
+
+Utiliser buzzQueue + allBuzzerAnswers existants.
+
+========================================
+
+8) Navigation contrôlée par l’état serveur uniquement
+- Pas de redirect forcé côté client sur buzz adverse
+- Le client affiche l’état courant
+- Si mismatch page/phase → corriger via resync
+
+========================================
+
+9) Phase REVEAL / RESULT
+- REVEAL et RESULT ne doivent pas être confondus avec la phase de synchronisation
+- RESULT doit rester une pause lisible et exploitable
+- Il ne doit pas y avoir de transition instantanée vers QUESTION_ACTIVE
+- Après RESULT, on passe dans une phase de synchronisation distincte avec cerveau
+- Ensuite seulement QUESTION_ACTIVE peut démarrer
+
+========================================
+
+10) Données question/réponses
+- Source = game server (Node)
+- Le client doit pouvoir reconstruire via game_state après reconnect
+- Ne pas dépendre uniquement du rendu PHP
+
+========================================
+
+OBJECTIF
+
+Je veux maintenant :
+
+1) Diagramme des phases serveur (GameOrchestrator)
+2) Mapping phase → page
+3) Plan technique détaillé pour :
+   - socket persistant (A)
+   - reconnect + resync complet (B)
+   - synchronisation entre questions
+4) Séparation claire entre :
+   - RESULT
+   - phase de synchronisation avec cerveau
+   - QUESTION_ACTIVE
+
+Je ne veux plus de patchs isolés.
+Je veux une correction alignée avec cette architecture A+B.
