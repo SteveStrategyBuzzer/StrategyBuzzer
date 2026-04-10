@@ -14,6 +14,13 @@ window.ROUND_SCOREBOARD_URL = @json(route('game.duo.round-scoreboard'));
 window.MATCH_RESULT_URL     = @json(route('game.duo.match-result'));
 window.CURRENT_PAGE         = 'result';
 window.NO_BRAIN_OVERLAY     = true;
+// Bridge UI: page-specific visual state saved on every navigation
+window.GR_SAVE_STATE_EXTRA  = {
+    phase:         'RESULT',
+    current_page:  'result',
+    player_score:  {{ (int)($playerScore ?? $player_score ?? 0) }},
+    opponent_score: {{ (int)($opponentScore ?? $opponent_score ?? 0) }},
+};
 </script>
 @endsection
 
@@ -1315,27 +1322,27 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         }, 1000);
     }
 
+    var _nav = function(u) { (window.duoNavigate || function(x) { window.location.href = x; })(u); };
+
     function navigateToNextQuestion() {
         cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
-        var url = window.QUESTION_URL || "{{ route('game.duo.question') }}";
-        window.location.href = url + '?match_id=' + encodeURIComponent(MATCH_ID);
+        _nav((window.QUESTION_URL || "{{ route('game.duo.question') }}") + '?match_id=' + encodeURIComponent(MATCH_ID));
     }
     
     function navigateToRoundScoreboard() {
         cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
-        var url = window.ROUND_SCOREBOARD_URL || window.RESULT_URL || "{{ route('game.duo.round-scoreboard') }}";
-        window.location.href = url + '?match_id=' + encodeURIComponent(MATCH_ID);
+        _nav((window.ROUND_SCOREBOARD_URL || "{{ route('game.duo.round-scoreboard') }}") + '?match_id=' + encodeURIComponent(MATCH_ID));
     }
     
     function navigateToFinalResults() {
         cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
-        window.location.href = (window.MATCH_RESULT_URL || "{{ route('game.duo.match-result') }}") + '?match_id=' + encodeURIComponent(MATCH_ID);
+        _nav((window.MATCH_RESULT_URL || "{{ route('game.duo.match-result') }}") + '?match_id=' + encodeURIComponent(MATCH_ID));
     }
     
     // ── Exit button: 2-click confirmation ────────────────────────────────────

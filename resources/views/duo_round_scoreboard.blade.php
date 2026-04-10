@@ -13,6 +13,13 @@ window.ROUND_SCOREBOARD_URL = @json(route('game.duo.round-scoreboard'));
 window.MATCH_RESULT_URL     = @json(route('game.duo.match-result'));
 window.CURRENT_PAGE         = 'round-scoreboard';
 window.NO_BRAIN_OVERLAY     = true;
+// Bridge UI: page-specific visual state saved on every navigation
+window.GR_SAVE_STATE_EXTRA  = {
+    phase:         'ROUND_SCOREBOARD',
+    current_page:  'round-scoreboard',
+    player_score:  {{ (int)($playerScore ?? 0) }},
+    opponent_score: {{ (int)($opponentScore ?? 0) }},
+};
 </script>
 @endsection
 
@@ -382,20 +389,20 @@ $tied = $playerScore === $opponentScore;
         }, 1000);
     }
 
+    var _nav = function(u) { (window.duoNavigate || function(x) { window.location.href = x; })(u); };
+
     function navigateToQuestion() {
         cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
-        var url = window.QUESTION_URL || '/game/duo/question';
-        window.location.href = url + '?match_id=' + encodeURIComponent(MATCH_ID);
+        _nav((window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID));
     }
 
     function navigateToMatchResult() {
         cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
-        var url = window.MATCH_RESULT_URL || '/game/duo/match-result';
-        window.location.href = url + '?match_id=' + encodeURIComponent(MATCH_ID);
+        _nav((window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID));
     }
 
     function _onSbPhaseChanged(data) {

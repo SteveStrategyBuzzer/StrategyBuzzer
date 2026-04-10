@@ -18,6 +18,11 @@ window.CURRENT_PAGE          = 'question';
 // If game_state briefly shows phase=INTRO during the intro→question transition,
 // the brain overlay must not obscure the question UI.
 window.NO_BRAIN_OVERLAY      = true;
+// Bridge UI: page-specific visual state saved on every navigation
+window.GR_SAVE_STATE_EXTRA   = {
+    phase:        'QUESTION_ACTIVE',
+    current_page: 'question',
+};
 </script>
 @endsection
 
@@ -1120,9 +1125,19 @@ $mode = 'duo';
     function redirectOnce(url, delay = 0) {
         if (isRedirecting) return;
         isRedirecting = true;
-        
+        // Update Bridge UI visual-state payload before navigating
+        const _qt = document.querySelector('.question-text') || document.querySelector('.question-text-display');
+        const _ps = playerScoreEl ? parseInt(playerScoreEl.textContent.trim(), 10) || 0 : 0;
+        const _os = opponentScoreEl ? parseInt(opponentScoreEl.textContent.trim(), 10) || 0 : 0;
+        window.GR_SAVE_STATE_EXTRA = {
+            phase:          'QUESTION_ACTIVE',
+            current_page:   'question',
+            question_text:  _qt ? _qt.textContent.trim() : '',
+            player_score:   _ps,
+            opponent_score: _os,
+        };
         setTimeout(() => {
-            window.location.href = url;
+            (window.duoNavigate || function(u) { window.location.href = u; })(url);
         }, delay);
     }
     
@@ -1574,7 +1589,9 @@ $mode = 'duo';
         stopTimer();
         _callFinishSocketIO('[DuoQuestion]').finally(function() {
             isRedirecting = true;
-            window.location.href = MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID);
+            (window.duoNavigate || function(u) { window.location.href = u; })(
+                MATCH_RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID)
+            );
         });
     }
 

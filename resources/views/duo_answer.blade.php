@@ -14,6 +14,15 @@ window.ROUND_SCOREBOARD_URL = @json(route('game.duo.round-scoreboard'));
 window.MATCH_RESULT_URL     = @json(route('game.duo.match-result'));
 window.CURRENT_PAGE         = 'answer';
 window.NO_BRAIN_OVERLAY     = true;
+// Bridge UI: page-specific visual state saved on every navigation
+window.GR_SAVE_STATE_EXTRA  = {
+    phase:         'ANSWER_COLLECTION',
+    current_page:  'answer',
+    question_text: @json($questionText ?? ''),
+    choices:       @json($choices ?? []),
+    player_score:  {{ (int)($playerScore ?? 0) }},
+    opponent_score: {{ (int)($opponentScore ?? 0) }},
+};
 </script>
 @endsection
 
@@ -1507,7 +1516,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;
-                window.location.href = window.MATCH_RESULT_URL || ('/duo/result/' + MATCH_ID);
+                (window.duoNavigate || function(u) { window.location.href = u; })(
+                    (window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID)
+                );
             }, delay);
         }
     }
@@ -1517,19 +1528,24 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         setTimeout(function() {
             if (isRedirecting) return;
             isRedirecting = true;
-            window.location.href = (window.ROUND_SCOREBOARD_URL || window.RESULT_URL || '/game/duo/round-scoreboard') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            (window.duoNavigate || function(u) { window.location.href = u; })(
+                (window.ROUND_SCOREBOARD_URL || window.RESULT_URL || '/game/duo/round-scoreboard') + '?match_id=' + encodeURIComponent(MATCH_ID)
+            );
         }, 2000);
     }
     function _onAnswerMatchEnded(data) {
         if (isRedirecting) return;
         isRedirecting = true;
         setTimeout(function() {
-            window.location.href = window.MATCH_RESULT_URL || ('/duo/result/' + MATCH_ID);
+            (window.duoNavigate || function(u) { window.location.href = u; })(
+                (window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID)
+            );
         }, 2000);
     }
     function _onAnswerPhaseChanged(data) {
         if (isRedirecting || !data || !data.phase) return;
         var phase = data.phase;
+        var _nav  = window.duoNavigate || function(u) { window.location.href = u; };
 
         if (phase === 'REVEAL') {
             // REVEAL ≠ scoreboard — stay on page so answer_revealed can show visual feedback.
@@ -1541,7 +1557,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;
-                window.location.href = (window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID);
+                _nav((window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID));
             }, 600);
             return;
         }
@@ -1551,7 +1567,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;
-                window.location.href = (window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID);
+                _nav((window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID));
             }, 800);
             return;
         }
@@ -1560,7 +1576,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;
-                window.location.href = (window.ROUND_SCOREBOARD_URL || window.RESULT_URL || '/game/duo/round-scoreboard') + '?match_id=' + encodeURIComponent(MATCH_ID);
+                _nav((window.ROUND_SCOREBOARD_URL || '/game/duo/round-scoreboard') + '?match_id=' + encodeURIComponent(MATCH_ID));
             }, 2500);
             return;
         }
@@ -1569,7 +1585,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;
-                window.location.href = (window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID);
+                _nav((window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID));
             }, 1000);
         }
     }

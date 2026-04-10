@@ -157,43 +157,59 @@
 
     // ── Bridge UI: restoreState on load ─────────────────────────────────────
     // On reconnect/cold-start, PHP may not have re-hydrated window globals.
-    // Pull them from sessionStorage (written by beforeunload below).
+    // Pull connection identifiers AND visual state from sessionStorage,
+    // then publish them to canonical window.GR_RESTORED_* keys so pages
+    // can render immediately before the socket state arrives.
     (function () {
         var ds = window.DuoSocketClient;
         if (!ds || !ds.restoreState) return;
         var saved = ds.restoreState();
         if (!saved) return;
+        // Connection identifiers
         if (!ROOM_ID    && saved.room_id)    { ROOM_ID = saved.room_id;       window.ROOM_ID    = ROOM_ID; }
         if (!JWT_TOKEN  && saved.jwt_token)  { JWT_TOKEN = saved.jwt_token;   window.JWT_TOKEN  = JWT_TOKEN; }
         if (!LOBBY_CODE && saved.lobby_code) { LOBBY_CODE = saved.lobby_code; window.LOBBY_CODE = LOBBY_CODE; }
         if (!window.MATCH_ID && saved.match_id) { window.MATCH_ID = saved.match_id; }
-        console.log('[GameplayRuntime] restoreState applied from session storage');
+        // Visual state — publish for immediate page rendering before socket state arrives
+        if (saved.phase)         window.GR_RESTORED_PHASE          = saved.phase;
+        if (saved.question_text) window.GR_RESTORED_QUESTION_TEXT  = saved.question_text;
+        if (saved.choices)       window.GR_RESTORED_CHOICES        = saved.choices;
+        if (saved.player_score  !== undefined) window.GR_RESTORED_PLAYER_SCORE   = saved.player_score;
+        if (saved.opponent_score !== undefined) window.GR_RESTORED_OPPONENT_SCORE = saved.opponent_score;
+        if (saved.phaseEndsAtMs) window.GR_RESTORED_PHASE_ENDS_AT  = saved.phaseEndsAtMs;
+        console.log('[GameplayRuntime] restoreState applied', { phase: saved.phase, page: saved.current_page });
     })();
 
+    // ── Build save payload: base identifiers + page-specific visual state ────
+    function buildSavePayload() {
+        var base = {
+            match_id:     window.MATCH_ID   || '',
+            room_id:      window.ROOM_ID    || '',
+            lobby_code:   window.LOBBY_CODE || '',
+            jwt_token:    window.JWT_TOKEN  || '',
+            current_page: window.CURRENT_PAGE || '',
+        };
+        // Merge page-specific extra (set by each page via window.GR_SAVE_STATE_EXTRA)
+        return Object.assign(base, window.GR_SAVE_STATE_EXTRA || {});
+    }
+
     // ── Bridge UI: auto-save before any navigation ───────────────────────────
-    // Fires regardless of what triggers the redirect — single reliable hook.
+    // Acts as universal safety net that fires regardless of what triggers navigation.
     window.addEventListener('beforeunload', function () {
         var ds = window.DuoSocketClient;
         if (ds && ds.saveState && (window.MATCH_ID || window.ROOM_ID)) {
-            ds.saveState({
-                match_id:   window.MATCH_ID   || '',
-                room_id:    window.ROOM_ID    || '',
-                lobby_code: window.LOBBY_CODE || '',
-                jwt_token:  window.JWT_TOKEN  || '',
-            });
+            ds.saveState(buildSavePayload());
         }
     });
 
-    // ── Shared navigation helper (save-then-redirect) ────────────────────────
+    // ── Shared navigation helper (explicit save-then-redirect) ───────────────
+    // All game-page redirect paths MUST call window.duoNavigate(url) instead of
+    // setting window.location.href directly.  This guarantees the full payload
+    // (including visual-state fields) is persisted before every page hop.
     window.duoNavigate = function (url) {
         var ds = window.DuoSocketClient;
         if (ds && ds.saveState && (window.MATCH_ID || window.ROOM_ID)) {
-            ds.saveState({
-                match_id:   window.MATCH_ID   || '',
-                room_id:    window.ROOM_ID    || '',
-                lobby_code: window.LOBBY_CODE || '',
-                jwt_token:  window.JWT_TOKEN  || '',
-            });
+            ds.saveState(buildSavePayload());
         }
         window.location.href = url;
     };
