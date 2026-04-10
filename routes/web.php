@@ -398,6 +398,7 @@ Route::prefix('game/duo')->name('game.duo.')->middleware('auth')->group(function
     Route::get('/question', [App\Http\Controllers\DuoController::class, 'showQuestion'])->name('question');
     Route::get('/answer', [App\Http\Controllers\DuoController::class, 'showAnswer'])->name('answer');
     Route::get('/result', [App\Http\Controllers\DuoController::class, 'showResult'])->name('result');
+    Route::get('/round-scoreboard', [App\Http\Controllers\DuoController::class, 'showRoundScoreboard'])->name('round-scoreboard');
     Route::post('/fetch-question', [App\Http\Controllers\DuoController::class, 'fetchQuestionJson'])->name('fetch-question');
     Route::post('/use-skill', [App\Http\Controllers\DuoController::class, 'useSkill'])->name('use-skill');
     Route::get('/match-result', [App\Http\Controllers\DuoController::class, 'showMatchResult'])->name('match-result');

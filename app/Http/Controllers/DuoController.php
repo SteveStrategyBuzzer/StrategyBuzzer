@@ -1279,6 +1279,68 @@ class DuoController extends Controller
         ]);
     }
 
+    public function showRoundScoreboard(Request $request)
+    {
+        $user = Auth::user();
+        $matchId = $request->input('match_id');
+
+        if (!$matchId) {
+            $gameState = session('game_state');
+            $matchId = $gameState['match_id'] ?? null;
+        }
+
+        if (!$matchId) {
+            return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
+        }
+
+        $match = DuoMatch::find($matchId);
+
+        if (!$match) {
+            return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
+        }
+
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return redirect()->route('duo.lobby')->with('error', __('Accès refusé'));
+        }
+
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+
+        $playerSnapshot   = $this->getPlayerSnapshot($user);
+        $opponentSnapshot = $this->getPlayerSnapshot($opponent);
+
+        $matchGameState = $match->game_state ?? [];
+        $playerScore = $isPlayer1
+            ? ($matchGameState['player_scores_map']['player'] ?? 0)
+            : ($matchGameState['player_scores_map']['opponent'] ?? 0);
+        $opponentScore = $isPlayer1
+            ? ($matchGameState['player_scores_map']['opponent'] ?? 0)
+            : ($matchGameState['player_scores_map']['player'] ?? 0);
+
+        $gameState = session('game_state', []);
+        $roomId    = $gameState['room_id']    ?? $match->room_id    ?? null;
+        $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
+        $jwtToken  = $this->generateFreshGameplayToken($roomId, $user->id);
+
+        return view('duo_round_scoreboard', [
+            'match_id'          => $match->id,
+            'room_id'           => $roomId,
+            'lobby_code'        => $lobbyCode,
+            'jwt_token'         => $jwtToken,
+            'playerId'          => $user->id,
+            'playerName'        => $this->getSnapshotDisplayName($playerSnapshot, $user, 'Joueur'),
+            'playerAvatarPath'  => $this->getSnapshotAvatarPath($playerSnapshot),
+            'opponentId'        => $opponent->id,
+            'opponentName'      => $this->getSnapshotDisplayName($opponentSnapshot, $opponent, 'Adversaire'),
+            'opponentAvatarPath'=> $this->getSnapshotAvatarPath($opponentSnapshot),
+            'playerScore'       => $playerScore,
+            'opponentScore'     => $opponentScore,
+            'currentRound'      => $matchGameState['current_round']          ?? 1,
+            'totalQuestions'    => $matchGameState['total_questions']        ?? 10,
+            'currentQuestion'   => $matchGameState['current_question_number'] ?? 1,
+        ]);
+    }
+
     public function showMatchResult()
     {
         $user = Auth::user();

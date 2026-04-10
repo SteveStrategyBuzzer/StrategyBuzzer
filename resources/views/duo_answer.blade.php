@@ -2,15 +2,18 @@
 
 @section('game-data')
 <script>
-window.MATCH_ID          = @json((string)($match_id ?? ''));
-window.ROOM_ID           = @json((string)($room_id ?? ''));
-window.LOBBY_CODE        = @json((string)($lobby_code ?? ''));
-window.JWT_TOKEN         = @json((string)($jwt_token ?? ''));
-window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
-window.TOTAL_QUESTIONS   = {{ (int)($totalQuestions ?? 10) }};
-window.QUESTION_URL      = @json(route('game.duo.question'));
-window.RESULT_URL        = @json(route('game.duo.result'));
-window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
+window.MATCH_ID             = @json((string)($match_id ?? ''));
+window.ROOM_ID              = @json((string)($room_id ?? ''));
+window.LOBBY_CODE           = @json((string)($lobby_code ?? ''));
+window.JWT_TOKEN            = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID      = @json((string)(auth()->id() ?? ''));
+window.TOTAL_QUESTIONS      = {{ (int)($totalQuestions ?? 10) }};
+window.QUESTION_URL         = @json(route('game.duo.question'));
+window.RESULT_URL           = @json(route('game.duo.result'));
+window.ROUND_SCOREBOARD_URL = @json(route('game.duo.round-scoreboard'));
+window.MATCH_RESULT_URL     = @json(route('game.duo.match-result'));
+window.CURRENT_PAGE         = 'answer';
+window.NO_BRAIN_OVERLAY     = true;
 </script>
 @endsection
 
@@ -1425,12 +1428,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
     }
     function _onAnswerRoundEnded(data) {
-        // round_ended fires at end of a full round (set of questions) → scoreboard, not next question
+        // round_ended fires at end of a full round → V3 round scoreboard
         if (isRedirecting) return;
         setTimeout(function() {
             if (isRedirecting) return;
             isRedirecting = true;
-            window.location.href = (window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            window.location.href = (window.ROUND_SCOREBOARD_URL || window.RESULT_URL || '/game/duo/round-scoreboard') + '?match_id=' + encodeURIComponent(MATCH_ID);
         }, 2000);
     }
     function _onAnswerMatchEnded(data) {
@@ -1446,28 +1449,34 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
         if (phase === 'REVEAL') {
             // REVEAL ≠ scoreboard — stay on page so answer_revealed can show visual feedback.
-            // Navigation will be driven by QUESTION_ACTIVE or ROUND_SCOREBOARD below.
             return;
         }
 
-        if (phase === 'QUESTION_ACTIVE') {
-            // Non-last question of round — go to next question.
-            // Delay to let answer_revealed visual display complete (answer_revealed fires
-            // immediately after REVEAL, so the player has already seen it for ~REVEAL-timer ms).
-            setTimeout(function() {
-                if (isRedirecting) return;
-                isRedirecting = true;
-                window.location.href = (window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID);
-            }, 2500);
-            return;
-        }
-
-        if (phase === 'ROUND_SCOREBOARD') {
-            // Last question of round — go to round scoreboard.
+        if (phase === 'RESULT') {
+            // V3: per-question result — navigate to result page after brief visual delay
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;
                 window.location.href = (window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            }, 600);
+            return;
+        }
+
+        if (phase === 'QUESTION_ACTIVE' || phase === 'SYNC') {
+            // Reconnect edge case: server already moved past RESULT while we were on answer page.
+            setTimeout(function() {
+                if (isRedirecting) return;
+                isRedirecting = true;
+                window.location.href = (window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID);
+            }, 800);
+            return;
+        }
+
+        if (phase === 'ROUND_SCOREBOARD') {
+            setTimeout(function() {
+                if (isRedirecting) return;
+                isRedirecting = true;
+                window.location.href = (window.ROUND_SCOREBOARD_URL || window.RESULT_URL || '/game/duo/round-scoreboard') + '?match_id=' + encodeURIComponent(MATCH_ID);
             }, 2500);
             return;
         }

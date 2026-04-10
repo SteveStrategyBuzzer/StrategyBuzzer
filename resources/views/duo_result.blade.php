@@ -2,16 +2,18 @@
 
 @section('game-data')
 <script>
-window.MATCH_ID          = @json((string)($match_id ?? ''));
-window.ROOM_ID           = @json((string)($room_id ?? ''));
-window.LOBBY_CODE        = @json((string)($lobby_code ?? ''));
-window.JWT_TOKEN         = @json((string)($jwt_token ?? ''));
-window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
-window.TOTAL_QUESTIONS   = {{ (int)($totalQuestions ?? 10) }};
-window.NO_SOCKET_OVERLAY = true;
-window.QUESTION_URL      = @json(route('game.duo.question'));
-window.RESULT_URL        = @json(route('game.duo.result'));
-window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
+window.MATCH_ID             = @json((string)($match_id ?? ''));
+window.ROOM_ID              = @json((string)($room_id ?? ''));
+window.LOBBY_CODE           = @json((string)($lobby_code ?? ''));
+window.JWT_TOKEN            = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID      = @json((string)(auth()->id() ?? ''));
+window.TOTAL_QUESTIONS      = {{ (int)($totalQuestions ?? 10) }};
+window.QUESTION_URL         = @json(route('game.duo.question'));
+window.RESULT_URL           = @json(route('game.duo.result'));
+window.ROUND_SCOREBOARD_URL = @json(route('game.duo.round-scoreboard'));
+window.MATCH_RESULT_URL     = @json(route('game.duo.match-result'));
+window.CURRENT_PAGE         = 'result';
+window.NO_BRAIN_OVERLAY     = true;
 </script>
 @endsection
 
@@ -1240,11 +1242,9 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
             playerStatus.querySelector('.status-text').textContent = '{{ __("Vous") }} - {{ __("Prêt") }}';
         }
         
-        if (DuoSocketClient.isConnected()) {
-            DuoSocketClient.socket.emit('player_ready', {
-                roomId: ROOM_ID || LOBBY_CODE,
-                matchId: MATCH_ID
-            });
+        // V3: player_ready also signals to the server we can move forward
+        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+            window.DuoSocketClient.playerReady();
             console.log('[DuoResult] Player ready sent');
         }
     }
@@ -1319,21 +1319,23 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
-        window.location.href = window.QUESTION_URL || "{{ route('game.duo.question') }}";
+        var url = window.QUESTION_URL || "{{ route('game.duo.question') }}";
+        window.location.href = url + '?match_id=' + encodeURIComponent(MATCH_ID);
     }
     
     function navigateToRoundScoreboard() {
         cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
-        window.location.href = window.RESULT_URL || "{{ route('game.duo.result') }}";
+        var url = window.ROUND_SCOREBOARD_URL || window.RESULT_URL || "{{ route('game.duo.round-scoreboard') }}";
+        window.location.href = url + '?match_id=' + encodeURIComponent(MATCH_ID);
     }
     
     function navigateToFinalResults() {
         cancelCountdown();
         if (isRedirecting) return;
         isRedirecting = true;
-        window.location.href = window.MATCH_RESULT_URL || "{{ route('game.duo.match-result') }}";
+        window.location.href = (window.MATCH_RESULT_URL || "{{ route('game.duo.match-result') }}") + '?match_id=' + encodeURIComponent(MATCH_ID);
     }
     
     // ── Exit button: 2-click confirmation ────────────────────────────────────
@@ -1390,6 +1392,7 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
     }
     function _onResultRoundEnded(data) {
         console.log('[DuoResult] Round ended', data);
+        // round_ended = end of full round → navigate to round scoreboard
         navigateToRoundScoreboard();
     }
     function _callResultFinishSocketIO(retryCount) {
@@ -1467,23 +1470,25 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         if (!data || !data.phase) { return; }
 
         if (data.phase === 'REVEAL') {
-            // REVEAL ≠ scoreboard — if duo_result is loaded during REVEAL (reconnect or
-            // edge case), stay here. Navigation will fire when QUESTION_ACTIVE or
-            // ROUND_SCOREBOARD arrives. No early-nav that anticipates the server.
             _cancelEarlyNav();
             return;
         }
 
-        if (data.phase === 'QUESTION_ACTIVE') {
+        if (data.phase === 'SYNC' || data.phase === 'QUESTION_ACTIVE') {
+            // V3: SYNC = navigate to question page (which will emit question_page_ready)
             _cancelEarlyNav();
-            navigateToNextQuestion(); return;
+            navigateToNextQuestion();
+            return;
         }
         if (data.phase === 'ROUND_SCOREBOARD') {
-            _cancelEarlyNav(); return; // round_ended event handles this
+            _cancelEarlyNav();
+            navigateToRoundScoreboard();
+            return;
         }
         if (data.phase === 'MATCH_END') {
             _cancelEarlyNav();
-            navigateToFinalResults(); return;
+            navigateToFinalResults();
+            return;
         }
         resetReadyStatus();
     }
@@ -1491,14 +1496,15 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         if (!payload) return;
         var stateObj = payload.state || payload;
         var phase = stateObj.phase;
-        var phaseEndsAtMs = stateObj.phaseEndsAtMs || payload.phaseEndsAtMs;
-        if (phase === 'REVEAL') {
-            // REVEAL ≠ scoreboard — no early-nav. Stay and wait for QUESTION_ACTIVE
-            // or ROUND_SCOREBOARD to drive navigation.
+        if (phase === 'REVEAL' || phase === 'RESULT') {
+            // Still on result page — stay
             _cancelEarlyNav();
-        } else if (phase === 'QUESTION_ACTIVE' || phase === 'QUESTION_DISPLAY' || phase === 'BUZZ_WINDOW') {
+        } else if (phase === 'SYNC' || phase === 'QUESTION_ACTIVE' || phase === 'QUESTION_DISPLAY' || phase === 'BUZZ_WINDOW') {
             _cancelEarlyNav();
             navigateToNextQuestion();
+        } else if (phase === 'ROUND_SCOREBOARD') {
+            _cancelEarlyNav();
+            navigateToRoundScoreboard();
         } else if (phase === 'MATCH_END' || phase === 'FINISHED') {
             _cancelEarlyNav();
             navigateToFinalResults();

@@ -2,19 +2,22 @@
 
 @section('game-data')
 <script>
-window.MATCH_ID          = @json((string)($match_id ?? ''));
-window.ROOM_ID           = @json((string)($room_id ?? ''));
-window.LOBBY_CODE        = @json((string)($lobby_code ?? ''));
-window.JWT_TOKEN         = @json((string)($jwt_token ?? ''));
-window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
-window.TOTAL_QUESTIONS   = {{ (int)($totalQuestions ?? 10) }};
-window.ANSWER_URL        = @json(route('game.duo.answer'));
-window.RESULT_URL        = @json(route('game.duo.result'));
-window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
+window.MATCH_ID              = @json((string)($match_id ?? ''));
+window.ROOM_ID               = @json((string)($room_id ?? ''));
+window.LOBBY_CODE            = @json((string)($lobby_code ?? ''));
+window.JWT_TOKEN             = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID       = @json((string)(auth()->id() ?? ''));
+window.TOTAL_QUESTIONS       = {{ (int)($totalQuestions ?? 10) }};
+window.ANSWER_URL            = @json(route('game.duo.answer'));
+window.RESULT_URL            = @json(route('game.duo.result'));
+window.ROUND_SCOREBOARD_URL  = @json(route('game.duo.round-scoreboard'));
+window.MATCH_RESULT_URL      = @json(route('game.duo.match-result'));
+window.QUESTION_URL          = @json(route('game.duo.question'));
+window.CURRENT_PAGE          = 'question';
 // Prevent brain overlay from covering question content on the question page.
 // If game_state briefly shows phase=INTRO during the intro→question transition,
 // the brain overlay must not obscure the question UI.
-window.NO_BRAIN_OVERLAY  = true;
+window.NO_BRAIN_OVERLAY      = true;
 </script>
 @endsection
 
@@ -818,6 +821,11 @@ $mode = 'duo';
     <div class="points-text" id="pointsText"></div>
 </div>
 
+{{-- V3: Opponent buzz banner — shown when opponent gets 1st position, question stays active --}}
+<div id="opponentBuzzBanner" style="display:none;position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(255,107,107,0.92),rgba(200,60,60,0.92));color:#fff;padding:12px 28px;border-radius:30px;font-size:1rem;font-weight:700;z-index:8500;box-shadow:0 4px 20px rgba(255,107,107,0.5);align-items:center;gap:10px;white-space:nowrap;">
+    ⚡ {{ __("L'adversaire a buzzé en premier ! Buzzez pour le 2e point !") }}
+</div>
+
 <audio id="buzzerSound" preload="auto">
     <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
 </audio>
@@ -1156,11 +1164,13 @@ $mode = 'duo';
     }
     
     function handleOpponentBuzz() {
-        if (buzzed || isRedirecting) return;
-        
-        stopTimer();
-        setBuzzerState('hidden');
-        redirectOnce(ANSWER_URL + '?opponent_buzzed=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), 300);
+        // V3: opponent buzzed first but question is NON-BLOCKING — I can still buzz.
+        // Show a brief banner without stopping the timer or disabling the buzzer.
+        var banner = document.getElementById('opponentBuzzBanner');
+        if (banner) {
+            banner.style.display = 'flex';
+            setTimeout(function() { banner.style.display = 'none'; }, 4000);
+        }
     }
     
     function showResult(isCorrect, points) {
@@ -1197,6 +1207,19 @@ $mode = 'duo';
                 }
                 break;
                 
+            case 'ANSWER_COLLECTION':
+                stopTimer();
+                setBuzzerState('hidden');
+                if (!isRedirecting && gameLayoutReady) {
+                    updateLoadingText('{{ __("Collecte des réponses...") }}');
+                }
+                break;
+                
+            case 'RESULT':
+                stopTimer();
+                setBuzzerState('hidden');
+                break;
+
             case 'REVEAL':
                 stopTimer();
                 setBuzzerState('hidden');
@@ -1291,8 +1314,25 @@ $mode = 'duo';
             return;
         }
         
+        if (currentPhase === 'ANSWER_COLLECTION') {
+            applyPhaseVisualState();
+            return;
+        }
+
+        if (currentPhase === 'RESULT') {
+            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 300);
+            return;
+        }
+
+        if (currentPhase === 'SYNC') {
+            // Reconnected during SYNC — send question_page_ready immediately
+            sendQuestionPageReady();
+            applyPhaseVisualState();
+            return;
+        }
+        
         if (currentPhase === 'ROUND_SCOREBOARD') {
-            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 200);
+            redirectOnce((window.ROUND_SCOREBOARD_URL || RESULT_URL) + '?match_id=' + encodeURIComponent(MATCH_ID), 200);
             return;
         }
         
@@ -1320,6 +1360,7 @@ $mode = 'duo';
         if (currentPhase === 'QUESTION_ACTIVE') {
             buzzed = false;
             isRedirecting = false;
+            window.NO_BRAIN_OVERLAY = true;
             applyPhaseVisualState();
             return;
         }
@@ -1334,6 +1375,32 @@ $mode = 'duo';
             }
             return;
         }
+
+        if (currentPhase === 'ANSWER_COLLECTION') {
+            // V3 grace period — stop timer, wait for RESULT
+            applyPhaseVisualState();
+            return;
+        }
+
+        if (currentPhase === 'RESULT') {
+            // V3: navigate to per-question result page
+            stopTimer();
+            setBuzzerState('hidden');
+            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 300);
+            return;
+        }
+
+        if (currentPhase === 'SYNC') {
+            // V3: server is synchronizing for next question — emit question_page_ready
+            // (This fires when reconnecting during SYNC or rare edge case)
+            stopTimer();
+            setBuzzerState('waiting');
+            sendQuestionPageReady();
+            // Temporarily lift NO_BRAIN_OVERLAY so GameplayRuntime can show the brain
+            window.NO_BRAIN_OVERLAY = false;
+            if (window.showBrainSpin) window.showBrainSpin('{{ __("Synchronisation...") }}');
+            return;
+        }
         
         if (currentPhase === 'REVEAL') {
             // REVEAL ≠ scoreboard — do not navigate here.
@@ -1343,7 +1410,7 @@ $mode = 'duo';
         }
         
         if (currentPhase === 'ROUND_SCOREBOARD') {
-            redirectOnce(RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 200);
+            redirectOnce((window.ROUND_SCOREBOARD_URL || RESULT_URL) + '?match_id=' + encodeURIComponent(MATCH_ID), 200);
             return;
         }
         
@@ -1390,17 +1457,33 @@ $mode = 'duo';
         applyPhaseVisualState();
     }
     
+    var questionPageReadySent = false;
+    function sendQuestionPageReady() {
+        if (questionPageReadySent) return;
+        questionPageReadySent = true;
+        if (window.DuoSocketClient && window.DuoSocketClient.questionPageReady) {
+            window.DuoSocketClient.questionPageReady();
+            console.log('[DuoQuestion] question_page_ready emitted');
+        }
+    }
+
     function handleBuzzWinner(data) {
         console.log('[DuoQuestion] Gagnant du buzz:', data);
         
-        stopTimer();
-        buzzButton.disabled = true;
-        setBuzzerState('hidden');
-        
         if (String(data.playerId || '') === CURRENT_USER_ID) {
-            // We won the buzz — navigate to answer page with buzzed=true flag
+            // V3: I won a buzz position — save state and navigate to answer page
+            if (window.DuoSocketClient && window.DuoSocketClient.saveState) {
+                window.DuoSocketClient.saveState({
+                    buzzPosition: data.position || 1,
+                    phase: 'ANSWER_SELECTION'
+                });
+            }
+            stopTimer();
+            buzzButton.disabled = true;
+            setBuzzerState('hidden');
             redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 150);
         } else {
+            // V3: opponent buzzed — NON-BLOCKING, I can still buzz for 2nd position
             handleOpponentBuzz();
         }
     }
@@ -1649,6 +1732,10 @@ $mode = 'duo';
     document.addEventListener('DOMContentLoaded', function() {
         var ds = window.DuoSocketClient;
         if (ds) {
+            // V3: emit question_page_ready after connect so server can advance from SYNC
+            ds.on('connect', function() {
+                setTimeout(function() { sendQuestionPageReady(); }, 350);
+            });
             ds.on('game_state',         handleGameState);
             ds.on('phase_changed',      handlePhaseChanged);
             ds.on('question_published', handleQuestionPublished);

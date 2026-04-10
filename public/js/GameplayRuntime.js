@@ -92,15 +92,18 @@
     // Phase → brain overlay mapping
 
     var PHASE_BRAIN = {
-        INTRO:            { show: true,  msg: null },
-        WAITING:          { show: true,  msg: null },
-        ROUND_SCOREBOARD: { show: true,  msg: null },
-        LOBBY:            { show: false },
-        QUESTION_ACTIVE:  { show: false },
-        ANSWER_SELECTION: { show: false },
-        REVEAL:           { show: false },
-        MATCH_END:        { show: false },
-        FINISHED:         { show: false },
+        INTRO:             { show: true,  msg: null },
+        WAITING:           { show: true,  msg: null },
+        SYNC:              { show: true,  msg: null },
+        ROUND_SCOREBOARD:  { show: true,  msg: null },
+        LOBBY:             { show: false },
+        QUESTION_ACTIVE:   { show: false },
+        ANSWER_SELECTION:  { show: false },
+        ANSWER_COLLECTION: { show: false },
+        RESULT:            { show: false },
+        REVEAL:            { show: false },
+        MATCH_END:         { show: false },
+        FINISHED:          { show: false },
     };
 
     function handleBrainForPhase(phase) {
@@ -118,6 +121,8 @@
                 msg = labels.preparing || 'Préparation...';
             } else if (phase === 'ROUND_SCOREBOARD') {
                 msg = labels.roundEnd || 'Fin du round...';
+            } else if (phase === 'SYNC') {
+                msg = labels.syncing || 'Synchronisation...';
             } else {
                 msg = labels.nextQuestion || 'Prochaine question...';
             }
@@ -230,6 +235,32 @@
         // Phase → brain (skip on intro page to avoid covering content on first join)
         if (data.phase && !HIDE_HEADER) {
             handleBrainForPhase(data.phase);
+        }
+
+        // Page/phase mismatch detection for reconnect handling
+        var page = window.CURRENT_PAGE;
+        var phase = data.phase;
+        if (page && phase && !window.__GR_MISMATCH_NAV) {
+            var matchId = window.MATCH_ID;
+            if (page === 'result' && (phase === 'SYNC' || phase === 'QUESTION_ACTIVE')) {
+                var qUrl = window.QUESTION_URL;
+                if (qUrl && matchId) {
+                    window.__GR_MISMATCH_NAV = true;
+                    window.location.href = qUrl + '?match_id=' + encodeURIComponent(matchId);
+                }
+            } else if (page === 'result' && phase === 'ROUND_SCOREBOARD') {
+                var sbUrl = window.ROUND_SCOREBOARD_URL;
+                if (sbUrl && matchId) {
+                    window.__GR_MISMATCH_NAV = true;
+                    window.location.href = sbUrl + '?match_id=' + encodeURIComponent(matchId);
+                }
+            } else if ((page === 'question' || page === 'answer') && phase === 'RESULT') {
+                var rUrl = window.RESULT_URL;
+                if (rUrl && matchId) {
+                    window.__GR_MISMATCH_NAV = true;
+                    window.location.href = rUrl + '?match_id=' + encodeURIComponent(matchId);
+                }
+            }
         }
     });
 
