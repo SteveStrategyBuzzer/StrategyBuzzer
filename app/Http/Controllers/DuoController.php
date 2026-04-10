@@ -2428,66 +2428,87 @@ class DuoController extends Controller
                 return null;
             }
 
-            $questionPhases = ['INTRO', 'QUESTION_ACTIVE', 'WAITING'];
-            $answerPhases = ['ANSWER_SELECTION'];
-            $resultPhases = ['REVEAL'];
-            $terminalPhases = ['ROUND_SCOREBOARD', 'MATCH_END', 'FINISHED'];
+            // ── V3 Phase sets ────────────────────────────────────────────────────
+            // question page: INTRO/WAITING (pre-question), SYNC (server waiting for
+            //   question_page_ready), QUESTION_ACTIVE (buzzing window)
+            $questionPhases = ['INTRO', 'WAITING', 'SYNC', 'QUESTION_ACTIVE'];
+
+            // answer page: buzz just landed (QUESTION_ACTIVE accepted to avoid bounce),
+            //   ANSWER_COLLECTION (grace for second player), ANSWER_SELECTION / BUZZ_WINNER_ANSWERING
+            $answerPhases = [
+                'QUESTION_ACTIVE',      // buzz just happened, phase transition in progress
+                'ANSWER_SELECTION',     // legacy / compat
+                'BUZZ_WINNER_ANSWERING',// explicit buzz-winner window
+                'ANSWER_COLLECTION',    // V3 grace period after all buzzed
+            ];
+
+            // result page (per-question): RESULT (60 s display), REVEAL (transitional)
+            $resultPhases = ['RESULT', 'REVEAL'];
 
             switch ($expectedPage) {
                 case 'question':
-                    if (in_array($currentPhase, $answerPhases)) {
+                    // If server already moved to answer phase, redirect buzz winner to answer
+                    if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
                         $playerId = (string) $user->id;
                         if ($lockedAnswerPlayerId === $playerId) {
                             return redirect()->route('game.duo.answer');
                         }
+                        // Non-buzz-winner: stay on question (waiting overlay shown by JS)
+                        return null;
                     }
-                    // Allow REVEAL phase on the question page: the result page navigates
-                    // here 2s early so the next question loads while the reveal is finishing.
-                    // JavaScript handles the waiting overlay for REVEAL state.
-                    if (in_array($currentPhase, $terminalPhases)) {
+                    if (in_array($currentPhase, $resultPhases)) {
+                        return redirect()->route('game.duo.result');
+                    }
+                    if ($currentPhase === 'ROUND_SCOREBOARD') {
+                        return redirect()->route('game.duo.round-scoreboard');
+                    }
+                    if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
+                        return redirect()->route('game.duo.match-result');
+                    }
+                    // INTRO / WAITING / SYNC / QUESTION_ACTIVE → stay on question page
+                    break;
+
+                case 'answer':
+                    if (in_array($currentPhase, $answerPhases)) {
+                        // Valid answer-page phases → allow
+                        break;
+                    }
+                    // Server moved backwards or to a different page
+                    if (in_array($currentPhase, ['INTRO', 'WAITING', 'SYNC'])) {
+                        return redirect()->route('game.duo.question');
+                    }
+                    if (in_array($currentPhase, $resultPhases)) {
+                        return redirect()->route('game.duo.result');
+                    }
+                    if ($currentPhase === 'ROUND_SCOREBOARD') {
+                        return redirect()->route('game.duo.round-scoreboard');
+                    }
+                    if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
                         return redirect()->route('game.duo.match-result');
                     }
                     break;
 
-                case 'answer':
-                    // Accept QUESTION_ACTIVE: buzz just registered, server transition in progress
-                    // Accept WAITING: both players valid on answer page during transition
-                    // Accept ANSWER_SELECTION: normal answer phase
-                    // QUESTION_ACTIVE and WAITING are added so a buzz navigating to answer
-                    // is never bounced back to question before the phase transitions
-                    $acceptedForAnswer = array_merge($answerPhases, ['QUESTION_ACTIVE', 'WAITING']);
-                    if (!in_array($currentPhase, $acceptedForAnswer)) {
-                        // INTRO is the only remaining question phase (QUESTION_ACTIVE/WAITING accepted above)
-                        if (in_array($currentPhase, $questionPhases)) {
-                            return redirect()->route('game.duo.question');
-                        }
-                        if (in_array($currentPhase, $resultPhases)) {
-                            return redirect()->route('game.duo.result');
-                        }
-                        if (in_array($currentPhase, $terminalPhases)) {
-                            return redirect()->route('game.duo.match-result');
-                        }
-                    }
-                    break;
-
                 case 'result':
-                    // ROUND_SCOREBOARD and REVEAL are both valid on the result/scoreboard page.
-                    $validForResult = array_merge($resultPhases, ['ROUND_SCOREBOARD']);
-                    if (!in_array($currentPhase, $validForResult)) {
-                        if (in_array($currentPhase, $questionPhases)) {
-                            return redirect()->route('game.duo.question');
+                    // RESULT and REVEAL are the only valid phases for duo_result
+                    if (in_array($currentPhase, $resultPhases)) {
+                        break; // Valid → allow
+                    }
+                    // Reconnect: server is ahead/behind
+                    if (in_array($currentPhase, $questionPhases)) {
+                        return redirect()->route('game.duo.question');
+                    }
+                    if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
+                        $playerId = (string) $user->id;
+                        if ($lockedAnswerPlayerId === $playerId) {
+                            return redirect()->route('game.duo.answer');
                         }
-                        if (in_array($currentPhase, $answerPhases)) {
-                            $playerId = (string) $user->id;
-                            if ($lockedAnswerPlayerId === $playerId) {
-                                return redirect()->route('game.duo.answer');
-                            }
-                            return redirect()->route('game.duo.question');
-                        }
-                        // Only MATCH_END / FINISHED redirect to final results — not ROUND_SCOREBOARD.
-                        if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
-                            return redirect()->route('game.duo.match-result');
-                        }
+                        return redirect()->route('game.duo.question');
+                    }
+                    if ($currentPhase === 'ROUND_SCOREBOARD') {
+                        return redirect()->route('game.duo.round-scoreboard');
+                    }
+                    if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
+                        return redirect()->route('game.duo.match-result');
                     }
                     break;
             }
