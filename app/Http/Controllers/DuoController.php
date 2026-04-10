@@ -1303,6 +1303,11 @@ class DuoController extends Controller
             return redirect()->route('duo.lobby')->with('error', __('Accès refusé'));
         }
 
+        $phaseRedirect = $this->validatePhaseAccess($match, $user, 'round-scoreboard');
+        if ($phaseRedirect) {
+            return $phaseRedirect;
+        }
+
         $isPlayer1 = $match->player1_id == $user->id;
         $opponent = $isPlayer1 ? $match->player2 : $match->player1;
 
@@ -2525,6 +2530,26 @@ class DuoController extends Controller
                     }
                     if ($currentPhase === 'ROUND_SCOREBOARD') {
                         return $toScoreboard();
+                    }
+                    if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
+                        return $toMatchResult();
+                    }
+                    break;
+
+                case 'round-scoreboard':
+                    // Only ROUND_SCOREBOARD is valid on this page
+                    if ($currentPhase === 'ROUND_SCOREBOARD') {
+                        break; // Valid → allow
+                    }
+                    if (in_array($currentPhase, $questionPhases)) {
+                        return $toQuestion();
+                    }
+                    if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
+                        $playerId = (string) $user->id;
+                        return ($lockedAnswerPlayerId === $playerId) ? $toAnswer() : $toQuestion();
+                    }
+                    if (in_array($currentPhase, $resultPhases)) {
+                        return $toResult();
                     }
                     if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
                         return $toMatchResult();
