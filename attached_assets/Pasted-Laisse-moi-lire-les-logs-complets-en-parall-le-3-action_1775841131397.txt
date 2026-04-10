@@ -1,0 +1,101 @@
+Laisse-moi lire les logs complets en parallèle.
+
+
+3 actions
+Voici l'audit complet de la session :
+
+🏟️ Session — Room RW9ZLW | Match #263
+Config : DUO · 3 rounds max · 10 questions/round · Général · Niveau 5 · FR
+Joueurs : LeFunny (id:3) vs 🤖 Bot
+Sockets ouverts : 7 connexions successives en ~2 minutes
+
+📋 Chronologie complète
+Lobby (T+0s)
+Room créée ✅
+LeFunny rejoint → bot auto-spawné → les deux ready → AUTO START
+INTRO (T+0s → T+13s, durée: 13s)
+Événement	Détail
+LeFunny déconnecté	Socket 1 mort → grace period 30s activée
+LeFunny reconnecté	Socket 2 — grace period annulée
+⚠️ Validation error	playerName: undefined sur join_room (voir anomalies)
+Phase timeout	INTRO terminé normalement à 13s
+Q1 — QUESTION_ACTIVE (T+13s → T+21s, durée: 8s)
+Question : "Quelle est la capitale de l'Australie ?"
+Choix : Perth / Sydney / Canberra ✓ / Melbourne
+
+Événement	Timing	Détail
+LeFunny déconnecté	T+13s	Socket 2 mort, reconnecté socket 3
+question_page_ready émis	T+13s	Ignoré — phase QUESTION_ACTIVE (pas SYNC)
+🤖 Bot buzze	T+22s	Position 1, latence 3ms
+LeFunny buzze	T+22s	Position 2, latence -683ms (décalage horloge -701ms)
+🤖 Bot répond	T+22.5s	Index 3 = "Melbourne" → ❌ INCORRECT
+LeFunny déconnecté	Pendant Q_ACTIVE	N'a jamais soumis de réponse
+LeFunny reconnecté	Socket 4	
+Q1 — ANSWER_COLLECTION (T+21s → T+23s, durée: 2s)
+1 seul buzzer à scorer (bot) — LeFunny buzzeur #2 sans réponse
+LeFunny déco/reco encore (socket 4 → socket 5)
+Q1 — RESULT (T+23s → T+83s, durée: 60s)
+Scoring calculé :
+
+Joueur	Buzz order	Réponse	Score
+🤖 Bot	#1	Melbourne ❌	-2 pts
+LeFunny	#2	aucune (déco)	0 pt
+Fun fact révélé : "Canberra a été choisie en 1908 comme compromis entre Sydney et Melbourne"
+
+Événements client :
+
+ANSWER_REVEALED reçu et propagé ✅
+Score update bot: total=-2, round=-2 ✅
+LeFunny déco/reco (socket 5 → socket 6)
+Client émet question_page_ready → Ignoré (phase RESULT, pas SYNC) — comportement attendu
+VoiceChat : 1ère tentative Firebase ❌ → 2ème tentative ✅ (initialisé avec succès)
+Q2 — SYNC (T+83s → T+86s, durée: ~3s sur 8s max)
+Événement	Détail
+Background prefetch	4 questions récupérées (pipeline total: 5)
+Bot: question_page_ready	1/2
+LeFunny déco/reco	Socket 6 → socket 7
+LeFunny: question_page_ready	2/2 → early exit SYNC ✅
+Q2 — QUESTION_ACTIVE (T+86s → , durée: 8s)
+Question : "Quelle unité monétaire est utilisée en Suisse ?"
+Choix : Le franc suisse / La couronne suédoise / L'euro / Le dollar canadien
+
+Événement	Détail
+🤖 Bot buzze	Position 1, latence 1ms
+Bot répond	Index 3 = "Le dollar canadien" → probablement ❌
+Logs tronqués	La session s'arrête ici
+🐛 Anomalies détectées
+1. playerName: undefined sur join_room — à chaque reconnexion
+Le client envoie playerName: "" (string vide visible en console browser), mais le serveur reçoit undefined et log une validation Zod. Le joueur rejoint quand même (le serveur ne coupe pas), mais c'est un bug côté payload. La valeur devrait être lue depuis le JWT plutôt que depuis une variable DOM potentiellement vide.
+
+2. BUZZ_RECEIVED et ANSWER_REVEALED marqués "Unhandled"
+Ces types d'events arrivent via game_event mais n'ont pas de case dans le switch générique du client — ils sont traités via des callbacks dédiés (buzz_winner, answer_revealed). Pas bloquant, mais génère du bruit dans les logs.
+
+3. restoreState phase=RESULT sur page=question (ligne 45 console)
+[GameplayRuntime] restoreState applied {"phase":"RESULT","page":"question"}
+
+La page question a restauré un état sauvegardé avec phase=RESULT — ce qui signifie que GR_SAVE_STATE_EXTRA a écrit phase: "RESULT" alors qu'on était encore sur la question page. Probablement causé par la transition ANSWER_COLLECTION → RESULT arrivant avant que la navigation vers /result ait eu lieu.
+
+4. VoiceChat Firebase — permission denied (non bloquant)
+2 tentatives échouent avec FirebaseError: Missing or insufficient permissions puis ça réussit. Probablement un timing issue sur l'initialisation Firebase.
+
+5. 7 reconnexions en 2 minutes
+Chaque navigation de page Blade génère une déconnexion/reconnexion. C'est le comportement V3 attendu (pages séparées), mais ça souligne l'importance du bridge state et de la grace period bot — les deux ont bien fonctionné.
+
+✅ Ce qui fonctionne correctement
+Fonctionnalité	Statut
+Auto-start quand les 2 ready	✅
+Grace period 30s bot (7 fois activée/annulée)	✅
+Multi-buzz V3 (bot #1 + LeFunny #2)	✅
+Scoring -2 pour réponse incorrecte buzz #1	✅
+Score 0 pour buzzeur sans réponse	✅
+ANSWER_REVEALED propagé client	✅
+Background prefetch (4 questions)	✅
+SYNC early exit (2/2 ready en ~3s)	✅
+question_page_ready ignoré hors SYNC	✅
+Pipeline questions (40 dispo, 5 chargées)	✅
+3 bugs à corriger : le playerName: undefined, le restoreState phase=RESULT sur page question, et les Unhandled event type. Tu veux qu'on les corrige ?
+
+
+Worked for 1 minute
+
+Scroll to latest
