@@ -1,0 +1,131 @@
+Je veux que tu travailles sur StrategyBuzzer avec cette règle de base, non négociable :
+
+SOLO = VÉRITÉ ABSOLUE DE RÉFÉRENCE POUR L’EXPÉRIENCE JOUEUR
+
+Cela veut dire que Solo est la référence officielle pour :
+- le layout
+- le design system
+- les composants visuels
+- les headers
+- les cartes
+- les avatars
+- les tailles / bordures / badges
+- l’affichage du niveau
+- l’affichage des skills
+- la structure Question / Réponse / Result / Fin de manche / Fin de partie / Tiebreaker
+- les statistiques affichées
+- le “Le saviez-vous ?”
+- la hiérarchie visuelle
+- le ressenti global du gameplay
+
+En revanche :
+
+NODE / SOCKET.IO = VÉRITÉ ABSOLUE POUR LE GAMEPLAY TEMPS RÉEL MULTIJOUEUR
+
+Cela veut dire que pour Duo :
+- les rooms
+- les phases
+- le buzz
+- les scores
+- les skills qui touchent au gameplay
+- les transitions d’état
+- la synchro
+- les reconnects
+- les restoreState
+- le timing réel
+doivent toujours rester pilotés par Node / Socket.IO.
+
+Donc la règle exacte est :
+
+1. SOLO est la vérité absolue pour l’UX et le rendu final attendu.
+2. NODE / SOCKET.IO est la vérité absolue pour la mécanique temps réel de Duo.
+3. DUO doit reproduire SOLO le plus fidèlement possible sur le plan visuel, structurel et fonctionnel.
+4. Mais cette reproduction doit être adaptée proprement à la réalité multijoueur temps réel, sans déplacer la logique gameplay dans Blade ou PHP.
+
+Tu ne dois jamais faire l’erreur suivante :
+❌ copier Solo tel quel dans Duo si cela casse la synchro temps réel
+Tu dois faire exactement ceci :
+✅ prendre Solo comme référence absolue d’interface, de structure et de comportement visible
+✅ puis brancher cette vérité UX sur la vérité gameplay fournie par Node
+
+Autrement dit :
+- ce que le joueur voit, comprend, ressent et parcourt dans Duo doit tendre vers Solo
+- ce qui décide réellement de l’état de jeu dans Duo reste Node
+
+Je veux maintenant que tu travailles avec une architecture centralisée en 3 couches :
+
+COUCHE 1 — VÉRITÉ GAMEPLAY
+Source de vérité : Node / Socket.IO / GameOrchestrator / game-engine
+Responsabilités :
+- phase courante
+- timing réel
+- buzz winner
+- score
+- skills gameplay
+- transitions officielles
+- synchro des joueurs
+- état multijoueur
+
+COUCHE 2 — RUNTIME GAMEPLAY FRONT
+À unifier fortement
+Responsabilités :
+- lecture de l’état serveur
+- restoreState propre
+- countdown correct basé sur la vérité serveur
+- bridge entre pages
+- affichage standard des overlays / transitions
+- application cohérente de la logique de page Question / Réponse / Result
+
+COUCHE 3 — DESIGN SYSTEM / STRUCTURE UX
+Référence absolue = SOLO
+Responsabilités :
+- layout
+- avatars
+- cartes
+- badges
+- header
+- score battle
+- statistiques
+- “Le saviez-vous ?”
+- fin de manche
+- fin de partie
+- tiebreaker
+- structure des skills visibles
+- cohérence d’affichage
+
+RÈGLE MAÎTRESSE :
+Si Duo et Solo divergent sur le rendu visible, c’est Duo qui doit se réaligner sur Solo.
+Si Duo et Solo divergent sur la mécanique temps réel, c’est Node qui décide.
+
+Donc :
+- SOLO dicte ce qui doit être vu
+- NODE dicte ce qui est réellement vrai côté jeu
+- DUO doit devenir l’union propre des deux
+
+Je veux que tu utilises ce principe pour corriger Duo page par page.
+
+Ordre de travail :
+1. Question
+2. Réponse
+3. Result
+4. Fin de manche / fin de partie / tiebreaker
+
+Pour chaque page :
+- commence par comparer Duo à Solo
+- liste les écarts visuels, structurels et comportementaux
+- identifie ce qui relève de l’UX
+- identifie ce qui relève du gameplay temps réel
+- corrige Duo pour qu’il reflète Solo sans casser Node
+
+Interdictions absolues :
+- ne jamais déplacer la logique temps réel dans Blade/PHP
+- ne jamais laisser une page Duo diverger de Solo sans justification forte
+- ne jamais patcher à l’aveugle
+- ne jamais mélanger plusieurs pages si on a décidé de travailler page par page
+- ne jamais considérer qu’un détail visible manquant est “secondaire” si Solo l’affiche
+
+Ta mission immédiate :
+Travailler sur Duo avec Solo comme vérité absolue UX.
+Commencer par la page Question uniquement.
+Identifier tout ce qui diverge de Solo sur cette page.
+Corriger Duo Question pour qu’elle rejoigne Solo sur le rendu et le comportement visible, tout en respectant la vérité gameplay de Node.
