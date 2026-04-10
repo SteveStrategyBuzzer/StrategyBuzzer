@@ -317,6 +317,9 @@
                 answer: {
                     // QUESTION_ACTIVE intentionally omitted: server allows it on the
                     // answer page (buzz winner navigated here while phase still QUESTION_ACTIVE).
+                    // ANSWER_COLLECTION omitted: valid grace-period phase for answer page.
+                    INTRO:            'QUESTION_URL',
+                    WAITING:          'QUESTION_URL',
                     SYNC:             'QUESTION_URL',
                     RESULT:           'RESULT_URL',
                     ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
@@ -324,8 +327,13 @@
                     FINISHED:         'MATCH_RESULT_URL',
                 },
                 result: {
+                    INTRO:            'QUESTION_URL',
+                    WAITING:          'QUESTION_URL',
                     SYNC:             'QUESTION_URL',
                     QUESTION_ACTIVE:  'QUESTION_URL',
+                    ANSWER_SELECTION:      'ANSWER_URL',
+                    BUZZ_WINNER_ANSWERING: 'ANSWER_URL',
+                    ANSWER_COLLECTION:     'ANSWER_URL',
                     ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
                     MATCH_END:        'MATCH_RESULT_URL',
                     FINISHED:         'MATCH_RESULT_URL',

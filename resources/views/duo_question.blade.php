@@ -1222,7 +1222,18 @@ $mode = 'duo';
     function applyPhaseVisualState() {
         switch (currentPhase) {
             case 'QUESTION_ACTIVE':
+                // Ensure any SYNC brain overlay is hidden when the question becomes active
+                if (window.hideBrainSpin) window.hideBrainSpin();
                 ensureQuestionPhaseReady();
+                break;
+
+            case 'SYNC':
+                // Inter-question sync: waiting for both players' question_page_ready.
+                // Directly show brain overlay even though NO_BRAIN_OVERLAY=true (bypass it).
+                stopTimer();
+                setBuzzerState('waiting');
+                updateLoadingText('{{ __("Synchronisation...") }}');
+                if (window.showBrainSpin) window.showBrainSpin('{{ __("Synchronisation...") }}');
                 break;
                 
             case 'ANSWER_SELECTION':

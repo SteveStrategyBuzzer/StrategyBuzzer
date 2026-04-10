@@ -2445,25 +2445,33 @@ class DuoController extends Controller
             // result page (per-question): RESULT (60 s display), REVEAL (transitional)
             $resultPhases = ['RESULT', 'REVEAL'];
 
+            // ── Helper: redirect to a named route with match_id as query param ──────
+            $qp = ['match_id' => $match->id];
+            $toQuestion      = fn()  => redirect()->route('game.duo.question',       $qp);
+            $toAnswer        = fn()  => redirect()->route('game.duo.answer',         $qp);
+            $toResult        = fn()  => redirect()->route('game.duo.result',         $qp);
+            $toScoreboard    = fn()  => redirect()->route('game.duo.round-scoreboard', $qp);
+            $toMatchResult   = fn()  => redirect()->route('game.duo.match-result',   $qp);
+
             switch ($expectedPage) {
                 case 'question':
                     // If server already moved to answer phase, redirect buzz winner to answer
                     if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
                         $playerId = (string) $user->id;
                         if ($lockedAnswerPlayerId === $playerId) {
-                            return redirect()->route('game.duo.answer');
+                            return $toAnswer();
                         }
                         // Non-buzz-winner: stay on question (waiting overlay shown by JS)
                         return null;
                     }
                     if (in_array($currentPhase, $resultPhases)) {
-                        return redirect()->route('game.duo.result');
+                        return $toResult();
                     }
                     if ($currentPhase === 'ROUND_SCOREBOARD') {
-                        return redirect()->route('game.duo.round-scoreboard');
+                        return $toScoreboard();
                     }
                     if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
-                        return redirect()->route('game.duo.match-result');
+                        return $toMatchResult();
                     }
                     // INTRO / WAITING / SYNC / QUESTION_ACTIVE → stay on question page
                     break;
@@ -2482,20 +2490,20 @@ class DuoController extends Controller
                             break; // Buzz winner (or unknown) — allow
                         }
                         // Non-buzz winner arrived on answer page — send back to question
-                        return redirect()->route('game.duo.question');
+                        return $toQuestion();
                     }
                     // Server moved backwards or to a different page
                     if (in_array($currentPhase, ['INTRO', 'WAITING', 'SYNC'])) {
-                        return redirect()->route('game.duo.question');
+                        return $toQuestion();
                     }
                     if (in_array($currentPhase, $resultPhases)) {
-                        return redirect()->route('game.duo.result');
+                        return $toResult();
                     }
                     if ($currentPhase === 'ROUND_SCOREBOARD') {
-                        return redirect()->route('game.duo.round-scoreboard');
+                        return $toScoreboard();
                     }
                     if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
-                        return redirect()->route('game.duo.match-result');
+                        return $toMatchResult();
                     }
                     break;
 
@@ -2506,20 +2514,20 @@ class DuoController extends Controller
                     }
                     // Reconnect: server is ahead/behind
                     if (in_array($currentPhase, $questionPhases)) {
-                        return redirect()->route('game.duo.question');
+                        return $toQuestion();
                     }
                     if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
                         $playerId = (string) $user->id;
                         if ($lockedAnswerPlayerId === $playerId) {
-                            return redirect()->route('game.duo.answer');
+                            return $toAnswer();
                         }
-                        return redirect()->route('game.duo.question');
+                        return $toQuestion();
                     }
                     if ($currentPhase === 'ROUND_SCOREBOARD') {
-                        return redirect()->route('game.duo.round-scoreboard');
+                        return $toScoreboard();
                     }
                     if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
-                        return redirect()->route('game.duo.match-result');
+                        return $toMatchResult();
                     }
                     break;
             }
