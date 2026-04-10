@@ -1322,11 +1322,12 @@ $mode = 'duo';
         if (currentPhase === 'SYNC') {
             // V3: SYNC is the normal inter-question state. Both players must send
             // question_page_ready before the server advances to QUESTION_ACTIVE.
-            // Explicitly lift NO_BRAIN_OVERLAY so the brain shows reliably,
-            // regardless of GameplayRuntime's handler execution order.
+            // Explicitly lift NO_BRAIN_OVERLAY BEFORE applyPhaseVisualState() so the
+            // brain shows reliably — applyPhaseVisualState(SYNC) calls showBrainSpin()
+            // directly and also enforces stopTimer() + setBuzzerState('waiting').
             window.NO_BRAIN_OVERLAY = false;
             sendQuestionPageReady();
-            if (window.showBrainSpin) window.showBrainSpin('{{ __("Synchronisation...") }}');
+            applyPhaseVisualState();
             return;
         }
         
