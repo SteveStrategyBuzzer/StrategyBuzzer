@@ -11,7 +11,15 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
-    // DEBUG : enregistrer le profile et la session
+    /**
+     * Détecte la langue préférée depuis le header Accept-Language du navigateur.
+     * Retourne un code de langue supporté ('fr', 'en', etc.) ou 'fr' par défaut.
+     */
+    private function detectBrowserLanguage(Request $request): string
+    {
+        $supported = array_keys(config('languages.supported', []));
+        return $request->getPreferredLanguage($supported) ?? 'fr';
+    }
 
     /**
      * Redirection vers Google
@@ -29,7 +37,7 @@ public function redirectToGoogle()
     /**
      * Callback Google
      */
-    public function handleGoogleCallback()
+    public function handleGoogleCallback(Request $request)
     {
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
@@ -51,6 +59,12 @@ public function redirectToGoogle()
                     'avatar' => $googleUser->getAvatar(),
                 ]
             );
+
+            // Sauvegarder la langue du navigateur uniquement pour les nouveaux comptes
+            if ($user->wasRecentlyCreated) {
+                $user->preferred_language = $this->detectBrowserLanguage($request);
+                $user->save();
+            }
 
             Auth::login($user);
 
@@ -79,7 +93,7 @@ public function redirectToGoogle()
     /**
      * Callback Facebook
      */
-    public function handleFacebookCallback()
+    public function handleFacebookCallback(Request $request)
     {
         try {
             $facebookUser = Socialite::driver('facebook')->stateless()->user();
@@ -101,6 +115,12 @@ public function redirectToGoogle()
                     'avatar' => $facebookUser->getAvatar(),
                 ]
             );
+
+            // Sauvegarder la langue du navigateur uniquement pour les nouveaux comptes
+            if ($user->wasRecentlyCreated) {
+                $user->preferred_language = $this->detectBrowserLanguage($request);
+                $user->save();
+            }
 
             Auth::login($user);
 
@@ -164,6 +184,7 @@ public function redirectToGoogle()
             'password' => Hash::make($validated['password']),
             'coins' => 30,
             'competence_coins' => 250,
+            'preferred_language' => $this->detectBrowserLanguage($request),
         ]);
 
         Auth::login($user);

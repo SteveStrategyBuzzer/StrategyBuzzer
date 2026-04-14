@@ -1856,6 +1856,12 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ Profil sauvegardé immédiatement');
   };
   
+  // Flag : langue changée → recharger la page après sauvegarde pour appliquer les traductions
+  let pendingLanguageReload = false;
+  if (selLang) {
+    selLang.addEventListener('change', () => { pendingLanguageReload = true; });
+  }
+
   // Fonction de sauvegarde automatique avec debounce
   const autoSave = () => {
     isDirty = true;
@@ -1875,6 +1881,11 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(data => {
         isDirty = false;
         console.log('✅ Profil sauvegardé automatiquement');
+        // Si la langue a changé, recharger la page pour appliquer les traductions serveur
+        if (pendingLanguageReload) {
+          pendingLanguageReload = false;
+          window.location.reload();
+        }
       })
       .catch(error => {
         console.log('⚠️ Erreur sauvegarde auto:', error);
