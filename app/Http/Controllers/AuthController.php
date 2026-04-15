@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Services\CurrencyDetectionService;
 
 class AuthController extends Controller
 {
@@ -19,6 +20,26 @@ class AuthController extends Controller
     {
         $supported = array_keys(config('languages.supported', []));
         return $request->getPreferredLanguage($supported) ?? 'fr';
+    }
+
+    /**
+     * Détecte le pays via IP et le sauvegarde immédiatement dans profile_settings.
+     * Appelé lors de la création d'un nouveau compte.
+     */
+    private function saveInitialCountry(User $user): void
+    {
+        try {
+            $countryCode = app(CurrencyDetectionService::class)->detectCountry();
+            if (!$countryCode) return;
+
+            $raw = $user->profile_settings ?? [];
+            if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
+            $raw['country'] = strtoupper($countryCode);
+            $user->profile_settings = $raw;
+            $user->save();
+        } catch (\Throwable $e) {
+            Log::warning('saveInitialCountry failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -60,10 +81,11 @@ public function redirectToGoogle()
                 ]
             );
 
-            // Sauvegarder la langue du navigateur uniquement pour les nouveaux comptes
+            // Pour les nouveaux comptes : sauvegarder langue + pays détectés
             if ($user->wasRecentlyCreated) {
                 $user->preferred_language = $this->detectBrowserLanguage($request);
                 $user->save();
+                $this->saveInitialCountry($user);
             }
 
             Auth::login($user);
@@ -116,10 +138,11 @@ public function redirectToGoogle()
                 ]
             );
 
-            // Sauvegarder la langue du navigateur uniquement pour les nouveaux comptes
+            // Pour les nouveaux comptes : sauvegarder langue + pays détectés
             if ($user->wasRecentlyCreated) {
                 $user->preferred_language = $this->detectBrowserLanguage($request);
                 $user->save();
+                $this->saveInitialCountry($user);
             }
 
             Auth::login($user);
@@ -186,6 +209,9 @@ public function redirectToGoogle()
             'competence_coins' => 250,
             'preferred_language' => $this->detectBrowserLanguage($request),
         ]);
+
+        // Sauvegarder le pays détecté via IP
+        $this->saveInitialCountry($user);
 
         Auth::login($user);
 

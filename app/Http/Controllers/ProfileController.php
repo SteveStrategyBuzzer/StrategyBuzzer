@@ -106,10 +106,21 @@ class ProfileController extends Controller
 
         $currentCountry = strtoupper((string) data_get($settings, 'country', ''));
 
-        // Auto-détection du pays via IP si non encore défini
+        // Auto-détection du pays via IP si non encore défini — sauvegarde immédiate
         $suggestedCountry = '';
         if ($currentCountry === '') {
-            $suggestedCountry = app(CurrencyDetectionService::class)->detectCountry() ?? '';
+            $detectedCountry = app(CurrencyDetectionService::class)->detectCountry() ?? '';
+            if ($detectedCountry !== '') {
+                // Sauvegarder directement dans profile_settings
+                $user = Auth::user();
+                if ($user) {
+                    $settings['country'] = $detectedCountry;
+                    $user->profile_settings = $settings;
+                    $user->save();
+                }
+                $currentCountry    = $detectedCountry;
+                $suggestedCountry  = $detectedCountry;
+            }
         }
         
         // Récupérer le joueur pour afficher son code
