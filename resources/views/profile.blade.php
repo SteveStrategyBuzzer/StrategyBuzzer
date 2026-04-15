@@ -1858,8 +1858,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Flag : langue changée → recharger la page après sauvegarde pour appliquer les traductions
   let pendingLanguageReload = false;
-  if (selLang) {
-    selLang.addEventListener('change', () => { pendingLanguageReload = true; });
+  const _langSelect = document.getElementById('sel-lang');
+  if (_langSelect) {
+    _langSelect.addEventListener('change', () => { pendingLanguageReload = true; });
   }
 
   // Fonction de sauvegarde automatique avec debounce
