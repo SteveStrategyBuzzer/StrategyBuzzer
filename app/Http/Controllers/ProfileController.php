@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 use App\Services\AvatarCatalog;
 use App\Services\DailyQuestService;
+use App\Services\CurrencyDetectionService;
 use App\Models\BotProfile;
 use App\Models\BotQualificationEvent;
 use App\Services\BotQualificationService;
@@ -104,6 +105,12 @@ class ProfileController extends Controller
         ];
 
         $currentCountry = strtoupper((string) data_get($settings, 'country', ''));
+
+        // Auto-détection du pays via IP si non encore défini
+        $suggestedCountry = '';
+        if ($currentCountry === '') {
+            $suggestedCountry = app(CurrencyDetectionService::class)->detectCountry() ?? '';
+        }
         
         // Récupérer le joueur pour afficher son code
         $player = Auth::user();
@@ -121,7 +128,7 @@ class ProfileController extends Controller
         $unlockedStrategicAvatars = $this->getUnlockedStrategicAvatars($player);
 
         return view('profile', compact(
-            'settings','routes','currentCountry',
+            'settings','routes','currentCountry','suggestedCountry',
             'stratName','stratUrl','stratTier','stratSkills','player','hasAvatar',
             'botProfile','botQualifyCount','botTier','unlockedStrategicAvatars'
         ));

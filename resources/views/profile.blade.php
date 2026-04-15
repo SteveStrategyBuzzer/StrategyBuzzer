@@ -556,7 +556,13 @@
     <div class="sb-row">
       <div class="sb-k">{{ __('Pays') }}</div>
       <div class="sb-v" id="apercu-pays">
-        {{ $currentCountry && isset($countries[$currentCountry]) ? $countries[$currentCountry] : '—' }}
+        @if($currentCountry && isset($countries[$currentCountry]))
+          {{ $countries[$currentCountry] }}
+        @elseif($suggestedCountry && isset($countries[$suggestedCountry]))
+          {{ $countries[$suggestedCountry] }}
+        @else
+          —
+        @endif
       </div>
     </div>
 
@@ -751,7 +757,7 @@
           <select name="country" id="sel-pays">
             <option value="">—</option>
             @foreach($countries as $code => $name)
-              <option value="{{ $code }}" @selected($currentCountry === $code)>{{ $name }}</option>
+              <option value="{{ $code }}" @selected($currentCountry === $code || ($currentCountry === '' && $suggestedCountry === $code))>{{ $name }}</option>
             @endforeach
           </select>
         </span>
@@ -1283,7 +1289,7 @@
 <script>
 // === Fonctions globales pour le popup Menu ===
 const hasAvatar = {{ $hasAvatar ? 'true' : 'false' }};
-const hasCountry = {{ !empty($currentCountry) ? 'true' : 'false' }};
+const hasCountry = {{ (!empty($currentCountry) || !empty($suggestedCountry)) ? 'true' : 'false' }};
 const menuUrl = '{{ route("menu") }}';
 
 function checkProfileAndGoMenu() {
