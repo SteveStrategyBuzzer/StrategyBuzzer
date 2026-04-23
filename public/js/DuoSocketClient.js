@@ -390,16 +390,8 @@ const DuoSocketClient = {
     },
 
     playerReady() {
-        if (!this.isConnected() || !this.currentRoomId) {
-            this._log('Cannot signal ready: not connected or not in room');
-            return false;
-        }
-
-        this._log('Signaling player ready');
-        this.socket.emit('player_ready', {
-            roomId: this.currentRoomId
-        });
-        return true;
+        this._log('playerReady() deprecated -> proxy to setReady(true)');
+        return this.setReady(true);
     },
 
     sendVoiceOffer(targetId, offer) {
