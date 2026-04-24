@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>StrategyBuzzer</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.png') }}">
@@ -74,6 +74,22 @@
     #loadingOverlay .loading-text { color: #4ECDC4; font-size: 1.1rem; font-weight: 600; }
     @keyframes grSpin { to { transform: rotate(360deg); } }
 
+    /* Connection status badge */
+    #connectionStatus {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        z-index: 8000;
+        display: none;
+    }
+    #connectionStatus.connecting    { background: rgba(255,193,7,0.9);  color: #000; display: block; }
+    #connectionStatus.connected     { background: rgba(40,167,69,0.9);   color: #fff; display: block; }
+    #connectionStatus.disconnected  { background: rgba(220,53,69,0.9);   color: #fff; display: block; }
+
     /* Voice mic button */
     #voiceMicButton {
         position: fixed;
@@ -109,32 +125,35 @@
         50%      { box-shadow: 0 0 20px rgba(46,204,113,0.8); }
     }
 
-    /* Connection status badge */
-    #connectionStatus {
-        position: fixed;
-        top: 10px;
-        right: 10px;
+    /* Game header */
+    #gameHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(15,32,39,0.96);
+        border-bottom: 1px solid rgba(78,205,196,0.3);
         padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        z-index: 1000;
-        display: none;
+        position: sticky;
+        top: 0;
+        z-index: 500;
+        min-height: 52px;
     }
-    #connectionStatus.connected {
-        display: block;
-        background: rgba(78, 205, 196, 0.3);
-        color: #4ECDC4;
-    }
-    #connectionStatus.disconnected {
-        display: block;
-        background: rgba(255, 107, 107, 0.3);
-        color: #FF6B6B;
-    }
-    #connectionStatus.connecting {
-        display: block;
-        background: rgba(255, 215, 0, 0.3);
-        color: #FFD700;
+    .gh-player { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .gh-left  { justify-content: flex-start; }
+    .gh-right { justify-content: flex-end; flex-direction: row-reverse; }
+    .gh-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0; }
+    .gh-name  { font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.9); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gh-score { font-size: 1.25rem; font-weight: 900; color: #4ECDC4; min-width: 26px; text-align: center; }
+    .gh-center { text-align: center; font-size: 0.72rem; color: rgba(255,255,255,0.6); flex-shrink: 0; padding: 0 8px; }
+    .gh-counter { display: block; font-weight: 700; color: rgba(255,255,255,0.85); font-size: 0.82rem; }
+    .gh-round   { display: block; font-size: 0.68rem; margin-top: 1px; }
+
+    @media (max-width: 375px) {
+        #gameHeader { padding: 5px 8px; min-height: 44px; }
+        .gh-avatar  { width: 26px; height: 26px; }
+        .gh-name    { max-width: 52px; font-size: 0.72rem; }
+        .gh-score   { font-size: 1.05rem; }
+        .gh-center  { padding: 0 3px; font-size: 0.62rem; }
     }
 
     body { background: #0f2027; color: #fff; margin: 0; padding: 0; }
@@ -158,13 +177,35 @@
     </div>
 </div>
 
-<!-- Connection Status Badge — hidden by default; only appears on disconnect -->
-<div id="connectionStatus" class="connection-status">{{ __('Connexion...') }}</div>
+<!-- Connection Status Badge -->
+<div id="connectionStatus"></div>
 
 <!-- Voice Mic Button (WebRTC — shown by VoiceChat init, hidden by default) -->
 <button id="voiceMicButton" title="{{ __('Activer/désactiver le micro') }}">
     <span id="micIcon">🎤</span>
 </button>
+
+<!-- Game header — always rendered; hidden by CSS when no player data, updated live by GameplayRuntime -->
+<header id="gameHeader" style="{{ empty($playerName) ? 'display:none;' : '' }}">
+    <div class="gh-player gh-left">
+        <img id="ghPlayerAvatar"
+             src="{{ asset($playerAvatarPath ?? 'images/avatars/standard/default.png') }}"
+             class="gh-avatar" alt="">
+        <div class="gh-name" id="ghPlayerName">{{ $playerName ?? '' }}</div>
+        <div class="gh-score" id="ghPlayerScore">{{ $playerScore ?? 0 }}</div>
+    </div>
+    <div class="gh-center">
+        <span class="gh-counter" id="ghQuestionCounter">{{ ($currentQuestion ?? 1) }}/{{ $totalQuestions ?? 10 }}</span>
+        <span class="gh-round" id="ghRound">{{ __('Manche') }} {{ $round ?? 1 }}</span>
+    </div>
+    <div class="gh-player gh-right">
+        <img id="ghOpponentAvatar"
+             src="{{ asset($opponentAvatarPath ?? 'images/avatars/standard/default.png') }}"
+             class="gh-avatar" alt="">
+        <div class="gh-name" id="ghOpponentName">{{ $opponentName ?? '' }}</div>
+        <div class="gh-score" id="ghOpponentScore">{{ $opponentScore ?? 0 }}</div>
+    </div>
+</header>
 
 <!-- Main game content (no container wrapper — game views are full-width) -->
 @yield('content')
@@ -196,16 +237,11 @@
 @keyframes toastFadeOut  { from { opacity:1; } to { opacity:0; } }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
 
 <!-- Socket.IO — loaded once here, never duplicated in views -->
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
-
-<!-- Game server URL — injected once from layout so all gameplay views get port 3001 -->
-<script>
-window.GAME_SERVER_URL = window.location.protocol + '//' + window.location.hostname + ':3001';
-</script>
 
 <!-- Window variables set by each game view (must come before GameplayRuntime) -->
 @yield('game-data')

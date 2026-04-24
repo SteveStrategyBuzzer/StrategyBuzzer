@@ -177,18 +177,6 @@ const DuoSocketClient = {
                                 if (this.onBuzzResult) this.onBuzzResult(event);
                                 this._dispatch('buzz', event);
                                 break;
-                            case 'PHASE_CHANGED':
-                                this._dispatch('phase_changed', event);
-                                break;
-                            case 'QUESTION_PUBLISHED':
-                                this._dispatch('question_published', event);
-                                break;
-                            case 'ROUND_ENDED':
-                                this._dispatch('round_ended', event);
-                                break;
-                            case 'MATCH_ENDED':
-                                this._dispatch('match_ended', event);
-                                break;
                             default:
                                 this._log('Unhandled event type', event.type);
                         }
@@ -269,11 +257,6 @@ const DuoSocketClient = {
                     if (this.onSkillFailed) this.onSkillFailed(data);
                 });
 
-                this._bindSocketEvent('skill_effect', (data) => {
-                    this._log('Skill effect', data);
-                    if (this.onSkillEffect) this.onSkillEffect(data);
-                });
-
                 this._bindSocketEvent('rate_limited', (data) => {
                     this._log('Rate limited', data);
                     if (this.onRateLimited) this.onRateLimited(data);
@@ -332,15 +315,11 @@ const DuoSocketClient = {
             lobbyCode: lobbyCode || undefined,
             playerId: playerInfo.playerId || '',
             playerName: playerInfo.playerName || '',
+            avatarId: playerInfo.avatarId,
+            strategicAvatarId: playerInfo.strategicAvatarId,
             division: playerInfo.division,
             token: playerInfo.token
         };
-        if (playerInfo.avatarId && typeof playerInfo.avatarId === 'string') {
-            payload.avatarId = playerInfo.avatarId;
-        }
-        if (playerInfo.strategicAvatarId && typeof playerInfo.strategicAvatarId === 'string') {
-            payload.strategicAvatarId = playerInfo.strategicAvatarId;
-        }
 
         this._log('Joining room', payload);
         this.socket.emit('join_room', payload);
@@ -421,39 +400,6 @@ const DuoSocketClient = {
             roomId: this.currentRoomId
         });
         return true;
-    },
-
-    questionPageReady() {
-        if (!this.isConnected() || !this.currentRoomId) {
-            this._log('Cannot signal question_page_ready: not connected or not in room');
-            return false;
-        }
-        this._log('Emitting question_page_ready');
-        this.socket.emit('question_page_ready', {
-            roomId: this.currentRoomId
-        });
-        return true;
-    },
-
-    saveState(data) {
-        try {
-            sessionStorage.setItem('duo_page_state', JSON.stringify(data || {}));
-        } catch (e) {
-            console.warn('[DuoSocket] saveState failed:', e);
-        }
-    },
-
-    restoreState() {
-        try {
-            var raw = sessionStorage.getItem('duo_page_state');
-            if (raw) {
-                sessionStorage.removeItem('duo_page_state');
-                return JSON.parse(raw);
-            }
-        } catch (e) {
-            console.warn('[DuoSocket] restoreState failed:', e);
-        }
-        return null;
     },
 
     sendVoiceOffer(targetId, offer) {
