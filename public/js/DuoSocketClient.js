@@ -279,6 +279,24 @@ const DuoSocketClient = {
                     if (this.onGameState) this.onGameState(data);
                 });
 
+                // Task #38 NOYAU STATS LIVE — server-authoritative live stats.
+                // These events are consumed by GameplayRuntime to repaint
+                // [data-stat][data-player] nodes across all gameplay views.
+                this._bindSocketEvent('player_stats_updated', (data) => {
+                    this._log('Player stats updated', data);
+                    if (this.onPlayerStatsUpdated) this.onPlayerStatsUpdated(data);
+                });
+
+                this._bindSocketEvent('round_stats', (data) => {
+                    this._log('Round stats received', data);
+                    if (this.onRoundStats) this.onRoundStats(data);
+                });
+
+                this._bindSocketEvent('match_stats', (data) => {
+                    this._log('Match stats received', data);
+                    if (this.onMatchStats) this.onMatchStats(data);
+                });
+
             } catch (error) {
                 this._log('Failed to create socket', { error: error.message });
                 reject(error);

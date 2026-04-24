@@ -31,6 +31,10 @@ export class GameOrchestrator {
   // pass in scoreAllBuzzers, broadcast on player_stats_updated / round_stats /
   // match_stats, and persisted to Laravel via the finalize endpoint.
   private playerStats: Map<string, Map<string, PlayerLiveStats>> = new Map();
+  // Wall-clock timestamp at which the current QUESTION_ACTIVE phase was
+  // published per room. Used to derive *relative* buzz latency for
+  // averageResponseMs (never use absolute epoch timestamps).
+  private currentQuestionPublishedAtMs: Map<string, number> = new Map();
 
   constructor(io: SocketIOServer, roomManager: RoomManager) {
     this.io = io;
@@ -461,11 +465,18 @@ export class GameOrchestrator {
       // ── Live-stats update + broadcast ──────────────────────────────────
       // Server-authoritative: front-ends must NEVER recompute these locally.
       const prevStats = this.getOrInitPlayerStats(roomId, buzzer.playerId);
+      // Convert absolute buzz timestamp into *relative* latency from the
+      // moment the question was published. This keeps averageResponseMs
+      // bounded (typically 0–QUESTION_TIMEOUT_MS) and meaningful.
+      const publishedAt = this.currentQuestionPublishedAtMs.get(roomId) || 0;
+      const relativeBuzzMs = publishedAt && buzzer.atMs
+        ? Math.max(0, buzzer.atMs - publishedAt)
+        : 0;
       const nextStats = updatePlayerLiveStats(prevStats, {
         didBuzz: true,
         buzzOrder,
         isCorrect,
-        buzzTimeMs: buzzer.atMs || 0,
+        buzzTimeMs: relativeBuzzMs,
         newScore: newTotalScore,
         newRoundScore,
       });
@@ -687,7 +698,11 @@ export class GameOrchestrator {
 
     this.io.to(roomId).emit("event", { event: publishEvent });
     this.logEventToRedis(roomId, publishEvent);
-    
+
+    // Mark the publish wall-clock for this room — used by scoreAllBuzzers to
+    // compute *relative* buzz latency for averageResponseMs.
+    this.currentQuestionPublishedAtMs.set(roomId, Date.now());
+
     for (const playerId of Object.keys(room.state.players)) {
       // Check active reduce_time effect via formal skill-engine
       const isReduceTimeActive = hasActiveEffect(room.state, playerId, "reduce_time");

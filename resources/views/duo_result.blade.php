@@ -55,12 +55,12 @@ $opponentName    = $opponentName    ?? ($opponent_info['name'] ?? __('Adversaire
 // $question array used by the scroll-skill section — build from flat variables if not provided.
 $question        = $question        ?? ['correct_answer' => $correctAnswer, 'answer' => $correctAnswer];
 
-// Efficiency % — official formula: (points earned / max possible points) × 100
-// Max possible = nb_questions × 2  (buzzer 1er + bonne réponse = +2 pts max/question)
-// Clamped to [0%, 100%] — negative scores show 0%
-$_effN = max(1, $currentQuestion ?? 1);
-$playerEfficiency   = max(0, min(100, (int) round(($playerScore   / (2 * $_effN)) * 100)));
-$opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)) * 100)));
+// Task #38 NOYAU STATS LIVE — efficiency is now server-authoritative.
+// Initial render shows a placeholder ("—%"); GameplayRuntime hydrates
+// [data-stat="efficiencyPercent"] nodes from the player_stats_updated /
+// match_stats / round_stats socket payloads (or game_state hydration).
+$playerEfficiency   = $player_stats['efficiencyPercent']   ?? '—';
+$opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
 @endphp
 
 <style>
