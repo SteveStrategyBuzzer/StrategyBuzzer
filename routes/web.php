@@ -406,6 +406,14 @@ Route::prefix('game/duo')->name('game.duo.')->middleware('auth')->group(function
     Route::post('/match/{match}/finish-socketio', [App\Http\Controllers\DuoController::class, 'finishMatchSocketIO'])->name('finish-socketio');
 });
 
+/* ===== ENDPOINTS INTERNES SERVEUR-À-SERVEUR (Node game-server → Laravel) =====
+   Pas de middleware auth/web : authentification via JWT dans Authorization header
+   (signé avec GAME_SERVER_JWT_SECRET, claim purpose='internal_finalize').
+   Exclu de CSRF dans VerifyCsrfToken middleware. */
+Route::prefix('internal/duo')->name('internal.duo.')->group(function () {
+    Route::post('/match/finalize', [App\Http\Controllers\DuoController::class, 'internalFinalize'])->name('match.finalize');
+});
+
 /* ===== INTERFACE DE JEU LEAGUE (Socket.IO) ===== */
 Route::prefix('game/league')->name('game.league.')->middleware('auth')->group(function () {
     Route::post('/start', [App\Http\Controllers\LeagueIndividualController::class, 'startGame'])->name('start');

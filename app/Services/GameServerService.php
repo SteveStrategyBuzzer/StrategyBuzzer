@@ -434,7 +434,7 @@ class GameServerService
         return $this->gameServerUrl;
     }
 
-    private function getJwtSecret(): string
+    public function getJwtSecret(): string
     {
         $key = $this->jwtSecret;
 

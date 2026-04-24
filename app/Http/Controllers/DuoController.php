@@ -323,102 +323,183 @@ class DuoController extends Controller
             return response()->json(['success' => false, 'message' => 'Non autorisé.'], 403);
         }
 
+        return $this->applyFinalizationFromRedis($match);
+    }
+
+    /**
+     * Server-to-server finalize endpoint, called by the Node game server when a match
+     * ends without an active front (disconnect / timeout / natural end with no client POST).
+     *
+     * Auth: short-lived JWT signed with GAME_SERVER_JWT_SECRET, claim purpose='internal_finalize'.
+     * Body: { roomId: string }
+     * No CSRF (excluded), no Auth::user(). Idempotent.
+     */
+    public function internalFinalize(Request $request)
+    {
+        $authHeader = $request->header('Authorization', '');
+        if (!preg_match('/^Bearer\s+(\S+)$/i', $authHeader, $m)) {
+            return response()->json(['success' => false, 'error' => 'Missing bearer token'], 401);
+        }
+        $token = $m[1];
+
+        try {
+            $secret  = $this->gameServerService->getJwtSecret();
+            $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key($secret, 'HS256'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('internalFinalize JWT verify failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => 'Invalid token'], 401);
+        }
+
+        $purpose = $decoded->purpose ?? null;
+        if ($purpose !== 'internal_finalize') {
+            return response()->json(['success' => false, 'error' => 'Invalid token purpose'], 401);
+        }
+
+        $roomId = (string) $request->input('roomId', '');
+        if ($roomId === '') {
+            return response()->json(['success' => false, 'error' => 'roomId required'], 400);
+        }
+
+        $match = DuoMatch::where('room_id', $roomId)
+            ->orWhere('lobby_code', $roomId)
+            ->first();
+
+        if (!$match) {
+            return response()->json(['success' => false, 'error' => 'Match not found'], 404);
+        }
+
+        return $this->applyFinalizationFromRedis($match);
+    }
+
+    /**
+     * Shared finalization pipeline — reads authoritative match result from Redis
+     * (written exclusively by the Node game server) and routes it through
+     * DuoMatchmakingService::finishMatch. Called from both the player-driven
+     * finishMatchSocketIO and the server-to-server internalFinalize endpoints.
+     */
+    private function applyFinalizationFromRedis(DuoMatch $match): \Illuminate\Http\JsonResponse
+    {
         if ($match->status === 'finished') {
             return response()->json(['success' => true, 'already_finished' => true]);
         }
 
-        // Read authoritative match result written by the game server to Redis.
-        // Client-provided winner data is intentionally ignored — only the game server writes this key.
         $roomId = $match->room_id ?? $match->lobby_code;
         if (!$roomId) {
             return response()->json(['success' => false, 'message' => 'Room ID introuvable.'], 400);
         }
 
-        $redisKey = 'gs:match:' . $roomId . ':result';
-        $raw = Redis::connection('game_server')->get($redisKey);
-
-        if (!$raw) {
-            // Game server hasn't written the result yet — tell client to retry
-            return response()->json(['success' => false, 'pending' => true, 'message' => 'Résultat pas encore disponible, réessayez.'], 202);
+        // Distributed dedupe lock: prevents concurrent finalization from frontend POST
+        // and Node->Laravel internal endpoint racing each other (would double-credit
+        // stats/coins/division updates). SETNX with 30s TTL acts as critical-section
+        // mutex; idempotency is also enforced at DB level by the status check above
+        // (re-read after lock acquisition further down).
+        $lockKey = 'finalize:duo:' . $match->id;
+        $acquired = Redis::connection('game_server')->set($lockKey, '1', 'EX', 30, 'NX');
+        if (!$acquired) {
+            return response()->json([
+                'success' => true,
+                'in_progress' => true,
+                'message' => 'Finalisation déjà en cours.',
+            ]);
         }
-
-        $result      = json_decode($raw, true);
-        $winnerId    = $result['winnerId']    ?? null;
-        $finalScores = $result['finalScores'] ?? [];
-        $isTie       = $result['isTie']       ?? false;
-        $decidedBy   = $result['decidedBy']   ?? ($isTie ? 'total_score' : 'rounds');
-        $roundsWon   = $result['roundsWon']   ?? [];   // { playerId: roundsWon }
-        $duration    = $result['duration']    ?? 0;    // total match duration in ms
-
-        $player1Id = (string) $match->player1_id;
-        $player2Id = (string) $match->player2_id;
-
-        // Determine comparative scores for division ranking.
-        // Priority: actual final scores → 1/0 winner differential → 0/0 for genuine tie.
-        $p1 = isset($finalScores[$player1Id]) ? (int) $finalScores[$player1Id] : -1;
-        $p2 = isset($finalScores[$player2Id]) ? (int) $finalScores[$player2Id] : -1;
-
-        if ($p1 >= 0 && $p2 >= 0 && $p1 !== $p2) {
-            $player1Score = $p1;
-            $player2Score = $p2;
-        } elseif ($winnerId) {
-            $player1Won   = (string) $winnerId === $player1Id;
-            $player1Score = $player1Won ? 1 : 0;
-            $player2Score = $player1Won ? 0 : 1;
-        } else {
-            // Genuine tie — no winner; division scores stay equal (0/0)
-            $player1Score = 0;
-            $player2Score = 0;
-        }
-
-        // Build enriched game state from Redis so quests and stats have real data
-        // instead of reading the empty PostgreSQL game_state column.
-        $baseGameState = $match->game_state ?? [];
-        $enrichedGameState = array_merge($baseGameState, [
-            'source'         => 'socket_io',
-            'mode'           => 'duo',
-            'final_scores'   => $finalScores,
-            'rounds_won'     => $roundsWon,
-            'duration_ms'    => $duration,
-            'is_tie'         => $isTie,
-            'decided_by'     => $decidedBy,
-            'player1_rounds' => (int) ($roundsWon[$player1Id] ?? 0),
-            'player2_rounds' => (int) ($roundsWon[$player2Id] ?? 0),
-        ]);
 
         try {
-            $this->matchmaking->finishMatch(
-                $match,
-                $player1Score,
-                $player2Score,
-                $enrichedGameState,
-                $isTie
-            );
-
-            // Record match for bot qualification (skips bot accounts)
-            $player1 = $match->player1;
-            $player2 = $match->player2;
-            if ($player1 && !$player1->is_bot) {
-                $this->botQualificationService->recordMultiplayerMatch($player1, 'duo_match', $match->id);
-            }
-            if ($player2 && !$player2->is_bot) {
-                $this->botQualificationService->recordMultiplayerMatch($player2, 'duo_match', $match->id);
-            }
-
-            $p1Won = $player1Score > $player2Score;
-            $p2Won = $player2Score > $player1Score;
-
-            $this->contactService->addOrUpdateContact($match->player1_id, $match->player2_id, $p1Won, true);
-            $this->contactService->addOrUpdateContact($match->player2_id, $match->player1_id, $p2Won, true);
-
-            return response()->json(['success' => true]);
-        } catch (\RuntimeException $e) {
-            if ($e->getMessage() === 'MATCH_ALREADY_FINISHED') {
+            // Re-read match status under lock to close the pre-check TOCTOU window
+            $match->refresh();
+            if ($match->status === 'finished') {
                 return response()->json(['success' => true, 'already_finished' => true]);
             }
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+
+            $redisKey = 'gs:match:' . $roomId . ':result';
+            $raw = Redis::connection('game_server')->get($redisKey);
+
+            if (!$raw) {
+                return response()->json([
+                    'success' => false,
+                    'pending' => true,
+                    'message' => 'Résultat pas encore disponible, réessayez.',
+                ], 202);
+            }
+
+            $result      = json_decode($raw, true);
+            $winnerId    = $result['winnerId']    ?? null;
+            $finalScores = $result['finalScores'] ?? [];
+            $isTie       = $result['isTie']       ?? false;
+            $decidedBy   = $result['decidedBy']   ?? ($isTie ? 'total_score' : 'rounds');
+            $roundsWon   = $result['roundsWon']   ?? [];
+            $duration    = $result['duration']    ?? 0;
+
+            $player1Id = (string) $match->player1_id;
+            $player2Id = (string) $match->player2_id;
+
+            $p1 = isset($finalScores[$player1Id]) ? (int) $finalScores[$player1Id] : -1;
+            $p2 = isset($finalScores[$player2Id]) ? (int) $finalScores[$player2Id] : -1;
+
+            if ($p1 >= 0 && $p2 >= 0 && $p1 !== $p2) {
+                $player1Score = $p1;
+                $player2Score = $p2;
+            } elseif ($winnerId) {
+                $player1Won   = (string) $winnerId === $player1Id;
+                $player1Score = $player1Won ? 1 : 0;
+                $player2Score = $player1Won ? 0 : 1;
+            } else {
+                $player1Score = 0;
+                $player2Score = 0;
+            }
+
+            $baseGameState = $match->game_state ?? [];
+            $enrichedGameState = array_merge($baseGameState, [
+                'source'         => 'socket_io',
+                'mode'           => 'duo',
+                'final_scores'   => $finalScores,
+                'rounds_won'     => $roundsWon,
+                'duration_ms'    => $duration,
+                'is_tie'         => $isTie,
+                'decided_by'     => $decidedBy,
+                'player1_rounds' => (int) ($roundsWon[$player1Id] ?? 0),
+                'player2_rounds' => (int) ($roundsWon[$player2Id] ?? 0),
+            ]);
+
+            try {
+                $this->matchmaking->finishMatch(
+                    $match,
+                    $player1Score,
+                    $player2Score,
+                    $enrichedGameState,
+                    $isTie
+                );
+
+                $player1 = $match->player1;
+                $player2 = $match->player2;
+                if ($player1 && !$player1->is_bot) {
+                    $this->botQualificationService->recordMultiplayerMatch($player1, 'duo_match', $match->id);
+                }
+                if ($player2 && !$player2->is_bot) {
+                    $this->botQualificationService->recordMultiplayerMatch($player2, 'duo_match', $match->id);
+                }
+
+                $p1Won = $player1Score > $player2Score;
+                $p2Won = $player2Score > $player1Score;
+
+                $this->contactService->addOrUpdateContact($match->player1_id, $match->player2_id, $p1Won, true);
+                $this->contactService->addOrUpdateContact($match->player2_id, $match->player1_id, $p2Won, true);
+
+                return response()->json(['success' => true]);
+            } catch (\RuntimeException $e) {
+                if ($e->getMessage() === 'MATCH_ALREADY_FINISHED') {
+                    return response()->json(['success' => true, 'already_finished' => true]);
+                }
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+            }
+        } finally {
+            // Release dedupe lock so retries (e.g., after pending 202) can proceed
+            // promptly without waiting for the 30s TTL. DB-level lockForUpdate in
+            // finishMatch() remains the authoritative idempotency guarantee.
+            Redis::connection('game_server')->del($lockKey);
         }
     }
 
@@ -1468,14 +1549,67 @@ class DuoController extends Controller
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
 
-        $isPlayer1 = $match->player1_id == $user->id;
-        $winnerId = $isPlayer1 ? $match->player2_id : $match->player1_id;
+        // Already finalized by another path (e.g. finishMatchSocketIO) — idempotent success.
+        if ($match->status === 'finished') {
+            session()->forget('game_state');
+            return response()->json([
+                'success' => true,
+                'already_finished' => true,
+                'message' => __('Vous avez abandonné la partie'),
+                'redirect_url' => route('duo.lobby'),
+            ]);
+        }
 
-        $match->status = 'completed';
-        $match->winner_id = $winnerId;
-        $match->finished_at = now();
-        $match->forfeit_by = $user->id;
-        $match->save();
+        // Forfait scoring: forfaiteur = 0, opponent = 1. Not a tie.
+        $isPlayer1 = $match->player1_id == $user->id;
+        $player1Score = $isPlayer1 ? 0 : 1;
+        $player2Score = $isPlayer1 ? 1 : 0;
+
+        // Build enriched state so finishMatch persists the forfeit reason in game_state JSON.
+        // finishMatch will set status='finished', winner_id, division points, coin rewards,
+        // and call PlayerDuoStat::updateAfterMatch for both players.
+        $baseGameState = $match->game_state ?? [];
+        $enrichedGameState = array_merge($baseGameState, [
+            'source'      => 'forfeit',
+            'mode'        => 'duo',
+            'forfeit_by'  => $user->id,
+            'forfeited_at' => now()->toISOString(),
+        ]);
+
+        try {
+            $this->matchmaking->finishMatch(
+                $match,
+                $player1Score,
+                $player2Score,
+                $enrichedGameState,
+                false // not a tie
+            );
+
+            // Preserve dedicated DB column for forfeit attribution (not handled by finishMatch).
+            $match->refresh();
+            $match->forfeit_by = $user->id;
+            $match->save();
+
+            // Mirror finishMatchSocketIO: bot qualification + contact tracking.
+            $player1 = $match->player1;
+            $player2 = $match->player2;
+            if ($player1 && !$player1->is_bot) {
+                $this->botQualificationService->recordMultiplayerMatch($player1, 'duo_match', $match->id);
+            }
+            if ($player2 && !$player2->is_bot) {
+                $this->botQualificationService->recordMultiplayerMatch($player2, 'duo_match', $match->id);
+            }
+
+            $p1Won = $player1Score > $player2Score;
+            $p2Won = $player2Score > $player1Score;
+            $this->contactService->addOrUpdateContact($match->player1_id, $match->player2_id, $p1Won, true);
+            $this->contactService->addOrUpdateContact($match->player2_id, $match->player1_id, $p2Won, true);
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() !== 'MATCH_ALREADY_FINISHED') {
+                throw $e;
+            }
+            // Race with another finalize path — treat as success.
+        }
 
         session()->forget('game_state');
 

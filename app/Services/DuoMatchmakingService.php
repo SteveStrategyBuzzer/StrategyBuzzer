@@ -170,6 +170,11 @@ class DuoMatchmakingService
         // Division points are simply 0 for both players in that case.
 
         return DB::transaction(function () use ($match, $player1Score, $player2Score, $gameState, $isTie) {
+            // Acquire row-level lock on duo_matches before status check.
+            // Concurrent callers (frontend POST + Node->Laravel internal endpoint)
+            // serialize on this lock and the second pass sees status='finished'
+            // after the first commits, preventing double-credit of stats/coins.
+            DB::table('duo_matches')->where('id', $match->id)->lockForUpdate()->first();
             $match->refresh();
 
             if ($match->status === 'finished') {

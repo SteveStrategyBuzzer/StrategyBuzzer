@@ -8,6 +8,7 @@ import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipelin
 import { appendEventLog, setRoomState, setMatchResult } from "./RedisService.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
 import { saveRoomSnapshot } from "./RoomRecovery.js";
+import { notifyMatchFinalized } from "./InternalLaravelClient.js";
 
 export class GameOrchestrator {
   private io: SocketIOServer;
@@ -1084,6 +1085,16 @@ export class GameOrchestrator {
       roundsWon,
       duration,
     });
+
+    // Server-to-server safety net: notify Laravel right away so the match is
+    // finalized even if no front actually POSTs /game/duo/match/{id}/finish-socketio
+    // (disconnect, timeout, closed browser). Idempotent — ignored if Laravel
+    // already finished the match. Fire-and-forget for DUO mode only.
+    if (room.state.config.mode === "DUO") {
+      notifyMatchFinalized(roomId).catch((err) => {
+        console.error(`[GameOrchestrator] notifyMatchFinalized failed for ${roomId}:`, err);
+      });
+    }
 
     this.io.to(roomId).emit("match_ended", {
       winnerId,
