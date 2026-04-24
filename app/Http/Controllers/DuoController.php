@@ -430,6 +430,9 @@ class DuoController extends Controller
             $decidedBy   = $result['decidedBy']   ?? ($isTie ? 'total_score' : 'rounds');
             $roundsWon   = $result['roundsWon']   ?? [];
             $duration    = $result['duration']    ?? 0;
+            // Server-authoritative live stats snapshot. Optional for backward
+            // compat with older Redis payloads that pre-date Task #38.
+            $playerStats = is_array($result['playerStats'] ?? null) ? $result['playerStats'] : [];
 
             $player1Id = (string) $match->player1_id;
             $player2Id = (string) $match->player2_id;
@@ -460,6 +463,14 @@ class DuoController extends Controller
                 'decided_by'     => $decidedBy,
                 'player1_rounds' => (int) ($roundsWon[$player1Id] ?? 0),
                 'player2_rounds' => (int) ($roundsWon[$player2Id] ?? 0),
+                // Live stats — exposed on game_state for downstream stat calculators
+                // (PlayerStatsService etc.). Each entry includes correctAnswers,
+                // wrongAnswers, totalAnswers, accuracyPercent, efficiencyPercent,
+                // averageResponseMs, buzzCount, buzzWon, buzzLost, currentStreak,
+                // bestStreak — server-authoritative, never recomputed client-side.
+                'player_stats'    => $playerStats,
+                'player1_stats'   => $playerStats[$player1Id] ?? null,
+                'player2_stats'   => $playerStats[$player2Id] ?? null,
             ]);
 
             try {

@@ -1,9 +1,10 @@
 import type { Server as SocketIOServer } from "socket.io";
 import type { RoomManager, Room } from "./RoomManager.js";
-import type { Question, Mode, Phase } from "@strategybuzzer/shared";
+import type { Question, Mode, Phase, PlayerLiveStats, MatchStats } from "@strategybuzzer/shared";
 import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent, BuzzReceivedEvent, GameStartedEvent } from "@strategybuzzer/shared";
 import { applyEvent, hasActiveEffect, expireEffects, applyScoreEffects, rechargeInventory } from "@strategybuzzer/game-engine";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
+import { updatePlayerLiveStats, emptyPlayerLiveStats } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
 import { appendEventLog, setRoomState, setMatchResult } from "./RedisService.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
@@ -25,10 +26,78 @@ export class GameOrchestrator {
   private syncReadyMaps: Map<string, Set<string>> = new Map();
   // Snapshot of expected human players at SYNC entry (used for early-exit check)
   private syncExpectedMaps: Map<string, Set<string>> = new Map();
+  // ─── Live stats per room/player (server-authoritative) ───────────────────
+  // Keyed by roomId → playerId → PlayerLiveStats. Updated after each scoring
+  // pass in scoreAllBuzzers, broadcast on player_stats_updated / round_stats /
+  // match_stats, and persisted to Laravel via the finalize endpoint.
+  private playerStats: Map<string, Map<string, PlayerLiveStats>> = new Map();
 
   constructor(io: SocketIOServer, roomManager: RoomManager) {
     this.io = io;
     this.roomManager = roomManager;
+  }
+
+  // ── Live stats helpers ──────────────────────────────────────────────────
+  private getOrInitPlayerStats(roomId: string, playerId: string): PlayerLiveStats {
+    let roomMap = this.playerStats.get(roomId);
+    if (!roomMap) {
+      roomMap = new Map();
+      this.playerStats.set(roomId, roomMap);
+    }
+    let stats = roomMap.get(playerId);
+    if (!stats) {
+      stats = emptyPlayerLiveStats(playerId);
+      roomMap.set(playerId, stats);
+    }
+    return stats;
+  }
+
+  private writePlayerStats(roomId: string, playerId: string, stats: PlayerLiveStats): void {
+    let roomMap = this.playerStats.get(roomId);
+    if (!roomMap) {
+      roomMap = new Map();
+      this.playerStats.set(roomId, roomMap);
+    }
+    roomMap.set(playerId, stats);
+    // Mirror the live-stat fields back onto the canonical Player so that any
+    // state hydration / Redis snapshot already carries them.
+    const room = this.roomManager.getRoom(roomId);
+    const p = room?.state.players[playerId];
+    if (p) {
+      p.correctAnswers     = stats.correctAnswers;
+      p.wrongAnswers       = stats.wrongAnswers;
+      p.totalAnswers       = stats.totalAnswers;
+      p.accuracyPercent    = stats.accuracyPercent;
+      p.efficiencyPercent  = stats.efficiencyPercent;
+      p.averageResponseMs  = stats.averageResponseMs;
+      p.buzzCount          = stats.buzzCount;
+      p.buzzWon            = stats.buzzWon;
+      p.buzzLost           = stats.buzzLost;
+      p.currentStreak      = stats.currentStreak;
+      p.bestStreak         = stats.bestStreak;
+    }
+  }
+
+  /**
+   * Snapshot all player stats for a room as a plain record, ready to broadcast
+   * or persist. Pulls from the in-memory map and tops up roundsWon / lives
+   * from canonical Player state (those are reducer-managed, not stat-managed).
+   */
+  private snapshotAllPlayerStats(roomId: string): Record<string, PlayerLiveStats> {
+    const room = this.roomManager.getRoom(roomId);
+    const out: Record<string, PlayerLiveStats> = {};
+    if (!room) return out;
+    for (const [playerId, p] of Object.entries(room.state.players)) {
+      const stats = this.getOrInitPlayerStats(roomId, playerId);
+      out[playerId] = {
+        ...stats,
+        score: p.score,
+        roundScore: p.roundScore,
+        roundsWon: p.roundsWon,
+        lives: p.lives,
+      };
+    }
+    return out;
   }
 
   async startGame(roomId: string): Promise<{ success: boolean; error?: string }> {
@@ -388,6 +457,55 @@ export class GameOrchestrator {
         delta: pointsEarned,
         skillsTriggered: scoreEffectResult.skillsTriggered,
       });
+
+      // ── Live-stats update + broadcast ──────────────────────────────────
+      // Server-authoritative: front-ends must NEVER recompute these locally.
+      const prevStats = this.getOrInitPlayerStats(roomId, buzzer.playerId);
+      const nextStats = updatePlayerLiveStats(prevStats, {
+        didBuzz: true,
+        buzzOrder,
+        isCorrect,
+        buzzTimeMs: buzzer.atMs || 0,
+        newScore: newTotalScore,
+        newRoundScore,
+      });
+      this.writePlayerStats(roomId, buzzer.playerId, nextStats);
+      const broadcastStats: PlayerLiveStats = {
+        ...nextStats,
+        roundsWon: player.roundsWon,
+        lives: player.lives,
+      };
+      this.io.to(roomId).emit("player_stats_updated", {
+        playerId: buzzer.playerId,
+        playerName: player?.name,
+        stats: broadcastStats,
+      });
+    }
+
+    // Also emit a no-buzz no-op stat refresh for non-buzzers so their efficiency
+    // (which depends on totalBuzzes) stays consistent across the front-ends.
+    // The pure fn handles "no buzz" by returning unchanged counters but updates score.
+    const roomForBroadcast = this.roomManager.getRoom(roomId);
+    if (roomForBroadcast) {
+      const buzzedIds = new Set(buzzQueue.map(b => b.playerId));
+      for (const [pid, p] of Object.entries(roomForBroadcast.state.players)) {
+        if (buzzedIds.has(pid)) continue;
+        const prev = this.getOrInitPlayerStats(roomId, pid);
+        const next = updatePlayerLiveStats(prev, {
+          didBuzz: false,
+          buzzOrder: 0,
+          isCorrect: false,
+          buzzTimeMs: 0,
+          newScore: p.score,
+          newRoundScore: p.roundScore,
+        });
+        this.writePlayerStats(roomId, pid, next);
+        this.io.to(roomId).emit("player_stats_updated", {
+          playerId: pid,
+          playerName: p.name,
+          stats: { ...next, roundsWon: p.roundsWon, lives: p.lives },
+        });
+      }
     }
   }
 
@@ -919,6 +1037,14 @@ export class GameOrchestrator {
       playerRoundsWon[playerId] = player.roundsWon + (playerId === winnerId ? 1 : 0);
     }
 
+    // Snapshot live stats BEFORE we apply the reducer so the rollup reflects
+    // the round we just finished (roundsWon below is already incremented for the winner).
+    const roundPlayerStats = this.snapshotAllPlayerStats(roomId);
+    // Patch in the post-round roundsWon for the winner so consumers see consistent values.
+    for (const [pid, stats] of Object.entries(roundPlayerStats)) {
+      stats.roundsWon = playerRoundsWon[pid] ?? stats.roundsWon;
+    }
+
     const roundEndedEvent: RoundEndedEvent = {
       id: room.state.lastEventId + 1,
       type: "ROUND_ENDED",
@@ -929,6 +1055,7 @@ export class GameOrchestrator {
       winnerId,
       isTie,
       playerRoundsWon,
+      playerStats: roundPlayerStats,
     };
 
     room.state = applyEvent(room.state, roundEndedEvent);
@@ -943,7 +1070,21 @@ export class GameOrchestrator {
       winnerName: winnerId ? room.state.players[winnerId]?.name : null,
       isTie,
       playerRoundsWon,
+      playerStats: roundPlayerStats,
     });
+
+    // Dedicated stats event for runtime UI consumers.
+    const roundStatsRollup: MatchStats = {
+      roomId,
+      mode: room.state.config.mode,
+      roundNumber: room.state.currentRound,
+      questionIndex: room.state.questionIndex,
+      players: roundPlayerStats,
+      winnerId,
+      isTie,
+      endedAtMs: Date.now(),
+    };
+    this.io.to(roomId).emit("round_stats", roundStatsRollup);
 
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
@@ -1057,6 +1198,9 @@ export class GameOrchestrator {
 
     const duration = room.state.startedAtMs ? Date.now() - room.state.startedAtMs : 0;
 
+    // Final live-stats snapshot — authoritative source for Laravel persistence
+    const finalPlayerStats = this.snapshotAllPlayerStats(roomId);
+
     const matchEndedEvent: MatchEndedEvent = {
       id: room.state.lastEventId + 1,
       type: "MATCH_ENDED",
@@ -1067,6 +1211,7 @@ export class GameOrchestrator {
       finalScores,
       roundsWon,
       duration,
+      playerStats: finalPlayerStats,
     };
 
     room.state = applyEvent(room.state, matchEndedEvent);
@@ -1084,7 +1229,21 @@ export class GameOrchestrator {
       decidedBy: isTie ? "total_score" : "rounds",
       roundsWon,
       duration,
+      playerStats: finalPlayerStats,
     });
+
+    // Dedicated stats event for runtime UI consumers.
+    const matchStatsRollup: MatchStats = {
+      roomId,
+      mode: room.state.config.mode,
+      roundNumber: room.state.currentRound,
+      questionIndex: room.state.questionIndex,
+      players: finalPlayerStats,
+      winnerId,
+      isTie,
+      endedAtMs: Date.now(),
+    };
+    this.io.to(roomId).emit("match_stats", matchStatsRollup);
 
     // Server-to-server safety net: notify Laravel right away so the match is
     // finalized even if no front actually POSTs /game/duo/match/{id}/finish-socketio
@@ -1263,6 +1422,7 @@ export class GameOrchestrator {
     this.syncReadyMaps.delete(roomId);
     this.syncExpectedMaps.delete(roomId);
     this.allBuzzerAnswers.delete(roomId);
+    this.playerStats.delete(roomId);
     console.log(`[GameOrchestrator] Cleaned up room ${roomId}`);
   }
 

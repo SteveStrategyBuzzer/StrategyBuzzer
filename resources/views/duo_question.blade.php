@@ -718,7 +718,7 @@ $mode = 'duo';
                 <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar">
                 <div class="player-name">{{ $playerName ?? __('Vous') }}</div>
                 <div class="player-level">{{ __('Niveau') }} {{ $playerLevel ?? 0 }} {{ __('Duo') }}</div>
-                <div class="player-score" id="playerScore">{{ $playerScore ?? 0 }}</div>
+                <div class="player-score" id="playerScore" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</div>
             </div>
             
             <div class="opponent-circle">
@@ -729,7 +729,7 @@ $mode = 'duo';
                 @endif
                 <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
                 <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel ?? 0 }} {{ __('Duo') }}</div>
-                <div class="opponent-score" id="opponentScore">{{ $opponentScore ?? 0 }}</div>
+                <div class="opponent-score" id="opponentScore" data-stat="score" data-player="opponent">{{ $opponentScore ?? 0 }}</div>
             </div>
         </div>
         
@@ -1122,11 +1122,11 @@ $mode = 'duo';
         }, delay);
     }
     
-    function getScoreParams() {
-        const ps = playerScoreEl ? playerScoreEl.textContent.trim() : '0';
-        const os = opponentScoreEl ? opponentScoreEl.textContent.trim() : '0';
-        return '&ps=' + encodeURIComponent(ps) + '&os=' + encodeURIComponent(os);
-    }
+    // NOTE (Task #38 NOYAU STATS LIVE): URL params ?ps=&os= are gone.
+    // Scores live exclusively in window.SB_LIVE_STATS, fed by GameplayRuntime
+    // listeners (player_stats_updated / score_update). Answer page reads them
+    // synchronously from there. This kills the last client→client trust path.
+    function getScoreParams() { return ''; }
 
     function handleBuzz() {
         if (buzzed || isRedirecting || currentPhase !== 'QUESTION_ACTIVE') return;

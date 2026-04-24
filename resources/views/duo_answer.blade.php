@@ -697,8 +697,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     <div class="header-row">
         <div class="question-label">{{ __('Question') }} #{{ $currentQuestion ?? 1 }}</div>
         <div class="potential-points points-2" id="potentialPoints">+2</div>
-        <div class="score-display" id="scoreDisplay">{{ __('Score') }} <span id="playerScoreValue">{{ $playerScore ?? 0 }}</span></div>
-        <div class="efficiency-display" id="efficiencyDisplay">⚡ <span id="efficiencyValue">—</span></div>
+        <div class="score-display" id="scoreDisplay">{{ __('Score') }} <span id="playerScoreValue" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</span></div>
+        <div class="efficiency-display" id="efficiencyDisplay">⚡ <span id="efficiencyValue" data-stat="efficiencyPercent" data-player="self">—</span></div>
     </div>
     
     <div class="question-text-box">
@@ -854,27 +854,20 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const JWT_TOKEN  = window.JWT_TOKEN  || '';
     const PLAYER_ID = {{ auth()->id() ?? 0 }};
 
-    // Read real-time scores passed from Question page via URL params (ps=playerScore, os=opponentScore)
-    (function initScoresFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        const ps = params.get('ps');
-        const os = params.get('os');
-        const scoreEl = document.getElementById('playerScoreValue');
-        if (ps !== null && scoreEl) {
-            const n = parseInt(ps, 10);
-            if (!isNaN(n)) {
-                scoreEl.textContent = n;
-                // Init efficiency from URL score
-                const qNum = Math.max(1, parseInt('{{ $currentQuestion ?? 1 }}', 10));
-                const eff = Math.max(0, Math.min(100, Math.round(n / (2 * qNum) * 100)));
-                const effEl = document.getElementById('efficiencyValue');
-                if (effEl) effEl.textContent = eff + '%';
-            }
-        }
-        // Store opponent score for socket updates
-        if (os !== null) {
-            window._initOpponentScore = parseInt(os, 10) || 0;
-        }
+    // Task #38 NOYAU STATS LIVE — initial score & efficiency hydration from
+    // the GameplayRuntime cache (window.SB_LIVE_STATS), populated by socket
+    // events (player_stats_updated / state / game_state). NO MORE URL params.
+    // If the page lands before any socket event fired (cold reload), values
+    // stay at 0; the next player_stats_updated will repaint via [data-stat].
+    (function initScoresFromLiveStats() {
+        var cache = window.SB_LIVE_STATS || {};
+        var meId  = String({{ auth()->id() ?? 0 }});
+        var meStats = cache[meId];
+        if (!meStats) return;
+        var scoreEl = document.getElementById('playerScoreValue');
+        if (scoreEl) scoreEl.textContent = String(meStats.score || 0);
+        var effEl   = document.getElementById('efficiencyValue');
+        if (effEl)   effEl.textContent   = String(Math.round(meStats.efficiencyPercent || 0)) + '%';
     })();
 
     function getGameServerUrl() {
@@ -1733,30 +1726,16 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             }, 1000);
         }
     }
-    function _updateEfficiencyDisplay(score) {
-        const qNum = Math.max(1, parseInt('{{ $currentQuestion ?? 1 }}', 10));
-        const eff = Math.max(0, Math.min(100, Math.round(score / (2 * qNum) * 100)));
-        const effEl = document.getElementById('efficiencyValue');
-        if (effEl) effEl.textContent = eff + '%';
+    // Task #38 NOYAU STATS LIVE: efficiency is server-authoritative.
+    // The DOM nodes are now wired via [data-stat="..."][data-player="self"]
+    // and updated by GameplayRuntime listeners. These two thin wrappers stay
+    // for backward-compat with code paths that still call them — they just
+    // ask GameplayRuntime to repaint from the cache.
+    function _updateEfficiencyDisplay(/* score */) {
+        if (typeof window.GRRepaintStats === 'function') window.GRRepaintStats();
     }
-    function _onAnswerScoreUpdate(data) {
-        const playerScoreEl = document.getElementById('playerScoreValue');
-        if (!playerScoreEl) return;
-        if (data.scores) {
-            const myScore = data.scores[String(PLAYER_ID)];
-            if (myScore !== undefined) {
-                playerScoreEl.textContent = myScore;
-                _updateEfficiencyDisplay(myScore);
-            }
-            return;
-        }
-        if (data.score !== undefined) {
-            const dataPlayerId = String(data.playerId || '').replace('player:', '');
-            if (dataPlayerId === String(PLAYER_ID) || data.playerId == PLAYER_ID) {
-                playerScoreEl.textContent = data.score;
-                _updateEfficiencyDisplay(data.score);
-            }
-        }
+    function _onAnswerScoreUpdate(/* data */) {
+        if (typeof window.GRRepaintStats === 'function') window.GRRepaintStats();
     }
     function _initAnswerEffects() {
         GameEffectsRuntime.registerEffect('shuffle_answers', {

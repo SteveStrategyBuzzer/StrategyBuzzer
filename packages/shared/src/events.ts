@@ -1,4 +1,4 @@
-import type { UUID, Phase, SkillId, Mode } from "./types.js";
+import type { UUID, Phase, SkillId, Mode, PlayerLiveStats } from "./types.js";
 
 export type BaseEvent = {
   id: number;
@@ -131,6 +131,8 @@ export type RoundEndedEvent = BaseEvent & {
   winnerId?: UUID;
   isTie: boolean;
   playerRoundsWon: Record<UUID, number>;
+  // Optional: server-authoritative live stats snapshot at round end
+  playerStats?: Record<UUID, PlayerLiveStats>;
 };
 
 export type TiebreakerStartedEvent = BaseEvent & {
@@ -158,6 +160,8 @@ export type MatchEndedEvent = BaseEvent & {
     trophies?: number;
   }[];
   duration: number;
+  // Optional: server-authoritative live stats snapshot at match end
+  playerStats?: Record<UUID, PlayerLiveStats>;
 };
 
 export type VoiceChannelJoinedEvent = BaseEvent & {

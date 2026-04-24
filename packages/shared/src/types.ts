@@ -77,6 +77,62 @@ export type Player = {
   isConnected: boolean;
   lastSeenMs: number;
   skills: Partial<Record<SkillId, SkillState>>;
+  // ─── Live stats (additive, optional, server-authoritative) ─────────────────
+  // Tracked by GameOrchestrator after each scoreAllBuzzers; broadcast via
+  // player_stats_updated / round_stats / match_stats. All optional for
+  // backward compatibility — older clients/states that don't carry them
+  // simply treat them as 0.
+  correctAnswers?: number;
+  wrongAnswers?: number;
+  totalAnswers?: number;
+  accuracyPercent?: number;
+  efficiencyPercent?: number;
+  averageResponseMs?: number;
+  buzzCount?: number;
+  buzzWon?: number;
+  buzzLost?: number;
+  currentStreak?: number;
+  bestStreak?: number;
+};
+
+/**
+ * PlayerLiveStats — broadcast payload for per-player live stats.
+ * Mirrors the live-stat fields of Player + score basics.
+ * Emitted by GameOrchestrator on `player_stats_updated`, and aggregated
+ * inside MatchStats for `round_stats` / `match_stats`.
+ */
+export type PlayerLiveStats = {
+  playerId: UUID;
+  score: number;
+  roundScore: number;
+  roundsWon: number;
+  lives: number;
+  correctAnswers: number;
+  wrongAnswers: number;
+  totalAnswers: number;
+  accuracyPercent: number;
+  efficiencyPercent: number;
+  averageResponseMs: number;
+  buzzCount: number;
+  buzzWon: number;
+  buzzLost: number;
+  currentStreak: number;
+  bestStreak: number;
+};
+
+/**
+ * MatchStats — server-authoritative rollup emitted on round_stats / match_stats
+ * and persisted to Laravel via the signed finalize endpoint.
+ */
+export type MatchStats = {
+  roomId: UUID;
+  mode: Mode;
+  roundNumber: number;
+  questionIndex: number;
+  players: Record<UUID, PlayerLiveStats>;
+  winnerId?: UUID;
+  isTie?: boolean;
+  endedAtMs: number;
 };
 
 export type QuestionType = "MCQ" | "TRUE_FALSE" | "TEXT";

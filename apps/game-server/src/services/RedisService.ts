@@ -78,6 +78,9 @@ export interface MatchResultPayload {
   decidedBy: "rounds" | "total_score";
   roundsWon?: Record<string, number>;
   duration?: number;
+  // Server-authoritative live stats snapshot at match end (optional for
+  // backward compatibility with older payloads in Redis).
+  playerStats?: Record<string, import("@strategybuzzer/shared").PlayerLiveStats>;
 }
 
 export async function setMatchResult(

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateScore, calculateTimeoutScore, calculateEfficiency, determineRoundWinner, determineMatchWinner } from '../src/scoring.js';
+import { calculateScore, calculateTimeoutScore, calculateEfficiency, determineRoundWinner, determineMatchWinner, updatePlayerLiveStats, emptyPlayerLiveStats } from '../src/scoring.js';
 import { DEFAULT_TEST_SCORING } from './fixtures.js';
 
 describe('calculateScore', () => {
@@ -82,23 +82,106 @@ describe('calculateTimeoutScore', () => {
   });
 });
 
-describe('calculateEfficiency', () => {
-  it('should return 0 for no answers', () => {
-    const result = calculateEfficiency(0, 0, 0);
-    expect(result).toBe(0);
+describe('calculateEfficiency (taux_precision aligned with #37)', () => {
+  it('should return 0 when no buzzes', () => {
+    expect(calculateEfficiency(0, 0, 0)).toBe(0);
+    expect(calculateEfficiency(0, 5, 0)).toBe(0);
   });
-  
-  it('should calculate efficiency based on accuracy and buzz rate', () => {
-    const result = calculateEfficiency(8, 10, 12);
-    expect(result).toBeGreaterThan(0);
-    expect(result).toBeLessThanOrEqual(100);
+
+  it('should be 100% when every buzz is correct', () => {
+    expect(calculateEfficiency(8, 8, 8)).toBe(100);
+    expect(calculateEfficiency(1, 1, 1)).toBe(100);
   });
-  
-  it('should return higher efficiency for perfect accuracy', () => {
-    const perfectResult = calculateEfficiency(10, 10, 10);
-    const imperfectResult = calculateEfficiency(5, 10, 10);
-    
-    expect(perfectResult).toBeGreaterThan(imperfectResult);
+
+  it('should be 0% when every buzz is wrong', () => {
+    expect(calculateEfficiency(0, 5, 5)).toBe(0);
+  });
+
+  it('should compute correctAnswers / totalBuzzes ratio (rounded)', () => {
+    expect(calculateEfficiency(3, 5, 5)).toBe(60);
+    expect(calculateEfficiency(8, 10, 10)).toBe(80);
+    expect(calculateEfficiency(1, 3, 3)).toBe(33);
+  });
+
+  it('should clamp to 0..100', () => {
+    expect(calculateEfficiency(10, 5, 5)).toBe(100);
+  });
+});
+
+describe('updatePlayerLiveStats', () => {
+  it('should track first-buzz correct: +score, +correct, +buzzWon, streak=1', () => {
+    const initial = emptyPlayerLiveStats('p1');
+    const next = updatePlayerLiveStats(initial, {
+      didBuzz: true,
+      buzzOrder: 1,
+      isCorrect: true,
+      buzzTimeMs: 1500,
+      newScore: 2,
+      newRoundScore: 2,
+    });
+    expect(next.score).toBe(2);
+    expect(next.correctAnswers).toBe(1);
+    expect(next.wrongAnswers).toBe(0);
+    expect(next.totalAnswers).toBe(1);
+    expect(next.buzzCount).toBe(1);
+    expect(next.buzzWon).toBe(1);
+    expect(next.buzzLost).toBe(0);
+    expect(next.currentStreak).toBe(1);
+    expect(next.bestStreak).toBe(1);
+    expect(next.efficiencyPercent).toBe(100);
+    expect(next.accuracyPercent).toBe(100);
+    expect(next.averageResponseMs).toBe(1500);
+  });
+
+  it('should reset currentStreak on wrong answer but preserve bestStreak', () => {
+    let s = emptyPlayerLiveStats('p1');
+    s = updatePlayerLiveStats(s, { didBuzz: true, buzzOrder: 1, isCorrect: true, buzzTimeMs: 1000, newScore: 2, newRoundScore: 2 });
+    s = updatePlayerLiveStats(s, { didBuzz: true, buzzOrder: 1, isCorrect: true, buzzTimeMs: 1000, newScore: 4, newRoundScore: 4 });
+    s = updatePlayerLiveStats(s, { didBuzz: true, buzzOrder: 1, isCorrect: false, buzzTimeMs: 2000, newScore: 2, newRoundScore: 2 });
+    expect(s.currentStreak).toBe(0);
+    expect(s.bestStreak).toBe(2);
+    expect(s.correctAnswers).toBe(2);
+    expect(s.wrongAnswers).toBe(1);
+    expect(s.efficiencyPercent).toBe(67); // 2/3 ≈ 66.67 → 67
+  });
+
+  it('should compute rolling averageResponseMs over buzzes', () => {
+    let s = emptyPlayerLiveStats('p1');
+    s = updatePlayerLiveStats(s, { didBuzz: true, buzzOrder: 1, isCorrect: true, buzzTimeMs: 1000, newScore: 2, newRoundScore: 2 });
+    s = updatePlayerLiveStats(s, { didBuzz: true, buzzOrder: 1, isCorrect: true, buzzTimeMs: 3000, newScore: 4, newRoundScore: 4 });
+    expect(s.averageResponseMs).toBe(2000);
+  });
+
+  it('should not increment counters for no-buzz players', () => {
+    const initial = emptyPlayerLiveStats('p1');
+    const next = updatePlayerLiveStats(initial, {
+      didBuzz: false,
+      buzzOrder: 0,
+      isCorrect: false,
+      buzzTimeMs: 0,
+      newScore: 0,
+      newRoundScore: 0,
+    });
+    expect(next.buzzCount).toBe(0);
+    expect(next.totalAnswers).toBe(0);
+    expect(next.correctAnswers).toBe(0);
+    expect(next.wrongAnswers).toBe(0);
+    expect(next.efficiencyPercent).toBe(0);
+  });
+
+  it('should track buzzLost for non-first-buzz players', () => {
+    const initial = emptyPlayerLiveStats('p1');
+    const next = updatePlayerLiveStats(initial, {
+      didBuzz: true,
+      buzzOrder: 2,
+      isCorrect: true,
+      buzzTimeMs: 2000,
+      newScore: 1,
+      newRoundScore: 1,
+    });
+    expect(next.buzzWon).toBe(0);
+    expect(next.buzzLost).toBe(1);
+    expect(next.buzzCount).toBe(1);
   });
 });
 

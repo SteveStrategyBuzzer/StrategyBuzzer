@@ -436,4 +436,156 @@
         }
     });
 
+    // ── Live stats — server-authoritative ───────────────────────────────────
+    // Server emits player_stats_updated after every scoring pass, then
+    // round_stats / match_stats at round/match boundaries. We patch the DOM
+    // declaratively via `[data-stat][data-player]` slots so any view that
+    // wants to display efficiency / streak / accuracy / etc just needs:
+    //
+    //   <span data-stat="efficiencyPercent" data-player="self">0</span>
+    //   <span data-stat="score" data-player="opponent">0</span>
+    //
+    // Supported `data-player` values:
+    //   "self"     → maps to USER_ID
+    //   "opponent" → maps to the first non-USER_ID player seen
+    //   "<uuid>"   → exact playerId match (for >2 players)
+    //
+    // Supported `data-stat` keys: any field of PlayerLiveStats
+    // (score, roundScore, roundsWon, lives, correctAnswers, wrongAnswers,
+    //  totalAnswers, accuracyPercent, efficiencyPercent, averageResponseMs,
+    //  buzzCount, buzzWon, buzzLost, currentStreak, bestStreak)
+    //
+    // For percent fields we append "%". averageResponseMs is rendered as ms.
+
+    // Cache of last-seen stats per player so non-broadcast pages can hydrate
+    // synchronously after navigation.
+    window.SB_LIVE_STATS = window.SB_LIVE_STATS || {};
+    var OPPONENT_ID = null;
+
+    function _resolvePlayerKey(key) {
+        if (!key) return null;
+        if (key === 'self') return USER_ID;
+        if (key === 'opponent') return OPPONENT_ID;
+        return String(key);
+    }
+
+    function _renderStatValue(statKey, value) {
+        if (value === undefined || value === null) return '0';
+        if (statKey === 'accuracyPercent' || statKey === 'efficiencyPercent') {
+            return Math.round(value) + '%';
+        }
+        if (statKey === 'averageResponseMs') {
+            return Math.round(value) + ' ms';
+        }
+        return String(value);
+    }
+
+    function _paintStatsForPlayer(playerId, stats) {
+        if (!playerId || !stats) return;
+        // Resolve which `data-player` aliases this player matches.
+        var aliases = [String(playerId)];
+        if (String(playerId) === USER_ID) aliases.push('self');
+        else if (OPPONENT_ID && String(playerId) === OPPONENT_ID) aliases.push('opponent');
+
+        aliases.forEach(function (alias) {
+            var nodes = document.querySelectorAll('[data-stat][data-player="' + alias + '"]');
+            for (var i = 0; i < nodes.length; i++) {
+                var node = nodes[i];
+                var key = node.getAttribute('data-stat');
+                if (!key) continue;
+                node.textContent = _renderStatValue(key, stats[key]);
+            }
+        });
+
+        // Also keep the legacy header score in sync (covered by score_update too,
+        // but useful when a pure stats refresh arrives without score_update).
+        if (typeof stats.score === 'number') {
+            if (String(playerId) === USER_ID)        updateHeaderScores(stats.score, undefined);
+            else if (String(playerId) === OPPONENT_ID) updateHeaderScores(undefined, stats.score);
+        }
+    }
+
+    function _ingestStats(playerId, stats) {
+        if (!playerId || !stats) return;
+        var pid = String(playerId);
+        // Track opponent on first non-self stat we see.
+        if (!OPPONENT_ID && pid !== USER_ID) OPPONENT_ID = pid;
+        window.SB_LIVE_STATS[pid] = stats;
+        _paintStatsForPlayer(pid, stats);
+    }
+
+    // Repaint everything from cache (used when a view just rendered new
+    // [data-stat][data-player] nodes after socket events already arrived).
+    window.GRRepaintStats = function () {
+        Object.keys(window.SB_LIVE_STATS || {}).forEach(function (pid) {
+            _paintStatsForPlayer(pid, window.SB_LIVE_STATS[pid]);
+        });
+    };
+
+    // Per-question / per-buzz refresh
+    socket.on('player_stats_updated', function (data) {
+        if (!data || !data.stats) return;
+        _ingestStats(data.playerId, data.stats);
+    });
+
+    // Round-end aggregate (Record<playerId, PlayerLiveStats>)
+    function _ingestStatsRecord(record) {
+        if (!record) return;
+        Object.keys(record).forEach(function (pid) {
+            _ingestStats(pid, record[pid]);
+        });
+    }
+
+    socket.on('round_stats', function (rollup) {
+        if (!rollup || !rollup.players) return;
+        _ingestStatsRecord(rollup.players);
+    });
+
+    socket.on('match_stats', function (rollup) {
+        if (!rollup || !rollup.players) return;
+        _ingestStatsRecord(rollup.players);
+    });
+
+    // round_ended / match_ended events also ship playerStats — pick them up
+    // so old listeners don't have to be rewired.
+    socket.on('round_ended', function (data) {
+        if (data && data.playerStats) _ingestStatsRecord(data.playerStats);
+    });
+
+    // Hydrate from the canonical state on initial join (server already mirrors
+    // live-stat fields back onto Player, so data.players[*] carries them too).
+    function _hydrateStatsFromState(playersMap) {
+        if (!playersMap) return;
+        Object.keys(playersMap).forEach(function (pid) {
+            var p = playersMap[pid];
+            if (!p) return;
+            _ingestStats(pid, {
+                playerId: pid,
+                score:             p.score             || 0,
+                roundScore:        p.roundScore        || 0,
+                roundsWon:         p.roundsWon         || 0,
+                lives:             p.lives             || 0,
+                correctAnswers:    p.correctAnswers    || 0,
+                wrongAnswers:      p.wrongAnswers      || 0,
+                totalAnswers:      p.totalAnswers      || 0,
+                accuracyPercent:   p.accuracyPercent   || 0,
+                efficiencyPercent: p.efficiencyPercent || 0,
+                averageResponseMs: p.averageResponseMs || 0,
+                buzzCount:         p.buzzCount         || 0,
+                buzzWon:           p.buzzWon           || 0,
+                buzzLost:          p.buzzLost          || 0,
+                currentStreak:     p.currentStreak     || 0,
+                bestStreak:        p.bestStreak        || 0,
+            });
+        });
+    }
+    socket.on('state', function (payload) {
+        if (!payload) return;
+        var data = payload.state || payload;
+        if (data.players) _hydrateStatsFromState(data.players);
+    });
+    socket.on('game_state', function (data) {
+        if (data && data.players) _hydrateStatsFromState(data.players);
+    });
+
 })();

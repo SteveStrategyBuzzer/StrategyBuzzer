@@ -960,9 +960,9 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
         <div class="score-player">
             <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar-small">
             <div class="score-label">{{ __('Vous') }}</div>
-            <div class="score-number" id="playerScore">{{ $playerScore ?? 0 }}</div>
+            <div class="score-number" id="playerScore" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</div>
             <div class="score-efficiency-label">{{ __('Efficacité') }}</div>
-            <div class="score-efficiency" id="playerEfficiency">{{ $playerEfficiency }}%</div>
+            <div class="score-efficiency" id="playerEfficiency" data-stat="efficiencyPercent" data-player="self">{{ $playerEfficiency }}%</div>
         </div>
         
         <div class="vs-divider">VS</div>
@@ -974,9 +974,9 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
                 <div class="opponent-avatar-empty">?</div>
             @endif
             <div class="score-label">{{ $opponentName ?? __('Adversaire') }}</div>
-            <div class="score-number" id="opponentScore">{{ $opponentScore ?? 0 }}</div>
+            <div class="score-number" id="opponentScore" data-stat="score" data-player="opponent">{{ $opponentScore ?? 0 }}</div>
             <div class="score-efficiency-label">{{ __('Efficacité') }}</div>
-            <div class="score-efficiency" id="opponentEfficiency">{{ $opponentEfficiency }}%</div>
+            <div class="score-efficiency" id="opponentEfficiency" data-stat="efficiencyPercent" data-player="opponent">{{ $opponentEfficiency }}%</div>
         </div>
     </div>
     
@@ -1455,23 +1455,12 @@ $opponentEfficiency = max(0, min(100, (int) round(($opponentScore / (2 * $_effN)
             navigateToFinalResults();
         });
     }
-    function _calcEfficiency(score, n) {
-        n = Math.max(1, n || 1);
-        // Official formula: (points / max_possible) × 100, max_possible = n × 2
-        return Math.max(0, Math.min(100, Math.round((score / (2 * n)) * 100)));
-    }
-    function _onResultScoreUpdate(data) {
-        console.log('[DuoResult] Score update', data);
-        if (data.playerScore !== undefined) {
-            playerScoreEl.textContent = data.playerScore;
-            var pEff = document.getElementById('playerEfficiency');
-            if (pEff) { pEff.textContent = _calcEfficiency(data.playerScore, CURRENT_QUESTION) + '%'; }
-        }
-        if (data.opponentScore !== undefined) {
-            opponentScoreEl.textContent = data.opponentScore;
-            var oEff = document.getElementById('opponentEfficiency');
-            if (oEff) { oEff.textContent = _calcEfficiency(data.opponentScore, CURRENT_QUESTION) + '%'; }
-        }
+    // Task #38 NOYAU STATS LIVE: efficiency is server-authoritative.
+    // Score and efficiency now live on [data-stat][data-player] nodes
+    // and are repainted by GameplayRuntime listeners. We keep this listener
+    // as a thin shim — the heavy lifting happens in player_stats_updated.
+    function _onResultScoreUpdate(/* data */) {
+        if (typeof window.GRRepaintStats === 'function') window.GRRepaintStats();
     }
     function _onResultPlayerReady(data) {
         console.log('[DuoResult] Player ready received', data);
