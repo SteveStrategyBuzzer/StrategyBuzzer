@@ -1,0 +1,184 @@
+Titre : StrategyBuzzer — Suite #38 + correction préalable du contrat runtime join_room
+
+Tu es Lead Senior Architect StrategyBuzzer.
+
+Contexte immuable :
+- Replit = source de vérité
+- GitHub = miroir officiel
+- VM = production, jamais source de vérité
+- Laravel = rendu, routes, API, DB, profils, stats persistées
+- Node.js + Socket.IO = autorité gameplay temps réel
+- Redis = état match/session
+- Firebase = présence + WebRTC seulement, jamais gameplay
+- Client JS = affichage uniquement
+
+IMPORTANT — Régression actuelle à corriger AVANT #38 :
+Dans F12 VM, on voit :
+VALIDATION_ERROR: Invalid join_room payload
+
+Diagnostic confirmé :
+- JoinRoomSchema Node exige :
+  roomId optional
+  lobbyCode optional
+  playerId required
+  playerName required
+  avatarId optional
+  strategicAvatarId optional
+  color optional
+  division optional
+  token optional
+
+- DuoSocketClient envoie :
+  roomId, lobbyCode, playerId, playerName, avatarId, strategicAvatarId, division, token
+
+Donc le schéma et le payload client sont compatibles.
+
+Cause probable confirmée :
+GameplayRuntime.js construit joinPayload avec :
+  playerId: USER_ID || ''
+  token: JWT_TOKEN
+  Object.assign(..., PLAYER_INFO)
+  if (PLAYER_NAME) joinPayload.playerName = PLAYER_NAME
+
+Mais les pages Duo gameplay injectent :
+  CURRENT_USER_ID ✅
+  USER_ID ❌
+  PLAYER_NAME ❌
+  PLAYER_INFO ❌
+
+Seul lobby.blade.php injecte PLAYER_NAME et PLAYER_INFO.
+
+Donc le payload join_room peut partir avec playerId/playerName vide sur les pages gameplay.
+
+Objectif correction préalable :
+Créer un contrat runtime central propre, compatible avec #38.
+
+Ne pas patcher 6 vues au hasard.
+Ne pas modifier le schéma Node à l’aveugle.
+Ne pas rendre le client autoritaire.
+
+Solution attendue :
+1. Créer un contrat unique :
+   window.SB_GAME_CONTEXT = {
+     roomId,
+     lobbyCode,
+     jwtToken,
+     currentUserId,
+     playerName,
+     playerInfo,
+     mode,
+     page
+   }
+
+2. GameplayRuntime.js doit lire en priorité SB_GAME_CONTEXT.
+
+3. Pendant transition, garder fallback rétrocompatible :
+   - roomId = SB_GAME_CONTEXT.roomId || window.ROOM_ID
+   - lobbyCode = SB_GAME_CONTEXT.lobbyCode || window.LOBBY_CODE
+   - jwtToken = SB_GAME_CONTEXT.jwtToken || window.JWT_TOKEN
+   - currentUserId = SB_GAME_CONTEXT.currentUserId || window.USER_ID || window.CURRENT_USER_ID
+   - playerName = SB_GAME_CONTEXT.playerName || window.PLAYER_NAME || 'Joueur'
+   - playerInfo = SB_GAME_CONTEXT.playerInfo || window.PLAYER_INFO || {}
+
+4. join_room doit toujours envoyer :
+   - playerId non vide
+   - playerName non vide
+   - token si disponible
+   - roomId ou lobbyCode
+
+5. Ajouter une validation défensive dans GameplayRuntime avant joinRoom :
+   si playerId ou playerName manquant :
+   console.error clair + ne pas emit join_room
+   sinon emit.
+
+6. Ne pas faire de logique gameplay client.
+   Ce contrat sert seulement à identifier le joueur et connecter Socket.IO.
+
+Ensuite seulement, poursuivre #38 :
+- centralisation scores/stats/efficacité côté Node
+- PlayerLiveStats
+- MatchStats
+- player_stats_updated
+- round_stats
+- match_stats
+- Blade passif data-stat
+- Laravel persistance à MATCH_END
+
+Méthode obligatoire :
+GREP → SLICE → PATCH → VALIDATION
+
+Patchs exigés :
+Patch 1 = diagnostic contrat global
+- grep SB_GAME_CONTEXT, ROOM_ID, CURRENT_USER_ID, USER_ID, PLAYER_NAME, PLAYER_INFO
+- slice GameplayRuntime.js start + join block
+- slice layouts.game script order
+- slice toutes les pages gameplay concernées
+
+Patch 2 = GameplayRuntime fallback central seulement
+- lire SB_GAME_CONTEXT + legacy globals
+- créer joinPayload central
+- bloquer join_room si playerId/playerName vides
+- validation : node --check public/js/GameplayRuntime.js
+
+Patch 3 = injection SB_GAME_CONTEXT dans layouts/game ou via partial Blade réutilisable
+- créer un partial commun si possible, ex : resources/views/partials/game-context.blade.php
+- chaque page fournit seulement ses variables PHP
+- validation : php -l
+
+Patch 4 = migration Duo sur SB_GAME_CONTEXT
+- game_intro
+- duo_question
+- duo_answer
+- duo_result
+- duo_round_scoreboard
+- duo_match_result
+- duo_waiting si concernée
+
+Patch 5 = migration autres modes
+- Solo
+- Master
+- League
+
+Patch 6 = validation F12
+- plus aucun VALIDATION_ERROR join_room
+- payload join_room contient playerId/playerName
+- Node reçoit join_room
+- state/phase_changed continuent
+
+Ensuite reprendre le plan #38 original :
+- PlayerLiveStats dans packages/shared/src/types.ts
+- calculateEfficiency aligné #37
+- updatePlayerLiveStats côté game-engine
+- GameOrchestrator update stats après scoreAllBuzzers
+- events player_stats_updated / round_stats / match_stats
+- Redis result enrichi liveStats
+- GameplayRuntime data-stat
+- Blade display-only
+- endpoint Laravel signé à MATCH_END
+- migration Solo/Master/League
+- cleanup formules dispersées
+
+Interdictions :
+- aucun patch sans slice réel
+- aucun patch multi-fichiers fragile
+- aucun calcul score/stats/efficacité dans Blade
+- aucune logique READY côté client
+- aucun gameplay Firebase
+- ne pas utiliser .bak pour raisonner
+- ne pas modifier JoinRoomSchema juste pour masquer le problème
+- ne pas rendre playerName optional si le vrai problème est l’injection absente
+
+Validation obligatoire :
+- npm run build pour Node
+- npm run build -w @strategybuzzer/shared si shared touché
+- npm test -w @strategybuzzer/game-engine si scoring touché
+- php -l pour chaque Blade/PHP touché
+- node --check pour chaque JS touché
+- slice élargi après patch
+
+But final :
+Un seul contrat runtime pour tous les modes.
+Un seul noyau Node pour scores/stats/efficacité.
+Aucun calcul gameplay dispersé.
+Duo sert de modèle live réel.
+Solo, Maître du jeu et Ligue réutilisent la même logique.

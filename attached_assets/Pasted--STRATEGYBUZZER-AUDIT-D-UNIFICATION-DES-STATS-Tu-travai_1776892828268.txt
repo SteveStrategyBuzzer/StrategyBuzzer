@@ -1,0 +1,64 @@
+🔥 STRATEGYBUZZER — AUDIT D’UNIFICATION DES STATS
+
+Tu travailles dans le pipeline officiel :
+
+* Replit = source de vérité
+* GitHub = miroir officiel
+* VM = production
+* aucun correctif manuel directement sur VM sans passer ensuite par Git
+
+Mission actuelle :
+réenligner totalement le système de statistiques StrategyBuzzer pour éviter les calculs parallèles et les métriques trompeuses.
+
+Contexte confirmé :
+
+* `LobbyController::getPlayerStats()` calcule actuellement des stats Duo localement à partir de `DuoMatch`
+* dans le modal lobby, le champ “Précision” a été renommé “Efficacité Duo” car la métrique actuelle n’était pas une vraie précision
+* plusieurs sources stats existent déjà dans le projet
+
+Tu dois auditer ces sources avant toute proposition :
+
+* `app/Models/PlayerDuoStat.php`
+* `app/Models/MatchPerformance.php`
+* `app/Services/StatisticsService.php`
+* `resources/views/profile.blade.php`
+* `resources/views/duo_result.blade.php`
+* `app/Http/Controllers/LobbyController.php`
+* toute autre source réellement liée aux stats si trouvée dans le code
+
+🎯 Objectif
+Déterminer comment unifier proprement les stats sans recréer un système from scratch.
+
+Tu dois distinguer clairement :
+
+1. score de match
+2. précision gameplay réelle
+3. efficacité/performance agrégée
+4. stats carrière par mode
+5. historique head-to-head entre joueurs
+
+⚠️ Interdictions absolues
+
+* ne pas proposer une réécriture complète si l’existant couvre déjà 70 à 80%
+* ne pas inventer de nouvelles métriques sans justifier pourquoi l’existant ne suffit pas
+* ne pas toucher à l’autorité gameplay Node
+* ne pas faire de patch tout de suite
+* ne pas supposer : chaque conclusion doit être rattachée à un fichier précis
+
+✅ Sortie attendue
+Tu dois fournir uniquement :
+
+1. Un audit structuré des sources existantes
+2. Les contradictions réelles entre `win_rate`, `efficiency`, `global_efficiency`, `accuracyPct`, etc.
+3. La meilleure source existante pour chaque type de statistique
+4. Un plan minimal d’unification en étapes
+5. Les fichiers à modifier plus tard, sans coder encore
+6. Les risques de régression
+
+Très important :
+L’objectif n’est pas de coder maintenant.
+L’objectif est de préparer un refactor propre qui passera ensuite par :
+
+Replit → GitHub → VM
+
+Donc je veux une réponse d’architecte, pas un patch immédiat.

@@ -1,0 +1,169 @@
+Titre : StrategyBuzzer — Build global gameplay + centralisation scores/stats/efficacité
+
+Tu es Lead Senior Architect StrategyBuzzer.
+
+Contexte immuable :
+- Replit = source de vérité
+- GitHub = miroir officiel
+- VM = production, jamais source de vérité
+- Laravel = rendu, routes, API, DB, profils, stats persistées
+- Node.js + Socket.IO = autorité gameplay temps réel : phases, timers, buzz, réponses, score live, transitions
+- Redis = état match/session
+- Firebase = présence + WebRTC seulement, jamais gameplay
+- Client JS = affichage uniquement
+
+Objectif :
+Construire/aligner une architecture globale gameplay qui couvre Duo, Solo, Maître du jeu, Ligue et futures variantes, en centralisant :
+- score live
+- score par manche
+- score match
+- réponses bonnes/mauvaises
+- précision %
+- efficacité %
+- temps moyen de réponse
+- buzz gagnés/perdus
+- skills utilisés
+- vies
+- rounds gagnés
+- stats fin de question
+- stats fin de manche
+- stats fin de match
+- stats persistées joueur/profil
+
+Règle absolue :
+Node est l’autorité live.
+Laravel persiste et affiche.
+Le client ne calcule jamais une vérité gameplay autonome.
+
+Architecture cible :
+1. Créer ou consolider un service central de scoring côté Node :
+   - ScoreEngine / StatsEngine / MatchStatsService
+   - utilisé par Duo, Solo, Ligue, Maître du jeu
+   - aucun calcul dispersé dans les vues Blade
+   - aucun calcul score/stats dupliqué dans GameplayRuntime.js
+
+2. Définir un modèle commun :
+   PlayerLiveStats :
+   - playerId
+   - score
+   - roundScore
+   - roundsWon
+   - lives
+   - correctAnswers
+   - wrongAnswers
+   - totalAnswers
+   - accuracyPercent
+   - efficiencyPercent
+   - averageResponseMs
+   - buzzCount
+   - buzzWon
+   - buzzLost
+   - skillUses
+   - currentStreak
+   - bestStreak
+
+   MatchStats :
+   - roomId
+   - mode
+   - roundNumber
+   - questionIndex
+   - players
+   - teamStats si applicable
+   - winner
+   - endedAtMs
+
+3. Toutes les pages doivent lire la même source :
+   - duo_question
+   - duo_answer
+   - duo_result
+   - duo_round_scoreboard
+   - duo_match_result
+   - solo/gameplay
+   - master pages
+   - league pages
+
+4. Les transitions doivent suivre le flow officiel :
+   Lobby
+   → READY via Socket
+   → phase_changed Node
+   → SYNC
+   → INTRO
+   → GAMEPLAY : Q → R → R → S
+   → ROUND_END
+   → MATCH_END
+
+5. Les stats doivent être produites à chaque niveau :
+   - après chaque réponse
+   - après chaque question
+   - après chaque manche
+   - après match
+   - puis envoyées à Laravel pour persistance
+
+6. Le score affiché doit être identique partout :
+   - header joueur
+   - cartes joueurs
+   - écran réponse
+   - écran résultat
+   - fin de manche
+   - fin de match
+   - profil/statistiques
+
+Méthode obligatoire :
+Avant chaque modification :
+GREP → SLICE → PATCH → VALIDATION
+
+Interdictions :
+- aucun patch sans slice réel
+- aucun patch large fragile
+- aucun calcul gameplay dans Blade
+- aucune logique autonome client
+- aucune logique READY côté client
+- aucun fallback Firebase gameplay
+- ne jamais utiliser .bak pour raisonner
+
+Patchs :
+- toujours du bas vers le haut dans un fichier
+- 1 patch = 1 action logique
+- validation obligatoire après chaque patch :
+  - npm run build pour Node
+  - php -l pour PHP/Blade
+  - node --check pour JS
+  - slice élargi nl -ba + sed
+
+Livrable attendu :
+1. Audit des fichiers existants impliqués dans les scores/stats :
+   - Node services
+   - game-engine package
+   - shared types/events
+   - GameplayRuntime.js
+   - DuoSocketClient.js
+   - Blade pages
+   - Laravel controllers/services
+
+2. Proposition d’architecture centrale :
+   - quels fichiers créer/modifier
+   - quelles responsabilités exactes
+   - quelles données transitent Socket.IO
+   - quelles données persistent Laravel
+
+3. Plan de patchs par ordre sécuritaire :
+   - types/events partagés
+   - reducer/state-machine si nécessaire
+   - service scoring Node
+   - handlers Socket
+   - GameplayRuntime affichage
+   - Blade affichage seulement
+   - Laravel persistance
+
+4. Commencer uniquement par le premier patch ancré :
+   - GREP
+   - SLICE
+   - PATCH
+   - VALIDATION
+
+Priorité :
+On ne veut plus corriger Duo comme un cas isolé.
+Duo doit devenir le modèle live réel.
+Solo doit pouvoir réutiliser la même logique avec bots.
+Maître du jeu et Ligue doivent réutiliser les mêmes stats/scores.
+Le score/stats/efficacité doit devenir un noyau central stable du projet.
