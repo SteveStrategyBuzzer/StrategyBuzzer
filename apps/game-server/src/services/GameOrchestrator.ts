@@ -1438,6 +1438,7 @@ export class GameOrchestrator {
     this.syncExpectedMaps.delete(roomId);
     this.allBuzzerAnswers.delete(roomId);
     this.playerStats.delete(roomId);
+    this.currentQuestionPublishedAtMs.delete(roomId);
     console.log(`[GameOrchestrator] Cleaned up room ${roomId}`);
   }
 
