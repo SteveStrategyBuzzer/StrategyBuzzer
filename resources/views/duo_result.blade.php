@@ -1,6 +1,18 @@
 @extends('layouts.game')
 
 @section('game-data')
+@include('partials.game-context', [
+    'roomId'         => $room_id ?? '',
+    'lobbyCode'      => $lobby_code ?? null,
+    'jwtToken'       => $jwt_token ?? '',
+    'matchId'        => $match_id ?? '',
+    'mode'           => 'duo',
+    'page'           => 'result',
+    'totalQuestions' => $totalQuestions ?? 10,
+    'playerName'     => $playerName ?? (auth()->user()->name ?? 'Joueur'),
+    'playerInfo'     => ['avatarId' => $playerAvatar ?? null],
+    'noBrainOverlay' => true,
+])
 <script>
 window.MATCH_ID             = @json((string)($match_id ?? ''));
 window.ROOM_ID              = @json((string)($room_id ?? ''));

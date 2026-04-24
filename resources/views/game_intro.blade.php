@@ -1,6 +1,19 @@
 @extends('layouts.game')
 
 @section('game-data')
+@include('partials.game-context', [
+    'roomId'         => $params['room_id'] ?? '',
+    'lobbyCode'      => $params['lobby_code'] ?? null,
+    'jwtToken'       => $params['jwt_token'] ?? '',
+    'matchId'        => $params['match_id'] ?? '',
+    'mode'           => $params['mode'] ?? 'duo',
+    'page'           => 'intro',
+    'playerName'     => $params['player_name'] ?? (auth()->user()->name ?? 'Joueur'),
+    'playerInfo'     => ['avatarId' => $params['player_avatar'] ?? null],
+    'noSocketOverlay'=> true,
+    'noBrainOverlay' => true,
+    'hideHeader'     => true,
+])
 <script>
 window.ROOM_ID           = @json($params['room_id'] ?? null);
 window.JWT_TOKEN         = @json($params['jwt_token'] ?? null);
@@ -522,18 +535,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // 10-second rescue: re-request state from server (not a blind redirect).
     // The server responds with game_state; our onPhase() handler navigates only
     // if the server confirms QUESTION_ACTIVE. No navigation on cached state.
+    // NOTE: re-uses DuoSocketClient.joinRoom so payload matches GameplayRuntime
+    // (playerName included — required by server JoinRoomSchema).
     setTimeout(function() {
         if (redirected) return;
         console.log('[Intro] Rescue (10s): re-requesting state from server...');
         var sock = DuoSocketClient.socket;
         if (sock && sock.connected && window.ROOM_ID) {
-            sock.emit('join_room', {
-                roomId: window.ROOM_ID,
-                lobbyCode: window.LOBBY_CODE || null,
-                playerId: String(window.CURRENT_USER_ID || ''),
-                token: window.JWT_TOKEN || null
-            });
-            console.log('[Intro] Rescue: join_room re-emitted — awaiting server game_state...');
+            var ctx = window.SB_GAME_CONTEXT || {};
+            var playerName = ctx.playerName || window.PLAYER_NAME;
+            var playerId   = String(ctx.currentUserId || window.CURRENT_USER_ID || '');
+            if (!playerName || !playerId) {
+                console.warn('[Intro] Rescue: missing playerName or playerId — skipping re-join.');
+            } else {
+                DuoSocketClient.joinRoom(window.ROOM_ID, window.LOBBY_CODE || null, {
+                    playerId:   playerId,
+                    playerName: playerName,
+                    token:      window.JWT_TOKEN || null,
+                    avatarId:   (ctx.playerInfo && ctx.playerInfo.avatarId) || (window.PLAYER_INFO && window.PLAYER_INFO.avatarId) || null
+                });
+                console.log('[Intro] Rescue: join_room re-emitted via DuoSocketClient — awaiting server game_state...');
+            }
         } else {
             console.warn('[Intro] Rescue: socket offline — starting 30s fallback timer.');
         }

@@ -402,6 +402,39 @@ const DuoSocketClient = {
         return true;
     },
 
+    questionPageReady() {
+        if (!this.isConnected() || !this.currentRoomId) {
+            this._log('Cannot signal question_page_ready: not connected or not in room');
+            return false;
+        }
+        this._log('Emitting question_page_ready');
+        this.socket.emit('question_page_ready', {
+            roomId: this.currentRoomId
+        });
+        return true;
+    },
+
+    saveState(data) {
+        try {
+            sessionStorage.setItem('duo_page_state', JSON.stringify(data || {}));
+        } catch (e) {
+            console.warn('[DuoSocket] saveState failed:', e);
+        }
+    },
+
+    restoreState() {
+        try {
+            var raw = sessionStorage.getItem('duo_page_state');
+            if (raw) {
+                sessionStorage.removeItem('duo_page_state');
+                return JSON.parse(raw);
+            }
+        } catch (e) {
+            console.warn('[DuoSocket] restoreState failed:', e);
+        }
+        return null;
+    },
+
     sendVoiceOffer(targetId, offer) {
         if (!this.isConnected() || !this.currentRoomId) {
             this._log('Cannot send voice offer: not connected or not in room');

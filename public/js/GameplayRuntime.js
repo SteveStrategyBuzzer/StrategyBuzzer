@@ -143,15 +143,16 @@
     window.GRUpdateCounter     = updateHeaderCounter;
     window.GRUpdateRound       = updateHeaderRound;
 
-    // Socket initialization — only if ROOM_ID + JWT_TOKEN present
+    // Socket initialization — read from SB_GAME_CONTEXT first, fallback to legacy window.*
 
-    var ROOM_ID         = window.ROOM_ID || null;
-    var JWT_TOKEN       = window.JWT_TOKEN || null;
-    var LOBBY_CODE      = window.LOBBY_CODE || null;
-    var USER_ID         = window.CURRENT_USER_ID ? String(window.CURRENT_USER_ID) : null;
-    var PLAYER_NAME     = window.PLAYER_NAME || null;
-    var PLAYER_INFO     = window.PLAYER_INFO || {};
-    var TOTAL_QUESTIONS = window.TOTAL_QUESTIONS || 10;
+    var CTX = window.SB_GAME_CONTEXT || {};
+    var ROOM_ID         = CTX.roomId        || window.ROOM_ID         || null;
+    var JWT_TOKEN       = CTX.jwtToken      || window.JWT_TOKEN       || null;
+    var LOBBY_CODE      = CTX.lobbyCode     || window.LOBBY_CODE      || null;
+    var USER_ID         = (CTX.currentUserId || window.CURRENT_USER_ID) ? String(CTX.currentUserId || window.CURRENT_USER_ID) : null;
+    var PLAYER_NAME     = CTX.playerName    || window.PLAYER_NAME     || null;
+    var PLAYER_INFO     = CTX.playerInfo    || window.PLAYER_INFO     || {};
+    var TOTAL_QUESTIONS = CTX.totalQuestions || window.TOTAL_QUESTIONS || 10;
     var NO_OVERLAY      = !!window.NO_SOCKET_OVERLAY;
     var HIDE_HEADER     = !!window.GR_HIDE_HEADER;
 
@@ -250,12 +251,24 @@
         if (!NO_OVERLAY) hideLoading();
         setConnectionStatus('', '');
 
+        // Defensive guard — server JoinRoomSchema requires non-empty playerId & playerName.
+        // Bail loudly here instead of letting the server reject with VALIDATION_ERROR.
+        if (!USER_ID || !PLAYER_NAME) {
+            console.error(
+                '[GameplayRuntime] Cannot join_room — missing playerId or playerName. ' +
+                'Make sure this view @includes partials.game-context with playerName set.',
+                { roomId: ROOM_ID, hasUserId: !!USER_ID, hasPlayerName: !!PLAYER_NAME }
+            );
+            setConnectionStatus('disconnected', (window.GR_LABELS && window.GR_LABELS.configMissing) || 'Configuration manquante');
+            return;
+        }
+
         // Join room — pass player metadata (merge window.PLAYER_INFO for extra fields like avatarId)
         var joinPayload = Object.assign({
-            playerId: USER_ID || '',
+            playerId: USER_ID,
+            playerName: PLAYER_NAME,
             token: JWT_TOKEN
         }, PLAYER_INFO);
-        if (PLAYER_NAME) joinPayload.playerName = PLAYER_NAME;
         socket.joinRoom(ROOM_ID, LOBBY_CODE, joinPayload);
         console.log('[GameplayRuntime] Joined room:', ROOM_ID);
     });

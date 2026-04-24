@@ -1,22 +1,27 @@
 @extends('layouts.game')
 
 @section('game-data')
-<script>
 @if(!empty($gameServerUrl) && !empty($lobby['game_server']['roomId']))
-window.ROOM_ID     = @json($lobby['game_server']['roomId']);
-window.JWT_TOKEN   = @json($playerToken ?? null);
-window.LOBBY_CODE  = @json($lobby['code'] ?? '');
-window.PLAYER_NAME = @json($players[$currentPlayerId]['name'] ?? 'Joueur');
-window.PLAYER_INFO = {
-    playerId: "{{ $currentPlayerId }}",
-    avatarId: @json($players[$currentPlayerId]['avatarId'] ?? $players[$currentPlayerId]['avatar'] ?? null)
-};
+@include('partials.game-context', [
+    'roomId'         => $lobby['game_server']['roomId'],
+    'lobbyCode'      => $lobby['code'] ?? '',
+    'jwtToken'       => $playerToken ?? '',
+    'mode'           => $lobby['mode'] ?? 'duo',
+    'page'           => 'lobby',
+    'playerName'     => $players[$currentPlayerId]['name'] ?? (auth()->user()->name ?? 'Joueur'),
+    'playerInfo'     => [
+        'playerId' => (string)$currentPlayerId,
+        'avatarId' => $players[$currentPlayerId]['avatarId'] ?? $players[$currentPlayerId]['avatar'] ?? null,
+    ],
+    'noSocketOverlay'=> true,
+])
 @else
+<script>
 window.ROOM_ID   = null;
 window.JWT_TOKEN = null;
-@endif
 window.NO_SOCKET_OVERLAY = true;
 </script>
+@endif
 @endsection
 
 @section('content')

@@ -243,6 +243,19 @@
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 
+<!-- Game server URL: prefer .env GAME_SERVER_URL (prod), else dev fallback hostname:3001 -->
+<script>
+(function () {
+    var configured = @json(config('app.game_server_url', null));
+    if (configured && configured.indexOf('localhost') === -1) {
+        window.GAME_SERVER_URL = configured;
+    } else {
+        // Dev / Replit: same hostname, port 3001
+        window.GAME_SERVER_URL = window.location.protocol + '//' + window.location.hostname + ':3001';
+    }
+})();
+</script>
+
 <!-- Window variables set by each game view (must come before GameplayRuntime) -->
 @yield('game-data')
 
