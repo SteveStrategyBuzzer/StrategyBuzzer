@@ -21,7 +21,7 @@
     </script>
 
     <title>StrategyBuzzer</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.png') }}">
