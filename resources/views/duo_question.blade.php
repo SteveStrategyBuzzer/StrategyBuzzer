@@ -750,7 +750,11 @@ $mode = 'duo';
                 <div class="player-name">{{ $playerName ?? __('Vous') }}</div>
                 <div class="player-level">{{ __('Niveau') }} {{ $playerLevel ?? 0 }} {{ __('Duo') }}</div>
                 <div class="player-score" id="playerScore" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</div>
-                <div class="live-stats player" aria-label="{{ __('Stats en direct') }}">
+                {{-- Player live-stats row (efficiency / streak / avg buzz / correct/buzz) intentionally hidden:
+                     same UX rationale as the opponent row below — the "0% · 0/0" badge is noise on the Question
+                     page. DOM nodes are kept (display:none) so GameplayRuntime data-stat updates never throw
+                     and so we can re-enable later without restoring markup. --}}
+                <div class="live-stats player" aria-label="{{ __('Stats en direct') }}" style="display:none;" aria-hidden="true">
                     <div class="stat-row">
                         <span class="stat-label">⚡</span>
                         <span class="stat-value" data-stat="efficiencyPercent" data-player="self">0%</span>
@@ -1051,7 +1055,20 @@ $mode = 'duo';
     
     function syncTimerWithServer(serverPhaseEndsAtMs) {
         if (!serverPhaseEndsAtMs) return;
-        
+
+        // The chrono on the Question page represents the QUESTION countdown only.
+        // Other phases the orchestrator drives — ANSWER_COLLECTION (2s grace),
+        // RESULT (60s ready-up window), ROUND_SCOREBOARD, etc. — must NOT be
+        // displayed here, otherwise the user sees the chrono jump to "2" right
+        // after the question ends and then to "60 → 57 → …" before the page
+        // navigates to the Result view. Only sync when we're either:
+        //   - explicitly in QUESTION_ACTIVE, or
+        //   - on initial page load before the first phase event arrives
+        //     (currentPhase still seeded with default 'QUESTION_ACTIVE').
+        if (currentPhase && currentPhase !== 'QUESTION_ACTIVE') {
+            return;
+        }
+
         phaseEndsAtMs = serverPhaseEndsAtMs;
         const now = Date.now();
         const remainingMs = Math.max(0, phaseEndsAtMs - now);
