@@ -1073,16 +1073,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const incorrectSound = document.getElementById('incorrectSound');
     let answerButtons = document.querySelectorAll('.answer-button');
 
-    // ── Bridge UI: warm restore — immediately render cached scores before socket arrives ──
-    (function() {
-        var rps = window.GR_RESTORED_PLAYER_SCORE;
-        var ros = window.GR_RESTORED_OPPONENT_SCORE;
-        var playerScoreEl   = document.getElementById('playerScore');
-        var opponentScoreEl = document.getElementById('opponentScore');
-        if (rps !== undefined && playerScoreEl)   { playerScoreEl.textContent   = String(rps); }
-        if (ros !== undefined && opponentScoreEl) { opponentScoreEl.textContent = String(ros); }
-    })();
-    
+    // NOTE: warm restore from GR_RESTORED_PLAYER_SCORE / GR_RESTORED_OPPONENT_SCORE
+    // is NOT needed on this view — the score DOM nodes here use [data-stat="score"]
+    // selectors and are hydrated by initScoresFromLiveStats() above (from
+    // window.SB_LIVE_STATS) plus subsequent socket score_update events handled
+    // canonically by GameplayRuntime.js. The duo_question variant of this block
+    // exists because that view uses #playerScore / #opponentScore literal IDs.
+
     function _applyIlluminateEffect() {
         // Highlight every digit sequence inside the question text, not answer options
         var questionBox = document.querySelector('.question-text-box');
@@ -1722,39 +1719,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             }
         } catch (e) { /* sessionStorage may be unavailable in private mode */ }
 
-        // Visual feedback only — navigation is driven exclusively by phase_changed events
-        // (QUESTION_ACTIVE for next question, ROUND_SCOREBOARD for scoreboard, MATCH_END for final).
-        // Exception: matchEnded flag for immediate end-of-match redirect.
-        if (data.matchEnded) {
-            const delay = isCorrect ? 1200 : 3000;
-            setTimeout(function() {
-                if (isRedirecting) return;
-                isRedirecting = true;
-                (window.duoNavigate || function(u) { window.location.href = u; })(
-                    (window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID)
-                );
-            }, delay);
-        }
-    }
-    function _onAnswerRoundEnded(data) {
-        // round_ended fires at end of a full round → V3 round scoreboard
-        if (isRedirecting) return;
-        setTimeout(function() {
-            if (isRedirecting) return;
-            isRedirecting = true;
-            (window.duoNavigate || function(u) { window.location.href = u; })(
-                (window.ROUND_SCOREBOARD_URL || window.RESULT_URL || '/game/duo/round-scoreboard') + '?match_id=' + encodeURIComponent(MATCH_ID)
-            );
-        }, 2000);
-    }
-    function _onAnswerMatchEnded(data) {
-        if (isRedirecting) return;
-        isRedirecting = true;
-        setTimeout(function() {
-            (window.duoNavigate || function(u) { window.location.href = u; })(
-                (window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID)
-            );
-        }, 2000);
+        // Visual feedback only — navigation is driven SOLELY by phase_changed events
+        // per architecture rule: Node = sole phase authority. ROUND_SCOREBOARD and
+        // MATCH_END phases are emitted by GameOrchestrator; this view reacts only to
+        // those phase transitions. Legacy `data.matchEnded` branch + `_onAnswerRoundEnded`
+        // + `_onAnswerMatchEnded` removed (they raced with phase_changed and the
+        // `isRedirecting` guard always picked the first arrival, making them dead).
     }
     function _onAnswerPhaseChanged(data) {
         if (isRedirecting || !data || !data.phase) return;
@@ -1822,17 +1792,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             }, 1000);
         }
     }
-    // Task #38 NOYAU STATS LIVE: efficiency is server-authoritative.
-    // The DOM nodes are now wired via [data-stat="..."][data-player="self"]
-    // and updated by GameplayRuntime listeners. These two thin wrappers stay
-    // for backward-compat with code paths that still call them — they just
-    // ask GameplayRuntime to repaint from the cache.
-    function _updateEfficiencyDisplay(/* score */) {
-        if (typeof window.GRRepaintStats === 'function') window.GRRepaintStats();
-    }
-    function _onAnswerScoreUpdate(/* data */) {
-        if (typeof window.GRRepaintStats === 'function') window.GRRepaintStats();
-    }
+    // Task #38 NOYAU STATS LIVE: efficiency + score are server-authoritative
+    // via GameplayRuntime.js subscribing to player_stats_updated / score_update
+    // and writing to [data-stat="..."][data-player="..."] nodes. Removed legacy
+    // no-op wrappers `_updateEfficiencyDisplay()` and `_onAnswerScoreUpdate()`
+    // — they only proxied to GRRepaintStats() with no extra logic, and
+    // `score_update` was double-bound (GameplayRuntime canonical handler +
+    // this stub doing nothing).
+
     function _initAnswerEffects() {
         GameEffectsRuntime.registerEffect('shuffle_answers', {
             onStart: function() {
@@ -1863,7 +1830,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
         }
     }
-    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
+    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads.
+    // round_ended / match_ended / score_update bindings removed: round_ended + match_ended
+    // navigations are now handled solely via phase_changed; score_update is handled
+    // canonically by GameplayRuntime.js (no view-local handler needed).
     window._duoAnswerHandlers = {
         connect:         _onAnswerConnect,
         disconnect:      _onAnswerDisconnect,
@@ -1871,10 +1841,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         state:           _onAnswerState,
         game_state:      _onAnswerGameState,
         answer_revealed: _onAnswerRevealed,
-        round_ended:     _onAnswerRoundEnded,
-        match_ended:     _onAnswerMatchEnded,
         phase_changed:   _onAnswerPhaseChanged,
-        score_update:    _onAnswerScoreUpdate,
         skill_effect:    _onSkillEffect,
         skill_failed:    _onSkillFailed,
         initEffects:     _initAnswerEffects
@@ -2019,10 +1986,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         ds.on('state',           h.state);
         ds.on('game_state',      h.game_state);
         ds.on('answer_revealed', h.answer_revealed);
-        ds.on('round_ended',     h.round_ended);
-        ds.on('match_ended',     h.match_ended);
         ds.on('phase_changed',   h.phase_changed);
-        ds.on('score_update',    h.score_update);
         ds.on('skill_effect',    h.skill_effect);
         ds.on('skill_failed',    h.skill_failed);
         h.initEffects();
