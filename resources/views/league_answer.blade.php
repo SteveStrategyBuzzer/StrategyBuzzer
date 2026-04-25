@@ -670,11 +670,11 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
 </div>
 
 <audio id="correctSound" preload="auto">
-    <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('buzzers/correct/wow.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="incorrectSound" preload="auto">
-    <source src="{{ asset('audio/buzzers/incorrect/incorrect1.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('buzzers/incorrect/hey.mp3') }}" type="audio/mpeg">
 </audio>
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>

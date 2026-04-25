@@ -194,27 +194,23 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
 /* ===== LOBBY (Salon d'attente multijoueur) ===== */
 Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
     Route::get('/open', [LobbyController::class, 'getOpenLobbies'])->name('open');
-    Route::post('/create', [LobbyController::class, 'create'])->name('create');
-    Route::post('/join', [LobbyController::class, 'join'])->name('join');
     Route::post('/{code}/close', [LobbyController::class, 'closeLobby'])->name('close');
     Route::get('/player-stats/{playerId}', [LobbyController::class, 'getPlayerStats'])->name('player-stats');
     Route::get('/{code}', [LobbyController::class, 'show'])->name('show');
     Route::get('/{code}/state', [LobbyController::class, 'getState'])->name('state');
-    Route::post('/{code}/ready', [LobbyController::class, 'setReady'])->name('ready');
     Route::post('/{code}/color', [LobbyController::class, 'setColor'])->name('color');
-    Route::post('/{code}/team', [LobbyController::class, 'setTeam'])->name('team');
+    // SOCKET AUTHORITY DISABLED
+    // SOCKET AUTHORITY DISABLED
     Route::post('/{code}/create-team', [LobbyController::class, 'createTeam'])->name('create-team');
     Route::post('/{code}/settings', [LobbyController::class, 'updateSettings'])->name('settings');
     Route::post('/{code}/bet/propose', [LobbyController::class, 'proposeBet'])->name('bet.propose');
     Route::post('/{code}/bet/respond', [LobbyController::class, 'respondToBet'])->name('bet.respond');
     Route::post('/{code}/bet/cancel', [LobbyController::class, 'cancelBet'])->name('bet.cancel');
     Route::post('/{code}/bet/refund', [LobbyController::class, 'refundBets'])->name('bet.refund');
-    Route::post('/{code}/start', [LobbyController::class, 'start'])->name('start');
+    // SOCKET AUTHORITY DISABLED
     Route::post('/{code}/leave', [LobbyController::class, 'leave'])->name('leave');
     Route::post('/{code}/remove-player', [LobbyController::class, 'removePlayer'])->name('remove-player');
-    Route::post('/{code}/game-mode', [LobbyController::class, 'setGameMode'])->name('game-mode');
     Route::post('/{code}/match-players', [LobbyController::class, 'matchPlayersByLevel'])->name('match-players');
-    Route::post('/{code}/player-order', [LobbyController::class, 'setPlayerOrder'])->name('player-order');
 });
 
 Route::post('/api/strategic-avatar', [LobbyController::class, 'setStrategicAvatar'])->middleware('auth')->name('api.strategic-avatar');
@@ -239,6 +235,7 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::get('/rankings', [App\Http\Controllers\DuoController::class, 'rankings'])->name('rankings');
     Route::get('/contacts', [App\Http\Controllers\DuoController::class, 'getContacts'])->name('contacts');
     Route::post('/contacts/add', [App\Http\Controllers\DuoController::class, 'addContact'])->name('contacts.add');
+    Route::get('/contacts/lookup/{playerCode}', [App\Http\Controllers\DuoController::class, 'contactLookup'])->name('contacts.lookup');
     Route::delete('/contacts/{contactId}', [App\Http\Controllers\DuoController::class, 'deleteContact'])->name('contacts.delete');
     Route::get('/contacts/groups', [App\Http\Controllers\PlayerGroupController::class, 'index'])->name('contacts.groups');
     Route::post('/contacts/groups', [App\Http\Controllers\PlayerGroupController::class, 'store'])->name('contacts.groups.store');
@@ -257,6 +254,7 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::post('/match/{match}/hint', [App\Http\Controllers\DuoController::class, 'getHint'])->name('match.hint');
     Route::post('/match/{match}/ai-suggest', [App\Http\Controllers\DuoController::class, 'getAISuggestion'])->name('match.ai-suggest');
     Route::post('/match/{match}/preview-questions', [App\Http\Controllers\DuoController::class, 'getPreviewQuestions'])->name('match.preview-questions');
+
 });
 
 /* ===== CHAT (Messages entre joueurs) ===== */
@@ -372,7 +370,8 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::get('/{gameId}/teams', [App\Http\Controllers\MasterGameController::class, 'showTeams'])->name('teams');
     Route::post('/{gameId}/teams', [App\Http\Controllers\MasterGameController::class, 'saveTeams'])->name('teams.save');
     
-    Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
+    Route::get('/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
+    Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes.show');
     Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
     
     // Secure player join page (no gameId in URL - players enter code only)
@@ -400,10 +399,12 @@ Route::prefix('game/duo')->name('game.duo.')->middleware('auth')->group(function
     Route::get('/question', [App\Http\Controllers\DuoController::class, 'showQuestion'])->name('question');
     Route::get('/answer', [App\Http\Controllers\DuoController::class, 'showAnswer'])->name('answer');
     Route::get('/result', [App\Http\Controllers\DuoController::class, 'showResult'])->name('result');
+    Route::get('/round-scoreboard', [App\Http\Controllers\DuoController::class, 'showRoundScoreboard'])->name('round-scoreboard');
     Route::post('/fetch-question', [App\Http\Controllers\DuoController::class, 'fetchQuestionJson'])->name('fetch-question');
     Route::post('/use-skill', [App\Http\Controllers\DuoController::class, 'useSkill'])->name('use-skill');
     Route::get('/match-result', [App\Http\Controllers\DuoController::class, 'showMatchResult'])->name('match-result');
     Route::post('/forfeit', [App\Http\Controllers\DuoController::class, 'handleForfeit'])->name('forfeit');
+    Route::post('/match/{match}/finish-socketio', [App\Http\Controllers\DuoController::class, 'finishMatchSocketIO'])->name('finish-socketio');
 });
 
 /* ===== INTERFACE DE JEU LEAGUE (Socket.IO) ===== */

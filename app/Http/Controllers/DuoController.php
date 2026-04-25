@@ -5,14 +5,15 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use App\Services\DuoMatchmakingService;
 use App\Services\DivisionService;
-use App\Services\GameStateService;
 use App\Services\PlayerProfileSnapshotService;
-use App\Services\BuzzManagerService;
 use App\Services\PlayerContactService;
 use App\Services\LobbyService;
 use App\Services\GameServerService;
+use App\Services\BotQualificationService;
+use App\Services\GameStateService;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\User;
@@ -22,11 +23,11 @@ class DuoController extends Controller
     public function __construct(
         private DuoMatchmakingService $matchmaking,
         private DivisionService $divisionService,
-        private GameStateService $gameStateService,
-        private BuzzManagerService $buzzManager,
         private PlayerContactService $contactService,
         private LobbyService $lobbyService,
-        private GameServerService $gameServerService
+        private GameServerService $gameServerService,
+        private BotQualificationService $botQualificationService,
+        private GameStateService $gameStateService
     ) {}
 
     private function getPlayerSnapshot(User $user): array
@@ -63,7 +64,7 @@ class DuoController extends Controller
     {
         $avatarName = $this->getSnapshotStrategicAvatarName($snapshot);
 
-        if ($avatarName === 'Aucun') {
+        if ($this->normalizeAvatarName($avatarName) === 'aucun') {
             return null;
         }
 
@@ -71,12 +72,23 @@ class DuoController extends Controller
         $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
 
         foreach ($strategicAvatars as $avatar) {
-            if (($avatar['name'] ?? null) === $avatarName) {
+            if ($this->normalizeAvatarName($avatar['name'] ?? '') === $this->normalizeAvatarName($avatarName)) {
                 return $avatar['image'] ?? $avatar['path'] ?? null;
             }
         }
 
         return null;
+    }
+
+    private function getPlayerDuoLevel(int $userId): int
+    {
+        $stats = \App\Models\PlayerDuoStat::where('user_id', $userId)->first();
+        return $stats->level ?? 0;
+    }
+
+    private function normalizeAvatarName(mixed $name): string
+    {
+        return mb_strtolower(trim((string) $name), 'UTF-8');
     }
 
     private function generateFreshGameplayToken(?string $roomId, int $userId): ?string
@@ -142,16 +154,32 @@ class DuoController extends Controller
             ], 400);
         }
 
+        $pendingCounts = $this->matchmaking->getPendingInvitationCounts($user->id);
+        if ($pendingCounts['sent'] >= 5) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Vous avez atteint la limite de 5 invitations en attente'),
+            ], 400);
+        }
+
         $match = $this->matchmaking->createInvitation($user, $opponent->id);
 
         $lobby = $this->lobbyService->createLobby($user, 'duo', [
             'theme' => __('Culture générale'),
             'nb_questions' => 10,
             'match_id' => $match->id,
+            'hasBot' => $opponent->is_bot,
         ]);
 
         $match->lobby_code = $lobby['code'];
         $match->save();
+
+        // Bot opponents are auto-accepted so the host can play immediately
+        if ($opponent->is_bot) {
+            $this->matchmaking->acceptMatch($match);
+            $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
+            $this->lobbyService->joinLobby($lobby['code'], $opponent);
+        }
 
         try {
             app(\App\Services\DailyQuestService::class)->checkAndCompleteDailyQuest(
@@ -168,6 +196,7 @@ class DuoController extends Controller
             'match' => $match->load(['player1', 'player2']),
             'lobby_code' => $lobby['code'],
             'redirect_url' => route('lobby.show', ['code' => $lobby['code']]),
+            'is_bot_match' => (bool) $opponent->is_bot,
         ]);
     }
 
@@ -209,11 +238,31 @@ class DuoController extends Controller
             ], 400);
         }
 
+        $lobbyExists = (bool) $this->lobbyService->getLobby($match->lobby_code);
+
+        if (!$lobbyExists) {
+            $host = \App\Models\User::find($match->player1_id);
+            if ($host) {
+                $this->lobbyService->recreateLobby($match->lobby_code, $host, 'duo', [
+                    'theme'        => $match->theme ?? __('Culture générale'),
+                    'nb_questions' => 10,
+                    'match_id'     => $match->id,
+                ]);
+            }
+        }
+
         $this->matchmaking->acceptMatch($match);
 
         $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
 
-        $this->lobbyService->joinLobby($match->lobby_code, $user);
+        $joinResult = $this->lobbyService->joinLobby($match->lobby_code, $user);
+
+        if (!($joinResult['success'] ?? false) && !($joinResult['already_joined'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Le salon n\'a pas pu être rejoint. Demandez à votre adversaire de renvoyer une invitation.'),
+            ], 400);
+        }
 
         return response()->json([
             'success' => true,
@@ -266,184 +315,110 @@ class DuoController extends Controller
         ]);
     }
 
-    public function buzz(Request $request, DuoMatch $match)
-    {
-        $request->validate([
-            'question_id' => 'required|string',
-            'client_time' => 'nullable|numeric',
-        ]);
-
-        $user = Auth::user();
-
-        if ($match->player1_id !== $user->id && $match->player2_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'appartenez pas à ce match.',
-            ], 403);
-        }
-
-        $playerId = $match->player1_id === $user->id ? 'player' : 'opponent';
-
-        $gameState = $match->game_state;
-        $buzzes = $gameState['buzzes'] ?? [];
-
-        if (!$this->buzzManager->canBuzz($playerId, $buzzes)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Trop de buzz. Veuillez patienter.',
-            ], 429);
-        }
-
-        $buzzRecord = $this->buzzManager->recordBuzz($playerId, $request->input('client_time'));
-        $buzzes[] = $buzzRecord;
-
-        $gameState['buzzes'] = $buzzes;
-        $match->game_state = $gameState;
-        $match->save();
-
-        $fastest = $this->buzzManager->determineFastest($buzzes);
-
-        return response()->json([
-            'success' => true,
-            'buzzRecord' => $buzzRecord,
-            'fastest' => $fastest,
-            'canAnswer' => $fastest && $fastest['player_id'] === $playerId,
-        ]);
-    }
-
-    public function submitAnswer(Request $request, DuoMatch $match)
-    {
-        $request->validate([
-            'question_id' => 'required|string',
-            'answer' => 'required|string',
-            'correct_answer' => 'required|string',
-        ]);
-
-        $user = Auth::user();
-
-        if ($match->player1_id !== $user->id && $match->player2_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous n\'appartenez pas à ce match.',
-            ], 403);
-        }
-
-        $playerId = $match->player1_id === $user->id ? 'player' : 'opponent';
-
-        $gameState = $match->game_state;
-        $buzzes = $gameState['buzzes'] ?? [];
-
-        $fastest = $this->buzzManager->determineFastest($buzzes);
-        $isFirst = $fastest && $fastest['player_id'] === $playerId;
-
-        $isCorrect = strtolower(trim($request->answer)) === strtolower(trim($request->correct_answer));
-
-        $points = $this->buzzManager->calculatePoints($isFirst, $isCorrect);
-
-        $this->gameStateService->updateScore($gameState, $playerId, $points, $isCorrect);
-
-        $this->gameStateService->recordAnswer($gameState, [
-            'question_id' => $request->question_id,
-            'question_text' => $request->input('question_text', ''),
-            'player_answer' => $request->answer,
-            'correct_answer' => $request->correct_answer,
-            'is_correct' => $isCorrect,
-            'points_earned' => $points,
-            'buzz_time' => $fastest['server_time'] ?? null,
-        ]);
-
-        $gameState['buzzes'] = [];
-        $gameState['question_start_time'] = microtime(true);
-
-        $hasMoreQuestions = $this->gameStateService->nextQuestion($gameState);
-
-        $roundResult = null;
-        if (!$hasMoreQuestions) {
-            $roundResult = $this->gameStateService->finishRound($gameState);
-
-            if ($roundResult['winner'] === 'draw' || $roundResult['is_draw']) {
-                $this->gameStateService->resetForNewRound($gameState);
-            } elseif (!$this->gameStateService->isMatchFinished($gameState)) {
-                $this->gameStateService->nextRound($gameState);
-            }
-        }
-
-        $match->game_state = $gameState;
-        $match->save();
-
-        return response()->json([
-            'success' => true,
-            'isCorrect' => $isCorrect,
-            'points' => $points,
-            'gameState' => $gameState,
-            'hasMoreQuestions' => $hasMoreQuestions,
-            'roundFinished' => !$hasMoreQuestions,
-            'roundResult' => $roundResult,
-        ]);
-    }
-
-    public function finishMatch(Request $request, DuoMatch $match)
+    public function finishMatchSocketIO(Request $request, DuoMatch $match)
     {
         $user = Auth::user();
 
         if ($match->player1_id !== $user->id && $match->player2_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non autorisé.',
-            ], 403);
+            return response()->json(['success' => false, 'message' => 'Non autorisé.'], 403);
         }
 
-        $gameState = $match->game_state;
-
-        if (!$this->gameStateService->isMatchFinished($gameState)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Le match n\'est pas terminé.',
-            ]);
+        if ($match->status === 'finished') {
+            return response()->json(['success' => true, 'already_finished' => true]);
         }
 
-        $matchResult = $this->gameStateService->getMatchResult($gameState);
+        // Read authoritative match result written by the game server to Redis.
+        // Client-provided winner data is intentionally ignored — only the game server writes this key.
+        $roomId = $match->room_id ?? $match->lobby_code;
+        if (!$roomId) {
+            return response()->json(['success' => false, 'message' => 'Room ID introuvable.'], 400);
+        }
 
-        $player1Score = $gameState['player_total_score'] ?? 0;
-        $player2Score = $gameState['opponent_total_score'] ?? 0;
+        $redisKey = 'gs:match:' . $roomId . ':result';
+        $raw = Redis::connection('game_server')->get($redisKey);
+
+        if (!$raw) {
+            // Game server hasn't written the result yet — tell client to retry
+            return response()->json(['success' => false, 'pending' => true, 'message' => 'Résultat pas encore disponible, réessayez.'], 202);
+        }
+
+        $result      = json_decode($raw, true);
+        $winnerId    = $result['winnerId']    ?? null;
+        $finalScores = $result['finalScores'] ?? [];
+        $isTie       = $result['isTie']       ?? false;
+        $decidedBy   = $result['decidedBy']   ?? ($isTie ? 'total_score' : 'rounds');
+        $roundsWon   = $result['roundsWon']   ?? [];   // { playerId: roundsWon }
+        $duration    = $result['duration']    ?? 0;    // total match duration in ms
+
+        $player1Id = (string) $match->player1_id;
+        $player2Id = (string) $match->player2_id;
+
+        // Determine comparative scores for division ranking.
+        // Priority: actual final scores → 1/0 winner differential → 0/0 for genuine tie.
+        $p1 = isset($finalScores[$player1Id]) ? (int) $finalScores[$player1Id] : -1;
+        $p2 = isset($finalScores[$player2Id]) ? (int) $finalScores[$player2Id] : -1;
+
+        if ($p1 >= 0 && $p2 >= 0 && $p1 !== $p2) {
+            $player1Score = $p1;
+            $player2Score = $p2;
+        } elseif ($winnerId) {
+            $player1Won   = (string) $winnerId === $player1Id;
+            $player1Score = $player1Won ? 1 : 0;
+            $player2Score = $player1Won ? 0 : 1;
+        } else {
+            // Genuine tie — no winner; division scores stay equal (0/0)
+            $player1Score = 0;
+            $player2Score = 0;
+        }
+
+        // Build enriched game state from Redis so quests and stats have real data
+        // instead of reading the empty PostgreSQL game_state column.
+        $baseGameState = $match->game_state ?? [];
+        $enrichedGameState = array_merge($baseGameState, [
+            'source'         => 'socket_io',
+            'mode'           => 'duo',
+            'final_scores'   => $finalScores,
+            'rounds_won'     => $roundsWon,
+            'duration_ms'    => $duration,
+            'is_tie'         => $isTie,
+            'decided_by'     => $decidedBy,
+            'player1_rounds' => (int) ($roundsWon[$player1Id] ?? 0),
+            'player2_rounds' => (int) ($roundsWon[$player2Id] ?? 0),
+        ]);
 
         try {
-            $finishedMatch = $this->matchmaking->finishMatch(
+            $this->matchmaking->finishMatch(
                 $match,
                 $player1Score,
                 $player2Score,
-                $gameState
+                $enrichedGameState,
+                $isTie
             );
 
-            $wasDecisiveRound = ($gameState['current_round'] ?? 1) === 3;
+            // Record match for bot qualification (skips bot accounts)
+            $player1 = $match->player1;
+            $player2 = $match->player2;
+            if ($player1 && !$player1->is_bot) {
+                $this->botQualificationService->recordMultiplayerMatch($player1, 'duo_match', $match->id);
+            }
+            if ($player2 && !$player2->is_bot) {
+                $this->botQualificationService->recordMultiplayerMatch($player2, 'duo_match', $match->id);
+            }
 
-            $player1Won = $matchResult['winner'] === 'player1' ? true : ($matchResult['winner'] === 'player2' ? false : null);
-            $player2Won = $matchResult['winner'] === 'player2' ? true : ($matchResult['winner'] === 'player1' ? false : null);
+            $p1Won = $player1Score > $player2Score;
+            $p2Won = $player2Score > $player1Score;
 
-            $this->contactService->addOrUpdateContact(
-                $match->player1_id,
-                $match->player2_id,
-                $player1Won,
-                $wasDecisiveRound
-            );
+            $this->contactService->addOrUpdateContact($match->player1_id, $match->player2_id, $p1Won, true);
+            $this->contactService->addOrUpdateContact($match->player2_id, $match->player1_id, $p2Won, true);
 
-            $this->contactService->addOrUpdateContact(
-                $match->player2_id,
-                $match->player1_id,
-                $player2Won,
-                $wasDecisiveRound
-            );
-
-            return response()->json([
-                'success' => true,
-                'match' => $finishedMatch->load(['player1', 'player2', 'winner']),
-                'matchResult' => $matchResult,
-            ]);
+            return response()->json(['success' => true]);
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'MATCH_ALREADY_FINISHED') {
+                return response()->json(['success' => true, 'already_finished' => true]);
+            }
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 400);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
 
@@ -577,8 +552,10 @@ class DuoController extends Controller
         $strategicAvatar = data_get($profileSettings, 'strategic_avatar', 'Aucun');
 
         $skills = $this->getPlayerSkillsWithTriggers($user);
+        $playerLevel = $this->getPlayerDuoLevel($user->id);
 
         $opponent = $match->player1_id == $user->id ? $match->player2 : $match->player1;
+        $opponentLevel = $this->getPlayerDuoLevel($opponent->id ?? 0);
         $opponentSettings = $opponent->profile_settings ?? [];
         if (is_string($opponentSettings)) {
             $opponentSettings = json_decode($opponentSettings, true) ?? [];
@@ -590,11 +567,11 @@ class DuoController extends Controller
 
         $avatarName = is_array($strategicAvatar) ? ($strategicAvatar['name'] ?? 'Aucun') : $strategicAvatar;
         $strategicAvatarPath = null;
-        if ($avatarName !== 'Aucun' && !empty($avatarName)) {
+        if ($this->normalizeAvatarName($avatarName) !== 'aucun' && !empty($avatarName)) {
             $catalog = \App\Services\AvatarCatalog::get();
             $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
             foreach ($strategicAvatars as $avatar) {
-                if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
+                if (isset($avatar['name']) && $this->normalizeAvatarName($avatar['name']) === $this->normalizeAvatarName($avatarName)) {
                     $strategicAvatarPath = $avatar['image'] ?? null;
                     break;
                 }
@@ -626,6 +603,8 @@ class DuoController extends Controller
             'opponentName' => $opponentName,
             'playerScore' => $playerScore,
             'opponentScore' => $opponentScore,
+            'playerLevel' => $playerLevel,
+            'opponentLevel' => $opponentLevel,
             'totalQuestions' => $totalQuestions,
             'currentQuestion' => $currentQuestion,
             'theme' => $theme,
@@ -637,47 +616,66 @@ class DuoController extends Controller
 
     protected function getPlayerSkillsWithTriggers($user): array
     {
-        $snapshot = $this->getPlayerSnapshot($user);
+        $snapshot   = $this->getPlayerSnapshot($user);
         $avatarName = $this->getSnapshotStrategicAvatarName($snapshot);
 
-        if ($avatarName === 'Aucun' || empty($avatarName)) {
+        if ($this->normalizeAvatarName($avatarName) === 'aucun' || empty($avatarName)) {
             return [];
         }
 
-        $catalog = \App\Services\AvatarCatalog::get();
-        $strategicAvatars = $catalog['stratégiques']['items'] ?? [];
-        $avatarInfo = null;
+        $avatarData = \App\Services\AvatarSkillService::getAvatarSkills($avatarName, $user->id);
+        $rawSkills  = $avatarData['skills'] ?? [];
 
-        foreach ($strategicAvatars as $avatar) {
-            if (isset($avatar['name']) && $avatar['name'] === $avatarName) {
-                $avatarInfo = $avatar;
-                break;
-            }
-        }
-
-        if (!$avatarInfo || empty($avatarInfo['skills'])) {
-            return [];
-        }
+        $normalizedAvatarName = $this->normalizeAvatarName($avatarName);
+        $isStratege = in_array($normalizedAvatarName, ['stratège', 'stratege']);
 
         $skills = [];
-        foreach ($avatarInfo['skills'] as $skillId) {
-            $skillData = \App\Services\SkillCatalog::getSkill($skillId);
-            if ($skillData) {
-                $skills[] = [
-                    'id' => $skillData['id'],
-                    'name' => $skillData['name'],
-                    'icon' => $skillData['icon'],
-                    'description' => $skillData['description'],
-                    'trigger' => $skillData['trigger'],
-                    'type' => $skillData['type'],
-                    'auto' => $skillData['auto'] ?? false,
-                    'uses_per_match' => $skillData['uses_per_match'] ?? 1,
-                    'used' => false,
-                ];
+
+        if ($isStratege) {
+            $strategeOwn    = ['coin_bonus', 'avatar_discount'];
+            $teammateAdded  = false;
+
+            foreach ($rawSkills as $skillData) {
+                if (!is_array($skillData) || empty($skillData['id'])) continue;
+                if (in_array($skillData['id'], $strategeOwn)) {
+                    $skills[] = $this->formatSkillForDisplay($skillData);
+                }
+            }
+
+            foreach ($rawSkills as $skillData) {
+                if (!is_array($skillData) || empty($skillData['id'])) continue;
+                if (!in_array($skillData['id'], array_merge($strategeOwn, ['create_team']))) {
+                    $skills[] = $this->formatSkillForDisplay($skillData);
+                    $teammateAdded = true;
+                    break;
+                }
+            }
+        } else {
+            foreach ($rawSkills as $skillData) {
+                if (!is_array($skillData) || empty($skillData['id'])) continue;
+                if ($skillData['id'] === 'create_team') continue;
+                $skills[] = $this->formatSkillForDisplay($skillData);
             }
         }
 
-        return $skills;
+        return array_slice($skills, 0, 3);
+    }
+
+    private function formatSkillForDisplay(array $skillData): array
+    {
+        $usesPerMatch = (int) ($skillData['uses_per_match'] ?? 1);
+        return [
+            'id'             => $skillData['id'],
+            'name'           => $skillData['name'] ?? '',
+            'icon'           => $skillData['icon'] ?? '⭐',
+            'description'    => $skillData['description'] ?? '',
+            'trigger'        => $skillData['trigger'] ?? 'question',
+            'type'           => $skillData['type'] ?? 'unknown',
+            'auto'           => $skillData['auto'] ?? false,
+            'uses_per_match' => $usesPerMatch,
+            'uses_left'      => $usesPerMatch > 0 ? $usesPerMatch : -1,
+            'used'           => false,
+        ];
     }
 
     public function activateSkill(Request $request, DuoMatch $match)
@@ -894,6 +892,7 @@ class DuoController extends Controller
 
         return view('duo_result', [
             'match_result' => $matchResult,
+            "player_stats_summary" => $playerStatsSummary,
             'opponent' => $opponent,
             'opponent_id' => $opponent->id ?? null,
             'opponent_name' => $opponent->name ?? 'Adversaire',
@@ -940,7 +939,7 @@ class DuoController extends Controller
             $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
 
             if ($lobby) {
-                $matchId = $lobby['match_id'] ?? null;
+                $matchId = $lobby['settings']['match_id'] ?? ($lobby['match_id'] ?? null);
 
                 if (!$matchId) {
                     $playerIds = array_keys($lobby['players'] ?? []);
@@ -1000,18 +999,19 @@ class DuoController extends Controller
         $match->status = 'in_progress';
         $match->started_at = now();
 
-        $lobbyCode = $gameState['lobby_code'] ?? $request->input('lobby_code');
-        $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
+        $lobbyCode = $request->input('lobby_code') ?: ($gameState['lobby_code'] ?? null);
         $lobby = null;
+        $roomId = null;
 
         if ($lobbyCode) {
             $lobby = Cache::get('lobby:' . strtoupper($lobbyCode));
-            if ($lobby && isset($lobby['game_server'])) {
-                $gameServer = $lobby['game_server'];
-                if (!$roomId && isset($gameServer['roomId'])) {
-                    $roomId = $gameServer['roomId'];
-                }
+            if ($lobby && isset($lobby['game_server']['roomId'])) {
+                $roomId = $lobby['game_server']['roomId'];
             }
+        }
+
+        if (!$roomId) {
+            $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
         }
 
         if (!$roomId) {
@@ -1141,16 +1141,22 @@ class DuoController extends Controller
         return $this->renderQuestionView($match, $user);
     }
 
-    public function showQuestion()
+    public function showQuestion(Request $request)
     {
         $user = Auth::user();
-        $gameState = session('game_state');
 
-        if (!$gameState || !isset($gameState['match_id'])) {
+        // Accept match_id from query param (reconnect path) with session as fallback
+        $matchId = $request->input('match_id');
+        if (!$matchId) {
+            $gameState = session('game_state');
+            $matchId = $gameState['match_id'] ?? null;
+        }
+
+        if (!$matchId) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
 
-        $match = DuoMatch::find($gameState['match_id']);
+        $match = DuoMatch::find($matchId);
 
         if (!$match) {
             session()->forget('game_state');
@@ -1167,19 +1173,26 @@ class DuoController extends Controller
             return $phaseRedirect;
         }
 
+        $gameState = session('game_state', []);
         return $this->renderQuestionView($match, $user);
     }
 
     public function showAnswer(Request $request)
     {
         $user = Auth::user();
-        $gameState = session('game_state');
 
-        if (!$gameState || !isset($gameState['match_id'])) {
+        // Accept match_id from query param (reconnect path) with session as fallback
+        $matchId = $request->input('match_id');
+        if (!$matchId) {
+            $gameState = session('game_state');
+            $matchId = $gameState['match_id'] ?? null;
+        }
+
+        if (!$matchId) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
 
-        $match = DuoMatch::find($gameState['match_id']);
+        $match = DuoMatch::find($matchId);
 
         if (!$match) {
             session()->forget('game_state');
@@ -1190,6 +1203,8 @@ class DuoController extends Controller
             session()->forget('game_state');
             return redirect()->route('duo.lobby')->with('error', __('Vous n\'appartenez pas à ce match'));
         }
+
+        $gameState = session('game_state', []);
 
         $phaseRedirect = $this->validatePhaseAccess($match, $user, 'answer');
         if ($phaseRedirect) {
@@ -1211,16 +1226,22 @@ class DuoController extends Controller
         return $this->renderAnswerView($match, $user, $gameState);
     }
 
-    public function showResult()
+    public function showResult(Request $request)
     {
         $user = Auth::user();
-        $gameState = session('game_state');
 
-        if (!$gameState || !isset($gameState['match_id'])) {
+        // Accept match_id from query param (reconnect path) with session as fallback
+        $matchId = $request->input('match_id');
+        if (!$matchId) {
+            $gameState = session('game_state');
+            $matchId = $gameState['match_id'] ?? null;
+        }
+
+        if (!$matchId) {
             return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
         }
 
-        $match = DuoMatch::find($gameState['match_id']);
+        $match = DuoMatch::find($matchId);
 
         if (!$match) {
             session()->forget('game_state');
@@ -1237,6 +1258,7 @@ class DuoController extends Controller
             return $phaseRedirect;
         }
 
+        $gameState = session('game_state', []);
         return $this->renderResultView($match, $user, $gameState);
     }
 
@@ -1280,6 +1302,73 @@ class DuoController extends Controller
         ]);
     }
 
+    public function showRoundScoreboard(Request $request)
+    {
+        $user = Auth::user();
+        $matchId = $request->input('match_id');
+
+        if (!$matchId) {
+            $gameState = session('game_state');
+            $matchId = $gameState['match_id'] ?? null;
+        }
+
+        if (!$matchId) {
+            return redirect()->route('duo.lobby')->with('error', __('Aucune partie en cours'));
+        }
+
+        $match = DuoMatch::find($matchId);
+
+        if (!$match) {
+            return redirect()->route('duo.lobby')->with('error', __('Match introuvable'));
+        }
+
+        if ($match->player1_id != $user->id && $match->player2_id != $user->id) {
+            return redirect()->route('duo.lobby')->with('error', __('Accès refusé'));
+        }
+
+        $phaseRedirect = $this->validatePhaseAccess($match, $user, 'round-scoreboard');
+        if ($phaseRedirect) {
+            return $phaseRedirect;
+        }
+
+        $isPlayer1 = $match->player1_id == $user->id;
+        $opponent = $isPlayer1 ? $match->player2 : $match->player1;
+
+        $playerSnapshot   = $this->getPlayerSnapshot($user);
+        $opponentSnapshot = $this->getPlayerSnapshot($opponent);
+
+        $matchGameState = $match->game_state ?? [];
+        $playerScore = $isPlayer1
+            ? ($matchGameState['player_scores_map']['player'] ?? 0)
+            : ($matchGameState['player_scores_map']['opponent'] ?? 0);
+        $opponentScore = $isPlayer1
+            ? ($matchGameState['player_scores_map']['opponent'] ?? 0)
+            : ($matchGameState['player_scores_map']['player'] ?? 0);
+
+        $gameState = session('game_state', []);
+        $roomId    = $gameState['room_id']    ?? $match->room_id    ?? null;
+        $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
+        $jwtToken  = $this->generateFreshGameplayToken($roomId, $user->id);
+
+        return view('duo_round_scoreboard', [
+            'match_id'          => $match->id,
+            'room_id'           => $roomId,
+            'lobby_code'        => $lobbyCode,
+            'jwt_token'         => $jwtToken,
+            'playerId'          => $user->id,
+            'playerName'        => $this->getSnapshotDisplayName($playerSnapshot, $user, 'Joueur'),
+            'playerAvatarPath'  => $this->getSnapshotAvatarPath($playerSnapshot),
+            'opponentId'        => $opponent->id,
+            'opponentName'      => $this->getSnapshotDisplayName($opponentSnapshot, $opponent, 'Adversaire'),
+            'opponentAvatarPath'=> $this->getSnapshotAvatarPath($opponentSnapshot),
+            'playerScore'       => $playerScore,
+            'opponentScore'     => $opponentScore,
+            'currentRound'      => $matchGameState['current_round']          ?? 1,
+            'totalQuestions'    => $matchGameState['total_questions']        ?? 10,
+            'currentQuestion'   => $matchGameState['current_question_number'] ?? 1,
+        ]);
+    }
+
     public function showMatchResult()
     {
         $user = Auth::user();
@@ -1302,7 +1391,11 @@ class DuoController extends Controller
         }
 
         $matchGameState = $match->game_state ?? [];
-        $matchResult = $this->gameStateService->getMatchResult($matchGameState);
+        $roomId = $match->room_id ?? $match->lobby_code;
+        $redisKey = "gs:match:" . $roomId . ":result";
+        $raw = Redis::connection("game_server")->get($redisKey);
+        $matchResult = $raw ? json_decode($raw, true) : [];
+        $playerStatsSummary = $matchResult["playerStatsSummary"] ?? [];
 
         $isPlayer1 = $match->player1_id == $user->id;
         $opponent = $isPlayer1 ? $match->player2 : $match->player1;
@@ -1311,18 +1404,42 @@ class DuoController extends Controller
 
         $this->contactService->registerMutualContacts($match->player1_id, $match->player2_id);
 
-        $accuracy = 0;
-        $total = ($matchGameState['global_stats']['correct'] ?? 0) + ($matchGameState['global_stats']['incorrect'] ?? 0);
-        if ($total > 0) {
-            $accuracy = round(($matchGameState['global_stats']['correct'] ?? 0) / $total * 100);
-        }
+        $meStats = $playerStatsSummary[(string) $user->id] ?? [];
+        $accuracy = (int) ($meStats['accuracyPct'] ?? 0);
 
+        $context = [
+            "won" => ($matchResult["winnerId"] ?? null) == (string) $user->id,
+            "total_questions" => (int) ($meStats["answersSubmitted"] ?? 0),
+            "user_correct" => (int) ($meStats["correctAnswers"] ?? 0),
+            "opponent_score" => (int) ($matchResult["finalScores"] ?? [])[array_key_first(array_diff(array_keys($matchResult["finalScores"] ?? []), [(string)$user->id]))] ?? 0,
+            "skills_used" => (int) ($meStats["skillsUsed"] ?? 0),
+            "lives_remaining" => (int) ($meStats["lives"] ?? 0),
+            "had_timeout" => false,
+            "division" => "duo",
+            "player_score" => (int) ($matchResult["finalScores"][(string)$user->id] ?? 0),
+        ];
+
+        $questsUnlocked = app(AppServicesQuestService::class)->fireMatchEndQuests($user, "duo", $context);
         $pointsEarned = $isPlayer1 ? ($match->player1_points_earned ?? 0) : ($match->player2_points_earned ?? 0);
         $coinsEarned = $isPlayer1 ? ($match->player1_coins_earned ?? 0) : ($match->player2_coins_earned ?? 0);
+
+        // Match efficiency: player_total_score / (2 × N) × 100 where N = total questions played
+        $totalQuestionsPlayed = (int) ($meStats['answersSubmitted'] ?? 0);
+        $playerMatchEfficiency = (int) ($meStats['accuracyPct'] ?? 0);
+
+        // Tiebreaker detection — prefer the authoritative 'decided_by' stored in
+        // enrichedGameState during finishMatchSocketIO (camelCase decidedBy written
+        // by the game server to Redis then mapped to snake_case decided_by in PHP).
+        // Fall back to getMatchResult() output for legacy solo/PHP-driven games.
+        $decidedBy = $matchGameState['decided_by'] ?? $matchResult['decided_by'] ?? 'rounds';
+        $isTiebreaker = $decidedBy === 'total_score';
+        $tiebreakerWon = $isTiebreaker && ($matchResult['player_won'] ?? false);
 
         session()->forget('game_state');
 
         return view('duo_match_result', [
+            "player_stats_summary" => $playerStatsSummary,
+              "quests_unlocked" => $questsUnlocked,
             'match_result' => $matchResult,
             'opponent' => $opponent,
             'opponent_id' => $opponent->id ?? null,
@@ -1337,6 +1454,10 @@ class DuoController extends Controller
             'round_details' => $matchGameState['answered_questions'] ?? [],
             'bet_info' => null,
             'bet_winnings' => 0,
+            'player_match_efficiency' => $playerMatchEfficiency,
+            'total_questions_played' => $totalQuestionsPlayed,
+            'is_tiebreaker' => $isTiebreaker,
+            'tiebreaker_won' => $tiebreakerWon,
         ]);
     }
 
@@ -1416,6 +1537,9 @@ class DuoController extends Controller
         $playerScore = 0;
         $opponentScore = 0;
 
+        $playerLevel   = $this->getPlayerDuoLevel($user->id);
+        $opponentLevel = $this->getPlayerDuoLevel($opponent->id ?? 0);
+
         return response()->view('duo_question', [
             'match_id' => $match->id,
             'match' => $match->load(['player1', 'player2']),
@@ -1437,6 +1561,8 @@ class DuoController extends Controller
             'currentQuestion' => $currentQuestion,
             'theme' => $theme,
             'themeDisplay' => $themeDisplay,
+            'playerLevel' => $playerLevel,
+            'opponentLevel' => $opponentLevel,
         ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');
@@ -1470,8 +1596,61 @@ class DuoController extends Controller
             $questionData = $questions[$currentQuestionNumber - 1] ?? [];
         }
 
+        // Final fallback: read live question from game-server Redis room state
+        if (empty($questionData) || empty($questionData['choices'])) {
+            $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
+            if ($roomId) {
+                try {
+                    $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
+                        ->get("room:{$roomId}:state");
+                    if ($rawState) {
+                        $roomState = json_decode($rawState, true);
+                        $qIdx      = $roomState['questionIndex'] ?? 0;
+                        $questions = $roomState['questions'] ?? [];
+                        if (isset($questions[$qIdx])) {
+                            $q = $questions[$qIdx];
+                            $questionData = [
+                                'text'    => $q['text'] ?? ($questionData['text'] ?? ''),
+                                'choices' => $q['choices'] ?? $q['answers'] ?? [],
+                                // Never expose correct_answer index before reveal
+                                'correct_answer' => null,
+                                'correct_index'  => null,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('[DUO-ANSWER] Redis question fallback failed', ['error' => $e->getMessage()]);
+                }
+            }
+        }
+
         if (!isset($questionData['choices']) && isset($questionData['answers'])) {
             $questionData['choices'] = $questionData['answers'];
+        }
+
+        // Filtrer les valeurs null dans les choix (questions true_false ont ['Vrai', null, 'Faux', null])
+        if (isset($questionData['choices']) && is_array($questionData['choices'])) {
+            $originalChoices = $questionData['choices'];
+            $originalCorrectIndex = $questionData['correct_answer'] ?? $questionData['correct_index'] ?? null;
+            $filteredChoices = [];
+            $newCorrectIndex = $originalCorrectIndex;
+            $newIdx = 0;
+            foreach ($originalChoices as $oldIdx => $choice) {
+                if ($choice !== null && $choice !== '') {
+                    if ($oldIdx === $originalCorrectIndex) {
+                        $newCorrectIndex = $newIdx;
+                    }
+                    $filteredChoices[] = $choice;
+                    $newIdx++;
+                }
+            }
+            $questionData['choices'] = $filteredChoices;
+            if (isset($questionData['correct_answer'])) {
+                $questionData['correct_answer'] = $newCorrectIndex;
+            }
+            if (isset($questionData['correct_index'])) {
+                $questionData['correct_index'] = $newCorrectIndex;
+            }
         }
 
         $buzzWinner = $gameState['buzz_winner'] ?? 'player';
@@ -1607,6 +1786,29 @@ class DuoController extends Controller
             'lobby_code' => $lobbyCode,
         ])]);
 
+        // Read current question from Redis game-server room state to get fun_fact
+        $resultQuestion = $gameState['last_question'] ?? [];
+        if ($roomId && empty($resultQuestion['fun_fact'])) {
+            try {
+                $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
+                    ->get("room:{$roomId}:state");
+                if ($rawState) {
+                    $roomState = json_decode($rawState, true);
+                    $qIdx = $roomState['questionIndex'] ?? 0;
+                    $questions = $roomState['questions'] ?? [];
+                    if (isset($questions[$qIdx])) {
+                        $q = $questions[$qIdx];
+                        $resultQuestion = [
+                            'text'     => $q['text'] ?? '',
+                            'fun_fact' => $q['funFact'] ?? $q['fun_fact'] ?? null,
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('[DUO-RESULT] Redis question fallback failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         $strategicAvatar = data_get($playerSnapshot, 'strategic_avatar', ['name' => 'Aucun']);
         $skills = $this->getPlayerSkillsWithTriggers($user);
         $avatarName = $this->getSnapshotStrategicAvatarName($playerSnapshot);
@@ -1615,19 +1817,34 @@ class DuoController extends Controller
         $playerAvatar = $this->getSnapshotAvatarPath($playerSnapshot);
         $opponentAvatar = $this->getSnapshotAvatarPath($opponentSnapshot);
 
+        $playerBuzzed = $gameState['last_player_buzzed'] ?? false;
+
         return view('duo_result', [
             'match_id' => $match->id,
             'room_id' => $roomId,
             'lobby_code' => $lobbyCode,
             'jwt_token' => $jwtToken,
             'is_correct' => $isCorrect,
+            'wasCorrect' => $isCorrect,
             'points_earned' => $pointsEarned,
+            'pointsEarned' => $pointsEarned,
+            'playerBuzzed' => $playerBuzzed,
+            'playerPoints' => $pointsEarned,
             'player_score' => $playerScore,
             'opponent_score' => $opponentScore,
+            'currentQuestion' => $currentQuestion,
             'total_questions' => 10,
             'skills' => $skills,
             'avatarName' => $avatarName,
             'strategicAvatarPath' => $strategicAvatarPath,
+            'playerAvatarPath' => $playerAvatar,
+            'opponentAvatarPath' => $opponentAvatar,
+            'opponentName' => $this->getSnapshotDisplayName($opponentSnapshot, $opponent, 'Adversaire'),
+            'question' => $resultQuestion,
+            'correct_answer' => $lastAnswer['correct_answer'] ?? '',
+            'player_answer' => $lastAnswer['player_answer'] ?? '',
+            'playerAnswer' => $lastAnswer['player_answer'] ?? '',
+            'correctAnswer' => $lastAnswer['correct_answer'] ?? '',
             'player_info' => [
                 'id' => $user->id,
                 'name' => $this->getSnapshotDisplayName($playerSnapshot, $user, 'Joueur'),
@@ -1642,8 +1859,6 @@ class DuoController extends Controller
                 'score' => $opponentScore,
                 'level' => $opponentStats->level,
             ],
-            'correct_answer' => $lastAnswer['correct_answer'] ?? '',
-            'player_answer' => $lastAnswer['player_answer'] ?? '',
         ]);
     }
 
@@ -1775,29 +1990,51 @@ class DuoController extends Controller
             ->with('player1')
             ->get()
             ->map(function ($match) {
+                $player = $match->player1;
                 return [
-                    'match_id' => $match->id,
-                    'id' => $match->id,
-                    'status' => $match->status,
-                    'lobby_code' => $match->lobby_code,
-                    'room_id' => $match->room_id,
-                    'from_player' => $match->player1,
+                    'match_id'    => $match->id,
+                    'id'          => $match->id,
+                    'status'      => $match->status,
+                    'lobby_code'  => $match->lobby_code,
+                    'room_id'     => $match->room_id,
+                    'from_player' => $player ? [
+                        'id'          => $player->id,
+                        'name'        => $player->name,
+                        'player_code' => $player->player_code ?? null,
+                        'avatar_url'  => $player->avatar_url ?? null,
+                    ] : [
+                        'id'          => null,
+                        'name'        => 'Joueur inconnu',
+                        'player_code' => null,
+                        'avatar_url'  => null,
+                    ],
                 ];
             })
             ->values();
 
         $sentInvitations = DuoMatch::where('player1_id', $user->id)
-            ->whereIn('status', ['waiting', 'accepted', 'lobby', 'in_progress', 'active', 'playing'])
+            ->where('status', 'waiting')
             ->with('player2')
             ->get()
             ->map(function ($match) {
+                $player = $match->player2;
                 return [
-                    'match_id' => $match->id,
-                    'id' => $match->id,
-                    'status' => $match->status,
+                    'match_id'   => $match->id,
+                    'id'         => $match->id,
+                    'status'     => $match->status,
                     'lobby_code' => $match->lobby_code,
-                    'room_id' => $match->room_id,
-                    'to_player' => $match->player2,
+                    'room_id'    => $match->room_id,
+                    'to_player'  => $player ? [
+                        'id'          => $player->id,
+                        'name'        => $player->name,
+                        'player_code' => $player->player_code ?? null,
+                        'avatar_url'  => $player->avatar_url ?? null,
+                    ] : [
+                        'id'          => null,
+                        'name'        => 'Joueur inconnu',
+                        'player_code' => null,
+                        'avatar_url'  => null,
+                    ],
                 ];
             })
             ->values();
@@ -1844,14 +2081,39 @@ class DuoController extends Controller
         ]);
     }
 
+    public function contactLookup(string $playerCode)
+    {
+        $user   = Auth::user();
+        $player = $this->contactService->lookupByCode($user->id, $playerCode);
+
+        if (!$player) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Joueur introuvable'),
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'player'  => $player,
+        ]);
+    }
+
     public function addContact(Request $request)
     {
         $request->validate([
-            'player_code' => 'required|string|max:20',
+            'player_code'         => 'required|string|max:20',
+            'display_name_choice' => 'nullable|string|in:name,code',
+            'display_id_choice'   => 'nullable|string|in:code,id',
         ]);
 
-        $user = Auth::user();
-        $contact = $this->contactService->addContactByCode($user->id, $request->player_code);
+        $user    = Auth::user();
+        $contact = $this->contactService->addContactByCode(
+            $user->id,
+            $request->player_code,
+            $request->input('display_name_choice', 'name'),
+            $request->input('display_id_choice', 'code')
+        );
 
         if (!$contact) {
             return response()->json([
@@ -1863,7 +2125,7 @@ class DuoController extends Controller
         return response()->json([
             'success' => true,
             'contact' => $contact,
-            'message' => __('Contact ajouté'),
+            'message' => __('Contact ajouté au carnet !'),
         ]);
     }
 
@@ -2206,61 +2468,126 @@ class DuoController extends Controller
                 return null;
             }
 
-            $questionPhases = ['INTRO', 'QUESTION_ACTIVE', 'WAITING'];
-            $answerPhases = ['ANSWER_SELECTION'];
-            $resultPhases = ['REVEAL'];
-            $terminalPhases = ['ROUND_SCOREBOARD', 'MATCH_END', 'FINISHED'];
+            // ── V3 Phase sets ────────────────────────────────────────────────────
+            // question page: INTRO/WAITING (pre-question), SYNC (server waiting for
+            //   question_page_ready), QUESTION_ACTIVE (buzzing window)
+            $questionPhases = ['INTRO', 'WAITING', 'SYNC', 'QUESTION_ACTIVE'];
+
+            // answer page: buzz just landed (QUESTION_ACTIVE accepted to avoid bounce),
+            //   ANSWER_COLLECTION (grace for second player), ANSWER_SELECTION / BUZZ_WINNER_ANSWERING
+            $answerPhases = [
+                'QUESTION_ACTIVE',      // buzz just happened, phase transition in progress
+                'ANSWER_SELECTION',     // legacy / compat
+                'BUZZ_WINNER_ANSWERING',// explicit buzz-winner window
+                'ANSWER_COLLECTION',    // V3 grace period after all buzzed
+            ];
+
+            // result page (per-question): RESULT (60 s display), REVEAL (transitional)
+            $resultPhases = ['RESULT', 'REVEAL'];
+
+            // ── Helper: redirect to a named route with match_id as query param ──────
+            $qp = ['match_id' => $match->id];
+            $toQuestion      = fn()  => redirect()->route('game.duo.question',       $qp);
+            $toAnswer        = fn()  => redirect()->route('game.duo.answer',         $qp);
+            $toResult        = fn()  => redirect()->route('game.duo.result',         $qp);
+            $toScoreboard    = fn()  => redirect()->route('game.duo.round-scoreboard', $qp);
+            $toMatchResult   = fn()  => redirect()->route('game.duo.match-result',   $qp);
 
             switch ($expectedPage) {
                 case 'question':
-                    if (in_array($currentPhase, $answerPhases)) {
+                    // If server already moved to answer phase, redirect buzz winner to answer
+                    if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
                         $playerId = (string) $user->id;
                         if ($lockedAnswerPlayerId === $playerId) {
-                            return redirect()->route('game.duo.answer');
+                            return $toAnswer();
                         }
+                        // Non-buzz-winner: stay on question (waiting overlay shown by JS)
+                        return null;
                     }
                     if (in_array($currentPhase, $resultPhases)) {
-                        return redirect()->route('game.duo.result');
+                        return $toResult();
                     }
-                    if (in_array($currentPhase, $terminalPhases)) {
-                        return redirect()->route('game.duo.match_result');
+                    if ($currentPhase === 'ROUND_SCOREBOARD') {
+                        return $toScoreboard();
                     }
+                    if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
+                        return $toMatchResult();
+                    }
+                    // INTRO / WAITING / SYNC / QUESTION_ACTIVE → stay on question page
                     break;
 
                 case 'answer':
-                    if (!in_array($currentPhase, $answerPhases)) {
-                        if (in_array($currentPhase, $questionPhases)) {
-                            return redirect()->route('game.duo.question');
-                        }
-                        if (in_array($currentPhase, $resultPhases)) {
-                            return redirect()->route('game.duo.result');
-                        }
-                        if (in_array($currentPhase, $terminalPhases)) {
-                            return redirect()->route('game.duo.match_result');
-                        }
+                    // ANSWER_COLLECTION: grace period after all buzzes — allow everyone
+                    // QUESTION_ACTIVE: buzz just registered (phase transition in progress) — allow
+                    $answerUnrestricted = ['QUESTION_ACTIVE', 'ANSWER_COLLECTION'];
+                    if (in_array($currentPhase, $answerUnrestricted)) {
+                        break; // Valid for all players
                     }
-
-                    $playerId = (string) $user->id;
-                    if ($lockedAnswerPlayerId && $lockedAnswerPlayerId !== $playerId) {
-                        return redirect()->route('game.duo.question');
+                    // ANSWER_SELECTION / BUZZ_WINNER_ANSWERING: only the buzz winner may be here
+                    if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING'])) {
+                        $playerId = (string) $user->id;
+                        if (!$lockedAnswerPlayerId || $lockedAnswerPlayerId === $playerId) {
+                            break; // Buzz winner (or unknown) — allow
+                        }
+                        // Non-buzz winner arrived on answer page — send back to question
+                        return $toQuestion();
+                    }
+                    // Server moved backwards or to a different page
+                    if (in_array($currentPhase, ['INTRO', 'WAITING', 'SYNC'])) {
+                        return $toQuestion();
+                    }
+                    if (in_array($currentPhase, $resultPhases)) {
+                        return $toResult();
+                    }
+                    if ($currentPhase === 'ROUND_SCOREBOARD') {
+                        return $toScoreboard();
+                    }
+                    if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
+                        return $toMatchResult();
                     }
                     break;
 
                 case 'result':
-                    if (!in_array($currentPhase, $resultPhases)) {
-                        if (in_array($currentPhase, $questionPhases)) {
-                            return redirect()->route('game.duo.question');
+                    // RESULT and REVEAL are the only valid phases for duo_result
+                    if (in_array($currentPhase, $resultPhases)) {
+                        break; // Valid → allow
+                    }
+                    // Reconnect: server is ahead/behind
+                    if (in_array($currentPhase, $questionPhases)) {
+                        return $toQuestion();
+                    }
+                    if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
+                        $playerId = (string) $user->id;
+                        if ($lockedAnswerPlayerId === $playerId) {
+                            return $toAnswer();
                         }
-                        if (in_array($currentPhase, $answerPhases)) {
-                            $playerId = (string) $user->id;
-                            if ($lockedAnswerPlayerId === $playerId) {
-                                return redirect()->route('game.duo.answer');
-                            }
-                            return redirect()->route('game.duo.question');
-                        }
-                        if (in_array($currentPhase, $terminalPhases)) {
-                            return redirect()->route('game.duo.match_result');
-                        }
+                        return $toQuestion();
+                    }
+                    if ($currentPhase === 'ROUND_SCOREBOARD') {
+                        return $toScoreboard();
+                    }
+                    if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
+                        return $toMatchResult();
+                    }
+                    break;
+
+                case 'round-scoreboard':
+                    // Only ROUND_SCOREBOARD is valid on this page
+                    if ($currentPhase === 'ROUND_SCOREBOARD') {
+                        break; // Valid → allow
+                    }
+                    if (in_array($currentPhase, $questionPhases)) {
+                        return $toQuestion();
+                    }
+                    if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
+                        $playerId = (string) $user->id;
+                        return ($lockedAnswerPlayerId === $playerId) ? $toAnswer() : $toQuestion();
+                    }
+                    if (in_array($currentPhase, $resultPhases)) {
+                        return $toResult();
+                    }
+                    if (in_array($currentPhase, ['MATCH_END', 'FINISHED'])) {
+                        return $toMatchResult();
                     }
                     break;
             }
@@ -2303,7 +2630,7 @@ class DuoController extends Controller
 
         $avatarName = $profileSettings['strategic_avatar'] ?? 'Aucun';
 
-        if ($avatarName !== 'Challenger') {
+        if ($this->normalizeAvatarName($avatarName) !== 'challenger') {
             return response()->json([
                 'success' => false,
                 'message' => __('Skill non disponible pour cet avatar'),

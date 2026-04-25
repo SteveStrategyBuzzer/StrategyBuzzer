@@ -80,7 +80,11 @@ export async function rehydrateRoom(
     
     if (state) {
       try {
-        state = applyEvent(state, event);
+        const replayEvent = {
+          ...event,
+          id: (state.lastEventId ?? 0) + 1,
+        } as GameEvent;
+        state = applyEvent(state, replayEvent);
       } catch (err) {
         console.error(`[RoomRecovery] Error applying event ${event.id} (${event.type}):`, err);
         break;

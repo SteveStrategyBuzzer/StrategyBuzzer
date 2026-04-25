@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Services\DuoFirestoreService;
 use App\Services\GameServerService;
 use App\Services\QuestionPlanBuilder;
 use App\Services\QuestionService;
@@ -17,7 +16,6 @@ use App\Services\CoinLedgerService;
 
 class LobbyService
 {
-    protected ?DuoFirestoreService $duoFirestoreService = null;
     private GameServerService $gameServerService;
     private CoinLedgerService $coinLedgerService;
     
@@ -29,14 +27,6 @@ class LobbyService
         $this->coinLedgerService = $coinLedgerService;
     }
     
-    protected function getDuoFirestoreService(): DuoFirestoreService
-    {
-        if ($this->duoFirestoreService === null) {
-            $this->duoFirestoreService = new DuoFirestoreService();
-        }
-        return $this->duoFirestoreService;
-    }
-
     protected const LOBBY_PREFIX = 'lobby:';
     protected const LOBBY_TTL = 3600;
     protected const PLAYER_LOBBIES_PREFIX = 'player_lobbies:';
@@ -49,11 +39,11 @@ class LobbyService
         ['id' => 'orange', 'name' => 'Orange', 'hex' => '#FB8C00', 'light' => '#FFE0B2'],
         ['id' => 'purple', 'name' => 'Violet', 'hex' => '#8E24AA', 'light' => '#E1BEE7'],
         ['id' => 'cyan', 'name' => 'Cyan', 'hex' => '#00ACC1', 'light' => '#B2EBF2'],
-        ['id' => 'pink', 'name' => 'Rose', 'hex' => '#D81B60', 'light' => '#F8BBD9'],
+        ['id' => 'pink', 'name' => 'Rose', 'hex' => '#F50057', 'light' => '#FF80AB'],
         ['id' => 'yellow', 'name' => 'Jaune', 'hex' => '#FDD835', 'light' => '#FFF9C4'],
-        ['id' => 'teal', 'name' => 'Turquoise', 'hex' => '#00897B', 'light' => '#B2DFDB'],
+        ['id' => 'teal', 'name' => 'Turquoise', 'hex' => '#0097A7', 'light' => '#B2EBF2'],
         ['id' => 'indigo', 'name' => 'Indigo', 'hex' => '#3949AB', 'light' => '#C5CAE9'],
-        ['id' => 'lime', 'name' => 'Lime', 'hex' => '#C0CA33', 'light' => '#F0F4C3'],
+        ['id' => 'lime', 'name' => 'Lime', 'hex' => '#76FF03', 'light' => '#CCFF90'],
         ['id' => 'brown', 'name' => 'Marron', 'hex' => '#6D4C41', 'light' => '#D7CCC8'],
     ];
     
@@ -108,6 +98,11 @@ class LobbyService
         return $user->name ?? 'Joueur';
     }
     
+    public function getUserAvatarPublic(User $user): string
+    {
+        return $this->getUserAvatar($user);
+    }
+
     protected function getUserAvatar(User $user): string
     {
         $settings = is_string($user->profile_settings) 
@@ -181,12 +176,14 @@ class LobbyService
                     'match_id' => $matchId,
                     'nb_questions' => $mergedSettings['nb_questions'],
                     'lobby_code' => $lobbyCode,
+                    'hasBot' => (bool) ($mergedSettings['hasBot'] ?? false),
                 ]
             );
 
             if (isset($result['roomId'])) {
                 $gameServerData = [
                     'roomId' => $result['roomId'],
+                    'lobbyCode' => $lobbyCode,
                     'socket_url' => $this->gameServerService->getSocketUrl(),
                 ];
                 Log::info('LobbyService: Room created at lobby creation', [
@@ -219,6 +216,7 @@ class LobbyService
                     'is_host' => true,
                     'joined_at' => now()->toISOString(),
                     'competence_coins' => $host->competence_coins ?? 0,
+                    'intelligence_coins' => $host->coins ?? 0,
                 ],
             ],
             'game_server' => $gameServerData,
@@ -229,6 +227,52 @@ class LobbyService
         $this->saveLobby($lobbyCode, $lobby);
         $this->addPlayerToLobbyList($host->id, $lobbyCode, $mode);
         
+        return $lobby;
+    }
+
+    public function recreateLobby(string $code, User $host, string $mode, array $settings = []): array
+    {
+        $mergedSettings = array_merge([
+            'max_players' => $this->getMaxPlayers($mode),
+            'min_players' => $this->getMinPlayers($mode),
+            'teams_enabled' => false,
+            'theme' => __('Culture générale'),
+            'nb_questions' => 10,
+        ], $settings);
+
+        $hostDisplayName = $this->getPlayerDisplayName($host);
+
+        $lobby = [
+            'code'       => strtoupper($code),
+            'host_id'    => $host->id,
+            'host_name'  => $hostDisplayName,
+            'mode'       => $mode,
+            'settings'   => $mergedSettings,
+            'players'    => [
+                $host->id => [
+                    'id'               => $host->id,
+                    'name'             => $hostDisplayName,
+                    'player_code'      => $host->player_code,
+                    'avatar'           => $this->getUserAvatar($host),
+                    'color'            => 'blue',
+                    'team'             => null,
+                    'ready'            => false,
+                    'is_host'          => true,
+                    'joined_at'        => now()->toISOString(),
+                    'competence_coins' => $host->competence_coins ?? 0,
+                    'intelligence_coins' => $host->coins ?? 0,
+                ],
+            ],
+            'game_server' => [],
+            'created_at'  => now()->toISOString(),
+            'status'      => 'waiting',
+        ];
+
+        $this->saveLobby($code, $lobby);
+        $this->addPlayerToLobbyList($host->id, $code, $mode);
+
+        Log::info('LobbyService: Lobby recreated from DB data', ['code' => $code, 'host_id' => $host->id]);
+
         return $lobby;
     }
 
@@ -276,6 +320,7 @@ class LobbyService
         $assignedColor = !empty($availableColors) ? $availableColors[0]['id'] : 'blue';
         
         $playerDisplayName = $this->getPlayerDisplayName($player);
+        $isBot = (bool) ($player->is_bot ?? false);
         $lobby['players'][$player->id] = [
             'id' => $player->id,
             'name' => $playerDisplayName,
@@ -283,10 +328,12 @@ class LobbyService
             'avatar' => $this->getUserAvatar($player),
             'color' => $assignedColor,
             'team' => null,
-            'ready' => false,
+            'ready' => $isBot,
             'is_host' => false,
+            'is_bot' => $isBot,
             'joined_at' => now()->toISOString(),
             'competence_coins' => $player->competence_coins ?? 0,
+            'intelligence_coins' => $player->coins ?? 0,
         ];
 
         $this->saveLobby($code, $lobby);
@@ -357,7 +404,7 @@ class LobbyService
         }
         
         $this->saveLobby($code, $lobby);
-        
+
         return ['success' => true, 'lobby' => $lobby];
     }
     
@@ -393,9 +440,24 @@ class LobbyService
             return ['success' => false, 'error' => __('Couleur invalide')];
         }
         
+        foreach ($lobby['players'] as $existingPlayerId => $existingPlayer) {
+            if ((int) $existingPlayerId !== (int) $player->id && (($existingPlayer['color'] ?? null) === $colorId)) {
+                return ['success' => false, 'error' => __('Cette couleur est déjà prise')];
+            }
+        }
+
         $lobby['players'][$player->id]['color'] = $colorId;
         
         $this->saveLobby($code, $lobby);
+
+        $roomId = $lobby['game_server']['roomId'] ?? null;
+        if ($roomId) {
+            $this->gameServerService->syncPlayerColor(
+                $roomId,
+                (string)$player->id,
+                $colorId
+            );
+        }
         
         return ['success' => true, 'lobby' => $lobby];
     }
@@ -781,59 +843,6 @@ class LobbyService
                         'count' => count($questions),
                     ]);
                     
-                    if (!empty($questions) && count($playerIds) >= 2) {
-                        $firestoreService = $this->getDuoFirestoreService();
-                        
-                        $player1Id = $playerIds[0] ?? $host->id;
-                        $player2Id = $playerIds[1];
-                        $player1Name = $lobby['players'][$player1Id]['name'] ?? 'Player 1';
-                        $player2Name = $lobby['players'][$player2Id]['name'] ?? 'Player 2';
-                        
-                        $firestoreService->createMatchSession($code, [
-                            'player1_id' => $player1Id,
-                            'player2_id' => $player2Id,
-                            'player1_name' => $player1Name,
-                            'player2_name' => $player2Name,
-                            'theme' => $theme,
-                            'niveau' => $niveau,
-                            'total_questions' => $nbQuestions,
-                            'chrono_time' => $lobby['settings']['chrono_time'] ?? 8,
-                        ]);
-                        Log::info("[LobbyService] Firestore match session created", [
-                            'lobby_code' => $code,
-                        ]);
-                        
-                        $q1Data = $questions[0];
-                        $q1Data['theme'] = $theme;
-                        $q1Data['question_number'] = 1;
-                        
-                        $firestoreService->storePreGeneratedQuestion($code, 1, $q1Data);
-                        
-                        $questionForPublish = [
-                            'id' => $q1Data['id'] ?? uniqid(),
-                            'text' => $q1Data['text'] ?? '',
-                            'answers' => $q1Data['answers'] ?? [],
-                            'correct_index' => $q1Data['correct_index'] ?? 0,
-                            'sub_theme' => $q1Data['sub_theme'] ?? '',
-                            'question_number' => 1,
-                            'total_questions' => $nbQuestions,
-                            'theme' => $theme,
-                        ];
-                        $firestoreService->publishQuestion($code, $questionForPublish, 1);
-                        
-                        $firestoreService->updateGameState($code, [
-                            'questionsGenerated' => true,
-                            'questions_generated' => true,
-                            'questions_count' => 1,
-                            'batchingInProgress' => $nbQuestions > 1,
-                        ]);
-                        
-                        Log::info("[LobbyService] Q1 stored, published and flags set in Firestore", [
-                            'lobby_code' => $code,
-                            'question_id' => $q1Data['id'] ?? 'unknown',
-                        ]);
-                    }
-                    
                     $sendResult = $this->gameServerService->sendQuestions($roomId, $questions);
                     
                     if (!($sendResult['success'] ?? false)) {
@@ -947,34 +956,6 @@ class LobbyService
                 $lobby['status'] = 'starting';
                 $lobby['started_at'] = now()->toISOString();
                 $this->saveLobby($code, $lobby);
-                
-                try {
-                    $player1Id = $playerIds[0] ?? null;
-                    $player2Id = $playerIds[1] ?? null;
-                    
-                    $matchData = [
-                        'player1_id' => $player1Id,
-                        'player2_id' => $player2Id,
-                        'player1_name' => $lobby['players'][$player1Id]['name'] ?? 'Player 1',
-                        'player2_name' => $lobby['players'][$player2Id]['name'] ?? 'Player 2',
-                    ];
-                    
-                    $firestore = $this->getDuoFirestoreService();
-                    
-                    $firestore->prepareGameSession($code, $matchData);
-                    
-                    $gameData = [
-                        'total_questions' => $lobby['settings']['nb_questions'] ?? 10,
-                        'chrono_time' => $lobby['settings']['chrono_time'] ?? 8,
-                        'current_round' => 1,
-                    ];
-                    
-                    $firestore->sendGameStartSignal($code, $gameData);
-                    
-                    Log::info("[LobbyService] Firebase game start signal sent for lobby {$code}");
-                } catch (\Exception $e) {
-                    Log::error("[LobbyService] Failed to send Firebase game start signal: " . $e->getMessage());
-                }
             } else {
                 $this->saveLobby($code, $lobby);
             }
@@ -1100,6 +1081,19 @@ class LobbyService
     public function getPlayerLobbyState(string $code, int $playerId): array
     {
         $lobby = $this->getLobby($code);
+     
+        if (isset($lobby['game_server']['roomId'], $lobby['game_server']['lobbyCode'])) {
+            if ($lobby['game_server']['lobbyCode'] !== $code) {
+                \Log::warning('[LobbyService] Clearing stale game_server cache', [
+                    'lobby_code' => $code,
+                    'cached_roomId' => $lobby['game_server']['roomId'],
+                    'cached_lobbyCode' => $lobby['game_server']['lobbyCode'],
+                ]);
+
+                $lobby['game_server'] = [];
+                $this->saveLobby($code, $lobby);
+            }
+        }
         
         if (!$lobby) {
             return ['exists' => false];
@@ -1271,6 +1265,10 @@ class LobbyService
             if ($player['is_host']) {
                 continue;
             }
+            // Bot players are always considered ready
+            if ($player['is_bot'] ?? false) {
+                continue;
+            }
             if (!$player['ready']) {
                 return false;
             }
@@ -1287,8 +1285,19 @@ class LobbyService
             return ['success' => true];
         }
         
-        $minPlayers = $lobby['settings']['min_players'] ?? 2;
-        $playerIds = array_keys($lobby['players']);
+        // Only count human (non-bot) players for presence check — bots have no browser
+        $humanPlayerIds = array_keys(array_filter(
+            $lobby['players'],
+            fn($p) => !($p['is_bot'] ?? false)
+        ));
+        $minPlayers = count($humanPlayerIds);
+        
+        // If there are no human players to verify (all bots), skip the check
+        if ($minPlayers === 0) {
+            return ['success' => true];
+        }
+
+        $playerIds = $humanPlayerIds;
         $maxRetries = 3;
         $retryDelay = 500000;
         

@@ -10,14 +10,16 @@ use App\Models\User;
 class GameServerService
 {
     private string $gameServerUrl;
+    private string $publicSocketUrl;
     private string $jwtSecret;
     private int $playerTokenTtlSeconds;
 
     public function __construct()
     {
-        $this->gameServerUrl = rtrim(config('app.game_server_url', 'http://localhost:3001'), '/');
+        $this->gameServerUrl = 'http://127.0.0.1:3001';
+        $this->publicSocketUrl = 'https://strategybuzzer.com';
         $this->jwtSecret = config('app.game_server_jwt_secret');
-        $this->playerTokenTtlSeconds = 20 * 60;
+        $this->playerTokenTtlSeconds = 4 * 60 * 60;
 
         if (!$this->jwtSecret || strlen(trim($this->jwtSecret)) < 16) {
             throw new \RuntimeException("Missing or weak GAME_SERVER_JWT_SECRET (mirror strict Replit)");
@@ -281,6 +283,54 @@ class GameServerService
         }
     }
 
+    public function syncPlayerColor(string $roomId, string $playerId, string $color): array
+    {
+        try {
+            Log::info('GameServerService: Syncing player color', [
+                'roomId' => $roomId,
+                'playerId' => $playerId,
+                'color' => $color,
+            ]);
+
+            $response = Http::timeout(10)->post("{$this->gameServerUrl}/rooms/{$roomId}/player-color", [
+                'playerId' => $playerId,
+                'color' => $color,
+            ]);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            Log::error('GameServerService: Failed to sync player color', [
+                'roomId' => $roomId,
+                'playerId' => $playerId,
+                'color' => $color,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to sync player color to game server',
+            ];
+        } catch (\Exception $e) {
+            Log::error('GameServerService: Exception syncing player color', [
+                'roomId' => $roomId,
+                'playerId' => $playerId,
+                'color' => $color,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
     public function startGame(string $roomId, ?string $hostId = null): array
     {
         try {
@@ -430,7 +480,7 @@ class GameServerService
 
     public function getSocketUrl(): string
     {
-        return $this->gameServerUrl;
+       return $this->publicSocketUrl;
     }
 
     private function getJwtSecret(): string

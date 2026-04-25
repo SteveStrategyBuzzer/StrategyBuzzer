@@ -19,7 +19,7 @@ $currentAvatar = $params['avatar'] ?? 'Aucun';
 $usedSkills = session('used_skills', []);
 
 // Détection du Stratège
-$isStratege = in_array(strtolower($currentAvatar), ['stratège', 'stratege']);
+$isStratege = in_array(mb_strtolower($currentAvatar, 'UTF-8'), ['stratège', 'stratege']);
 $teammateInfo = $avatarSkillsFull['teammate'] ?? null;
 
 // Construire le tableau des skills pour l'affichage
@@ -948,10 +948,10 @@ if ($isMultiplayer && !empty($opponentInfo)) {
                 <div class="strategic-avatar-circle empty"></div>
             @endif
             
-            <!-- Cercles de skills (jusqu'à 4 pour Stratège + coéquipier) -->
+            <!-- Cercles de skills (max 3 : 2 propres + 1 coéquipier pour Stratège) -->
             <div class="skills-container">
                 @php
-                    $maxSkills = min(count($skills), 4);
+                    $maxSkills = min(count($skills), 3);
                 @endphp
                 @for($i = 0; $i < $maxSkills; $i++)
                     @if(isset($skills[$i]))
@@ -2130,8 +2130,20 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig, 'voice-chat-game-question');
 const db = getFirestore(app);
-window.voiceChatDb = db;
 window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp };
+(function(_db, fn) {
+    function wrapDoc(ref) {
+        return { get: () => fn.getDoc(ref), set: (d, o) => fn.setDoc(ref, d, o||{}), delete: () => fn.deleteDoc(ref), onSnapshot: cb => fn.onSnapshot(ref, cb), collection: n => wrapCol(fn.collection(ref, n)) };
+    }
+    function wrapCol(ref) {
+        return { doc: id => wrapDoc(fn.doc(ref, id)), add: d => fn.addDoc(ref, d), where: (f,op,v) => wrapQ(fn.query(ref, fn.where(f,op,v))), onSnapshot: cb => fn.onSnapshot(ref, cb), get: () => fn.getDocs(ref) };
+    }
+    function wrapQ(ref) { return { get: () => fn.getDocs(ref), onSnapshot: cb => fn.onSnapshot(ref, cb) }; }
+    window.voiceChatDb = { collection: n => wrapCol(fn.collection(_db, n)) };
+    window.firebase = window.firebase || {};
+    window.firebase.firestore = window.firebase.firestore || {};
+    window.firebase.firestore.FieldValue = { serverTimestamp: () => fn.serverTimestamp() };
+})(db, window.voiceChatFirebase);
 </script>
 
 <script src="{{ asset('js/VoiceChat.js') }}"></script>

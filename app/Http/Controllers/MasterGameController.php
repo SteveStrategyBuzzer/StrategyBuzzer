@@ -99,10 +99,10 @@ class MasterGameController extends Controller
             'status' => 'draft'
         ]);
 
-        // Mode Automatique : Générer toutes les questions automatiquement
+        // Mode Automatique : générer d'abord la Manche 1 puis ouvrir la composition
         if ($validated['creation_mode'] === 'automatique') {
-            $this->generateAllQuestions($game);
-            return redirect()->route('master.compose', $game->id);
+            $this->generateInitialQuizStructure($game);
+            return redirect()->route('master.compose', ['gameId' => $game->id, 'manche' => 1]);
         }
 
         // Mode Personnalisé : Rediriger vers la page de composition pour édition manuelle
@@ -138,7 +138,7 @@ class MasterGameController extends Controller
 
         // Get manche parameter (1-4, where 4 = Manche Ultime)
         $manche = (int) $request->query('manche', 1);
-        $manche = max(1, min(4, $manche)); // Clamp between 1 and 4
+        $manche = max(1, min(5, $manche)); // Clamp between 1 and 5
 
         return view('master.compose', compact('game', 'manche'));
     }
@@ -262,6 +262,13 @@ class MasterGameController extends Controller
                 'questionNumber' => (int) $questionNumber,
                 'previousQuestions' => $previousQuestions,
                 'gameSeed' => $game->id,
+                'domainType' => $game->domain_type,
+                'schoolLevel' => $game->school_level,
+                'schoolGrade' => $game->school_grade,
+                'schoolSubject' => $game->school_subject,
+                'schoolCountry' => $game->school_country,
+                'mode' => $game->mode,
+                'totalQuestions' => $game->total_questions,
             ]);
 
             if (!$response->successful()) {
@@ -757,13 +764,18 @@ class MasterGameController extends Controller
     }
 
     // Page 5: Générer les codes
-    public function codes($gameId)
+    public function codes($gameId = null)
     {
-        $game = MasterGame::findOrFail($gameId);
-        
-        // Vérifier que c'est bien l'hôte
-        if ($game->host_user_id !== Auth::id()) {
-            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        if ($gameId) {
+            $game = MasterGame::findOrFail($gameId);
+
+            if ($game->host_user_id !== Auth::id()) {
+                abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+            }
+        } else {
+            $game = MasterGame::where('host_user_id', Auth::id())
+                ->orderBy('created_at', 'desc')
+                ->first();
         }
 
         return view('master.codes', compact('game'));
@@ -821,10 +833,63 @@ class MasterGameController extends Controller
         }
         
         // Générer la question de départage (toujours en dernier)
-        $this->generateTiebreakerQuestion($game, $totalQuestions + 1, $generatedQuestions);
+        $this->generateTiebreakerQuestion($game, (($game->total_questions * 3) + 1), $generatedQuestions);
     }
     
     // Générer la question de départage
+    
+    
+    // Génération initiale complète du quiz
+    private function generateInitialQuizStructure($game)
+    {
+        $perManche = $game->total_questions;
+        $base = $perManche * 3;
+
+        // Manches 1 à 3
+        $this->generateQuestionsForManche($game, 1);
+        $this->generateQuestionsForManche($game, 2);
+        $this->generateQuestionsForManche($game, 3);
+
+        // Manche Ultime
+        if ($game->tiebreaker_mode === 'bonus') {
+            $this->generateTiebreakerQuestion($game, $base + 1, []);
+        }
+
+        if ($game->tiebreaker_mode === 'sudden_death') {
+            for ($i = 1; $i <= 5; $i++) {
+                $this->generateTiebreakerQuestion($game, $base + $i, []);
+            }
+        }
+       
+        // Bonus Avatar Épique
+        if ($game->strategic_avatars_enabled && in_array('Épique', $game->strategic_avatars_tiers ?? [])) {
+            $this->generateTextQuestionWithAI($game, $base + 6, 'multiple_choice', []);
+        }
+    }
+
+// Génération par manche (nouveau flux MJ)
+    private function generateQuestionsForManche($game, $manche)
+    {
+        $questionsPerManche = $game->total_questions;
+        $start = ($manche - 1) * $questionsPerManche + 1;
+        $end = $start + $questionsPerManche - 1;
+
+        $generatedQuestions = [];
+
+        for ($i = $start; $i <= $end; $i++) {
+            $questionType = $this->getQuestionTypeForNumber($game, $i);
+
+            if ($questionType === 'image') {
+                $this->createEmptyImageQuestionTemplate($game, $i);
+            } else {
+                $questionText = $this->generateTextQuestionWithAI($game, $i, $questionType, $generatedQuestions);
+                if ($questionText) {
+                    $generatedQuestions[] = $questionText;
+                }
+            }
+        }
+    }
+
     private function generateTiebreakerQuestion($game, $questionNumber, $previousQuestions = [])
     {
         try {
@@ -846,7 +911,14 @@ class MasterGameController extends Controller
                 'questionType' => 'multiple_choice',
                 'questionNumber' => $questionNumber,
                 'previousQuestions' => $previousQuestions,
-                'gameSeed' => $game->id
+                'gameSeed' => $game->id,
+                'domainType' => $game->domain_type,
+                'schoolLevel' => $game->school_level,
+                'schoolGrade' => $game->school_grade,
+                'schoolSubject' => $game->school_subject,
+                'schoolCountry' => $game->school_country,
+                'mode' => $game->mode,
+                'totalQuestions' => $game->total_questions
             ]);
             
             $context = stream_context_create([
@@ -1071,7 +1143,14 @@ class MasterGameController extends Controller
                 'questionType' => $questionType,
                 'questionNumber' => $questionNumber,
                 'previousQuestions' => $previousQuestions,
-                'gameSeed' => $game->id
+                'gameSeed' => $game->id,
+                'domainType' => $game->domain_type,
+                'schoolLevel' => $game->school_level,
+                'schoolGrade' => $game->school_grade,
+                'schoolSubject' => $game->school_subject,
+                'schoolCountry' => $game->school_country,
+                'mode' => $game->mode,
+                'totalQuestions' => $game->total_questions
             ]);
             
             $context = stream_context_create([
@@ -1388,7 +1467,7 @@ class MasterGameController extends Controller
             'host_id' => $game->host_user_id,
             'host_name' => $game->host->name ?? 'Host',
             'game_mode' => $game->mode,
-            'total_questions' => $game->total_questions,
+            'total_questions' => ($game->total_questions * 3),
             'participants_expected' => $game->participants_expected,
         ]);
         
@@ -1445,7 +1524,7 @@ class MasterGameController extends Controller
         
         $nextQuestionNumber = $game->current_question + 1;
         
-        if ($nextQuestionNumber > $game->total_questions) {
+        if ($nextQuestionNumber > ($game->total_questions * 3)) {
             return response()->json([
                 'success' => false,
                 'message' => 'C\'est déjà la dernière question'
@@ -2022,7 +2101,7 @@ class MasterGameController extends Controller
             'success' => true,
             'question' => $questionData,
             'current_question' => $currentQuestionNumber,
-            'total_questions' => $game->total_questions,
+            'total_questions' => ($game->total_questions * 3),
             'is_host' => $isHost,
         ]);
     }
@@ -2108,7 +2187,7 @@ class MasterGameController extends Controller
             'player_name' => $playerName,
             'player_avatar' => $playerAvatarPath,
             'current_question' => $currentQuestion,
-            'total_questions' => $game->total_questions,
+            'total_questions' => ($game->total_questions * 3),
             'question' => $question,
             'players' => $players,
             'game_mode' => $game->mode,
@@ -2165,7 +2244,7 @@ class MasterGameController extends Controller
             'player_name' => $playerName,
             'player_avatar' => $playerAvatarPath,
             'current_question' => $currentQuestion,
-            'total_questions' => $game->total_questions,
+            'total_questions' => ($game->total_questions * 3),
             'question' => $question,
             'players' => $players,
             'game_mode' => $game->mode,
@@ -2225,7 +2304,7 @@ class MasterGameController extends Controller
             'player_name' => $playerName,
             'player_avatar' => $playerAvatarPath,
             'current_question' => $currentQuestion,
-            'total_questions' => $game->total_questions,
+            'total_questions' => ($game->total_questions * 3),
             'question' => $question,
             'players' => $players,
             'game_mode' => $game->mode,

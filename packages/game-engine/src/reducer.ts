@@ -9,6 +9,7 @@ export function createInitialState(sessionId: string, lobbyCode: string, config:
     phase: "LOBBY",
     config,
     players: {},
+      playerStats: {},
     order: [],
     currentRound: 0,
     questionIndex: 0,
@@ -64,12 +65,23 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
       s.players[event.playerId] = createDefaultPlayer(event.playerId, event.name, {
         avatarId: event.avatarId,
         strategicAvatarId: event.strategicAvatarId,
+        color: event.color,
         isBot: event.isBot,
         isHost: event.isHost,
         teamId: event.teamId,
         division: event.division,
         lastSeenMs: event.atMs,
       });
+        s.playerStats[event.playerId] = {
+          correctAnswers: 0,
+          wrongAnswers: 0,
+          answersSubmitted: 0,
+          buzzCount: 0,
+          buzzWinCount: 0,
+          buzzReactionTotalMs: 0,
+          skillsUsed: 0,
+          skillsSuccessful: 0,
+        };
       s.order.push(event.playerId);
       return s;
     }
@@ -161,6 +173,7 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
       if (s.buzzQueue.some((b) => b.playerId === event.playerId)) return s;
       if (s.answeredPlayerIds.includes(event.playerId)) return s;
 
+        s.playerStats[event.playerId].buzzCount++;
       s.buzzQueue.push({
         playerId: event.playerId,
         atMs: event.buzzTimeMs,
@@ -169,26 +182,39 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
 
       if (s.buzzQueue.length === 1) {
         s.lockedAnswerPlayerId = event.playerId;
-        s.phase = "ANSWER_SELECTION";
+        s.phase = "ANSWER_COLLECTION";
         s.phaseStartedAtMs = event.atMs;
-        s.phaseEndsAtMs = event.atMs + s.config.timers.answerSelection;
+        s.phaseEndsAtMs = event.atMs + s.config.timers.answerCollection;
       }
       return s;
     }
 
     case "ANSWER_SUBMITTED": {
-      assert(s.phase === "ANSWER_SELECTION", "Answer not allowed in current phase");
+      assert(s.phase === "ANSWER_COLLECTION", "Answer not allowed in current phase");
       const isInBuzzQueue = s.buzzQueue.some((b) => b.playerId === event.playerId);
       assert(isInBuzzQueue, "Player did not buzz for this question");
       assert(!!s.players[event.playerId], "Unknown player");
 
       if (!s.answeredPlayerIds.includes(event.playerId)) {
         s.answeredPlayerIds.push(event.playerId);
+          s.playerStats[event.playerId].answersSubmitted++;
       }
       return s;
     }
 
     case "ANSWER_REVEALED": {
+        const stats = s.playerStats[event.playerId];
+        if (stats) {
+          if (event.isCorrect) {
+            stats.correctAnswers++;
+          } else {
+            stats.wrongAnswers++;
+          }
+          stats.buzzReactionTotalMs += event.buzzTimeMs;
+          if (s.buzzQueue.length > 0 && s.buzzQueue[0].playerId === event.playerId) {
+            stats.buzzWinCount++;
+          }
+        }
       s.lastAnswer = {
         playerId: event.playerId,
         answer: event.answer,

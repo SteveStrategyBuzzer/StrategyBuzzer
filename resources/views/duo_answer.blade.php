@@ -2,16 +2,28 @@
 
 @section('game-data')
 <script>
-window.MATCH_ID          = @json((string)($match_id ?? ''));
-window.ROOM_ID           = @json((string)($room_id ?? ''));
-window.LOBBY_CODE        = @json((string)($lobby_code ?? ''));
-window.JWT_TOKEN         = @json((string)($jwt_token ?? ''));
-window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
-window.TOTAL_QUESTIONS   = {{ (int)($totalQuestions ?? 10) }};
-window.GAME_SERVER_URL   = window.location.origin;
-window.QUESTION_URL      = @json(route('game.duo.question'));
-window.RESULT_URL        = @json(route('game.duo.result'));
-window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
+window.MATCH_ID             = @json((string)($match_id ?? ''));
+window.ROOM_ID              = @json((string)($room_id ?? ''));
+window.LOBBY_CODE           = @json((string)($lobby_code ?? ''));
+window.JWT_TOKEN            = @json((string)($jwt_token ?? ''));
+window.CURRENT_USER_ID      = @json((string)(auth()->id() ?? ''));
+window.TOTAL_QUESTIONS      = {{ (int)($totalQuestions ?? 10) }};
+window.QUESTION_URL         = @json(route('game.duo.question'));
+window.RESULT_URL           = @json(route('game.duo.result'));
+window.ROUND_SCOREBOARD_URL = @json(route('game.duo.round-scoreboard'));
+window.MATCH_RESULT_URL     = @json(route('game.duo.match-result'));
+window.CURRENT_PAGE         = 'answer';
+window.NO_BRAIN_OVERLAY     = true;
+// Bridge UI: page-specific visual state saved on every navigation
+window.GR_SAVE_STATE_EXTRA  = {
+    phase:         'ANSWER_COLLECTION',
+    current_page:  'answer',
+    question_text: @json($questionText ?? ''),
+    choices:       @json($choices ?? []),
+    player_score:  {{ (int)($playerScore ?? 0) }},
+    opponent_score: {{ (int)($opponentScore ?? 0) }},
+    phaseEndsAtMs: null,
+};
 </script>
 @endsection
 
@@ -20,6 +32,7 @@ window.MATCH_RESULT_URL  = @json(route('game.duo.match-result'));
 $mode = 'duo';
 $choices = $question['choices'] ?? [];
 $questionText = $question['text'] ?? '';
+$correct_index = $question['correct_answer'] ?? $question['correct_index'] ?? null;
 $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
 $buzzTime = $buzz_time ?? 0;
 $noBuzz = ($no_buzz ?? false) || !$isBuzzWinner && $buzzTime == 0;
@@ -39,7 +52,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         justify-content: center;
         padding: 10px;
         margin: 0;
-        overflow-x: hidden;
+        overflow: hidden;
     }
     
     .game-container {
@@ -94,6 +107,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         font-size: 1.1rem;
         font-weight: 600;
         color: #aaa;
+    }
+
+    .efficiency-display {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #FFD700;
+        opacity: 0.85;
     }
     
     .question-text-box {
@@ -409,21 +429,31 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         color: #DEB887;
     }
     
+    .skill-action-btn.pending {
+        opacity: 0.6;
+        cursor: wait;
+        pointer-events: none;
+        animation: pulse 0.8s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 0.9; }
+    }
     .skill-action-btn:not(:disabled):hover {
         transform: scale(1.05);
         filter: brightness(1.2);
     }
     
-    .answer-button.illuminated {
-        background: linear-gradient(135deg, rgba(147, 112, 219, 0.4) 0%, rgba(186, 85, 211, 0.4) 100%);
-        border-color: #B19CD9;
-        box-shadow: 0 0 20px rgba(147, 112, 219, 0.6);
+    .illuminated-number {
+        color: #FFD700;
+        font-weight: 700;
+        text-shadow: 0 0 8px rgba(255, 215, 0, 0.8), 0 0 16px rgba(255, 215, 0, 0.5);
         animation: pulse-illuminate 1.5s ease-in-out infinite;
     }
     
     @keyframes pulse-illuminate {
-        0%, 100% { box-shadow: 0 0 20px rgba(147, 112, 219, 0.6); }
-        50% { box-shadow: 0 0 35px rgba(147, 112, 219, 0.9); }
+        0%, 100% { text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); }
+        50% { text-shadow: 0 0 20px rgba(255, 215, 0, 1), 0 0 35px rgba(255, 215, 0, 0.7); }
     }
     
     .answer-button.acidified {
@@ -523,32 +553,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     .correct-answer-text {
         font-size: 1.2rem;
         margin-top: 15px;
-        color: #FFD700;
-    }
-    
-    .connection-status {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        z-index: 1000;
-    }
-    
-    .connection-status.connected {
-        background: rgba(78, 205, 196, 0.3);
-        color: #4ECDC4;
-    }
-    
-    .connection-status.disconnected {
-        background: rgba(255, 107, 107, 0.3);
-        color: #FF6B6B;
-    }
-    
-    .connection-status.connecting {
-        background: rgba(255, 215, 0, 0.3);
         color: #FFD700;
     }
     
@@ -652,6 +656,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         0%, 100% { opacity: 1; }
         50% { opacity: 0.7; }
     }
+
+    /* Hide connection badge when connected — only show when disconnected */
+    #connectionStatus.connected { display: none !important; }
+
+    /* Hide voice mic on answer page — only shown on result page */
+    #voiceMicButton { display: none !important; }
 </style>
 
 {{-- connection-status, voice-mic-button: provided by layouts.game --}}
@@ -661,6 +671,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         <div class="question-label">{{ __('Question') }} #{{ $currentQuestion ?? 1 }}</div>
         <div class="potential-points points-2" id="potentialPoints">+2</div>
         <div class="score-display" id="scoreDisplay">{{ __('Score') }} <span id="playerScoreValue">{{ $playerScore ?? 0 }}</span></div>
+        <div class="efficiency-display" id="efficiencyDisplay">⚡ <span id="efficiencyValue">—</span></div>
     </div>
     
     <div class="question-text-box">
@@ -797,11 +808,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 </div>
 
 <audio id="correctSound" preload="auto">
-    <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('buzzers/correct/wow.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="incorrectSound" preload="auto">
-    <source src="{{ asset('audio/buzzers/incorrect/incorrect1.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('buzzers/incorrect/hey.mp3') }}" type="audio/mpeg">
 </audio>
 
 {{-- socket.io, DuoSocketClient, GameEffectsRuntime: loaded by layouts.game --}}
@@ -810,12 +821,35 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 (function() {
     'use strict';
     
-    const MATCH_ID = '{{ $match_id ?? "" }}';
-    const ROOM_ID = '{{ $room_id ?? "" }}';
-    const LOBBY_CODE = '{{ $lobby_code ?? "" }}';
-    const JWT_TOKEN = '{{ $jwt_token ?? "" }}';
+    const MATCH_ID   = window.MATCH_ID   || '';
+    const ROOM_ID    = window.ROOM_ID    || '';
+    const LOBBY_CODE = window.LOBBY_CODE || '';
+    const JWT_TOKEN  = window.JWT_TOKEN  || '';
     const PLAYER_ID = {{ auth()->id() ?? 0 }};
-    
+
+    // Read real-time scores passed from Question page via URL params (ps=playerScore, os=opponentScore)
+    (function initScoresFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const ps = params.get('ps');
+        const os = params.get('os');
+        const scoreEl = document.getElementById('playerScoreValue');
+        if (ps !== null && scoreEl) {
+            const n = parseInt(ps, 10);
+            if (!isNaN(n)) {
+                scoreEl.textContent = n;
+                // Init efficiency from URL score
+                const qNum = Math.max(1, parseInt('{{ $currentQuestion ?? 1 }}', 10));
+                const eff = Math.max(0, Math.min(100, Math.round(n / (2 * qNum) * 100)));
+                const effEl = document.getElementById('efficiencyValue');
+                if (effEl) effEl.textContent = eff + '%';
+            }
+        }
+        // Store opponent score for socket updates
+        if (os !== null) {
+            window._initOpponentScore = parseInt(os, 10) || 0;
+        }
+    })();
+
     function getGameServerUrl() {
         return window.location.origin;
     }
@@ -844,6 +878,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     let selectedIndex = null;
     let isRedirecting = false;
     let historianSkillUsed = false;
+    let phaseEndsAtMs = null;  // FIX: track server-side phase end time
     
     const CHOICES = @json($choices);
     const HAS_ILLUMINATE = {{ ($hasIlluminateNumbers ?? false) ? 'true' : 'false' }};
@@ -920,49 +955,138 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const answersContainer = document.getElementById('answersContainer');
     const correctSound = document.getElementById('correctSound');
     const incorrectSound = document.getElementById('incorrectSound');
-    const answerButtons = document.querySelectorAll('.answer-button');
+    let answerButtons = document.querySelectorAll('.answer-button');
+
+    // ── Bridge UI: warm restore — immediately render cached scores before socket arrives ──
+    (function() {
+        var rps = window.GR_RESTORED_PLAYER_SCORE;
+        var ros = window.GR_RESTORED_OPPONENT_SCORE;
+        var playerScoreEl   = document.getElementById('playerScore');
+        var opponentScoreEl = document.getElementById('opponentScore');
+        if (rps !== undefined && playerScoreEl)   { playerScoreEl.textContent   = String(rps); }
+        if (ros !== undefined && opponentScoreEl) { opponentScoreEl.textContent = String(ros); }
+    })();
     
-    function containsNumber(str) {
-        return /\d/.test(str);
+    function _applyIlluminateEffect() {
+        // Highlight every digit sequence inside the question text, not answer options
+        var questionBox = document.querySelector('.question-text-box');
+        if (!questionBox) return;
+        var html = questionBox.textContent || '';
+        if (!/\d/.test(html)) return;
+        // Wrap digits in the raw innerHTML (preserve existing content)
+        questionBox.innerHTML = questionBox.innerHTML.replace(
+            /(\d+)/g,
+            '<span class="illuminated-number">$1</span>'
+        );
+        console.log('[Skills] Illuminate numbers applied to question text');
     }
-    
+
+    function _applyAcidifyEffect(wrongIndices) {
+        if (Array.isArray(wrongIndices) && wrongIndices.length > 0) {
+            wrongIndices.forEach(function(idx) {
+                if (answerButtons[idx]) answerButtons[idx].classList.add('acidified');
+            });
+        } else {
+            // Fallback: pick one random wrong answer client-side
+            const available = [];
+            answerButtons.forEach(function(button, idx) {
+                if (!button.classList.contains('correct')) {
+                    available.push(idx);
+                }
+            });
+            if (available.length > 0) {
+                const r = available[Math.floor(Math.random() * available.length)];
+                answerButtons[r].classList.add('acidified');
+            }
+        }
+        console.log('[Skills] Acidify error visual applied', wrongIndices);
+    }
+
+    function _applyAiSuggestionEffect(suggestedIndex) {
+        if (suggestedIndex !== undefined && suggestedIndex !== null && answerButtons[suggestedIndex]) {
+            answerButtons[suggestedIndex].classList.add('ai-suggested');
+        } else {
+            // Fallback: pick random available answer
+            const available = [];
+            answerButtons.forEach(function(button, idx) {
+                if (!button.classList.contains('eliminated') && !button.classList.contains('acidified')) {
+                    available.push(idx);
+                }
+            });
+            if (available.length > 0) {
+                const r = available[Math.floor(Math.random() * available.length)];
+                answerButtons[r].classList.add('ai-suggested');
+            }
+        }
+        console.log('[Skills] AI suggestion visual applied', suggestedIndex);
+    }
+
+    function _onSkillEffect(data) {
+        const skillId = data && data.skillId;
+        if (!skillId) return;
+
+        if (skillId === 'illuminate_numbers') {
+            const btn = document.getElementById('skillIlluminate');
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyIlluminateEffect();
+        } else if (skillId === 'acidify_error') {
+            const btn = document.getElementById('skillAcidify');
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyAcidifyEffect(data.wrongIndices);
+        } else if (skillId === 'ai_suggestion') {
+            const btn = document.getElementById('skillAiSuggest');
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyAiSuggestionEffect(data.suggestedIndex);
+        }
+    }
+
+    function _onSkillFailed(data) {
+        const skillId = data && data.skillId;
+        if (!skillId) return;
+        // Restore the button and clear the "used" guard so the player can retry
+        if (skillId === 'illuminate_numbers') {
+            skillsUsed.illuminate = false;
+            const btn = document.getElementById('skillIlluminate');
+            if (btn) { btn.classList.remove('pending'); }
+        } else if (skillId === 'acidify_error') {
+            skillsUsed.acidify = false;
+            const btn = document.getElementById('skillAcidify');
+            if (btn) { btn.classList.remove('pending'); }
+        } else if (skillId === 'ai_suggestion') {
+            skillsUsed.aiSuggest = false;
+            const btn = document.getElementById('skillAiSuggest');
+            if (btn) { btn.classList.remove('pending'); }
+        }
+        console.log('[Skills] Skill activation failed:', skillId, data.reason || '');
+    }
+
     function activateIlluminateSkill() {
         if (skillsUsed.illuminate || answered) return;
         skillsUsed.illuminate = true;
-        
         const btn = document.getElementById('skillIlluminate');
-        if (btn) btn.classList.add('used');
-        
-        answerButtons.forEach(function(button) {
-            const text = button.getAttribute('data-text') || '';
-            if (containsNumber(text)) {
-                button.classList.add('illuminated');
-            }
-        });
-        
-        console.log('[Skills] Illuminate numbers activated');
+        if (btn) btn.classList.add('pending');
+        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+            window.DuoSocketClient.useSkill('illuminate_numbers');
+        } else {
+            // No server connection: apply effect immediately client-side
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyIlluminateEffect();
+        }
+        console.log('[Skills] Illuminate numbers requested');
     }
     
     function activateAcidifySkill() {
         if (skillsUsed.acidify || answered) return;
         skillsUsed.acidify = true;
-        
         const btn = document.getElementById('skillAcidify');
-        if (btn) btn.classList.add('used');
-        
-        const wrongAnswers = [];
-        answerButtons.forEach(function(button, idx) {
-            if (!button.classList.contains('correct') && !button.classList.contains('illuminated')) {
-                wrongAnswers.push(idx);
-            }
-        });
-        
-        if (wrongAnswers.length > 0) {
-            const randomIdx = wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
-            answerButtons[randomIdx].classList.add('acidified');
+        if (btn) btn.classList.add('pending');
+        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+            window.DuoSocketClient.useSkill('acidify_error');
+        } else {
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyAcidifyEffect(null);
         }
-        
-        console.log('[Skills] Acidify error activated');
+        console.log('[Skills] Acidify error requested');
     }
     
     function activateEliminateSkill() {
@@ -974,7 +1098,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         
         const wrongAnswers = [];
         answerButtons.forEach(function(button, idx) {
-            if (!button.classList.contains('illuminated') && !button.classList.contains('ai-suggested')) {
+            if (!button.classList.contains('ai-suggested')) {
                 wrongAnswers.push(idx);
             }
         });
@@ -999,23 +1123,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function activateAiSuggestSkill() {
         if (skillsUsed.aiSuggest || answered) return;
         skillsUsed.aiSuggest = true;
-        
         const btn = document.getElementById('skillAiSuggest');
-        if (btn) btn.classList.add('used');
-        
-        const availableAnswers = [];
-        answerButtons.forEach(function(button, idx) {
-            if (!button.classList.contains('eliminated') && !button.classList.contains('acidified')) {
-                availableAnswers.push(idx);
-            }
-        });
-        
-        if (availableAnswers.length > 0) {
-            const suggestedIdx = availableAnswers[Math.floor(Math.random() * availableAnswers.length)];
-            answerButtons[suggestedIdx].classList.add('ai-suggested');
+        if (btn) btn.classList.add('pending');
+        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
+            window.DuoSocketClient.useSkill('ai_suggestion');
+        } else {
+            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
+            _applyAiSuggestionEffect(null);
         }
-        
-        console.log('[Skills] AI Suggestion activated');
+        console.log('[Skills] AI suggestion requested');
     }
     
     function activateLockCorrectSkill() {
@@ -1091,9 +1207,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function calculatePotentialPoints(remainingTime) {
         if (historianSkillUsed) return 1;
         if (NO_BUZZ) return 0;
-        if (remainingTime > 3) return 2;
-        if (remainingTime >= 1) return 1;
-        return 0;
+        // Scoring is based on buzz ORDER only, not remaining time.
+        // 1st buzzer → always +2 if correct. 2nd buzzer → always +1.
+        return IS_BUZZ_WINNER ? 2 : 1;
     }
     
     function updatePotentialPointsDisplay(points) {
@@ -1118,6 +1234,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     
     function startTimer() {
         if (timerInterval) clearInterval(timerInterval);
+        
+        // FIX: sync starting timeLeft with server's remaining ANSWER_SELECTION time
+        if (phaseEndsAtMs) {
+            const remaining = Math.max(0, phaseEndsAtMs - Date.now());
+            timeLeft = Math.ceil(remaining / 1000);
+            if (timeLeft <= 0) timeLeft = 1; // at least 1 tick before auto-timeout
+        }
         
         // Démarrer le shuffle des réponses si actif
         startShuffleInterval();
@@ -1200,6 +1323,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             potentialPoints: pointsToSend,
             historianSkillUsed: historianSkillUsed
         });
+
+        // Show waiting overlay until answer_revealed or RESULT phase
+        if (waitingOverlay) {
+            waitingOverlay.style.display = 'flex';
+        }
     }
     
     function activateHistorianSkill() {
@@ -1230,34 +1358,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     }
     
     function showResult(isCorrect, correctIndex, pointsEarned) {
-        resultOverlay.className = 'result-overlay ' + (isCorrect ? 'correct' : 'incorrect');
-        resultText.textContent = isCorrect ? '{{ __("Bonne réponse !") }}' : '{{ __("Mauvaise réponse !") }}';
-        
-        if (isCorrect) {
-            pointsText.textContent = '+' + pointsEarned + ' {{ __("points") }}';
-        } else if (historianSkillUsed) {
-            pointsText.textContent = '{{ __("0 point") }}';
-        } else {
-            pointsText.textContent = '{{ __("-2 points") }}';
-        }
-        
-        if (!isCorrect && correctIndex !== undefined && correctIndex >= 0) {
-            const choices = @json($choices);
-            if (choices[correctIndex]) {
-                correctAnswerText.textContent = '{{ __("La bonne réponse était :") }} ' + choices[correctIndex];
-            }
-        } else {
-            correctAnswerText.textContent = '';
-        }
-        
-        resultOverlay.style.display = 'block';
-        
+        // Always: play sound
         if (isCorrect && correctSound) {
             correctSound.play().catch(function() {});
         } else if (!isCorrect && incorrectSound) {
             incorrectSound.play().catch(function() {});
         }
-        
+
+        // Always: highlight answer buttons
         answerButtons.forEach(function(btn, idx) {
             btn.classList.remove('selected');
             const indicator = document.getElementById('indicator' + idx);
@@ -1269,6 +1377,24 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 if (indicator) indicator.textContent = '✗';
             }
         });
+
+        // Popup overlay: ONLY for incorrect answers
+        if (!isCorrect) {
+            resultOverlay.className = 'result-overlay incorrect';
+            resultText.textContent = '{{ __("Mauvaise réponse !") }}';
+            if (historianSkillUsed) {
+                pointsText.textContent = '{{ __("0 point") }}';
+            } else {
+                pointsText.textContent = '{{ __("-2 points") }}';
+            }
+            if (correctIndex !== undefined && correctIndex >= 0) {
+                const choices = @json($choices);
+                if (choices[correctIndex]) {
+                    correctAnswerText.textContent = '{{ __("La bonne réponse était :") }} ' + choices[correctIndex];
+                }
+            }
+            resultOverlay.style.display = 'block';
+        }
     }
     
     answerButtons.forEach(function(btn, index) {
@@ -1282,108 +1408,244 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         historianSkillBtn.addEventListener('click', activateHistorianSkill);
     }
     
-    DuoSocketClient.on('connect', function() {
+    // ── Named socket handlers (closures over IIFE vars) ──────────────────────
+    // connect() + joinRoom() handled by GameplayRuntime — view-specific only
+    function _onAnswerConnect() {
         console.log('[DuoAnswer] Socket connected (room join handled by GameplayRuntime)');
-    });
-    
-    DuoSocketClient.on('disconnect', function(reason) {
-        updateConnectionStatus('disconnected');
-    });
-    
-    DuoSocketClient.on('error', function(error) {
-        console.error('[DuoAnswer] Socket error:', error);
-    });
-    
-    DuoSocketClient.on('answer_revealed', function(data) {
-        if (isRedirecting) return;
-        
-        waitingOverlay.style.display = 'none';
-        
-        const isCorrect = data.isCorrect || false;
-        const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
-        const pointsEarned = data.points || data.pointsEarned || 0;
-        
-        showResult(isCorrect, correctIndex, pointsEarned);
-        
-        setTimeout(function() {
-            if (isRedirecting) return;
-            
-            if (data.nextUrl) {
-                isRedirecting = true;
-                window.location.href = data.nextUrl;
-            } else if (data.matchEnded) {
-                isRedirecting = true;
-                window.location.href = '/duo/result/' + MATCH_ID;
-            }
-        }, 3000);
-    };
-    
-    DuoSocketClient.on('round_ended', function(data) {
-        if (isRedirecting) return;
-        
-        setTimeout(function() {
-            if (isRedirecting) return;
-            isRedirecting = true;
-            
-            if (data.nextQuestionUrl) {
-                window.location.href = data.nextQuestionUrl;
-            } else {
-                window.location.href = '/duo/question/' + MATCH_ID;
-            }
-        }, 2000);
-    };
-    
-    DuoSocketClient.on('match_ended', function(data) {
-        if (isRedirecting) return;
-        isRedirecting = true;
-        
-        setTimeout(function() {
-            window.location.href = '/duo/result/' + MATCH_ID;
-        }, 2000);
-    };
-    
-    DuoSocketClient.on('score_update', function(data) {
-        console.log('[DuoAnswer] Score update received:', data);
-        const playerScoreEl = document.getElementById('playerScoreValue');
-        if (playerScoreEl && data.score !== undefined) {
-            const dataPlayerId = String(data.playerId).replace('player:', '');
-            const currentPlayerId = String(PLAYER_ID);
-            if (dataPlayerId === currentPlayerId || data.playerId == PLAYER_ID) {
-                playerScoreEl.textContent = data.score;
-            }
-        }
-    };
-    
-    GameEffectsRuntime.registerEffect('shuffle_answers', {
-        onStart: function() {
-            stopShuffleInterval();
-            var container = document.getElementById('answersContainer');
-            if (container) container.classList.add('shuffle-active');
-            var ind = container ? container.querySelector('.shuffle-indicator') : null;
-            if (!ind && container) {
-                ind = document.createElement('div');
-                ind.className = 'shuffle-indicator';
-                ind.textContent = '🔀 {{ __("Réponses mélangées!") }}';
-                container.insertBefore(ind, container.firstChild);
-            }
-            if (ind) ind.style.display = '';
-            shuffleAnswers();
-            shuffleInterval = setInterval(shuffleAnswers, 1500);
-        },
-        onStop: function() {
-            stopShuffleInterval();
-            var container = document.getElementById('answersContainer');
-            if (container) container.classList.remove('shuffle-active');
-            var ind = container ? container.querySelector('.shuffle-indicator') : null;
-            if (ind) ind.style.display = 'none';
-        }
-    });
-
-    if (GAME_SERVER_URL) {
-        updateConnectionStatus('connecting');
-        GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
     }
-    
+    function _onAnswerGameState(data) {
+        // FIX: sync timer with server's remaining ANSWER_SELECTION time
+        if (!data || !data.phaseEndsAtMs) return;
+          var phase = data.phase || '';
+          if (phase !== 'ANSWER_COLLECTION' && phase !== 'BUZZ_WINNER_ANSWERING') return;
+        phaseEndsAtMs = data.phaseEndsAtMs;
+        var remaining = Math.max(0, phaseEndsAtMs - Date.now());
+        var serverLeft = Math.ceil(remaining / 1000);
+        // Only correct if local timer is more than 1 second off from server
+        if (Math.abs(serverLeft - timeLeft) > 1) {
+            console.log('[DuoAnswer] Timer synced: local=' + timeLeft + 's server=' + serverLeft + 's');
+            timeLeft = serverLeft;
+        }
+    }
+
+    /**
+     * state — fires on (re)connect with full server state.
+     * If PHP rendered an empty choices list (cold reconnect), rebuild the UI from
+     * state.currentQuestion so the answer page is usable.
+     */
+    function _onAnswerState(payload) {
+        if (!payload) return;
+        var data = payload.state || payload;
+
+        // ── Reconnect choice hydration ───────────────────────────────────────
+        var container = document.getElementById('answersContainer');
+        if (container) {
+            var existingBtns = container.querySelectorAll('.answer-button');
+            var choicesEmpty = existingBtns.length === 0 ||
+                (existingBtns.length === 1 && existingBtns[0].querySelector('.answer-text') &&
+                 existingBtns[0].querySelector('.answer-text').textContent.trim() === '');
+
+            var cq = data.currentQuestion || (data.state && data.state.currentQuestion);
+            if (choicesEmpty && cq) {
+                var serverChoices = cq.choices || cq.answers || [];
+                if (serverChoices.length) {
+                    console.log('[DuoAnswer] Hydrating choices from state:', serverChoices);
+                    // Rebuild choice buttons
+                    container.innerHTML = '';
+                    serverChoices.forEach(function(choice, idx) {
+                        var btn = document.createElement('button');
+                        btn.className = 'answer-button' + (IS_BUZZ_WINNER || NO_BUZZ ? '' : ' waiting');
+                        btn.dataset.index = idx;
+                        btn.dataset.text  = choice;
+                        if (!IS_BUZZ_WINNER && !NO_BUZZ) btn.disabled = true;
+                        btn.innerHTML =
+                            '<span class="answer-number">' + (idx + 1) + '</span>' +
+                            '<span class="answer-text">' + _escapeHtml(choice) + '</span>' +
+                            '<span class="answer-indicator" id="indicator' + idx + '"></span>';
+                        container.appendChild(btn);
+                    });
+                    // Refresh the module-level answerButtons reference
+                    answerButtons = container.querySelectorAll('.answer-button');
+                    // Re-attach click listeners
+                    _attachAnswerBtnListeners();
+                }
+                // Rebuild question text if empty
+                var qtBox = document.querySelector('.question-text-box');
+                if (qtBox && !qtBox.textContent.trim() && cq.text) {
+                    qtBox.textContent = cq.text;
+                }
+            }
+        }
+
+        // ── Timer resync ─────────────────────────────────────────────────────
+        if (data.phaseEndsAtMs) {
+            var phase = data.phase || '';
+              if (phase === 'ANSWER_COLLECTION' || phase === 'BUZZ_WINNER_ANSWERING') {
+                phaseEndsAtMs = data.phaseEndsAtMs;
+                var rem = Math.max(0, phaseEndsAtMs - Date.now());
+                var srvLeft = Math.ceil(rem / 1000);
+                if (Math.abs(srvLeft - timeLeft) > 1) {
+                    console.log('[DuoAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
+                    timeLeft = srvLeft;
+                }
+            }
+        }
+    }
+
+    function _escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function _attachAnswerBtnListeners() {
+        var container = document.getElementById('answersContainer');
+        if (!container) return;
+        container.querySelectorAll('.answer-button').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (btn.disabled || answered) return;
+                var idx = parseInt(btn.dataset.index, 10);
+                selectAnswer(idx);
+            });
+        });
+    }
+    function _onAnswerDisconnect(reason) {
+        updateConnectionStatus('disconnected');
+    }
+    function _onAnswerError(error) {
+        console.error('[DuoAnswer] Socket error:', error);
+    }
+function _onAnswerRevealed(data) {
+    if (isRedirecting) return;
+
+    waitingOverlay.style.display = 'none';
+
+    const isCorrect    = data.isCorrect || false;
+    const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
+    const pointsEarned = data.points || data.pointsEarned || 0;
+
+    showResult(isCorrect, correctIndex, pointsEarned);
+
+    if (!isRedirecting) {
+        isRedirecting = true;
+        setTimeout(function() {
+            window.location.href = RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID);
+        }, 250);
+    }
+}
+
+function _onAnswerRoundEnded(data) {
+    return;
+}
+
+function _onAnswerMatchEnded(data) {
+    return;
+}
+
+function _onAnswerPhaseChanged(data) {
+    if (isRedirecting || !data || !data.phase) return;
+
+    var phase = data.phase;
+
+    if (phase === 'ANSWER_COLLECTION') {
+        return;
+    }
+
+
+    if (phase === 'RESULT') {
+        if (!isRedirecting) {
+            isRedirecting = true;
+            window.location.href = RESULT_URL + '?match_id=' + encodeURIComponent(MATCH_ID);
+        }
+        return;
+    }
+
+    if (phase === 'QUESTION_ACTIVE' || phase === 'SYNC') {
+        return;
+    }
+
+    if (phase === 'ROUND_SCOREBOARD') {
+        return;
+    }
+
+    if (phase === 'MATCH_END') {
+        return;
+    }
+}
+    function _updateEfficiencyDisplay(score) {
+        const qNum = Math.max(1, parseInt('{{ $currentQuestion ?? 1 }}', 10));
+        const eff = Math.max(0, Math.min(100, Math.round(score / (2 * qNum) * 100)));
+        const effEl = document.getElementById('efficiencyValue');
+        if (effEl) effEl.textContent = eff + '%';
+    }
+    function _onAnswerScoreUpdate(data) {
+        const playerScoreEl = document.getElementById('playerScoreValue');
+        if (!playerScoreEl) return;
+        if (data.scores) {
+            const myScore = data.scores[String(PLAYER_ID)];
+            if (myScore !== undefined) {
+                playerScoreEl.textContent = myScore;
+                _updateEfficiencyDisplay(myScore);
+            }
+            return;
+        }
+        if (data.score !== undefined) {
+            const dataPlayerId = String(data.playerId || '').replace('player:', '');
+            if (dataPlayerId === String(PLAYER_ID) || data.playerId == PLAYER_ID) {
+                playerScoreEl.textContent = data.score;
+                _updateEfficiencyDisplay(data.score);
+            }
+        }
+    }
+    function _initAnswerEffects() {
+        GameEffectsRuntime.registerEffect('shuffle_answers', {
+            onStart: function() {
+                stopShuffleInterval();
+                var container = document.getElementById('answersContainer');
+                if (container) container.classList.add('shuffle-active');
+                var ind = container ? container.querySelector('.shuffle-indicator') : null;
+                if (!ind && container) {
+                    ind = document.createElement('div');
+                    ind.className = 'shuffle-indicator';
+                    ind.textContent = '🔀 {{ __("Réponses mélangées!") }}';
+                    container.insertBefore(ind, container.firstChild);
+                }
+                if (ind) ind.style.display = '';
+                shuffleAnswers();
+                shuffleInterval = setInterval(shuffleAnswers, 1500);
+            },
+            onStop: function() {
+                stopShuffleInterval();
+                var container = document.getElementById('answersContainer');
+                if (container) container.classList.remove('shuffle-active');
+                var ind = container ? container.querySelector('.shuffle-indicator') : null;
+                if (ind) ind.style.display = 'none';
+            }
+        });
+        if (GAME_SERVER_URL) {
+            updateConnectionStatus('connecting');
+            GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
+        }
+    }
+    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
+    window._duoAnswerHandlers = {
+        connect:         _onAnswerConnect,
+        disconnect:      _onAnswerDisconnect,
+        error:           _onAnswerError,
+        state:           _onAnswerState,
+        game_state:      _onAnswerGameState,
+        answer_revealed: _onAnswerRevealed,
+        round_ended:     _onAnswerRoundEnded,
+        match_ended:     _onAnswerMatchEnded,
+        phase_changed:   _onAnswerPhaseChanged,
+        score_update:    _onAnswerScoreUpdate,
+        skill_effect:    _onSkillEffect,
+        skill_failed:    _onSkillFailed,
+        initEffects:     _initAnswerEffects
+    };
+
     initSkillButtons();
     
     if (IS_BUZZ_WINNER || NO_BUZZ) {
@@ -1413,8 +1675,20 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig, 'voice-chat-app');
 const db = getFirestore(app);
-window.voiceChatDb = db;
 window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, deleteDoc, getDocs, getDoc, setDoc, serverTimestamp };
+(function(_db, fn) {
+    function wrapDoc(ref) {
+        return { get: () => fn.getDoc(ref), set: (d, o) => fn.setDoc(ref, d, o||{}), delete: () => fn.deleteDoc(ref), onSnapshot: cb => fn.onSnapshot(ref, cb), collection: n => wrapCol(fn.collection(ref, n)) };
+    }
+    function wrapCol(ref) {
+        return { doc: id => wrapDoc(fn.doc(ref, id)), add: d => fn.addDoc(ref, d), where: (f,op,v) => wrapQ(fn.query(ref, fn.where(f,op,v))), onSnapshot: cb => fn.onSnapshot(ref, cb), get: () => fn.getDocs(ref) };
+    }
+    function wrapQ(ref) { return { get: () => fn.getDocs(ref), onSnapshot: cb => fn.onSnapshot(ref, cb) }; }
+    window.voiceChatDb = { collection: n => wrapCol(fn.collection(_db, n)) };
+    window.firebase = window.firebase || {};
+    window.firebase.firestore = window.firebase.firestore || {};
+    window.firebase.firestore.FieldValue = { serverTimestamp: () => fn.serverTimestamp() };
+})(db, window.voiceChatFirebase);
 </script>
 
 <script src="{{ asset('js/VoiceChat.js') }}"></script>
@@ -1488,13 +1762,37 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         }
     }
     
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(initVoiceChat, 1000);
-    });
     
     window.addEventListener('beforeunload', () => {
         if (voiceChat) voiceChat.cleanup();
     });
+
+    // Register DuoSocketClient handlers after all scripts have loaded.
+    // DOMContentLoaded is guaranteed to fire after ALL blocking <script src=""> tags —
+    // including DuoSocketClient.js. setTimeout(0) is unreliable: it is a macrotask that
+    // can fire DURING a script fetch, before window.DuoSocketClient is set.
+    document.addEventListener('DOMContentLoaded', function() {
+        var ds = window.DuoSocketClient;
+        var h  = window._duoAnswerHandlers;
+        if (!ds || !h) { console.error('[DuoAnswer] DuoSocketClient or handlers missing'); return; }
+        ds.on('connect',         h.connect);
+        ds.on('disconnect',      h.disconnect);
+        ds.on('error',           h.error);
+        ds.on('state',           h.state);
+        ds.on('game_state',      h.game_state);
+        ds.on('answer_revealed', h.answer_revealed);
+        ds.on('round_ended',     h.round_ended);
+        ds.on('match_ended',     h.match_ended);
+        ds.on('phase_changed',   h.phase_changed);
+        ds.on('score_update',    h.score_update);
+        ds.on('skill_effect',    h.skill_effect);
+        ds.on('skill_failed',    h.skill_failed);
+        h.initEffects();
+    });
 })();
 </script>
+@endsection
+
+@section('scripts')
+{{-- Handlers registered via setTimeout(0) inside @section('content') IIFE above --}}
 @endsection

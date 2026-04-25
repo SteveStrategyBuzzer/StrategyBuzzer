@@ -12,6 +12,7 @@ export type PlayerJoinedEvent = BaseEvent & {
   name: string;
   avatarId?: string;
   strategicAvatarId?: string;
+  color?: string;
   isBot?: boolean;
   isHost?: boolean;
   teamId?: UUID;

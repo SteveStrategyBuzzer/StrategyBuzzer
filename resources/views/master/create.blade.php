@@ -481,7 +481,15 @@ body {
 <div class="create-container">
     <h1 class="create-title">Général</h1>
     
-    <form action="{{ route('master.store') }}" method="POST" id="createForm">
+        <div style="margin-bottom: 1rem;">
+        <a href="{{ route('master.codes') }}" 
+           class="btn-continue" 
+           style="display:block; width:100%; text-align:center; background: linear-gradient(135deg, #6C5CE7, #4834D4);">
+            📂 {{ __('Quiz Enregistré') }}
+        </a>
+    </div>
+
+<form action="{{ route('master.store') }}" method="POST" id="createForm">
         @csrf
         
         <!-- Nom du Quiz (pleine largeur) -->
@@ -496,10 +504,19 @@ body {
             <div class="form-group">
                 <label class="form-label" style="text-align: center;">Langue</label>
                 <select name="language" class="form-select" required style="text-align: center; font-weight: 600;">
-                    <option value="FR">Français</option>
-                    <option value="EN">English</option>
-                    <option value="ES">Español</option>
-                    <option value="DE">Deutsch</option>
+                    @php
+                        $userLang = strtoupper(app()->getLocale() ?? 'FR');
+                    @endphp
+                    <option value="FR" {{ $userLang == 'FR' ? 'selected' : '' }}>Français</option>
+                    <option value="EN" {{ $userLang == 'EN' ? 'selected' : '' }}>English</option>
+                    <option value="ES" {{ $userLang == 'ES' ? 'selected' : '' }}>Español</option>
+                    <option value="DE" {{ $userLang == 'DE' ? 'selected' : '' }}>Deutsch</option>
+                    <option value="IT" {{ $userLang == 'IT' ? 'selected' : '' }}>Italiano</option>
+                    <option value="PT" {{ $userLang == 'PT' ? 'selected' : '' }}>Português</option>
+                    <option value="NL" {{ $userLang == 'NL' ? 'selected' : '' }}>Nederlands</option>
+                    <option value="PL" {{ $userLang == 'PL' ? 'selected' : '' }}>Polski</option>
+                    <option value="TR" {{ $userLang == 'TR' ? 'selected' : '' }}>Türkçe</option>
+                    <option value="RO" {{ $userLang == 'RO' ? 'selected' : '' }}>Română</option>
                 </select>
             </div>
             <div class="form-group" style="margin-top: 1rem;">
@@ -519,11 +536,11 @@ body {
                 <label class="form-label" style="text-align: center;">Nombre</label>
                 <div class="radio-group" style="justify-content: center;">
                     <label class="radio-label">
-                        <input type="radio" name="total_questions" value="10" class="radio-input">
+                        <input type="radio" name="total_questions" value="10" class="radio-input" checked>
                         <span>010</span>
                     </label>
                     <label class="radio-label">
-                        <input type="radio" name="total_questions" value="20" class="radio-input" checked>
+                        <input type="radio" name="total_questions" value="20" class="radio-input">
                         <span>020</span>
                     </label>
                     <label class="radio-label">
@@ -541,7 +558,7 @@ body {
                 <label class="form-label" style="text-align: center;">{{ __('Types') }}</label>
                 <div class="checkbox-group" style="justify-content: center;">
                     <label class="checkbox-label">
-                        <input type="checkbox" name="question_types[]" value="true_false" class="checkbox-input type-checkbox">
+                        <input type="checkbox" name="question_types[]" value="true_false" class="checkbox-input type-checkbox" checked>
                         <span>{{ __('Vrai/Faux') }}</span>
                     </label>
                     <label class="checkbox-label">
@@ -549,7 +566,7 @@ body {
                         <span>{{ __('QCM') }}</span>
                     </label>
                     <label class="checkbox-label">
-                        <input type="checkbox" name="question_types[]" value="image" class="checkbox-input type-checkbox" id="imageCheckbox">
+                        <input type="checkbox" name="question_types[]" value="image" class="checkbox-input type-checkbox" id="imageCheckbox" style="opacity:0.5; cursor:not-allowed;">
                         <span>{{ __('Image') }}</span>
                     </label>
                 </div>
@@ -590,10 +607,10 @@ body {
         <div class="section">
             <div class="section-title">{{ __('Mode de Jeu') }}</div>
             <select name="mode" class="form-select" style="text-align: center; font-weight: 600;">
-                <option value="one_vs_all" selected>{{ __('1 contre Tous') }}</option>
+                <option value="one_vs_all">{{ __('1 contre Tous') }}</option>
                 <option value="face_to_face">{{ __('Face à Face') }}</option>
                 <option value="groups">{{ __('En Groupe') }}</option>
-                <option value="podium">{{ __('Podium') }}</option>
+                <option value="podium" selected>{{ __('Podium') }}</option>
             </select>
         </div>
         
@@ -601,14 +618,44 @@ body {
         <div class="section">
             <div class="section-title">{{ __('Manche Ultime') }}</div>
             <select name="tiebreaker_mode" class="form-select" style="text-align: center; font-weight: 600;">
-                <option value="bonus" selected>{{ __('Bonus') }}</option>
+                <option value="bonus" selected>{{ __('Dernière Chance') }}</option>
                 <option value="efficiency">{{ __('Efficacité') }}</option>
                 <option value="sudden_death">{{ __('Mort Subite') }}</option>
             </select>
         </div>
+
+        <!-- Avatars Stratégiques -->
+        <div class="section">
+            <div class="section-title">Avatars Stratégiques</div>
+
+            <div class="toggle-row">
+                <span>Activer</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="strategic_avatars_enabled" value="1" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <div class="checkbox-group" style="justify-content: center;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Rare" checked>
+                        <span>Rare</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Épique" checked>
+                        <span>Épique</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Légendaire" checked>
+                        <span>Légendaire</span>
+                    </label>
+                </div>
+            </div>
+        </div>
         
         <!-- Domaine -->
-        <div class="section section-full">
+        <div class="section">
             <div class="section-title">Domaine</div>
             
             <div class="form-group">
@@ -722,40 +769,6 @@ body {
                     <option value="buzzer_default_1">Buzzer 1</option>
                     <option value="buzzer_default_2">Buzzer 2</option>
                 </select>
-            </div>
-        </div>
-        
-        <!-- Avatars Stratégiques -->
-        <div class="section section-full">
-            <div class="section-title">{{ __('Avatars Stratégiques') }}</div>
-            
-            <div class="toggle-row">
-                <span>{{ __('Activer les avatars stratégiques') }}</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" name="strategic_avatars_enabled" value="1" id="strategicAvatarsToggle">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            
-            <div id="strategicAvatarsOptions" class="subsection-hidden">
-                <div class="tier-checkbox-group">
-                    <label class="tier-checkbox-label">
-                        <input type="checkbox" id="tierAll" class="tier-checkbox">
-                        <span style="font-weight:700; color:#FFD700;">{{ __('Tous') }}</span>
-                    </label>
-                    <label class="tier-checkbox-label">
-                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Rare" class="tier-checkbox tier-individual" id="tierRare">
-                        <span>🎯 {{ __('Rare') }}</span>
-                    </label>
-                    <label class="tier-checkbox-label">
-                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Épique" class="tier-checkbox tier-individual" id="tierEpic">
-                        <span>🔮 {{ __('Épique') }}</span>
-                    </label>
-                    <label class="tier-checkbox-label">
-                        <input type="checkbox" name="strategic_avatars_tiers[]" value="Légendaire" class="tier-checkbox tier-individual" id="tierLegendary">
-                        <span>👑 {{ __('Légendaire') }}</span>
-                    </label>
-                </div>
             </div>
         </div>
         </div>
@@ -913,21 +926,10 @@ const aiImagesCost = document.getElementById('aiImagesCost');
 const aiImagesRadios = document.querySelectorAll('input[name="ai_images_count"]');
 
 // Show/hide AI images section when Image checkbox is toggled
-if (imageCheckbox && aiImagesSection) {
-    imageCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-            aiImagesSection.style.display = 'block';
-            // Show warning modal only first time
-            if (!imageWarningShown && imageWarningModal) {
-                imageWarningModal.style.display = 'flex';
-                imageWarningShown = true;
-            }
-        } else {
-            aiImagesSection.style.display = 'none';
-            // Reset to 0 when unchecked
-            document.querySelector('input[name="ai_images_count"][value="0"]').checked = true;
-            updateAiImagesCost();
-        }
+if (imageCheckbox && imageWarningModal) {
+    imageCheckbox.addEventListener('click', function(e) {
+        e.preventDefault();
+        imageWarningModal.style.display = 'flex';
     });
 }
 

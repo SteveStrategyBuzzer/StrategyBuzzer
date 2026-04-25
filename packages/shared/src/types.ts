@@ -8,16 +8,16 @@ export type Mode =
   | "MASTER";
 
 export type Phase =
-  | "LOBBY"               
-  | "INTRO"               
-  | "QUESTION_ACTIVE"     
-  | "ANSWER_SELECTION"    
-  | "REVEAL"              
-  | "WAITING"             
-  | "ROUND_SCOREBOARD"    
-  | "TIEBREAKER_CHOICE"   
-  | "TIEBREAKER_QUESTION" 
-  | "MATCH_END";          
+  | "LOBBY"
+  | "INTRO"
+  | "SYNC"
+  | "QUESTION_ACTIVE"
+  | "ANSWER_COLLECTION"
+  | "RESULT"
+  | "ROUND_SCOREBOARD"
+  | "TIEBREAKER_CHOICE"
+  | "TIEBREAKER_QUESTION"
+  | "MATCH_END";
 
 export type SkillType = "PASSIVE" | "VISUAL" | "ACTIVE_PRE" | "ACTIVE_POST";
 export type SkillTrigger = "auto" | "question" | "answer" | "reveal";
@@ -62,6 +62,7 @@ export type Player = {
   avatarId?: string;
   avatarUrl?: string;
   strategicAvatarId?: string;
+  color?: string;
   isBot?: boolean;
   isHost?: boolean;
   teamId?: UUID;
@@ -74,6 +75,19 @@ export type Player = {
   isConnected: boolean;
   lastSeenMs: number;
   skills: Partial<Record<SkillId, SkillState>>;
+};
+
+export type PlayerStats = {
+  correctAnswers: number;
+  wrongAnswers: number;
+  answersSubmitted: number;
+
+  buzzCount: number;
+  buzzWinCount: number;
+  buzzReactionTotalMs: number;
+
+  skillsUsed: number;
+  skillsSuccessful: number;
 };
 
 export type QuestionType = "MCQ" | "TRUE_FALSE" | "TEXT";
@@ -105,10 +119,10 @@ export type ScoringConfig = {
 
 export type TimersConfig = {
   intro: number;
+  sync: number;
   questionActive: number;
-  answerSelection: number;
-  reveal: number;
-  waiting: number;
+  answerCollection: number;
+  result: number;
   roundScoreboard: number;
   tiebreakerChoice: number;
   matchEnd: number;
@@ -214,6 +228,7 @@ export type GameState = {
   config: GameConfig;
 
   players: Record<UUID, Player>;
+  playerStats: Record<UUID, PlayerStats>;
   order: UUID[];
 
   currentRound: number;
@@ -260,9 +275,9 @@ export const DEFAULT_SCORING: ScoringConfig = {
 export const DEFAULT_TIMERS: TimersConfig = {
   intro: 9000,
   questionActive: 8000,
-  answerSelection: 10000,
-  reveal: 3000,
-  waiting: 5000,
+  answerCollection: 10000,
+  result: 3000,
+  sync: 5000,
   roundScoreboard: 5000,
   tiebreakerChoice: 10000,
   matchEnd: 10000,
@@ -272,9 +287,9 @@ export const DEFAULT_TIMERS: TimersConfig = {
 export const DEFAULT_DUO_TIMERS: TimersConfig = {
   intro: 3000,
   questionActive: 8000,
-  answerSelection: 10000,
-  reveal: 5000,
-  waiting: 5000,
+  answerCollection: 10000,
+  result: 5000,
+  sync: 5000,
   roundScoreboard: 5000,
   tiebreakerChoice: 10000,
   matchEnd: 10000,

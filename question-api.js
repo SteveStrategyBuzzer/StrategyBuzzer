@@ -487,6 +487,7 @@ function getQuestionLengthConstraint(niveau) {
 }
 
 app.post('/generate-question', async (req, res) => {
+  try {
   const MAX_RETRIES = 3;
   
   const { theme, niveau, questionNumber, opponentAge = null, isBoss = false, language = 'fr' } = req.body;
@@ -1066,6 +1067,13 @@ NOTE TECHNIQUE: Les réponses restent en français ("Vrai"/"Faux") pour compatib
       console.log(`🔄 Nouvelle tentative...`);
     }
   }
+  } catch (error) {
+    console.error('❌ Erreur globale generate-question:', error.message);
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
 });
 
 // NOUVEAU ENDPOINT : Génération progressive de questions (queue system)
@@ -1237,7 +1245,7 @@ function translateElement(element, language) {
 
 // Endpoint pour générer une question Master (texte uniquement)
 app.post('/generate-master-question', async (req, res) => {
-  const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1, previousQuestions = [], gameSeed = null } = req.body;
+  const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1, previousQuestions = [], gameSeed = null, domainType = 'theme', schoolLevel = null, schoolGrade = null, schoolSubject = null, schoolCountry = null, mode = 'standard', totalQuestions = 20 } = req.body;
   
   // Obtenir le sous-thème basé sur la rotation (avec seed aléatoire si fourni)
   // Le seed garantit que chaque jeu a un ordre différent de sous-thèmes
@@ -1250,6 +1258,9 @@ app.post('/generate-master-question', async (req, res) => {
   console.log(`🎯 Sous-thème assigné: ${subtheme}`);
   console.log(`🚫 Questions précédentes à éviter: ${previousQuestions.length}`);
   
+  try {
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
   try {
     // Construire le prompt selon le type de question avec les 5 règles strictes
     let systemPrompt = `Tu es un expert en création de questions de quiz éducatives et divertissantes.
@@ -1310,16 +1321,36 @@ Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 
 La bonne réponse doit être à l'index 0.`;
     }
-    
-    const fullPrompt = systemPrompt + "\n\n" + userPrompt;
-    
-    const geminiResponse = await gemini.models.generateContent({
+
+      let contextBlock = '';
+      if ((req.body.domainType || 'theme') === 'school') {
+        contextBlock = `
+CONTEXTE SCOLAIRE OBLIGATOIRE:
+- Niveau: ${req.body.schoolLevel || 'non précisé'}
+- Année: ${req.body.schoolGrade || 'non précisée'}
+- Matière: ${req.body.schoolSubject || 'non précisée'}
+- Pays: ${req.body.schoolCountry || 'non précisé'}
+
+RÈGLES SCOLAIRES OBLIGATOIRES:
+1. La question doit correspondre au programme scolaire du pays et du niveau indiqués.
+2. La difficulté doit être adaptée à l'année scolaire demandée, sans niveau universitaire si le niveau est secondaire.
+3. Utilise des références, formulations et connaissances cohérentes avec un contexte scolaire réel.
+4. Si le pays est Canada et la langue est français, privilégie un contexte scolaire francophone canadien.
+5. Ne mélange jamais des périodes historiques incompatibles entre elles.
+6. Si la question parle de la Nouvelle-France, elle ne doit jamais être placée au Moyen Âge.
+7. Vérifie la cohérence chronologique, géographique et institutionnelle avant de répondre.
+`;
+      }
+
+      const fullPrompt = systemPrompt + "\n\n" + contextBlock + "\n\n" + userPrompt;
+      
+      const geminiResponse = await gemini.models.generateContent({
       model: 'gemini-2.0-flash',
       contents: [
         { role: 'user', parts: [{ text: fullPrompt }] }
       ],
       config: {
-        temperature: 0.3,
+        temperature: (req.body.domainType === 'school') ? 0.1 : 0.3,
         maxOutputTokens: 500,
         responseMimeType: 'application/json'
       }
@@ -1356,36 +1387,56 @@ La bonne réponse doit être à l'index 0.`;
       parsedData = JSON.parse(cleanContent);
     } catch (parseError) {
       console.error('❌ Erreur parsing JSON:', parseError.message);
-      // Fallback : générer une question par défaut
-      parsedData = {
-        question: questionType === 'true_false' 
-          ? (language === 'fr' ? 'Le ciel est bleu.' : 'The sky is blue.')
-          : (language === 'fr' ? 'Quelle est la capitale de la France ?' : 'What is the capital of France?'),
-        answers: questionType === 'true_false' 
-          ? ['Vrai', 'Faux']
-          : ['Paris', 'Lyon', 'Marseille', 'Bordeaux'],
-        correct_index: 0
-      };
+      throw new Error('Réponse JSON invalide de Gemini');
     }
     
-    // Valider et normaliser les données
+    // Validation stricte des données
     if (!parsedData.question || typeof parsedData.question !== 'string') {
-      parsedData.question = 'Question générée';
+      throw new Error('Question invalide');
     }
     
     if (!Array.isArray(parsedData.answers)) {
-      parsedData.answers = questionType === 'true_false' 
-        ? ['Vrai', 'Faux']
-        : ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'];
+      throw new Error('Réponses invalides');
     }
     
     if (typeof parsedData.correct_index !== 'number') {
-      parsedData.correct_index = 0;
+      throw new Error('correct_index invalide');
+    }
+
+    if (parsedData.question.trim().length < 10) {
+      throw new Error('Question trop courte');
+    }
+
+    if (parsedData.answers.length < 2) {
+      throw new Error('Nombre de réponses insuffisant');
+    }
+
+    if (new Set(parsedData.answers).size !== parsedData.answers.length) {
+      throw new Error('Réponses dupliquées');
+    }
+
+    if (parsedData.correct_index < 0 || parsedData.correct_index >= parsedData.answers.length) {
+      throw new Error('correct_index hors plage');
+    }
+
+    const normalizedQuestion = parsedData.question.toLowerCase();
+    const correctAnswer = String(parsedData.answers[parsedData.correct_index] ?? '').trim().toLowerCase();
+
+    if (!correctAnswer || correctAnswer.length < 3) {
+      throw new Error('Réponse correcte invalide');
+    }
+
+    if (['a', 'b', 'c', 'd', 'ok', 'oui', 'non'].includes(correctAnswer)) {
+      throw new Error('Réponse correcte trop faible');
+    }
+
+    if (normalizedQuestion.includes('nouvelle-france') && normalizedQuestion.includes('moyen âge')) {
+      throw new Error('Anachronisme détecté');
     }
     
     console.log(`✅ Question générée: "${parsedData.question.substring(0, 50)}..."`);
     
-    res.json({
+    return res.json({
       success: true,
       question: {
         text: parsedData.question,
@@ -1393,6 +1444,14 @@ La bonne réponse doit être à l'index 0.`;
         correct_index: parsedData.correct_index
       }
     });
+    
+    } catch (error) {
+      console.log(`❌ Tentative ${attempt}/${MAX_RETRIES} échouée:`, error.message);
+      if (attempt === MAX_RETRIES) {
+        throw error;
+      }
+    }
+  }
     
   } catch (error) {
     console.error('❌ Erreur génération question Master:', error.message);

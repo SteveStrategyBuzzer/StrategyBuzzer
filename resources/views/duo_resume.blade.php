@@ -6,7 +6,6 @@ window.ROOM_ID           = @json((string)($params['session_id'] ?? $params['matc
 window.LOBBY_CODE        = @json(null);
 window.JWT_TOKEN         = @json((string)($params['jwt_token'] ?? ''));
 window.CURRENT_USER_ID   = @json((string)(auth()->id() ?? ''));
-window.GAME_SERVER_URL   = window.location.origin;
 window.NO_SOCKET_OVERLAY = true;
 window.PHASE_ENDS_AT_MS  = {{ isset($phaseEndsAt) ? (int)$phaseEndsAt : 'null' }};
 window.QUESTION_URL      = @json(route('game.duo.question'));
@@ -758,13 +757,24 @@ body {
         return window.location.origin;
     }
     
-    // connect() + joinRoom() handled by GameplayRuntime — subscribe to events only
-    function initSocket() {
-        if (socketInitialized || typeof DuoSocketClient === 'undefined') return false;
-        try {
-            DuoSocketClient.on('player_ready', (data) => {
-                console.log('[Socket] player_ready received:', data);
-                if (data.playerId && String(data.playerId) !== String(playerId)) {
+    // ── Named socket handlers (closures over IIFE vars) ──────────────────────
+    // connect() + joinRoom() handled by GameplayRuntime — view-specific only
+    function _onResumePlayerReady(data) {
+        console.log('[Socket] player_ready received:', data);
+        if (data.playerId && String(data.playerId) !== String(playerId)) {
+            if (!opponentReady) {
+                opponentReady = true;
+                const opponentDot = document.getElementById('opponentDot');
+                if (opponentDot) opponentDot.classList.add('ready');
+                checkBothReady();
+            }
+        }
+    }
+    function _onResumeState(state) {
+        console.log('[Socket] state received:', state);
+        if (state && state.players) {
+            Object.entries(state.players).forEach(([pid, player]) => {
+                if (String(pid) !== String(playerId) && player.isReady) {
                     if (!opponentReady) {
                         opponentReady = true;
                         const opponentDot = document.getElementById('opponentDot');
@@ -773,34 +783,28 @@ body {
                     }
                 }
             });
-            DuoSocketClient.on('state', (state) => {
-                console.log('[Socket] state received:', state);
-                if (state && state.players) {
-                    Object.entries(state.players).forEach(([pid, player]) => {
-                        if (String(pid) !== String(playerId) && player.isReady) {
-                            if (!opponentReady) {
-                                opponentReady = true;
-                                const opponentDot = document.getElementById('opponentDot');
-                                if (opponentDot) opponentDot.classList.add('ready');
-                                checkBothReady();
-                            }
-                        }
-                    });
-                }
-            });
-            DuoSocketClient.on('phase_changed', (data) => {
-                if (data && data.phase === 'QUESTION_ACTIVE' && redirectUrl && !redirected) {
-                    redirected = true;
-                    window.location.href = redirectUrl;
-                }
-            });
-            socketInitialized = true;
-            console.log('[Socket] Handlers registered (connect+joinRoom by GameplayRuntime)');
-            return true;
-        } catch (err) {
-            console.warn('[Socket] Init failed:', err.message);
-            return false;
         }
+    }
+    function _onResumePhaseChanged(data) {
+        if (data && data.phase === 'QUESTION_ACTIVE' && redirectUrl && !redirected) {
+            redirected = true;
+            window.location.href = redirectUrl;
+        }
+    }
+    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
+    // setInitialized() closes over the IIFE-local socketInitialized flag
+    window._duoResumeHandlers = {
+        player_ready:   _onResumePlayerReady,
+        state:          _onResumeState,
+        phase_changed:  _onResumePhaseChanged,
+        setInitialized: function() { socketInitialized = true; }
+    };
+
+    // connect() + joinRoom() handled by GameplayRuntime — subscribe to events only
+    function initSocket() {
+        // Guard: only relevant if called before DuoSocketClient loads (will always fail gracefully)
+        if (socketInitialized || typeof DuoSocketClient === 'undefined') return false;
+        return false; // binding moved to the scripts section
     }
     
     // Initialize Firebase for chat/voice only (not for ready sync)
@@ -1234,6 +1238,24 @@ body {
             initVoiceChat();
         }, 1500);
     }
+
+    // Register DuoSocketClient handlers after all scripts have loaded.
+    // DOMContentLoaded is guaranteed to fire after ALL blocking <script src=""> tags —
+    // including DuoSocketClient.js. setTimeout(0) is unreliable: it is a macrotask that
+    // can fire DURING a script fetch, before window.DuoSocketClient is set.
+    document.addEventListener('DOMContentLoaded', function() {
+        var ds = window.DuoSocketClient;
+        var h  = window._duoResumeHandlers;
+        if (!ds || !h) { console.error('[DuoResume] DuoSocketClient or handlers missing'); return; }
+        ds.on('player_ready',  h.player_ready);
+        ds.on('state',         h.state);
+        ds.on('phase_changed', h.phase_changed);
+        h.setInitialized(); // sets IIFE-local socketInitialized = true via closure
+    });
 })();
 </script>
+@endsection
+
+@section('scripts')
+{{-- Handlers registered via setTimeout(0) inside @section('content') IIFE above --}}
 @endsection

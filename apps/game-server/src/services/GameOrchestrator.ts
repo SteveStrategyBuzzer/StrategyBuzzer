@@ -5,7 +5,8 @@ import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerReveal
 import { applyEvent, hasActiveEffect, expireEffects, applyScoreEffects, rechargeInventory } from "@strategybuzzer/game-engine";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
-import { appendEventLog, setRoomState } from "./RedisService.js";
+import { appendEventLog, setRoomState, setMatchResult } from "./RedisService.js";
+import { rateLimiter } from "../middleware/rateLimiter.js";
 import { saveRoomSnapshot } from "./RoomRecovery.js";
 
 export class GameOrchestrator {
@@ -15,6 +16,14 @@ export class GameOrchestrator {
   private pendingAnswers: Map<string, { playerId: string; answer: number | string | boolean; submittedAtMs: number }> = new Map();
   // Store answers from ALL buzzers (key = roomId, value = Map of playerId -> answer data)
   private allBuzzerAnswers: Map<string, Map<string, { answer: number | string | boolean; submittedAtMs: number; buzzOrder: number }>> = new Map();
+  // Track last score delta per player for cancel_error retroactive correction.
+  // Stores { questionIndex, delta } so cancel_error only applies to the
+  // question that was just scored (prevents stale cross-question corrections).
+  private lastScoreDeltas: Map<string, Map<string, { questionIndex: number; delta: number }>> = new Map();
+  // Track which players have sent question_page_ready during SYNC phase
+  private syncReadyMaps: Map<string, Set<string>> = new Map();
+  // Snapshot of expected human players at SYNC entry (used for early-exit check)
+  private syncExpectedMaps: Map<string, Set<string>> = new Map();
 
   constructor(io: SocketIOServer, roomManager: RoomManager) {
     this.io = io;
@@ -119,29 +128,26 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event });
     this.logEventToRedis(roomId, event);
 
-    if (room.state.lockedAnswerPlayerId === playerId) {
-      this.clearPhaseTimer(roomId);
+    // V3 NON-BLOCKING: phase stays QUESTION_ACTIVE after buzz
+    // Emit buzz_winner with position but do NOT change phase or clear timer
+    const position = room.state.buzzQueue.length; // already includes this buzz
+    const player = room.state.players[playerId];
+    this.io.to(roomId).emit("buzz_winner", {
+      playerId,
+      playerName: player?.name,
+      position,
+    });
 
-      const player = room.state.players[playerId];
-      this.io.to(roomId).emit("buzz_winner", {
-        playerId,
-        playerName: player?.name,
-        position: 1,
-      });
-
-      this.emitPhaseChanged(roomId);
-      this.schedulePhaseTimeout(roomId);
-
-      console.log(`[GameOrchestrator] Buzz winner: ${player?.name} (${playerId})`);
-    }
+    console.log(`[GameOrchestrator] Buzz winner: ${player?.name} (${playerId}), position: ${position}`);
   }
 
   handleAnswer(roomId: string, playerId: string, answer: number | string | boolean): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    if (room.state.phase !== "ANSWER_SELECTION") {
-      console.log(`[GameOrchestrator] Answer rejected: not in ANSWER_SELECTION phase`);
+    const acceptablePhases = ["QUESTION_ACTIVE", "ANSWER_COLLECTION"];
+    if (!acceptablePhases.includes(room.state.phase)) {
+      console.log(`[GameOrchestrator] Answer rejected: not in answer phase (${room.state.phase})`);
       return;
     }
 
@@ -187,15 +193,10 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event: submitEvent });
     this.logEventToRedis(roomId, submitEvent);
 
-
     console.log(`[GameOrchestrator] Player ${playerId} answered (buzz order: ${buzzOrder}). ${roomAnswers.size}/${room.state.buzzQueue.length} buzzers answered`);
 
-    // Check if all buzzers have answered
-    if (roomAnswers.size >= room.state.buzzQueue.length) {
-      console.log(`[GameOrchestrator] All ${roomAnswers.size} buzzers answered - revealing now`);
-      this.clearPhaseTimer(roomId);
-      this.revealAnswer(roomId);
-    }
+    // V3: Do NOT reveal early — let QUESTION_ACTIVE run its full timer.
+    // ANSWER_COLLECTION will catch any remaining answers after the timer expires.
   }
 
   private revealAnswer(roomId: string): void {
@@ -224,15 +225,16 @@ export class GameOrchestrator {
       }
     }
 
-    // Transition to REVEAL phase first
+    // V3: Transition to RESULT phase (replaces REVEAL)
+    const resultTimer = room.state.config.timers.result;
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
       type: "PHASE_CHANGED",
       atMs: Date.now(),
       sessionId: roomId,
       fromPhase: room.state.phase,
-      toPhase: "REVEAL",
-      phaseEndsAtMs: Date.now() + room.state.config.timers.reveal,
+      toPhase: "RESULT",
+      phaseEndsAtMs: Date.now() + resultTimer,
     };
 
     room.state = applyEvent(room.state, phaseEvent);
@@ -298,11 +300,9 @@ export class GameOrchestrator {
         pointsEarned = this.calculateScore(isCorrect, true, buzzOrder);
         
         console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) answered ${isCorrect ? 'correctly' : 'incorrectly'}: ${pointsEarned} pts`);
-      } else {
-        // Player buzzed but did NOT answer (timeout) - penalized with -2
-        pointsEarned = -2;
-        console.log(`[GameOrchestrator] Buzzer ${buzzer.playerId} (order: ${buzzOrder}) timed out (no answer): ${pointsEarned} pts`);
-      }
+        } else {
+          pointsEarned = -2;
+        }
 
       // Apply active skill effects (score_shield, double_points) — server is sole arbiter
       const scoreEffectResult = applyScoreEffects(room.state, buzzer.playerId, pointsEarned);
@@ -311,6 +311,16 @@ export class GameOrchestrator {
       if (scoreEffectResult.skillsTriggered.length > 0) {
         console.log(`[GameOrchestrator] Skill effects on ${buzzer.playerId}: ${scoreEffectResult.skillsTriggered.map(s => s.skillId).join(", ")}`);
       }
+
+      // Track last score delta per player (used by cancel_error retroactive correction).
+      // Keyed by questionIndex so cancel_error can only correct the current question.
+      if (!this.lastScoreDeltas.has(roomId)) {
+        this.lastScoreDeltas.set(roomId, new Map());
+      }
+      this.lastScoreDeltas.get(roomId)!.set(buzzer.playerId, {
+        questionIndex: room.state.questionIndex,
+        delta: pointsEarned,
+      });
 
       // Calculate expected scores for event payload (reducer will apply the actual update)
       const newRoundScore = (player.roundScore || 0) + pointsEarned;
@@ -406,18 +416,8 @@ export class GameOrchestrator {
         this.handleQuestionTimeout(roomId);
         break;
 
-      case "ANSWER_SELECTION":
+      case "ANSWER_COLLECTION":
         this.handleAnswerTimeout(roomId);
-        break;
-
-      case "REVEAL":
-        this.transitionAfterReveal(roomId);
-        break;
-
-      case "WAITING":
-        this.handleWaitingTimeout(roomId).catch((err: unknown) => {
-          console.error(`[GameOrchestrator] Error in handleWaitingTimeout:`, err);
-        });
         break;
 
       case "ROUND_SCOREBOARD":
@@ -433,12 +433,47 @@ export class GameOrchestrator {
     }
   }
 
+  
+  private transitionToIntro(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    const phaseEvent: PhaseChangedEvent = {
+      id: room.state.lastEventId + 1,
+      type: "PHASE_CHANGED",
+      atMs: Date.now(),
+      sessionId: roomId,
+      fromPhase: room.state.phase,
+      toPhase: "INTRO",
+      phaseEndsAtMs: Date.now() + room.state.config.timers.sync,
+      questionIndex: room.state.questionIndex,
+      roundNumber: room.state.currentRound,
+    };
+
+    room.state = applyEvent(room.state, phaseEvent);
+    room.events.push(phaseEvent);
+
+    this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
+    this.emitPhaseChanged(roomId);
+    this.schedulePhaseTimeout(roomId);
+  }
+
   private transitionToQuestionActive(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
     if (room.state.questions.length === 0) {
       console.error(`[GameOrchestrator] No questions available for room ${roomId}`);
+      return;
+    }
+
+    const currentQuestion = room.state.questions[room.state.questionIndex];
+    if (!currentQuestion) {
+      console.warn(
+        `[GameOrchestrator] No question at index ${room.state.questionIndex} for room ${roomId} — ending round early`
+      );
+      this.endRound(roomId);
       return;
     }
 
@@ -460,6 +495,7 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event: phaseEvent });
     this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
+    rateLimiter.resetForQuestion(roomId).catch(e => console.warn(`[RateLimiter] Reset failed for ${roomId}:`, e));
     this.broadcastQuestion(roomId);
     this.schedulePhaseTimeout(roomId);
   }
@@ -468,21 +504,23 @@ export class GameOrchestrator {
     if (!choices || !Array.isArray(choices)) {
       return undefined;
     }
-    return choices.map((choice: unknown) => {
-      if (typeof choice === 'string') {
-        return choice;
-      }
-      if (choice && typeof choice === 'object') {
-        const obj = choice as Record<string, unknown>;
-        if (typeof obj.text === 'string') {
-          return obj.text;
+    return choices
+      .map((choice: unknown) => {
+        if (typeof choice === 'string') {
+          return choice;
         }
-        if (typeof obj.answer === 'string') {
-          return obj.answer;
+        if (choice && typeof choice === 'object') {
+          const obj = choice as Record<string, unknown>;
+          if (typeof obj.text === 'string') {
+            return obj.text;
+          }
+          if (typeof obj.answer === 'string') {
+            return obj.answer;
+          }
         }
-      }
-      return String(choice);
-    });
+        return String(choice);
+      })
+      .filter((c: string) => c !== 'null' && c !== 'undefined' && c.trim() !== '');
   }
 
   private broadcastQuestion(roomId: string): void {
@@ -530,6 +568,12 @@ export class GameOrchestrator {
       const reductionMs = isReduceTimeActive ? 2000 : 0;
       const playerTimeLimit = Math.max(1000, baseTimeLimit - reductionMs);
       
+      // phaseEndsAtMs: derive from the canonical room timestamp so client timer is accurate.
+      // For reduce_time players, subtract the reduction from the room's deadline.
+      const playerPhaseEndsAtMs = room.state.phaseEndsAtMs
+        ? room.state.phaseEndsAtMs - reductionMs
+        : Date.now() + playerTimeLimit;
+
       this.io.to(`player:${playerId}`).emit("question_published", {
         questionIndex: room.state.questionIndex,
         questionId: question.id,
@@ -539,6 +583,7 @@ export class GameOrchestrator {
         subCategory: question.subCategory,
         difficulty: question.difficulty,
         timeLimitMs: playerTimeLimit,
+        phaseEndsAtMs: playerPhaseEndsAtMs,
         totalQuestions: room.state.questions.length,
         reduceTimeActive: isReduceTimeActive,
         activeEffects: room.state.activeEffects.filter(e => e.targetPlayerId === playerId),
@@ -556,14 +601,23 @@ export class GameOrchestrator {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
+    // V3: QUESTION_ACTIVE timeout → ANSWER_COLLECTION (2-3s grace) then RESULT
+    // If no buzzers at all, skip ANSWER_COLLECTION and go straight to RESULT
+    if (room.state.buzzQueue.length === 0) {
+      console.log(`[GameOrchestrator] No buzzers in room ${roomId} — skipping ANSWER_COLLECTION`);
+      this.revealAnswer(roomId);
+      return;
+    }
+
+    const answerCollectionTimer = room.state.config.timers.answerCollection;
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
       type: "PHASE_CHANGED",
       atMs: Date.now(),
       sessionId: roomId,
       fromPhase: room.state.phase,
-      toPhase: "REVEAL",
-      phaseEndsAtMs: Date.now() + room.state.config.timers.reveal,
+      toPhase: "ANSWER_COLLECTION",
+      phaseEndsAtMs: Date.now() + answerCollectionTimer,
     };
 
     room.state = applyEvent(room.state, phaseEvent);
@@ -572,37 +626,9 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event: phaseEvent });
     this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
-
-    const fullQuestion = room.state.questions[room.state.questionIndex];
-    let correctAnswer: number | string | boolean = 0;
-    if (fullQuestion) {
-      if (fullQuestion.type === "MCQ" && fullQuestion.correctIndex !== undefined) {
-        correctAnswer = fullQuestion.correctIndex;
-      } else if (fullQuestion.type === "TRUE_FALSE" && fullQuestion.correctBool !== undefined) {
-        correctAnswer = fullQuestion.correctBool;
-      } else if (fullQuestion.type === "TEXT" && fullQuestion.correctText !== undefined) {
-        correctAnswer = fullQuestion.correctText;
-      }
-    }
-
-    this.io.to(roomId).emit("answer_revealed", {
-      playerId: null,
-      playerName: null,
-      answer: null,
-      isCorrect: false,
-      correctAnswer,
-      correctIndex: fullQuestion?.correctIndex,
-      correctBool: fullQuestion?.correctBool,
-      correctText: fullQuestion?.correctText,
-      pointsEarned: 0,
-      totalScore: 0,
-      roundScore: 0,
-      timeout: true,
-      funFact: fullQuestion?.funFact,
-      didYouKnow: fullQuestion?.funFact,
-    });
-
     this.schedulePhaseTimeout(roomId);
+
+    console.log(`[GameOrchestrator] ANSWER_COLLECTION phase (${answerCollectionTimer}ms) for room ${roomId} with ${room.state.buzzQueue.length} buzzer(s)`);
   }
 
   private handleAnswerTimeout(roomId: string): void {
@@ -611,45 +637,87 @@ export class GameOrchestrator {
 
     // All buzzers who didn't answer will be scored as timeout (-2 pts) in scoreAllBuzzers
     // We use allBuzzerAnswers as single source of truth - buzzers not in the map = timeout
-    console.log(`[GameOrchestrator] Answer timeout in room ${roomId} - revealing answers`);
+    console.log(`[GameOrchestrator] ANSWER_COLLECTION timeout in room ${roomId} - revealing answers`);
     this.revealAnswer(roomId);
   }
 
-  private shouldShowWaiting(questionIndex: number): boolean {
-    return questionIndex === 0 || questionIndex === 4;
-  }
 
-  private getWaitingBlockInfo(questionIndex: number): { nextBlockStart: number; nextBlockEnd: number } | null {
-    if (questionIndex === 0) {
-      return { nextBlockStart: 2, nextBlockEnd: 5 };
-    } else if (questionIndex === 4) {
-      return { nextBlockStart: 6, nextBlockEnd: 9 };
-    }
-    return null;
-  }
 
-  private async transitionToWaiting(roomId: string): Promise<void> {
+
+  private transitionAfterResult(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    const blockInfo = this.getWaitingBlockInfo(room.state.questionIndex);
-    if (!blockInfo) {
-      room.state.questionIndex++;
-      this.transitionToQuestionActive(roomId);
-      return;
+    const isLastQuestion = room.state.questionIndex >= room.state.config.questionsPerRound - 1;
+
+    if (isLastQuestion) {
+      this.endRound(roomId);
+    } else {
+      // V3: always go through SYNC for inter-question sync.
+      // If this is a block-boundary question, prefetch the next block in the background
+      // so it is ready by the time QUESTION_ACTIVE starts (non-blocking).
+        if (room.state.questionIndex === 0 || room.state.questionIndex === 4) {
+          this.prefetchQuestionBlock(roomId).catch((err: unknown) => {
+            console.error(`[GameOrchestrator] Background question prefetch failed:`, err);
+          });
+        }
+        this.transitionToSync(roomId);
     }
+  }
 
-    const waitingDuration = room.state.config.timers.waiting;
-    const waitingEndsAtMs = Date.now() + waitingDuration;
+  private async prefetchQuestionBlock(roomId: string): Promise<void> {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
 
+    console.log(`[GameOrchestrator] Background prefetch starting for room ${roomId}`);
+    const blockResult = await fetchNextBlock(roomId, 4);
+
+    const freshRoom = this.roomManager.getRoom(roomId);
+    if (!freshRoom) return;
+
+    if (blockResult.questions.length > 0) {
+      const newQuestions = blockResult.questions.filter(q => {
+        if (freshRoom.usedQuestionIds?.has(q.id)) {
+          console.log(`[GameOrchestrator] Skipping duplicate question ${q.id}`);
+          return false;
+        }
+        return true;
+      });
+      for (const q of newQuestions) {
+        freshRoom.usedQuestionIds ??= new Set();
+        freshRoom.usedQuestionIds.add(q.id);
+        freshRoom.state.questions.push(q);
+      }
+      console.log(`[GameOrchestrator] Background prefetched ${newQuestions.length} questions for room ${roomId}, total: ${freshRoom.state.questions.length}`);
+    }
+  }
+
+  private transitionToSync(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+      if (room.state.questionIndex < room.state.questions.length - 1) { room.state.questionIndex++; }
+
+    // Snapshot the set of expected human players at SYNC entry.
+    // This snapshot is used for early-exit: we wait for ALL expected humans before advancing.
+    // Transient disconnects during page navigation do NOT update this snapshot.
+    const expectedHumans = new Set<string>(
+      Object.values(room.state.players)
+        .filter(p => !p.isBot)
+        .map(p => p.id)
+    );
+    this.syncReadyMaps.set(roomId, new Set<string>());
+    this.syncExpectedMaps.set(roomId, expectedHumans);
+
+    const syncTimer = room.state.config.timers.sync;
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
       type: "PHASE_CHANGED",
       atMs: Date.now(),
       sessionId: roomId,
       fromPhase: room.state.phase,
-      toPhase: "WAITING",
-      phaseEndsAtMs: waitingEndsAtMs,
+      toPhase: "SYNC",
+      phaseEndsAtMs: Date.now() + syncTimer,
       questionIndex: room.state.questionIndex,
       roundNumber: room.state.currentRound,
     };
@@ -660,82 +728,45 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("event", { event: phaseEvent });
     this.logEventToRedis(roomId, phaseEvent);
     this.emitPhaseChanged(roomId);
-
-    this.io.to(roomId).emit("waiting_block", {
-      nextBlockStart: blockInfo.nextBlockStart,
-      nextBlockEnd: blockInfo.nextBlockEnd,
-      waitingEndsAtMs,
-    });
-
-    console.log(`[GameOrchestrator] Waiting phase for block ${blockInfo.nextBlockStart}-${blockInfo.nextBlockEnd}`);
-
-    const blockResult = await fetchNextBlock(roomId, 4);
-    if (blockResult.questions.length > 0) {
-      const newQuestions = blockResult.questions.filter(q => {
-        if (room.usedQuestionIds?.has(q.id)) {
-          console.log(`[GameOrchestrator] Skipping duplicate question ${q.id}`);
-          return false;
-        }
-        return true;
-      });
-
-      for (const q of newQuestions) {
-        room.usedQuestionIds?.add(q.id);
-        room.state.questions.push(q);
-      }
-
-      console.log(`[GameOrchestrator] Added ${newQuestions.length} new questions for room ${roomId}, total: ${room.state.questions.length}`);
-    }
-
     this.schedulePhaseTimeout(roomId);
+
+    console.log(`[GameOrchestrator] SYNC phase started for room ${roomId} (max ${syncTimer}ms), next question index: ${room.state.questionIndex}`);
   }
 
-  private async handleWaitingTimeout(roomId: string): Promise<void> {
+  private handleSyncTimeout(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    const nextQuestionIndex = room.state.questionIndex + 1;
-    if (nextQuestionIndex >= room.state.questions.length) {
-      console.log(`[GameOrchestrator] Waiting for questions, checking pipeline status...`);
-      const status = await getPipelineStatus(roomId);
-      if (!status.ready && status.available < nextQuestionIndex + 1) {
-        console.log(`[GameOrchestrator] Questions not ready yet, fetching more...`);
-        const blockResult = await fetchNextBlock(roomId, 4);
-        if (blockResult.questions.length > 0) {
-          const newQuestions = blockResult.questions.filter(q => {
-            if (room.usedQuestionIds?.has(q.id)) {
-              return false;
-            }
-            return true;
-          });
+    console.log(`[GameOrchestrator] SYNC timeout for room ${roomId} — advancing to INTRO`);
+    this.syncReadyMaps.delete(roomId);
+    this.syncExpectedMaps.delete(roomId);
+    this.transitionToIntro(roomId);
+  }
 
-          for (const q of newQuestions) {
-            room.usedQuestionIds?.add(q.id);
-            room.state.questions.push(q);
-          }
-        }
-      }
+  handleQuestionPageReady(roomId: string, playerId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    if (room.state.phase !== "SYNC") {
+      console.log(`[GameOrchestrator] question_page_ready ignored: not in SYNC phase (${room.state.phase})`);
+      return;
     }
 
-    room.state.questionIndex++;
-    this.transitionToQuestionActive(roomId);
-  }
+    const readyMap = this.syncReadyMaps.get(roomId);
+    const expectedSet = this.syncExpectedMaps.get(roomId);
+    if (!readyMap || !expectedSet) return;
 
-  private transitionAfterReveal(roomId: string): void {
-    const room = this.roomManager.getRoom(roomId);
-    if (!room) return;
+    readyMap.add(playerId);
+    console.log(`[GameOrchestrator] question_page_ready from ${playerId} in room ${roomId} (${readyMap.size}/${expectedSet.size} expected humans ready)`);
 
-    const isLastQuestion = room.state.questionIndex >= room.state.config.questionsPerRound - 1;
-
-    if (isLastQuestion) {
-      this.endRound(roomId);
-    } else if (this.shouldShowWaiting(room.state.questionIndex)) {
-      this.transitionToWaiting(roomId).catch((err: unknown) => {
-        console.error(`[GameOrchestrator] Error in transitionToWaiting:`, err);
-      });
-    } else {
-      room.state.questionIndex++;
-      this.transitionToQuestionActive(roomId);
+    // Early exit only when ALL expected humans (snapshotted at SYNC entry) have signalled ready.
+    // Disconnected or slow humans are handled by the 8s fallback timer — do NOT fast-path here.
+    if (expectedSet.size > 0 && [...expectedSet].every(id => readyMap.has(id))) {
+      console.log(`[GameOrchestrator] All ${expectedSet.size} expected human(s) ready — early exit SYNC for room ${roomId}`);
+      this.clearPhaseTimer(roomId);
+      this.syncReadyMaps.delete(roomId);
+      this.syncExpectedMaps.delete(roomId);
+      this.transitionToIntro(roomId);
     }
   }
 
@@ -822,53 +853,66 @@ export class GameOrchestrator {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    const maxRoundsWon = Math.max(...Object.values(room.state.players).map(p => p.roundsWon));
+      const nextPhase = getNextPhase(room.state);
 
-    if (maxRoundsWon >= room.state.config.roundsToWin) {
-      this.endMatch(roomId).catch((err: unknown) => {
-        console.error(`[GameOrchestrator] Error in endMatch:`, err);
-      });
-    } else if (room.state.currentRound >= room.state.config.maxRounds) {
-      this.endMatch(roomId).catch((err: unknown) => {
-        console.error(`[GameOrchestrator] Error in endMatch:`, err);
-      });
-    } else {
-      room.state.currentRound++;
-      room.state.questionIndex = 0;
-
-      for (const player of Object.values(room.state.players)) {
-        player.roundScore = 0;
-      }
-
-      // skill_recharge passive: restore full inventory for players who have this skill
-      for (const playerId of Object.keys(room.state.players)) {
-        const inventory = room.state.skillInventory[playerId] ?? [];
-        const hasRecharge = inventory.some(e => e.skillId === "skill_recharge");
-        if (hasRecharge) {
-          room.state = rechargeInventory(room.state, playerId);
-          console.log(`[GameOrchestrator] skill_recharge applied for ${playerId} at round ${room.state.currentRound}`);
+      if (nextPhase === "MATCH_END") {
+        this.endMatch(roomId).catch((err: unknown) => {
+          console.error(`[GameOrchestrator] Error in endMatch:`, err);
+        });
+      } else if (nextPhase === "TIEBREAKER_CHOICE") {
+        const event = this.roomManager.transitionPhase(roomId, nextPhase);
+        if (event) {
+          this.io.to(roomId).emit("event", { event });
+          this.logEventToRedis(roomId, event);
+          this.emitPhaseChanged(roomId);
+          this.schedulePhaseTimeout(roomId);
         }
+      } else {
+        room.state.currentRound++;
+        room.state.questionIndex = 0;
+        for (const player of Object.values(room.state.players)) {
+          player.roundScore = 0;
+        }
+
+        for (const playerId of Object.keys(room.state.players)) {
+          const inventory = room.state.skillInventory[playerId] ?? [];
+          const hasRecharge = inventory.some(e => e.skillId === "skill_recharge");
+          if (hasRecharge) {
+            room.state = rechargeInventory(room.state, playerId);
+            console.log(`[GameOrchestrator] skill_recharge applied for ${playerId} at round ${room.state.currentRound}`);
+          }
+        }
+
+        this.transitionToRoundSync(roomId);
       }
-
-      const phaseEvent: PhaseChangedEvent = {
-        id: room.state.lastEventId + 1,
-        type: "PHASE_CHANGED",
-        atMs: Date.now(),
-        sessionId: roomId,
-        fromPhase: room.state.phase,
-        toPhase: "INTRO",
-        phaseEndsAtMs: Date.now() + room.state.config.timers.intro,
-        roundNumber: room.state.currentRound,
-      };
-
-      room.state = applyEvent(room.state, phaseEvent);
-      room.events.push(phaseEvent);
-
-      this.io.to(roomId).emit("event", { event: phaseEvent });
-      this.logEventToRedis(roomId, phaseEvent);
-      this.emitPhaseChanged(roomId);
-      this.schedulePhaseTimeout(roomId);
     }
+
+  private transitionToRoundSync(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    const syncTimer = room.state.config.timers.sync;
+    const phaseEvent: PhaseChangedEvent = {
+      id: room.state.lastEventId + 1,
+      type: "PHASE_CHANGED",
+      atMs: Date.now(),
+      sessionId: roomId,
+      fromPhase: room.state.phase,
+      toPhase: "SYNC",
+      phaseEndsAtMs: Date.now() + syncTimer,
+      questionIndex: room.state.questionIndex,
+      roundNumber: room.state.currentRound,
+    };
+
+    room.state = applyEvent(room.state, phaseEvent);
+    room.events.push(phaseEvent);
+
+    this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
+    this.emitPhaseChanged(roomId);
+    this.schedulePhaseTimeout(roomId);
+
+    console.log(`[GameOrchestrator] Round-start SYNC phase started for room ${roomId} (max ${syncTimer}ms), question index: ${room.state.questionIndex}, round: ${room.state.currentRound}`);
   }
 
   private async endMatch(roomId: string): Promise<void> {
@@ -910,6 +954,30 @@ export class GameOrchestrator {
 
     const duration = room.state.startedAtMs ? Date.now() - room.state.startedAtMs : 0;
 
+    const playerStatsSummary = Object.fromEntries(
+      Object.entries(room.state.playerStats || {}).map(([playerId, stats]) => {
+        const answersSubmitted = stats.answersSubmitted || 0;
+        const buzzCount = stats.buzzCount || 0;
+        const avgBuzzMs = buzzCount > 0 ? Math.round(stats.buzzReactionTotalMs / buzzCount) : 0;
+        const accuracyPct = answersSubmitted > 0 ? Math.round((stats.correctAnswers / answersSubmitted) * 100) : 0;
+        const buzzSuccessPct = buzzCount > 0 ? Math.round((stats.buzzWinCount / buzzCount) * 100) : 0;
+
+        return [playerId, {
+          correctAnswers: stats.correctAnswers || 0,
+          wrongAnswers: stats.wrongAnswers || 0,
+          answersSubmitted,
+          buzzCount,
+          buzzWinCount: stats.buzzWinCount || 0,
+          buzzReactionTotalMs: stats.buzzReactionTotalMs || 0,
+          avgBuzzMs,
+          accuracyPct,
+          buzzSuccessPct,
+          skillsUsed: stats.skillsUsed || 0,
+          skillsSuccessful: stats.skillsSuccessful || 0,
+        }];
+      })
+    );
+
     const matchEndedEvent: MatchEndedEvent = {
       id: room.state.lastEventId + 1,
       type: "MATCH_ENDED",
@@ -927,12 +995,26 @@ export class GameOrchestrator {
 
     this.io.to(roomId).emit("event", { event: matchEndedEvent });
     this.logEventToRedis(roomId, matchEndedEvent);
+
+    // Persist authoritative result to Redis BEFORE notifying clients
+    // Laravel reads this to finalize stats without trusting client-provided data
+    await setMatchResult(roomId, {
+      winnerId: winnerId ?? null,
+      finalScores,
+      isTie,
+      decidedBy: isTie ? "total_score" : "rounds",
+      roundsWon,
+        playerStatsSummary,
+      duration,
+    });
+
     this.io.to(roomId).emit("match_ended", {
       winnerId,
       winnerName: winnerId ? room.state.players[winnerId]?.name : null,
       isTie,
       finalScores,
       roundsWon,
+        playerStatsSummary,
       duration,
     });
 
@@ -1024,9 +1106,76 @@ export class GameOrchestrator {
     }
   }
 
+  /**
+   * cancel_error: retroactively converts the player's last -2 score delta to 0.
+   * Called from the skill handler when the player activates cancel_error.
+   * Returns true if the correction was applied, false if last delta was not negative.
+   */
+  handleCancelError(roomId: string, playerId: string): boolean {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return false;
+
+    const roomDeltas = this.lastScoreDeltas.get(roomId);
+    const entry = roomDeltas?.get(playerId);
+
+    // Guard: entry must exist, delta must be negative, AND must be from the
+    // current question (prevents stale corrections from earlier rounds)
+    if (!entry || entry.delta >= 0 || entry.questionIndex !== room.state.questionIndex) {
+      console.log(
+        `[GameOrchestrator] cancel_error: no valid negative delta for ${playerId} ` +
+        `(entry=${JSON.stringify(entry)}, currentQ=${room.state.questionIndex})`
+      );
+      return false;
+    }
+
+    // Revert the negative delta (add back the absolute value)
+    const correction = Math.abs(entry.delta);
+    const player = room.state.players[playerId];
+    if (!player) return false;
+
+    player.score += correction;
+    player.roundScore += correction;
+
+    // Mark delta as corrected so it can't be used again
+    roomDeltas!.set(playerId, { questionIndex: entry.questionIndex, delta: 0 });
+
+    const newTotalScore = player.score;
+    const newRoundScore = player.roundScore;
+
+    this.io.to(roomId).emit("score_update", {
+      playerId,
+      score: newTotalScore,
+      roundScore: newRoundScore,
+      delta: correction,
+      skillsTriggered: [{ skillId: "cancel_error", playerId }],
+    });
+
+    console.log(`[GameOrchestrator] cancel_error applied for ${playerId}: +${correction} pts (was ${entry.delta})`);
+    return true;
+  }
+
+  /**
+   * premonition: returns the category of the next question for the given room.
+   * Called from the skill handler to emit only to the activating player.
+   */
+  getNextQuestionCategory(roomId: string): string | null {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return null;
+
+    const nextIndex = room.state.questionIndex + 1;
+    const nextQuestion = room.state.questions[nextIndex];
+    if (!nextQuestion) return null;
+
+    return nextQuestion.category || nextQuestion.subCategory || null;
+  }
+
   cleanup(roomId: string): void {
     this.clearPhaseTimer(roomId);
     this.pendingAnswers.delete(roomId);
+    this.lastScoreDeltas.delete(roomId);
+    this.syncReadyMaps.delete(roomId);
+    this.syncExpectedMaps.delete(roomId);
+    this.allBuzzerAnswers.delete(roomId);
     console.log(`[GameOrchestrator] Cleaned up room ${roomId}`);
   }
 

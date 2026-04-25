@@ -4,7 +4,7 @@
  * Responsibilities:
  *   • Establish ONE Socket.IO connection per page load via DuoSocketClient
  *   • Join the game room once (from window.ROOM_ID, window.JWT_TOKEN, etc.)
- *   • Show/hide #brainOverlay based on phase (INTRO → show, WAITING → show, others → hide)
+ *   • Show/hide #brainOverlay based on phase (INTRO → show, SYNC/ROUND_SCOREBOARD → show, others → hide)
  *   • Show #loadingOverlay while connecting; hide on connect
  *   • Update game-header scores in real-time (#ghPlayerScore, #ghOpponentScore, counters)
  *   • Expose helpers: showBrainSpin, hideBrainSpin, showLoading, hideLoading, setConnectionStatus
@@ -92,24 +92,38 @@
     // Phase → brain overlay mapping
 
     var PHASE_BRAIN = {
-        INTRO:            { show: true,  msg: null }, // msg set below from labels
-        WAITING:          { show: true,  msg: null },
-        LOBBY:            { show: false },
-        QUESTION_ACTIVE:  { show: false },
-        ANSWER_SELECTION: { show: false },
-        REVEAL:           { show: false },
-        ROUND_SCOREBOARD: { show: false },
-        MATCH_END:        { show: false },
-        FINISHED:         { show: false },
+        INTRO:             { show: true,  msg: null },
+        SYNC:              { show: true,  msg: null },
+          TIEBREAKER_CHOICE:  { show: true,  msg: null },
+          TIEBREAKER_QUESTION: { show: false },
+        ROUND_SCOREBOARD:  { show: true,  msg: null },
+        LOBBY:             { show: false },
+        QUESTION_ACTIVE:   { show: false },
+        ANSWER_COLLECTION: { show: false },
+        RESULT:            { show: false },
+        MATCH_END:         { show: false },
     };
 
     function handleBrainForPhase(phase) {
+        // Some pages (e.g. duo_question) must never show the brain overlay —
+        // it would cover the question content. window.NO_BRAIN_OVERLAY opts out.
+        if (window.NO_BRAIN_OVERLAY) {
+            hideBrainSpin();
+            return;
+        }
         var cfg = PHASE_BRAIN[phase] || { show: false };
         if (cfg.show) {
             var labels = window.GR_LABELS || {};
-            var msg = (phase === 'INTRO')
-                ? (labels.preparing || 'Préparation...')
-                : (labels.nextQuestion || 'Prochaine question...');
+            var msg;
+            if (phase === 'INTRO') {
+                msg = labels.preparing || 'Préparation...';
+            } else if (phase === 'ROUND_SCOREBOARD') {
+                msg = labels.roundEnd || 'Fin du round...';
+            } else if (phase === 'SYNC') {
+                msg = labels.syncing || 'Synchronisation...';
+            } else {
+                msg = labels.nextQuestion || 'Prochaine question...';
+            }
             showBrainSpin(msg);
         } else {
             hideBrainSpin();
@@ -137,6 +151,71 @@
     var PLAYER_INFO     = window.PLAYER_INFO || {};
     var TOTAL_QUESTIONS = window.TOTAL_QUESTIONS || 10;
     var NO_OVERLAY      = !!window.NO_SOCKET_OVERLAY;
+    var HIDE_HEADER     = !!window.GR_HIDE_HEADER;
+
+    // ── Bridge UI: restoreState on load ─────────────────────────────────────
+    // On reconnect/cold-start, PHP may not have re-hydrated window globals.
+    // Pull connection identifiers AND visual state from sessionStorage,
+    // then publish them to canonical window.GR_RESTORED_* keys so pages
+    // can render immediately before the socket state arrives.
+    (function () {
+        var ds = window.DuoSocketClient;
+        if (!ds || !ds.restoreState) return;
+        var saved = ds.restoreState();
+        if (!saved) return;
+        // Connection identifiers
+        if (!ROOM_ID    && saved.room_id)    { ROOM_ID = saved.room_id;       window.ROOM_ID    = ROOM_ID; }
+        if (!JWT_TOKEN  && saved.jwt_token)  { JWT_TOKEN = saved.jwt_token;   window.JWT_TOKEN  = JWT_TOKEN; }
+        if (!LOBBY_CODE && saved.lobby_code) { LOBBY_CODE = saved.lobby_code; window.LOBBY_CODE = LOBBY_CODE; }
+        if (!window.MATCH_ID && saved.match_id) { window.MATCH_ID = saved.match_id; }
+        // Visual state — publish for immediate page rendering before socket state arrives
+        if (saved.phase)         window.GR_RESTORED_PHASE          = saved.phase;
+        if (saved.question_text) window.GR_RESTORED_QUESTION_TEXT  = saved.question_text;
+        if (saved.choices)       window.GR_RESTORED_CHOICES        = saved.choices;
+        if (saved.player_score  !== undefined) window.GR_RESTORED_PLAYER_SCORE   = saved.player_score;
+        if (saved.opponent_score !== undefined) window.GR_RESTORED_OPPONENT_SCORE = saved.opponent_score;
+        if (saved.phaseEndsAtMs) window.GR_RESTORED_PHASE_ENDS_AT  = saved.phaseEndsAtMs;
+        console.log('[GameplayRuntime] restoreState applied', { phase: saved.phase, page: saved.current_page });
+    })();
+
+    // ── Build save payload: base identifiers + page-specific visual state ────
+    function buildSavePayload() {
+        var base = {
+            match_id:     window.MATCH_ID   || '',
+            room_id:      window.ROOM_ID    || '',
+            lobby_code:   window.LOBBY_CODE || '',
+            jwt_token:    window.JWT_TOKEN  || '',
+            current_page: window.CURRENT_PAGE || '',
+        };
+        // Merge page-specific extra (set by each page via window.GR_SAVE_STATE_EXTRA)
+        return Object.assign(base, window.GR_SAVE_STATE_EXTRA || {});
+    }
+
+    // ── Bridge UI: auto-save before any navigation ───────────────────────────
+    // Acts as universal safety net that fires regardless of what triggers navigation.
+    window.addEventListener('beforeunload', function () {
+        var ds = window.DuoSocketClient;
+        if (ds && ds.saveState && (window.MATCH_ID || window.ROOM_ID)) {
+            ds.saveState(buildSavePayload());
+        }
+    });
+
+    // ── Shared navigation helper (explicit save-then-redirect) ───────────────
+    // All game-page redirect paths MUST call window.duoNavigate(url) instead of
+    // setting window.location.href directly.  This guarantees the full payload
+    // (including visual-state fields) is persisted before every page hop.
+    window.duoNavigate = function (url) {
+        var ds = window.DuoSocketClient;
+        if (ds && ds.saveState && (window.MATCH_ID || window.ROOM_ID)) {
+            ds.saveState(buildSavePayload());
+        }
+        window.location.href = url;
+    };
+
+    if (HIDE_HEADER) {
+        var hdr = document.getElementById('gameHeader');
+        if (hdr) hdr.style.display = 'none';
+    }
 
     if (!ROOM_ID || !JWT_TOKEN) {
         // No gameplay session — overlays stay hidden, done.
@@ -152,9 +231,6 @@
     // Show loading overlay while connecting (skip for pages that show their own content)
     if (!NO_OVERLAY) {
         showLoading();
-        setConnectionStatus('connecting', window.GR_LABELS && window.GR_LABELS.connecting ? window.GR_LABELS.connecting : 'Connexion...');
-    } else {
-        setConnectionStatus('connecting', window.GR_LABELS && window.GR_LABELS.connecting ? window.GR_LABELS.connecting : 'Connexion...');
     }
 
     // Connect — DuoSocketClient.connect() is idempotent (safe to call even if already connected)
@@ -170,7 +246,7 @@
 
     socket.on('connect', function () {
         if (!NO_OVERLAY) hideLoading();
-        setConnectionStatus('connected', window.GR_LABELS && window.GR_LABELS.connected ? window.GR_LABELS.connected : 'Connecté');
+        setConnectionStatus('', '');
 
         // Join room — pass player metadata (merge window.PLAYER_INFO for extra fields like avatarId)
         var joinPayload = Object.assign({
@@ -187,9 +263,10 @@
         console.warn('[GameplayRuntime] Disconnected:', reason);
     });
 
-    // game_state: initial hydration and reconnect
-    socket.on('game_state', function (data) {
-        if (!data) return;
+    // state: initial hydration and reconnect (server emits { state: GameState })
+    socket.on('state', function (payload) {
+        if (!payload) return;
+        var data = payload.state || payload;
 
         // Score from players roster (keyed by player ID)
         if (data.players && USER_ID) {
@@ -212,29 +289,186 @@
             updateHeaderRound(data.currentRound);
         }
 
-        // Phase → brain
-        if (data.phase) {
+        // Phase → brain (skip on intro page to avoid covering content on first join)
+        if (data.phase && !HIDE_HEADER) {
             handleBrainForPhase(data.phase);
+        }
+
+        // ── Canonical page/phase mismatch reconciliation ─────────────────────
+        // On reconnect the server may already be on a different phase than the
+        // current Blade page. Navigate to the correct page immediately.
+        var _page  = window.CURRENT_PAGE;
+        var _phase = data.phase;
+        if (_page && _phase && !window.__GR_MISMATCH_NAV) {
+            // Map: page → { phase → window URL key }
+            var _MAP = {
+                question: {
+                    // NOTE: answer phases (BUZZ_WINNER_ANSWERING, ANSWER_COLLECTION) are NOT mapped here because only the buzz winner
+                    // ANSWER_COLLECTION) are NOT mapped here because only the buzz winner
+                    // should redirect to Answer — the role check requires lockedAnswerPlayerId
+                    // from socket state, handled by the question page's own handleGameState.
+                      TIEBREAKER_CHOICE:  "QUESTION_URL",
+                      TIEBREAKER_QUESTION: "QUESTION_URL",
+                    RESULT:           'RESULT_URL',
+                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                    MATCH_END:        'MATCH_RESULT_URL',
+                },
+                answer: {
+                    // ANSWER_COLLECTION omitted: valid grace-period phase for answer page.
+                    INTRO:            'QUESTION_URL',
+                    SYNC:             'QUESTION_URL',
+                    // FIXED: stay on answer during transition
+                      QUESTION_ACTIVE:  null,
+                    RESULT:           'RESULT_URL',
+                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                    MATCH_END:        'MATCH_RESULT_URL',
+                },
+                result: {
+                    INTRO:            'QUESTION_URL',
+                    SYNC:             'QUESTION_URL',
+                    // FIXED: stay on answer during transition
+                      QUESTION_ACTIVE:  null,
+                    // Answer phases: redirect to question; question page handleGameState
+                    // will then role-check lockedAnswerPlayerId and redirect buzz winner
+                    // to answer (avoids ping-pong for non-buzz-winners).
+                    BUZZ_WINNER_ANSWERING: 'QUESTION_URL',
+                    // FIXED: keep on answer page
+                    ANSWER_COLLECTION:     null,
+                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                    MATCH_END:        'MATCH_RESULT_URL',
+                },
+                'round-scoreboard': {
+                      TIEBREAKER_CHOICE:  "QUESTION_URL",
+                      TIEBREAKER_QUESTION: "QUESTION_URL",
+                    SYNC:             'QUESTION_URL',
+                    // FIXED: stay on answer during transition
+                      QUESTION_ACTIVE:  null,
+                    RESULT:           'RESULT_URL',
+                    MATCH_END:        'MATCH_RESULT_URL',
+                },
+            };
+            var _pageMap = _MAP[_page];
+            if (_pageMap && _pageMap[_phase]) {
+                var _targetKey = _pageMap[_phase];
+                var _targetUrl = window[_targetKey];
+                var _matchId   = window.MATCH_ID;
+                if (_targetUrl) {
+                    window.__GR_MISMATCH_NAV = true;
+                    window.duoNavigate(_targetUrl + (_matchId ? '?match_id=' + encodeURIComponent(_matchId) : ''));
+                }
+            }
         }
     });
 
-    socket.on('phase_changed', function (data) {
-        if (!data || !data.phase) return;
-        handleBrainForPhase(data.phase);
+      socket.on('phase_changed', function (data) {
+          if (!data || !data.phase) return;
 
-        // Update counter from phase data if available
-        if (data.questionIndex !== undefined) {
-            updateHeaderCounter(data.questionIndex + 1, TOTAL_QUESTIONS);
+          handleBrainForPhase(data.phase);
+
+          if (data.questionIndex !== undefined) {
+              updateHeaderCounter(data.questionIndex + 1, TOTAL_QUESTIONS);
+          }
+          if (data.roundNumber !== undefined) {
+              updateHeaderRound(data.roundNumber);
+          }
+
+          var _page  = window.CURRENT_PAGE;
+          var _phase = data.phase;
+
+          if (_page && _phase && !window.__GR_MISMATCH_NAV) {
+              var _MAP = {
+                  question: {
+                        TIEBREAKER_CHOICE:  "QUESTION_URL",
+                        TIEBREAKER_QUESTION: "QUESTION_URL",
+                      RESULT:           'RESULT_URL',
+                      ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                      MATCH_END:        'MATCH_RESULT_URL',
+                  },
+                  answer: {
+                      INTRO:            'QUESTION_URL',
+                      SYNC:             'QUESTION_URL',
+                      // FIXED: stay on answer during transition
+                      QUESTION_ACTIVE:  null,
+                      RESULT:           'RESULT_URL',
+                      ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                      MATCH_END:        'MATCH_RESULT_URL',
+                  },
+                    result: {
+                        INTRO:                 'QUESTION_URL',
+                          SYNC:                  'QUESTION_URL',
+                          QUESTION_ACTIVE:       'QUESTION_URL',
+                          BUZZ_WINNER_ANSWERING: 'QUESTION_URL',
+                        // FIXED: keep on answer page
+                      ANSWER_COLLECTION:     null,
+                        ROUND_SCOREBOARD:      'ROUND_SCOREBOARD_URL',
+                        MATCH_END:             'MATCH_RESULT_URL',
+                    },
+                  'round-scoreboard': {
+                        TIEBREAKER_CHOICE:  "QUESTION_URL",
+                        TIEBREAKER_QUESTION: "QUESTION_URL",
+                      SYNC:             'QUESTION_URL',
+                      // FIXED: stay on answer during transition
+                      QUESTION_ACTIVE:  null,
+                      RESULT:           'RESULT_URL',
+                      MATCH_END:        'MATCH_RESULT_URL',
+                  },
+              };
+
+              var _pageMap = _MAP[_page];
+              if (_pageMap && _pageMap[_phase]) {
+                  var _targetKey = _pageMap[_phase];
+                  var _targetUrl = window[_targetKey];
+                  var _matchId   = window.MATCH_ID;
+
+                  if (_targetUrl) {
+                      window.__GR_MISMATCH_NAV = true;
+                      window.duoNavigate(
+                          _targetUrl + (_matchId ? '?match_id=' + encodeURIComponent(_matchId) : '')
+                      );
+                  }
+              }
+          }
+      });
+
+    // game_state: flat hydration on join (totalQuestions, currentQuestion, etc.)
+    socket.on('game_state', function (data) {
+        if (!data) return;
+
+        if (data.players && USER_ID) {
+            var gsPE   = data.players[USER_ID];
+            var gsOpp  = null;
+            Object.keys(data.players).forEach(function (pid) {
+                if (pid !== USER_ID) gsOpp = data.players[pid];
+            });
+            if (gsPE)  updateHeaderScores(gsPE.score, undefined);
+            if (gsOpp) updateHeaderScores(undefined, gsOpp.score);
         }
-        if (data.roundNumber !== undefined) {
-            updateHeaderRound(data.roundNumber);
+        if (data.questionIndex !== undefined) {
+            updateHeaderCounter(data.questionIndex + 1, data.totalQuestions || TOTAL_QUESTIONS);
+        }
+        if (data.currentRound !== undefined) {
+            updateHeaderRound(data.currentRound);
+        }
+        if (data.phase && !HIDE_HEADER) {
+            handleBrainForPhase(data.phase);
         }
     });
 
     socket.on('score_update', function (data) {
         if (!data || !USER_ID) return;
 
-        // Format: { playerId, score, roundScore, delta }
+        // Server format: { scores: { playerId: score }, roundScores: {...} }
+        if (data.scores) {
+            Object.keys(data.scores).forEach(function (pid) {
+                if (String(pid) === USER_ID) {
+                    updateHeaderScores(data.scores[pid], undefined);
+                } else {
+                    updateHeaderScores(undefined, data.scores[pid]);
+                }
+            });
+            return;
+        }
+        // Legacy fallback: { playerId, score }
         if (data.playerId !== undefined) {
             if (String(data.playerId) === USER_ID) {
                 updateHeaderScores(data.score, undefined);

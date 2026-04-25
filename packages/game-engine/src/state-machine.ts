@@ -10,21 +10,21 @@ export type PhaseTransition = {
 const PHASE_TRANSITIONS: PhaseTransition[] = [
   { from: "LOBBY", to: "INTRO" },
   { from: "INTRO", to: "QUESTION_ACTIVE" },
-  { from: "QUESTION_ACTIVE", to: "ANSWER_SELECTION" },
-  { from: "QUESTION_ACTIVE", to: "REVEAL" },
-  { from: "ANSWER_SELECTION", to: "REVEAL" },
-  { from: "REVEAL", to: "WAITING" },
+  { from: "QUESTION_ACTIVE", to: "ANSWER_COLLECTION" },
+  { from: "QUESTION_ACTIVE", to: "RESULT" },
+  { from: "ANSWER_COLLECTION", to: "RESULT" },
+  { from: "RESULT", to: "SYNC" },
   {
-    from: "REVEAL",
+    from: "RESULT",
     to: "QUESTION_ACTIVE",
     condition: (state) => state.questionIndex < state.config.questionsPerRound - 1
   },
   {
-    from: "REVEAL",
+    from: "RESULT",
     to: "ROUND_SCOREBOARD",
     condition: (state) => state.questionIndex >= state.config.questionsPerRound - 1
   },
-  { from: "WAITING", to: "QUESTION_ACTIVE" },
+  { from: "SYNC", to: "QUESTION_ACTIVE" },
   {
     from: "ROUND_SCOREBOARD",
     to: "INTRO",
@@ -83,12 +83,12 @@ export function getPhaseTimeout(state: GameState): number {
       return state.config.timers.intro;
     case "QUESTION_ACTIVE":
       return state.config.timers.questionActive;
-    case "ANSWER_SELECTION":
-      return state.config.timers.answerSelection;
-    case "REVEAL":
-      return state.config.timers.reveal;
-    case "WAITING":
-      return state.config.timers.waiting;
+    case "ANSWER_COLLECTION":
+      return state.config.timers.answerCollection;
+    case "RESULT":
+      return state.config.timers.result;
+    case "SYNC":
+      return state.config.timers.sync;
     case "ROUND_SCOREBOARD":
       return state.config.timers.roundScoreboard;
     case "TIEBREAKER_CHOICE":
@@ -107,5 +107,5 @@ export function isTerminalPhase(phase: Phase): boolean {
 }
 
 export function isPlayPhase(phase: Phase): boolean {
-  return ["QUESTION_ACTIVE", "ANSWER_SELECTION", "TIEBREAKER_QUESTION"].includes(phase);
+  return ["QUESTION_ACTIVE", "ANSWER_COLLECTION", "TIEBREAKER_QUESTION"].includes(phase);
 }

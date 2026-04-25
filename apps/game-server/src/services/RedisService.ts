@@ -65,6 +65,9 @@ export async function cleanupRoom(roomId: string): Promise<void> {
   await redisClient.del(kUsed(roomId));
   await redisClient.del(kEvents(roomId));
 }
+export async function setMatchResult(roomId: string, result: object): Promise<void> {
+  await redisClient.set(`room:${roomId}:match_result`, JSON.stringify(result), "EX", TTL_SECONDS);
+}
 
 // Health check
 export async function ping(): Promise<boolean> {

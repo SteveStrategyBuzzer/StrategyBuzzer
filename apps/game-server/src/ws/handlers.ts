@@ -123,6 +123,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         const event = roomManager.joinRoom(roomId, playerId, playerName, {
           avatarId: avatarId,
           strategicAvatarId: payload.strategicAvatarId,
+          color: payload.color,
           division: payload.division,
         });
         
@@ -168,6 +169,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             avatarId?: string;
             avatarUrl?: string;
             strategicAvatarId?: string;
+            color?: string;
             score: number;
             roundScore: number;
             roundsWon: number;
@@ -183,6 +185,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
               avatarId: player.avatarId,
               avatarUrl: player.avatarId,
               strategicAvatarId: player.strategicAvatarId,
+              color: player.color,
               score: player.score,
               roundScore: player.roundScore,
               roundsWon: player.roundsWon,
@@ -223,7 +226,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
               theme: q.category || q.subCategory || "Culture générale",
               timeLimitMs: q.timeLimitMs || state.config.timers.questionActive,
               buzzWindowDurationMs: state.config.timers.questionActive,
-              answerDurationMs: state.config.timers.answerSelection,
+              answerDurationMs: state.config.timers.answerCollection,
             };
           }
           
