@@ -1,6 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'roomId'         => (string)($match->id ?? ''),
+    'jwtToken'       => $jwt_token ?? '',
+    'matchId'        => (string)($match->id ?? ''),
+    'mode'           => 'league_team',
+    'page'           => 'results',
+    'playerName'     => $user->name ?? (auth()->user()->name ?? 'Joueur'),
+])
 <div class="league-results-container">
     <div class="results-header">
         @if($match->winner_team_id === $match->team1_id)

@@ -388,6 +388,15 @@
     </style>
 </head>
 <body>
+    @include('partials.game-context', [
+        'roomId'         => $room_id ?? '',
+        'jwtToken'       => $jwt_token ?? '',
+        'matchId'        => (string)($game->id ?? ''),
+        'mode'           => 'master',
+        'page'           => 'transition',
+        'totalQuestions' => $totalQuestions ?? 10,
+        'playerName'     => auth()->user()->name ?? 'Joueur',
+    ])
     <div class="content-wrapper">
         <!-- Titre -->
         <div class="title-section">

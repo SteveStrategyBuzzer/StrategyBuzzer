@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'mode'           => 'solo',
+    'page'           => 'question',
+    'totalQuestions' => $totalQuestions ?? 10,
+    'playerName'     => auth()->user()->name ?? 'Joueur',
+])
 <style>
     body {
         background-color: #001F3F;

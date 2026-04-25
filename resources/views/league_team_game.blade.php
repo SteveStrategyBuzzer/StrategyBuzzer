@@ -1,6 +1,15 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'roomId'         => (string)($match->id ?? ''),
+    'jwtToken'       => $jwt_token ?? '',
+    'matchId'        => (string)($match->id ?? ''),
+    'mode'           => 'league_team',
+    'page'           => 'game',
+    'totalQuestions' => $totalQuestions ?? 10,
+    'playerName'     => $user->name ?? (auth()->user()->name ?? 'Joueur'),
+])
 <div class="league-team-game-container">
     <div class="game-header">
         <div class="round-indicator">

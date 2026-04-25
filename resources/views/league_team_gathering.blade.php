@@ -1,6 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'roomId'         => $sessionId ?? '',
+    'jwtToken'       => $jwt_token ?? '',
+    'matchId'        => $sessionId ?? '',
+    'mode'           => 'league_team',
+    'page'           => 'gathering',
+    'playerName'     => auth()->user()->name ?? 'Joueur',
+])
 <div class="screen-edge-glow" id="screenEdgeGlow"></div>
 <div class="gathering-container">
     <div class="gathering-header">

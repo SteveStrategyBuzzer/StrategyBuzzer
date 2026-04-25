@@ -1,6 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'roomId'         => $params['match_id'] ?? '',
+    'lobbyCode'      => $params['lobby_code'] ?? null,
+    'jwtToken'       => $params['jwt_token'] ?? session('game_state.jwt_token') ?? '',
+    'matchId'        => $params['match_id'] ?? '',
+    'mode'           => $params['mode'] ?? 'solo',
+    'page'           => 'transition',
+    'totalQuestions' => $params['nb_questions'] ?? $params['total_questions'] ?? 10,
+    'playerName'     => $params['player_info']['name'] ?? (auth()->user()->name ?? 'Joueur'),
+    'playerInfo'     => $params['player_info'] ?? [],
+])
 @php
 $mode = $params['mode'] ?? 'solo';
 $opponentType = $params['opponent_type'] ?? 'ai';

@@ -1,6 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'roomId'         => $params['match_id'] ?? '',
+    'lobbyCode'      => $params['lobby_code'] ?? null,
+    'jwtToken'       => $params['jwt_token'] ?? '',
+    'matchId'        => $params['match_id'] ?? '',
+    'mode'           => $params['mode'] ?? 'solo',
+    'page'           => 'preparation',
+    'totalQuestions' => $params['nb_questions'] ?? $params['total_questions'] ?? 10,
+    'playerName'     => $params['player_info']['name'] ?? (auth()->user()->name ?? 'Joueur'),
+    'playerInfo'     => $params['player_info'] ?? [],
+])
 <style>
   body { 
     background: linear-gradient(135deg, #003DA5 0%, #001A52 100%);

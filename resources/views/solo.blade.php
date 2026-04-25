@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'mode'       => 'solo',
+    'page'       => 'lobby',
+    'playerName' => auth()->user()->name ?? 'Joueur',
+])
 @php
 // Avatars non-avantageux en mode Solo (skills orientés multijoueur)
 $soloDisadvantagedAvatars = [

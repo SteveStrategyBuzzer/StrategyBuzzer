@@ -9,6 +9,17 @@
 @endpush
 
 @section('content')
+@include('partials.game-context', [
+    'roomId'         => $params['match_id'] ?? '',
+    'lobbyCode'      => $params['lobby_code'] ?? null,
+    'jwtToken'       => $params['jwt_token'] ?? session('game_state.jwt_token') ?? '',
+    'matchId'        => $params['match_id'] ?? '',
+    'mode'           => $params['mode'] ?? 'solo',
+    'page'           => 'result',
+    'totalQuestions' => $params['nb_questions'] ?? $params['total_questions'] ?? 10,
+    'playerName'     => $params['player_info']['name'] ?? (auth()->user()->name ?? 'Joueur'),
+    'playerInfo'     => $params['player_info'] ?? [],
+])
 <style>
     body {
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);

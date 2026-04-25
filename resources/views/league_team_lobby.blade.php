@@ -1,6 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'roomId'         => $activeGathering['sessionId'] ?? '',
+    'jwtToken'       => $jwt_token ?? '',
+    'matchId'        => $activeGathering['sessionId'] ?? '',
+    'mode'           => 'league_team',
+    'page'           => 'lobby',
+    'playerName'     => $user->name ?? (auth()->user()->name ?? 'Joueur'),
+])
 <div class="league-lobby-container">
     @if($activeGathering ?? false)
     <div class="active-gathering-banner" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: 15px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4); animation: pulse-glow-purple 2s infinite;">

@@ -1,6 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
+@include('partials.game-context', [
+    'roomId'         => $room_id ?? '',
+    'jwtToken'       => $jwt_token ?? '',
+    'matchId'        => $match_id ?? '',
+    'mode'           => 'master',
+    'page'           => 'player-join',
+    'playerName'     => $user->name ?? (auth()->user()->name ?? 'Joueur'),
+])
 <style>
 body {
     background-color: #003DA5;
