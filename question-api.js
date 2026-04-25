@@ -1237,7 +1237,7 @@ function translateElement(element, language) {
 
 // Endpoint pour générer une question Master (texte uniquement)
 app.post('/generate-master-question', async (req, res) => {
-  const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1, previousQuestions = [], gameSeed = null } = req.body;
+  const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1, previousQuestions = [], gameSeed = null, domainType = 'theme', schoolLevel = null, schoolGrade = null, schoolSubject = null, schoolCountry = null, mode = 'standard', totalQuestions = 20 } = req.body;
   
   // Obtenir le sous-thème basé sur la rotation (avec seed aléatoire si fourni)
   // Le seed garantit que chaque jeu a un ordre différent de sous-thèmes
@@ -1310,16 +1310,36 @@ Réponds UNIQUEMENT avec ce JSON (pas de texte avant ou après):
 
 La bonne réponse doit être à l'index 0.`;
     }
-    
-    const fullPrompt = systemPrompt + "\n\n" + userPrompt;
-    
+
+    let contextBlock = '';
+    if (domainType === 'school') {
+      contextBlock = `
+CONTEXTE SCOLAIRE OBLIGATOIRE:
+- Niveau: ${schoolLevel || 'non précisé'}
+- Année: ${schoolGrade || 'non précisée'}
+- Matière: ${schoolSubject || 'non précisée'}
+- Pays: ${schoolCountry || 'non précisé'}
+
+RÈGLES SCOLAIRES OBLIGATOIRES:
+1. La question doit correspondre au programme scolaire du pays et du niveau indiqués.
+2. La difficulté doit être adaptée à l'année scolaire demandée, sans niveau universitaire si le niveau est secondaire.
+3. Utilise des références, formulations et connaissances cohérentes avec un contexte scolaire réel.
+4. Si le pays est Canada et la langue est français, privilégie un contexte scolaire francophone canadien.
+5. Ne mélange jamais des périodes historiques incompatibles entre elles.
+6. Si la question parle de la Nouvelle-France, elle ne doit jamais être placée au Moyen Âge.
+7. Vérifie la cohérence chronologique, géographique et institutionnelle avant de répondre.
+`;
+    }
+
+    const fullPrompt = systemPrompt + "\n\n" + contextBlock + "\n\n" + userPrompt;
+
     const geminiResponse = await gemini.models.generateContent({
       model: 'gemini-2.0-flash',
       contents: [
         { role: 'user', parts: [{ text: fullPrompt }] }
       ],
       config: {
-        temperature: 0.3,
+        temperature: (domainType === 'school') ? 0.1 : 0.3,
         maxOutputTokens: 500,
         responseMimeType: 'application/json'
       }

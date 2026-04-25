@@ -370,7 +370,8 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::get('/{gameId}/teams', [App\Http\Controllers\MasterGameController::class, 'showTeams'])->name('teams');
     Route::post('/{gameId}/teams', [App\Http\Controllers\MasterGameController::class, 'saveTeams'])->name('teams.save');
     
-    Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
+    Route::get('/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
+    Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes.show');
     Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
     
     // Secure player join page (no gameId in URL - players enter code only)

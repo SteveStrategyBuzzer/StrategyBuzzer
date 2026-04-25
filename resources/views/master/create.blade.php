@@ -480,7 +480,15 @@ body {
 
 <div class="create-container">
     <h1 class="create-title">Général</h1>
-    
+
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ route('master.codes') }}"
+           class="btn-continue"
+           style="display:block; width:100%; text-align:center; background: linear-gradient(135deg, #6C5CE7, #4834D4);">
+            📂 {{ __('Quiz Enregistré') }}
+        </a>
+    </div>
+
     <form action="{{ route('master.store') }}" method="POST" id="createForm">
         @csrf
         
@@ -496,10 +504,19 @@ body {
             <div class="form-group">
                 <label class="form-label" style="text-align: center;">Langue</label>
                 <select name="language" class="form-select" required style="text-align: center; font-weight: 600;">
-                    <option value="FR">Français</option>
-                    <option value="EN">English</option>
-                    <option value="ES">Español</option>
-                    <option value="DE">Deutsch</option>
+                    @php
+                        $userLang = strtoupper(app()->getLocale() ?? 'FR');
+                    @endphp
+                    <option value="FR" {{ $userLang == 'FR' ? 'selected' : '' }}>Français</option>
+                    <option value="EN" {{ $userLang == 'EN' ? 'selected' : '' }}>English</option>
+                    <option value="ES" {{ $userLang == 'ES' ? 'selected' : '' }}>Español</option>
+                    <option value="DE" {{ $userLang == 'DE' ? 'selected' : '' }}>Deutsch</option>
+                    <option value="IT" {{ $userLang == 'IT' ? 'selected' : '' }}>Italiano</option>
+                    <option value="PT" {{ $userLang == 'PT' ? 'selected' : '' }}>Português</option>
+                    <option value="NL" {{ $userLang == 'NL' ? 'selected' : '' }}>Nederlands</option>
+                    <option value="PL" {{ $userLang == 'PL' ? 'selected' : '' }}>Polski</option>
+                    <option value="TR" {{ $userLang == 'TR' ? 'selected' : '' }}>Türkçe</option>
+                    <option value="RO" {{ $userLang == 'RO' ? 'selected' : '' }}>Română</option>
                 </select>
             </div>
             <div class="form-group" style="margin-top: 1rem;">

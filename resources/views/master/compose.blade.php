@@ -106,13 +106,12 @@ function getQuestionTypeForNumber($game, $questionNumber) {
 
 $currentManche = $manche ?? 1;
 $totalQuestions = $game->total_questions;
-$questionsPerRound = (int) ceil($totalQuestions / 3);
+$questionsPerRound = $totalQuestions;
 $normalQuestions = $game->questions->where('is_tiebreaker', false);
-$tiebreakerQuestion = $game->questions->where('is_tiebreaker', true)->first();
 
 if ($currentManche <= 3) {
     $startQuestion = ($currentManche - 1) * $questionsPerRound + 1;
-    $endQuestion = min($currentManche * $questionsPerRound, $totalQuestions);
+    $endQuestion = $currentManche * $questionsPerRound;
     $mancheTitle = "Manche {$currentManche}";
     $isMancheUltime = false;
 } else {
@@ -446,7 +445,7 @@ body {
 @endif
 
 <div class="compose-container">
-    <h1 class="compose-title">{{ __('Mode ' . ucfirst($game->creation_mode)) }}</h1>
+      <h1 class="compose-title">{{ $game->name }}</h1>
     
     <div class="manche-progress">
         @for($i = 1; $i <= 3; $i++)
@@ -461,17 +460,17 @@ body {
         @if(!$isMancheUltime)
             @for ($i = $startQuestion; $i <= $endQuestion; $i++)
                 @php
-                    $existingQuestion = $normalQuestions->firstWhere('question_number', $i);
+                    $ultimateQuestion = $normalQuestions->firstWhere('question_number', $i);
                     $questionType = getQuestionTypeForNumber($game, $i);
                     $defaultAnswers = $questionType === 'true_false' 
                         ? ['Vrai', 'Faux'] 
                         : ['Réponse 1', 'Réponse 2', 'Réponse 3', 'Réponse 4'];
                     
-                    if ($existingQuestion) {
-                        $displayQuestion = $existingQuestion->question_text ?? 'Question';
-                        $displayAnswers = $existingQuestion->answers ?? $defaultAnswers;
-                        $correctAnswer = $existingQuestion->correct_answer;
-                        $displayImage = $existingQuestion->question_image;
+                    if ($ultimateQuestion) {
+                        $displayQuestion = $ultimateQuestion->question_text ?? 'Question';
+                        $displayAnswers = $ultimateQuestion->answers ?? $defaultAnswers;
+                        $correctAnswer = $ultimateQuestion->correct_answer;
+                        $displayImage = $ultimateQuestion->question_image;
                     } else {
                         $example = getThemeExamples($game->theme ?? $game->school_subject, $i, $questionType);
                         $displayQuestion = $example['question'] ?? 'Question';
@@ -487,7 +486,7 @@ body {
                 
                 <div class="question-bubble">
                     <div class="bubble-number">{{ $i }}</div>
-                    <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Créer') }}</a>
+                    <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">🔄</a>
                     
                     <div class="bubble-content">
                         @if($questionType === 'image')
@@ -528,75 +527,69 @@ body {
                     </a>
                 @endif
             </div>
-        @else
-            <div class="tiebreaker-section">
-                <h3 class="tiebreaker-title">⚡ {{ __('Question de départage') }}</h3>
+          @else
+              @php
+                  $ultimateMode = $game->tiebreaker_mode ?? 'bonus';
+                  $ultimateBaseNumber = ($game->total_questions * 3) + 1;
+                  $ultimateMinBlocks = $ultimateMode === 'sudden_death' ? 5 : ($ultimateMode === 'efficiency' ? 0 : 1);
+                  $ultimateTitle = $ultimateMode === 'sudden_death'
+                      ? __('Manche Ultime · Mort Subite')
+                      : ($ultimateMode === 'efficiency'
+                          ? __('Manche Ultime · Efficacité')
+                          : __('Manche Ultime · Dernière Chance'));
+                  $ultimateInfo = $ultimateMode === 'sudden_death'
+                      ? __('Les 5 premiers blocs sont obligatoires et non supprimables.')
+                      : ($ultimateMode === 'efficiency'
+                          ? __('Aucune question n’est requise pour le mode efficacité.')
+                          : __('Le premier bloc est obligatoire et non supprimable.'));
+                    $ultimateLastBaseQuestionNumber = $ultimateMinBlocks > 0
+                        ? $ultimateBaseNumber + ($ultimateMinBlocks - 1)
+                        : $ultimateBaseNumber - 1;
+
+                    $ultimateQuestions = $ultimateMode === 'efficiency'
+                        ? collect()
+                        : $game->questions
+                            ->whereBetween('question_number', [$ultimateBaseNumber, $ultimateLastBaseQuestionNumber])
+                            ->sortBy('question_number')
+                            ->values();
+
+                    $ultimateDisplayCount = $ultimateMinBlocks;
+
+                  $hasEpicStrategicAvatarBonus = $game->strategic_avatars_enabled
+                      && in_array('Épique', $game->strategic_avatars_tiers ?? []);
+
+                  $avatarBonusQuestionNumber = $ultimateBaseNumber + 6;
+                  $avatarBonusQuestion = $hasEpicStrategicAvatarBonus
+                      ? $game->questions->firstWhere('question_number', $avatarBonusQuestionNumber)
+                      : null;
+              @endphp
+              <div class="tiebreaker-section">
+                  <h3 class="tiebreaker-title">⚡ {{ $ultimateTitle }}</h3>
                 
-                @if($tiebreakerQuestion)
-                    <div class="question-bubble tiebreaker-bubble">
-                        <div class="bubble-number" style="color: #FF6B35;">⚡</div>
-                        <a href="{{ route('master.question.edit', [$game->id, $tiebreakerQuestion->question_number]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FF6B35, #FF4444); color: white;">{{ __('Modifier') }}</a>
-                        
-                        <div class="bubble-content">
-                            <div class="question-text">{{ $tiebreakerQuestion->question_text ?? __('Question de départage') }}</div>
-                            @foreach($tiebreakerQuestion->answers as $index => $answer)
-                                <div class="answer-item {{ $tiebreakerQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
-                                    {{ $index + 1 }}. {{ $answer }}
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @else
-                    <div class="question-bubble tiebreaker-bubble">
-                        <div class="bubble-number" style="color: #FF6B35;">⚡</div>
-                        <a href="{{ route('master.question.edit', [$game->id, $game->total_questions + 1]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FF6B35, #FF4444); color: white;">{{ __('Créer') }}</a>
-                        
-                        <div class="bubble-content">
-                            <div class="question-text" style="opacity: 0.4;">{{ __('Question de départage') }}</div>
-                            <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
-                            <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
-                            <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
-                            <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
-                        </div>
-                    </div>
-                @endif
-                
-                <p class="tiebreaker-info">
-                    {{ __('Utilisée uniquement en cas d\'égalité entre les joueurs') }}
-                </p>
-            </div>
-            
-            <div class="navigation-buttons">
-                <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
-                    ✓ {{ __('Terminer') }}
-                </button>
-            </div>
-        @endif
-        
-    @else
-        @if(!$isMancheUltime)
-            @for ($i = $startQuestion; $i <= $endQuestion; $i++)
-                @php
-                    $existingQuestion = $game->questions->firstWhere('question_number', $i);
-                @endphp
-                
-                <div class="question-bubble">
-                    <div class="bubble-number">{{ $i }}</div>
-                    <a href="{{ route('master.question.edit', [$game->id, $i]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">{{ __('Créer') }}</a>
+                @if($ultimateMode !== 'efficiency')
+                      @for($offset = 0; $offset < $ultimateDisplayCount; $offset++)
+                          @php
+                              $questionNumber = $ultimateBaseNumber + $offset;
+                              $ultimateQuestion = $ultimateQuestions->firstWhere('question_number', $questionNumber);
+                              $isLockedBlock = $offset < $ultimateMinBlocks;
+                          @endphp
+                          <div class="question-bubble tiebreaker-bubble">
+                              <div class="bubble-number" style="color: #FF6B35;">⚡ {{ __('Bloc') }} {{ $offset + 1 }}</div>
+                              <a href="{{ route('master.question.edit', [$game->id, $questionNumber]) }}" class="btn-create" style="text-decoration: none; display: inline-block;">🔄</a>
                     
                     <div class="bubble-content">
-                        @if($existingQuestion)
-                            @if($existingQuestion->question_image)
+                        @if($ultimateQuestion)
+                            @if($ultimateQuestion->question_image)
                                 <div class="question-image">
-                                    <img src="{{ asset('storage/' . $existingQuestion->question_image) }}" alt="Question Image">
+                                    <img src="{{ asset('storage/' . $ultimateQuestion->question_image) }}" alt="Question Image">
                                 </div>
                             @else
-                                <div class="question-text">{{ $existingQuestion->question_text }}</div>
+                                <div class="question-text">{{ $ultimateQuestion->question_text }}</div>
                             @endif
                             
-                            @foreach($existingQuestion->answers as $index => $answer)
-                                <div class="answer-item {{ $existingQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
-                                    @if(!$existingQuestion->question_image || count($existingQuestion->answers) > 2)
+                            @foreach($ultimateQuestion->answers as $index => $answer)
+                                <div class="answer-item {{ $ultimateQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
+                                    @if(!$ultimateQuestion->question_image || count($ultimateQuestion->answers) > 2)
                                         {{ $index + 1 }}.
                                     @endif
                                     {{ $answer }}
@@ -614,58 +607,171 @@ body {
             @endfor
             
             <div class="navigation-buttons">
-                @if($currentManche < 3)
-                    <a href="{{ route('master.compose', ['gameId' => $game->id, 'manche' => $currentManche + 1]) }}" class="btn-next-manche">
-                        Manche {{ $currentManche + 1 }} →
-                    </a>
-                @else
-                    <a href="{{ route('master.compose', ['gameId' => $game->id, 'manche' => 4]) }}" class="btn-manche-ultime">
-                        ⚡ Manche Ultime →
-                    </a>
-                @endif
-            </div>
-        @else
-            <div class="tiebreaker-section">
-                <h3 class="tiebreaker-title">⚡ {{ __('Question de départage') }}</h3>
-                
-                @php
-                    $tiebreakerQuestionNum = $game->total_questions + 1;
-                    $existingTiebreaker = $game->questions->firstWhere('question_number', $tiebreakerQuestionNum);
-                @endphp
-                
-                <div class="question-bubble tiebreaker-bubble">
-                    <div class="bubble-number" style="color: #FF6B35;">⚡</div>
-                    <a href="{{ route('master.question.edit', [$game->id, $tiebreakerQuestionNum]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FF6B35, #FF4444); color: white;">{{ $existingTiebreaker ? __('Modifier') : __('Créer') }}</a>
-                    
-                    <div class="bubble-content">
-                        @if($existingTiebreaker)
-                            <div class="question-text">{{ $existingTiebreaker->question_text }}</div>
-                            @foreach($existingTiebreaker->answers as $index => $answer)
-                                <div class="answer-item {{ $existingTiebreaker->correct_answer === $index ? 'answer-correct' : '' }}">
-                                    {{ $index + 1 }}. {{ $answer }}
-                                </div>
-                            @endforeach
-                        @else
-                            <div class="question-text" style="opacity: 0.4;">{{ __('Question de départage') }}</div>
-                            <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
-                            <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
-                            <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
-                            <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
-                        @endif
-                    </div>
-                </div>
-                
-                <p class="tiebreaker-info">
-                    {{ __('Utilisée uniquement en cas d\'égalité entre les joueurs') }}
-                </p>
-            </div>
-            
-            <div class="navigation-buttons">
                 <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
                     ✓ {{ __('Terminer') }}
                 </button>
             </div>
+                    @if($hasEpicStrategicAvatarBonus)
+                        <div class="question-bubble" style="margin-top: 1.5rem; border: 2px solid #FFD700;">
+                            <div class="bubble-number">⭐ {{ __('Bonus Avatar Épique') }}</div>
+                            <a href="{{ route('master.question.edit', [$game->id, $avatarBonusQuestionNumber]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FFD700, #FFA500); color: #003DA5;">🔄</a>
+
+                            <div class="bubble-content">
+                                @if($avatarBonusQuestion)
+                                    <div class="question-text">{{ $avatarBonusQuestion->question_text }}</div>
+                                    @foreach(($avatarBonusQuestion->answers ?? []) as $index => $answer)
+                                        <div class="answer-item {{ $avatarBonusQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
+                                            {{ $index + 1 }}. {{ $answer }}
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <div class="question-text" style="opacity: 0.4;">{{ __('⚠️ Bonus avatar non généré (backend à corriger)') }}</div>
+                                    <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
+                                    <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
+                                    <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
+                                    <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
+                                @endif
+                            </div>
+
+                            <div class="tiebreaker-info" style="margin-top: 0.8rem;">
+                                {{ __('Bloc obligatoire non supprimable') }}
+                            </div>
+                        </div>
+                    @endif
+
+                    <p class="tiebreaker-info">
+                        {{ $ultimateInfo ?? '' }}
+                    </p>
+
+              @php
+                  $manualUltimateMode = $game->tiebreaker_mode ?? 'bonus';
+                  $manualUltimateBaseNumber = ($game->total_questions * 3) + 1;
+                  $manualUltimateMinBlocks = $manualUltimateMode === 'sudden_death' ? 5 : ($manualUltimateMode === 'efficiency' ? 0 : 1);
+                  $manualUltimateTitle = $manualUltimateMode === 'sudden_death'
+                      ? __('Manche Ultime · Mort Subite')
+                      : ($manualUltimateMode === 'efficiency'
+                          ? __('Manche Ultime · Efficacité')
+                          : __('Manche Ultime · Dernière Chance'));
+                  $manualUltimateInfo = $manualUltimateMode === 'sudden_death'
+                      ? __('Les 5 premiers blocs sont obligatoires et non supprimables.')
+                      : ($manualUltimateMode === 'efficiency'
+                          ? __('Aucune question n’est requise pour le mode efficacité.')
+                          : __('Le premier bloc est obligatoire et non supprimable.'));
+                    $manualUltimateLastBaseQuestionNumber = $manualUltimateMinBlocks > 0
+                        ? $manualUltimateBaseNumber + ($manualUltimateMinBlocks - 1)
+                        : $manualUltimateBaseNumber - 1;
+
+                    $manualUltimateQuestions = $manualUltimateMode === 'efficiency'
+                        ? collect()
+                        : $game->questions
+                            ->whereBetween('question_number', [$manualUltimateBaseNumber, $manualUltimateLastBaseQuestionNumber])
+                            ->sortBy('question_number')
+                            ->values();
+
+                    $manualUltimateDisplayCount = $manualUltimateMinBlocks;
+                  $manualHasEpicStrategicAvatarBonus = $game->strategic_avatars_enabled
+                      && in_array('Épique', $game->strategic_avatars_tiers ?? []);
+                  $manualAvatarBonusQuestionNumber = $manualUltimateBaseNumber + 6;
+                  $manualAvatarBonusQuestion = $manualHasEpicStrategicAvatarBonus
+                      ? $game->questions->firstWhere('question_number', $manualAvatarBonusQuestionNumber)
+                      : null;
+              @endphp
+                
+                  <div class="tiebreaker-section">
+                      <h3 class="tiebreaker-title">⚡ {{ $manualUltimateTitle }}</h3>
+
+                      @if($manualUltimateMode !== 'efficiency')
+                          @for($offset = 0; $offset < $manualUltimateDisplayCount; $offset++)
+                              @php
+                                  $questionNumber = $manualUltimateBaseNumber + $offset;
+                                  $manualUltimateQuestion = $manualUltimateQuestions->firstWhere('question_number', $questionNumber);
+                                  $isLockedBlock = $offset < $manualUltimateMinBlocks;
+                              @endphp
+
+                              <div class="question-bubble tiebreaker-bubble">
+                                  <div class="bubble-number" style="color: #FF6B35;">⚡ {{ __('Bloc') }} {{ $offset + 1 }}</div>
+
+                                  <a href="{{ route('master.question.edit', [$game->id, $questionNumber]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FF6B35, #FF4444); color: white;">🔄</a>
+
+                                  <div class="bubble-content">
+                                      @if($manualUltimateQuestion)
+                                          <div class="question-text">{{ $manualUltimateQuestion->question_text }}</div>
+                                          @foreach(($manualUltimateQuestion->answers ?? []) as $index => $answer)
+                                              <div class="answer-item {{ $manualUltimateQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
+                                                  {{ $index + 1 }}. {{ $answer }}
+                                              </div>
+                                          @endforeach
+                                      @else
+                                          <div class="question-text" style="opacity: 0.4;">{{ __('Bloc Ultime') }} {{ $offset + 1 }}</div>
+                                          <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
+                                          <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
+                                          <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
+                                          <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
+                                      @endif
+                                  </div>
+
+                                  <div class="tiebreaker-info" style="margin-top: 0.8rem;">
+                                      {{ $isLockedBlock ? __('Bloc obligatoire non supprimable') : __('Bloc additionnel') }}
+                                  </div>
+                              </div>
+                          @endfor
+
+                          <div class="question-bubble tiebreaker-bubble" style="border-style: dashed;">
+                              <div class="bubble-number" style="color: #FF6B35;">➕</div>
+                              <div class="bubble-content">
+                                  <div class="question-text">{{ __('Ajout de blocs additionnels') }}</div>
+                              </div>
+                          </div>
+                      @else
+                          <div class="question-bubble tiebreaker-bubble">
+                              <div class="bubble-number" style="color: #FF6B35;">⚡</div>
+                              <div class="bubble-content">
+                                  <div class="question-text">{{ __('Aucun bloc de question à composer pour ce mode.') }}</div>
+                              </div>
+                          </div>
+                      @endif
+
+                      @if($manualHasEpicStrategicAvatarBonus)
+                          <div class="question-bubble" style="margin-top: 1.5rem; border: 2px solid #FFD700;">
+                              <div class="bubble-number">⭐ {{ __('Bonus Avatar Épique') }}</div>
+
+                              <a href="{{ route('master.question.edit', [$game->id, $manualAvatarBonusQuestionNumber]) }}" class="btn-create" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #FFD700, #FFA500); color: #003DA5;">🔄</a>
+
+                              <div class="bubble-content">
+                                  @if($manualAvatarBonusQuestion)
+                                      <div class="question-text">{{ $manualAvatarBonusQuestion->question_text }}</div>
+                                      @foreach(($manualAvatarBonusQuestion->answers ?? []) as $index => $answer)
+                                          <div class="answer-item {{ $manualAvatarBonusQuestion->correct_answer === $index ? 'answer-correct' : '' }}">
+                                              {{ $index + 1 }}. {{ $answer }}
+                                          </div>
+                        @endforeach
+                                      @endif
+                                  @else
+                                      <div class="question-text" style="opacity: 0.4;">{{ __('⚠️ Bonus avatar non généré (backend à corriger)') }}</div>
+                                      <div class="answer-item" style="opacity: 0.4;">1. {{ __('Réponse') }}</div>
+                                      <div class="answer-item" style="opacity: 0.4;">2. {{ __('Réponse') }}</div>
+                                      <div class="answer-item" style="opacity: 0.4;">3. {{ __('Réponse') }}</div>
+                                      <div class="answer-item" style="opacity: 0.4;">4. {{ __('Réponse') }}</div>
+                                  @endif
+                              </div>
+
+                              <div class="tiebreaker-info" style="margin-top: 0.8rem;">
+                                  {{ __('Bloc obligatoire non supprimable') }}
+                              </div>
+                          </div>
+                      @endif
+
+                      <p class="tiebreaker-info">
+                          {{ $manualUltimateInfo ?? "" }}
+                      </p>
+                  </div>
+
+                  <div class="navigation-buttons">
+                      <button class="btn-validate" onclick="window.location.href='{{ route('master.codes', $game->id) }}'">
+                          ✓ {{ __('Terminer') }}
+                      </button>
+                  </div>
+          @endif
         @endif
-    @endif
 </div>
 @endsection
