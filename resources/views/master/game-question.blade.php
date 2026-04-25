@@ -268,6 +268,47 @@ body {
     font-weight: 700;
 }
 
+.player-eff {
+    color: #4ECDC4;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+    opacity: 0.85;
+    min-width: 38px;
+    text-align: right;
+}
+
+.player-streak {
+    color: #FF8E53;
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-left: 0.4rem;
+    min-width: 24px;
+    text-align: right;
+}
+
+.player-telemetry {
+    color: #C0C0C0;
+    font-size: 0.75rem;
+    margin-left: 0.4rem;
+    opacity: 0.85;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.player-telemetry .pt-correct { color: #4ECDC4; }
+.player-telemetry .pt-wrong   { color: #FF6B6B; }
+.player-telemetry .pt-buzz    { color: #FFD700; }
+
+.player-avg-buzz {
+    color: #4ECDC4;
+    font-size: 0.75rem;
+    margin-left: 0.4rem;
+    opacity: 0.85;
+    min-width: 50px;
+    text-align: right;
+    font-weight: 600;
+}
+
 .player-buzzed {
     width: 20px;
     text-align: center;
@@ -424,6 +465,10 @@ body {
                     elseif ($index === 1) $rankClass = 'silver';
                     elseif ($index === 2) $rankClass = 'bronze';
                 @endphp
+                @php
+                    $masterPid = (string)($p->user_id ?? $p->id);
+                    $isSelfRow = (string)($p->user_id ?? '') === (string)(auth()->id() ?? '___');
+                @endphp
                 <div class="player-row {{ $index < 3 ? 'top-3' : '' }}">
                     <span class="player-rank {{ $rankClass }}">
                         @if($index === 0) 🥇
@@ -437,9 +482,15 @@ body {
                     </span>
                     <span class="player-buzzed" id="buzz-indicator-{{ $p->id }}">
                     </span>
-                    <span class="player-score">
+                    <span class="player-score" data-stat="score" data-player="{{ $isSelfRow ? 'self' : $masterPid }}">
                         {{ $p->score ?? 0 }}
                     </span>
+                    <span class="player-eff" title="{{ __('Efficacité') }}" data-stat="efficiencyPercent" data-player="{{ $isSelfRow ? 'self' : $masterPid }}">0%</span>
+                    <span class="player-streak" title="{{ __('Série en cours') }}" data-stat="currentStreak" data-player="{{ $isSelfRow ? 'self' : $masterPid }}">0</span>
+                    <span class="player-telemetry" title="{{ __('Bons/Faux/Buzz') }}">
+                        <span class="pt-correct" data-stat="correctAnswers" data-player="{{ $isSelfRow ? 'self' : $masterPid }}">0</span>/<span class="pt-wrong" data-stat="wrongAnswers" data-player="{{ $isSelfRow ? 'self' : $masterPid }}">0</span>/<span class="pt-buzz" data-stat="buzzCount" data-player="{{ $isSelfRow ? 'self' : $masterPid }}">0</span>
+                    </span>
+                    <span class="player-avg-buzz" title="{{ __('Buzz moyen') }}" data-stat="averageResponseMs" data-player="{{ $isSelfRow ? 'self' : $masterPid }}">0 ms</span>
                 </div>
             @endforeach
         </div>
@@ -560,4 +611,32 @@ function submitBuzz() {
     console.log('Buzz submitted');
 }
 </script>
+
+{{--
+    Live stats wiring (Task #42).
+
+    This view extends layouts.app (not layouts.game), so the shared
+    GameplayRuntime stack is not auto-loaded. Master mode IS already
+    backed by the Node WS game server — the controller publishes
+    room_id + jwt_token via partials.game-context above — so we just
+    need to load Socket.IO + DuoSocketClient + GameplayRuntime here.
+
+    Once loaded, GameplayRuntime subscribes to player_stats_updated /
+    round_stats / match_stats from the server and paints every
+    [data-stat][data-player] slot rendered above. No stat math runs in
+    Blade and no REST polling is involved.
+--}}
+<script>
+(function () {
+    var ctx = window.SB_GAME_CONTEXT || {};
+    if (ctx.gameServerUrl) {
+        window.GAME_SERVER_URL = ctx.gameServerUrl;
+    } else if (!window.GAME_SERVER_URL) {
+        window.GAME_SERVER_URL = window.location.protocol + '//' + window.location.hostname + ':3001';
+    }
+})();
+</script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+<script src="{{ asset('js/GameplayRuntime.js') }}"></script>
 @endsection

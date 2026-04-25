@@ -142,6 +142,21 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         color: #FFD700;
         opacity: 0.85;
     }
+
+    .opponent-mini {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: #FF6B6B;
+        font-weight: 600;
+        padding-left: 10px;
+        margin-left: 6px;
+        border-left: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    .opponent-mini .om-label { opacity: 0.7; font-size: 0.75rem; }
+    .opponent-mini .om-value { font-weight: 800; }
     
     .question-text-box {
         background: rgba(30, 50, 70, 0.6);
@@ -699,6 +714,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         <div class="potential-points points-2" id="potentialPoints">+2</div>
         <div class="score-display" id="scoreDisplay">{{ __('Score') }} <span id="playerScoreValue" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</span></div>
         <div class="efficiency-display" id="efficiencyDisplay">⚡ <span id="efficiencyValue" data-stat="efficiencyPercent" data-player="self">—</span></div>
+        <div class="opponent-mini" aria-label="{{ __('Adversaire') }}">
+            <span class="om-label">{{ __('Adv.') }}</span>
+            <span class="om-value" data-stat="score" data-player="opponent">{{ $opponentScore ?? 0 }}</span>
+            <span class="om-label">⚡</span>
+            <span class="om-value" data-stat="efficiencyPercent" data-player="opponent">0%</span>
+            <span class="om-label">·</span>
+            <span class="om-label">{{ __('Série') }}</span>
+            <span class="om-value" data-stat="currentStreak" data-player="opponent">0</span>
+        </div>
     </div>
     
     <div class="question-text-box">

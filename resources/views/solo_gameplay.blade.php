@@ -50,7 +50,34 @@
         font-size: 1.5rem;
         margin-bottom: 20px;
     }
+    .solo-live-stats {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px 18px;
+        background: rgba(0,0,0,0.35);
+        border: 1px solid rgba(255,215,0,0.25);
+        border-radius: 10px;
+        padding: 10px 16px;
+        margin-bottom: 18px;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    .solo-live-stats .sls-item { display: flex; align-items: center; gap: 5px; }
+    .solo-live-stats .sls-label { opacity: 0.75; font-size: 0.8rem; }
+    .solo-live-stats .sls-value { color: #FFD700; font-weight: 800; }
+    .solo-live-stats .sls-eff   { color: #4ECDC4; }
+    .solo-live-stats .sls-streak{ color: #FF8E53; }
 </style>
+
+<div class="solo-live-stats" aria-label="{{ __('Stats en direct') }}">
+    <span class="sls-item"><span class="sls-label">{{ __('Score') }}</span><span class="sls-value" data-stat="score" data-player="self">0</span></span>
+    <span class="sls-item"><span class="sls-label">⚡ {{ __('Efficacité') }}</span><span class="sls-value sls-eff" data-stat="efficiencyPercent" data-player="self">0%</span></span>
+    <span class="sls-item"><span class="sls-label">🎯 {{ __('Précision') }}</span><span class="sls-value" data-stat="accuracyPercent" data-player="self">0%</span></span>
+    <span class="sls-item"><span class="sls-label">🔥 {{ __('Série') }}</span><span class="sls-value sls-streak" data-stat="currentStreak" data-player="self">0</span></span>
+    <span class="sls-item"><span class="sls-label">⏱ {{ __('Tps moyen') }}</span><span class="sls-value" data-stat="averageResponseMs" data-player="self">0 ms</span></span>
+    <span class="sls-item"><span class="sls-label">✓/✗</span><span class="sls-value" data-stat="correctAnswers" data-player="self">0</span>/<span class="sls-value" data-stat="totalAnswers" data-player="self">0</span></span>
+</div>
 
 <div class="question">
     <h2>Question {{ $params['current'] ?? 1 }} / {{ $params['nb_questions'] }}</h2>
@@ -77,6 +104,7 @@
     </div>
 </form>
 
+<script src="{{ asset('js/SoloStatsEngine.js') }}"></script>
 <script>
     let timer = 30;
     const timerElement = document.getElementById('timer');
@@ -88,5 +116,28 @@
             document.querySelector('form').submit();
         }
     }, 1000);
+
+    (function () {
+        var totalAns = {{ (int)($params['current'] ?? 1) - 1 }};
+        if (window.SoloStatsEngine) {
+            window.SoloStatsEngine.reconcile({ totalAnswers: totalAns });
+            window.SoloStatsEngine.markQuestionStart();
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            var btns = document.querySelectorAll('.reponse-btn');
+            btns.forEach(function (b) {
+                b.addEventListener('click', function () {
+                    if (!window.SoloStatsEngine) return;
+                    var elapsed = window.SoloStatsEngine.consumeQuestionElapsedMs();
+                    var st = window.SoloStatsEngine.load();
+                    st.buzzCount = (st.buzzCount || 0) + 1;
+                    window.SoloStatsEngine.save(st);
+                    if (typeof elapsed === 'number') {
+                        try { sessionStorage.setItem('sb.soloPendingMs.' + (window.MATCH_ID || 'solo'), String(elapsed)); } catch (e) {}
+                    }
+                }, true);
+            });
+        });
+    })();
 </script>
 @endsection

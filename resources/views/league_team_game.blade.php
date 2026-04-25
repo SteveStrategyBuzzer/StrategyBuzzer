@@ -10,6 +10,46 @@
     'totalQuestions' => $totalQuestions ?? 10,
     'playerName'     => $user->name ?? (auth()->user()->name ?? 'Joueur'),
 ])
+{{--
+    ⚠️ TEMPORAIRE — League Team reste à migrer vers Node-authoritative
+    avant live stats WS.
+
+    Live stats wiring (Task #42) — DEFERRED for League team mode.
+
+    Unlike Duo and Master, League team does not currently run on the
+    Node WebSocket game server. The controller (LeagueTeamController)
+    drives the match through plain Laravel REST endpoints
+    (/api/league/team/match/{id}/question, /buzz, /submit-answer) and
+    never creates a Node room nor issues a player JWT — note that
+    `$jwt_token` is not provided to this view, so the runtime would
+    refuse to connect anyway.
+
+    Per the live-stats contract, [data-stat][data-player] slots in this
+    file MUST be driven by the same server-authoritative WS pipeline
+    used by Duo / Master (player_stats_updated, round_stats,
+    match_stats). REST polling is explicitly forbidden as a substitute.
+    The slots therefore stay rendered (so the markup is ready) but
+    remain at their default values until the LeagueTeam backend is
+    upgraded to push events through the Node orchestrator.
+
+    Required follow-up work (server side, before this view can load
+    GameplayRuntime safely):
+      1. Have LeagueTeamService::initializeTeamMatch() create a Node
+         room (POST /rooms with mode=LEAGUE_TEAM) and persist its
+         room_id on the LeagueTeamMatch record.
+      2. Have LeagueTeamController return room_id + a per-user JWT
+         (via GameServerService::generatePlayerToken) when rendering
+         this view.
+      3. Have processBuzz / submitAnswer forward events to the Node
+         GameOrchestrator so player_stats_updated / round_stats /
+         match_stats get broadcast to room participants.
+
+    Once that backend work is done, append the same three script tags
+    used by Master (socket.io CDN, DuoSocketClient, GameplayRuntime)
+    at the bottom of @section('content').
+
+    Full audit: docs/audits/league_team_live_stats_pending.md
+--}}
 <div class="league-team-game-container">
     <div class="game-header">
         <div class="round-indicator">
@@ -33,6 +73,7 @@
             <div class="rounds-won">Manches: <span id="team1RoundsWon">0</span></div>
             <div class="team-members">
                 @foreach($match->team1->teamMembers as $member)
+                    @php $lpid = $member->user_id === Auth::id() ? 'self' : (string)$member->user_id; @endphp
                     <div class="member-mini {{ $member->user_id === Auth::id() ? 'current-user' : '' }}" data-user-id="{{ $member->user_id }}">
                         <div class="member-avatar-mini">
                             @if($member->user->avatar_url)
@@ -42,7 +83,15 @@
                             @endif
                         </div>
                         <div class="member-name-mini">{{ $member->user->name }}</div>
-                        <div class="member-score" id="score-{{ $member->user_id }}">0</div>
+                        <div class="member-score" id="score-{{ $member->user_id }}" data-stat="score" data-player="{{ $lpid }}">0</div>
+                        <div class="member-stats">
+                            <span class="ms-eff" title="{{ __('Efficacité') }}">⚡<span data-stat="efficiencyPercent" data-player="{{ $lpid }}">0%</span></span>
+                            <span class="ms-streak" title="{{ __('Série') }}">🔥<span data-stat="currentStreak" data-player="{{ $lpid }}">0</span></span>
+                            <span class="ms-buzz" title="{{ __('Buzz moyen') }}">⏱<span data-stat="averageResponseMs" data-player="{{ $lpid }}">0 ms</span></span>
+                            <span title="{{ __('Bons/Faux/Buzz') }}">
+                                <span class="ms-correct" data-stat="correctAnswers" data-player="{{ $lpid }}">0</span><span class="ms-total">/</span><span class="ms-wrong" data-stat="wrongAnswers" data-player="{{ $lpid }}">0</span><span class="ms-total">/</span><span class="ms-buzz" data-stat="buzzCount" data-player="{{ $lpid }}">0</span>
+                            </span>
+                        </div>
                         <div class="buzz-indicator" id="buzz-{{ $member->user_id }}"></div>
                     </div>
                 @endforeach
@@ -60,7 +109,8 @@
             <div class="rounds-won">Manches: <span id="team2RoundsWon">0</span></div>
             <div class="team-members">
                 @foreach($match->team2->teamMembers as $member)
-                    <div class="member-mini" data-user-id="{{ $member->user_id }}">
+                    @php $lpid = $member->user_id === Auth::id() ? 'self' : (string)$member->user_id; @endphp
+                    <div class="member-mini {{ $member->user_id === Auth::id() ? 'current-user' : '' }}" data-user-id="{{ $member->user_id }}">
                         <div class="member-avatar-mini">
                             @if($member->user->avatar_url)
                                 <img src="{{ $member->user->avatar_url }}" alt="">
@@ -69,7 +119,15 @@
                             @endif
                         </div>
                         <div class="member-name-mini">{{ $member->user->name }}</div>
-                        <div class="member-score" id="score-{{ $member->user_id }}">0</div>
+                        <div class="member-score" id="score-{{ $member->user_id }}" data-stat="score" data-player="{{ $lpid }}">0</div>
+                        <div class="member-stats">
+                            <span class="ms-eff" title="{{ __('Efficacité') }}">⚡<span data-stat="efficiencyPercent" data-player="{{ $lpid }}">0%</span></span>
+                            <span class="ms-streak" title="{{ __('Série') }}">🔥<span data-stat="currentStreak" data-player="{{ $lpid }}">0</span></span>
+                            <span class="ms-buzz" title="{{ __('Buzz moyen') }}">⏱<span data-stat="averageResponseMs" data-player="{{ $lpid }}">0 ms</span></span>
+                            <span title="{{ __('Bons/Faux/Buzz') }}">
+                                <span class="ms-correct" data-stat="correctAnswers" data-player="{{ $lpid }}">0</span><span class="ms-total">/</span><span class="ms-wrong" data-stat="wrongAnswers" data-player="{{ $lpid }}">0</span><span class="ms-total">/</span><span class="ms-buzz" data-stat="buzzCount" data-player="{{ $lpid }}">0</span>
+                            </span>
+                        </div>
                         <div class="buzz-indicator" id="buzz-{{ $member->user_id }}"></div>
                     </div>
                 @endforeach
@@ -265,6 +323,25 @@
     min-width: 30px;
     text-align: right;
 }
+
+.member-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: center;
+    margin-left: 6px;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.member-stats .ms-eff { color: #4ECDC4; font-weight: 700; }
+.member-stats .ms-streak { color: #FF8E53; font-weight: 700; }
+.member-stats .ms-buzz { color: #FFD700; font-weight: 700; }
+.member-stats .ms-correct { color: #4ECDC4; font-weight: 700; }
+.member-stats .ms-wrong { color: #FF6B6B; font-weight: 700; }
+.member-stats .ms-total { color: #C0C0C0; font-weight: 700; }
+.member-stats span span { margin-left: 2px; }
 
 .buzz-indicator {
     position: absolute;

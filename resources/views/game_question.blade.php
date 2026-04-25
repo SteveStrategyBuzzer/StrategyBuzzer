@@ -923,7 +923,16 @@ if ($isMultiplayer && !empty($opponentInfo)) {
                 <img src="{{ $playerAvatarPath }}" alt="Avatar joueur" class="player-avatar">
                 <div class="player-name">{{ $playerName }}</div>
                 <div class="player-level">{{ __('Niveau') }} {{ $playerLevel }}</div>
-                <div class="player-score" id="playerScore">{{ $params['score'] }}</div>
+                <div class="player-score" id="playerScore" data-stat="score" data-player="self">{{ $params['score'] }}</div>
+                @if(!$isMultiplayer)
+                <div class="solo-live-stats" aria-label="{{ __('Stats en direct') }}" style="margin-top:8px;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 10px;font-size:0.78rem;font-weight:600;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.25);border-radius:8px;padding:6px 10px;max-width:220px;">
+                    <span><span style="opacity:.7">⚡</span> <span style="color:#4ECDC4" data-stat="efficiencyPercent" data-player="self">0%</span></span>
+                    <span><span style="opacity:.7">🎯</span> <span style="color:#FFD700" data-stat="accuracyPercent" data-player="self">0%</span></span>
+                    <span><span style="opacity:.7">🔥</span> <span style="color:#FF8E53" data-stat="currentStreak" data-player="self">0</span></span>
+                    <span><span style="opacity:.7">⏱</span> <span style="color:#FFD700" data-stat="averageResponseMs" data-player="self">0 ms</span></span>
+                    <span><span style="opacity:.7">✓</span> <span style="color:#FFD700" data-stat="correctAnswers" data-player="self">0</span>/<span style="color:#FFD700" data-stat="totalAnswers" data-player="self">0</span></span>
+                </div>
+                @endif
             </div>
             
             <!-- Adversaire -->
@@ -2241,6 +2250,40 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
 
     window.addEventListener('beforeunload', () => {
         if (voiceChat) voiceChat.cleanup();
+    });
+})();
+</script>
+@endif
+
+@if(!$isMultiplayer)
+<script src="{{ asset('js/SoloStatsEngine.js') }}"></script>
+<script>
+(function () {
+    var totalAns = {{ (int)($params['current_question'] ?? 1) - 1 }};
+    var serverScore = {{ (int)($params['score'] ?? 0) }};
+    var nodeScore = document.querySelector('[data-stat="score"][data-player="self"]');
+    if (nodeScore) nodeScore.setAttribute('data-server-score', String(serverScore));
+
+    if (window.SoloStatsEngine) {
+        window.SoloStatsEngine.reconcile({ totalAnswers: totalAns });
+        window.SoloStatsEngine.markQuestionStart();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var btns = document.querySelectorAll('.reponse-btn, .answer-btn, [data-answer-id], button[name="answer_id"]');
+        btns.forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (window.SoloStatsEngine) {
+                    var elapsed = window.SoloStatsEngine.consumeQuestionElapsedMs();
+                    var st = window.SoloStatsEngine.load();
+                    st.buzzCount = (st.buzzCount || 0) + 1;
+                    window.SoloStatsEngine.save(st);
+                    if (typeof elapsed === 'number') {
+                        try { sessionStorage.setItem('sb.soloPendingMs.' + (window.MATCH_ID || 'solo'), String(elapsed)); } catch (e) {}
+                    }
+                }
+            }, { once: false, capture: true });
+        });
     });
 })();
 </script>

@@ -1831,4 +1831,40 @@ function handleTimeout() {
     }, 2000);
 }
 </script>
+
+@if(($params['mode'] ?? 'solo') === 'solo')
+<script src="{{ asset('js/SoloStatsEngine.js') }}"></script>
+<script>
+(function () {
+    if (!window.SoloStatsEngine) return;
+    var newScore   = {{ (int)($params['score'] ?? 0) }};
+    var totalAns   = {{ (int)($params['current_question'] ?? 1) }};
+    var prev       = window.SoloStatsEngine.load();
+    var prevScore  = (prev && typeof prev.score === 'number') ? prev.score : 0;
+    var wasCorrect = newScore > prevScore;
+    var newCorrect = (prev.correctAnswers | 0) + (wasCorrect ? 1 : 0);
+    var matchKey   = (window.MATCH_ID || 'solo');
+    var lastMs = null;
+    try {
+        var raw = sessionStorage.getItem('sb.soloPendingMs.' + matchKey);
+        if (raw) {
+            sessionStorage.removeItem('sb.soloPendingMs.' + matchKey);
+            var n = parseInt(raw, 10);
+            if (!isNaN(n) && n >= 0) lastMs = n;
+        }
+    } catch (e) {}
+
+    var nodeScore = document.querySelector('[data-stat="score"][data-player="self"]');
+    if (nodeScore) nodeScore.setAttribute('data-server-score', String(newScore));
+
+    window.SoloStatsEngine.reconcile({
+        totalAnswers: totalAns,
+        correctAnswers: newCorrect,
+        lastAnswerCorrect: wasCorrect,
+        lastResponseMs: (wasCorrect && lastMs !== null) ? lastMs : 0
+    });
+})();
+</script>
+@endif
+
 @endsection

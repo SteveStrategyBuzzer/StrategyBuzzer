@@ -150,6 +150,33 @@ $mode = 'duo';
         color: #4ECDC4;
         text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
     }
+
+    .live-stats {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        margin-top: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.2;
+        opacity: 0.9;
+    }
+
+    .live-stats .stat-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .live-stats .stat-label {
+        opacity: 0.65;
+    }
+
+    .live-stats.player .stat-value { color: #4ECDC4; }
+    .live-stats.opponent .stat-value { color: #FF6B6B; }
+    .live-stats .stat-value { font-weight: 800; }
     
     .opponent-circle {
         display: flex;
@@ -719,6 +746,21 @@ $mode = 'duo';
                 <div class="player-name">{{ $playerName ?? __('Vous') }}</div>
                 <div class="player-level">{{ __('Niveau') }} {{ $playerLevel ?? 0 }} {{ __('Duo') }}</div>
                 <div class="player-score" id="playerScore" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</div>
+                <div class="live-stats player" aria-label="{{ __('Stats en direct') }}">
+                    <div class="stat-row">
+                        <span class="stat-label">⚡</span>
+                        <span class="stat-value" data-stat="efficiencyPercent" data-player="self">0%</span>
+                        <span class="stat-label">·</span>
+                        <span class="stat-label">{{ __('Série') }}</span>
+                        <span class="stat-value" data-stat="currentStreak" data-player="self">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">{{ __('Buzz') }}</span>
+                        <span class="stat-value" data-stat="averageResponseMs" data-player="self">0 ms</span>
+                        <span class="stat-label">·</span>
+                        <span class="stat-value" data-stat="correctAnswers" data-player="self">0</span><span class="stat-label">/</span><span class="stat-value" data-stat="buzzCount" data-player="self">0</span>
+                    </div>
+                </div>
             </div>
             
             <div class="opponent-circle">
@@ -730,6 +772,21 @@ $mode = 'duo';
                 <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
                 <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel ?? 0 }} {{ __('Duo') }}</div>
                 <div class="opponent-score" id="opponentScore" data-stat="score" data-player="opponent">{{ $opponentScore ?? 0 }}</div>
+                <div class="live-stats opponent" aria-label="{{ __('Stats adversaire en direct') }}">
+                    <div class="stat-row">
+                        <span class="stat-label">⚡</span>
+                        <span class="stat-value" data-stat="efficiencyPercent" data-player="opponent">0%</span>
+                        <span class="stat-label">·</span>
+                        <span class="stat-label">{{ __('Série') }}</span>
+                        <span class="stat-value" data-stat="currentStreak" data-player="opponent">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">{{ __('Buzz') }}</span>
+                        <span class="stat-value" data-stat="averageResponseMs" data-player="opponent">0 ms</span>
+                        <span class="stat-label">·</span>
+                        <span class="stat-value" data-stat="correctAnswers" data-player="opponent">0</span><span class="stat-label">/</span><span class="stat-value" data-stat="buzzCount" data-player="opponent">0</span>
+                    </div>
+                </div>
             </div>
         </div>
         
