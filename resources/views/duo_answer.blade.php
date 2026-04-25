@@ -1351,10 +1351,20 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function startTimer() {
         if (timerInterval) clearInterval(timerInterval);
         
-        // FIX: sync starting timeLeft with server's remaining ANSWER_SELECTION time
+        // Sync starting timeLeft with server's remaining ANSWER_SELECTION time, but
+        // absorb up to 1.5s of network/page-load latency: if the server reports
+        // remaining ≥ (ANSWER_TIME − 1.5)s, snap the visible countdown back up to
+        // the full ANSWER_TIME so the player sees a clean fresh "10s" on arrival.
+        // The setInterval below still re-syncs every tick, so the actual timeout
+        // remains driven by the server's authoritative phaseEndsAtMs.
         if (phaseEndsAtMs) {
             const remaining = Math.max(0, phaseEndsAtMs - Date.now());
-            timeLeft = Math.ceil(remaining / 1000);
+            const ceilLeft = Math.ceil(remaining / 1000);
+            if (remaining >= (ANSWER_TIME - 1.5) * 1000) {
+                timeLeft = ANSWER_TIME;
+            } else {
+                timeLeft = ceilLeft;
+            }
             if (timeLeft <= 0) timeLeft = 1; // at least 1 tick before auto-timeout
         }
         
@@ -1690,13 +1700,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         const pointsEarned = data.points || data.pointsEarned || 0;
         showResult(isCorrect, correctIndex, pointsEarned);
 
-        // P0.3 — Display the server-provided "Le saviez-vous?" fun fact.
-        // The Node orchestrator emits both `didYouKnow` and the legacy `funFact`
-        // alias on every answer_revealed (GameOrchestrator emit, ~L.440-456).
-        const trivia = data.didYouKnow || data.funFact;
-        if (trivia) {
-            showDidYouKnow(trivia);
-        }
         // Visual feedback only — navigation is driven exclusively by phase_changed events
         // (QUESTION_ACTIVE for next question, ROUND_SCOREBOARD for scoreboard, MATCH_END for final).
         // Exception: matchEnded flag for immediate end-of-match redirect.

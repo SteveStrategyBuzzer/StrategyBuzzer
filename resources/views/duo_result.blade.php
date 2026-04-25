@@ -158,13 +158,29 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         color: #95a5a6;
     }
     
+    /* Hide the avatar/name/score/efficiency battle row — duplicates info that
+       already appears in the integrated stats-columns grid below, and the
+       efficiency value here was unreliable per user report. */
     .score-battle {
+        display: none !important;
+    }
+    .score-battle--legacy-display {
         display: flex;
         justify-content: center;
         align-items: center;
         gap: 20px;
         margin: 15px 0;
         animation: fadeIn 0.8s ease-out;
+    }
+
+    /* Header variant for "no buzz" rounds (player did not press the buzzer). */
+    .result-header.result-no-buzz {
+        background: linear-gradient(135deg, rgba(52, 152, 219, 0.25), rgba(41, 128, 185, 0.25));
+        border: 2px solid #3498DB;
+        box-shadow: 0 8px 32px rgba(52, 152, 219, 0.3);
+    }
+    .result-no-buzz .result-title {
+        color: #3498DB;
     }
     
     .score-player, .score-opponent {
@@ -940,12 +956,28 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
 {{-- connection-status, voice-mic button: provided by layouts.game --}}
 
 <div class="result-container">
-    <div class="result-header {{ $wasCorrect ? 'result-correct' : 'result-incorrect' }}">
+    @php
+        $playerBuzzed = $playerBuzzed ?? false;
+        // 3 visual states for the header:
+        //  - correct  → green title "Bonne réponse !"
+        //  - no-buzz  → blue  title "Pas de buzz" (player did not press the buzzer)
+        //  - wrong    → red   title "Mauvaise réponse" (player buzzed and got it wrong)
+        // The ✓/❌ icon is intentionally omitted per UX request.
+        if ($wasCorrect) {
+            $headerVariant = 'result-correct';
+        } elseif (!$playerBuzzed) {
+            $headerVariant = 'result-no-buzz';
+        } else {
+            $headerVariant = 'result-incorrect';
+        }
+    @endphp
+    <div class="result-header {{ $headerVariant }}">
         <div class="round-indicator">{{ __('Question') }} {{ $currentQuestion ?? 1 }}/{{ $totalQuestions ?? 10 }}</div>
-        <div class="result-icon">{{ $wasCorrect ? '✅' : '❌' }}</div>
         <div class="result-title">
             @if($wasCorrect)
                 {{ __('Bonne réponse !') }}
+            @elseif(!$playerBuzzed)
+                {{ __('Pas de buzz') }}
             @else
                 {{ __('Mauvaise réponse') }}
             @endif
