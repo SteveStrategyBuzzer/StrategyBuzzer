@@ -1700,6 +1700,28 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         const pointsEarned = data.points || data.pointsEarned || 0;
         showResult(isCorrect, correctIndex, pointsEarned);
 
+        // Stash the server-provided "Le saviez-vous?" fun fact and the question
+        // number into sessionStorage so the next page (duo_result) can show them
+        // even when the controller's own server-side fallback (Redis room state)
+        // returns nothing — e.g. if the orchestrator already advanced questionIndex
+        // by the time the Result controller runs, or if funFact is absent on the
+        // persisted question record. Server-side data still wins; this is purely
+        // a client-side belt-and-braces fallback scoped to the current tab.
+        try {
+            var funText = (data.didYouKnow || data.funFact || '').toString().trim();
+            if (funText) {
+                sessionStorage.setItem('duo_last_fun_fact', funText);
+            } else {
+                sessionStorage.removeItem('duo_last_fun_fact');
+            }
+            if (typeof data.questionIndex === 'number') {
+                // Server uses 0-indexed questionIndex; display is 1-indexed.
+                sessionStorage.setItem('duo_last_question_number', String(data.questionIndex + 1));
+            } else if (typeof data.currentQuestion === 'number') {
+                sessionStorage.setItem('duo_last_question_number', String(data.currentQuestion));
+            }
+        } catch (e) { /* sessionStorage may be unavailable in private mode */ }
+
         // Visual feedback only — navigation is driven exclusively by phase_changed events
         // (QUESTION_ACTIVE for next question, ROUND_SCOREBOARD for scoreboard, MATCH_END for final).
         // Exception: matchEnded flag for immediate end-of-match redirect.
@@ -1760,12 +1782,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
         if (phase === 'RESULT') {
             // V3: per-question result — navigate to result page after visual feedback.
-            // F3: if an incorrect-answer overlay is visible, give 2500ms to read it;
-            //     otherwise 600ms is enough for a correct answer.
-            var hasIncorrectOverlay = resultOverlay &&
-                resultOverlay.style.display !== 'none' &&
-                resultOverlay.classList.contains('incorrect');
-            var resultDelay = hasIncorrectOverlay ? 2500 : 600;
+            // UX: previous 600ms delay for correct answers was too snappy — players
+            // barely had time to read "Bonne réponse !" before the page swapped.
+            // Bumped to 2500ms in all cases (matches incorrect-answer delay) so the
+            // visual feedback on the Answer page stays readable for ~2.5s.
+            var resultDelay = 2500;
             setTimeout(function() {
                 if (isRedirecting) return;
                 isRedirecting = true;

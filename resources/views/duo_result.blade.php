@@ -158,19 +158,22 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         color: #95a5a6;
     }
     
-    /* Hide the avatar/name/score/efficiency battle row — duplicates info that
-       already appears in the integrated stats-columns grid below, and the
-       efficiency value here was unreliable per user report. */
+    /* Avatar/name/score battle row stays visible (per UX request: keep current
+       score + per-round delta + avatars). ONLY the "Efficacité" label/value is
+       removed because that figure was unreliable. The .score-battle base layout
+       is restored to its original flex display below. */
     .score-battle {
-        display: none !important;
-    }
-    .score-battle--legacy-display {
         display: flex;
         justify-content: center;
         align-items: center;
         gap: 20px;
         margin: 15px 0;
         animation: fadeIn 0.8s ease-out;
+    }
+    /* Hide just the efficacité row inside each player card. */
+    .score-efficiency-label,
+    .score-efficiency {
+        display: none !important;
     }
 
     /* Header variant for "no buzz" rounds (player did not press the buzzer). */
@@ -476,6 +479,11 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         font-size: 0.75rem;
         opacity: 0.8;
         margin-top: 2px;
+        /* Per UX request: strategist skill descriptions are not shown on the
+           Result page (they live on the Question page where they're actionable).
+           DOM is kept so click handlers etc. don't break — only the visual is
+           suppressed. */
+        display: none !important;
     }
     
     .skill-btn {
@@ -1092,9 +1100,16 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     </div>
     
     @if(!empty($question['fun_fact']))
-        <div class="did-you-know">
+        <div class="did-you-know" id="didYouKnowBlock">
             <div class="did-you-know-title">💡 {{ __('Le saviez-vous ?') }}</div>
-            <div class="did-you-know-content">{{ $question['fun_fact'] }}</div>
+            <div class="did-you-know-content" id="didYouKnowContent">{{ $question['fun_fact'] }}</div>
+        </div>
+    @else
+        {{-- Empty placeholder so the client-side fallback below can hydrate it
+             when sessionStorage holds a fresh fun_fact stashed by duo_answer.blade.php. --}}
+        <div class="did-you-know" id="didYouKnowBlock" style="display:none;">
+            <div class="did-you-know-title">💡 {{ __('Le saviez-vous ?') }}</div>
+            <div class="did-you-know-content" id="didYouKnowContent"></div>
         </div>
     @endif
     
@@ -1914,6 +1929,39 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
     // including DuoSocketClient.js. setTimeout(0) is unreliable: it is a macrotask that
     // can fire DURING a script fetch, before window.DuoSocketClient is set.
     document.addEventListener('DOMContentLoaded', function() {
+        // Client-side fallback hydration from sessionStorage:
+        //  - didYouKnow: stashed by duo_answer.blade.php on `answer_revealed`.
+        //    The server-side @if($question['fun_fact']) branch wins when present;
+        //    we only kick in when the server emitted an empty placeholder.
+        //  - round indicator: bumps the "Question N/T" header when the controller
+        //    couldn't read a fresher questionIndex from Redis (rare race when the
+        //    orchestrator already advanced past RESULT by the time the page loads).
+        try {
+            var dykContent = document.getElementById('didYouKnowContent');
+            var dykBlock   = document.getElementById('didYouKnowBlock');
+            if (dykContent && dykBlock) {
+                var serverFact = (dykContent.textContent || '').trim();
+                if (!serverFact) {
+                    var stashed = sessionStorage.getItem('duo_last_fun_fact');
+                    if (stashed && stashed.trim()) {
+                        dykContent.textContent = stashed.trim();
+                        dykBlock.style.display = '';
+                    }
+                }
+            }
+            var indicator = document.querySelector('.round-indicator');
+            if (indicator) {
+                var stashedQ = sessionStorage.getItem('duo_last_question_number');
+                var qNum = parseInt(stashedQ || '', 10);
+                if (!isNaN(qNum) && qNum > 0) {
+                    // Total is whatever the server already wrote — preserve it.
+                    var totalMatch = indicator.textContent.match(/\/(\d+)\s*$/);
+                    var total = totalMatch ? totalMatch[1] : '10';
+                    indicator.textContent = "{{ __('Question') }} " + qNum + '/' + total;
+                }
+            }
+        } catch (e) { /* sessionStorage unavailable — keep server-rendered values */ }
+
         var ds = window.DuoSocketClient;
         var h  = window._duoResultHandlers;
         if (!ds || !h) { console.error('[DuoResult] DuoSocketClient or handlers missing'); return; }

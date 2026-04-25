@@ -776,7 +776,11 @@ $mode = 'duo';
                 <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
                 <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel ?? 0 }} {{ __('Duo') }}</div>
                 <div class="opponent-score" id="opponentScore" data-stat="score" data-player="opponent">{{ $opponentScore ?? 0 }}</div>
-                <div class="live-stats opponent" aria-label="{{ __('Stats adversaire en direct') }}">
+                {{-- Opponent live-stats row (efficiency %, streak, avg buzz ms, correct/buzz) intentionally hidden:
+                     UX feedback considered the "17% / 1/7" badge confusing on the Question page. The DOM nodes
+                     are kept (display:none) so GameplayRuntime data-stat updates don't throw and so we can
+                     re-enable later without restoring markup. --}}
+                <div class="live-stats opponent" aria-label="{{ __('Stats adversaire en direct') }}" style="display:none;" aria-hidden="true">
                     <div class="stat-row">
                         <span class="stat-label">⚡</span>
                         <span class="stat-value" data-stat="efficiencyPercent" data-player="opponent">0%</span>

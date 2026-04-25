@@ -1918,17 +1918,32 @@ class DuoController extends Controller
             'lobby_code' => $lobbyCode,
         ])]);
 
-        // Read current question from Redis game-server room state to get fun_fact
+        // Read current question from Redis game-server room state to get fun_fact AND
+        // the up-to-date 1-based question number. The orchestrator is the only writer
+        // for `room.state.questionIndex` (incremented after each RESULT phase ends),
+        // so it is the freshest source for the round indicator. `match.game_state.
+        // current_question_number` is only updated by the legacy REST submitAnswer
+        // path, which is no longer the authoritative driver in Node-authoritative
+        // Duo — that's why "Question 1/10" used to stay stuck on the Result page.
         $resultQuestion = $gameState['last_question'] ?? [];
-        if ($roomId && empty($resultQuestion['fun_fact'])) {
+        if ($roomId) {
             try {
                 $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
                     ->get("room:{$roomId}:state");
                 if ($rawState) {
                     $roomState = json_decode($rawState, true);
-                    $qIdx = $roomState['questionIndex'] ?? 0;
+                    $qIdx = $roomState['questionIndex'] ?? null;
                     $questions = $roomState['questions'] ?? [];
-                    if (isset($questions[$qIdx])) {
+                    if ($qIdx !== null) {
+                        // 0-indexed → 1-indexed. The Result page renders for the
+                        // just-finished question, which is exactly questionIndex
+                        // during the RESULT phase. If the orchestrator has already
+                        // advanced (race), the indicator will be at most one ahead,
+                        // and the sessionStorage hydration in duo_result.blade.php
+                        // corrects the rare drift to the value seen at answer_revealed.
+                        $currentQuestion = ((int)$qIdx) + 1;
+                    }
+                    if (empty($resultQuestion['fun_fact']) && isset($questions[$qIdx])) {
                         $q = $questions[$qIdx];
                         $resultQuestion = [
                             'text'     => $q['text'] ?? '',
@@ -1937,7 +1952,7 @@ class DuoController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-                \Log::warning('[DUO-RESULT] Redis question fallback failed', ['error' => $e->getMessage()]);
+                \Log::warning('[DUO-RESULT] Redis room-state fallback failed', ['error' => $e->getMessage()]);
             }
         }
 
