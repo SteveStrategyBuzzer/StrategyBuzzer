@@ -24,6 +24,7 @@ export const JoinRoomSchema = z.object({
   playerName: z.string(),
   avatarId: z.string().nullish(),
   strategicAvatarId: z.string().nullish(),
+  color: z.string().optional(),
   division: z.string().nullish(),
   token: z.string().optional(),
 });

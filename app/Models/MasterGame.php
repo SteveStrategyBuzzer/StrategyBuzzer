@@ -12,6 +12,8 @@ class MasterGame extends Model
     protected $fillable = [
         'game_code',
         'firebase_id',
+        'room_id',
+        'lobby_code',
         'host_user_id',
         'name',
         'languages',

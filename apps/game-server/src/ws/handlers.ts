@@ -128,6 +128,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         const event = roomManager.joinRoom(roomId, playerId, playerName, {
           avatarId: avatarId ?? undefined,
           strategicAvatarId: payload.strategicAvatarId ?? undefined,
+          color: payload.color ?? undefined,
           division: payload.division ?? undefined,
         });
         

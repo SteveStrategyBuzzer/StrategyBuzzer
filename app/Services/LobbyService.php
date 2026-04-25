@@ -183,6 +183,7 @@ class LobbyService
             if (isset($result['roomId'])) {
                 $gameServerData = [
                     'roomId' => $result['roomId'],
+                    'lobbyCode' => $lobbyCode,
                     'socket_url' => $this->gameServerService->getSocketUrl(),
                 ];
                 Log::info('LobbyService: Room created at lobby creation', [
@@ -438,11 +439,26 @@ class LobbyService
         if (!$validColor) {
             return ['success' => false, 'error' => __('Couleur invalide')];
         }
-        
+
+        foreach ($lobby['players'] as $existingPlayerId => $existingPlayer) {
+            if ((int) $existingPlayerId !== (int) $player->id && (($existingPlayer['color'] ?? null) === $colorId)) {
+                return ['success' => false, 'error' => __('Cette couleur est déjà prise')];
+            }
+        }
+
         $lobby['players'][$player->id]['color'] = $colorId;
-        
+
         $this->saveLobby($code, $lobby);
-        
+
+        $roomId = $lobby['game_server']['roomId'] ?? null;
+        if ($roomId) {
+            $this->gameServerService->syncPlayerColor(
+                $roomId,
+                (string) $player->id,
+                $colorId
+            );
+        }
+
         return ['success' => true, 'lobby' => $lobby];
     }
     
@@ -1065,7 +1081,20 @@ class LobbyService
     public function getPlayerLobbyState(string $code, int $playerId): array
     {
         $lobby = $this->getLobby($code);
-        
+
+        if ($lobby && isset($lobby['game_server']['roomId'], $lobby['game_server']['lobbyCode'])) {
+            if ($lobby['game_server']['lobbyCode'] !== $code) {
+                Log::warning('[LobbyService] Clearing stale game_server cache', [
+                    'lobby_code' => $code,
+                    'cached_roomId' => $lobby['game_server']['roomId'],
+                    'cached_lobbyCode' => $lobby['game_server']['lobbyCode'],
+                ]);
+
+                $lobby['game_server'] = [];
+                $this->saveLobby($code, $lobby);
+            }
+        }
+
         if (!$lobby) {
             return ['exists' => false];
         }

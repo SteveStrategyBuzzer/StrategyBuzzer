@@ -1,0 +1,75 @@
+Go Lot 2 — Couleur joueur synchronisée Laravel ↔ Node ↔ client.
+
+Contexte :
+Replit main reste la référence.
+La branche VM recovery existe :
+origin/vm/all-vm-touched-recovery-2026-04-24
+
+Objectif :
+récupérer uniquement la logique couleur joueur utile depuis VM, sans écraser les travaux #35-#41.
+
+À intégrer depuis VM recovery, uniquement si absent ou incomplet sur main :
+
+1. app/Services/LobbyService.php
+   - logique setColor()
+   - unicité de couleur par lobby
+   - cache lobbyCode à côté de roomId si utile
+   - détection cache obsolète dans getPlayerLobbyState()
+   - appel syncPlayerColor()
+
+2. app/Services/GameServerService.php
+   - uniquement méthode syncPlayerColor()
+   - ne pas reprendre le constructeur VM
+   - ne pas reprendre les URL hardcodées VM
+   - ne pas modifier les réglages Replit existants
+
+3. packages/shared/src/types.ts
+   - uniquement ajouter color?: string sur Player si manquant
+   - ne rien retirer
+   - ne pas toucher PlayerLiveStats, MatchStats, phases, skills, stats
+
+4. packages/shared/src/events.ts
+   - uniquement color?: string sur PlayerJoinedEvent si manquant
+   - ne rien retirer
+
+5. apps/game-server/src/validation/schemas.ts
+   - uniquement color: z.string().optional() dans JoinRoomSchema si manquant
+   - ne pas toucher QuestionPageReadySchema
+   - ne pas retirer les skill IDs existants
+   - ne pas changer nullish/optional ailleurs
+
+6. apps/game-server/src/ws/handlers.ts
+   - uniquement passage color dans join_room / player roster / game_state si utile
+   - ne pas retirer BotPlayerService
+   - ne pas retirer question_page_ready
+   - ne pas retirer stats live events
+   - ne pas modifier les phases V3
+
+7. resources/views/lobby.blade.php
+   - reprendre uniquement la portion couleur si encore pertinente
+   - ne pas écraser la migration SB_GAME_CONTEXT / socket authority / layout actuel
+   - ne pas réintroduire Firebase gameplay
+   - Firebase présence seulement
+
+Règles absolues :
+- Ne merge pas la branche VM.
+- Ne remplace aucun fichier complet.
+- Pas de patch massif.
+- Pas de fichier .bak.
+- Replit main reste référence.
+- Chaque intégration doit être GREP → SLICE → PATCH → VALIDATION.
+- Patch du bas vers le haut si plusieurs zones dans le même fichier.
+- Après chaque patch :
+  - npm run build dans apps/game-server si Node/shared modifié
+  - php -l si PHP/Blade modifié
+  - git diff --stat
+  - slice élargie de validation
+
+Sortie attendue avant patch :
+1. liste exacte des zones trouvées sur main
+2. liste exacte des zones VM utiles comparées
+3. plan Patch 1, Patch 2, Patch 3
+4. aucun patch avant ce plan
+
+But final Lot 2 :
+la couleur choisie en lobby doit rester unique, être stockée côté Laravel, transmise au game-server, incluse dans l’état Socket.IO, et visible des deux joueurs en temps réel, sans casser la centralisation stats #37-#41.

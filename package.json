@@ -14,7 +14,9 @@
     "dev:game-server": "npm -w @strategybuzzer/game-server run dev",
     "start:game-server": "npm -w @strategybuzzer/game-server run start",
     "test:e2e:duo-join": "node tests/e2e/duo-join-room.test.js",
-    "test:e2e:duo-join-browser": "node tests/e2e/duo-join-room.browser.spec.js"
+    "test:e2e:duo-join-browser": "node tests/e2e/duo-join-room.browser.spec.js",
+    "test:e2e:master-join-browser": "node tests/e2e/master-join-room.browser.spec.js",
+    "test:e2e:league-individual-join-browser": "node tests/e2e/league-individual-join-room.browser.spec.js"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",

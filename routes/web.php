@@ -372,6 +372,9 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     
     Route::get('/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes');
     Route::get('/{gameId}/codes', [App\Http\Controllers\MasterGameController::class, 'codes'])->name('codes.show');
+    Route::get('/{gameId}/preview', [App\Http\Controllers\MasterGameController::class, 'preview'])->name('preview');
+    Route::post('/{gameId}/select', [App\Http\Controllers\MasterGameController::class, 'selectQuiz'])->name('select');
+    Route::delete('/{gameId}', [App\Http\Controllers\MasterGameController::class, 'destroyQuiz'])->name('destroy');
     Route::get('/{gameId}/lobby', [App\Http\Controllers\MasterGameController::class, 'lobby'])->name('lobby');
     
     // Secure player join page (no gameId in URL - players enter code only)
@@ -528,5 +531,13 @@ if (! app()->environment('production')) {
         Route::post('/duo/setup-bot-match', [App\Http\Controllers\TestSupportController::class, 'setupDuoBotMatch'])
             ->middleware('auth')
             ->name('duo.setup-bot-match');
+
+        Route::post('/master/setup-bot-match', [App\Http\Controllers\TestSupportController::class, 'setupMasterBotMatch'])
+            ->middleware('auth')
+            ->name('master.setup-bot-match');
+
+        Route::post('/league/individual/setup-bot-match', [App\Http\Controllers\TestSupportController::class, 'setupLeagueIndividualBotMatch'])
+            ->middleware('auth')
+            ->name('league.individual.setup-bot-match');
     });
 }

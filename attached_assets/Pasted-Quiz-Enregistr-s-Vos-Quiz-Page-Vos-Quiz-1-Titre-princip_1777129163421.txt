@@ -1,0 +1,105 @@
+Quiz Enregistrés / Vos Quiz.
+Page : Vos Quiz
+1. Titre principal
+Remplacer :
+Vos Codes
+par :
+Vos Quiz
+Sous-titre possible :
+Sélectionne un quiz enregistré, vérifie ses paramètres, choisis les joueurs, puis démarre la partie.
+
+2. Bloc principal : Quiz Sélectionné
+Remplacer :
+Partie en cours
+par :
+Quiz Sélectionné
+Ce bloc ne montre pas les questions, seulement le pedigree du quiz.
+Contenu du bloc
+Code du quiz
+Exemple : JM-4827
+Généré automatiquement au moment de l’enregistrement du nouveau quiz.
+Carnet
+Icône ou bouton juste à côté du code.
+Sert à sélectionner :
+un groupe
+une classe
+des joueurs individuels
+des équipes si applicable
+Spécifications affichées
+Dans la bulle Quiz Sélectionné, afficher :
+Nom du quiz
+Langue du quiz
+Nombre maximal de joueurs
+Nombre de questions
+Domaine
+Types de questions
+Mode du quiz
+Avatars Stratégiques : activés / désactivés
+Ambiance visuelle choisie
+Son / ambiance sonore choisie
+Manche Ultime
+
+3. Bouton central : Démarrer le Quiz
+Entre Quiz Sélectionné et Historique, ajouter :
+Démarrer le Quiz
+Action :
+Vérifie qu’un quiz est sélectionné.
+Vérifie qu’un groupe ou des joueurs sont sélectionnés via le carnet.
+Envoie les invitations.
+Transporte le MJ vers la page de gestion du quiz. (qui reste à créer)
+Node reste autorité gameplay après démarrage.
+
+4. Bloc Historique : Quiz enregistrés
+La structure actuelle peut rester, mais chaque carte de quiz doit avoir plus d’actions.
+Chaque quiz enregistré affiche rapidement :
+Nom du quiz
+Domaine
+Nombre de questions
+Langue
+Date d’enregistrement
+Actions sur chaque quiz
+1. Cliquer sur la carte
+ Ouvre une page de lecture complète du quiz, similaire à la page Général, mais :
+sans options de création
+sans modification possible
+en lecture seule
+affiche toutes les questions, réponses, bonnes réponses et paramètres
+2. Icône ⏫
+ Pousse ce quiz dans le bloc Quiz Sélectionné.
+3. Supprimer
+ Supprime le quiz enregistré, idéalement avec confirmation :
+Supprimer ce quiz enregistré ?
+
+5. Page détail du quiz enregistré
+Quand on clique sur un quiz dans l’historique :
+Page : Aperçu du quiz
+Affichage lecture seule :
+Nom du quiz
+Code
+Langue
+Domaine
+Mode
+Nombre de questions
+Type de questions
+Avatars Stratégiques
+Ambiance
+Sons
+Liste complète des questions
+Réponses
+Bonne réponse
+Explication / Saviez-vous, si disponible
+Actions possibles :
+Retour à Vos Quiz
+⏫ Utiliser ce quiz
+Supprimer ce quiz
+Aucune modification directe.
+
+Logique propre
+La page Vos Quiz devient une page de sélection et lancement, pas une page de création.
+La création reste ailleurs.
+ L’historique sert à retrouver les quiz.
+ Le bloc Quiz Sélectionné sert à préparer le lancement.
+ Le bouton Démarrer le Quiz sert à inviter et envoyer le MJ vers la gestion.
+Cette structure respecte le rôle prévu du mode Maître du jeu : création, invitation, lancement et gestion du quiz séparés proprement dans le flow StrategyBuzzer.
+
+

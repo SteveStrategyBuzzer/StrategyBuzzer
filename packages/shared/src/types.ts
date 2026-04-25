@@ -65,6 +65,7 @@ export type Player = {
   avatarId?: string;
   avatarUrl?: string;
   strategicAvatarId?: string;
+  color?: string;
   isBot?: boolean;
   isHost?: boolean;
   teamId?: UUID;

@@ -766,19 +766,84 @@ class MasterGameController extends Controller
     // Page 5: Générer les codes
     public function codes($gameId = null)
     {
+        $userId = Auth::id();
+        $game = null;
+
         if ($gameId) {
             $game = MasterGame::findOrFail($gameId);
 
-            if ($game->host_user_id !== Auth::id()) {
+            if ($game->host_user_id !== $userId) {
                 abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
             }
+
+            session(['master_selected_quiz_id' => $game->id]);
         } else {
-            $game = MasterGame::where('host_user_id', Auth::id())
-                ->orderBy('created_at', 'desc')
-                ->first();
+            $sessionQuizId = session('master_selected_quiz_id');
+            if ($sessionQuizId) {
+                $game = MasterGame::where('id', $sessionQuizId)
+                    ->where('host_user_id', $userId)
+                    ->first();
+            }
+
+            if (!$game) {
+                $game = MasterGame::where('host_user_id', $userId)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+                if ($game) {
+                    session(['master_selected_quiz_id' => $game->id]);
+                }
+            }
         }
 
-        return view('master.codes', compact('game'));
+        $history = MasterGame::where('host_user_id', $userId)
+            ->when($game, fn($q) => $q->where('id', '!=', $game->id))
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get();
+
+        return view('master.codes', compact('game', 'history'));
+    }
+
+    public function preview($gameId)
+    {
+        $game = MasterGame::with('questionsOrdered')->findOrFail($gameId);
+
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+
+        return view('master.preview', compact('game'));
+    }
+
+    public function selectQuiz($gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+
+        session(['master_selected_quiz_id' => $game->id]);
+
+        return redirect()->route('master.codes')->with('success', __('Quiz sélectionné'));
+    }
+
+    public function destroyQuiz($gameId)
+    {
+        $game = MasterGame::findOrFail($gameId);
+
+        if ($game->host_user_id !== Auth::id()) {
+            abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
+        }
+
+        if (session('master_selected_quiz_id') === $game->id) {
+            session()->forget('master_selected_quiz_id');
+        }
+
+        $game->delete();
+
+        return redirect()->route('master.codes')->with('success', __('Quiz supprimé'));
     }
 
     // Générer toutes les questions automatiquement (Mode Automatique)
@@ -1141,7 +1206,14 @@ class MasterGameController extends Controller
                 'questionType' => $questionType,
                 'questionNumber' => $questionNumber,
                 'previousQuestions' => $previousQuestions,
-                'gameSeed' => $game->id
+                'gameSeed' => $game->id,
+                'domainType' => $game->domain_type,
+                'schoolLevel' => $game->school_level,
+                'schoolGrade' => $game->school_grade,
+                'schoolSubject' => $game->school_subject,
+                'schoolCountry' => $game->school_country,
+                'mode' => $game->mode,
+                'totalQuestions' => $game->total_questions,
             ]);
             
             $context = stream_context_create([

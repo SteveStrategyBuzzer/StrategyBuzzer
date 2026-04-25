@@ -12,6 +12,8 @@ class LeagueIndividualMatch extends Model
         'player2_id',
         'winner_id',
         'status',
+        'room_id',
+        'lobby_code',
         'player1_level',
         'player2_level',
         'game_state',

@@ -335,6 +335,71 @@ class GameServerService
         }
     }
 
+    public function syncPlayerColor(string $roomId, string $playerId, string $color): array
+    {
+        try {
+            $room = $this->getRoom($roomId);
+            if ($room !== null) {
+                $phase = $room['state']['phase'] ?? null;
+                if ($phase !== null && $phase !== 'LOBBY') {
+                    Log::info('GameServerService: Skipping syncPlayerColor (room not in LOBBY phase)', [
+                        'roomId' => $roomId,
+                        'playerId' => $playerId,
+                        'phase' => $phase,
+                    ]);
+                    return [
+                        'success' => false,
+                        'skipped' => true,
+                        'error' => 'Room not in LOBBY phase',
+                    ];
+                }
+            }
+
+            Log::info('GameServerService: Syncing player color', [
+                'roomId' => $roomId,
+                'playerId' => $playerId,
+                'color' => $color,
+            ]);
+
+            $response = Http::timeout(10)->post("{$this->gameServerUrl}/rooms/{$roomId}/player-color", [
+                'playerId' => $playerId,
+                'color' => $color,
+            ]);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            Log::error('GameServerService: Failed to sync player color', [
+                'roomId' => $roomId,
+                'playerId' => $playerId,
+                'color' => $color,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to sync player color to game server',
+            ];
+        } catch (\Exception $e) {
+            Log::error('GameServerService: Exception syncing player color', [
+                'roomId' => $roomId,
+                'playerId' => $playerId,
+                'color' => $color,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
     private function formatQuestionsForGameServer(array $questions): array
     {
         return array_map(function ($q, $index) {
