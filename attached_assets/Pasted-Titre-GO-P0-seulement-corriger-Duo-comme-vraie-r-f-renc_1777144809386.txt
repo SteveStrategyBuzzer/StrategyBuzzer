@@ -1,0 +1,127 @@
+Titre : GO P0 seulement — corriger Duo comme vraie référence avant #53
+
+Audit validé.
+
+Verdict accepté :
+Duo n’est pas encore une référence propre à généraliser tant que les anomalies P0 ne sont pas corrigées.
+
+Donc GO seulement pour P0, pas pour #53 ni propagation League Team tant que re-audit vert non obtenu.
+
+Règle absolue à respecter :
+Node reste seule autorité de phase.
+Client = affichage uniquement.
+Aucun chrono client ne doit décider une navigation.
+
+Travail demandé :
+
+Patch P0.1
+Corriger duo_result.blade.php
+
+- supprimer logique countdown autonome 60 s pilotant navigateToNextQuestion()
+- recaler affichage uniquement sur phaseEndsAtMs
+- ne jamais naviguer depuis le timer client
+- navigation seulement sur phase_changed serveur
+- vérifier aussi comportement restoreState / reconnect cold-start si phaseEndsAtMs est restauré
+
+Patch P0.2
+Corriger duo_round_scoreboard.blade.php
+
+- même principe
+- plus de 30 s hard-coded autonome
+- affichage piloté par phaseEndsAtMs
+- navigation uniquement sur phase_changed
+- vérifier reconnect cold-start
+
+Patch P0.3
+Corriger duo_answer.blade.php
+
+- ANSWER_SELECTION :
+  plus de décrémentation autonome
+  recalcul tick depuis phaseEndsAtMs (pattern duo_question)
+- câbler didYouKnow / funFact réellement affiché
+
+Validation obligatoire après chaque patch :
+GREP → SLICE → PATCH → VALIDATION
+- npm run build si Node touché
+- php -l si Blade touché
+- slice élargi après patch
+- re-audit F12 demandé
+
+Validation finale attendue :
+- aucun drift entre joueurs
+- aucun timer client autonome pilote une phase
+- Le saviez-vous visible
+- reconnect cold-start conserve cohérence de phase
+- Duo devient alors seulement candidat référence
+
+IMPORTANT :
+Ces patchs doivent rester compatibles avec le chantier #38 :
+SB_GAME_CONTEXT
+PlayerLiveStats
+MatchStats
+player_stats_updated
+round_stats
+match_stats
+
+Ne rien faire qui contredit la centralisation future.
+
+Rappel des compétences officielles (à préserver dans tout raisonnement effets / activeEffects / skill_used / skill_activated) :
+
+RARE
+- Mathématicien :
+  illuminer une bonne réponse si présence de chiffre
+
+- Scientifique :
+  éliminer/acidifier une mauvaise réponse une fois
+
+- Explorateur :
+  voir la réponse adverse en Duo
+  voir la réponse la plus choisie en multijoueur
+
+- Défenseur :
+  annuler une attaque
+
+ÉPIQUE
+- Comédien :
+  faux affichage de score / tromper affichage bonne réponse
+
+- Magicien :
+  changer une question
+  annuler une mauvaise réponse
+
+- Challenger :
+  shuffle_answers
+  diminuer timer adverse
+
+- Historien :
+  indice texte
+  temps supplémentaire
+
+LÉGENDAIRE
+- IA Junior :
+  suggestion IA
+  éliminer deux mauvaises réponses
+  retenter une réponse
+
+- Stratège :
+  bonus victoire + équipe d’avatars
+
+- Sprinteur :
+  pré-buzz / temps bonus
+
+- Visionnaire :
+  voir question future
+  annuler attaque Challenger
+
+Les patches P0 ne doivent pas casser :
+- activeEffects
+- skill_used
+- skill_activated
+- restoreState des skills
+- future généralisation Ligue / MJ
+
+Livrable attendu :
+1. Plan patch P0 détaillé
+2. Patches ancrés un par un
+3. Re-audit Duo après patch
+4. Verdict si Duo devient enfin référence propre

@@ -1354,9 +1354,19 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
         
         timerInterval = setInterval(function() {
-            timeLeft--;
-            
-            const percentage = (timeLeft / ANSWER_TIME) * 100;
+            // P0.3 — Recompute timeLeft from Node-authoritative phaseEndsAtMs at every
+            // tick (mirrors the duo_question canonical pattern). This survives
+            // backgrounded tabs / throttled timers and keeps the two players' chronos
+            // in sync to within one tick. Fallback to local decrement only if the
+            // server hasn't published a deadline yet (shouldn't happen post-buzz).
+            if (phaseEndsAtMs) {
+                const remainingMs = Math.max(0, phaseEndsAtMs - Date.now());
+                timeLeft = Math.ceil(remainingMs / 1000);
+            } else {
+                timeLeft--;
+            }
+
+            const percentage = Math.max(0, (timeLeft / ANSWER_TIME) * 100);
             timerBar.style.width = percentage + '%';
             timerSeconds.textContent = Math.max(0, timeLeft) + 's';
             
@@ -1370,12 +1380,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 timerInterval = null;
-                // V3: all buzzing players (first, second, no_buzz) send timeout
+                // UX safety net: auto-submit a timeout. The Node server is still
+                // the sole authority on the phase transition (handleAnswerTimeout) —
+                // a late client submission is harmless because the orchestrator
+                // ignores submissions outside the answer window.
                 if (!answered && canAnswer()) {
                     handleTimeout();
                 }
             }
-        }, 1000);
+        }, 250);
     }
     
     function handleTimeout() {
@@ -1625,6 +1638,23 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             .replace(/"/g, '&quot;');
     }
 
+    // P0.3 — "Le saviez-vous?" toast. Mirrors duo_question.blade.php's helper but
+    // uses textContent for the trivia body (XSS-safe) since the funFact comes
+    // straight from question content. Auto-dismisses after ~6 s.
+    function showDidYouKnow(text) {
+        if (!text) return;
+        var div = document.createElement('div');
+        div.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);max-width:600px;width:90%;padding:14px 20px;border-radius:12px;background:linear-gradient(135deg,#8E44AD,#6C3483);color:#fff;font-size:14px;z-index:9998;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
+        var label = document.createElement('strong');
+        label.textContent = '{{ __("Le saviez-vous?") }} ';
+        var body = document.createTextNode(String(text));
+        div.appendChild(label);
+        div.appendChild(body);
+        document.body.appendChild(div);
+        setTimeout(function() { div.style.transition = 'opacity 0.5s'; div.style.opacity = '0'; }, 5500);
+        setTimeout(function() { if (div.parentNode) div.remove(); }, 6100);
+    }
+
     function _attachAnswerBtnListeners() {
         var container = document.getElementById('answersContainer');
         if (!container) return;
@@ -1649,6 +1679,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
         const pointsEarned = data.points || data.pointsEarned || 0;
         showResult(isCorrect, correctIndex, pointsEarned);
+
+        // P0.3 — Display the server-provided "Le saviez-vous?" fun fact.
+        // The Node orchestrator emits both `didYouKnow` and the legacy `funFact`
+        // alias on every answer_revealed (GameOrchestrator emit, ~L.440-456).
+        const trivia = data.didYouKnow || data.funFact;
+        if (trivia) {
+            showDidYouKnow(trivia);
+        }
         // Visual feedback only — navigation is driven exclusively by phase_changed events
         // (QUESTION_ACTIVE for next question, ROUND_SCOREBOARD for scoreboard, MATCH_END for final).
         // Exception: matchEnded flag for immediate end-of-match redirect.

@@ -369,6 +369,12 @@ $tied = $playerScore === $opponentScore;
     var countdownSecs = 30;
     var countdownInterval = null;
     var exitConfirming = false;
+    // P0.2 — Node-authoritative phase deadline. Restored on cold reconnect from
+    // sessionStorage (via GameplayRuntime) and refreshed on every phase_changed/state.
+    // The countdown bar is purely visual — navigation only happens on phase_changed.
+    var phaseEndsAtMs = (typeof window !== 'undefined' && window.GR_RESTORED_PHASE_ENDS_AT)
+        ? Number(window.GR_RESTORED_PHASE_ENDS_AT) || null
+        : null;
 
     var sbBtnExit = document.getElementById('sbBtnExit');
     var nextInfo  = document.getElementById('nextInfo');
@@ -378,27 +384,47 @@ $tied = $playerScore === $opponentScore;
     }
 
     function startCountdown(seconds) {
+        // P0.2 — Display-only countdown driven by Node-authoritative phaseEndsAtMs.
+        // No autonomous decrement, no client-driven navigation. Navigation is
+        // exclusively handled by phase_changed events in _onSbPhaseChanged().
         cancelCountdown();
-        countdownSecs = seconds || 30;
         var fill = document.getElementById('sbCountdownFill');
         var secsEl = document.getElementById('sbCountdownSecs');
-        var total = countdownSecs;
+
+        // If the server hasn't given us a deadline yet, render the static initial
+        // state and bail — the countdown will start as soon as phaseEndsAtMs lands
+        // (via phase_changed/state). The `seconds` argument is now only a UI hint.
+        if (!phaseEndsAtMs) {
+            countdownSecs = seconds || 30;
+            if (fill) { fill.style.width = '100%'; fill.classList.remove('urgent'); }
+            if (secsEl) { secsEl.textContent = '—'; secsEl.classList.remove('urgent'); }
+            return;
+        }
+
+        var totalMs = Math.max(1, phaseEndsAtMs - Date.now());
         if (fill) { fill.style.width = '100%'; fill.classList.remove('urgent'); }
-        if (secsEl) { secsEl.textContent = countdownSecs + 's'; secsEl.classList.remove('urgent'); }
+        if (secsEl) { secsEl.classList.remove('urgent'); }
+
         countdownInterval = setInterval(function() {
-            countdownSecs--;
-            var pct = Math.max(0, (countdownSecs / total) * 100);
+            // Recompute from the Node deadline at every tick — survives backgrounded
+            // tabs, throttled timers and clock drift between the two players.
+            var remainingMs = Math.max(0, (phaseEndsAtMs || 0) - Date.now());
+            var remainingSec = Math.ceil(remainingMs / 1000);
+            countdownSecs = remainingSec;
+            var pct = Math.max(0, Math.min(100, (remainingMs / totalMs) * 100));
             if (fill) { fill.style.width = pct + '%'; }
-            if (secsEl) { secsEl.textContent = Math.max(0, countdownSecs) + 's'; }
-            if (countdownSecs <= 8) {
+            if (secsEl) { secsEl.textContent = remainingSec + 's'; }
+            if (remainingSec <= 8) {
                 if (fill) fill.classList.add('urgent');
                 if (secsEl) secsEl.classList.add('urgent');
             }
-            if (countdownSecs <= 0) {
+            if (remainingMs <= 0) {
+                // Bar reached zero — stop the visual loop. DO NOT navigate.
+                // The Node server is the sole authority and will emit phase_changed
+                // when the next round/question is actually ready.
                 cancelCountdown();
-                navigateToQuestion();
             }
-        }, 1000);
+        }, 250);
     }
 
     var _nav = function(u) { (window.duoNavigate || function(x) { window.location.href = x; })(u); };
@@ -420,6 +446,16 @@ $tied = $playerScore === $opponentScore;
     function _onSbPhaseChanged(data) {
         if (isRedirecting || !data || !data.phase) return;
         var phase = data.phase;
+
+        // P0.2 — refresh Node-authoritative deadline from every phase event.
+        // While we're still on ROUND_SCOREBOARD, restart the visual countdown
+        // with the new deadline. When we leave it, navigation handlers below take over.
+        if (data.phaseEndsAtMs) {
+            phaseEndsAtMs = Number(data.phaseEndsAtMs);
+            if (phase === 'ROUND_SCOREBOARD') {
+                startCountdown();
+            }
+        }
 
         if (phase === 'INTRO' || phase === 'WAITING') {
             // Next round starting
@@ -446,6 +482,15 @@ $tied = $playerScore === $opponentScore;
         if (!payload) return;
         var data = payload.state || payload;
         var phase = data.phase;
+
+        // P0.2 — Refresh Node-authoritative deadline from full state events too
+        // (covers cold reconnect: server emits `state` on (re)join with phaseEndsAtMs).
+        if (data.phaseEndsAtMs) {
+            phaseEndsAtMs = Number(data.phaseEndsAtMs);
+            if (phase === 'ROUND_SCOREBOARD') {
+                startCountdown();
+            }
+        }
 
         if (!phase || phase === 'ROUND_SCOREBOARD') return;
 

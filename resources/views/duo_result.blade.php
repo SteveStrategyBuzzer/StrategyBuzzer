@@ -1214,6 +1214,12 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     let countdownSecs = 60;
     let countdownInterval = null;
     let exitConfirming = false;
+    // P0.1 — Node-authoritative phase deadline. Restored on cold reconnect from
+    // sessionStorage (via GameplayRuntime) and refreshed on every phase_changed/state
+    // event. The countdown bar is now a passive display: it never drives navigation.
+    let phaseEndsAtMs = (typeof window !== 'undefined' && window.GR_RESTORED_PHASE_ENDS_AT)
+        ? Number(window.GR_RESTORED_PHASE_ENDS_AT) || null
+        : null;
     
     const connectionStatus = document.getElementById('connectionStatus');
     const btnGo = document.getElementById('btnGo');
@@ -1309,29 +1315,50 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     }
     
     function startCountdown() {
+        // P0.1 — Display-only countdown driven by Node-authoritative phaseEndsAtMs.
+        // No autonomous decrement, no client-driven navigation. Navigation is
+        // exclusively handled by phase_changed events in _onResultPhaseChanged().
         cancelCountdown();
         var fill = document.getElementById('countdownBarFill');
         var secsEl = document.getElementById('countdownSecs');
         if (!fill || !secsEl) return;
-        countdownSecs = 60;
+
+        // If the server hasn't given us a deadline yet, render the static initial
+        // state and bail — the countdown will start as soon as phaseEndsAtMs lands.
+        if (!phaseEndsAtMs) {
+            fill.style.width = '100%';
+            fill.classList.remove('urgent');
+            secsEl.textContent = '—';
+            secsEl.classList.remove('urgent');
+            return;
+        }
+
+        var totalMs = Math.max(1, phaseEndsAtMs - Date.now());
         fill.style.width = '100%';
         fill.classList.remove('urgent');
-        secsEl.textContent = '60s';
         secsEl.classList.remove('urgent');
+
         countdownInterval = setInterval(function() {
-            countdownSecs--;
-            var pct = Math.max(0, (countdownSecs / 60) * 100);
+            // Recompute from the Node deadline at every tick — survives backgrounded
+            // tabs, throttled timers and clock drift between the two players.
+            var remainingMs = Math.max(0, (phaseEndsAtMs || 0) - Date.now());
+            var remainingSec = Math.ceil(remainingMs / 1000);
+            countdownSecs = remainingSec;
+            var pct = Math.max(0, Math.min(100, (remainingMs / totalMs) * 100));
             fill.style.width = pct + '%';
-            secsEl.textContent = Math.max(0, countdownSecs) + 's';
-            if (countdownSecs <= 10) {
+            secsEl.textContent = remainingSec + 's';
+            if (remainingSec <= 10) {
                 fill.classList.add('urgent');
                 secsEl.classList.add('urgent');
             }
-            if (countdownSecs <= 0) {
+            if (remainingMs <= 0) {
+                // Bar reached zero — stop the visual loop. DO NOT navigate.
+                // The Node server is the sole authority and will emit phase_changed
+                // when the next phase is actually ready. _onResultPhaseChanged()
+                // will then route the player to the right page.
                 cancelCountdown();
-                navigateToNextQuestion();
             }
-        }, 1000);
+        }, 250);
     }
 
     var _nav = function(u) { (window.duoNavigate || function(x) { window.location.href = x; })(u); };
@@ -1477,6 +1504,16 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         console.log('[DuoResult] Phase changed', data);
         if (!data || !data.phase) { return; }
 
+        // P0.1 — refresh Node-authoritative deadline from every phase event.
+        // When we're still on RESULT, restart the visual countdown with the new
+        // deadline. When we leave RESULT, navigation handlers below take over.
+        if (data.phaseEndsAtMs) {
+            phaseEndsAtMs = Number(data.phaseEndsAtMs);
+            if (data.phase === 'RESULT') {
+                startCountdown();
+            }
+        }
+
         if (data.phase === 'REVEAL') {
             _cancelEarlyNav();
             return;
@@ -1504,6 +1541,16 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         if (!payload) return;
         var stateObj = payload.state || payload;
         var phase = stateObj.phase;
+
+        // P0.1 — Refresh Node-authoritative deadline from full state events too
+        // (covers cold reconnect: server emits `state` on (re)join with phaseEndsAtMs).
+        if (stateObj.phaseEndsAtMs) {
+            phaseEndsAtMs = Number(stateObj.phaseEndsAtMs);
+            if (phase === 'RESULT') {
+                startCountdown();
+            }
+        }
+
         if (phase === 'REVEAL' || phase === 'RESULT') {
             // Still on result page — stay
             _cancelEarlyNav();
