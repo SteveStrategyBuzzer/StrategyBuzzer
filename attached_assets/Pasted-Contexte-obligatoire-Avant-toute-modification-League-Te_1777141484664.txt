@@ -1,0 +1,74 @@
+Contexte obligatoire :
+
+Avant toute modification League Team / Master / Solo, il faut vérifier que le gameplay Duo validé en VM sert bien de référence fonctionnelle réelle.
+
+Duo avait encore des problématiques connues :
+- sync entre joueurs
+- chrono désaligné
+- lecture/affichage stats, scores, %, efficience
+- affichage de la bonne réponse après réponse
+- affichage du mauvais choix du joueur si erreur
+- skills identifiés ou affichés aux mauvaises places
+- absence / mauvaise intégration du bloc “Le Saviez-vous”
+- pages de fin de manche manquantes ou incomplètes
+- page fin de match / recap incomplet
+- transitions Q → R → R → S instables
+- risque restoreState/reconnect
+
+Objectif :
+Ne pas migrer ou généraliser une version Duo incomplète.
+Duo doit être audité comme modèle réel avant de servir de base aux autres modes.
+
+À faire maintenant :
+
+1. Comparer la version Replit actuelle avec la version VM validée / problématique connue.
+2. Auditer le flow Duo complet :
+   Lobby
+   → READY Socket
+   → phase_changed Node
+   → SYNC
+   → INTRO
+   → QUESTION
+   → ANSWER
+   → RESULT
+   → ROUND_END
+   → MATCH_END
+
+3. Vérifier précisément :
+   - Node est bien seule autorité des phases
+   - aucun timer autonome Blade/JS parasite
+   - phase_changed est la source unique de transition
+   - les deux joueurs voient le même chrono
+   - player_stats_updated / round_stats / match_stats alimentent bien les bons data-stat
+   - score, %, efficience, streak, temps moyen sont cohérents partout
+   - bonne réponse affichée après reveal
+   - mauvais choix du joueur affiché si erreur
+   - skills au bon endroit, bon joueur, bonne phase
+   - bloc “Le Saviez-vous” présent dans RESULT / recap si prévu
+   - fin de manche existe et reçoit les bonnes stats
+   - fin de match existe et reçoit match_stats officiel
+   - reconnect/restoreState ne casse pas le flow
+
+4. Ne pas corriger à l’aveugle.
+   Pour chaque problème :
+   - grep
+   - slice réel
+   - explication courte
+   - patch séparé
+   - validation
+
+5. Ne pas mélanger avec League Team.
+   League Team Phase B (#53) doit attendre que Duo soit confirmé comme référence propre.
+
+Règle centrale :
+Si Duo n’affiche pas correctement la vérité Node, on ne généralise pas.
+
+Livrable attendu :
+Un audit clair :
+- OK / PAS OK par élément
+- fichier concerné
+- preuve grep/slice
+- risque
+- patch proposé si nécessaire
+
+Ne marque aucune tâche comme terminée tant que le flow Duo complet n’est pas confirmé.

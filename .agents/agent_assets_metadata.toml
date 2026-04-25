@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "zaB-1zyHMOTGSjJgwse7S"
+uri = "file://.local/AUDIT_DUO.md"
+type = "text"
+title = "Audit Duo — Vérité Node vs Affichage Client"
