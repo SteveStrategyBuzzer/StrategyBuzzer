@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\TeamService;
 use App\Services\LeagueTeamService;
 use App\Services\LeagueTeamFirestoreService;
+use App\Services\GameServerService;
 use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Models\TeamJoinRequest;
@@ -13,21 +14,26 @@ use App\Models\User;
 use App\Models\ProfileStat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class LeagueTeamController extends Controller
 {
     private TeamService $teamService;
     private LeagueTeamService $leagueTeamService;
     private LeagueTeamFirestoreService $firestoreService;
+    private GameServerService $gameServerService;
 
     public function __construct(
         TeamService $teamService,
         LeagueTeamService $leagueTeamService,
-        LeagueTeamFirestoreService $firestoreService
+        LeagueTeamFirestoreService $firestoreService,
+        GameServerService $gameServerService
     ) {
         $this->teamService = $teamService;
         $this->leagueTeamService = $leagueTeamService;
         $this->firestoreService = $firestoreService;
+        $this->gameServerService = $gameServerService;
     }
 
     public function showLigue()
@@ -755,7 +761,157 @@ class LeagueTeamController extends Controller
             return redirect()->route('league.team.lobby')->with('error', __('Vous n\'êtes pas dans ce match.'));
         }
 
-        return view('league_team_game', compact('user', 'match'));
+        // Task #50 (Phase A) — issue per-user JWT and surface the game-server
+        // context to the view so [data-stat][data-player] slots can connect via
+        // GameplayRuntime. JWT generation is opportunistic: if room_id is missing
+        // (e.g. legacy match created before the migration) the view degrades to
+        // the REST-only path and live-stats slots stay at their default values.
+        $roomId = $match->room_id ?? null;
+        $lobbyCode = $match->lobby_code ?? null;
+        $jwtToken = null;
+        $gameServerUrl = config('app.game_server_url', env('GAME_SERVER_URL', 'http://localhost:3001'));
+
+        if ($roomId) {
+            try {
+                $jwtToken = $this->gameServerService->generatePlayerToken((int) $user->id, $roomId);
+            } catch (\Throwable $e) {
+                Log::warning('LeagueTeamController: JWT generation failed (non-fatal)', [
+                    'match_id' => $match->id,
+                    'user_id' => $user->id,
+                    'room_id' => $roomId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $totalQuestions = 18; // LEAGUE_TEAM: 9 questions/round × 2 rounds-to-win
+
+        return view('league_team_game', compact(
+            'user',
+            'match',
+            'roomId',
+            'lobbyCode',
+            'jwtToken',
+            'gameServerUrl',
+            'totalQuestions'
+        ));
+    }
+
+    /**
+     * Server-to-server finalize endpoint, called by the Node game server when a
+     * League Team match ends without an active client (disconnect / timeout /
+     * natural end with closed browser).
+     *
+     * Auth: short-lived JWT signed with GAME_SERVER_JWT_SECRET, claim purpose='internal_finalize'.
+     * Body: { roomId: string }
+     * No CSRF (excluded), no Auth::user(). Idempotent.
+     */
+    public function internalFinalize(Request $request)
+    {
+        $authHeader = $request->header('Authorization', '');
+        if (!preg_match('/^Bearer\s+(\S+)$/i', $authHeader, $m)) {
+            return response()->json(['success' => false, 'error' => 'Missing bearer token'], 401);
+        }
+        $token = $m[1];
+
+        try {
+            $secret  = $this->gameServerService->getJwtSecret();
+            $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key($secret, 'HS256'));
+        } catch (\Throwable $e) {
+            Log::warning('LeagueTeamController.internalFinalize JWT verify failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => 'Invalid token'], 401);
+        }
+
+        $purpose = $decoded->purpose ?? null;
+        if ($purpose !== 'internal_finalize') {
+            return response()->json(['success' => false, 'error' => 'Invalid token purpose'], 401);
+        }
+
+        $roomId = (string) $request->input('roomId', '');
+        if ($roomId === '') {
+            return response()->json(['success' => false, 'error' => 'roomId required'], 400);
+        }
+
+        $match = LeagueTeamMatch::where('room_id', $roomId)
+            ->orWhere('lobby_code', $roomId)
+            ->first();
+
+        if (!$match) {
+            return response()->json(['success' => false, 'error' => 'Match not found'], 404);
+        }
+
+        if ($match->status === 'finished') {
+            return response()->json(['success' => true, 'already_finished' => true]);
+        }
+
+        // Distributed dedupe lock — same pattern as DuoController::applyFinalizationFromRedis.
+        // Prevents concurrent finalization from REST flow racing the Node-side
+        // safety-net call. SETNX with 30s TTL acts as critical-section mutex.
+        $lockKey = 'finalize:league_team:' . $match->id;
+        $acquired = Redis::connection('game_server')->set($lockKey, '1', 'EX', 30, 'NX');
+        if (!$acquired) {
+            return response()->json([
+                'success' => true,
+                'in_progress' => true,
+                'message' => 'Finalisation déjà en cours.',
+            ]);
+        }
+
+        try {
+            // Re-read under lock to close TOCTOU window.
+            $match->refresh();
+            if ($match->status === 'finished') {
+                return response()->json(['success' => true, 'already_finished' => true]);
+            }
+
+            // Phase B (future): when LT buzz/answer is migrated to the orchestrator,
+            // 'gs:match:{roomId}:result' will be the authoritative source the same
+            // way Duo uses it today. We read it here speculatively so the contract
+            // is in place; for Phase A this key is expected to be empty (orchestrator
+            // never advances LT rooms) and we fall through to the REST-populated
+            // game_state below.
+            $redisKey = 'gs:match:' . ($match->room_id ?? $roomId) . ':result';
+            $rawResult = Redis::connection('game_server')->get($redisKey);
+
+            $gameState = $match->game_state ?? [];
+            $hasRedisResult = is_string($rawResult) && $rawResult !== '';
+            $hasRestState   = isset($gameState['players']) && is_array($gameState['players']) && count($gameState['players']) > 0;
+
+            if (!$hasRedisResult && !$hasRestState) {
+                // Defensive: neither the orchestrator nor the REST loop has produced
+                // anything score-worthy yet. Do NOT silently close the match as a
+                // draw — that would clobber a legitimate in-progress match if this
+                // safety-net call lands before the REST flow has had a chance to
+                // populate scores. Tell the caller to retry; the lock TTL will expire
+                // naturally so a later attempt can finalize once data is present.
+                Log::info('LeagueTeamController.internalFinalize: no authoritative result available, asking caller to retry', [
+                    'match_id' => $match->id,
+                    'room_id' => $roomId,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'pending' => true,
+                    'message' => 'Résultat pas encore disponible, réessayez.',
+                ], 202);
+            }
+
+            // Phase A: REST-authoritative game_state is the only data we have.
+            // Phase B will additionally enrich $gameState from $rawResult before
+            // calling finalizeMatch (mirrors DuoController::applyFinalizationFromRedis).
+            $this->leagueTeamService->finalizeMatch($match, $gameState);
+            $this->firestoreService->deleteMatchSession($match->id);
+
+            return response()->json(['success' => true]);
+        } catch (\Throwable $e) {
+            Log::error('LeagueTeamController.internalFinalize: finalization failed', [
+                'match_id' => $match->id,
+                'room_id' => $roomId,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => 'Finalization failed'], 500);
+        }
     }
 
     public function getQuestion($matchId)
@@ -1107,6 +1263,44 @@ class LeagueTeamController extends Controller
                 'relay_indices' => $relayIndices,
                 'game_state' => $gameState,
             ]);
+
+            // Task #50 (Phase A) — allocate Node game-server room so the WS pipeline
+            // (live stats, presence, voice readiness, internal-finalize) is wired.
+            // The legacy REST gameplay loop (getQuestion / buzz / submitAnswer)
+            // continues to drive question/buzz/answer state for now; migrating that
+            // loop to GameOrchestrator events is the next phase. Failure here is
+            // non-fatal — the match still works on the legacy REST path.
+            try {
+                $roomResult = $this->gameServerService->createRoom('LEAGUE_TEAM', (int) $user->id, [
+                    'theme' => 'general',
+                    'niveau' => 5,
+                    'language' => app()->getLocale() ?: 'fr',
+                    'hasBot' => false,
+                ]);
+
+                if (!empty($roomResult['success']) && !empty($roomResult['roomId'])) {
+                    $match->update([
+                        'room_id' => $roomResult['roomId'],
+                        'lobby_code' => $roomResult['lobbyCode'] ?? null,
+                    ]);
+
+                    Log::info('LeagueTeamController: Node room allocated for match', [
+                        'match_id' => $match->id,
+                        'room_id' => $roomResult['roomId'],
+                        'lobby_code' => $roomResult['lobbyCode'] ?? null,
+                    ]);
+                } else {
+                    Log::warning('LeagueTeamController: Node room allocation returned no roomId', [
+                        'match_id' => $match->id,
+                        'roomResult' => $roomResult,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('LeagueTeamController: Node room allocation failed (non-fatal, falling back to REST)', [
+                    'match_id' => $match->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             \DB::commit();
 

@@ -2,51 +2,38 @@
 
 @section('content')
 @include('partials.game-context', [
-    'roomId'         => (string)($match->id ?? ''),
-    'jwtToken'       => $jwt_token ?? '',
+    'roomId'         => (string)($roomId ?? ''),
+    'lobbyCode'      => $lobbyCode ?? null,
+    'jwtToken'       => (string)($jwtToken ?? ''),
     'matchId'        => (string)($match->id ?? ''),
     'mode'           => 'league_team',
     'page'           => 'game',
-    'totalQuestions' => $totalQuestions ?? 10,
+    'totalQuestions' => $totalQuestions ?? 18,
     'playerName'     => $user->name ?? (auth()->user()->name ?? 'Joueur'),
+    'playerInfo'     => ['avatarId' => data_get($user->profile_settings, 'avatar.url', null)],
+    'gameServerUrl'  => $gameServerUrl ?? null,
 ])
 {{--
-    ⚠️ TEMPORAIRE — League Team reste à migrer vers Node-authoritative
-    avant live stats WS.
+    Task #50 (Phase A) — League Team is now wired to the Node game server:
+      • LeagueTeamController::startMatch() allocates a LEAGUE_TEAM room and
+        persists room_id + lobby_code on the LeagueTeamMatch record.
+      • LeagueTeamController::showGame() issues a per-user JWT via
+        GameServerService::generatePlayerToken and surfaces room_id +
+        jwt_token + game_server_url through partials.game-context.
+      • The socket.io / DuoSocketClient / GameplayRuntime triplet (loaded
+        below) connects on page load, joins the room and patches the
+        [data-stat][data-player] slots when the orchestrator emits
+        player_stats_updated / round_stats / match_stats.
+      • Server-to-server finalization routes through
+        POST /internal/league/team/match/finalize (JWT-signed,
+        purpose='internal_finalize').
 
-    Live stats wiring (Task #42) — DEFERRED for League team mode.
-
-    Unlike Duo and Master, League team does not currently run on the
-    Node WebSocket game server. The controller (LeagueTeamController)
-    drives the match through plain Laravel REST endpoints
-    (/api/league/team/match/{id}/question, /buzz, /submit-answer) and
-    never creates a Node room nor issues a player JWT — note that
-    `$jwt_token` is not provided to this view, so the runtime would
-    refuse to connect anyway.
-
-    Per the live-stats contract, [data-stat][data-player] slots in this
-    file MUST be driven by the same server-authoritative WS pipeline
-    used by Duo / Master (player_stats_updated, round_stats,
-    match_stats). REST polling is explicitly forbidden as a substitute.
-    The slots therefore stay rendered (so the markup is ready) but
-    remain at their default values until the LeagueTeam backend is
-    upgraded to push events through the Node orchestrator.
-
-    Required follow-up work (server side, before this view can load
-    GameplayRuntime safely):
-      1. Have LeagueTeamService::initializeTeamMatch() create a Node
-         room (POST /rooms with mode=LEAGUE_TEAM) and persist its
-         room_id on the LeagueTeamMatch record.
-      2. Have LeagueTeamController return room_id + a per-user JWT
-         (via GameServerService::generatePlayerToken) when rendering
-         this view.
-      3. Have processBuzz / submitAnswer forward events to the Node
-         GameOrchestrator so player_stats_updated / round_stats /
-         match_stats get broadcast to room participants.
-
-    Once that backend work is done, append the same three script tags
-    used by Master (socket.io CDN, DuoSocketClient, GameplayRuntime)
-    at the bottom of @section('content').
+    Phase A intentionally keeps the legacy REST gameplay loop
+    (/api/league/team/match/{id}/question | /buzz | /submit-answer) as the
+    authoritative driver of question/buzz/answer state. Migrating the loop
+    itself to GameOrchestrator events (so stats fire mid-match without
+    the REST round-trip) is the next phase of this migration; the WS
+    infrastructure is in place and ready to receive that work.
 
     Full audit: docs/audits/league_team_live_stats_pending.md
 --}}
@@ -838,5 +825,27 @@ loadQuestion();
 <audio id="incorrectSound" preload="auto">
     <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
 </audio>
+
+{{-- Task #50 (Phase A) — Resolve game-server URL then load the canonical
+     socket.io / DuoSocketClient / GameplayRuntime triplet. Mirrors the
+     pattern in resources/views/master/game-question.blade.php so the
+     [data-stat][data-player] slots above can connect when room_id +
+     jwt_token are present. The runtime degrades gracefully when either
+     is missing (legacy match record without room_id, or JWT generation
+     failure) — it logs and stays disconnected, leaving the REST flow as
+     the only driver of question/buzz/answer state. --}}
+<script>
+(function () {
+    var ctx = window.SB_GAME_CONTEXT || {};
+    if (ctx.gameServerUrl) {
+        window.GAME_SERVER_URL = ctx.gameServerUrl;
+    } else if (!window.GAME_SERVER_URL) {
+        window.GAME_SERVER_URL = window.location.protocol + '//' + window.location.hostname + ':3001';
+    }
+})();
+</script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ asset('js/DuoSocketClient.js') }}"></script>
+<script src="{{ asset('js/GameplayRuntime.js') }}"></script>
 
 @endsection

@@ -326,7 +326,7 @@ class LeagueTeamService
         ];
     }
 
-    private function finalizeMatch(LeagueTeamMatch $match, array $gameState): void
+    public function finalizeMatch(LeagueTeamMatch $match, array $gameState): void
     {
         $team1Players = array_filter($gameState['players'], fn($p) => $p['team_index'] === 1);
         $team2Players = array_filter($gameState['players'], fn($p) => $p['team_index'] === 2);

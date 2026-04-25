@@ -14,6 +14,7 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         'stripe/*',
         'internal/duo/match/finalize',
+        'internal/league/team/match/finalize',
         // Dev-only test-support endpoints (route group itself is gated by APP_ENV !== 'production').
         '__test/*',
     ];

@@ -22,6 +22,8 @@ class LeagueTeamMatch extends Model
         'game_state',
         'team1_points_earned',
         'team2_points_earned',
+        'room_id',
+        'lobby_code',
     ];
 
     protected $casts = [

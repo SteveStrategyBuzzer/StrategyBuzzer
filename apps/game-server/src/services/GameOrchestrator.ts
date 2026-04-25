@@ -1261,11 +1261,12 @@ export class GameOrchestrator {
     this.io.to(roomId).emit("match_stats", matchStatsRollup);
 
     // Server-to-server safety net: notify Laravel right away so the match is
-    // finalized even if no front actually POSTs /game/duo/match/{id}/finish-socketio
+    // finalized even if no front actually POSTs the per-mode finish endpoint
     // (disconnect, timeout, closed browser). Idempotent — ignored if Laravel
-    // already finished the match. Fire-and-forget for DUO mode only.
-    if (room.state.config.mode === "DUO") {
-      notifyMatchFinalized(roomId).catch((err) => {
+    // already finished the match. Fire-and-forget. Mode is forwarded so the
+    // client routes to the correct controller (Task #50 added LEAGUE_TEAM).
+    if (room.state.config.mode === "DUO" || room.state.config.mode === "LEAGUE_TEAM") {
+      notifyMatchFinalized(roomId, room.state.config.mode).catch((err) => {
         console.error(`[GameOrchestrator] notifyMatchFinalized failed for ${roomId}:`, err);
       });
     }
