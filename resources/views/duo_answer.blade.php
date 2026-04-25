@@ -730,10 +730,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         </div>
     </div>
     
-    <div class="question-text-box">
+    {{-- Question text intentionally hidden on the Answer page — it was already
+         shown on the Question page and should not reappear here. The DOM node
+         is kept (display:none) because skill effects (e.g. illuminate-numbers
+         at line ~1083) and the auto-recovery logic (line ~1604) read from
+         .question-text-box; removing it would break those code paths. --}}
+    <div class="question-text-box" style="display: none;">
         {{ $questionText }}
     </div>
-    
+
     <div class="timer-section">
         <span class="timer-label">{{ __('Temps pour répondre') }}</span>
         <div class="timer-bar-container">
