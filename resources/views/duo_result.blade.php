@@ -1276,8 +1276,11 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     const connectionStatus = document.getElementById('connectionStatus');
     const btnGo = document.getElementById('btnGo');
     const waitingMessage = document.getElementById('waitingMessage');
-    const playerScoreEl = document.getElementById('playerScore');
-    const opponentScoreEl = document.getElementById('opponentScore');
+    // NOTE: outer-scope playerScoreEl / opponentScoreEl removed — they were
+    // never read here. Score nodes (#playerScore / #opponentScore) are repainted
+    // canonically by GameplayRuntime.js via [data-stat][data-player] selectors,
+    // and the inner `activateSkill('history_corrects')` closure does its own
+    // local getElementById('playerScore') lookup for the recovery animation.
     const playerStatus = document.getElementById('playerStatus');
     const opponentStatus = document.getElementById('opponentStatus');
     const btnExit = document.getElementById('btnExit');
@@ -1488,11 +1491,12 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     function _onResultError(error) {
         console.error('[DuoResult] Socket error:', error);
     }
-    function _onResultRoundEnded(data) {
-        console.log('[DuoResult] Round ended', data);
-        // round_ended = end of full round → navigate to round scoreboard
-        navigateToRoundScoreboard();
-    }
+    // NOTE: legacy `_onResultRoundEnded` removed — it was a pure duplicate of the
+    // ROUND_SCOREBOARD branch in `_onResultPhaseChanged()` below. The Node game
+    // server emits both `round_ended` and `phase_changed` for the same transition;
+    // per architecture rule (Node = sole phase authority), only `phase_changed`
+    // drives navigation. The `isRedirecting` guard meant whichever event arrived
+    // first won and the other was silently dead anyway.
     function _callResultFinishSocketIO(retryCount) {
         var matchId = window.MATCH_ID;
         var token   = window.JWT_TOKEN;
@@ -1528,19 +1532,22 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         });
     }
 
-    function _onResultMatchEnded(data) {
-        console.log('[DuoResult] Match ended', data);
-        _callResultFinishSocketIO().finally(function() {
-            navigateToFinalResults();
-        });
-    }
-    // Task #38 NOYAU STATS LIVE: efficiency is server-authoritative.
-    // Score and efficiency now live on [data-stat][data-player] nodes
-    // and are repainted by GameplayRuntime listeners. We keep this listener
-    // as a thin shim — the heavy lifting happens in player_stats_updated.
-    function _onResultScoreUpdate(/* data */) {
-        if (typeof window.GRRepaintStats === 'function') window.GRRepaintStats();
-    }
+    // NOTE: legacy `_onResultMatchEnded` removed. Its only purpose was to call
+    // `_callResultFinishSocketIO()` then navigate to the final results page.
+    // That logic now lives DETERMINISTICALLY inside the MATCH_END branch of
+    // `_onResultPhaseChanged()` below — previously it was non-deterministic
+    // because match_ended and phase_changed(MATCH_END) raced, and whichever
+    // arrived first set isRedirecting=true, silently dropping the loser.
+    // Server-side finalization (Node → POST /internal/duo/match/finalize)
+    // remains the canonical path; this client call is belt-and-suspenders
+    // resilience guarded against double-execution by Redis SETNX in
+    // DuoController::applyFinalizationFromRedis().
+
+    // NOTE: legacy `_onResultScoreUpdate` stub removed. It was a pure no-op
+    // proxy to window.GRRepaintStats(). The score_update event is now bound
+    // canonically by GameplayRuntime.js, which writes to
+    // [data-stat="score"][data-player="..."] nodes (#playerScore /
+    // #opponentScore both carry these data-attrs on this view).
     function _onResultPlayerReady(data) {
         console.log('[DuoResult] Player ready received', data);
         if (data && data.playerId && String(data.playerId) !== String(CURRENT_PLAYER_ID)) {
@@ -1584,7 +1591,14 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         }
         if (data.phase === 'MATCH_END') {
             _cancelEarlyNav();
-            navigateToFinalResults();
+            // Belt-and-suspenders: trigger client-side finalize POST before navigating.
+            // Server-side `notifyMatchFinalized` from Node is the canonical path;
+            // this client call adds resilience if that S2S call ever fails. Both
+            // converge on `applyFinalizationFromRedis()` which is idempotent
+            // (Redis SETNX lock + DB status check).
+            _callResultFinishSocketIO().finally(function() {
+                navigateToFinalResults();
+            });
             return;
         }
         resetReadyStatus();
@@ -1614,7 +1628,15 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
             navigateToRoundScoreboard();
         } else if (phase === 'MATCH_END' || phase === 'FINISHED') {
             _cancelEarlyNav();
-            navigateToFinalResults();
+            // Cold-reconnect symmetry with live phase_changed(MATCH_END) path:
+            // if we land here via a `state` event without a fresh phase_changed
+            // (e.g. tab was backgrounded during MATCH_END broadcast), still
+            // trigger the belt-and-suspenders finalize POST. Idempotent on the
+            // server (Redis SETNX lock + DB status check in
+            // DuoController::applyFinalizationFromRedis()).
+            _callResultFinishSocketIO().finally(function() {
+                navigateToFinalResults();
+            });
         }
     }
     function _onResultBothReady(data) {
@@ -1678,13 +1700,15 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         showSkillMessage(data.message || '{{ __("Activation impossible") }}', false);
     }
 
-    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads
+    // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads.
+    // round_ended / match_ended / score_update bindings removed: round_ended +
+    // match_ended navigations are now handled solely via phase_changed (with the
+    // belt-and-suspenders finish-socketio call moved into the MATCH_END branch);
+    // score_update is handled canonically by GameplayRuntime.js (no view-local
+    // handler needed).
     window._duoResultHandlers = {
         disconnect:    _onResultDisconnect,
         error:         _onResultError,
-        round_ended:   _onResultRoundEnded,
-        match_ended:   _onResultMatchEnded,
-        score_update:  _onResultScoreUpdate,
         player_ready:  _onResultPlayerReady,
         phase_changed: _onResultPhaseChanged,
         state:         _onResultState,
@@ -1967,9 +1991,6 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         if (!ds || !h) { console.error('[DuoResult] DuoSocketClient or handlers missing'); return; }
         ds.on('disconnect',   h.disconnect);
         ds.on('error',        h.error);
-        ds.on('round_ended',  h.round_ended);
-        ds.on('match_ended',  h.match_ended);
-        ds.on('score_update', h.score_update);
         ds.on('player_ready', h.player_ready);
         ds.on('phase_changed',h.phase_changed);
         ds.on('state',        h.state);
