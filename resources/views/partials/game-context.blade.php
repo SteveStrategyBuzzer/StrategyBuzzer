@@ -34,7 +34,7 @@
         mode:           @json($mode ?? 'duo'),
         page:           @json($page ?? ''),
         totalQuestions: {{ (int)($totalQuestions ?? 10) }},
-        gameServerUrl:  window.GAME_SERVER_URL || null
+        gameServerUrl:  @json($gameServerUrl ?? null) || window.GAME_SERVER_URL || null
     };
     window.SB_GAME_CONTEXT = ctx;
 

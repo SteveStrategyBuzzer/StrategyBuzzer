@@ -535,8 +535,12 @@
 </style>
 
 <script>
-const matchId = {{ $match->id }};
-const userId = {{ Auth::id() }};
+// Task #42 — consume window.SB_GAME_CONTEXT (published by partials.game-context).
+// matchId and userId are kept as numeric to preserve the existing REST API
+// signatures used throughout this file ('/api/league/team/match/${matchId}/...').
+const __SB = window.SB_GAME_CONTEXT || {};
+const matchId = parseInt(__SB.matchId || '{{ $match->id }}', 10);
+const userId  = parseInt(__SB.currentUserId || '{{ Auth::id() }}', 10);
 let questionStartTime;
 let buzzAllowed = false;
 let alreadyBuzzed = false;

@@ -9,6 +9,7 @@
     'page'           => 'answer',
     'totalQuestions' => $totalQuestions ?? 10,
     'playerName'     => auth()->user()->name ?? 'Joueur',
+    'gameServerUrl'  => $game_server_url ?? null,
 ])
 <style>
 body {
@@ -476,8 +477,10 @@ body {
 </div>
 
 <script>
-const GAME_SERVER_URL = @json($game_server_url ?? '');
-const JWT_TOKEN = @json($jwt_token ?? '');
+// Task #42 — consume window.SB_GAME_CONTEXT (published by partials.game-context).
+const __SB = window.SB_GAME_CONTEXT || {};
+const GAME_SERVER_URL = __SB.gameServerUrl || '';
+const JWT_TOKEN = __SB.jwtToken || '';
 const IS_HOST = @json($is_host);
 </script>
 @endsection
