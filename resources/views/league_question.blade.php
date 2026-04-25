@@ -1235,19 +1235,7 @@ $mode = 'league';
             updateConnectionStatus('disconnected');
         };
         
-        // Unified positive signal for E2E browser tests — fires only on the FIRST
-        // server-acknowledged game_state event (real proof the join_room round-trip
-        // succeeded), so the signal cannot be a false positive from a failed join.
-        // Mirrors the [GameplayRuntime] Joined room: <uuid> format used by Duo /
-        // Master views — see tests/e2e/*-join-room.browser.spec.js.
-        let _e2eJoinSignalSent = false;
-        duoSocket.onGameState = (state) => {
-            if (!_e2eJoinSignalSent) {
-                _e2eJoinSignalSent = true;
-                try { console.log('[GameplayRuntime] Joined room:', ROOM_ID); } catch (e) {}
-            }
-            return handleGameState(state);
-        };
+        duoSocket.onGameState = handleGameState;
         duoSocket.onPhaseChanged = handlePhaseChanged;
         duoSocket.onQuestionPublished = handleQuestionPublished;
         duoSocket.onBuzzWinner = handleBuzzWinner;

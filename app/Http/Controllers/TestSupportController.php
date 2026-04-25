@@ -291,6 +291,11 @@ class TestSupportController extends Controller
             'jwt_token'  => $jwtToken,
         ]);
 
+        // Contract: mirror Duo's setup-bot-match response shape so all three
+        // browser specs can share the same client logic. Master has no
+        // dedicated intro page — the host lands directly on the question
+        // route — so `intro_url` is null by design (kept in the payload for
+        // schema symmetry, not omitted).
         return response()->json([
             'success'      => true,
             'game_id'      => $game->id,
@@ -298,6 +303,7 @@ class TestSupportController extends Controller
             'lobby_code'   => $lobbyCode,
             'room_id'      => $roomId,
             'jwt_token'    => $jwtToken,
+            'intro_url'    => null,
             'question_url' => route('game.master.question'),
         ]);
     }
@@ -406,12 +412,18 @@ class TestSupportController extends Controller
             'jwt_token'     => $jwtToken,
         ]);
 
+        // Contract: mirror Duo's setup-bot-match response shape so all three
+        // browser specs can share the same client logic. League Individual
+        // has no dedicated intro page — the player lands directly on the
+        // question route — so `intro_url` is null by design (kept in the
+        // payload for schema symmetry, not omitted).
         return response()->json([
             'success'      => true,
             'match_id'     => $match->id,
             'lobby_code'   => $lobbyCode,
             'room_id'      => $roomId,
             'jwt_token'    => $jwtToken,
+            'intro_url'    => null,
             'question_url' => route('game.league.question'),
         ]);
     }

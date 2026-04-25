@@ -6,12 +6,15 @@
  *
  * GUARDS AGAINST: any future change that causes the League Individual gameplay
  * view (`league_question`, served by /game/league/question) to send a
- * malformed `join_room` payload to the Game Server. Unlike Duo / Master,
- * `league_question` does not load `GameplayRuntime.js` — it drives
- * `DuoSocketClient` directly. To unify the positive E2E signal across
- * modes, the view emits `[GameplayRuntime] Joined room: <roomId>` from
- * its `onConnect` handler (right before joinRoom()), so this spec uses
- * the exact same SUCCESS_PATTERN as the Duo and Master specs.
+ * malformed `join_room` payload to the Game Server.
+ *
+ * Note: unlike Duo / Master, `league_question` does NOT load
+ * `GameplayRuntime.js` — it drives `DuoSocketClient` directly. To avoid
+ * adding any test-only instrumentation to the production view, this spec
+ * uses the natively-emitted `[DuoSocket] Game state received` log line as
+ * its positive signal — that line fires inside DuoSocketClient ONLY when
+ * the server pushes back a `game_state` event in response to a successful
+ * join_room handshake (see public/js/DuoSocketClient.js _bindSocketEvent).
  *
  * Strategy:
  *   1. POST /__test/login                                   — login fixture user
@@ -20,7 +23,7 @@
  *      lobby_code on the match, seed session('game_state').
  *   3. Open Playwright + navigate to /game/league/question.
  *   4. Capture all console / pageerror.
- *   5. Assert: zero forbidden patterns AND ≥1 `[GameplayRuntime] Joined room:`.
+ *   5. Assert: zero forbidden patterns AND ≥1 `[DuoSocket] Game state received`.
  *
  * Usage:    npm run test:e2e:league-individual-join-browser
  * Exit:     0 = pass / 1 = regression / setup failure.
@@ -51,7 +54,10 @@ const FORBIDDEN_PATTERNS = [
   /Invalid join_room/i,
   /Cannot join_room/i,
 ];
-const SUCCESS_PATTERN = /\[GameplayRuntime\]\s+Joined room:/i;
+// Natively emitted by public/js/DuoSocketClient.js when the server sends
+// back a `game_state` event — true post-join confirmation, no production
+// view instrumentation required.
+const SUCCESS_PATTERN = /\[DuoSocket\]\s+Game state received/i;
 
 function info(msg) { console.log('[INFO]', msg); }
 function pass(msg) { console.log('[PASS]', msg); }
@@ -208,8 +214,9 @@ async function main() {
   const joined = consoleMessages.find((m) => SUCCESS_PATTERN.test(m.text));
   if (!joined) {
     fail(
-      'Did not observe "[GameplayRuntime] Joined room:" in browser console — '
-      + 'the socket connect/join_room handshake never completed for League Individual mode.',
+      'Did not observe "[DuoSocket] Game state received" in browser console — '
+      + 'the socket connect/join_room handshake never produced a game_state '
+      + 'response for League Individual mode.',
       { totalConsoleMessages: consoleMessages.length, sample: consoleMessages.slice(-15) }
     );
   }
