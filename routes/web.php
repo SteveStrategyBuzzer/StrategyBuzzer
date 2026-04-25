@@ -511,3 +511,21 @@ Route::get('/privacy-policy', function () {
 });
 
 Route::view('/data-deletion', 'data-deletion')->name('data.deletion');
+
+/* ===== DEV/TEST-ONLY SUPPORT ROUTES =====
+   Gated at registration time by APP_ENV !== 'production' AND defended again
+   inside each controller method. CSRF is excluded for the `__test/*` prefix
+   in App\Http\Middleware\VerifyCsrfToken. These routes exist so Playwright /
+   the testing skill can bypass Firebase OAuth-only login and exercise the
+   full multiplayer (Duo) browser flow. They prevent regressions like the
+   recent `VALIDATION_ERROR: Invalid join_room payload` incident. */
+if (! app()->environment('production')) {
+    Route::prefix('__test')->name('test.')->group(function () {
+        Route::post('/login', [App\Http\Controllers\TestSupportController::class, 'login'])
+            ->name('login');
+
+        Route::post('/duo/setup-bot-match', [App\Http\Controllers\TestSupportController::class, 'setupDuoBotMatch'])
+            ->middleware('auth')
+            ->name('duo.setup-bot-match');
+    });
+}

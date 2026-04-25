@@ -12,7 +12,9 @@
     "build:game-server": "npm -w @strategybuzzer/game-server run build",
     "build:all": "npm run build:shared && npm run build:game-engine && npm run build:game-server",
     "dev:game-server": "npm -w @strategybuzzer/game-server run dev",
-    "start:game-server": "npm -w @strategybuzzer/game-server run start"
+    "start:game-server": "npm -w @strategybuzzer/game-server run start",
+    "test:e2e:duo-join": "node tests/e2e/duo-join-room.test.js",
+    "test:e2e:duo-join-browser": "node tests/e2e/duo-join-room.browser.spec.js"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
@@ -26,9 +28,11 @@
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^25.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "laravel-vite-plugin": "^2.0.1",
+    "playwright": "^1.59.1",
     "typescript": "^5.3.0",
     "vite": "^7.3.0"
   }
