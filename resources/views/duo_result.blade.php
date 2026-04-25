@@ -930,6 +930,11 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         background: #28a745;
         border-color: #1e7e34;
     }
+
+    /* Hide shared layout #gameHeader on Duo result page — this view has its own
+       integrated stats panel (incl. "Manche") so the shared header would
+       duplicate "X/Y · Manche Z · Bot" on top. */
+    #gameHeader { display: none !important; }
 </style>
 
 {{-- connection-status, voice-mic button: provided by layouts.game --}}

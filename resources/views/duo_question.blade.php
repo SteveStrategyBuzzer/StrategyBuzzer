@@ -720,7 +720,11 @@ $mode = 'duo';
             bottom: calc(20px + env(safe-area-inset-bottom, 0px));
         }
     }
-   
+
+    /* Hide shared layout #gameHeader on Duo question page — this view already
+       integrates its own .question-header + .left-column (player + opponent
+       circles) so the shared header would duplicate / overlap the panels. */
+    #gameHeader { display: none !important; }
 </style>
 {{-- loading-overlay, connection-status, voice-mic-button: provided by layouts.game --}}
 

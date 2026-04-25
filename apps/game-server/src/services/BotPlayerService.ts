@@ -7,6 +7,7 @@ const BOT_TIMING = {
   buzzMs: { min: 3000, max: 7000 },
   answerMs: { min: 800, max: 2000 },
   syncReadyMs: { min: 500, max: 1500 },
+  resultReadyMs: { min: 1500, max: 3000 },
 };
 
 function randomBetween(min: number, max: number): number {
@@ -21,6 +22,7 @@ export class BotPlayerService {
   private buzzTimer: ReturnType<typeof setTimeout> | null = null;
   private answerTimer: ReturnType<typeof setTimeout> | null = null;
   private syncReadyTimer: ReturnType<typeof setTimeout> | null = null;
+  private resultReadyTimer: ReturnType<typeof setTimeout> | null = null;
   private onCleanup: (() => void) | undefined;
   private readySent = false;
   private currentPhase: string = 'LOBBY';
@@ -144,9 +146,21 @@ export class BotPlayerService {
 
         case "INTRO":
         case "WAITING":
-        case "ANSWER_COLLECTION":
-        case "RESULT": {
+        case "ANSWER_COLLECTION": {
           // Between rounds or phases: no action needed from bot
+          break;
+        }
+
+        case "RESULT": {
+          // Bot signals it is ready for the next round so the human player sees
+          // the opponent status flip from "En attente" to "Prêt" (matches what
+          // the human client emits on arrival at duo_result.blade.php).
+          const delay = randomBetween(BOT_TIMING.resultReadyMs.min, BOT_TIMING.resultReadyMs.max);
+          this.resultReadyTimer = setTimeout(() => {
+            this.resultReadyTimer = null;
+            this.socket.emit("ready", { roomId: this.roomId, isReady: true });
+            console.log(`[Bot] Sent ready for RESULT (room ${this.roomId})`);
+          }, delay);
           break;
         }
 
@@ -241,6 +255,10 @@ export class BotPlayerService {
     if (this.syncReadyTimer) {
       clearTimeout(this.syncReadyTimer);
       this.syncReadyTimer = null;
+    }
+    if (this.resultReadyTimer) {
+      clearTimeout(this.resultReadyTimer);
+      this.resultReadyTimer = null;
     }
     if (this.humanGraceTimer) {
       clearTimeout(this.humanGraceTimer);

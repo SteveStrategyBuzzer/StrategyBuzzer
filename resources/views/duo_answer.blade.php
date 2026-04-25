@@ -704,6 +704,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
     /* Hide voice mic on answer page — only shown on result page */
     #voiceMicButton { display: none !important; }
+
+    /* Hide shared layout #gameHeader on Duo answer page — this view already
+       integrates its own header + player/opponent panels so the shared header
+       would duplicate "Question X/Y · Manche Z · Bot" on top. */
+    #gameHeader { display: none !important; }
 </style>
 
 {{-- connection-status, voice-mic-button: provided by layouts.game --}}
