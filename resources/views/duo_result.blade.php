@@ -1931,8 +1931,8 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
     document.addEventListener('DOMContentLoaded', function() {
         // Client-side fallback hydration from sessionStorage:
         //  - didYouKnow: stashed by duo_answer.blade.php on `answer_revealed`.
-        //    The server-side @if($question['fun_fact']) branch wins when present;
-        //    we only kick in when the server emitted an empty placeholder.
+        //    The server-side fun_fact Blade branch wins when present; we only
+        //    kick in when the server emitted an empty placeholder.
         //  - round indicator: bumps the "Question N/T" header when the controller
         //    couldn't read a fresher questionIndex from Redis (rare race when the
         //    orchestrator already advanced past RESULT by the time the page loads).
