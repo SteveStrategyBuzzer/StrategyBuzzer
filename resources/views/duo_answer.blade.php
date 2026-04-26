@@ -777,8 +777,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             'acidify_error'      => ['class' => 'scientifique',  'icon' => '🧪', 'label' => __('Acidifier'),       'title' => __('Acidifie une mauvaise réponse')],
             'eliminate_two'      => ['class' => 'ia-junior',     'icon' => '❌', 'label' => __('Éliminer 2'),      'title' => __('Élimine 2 mauvaises réponses')],
             'ai_suggestion'      => ['class' => 'ia-junior',     'icon' => '🤖', 'label' => __('Suggestion IA'),   'title' => __('L\'IA suggère une réponse')],
-            'lock_correct'       => ['class' => 'visionnaire',   'icon' => '🔒', 'label' => __('2 pts sécurisés'), 'title' => __('Seule la bonne réponse sélectionnable')],
-            'extra_answer_time'  => ['class' => 'historien',     'icon' => '⏰', 'label' => __('+2s'),             'title' => __('Ajoute 2 secondes')],
+            'secure_answer'      => ['class' => 'visionnaire',   'icon' => '🎯', 'label' => __('2 pts sécurisés'), 'title' => __('Seule la bonne réponse sélectionnable')],
+            'time_bonus'         => ['class' => 'sprinteur',     'icon' => '🕒', 'label' => __('+2s'),             'title' => __('Ajoute 2 secondes')],
         ];
 
         // Filter by ID presence in $answerSkillMeta only — DO NOT filter by

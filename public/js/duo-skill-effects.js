@@ -239,30 +239,34 @@
                 return;
             }
             used.lockCorrect = true;
-            var btn = getSkillButton('lock_correct');
+            var btn = getSkillButton('secure_answer');
             if (btn) btn.classList.add('used');
             getAnswerButtons().forEach(function (b) { b.classList.add('locked-correct'); });
-            console.log('[Skills] Lock correct activated - 2 points secured');
+            console.log('[Skills] Secure answer activated - 2 points secured');
         }
 
         function activateExtraTime() {
             if (used.extraTime || isAnswered()) return;
             used.extraTime = true;
-            var btn = getSkillButton('extra_answer_time');
+            var btn = getSkillButton('time_bonus');
             if (btn) btn.classList.add('used');
             extendTime(2);
-            console.log('[Skills] Extra time activated, +2s');
+            console.log('[Skills] Time bonus activated, +2s');
         }
 
         // ── Wire up rendered buttons by data-skill-id ───────────────────────
-
+        // Canonical AvatarSkillService IDs — must match $answerSkillMeta keys
+        // in resources/views/duo_answer.blade.php (Task #56 regression fix:
+        // previous IDs `lock_correct` / `extra_answer_time` did not exist in
+        // AvatarSkillService, so Visionnaire and Sprinteur action buttons
+        // never rendered).
         var bindings = {
             'illuminate_numbers': activateIlluminate,
             'acidify_error':      activateAcidify,
             'eliminate_two':      activateEliminate,
             'ai_suggestion':      activateAiSuggest,
-            'lock_correct':       activateLockCorrect,
-            'extra_answer_time':  activateExtraTime,
+            'secure_answer':      activateLockCorrect,
+            'time_bonus':         activateExtraTime,
         };
         Object.keys(bindings).forEach(function (skillId) {
             var btn = getSkillButton(skillId);
