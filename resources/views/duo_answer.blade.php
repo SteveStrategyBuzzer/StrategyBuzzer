@@ -766,71 +766,48 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     </div>
     
     @php
-        $hasHistorianSkill = false;
-        $hasIlluminateNumbers = false;
-        $hasAcidifyError = false;
-        $hasEliminateTwo = false;
-        $hasAiSuggestion = false;
-        $hasLockCorrect = false;
-        $hasExtraAnswerTime = false;
-        
-        if (isset($skills) && is_array($skills)) {
-            foreach ($skills as $skill) {
-                $skillId = $skill['id'] ?? '';
-                if ($skillId === 'knowledge_without_time') {
-                    $hasHistorianSkill = true;
-                }
-                if ($skillId === 'illuminate_numbers') $hasIlluminateNumbers = true;
-                if ($skillId === 'acidify_error') $hasAcidifyError = true;
-                if ($skillId === 'eliminate_two') $hasEliminateTwo = true;
-                if ($skillId === 'ai_suggestion') $hasAiSuggestion = true;
-                if ($skillId === 'lock_correct') $hasLockCorrect = true;
-                if ($skillId === 'extra_answer_time') $hasExtraAnswerTime = true;
-            }
-        }
-        
+        // Catalogue des skills à trigger="answer" rendus dans la barre d'action.
+        // L'historien (knowledge_without_time) est rendu séparément en bandeau
+        // (cf. bloc @if($noBuzz && $hasHistorianSkill) plus bas), donc exclu ici.
+        // CSS class + icône + libellé conservés à l'identique pour ne pas
+        // changer l'UX. Pilote: AvatarSkillService::getAvatarSkills() →
+        // DuoController::getPlayerSkillsWithTriggers() → $skills.
+        $answerSkillMeta = [
+            'illuminate_numbers' => ['class' => 'mathematicien', 'icon' => '💡', 'label' => __('Illuminer'),       'title' => __('Illumine une réponse si elle contient un chiffre')],
+            'acidify_error'      => ['class' => 'scientifique',  'icon' => '🧪', 'label' => __('Acidifier'),       'title' => __('Acidifie une mauvaise réponse')],
+            'eliminate_two'      => ['class' => 'ia-junior',     'icon' => '❌', 'label' => __('Éliminer 2'),      'title' => __('Élimine 2 mauvaises réponses')],
+            'ai_suggestion'      => ['class' => 'ia-junior',     'icon' => '🤖', 'label' => __('Suggestion IA'),   'title' => __('L\'IA suggère une réponse')],
+            'lock_correct'       => ['class' => 'visionnaire',   'icon' => '🔒', 'label' => __('2 pts sécurisés'), 'title' => __('Seule la bonne réponse sélectionnable')],
+            'extra_answer_time'  => ['class' => 'historien',     'icon' => '⏰', 'label' => __('+2s'),             'title' => __('Ajoute 2 secondes')],
+        ];
+
+        // Filter by ID presence in $answerSkillMeta only — DO NOT filter by
+        // trigger. Several of these skills are declared trigger='question' in
+        // AvatarSkillService (illuminate_numbers, ai_suggestion, eliminate_two,
+        // lock_correct) but are still rendered + activated on the Answer page,
+        // matching pre-Task-#56 behavior (which used per-ID @if checks).
+        $answerActionSkills = collect($skills ?? [])
+            ->filter(fn($s) => isset($answerSkillMeta[$s['id'] ?? '']))
+            ->values();
+
+        $hasHistorianSkill = collect($skills ?? [])
+            ->contains(fn($s) => ($s['id'] ?? '') === 'knowledge_without_time');
+
         $correctIndex = $correct_index ?? null;
-        $choicesJson = json_encode($choices);
+        $choicesJson  = json_encode($choices);
     @endphp
-    
-    @if($hasIlluminateNumbers || $hasAcidifyError || $hasEliminateTwo || $hasAiSuggestion || $hasLockCorrect || $hasExtraAnswerTime)
+
+    @if($answerActionSkills->isNotEmpty())
     <div class="active-skills-bar" id="activeSkillsBar">
-        @if($hasIlluminateNumbers)
-            <button class="skill-action-btn mathematicien" id="skillIlluminate" title="{{ __('Illumine une réponse si elle contient un chiffre') }}">
-                <span class="skill-icon">💡</span>
-                <span>{{ __('Illuminer') }}</span>
+        @foreach($answerActionSkills as $skill)
+            @php $meta = $answerSkillMeta[$skill['id']]; @endphp
+            <button class="skill-action-btn {{ $meta['class'] }}"
+                    data-skill-id="{{ $skill['id'] }}"
+                    title="{{ $meta['title'] }}">
+                <span class="skill-icon">{{ $meta['icon'] }}</span>
+                <span>{{ $meta['label'] }}</span>
             </button>
-        @endif
-        @if($hasAcidifyError)
-            <button class="skill-action-btn scientifique" id="skillAcidify" title="{{ __('Acidifie une mauvaise réponse') }}">
-                <span class="skill-icon">🧪</span>
-                <span>{{ __('Acidifier') }}</span>
-            </button>
-        @endif
-        @if($hasEliminateTwo)
-            <button class="skill-action-btn ia-junior" id="skillEliminate" title="{{ __('Élimine 2 mauvaises réponses') }}">
-                <span class="skill-icon">❌</span>
-                <span>{{ __('Éliminer 2') }}</span>
-            </button>
-        @endif
-        @if($hasAiSuggestion)
-            <button class="skill-action-btn ia-junior" id="skillAiSuggest" title="{{ __('L\'IA suggère une réponse') }}">
-                <span class="skill-icon">🤖</span>
-                <span>{{ __('Suggestion IA') }}</span>
-            </button>
-        @endif
-        @if($hasLockCorrect)
-            <button class="skill-action-btn visionnaire" id="skillLockCorrect" title="{{ __('Seule la bonne réponse sélectionnable') }}">
-                <span class="skill-icon">🔒</span>
-                <span>{{ __('2 pts sécurisés') }}</span>
-            </button>
-        @endif
-        @if($hasExtraAnswerTime)
-            <button class="skill-action-btn historien" id="skillExtraTime" title="{{ __('Ajoute 2 secondes') }}">
-                <span class="skill-icon">⏰</span>
-                <span>{{ __('+2s') }}</span>
-            </button>
-        @endif
+        @endforeach
     </div>
     @endif
 
@@ -878,6 +855,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
 {{-- socket.io, DuoSocketClient, GameEffectsRuntime: loaded by layouts.game --}}
 
+{{-- Skill effects + activation handlers + answer shuffling for the Duo Answer page.
+     Extracted from this Blade in Task #56 to keep the inline IIFE focused on
+     timer/scoring/socket plumbing. The module exposes window.DuoSkillEffects
+     and is initialised below with closures over local timer/state vars. --}}
+<script src="{{ asset('js/duo-skill-effects.js') }}"></script>
+
 <script>
 (function() {
     'use strict';
@@ -888,21 +871,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const JWT_TOKEN  = window.JWT_TOKEN  || '';
     const PLAYER_ID = {{ auth()->id() ?? 0 }};
 
-    // Task #38 NOYAU STATS LIVE — initial score & efficiency hydration from
-    // the GameplayRuntime cache (window.SB_LIVE_STATS), populated by socket
-    // events (player_stats_updated / state / game_state). NO MORE URL params.
-    // If the page lands before any socket event fired (cold reload), values
-    // stay at 0; the next player_stats_updated will repaint via [data-stat].
-    (function initScoresFromLiveStats() {
-        var cache = window.SB_LIVE_STATS || {};
-        var meId  = String({{ auth()->id() ?? 0 }});
-        var meStats = cache[meId];
-        if (!meStats) return;
-        var scoreEl = document.getElementById('playerScoreValue');
-        if (scoreEl) scoreEl.textContent = String(meStats.score || 0);
-        var effEl   = document.getElementById('efficiencyValue');
-        if (effEl)   effEl.textContent   = String(Math.round(meStats.efficiencyPercent || 0)) + '%';
-    })();
+    // Task #38 NOYAU STATS LIVE — score & efficiency are server-authoritative
+    // via GameplayRuntime.js, which subscribes to player_stats_updated and
+    // writes to [data-stat="..."][data-player="..."] nodes. The PHP first paint
+    // (#playerScoreValue with $playerScore in the markup above) is the only
+    // local seed; no JS warm-restore is needed here.
 
     function getGameServerUrl() {
         return window.location.origin;
@@ -1008,68 +981,20 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     let currentPhase = null;
     
     const CHOICES = @json($choices);
-    const HAS_ILLUMINATE = {{ ($hasIlluminateNumbers ?? false) ? 'true' : 'false' }};
-    const HAS_ACIDIFY = {{ ($hasAcidifyError ?? false) ? 'true' : 'false' }};
-    const HAS_ELIMINATE = {{ ($hasEliminateTwo ?? false) ? 'true' : 'false' }};
-    const HAS_AI_SUGGEST = {{ ($hasAiSuggestion ?? false) ? 'true' : 'false' }};
-    const HAS_LOCK_CORRECT = {{ ($hasLockCorrect ?? false) ? 'true' : 'false' }};
-    const HAS_EXTRA_ANSWER_TIME = {{ ($hasExtraAnswerTime ?? false) ? 'true' : 'false' }};
-    
-    let skillsUsed = {
-        illuminate: false,
-        acidify: false,
-        eliminate: false,
-        aiSuggest: false,
-        lockCorrect: false,
-        extraTime: false
-    };
-    
-    // Skill Challenger: Shuffle Answers
+
+    // Skill Challenger: Shuffle Answers (passive flag, server-driven via game_effects)
     const SHUFFLE_ACTIVE = {{ $shuffleAnswersActive ? 'true' : 'false' }};
-    let shuffleInterval = null;
-    
-    function shuffleAnswers() {
-        if (answered) return;
-        
-        const container = document.getElementById('answersContainer');
-        const buttons = Array.from(container.querySelectorAll('.answer-button'));
-        const indicator = container.querySelector('.shuffle-indicator');
-        
-        // Fisher-Yates shuffle pour l'ordre des boutons
-        for (let i = buttons.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [buttons[i], buttons[j]] = [buttons[j], buttons[i]];
-        }
-        
-        // Ajouter l'animation de shuffle
-        buttons.forEach(btn => btn.classList.add('shuffling'));
-        
-        // Réorganiser le DOM
-        buttons.forEach(btn => container.appendChild(btn));
-        
-        // Remettre l'indicateur en haut si présent
-        if (indicator) {
-            container.insertBefore(indicator, container.firstChild);
-        }
-        
-        // Retirer l'animation après 0.3s
-        setTimeout(() => {
-            buttons.forEach(btn => btn.classList.remove('shuffling'));
-        }, 300);
-    }
-    
-    function startShuffleInterval() {
-        if (!SHUFFLE_ACTIVE) return;
-        shuffleInterval = setInterval(shuffleAnswers, 1500);
-    }
-    
-    function stopShuffleInterval() {
-        if (shuffleInterval) {
-            clearInterval(shuffleInterval);
-            shuffleInterval = null;
-        }
-    }
-    
+
+    // Skill effects + activation handlers + answers shuffle live in
+    // public/js/duo-skill-effects.js (extracted in Task #56). The init call
+    // is deferred until calculatePotentialPoints is defined further below;
+    // these forward-declared wrappers are referenced by startTimer() /
+    // selectAnswer() / handleTimeout() before that point.
+    let skillEffects = null;
+    function shuffleAnswers()        { if (skillEffects) skillEffects.shuffleAnswers(); }
+    function startShuffleInterval()  { if (skillEffects) skillEffects.startShuffleInterval(false); }
+    function stopShuffleInterval()   { if (skillEffects) skillEffects.stopShuffleInterval(); }
+
     const timerBar = document.getElementById('timerBar');
     const timerSeconds = document.getElementById('timerSeconds');
     const potentialPoints = document.getElementById('potentialPoints');
@@ -1084,249 +1009,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const incorrectSound = document.getElementById('incorrectSound');
     let answerButtons = document.querySelectorAll('.answer-button');
 
-    // NOTE: warm restore from GR_RESTORED_PLAYER_SCORE / GR_RESTORED_OPPONENT_SCORE
-    // is NOT needed on this view — the score DOM nodes here use [data-stat="score"]
-    // selectors and are hydrated by initScoresFromLiveStats() above (from
-    // window.SB_LIVE_STATS) plus subsequent socket score_update events handled
-    // canonically by GameplayRuntime.js. The duo_question variant of this block
-    // exists because that view uses #playerScore / #opponentScore literal IDs.
-
-    function _applyIlluminateEffect() {
-        // Highlight every digit sequence inside the question text, not answer options
-        var questionBox = document.querySelector('.question-text-box');
-        if (!questionBox) return;
-        var html = questionBox.textContent || '';
-        if (!/\d/.test(html)) return;
-        // Wrap digits in the raw innerHTML (preserve existing content)
-        questionBox.innerHTML = questionBox.innerHTML.replace(
-            /(\d+)/g,
-            '<span class="illuminated-number">$1</span>'
-        );
-        console.log('[Skills] Illuminate numbers applied to question text');
-    }
-
-    function _applyAcidifyEffect(wrongIndices) {
-        if (Array.isArray(wrongIndices) && wrongIndices.length > 0) {
-            wrongIndices.forEach(function(idx) {
-                if (answerButtons[idx]) answerButtons[idx].classList.add('acidified');
-            });
-        } else {
-            // Fallback: pick one random wrong answer client-side
-            const available = [];
-            answerButtons.forEach(function(button, idx) {
-                if (!button.classList.contains('correct')) {
-                    available.push(idx);
-                }
-            });
-            if (available.length > 0) {
-                const r = available[Math.floor(Math.random() * available.length)];
-                answerButtons[r].classList.add('acidified');
-            }
-        }
-        console.log('[Skills] Acidify error visual applied', wrongIndices);
-    }
-
-    function _applyAiSuggestionEffect(suggestedIndex) {
-        if (suggestedIndex !== undefined && suggestedIndex !== null && answerButtons[suggestedIndex]) {
-            answerButtons[suggestedIndex].classList.add('ai-suggested');
-        } else {
-            // Fallback: pick random available answer
-            const available = [];
-            answerButtons.forEach(function(button, idx) {
-                if (!button.classList.contains('eliminated') && !button.classList.contains('acidified')) {
-                    available.push(idx);
-                }
-            });
-            if (available.length > 0) {
-                const r = available[Math.floor(Math.random() * available.length)];
-                answerButtons[r].classList.add('ai-suggested');
-            }
-        }
-        console.log('[Skills] AI suggestion visual applied', suggestedIndex);
-    }
-
-    function _onSkillEffect(data) {
-        const skillId = data && data.skillId;
-        if (!skillId) return;
-
-        if (skillId === 'illuminate_numbers') {
-            const btn = document.getElementById('skillIlluminate');
-            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
-            _applyIlluminateEffect();
-        } else if (skillId === 'acidify_error') {
-            const btn = document.getElementById('skillAcidify');
-            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
-            _applyAcidifyEffect(data.wrongIndices);
-        } else if (skillId === 'ai_suggestion') {
-            const btn = document.getElementById('skillAiSuggest');
-            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
-            _applyAiSuggestionEffect(data.suggestedIndex);
-        }
-    }
-
-    function _onSkillFailed(data) {
-        const skillId = data && data.skillId;
-        if (!skillId) return;
-        // Restore the button and clear the "used" guard so the player can retry
-        if (skillId === 'illuminate_numbers') {
-            skillsUsed.illuminate = false;
-            const btn = document.getElementById('skillIlluminate');
-            if (btn) { btn.classList.remove('pending'); }
-        } else if (skillId === 'acidify_error') {
-            skillsUsed.acidify = false;
-            const btn = document.getElementById('skillAcidify');
-            if (btn) { btn.classList.remove('pending'); }
-        } else if (skillId === 'ai_suggestion') {
-            skillsUsed.aiSuggest = false;
-            const btn = document.getElementById('skillAiSuggest');
-            if (btn) { btn.classList.remove('pending'); }
-        }
-        console.log('[Skills] Skill activation failed:', skillId, data.reason || '');
-    }
-
-    function activateIlluminateSkill() {
-        if (skillsUsed.illuminate || answered) return;
-        skillsUsed.illuminate = true;
-        const btn = document.getElementById('skillIlluminate');
-        if (btn) btn.classList.add('pending');
-        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
-            window.DuoSocketClient.useSkill('illuminate_numbers');
-        } else {
-            // No server connection: apply effect immediately client-side
-            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
-            _applyIlluminateEffect();
-        }
-        console.log('[Skills] Illuminate numbers requested');
-    }
-    
-    function activateAcidifySkill() {
-        if (skillsUsed.acidify || answered) return;
-        skillsUsed.acidify = true;
-        const btn = document.getElementById('skillAcidify');
-        if (btn) btn.classList.add('pending');
-        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
-            window.DuoSocketClient.useSkill('acidify_error');
-        } else {
-            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
-            _applyAcidifyEffect(null);
-        }
-        console.log('[Skills] Acidify error requested');
-    }
-    
-    function activateEliminateSkill() {
-        if (skillsUsed.eliminate || answered) return;
-        skillsUsed.eliminate = true;
-        
-        const btn = document.getElementById('skillEliminate');
-        if (btn) btn.classList.add('used');
-        
-        const wrongAnswers = [];
-        answerButtons.forEach(function(button, idx) {
-            if (!button.classList.contains('ai-suggested')) {
-                wrongAnswers.push(idx);
-            }
-        });
-        
-        for (let i = wrongAnswers.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [wrongAnswers[i], wrongAnswers[j]] = [wrongAnswers[j], wrongAnswers[i]];
-        }
-        
-        let eliminated = 0;
-        for (let i = 0; i < wrongAnswers.length && eliminated < 2; i++) {
-            const idx = wrongAnswers[i];
-            if (answerButtons.length - eliminated > 2) {
-                answerButtons[idx].classList.add('eliminated');
-                eliminated++;
-            }
-        }
-        
-        console.log('[Skills] Eliminate 2 activated, removed', eliminated, 'answers');
-    }
-    
-    function activateAiSuggestSkill() {
-        if (skillsUsed.aiSuggest || answered) return;
-        skillsUsed.aiSuggest = true;
-        const btn = document.getElementById('skillAiSuggest');
-        if (btn) btn.classList.add('pending');
-        if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
-            window.DuoSocketClient.useSkill('ai_suggestion');
-        } else {
-            if (btn) { btn.classList.remove('pending'); btn.classList.add('used'); }
-            _applyAiSuggestionEffect(null);
-        }
-        console.log('[Skills] AI suggestion requested');
-    }
-    
-    function activateLockCorrectSkill() {
-        if (skillsUsed.lockCorrect || answered) return;
-        
-        const currentPoints = calculatePotentialPoints(timeLeft);
-        if (currentPoints !== 2) {
-            alert('{{ __("Ce skill ne fonctionne que si vous êtes sur 2 points !") }}');
-            return;
-        }
-        
-        skillsUsed.lockCorrect = true;
-        
-        const btn = document.getElementById('skillLockCorrect');
-        if (btn) btn.classList.add('used');
-        
-        answerButtons.forEach(function(button) {
-            button.classList.add('locked-correct');
-        });
-        
-        console.log('[Skills] Lock correct activated - 2 points secured');
-    }
-    
-    function activateExtraTimeSkill() {
-        if (skillsUsed.extraTime || answered) return;
-        skillsUsed.extraTime = true;
-        
-        const btn = document.getElementById('skillExtraTime');
-        if (btn) btn.classList.add('used');
-        
-        timeLeft += 2;
-        ANSWER_TIME += 2;
-        
-        timerSeconds.textContent = timeLeft + 's';
-        const percentage = (timeLeft / ANSWER_TIME) * 100;
-        timerBar.style.width = percentage + '%';
-        
-        console.log('[Skills] Extra time activated, +2s');
-    }
-    
-    function initSkillButtons() {
-        const illuminateBtn = document.getElementById('skillIlluminate');
-        if (illuminateBtn) {
-            illuminateBtn.addEventListener('click', activateIlluminateSkill);
-        }
-        
-        const acidifyBtn = document.getElementById('skillAcidify');
-        if (acidifyBtn) {
-            acidifyBtn.addEventListener('click', activateAcidifySkill);
-        }
-        
-        const eliminateBtn = document.getElementById('skillEliminate');
-        if (eliminateBtn) {
-            eliminateBtn.addEventListener('click', activateEliminateSkill);
-        }
-        
-        const aiSuggestBtn = document.getElementById('skillAiSuggest');
-        if (aiSuggestBtn) {
-            aiSuggestBtn.addEventListener('click', activateAiSuggestSkill);
-        }
-        
-        const lockCorrectBtn = document.getElementById('skillLockCorrect');
-        if (lockCorrectBtn) {
-            lockCorrectBtn.addEventListener('click', activateLockCorrectSkill);
-        }
-        
-        const extraTimeBtn = document.getElementById('skillExtraTime');
-        if (extraTimeBtn) {
-            extraTimeBtn.addEventListener('click', activateExtraTimeSkill);
-        }
-    }
     
     function calculatePotentialPoints(remainingTime) {
         if (historianSkillUsed) return 1;
@@ -1360,16 +1042,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         if (timerInterval) clearInterval(timerInterval);
         
         // ── Node calcule, Blade affiche ────────────────────────────────────────
-        // The setInterval below derives `timeLeft` exclusively from
-        // `phaseEndsAtMs` on every tick — never from a `timeLeft--` local
-        // decrement in the nominal path. The only fallback decrement remaining
-        // is an explicit defensive branch for the rare case where the server
-        // has not yet published a deadline.
-        //
-        // Patch 4 — Honest read of the server's phaseEndsAtMs. No more
-        // local snap-to-ANSWER_TIME extension: Node now publishes a real
-        // ANSWER_SELECTION phase (10 s) so the buzzer always gets a fair
-        // window regardless of when they buzzed within QUESTION_ACTIVE.
+        // The setInterval below derives `timeLeft` from `phaseEndsAtMs` on
+        // every tick (never from a local `timeLeft--` in the nominal path).
+        // The defensive decrement only fires if the server has not yet
+        // published a deadline. Node owns the ANSWER_SELECTION window (10 s),
+        // so every buzzer gets a fair chrono regardless of when they buzzed.
         if (phaseEndsAtMs) {
             const remaining = Math.max(0, phaseEndsAtMs - Date.now());
             timeLeft = Math.ceil(remaining / 1000);
@@ -1842,18 +1519,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             }, 1000);
         }
     }
-    // Task #38 NOYAU STATS LIVE: efficiency + score are server-authoritative
-    // via GameplayRuntime.js subscribing to player_stats_updated / score_update
-    // and writing to [data-stat="..."][data-player="..."] nodes. Removed legacy
-    // no-op wrappers `_updateEfficiencyDisplay()` and `_onAnswerScoreUpdate()`
-    // — they only proxied to GRRepaintStats() with no extra logic, and
-    // `score_update` was double-bound (GameplayRuntime canonical handler +
-    // this stub doing nothing).
-
+    // Stats note: efficiency + score are written canonically by GameplayRuntime.js
+    // (subscribes to player_stats_updated / score_update → [data-stat][data-player]).
     function _initAnswerEffects() {
         GameEffectsRuntime.registerEffect('shuffle_answers', {
             onStart: function() {
-                stopShuffleInterval();
                 var container = document.getElementById('answersContainer');
                 if (container) container.classList.add('shuffle-active');
                 var ind = container ? container.querySelector('.shuffle-indicator') : null;
@@ -1864,11 +1534,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                     container.insertBefore(ind, container.firstChild);
                 }
                 if (ind) ind.style.display = '';
-                shuffleAnswers();
-                shuffleInterval = setInterval(shuffleAnswers, 1500);
+                // Force-start shuffle even if SHUFFLE_ACTIVE flag wasn't set at
+                // page render: this is the server telling us shuffle is now on.
+                if (skillEffects) skillEffects.startShuffleInterval(true);
             },
             onStop: function() {
-                stopShuffleInterval();
+                if (skillEffects) skillEffects.stopShuffleInterval();
                 var container = document.getElementById('answersContainer');
                 if (container) container.classList.remove('shuffle-active');
                 var ind = container ? container.querySelector('.shuffle-indicator') : null;
@@ -1892,12 +1563,30 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         game_state:      _onAnswerGameState,
         answer_revealed: _onAnswerRevealed,
         phase_changed:   _onAnswerPhaseChanged,
-        skill_effect:    _onSkillEffect,
-        skill_failed:    _onSkillFailed,
+        // Skill effect/failed routing is owned by public/js/duo-skill-effects.js
+        // (Task #56). Closures resolve `skillEffects` lazily, after init below.
+        skill_effect:    function (data) { if (skillEffects) skillEffects.onSkillEffect(data); },
+        skill_failed:    function (data) { if (skillEffects) skillEffects.onSkillFailed(data); },
         initEffects:     _initAnswerEffects
     };
 
-    initSkillButtons();
+    // Wire skill action buttons + effect listeners via the extracted module.
+    // Replaces the legacy initSkillButtons() + 12 inline handlers (Task #56).
+    skillEffects = window.DuoSkillEffects.init({
+        socket: window.DuoSocketClient,
+        isAnswered: function () { return answered; },
+        computeCurrentPotentialPoints: function () { return calculatePotentialPoints(timeLeft); },
+        extendTime: function (seconds) {
+            timeLeft     += seconds;
+            ANSWER_TIME  += seconds;
+            if (timerSeconds) timerSeconds.textContent = timeLeft + 's';
+            if (timerBar)     timerBar.style.width = ((timeLeft / ANSWER_TIME) * 100) + '%';
+        },
+        shuffleActive: SHUFFLE_ACTIVE,
+        labels: {
+            lockCorrectError: '{{ __("Ce skill ne fonctionne que si vous êtes sur 2 points !") }}',
+        },
+    });
     
     // V3: canAnswer() dérive de PLAYER_BUZZ_POSITION (first/second/no_buzz = actif, none = attente)
     if (canAnswer()) {
