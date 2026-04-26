@@ -963,6 +963,63 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
 
 {{-- connection-status, voice-mic button: provided by layouts.game --}}
 
+@php
+    $resultPending = $resultPending ?? false;
+@endphp
+
+<style>
+    /* Bug #1 fix (docs/decisions/2026-04-26-duo-immediate-result-nav.md):
+       Pending overlay is shown when the buzz-winner navigated here early
+       (before Node emitted phase_changed RESULT). It is dismissed by
+       _onResultAnswerRevealed when the server-authoritative answer_revealed
+       event arrives for THIS player. */
+    #resultPendingOverlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 32, 39, 0.92);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        color: #fff;
+        text-align: center;
+        padding: 20px;
+    }
+    #resultPendingOverlay .pending-spinner {
+        width: 56px;
+        height: 56px;
+        border: 4px solid rgba(255, 255, 255, 0.15);
+        border-top-color: #4ECDC4;
+        border-radius: 50%;
+        animation: pending-spin 0.9s linear infinite;
+    }
+    #resultPendingOverlay .pending-text {
+        font-size: 1.2rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+    #resultPendingOverlay .pending-subtext {
+        font-size: 0.95rem;
+        opacity: 0.7;
+        max-width: 320px;
+    }
+    @keyframes pending-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+@if($resultPending)
+    <div id="resultPendingOverlay" role="status" aria-live="polite">
+        <div class="pending-spinner"></div>
+        <div class="pending-text">{{ __('En attente du résultat…') }}</div>
+        <div class="pending-subtext">{{ __('Le serveur finalise la manche.') }}</div>
+    </div>
+@endif
+
 <div class="result-container">
     @php
         $playerBuzzed = $playerBuzzed ?? false;
@@ -1700,6 +1757,80 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         showSkillMessage(data.message || '{{ __("Activation impossible") }}', false);
     }
 
+    // Bug #1 fix (docs/decisions/2026-04-26-duo-immediate-result-nav.md):
+    // When the buzz-winner navigates here early (during ANSWER_*), the page renders
+    // in "pending" mode. This handler hydrates the result-header / points-earned /
+    // answer-display from the server-authoritative `answer_revealed` event and
+    // dismisses the pending overlay.
+    //
+    // Filter (Bug #63 fix): `answer_revealed` is broadcast room-wide, one event per
+    // buzzer. We only react to OUR own event, so the opponent's outcome never
+    // pollutes our result header.
+    function _onResultAnswerRevealed(data) {
+        if (!data) return;
+        var myId = (window.SB_GAME_CONTEXT && window.SB_GAME_CONTEXT.currentUserId)
+            || window.CURRENT_USER_ID
+            || '';
+        if (myId && data.playerId != null && String(data.playerId) !== String(myId)) {
+            return; // event for the other player — ignore
+        }
+
+        var isCorrect    = !!data.isCorrect;
+        var pointsEarned = Number(data.points || data.pointsEarned || 0);
+
+        // Update result-header variant + title
+        try {
+            var headerEl = document.querySelector('.result-header');
+            var titleEl  = document.querySelector('.result-header .result-title');
+            if (headerEl) {
+                headerEl.classList.remove('result-correct', 'result-incorrect', 'result-no-buzz');
+                headerEl.classList.add(isCorrect ? 'result-correct' : 'result-incorrect');
+            }
+            if (titleEl) {
+                titleEl.textContent = isCorrect
+                    ? @json(__('Bonne réponse !'))
+                    : @json(__('Mauvaise réponse'));
+            }
+        } catch (e) { /* DOM not ready — overlay will stay until next phase_changed */ }
+
+        // Update points-earned label
+        try {
+            var pointsEl = document.querySelector('.points-earned');
+            if (pointsEl) {
+                pointsEl.classList.remove('positive', 'negative', 'neutral');
+                if (pointsEarned > 0) {
+                    pointsEl.classList.add('positive');
+                    pointsEl.textContent = '+' + pointsEarned + ' ' + @json(__('points'));
+                } else if (pointsEarned < 0) {
+                    pointsEl.classList.add('negative');
+                    pointsEl.textContent = pointsEarned + ' ' + @json(__('points'));
+                } else {
+                    pointsEl.classList.add('neutral');
+                    pointsEl.textContent = @json(__('0 point'));
+                }
+            }
+        } catch (e) { /* idem */ }
+
+        // Update answer-display ✓/✗ icon
+        try {
+            var ansEl = document.querySelector('.result-answers .answer-display:first-child');
+            if (ansEl) {
+                ansEl.classList.remove('answer-correct', 'answer-incorrect');
+                ansEl.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
+                var iconEl = ansEl.querySelector('.answer-icon');
+                if (iconEl) iconEl.textContent = isCorrect ? '✓' : '✗';
+            }
+        } catch (e) { /* idem */ }
+
+        // Dismiss pending overlay
+        try {
+            var overlay = document.getElementById('resultPendingOverlay');
+            if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        } catch (e) { /* overlay was never rendered (non-pending render path) */ }
+
+        console.log('[DuoResult] Answer revealed (filtered)', { isCorrect: isCorrect, points: pointsEarned });
+    }
+
     // Expose for the scripts section — .on() bindings done there after DuoSocketClient.js loads.
     // round_ended / match_ended / score_update bindings removed: round_ended +
     // match_ended navigations are now handled solely via phase_changed (with the
@@ -1707,14 +1838,15 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     // score_update is handled canonically by GameplayRuntime.js (no view-local
     // handler needed).
     window._duoResultHandlers = {
-        disconnect:    _onResultDisconnect,
-        error:         _onResultError,
-        player_ready:  _onResultPlayerReady,
-        phase_changed: _onResultPhaseChanged,
-        state:         _onResultState,
-        both_ready:    _onResultBothReady,
-        skill_effect:  _onResultSkillEffect,
-        skill_failed:  _onResultSkillFailed
+        disconnect:      _onResultDisconnect,
+        error:           _onResultError,
+        player_ready:    _onResultPlayerReady,
+        phase_changed:   _onResultPhaseChanged,
+        state:           _onResultState,
+        both_ready:      _onResultBothReady,
+        skill_effect:    _onResultSkillEffect,
+        skill_failed:    _onResultSkillFailed,
+        answer_revealed: _onResultAnswerRevealed
     };
 
     window.addEventListener('beforeunload', function() {
@@ -1989,14 +2121,15 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         var ds = window.DuoSocketClient;
         var h  = window._duoResultHandlers;
         if (!ds || !h) { console.error('[DuoResult] DuoSocketClient or handlers missing'); return; }
-        ds.on('disconnect',   h.disconnect);
-        ds.on('error',        h.error);
-        ds.on('player_ready', h.player_ready);
-        ds.on('phase_changed',h.phase_changed);
-        ds.on('state',        h.state);
-        ds.on('both_ready',   h.both_ready);
-        ds.on('skill_effect', h.skill_effect);
-        ds.on('skill_failed', h.skill_failed);
+        ds.on('disconnect',     h.disconnect);
+        ds.on('error',          h.error);
+        ds.on('player_ready',   h.player_ready);
+        ds.on('phase_changed',  h.phase_changed);
+        ds.on('state',          h.state);
+        ds.on('both_ready',     h.both_ready);
+        ds.on('skill_effect',   h.skill_effect);
+        ds.on('skill_failed',   h.skill_failed);
+        ds.on('answer_revealed',h.answer_revealed);
     });
 })();
 </script>

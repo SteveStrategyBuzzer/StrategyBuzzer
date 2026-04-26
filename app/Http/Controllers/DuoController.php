@@ -1925,7 +1925,13 @@ class DuoController extends Controller
         // current_question_number` is only updated by the legacy REST submitAnswer
         // path, which is no longer the authoritative driver in Node-authoritative
         // Duo — that's why "Question 1/10" used to stay stuck on the Result page.
+        //
+        // Bug #1 fix (Option B): we ALSO read `phase` here so we can detect when the
+        // buzz-winner reached this page early (during ANSWER_SELECTION/COLLECTION,
+        // before Node has emitted phase_changed RESULT). In that case the page
+        // renders in "pending" mode and waits for the socket to hydrate.
         $resultQuestion = $gameState['last_question'] ?? [];
+        $currentPhase = null;
         if ($roomId) {
             try {
                 $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
@@ -1934,6 +1940,7 @@ class DuoController extends Controller
                     $roomState = json_decode($rawState, true);
                     $qIdx = $roomState['questionIndex'] ?? null;
                     $questions = $roomState['questions'] ?? [];
+                    $currentPhase = $roomState['phase'] ?? null;
                     if ($qIdx !== null) {
                         // 0-indexed → 1-indexed. The Result page renders for the
                         // just-finished question, which is exactly questionIndex
@@ -1956,6 +1963,13 @@ class DuoController extends Controller
             }
         }
 
+        // Pending = early-arrival mode. True iff the buzz-winner navigated here
+        // before Node transitioned the room to a result-ready phase. The view
+        // hides ✓/✗/points/header until `answer_revealed` (filtered by playerId)
+        // arrives via socket and `_onResultAnswerRevealed` hydrates the DOM.
+        $resultReadyPhases = ['RESULT', 'REVEAL', 'ROUND_SCOREBOARD', 'MATCH_END', 'FINISHED'];
+        $resultPending = $currentPhase !== null && !in_array($currentPhase, $resultReadyPhases, true);
+
         $strategicAvatar = data_get($playerSnapshot, 'strategic_avatar', ['name' => 'Aucun']);
         $skills = $this->getPlayerSkillsWithTriggers($user);
         $avatarName = $this->getSnapshotStrategicAvatarName($playerSnapshot);
@@ -1977,6 +1991,7 @@ class DuoController extends Controller
             'pointsEarned' => $pointsEarned,
             'playerBuzzed' => $playerBuzzed,
             'playerPoints' => $pointsEarned,
+            'resultPending' => $resultPending,
             'player_score' => $playerScore,
             'opponent_score' => $opponentScore,
             'currentQuestion' => $currentQuestion,
@@ -2695,7 +2710,7 @@ class DuoController extends Controller
                     break;
 
                 case 'result':
-                    // RESULT and REVEAL are the only valid phases for duo_result
+                    // RESULT and REVEAL are the only "fully ready" phases for duo_result
                     if (in_array($currentPhase, $resultPhases)) {
                         break; // Valid → allow
                     }
@@ -2703,10 +2718,20 @@ class DuoController extends Controller
                     if (in_array($currentPhase, $questionPhases)) {
                         return $toQuestion();
                     }
+                    // Bug #1 fix (Option B, see docs/decisions/2026-04-26-duo-immediate-result-nav.md):
+                    // Allow the buzz-winner who just submitted to land on /duo/result while
+                    // the server is still in ANSWER_SELECTION / ANSWER_COLLECTION /
+                    // BUZZ_WINNER_ANSWERING. The page renders in "pending" mode and
+                    // hydrates from socket events. Non-buzz-winners are redirected back
+                    // to question (for the no-buzz path) or to answer (if their buzz is
+                    // pending). This is a deliberate, narrow derogation to "Node = sole
+                    // phase authority" — bounded to the buzzer who already submitted, and
+                    // idempotent because phase_changed RESULT becomes a no-op when we are
+                    // already on /duo/result.
                     if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
                         $playerId = (string) $user->id;
                         if ($lockedAnswerPlayerId === $playerId) {
-                            return $toAnswer();
+                            break; // Buzz-winner: allow early access (pending mode)
                         }
                         return $toQuestion();
                     }

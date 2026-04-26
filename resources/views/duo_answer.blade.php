@@ -1168,6 +1168,25 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         if (waitingOverlay) {
             waitingOverlay.style.display = 'flex';
         }
+
+        // Bug #1 fix — Option B (documented in docs/decisions/2026-04-26-duo-immediate-result-nav.md):
+        // After the answer is submitted, navigate immediately to /duo/result so the
+        // player never lingers on the Answer page waiting for the opponent. The
+        // Result page renders in "pending" mode (overlay visible, ✓/✗/points hidden)
+        // and hydrates from server events:
+        //   - `answer_revealed` (filtered by playerId): fills header/points/answer
+        //   - `score_update` / `match_stats` / `round_stats` (via GameplayRuntime):
+        //     repaints [data-stat="score"] nodes
+        //   - `phase_changed RESULT`: idempotent no-op when already on Result page
+        // The 250 ms delay lets the socket flush the `answer` event first.
+        // `isRedirecting` guard ensures only one navigation fires (this branch OR
+        // the `phase === 'RESULT'` branch in _onAnswerPhaseChanged, never both).
+        setTimeout(function () {
+            if (isRedirecting) return;
+            isRedirecting = true;
+            var _nav = window.duoNavigate || function (u) { window.location.href = u; };
+            _nav((window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID));
+        }, 250);
     }
     
     function activateHistorianSkill() {
@@ -1411,6 +1430,22 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     }
     function _onAnswerRevealed(data) {
         if (isRedirecting) return;
+
+        // Bug #63 fix — `answer_revealed` is broadcast room-wide by Node, with one
+        // event per buzzer. Without this filter, a fast-buzzing opponent who answers
+        // wrong would flip MY cards to "incorrect" before MY own answer_revealed
+        // arrives. Use the canonical SB_GAME_CONTEXT.currentUserId (auth()->id() as
+        // string) — already published by partials/game-context.blade.php via the
+        // @include at the top of this view; no new global needed.
+        var _myId = (window.SB_GAME_CONTEXT && window.SB_GAME_CONTEXT.currentUserId)
+            || window.CURRENT_USER_ID
+            || '';
+        if (_myId && data && data.playerId != null && String(data.playerId) !== String(_myId)) {
+            // Event belongs to the other player — do not mutate my visual state and
+            // do not stash my sessionStorage with their fun-fact / question index.
+            return;
+        }
+
         waitingOverlay.style.display = 'none';
         const isCorrect    = data.isCorrect || false;
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
