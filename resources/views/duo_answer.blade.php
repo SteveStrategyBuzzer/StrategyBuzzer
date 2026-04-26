@@ -871,12 +871,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const JWT_TOKEN  = window.JWT_TOKEN  || '';
     const PLAYER_ID = {{ auth()->id() ?? 0 }};
 
-    // Task #38 NOYAU STATS LIVE — score & efficiency are server-authoritative
-    // via GameplayRuntime.js, which subscribes to player_stats_updated and
-    // writes to [data-stat="..."][data-player="..."] nodes. The PHP first paint
-    // (#playerScoreValue with $playerScore in the markup above) is the only
-    // local seed; no JS warm-restore is needed here.
-
+    // Stats: GameplayRuntime owns score/efficiency via [data-stat][data-player].
+    // The PHP first paint of #playerScoreValue is the only local seed.
     function getGameServerUrl() {
         return window.location.origin;
     }
