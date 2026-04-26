@@ -994,7 +994,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     let selectedIndex = null;
     let isRedirecting = false;
     let historianSkillUsed = false;
-    let phaseEndsAtMs = null;  // FIX: track server-side phase end time
+    let phaseEndsAtMs = null;  // FIX: track server-side phase end time (may be locally extended on snap)
+    // P57.1 — Snap-persistence bookkeeping
+    //   serverPhaseEndsAtMs : authoritative deadline as published by Node;
+    //                        kept aside so audit / late events can reason about it.
+    //   snapActiveUntilMs   : monotonically-decreasing wall-clock cutoff during
+    //                        which state-event hydrators must NOT downgrade the
+    //                        locally-extended deadline (the snap UX guarantee).
+    let serverPhaseEndsAtMs = null;
+    let snapActiveUntilMs = 0;
     
     const CHOICES = @json($choices);
     const HAS_ILLUMINATE = {{ ($hasIlluminateNumbers ?? false) ? 'true' : 'false' }};
@@ -1348,20 +1356,38 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function startTimer() {
         if (timerInterval) clearInterval(timerInterval);
         
-        // Sync starting timeLeft with server's remaining ANSWER_SELECTION time, but
-        // absorb up to 3s of network/page-load latency: if the server reports
-        // remaining ≥ (ANSWER_TIME − 3)s, snap the visible countdown back up to
-        // the full ANSWER_TIME so the player sees a clean fresh "10s" on arrival
-        // (was 1.5s — bumped to 3s to better cover slow mobile / cold socket
-        // handshake roundtrips that previously caused the visible timer to
-        // arrive at 8 s or below).
-        // The setInterval below still re-syncs every tick, so the actual timeout
-        // remains driven by the server's authoritative phaseEndsAtMs.
+        // ── Node calcule, Blade affiche ────────────────────────────────────────
+        // The setInterval below derives `timeLeft` exclusively from
+        // `phaseEndsAtMs` on every tick — never from a `timeLeft--` local
+        // decrement in the nominal path. The only fallback decrement remaining
+        // is an explicit defensive branch for the rare case where the server
+        // has not yet published a deadline.
+        //
+        // P57.1 — Snap-to-ANSWER_TIME persistent across ticks.
+        //   Sync starting timeLeft with the server's remaining ANSWER_SELECTION
+        //   time, but absorb up to 3 s of network / page-load latency: if the
+        //   server reports remaining ≥ (ANSWER_TIME − 3) s, snap the visible
+        //   countdown back up to the full ANSWER_TIME so the player sees a
+        //   clean fresh "10 s" on arrival.
+        //
+        //   Critically (vs. the previous behaviour where the snap was wiped
+        //   the very next tick), we ALSO override `phaseEndsAtMs` locally to
+        //   `Date.now() + ANSWER_TIME * 1000` so the per-tick recompute keeps
+        //   yielding ANSWER_TIME for the first ~1 s. The server's own
+        //   deadline is preserved separately in `serverPhaseEndsAtMs` and the
+        //   `snapActiveUntilMs` window tells state-event hydrators to leave
+        //   our extended deadline alone for the duration of the snap. The
+        //   Node server still owns the actual phase transition: a late
+        //   submission past `phaseEndsAtMs` is harmless because the
+        //   orchestrator ignores answers outside the authoritative window.
         if (phaseEndsAtMs) {
             const remaining = Math.max(0, phaseEndsAtMs - Date.now());
             const ceilLeft = Math.ceil(remaining / 1000);
             if (remaining >= (ANSWER_TIME - 3) * 1000) {
                 timeLeft = ANSWER_TIME;
+                serverPhaseEndsAtMs = phaseEndsAtMs;
+                phaseEndsAtMs = Date.now() + ANSWER_TIME * 1000;
+                snapActiveUntilMs = phaseEndsAtMs;
             } else {
                 timeLeft = ceilLeft;
             }
@@ -1374,17 +1400,26 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
         
         timerInterval = setInterval(function() {
-            // P0.3 — Recompute timeLeft from Node-authoritative phaseEndsAtMs at every
-            // tick (mirrors the duo_question canonical pattern). This survives
-            // backgrounded tabs / throttled timers and keeps the two players' chronos
-            // in sync to within one tick. Fallback to local decrement only if the
-            // server hasn't published a deadline yet (shouldn't happen post-buzz).
+            // P0.3 / P57.1 — Recompute timeLeft from the (possibly
+            // locally-extended) phaseEndsAtMs at every tick. This mirrors the
+            // duo_question canonical pattern, survives backgrounded tabs /
+            // throttled timers, and keeps the two players' chronos in sync to
+            // within one tick. The defensive `timeLeft--` branch only fires
+            // if the server has not yet published any deadline (shouldn't
+            // happen post-buzz).
+            let computed;
             if (phaseEndsAtMs) {
                 const remainingMs = Math.max(0, phaseEndsAtMs - Date.now());
-                timeLeft = Math.ceil(remainingMs / 1000);
+                computed = Math.ceil(remainingMs / 1000);
             } else {
-                timeLeft--;
+                // Defensive fallback: phaseEndsAtMs absent — decrement locally.
+                computed = timeLeft - 1;
             }
+            // Monotone-decreasing guard: a late state event that resyncs
+            // phaseEndsAtMs *upward* must never cause the visible counter to
+            // tick back up. The chrono only descends.
+            if (computed > timeLeft) computed = timeLeft;
+            timeLeft = computed;
 
             const percentage = Math.max(0, (timeLeft / ANSWER_TIME) * 100);
             timerBar.style.width = percentage + '%';
@@ -1577,8 +1612,19 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             console.warn('[DuoAnswer] game_state ignored stale snapshot: server remaining=' + remaining + 'ms vs local timeLeft=' + timeLeft + 's');
             return;
         }
+        // P57.1 — Snap-protection window: while the locally-extended snap is
+        // still active, don't let an in-flight server snapshot rewind the
+        // visible chrono. We *do* keep the server's authoritative deadline
+        // up to date in `serverPhaseEndsAtMs` for audit / late ticks.
+        if (Date.now() < snapActiveUntilMs && data.phaseEndsAtMs < phaseEndsAtMs) {
+            serverPhaseEndsAtMs = data.phaseEndsAtMs;
+            return;
+        }
         phaseEndsAtMs = data.phaseEndsAtMs;
+        serverPhaseEndsAtMs = data.phaseEndsAtMs;
         var serverLeft = Math.ceil(remaining / 1000);
+        // Monotone-decreasing guard mirrors the tick: never push timeLeft up.
+        if (serverLeft > timeLeft) serverLeft = timeLeft;
         if (Math.abs(serverLeft - timeLeft) > 1) {
             console.log('[DuoAnswer] game_state timer resync: local=' + timeLeft + 's server=' + serverLeft + 's');
             timeLeft = serverLeft;
@@ -1663,9 +1709,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 var rem = Math.max(0, data.phaseEndsAtMs - Date.now());
                 if (rem < 2000 && timeLeft >= 5) {
                     console.warn('[DuoAnswer] state ignored stale snapshot: server remaining=' + rem + 'ms vs local timeLeft=' + timeLeft + 's');
+                } else if (Date.now() < snapActiveUntilMs && data.phaseEndsAtMs < phaseEndsAtMs) {
+                    // P57.1 — Snap-protection window: see _onAnswerGameState.
+                    serverPhaseEndsAtMs = data.phaseEndsAtMs;
                 } else {
                     phaseEndsAtMs = data.phaseEndsAtMs;
+                    serverPhaseEndsAtMs = data.phaseEndsAtMs;
                     var srvLeft = Math.ceil(rem / 1000);
+                    // Monotone-decreasing guard.
+                    if (srvLeft > timeLeft) srvLeft = timeLeft;
                     if (Math.abs(srvLeft - timeLeft) > 1) {
                         console.log('[DuoAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
                         timeLeft = srvLeft;

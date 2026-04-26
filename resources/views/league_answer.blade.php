@@ -702,6 +702,14 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     let selectedIndex = null;
     let isRedirecting = false;
     let shuffleInterval = null;
+    // P57.2 — Node-authoritative timer state (mirrors duo_answer):
+    //   phaseEndsAtMs        : authoritative deadline (may be locally extended on snap)
+    //   serverPhaseEndsAtMs  : original Node-published deadline, kept aside
+    //   snapActiveUntilMs    : window during which state hydrators must not
+    //                          rewind the visible chrono.
+    let phaseEndsAtMs = null;
+    let serverPhaseEndsAtMs = null;
+    let snapActiveUntilMs = 0;
     
     function shuffleAnswers() {
         if (answered) return;
@@ -760,15 +768,58 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
     
     function startTimer() {
         if (timerInterval) clearInterval(timerInterval);
-        
+
+        // ── Node calcule, Blade affiche ────────────────────────────────────────
+        // Canonical pattern (mirrors duo_answer.startTimer):
+        //   - The 250 ms tick derives `timeLeft` exclusively from
+        //     `phaseEndsAtMs` (Node-authoritative, possibly snap-extended
+        //     locally for the first ~1 s of the answer phase).
+        //   - The only `timeLeft--` left in this function is an explicit
+        //     defensive fallback for the case where Node has not yet
+        //     published a deadline (cold connect race).
+        //
+        // Snap-to-ANSWER_TIME persistence: if the server reports
+        // remaining ≥ ANSWER_TIME − 3 s, we snap the visible counter back
+        // up to ANSWER_TIME and locally extend `phaseEndsAtMs` to
+        // `Date.now() + ANSWER_TIME * 1000` so the snap doesn't get wiped
+        // by the next tick. The original server deadline is preserved in
+        // `serverPhaseEndsAtMs` for audit and post-snap reconciliation.
+        if (phaseEndsAtMs) {
+            const remaining = Math.max(0, phaseEndsAtMs - Date.now());
+            const ceilLeft = Math.ceil(remaining / 1000);
+            if (remaining >= (ANSWER_TIME - 3) * 1000) {
+                timeLeft = ANSWER_TIME;
+                serverPhaseEndsAtMs = phaseEndsAtMs;
+                phaseEndsAtMs = Date.now() + ANSWER_TIME * 1000;
+                snapActiveUntilMs = phaseEndsAtMs;
+            } else {
+                timeLeft = ceilLeft;
+            }
+            if (timeLeft <= 0) timeLeft = 1;
+        }
+
+        chronoTimer.textContent = Math.max(0, timeLeft);
+
         timerInterval = setInterval(function() {
-            timeLeft--;
+            let computed;
+            if (phaseEndsAtMs) {
+                const remainingMs = Math.max(0, phaseEndsAtMs - Date.now());
+                computed = Math.ceil(remainingMs / 1000);
+            } else {
+                // Defensive fallback: no Node deadline yet.
+                computed = timeLeft - 1;
+            }
+            // Monotone-decreasing guard: a late state event resyncing
+            // phaseEndsAtMs upward must never push the chrono back up.
+            if (computed > timeLeft) computed = timeLeft;
+            timeLeft = computed;
+
             chronoTimer.textContent = Math.max(0, timeLeft);
-            
+
             if (timeLeft <= 5) {
                 chronoTimer.classList.add('warning');
             }
-            
+
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 timerInterval = null;
@@ -776,7 +827,62 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
                     handleTimeout();
                 }
             }
-        }, 1000);
+        }, 250);
+    }
+
+    // P57.2 — Stale-snapshot defense + snap protection mirror duo_answer.
+    function _onAnswerGameState(data) {
+        if (!data || !data.phaseEndsAtMs) return;
+        var phase = data.phase || '';
+        var answerPhases = ['QUESTION_ACTIVE', 'ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'];
+        if (phase && !answerPhases.includes(phase)) return;
+
+        var remaining = Math.max(0, data.phaseEndsAtMs - Date.now());
+        if (remaining < 2000 && timeLeft >= 5) {
+            console.warn('[LeagueAnswer] game_state ignored stale snapshot: server remaining=' + remaining + 'ms vs local timeLeft=' + timeLeft + 's');
+            return;
+        }
+        if (Date.now() < snapActiveUntilMs && data.phaseEndsAtMs < phaseEndsAtMs) {
+            // Snap-protection window: keep server value aside, leave local extended deadline alone.
+            serverPhaseEndsAtMs = data.phaseEndsAtMs;
+            return;
+        }
+        phaseEndsAtMs = data.phaseEndsAtMs;
+        serverPhaseEndsAtMs = data.phaseEndsAtMs;
+        var serverLeft = Math.ceil(remaining / 1000);
+        if (serverLeft > timeLeft) serverLeft = timeLeft;
+        if (Math.abs(serverLeft - timeLeft) > 1) {
+            console.log('[LeagueAnswer] game_state timer resync: local=' + timeLeft + 's server=' + serverLeft + 's');
+            timeLeft = serverLeft;
+        }
+    }
+
+    function _onAnswerState(payload) {
+        if (!payload) return;
+        var data = payload.state || payload;
+        if (!data.phaseEndsAtMs) return;
+
+        var phase = data.phase || '';
+        var answerPhases = ['QUESTION_ACTIVE', 'ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'];
+        if (phase && !answerPhases.includes(phase)) return;
+
+        var rem = Math.max(0, data.phaseEndsAtMs - Date.now());
+        if (rem < 2000 && timeLeft >= 5) {
+            console.warn('[LeagueAnswer] state ignored stale snapshot: server remaining=' + rem + 'ms vs local timeLeft=' + timeLeft + 's');
+            return;
+        }
+        if (Date.now() < snapActiveUntilMs && data.phaseEndsAtMs < phaseEndsAtMs) {
+            serverPhaseEndsAtMs = data.phaseEndsAtMs;
+            return;
+        }
+        phaseEndsAtMs = data.phaseEndsAtMs;
+        serverPhaseEndsAtMs = data.phaseEndsAtMs;
+        var srvLeft = Math.ceil(rem / 1000);
+        if (srvLeft > timeLeft) srvLeft = timeLeft;
+        if (Math.abs(srvLeft - timeLeft) > 1) {
+            console.log('[LeagueAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
+            timeLeft = srvLeft;
+        }
     }
     
     function handleTimeout() {
@@ -865,6 +971,13 @@ $isBuzzWinner = ($buzz_winner ?? 'player') === 'player';
             token: JWT_TOKEN
         });
     };
+
+    // P57.2 — Hydrate Node-authoritative phaseEndsAtMs from `state` /
+    // `game_state`. Node calcule, Blade affiche : the Blade timer is purely a
+    // mirror of the server-published deadline (with a snap-protection window
+    // and stale-snapshot defenses; see _onAnswerState / _onAnswerGameState).
+    DuoSocketClient.onState = _onAnswerState;
+    DuoSocketClient.onGameState = _onAnswerGameState;
     
     DuoSocketClient.onDisconnect = function(reason) {
         updateConnectionStatus('disconnected');

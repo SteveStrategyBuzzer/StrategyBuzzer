@@ -106,16 +106,33 @@
 
 <script src="{{ asset('js/SoloStatsEngine.js') }}"></script>
 <script>
-    let timer = 30;
+    // ─── P57.5 — RUNTIME LOCAL PRIVÉ (NON SOURCE OFFICIELLE) ──────────────
+    // Solo est un mode strictement client-side : pas d'adversaire qui observe
+    // le chrono, pas de room Node, pas de JWT, pas de phase serveur. Ce
+    // timer n'est PAS Node-authoritative et ne prétend pas l'être.
+    // Audit conformité :
+    //   • le scoring officiel est délégué au POST /solo/answer (Laravel)
+    //   • les stats live appartiennent à SoloStatsEngine (chargé ci-dessus)
+    //   • ce script n'a qu'UNE responsabilité : déclencher le submit à T=0
+    // Le wall-clock anchoring (`phaseEndsAtMs`) sert UNIQUEMENT à survivre
+    // à un onglet en arrière-plan ; ce N'EST PAS un signal serveur.
+    // Si Solo devient un jour observable / multijoueur, remplacer ce
+    // runtime local par une vraie hydration Node (cf. duo_question).
+    const SOLO_QUESTION_TIME = 30;
     const timerElement = document.getElementById('timer');
+    let phaseEndsAtMs = Date.now() + SOLO_QUESTION_TIME * 1000;
+    let timer = SOLO_QUESTION_TIME;
     const interval = setInterval(() => {
-        timer--;
+        const remainingMs = Math.max(0, phaseEndsAtMs - Date.now());
+        let computed = Math.ceil(remainingMs / 1000);
+        if (computed > timer) computed = timer; // monotone-decreasing guard
+        timer = computed;
         timerElement.textContent = timer;
         if (timer <= 0) {
             clearInterval(interval);
             document.querySelector('form').submit();
         }
-    }, 1000);
+    }, 250);
 
     (function () {
         var totalAns = {{ (int)($params['current'] ?? 1) - 1 }};

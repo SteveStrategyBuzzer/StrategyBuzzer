@@ -491,6 +491,25 @@ let questionStartTime = null;
 let firestoreUnsubscribe = null;
 let timerInterval = null;
 let timeRemaining = 10;
+// ─── P57.3 — TEMPORAIRE : timer LOCAL (PAS Node-authoritative) ─────────────
+// Cette vue (League Individual / Jeu) est pilotée intégralement par Firestore
+// + REST ; elle ne se connecte PAS au game-server Node (aucun room_id /
+// jwt_token / DuoSocketClient.connect ici). Donc :
+//   • `phaseEndsAtMs` est calculé localement (`Date.now()+QUESTION_TIME*1000`)
+//   • ce N'EST PAS la même source de vérité que duo_answer / league_answer
+//   • la résistance aux onglets en arrière-plan est le seul gain ici
+//   • toute désync joueurs↔serveur reste possible
+//
+// Pour passer cette vue en VRAI Node-authoritative il faut :
+//   1) router League Individual via le GameOrchestrator Node (room réelle,
+//      JWT, phase_changed) — pas seulement Firestore
+//   2) charger DuoSocketClient + game-context dans cette vue
+//   3) hydrater `phaseEndsAtMs` depuis l'événement Node `state` /
+//      `game_state` / `phase_changed` (cf. duo_answer.blade.php)
+// Cette migration est hors scope de #57 et doit faire l'objet d'une tâche
+// dédiée. Tant qu'elle n'est pas faite, ce timer reste TEMPORAIRE.
+const QUESTION_TIME = 10;
+let phaseEndsAtMs = null;
 
 // Listen to Firestore for real-time game state
 function listenToFirestoreMatch() {
@@ -598,22 +617,36 @@ function displayQuestionFromFirestore(question) {
 
 function startTimer() {
     clearInterval(timerInterval);
-    timeRemaining = 10;
     questionStartTime = Date.now();
-    
-    // Update question counter display to show timer
-    const counterDisplay = document.getElementById('currentQuestion');
-    const baseText = counterDisplay.textContent;
-    
+    // TEMPORAIRE — anchor LOCAL : pas de Node ici (Firestore-only view).
+    // Le wall-clock anchoring sert UNIQUEMENT a survivre a un onglet en
+    // arriere-plan ; ce N'EST PAS un signal serveur. Voir le grand bloc
+    // de commentaire en haut pour la migration future.
+    phaseEndsAtMs = Date.now() + QUESTION_TIME * 1000;
+    timeRemaining = QUESTION_TIME;
+
     timerInterval = setInterval(() => {
-        timeRemaining--;
-        // Could update a timer UI element here
+        let computed;
+        if (phaseEndsAtMs) {
+            const remainingMs = Math.max(0, phaseEndsAtMs - Date.now());
+            computed = Math.ceil(remainingMs / 1000);
+        } else {
+            // Defensive fallback: deadline cleared mid-flight.
+            computed = timeRemaining - 1;
+        }
+        // Monotone-decreasing guard mirrors the canonical pattern.
+        if (computed > timeRemaining) computed = timeRemaining;
+        timeRemaining = computed;
+
         if (timeRemaining <= 0) {
             clearInterval(timerInterval);
-            // Time's up - disable buzz
+            timerInterval = null;
+            // Time's up — disable buzz. The actual phase transition is
+            // driven by the round/answer pipeline (Firestore + REST), not
+            // by this client-side tick.
             document.getElementById('buzzButton').disabled = true;
         }
-    }, 1000);
+    }, 250);
 }
 
 async function loadGameState() {

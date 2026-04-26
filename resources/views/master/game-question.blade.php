@@ -513,6 +513,24 @@ let timeRemaining = TIME_LIMIT;
 let timerInterval = null;
 let hasBuzzed = false;
 let isPaused = false;
+// ─── P57.4 — TEMPORAIRE : fallback LOCAL qui CÈDE à Node ───────────────────
+// La vue Maître charge bien partials.game-context (room_id + jwt_token) et
+// DuoSocketClient ; un GameOrchestrator Node existe pour le mode MASTER.
+// MAIS, à date, la progression de phase Maître est pilotée par le HOST via
+// HTTP (boutons "Révéler la réponse" / "Passer") plutôt que par la boucle
+// d'orchestration Node. Conséquence concrète :
+//   • un événement Node `state` / `phase_changed` avec `phaseEndsAtMs` PEUT
+//     arriver (et alors `_onMasterPhaseSnapshot` ci-dessous prend la main —
+//     c'est la seule source autorisée à hydrater `phaseEndsAtMs`)
+//   • mais s'il n'arrive pas, la vue retombe sur un anchor LOCAL
+//     (`Date.now() + TIME_LIMIT * 1000`) — c'est un FALLBACK, pas une
+//     source de vérité serveur, et il est nommé TEMPORAIRE.
+// Migration vers vrai Node-authoritative = tâche séparée : router le mode
+// MASTER à travers la boucle orchestrator (transitionToQuestionActive,
+// emitPhaseChanged) au lieu de laisser le host piloter par REST.
+let phaseEndsAtMs = null;          // null tant que ni Node ni fallback n'a ancré
+let serverPhaseEndsAtMs = null;    // dernier deadline Node observé (audit)
+let phaseAnchorIsLocalFallback = false;  // true si l'anchor courant est le fallback local
 
 document.addEventListener('DOMContentLoaded', function() {
     startTimer();
@@ -582,25 +600,79 @@ document.addEventListener('DOMContentLoaded', function() {
 function startTimer() {
     const timerEl = document.getElementById('timer');
     const timerValue = document.getElementById('timer-value');
-    
+
+    // ── Anchor : Node si déjà reçu, sinon FALLBACK LOCAL ──────────────────
+    // Si `_onMasterPhaseSnapshot` a déjà reçu un deadline serveur, ne pas
+    // l'écraser. Sinon, on pose un anchor LOCAL clairement marqué TEMPORAIRE
+    // (cf. bloc en tête de fichier : la progression de phase Maître n'est
+    // pas encore pilotée par la boucle orchestrator Node).
+    // La transition parasite legacy (`window.location.href` → page réponse
+    // sur timeout client) a été supprimée : l'avance de phase doit venir
+    // d'une action host explicite, pas d'un compteur client.
+    if (!phaseEndsAtMs || phaseAnchorIsLocalFallback) {
+        phaseEndsAtMs = Date.now() + Math.max(0, timeRemaining) * 1000;
+        phaseAnchorIsLocalFallback = true;
+    }
+
     timerInterval = setInterval(() => {
-        timeRemaining--;
+        let computed;
+        if (phaseEndsAtMs) {
+            const remainingMs = Math.max(0, phaseEndsAtMs - Date.now());
+            computed = Math.ceil(remainingMs / 1000);
+        } else {
+            // Defensive fallback: deadline cleared mid-flight.
+            computed = timeRemaining - 1;
+        }
+        // Monotone-decreasing guard: a late state event resyncing
+        // phaseEndsAtMs upward must never push the chrono back up.
+        if (computed > timeRemaining) computed = timeRemaining;
+        timeRemaining = computed;
+
         timerValue.textContent = timeRemaining;
-        
+
         if (timeRemaining <= 10) {
             timerEl.classList.add('danger');
             timerEl.classList.remove('warning');
         } else if (timeRemaining <= 20) {
             timerEl.classList.add('warning');
         }
-        
+
         if (timeRemaining <= 0) {
             clearInterval(timerInterval);
-            if (IS_HOST) {
-                window.location.href = '{{ route("game.master.answer") }}';
-            }
+            timerInterval = null;
+            // Phase transition is owned by Node now (was: parasitic
+            // window.location.href on the host). The host control buttons
+            // ("Révéler la réponse", "Passer") still drive explicit
+            // navigation; the timeout itself just stops the visible counter.
         }
-    }, 1000);
+    }, 250);
+}
+
+// P57.4 — Hydrate phaseEndsAtMs from Node when available.
+// Si Node publie un deadline pour ce room, on remplace IMMÉDIATEMENT
+// l'anchor local fallback et on bascule en mode authoritative pour ce
+// cycle. Tant que Node n'a rien envoyé, le fallback local reste actif
+// (et marqué comme tel via `phaseAnchorIsLocalFallback`).
+function _onMasterPhaseSnapshot(data) {
+    if (!data || !data.phaseEndsAtMs) return;
+    var remaining = Math.max(0, data.phaseEndsAtMs - Date.now());
+    if (remaining < 2000 && timeRemaining >= 5) {
+        console.warn('[Master] state ignored stale snapshot: server remaining=' + remaining + 'ms vs local timeRemaining=' + timeRemaining + 's');
+        return;
+    }
+    serverPhaseEndsAtMs = data.phaseEndsAtMs;
+    // Si l'anchor courant est le fallback local, Node l'écrase : on devient
+    // authoritative pour cette phase.
+    if (phaseAnchorIsLocalFallback) {
+        phaseEndsAtMs = data.phaseEndsAtMs;
+        phaseAnchorIsLocalFallback = false;
+        return;
+    }
+    // Anchor déjà Node : monotone-decreasing guard, on ne remonte jamais.
+    if (phaseEndsAtMs && data.phaseEndsAtMs > phaseEndsAtMs) {
+        return;
+    }
+    phaseEndsAtMs = data.phaseEndsAtMs;
 }
 
 function submitAnswer(answerIndex) {
@@ -639,4 +711,30 @@ function submitBuzz() {
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="{{ asset('js/DuoSocketClient.js') }}"></script>
 <script src="{{ asset('js/GameplayRuntime.js') }}"></script>
+
+{{-- P57.4 — Wire Node `state` / `game_state` / `phase_changed` events into the
+     local timer so phaseEndsAtMs is hydrated from the orchestrator when it
+     emits one. If Node never publishes a deadline for this room, the timer
+     stays on the locally-anchored fallback set by startTimer() (clearly
+     marked TEMPORAIRE — see top-of-file P57.4 comment). --}}
+<script>
+(function () {
+    if (!window.DuoSocketClient || typeof _onMasterPhaseSnapshot !== 'function') return;
+    var prevState = DuoSocketClient.onState;
+    var prevGameState = DuoSocketClient.onGameState;
+    var prevPhaseChanged = DuoSocketClient.onPhaseChanged;
+    DuoSocketClient.onState = function (data) {
+        _onMasterPhaseSnapshot(data && (data.state || data));
+        if (typeof prevState === 'function') prevState(data);
+    };
+    DuoSocketClient.onGameState = function (data) {
+        _onMasterPhaseSnapshot(data);
+        if (typeof prevGameState === 'function') prevGameState(data);
+    };
+    DuoSocketClient.onPhaseChanged = function (data) {
+        _onMasterPhaseSnapshot(data);
+        if (typeof prevPhaseChanged === 'function') prevPhaseChanged(data);
+    };
+})();
+</script>
 @endsection
