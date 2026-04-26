@@ -1093,29 +1093,40 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
 
             if (timeLeft <= 0) {
-                // The auto-timeout is a UX safety net for the REAL answer
-                // window only. While the buzzer is still bleeding off
-                // residual QUESTION_ACTIVE time (they buzzed mid-question
-                // and were redirected here before Node opened the official
-                // ANSWER_SELECTION phase), reaching 0s does NOT mean their
-                // answer time is up — Node will publish ANSWER_SELECTION on
-                // the next phase transition and the chrono will jump UP to
-                // 10s. Auto-submitting here would cut their answer window
-                // short. We therefore restrict the safety net to phases
-                // where the chrono is authoritative for the answer window.
-                var inAnswerWindow =
-                    currentPhase === 'ANSWER_SELECTION' ||
-                    currentPhase === 'ANSWER_COLLECTION' ||
-                    currentPhase === 'BUZZ_WINNER_ANSWERING';
-                if (!inAnswerWindow) {
-                    return; // keep ticking; do NOT auto-submit yet
-                }
-                clearInterval(timerInterval);
-                timerInterval = null;
+                // Auto-timeout is a UX safety net for the player's REAL
+                // answer window only. Each buzz position has a different
+                // window:
+                //   - 'first'    → ANSWER_SELECTION (10 s) is THEIR window
+                //   - 'second'   → ANSWER_COLLECTION (2 s grace) is THEIR
+                //                  window; ANSWER_SELECTION counts down
+                //                  the FIRST buzzer's lock and is NOT a
+                //                  signal that their own window expired
+                //   - 'no_buzz' (Historian) → ANSWER_COLLECTION as well
+                // Without this stricter gate, a position-2 buzzer was
+                // auto-submitted as -1 the instant the bot's 10 s lock
+                // expired, before they ever saw their own 2 s window —
+                // i.e. the "bug de temps après avoir répondu" symptom.
                 // Node remains the sole authority on the phase transition
                 // (handleAnswerTimeout) — a late client submission is
                 // harmless because the orchestrator ignores submissions
                 // outside the answer window.
+                var isMyAnswerWindow =
+                    currentPhase === 'ANSWER_COLLECTION' ||
+                    currentPhase === 'BUZZ_WINNER_ANSWERING' ||
+                    (currentPhase === 'ANSWER_SELECTION' && PLAYER_BUZZ_POSITION === 'first');
+                if (!isMyAnswerWindow) {
+                    // Not my window yet — stop ticking and display "--"
+                    // so the chrono doesn't visibly freeze at "0s". The
+                    // next phase_changed (typically ANSWER_COLLECTION
+                    // for position-2) re-anchors phaseEndsAtMs and
+                    // restarts the timer with the correct deadline.
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    if (timerSeconds) timerSeconds.textContent = '--';
+                    return;
+                }
+                clearInterval(timerInterval);
+                timerInterval = null;
                 if (!answered && canAnswer()) {
                     handleTimeout();
                 }
@@ -1437,14 +1448,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         console.error('[DuoAnswer] Socket error:', error);
     }
     function _onAnswerRevealed(data) {
-        if (isRedirecting) return;
-
         // Bug #63 fix — `answer_revealed` is broadcast room-wide by Node, with one
         // event per buzzer. Without this filter, a fast-buzzing opponent who answers
         // wrong would flip MY cards to "incorrect" before MY own answer_revealed
         // arrives. Use the canonical SB_GAME_CONTEXT.currentUserId (auth()->id() as
         // string) — already published by partials/game-context.blade.php via the
         // include directive at the top of this view; no new global needed.
+        // NOTE: this filter MUST run before the isRedirecting bail below — an event
+        // for the opponent must always be ignored, even when no nav is pending.
         var _myId = (window.SB_GAME_CONTEXT && window.SB_GAME_CONTEXT.currentUserId)
             || window.CURRENT_USER_ID
             || '';
@@ -1454,11 +1465,27 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             return;
         }
 
+        // ── Audio + visual feedback ALWAYS run for OUR own answer_revealed ──
+        // Even when a navigation is already pending (the 250 ms post-answer
+        // redirect in selectAnswer flips isRedirecting=true the instant the
+        // socket flush completes; without this, answer_revealed arrives a
+        // few ms later, hits the legacy `if (isRedirecting) return;` guard
+        // at the top of the function, and the player hears nothing — the
+        // "son inexistance des fois" symptom). The audio cue is short and
+        // does not interfere with the imminent navigation; the highlight
+        // helps the eye anchor on the correct/incorrect button before the
+        // page swaps.
         waitingOverlay.style.display = 'none';
         const isCorrect    = data.isCorrect || false;
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
         const pointsEarned = data.points || data.pointsEarned || 0;
         showResult(isCorrect, correctIndex, pointsEarned);
+
+        // Side-effects below (sessionStorage stash) are only useful if we
+        // are about to navigate to /result via a NEW navigation. If a nav
+        // is already in flight, the next page already has the data it
+        // needs — skip the stash and bail.
+        if (isRedirecting) return;
 
         // Stash the server-provided "Le saviez-vous?" fun fact and the question
         // number into sessionStorage so the next page (duo_result) can show them
@@ -1520,8 +1547,24 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         if (phase === 'ANSWER_COLLECTION') {
-            // Grace period: all players have buzzed, server collecting answers.
-            // Ensure waiting overlay is visible if this player already submitted.
+            // Grace period: all earlier buzzers have answered (or their lock
+            // expired), and the server is now collecting from the remaining
+            // buzzers (typically position-2). For THEM, this is the TRUE
+            // start of their personal answer window — so re-anchor the
+            // chrono on the freshly-published `phaseEndsAtMs` and restart
+            // the countdown. Without this, the timer remains anchored on
+            // ANSWER_SELECTION's now-expired deadline and either freezes
+            // visibly at "0s" or trips the auto-timeout safety net the
+            // instant the player lands here, submitting -1 before they
+            // can pick an answer (the "bug de temps après avoir répondu"
+            // symptom). For an already-answered player we just keep the
+            // waiting overlay visible until RESULT.
+            if (data.phaseEndsAtMs) {
+                phaseEndsAtMs = data.phaseEndsAtMs;
+                if (canAnswer() && !answered) {
+                    startTimer();
+                }
+            }
             if (answered && waitingOverlay) {
                 waitingOverlay.style.display = 'flex';
             }
@@ -1544,6 +1587,20 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // ANSWER_SELECTION/ANSWER_COLLECTION, never beyond.
             if (waitingOverlay) waitingOverlay.style.display = 'none';
 
+            // CLAIM the navigation slot SYNCHRONOUSLY (not inside the
+            // setTimeout) — fixes the "du retour à question" symptom.
+            // Previously, RESULT scheduled a 2500 ms delayed nav to /result
+            // and only flipped isRedirecting=true inside the timer. During
+            // those 2500 ms, a fast-following SYNC/QUESTION_ACTIVE
+            // phase_changed reached the function (top-of-function bail
+            // still saw isRedirecting=false), scheduled its OWN 800 ms
+            // redirect to /question, and won the race — sending the
+            // player back to /question instead of forward to /result.
+            // Setting the flag here makes the top-of-function guard reject
+            // every subsequent phase_changed for the rest of this page's
+            // lifetime, so /result is the only possible destination.
+            isRedirecting = true;
+
             // V3: per-question result — navigate to result page after visual feedback.
             // UX: previous 600ms delay for correct answers was too snappy — players
             // barely had time to read "Bonne réponse !" before the page swapped.
@@ -1551,8 +1608,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // visual feedback on the Answer page stays readable for ~2.5s.
             var resultDelay = 2500;
             setTimeout(function() {
-                if (isRedirecting) return;
-                isRedirecting = true;
                 _nav((window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID));
             }, resultDelay);
             return;
@@ -1560,27 +1615,30 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
         if (phase === 'QUESTION_ACTIVE' || phase === 'SYNC') {
             // Reconnect edge case: server already moved past RESULT while we were on answer page.
+            // Note: the RESULT branch above claims isRedirecting synchronously,
+            // so under nominal flow this branch never wins the race against a
+            // pending /result navigation. It only fires on a true cold landing
+            // where the server is already advancing to the next question and
+            // we never saw RESULT — in which case forwarding to /question is
+            // the right behaviour.
+            isRedirecting = true;
             setTimeout(function() {
-                if (isRedirecting) return;
-                isRedirecting = true;
                 _nav((window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID));
             }, 800);
             return;
         }
 
         if (phase === 'ROUND_SCOREBOARD') {
+            isRedirecting = true;
             setTimeout(function() {
-                if (isRedirecting) return;
-                isRedirecting = true;
                 _nav((window.ROUND_SCOREBOARD_URL || '/game/duo/round-scoreboard') + '?match_id=' + encodeURIComponent(MATCH_ID));
             }, 2500);
             return;
         }
 
         if (phase === 'MATCH_END') {
+            isRedirecting = true;
             setTimeout(function() {
-                if (isRedirecting) return;
-                isRedirecting = true;
                 _nav((window.MATCH_RESULT_URL || '/game/duo/match-result') + '?match_id=' + encodeURIComponent(MATCH_ID));
             }, 1000);
         }
