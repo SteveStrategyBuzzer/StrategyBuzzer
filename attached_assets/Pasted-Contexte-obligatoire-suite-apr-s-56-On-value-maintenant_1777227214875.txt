@@ -1,0 +1,118 @@
+Contexte obligatoire — suite après #56
+
+On évalue maintenant les tâches #61, #62 et #63.
+Raisonner multi-modes et avec les règles immuables :
+
+Replit = source de vérité
+GitHub = miroir
+VM = production (jamais source de vérité)
+
+Architecture :
+Blade affiche.
+Node calcule.
+Laravel persiste.
+Firebase jamais gameplay.
+
+Aucun patch à l’aveugle.
+D’abord audit architectural de ces 3 tâches.
+
+========================
+TÂCHE #61 — Skills Visionnaire / Sprinteur
+========================
+
+Évaluer et clarifier d’abord :
+
+Point critique à trancher :
+- est-ce 1 utilisation par manche (uses_per_round)
+ou
+- 1 utilisation par match (uses_per_match) ?
+
+Le plan ne doit pas mélanger les deux.
+
+Vérifier que :
+- secure_answer
+- time_bonus
+
+ne restent plus purement client dans public/js/duo-skill-effects.js.
+
+Je veux qu’elles suivent le même contrat que les autres skills :
+DuoSocketClient.useSkill
+→ validation Node
+→ décrément serveur
+→ skill_effect officiel
+
+Attention :
+- secure_answer ne doit jamais modifier score côté client.
+- time_bonus ne doit pas seulement faire +2s localement si le temps officiel vient de phaseEndsAtMs.
+Si +2s modifie le vrai temps, Node doit l’autoriser et publier l’effet.
+
+Vérifier aussi les impacts :
+- Duo
+- Solo compatibilité (même contrat skill, exécution adaptée)
+- Master futur
+- Ligue futur
+
+Dire si ça doit aller dans docs/decisions ou docs/audits.
+
+========================
+TÂCHE #63 — Bug bonne réponse affichée incorrecte
+========================
+
+Auditer si le diagnostic est correct :
+
+answer_revealed est émis à toute la room.
+Le handler _onAnswerRevealed applique potentiellement l’isCorrect adverse.
+
+Vérifier si le bon filtre est :
+if (String(data.playerId) !== String(MY_PLAYER_ID)) return;
+
+Mais utiliser en priorité SB_GAME_CONTEXT si player id y est déjà disponible,
+pas créer un nouveau global parasite si évitable.
+
+Si le diagnostic tient :
+marquer patch chirurgical candidat.
+
+========================
+TÂCHE #62 — Navigation immédiate vers Result après réponse
+========================
+
+Évaluer le risque architectural :
+
+Je veux savoir si cette solution respecte :
+Node autoritaire
+ou recrée une navigation client parasite.
+
+Version acceptable uniquement si :
+
+- après submit le client peut aller vers /duo/result
+- mais duo_result devient page passive d’attente (“En attente du résultat…”)
+- aucun score/résultat n’est calculé côté Blade
+- la page attend :
+answer_revealed
+round_stats
+match_stats
+phase_changed RESULT
+
+DuoController doit seulement assouplir l’accès en ANSWER_SELECTION / ANSWER_COLLECTION.
+
+Valider si cette solution reste idempotente si phase_changed RESULT arrive avant ou après.
+
+========================
+ORDRE D’ÉVALUATION
+========================
+
+Je veux l’analyse dans cet ordre :
+
+1. #63
+2. #61
+3. #62
+
+Et verdict clair pour chaque tâche :
+GO / GO avec conditions / REFUS
+
+Pas de patch encore.
+Seulement audit + critique + risques + prérequis.
+Si une tâche touche l’architecture, signaler si elle doit être documentée.
+
+Si Replit et réalité terminal se contredisent :
+terminal gagne.
