@@ -1436,7 +1436,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // wrong would flip MY cards to "incorrect" before MY own answer_revealed
         // arrives. Use the canonical SB_GAME_CONTEXT.currentUserId (auth()->id() as
         // string) — already published by partials/game-context.blade.php via the
-        // @include at the top of this view; no new global needed.
+        // include directive at the top of this view; no new global needed.
         var _myId = (window.SB_GAME_CONTEXT && window.SB_GAME_CONTEXT.currentUserId)
             || window.CURRENT_USER_ID
             || '';
