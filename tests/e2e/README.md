@@ -11,6 +11,7 @@ DOM contract that `public/js/GameplayRuntime.js` and
 | Mode             | Spec                          | Status                                                                                  |
 | ---------------- | ----------------------------- | --------------------------------------------------------------------------------------- |
 | **Duo**          | `duo.spec.ts`                 | Live stats (self+opponent) + DB finalize. Uses dev-only `BotPlayerService`.             |
+| **Duo Patch 4**  | `duo-patch4-score.spec.ts`    | Score affiché == `answer_revealed.pointsEarned` (Node = source unique) + aucun retour parasite vers `/duo/answer`. Couvre les 6 scénarios de la grille 2/1/0/-2 (#67). |
 | **Solo**         | `solo.spec.ts`                | Local `SoloStatsEngine` self stats.                                                     |
 | **Master**       | `master.spec.ts`              | DOM/runtime contract only — no Master bot service exists yet.                           |
 | **League Team**  | `league-team.skip.md`         | **SKIPPED (blocked).** League Team is still REST-polling; awaits Node-engine migration. |

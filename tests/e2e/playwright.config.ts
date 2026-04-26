@@ -10,7 +10,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+  reporter: [
+    ['list'],
+    ['html', { open: 'never', outputFolder: '/tmp/playwright-report' }],
+  ],
+  outputDir: '/tmp/playwright-test-results',
   use: {
     baseURL,
     headless: true,
@@ -20,6 +24,12 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    // Allow CI / Replit agent environments to point at a system Chromium when
+    // the bundled headless shell is missing system libs (libgbm, libudev…).
+    // Set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to override.
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+      : undefined,
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

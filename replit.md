@@ -21,7 +21,7 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Unified Game Layout:** A shared `game_question.blade.php` template is used for Solo and Duo modes. All multiplayer gameplay views extend `layouts/game.blade.php`.
 
-**Real-Time Multiplayer Synchronization:** Multiplayer modes use Socket.IO for low-latency communication via a Node.js Game Server. JWT tokens are pre-generated for authentication, and Redis is used for game state persistence. Solo mode uses AI opponents.
+**Real-Time Multiplayer Synchronization:** Multiplayer modes use Socket.IO for low-latency communication via a Node.js Game Server. JWT tokens are pre-generated for authentication, and Redis is used for game state persistence. Solo mode uses AI opponents. The Game Server's `GameOrchestrator.startGame()` skips its LLM question pipeline whenever the room already has questions pre-loaded (e.g. via `POST /rooms/:roomId/questions`); this lets callers that own their own question source — including deterministic E2E tests and any future host-supplied-question modes — drive matches without their seed being overwritten.
 
 **Avatar System:** User-specific avatars (12 across 3 tiers) offer 25+ unique skills managed by `AvatarSkillService.php`. **The full canonical contract — universal Question-page visibility (4 states: disponible/actif/consommé/bloqué), per-skill activation pages, Node-as-sole-authority architecture, the 12-avatar catalogue, the Solo "same contract, possibly local execution" rule, and the 10-point per-skill validation checklist — lives in `docs/STRATEGIC_AVATAR_SKILL_CONTRACT.md` and MUST be read and obeyed by any work that touches a strategic avatar skill in any mode.**
 

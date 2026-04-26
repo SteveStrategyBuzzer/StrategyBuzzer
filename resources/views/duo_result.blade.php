@@ -1776,7 +1776,9 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         }
 
         var isCorrect    = !!data.isCorrect;
-        var pointsEarned = Number(data.points || data.pointsEarned || 0);
+        // Patch 4 — Source unique de vérité = `pointsEarned` strict (Node).
+        // Pas de fallback sur `data.points` legacy.
+        var pointsEarned = Number(data.pointsEarned ?? 0);
 
         // Update result-header variant + title
         try {

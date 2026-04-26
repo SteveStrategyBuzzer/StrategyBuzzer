@@ -119,23 +119,34 @@ export class GameOrchestrator {
     room.usedQuestionIds = new Set<string>();
     this.roomManager.resetSkillEffects(roomId);
 
-    const pipelineResult = await initQuestionPipeline({
-      roomId,
-      theme: room.pipelineConfig.theme,
-      niveau: room.pipelineConfig.niveau,
-      language: room.pipelineConfig.language,
-      maxRounds: room.pipelineConfig.maxRounds,
-    });
+    // If questions were pre-loaded via POST /rooms/:roomId/questions
+    // (e.g. by deterministic E2E tests, or any future caller that owns
+    // its own question source), skip the LLM pipeline entirely. This
+    // keeps the production behaviour identical for callers that don't
+    // pre-load questions, and makes the API symmetric.
+    if (room.state.questions.length > 0) {
+      for (const q of room.state.questions) {
+        room.usedQuestionIds.add(q.id);
+      }
+      console.log(`[GameOrchestrator] Using ${room.state.questions.length} pre-loaded question(s) for room ${roomId} (pipeline skipped)`);
+    } else {
+      const pipelineResult = await initQuestionPipeline({
+        roomId,
+        theme: room.pipelineConfig.theme,
+        niveau: room.pipelineConfig.niveau,
+        language: room.pipelineConfig.language,
+        maxRounds: room.pipelineConfig.maxRounds,
+      });
 
-    if (!pipelineResult.success || !pipelineResult.firstQuestion) {
-      console.error(`[GameOrchestrator] Failed to initialize question pipeline for room ${roomId}: ${pipelineResult.error}`);
-      return { success: false, error: pipelineResult.error || "Failed to initialize questions" };
-    }
+      if (!pipelineResult.success || !pipelineResult.firstQuestion) {
+        console.error(`[GameOrchestrator] Failed to initialize question pipeline for room ${roomId}: ${pipelineResult.error}`);
+        return { success: false, error: pipelineResult.error || "Failed to initialize questions" };
+      }
 
-    room.state.questions = [pipelineResult.firstQuestion];
-    room.usedQuestionIds ??= new Set();
+      room.state.questions = [pipelineResult.firstQuestion];
       room.usedQuestionIds.add(pipelineResult.firstQuestion.id);
-    console.log(`[GameOrchestrator] Pipeline initialized with first question for room ${roomId}`);
+      console.log(`[GameOrchestrator] Pipeline initialized with first question for room ${roomId}`);
+    }
 
     const event = this.roomManager.startGame(roomId);
     if (!event) {

@@ -80,6 +80,7 @@ outputType = "console"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd apps/game-server && PORT=3001 npx tsx src/index.ts"
+waitForPort = 3001
 
 [[workflows.workflow]]
 name = "Redis Server"
@@ -99,14 +100,6 @@ externalPort = 3000
 [[ports]]
 localPort = 3001
 externalPort = 3001
-
-[[ports]]
-localPort = 5000
-externalPort = 80
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
 
 [[ports]]
 localPort = 24678

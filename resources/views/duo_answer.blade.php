@@ -1234,15 +1234,23 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         console.log('[DuoAnswer] Historian skill activated - can answer for 1 point');
     }
     
+    // Task #67 / Patch 4 — `showResult()` is now 100% visual + numeric.
+    // Source unique de vérité = `answer_revealed.pointsEarned` reçu de Node
+    // (déjà filtré par `playerId` dans `_onAnswerRevealed`). Aucune chaîne
+    // « Correct », « Incorrect », « Bonne réponse » ou « Mauvaise réponse »
+    // n'est rendue ici (interdit par la règle gameplay). Aucun calcul local
+    // de score : le delta affiché est strictement la valeur fournie par Node.
     function showResult(isCorrect, correctIndex, pointsEarned) {
-        // Always: play sound
+        // Audio cue (non-textuel) — autorisé.
         if (isCorrect && correctSound) {
             correctSound.play().catch(function() {});
         } else if (!isCorrect && incorrectSound) {
             incorrectSound.play().catch(function() {});
         }
 
-        // Always: highlight answer buttons
+        // Highlight visuel sur les boutons de réponse :
+        //  - bouton de la bonne réponse canonique (`correctIndex`) → vert + ✓
+        //  - bouton choisi par le joueur s'il s'est trompé           → rouge + ✗
         answerButtons.forEach(function(btn, idx) {
             btn.classList.remove('selected');
             const indicator = document.getElementById('indicator' + idx);
@@ -1255,21 +1263,25 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             }
         });
 
-        // Popup overlay: ONLY for incorrect answers
-        if (!isCorrect) {
-            resultOverlay.className = 'result-overlay incorrect';
-            resultText.textContent = '{{ __("Mauvaise réponse !") }}';
-            if (historianSkillUsed) {
-                pointsText.textContent = '{{ __("0 point") }}';
+        // Badge numérique : strictement `pointsEarned` reçu de Node.
+        // Aucun calcul local (pas d'appel à `calculatePotentialPoints` ici).
+        var pts = Number(pointsEarned);
+        if (!isFinite(pts)) pts = 0;
+        if (pointsText) {
+            if (pts === 0) {
+                pointsText.textContent = @json(__('0 point'));
             } else {
-                pointsText.textContent = '{{ __("-2 points") }}';
+                var unit = (pts === 1 || pts === -1)
+                    ? @json(__('point'))
+                    : @json(__('points'));
+                pointsText.textContent = (pts > 0 ? '+' : '') + pts + ' ' + unit;
             }
-            if (correctIndex !== undefined && correctIndex >= 0) {
-                const choices = @json($choices);
-                if (choices[correctIndex]) {
-                    correctAnswerText.textContent = '{{ __("La bonne réponse était :") }} ' + choices[correctIndex];
-                }
-            }
+        }
+        if (resultText)        resultText.textContent = '';
+        if (correctAnswerText) correctAnswerText.textContent = '';
+        if (resultOverlay) {
+            var variant = pts > 0 ? 'correct' : (pts < 0 ? 'incorrect' : '');
+            resultOverlay.className = 'result-overlay' + (variant ? ' ' + variant : '');
             resultOverlay.style.display = 'block';
         }
     }
@@ -1478,7 +1490,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         waitingOverlay.style.display = 'none';
         const isCorrect    = data.isCorrect || false;
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
-        const pointsEarned = data.points || data.pointsEarned || 0;
+        // Patch 4 — Source unique de vérité = `pointsEarned` strict (Node).
+        // Aucun fallback sur `data.points` (legacy) : si Node ne l'envoie pas,
+        // on affiche 0 plutôt que de masquer un bug en aval.
+        const pointsEarned = data.pointsEarned ?? 0;
         showResult(isCorrect, correctIndex, pointsEarned);
 
         // Side-effects below (sessionStorage stash) are only useful if we

@@ -89,7 +89,7 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
         error: "Room not found",
       });
     }
-    
+
     const sanitizedState = {
       ...state,
       questions: state.questions.map(q => ({
