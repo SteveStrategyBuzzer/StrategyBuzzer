@@ -213,6 +213,18 @@ export class GameOrchestrator {
     });
 
     console.log(`[GameOrchestrator] Buzz winner: ${player?.name} (${playerId}), position: ${position}`);
+
+    // Patch 2 — Early-exit: if every CONNECTED player in the room has now
+    // buzzed, there is nothing more to wait for in QUESTION_ACTIVE. Open the
+    // official ANSWER_SELECTION window immediately so buzzers get their
+    // full 10s answer time without burning the rest of the buzz window.
+    // We filter on isConnected so a player who dropped mid-question does not
+    // block the early-exit (they cannot buzz anyway).
+    const connectedPlayers = Object.values(room.state.players).filter((p) => p.isConnected).length;
+    if (connectedPlayers > 0 && room.state.buzzQueue.length >= connectedPlayers) {
+      console.log(`[GameOrchestrator] All ${connectedPlayers} connected player(s) buzzed in room ${roomId} — early exit QUESTION_ACTIVE → ANSWER_SELECTION`);
+      this.transitionToAnswerSelection(roomId);
+    }
   }
 
   handleAnswer(roomId: string, playerId: string, answer: number | string | boolean): void {
@@ -558,7 +570,7 @@ export class GameOrchestrator {
         break;
 
       case "ANSWER_SELECTION":
-        this.handleAnswerTimeout(roomId);
+        this.handleAnswerSelectionTimeout(roomId);
         break;
 
       case "ANSWER_COLLECTION":
@@ -742,13 +754,83 @@ export class GameOrchestrator {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    // V3: QUESTION_ACTIVE timeout → ANSWER_COLLECTION (2-3s grace) then RESULT
-    // If no buzzers at all, skip ANSWER_COLLECTION and go straight to RESULT
+    // Patch 2 — QUESTION_ACTIVE timeout routing:
+    //   • No buzzer at all  → skip ANSWER_SELECTION, go straight to RESULT.
+    //   • At least 1 buzzer → enter the official ANSWER_SELECTION window
+    //                         (10s) where buzzed players have a guaranteed,
+    //                         fair amount of time to actually pick an answer.
     if (room.state.buzzQueue.length === 0) {
-      console.log(`[GameOrchestrator] No buzzers in room ${roomId} — skipping ANSWER_COLLECTION`);
+      console.log(`[GameOrchestrator] No buzzers in room ${roomId} — skipping ANSWER_SELECTION`);
       this.revealAnswer(roomId);
       return;
     }
+
+    this.transitionToAnswerSelection(roomId);
+  }
+
+  /**
+   * Patch 2 — Officially open the ANSWER_SELECTION window.
+   * Called either:
+   *   (a) from handleQuestionTimeout when QUESTION_ACTIVE expires with ≥ 1 buzzer
+   *   (b) from handleBuzz early-exit when ALL connected players have buzzed,
+   *       so we don't make them wait the full 8s buzz window for nothing.
+   * Carries lockedAnswerPlayerId in the broadcast so duo_question.blade.php
+   * can redirect the correct buzzer(s) to the answer page.
+   */
+  private transitionToAnswerSelection(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    if (room.state.phase !== "QUESTION_ACTIVE") {
+      console.warn(`[GameOrchestrator] transitionToAnswerSelection skipped: not in QUESTION_ACTIVE (${room.state.phase})`);
+      return;
+    }
+
+    // Cancel any in-flight QUESTION_ACTIVE timer — we're advancing early or on timeout.
+    this.clearPhaseTimer(roomId);
+
+    const answerSelectionTimer = room.state.config.timers.answerSelection;
+    const phaseEvent: PhaseChangedEvent = {
+      id: room.state.lastEventId + 1,
+      type: "PHASE_CHANGED",
+      atMs: Date.now(),
+      sessionId: roomId,
+      fromPhase: room.state.phase,
+      toPhase: "ANSWER_SELECTION",
+      phaseEndsAtMs: Date.now() + answerSelectionTimer,
+    };
+
+    room.state = applyEvent(room.state, phaseEvent);
+    room.events.push(phaseEvent);
+
+    this.io.to(roomId).emit("event", { event: phaseEvent });
+    this.logEventToRedis(roomId, phaseEvent);
+    this.emitPhaseChanged(roomId);
+    this.schedulePhaseTimeout(roomId);
+
+    console.log(`[GameOrchestrator] ANSWER_SELECTION phase (${answerSelectionTimer}ms) for room ${roomId} with ${room.state.buzzQueue.length} buzzer(s), locked: ${room.state.lockedAnswerPlayerId}`);
+  }
+
+  private handleAnswerTimeout(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    // All buzzers who didn't answer will be scored as timeout (-2 pts) in scoreAllBuzzers
+    // We use allBuzzerAnswers as single source of truth - buzzers not in the map = timeout
+    console.log(`[GameOrchestrator] ANSWER_COLLECTION timeout in room ${roomId} - revealing answers`);
+    this.revealAnswer(roomId);
+  }
+
+  /**
+   * Patch 1 — ANSWER_SELECTION timeout handler.
+   * When the official 10s answer window expires, transition to the short
+   * ANSWER_COLLECTION grace period (catches answers in flight at the
+   * boundary). ANSWER_COLLECTION's own timeout will then trigger
+   * revealAnswer → RESULT.
+   */
+  private handleAnswerSelectionTimeout(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
 
     const answerCollectionTimer = room.state.config.timers.answerCollection;
     const phaseEvent: PhaseChangedEvent = {
@@ -769,17 +851,7 @@ export class GameOrchestrator {
     this.emitPhaseChanged(roomId);
     this.schedulePhaseTimeout(roomId);
 
-    console.log(`[GameOrchestrator] ANSWER_COLLECTION phase (${answerCollectionTimer}ms) for room ${roomId} with ${room.state.buzzQueue.length} buzzer(s)`);
-  }
-
-  private handleAnswerTimeout(roomId: string): void {
-    const room = this.roomManager.getRoom(roomId);
-    if (!room) return;
-
-    // All buzzers who didn't answer will be scored as timeout (-2 pts) in scoreAllBuzzers
-    // We use allBuzzerAnswers as single source of truth - buzzers not in the map = timeout
-    console.log(`[GameOrchestrator] ANSWER_COLLECTION timeout in room ${roomId} - revealing answers`);
-    this.revealAnswer(roomId);
+    console.log(`[GameOrchestrator] ANSWER_SELECTION timeout in room ${roomId} → ANSWER_COLLECTION grace (${answerCollectionTimer}ms)`);
   }
 
   private shouldShowWaiting(questionIndex: number): boolean {

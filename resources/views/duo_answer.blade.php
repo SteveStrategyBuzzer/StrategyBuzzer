@@ -994,15 +994,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     let selectedIndex = null;
     let isRedirecting = false;
     let historianSkillUsed = false;
-    let phaseEndsAtMs = null;  // FIX: track server-side phase end time (may be locally extended on snap)
-    // P57.1 — Snap-persistence bookkeeping
-    //   serverPhaseEndsAtMs : authoritative deadline as published by Node;
-    //                        kept aside so audit / late events can reason about it.
-    //   snapActiveUntilMs   : monotonically-decreasing wall-clock cutoff during
-    //                        which state-event hydrators must NOT downgrade the
-    //                        locally-extended deadline (the snap UX guarantee).
-    let serverPhaseEndsAtMs = null;
-    let snapActiveUntilMs = 0;
+    // Patch 4 — Node is the sole authority on the answer countdown.
+    // phaseEndsAtMs is set EXCLUSIVELY from server events and never
+    // locally extended. The snap/serverPhaseEndsAtMs/snapActiveUntilMs
+    // bookkeeping was removed in favour of the real ANSWER_SELECTION
+    // phase (10s) emitted by the orchestrator after QUESTION_ACTIVE.
+    let phaseEndsAtMs = null;
     
     const CHOICES = @json($choices);
     const HAS_ILLUMINATE = {{ ($hasIlluminateNumbers ?? false) ? 'true' : 'false' }};
@@ -1363,34 +1360,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // is an explicit defensive branch for the rare case where the server
         // has not yet published a deadline.
         //
-        // P57.1 — Snap-to-ANSWER_TIME persistent across ticks.
-        //   Sync starting timeLeft with the server's remaining ANSWER_SELECTION
-        //   time, but absorb up to 3 s of network / page-load latency: if the
-        //   server reports remaining ≥ (ANSWER_TIME − 3) s, snap the visible
-        //   countdown back up to the full ANSWER_TIME so the player sees a
-        //   clean fresh "10 s" on arrival.
-        //
-        //   Critically (vs. the previous behaviour where the snap was wiped
-        //   the very next tick), we ALSO override `phaseEndsAtMs` locally to
-        //   `Date.now() + ANSWER_TIME * 1000` so the per-tick recompute keeps
-        //   yielding ANSWER_TIME for the first ~1 s. The server's own
-        //   deadline is preserved separately in `serverPhaseEndsAtMs` and the
-        //   `snapActiveUntilMs` window tells state-event hydrators to leave
-        //   our extended deadline alone for the duration of the snap. The
-        //   Node server still owns the actual phase transition: a late
-        //   submission past `phaseEndsAtMs` is harmless because the
-        //   orchestrator ignores answers outside the authoritative window.
+        // Patch 4 — Honest read of the server's phaseEndsAtMs. No more
+        // local snap-to-ANSWER_TIME extension: Node now publishes a real
+        // ANSWER_SELECTION phase (10 s) so the buzzer always gets a fair
+        // window regardless of when they buzzed within QUESTION_ACTIVE.
         if (phaseEndsAtMs) {
             const remaining = Math.max(0, phaseEndsAtMs - Date.now());
-            const ceilLeft = Math.ceil(remaining / 1000);
-            if (remaining >= (ANSWER_TIME - 3) * 1000) {
-                timeLeft = ANSWER_TIME;
-                serverPhaseEndsAtMs = phaseEndsAtMs;
-                phaseEndsAtMs = Date.now() + ANSWER_TIME * 1000;
-                snapActiveUntilMs = phaseEndsAtMs;
-            } else {
-                timeLeft = ceilLeft;
-            }
+            timeLeft = Math.ceil(remaining / 1000);
             if (timeLeft <= 0) timeLeft = 1; // at least 1 tick before auto-timeout
         }
         
@@ -1415,10 +1391,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 // Defensive fallback: phaseEndsAtMs absent — decrement locally.
                 computed = timeLeft - 1;
             }
-            // Monotone-decreasing guard: a late state event that resyncs
-            // phaseEndsAtMs *upward* must never cause the visible counter to
-            // tick back up. The chrono only descends.
-            if (computed > timeLeft) computed = timeLeft;
+            // Patch 4 — No monotone-decreasing guard anymore. The chrono MUST
+            // be allowed to jump UP when Node transitions QUESTION_ACTIVE
+            // (residual ≤ 8 s) → ANSWER_SELECTION (fresh 10 s). This is the
+            // whole point of giving every buzzer a fair answer window.
             timeLeft = computed;
 
             const percentage = Math.max(0, (timeLeft / ANSWER_TIME) * 100);
@@ -1600,31 +1576,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         if (!data.phaseEndsAtMs) return;
-        // Stale-snapshot defense: if the server snapshot reports < 2 s remaining
-        // but our local timer is still on a fresh value (≥ 5 s), treat the
-        // snapshot as stale (likely produced before the buzz transition or
-        // delivered after page-load + socket-handshake latency burned through
-        // it) and skip the resync. The setInterval below keeps recomputing
-        // from phaseEndsAtMs each tick, so any genuinely-late server clock
-        // will catch up naturally on the next valid event.
-        var remaining = Math.max(0, data.phaseEndsAtMs - Date.now());
-        if (remaining < 2000 && timeLeft >= 5) {
-            console.warn('[DuoAnswer] game_state ignored stale snapshot: server remaining=' + remaining + 'ms vs local timeLeft=' + timeLeft + 's');
-            return;
-        }
-        // P57.1 — Snap-protection window: while the locally-extended snap is
-        // still active, don't let an in-flight server snapshot rewind the
-        // visible chrono. We *do* keep the server's authoritative deadline
-        // up to date in `serverPhaseEndsAtMs` for audit / late ticks.
-        if (Date.now() < snapActiveUntilMs && data.phaseEndsAtMs < phaseEndsAtMs) {
-            serverPhaseEndsAtMs = data.phaseEndsAtMs;
-            return;
-        }
+        // Patch 4 — Honest resync. Node is the sole authority and now
+        // publishes a real ANSWER_SELECTION phase, so stale-snapshot
+        // and snap-protection guards are gone. The chrono follows the
+        // server deadline exactly, even when it jumps UP on the
+        // QUESTION_ACTIVE → ANSWER_SELECTION transition.
         phaseEndsAtMs = data.phaseEndsAtMs;
-        serverPhaseEndsAtMs = data.phaseEndsAtMs;
+        var remaining = Math.max(0, data.phaseEndsAtMs - Date.now());
         var serverLeft = Math.ceil(remaining / 1000);
-        // Monotone-decreasing guard mirrors the tick: never push timeLeft up.
-        if (serverLeft > timeLeft) serverLeft = timeLeft;
         if (Math.abs(serverLeft - timeLeft) > 1) {
             console.log('[DuoAnswer] game_state timer resync: local=' + timeLeft + 's server=' + serverLeft + 's');
             timeLeft = serverLeft;
@@ -1696,32 +1655,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // V3: QUESTION_ACTIVE is the nominal answer phase; include it with legacy phases
             var timerPhases = ['QUESTION_ACTIVE', 'ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'];
             if (timerPhases.includes(phase)) {
-                // Stale-snapshot defense (mirrors _onAnswerGameState above): the
-                // `state` event on (re)connect can carry a phaseEndsAtMs that
-                // was captured BEFORE the buzz transition completed, or one
-                // that has been "in flight" long enough that it now reads
-                // near-expired even though the real ANSWER_SELECTION phase
-                // has plenty of time left server-side. Skip the resync if
-                // server reports < 2s remaining while our local timer is
-                // still on a fresh value (≥ 5s) — wait for the next
-                // authoritative event instead of collapsing the visible
-                // countdown to ~1s.
+                // Patch 4 — Honest resync on (re)connect. Stale-snapshot and
+                // snap-protection guards removed: Node now publishes a real
+                // 10 s ANSWER_SELECTION phase, so we trust phaseEndsAtMs as-is.
+                phaseEndsAtMs = data.phaseEndsAtMs;
                 var rem = Math.max(0, data.phaseEndsAtMs - Date.now());
-                if (rem < 2000 && timeLeft >= 5) {
-                    console.warn('[DuoAnswer] state ignored stale snapshot: server remaining=' + rem + 'ms vs local timeLeft=' + timeLeft + 's');
-                } else if (Date.now() < snapActiveUntilMs && data.phaseEndsAtMs < phaseEndsAtMs) {
-                    // P57.1 — Snap-protection window: see _onAnswerGameState.
-                    serverPhaseEndsAtMs = data.phaseEndsAtMs;
-                } else {
-                    phaseEndsAtMs = data.phaseEndsAtMs;
-                    serverPhaseEndsAtMs = data.phaseEndsAtMs;
-                    var srvLeft = Math.ceil(rem / 1000);
-                    // Monotone-decreasing guard.
-                    if (srvLeft > timeLeft) srvLeft = timeLeft;
-                    if (Math.abs(srvLeft - timeLeft) > 1) {
-                        console.log('[DuoAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
-                        timeLeft = srvLeft;
-                    }
+                var srvLeft = Math.ceil(rem / 1000);
+                if (Math.abs(srvLeft - timeLeft) > 1) {
+                    console.log('[DuoAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
+                    timeLeft = srvLeft;
                 }
             }
         }

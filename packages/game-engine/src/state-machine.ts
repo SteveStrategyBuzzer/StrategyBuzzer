@@ -14,6 +14,7 @@ const PHASE_TRANSITIONS: PhaseTransition[] = [
   { from: "QUESTION_ACTIVE", to: "ANSWER_SELECTION" },
   { from: "QUESTION_ACTIVE", to: "REVEAL" },
   { from: "ANSWER_COLLECTION", to: "RESULT" },
+  { from: "ANSWER_SELECTION", to: "ANSWER_COLLECTION" },
   { from: "ANSWER_SELECTION", to: "REVEAL" },
   {
     from: "RESULT",
