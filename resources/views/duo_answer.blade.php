@@ -969,6 +969,17 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     // bookkeeping was removed in favour of the real ANSWER_SELECTION
     // phase (10s) emitted by the orchestrator after QUESTION_ACTIVE.
     let phaseEndsAtMs = null;
+    // Post-#76 follow-up — server-published phase START. Captured at the same
+    // points as `phaseEndsAtMs` (state event, phase_changed ANSWER_SELECTION
+    // and ANSWER_COLLECTION). Used by startTimer() to compute the bar's
+    // denominator as `phaseEndsAtMs - phaseStartedAtMs` — the TRUE phase
+    // window length as published by Node (10 000 ms for ANSWER_SELECTION,
+    // 2 000 for ANSWER_COLLECTION, etc.). This way the bar honestly shows
+    // that network/render latency already ate a chunk of the window
+    // (e.g. starts at 95 % when 500 ms were lost), instead of starting at
+    // 100 % and lying about the absolute scale. The numeric display stays
+    // anchored on `remaining` — never falsified.
+    let phaseStartedAtMs = null;
     // Patch 2 (#65) — Snapshot of the answer-window duration captured at the
     // moment startTimer() runs, so the bar percentage is anchored on the real
     // server-published window (10 s for ANSWER_SELECTION) instead of any
@@ -1057,13 +1068,33 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         const remaining = Math.max(0, phaseEndsAtMs - Date.now());
-        // Snapshot of the answer-window duration anchored on the server
-        // deadline. Used for the bar percentage at every tick.
-        answerWindowMs = remaining > 0 ? remaining : 1;
+        // Bar denominator anchored on the SERVER-PUBLISHED phase window
+        // (`phaseEndsAtMs - phaseStartedAtMs`) when available. This is the
+        // TRUE window length emitted by Node (10 000 ms for ANSWER_SELECTION,
+        // 2 000 for ANSWER_COLLECTION). Using this instead of `remaining`
+        // means the bar honestly reflects how much of the window has already
+        // elapsed before the client could render — e.g. starts at 95 % when
+        // 500 ms of network/render latency were lost — instead of starting
+        // at 100 % and silently shrinking its absolute scale on every
+        // restart. Falls back to `remaining` only when phaseStartedAtMs is
+        // missing (legacy paths). The numeric `timeLeft` below is computed
+        // from `remaining` and is NEVER falsified or clamped: it is the
+        // truthful Math.ceil of (server deadline - local clock).
+        var serverWindow = (phaseStartedAtMs && phaseEndsAtMs > phaseStartedAtMs)
+            ? (phaseEndsAtMs - phaseStartedAtMs)
+            : 0;
+        if (serverWindow > 0) {
+            answerWindowMs = serverWindow;
+        } else {
+            answerWindowMs = remaining > 0 ? remaining : 1;
+        }
         timeLeft = Math.ceil(remaining / 1000);
         if (timeLeft <= 0) timeLeft = 1; // at least 1 tick before auto-timeout
 
-        console.log('[DuoAnswer] startTimer phaseEndsAtMs=' + phaseEndsAtMs + ' remaining=' + remaining + 'ms');
+        console.log('[DuoAnswer] startTimer phaseEndsAtMs=' + phaseEndsAtMs +
+            ' phaseStartedAtMs=' + phaseStartedAtMs +
+            ' remaining=' + remaining + 'ms' +
+            ' window=' + answerWindowMs + 'ms');
 
         // Démarrer le shuffle des réponses si actif
         startShuffleInterval();
@@ -1387,6 +1418,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             if (phase === 'ANSWER_SELECTION' || phase === 'BUZZ_WINNER_ANSWERING') {
                 currentPhase = phase;
                 phaseEndsAtMs = data.phaseEndsAtMs;
+                if (data.phaseStartedAtMs) phaseStartedAtMs = data.phaseStartedAtMs;
                 // Initial `state` event on (re)connect is the primary
                 // hydration path for buzzers landing on this page: start the
                 // timer here if the IIFE init found a null phaseEndsAtMs
@@ -1541,7 +1573,21 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // tick Node opens the window — never from a hardcoded fallback.
         if (phase === 'ANSWER_SELECTION' || phase === 'BUZZ_WINNER_ANSWERING') {
             if (data.phaseEndsAtMs) {
+                // Anti-restart guard (post-#76 follow-up): on initial connect
+                // the socket emits `state` then `phase_changed ANSWER_SELECTION`
+                // ~30 ms apart — both publish the SAME phaseEndsAtMs. The
+                // first call (via _onAnswerState, line 1395) starts the timer;
+                // without this guard the second call clears the freshly-started
+                // setInterval and re-anchors answerWindowMs on a slightly
+                // smaller `remaining`, making the bar visibly jump backwards
+                // ~30 ms and its absolute scale shift. If the deadline truly
+                // moved (skill extension, new phase), the inequality holds and
+                // we relance normally.
+                if (timerInterval && phaseEndsAtMs === data.phaseEndsAtMs) {
+                    return;
+                }
                 phaseEndsAtMs = data.phaseEndsAtMs;
+                if (data.phaseStartedAtMs) phaseStartedAtMs = data.phaseStartedAtMs;
                 if (canAnswer() && !answered) {
                     startTimer();
                 }
@@ -1562,8 +1608,24 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // can pick an answer (the "bug de temps après avoir répondu"
             // symptom). For an already-answered player we just keep the
             // waiting overlay visible until RESULT.
-            if (data.phaseEndsAtMs) {
+            //
+            // Restart-restriction (post-#76 follow-up): only re-anchor for
+            // players whose personal answer window actually opens at
+            // ANSWER_COLLECTION, namely position-2 buzzers and Historian
+            // skill activations (no_buzz player who unlocked a 2 s window).
+            // For everyone else (position-1 already answered/timed out,
+            // no_buzz watchers without Historian), a fresh 2 s countdown
+            // is misleading — RESULT is ~2 s away and they cannot act.
+            // The auto-timeout gate inside startTimer (line ~1117) already
+            // displays "--" cleanly when the previous window expires for
+            // non-owners, so simply NOT relancing here is the correct
+            // behaviour.
+            var isMyCollectionWindow =
+                PLAYER_BUZZ_POSITION === 'second' ||
+                historianSkillUsed;
+            if (isMyCollectionWindow && data.phaseEndsAtMs) {
                 phaseEndsAtMs = data.phaseEndsAtMs;
+                if (data.phaseStartedAtMs) phaseStartedAtMs = data.phaseStartedAtMs;
                 if (canAnswer() && !answered) {
                     startTimer();
                 }
