@@ -214,17 +214,11 @@ export class GameOrchestrator {
 
     console.log(`[GameOrchestrator] Buzz winner: ${player?.name} (${playerId}), position: ${position}`);
 
-    // Patch 2 — Early-exit: if every CONNECTED player in the room has now
-    // buzzed, there is nothing more to wait for in QUESTION_ACTIVE. Open the
-    // official ANSWER_SELECTION window immediately so buzzers get their
-    // full 10s answer time without burning the rest of the buzz window.
-    // We filter on isConnected so a player who dropped mid-question does not
-    // block the early-exit (they cannot buzz anyway).
-    const connectedPlayers = Object.values(room.state.players).filter((p) => p.isConnected).length;
-    if (connectedPlayers > 0 && room.state.buzzQueue.length >= connectedPlayers) {
-      console.log(`[GameOrchestrator] All ${connectedPlayers} connected player(s) buzzed in room ${roomId} — early exit QUESTION_ACTIVE → ANSWER_SELECTION`);
-      this.transitionToAnswerSelection(roomId);
-    }
+    // NOTE: An "all-buzzed → transition immediately to ANSWER_SELECTION"
+    // optimisation was intentionally deferred. Stabilise the official flow
+    // (QUESTION_ACTIVE → ANSWER_SELECTION → ANSWER_COLLECTION → RESULT) on
+    // its full timers first; an early-exit can be added in a dedicated
+    // follow-up task once the timer contract is fully validated.
   }
 
   handleAnswer(roomId: string, playerId: string, answer: number | string | boolean): void {
