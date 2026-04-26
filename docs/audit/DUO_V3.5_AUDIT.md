@@ -6,7 +6,11 @@
 > 1. Node = **seule autorité de gameplay** (phases, buzz, scoring, fin de manche/partie).
 > 2. Firebase = **présence + signalisation WebRTC uniquement**. Jamais de phase, jamais de score, jamais de question.
 > 3. Aucune divergence Solo / Duo / Master / League : un seul contrat de phases, un seul scoring, un seul cycle de ronde.
-> 4. Citations `fichier:lignes` obligatoires. Trois statuts : **[OBSERVÉ]** (lu directement dans le code), **[CONFIRMÉ]** (recoupé entre 2+ fichiers), **[RISQUE]** (déduction qualifiée d'une lecture).
+> 4. Citations `fichier:lignes` obligatoires. Taxonomie d'évidence stricte (utilisée uniformément ci-dessous) :
+>    - **[OBSERVÉ CODE]** = directement lu dans le code à la ligne citée (et, le cas échéant, recoupé entre plusieurs fichiers — la confirmation par recoupement reste du code, pas de logs).
+>    - **[RISQUE POTENTIEL]** = déduction qualifiée à partir d'une lecture du code, sans preuve d'occurrence en production.
+>    - **[CONFIRMÉ PROD (LOGS)]** = corroboré par des logs / traces de production. **Aucune occurrence dans cet audit** : il s'agit d'un audit statique sur le code de la branche en cours, sans accès aux logs production. Toute escalade ultérieure d'un item OBSERVÉ CODE ou RISQUE POTENTIEL vers CONFIRMÉ PROD (LOGS) doit être faite explicitement avec un pointeur vers les logs.
+> 5. Tout périmètre **non lu** dans cet audit est explicitement consigné en §1.6 « Périmètre des inconnus » — aucune conclusion principale ne dépend d'un fichier non lu.
 
 ---
 
@@ -14,11 +18,11 @@
 
 ### 1.1 Architecture
 
-- **Source d'autorité** : Node Game Server (`apps/game-server/`), un process TS lancé par le workflow `Game Server` (port 3001), `apps/game-server/src/index.ts`. Toutes les transitions de phase, l'enregistrement des buzz, le scoring et la fin de match sont exécutés dans `GameOrchestrator.ts`. **[CONFIRMÉ]** par `apps/game-server/src/services/GameOrchestrator.ts:190-1355`.
-- **Persistance temps-réel** : Redis (`Redis Server` workflow, port 6379) sert de bus d'événements (`logEventToRedis`) et de store d'état canonique (`room:{roomId}:state`, `match:{roomId}:result`). **[OBSERVÉ]** `GameOrchestrator.ts:203, 1306` (via `setMatchResult`).
+- **Source d'autorité** : Node Game Server (`apps/game-server/`), un process TS lancé par le workflow `Game Server` (port 3001), `apps/game-server/src/index.ts`. Toutes les transitions de phase, l'enregistrement des buzz, le scoring et la fin de match sont exécutés dans `GameOrchestrator.ts`. **[OBSERVÉ CODE]** par `apps/game-server/src/services/GameOrchestrator.ts:190-1355`.
+- **Persistance temps-réel** : Redis (`Redis Server` workflow, port 6379) sert de bus d'événements (`logEventToRedis`) et de store d'état canonique (`room:{roomId}:state`, `match:{roomId}:result`). **[OBSERVÉ CODE]** `GameOrchestrator.ts:203, 1306` (via `setMatchResult`).
 - **Persistance long-terme** : PostgreSQL via Laravel (modèle `DuoMatch`), alimenté par `applyFinalizationFromRedis` (`app/Http/Controllers/DuoController.php:382-515`).
 - **Front** : Blade + JS vanilla (`public/js/GameplayRuntime.js`, `public/js/DuoSocketClient.js`). Pas de SPA Inertia sur le chemin gameplay Duo : chaque page (`/duo/question`, `/duo/answer`, `/duo/result`, `/duo/round-scoreboard`, `/duo/match-result`) est rendue server-side par Laravel.
-- **Firebase** : limité à la présence lobby (`LobbyPresenceManager`) et à la signalisation WebRTC voice. **[CONFIRMÉ]** : aucun import de `firebase/firestore` dans `GameOrchestrator.ts` ni dans le scoring (`packages/game-engine/src/scoring.ts`, `reducer.ts`).
+- **Firebase** : limité à la présence lobby (`LobbyPresenceManager`) et à la signalisation WebRTC voice. **[OBSERVÉ CODE]** : aucun import de `firebase/firestore` dans `GameOrchestrator.ts` ni dans le scoring (`packages/game-engine/src/scoring.ts`, `reducer.ts`).
 
 ### 1.2 Flux nominal d'une partie Duo
 
@@ -65,6 +69,19 @@
 - Niveau 2 — Pipeline Firestore : `GameServerQuestionPipeline` filtre les IDs déjà servis.
 - Niveau 3 — Orchestrateur : `room.usedQuestionIds: Set<string>` filtre lors de `transitionToWaiting` (`GameOrchestrator.ts:907-913`) et `prefetchQuestionBlock` (`GameOrchestrator.ts:993-998`).
 
+### 1.6 Périmètre des inconnus (bounded)
+
+Les zones suivantes **n'ont pas été lues exhaustivement** dans cet audit. Aucune conclusion principale (Sections 5, 7, 8, 9, 10) ne dépend d'elles : elles sont consignées ici uniquement pour transparence et pour cadrer un audit complémentaire éventuel.
+
+| # | Zone | Pourquoi non lue ici | Impact possible si lecture ultérieure révèle un écart |
+|---|------|----------------------|------------------------------------------------------|
+| U1 | `apps/game-server/src/ws/handlers.ts` (handlers Socket.IO bruts) | Hors scope « Duo gameplay » direct ; les handlers délèguent à `GameOrchestrator` / `RoomManager`. | Pourrait introduire une validation laxiste avant le handler — à auditer si un risque RISQUE POTENTIEL escalade. |
+| U2 | `public/js/GameplayRuntime.js` (consommateur de `window.GR_SAVE_STATE_EXTRA`) | Hors scope back-end. Cité en §10 D1/D4 comme producteur du risque. | Pourrait déjà valider la phase contre le serveur avant de l'utiliser ; dans ce cas D1 dégradé en BAS. |
+| U3 | Comportement réel de la dérogation Bug #1 en mode socket lent (`docs/decisions/2026-04-26-duo-immediate-result-nav.md`) | Le décisionnaire produit existe ; pas de logs prod consultés. | Pourrait déjà avoir des telemetry / fuites observées en prod — à corréler. |
+| U4 | League Team (5v5) — règles spécifiques de fin de manche par équipe | Hors scope Duo. La validation cross-mode (§14) ne couvre League Team que par check de symétrie d'API. | Audit séparé nécessaire si on étend les patches §11 à League Team. |
+
+Tout item escaladé hors de cette table doit déclencher un addendum signé à cet audit, jamais une réécriture silencieuse.
+
 ---
 
 ## Section 2 — Qui parle à quoi (matrice émetteurs / consommateurs)
@@ -103,11 +120,11 @@
 
 ### 2.3 Node → Laravel (server-to-server)
 
-- `notifyMatchFinalized(roomId, mode)` : `GameOrchestrator.ts:1335` → POST interne sur la route Laravel `duo.finish` qui invoque `applyFinalizationFromRedis` (`DuoController.php:382-515`). **[OBSERVÉ]** filet de sécurité, idempotent.
+- `notifyMatchFinalized(roomId, mode)` : `GameOrchestrator.ts:1335` → POST interne sur la route Laravel `duo.finish` qui invoque `applyFinalizationFromRedis` (`DuoController.php:382-515`). **[OBSERVÉ CODE]** filet de sécurité, idempotent.
 
 ### 2.4 Laravel → Node (lecture seule)
 
-- `renderAnswerView` lit `room:{roomId}:state` directement dans Redis (`DuoController.php:1736-1737`) en **fallback** si `current_question` est vide en session. **[OBSERVÉ]** — lecture seule (Node reste autorité).
+- `renderAnswerView` lit `room:{roomId}:state` directement dans Redis (`DuoController.php:1736-1737`) en **fallback** si `current_question` est vide en session. **[OBSERVÉ CODE]** — lecture seule (Node reste autorité).
 - `validatePhaseAccess` (`DuoController.php:2610-…`, appelée par `showQuestion/showAnswer/showResult/showRoundScoreboard` aux lignes 1262, 1300, 1347, 1420) interroge le Game Server via **HTTP** : `$this->gameServerService->getRoom($roomId)` → `GameServerService::getRoom` (`app/Services/GameServerService.php:115-…`). Ce n'est **pas** une lecture Redis directe : Laravel passe par l'API HTTP du Node Game Server. Conséquence : la latence et la disponibilité du Node Game Server impactent le rendu HTTP des pages Duo. Si le Game Server est lent ou indisponible, le guard ne peut pas valider la phase.
 
 ### 2.5 Front ↔ Laravel (HTTP)
@@ -119,7 +136,7 @@
 
 - `LobbyPresenceManager` : Firestore `gameSessions/{sessionId}/presence`. Aucun champ de gameplay.
 - WebRTC voice : `gameSessions/{sessionId}/voiceSignals` pour SDP/ICE. Aucun impact sur le state-machine.
-- **[CONFIRMÉ]** Aucune écriture Firebase depuis `GameOrchestrator.ts` / `RoomManager.ts` / `scoring.ts` / `reducer.ts`.
+- **[OBSERVÉ CODE]** Aucune écriture Firebase depuis `GameOrchestrator.ts` / `RoomManager.ts` / `scoring.ts` / `reducer.ts`.
 
 ---
 
@@ -161,7 +178,7 @@ fin match    endMatch()              ── match_stats emit + setMatchResult Re
 
 **Remarques temporelles**
 
-- La fenêtre QUESTION_ACTIVE **ne se raccourcit pas** quand un buzz arrive. Le commentaire `GameOrchestrator.ts:217-221` documente explicitement que l'optimisation « tous-buzzés → ANSWER_SELECTION immédiat » a été **différée**. Conséquence : un buzz précoce force quand même le joueur non-buzzer à attendre la fin du timer 8 s. **[OBSERVÉ]**
+- La fenêtre QUESTION_ACTIVE **ne se raccourcit pas** quand un buzz arrive. Le commentaire `GameOrchestrator.ts:217-221` documente explicitement que l'optimisation « tous-buzzés → ANSWER_SELECTION immédiat » a été **différée**. Conséquence : un buzz précoce force quand même le joueur non-buzzer à attendre la fin du timer 8 s. **[OBSERVÉ CODE]**
 - `transitionToAnswerSelection` peut aussi être appelée depuis le commentaire « (b) all-buzzed early-exit » (`GameOrchestrator.ts:769-770`), mais aucun appel actif n'est branché (cf. §10 pour cohérence).
 - Un buzz côté V3.5 = `lockedAnswerPlayerId` set sur le **premier** buzzer uniquement (`packages/game-engine/src/reducer.ts:170-172`). Les buzzers 2/3/… ne sont **pas** « locked » (ce drapeau ne contrôle pas le scoring, juste l'UI).
 
@@ -210,10 +227,10 @@ Et dans `scoreAllBuzzers` :
 
 | Cas | Attendu | Observé | Statut |
 |---|---|---|---|
-| 1ᵉʳ à buzzer + correct | +2 | `GameOrchestrator.ts:544-545` | **[CONFIRMÉ]** |
-| 2ᵉ⁺ à buzzer + correct | +1 | `GameOrchestrator.ts:548` | **[CONFIRMÉ]** |
-| Aucun buzz | 0 | non-itéré, broadcast no-op `player_stats_updated:511-518` | **[CONFIRMÉ]** |
-| Buzz + faux / Buzz + timeout | −2 | `GameOrchestrator.ts:386, 540-541` | **[CONFIRMÉ]** |
+| 1ᵉʳ à buzzer + correct | +2 | `GameOrchestrator.ts:544-545` | **[OBSERVÉ CODE]** |
+| 2ᵉ⁺ à buzzer + correct | +1 | `GameOrchestrator.ts:548` | **[OBSERVÉ CODE]** |
+| Aucun buzz | 0 | non-itéré, broadcast no-op `player_stats_updated:511-518` | **[OBSERVÉ CODE]** |
+| Buzz + faux / Buzz + timeout | −2 | `GameOrchestrator.ts:386, 540-541` | **[OBSERVÉ CODE]** |
 
 ### 5.3 Effets de skills sur le score
 
@@ -222,9 +239,9 @@ Et dans `scoreAllBuzzers` :
 
 ### 5.4 Risques
 
-- **[RISQUE — BAS]** Le test d'égalité MCQ se fait avec `===` (`GameOrchestrator.ts:372`) sur `buzzerAnswer.answer === question.correctIndex`. Le payload `answer` socket n'est pas typé strictement entier par le front (`DuoSocketClient.answer(answerValue)` envoie tel quel, `DuoSocketClient.js:377-389`). Si un front envoie une string `"2"` au lieu de `2`, le scoring échouera silencieusement (= compté faux, −2). Le schéma `AnswerSchema` côté Node devrait coercer le type — à vérifier dans `apps/game-server/src/types/schemas.ts` (non lu dans cet audit). **Statut : à confirmer.**
-- **[RISQUE — BAS]** Le test TEXT (`GameOrchestrator.ts:376`) compare en lowercase mais sans `trim()`. Une réponse `" Paris"` sera comptée fausse. Acceptable pour V3.5 mais à documenter.
-- **[CONFIRMÉ]** `calculateEfficiency = correct / totalBuzzes` (cf. `packages/game-engine/src/scoring.ts`). Donc un joueur qui ne buzze jamais a `efficiency = 0` (division par 0 protégée à l'amont). Le broadcast `player_stats_updated` non-buzzers (`GameOrchestrator.ts:502-526`) garantit que les fronts n'affichent jamais une efficience stale après une question où ils n'ont pas buzzé.
+- **[OBSERVÉ CODE — BAS]** Le test d'égalité MCQ se fait avec `===` (`GameOrchestrator.ts:372`) sur `buzzerAnswer.answer === question.correctIndex`. Le payload `answer` socket n'est pas typé strictement entier par le front (`DuoSocketClient.answer(answerValue)` envoie tel quel, `DuoSocketClient.js:377-389`). `AnswerSchema` côté Node accepte explicitement `z.union([z.number(), z.string(), z.boolean()])` **sans coercition** (`apps/game-server/src/validation/schemas.ts:37-40`). Conséquence : si un front envoie la string `"2"` au lieu de l'entier `2` pour une question MCQ, la validation Zod passe mais le `===` à `:372` échoue → réponse comptée fausse silencieusement (−2). **Statut : observé en code, non corroboré par logs prod.**
+- **[RISQUE POTENTIEL — BAS]** Le test TEXT (`GameOrchestrator.ts:376`) compare en lowercase mais sans `trim()`. Une réponse `" Paris"` sera comptée fausse. Acceptable pour V3.5 mais à documenter.
+- **[OBSERVÉ CODE]** `calculateEfficiency = correct / totalBuzzes` (cf. `packages/game-engine/src/scoring.ts`). Donc un joueur qui ne buzze jamais a `efficiency = 0` (division par 0 protégée à l'amont). Le broadcast `player_stats_updated` non-buzzers (`GameOrchestrator.ts:502-526`) garantit que les fronts n'affichent jamais une efficience stale après une question où ils n'ont pas buzzé.
 
 ---
 
@@ -248,16 +265,16 @@ Et dans `scoreAllBuzzers` :
 
 ### 6.3 Sécurité — non-exposition de la bonne réponse
 
-- `routes.ts:93-100` (`apps/game-server/src/`, non lu en intégralité ici mais référencé en mémoire) : `correctIndex`/`correctBool`/`correctText` **sanitisés** hors `QUESTION_PUBLISHED`.
+- `apps/game-server/src/http/routes.ts:93-99` : `sanitizedState` retire explicitement `correctIndex`/`correctBool`/`correctText` du payload retourné par `GET /rooms/{roomId}` (utilisé par `GameServerService::getRoom` côté Laravel). **[OBSERVÉ CODE]** — le canal HTTP de réconciliation ne fuit pas la bonne réponse.
 - `broadcastQuestion` n'inclut **jamais** `correctIndex` (`GameOrchestrator.ts:687-700`).
-- Côté Laravel fallback (`renderAnswerView:1744-1750`) : explicitement `'correct_answer' => null, 'correct_index' => null` malgré le fait que `room.state.questions[idx]` les contient. **[CONFIRMÉ]** — bonne pratique préservée.
+- Côté Laravel fallback (`renderAnswerView:1744-1750`) : explicitement `'correct_answer' => null, 'correct_index' => null` malgré le fait que `room.state.questions[idx]` les contient. **[OBSERVÉ CODE]** — bonne pratique préservée.
 - La bonne réponse n'apparaît qu'au moment de `answer_revealed` (`GameOrchestrator.ts:446-461`) qui inclut `correctIndex`/`correctBool`/`correctText`.
 
 ### 6.4 Risques
 
-- **[OBSERVÉ — MOYEN]** `renderQuestionView` **harcode** `currentQuestion = 1` (`DuoController.php:1666`). Le bon numéro de question vient ensuite via `question_published` (`questionIndex`) côté front. Si le front utilise le `currentQuestion` injecté par le PHP comme valeur initiale d'affichage (« Question 1/9 »), il y aura **toujours** affichage « Question 1 » au moment du load — même au tour 5. La valeur n'est mise à jour que si le code JS écoute `question_published` et repaint le compteur. Voir §10.
-- **[RISQUE — MOYEN]** `room.state.questions[room.state.questionIndex]` peut être `undefined` si le pipeline est en retard. `transitionToQuestionActive` gère ce cas en appelant `endRound` (`GameOrchestrator.ts:619`), mais `broadcastQuestion` ne le gère qu'avec un `console.error` puis `return` silencieux (`GameOrchestrator.ts:674-677`). Conséquence : la phase passe en QUESTION_ACTIVE avec `phaseEndsAtMs` valide, mais aucun `question_published` n'est jamais émis → les fronts restent bloqués sur l'ancienne question pendant 8 s. **À confirmer en runtime**.
-- **[OBSERVÉ — BAS]** Le filtrage TRUE_FALSE recompose le `correct_index` côté Laravel (`DuoController.php:1764-1786`) en parallèle du sanitize Node. Si jamais le front reçoit la question via `question_published` (Node, déjà sanitizé) **et** la même via le HTTP page-load (Laravel, re-filtré), le mapping d'index pourrait diverger. Risque résiduel uniquement si les deux sources sont consommées en même temps.
+- **[OBSERVÉ CODE — MOYEN]** `renderQuestionView` **harcode** `currentQuestion = 1` (`DuoController.php:1666`). Le bon numéro de question vient ensuite via `question_published` (`questionIndex`) côté front. Si le front utilise le `currentQuestion` injecté par le PHP comme valeur initiale d'affichage (« Question 1/9 »), il y aura **toujours** affichage « Question 1 » au moment du load — même au tour 5. La valeur n'est mise à jour que si le code JS écoute `question_published` et repaint le compteur. Voir §10.
+- **[RISQUE POTENTIEL — MOYEN]** `room.state.questions[room.state.questionIndex]` peut être `undefined` si le pipeline est en retard. `transitionToQuestionActive` gère ce cas en appelant `endRound` (`GameOrchestrator.ts:619`), mais `broadcastQuestion` ne le gère qu'avec un `console.error` puis `return` silencieux (`GameOrchestrator.ts:674-677`). Conséquence théorique : la phase passe en QUESTION_ACTIVE avec `phaseEndsAtMs` valide, mais aucun `question_published` n'est émis → les fronts restent sur l'ancienne question pendant 8 s. **Statut : risque déduit du code, pas d'occurrence prod observée dans cet audit.**
+- **[OBSERVÉ CODE — BAS]** Le filtrage TRUE_FALSE recompose le `correct_index` côté Laravel (`DuoController.php:1764-1786`) en parallèle du sanitize Node. Si jamais le front reçoit la question via `question_published` (Node, déjà sanitizé) **et** la même via le HTTP page-load (Laravel, re-filtré), le mapping d'index pourrait diverger. Risque résiduel uniquement si les deux sources sont consommées en même temps.
 
 ---
 
@@ -309,8 +326,8 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 
 ### 7.4 Risques
 
-- **[OBSERVÉ — HAUT]** En cas de tie au niveau `roundsWon`, le `winnerId` est défini par `finalScores` mais `isTie = true` reste positionné (`GameOrchestrator.ts:1270-1278`). Le `decidedBy: "total_score"` est correct, mais côté Laravel `applyFinalizationFromRedis` (`DuoController.php:443-453`) prend ce winnerId comme winner réel. Si les `finalScores` sont aussi égaux, `winnerId` reste défini sur le **dernier** `topPlayers` parcouru (ordre non déterministe — dépend de l'ordre d'insertion dans `room.state.players` qui est l'ordre de `join_room`). **Tie parfait → vainqueur arbitraire**. À documenter ou décider d'un règlement (égalité officielle).
-- **[OBSERVÉ — MOYEN]** Si un joueur se déconnecte avant `endRound`, son `roundScore` reste comptabilisé. Aucune logique de forfait n'est codée dans `endRound` (audit du fichier non exhaustif sur ce point — voir `apps/game-server/src/services/GameOrchestrator.ts:1088-1188` pour la logique réelle).
+- **[OBSERVÉ CODE — HAUT]** En cas de tie au niveau `roundsWon`, le `winnerId` est défini par `finalScores` mais `isTie = true` reste positionné (`GameOrchestrator.ts:1270-1278`). Le `decidedBy: "total_score"` est correct, mais côté Laravel `applyFinalizationFromRedis` (`DuoController.php:443-453`) prend ce winnerId comme winner réel. Si les `finalScores` sont aussi égaux, `winnerId` reste défini sur le **dernier** `topPlayers` parcouru (ordre non déterministe — dépend de l'ordre d'insertion dans `room.state.players` qui est l'ordre de `join_room`). **Tie parfait → vainqueur arbitraire**. À documenter ou décider d'un règlement (égalité officielle).
+- **[OBSERVÉ CODE — MOYEN]** Si un joueur se déconnecte avant `endRound`, son `roundScore` reste comptabilisé. La logique `endRound` (`apps/game-server/src/services/GameOrchestrator.ts:1088-1188`) ne contient pas de branche « forfait / déconnexion » : elle agrège indistinctement les `roundScore` de tous les joueurs encore présents dans `room.state.players`. Conséquence : un joueur qui se déconnecte à mi-manche peut quand même remporter la manche si son `roundScore` reste le plus élevé.
 
 ---
 
@@ -334,10 +351,10 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 
 ### 8.4 Risques
 
-- **[OBSERVÉ — MOYEN]** `renderAnswerView:1714-1719` et `renderResultView:1897-1902` lisent `$matchGameState['player_scores_map']` directement depuis `$match->game_state` (la colonne JSON sur la table `duo_matches`). Cette colonne **n'est mise à jour que par `applyFinalizationFromRedis` à la fin du match**. Pendant la partie, ce `player_scores_map` est donc **stale** ou absent. Conséquence : les pages `/duo/answer` et `/duo/result` affichent **0–0** au load HTTP, puis sont rectifiées par `score_update` socket. **Flash visible si la connexion socket est lente.** Voir §9.
-- **[OBSERVÉ — MOYEN]** `currentQuestion` vient de `$matchGameState['current_question_number']` dans `renderAnswerView:1712` et `renderResultView:1895`. Même problème : ce champ n'est jamais maintenu en DB pendant la partie. Toujours `1` à l'affichage initial. Le repaint dépend des écouteurs JS.
-- **[CONFIRMÉ]** Le calcul `relativeBuzzMs = buzzer.atMs - publishedAt` (`GameOrchestrator.ts:478-480`) est borné à `>= 0` et ramené à 0 si `publishedAt` est manquant. `averageResponseMs` reste donc dans `[0, 8000]` pour Duo (timer questionActive). C'est correct.
-- **[RISQUE — BAS]** Si une room est restaurée depuis Redis après crash, `playerStats` Map (en mémoire) est vide. La reprise des stats live est cassée (les valeurs absolues `score`/`roundScore` restent bonnes via reducer, mais `efficiency`/`avgResponseMs` repartent de zéro). Pas de test de cette branche dans cet audit.
+- **[OBSERVÉ CODE — MOYEN]** `renderAnswerView:1714-1719` et `renderResultView:1897-1902` lisent `$matchGameState['player_scores_map']` directement depuis `$match->game_state` (la colonne JSON sur la table `duo_matches`). Cette colonne **n'est mise à jour que par `applyFinalizationFromRedis` à la fin du match**. Pendant la partie, ce `player_scores_map` est donc **stale** ou absent. Conséquence : les pages `/duo/answer` et `/duo/result` affichent **0–0** au load HTTP, puis sont rectifiées par `score_update` socket. **Flash visible si la connexion socket est lente.** Voir §9.
+- **[OBSERVÉ CODE — MOYEN]** `currentQuestion` vient de `$matchGameState['current_question_number']` dans `renderAnswerView:1712` et `renderResultView:1895`. Même problème : ce champ n'est jamais maintenu en DB pendant la partie. Toujours `1` à l'affichage initial. Le repaint dépend des écouteurs JS.
+- **[OBSERVÉ CODE]** Le calcul `relativeBuzzMs = buzzer.atMs - publishedAt` (`GameOrchestrator.ts:478-480`) est borné à `>= 0` et ramené à 0 si `publishedAt` est manquant. `averageResponseMs` reste donc dans `[0, 8000]` pour Duo (timer questionActive). C'est correct.
+- **[RISQUE POTENTIEL — BAS]** Si une room est restaurée depuis Redis après crash, `playerStats` Map (en mémoire) est vide. La reprise des stats live est cassée (les valeurs absolues `score`/`roundScore` restent bonnes via reducer, mais `efficiency`/`avgResponseMs` repartent de zéro). Pas de test de cette branche dans cet audit.
 
 ---
 
@@ -351,7 +368,7 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 | D2 | Page Blade pré-injecte `currentQuestion = 1` toujours | MOYEN | `DuoController.php:1666`, `duo_question.blade.php:11` (`totalQuestions ?? 10`) |
 | D3 | `player_scores_map` lu depuis `$match->game_state` (stale pendant la partie) | MOYEN | `DuoController.php:1714-1719, 1897-1902` |
 | D4 | `restoreState()` peut publier `phase=QUESTION_ACTIVE` alors que serveur déjà en RESULT | HAUT | `public/js/DuoSocketClient.js:443-454` + `resources/views/duo_question.blade.php:35` |
-| D5 | « Bug #1 derogation » dans `renderPageGuard` laisse le buzz-winner aller en `/duo/result` alors que serveur est encore en ANSWER_SELECTION | HAUT | `DuoController.php:2731` (à confirmer en lecture exhaustive du switch) |
+| D5 | « Bug #1 derogation » dans `validatePhaseAccess` laisse le buzz-winner aller en `/duo/result` alors que le serveur est encore en `ANSWER_SELECTION` / `BUZZ_WINNER_ANSWERING` / `ANSWER_COLLECTION` | HAUT | `DuoController.php:2721-2737` (dérogation déjà gated par `$lockedAnswerPlayerId === $playerId` à `:2733` ; voir `docs/decisions/2026-04-26-duo-immediate-result-nav.md`). La page rend en mode « pending » et hydrate via socket — le risque résiduel est : si la socket est lente, la page `/duo/result` reste vide alors que le serveur n'a pas encore émis `answer_revealed`. |
 | D6 | Question manquante (`room.state.questions[idx] === undefined`) en QUESTION_ACTIVE → silence (`broadcastQuestion:674-677`) | MOYEN | `GameOrchestrator.ts:674-677` |
 | D7 | Tie parfait (égalité de `roundsWon` ET `finalScores`) → winnerId arbitraire selon ordre `Object.entries(players)` | HAUT | `GameOrchestrator.ts:1267-1278` |
 | D8 | Front buzz-late : envoi `buzz` avec `clientTimeMs` dans le passé alors que serveur a déjà transitionné. `registerBuzz` filtre via `phase !== "QUESTION_ACTIVE"` (RoomManager.ts:212) → buzz silencieusement rejeté, aucun feedback | BAS | `RoomManager.ts:212-215` |
@@ -378,7 +395,7 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 ### 🟠 HAUTE (désynchronisation visible, contournée par garde mais fragilisante)
 
 - **H1 — Hardcode `phase: 'QUESTION_ACTIVE'` dans la Blade** *(cf. D1)*. `resources/views/duo_question.blade.php:34-37` injecte `window.GR_SAVE_STATE_EXTRA = { phase: 'QUESTION_ACTIVE' }` au chargement. Si `GameplayRuntime.restoreState()` publie cette valeur sans confirmer auprès du serveur, on a une fenêtre où le front pense être en QUESTION_ACTIVE alors que le serveur est en INTRO ou RESULT.
-- **H2 — Bug #1 derogation `renderPageGuard`** *(cf. D5)*. Le commentaire en code mentionne explicitement une « dérogation Bug #1 » qui laisse le buzz-winner sortir vers `/duo/result` alors que le serveur est encore en ANSWER_*. À confirmer en lecture exhaustive du switch (`DuoController.php:2610-2775`), mais c'est un risque connu — la dérogation devrait être gated par une vérification stricte de l'état Redis (`phase IN ('RESULT', 'SYNC')`).
+- **H2 — Bug #1 derogation `validatePhaseAccess`** *(cf. D5)*. **[OBSERVÉ CODE — HAUT]** La dérogation est codée et **déjà gated** par `$lockedAnswerPlayerId === $playerId` (`DuoController.php:2731-2737`, gating clause à `:2733`). Le buzz-winner peut donc atterrir sur `/duo/result` pendant que le serveur est encore en `ANSWER_SELECTION` / `BUZZ_WINNER_ANSWERING` / `ANSWER_COLLECTION`. Le risque résiduel — la page rend en mode « pending » et hydrate via socket — est documenté en `docs/decisions/2026-04-26-duo-immediate-result-nav.md`. Durcissement proposé : ajouter une vérification supplémentaire `phase IN ('RESULT', 'REVEAL', 'SYNC')` une fois `applyFinalizationFromRedis` câblé pour exposer un `result_ready` Redis (cf. P5).
 - **H3 — `restoreState()` sans validation serveur** *(cf. D4)*. `DuoSocketClient.restoreState` (`public/js/DuoSocketClient.js:443-454`) lit `sessionStorage` et restitue tel quel. Aucune validation que la phase restituée correspond à l'état serveur courant.
 - **H4 — `notifyMatchFinalized` filtré DUO/LEAGUE_TEAM uniquement** *(cf. D11)*. Crée une asymétrie entre modes : Master et League Individual reposent uniquement sur le POST front pour finaliser, sans filet de sécurité s2s. **Viole la règle « aucune divergence entre modes »**.
 
@@ -445,7 +462,7 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 - **Risque** : élevé — touche à la mécanique de reconnexion. À planifier seul, hors lot.
 
 ### P9 — [BASSE] Coercer le payload `answer` socket en type cible
-- Côté Node, dans `AnswerSchema` (`apps/game-server/src/types/schemas.ts`), forcer `z.union([z.number().int(), z.boolean(), z.string()])` selon le type de la question courante.
+- Côté Node, dans `AnswerSchema` (`apps/game-server/src/validation/schemas.ts`), forcer `z.union([z.number().int(), z.boolean(), z.string()])` selon le type de la question courante.
 - **Patch Node uniquement**.
 - **Risque** : faible.
 
@@ -468,7 +485,7 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 | P6 | `app/Http/Controllers/DuoController.php` | 1666 (renderQuestionView) ; 1712, 1714-1719 (renderAnswerView) ; 1895, 1897-1902 (renderResultView). Lecture Redis déjà câblée pour `questionData` (1736-1755) — à étendre à `currentQuestion` et `player_scores_map`. |
 | P7 | `apps/game-server/src/services/GameOrchestrator.ts` | 674-677 (broadcastQuestion guard) |
 | P8 | `apps/game-server/src/ws/handlers.ts` ; `public/js/DuoSocketClient.js` ; `apps/game-server/src/services/RoomManager.ts:272-275` (`getEvents(fromEventId)` existe déjà) | handler `join_room` (~170-303) ; DuoSocketClient.js (handler `state` ~147-156) |
-| P9 | `apps/game-server/src/types/schemas.ts` (à créer/lire) | `AnswerSchema` |
+| P9 | `apps/game-server/src/validation/schemas.ts` (à créer/lire) | `AnswerSchema` |
 | P10 | `apps/game-server/src/services/GameOrchestrator.ts` | 376 (TEXT compare) |
 
 **Aucun patch ne doit toucher** :
