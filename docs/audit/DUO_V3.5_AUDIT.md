@@ -90,16 +90,19 @@ Sous-table « assertion → citation » des affirmations centrales de cet audit,
 - Niveau 2 — Pipeline Firestore : `GameServerQuestionPipeline` filtre les IDs déjà servis.
 - Niveau 3 — Orchestrateur : `room.usedQuestionIds: Set<string>` filtre lors de `transitionToWaiting` (`GameOrchestrator.ts:907-913`) et `prefetchQuestionBlock` (`GameOrchestrator.ts:993-998`).
 
-### 1.6 Périmètre des inconnus (bounded)
+### 1.6 Périmètre des inconnus (bounded — final)
 
-Les zones suivantes **n'ont pas été lues exhaustivement** dans cet audit. Aucune conclusion principale (Sections 5, 7, 8, 9, 10) ne dépend d'elles : elles sont consignées ici uniquement pour transparence et pour cadrer un audit complémentaire éventuel.
+Les zones suivantes restent **hors-périmètre confirmé** de cet audit. Aucune conclusion principale (Sections 5, 7, 8, 9, 10) n'en dépend. Les zones précédemment listées ici comme « non lues » (`apps/game-server/src/ws/handlers.ts` et `public/js/GameplayRuntime.js`) ont été lues dans la passe finale et leurs constats incorporés en §2, §9 et §10 :
 
-| # | Zone | Pourquoi non lue ici | Impact possible si lecture ultérieure révèle un écart |
-|---|------|----------------------|------------------------------------------------------|
-| U1 | `apps/game-server/src/ws/handlers.ts` (handlers Socket.IO bruts) | Hors scope « Duo gameplay » direct ; les handlers délèguent à `GameOrchestrator` / `RoomManager`. | Pourrait introduire une validation laxiste avant le handler — à auditer si un risque RISQUE POTENTIEL escalade. |
-| U2 | `public/js/GameplayRuntime.js` (consommateur de `window.GR_SAVE_STATE_EXTRA`) | Hors scope back-end. Cité en §10 D1/D4 comme producteur du risque. | Pourrait déjà valider la phase contre le serveur avant de l'utiliser ; dans ce cas D1 dégradé en BAS. |
-| U3 | Comportement réel de la dérogation Bug #1 en mode socket lent (`docs/decisions/2026-04-26-duo-immediate-result-nav.md`) | Le décisionnaire produit existe ; pas de logs prod consultés. | Pourrait déjà avoir des telemetry / fuites observées en prod — à corréler. |
-| U4 | League Team (5v5) — règles spécifiques de fin de manche par équipe | Hors scope Duo. La validation cross-mode (§14) ne couvre League Team que par check de symétrie d'API. | Audit séparé nécessaire si on étend les patches §11 à League Team. |
+- **`apps/game-server/src/ws/handlers.ts`** : la validation du payload `join_room` est faite par Zod (`handlers.ts:67-74`), et le handler renvoie un `phase_changed` complet (`handlers.ts:183-186, 263-267`) — donc à la reconnexion le serveur réémet bien l'état canonique. Ceci atténue D4/H3 mais ne le résout pas (le front consomme aussi sa valeur sessionStorage en parallèle).
+- **`public/js/GameplayRuntime.js`** : consomme `restoreState()` (`:159-194`) **et** dispose d'une réconciliation `page → phase` (`:312-367`) qui redirige si mismatch. L'usage de `window.GR_SAVE_STATE_EXTRA.phase` (`:194`) reste un risque H1 réel, mais borné à la fenêtre avant le 1ᵉʳ `phase_changed` reçu.
+
+Demeurent hors périmètre confirmé :
+
+| # | Zone | Pourquoi hors périmètre | Impact possible si audit futur révèle un écart |
+|---|------|------------------------|----------------------------------------------|
+| U1 | Comportement réel de la dérogation Bug #1 en mode socket lent (`docs/decisions/2026-04-26-duo-immediate-result-nav.md`) | Pas de logs prod consultés (audit statique uniquement). | Pourrait déjà avoir des telemetry / fuites observées en prod — à corréler avant le patch P3. |
+| U2 | League Team (5v5) — règles spécifiques de fin de manche par équipe | Hors scope Duo (audit dédié à venir). La validation cross-mode (§14) ne couvre League Team que par check de symétrie d'API. | Audit séparé nécessaire si on étend les patches §11 à League Team. |
 
 Tout item escaladé hors de cette table doit déclencher un addendum signé à cet audit, jamais une réécriture silencieuse.
 
