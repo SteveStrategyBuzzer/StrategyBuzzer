@@ -475,18 +475,20 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 
 ## Section 12 — Fichiers à toucher (chirurgical)
 
-| Patch | Fichier(s) | Lignes ciblées |
-|---|---|---|
-| P1 | `apps/game-server/src/services/GameOrchestrator.ts` | 1267-1278 (endMatch tie-break) |
-| P2 | `resources/views/duo_question.blade.php` ; `public/js/GameplayRuntime.js` | duo_question.blade.php:34-37 ; GameplayRuntime.js (lecteurs de `GR_SAVE_STATE_EXTRA.phase`) |
-| P3 | `app/Http/Controllers/DuoController.php` | ~2731 (dérogation Bug #1 dans le switch `renderPageGuard`) |
-| P4 | `public/js/DuoSocketClient.js` ; `apps/game-server/src/ws/handlers.ts` | DuoSocketClient.js:443-454 ; handlers.ts (handler `state` ou `join_room`) |
-| P5 | `apps/game-server/src/services/GameOrchestrator.ts` | 1334-1338 (`if (mode === "DUO" \|\| "LEAGUE_TEAM")`) |
-| P6 | `app/Http/Controllers/DuoController.php` | 1666 (renderQuestionView) ; 1712, 1714-1719 (renderAnswerView) ; 1895, 1897-1902 (renderResultView). Lecture Redis déjà câblée pour `questionData` (1736-1755) — à étendre à `currentQuestion` et `player_scores_map`. |
-| P7 | `apps/game-server/src/services/GameOrchestrator.ts` | 674-677 (broadcastQuestion guard) |
-| P8 | `apps/game-server/src/ws/handlers.ts` ; `public/js/DuoSocketClient.js` ; `apps/game-server/src/services/RoomManager.ts:272-275` (`getEvents(fromEventId)` existe déjà) | handler `join_room` (~170-303) ; DuoSocketClient.js (handler `state` ~147-156) |
-| P9 | `apps/game-server/src/validation/schemas.ts` (à créer/lire) | `AnswerSchema` |
-| P10 | `apps/game-server/src/services/GameOrchestrator.ts` | 376 (TEXT compare) |
+Schéma : **fichier · raison · type d'intervention attendue** (ligne par patch P1–P10 du §11).
+
+| Patch | Fichier · Lignes ciblées | Raison (lien §10) | Type d'intervention attendue |
+|---|---|---|---|
+| P1 | `apps/game-server/src/services/GameOrchestrator.ts:1267-1278` (`endMatch`) | B1 — tie parfait → vainqueur arbitraire | Logique : ajouter un 2ᵉ tiebreaker déterministe **ou** statut `isTie=true` officiel. |
+| P2 | `resources/views/duo_question.blade.php:34-37` ; `public/js/GameplayRuntime.js` (lecteurs de `GR_SAVE_STATE_EXTRA.phase`) | H1 / D1 — hardcode `phase: 'QUESTION_ACTIVE'` | Suppression : retirer la valeur hardcodée + s'assurer qu'aucun lecteur ne la consomme comme autorité. |
+| P3 | `app/Http/Controllers/DuoController.php:2731-2737` (dérogation dans `validatePhaseAccess`) | H2 / D5 — buzz-winner sort tôt vers `/duo/result` | Durcissement : conditionner la dérogation à un check additionnel (Redis `phase IN ('RESULT','REVEAL','SYNC')` ou présence d'un flag `result_ready`). |
+| P4 | `public/js/DuoSocketClient.js:443-454` ; `apps/game-server/src/ws/handlers.ts` (handler `state` ou `join_room`) | H3 / D4 — `restoreState()` republie sessionStorage sans confirmation | Refactor flux : demander un `state` frais avant publication ; n'appliquer le snapshot local qu'après confirmation serveur. |
+| P5 | `apps/game-server/src/services/GameOrchestrator.ts:1334-1338` (filtre mode dans `notifyMatchFinalized`) | H4 / D11 — divergence Master & League Individual | Extension de scope : élargir le filtre `mode === "DUO" \|\| "LEAGUE_TEAM"` à `MASTER` et `LEAGUE_INDIVIDUAL` (+ vérifier idempotence des routes Laravel cibles). |
+| P6 | `app/Http/Controllers/DuoController.php:1666` (renderQuestionView) ; `:1712, 1714-1719` (renderAnswerView) ; `:1895, 1897-1902` (renderResultView). Pattern Redis déjà câblé pour `questionData` à `:1736-1755`. | M1 / M2 / M5 / D2 / D3 — `currentQuestion=1` hardcodé et `player_scores_map` stale au load | Lecture seule : étendre le fallback Redis existant à `currentQuestion` et `player_scores_map` (aucune nouvelle écriture en DB). |
+| P7 | `apps/game-server/src/services/GameOrchestrator.ts:674-677` (`broadcastQuestion` guard) | M / D6 — `console.error + return` silencieux si question manquante | Gestion d'erreur : émettre un événement explicite (`error` socket) ou forcer `endRound` au lieu de retourner en silence. |
+| P8 | `apps/game-server/src/ws/handlers.ts` (handler `join_room` ~170-303) ; `public/js/DuoSocketClient.js` (handler `state` ~147-156) ; `apps/game-server/src/services/RoomManager.ts:272-275` (`getEvents(fromEventId)` déjà disponible) | Reconnect — risque de manquer des événements entre déconnexion et reconnexion | Ajout : sur reconnect, replayer les événements depuis `lastEventId` connu côté client (pas de nouveau code dans `RoomManager`, juste consommation). |
+| P9 | `apps/game-server/src/validation/schemas.ts:37-40` (`AnswerSchema`) | L1 — `===` strict vs `z.union` non coercif | Renforcement validation : ajouter une coercition explicite (`z.coerce.number()` pour MCQ, `z.coerce.boolean()` pour TRUE_FALSE) ou normaliser dans le handler avant comparaison. |
+| P10 | `apps/game-server/src/services/GameOrchestrator.ts:376` (TEXT compare) | L2 — pas de `trim()` sur la comparaison TEXT | Ajout one-liner : `.trim()` côté serveur avant `toLowerCase()`. |
 
 **Aucun patch ne doit toucher** :
 - `packages/game-engine/src/scoring.ts` (contrat scoring stable, déjà universel).
