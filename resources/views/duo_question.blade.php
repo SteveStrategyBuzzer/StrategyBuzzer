@@ -1242,13 +1242,15 @@ $mode = 'duo';
     }
     
     function handleOpponentBuzz() {
-        // V3: opponent buzzed first but question is NON-BLOCKING — I can still buzz.
-        // Show a brief banner without stopping the timer or disabling the buzzer.
+        // No-op by product rule: the QUESTION page must NEVER announce
+        // "the opponent buzzed first" in any mode. The buzzer queue is
+        // server-authoritative; the buzz is non-blocking (you can still
+        // buzz for 2nd position) and any visual cue here would either
+        // distract or look like a defeat banner. We deliberately keep
+        // the function (call sites stay valid) and force-hide the legacy
+        // DOM banner in case prior CSS / JS left it visible.
         var banner = document.getElementById('opponentBuzzBanner');
-        if (banner) {
-            banner.style.display = 'flex';
-            setTimeout(function() { banner.style.display = 'none'; }, 4000);
-        }
+        if (banner) banner.style.display = 'none';
     }
     
     function showResult(isCorrect, points) {

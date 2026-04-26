@@ -1000,6 +1000,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     // bookkeeping was removed in favour of the real ANSWER_SELECTION
     // phase (10s) emitted by the orchestrator after QUESTION_ACTIVE.
     let phaseEndsAtMs = null;
+    // Tracks the latest server-published phase. Updated by the three handlers
+    // that receive a phase tag (_onAnswerPhaseChanged, _onAnswerGameState,
+    // _onAnswerState). Used to gate the auto-timeout safety net so we do NOT
+    // auto-submit while we are still bleeding off residual QUESTION_ACTIVE
+    // time — the real answer window opens only with ANSWER_SELECTION.
+    let currentPhase = null;
     
     const CHOICES = @json($choices);
     const HAS_ILLUMINATE = {{ ($hasIlluminateNumbers ?? false) ? 'true' : 'false' }};
@@ -1409,12 +1415,29 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
             
             if (timeLeft <= 0) {
+                // The auto-timeout is a UX safety net for the REAL answer
+                // window only. While the buzzer is still bleeding off
+                // residual QUESTION_ACTIVE time (they buzzed mid-question
+                // and were redirected here before Node opened the official
+                // ANSWER_SELECTION phase), reaching 0s does NOT mean their
+                // answer time is up — Node will publish ANSWER_SELECTION on
+                // the next phase transition and the chrono will jump UP to
+                // 10s. Auto-submitting here would cut their answer window
+                // short. We therefore restrict the safety net to phases
+                // where the chrono is authoritative for the answer window.
+                var inAnswerWindow =
+                    currentPhase === 'ANSWER_SELECTION' ||
+                    currentPhase === 'ANSWER_COLLECTION' ||
+                    currentPhase === 'BUZZ_WINNER_ANSWERING';
+                if (!inAnswerWindow) {
+                    return; // keep ticking; do NOT auto-submit yet
+                }
                 clearInterval(timerInterval);
                 timerInterval = null;
-                // UX safety net: auto-submit a timeout. The Node server is still
-                // the sole authority on the phase transition (handleAnswerTimeout) —
-                // a late client submission is harmless because the orchestrator
-                // ignores submissions outside the answer window.
+                // Node remains the sole authority on the phase transition
+                // (handleAnswerTimeout) — a late client submission is
+                // harmless because the orchestrator ignores submissions
+                // outside the answer window.
                 if (!answered && canAnswer()) {
                     handleTimeout();
                 }
@@ -1565,6 +1588,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // V3: accept QUESTION_ACTIVE (nominal answer phase) in addition to legacy phases
         var answerPhases = ['QUESTION_ACTIVE', 'ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'];
         if (!answerPhases.includes(phase)) return;
+        currentPhase = phase;
 
         // Verrou source de vérité: mettre à jour PLAYER_BUZZ_POSITION depuis buzzQueue serveur
         // Fallback: si buzzQueue absent, utiliser playerBuzzOrder si disponible
@@ -1655,6 +1679,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // V3: QUESTION_ACTIVE is the nominal answer phase; include it with legacy phases
             var timerPhases = ['QUESTION_ACTIVE', 'ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'];
             if (timerPhases.includes(phase)) {
+                currentPhase = phase;
                 // Patch 4 — Honest resync on (re)connect. Stale-snapshot and
                 // snap-protection guards removed: Node now publishes a real
                 // 10 s ANSWER_SELECTION phase, so we trust phaseEndsAtMs as-is.
@@ -1752,6 +1777,9 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         if (isRedirecting || !data || !data.phase) return;
         var phase = data.phase;
         var _nav  = window.duoNavigate || function(u) { window.location.href = u; };
+
+        // Track latest phase for the auto-timeout safety-net gate.
+        currentPhase = phase;
 
         // F4: mettre à jour GR_SAVE_STATE_EXTRA.phase dynamiquement
         if (window.GR_SAVE_STATE_EXTRA) {
