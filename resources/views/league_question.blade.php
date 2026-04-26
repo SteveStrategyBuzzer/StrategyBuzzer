@@ -996,7 +996,15 @@ $mode = 'league';
             isRedirecting = false;
             startTimer();
         } else if (currentPhase === 'ANSWER_SELECTION') {
-            stopTimer();
+            // Task #55 — V3 non-blocking parity with Duo: when the lock is on
+            // me I've already navigated via local handleBuzz(); when it's on
+            // the opponent we keep the timer/buzzer alive and only flash the
+            // reactive glow on offensive skills. No unconditional shutdown.
+            const lockedId = data.lockedPlayerId || data.lockedAnswerPlayerId || '';
+            const myId = '{{ auth()->id() ?? "" }}';
+            if (String(lockedId) !== String(myId)) {
+                handleOpponentBuzz(data);
+            }
         } else if (currentPhase === 'REVEAL') {
             stopTimer();
         }
