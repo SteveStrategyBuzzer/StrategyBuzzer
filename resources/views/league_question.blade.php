@@ -891,10 +891,10 @@ $mode = 'league';
         buzzButton.disabled = true;
         setBuzzerState('waiting');
         
-        isRedirecting = true;
-        setTimeout(() => {
-            window.location.href = '/game/duo/answer?timeout=true&match_id=' + MATCH_ID;
-        }, 500);
+        // Task #55 — Mirror of Duo (Task #64): no client-side timeout redirect.
+        // The Node game server is the sole phase authority; we stay on the
+        // question page and the next phase_changed event (RESULT) will navigate.
+        console.log('[LeagueQuestion] handleNoBuzz: waiting for next phase_changed');
     }
     
     function handleOpponentBuzz(data) {
