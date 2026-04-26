@@ -85,3 +85,9 @@ attached_assets/Pasted-Je-travaille-sur-un-projet-appel-StrategyBuzzer-un-jeu-_1
 *.bak.*
 firebase/firebase-service-account.json
 dump.rdb
+
+# Playwright test artifacts
+tests/e2e/playwright-report/
+tests/e2e/test-results/
+playwright-report/
+test-results/
