@@ -1349,15 +1349,18 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         if (timerInterval) clearInterval(timerInterval);
         
         // Sync starting timeLeft with server's remaining ANSWER_SELECTION time, but
-        // absorb up to 1.5s of network/page-load latency: if the server reports
-        // remaining ≥ (ANSWER_TIME − 1.5)s, snap the visible countdown back up to
-        // the full ANSWER_TIME so the player sees a clean fresh "10s" on arrival.
+        // absorb up to 3s of network/page-load latency: if the server reports
+        // remaining ≥ (ANSWER_TIME − 3)s, snap the visible countdown back up to
+        // the full ANSWER_TIME so the player sees a clean fresh "10s" on arrival
+        // (was 1.5s — bumped to 3s to better cover slow mobile / cold socket
+        // handshake roundtrips that previously caused the visible timer to
+        // arrive at 8 s or below).
         // The setInterval below still re-syncs every tick, so the actual timeout
         // remains driven by the server's authoritative phaseEndsAtMs.
         if (phaseEndsAtMs) {
             const remaining = Math.max(0, phaseEndsAtMs - Date.now());
             const ceilLeft = Math.ceil(remaining / 1000);
-            if (remaining >= (ANSWER_TIME - 1.5) * 1000) {
+            if (remaining >= (ANSWER_TIME - 3) * 1000) {
                 timeLeft = ANSWER_TIME;
             } else {
                 timeLeft = ceilLeft;
@@ -1562,8 +1565,19 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         if (!data.phaseEndsAtMs) return;
+        // Stale-snapshot defense: if the server snapshot reports < 2 s remaining
+        // but our local timer is still on a fresh value (≥ 5 s), treat the
+        // snapshot as stale (likely produced before the buzz transition or
+        // delivered after page-load + socket-handshake latency burned through
+        // it) and skip the resync. The setInterval below keeps recomputing
+        // from phaseEndsAtMs each tick, so any genuinely-late server clock
+        // will catch up naturally on the next valid event.
+        var remaining = Math.max(0, data.phaseEndsAtMs - Date.now());
+        if (remaining < 2000 && timeLeft >= 5) {
+            console.warn('[DuoAnswer] game_state ignored stale snapshot: server remaining=' + remaining + 'ms vs local timeLeft=' + timeLeft + 's');
+            return;
+        }
         phaseEndsAtMs = data.phaseEndsAtMs;
-        var remaining = Math.max(0, phaseEndsAtMs - Date.now());
         var serverLeft = Math.ceil(remaining / 1000);
         if (Math.abs(serverLeft - timeLeft) > 1) {
             console.log('[DuoAnswer] game_state timer resync: local=' + timeLeft + 's server=' + serverLeft + 's');
@@ -1636,12 +1650,26 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // V3: QUESTION_ACTIVE is the nominal answer phase; include it with legacy phases
             var timerPhases = ['QUESTION_ACTIVE', 'ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'];
             if (timerPhases.includes(phase)) {
-                phaseEndsAtMs = data.phaseEndsAtMs;
-                var rem = Math.max(0, phaseEndsAtMs - Date.now());
-                var srvLeft = Math.ceil(rem / 1000);
-                if (Math.abs(srvLeft - timeLeft) > 1) {
-                    console.log('[DuoAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
-                    timeLeft = srvLeft;
+                // Stale-snapshot defense (mirrors _onAnswerGameState above): the
+                // `state` event on (re)connect can carry a phaseEndsAtMs that
+                // was captured BEFORE the buzz transition completed, or one
+                // that has been "in flight" long enough that it now reads
+                // near-expired even though the real ANSWER_SELECTION phase
+                // has plenty of time left server-side. Skip the resync if
+                // server reports < 2s remaining while our local timer is
+                // still on a fresh value (≥ 5s) — wait for the next
+                // authoritative event instead of collapsing the visible
+                // countdown to ~1s.
+                var rem = Math.max(0, data.phaseEndsAtMs - Date.now());
+                if (rem < 2000 && timeLeft >= 5) {
+                    console.warn('[DuoAnswer] state ignored stale snapshot: server remaining=' + rem + 'ms vs local timeLeft=' + timeLeft + 's');
+                } else {
+                    phaseEndsAtMs = data.phaseEndsAtMs;
+                    var srvLeft = Math.ceil(rem / 1000);
+                    if (Math.abs(srvLeft - timeLeft) > 1) {
+                        console.log('[DuoAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
+                        timeLeft = srvLeft;
+                    }
                 }
             }
         }
