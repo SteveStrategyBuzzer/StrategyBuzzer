@@ -1,0 +1,116 @@
+Contexte — Audit des plans #77, #75, #76 avant tout patch
+
+On n’écrit aucun code avant audit critique.
+
+Règles immuables :
+
+Node = autorité unique
+Blade affiche
+Laravel persiste
+Firebase jamais gameplay
+
+Si une proposition viole ça → refus.
+
+Analyser ces 3 tâches dans cet ordre :
+
+================================
+1) TÂCHE #77 — Hardcodes phase / restoreState / dérogation buzz-winner
+================================
+
+Priorité critique.
+
+Auditer si les 3 risques sont réels :
+
+- hardcode phase:'QUESTION_ACTIVE' dans duo_question
+- restoreState() sans validation serveur
+- dérogation Bug #1 permettant sortie vers /duo/result trop tôt
+
+Position cible :
+
+- le hardcode phase ne doit plus être une source d’autorité.
+- restoreState doit revalider l’état serveur avant publication locale.
+- la dérogation buzz-winner doit idéalement être supprimée si ANSWER_SELECTION est maintenant vraie phase officielle.
+
+Si elle reste temporairement :
+elle doit être gated par :
+- state.phase
+- lockedAnswerPlayerId cohérent avec le joueur courant
+pas seulement un simple check permissif.
+
+Je veux audit :
+GO / risque / interactions possibles avec ANSWER_SELECTION.
+
+================================
+2) TÂCHE #76 — Flash Question 1/9 et faux score 0-0
+================================
+
+Auditer si la correction par lecture Redis fallback est propre.
+
+Contraintes :
+- lecture seule seulement
+- aucune logique gameplay ajoutée côté PHP
+- si Redis disponible, jamais fallback Laravel stale prioritaire.
+
+Valider si :
+renderQuestionView
+renderAnswerView
+renderResultView
+
+peuvent tous lire l’état canonique room state sans régression.
+
+Verdict GO ou non.
+
+================================
+3) TÂCHE #75 — Égalité parfaite fin de match
+================================
+
+Ici pas d’implémentation automatique sans décision produit.
+
+Je veux évaluer deux options :
+
+A)
+second critère implicite supplémentaire
+
+B)
+égalité officielle :
+winnerId = null
+isTie = true
+
+Tenir compte du système points Duo :
+
+buzz #1 :
+bonne = +2
+erreur = -2
+
+buzz #2 :
+bonne = +1
+erreur = -2
+
+pas de buzz :
+0 point
+
+Vu cette logique asymétrique, dire si tie officiel est préférable.
+
+Par défaut je penche pour :
+égalité officielle.
+
+Ne pas coder un critère caché sans justification produit.
+
+================================
+FORMAT DE RÉPONSE ATTENDU
+================================
+
+Pour chaque tâche :
+
+- Diagnostic
+- Risque
+- Compatibilité avec architecture
+- Interaction possible avec ANSWER_SELECTION
+- GO / GO avec conditions / REFUS
+
+Si une tâche doit être documentée :
+signaler docs/audit ou docs/decisions.
+
+Pas de patch.
+Pas de code.
+Audit critique seulement.
