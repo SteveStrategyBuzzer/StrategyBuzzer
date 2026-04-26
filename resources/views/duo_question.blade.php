@@ -382,6 +382,19 @@ $mode = 'duo';
         opacity: 0.5;
         cursor: not-allowed;
     }
+
+    /* Task #55 — Reactive glow: pulses gold ~3.5s when the opponent buzzes
+       first, only on offensive skills targeting the opponent that are still
+       available. Replaces the legacy "L'adversaire a buzzé en premier" banner. */
+    @keyframes sb-reactive-glow {
+        0%   { box-shadow: 0 0 12px rgba(255, 215, 0, 0.35); transform: scale(1); border-color: rgba(255,215,0,0.7); }
+        50%  { box-shadow: 0 0 28px rgba(255, 215, 0, 1), 0 0 48px rgba(255, 195, 0, 0.65); transform: scale(1.15); border-color: rgba(255,215,0,1); }
+        100% { box-shadow: 0 0 12px rgba(255, 215, 0, 0.35); transform: scale(1); border-color: rgba(255,215,0,0.7); }
+    }
+    .skill-circle.reactive-glow {
+        animation: sb-reactive-glow 1.2s ease-in-out 3;
+        background: rgba(255, 215, 0, 0.28);
+    }
     
     .buzz-container-bottom {
         position: fixed;
@@ -833,6 +846,7 @@ $mode = 'duo';
                              data-skill-trigger="{{ $skill['trigger'] ?? 'question' }}"
                              data-uses-left="{{ $skill['uses_left'] ?? 1 }}"
                              data-passive="{{ $isPassive ? 'true' : 'false' }}"
+                             data-affects-others="{{ !empty($skill['affects_others']) ? 'true' : 'false' }}"
                              title="{{ $skill['name'] ?? '' }}: {{ $skill['description'] ?? '' }}">
                             {{ $skill['icon'] ?? '⭐' }}
                         </div>
@@ -865,10 +879,9 @@ $mode = 'duo';
     <div class="points-text" id="pointsText"></div>
 </div>
 
-{{-- V3: Opponent buzz banner — shown when opponent gets 1st position, question stays active --}}
-<div id="opponentBuzzBanner" style="display:none;position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(255,107,107,0.92),rgba(200,60,60,0.92));color:#fff;padding:12px 28px;border-radius:30px;font-size:1rem;font-weight:700;z-index:8500;box-shadow:0 4px 20px rgba(255,107,107,0.5);align-items:center;gap:10px;white-space:nowrap;">
-    ⚡ {{ __("L'adversaire a buzzé en premier ! Buzzez pour le 2e point !") }}
-</div>
+{{-- Task #55 — Legacy opponent-buzz banner removed. Visual feedback is now
+     conveyed by the reactive-glow pulse on offensive skills targeting the
+     opponent (handled in JS handleOpponentBuzz). No DOM element needed. --}}
 
 <audio id="buzzerSound" preload="auto">
     <source id="buzzerSource" src="{{ asset('sounds/buzzer_default_1.mp3') }}" type="audio/mpeg">
@@ -1244,15 +1257,29 @@ $mode = 'duo';
     }
     
     function handleOpponentBuzz() {
-        // No-op by product rule: the QUESTION page must NEVER announce
-        // "the opponent buzzed first" in any mode. The buzzer queue is
-        // server-authoritative; the buzz is non-blocking (you can still
-        // buzz for 2nd position) and any visual cue here would either
-        // distract or look like a defeat banner. We deliberately keep
-        // the function (call sites stay valid) and force-hide the legacy
-        // DOM banner in case prior CSS / JS left it visible.
-        var banner = document.getElementById('opponentBuzzBanner');
-        if (banner) banner.style.display = 'none';
+        // Task #55 — Replaces the legacy text banner. When the opponent buzzes
+        // first, briefly pulse-glow the player's still-available offensive
+        // skills that target the opponent (data-affects-others="true"), as a
+        // discreet reminder that they can riposte. Buzzer stays active so the
+        // player can still grab 2nd position; no other behaviour changes.
+        var circles = document.querySelectorAll(
+            '.skill-circle.active[data-affects-others="true"]'
+        );
+        circles.forEach(function(circle) {
+            // Defensive: skip used / depleted / passive / non-targeting circles.
+            if (circle.classList.contains('used')) return;
+            if (circle.classList.contains('depleted')) return;
+            if (circle.getAttribute('data-passive') === 'true') return;
+            // Restart the animation if it was already running.
+            circle.classList.remove('reactive-glow');
+            // Force reflow so re-adding the class restarts the keyframes.
+            // eslint-disable-next-line no-unused-expressions
+            void circle.offsetWidth;
+            circle.classList.add('reactive-glow');
+            setTimeout(function() {
+                circle.classList.remove('reactive-glow');
+            }, 3600);
+        });
     }
     
     function showResult(isCorrect, points) {

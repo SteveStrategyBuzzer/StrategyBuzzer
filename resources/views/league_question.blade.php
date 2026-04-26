@@ -294,6 +294,19 @@ $mode = 'league';
         opacity: 0.5;
         cursor: not-allowed;
     }
+
+    /* Task #55 — Reactive glow: pulses gold ~3.5s when the opponent buzzes
+       first, only on offensive skills targeting the opponent that are still
+       available. Replaces the legacy "Adversaire a buzzé" overlay. */
+    @keyframes sb-reactive-glow {
+        0%   { box-shadow: 0 0 12px rgba(255, 215, 0, 0.35); transform: scale(1); border-color: rgba(255,215,0,0.7); }
+        50%  { box-shadow: 0 0 28px rgba(255, 215, 0, 1), 0 0 48px rgba(255, 195, 0, 0.65); transform: scale(1.15); border-color: rgba(255,215,0,1); }
+        100% { box-shadow: 0 0 12px rgba(255, 215, 0, 0.35); transform: scale(1); border-color: rgba(255,215,0,0.7); }
+    }
+    .skill-circle.reactive-glow {
+        animation: sb-reactive-glow 1.2s ease-in-out 3;
+        background: rgba(255, 215, 0, 0.28);
+    }
     
     .buzz-container-bottom {
         position: fixed;
@@ -708,10 +721,17 @@ $mode = 'league';
             <div class="skills-container">
                 @if(!empty($skills) && is_array($skills))
                     @foreach($skills as $skill)
-                        <div class="skill-circle {{ ($skill['used'] ?? false) ? 'used' : 'active' }}" 
+                        @php
+                            $_isPassive = in_array($skill['id'] ?? '', ['faster_buzz', 'skill_recharge']);
+                            $_isUsed    = $skill['used'] ?? false;
+                            $_class     = $_isUsed ? 'used' : ($_isPassive ? 'passive' : 'active');
+                        @endphp
+                        <div class="skill-circle {{ $_class }}" 
                              data-skill-id="{{ $skill['id'] ?? '' }}"
                              data-skill-trigger="{{ $skill['trigger'] ?? 'question' }}"
                              data-uses-left="{{ $skill['uses_left'] ?? 1 }}"
+                             data-passive="{{ $_isPassive ? 'true' : 'false' }}"
+                             data-affects-others="{{ !empty($skill['affects_others']) ? 'true' : 'false' }}"
                              title="{{ $skill['name'] ?? '' }}: {{ $skill['description'] ?? '' }}">
                             {{ $skill['icon'] ?? '⭐' }}
                         </div>
@@ -740,12 +760,9 @@ $mode = 'league';
     <div class="points-text" id="pointsText"></div>
 </div>
 
-<div id="opponentBuzzedOverlay" class="opponent-buzzed-overlay">
-    <div class="opponent-buzzed-message">
-        <h2>🔔 {{ __('Adversaire a buzzé !') }}</h2>
-        <p>{{ __('En attente de sa réponse...') }}</p>
-    </div>
-</div>
+{{-- Task #55 — Legacy opponent-buzz overlay removed. Visual feedback is now
+     conveyed by the reactive-glow pulse on offensive skills targeting the
+     opponent (handled in JS handleOpponentBuzz). No DOM element needed. --}}
 
 <audio id="buzzerSound" preload="auto">
     <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
@@ -789,7 +806,7 @@ $mode = 'league';
     const pointsText = document.getElementById('pointsText');
     const buzzerSound = document.getElementById('buzzerSound');
     const noBuzzSound = document.getElementById('noBuzzSound');
-    const opponentBuzzedOverlay = document.getElementById('opponentBuzzedOverlay');
+    // Task #55 — opponentBuzzedOverlay removed; visual feedback now via skill glow.
     
     function updateConnectionStatus(status) {
         connectionStatus.className = 'connection-status ' + status;
@@ -899,16 +916,27 @@ $mode = 'league';
     }
     
     function handleOpponentBuzz(data) {
-        if (buzzed || isRedirecting) return;
-        
-        stopTimer();
-        setBuzzerState('hidden');
-        opponentBuzzedOverlay.style.display = 'flex';
-        
-        isRedirecting = true;
-        setTimeout(() => {
-            window.location.href = '/game/duo/answer?opponent_buzzed=true&match_id=' + MATCH_ID;
-        }, 1500);
+        // Task #55 — Replaces the legacy text overlay AND the parasitic
+        // /game/duo/answer?opponent_buzzed=true redirect. When the opponent
+        // buzzes first, briefly pulse-glow the player's still-available
+        // offensive skills targeting the opponent. The buzzer stays active so
+        // the player can still grab 2nd position; the question page waits for
+        // the next phase event (ANSWER_SELECTION / RESULT) to navigate.
+        var circles = document.querySelectorAll(
+            '.skill-circle.active[data-affects-others="true"]'
+        );
+        circles.forEach(function(circle) {
+            if (circle.classList.contains('used')) return;
+            if (circle.classList.contains('depleted')) return;
+            if (circle.getAttribute('data-passive') === 'true') return;
+            circle.classList.remove('reactive-glow');
+            // eslint-disable-next-line no-unused-expressions
+            void circle.offsetWidth;
+            circle.classList.add('reactive-glow');
+            setTimeout(function() {
+                circle.classList.remove('reactive-glow');
+            }, 3600);
+        });
     }
     
     function showResult(isCorrect, points) {
@@ -1022,10 +1050,12 @@ $mode = 'league';
     function handleBuzzWinner(data) {
         console.log('[DuoQuestion] {{ __("Gagnant du buzz") }}:', data);
         
-        stopTimer();
-        buzzButton.disabled = true;
-        setBuzzerState('hidden');
-        
+        // Task #55 — V3 non-blocking model: when the opponent wins a buzz
+        // position, do NOT stop the local timer or disable the buzzer. The
+        // player can still buzz for 2nd position (server is sole authority).
+        // We only signal it visually via handleOpponentBuzz (skill glow).
+        // When the local player IS the winner, handleBuzz() already ran the
+        // local stop/disable/redirect path, so no extra work needed here.
         if (data.playerId && data.playerId !== '{{ auth()->id() ?? "" }}') {
             handleOpponentBuzz(data);
         }
