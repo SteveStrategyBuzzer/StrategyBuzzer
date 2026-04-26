@@ -14,7 +14,28 @@
 
 ---
 
-## Section 1 — État actuel V3.5 (factuel)
+## Section 1 — État actuel
+
+### 1.0 Preuves minimales (table assertion → citation)
+
+Sous-table « assertion → citation » des affirmations centrales de cet audit, pour permettre une lecture rapide. Les affirmations de second niveau (UX flash, risques bornés, etc.) sont citées en place dans leur section.
+
+| # | Assertion centrale | Citation primaire | Citation de recoupement |
+|---|--------------------|-------------------|------------------------|
+| A1 | Node Game Server est l'autorité unique pour phases / buzz / scoring / fin de manche & match | `apps/game-server/src/services/GameOrchestrator.ts:190-1355` (services), `apps/game-server/src/index.ts` (process) | `packages/game-engine/src/scoring.ts` + `reducer.ts` (aucun import Firebase) |
+| A2 | Firebase n'est jamais autorité gameplay | absence d'import `firebase/firestore` dans `GameOrchestrator.ts` / `RoomManager.ts` / `scoring.ts` / `reducer.ts` | `LobbyPresenceManager` (présence uniquement) |
+| A3 | Scoring +2 / +1 / 0 / −2 | `GameOrchestrator.ts:540-545` | `packages/game-engine/src/scoring.ts` (fonction `calculateScore`) |
+| A4 | `scoreAllBuzzers` retourne tôt si `buzzQueue.length === 0` (donc pas de `player_stats_updated` dans le cas zéro buzz) | `GameOrchestrator.ts:347-350` | broadcast non-buzzers à `:502-526` n'est jamais atteint dans ce cas |
+| A5 | `questionIndex` est incrémenté à 3 endroits, dont avant `SYNC` | `GameOrchestrator.ts:1014` (`transitionToSync`) | `:953` (`handleWaitingTimeout`), `:870` (`transitionToWaiting` fallback) |
+| A6 | `validatePhaseAccess` lit l'état serveur via HTTP (pas Redis direct) | `app/Http/Controllers/DuoController.php:2619` (`gameServerService->getRoom`) | `app/Services/GameServerService.php:115-121` (HTTP GET `/rooms/{roomId}`) |
+| A7 | La route HTTP `/rooms/{roomId}` retire `correctIndex/correctBool/correctText` | `apps/game-server/src/http/routes.ts:93-99` (`sanitizedState`) | — |
+| A8 | `AnswerSchema` accepte `union(number, string, boolean)` sans coercition | `apps/game-server/src/validation/schemas.ts:37-40` | comparaison `===` à `GameOrchestrator.ts:372` |
+| A9 | Hardcode `phase: 'QUESTION_ACTIVE'` au load Blade | `resources/views/duo_question.blade.php:34-37` | `public/js/DuoSocketClient.js:443-454` (consommateur `restoreState`) |
+| A10 | Tie parfait → vainqueur arbitraire (ordre Map JS) | `GameOrchestrator.ts:1267-1278` (`endMatch`) | `app/Http/Controllers/DuoController.php:443-453` (`applyFinalizationFromRedis`) |
+| A11 | `notifyMatchFinalized` est filtré DUO/LEAGUE_TEAM uniquement | `GameOrchestrator.ts:1334-1338` | — |
+| A12 | Constantes timers Duo V3.5 figées | `packages/shared/src/types.ts:345-355` (`DEFAULT_DUO_TIMERS`), `:362-364` (`questionsPerRound` / `roundsToWin` / `maxRounds`) | — |
+| A13 | `renderQuestionView` hardcode `currentQuestion = 1` au load HTTP | `app/Http/Controllers/DuoController.php:1666` | front s'aligne ensuite via `question_published` socket |
+| A14 | `player_scores_map` lu depuis `$match->game_state` est stale pendant la partie | `app/Http/Controllers/DuoController.php:1714-1719`, `:1897-1902` | `applyFinalizationFromRedis` ne MAJ la colonne qu'à la fin (`DuoController.php:382-515`) |
 
 ### 1.1 Architecture
 
@@ -84,7 +105,7 @@ Tout item escaladé hors de cette table doit déclencher un addendum signé à c
 
 ---
 
-## Section 2 — Qui parle à quoi (matrice émetteurs / consommateurs)
+## Section 2 — Qui parle à quoi
 
 ### 2.1 Événements Socket.IO Node → Front (Game Server émet)
 
@@ -140,7 +161,7 @@ Tout item escaladé hors de cette table doit déclencher un addendum signé à c
 
 ---
 
-## Section 3 — Timeline phases (frise temporelle annotée)
+## Section 3 — Timeline phases
 
 ```
 T+0          INTRO            13 s   [Laravel sert duo_intro? → en pratique GameplayRuntime gère affichage local]
@@ -184,7 +205,7 @@ fin match    endMatch()              ── match_stats emit + setMatchResult Re
 
 ---
 
-## Section 4 — Table des responsabilités
+## Section 4 — Table responsabilités
 
 | Domaine | Node Game Server | Laravel | Front (GameplayRuntime + DuoSocketClient) | Firebase |
 |---|---|---|---|---|
@@ -204,7 +225,7 @@ fin match    endMatch()              ── match_stats emit + setMatchResult Re
 
 ---
 
-## Section 5 — Audit du système de points / buzzer (+2 / +1 / 0 / -2)
+## Section 5 — Audit points / buzzer (+2 / +1 / 0 / -2)
 
 ### 5.1 Implémentation observée
 
@@ -245,7 +266,7 @@ Et dans `scoreAllBuzzers` :
 
 ---
 
-## Section 6 — Audit des questions (génération / distribution / sécurité)
+## Section 6 — Audit questions
 
 ### 6.1 Pipeline de génération
 
@@ -278,7 +299,7 @@ Et dans `scoreAllBuzzers` :
 
 ---
 
-## Section 7 — Audit de la progression de ronde (transitions)
+## Section 7 — Audit progression de ronde
 
 ### 7.1 Transitions confirmées
 
@@ -358,7 +379,7 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 
 ---
 
-## Section 9 — Risques de désynchronisation
+## Section 9 — Risques désync
 
 ### 9.1 Catégorisation
 
@@ -417,7 +438,7 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 
 ---
 
-## Section 11 — Plan de micro-patchs (ordonné, sans code)
+## Section 11 — Plan micro-patchs
 
 > Ordre choisi pour minimiser les régressions et résoudre les BLOCAGE / HAUTE en priorité, en respectant la règle « Node = autorité unique ».
 
@@ -473,7 +494,7 @@ Source : `packages/game-engine/src/state-machine.ts` (`PHASE_TRANSITIONS`, `getN
 
 ---
 
-## Section 12 — Fichiers à toucher (chirurgical)
+## Section 12 — Fichiers à toucher
 
 Schéma : **fichier · raison · type d'intervention attendue** (ligne par patch P1–P10 du §11).
 
@@ -498,7 +519,7 @@ Schéma : **fichier · raison · type d'intervention attendue** (ligne par patch
 
 ---
 
-## Section 13 — Risques de régression
+## Section 13 — Risques régression
 
 | Patch | Risque de régression | Modes potentiellement impactés | Mitigation |
 |---|---|---|---|
