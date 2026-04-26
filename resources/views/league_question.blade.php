@@ -295,6 +295,18 @@ $mode = 'league';
         cursor: not-allowed;
     }
 
+    /* Task #55 — Passive skill (faster_buzz, skill_recharge): soft green glow,
+       no animation, no pointer interaction. Mirrors the equivalent rule in
+       duo_question.blade.php so both views stay structurally identical. */
+    .skill-circle.passive {
+        border-color: rgba(72, 199, 116, 0.7);
+        background: rgba(72, 199, 116, 0.15);
+        box-shadow: 0 0 12px rgba(72, 199, 116, 0.3);
+        animation: none;
+        opacity: 0.9;
+        cursor: default;
+    }
+
     /* Task #55 — Reactive glow: pulses gold ~3.5s when the opponent buzzes
        first, only on offensive skills targeting the opponent that are still
        available. Replaces the legacy "Adversaire a buzzé" overlay. */
@@ -456,40 +468,10 @@ $mode = 'league';
         color: #FFD700;
     }
     
-    .opponent-buzzed-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 107, 107, 0.2);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 200;
-        animation: fadeIn 0.3s ease;
-    }
-    
-    .opponent-buzzed-message {
-        background: rgba(0, 0, 0, 0.9);
-        padding: 40px 60px;
-        border-radius: 30px;
-        text-align: center;
-        border: 3px solid #FF6B6B;
-        box-shadow: 0 0 50px rgba(255, 107, 107, 0.8);
-    }
-    
-    .opponent-buzzed-message h2 {
-        font-size: 2rem;
-        color: #FF6B6B;
-        margin-bottom: 10px;
-    }
-    
-    .opponent-buzzed-message p {
-        font-size: 1.2rem;
-        opacity: 0.9;
-    }
-    
+    /* Task #55 — Legacy `.opponent-buzzed-overlay` / `.opponent-buzzed-message`
+       styles removed alongside the DOM they targeted. The reactive skill glow
+       (`.skill-circle.reactive-glow` above) replaces this UI. */
+
     @media (max-width: 1024px) {
         .game-layout {
             gap: 20px;
