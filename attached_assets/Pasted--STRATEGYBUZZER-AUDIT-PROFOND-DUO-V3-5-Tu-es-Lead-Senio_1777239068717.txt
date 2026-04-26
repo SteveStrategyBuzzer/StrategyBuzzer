@@ -1,0 +1,257 @@
+🔥 STRATEGYBUZZER — AUDIT PROFOND DUO V3.5
+
+Tu es Lead Senior Architect StrategyBuzzer.
+
+Stack réelle :
+
+* Laravel = rendu Blade, API, DB, cache lobby
+* Node.js + Socket.IO = autorité gameplay temps réel
+* Redis = état des matchs
+* Firebase = présence + WebRTC seulement
+* Client = affichage uniquement
+
+Mission : **audit profond seulement, pas de patch immédiat.**
+
+## Objectif
+
+Auditer le mode Duo en profondeur pour comprendre et documenter précisément :
+
+1. comment les phases doivent s’enchaîner
+2. qui parle à quoi
+3. comment les points doivent être calculés avec le buzzer
+4. comment `SYNC` doit être utilisé
+5. comment les stats, %, scores et points doivent circuler entre les pages
+6. comment garantir que les questions soient véridiques et vérifiables
+7. comment empêcher les pages d’être désynchronisées, exemple :
+
+   * joueur A voit 1/10
+   * joueur B voit 3/10
+
+## Règles d’architecture non négociables
+
+Node est l’autorité gameplay.
+
+Donc :
+
+* pas de calcul gameplay dans Blade
+* pas de transition client autonome
+* pas de phase inventée côté client
+* pas de stats finales recalculées différemment par Laravel
+* Firebase ne doit pas contrôler les phases, le ready, le score, les buzz ou les réponses
+* Firebase = présence et WebRTC seulement
+
+## Flow Duo attendu
+
+Le flow cible est :
+
+Lobby
+→ READY Socket
+→ `phase_changed` Node
+→ SYNC initial si nécessaire
+→ INTRO
+→ Gameplay : Q → R → R → S
+→ ROUND_END
+→ SYNC uniquement pour relance de ronde / relance structurée
+→ manche suivante
+→ MATCH_END
+
+Important :
+`SYNC` ne doit pas devenir une phase parasite entre chaque petite action.
+`SYNC` doit servir à synchroniser une relance de ronde, une transition structurée, ou une reprise contrôlée.
+
+## Pages Duo à auditer
+
+Auditer au minimum :
+
+* `resources/views/lobby.blade.php`
+* `resources/views/game_intro.blade.php`
+* `resources/views/duo_question.blade.php`
+* `resources/views/duo_answer.blade.php`
+* `resources/views/duo_result.blade.php`
+* `public/js/GameplayRuntime.js`
+* `public/js/DuoSocketClient.js`
+* `apps/game-server/src/ws/handlers.ts`
+* `apps/game-server/src/services/GameOrchestrator.ts`
+* `apps/game-server/src/services/RoomManager.ts`
+* `apps/game-server/src/http/routes.ts`
+* fichiers liés aux questions et stats si nécessaires
+
+## Logique points / buzzer à vérifier
+
+La règle Duo officielle à auditer :
+
+* Premier joueur à buzzer = joue pour 2 points
+* Deuxième joueur à buzzer = joue pour 1 point
+* Joueur qui ne buzz pas = joue pour 0 point
+* Si joueur à 2 ou 1 points répond faux = -2 points
+* Si joueur joue pour 0 point :
+
+  * bonne réponse = 0 point
+  * mauvaise réponse = 0 point
+* Chaque joueur doit pouvoir avancer à sa vitesse dans la phase réponse, mais Node reste autorité.
+* Ne pas afficher de texte qui identifie trop directement “bonne/mauvaise réponse” si la règle UX actuelle l’interdit.
+* Le rendu doit indiquer clairement combien le joueur joue : 2, 1 ou 0 point.
+
+À auditer :
+
+* où la position buzzer est stockée
+* où le score est calculé
+* où les points potentiels sont affichés
+* si le score final vient bien de Node
+* si les pages lisent les bons champs
+
+## Questions véridiques et vérifiables
+
+Auditer la chaîne question :
+
+* génération
+* stockage temporaire/cache
+* livraison au game-server
+* affichage question/réponses
+* correct_index / correct_id
+* compatibilité QCM / vrai-faux / image
+* anti-duplication
+* validation de structure
+
+Objectif :
+les questions doivent être véridiques, vérifiables, et cohérentes avec les réponses.
+
+Identifier :
+
+* où la question est générée
+* où elle est validée
+* où elle est envoyée à Node
+* où Node la publie
+* où le client la consomme
+* où un mauvais mapping `correct_index` pourrait apparaître
+
+## Rondes et progression question
+
+Auditer le problème potentiel :
+
+* une page affiche 1/10
+* une autre affiche 3/10
+* une page reste bloquée sur une ancienne question
+* une page avance sans l’autre
+
+Tu dois identifier :
+
+1. la source officielle de `questionIndex`
+2. la source officielle de `roundNumber`
+3. la source officielle du nombre total de questions
+4. comment chaque page reçoit ces valeurs
+5. si une page lit encore une valeur depuis URL/session/Blade au lieu du state Node
+6. si `restoreState` ou `bridge state` peut réhydrater une mauvaise progression
+7. si refresh/reconnect remet bien les deux joueurs au même état
+
+## Stats / % / scores entre pages
+
+Auditer la communication des stats entre :
+
+* Question
+* Réponse
+* Résultat
+* Fin de manche
+* Fin de match
+
+À vérifier :
+
+* score live
+* roundScore
+* roundsWon
+* accuracyPct
+* points possibles
+* points gagnés
+* efficacité
+* bonne/mauvaise réponse
+* temps moyen
+* streak
+* stats joueur
+* stats adversaire
+
+Objectif :
+les stats doivent venir du noyau commun Node / game-engine quand elles concernent le gameplay temps réel.
+
+Laravel peut persister après finalize, mais ne doit pas recalculer différemment.
+
+## Skills et effets
+
+Tenir compte des avatars stratégiques existants :
+
+* Mathématicien
+* Scientifique
+* Explorateur
+* Défenseur
+* Comédien
+* Magicien
+* Challenger
+* Historien
+* IA Junior
+* Stratège
+* Sprinteur
+* Visionnaire
+
+Les pouvoirs officiels existent dans la documentation projet. Les skills doivent respecter une structure centralisée, pas dupliquée dans chaque Blade.
+
+À auditer :
+
+* skill actif ou consommé visible au minimum dans Question
+* skill activable dans Réponse si la règle du skill l’exige
+* aucun skill ne doit être recalculé localement
+* les effets doivent passer par un runtime commun, pas par du wiring copié dans plusieurs vues
+
+## Sortie attendue
+
+Je veux uniquement un audit structuré, pas de patch.
+
+Format attendu :
+
+1. Résumé de l’état actuel Duo
+2. Schéma “qui parle à quoi”
+
+   * Laravel
+   * Node
+   * Socket.IO
+   * Redis
+   * Firebase
+   * Client
+3. Timeline complète des phases Duo
+4. Table des responsabilités par phase
+5. Audit des points/buzzer
+6. Audit des questions
+7. Audit progression ronde/question
+8. Audit stats/%/scores entre pages
+9. Audit des risques de désynchronisation
+10. Liste des incohérences trouvées
+11. Plan de correction en micro-patchs
+12. Fichiers à toucher plus tard
+13. Risques de régression
+14. Validation minimale par mode :
+
+    * Duo
+    * Solo
+    * Maître du jeu
+    * Ligue
+
+## Interdictions
+
+* Pas de patch maintenant
+* Pas de refactor from scratch
+* Pas de nouvelle architecture inventée si l’existant couvre déjà le besoin
+* Pas de logique gameplay client
+* Pas de Firebase pour gameplay
+* Pas de stats parallèles par mode
+* Pas de formule Solo séparée pour score/stats
+* Pas de correction sans citer les fichiers concernés
+
+## But final
+
+Obtenir une carte claire et fiable du mode Duo pour corriger ensuite sans dérive :
+
+0 bug sync
+0 bug UI
+0 logique client parasite
+100% Node autoritaire
+questions fiables
+stats cohérentes
+progression ronde/question identique pour les deux joueurs
