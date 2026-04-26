@@ -1238,7 +1238,15 @@ $mode = 'duo';
         buzzButton.disabled = true;
         setBuzzerState('waiting');
         
-        redirectOnce(ANSWER_URL + '?timeout=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), 500);
+        // Task #64 Patch 1/4 — DO NOT redirect to /duo/answer?timeout=true here.
+        // That redirect was a legacy anti-pattern: by the time it arrived, Node had
+        // already advanced to SYNC for the next question, so validatePhaseAccess()
+        // bounced the user back to /duo/question (the "Question revient après la
+        // Réponse" regression). The Node server is the sole authority on phase
+        // transitions. When no one buzzes, we stay on /duo/question with the buzzer
+        // visually disabled, and the existing phase_changed handler (RESULT branch
+        // ~line 1481) navigates us to /duo/result the moment the server emits it.
+        console.log('[DuoQuestion] handleNoBuzz: timer expired, no buzz — waiting passively for phase_changed:RESULT');
     }
     
     function handleOpponentBuzz() {
