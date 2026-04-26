@@ -1,0 +1,265 @@
+RÈGLE GLOBALE SKILLS / AVATARS STRATÉGIQUES
+
+Tous les skills doivent être visibles au minimum sur la page Question pour indiquer clairement :
+- skill disponible
+- skill actif
+- skill consommé
+- skill bloqué / non applicable
+
+Ensuite, chaque skill doit être activable ou affiché sur la bonne page selon son effet réel.
+
+Aucun skill ne doit être câblé uniquement dans une Blade isolée.
+Les effets doivent passer par le runtime commun :
+- activeEffects
+- skill_used
+- skill_activated
+- restoreState
+- GameEffectsRuntime / GameplayRuntime
+
+Node reste autorité.
+Le client affiche seulement l’effet reçu ou autorisé.
+
+TABLE OFFICIELLE DES AVATARS STRATÉGIQUES
+
+RARE 🎯
+
+🧠 Mathématicien
+Compétence :
+- Peut illuminer une bonne réponse s’il y a un chiffre dans la réponse.
+Page :
+- Visible sur Question.
+- Activable dans Réponse.
+État :
+- disponible / actif / consommé.
+
+🧪 Scientifique
+Compétence :
+- Peut acidifier une mauvaise réponse 1 fois avant de choisir.
+Page :
+- Visible sur Question.
+- Activable dans Réponse.
+État :
+- disponible / actif / consommé.
+
+🧭 Explorateur
+Compétence :
+- En Duo : peut illuminer la réponse choisie par le joueur adverse.
+- En Maître du jeu : peut illuminer la réponse la plus cliquée.
+Page :
+- Visible sur Question.
+- Activable dans Réponse.
+État :
+- disponible / actif / consommé.
+
+🛡️ Défenseur
+Compétence :
+- Peut annuler une attaque provenant de n’importe quel avatar.
+Page :
+- Visible sur Question.
+- Affichage/activation sur Question ou Réponse selon le moment de l’attaque.
+État :
+- disponible / actif / consommé / contre-attaque réussie.
+
+
+ÉPIQUE ⭐
+
+🎭 Comédien
+Compétences :
+1. En Maître du jeu, peut afficher un score inférieur jusqu’à la fin de la partie.
+Page :
+- Visible sur Question.
+- Activable dans Résultat pour une manche.
+
+2. Peut tromper les joueurs en affichant une bonne réponse comme mauvaise réponse.
+Page :
+- Visible sur Question.
+- Activable dans Réponse.
+- Effet visible dans Résultat.
+
+État :
+- disponible / actif / consommé.
+
+🧙‍♂️ Magicien
+Compétences :
+1. Peut obtenir une question bonus par partie.
+Page :
+- Visible sur Question.
+- Visible et activable dans Résultat de la 10e question.
+
+2. Peut annuler une mauvaise réponse sans buzzer, 1 fois par partie.
+Page :
+- Visible sur Question.
+- Effet visible dans Résultat.
+
+État :
+- disponible / actif / consommé.
+
+🔥 Challenger
+Compétences :
+1. Fait changer les réponses des participants d’emplacement toutes les 2 secondes.
+Page :
+- Visible sur Question.
+- Activable dans Question et Réponse.
+
+2. Diminue le compte à rebours des autres joueurs :
+- -2 secondes dans Question
+- -3 secondes dans Réponse
+Page :
+- Visible sur Question.
+- Activable dans Question ou Réponse.
+
+État :
+- disponible / actif / consommé / effet en cours.
+
+📚 Historien
+Compétences :
+1. Voit un indice texte avant les autres.
+Page :
+- Visible sur Question.
+- Activable dans Résultat.
+
+2. Peut obtenir 2 secondes supplémentaires pour répondre, 1 fois.
+Page :
+- Visible sur Question.
+- Activable dans Résultat.
+
+État :
+- disponible / actif / consommé.
+
+
+LÉGENDAIRE 👑
+
+🤖 IA Junior
+Compétences :
+1. Voit une suggestion IA qui illumine la bonne réponse, 1 fois.
+Page :
+- Visible sur Question.
+- Activable dans Résultat.
+
+2. Peut éliminer 2 mauvaises réponses sur 4.
+Page :
+- Visible sur Question.
+- Activable dans Réponse.
+
+3. Peut reprendre une mauvaise réponse 1 fois.
+Page :
+- Visible sur Question.
+- Activable dans Réponse.
+
+État :
+- disponible / actif / consommé.
+
+🏆 Stratège
+Compétences :
+1. Gagne +20 % de pièces d’intelligence et de compétence sur les parties victorieuses.
+Page :
+- Visible sur Question.
+- Effet appliqué en fin de match si victoire.
+
+2. Peut créer une équipe en ajoutant 1 skill d’avatar Rare dans tous les modes.
+Page :
+- Visible sur Question.
+- Activable selon l’avatar Rare choisi.
+
+3. Réduit le coût de déblocage des Avatars Stratégiques :
+- Rare : -40 %
+- Épique : -30 %
+- Légendaire : -20 %
+Page :
+- Visible sur Question.
+- Effet affiché dans boutique/progression si applicable.
+
+État :
+- disponible / actif / passif / consommé selon le cas.
+
+⚡ Sprinteur
+Compétences :
+1. Automatique pendant 5 questions :
+si le joueur buzz après l’adversaire avec un écart entre 0,01 s et 0,75 s maximum, il bénéficie de son effet Sprinteur.
+Page :
+- Visible sur Question.
+- Effet visuel dans Réponse.
+
+2. Peut utiliser 3 secondes de réflexion supplémentaires, 1 fois.
+Page :
+- Visible sur Question.
+- Activable dans Réponse.
+
+3. Après chaque manche, ses skills se réactivent automatiquement.
+Page :
+- Visible sur Question.
+
+État :
+- disponible / actif / automatique / consommé / réactivé.
+
+🌟 Visionnaire
+Compétences :
+1. Peut voir 5 questions futures :
+prochaine question révélée en avance, 5 fois par match.
+Page :
+- Visible sur Question.
+- Visible et activable dans Résultat.
+
+2. Peut contrer une attaque du Challenger, 1 fois par partie.
+Page :
+- Visible sur Question.
+- Effet visible sur la page où l’attaque se produit.
+
+3. Dans une manche, si le joueur est sur un gain potentiel de 2 points, il peut rendre seulement la bonne réponse sélectionnable.
+Page :
+- Visible sur Question.
+- Activable dans Résultat.
+
+État :
+- disponible / actif / consommé / contre-attaque réussie.
+
+
+VALIDATION SKILLS OBLIGATOIRE
+
+Pour chaque skill, Replit doit vérifier :
+- page où il est visible
+- page où il est activable
+- event Socket utilisé
+- effet Node correspondant
+- activeEffects mis à jour
+- affichage après reconnect / restoreState
+- état disponible/actif/consommé
+- compatibilité Duo
+- compatibilité Solo
+- compatibilité Maître du jeu
+- compatibilité Ligue
+
+INTERDICTION
+
+Ne pas coder un skill directement dans une page isolée si ce skill doit exister dans plusieurs modes.
+
+Toute logique réutilisable doit aller dans :
+- Node / GameOrchestrator pour la vérité gameplay
+- GameEffectsRuntime ou GameplayRuntime pour l’affichage commun
+- Blade seulement pour les hooks DOM et l’état visuel passif. 
+
+Oui, les skills doivent être compatibles Solo, mais Solo peut garder une exécution différente.
+Règle propre :
+Même contrat de skill pour tous les modes.
+Exécution adaptée selon le mode.
+Donc :
+Duo / Master / Ligue : skills passent par Node, car ils peuvent affecter d’autres joueurs.
+Solo : skills peuvent rester locaux/privés si ça touche seulement le joueur ou les bots, mais ils doivent respecter le même contrat :
+même nom de skill
+même phase autorisée
+même compteur d’utilisation
+même effet logique
+mêmes stats finales si applicable
+Exemple :
+Scientifique
+- Solo : élimine une mauvaise réponse localement.
+- Duo : Node décide quelle mauvaise réponse est éliminée et envoie l’effet.
+Explorateur
+- Solo : montre le choix d’un bot système.
+- Duo : montre le choix adverse réel.
+- Master : montre la réponse la plus cliquée.
+Donc Solo ne doit pas être un monde séparé avec ses propres règles inventées.
+Verdict :
+Solo peut être local pour l’UX.
+Mais Solo ne doit pas être indépendant du modèle central.
+Sinon on va recrée exactement les problèmes qu’on veut supprimer : un jeu par mode.
