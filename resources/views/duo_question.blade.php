@@ -31,8 +31,12 @@ window.CURRENT_PAGE          = 'question';
 // the brain overlay must not obscure the question UI.
 window.NO_BRAIN_OVERLAY      = true;
 // Bridge UI: page-specific visual state saved on every navigation
+// phase is intentionally null on initial render — Node is the sole phase
+// authority (cf. docs/decisions/…). The first `state` / `phase_changed`
+// socket event will publish the canonical phase. Any pre-injected phase
+// here would be a duplicate source of truth (Tâche #77, P77.1).
 window.GR_SAVE_STATE_EXTRA   = {
-    phase:        'QUESTION_ACTIVE',
+    phase:        null,
     current_page: 'question',
 };
 </script>
@@ -1236,7 +1240,9 @@ $mode = 'duo';
         const _ps = playerScoreEl ? parseInt(playerScoreEl.textContent.trim(), 10) || 0 : 0;
         const _os = opponentScoreEl ? parseInt(opponentScoreEl.textContent.trim(), 10) || 0 : 0;
         window.GR_SAVE_STATE_EXTRA = {
-            phase:          currentPhase || 'QUESTION_ACTIVE',
+            // Tâche #77 P77.1: phase = currentPhase reçu de Node, sans fallback hardcodé.
+            // Si Node n'a encore rien envoyé, phase reste null — Node restera la seule autorité.
+            phase:          currentPhase || null,
             current_page:   'question',
             question_text:  _qt ? _qt.textContent.trim() : '',
             player_score:   _ps,
@@ -1655,11 +1661,13 @@ $mode = 'duo';
         console.log('[DuoQuestion] Gagnant du buzz:', data);
         
         if (String(data.playerId || '') === CURRENT_USER_ID) {
-            // V3: I won a buzz position — save state and navigate to answer page
+            // V3: I won a buzz position — save state and navigate to answer page.
+            // Tâche #77 P77.1/P77.2 — Le client n'envoie plus de phase claim
+            // (GR_RESTORED_PHASE est retiré côté GameplayRuntime, restoreState ne
+            // ré-applique plus la phase saved). Seul Node est autorité.
             if (window.DuoSocketClient && window.DuoSocketClient.saveState) {
                 window.DuoSocketClient.saveState({
-                    buzzPosition: data.position || 1,
-                    phase: 'ANSWER_SELECTION'
+                    buzzPosition: data.position || 1
                 });
             }
             stopTimer();

@@ -26,8 +26,10 @@ window.MATCH_RESULT_URL     = @json(route('game.duo.match-result'));
 window.CURRENT_PAGE         = 'round-scoreboard';
 window.NO_BRAIN_OVERLAY     = true;
 // Bridge UI: page-specific visual state saved on every navigation
+// Tâche #77 P77.1: phase = null (Node = sole authority). The first
+// `state` / `phase_changed` socket event publishes the canonical phase.
 window.GR_SAVE_STATE_EXTRA  = {
-    phase:         'ROUND_SCOREBOARD',
+    phase:         null,
     current_page:  'round-scoreboard',
     player_score:  {{ (int)($playerScore ?? 0) }},
     opponent_score: {{ (int)($opponentScore ?? 0) }},

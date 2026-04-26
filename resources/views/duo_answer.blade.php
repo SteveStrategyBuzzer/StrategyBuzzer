@@ -1180,29 +1180,17 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             historianSkillUsed: historianSkillUsed
         });
 
-        // Show waiting overlay until answer_revealed or RESULT phase
+        // Show waiting overlay until phase_changed → RESULT.
+        // Tâche #77 P77.3 — La dérogation Bug #1 (immediate client nav vers /duo/result)
+        // a été supprimée. Le buzz-winner reste sur /duo/answer après submit jusqu'à ce
+        // que Node émette `phase_changed RESULT`, qui est intercepté par
+        // `_onAnswerPhaseChanged` (branche `phase === 'RESULT'`, ligne ~1594) :
+        // celle-ci masque l'overlay et navigue vers /duo/result après le délai visuel
+        // standard (2500 ms). Cette voie est l'unique source de navigation après submit.
+        // → Conformité « Node = autorité unique de navigation ».
         if (waitingOverlay) {
             waitingOverlay.style.display = 'flex';
         }
-
-        // Bug #1 fix — Option B (documented in docs/decisions/2026-04-26-duo-immediate-result-nav.md):
-        // After the answer is submitted, navigate immediately to /duo/result so the
-        // player never lingers on the Answer page waiting for the opponent. The
-        // Result page renders in "pending" mode (overlay visible, ✓/✗/points hidden)
-        // and hydrates from server events:
-        //   - `answer_revealed` (filtered by playerId): fills header/points/answer
-        //   - `score_update` / `match_stats` / `round_stats` (via GameplayRuntime):
-        //     repaints [data-stat="score"] nodes
-        //   - `phase_changed RESULT`: idempotent no-op when already on Result page
-        // The 250 ms delay lets the socket flush the `answer` event first.
-        // `isRedirecting` guard ensures only one navigation fires (this branch OR
-        // the `phase === 'RESULT'` branch in _onAnswerPhaseChanged, never both).
-        setTimeout(function () {
-            if (isRedirecting) return;
-            isRedirecting = true;
-            var _nav = window.duoNavigate || function (u) { window.location.href = u; };
-            _nav((window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID));
-        }, 250);
     }
     
     function activateHistorianSkill() {

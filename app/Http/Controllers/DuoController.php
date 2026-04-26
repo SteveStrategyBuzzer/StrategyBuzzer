@@ -1631,6 +1631,57 @@ class DuoController extends Controller
         ]);
     }
 
+    /**
+     * Tâche #76 — Lecture seule de l'état live de la room côté game-server (Redis).
+     *
+     * Contrat strict :
+     *   - Source de vérité unique pendant la partie = Node (Redis room:{id}:state).
+     *   - Retourne null si le match est finalisé (status='finished') OU si Redis n'a
+     *     pas (encore) cet état → l'appelant doit alors retomber sur $match->game_state
+     *     (DB persistée à la finalisation par /internal/duo/match/finalize).
+     *   - **AUCUNE écriture**, aucun recalcul PHP, aucune persistance Redis→DB.
+     *
+     * @return array{questionIndex0:int, totalQuestions:int|null, scores:array<string,int>}|null
+     */
+    protected function readLiveRoomScores(?DuoMatch $match): ?array
+    {
+        if (!$match || $match->status === 'finished') {
+            return null; // match terminé → DB est l'autorité
+        }
+        $roomId = $match->room_id ?? null;
+        if (!$roomId) {
+            return null;
+        }
+        try {
+            $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
+                ->get("room:{$roomId}:state");
+            if (!$rawState) {
+                return null;
+            }
+            $roomState = json_decode($rawState, true);
+            if (!is_array($roomState)) {
+                return null;
+            }
+            $scores = [];
+            foreach (($roomState['players'] ?? []) as $pid => $pdata) {
+                if (is_array($pdata) && isset($pdata['score'])) {
+                    $scores[(string) $pid] = (int) $pdata['score'];
+                }
+            }
+            return [
+                'questionIndex0' => (int) ($roomState['questionIndex'] ?? 0),
+                'totalQuestions' => isset($roomState['totalQuestions']) ? (int) $roomState['totalQuestions'] : null,
+                'scores'         => $scores,
+            ];
+        } catch (\Exception $e) {
+            \Log::warning('[DUO] readLiveRoomScores failed', [
+                'room_id' => $roomId,
+                'error'   => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
     protected function renderQuestionView(DuoMatch $match, $user)
     {
         $roomId = $match->room_id ?? null;
@@ -1668,6 +1719,18 @@ class DuoController extends Controller
         $themeDisplay = '🧠 Culture générale';
         $playerScore = 0;
         $opponentScore = 0;
+
+        // Tâche #76 — Hydratation Redis-first (anti-flash "Question 1/9" + "0–0").
+        // Contrat : Redis si match en cours, DB ($match->game_state) si finalisé.
+        // Sur la page Question, $match->game_state n'a pas de score utile (initialisé
+        // à 0), donc le cas DB se confond avec les valeurs par défaut ci-dessus.
+        $liveState = $this->readLiveRoomScores($match);
+        if ($liveState !== null) {
+            $playerScore   = $liveState['scores'][(string) $user->id]      ?? $playerScore;
+            $opponentScore = $liveState['scores'][(string) ($opponent->id ?? '')] ?? $opponentScore;
+            // questionIndex côté Node est 0-based, on affiche 1-based.
+            $currentQuestion = $liveState['questionIndex0'] + 1;
+        }
 
         $playerLevel   = $this->getPlayerDuoLevel($user->id);
         $opponentLevel = $this->getPlayerDuoLevel($opponent->id ?? 0);
@@ -1717,6 +1780,15 @@ class DuoController extends Controller
         $opponentScore = $isPlayer1
             ? ($matchGameState['player_scores_map']['opponent'] ?? 0)
             : ($matchGameState['player_scores_map']['player'] ?? 0);
+
+        // Tâche #76 — Hydratation Redis-first (anti-flash "0–0" + "Question 1/9").
+        // Match en cours → Node/Redis ; match finalisé → DB ($matchGameState ci-dessus).
+        $liveState = $this->readLiveRoomScores($match);
+        if ($liveState !== null) {
+            $playerScore   = $liveState['scores'][(string) $user->id]     ?? $playerScore;
+            $opponentScore = $liveState['scores'][(string) $opponent->id] ?? $opponentScore;
+            $currentQuestionNumber = $liveState['questionIndex0'] + 1;
+        }
 
         $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
         $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
@@ -1901,6 +1973,18 @@ class DuoController extends Controller
             ? ($matchGameState['player_scores_map']['opponent'] ?? 0)
             : ($matchGameState['player_scores_map']['player'] ?? 0);
 
+        // Tâche #76 — Hydratation Redis-first (anti-flash "0–0").
+        // Match en cours → Node/Redis ; match finalisé → DB ($matchGameState ci-dessus).
+        // Note : $currentQuestion est aussi rechargé plus bas via le Redis-fallback
+        // historique (lignes ~1956+, conservé pour récupérer fun_fact). Cette assignation
+        // précoce évite tout flash sur la valeur DB stale.
+        $liveState = $this->readLiveRoomScores($match);
+        if ($liveState !== null) {
+            $playerScore   = $liveState['scores'][(string) $user->id]     ?? $playerScore;
+            $opponentScore = $liveState['scores'][(string) $opponent->id] ?? $opponentScore;
+            $currentQuestion = $liveState['questionIndex0'] + 1;
+        }
+
         $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
         $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
 
@@ -1926,12 +2010,11 @@ class DuoController extends Controller
         // path, which is no longer the authoritative driver in Node-authoritative
         // Duo — that's why "Question 1/10" used to stay stuck on the Result page.
         //
-        // Bug #1 fix (Option B): we ALSO read `phase` here so we can detect when the
-        // buzz-winner reached this page early (during ANSWER_SELECTION/COLLECTION,
-        // before Node has emitted phase_changed RESULT). In that case the page
-        // renders in "pending" mode and waits for the socket to hydrate.
+        // Tâche #77 P77.3 — La lecture de `phase` (Bug #1 / $resultPending) a été
+        // supprimée : la page /duo/result n'est désormais accessible que sur RESULT
+        // ou plus tard (cf. `validatePhaseAccess` case 'result'). Aucun mode "pending"
+        // à gérer ici.
         $resultQuestion = $gameState['last_question'] ?? [];
-        $currentPhase = null;
         if ($roomId) {
             try {
                 $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
@@ -1940,14 +2023,10 @@ class DuoController extends Controller
                     $roomState = json_decode($rawState, true);
                     $qIdx = $roomState['questionIndex'] ?? null;
                     $questions = $roomState['questions'] ?? [];
-                    $currentPhase = $roomState['phase'] ?? null;
                     if ($qIdx !== null) {
                         // 0-indexed → 1-indexed. The Result page renders for the
                         // just-finished question, which is exactly questionIndex
-                        // during the RESULT phase. If the orchestrator has already
-                        // advanced (race), the indicator will be at most one ahead,
-                        // and the sessionStorage hydration in duo_result.blade.php
-                        // corrects the rare drift to the value seen at answer_revealed.
+                        // during the RESULT phase.
                         $currentQuestion = ((int)$qIdx) + 1;
                     }
                     if (empty($resultQuestion['fun_fact']) && isset($questions[$qIdx])) {
@@ -1962,13 +2041,6 @@ class DuoController extends Controller
                 \Log::warning('[DUO-RESULT] Redis room-state fallback failed', ['error' => $e->getMessage()]);
             }
         }
-
-        // Pending = early-arrival mode. True iff the buzz-winner navigated here
-        // before Node transitioned the room to a result-ready phase. The view
-        // hides ✓/✗/points/header until `answer_revealed` (filtered by playerId)
-        // arrives via socket and `_onResultAnswerRevealed` hydrates the DOM.
-        $resultReadyPhases = ['RESULT', 'REVEAL', 'ROUND_SCOREBOARD', 'MATCH_END', 'FINISHED'];
-        $resultPending = $currentPhase !== null && !in_array($currentPhase, $resultReadyPhases, true);
 
         $strategicAvatar = data_get($playerSnapshot, 'strategic_avatar', ['name' => 'Aucun']);
         $skills = $this->getPlayerSkillsWithTriggers($user);
@@ -1991,7 +2063,6 @@ class DuoController extends Controller
             'pointsEarned' => $pointsEarned,
             'playerBuzzed' => $playerBuzzed,
             'playerPoints' => $pointsEarned,
-            'resultPending' => $resultPending,
             'player_score' => $playerScore,
             'opponent_score' => $opponentScore,
             'currentQuestion' => $currentQuestion,
@@ -2718,22 +2789,15 @@ class DuoController extends Controller
                     if (in_array($currentPhase, $questionPhases)) {
                         return $toQuestion();
                     }
-                    // Bug #1 fix (Option B, see docs/decisions/2026-04-26-duo-immediate-result-nav.md):
-                    // Allow the buzz-winner who just submitted to land on /duo/result while
-                    // the server is still in ANSWER_SELECTION / ANSWER_COLLECTION /
-                    // BUZZ_WINNER_ANSWERING. The page renders in "pending" mode and
-                    // hydrates from socket events. Non-buzz-winners are redirected back
-                    // to question (for the no-buzz path) or to answer (if their buzz is
-                    // pending). This is a deliberate, narrow derogation to "Node = sole
-                    // phase authority" — bounded to the buzzer who already submitted, and
-                    // idempotent because phase_changed RESULT becomes a no-op when we are
-                    // already on /duo/result.
+                    // Tâche #77 P77.3 — Suppression de la dérogation Bug #1.
+                    // Pendant ANSWER_SELECTION / BUZZ_WINNER_ANSWERING / ANSWER_COLLECTION,
+                    // PERSONNE n'est autorisé à atterrir sur /duo/result. Le buzz-winner
+                    // est renvoyé sur /duo/answer (où il attend phase_changed RESULT) ;
+                    // les autres sont renvoyés sur /duo/question. Conformité stricte
+                    // « Node = autorité unique de navigation ».
                     if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
                         $playerId = (string) $user->id;
-                        if ($lockedAnswerPlayerId === $playerId) {
-                            break; // Buzz-winner: allow early access (pending mode)
-                        }
-                        return $toQuestion();
+                        return ($lockedAnswerPlayerId === $playerId) ? $toAnswer() : $toQuestion();
                     }
                     if ($currentPhase === 'ROUND_SCOREBOARD') {
                         return $toScoreboard();

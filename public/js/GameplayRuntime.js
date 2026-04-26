@@ -171,14 +171,20 @@
         if (!JWT_TOKEN  && saved.jwt_token)  { JWT_TOKEN = saved.jwt_token;   window.JWT_TOKEN  = JWT_TOKEN; }
         if (!LOBBY_CODE && saved.lobby_code) { LOBBY_CODE = saved.lobby_code; window.LOBBY_CODE = LOBBY_CODE; }
         if (!window.MATCH_ID && saved.match_id) { window.MATCH_ID = saved.match_id; }
-        // Visual state — publish for immediate page rendering before socket state arrives
-        if (saved.phase)         window.GR_RESTORED_PHASE          = saved.phase;
+        // Visual state — publish for immediate page rendering before socket state arrives.
+        //
+        // ⚠ Tâche #77 P77.2 — `phase` is intentionally NOT republished from sessionStorage.
+        // Node is the sole phase authority: the canonical phase is delivered by the first
+        // `state` (on join_room) or `phase_changed` socket event. Republishing a stale
+        // local `saved.phase` would create a duplicate source of truth and a desync window
+        // before the server's first message arrives. The visual hints below (text/choices/
+        // scores/phaseEndsAtMs) are pure display aids — they have no gameplay authority.
         if (saved.question_text) window.GR_RESTORED_QUESTION_TEXT  = saved.question_text;
         if (saved.choices)       window.GR_RESTORED_CHOICES        = saved.choices;
         if (saved.player_score  !== undefined) window.GR_RESTORED_PLAYER_SCORE   = saved.player_score;
         if (saved.opponent_score !== undefined) window.GR_RESTORED_OPPONENT_SCORE = saved.opponent_score;
         if (saved.phaseEndsAtMs) window.GR_RESTORED_PHASE_ENDS_AT  = saved.phaseEndsAtMs;
-        console.log('[GameplayRuntime] restoreState applied', { phase: saved.phase, page: saved.current_page });
+        console.log('[GameplayRuntime] restoreState applied (phase intentionally omitted)', { page: saved.current_page });
     })();
 
     // ── Build save payload: base identifiers + page-specific visual state ────

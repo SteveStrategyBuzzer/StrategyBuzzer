@@ -1,0 +1,101 @@
+Suite audit validé — on passe aux 3 constats approuvés.
+
+Contexte immuable :
+Node = autorité unique
+Blade affiche
+Laravel persiste
+Firebase jamais gameplay
+
+Aucune dérive de cette règle.
+
+Travail maintenant cadré sur 3 axes :
+
+================================
+1) TÂCHE #77 — GO approuvé
+================================
+
+Appliquer avec cette cible :
+
+- supprimer le hardcode phase:'QUESTION_ACTIVE' de duo_question
+- restoreState doit revalider l’état serveur avant publication locale
+- suppression préférée de la dérogation Bug #1
+
+Important :
+Ne pas remplacer ça par un nouveau protocole complexe basé sur result_ready si phase RESULT suffit.
+
+Cible :
+le buzz-winner reste sur /duo/answer
+jusqu’à phase_changed → RESULT
+
+Node dicte la navigation.
+
+Validation demandée :
+- reload dans chaque phase
+- disconnect/reconnect en partie
+- double onglet
+- vérifier qu’on ne réintroduit pas le bug que #62 contournait (joueur figé après réponse)
+
+Patchs séparés.
+Bas → haut.
+
+================================
+2) TÂCHE #76 — GO approuvé
+================================
+
+Implémenter exactement ce fallback :
+
+- Redis si match en cours
+- DB ($match->game_state) si match finalisé
+
+Interdictions :
+- aucune écriture dans game_state pendant la partie
+- aucun recalcul PHP
+- aucune persistance Redis → DB pour “accélérer”
+
+Lecture seule seulement.
+
+Valider :
+- zéro flash Question 1/9
+- zéro flash 0-0
+- reload question / answer / result en match
+
+================================
+3) TÂCHE #75 — Décision produit actée
+================================
+
+Partir sur Option B :
+
+winnerId = null
+isTie = true
+
+Pas de critère caché supplémentaire.
+
+Produire ADR :
+docs/decisions/2026-04-XX-duo-tie-officiel.md
+
+Inclure décision sur :
+- winrate
+- pièces d’intelligence
+- UI résultat “égalité officielle”
+- cohérence Solo / Master / League
+
+Pas de patch code tant que ADR pas validé.
+
+================================
+ORDRE D’EXÉCUTION
+================================
+
+1. #77
+2. #76
+3. ADR #75
+
+Si une correction révèle une interaction avec ANSWER_SELECTION, signaler immédiatement avant patch.
+
+Méthode obligatoire :
+GREP
+SLICE
+PATCH
+VALIDATION
+
+Un patch logique à la fois.
+Aucun gros PR monolithique.
