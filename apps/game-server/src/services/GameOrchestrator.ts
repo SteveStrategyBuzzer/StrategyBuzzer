@@ -1,6 +1,6 @@
 import type { Server as SocketIOServer } from "socket.io";
 import type { RoomManager, Room } from "./RoomManager.js";
-import type { Question, Mode, Phase, PlayerLiveStats, MatchStats } from "@strategybuzzer/shared";
+import type { Question, Mode, Phase, PlayerLiveStats, MatchStats, Player } from "@strategybuzzer/shared";
 import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent, BuzzReceivedEvent, GameStartedEvent } from "@strategybuzzer/shared";
 import { applyEvent, hasActiveEffect, expireEffects, applyScoreEffects, rechargeInventory } from "@strategybuzzer/game-engine";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
@@ -331,6 +331,16 @@ export class GameOrchestrator {
 
     room.state = applyEvent(room.state, phaseEvent);
     room.events.push(phaseEvent);
+
+    // Reset per-player ready flag so the next "GO" press on /duo/result is
+    // required from each connected player before the early-transition
+    // short-circuit (requestEarlyResultTransition) can fire. Without this
+    // reset the flag would still be true from the LOBBY auto-start, and
+    // every RESULT entry would auto-advance instantly the moment both
+    // players are connected — defeating the whole point of the GO button.
+    for (const p of Object.values(room.state.players)) {
+      (p as Player & { isReady?: boolean }).isReady = false;
+    }
 
     this.io.to(roomId).emit("event", { event: phaseEvent });
     this.logEventToRedis(roomId, phaseEvent);
@@ -967,6 +977,27 @@ export class GameOrchestrator {
 
   private transitionAfterReveal(roomId: string): void {
     this.transitionAfterResult(roomId);
+  }
+
+  /**
+   * Public short-circuit for the RESULT-phase fallback timeout.
+   * Called by ws/handlers.ts socket.on("ready") when ALL connected players
+   * have signalled ready while the room is in RESULT (or REVEAL). Without
+   * this, the GO button on /duo/result was a no-op and the round only
+   * advanced after the 60 s wall-clock timeout. We clear the pending
+   * phase timer first so transitionAfterResult is not called twice
+   * (early + delayed). Safe to call from anywhere because it bails out
+   * if the room is not actually in a RESULT-like phase.
+   */
+  public requestEarlyResultTransition(roomId: string): boolean {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return false;
+    if (room.state.phase !== "RESULT" && room.state.phase !== "REVEAL") {
+      return false;
+    }
+    this.clearPhaseTimer(roomId);
+    this.transitionAfterResult(roomId);
+    return true;
   }
 
   private transitionAfterResult(roomId: string): void {

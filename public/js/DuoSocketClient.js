@@ -413,9 +413,20 @@ const DuoSocketClient = {
             return false;
         }
 
+        // The Game Server only listens to a single canonical event name `ready`
+        // with payload `{roomId, isReady}` — see handlers.ts socket.on("ready").
+        // Previous code emitted `player_ready` with no `isReady` field, which
+        // had NO listener on the server (the server only EMITS `player_ready`
+        // as a broadcast, after receiving `ready`). Result: the GO button on
+        // /duo/result silently dropped every click and the next-question
+        // transition only fired via the 60 s RESULT-phase fallback timeout.
+        // We now align with the bot (BotPlayerService.ts:161 emits the exact
+        // same event/payload), so server-side aggregation can detect "all
+        // players ready" and short-circuit the timeout.
         this._log('Signaling player ready');
-        this.socket.emit('player_ready', {
-            roomId: this.currentRoomId
+        this.socket.emit('ready', {
+            roomId: this.currentRoomId,
+            isReady: true
         });
         return true;
     },

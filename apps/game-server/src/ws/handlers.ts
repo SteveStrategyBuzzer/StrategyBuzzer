@@ -654,7 +654,28 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           } else {
             console.log("[WS] startGame already in progress for room, skipping duplicate trigger", payload.roomId);
           }
-        } 
+        } else if (
+          (room.state.phase === "RESULT" || room.state.phase === "REVEAL") &&
+          payload.isReady === true &&
+          players.length > 0 &&
+          players.every(
+            (p) =>
+              !p.isConnected ||
+              ((p as Player & { isReady?: boolean }).isReady) === true
+          )
+        ) {
+          // RESULT-phase short-circuit: every connected player has pressed
+          // the GO button on /duo/result. Bypass the 60 s fallback timeout
+          // and advance to the next question immediately. The orchestrator
+          // method clears the pending phase timer so transitionAfterResult
+          // is not invoked twice. The isReady flag is reset back to false
+          // by GameOrchestrator.revealAnswer() on the NEXT entry into
+          // RESULT, so this path will not re-fire spuriously.
+          console.log(
+            `[WS] All players ready in ${room.state.phase} for room ${payload.roomId} — short-circuiting fallback timeout`
+          );
+          gameOrchestrator.requestEarlyResultTransition(payload.roomId);
+        }
 
 
 
