@@ -1534,6 +1534,16 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         if (phase === 'RESULT') {
+            // Patch 3 (#66) — Hide the "waiting for the other player" overlay
+            // unconditionally as soon as Node enters RESULT. Without this, the
+            // overlay (re-shown when this player already answered, lines
+            // ~1500-1501 / 1525-1527) would stay forever if the only remaining
+            // `answer_revealed` event belongs to the opponent and gets filtered
+            // out by the playerId guard added in #63. Each player progresses at
+            // their own pace; the overlay only makes sense during
+            // ANSWER_SELECTION/ANSWER_COLLECTION, never beyond.
+            if (waitingOverlay) waitingOverlay.style.display = 'none';
+
             // V3: per-question result — navigate to result page after visual feedback.
             // UX: previous 600ms delay for correct answers was too snappy — players
             // barely had time to read "Bonne réponse !" before the page swapped.
