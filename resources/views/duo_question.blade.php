@@ -935,6 +935,37 @@ $mode = 'duo';
     let currentPhase = 'LOBBY';
     let currentQuestion = null;
     let isRedirecting = false;
+
+    // Persist "this player buzzed for question N" across the 302 bounce that the
+    // backend issues when a position-2 buzzer hits /duo/answer during ANSWER_SELECTION
+    // (the lock is held by position 1). When ANSWER_COLLECTION later opens (2s grace),
+    // the duo_question handler reads this flag to navigate the player to /duo/answer
+    // so they can use their answering window. Cleared on each new QUESTION_ACTIVE.
+    const BUZZED_KEY = 'duoBuzzed_' + (window.MATCH_ID || '');
+    function markBuzzedForQuestion(qIdx) {
+        try {
+            sessionStorage.setItem(BUZZED_KEY, JSON.stringify({
+                questionIndex: (qIdx === undefined || qIdx === null) ? null : Number(qIdx),
+                ts: Date.now()
+            }));
+        } catch (e) {}
+    }
+    function hasBuzzedForQuestion(qIdx) {
+        try {
+            const raw = sessionStorage.getItem(BUZZED_KEY);
+            if (!raw) return false;
+            const data = JSON.parse(raw);
+            if (!data) return false;
+            // If we don't have a questionIndex on either side, fall back to "any recent buzz" (<60s)
+            if (qIdx === undefined || qIdx === null || data.questionIndex === null) {
+                return (Date.now() - (data.ts || 0)) < 60000;
+            }
+            return Number(data.questionIndex) === Number(qIdx);
+        } catch (e) { return false; }
+    }
+    function clearBuzzedFlag() {
+        try { sessionStorage.removeItem(BUZZED_KEY); } catch (e) {}
+    }
     let gameLayoutReady = false;
     let socketConnected = false;
     let questionReceived = false;
@@ -1227,6 +1258,15 @@ $mode = 'duo';
         if (buzzed || isRedirecting || currentPhase !== 'QUESTION_ACTIVE') return;
         
         buzzed = true;
+        // Persist across the 302 bounce: the position-2 buzzer will be sent back to
+        // /duo/question by the backend during ANSWER_SELECTION (lock held by position 1),
+        // but ANSWER_COLLECTION must navigate them to /duo/answer for their grace window.
+        try {
+            const qIdx = (window.SB_LIVE_STATS && window.SB_LIVE_STATS.questionIndex !== undefined)
+                ? window.SB_LIVE_STATS.questionIndex
+                : null;
+            markBuzzedForQuestion(qIdx);
+        } catch (e) {}
         stopTimer();
         
         buzzerSound.currentTime = 0;
@@ -1422,7 +1462,17 @@ $mode = 'duo';
                 return;
             }
         }
-        
+
+        if (currentPhase === 'ANSWER_COLLECTION') {
+            // Reconnect / state-restore mid-grace: if we already buzzed for this question,
+            // jump to /duo/answer to use the remaining 2s window. Server allows it.
+            const qIdx = (data && data.questionIndex !== undefined) ? data.questionIndex : null;
+            if (hasBuzzedForQuestion(qIdx)) {
+                redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 50);
+                return;
+            }
+        }
+
         if (currentPhase === 'REVEAL') {
             // Pre-navigation: result page sent us here early during REVEAL.
             // FIX: set isRedirecting so phase_changed:REVEAL can't send us back to result.
@@ -1484,6 +1534,8 @@ $mode = 'duo';
        
         if (currentPhase === 'QUESTION_ACTIVE') {
             buzzed = false;
+            // New question — drop the persisted "I buzzed" flag from the previous one.
+            clearBuzzedFlag();
             isRedirecting = false;
             window.NO_BRAIN_OVERLAY = true;
             applyPhaseVisualState();
@@ -1502,7 +1554,14 @@ $mode = 'duo';
         }
 
         if (currentPhase === 'ANSWER_COLLECTION') {
-            // V3 grace period — stop timer, wait for RESULT
+            // V3 grace period (2s). Position-2 buzzer who got 302-bounced back to /question
+            // during ANSWER_SELECTION must navigate to /duo/answer now to use their window.
+            // The backend allows ANSWER_COLLECTION on /duo/answer for everyone.
+            const qIdx = (data && data.questionIndex !== undefined) ? data.questionIndex : null;
+            if (hasBuzzedForQuestion(qIdx)) {
+                redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 50);
+                return;
+            }
             applyPhaseVisualState();
             return;
         }
