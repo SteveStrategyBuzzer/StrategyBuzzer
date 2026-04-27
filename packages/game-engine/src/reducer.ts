@@ -78,12 +78,21 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
       if (!s.players[event.playerId]) return s;
 
       if (event.reason === "disconnect") {
+        // Transient disconnect (page navigation, network blip): mark the
+        // player as disconnected but DO NOT touch buzzQueue or
+        // lockedAnswerPlayerId. The grace window lets the same playerId
+        // reconnect on a new socket and resume their position. Wiping the
+        // buzz here was the root cause of the cancelled #77 bug where a
+        // buzz-winner navigating from /duo/question to /duo/answer would
+        // lose their position and get NOT_YOUR_TURN on click.
         s.players[event.playerId].isConnected = false;
-      } else {
-        delete s.players[event.playerId];
-        s.order = s.order.filter((id) => id !== event.playerId);
+        return s;
       }
 
+      // Hard leave (kick, true quit, room cleanup): purge the player
+      // entirely, including any pending buzz position and lock.
+      delete s.players[event.playerId];
+      s.order = s.order.filter((id) => id !== event.playerId);
       s.buzzQueue = s.buzzQueue.filter((b) => b.playerId !== event.playerId);
       if (s.lockedAnswerPlayerId === event.playerId) {
         s.lockedAnswerPlayerId = undefined;
@@ -178,8 +187,19 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
         s.phase === "ANSWER_SELECTION" || s.phase === "QUESTION_ACTIVE" || s.phase === "ANSWER_COLLECTION",
         "Answer not allowed in current phase"
       );
+      // Task #78 — Non-buzzer "participatif" submissions (Duo) are allowed
+      // when the answer phase is active and at least one buzzer exists in the
+      // queue. The legacy assertion required `isInBuzzQueue`, which crashed
+      // applyEvent for participatif players (the WS handler authorises them
+      // via the same isParticipatif rule in handlers.ts:402). We keep the
+      // strict check on the player existing — but allow non-queued players to
+      // record their answer when the room has at least one real buzzer.
       const isInBuzzQueue = s.buzzQueue.some((b) => b.playerId === event.playerId);
-      assert(isInBuzzQueue, "Player did not buzz for this question");
+      const isParticipatif = !isInBuzzQueue && s.buzzQueue.length > 0;
+      assert(
+        isInBuzzQueue || isParticipatif,
+        "Player did not buzz for this question"
+      );
       assert(!!s.players[event.playerId], "Unknown player");
 
       if (!s.answeredPlayerIds.includes(event.playerId)) {

@@ -24,6 +24,7 @@ import {
   PingCheckSchema,
   TimeSyncSchema,
   QuestionPageReadySchema,
+  ResultPageReadySchema,
   type JoinRoomPayload,
   type BuzzPayload,
   type AnswerPayload,
@@ -35,6 +36,7 @@ import {
   type PingCheckPayload,
   type TimeSyncPayload,
   type QuestionPageReadyPayload,
+  type ResultPageReadyPayload,
 } from "../validation/schemas.js";
 import { timeSyncService } from "../services/TimeSyncService.js";
 
@@ -380,11 +382,25 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           return;
         }
         
-        // V3 non-blocking: any player who has buzzed (is in buzzQueue) can answer.
-        // Also accept if they hold the lockedAnswerPlayerId (legacy path).
+        // Task #78 — Non-buzzer "participatif" mode for Duo.
+        //
+        // Eligibility tiers:
+        //   1) Player is in buzzQueue OR holds lockedAnswerPlayerId
+        //      → full scoring (first=+2, second=+1, wrong=-1, timeout=-2)
+        //   2) Player is NOT in the queue but the room is in an answer-collecting
+        //      phase (ANSWER_SELECTION / ANSWER_COLLECTION) and the round had
+        //      at least ONE buzzer → "participatif", scored ALWAYS 0 pts.
+        //      Lets the non-buzzer keep playing on /duo/answer (same UI, same
+        //      audio cues for correct/wrong) without affecting the scoreboard.
+        //
+        // No-buzz rounds (queue empty) skip ANSWER_SELECTION entirely on the
+        // server, so no participatif path is needed there — handled upstream.
         const isInBuzzQueue = room.state.buzzQueue.some(b => b.playerId === currentPlayerId);
         const isLocked = room.state.lockedAnswerPlayerId === currentPlayerId;
-        if (!isInBuzzQueue && !isLocked) {
+        const isAnswerPhase = room.state.phase === "ANSWER_SELECTION" || room.state.phase === "ANSWER_COLLECTION";
+        const hasBuzzers = room.state.buzzQueue.length > 0;
+        const isParticipatif = !isInBuzzQueue && !isLocked && isAnswerPhase && hasBuzzers;
+        if (!isInBuzzQueue && !isLocked && !isParticipatif) {
           MetricsService.incrementEventsFailed();
           socket.emit("error", { code: "NOT_YOUR_TURN", message: "You have not buzzed for this question" });
           return;
@@ -772,6 +788,26 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
       }
 
       gameOrchestrator.handleQuestionPageReady(payload.roomId, currentPlayerId);
+    });
+
+    // Task #78 — Symmetric per-arrival barrier on /duo/result. The orchestrator
+    // resets the visible 60 s countdown ONLY when ALL expected humans have
+    // arrived; the first player to land sees a "waiting for opponent" overlay.
+    socket.on("result_page_ready", (data: unknown) => {
+      const result = validateEvent(ResultPageReadySchema, data);
+      if (!result.success) {
+        console.error("[WS] Validation error for result_page_ready:", result.error.issues);
+        socket.emit("error", { code: "VALIDATION_ERROR", message: "Invalid result_page_ready payload" });
+        return;
+      }
+      const payload = result.data as ResultPageReadyPayload;
+
+      if (!currentPlayerId || !currentRoomId || currentRoomId !== payload.roomId) {
+        socket.emit("error", { code: "NOT_IN_ROOM", message: "Not in a room" });
+        return;
+      }
+
+      gameOrchestrator.handleResultPageReady(payload.roomId, currentPlayerId);
     });
 
     socket.on("disconnect", () => {

@@ -1562,7 +1562,15 @@ $mode = 'duo';
             if (String(lockedId) === CURRENT_USER_ID) {
                 redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 150);
             } else {
+                // Task #78 — Non-buzzer "participatif" navigation.
+                // The non-buzzer also lands on /duo/answer (mode 'none') so
+                // they can keep playing on the same question — same UI, same
+                // sounds, but ALWAYS scored 0 pts (server-enforced). The
+                // controller defaults `buzzed=false` → buzz_winner='opponent'
+                // → $playerBuzzPosition='none'. handleOpponentBuzz() still
+                // fires for the discreet riposte-skill glow before we leave.
                 handleOpponentBuzz();
+                redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
             }
             return;
         }

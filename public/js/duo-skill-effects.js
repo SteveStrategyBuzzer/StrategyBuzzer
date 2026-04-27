@@ -132,7 +132,47 @@
                 var btn3 = getSkillButton('ai_suggestion');
                 if (btn3) { btn3.classList.remove('pending'); btn3.classList.add('used'); }
                 _applyAiSuggestionEffect(data.suggestedIndex);
+            } else if (skillId === 'see_opponent_choice') {
+                // Task #78 — Visionnaire activation confirmed by server.
+                // Mark the local client as entitled to see the next
+                // opponent_choice_submitted glow. Cleared after the first
+                // opponent submission consumes it (1 use per match — matches
+                // the server-side AvatarSkillService budget for Visionnaire).
+                window._duoVisionnaireActive = true;
+                var visBtn = getSkillButton('see_opponent_choice');
+                if (visBtn) { visBtn.classList.remove('pending'); visBtn.classList.add('active'); }
+                console.log('[Skills] Visionnaire activated — awaiting opponent choice');
             }
+        }
+
+        // Task #78 — Visionnaire glow handler. Wired from the view's socket
+        // bindings (see duo_answer.blade.php). Filters out self-submitted
+        // answers and gates the visual on the local Visionnaire-active flag
+        // set in `onSkillEffect`. Exposed on the returned API so the view can
+        // bind it without poking module internals.
+        function onOpponentChoiceSubmitted(data) {
+            if (!data || data.answer === undefined || data.answer === null) return;
+            // Self-filter: ignore our own submission echoed back to the room.
+            var myId = (typeof window !== 'undefined' && window.CURRENT_USER_ID)
+                ? String(window.CURRENT_USER_ID) : '';
+            if (myId && String(data.playerId) === myId) return;
+            // Gate on Visionnaire activation. Without this flag, the glow
+            // would leak to every player in the room — defeating the skill.
+            if (!window._duoVisionnaireActive) return;
+
+            var buttons = getAnswerButtons();
+            var target = null;
+            for (var i = 0; i < buttons.length; i++) {
+                if (parseInt(buttons[i].getAttribute('data-index'), 10) === parseInt(data.answer, 10)) {
+                    target = buttons[i];
+                    break;
+                }
+            }
+            if (!target) return;
+            target.classList.add('opponent-choice-glow');
+            // Consume the activation: 1 use per match.
+            window._duoVisionnaireActive = false;
+            console.log('[Skills] Visionnaire glow applied to opponent choice', data.answer);
         }
 
         function onSkillFailed(data) {
@@ -312,11 +352,12 @@
         }
 
         return {
-            onSkillEffect:       onSkillEffect,
-            onSkillFailed:       onSkillFailed,
-            shuffleAnswers:      shuffleAnswers,
-            startShuffleInterval: startShuffleInterval,
-            stopShuffleInterval:  stopShuffleInterval,
+            onSkillEffect:               onSkillEffect,
+            onSkillFailed:               onSkillFailed,
+            onOpponentChoiceSubmitted:   onOpponentChoiceSubmitted,
+            shuffleAnswers:              shuffleAnswers,
+            startShuffleInterval:        startShuffleInterval,
+            stopShuffleInterval:         stopShuffleInterval,
         };
     }
 

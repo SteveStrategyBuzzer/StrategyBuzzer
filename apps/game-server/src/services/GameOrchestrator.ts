@@ -17,7 +17,16 @@ export class GameOrchestrator {
   private phaseTimers: Map<string, NodeJS.Timeout> = new Map();
   private pendingAnswers: Map<string, { playerId: string; answer: number | string | boolean; submittedAtMs: number }> = new Map();
   // Store answers from ALL buzzers (key = roomId, value = Map of playerId -> answer data)
-  private allBuzzerAnswers: Map<string, Map<string, { answer: number | string | boolean; submittedAtMs: number; buzzOrder: number }>> = new Map();
+  // Task #78 — value type now carries `didBuzz` so scoreAllBuzzers can treat
+  // non-buzzer participatif answers (Duo) separately: same UI feedback as
+  // buzzers, but ALWAYS scored 0 pts and NOT counted as a buzz in live stats.
+  private allBuzzerAnswers: Map<string, Map<string, { answer: number | string | boolean; submittedAtMs: number; buzzOrder: number; didBuzz: boolean }>> = new Map();
+  // Task #78 — Symmetric per-arrival barrier on RESULT, mirroring SYNC. The
+  // 60s countdown is reset on the SECOND human's `result_page_ready`. The
+  // expected-set is snapshotted at REVEAL/RESULT entry; transient drops do
+  // not shrink it.
+  private resultReadyMaps: Map<string, Set<string>> = new Map();
+  private resultExpectedMaps: Map<string, Set<string>> = new Map();
   // Track last score delta per player for cancel_error retroactive correction.
   // Stores { questionIndex, delta } so cancel_error only applies to the
   // question that was just scored (prevents stale cross-question corrections).
@@ -243,11 +252,23 @@ export class GameOrchestrator {
       return;
     }
 
-    // Check if this player buzzed (is in the buzz queue)
+    // Task #78 — Tier 1: real buzzer (in queue) → buzzOrder>=1, didBuzz=true.
+    //          Tier 2: non-buzzer "participatif" (Duo only path that hits here)
+    //                  → buzzOrder=0, didBuzz=false. Eligibility was already
+    //                  validated in handlers.ts (room must be in answer phase
+    //                  AND have at least one buzzer in the queue). The
+    //                  participatif answer feeds the same UI feedback to the
+    //                  non-buzzer (correct sound / wrong sound) but is
+    //                  ALWAYS scored 0 pts in scoreAllBuzzers below.
     const buzzIndex = room.state.buzzQueue.findIndex(b => b.playerId === playerId);
-    if (buzzIndex === -1) {
-      console.log(`[GameOrchestrator] Answer rejected: ${playerId} did not buzz`);
-      return;
+    const isBuzzer = buzzIndex !== -1;
+    if (!isBuzzer) {
+      const isAnswerPhase = room.state.phase === "ANSWER_SELECTION" || room.state.phase === "ANSWER_COLLECTION";
+      const hasBuzzers = room.state.buzzQueue.length > 0;
+      if (!isAnswerPhase || !hasBuzzers) {
+        console.log(`[GameOrchestrator] Answer rejected: ${playerId} did not buzz and not eligible for participatif`);
+        return;
+      }
     }
 
     // Initialize room's buzzer answers map if needed
@@ -264,10 +285,32 @@ export class GameOrchestrator {
     }
 
     const submittedAtMs = Date.now();
-    const buzzOrder = buzzIndex + 1; // 1-indexed buzz order
+    const buzzOrder = isBuzzer ? buzzIndex + 1 : 0; // 1-indexed for buzzers, 0 for participatif
 
-    // Store this buzzer's answer
-    roomAnswers.set(playerId, { answer, submittedAtMs, buzzOrder });
+    // Store this player's answer (with didBuzz flag for scoreAllBuzzers).
+    roomAnswers.set(playerId, { answer, submittedAtMs, buzzOrder, didBuzz: isBuzzer });
+
+    // Task #78 — Visionnaire-side broadcast. Emit a targeted "opponent_choice_submitted"
+    // socket event to all OTHER players in the room. The client filters the event
+    // based on whether they currently have the see_opponent_choice skill marked
+    // active in their inventory; the SERVER does NOT gate by skill here so we
+    // avoid coupling Node to the PHP catalog. Skill activation itself remains
+    // Node-authoritative via the existing `skill` socket event flow.
+    //
+    // SECURITY TRADE-OFF (acknowledged): the `answer` index is sent over the
+    // wire to every player in the room, so a malicious client could read the
+    // opponent's choice via DevTools without owning Visionnaire. Closing this
+    // leak requires routing see_opponent_choice through the Node skill engine
+    // (it is currently absent from packages/shared/src/types.ts → SkillEffectType,
+    // by design — the PHP AvatarSkillService is the canonical catalog) and
+    // filtering this emit by `room.state.activeEffects` membership. Tracked as
+    // a follow-up — out of scope for the per-player progression contract.
+    this.io.to(roomId).emit("opponent_choice_submitted", {
+      playerId,
+      answer,
+      questionIndex: room.state.questionIndex,
+      submittedAtMs,
+    });
 
     const submitEvent: AnswerSubmittedEvent = {
       id: room.state.lastEventId + 1,
@@ -317,7 +360,15 @@ export class GameOrchestrator {
       }
     }
 
-    // V3: Transition to RESULT phase (replaces REVEAL)
+    // V3: Transition to RESULT phase (replaces REVEAL).
+    //
+    // Task #78 — RESULT timer is now a SOFT ceiling. We arm it with the full
+    // configured `result` window (60 s in DUO) so any room with no second
+    // human ever arriving still advances eventually, but the canonical
+    // "Prochaine question dans 60 s" countdown only STARTS at the moment
+    // the second human signals `result_page_ready` (handleResultPageReady
+    // re-stamps phaseEndsAtMs and re-emits phase_changed). The first human
+    // to land sees a "waiting for opponent" overlay until that re-stamp.
     const resultTimer = room.state.config.timers.result;
     const phaseEvent: PhaseChangedEvent = {
       id: room.state.lastEventId + 1,
@@ -331,6 +382,19 @@ export class GameOrchestrator {
 
     room.state = applyEvent(room.state, phaseEvent);
     room.events.push(phaseEvent);
+
+    // Snapshot the expected human set at RESULT entry. handleResultPageReady
+    // re-stamps the deadline only when ALL expected humans have arrived
+    // (first arrival keeps the soft ceiling running; second arrival rearms
+    // a fresh 60 s window). Bot-only or single-human rooms naturally
+    // advance via the soft ceiling or via a single arrival → fresh stamp.
+    const expectedHumans = new Set<string>(
+      Object.values(room.state.players)
+        .filter(p => !p.isBot)
+        .map(p => p.id)
+    );
+    this.resultReadyMaps.set(roomId, new Set<string>());
+    this.resultExpectedMaps.set(roomId, expectedHumans);
 
     // Reset per-player ready flag so the next "GO" press on /duo/result is
     // required from each connected player before the early-transition
@@ -520,12 +584,79 @@ export class GameOrchestrator {
       });
     }
 
+    // Task #78 — Non-buzzer "participatif" reveal pass.
+    //
+    // Any non-buzzer who submitted an answer during ANSWER_SELECTION /
+    // ANSWER_COLLECTION (Duo) gets the same correct/wrong feedback the
+    // buzzers received — but ALWAYS scored 0 pts (no score event, no live
+    // stats buzz counters touched). Without this loop the non-buzzer's
+    // /duo/answer page would never see `answer_revealed` and stay stuck
+    // on its waiting/empty state.
+    const buzzedIds = new Set(buzzQueue.map(b => b.playerId));
+    for (const [pid, ans] of roomAnswers) {
+      if (buzzedIds.has(pid)) continue; // already scored above
+      if (ans.didBuzz !== false) continue; // safety: skip anything not flagged participatif
+      const player = room.state.players[pid];
+      if (!player) continue;
+
+      let isCorrect = false;
+      if (question) {
+        if (question.type === "MCQ" && question.correctIndex !== undefined) {
+          isCorrect = ans.answer === question.correctIndex;
+        } else if (question.type === "TRUE_FALSE" && question.correctBool !== undefined) {
+          isCorrect = ans.answer === question.correctBool;
+        } else if (question.type === "TEXT" && question.correctText !== undefined) {
+          isCorrect = String(ans.answer).toLowerCase() === question.correctText.toLowerCase();
+        }
+      }
+
+      const partRevealEvent: AnswerRevealedEvent = {
+        id: room.state.lastEventId + 1,
+        type: "ANSWER_REVEALED",
+        atMs: Date.now(),
+        sessionId: roomId,
+        playerId: pid,
+        answer: ans.answer ?? -1,
+        isCorrect,
+        correctAnswer,
+        pointsEarned: 0, // ALWAYS 0 for participatif
+        buzzTimeMs: 0,
+        totalScore: player.score,
+        roundScore: player.roundScore,
+        funFact: question?.funFact,
+        didYouKnow: question?.funFact,
+      };
+      room.state = applyEvent(room.state, partRevealEvent);
+      room.events.push(partRevealEvent);
+      this.io.to(roomId).emit("event", { event: partRevealEvent });
+      this.logEventToRedis(roomId, partRevealEvent);
+
+      this.io.to(roomId).emit("answer_revealed", {
+        playerId: pid,
+        playerName: player?.name,
+        answer: ans.answer,
+        isCorrect,
+        correctAnswer,
+        correctIndex: question?.correctIndex,
+        correctBool: question?.correctBool,
+        correctText: question?.correctText,
+        pointsEarned: 0,
+        totalScore: player.score,
+        roundScore: player.roundScore,
+        funFact: question?.funFact,
+        didYouKnow: question?.funFact,
+        skillsTriggered: [],
+        participatif: true,
+      });
+
+      console.log(`[GameOrchestrator] Non-buzzer participatif ${pid} answered ${isCorrect ? 'correctly' : 'incorrectly'}: 0 pts (always)`);
+    }
+
     // Also emit a no-buzz no-op stat refresh for non-buzzers so their efficiency
     // (which depends on totalBuzzes) stays consistent across the front-ends.
     // The pure fn handles "no buzz" by returning unchanged counters but updates score.
     const roomForBroadcast = this.roomManager.getRoom(roomId);
     if (roomForBroadcast) {
-      const buzzedIds = new Set(buzzQueue.map(b => b.playerId));
       for (const [pid, p] of Object.entries(roomForBroadcast.state.players)) {
         if (buzzedIds.has(pid)) continue;
         const prev = this.getOrInitPlayerStats(roomId, pid);
@@ -1125,6 +1256,84 @@ export class GameOrchestrator {
       this.syncExpectedMaps.delete(roomId);
       this.transitionToQuestionActive(roomId);
     }
+  }
+
+  /**
+   * Task #78 — Symmetric per-arrival barrier on /duo/result.
+   *
+   * Each connected player emits `result_page_ready` once on mount of the
+   * /duo/result page. We re-arm the canonical 60 s RESULT countdown ONLY
+   * when ALL expected humans (snapshotted at REVEAL → RESULT entry) have
+   * arrived. Behaviour:
+   *   • 1st arrival           → register, do NOT touch the deadline. The
+   *                             player sees a "waiting for opponent" overlay.
+   *                             The soft ceiling (already armed in
+   *                             revealAnswer) keeps a hard upper bound.
+   *   • 2nd / Nth arrival     → re-stamp phaseEndsAtMs to Date.now() + 60s
+   *                             and re-emit phase_changed so every client
+   *                             snaps to the fresh deadline. Only THEN does
+   *                             the visible countdown start ticking down.
+   * Bot-only / single-human rooms hit the all-arrived condition on the
+   * first call, which is the desired behaviour: timer starts immediately.
+   */
+  handleResultPageReady(roomId: string, playerId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    if (room.state.phase !== "RESULT" && room.state.phase !== "REVEAL") {
+      console.log(`[GameOrchestrator] result_page_ready ignored: not in RESULT/REVEAL phase (${room.state.phase})`);
+      return;
+    }
+
+    const readyMap = this.resultReadyMaps.get(roomId);
+    const expectedSet = this.resultExpectedMaps.get(roomId);
+    if (!readyMap || !expectedSet) {
+      // Maps were cleared (e.g. transition already happened). Safe no-op.
+      return;
+    }
+
+    if (readyMap.has(playerId)) {
+      // Idempotent: ignore duplicate signals from the same player.
+      return;
+    }
+    readyMap.add(playerId);
+    console.log(`[GameOrchestrator] result_page_ready from ${playerId} in room ${roomId} (${readyMap.size}/${expectedSet.size} expected humans ready)`);
+
+    // Notify clients about per-player arrival progress (used by /duo/result
+    // to flip the per-side "Vous / Adversaire — En attente" status row).
+    this.io.to(roomId).emit("result_page_ready_progress", {
+      ready: [...readyMap],
+      expected: [...expectedSet],
+    });
+
+    // Re-arm the canonical countdown ONLY once all expected humans have arrived.
+    if (expectedSet.size === 0 || ![...expectedSet].every(id => readyMap.has(id))) {
+      return;
+    }
+
+    // Cancel the in-flight soft ceiling and re-stamp a fresh `result` window.
+    this.clearPhaseTimer(roomId);
+    const resultTimer = room.state.config.timers.result;
+    const restampEvent: PhaseChangedEvent = {
+      id: room.state.lastEventId + 1,
+      type: "PHASE_CHANGED",
+      atMs: Date.now(),
+      sessionId: roomId,
+      fromPhase: room.state.phase,
+      toPhase: "RESULT",
+      phaseEndsAtMs: Date.now() + resultTimer,
+    };
+    room.state = applyEvent(room.state, restampEvent);
+    room.events.push(restampEvent);
+    this.io.to(roomId).emit("event", { event: restampEvent });
+    this.logEventToRedis(roomId, restampEvent);
+    this.emitPhaseChanged(roomId);
+    this.schedulePhaseTimeout(roomId);
+
+    this.resultReadyMaps.delete(roomId);
+    this.resultExpectedMaps.delete(roomId);
+
+    console.log(`[GameOrchestrator] All ${expectedSet.size} human(s) on /duo/result — fresh ${resultTimer}ms countdown armed for room ${roomId}`);
   }
 
   private endRound(roomId: string): void {

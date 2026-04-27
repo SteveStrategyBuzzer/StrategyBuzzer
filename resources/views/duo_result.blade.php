@@ -1225,6 +1225,13 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     </div>
     
     <div class="result-actions">
+        {{-- Task #78 — Arrival-waiting overlay. Shown until the server's
+             re-stamped phase_changed(RESULT) signals that BOTH humans have
+             reached /duo/result (cf. handleResultPageReady). Hidden by
+             markResultRestamped() in the script block below. --}}
+        <div id="resultArrivalWaiting" style="text-align:center;padding:8px 12px;margin-bottom:8px;color:#a8b3c7;font-size:0.9rem;font-style:italic;opacity:0.85;">
+            ⏳ {{ __("En attente de l'autre joueur") }}<span class="waiting-dots"></span>
+        </div>
         {{-- 60s countdown --}}
         <div class="countdown-wrap" id="countdownWrap">
             <div class="countdown-label">{{ __('Prochaine question dans') }}</div>
@@ -1273,6 +1280,16 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     let countdownSecs = 60;
     let countdownInterval = null;
     let exitConfirming = false;
+    // Task #78 — Per-player progression between SYNC barriers.
+    // The Node-authoritative 60s RESULT countdown is RE-STAMPED only when the
+    // SECOND human signals `result_page_ready` (cf. GameOrchestrator
+    // .handleResultPageReady). Until that re-stamp arrives, we keep the
+    // countdown bar visually FROZEN at 60s and show an arrival-waiting overlay,
+    // so the first arriver doesn't see their bar drain while their opponent is
+    // still on /duo/answer. The flag is flipped in `markResultRestamped()`,
+    // which is called from `_onResultPhaseChanged` and `_onResultState` when
+    // they observe a fresh phaseEndsAtMs in RESULT.
+    let _awaitingResultRestamp = true;
     // P0.1 — Node-authoritative phase deadline. Restored on cold reconnect from
     // sessionStorage (via GameplayRuntime) and refreshed on every phase_changed/state
     // event. The countdown bar is now a passive display: it never drives navigation.
@@ -1384,6 +1401,19 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         var fill = document.getElementById('countdownBarFill');
         var secsEl = document.getElementById('countdownSecs');
         if (!fill || !secsEl) return;
+
+        // Task #78 — Until the second human signals `result_page_ready` and the
+        // server re-stamps phaseEndsAtMs, keep the bar visually frozen at 60s.
+        // This avoids the first arriver watching their bar drain while their
+        // opponent is still reading their result on /duo/answer. The freeze is
+        // released by `markResultRestamped()` when the canonical re-stamp lands.
+        if (_awaitingResultRestamp) {
+            fill.style.width = '100%';
+            fill.classList.remove('urgent');
+            secsEl.textContent = '60s';
+            secsEl.classList.remove('urgent');
+            return;
+        }
 
         // If the server hasn't given us a deadline yet, render the static initial
         // state and bail — the countdown will start as soon as phaseEndsAtMs lands.
@@ -1561,6 +1591,47 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
             setOpponentReady();
         }
     }
+
+    // Task #78 — When the canonical re-stamp lands (server has confirmed BOTH
+    // humans are on /duo/result), unfreeze the countdown bar and hide the
+    // arrival-waiting overlay. Idempotent: safe to call repeatedly.
+    function markResultRestamped() {
+        if (!_awaitingResultRestamp) return;
+        _awaitingResultRestamp = false;
+        var overlay = document.getElementById('resultArrivalWaiting');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    // Task #78 — Per-player "I am on /duo/result" arrival progress. Server
+    // emits this once per arriving human so the UI can flip the existing
+    // playerStatus / opponentStatus rows from "En attente" → "Sur la page".
+    // We do NOT navigate or unfreeze the bar here — that's the job of the
+    // re-stamped phase_changed event handled in markResultRestamped().
+    function _onResultPageReadyProgress(data) {
+        if (!data || !Array.isArray(data.ready)) return;
+        var meReady = data.ready.some(function(id) {
+            return String(id) === String(CURRENT_PLAYER_ID);
+        });
+        var opponentReady = data.ready.some(function(id) {
+            return String(id) !== String(CURRENT_PLAYER_ID);
+        });
+        if (meReady && playerStatus && !playerStatus.classList.contains('ready')) {
+            playerStatus.classList.remove('waiting');
+            playerStatus.classList.add('ready');
+            var pIcon = playerStatus.querySelector('.status-icon');
+            var pText = playerStatus.querySelector('.status-text');
+            if (pIcon) pIcon.textContent = '👁️';
+            if (pText) pText.textContent = '{{ __("Vous") }} - {{ __("Sur la page") }}';
+        }
+        if (opponentReady && opponentStatus && !opponentStatus.classList.contains('ready')) {
+            opponentStatus.classList.remove('waiting');
+            opponentStatus.classList.add('ready');
+            var oIcon = opponentStatus.querySelector('.status-icon');
+            var oText = opponentStatus.querySelector('.status-text');
+            if (oIcon) oIcon.textContent = '👁️';
+            if (oText) oText.textContent = '{{ $opponentName ?? __("Adversaire") }} - {{ __("Sur la page") }}';
+        }
+    }
     var _earlyNavTimer = null;
     function _cancelEarlyNav() {
         if (_earlyNavTimer) { clearTimeout(_earlyNavTimer); _earlyNavTimer = null; }
@@ -1576,6 +1647,12 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         if (data.phaseEndsAtMs) {
             phaseEndsAtMs = Number(data.phaseEndsAtMs);
             if (data.phase === 'RESULT') {
+                // Task #78 — Any phase_changed(RESULT) received WHILE we are on
+                // /duo/result is the canonical re-stamp from
+                // GameOrchestrator.handleResultPageReady (the original
+                // phase_changed → RESULT happens before we mount). Unfreeze
+                // the bar and let the real countdown begin.
+                markResultRestamped();
                 startCountdown();
             }
         }
@@ -1620,6 +1697,11 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         if (stateObj.phaseEndsAtMs) {
             phaseEndsAtMs = Number(stateObj.phaseEndsAtMs);
             if (phase === 'RESULT') {
+                // Task #78 — Cold-reconnect path: if the server-side re-stamp
+                // already happened (both humans were on /duo/result earlier
+                // and we just disconnected/refreshed), the snapshot's
+                // phaseEndsAtMs reflects that re-stamped deadline. Unfreeze.
+                markResultRestamped();
                 startCountdown();
             }
         }
@@ -1722,14 +1804,16 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     // score_update is handled canonically by GameplayRuntime.js (no view-local
     // handler needed).
     window._duoResultHandlers = {
-        disconnect:      _onResultDisconnect,
-        error:           _onResultError,
-        player_ready:    _onResultPlayerReady,
-        phase_changed:   _onResultPhaseChanged,
-        state:           _onResultState,
-        both_ready:      _onResultBothReady,
-        skill_effect:    _onResultSkillEffect,
-        skill_failed:    _onResultSkillFailed
+        disconnect:                  _onResultDisconnect,
+        error:                       _onResultError,
+        player_ready:                _onResultPlayerReady,
+        phase_changed:               _onResultPhaseChanged,
+        state:                       _onResultState,
+        both_ready:                  _onResultBothReady,
+        skill_effect:                _onResultSkillEffect,
+        skill_failed:                _onResultSkillFailed,
+        // Task #78 — Per-player arrival progress on /duo/result.
+        result_page_ready_progress:  _onResultPageReadyProgress,
     };
 
     window.addEventListener('beforeunload', function() {
@@ -2004,15 +2088,40 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         var ds = window.DuoSocketClient;
         var h  = window._duoResultHandlers;
         if (!ds || !h) { console.error('[DuoResult] DuoSocketClient or handlers missing'); return; }
-        ds.on('disconnect',     h.disconnect);
-        ds.on('error',          h.error);
-        ds.on('player_ready',   h.player_ready);
-        ds.on('phase_changed',  h.phase_changed);
-        ds.on('state',          h.state);
-        ds.on('both_ready',     h.both_ready);
-        ds.on('skill_effect',   h.skill_effect);
-        ds.on('skill_failed',   h.skill_failed);
-        ds.on('answer_revealed',h.answer_revealed);
+        ds.on('disconnect',                  h.disconnect);
+        ds.on('error',                       h.error);
+        ds.on('player_ready',                h.player_ready);
+        ds.on('phase_changed',               h.phase_changed);
+        ds.on('state',                       h.state);
+        ds.on('both_ready',                  h.both_ready);
+        ds.on('skill_effect',                h.skill_effect);
+        ds.on('skill_failed',                h.skill_failed);
+        ds.on('answer_revealed',             h.answer_revealed);
+        ds.on('result_page_ready_progress',  h.result_page_ready_progress);
+
+        // Task #78 — Signal arrival on /duo/result so the server can re-stamp
+        // the canonical 60s countdown only when BOTH humans are present
+        // (cf. GameOrchestrator.handleResultPageReady). Emit immediately if
+        // the socket is already connected; otherwise wait for the connect
+        // event. The server is idempotent on duplicate signals.
+        function _emitResultPageReady() {
+            try {
+                if (ds.socket && ds.socket.connected) {
+                    ds.socket.emit('result_page_ready', {
+                        roomId: ROOM_ID || LOBBY_CODE,
+                        matchId: MATCH_ID,
+                    });
+                    console.log('[DuoResult] result_page_ready emitted');
+                }
+            } catch (e) { console.warn('[DuoResult] result_page_ready emit failed', e); }
+        }
+        if (ds.isConnected && ds.isConnected()) {
+            _emitResultPageReady();
+        }
+        // Also fire on (re)connect — covers the cold-load race where the
+        // socket is still handshaking when DOMContentLoaded runs, and any
+        // mid-page reconnect after a transient drop.
+        ds.on('connect', _emitResultPageReady);
     });
 })();
 </script>

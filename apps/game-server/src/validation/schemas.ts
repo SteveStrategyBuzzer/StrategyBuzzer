@@ -80,6 +80,15 @@ export const QuestionPageReadySchema = z.object({
   roomId: z.string(),
 });
 
+// Sent by /duo/result on mount. Mirrors question_page_ready: the orchestrator
+// resets the 60s RESULT countdown only when the SECOND player arrives, so the
+// player who lands first sees a "waiting for opponent" overlay until the peer
+// is ready. Solo and bot-only rooms naturally skip this barrier (a single
+// human still triggers the second-arrival path immediately).
+export const ResultPageReadySchema = z.object({
+  roomId: z.string(),
+});
+
 export type JoinRoomPayload = z.infer<typeof JoinRoomSchema>;
 export type BuzzPayload = z.infer<typeof BuzzSchema>;
 export type AnswerPayload = z.infer<typeof AnswerSchema>;
@@ -91,3 +100,4 @@ export type VoiceCandidatePayload = z.infer<typeof VoiceCandidateSchema>;
 export type PingCheckPayload = z.infer<typeof PingCheckSchema>;
 export type TimeSyncPayload = z.infer<typeof TimeSyncSchema>;
 export type QuestionPageReadyPayload = z.infer<typeof QuestionPageReadySchema>;
+export type ResultPageReadyPayload = z.infer<typeof ResultPageReadySchema>;

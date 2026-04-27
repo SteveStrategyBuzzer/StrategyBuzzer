@@ -535,6 +535,33 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         border-color: #FFD700;
         box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
     }
+
+    /* Task #78 — Visionnaire (see_opponent_choice) glow. Applied to the
+       opponent's selected answer button on opponent_choice_submitted, only
+       for the player who has the skill currently active. The 👁️ marker is
+       offset to avoid colliding with the .ai-suggested 🤖 prefix and the
+       .acidified ✕ overlay. Animation pulses to nudge the user that the
+       reveal is fresh. */
+    .answer-button.opponent-choice-glow {
+        background: linear-gradient(135deg, rgba(186, 85, 211, 0.30) 0%, rgba(138, 43, 226, 0.30) 100%);
+        border-color: #BA55D3;
+        box-shadow: 0 0 24px rgba(186, 85, 211, 0.65);
+        animation: pulse-visionnaire 1.4s ease-in-out infinite;
+    }
+    .answer-button.opponent-choice-glow::after {
+        content: '👁️';
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.1rem;
+        text-shadow: 0 0 6px rgba(186, 85, 211, 0.9);
+        pointer-events: none;
+    }
+    @keyframes pulse-visionnaire {
+        0%, 100% { box-shadow: 0 0 18px rgba(186, 85, 211, 0.55); }
+        50%      { box-shadow: 0 0 28px rgba(186, 85, 211, 0.95); }
+    }
     
     .result-overlay {
         position: fixed;
@@ -754,10 +781,16 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         </div>
         @endif
         @foreach($choices as $index => $choice)
-            <button class="answer-button {{ $playerBuzzPosition === 'none' ? 'waiting' : '' }}" 
+            {{-- Task #78 — 'none' is now PARTICIPATIF in Duo: the non-buzzer
+                 keeps playing on the same /duo/answer page (same UI, same
+                 sounds) but is ALWAYS scored 0 pts (server-enforced). Buttons
+                 must therefore render enabled in the 'none' state too. The
+                 only static-disabled cases left here are unrelated future
+                 server-controlled lockouts; client JS toggles `.waiting` on
+                 transient states (cf. applyBuzzPosition in script block). --}}
+            <button class="answer-button"
                     data-index="{{ $index }}"
-                    data-text="{{ $choice }}"
-                    {{ $playerBuzzPosition === 'none' ? 'disabled' : '' }}>
+                    data-text="{{ $choice }}">
                 <span class="answer-number">{{ $index + 1 }}</span>
                 <span class="answer-text">{{ $choice }}</span>
                 <span class="answer-indicator" id="indicator{{ $index }}"></span>
@@ -826,8 +859,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             {{ __('Vous avez buzzé en') }} {{ number_format($buzzTime, 1) }}s 💚
         </div>
     @else
+        {{-- Task #78 — Non-buzzer "participatif" banner. The non-buzzer can still
+             pick an answer for 0 pt; copy is intentionally upbeat (not "wait"). --}}
         <div class="buzz-status-banner opponent-buzz">
-            ⏳ {{ __(':name a buzzé - En attente de sa réponse...', ['name' => $opponentName ?? __('Adversaire')]) }}
+            👀 {{ __(':name a buzzé - Vous pouvez participer (0 point)', ['name' => $opponentName ?? __('Adversaire')]) }}
         </div>
     @endif
 </div>
@@ -908,7 +943,20 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     window.PLAYER_BUZZ_POSITION = PLAYER_BUZZ_POSITION;
 
     function canAnswer() {
-        return PLAYER_BUZZ_POSITION === 'first' || PLAYER_BUZZ_POSITION === 'second' || PLAYER_BUZZ_POSITION === 'no_buzz';
+        // Task #78 — 'none' is now PARTICIPATIF in Duo: the non-buzzer keeps
+        // playing on the same /duo/answer page (same UI, same correct/wrong
+        // sounds) but is ALWAYS scored 0 pts (server-enforced in
+        // GameOrchestrator.scoreAllBuzzers — non-buzzer participatif loop).
+        // The waiting overlay is no longer shown for 'none'; the only blocked
+        // state on this page is `answered` (already submitted).
+        return PLAYER_BUZZ_POSITION === 'first'
+            || PLAYER_BUZZ_POSITION === 'second'
+            || PLAYER_BUZZ_POSITION === 'no_buzz'
+            || PLAYER_BUZZ_POSITION === 'none';
+    }
+    function isParticipatif() {
+        // Helper for visual nudges that should NOT fire for real buzzers.
+        return PLAYER_BUZZ_POSITION === 'none';
     }
 
     /**
@@ -1790,6 +1838,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // (Task #56). Closures resolve `skillEffects` lazily, after init below.
         skill_effect:    function (data) { if (skillEffects) skillEffects.onSkillEffect(data); },
         skill_failed:    function (data) { if (skillEffects) skillEffects.onSkillFailed(data); },
+        // Task #78 — Visionnaire opponent-choice glow. Server emits this on
+        // every answer submission to the room; the module's gate ensures only
+        // the Visionnaire owner sees the glow (cf. duo-skill-effects.js).
+        opponent_choice_submitted: function (data) {
+            if (skillEffects && skillEffects.onOpponentChoiceSubmitted) {
+                skillEffects.onOpponentChoiceSubmitted(data);
+            }
+        },
         initEffects:     _initAnswerEffects
     };
 
