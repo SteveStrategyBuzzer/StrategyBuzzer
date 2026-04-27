@@ -864,7 +864,23 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 <script>
 (function() {
     'use strict';
-    
+
+    // Diagnostic page-load watermark (Tâche #78 — "ouvre et re-ouvre" investigation)
+    // Log a unique instance id + URL on every /duo/answer init. If the page is loaded
+    // twice in the same session, two distinct instance ids will appear in the console
+    // within seconds of each other, proving a real double-load (vs visual artifact).
+    var _pageInstanceId = Math.random().toString(36).slice(2, 10);
+    console.log('[DuoAnswer] Page init', {
+        instanceId: _pageInstanceId,
+        ts: Date.now(),
+        url: window.location.href,
+        match_id: window.MATCH_ID || null,
+        buzzed: new URLSearchParams(window.location.search).get('buzzed')
+    });
+    window.addEventListener('pagehide', function() {
+        console.log('[DuoAnswer] Page hide', { instanceId: _pageInstanceId, ts: Date.now() });
+    });
+
     const MATCH_ID   = window.MATCH_ID   || '';
     const ROOM_ID    = window.ROOM_ID    || '';
     const LOBBY_CODE = window.LOBBY_CODE || '';
