@@ -180,6 +180,16 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         socket.emit("state", { state });
         
         if (state) {
+          // Re-émission de la phase courante à la connexion socket.
+          // `source: 'join_sync'` distingue cette ré-émission d'une véritable
+          // transition de phase (qui n'a pas ce drapeau, voir
+          // GameOrchestrator.emitPhaseChanged). Les pages clientes — notamment
+          // /duo/answer — utilisent ce flag pour éviter le rebond
+          // Answer→Question→Answer sur le buzz winner qui vient juste
+          // d'arriver pendant que la phase serveur est encore QUESTION_ACTIVE
+          // (V3 NON-BLOCKING : la phase ne bascule sur ANSWER_SELECTION qu'au
+          // timeout). Sans ce drapeau, le `phase_changed` d'arrivée était
+          // confondu avec une vraie transition et déclenchait le rebond.
           socket.emit("phase_changed", {
             phase: state.phase,
             phaseStartedAtMs: state.phaseStartedAtMs ?? Date.now(),
@@ -187,6 +197,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             questionIndex: state.questionIndex,
             roundNumber: state.currentRound,
             activeEffects: state.activeEffects,
+            source: "join_sync",
           });
           
           // Emit comprehensive game_state for initial hydration

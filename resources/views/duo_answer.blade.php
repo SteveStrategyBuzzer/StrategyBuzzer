@@ -1686,6 +1686,24 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // where the server is already advancing to the next question and
             // we never saw RESULT — in which case forwarding to /question is
             // the right behaviour.
+            //
+            // Garde anti-rebond Answer→Question→Answer (post-#75/#76/#77).
+            // Le serveur ré-émet `phase_changed` à la connexion socket
+            // (apps/game-server/src/ws/handlers.ts) marquée par
+            // `source: 'join_sync'` — c'est la ré-hydratation de phase, PAS
+            // une vraie transition. Quand le buzz winner navigue sur
+            // /duo/answer pendant que la phase serveur est encore
+            // QUESTION_ACTIVE (V3 NON-BLOCKING : la phase ne bascule sur
+            // ANSWER_SELECTION qu'au timeout), cette ré-émission de
+            // jonction déclenchait ce branch et renvoyait l'utilisateur
+            // sur /duo/question — qui le ré-aiguillait ensuite sur
+            // /duo/answer via le verrou ANSWER_SELECTION (provoquant le
+            // rebond signalé). On ignore donc la ré-émission de jonction ;
+            // les vraies transitions QUESTION_ACTIVE / SYNC arriveront
+            // sans ce drapeau et déclencheront le rebond légitime.
+            if (data.source === 'join_sync') {
+                return;
+            }
             isRedirecting = true;
             setTimeout(function() {
                 _nav((window.QUESTION_URL || '/game/duo/question') + '?match_id=' + encodeURIComponent(MATCH_ID));
