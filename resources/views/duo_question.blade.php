@@ -1264,9 +1264,14 @@ $mode = 'duo';
         if (buzzed || isRedirecting || currentPhase !== 'QUESTION_ACTIVE') return;
         
         buzzed = true;
-        // Persist across the 302 bounce: the position-2 buzzer will be sent back to
-        // /duo/question by the backend during ANSWER_SELECTION (lock held by position 1),
-        // but ANSWER_COLLECTION must navigate them to /duo/answer for their grace window.
+        // Persist locally so the ANSWER_COLLECTION phase_changed handler can detect
+        // this player as a buzzer (used for the position-2 grace window navigation).
+        // Navigation itself is driven exclusively by the server: handleBuzzWinner
+        // (on `buzz_winner` for position-1) and the ANSWER_COLLECTION phase change
+        // (for position-2). Do NOT navigate optimistically here — if the server
+        // rejects/dedupes the buzz, an eager redirect would bounce off the backend
+        // phase guard (validatePhaseAccess) and surface as "Question → flash → back
+        // to Question → Result", breaking the Duo 3-page contract.
         try {
             const qIdx = (window.SB_LIVE_STATS && window.SB_LIVE_STATS.questionIndex !== undefined)
                 ? window.SB_LIVE_STATS.questionIndex
@@ -1285,7 +1290,10 @@ $mode = 'duo';
             window.DuoSocketClient.buzz(Date.now());
         }
         
-        redirectOnce(ANSWER_URL + '?buzzed=true&match_id=' + encodeURIComponent(MATCH_ID) + getScoreParams(), BUZZ_REDIRECT_DELAY);
+        // Node = sole authority on navigation. The server will emit `buzz_winner`
+        // (handled by handleBuzzWinner) for accepted buzzes, which performs the
+        // /duo/answer redirect. Late/rejected buzzes correctly stay on /duo/question
+        // until the next phase_changed event.
     }
     
     function handleNoBuzz() {
