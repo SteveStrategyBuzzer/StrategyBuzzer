@@ -66,8 +66,29 @@ class QuestionService
             'is_boss' => $isBoss,
             'skip_cache' => $skipCache
         ]);
-        
-        $question = $this->aiGenerator->generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
+
+        try {
+            $question = $this->aiGenerator->generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
+        } catch (\Throwable $e) {
+            // L'IA est indisponible (quota Gemini épuisé, panne réseau, etc.).
+            // Au lieu de faire échouer le démarrage du match, on sert une
+            // question depuis le pool de secours pré-embarqué. Sans ce filet
+            // de sécurité, un 429 Gemini bloquait toute initialisation de
+            // partie côté Node Game Server (POST /api/game-server/init → 500).
+            Log::warning('[QuestionService] AI generation failed, falling back to seed pool', [
+                'theme' => $theme,
+                'niveau' => $niveau,
+                'language' => $language,
+                'error' => $e->getMessage(),
+            ]);
+            $question = $this->getFallbackQuestion($theme, $language, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts);
+            if (!$question) {
+                // Pas de filet de secours dispo (langue non couverte par le seed
+                // ou pool entièrement consommé) — on relaie l'erreur d'origine
+                // pour ne pas masquer un vrai problème.
+                throw $e;
+            }
+        }
         
         // Randomiser les réponses pour questions à choix multiples
         // Les questions vrai/faux gardent leurs positions fixes (Vrai toujours à gauche, Faux à droite)
@@ -87,6 +108,73 @@ class QuestionService
         }
         
         return $question;
+    }
+
+    /**
+     * Charge une question depuis le pool de secours embarqué quand l'IA
+     * est indisponible. Le pool vit dans resources/seed/fallback-questions-{lang}.json.
+     * Retourne null si aucun pool n'est dispo pour la langue OU si toutes les
+     * questions ont déjà été servies dans la partie en cours.
+     *
+     * @return array|null Question au format aiGenerator (type, question_text, answers, correct_index, …)
+     */
+    private function getFallbackQuestion(string $theme, string $language, array $usedQuestionIds = [], array $usedAnswers = [], array $usedQuestionTexts = []): ?array
+    {
+        $seedPath = resource_path("seed/fallback-questions-{$language}.json");
+        if (!file_exists($seedPath)) {
+            // Repli sur le français si la langue demandée n'a pas de pool dédié.
+            $seedPath = resource_path('seed/fallback-questions-fr.json');
+            if (!file_exists($seedPath)) {
+                return null;
+            }
+        }
+
+        $raw = file_get_contents($seedPath);
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded) || empty($decoded['questions'])) {
+            return null;
+        }
+
+        // Helper : ID déterministe stable d'un appel à l'autre (md5 du texte
+        // normalisé) — indispensable pour que la dédup par ID fonctionne quand
+        // le caller passe les usedQuestionIds entre questions consécutives.
+        $idFor = function (array $q) use ($language): string {
+            $text = trim((string)($q['question_text'] ?? ''));
+            return 'seed_' . $language . '_' . substr(md5(strtolower($text)), 0, 12);
+        };
+        // Normalisation pour comparer les textes peu importe la casse / espaces.
+        $normalize = fn ($t) => mb_strtolower(trim((string)$t));
+
+        $candidates = $decoded['questions'];
+        // Privilégier les questions du même thème quand possible, sinon n'importe lesquelles.
+        $sameTheme = array_values(array_filter($candidates, fn ($q) => ($q['theme'] ?? '') === $theme));
+        $pool = !empty($sameTheme) ? $sameTheme : $candidates;
+
+        $usedIdSet = array_flip(array_map('strval', $usedQuestionIds));
+        $usedTextSet = array_flip(array_map($normalize, $usedQuestionTexts));
+        $usedAnswerSet = array_flip(array_map($normalize, $usedAnswers));
+
+        $filtered = array_values(array_filter($pool, function ($q) use ($idFor, $normalize, $usedIdSet, $usedTextSet, $usedAnswerSet) {
+            $id = $idFor($q);
+            $text = $normalize($q['question_text'] ?? '');
+            $correctIdx = (int)($q['correct_id'] ?? $q['correct_index'] ?? 0);
+            $correctAnswer = $normalize($q['answers'][$correctIdx] ?? '');
+            return !isset($usedIdSet[$id])
+                && !isset($usedTextSet[$text])
+                && !isset($usedAnswerSet[$correctAnswer]);
+        }));
+
+        // Si tout a été consommé (ou si le caller n'a pas tracé les déjà-vues),
+        // on autorise la répétition — mieux que de bloquer le démarrage.
+        $picks = !empty($filtered) ? $filtered : $pool;
+        $picked = $picks[array_rand($picks)];
+
+        // Normaliser la forme attendue par le reste de la pipeline.
+        $picked['id'] = $idFor($picked);
+        $picked['correct_index'] = (int)($picked['correct_index'] ?? $picked['correct_id'] ?? 0);
+        $picked['type'] = $picked['type'] ?? 'multiple';
+
+        return $picked;
     }
     
     /**
