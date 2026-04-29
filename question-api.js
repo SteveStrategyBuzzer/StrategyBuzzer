@@ -1,17 +1,35 @@
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
+const { router: aiRouter, validation: aiValidation } = require('./providers');
 
-// Initialize Google Gemini AI client
-const gemini = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY 
-});
-
+// Imagen (image generation) is out of scope for the text router. We keep a
+// direct GoogleGenAI client so /generate-image-question keeps working using
+// the first configured Gemini key.
+function pickImagenApiKey() {
+  const list = process.env.GEMINI_API_KEYS;
+  if (list && list.trim()) return list.split(',')[0].trim();
+  return process.env.GEMINI_API_KEY || '';
+}
+let _imagenClient = null;
+function getImagenClient() {
+  if (_imagenClient) return _imagenClient;
+  const key = pickImagenApiKey();
+  if (!key) throw new Error('No Gemini key configured for image generation');
+  _imagenClient = new GoogleGenAI({ apiKey: key });
+  return _imagenClient;
+}
 
 const app = express();
 
-// Healthcheck (Nginx + monitoring)
+// Healthcheck (Nginx + monitoring) — extended with AI router stats so we can
+// see provider/key health, last failover and last contract rejection.
 app.get("/health", (req, res) => {
-  res.status(200).json({ ok: true, ts: Date.now() });
+  const aiHealth = aiRouter.getHealth();
+  res.status(200).json({
+    ok: true,
+    ts: Date.now(),
+    ai_router: aiHealth,
+  });
 });
 
 app.use(express.json());
@@ -486,6 +504,14 @@ function getQuestionLengthConstraint(niveau) {
   }
 }
 
+// ============================================================================
+// LEGACY ENDPOINT — temporary "filet de sécurité" for Solo while the
+// persistent question bank fills up (see task #82). Goes through the AI
+// router for failover, BUT this endpoint is NOT supposed to be on the
+// live-match critical path. The bank-only architecture is the goal; this
+// shim is documented in docs and will be removed once Solo is bank-only
+// (tracked as a follow-up to task #83).
+// ============================================================================
 app.post('/generate-question', async (req, res) => {
   const MAX_RETRIES = 3;
   
@@ -810,36 +836,18 @@ RÈGLES STRICTES:
 NOTE TECHNIQUE: Les réponses restent en français ("Vrai"/"Faux") pour compatibilité avec le frontend/backend actuel. Lors de l'activation future d'autres langues, adapter également le frontend pour afficher les traductions.`;
 
     const systemPrompt = `Tu es un expert en création de questions de quiz éducatives en ${languageName}. Tu génères des questions uniques, pertinentes et adaptées au niveau de difficulté demandé. Tu réponds UNIQUEMENT en JSON valide, sans markdown ni backticks.`;
-    
-    const fullPrompt = systemPrompt + "\n\n" + prompt;
-    
-    const response = await gemini.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [
-        { role: 'user', parts: [{ text: fullPrompt }] }
-      ],
-      config: {
-        temperature: 1.0,
-        maxOutputTokens: 500,
-        responseMimeType: 'application/json'
-      }
+
+    const routed = await aiRouter.generate({
+      systemPrompt,
+      userPrompt: prompt,
+      temperature: 1.0,
+      maxOutputTokens: 500,
+      responseMimeType: 'application/json',
     });
 
-    console.log('Gemini Response received');
-    
-    // Extract text from Gemini response
-    let content = '';
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-      content = response.candidates[0].content.parts.map(p => p.text || '').join('');
-    } else if (response.text) {
-      content = response.text;
-    } else if (typeof response === 'string') {
-      content = response;
-    }
-    
+    let content = routed.text;
     if (!content) {
-      console.error('Gemini response structure:', JSON.stringify(response, null, 2));
-      throw new Error('No content in Gemini response');
+      throw new Error('No content in router response');
     }
     
     // Clean up the response - remove markdown code blocks if present
@@ -1236,6 +1244,12 @@ function translateElement(element, language) {
 }
 
 // Endpoint pour générer une question Master (texte uniquement)
+// ============================================================================
+// MJ (Maître du Jeu) endpoint — used for off-line quiz preparation by hosts.
+// Per task #83 spec, MJ "hors match live" preparation is an authorized
+// router caller. Live MJ matches read questions from the persistent bank
+// and never call this endpoint.
+// ============================================================================
 app.post('/generate-master-question', async (req, res) => {
   const { theme = 'Culture générale', language = 'fr', questionType = 'multiple_choice', questionNumber = 1, previousQuestions = [], gameSeed = null, domainType = 'theme', schoolLevel = null, schoolGrade = null, schoolSubject = null, schoolCountry = null, mode = 'standard', totalQuestions = 20 } = req.body;
   
@@ -1331,30 +1345,17 @@ RÈGLES SCOLAIRES OBLIGATOIRES:
 `;
     }
 
-    const fullPrompt = systemPrompt + "\n\n" + contextBlock + "\n\n" + userPrompt;
+    const masterUserPrompt = contextBlock + "\n\n" + userPrompt;
 
-    const geminiResponse = await gemini.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [
-        { role: 'user', parts: [{ text: fullPrompt }] }
-      ],
-      config: {
-        temperature: (domainType === 'school') ? 0.1 : 0.3,
-        maxOutputTokens: 500,
-        responseMimeType: 'application/json'
-      }
+    const routedMaster = await aiRouter.generate({
+      systemPrompt,
+      userPrompt: masterUserPrompt,
+      temperature: (domainType === 'school') ? 0.1 : 0.3,
+      maxOutputTokens: 500,
+      responseMimeType: 'application/json',
     });
-    
-    // Extract text from Gemini response
-    let content = '';
-    if (geminiResponse.candidates && geminiResponse.candidates[0]?.content?.parts) {
-      content = geminiResponse.candidates[0].content.parts.map(p => p.text || '').join('');
-    } else if (geminiResponse.text) {
-      content = geminiResponse.text;
-    } else if (typeof geminiResponse === 'string') {
-      content = geminiResponse;
-    }
-    content = content?.trim() || '';
+
+    let content = (routedMaster.text || '').trim();
     console.log('📥 Réponse brute:', content.substring(0, 100) + '...');
     
     // Parser le JSON de la réponse
@@ -1468,7 +1469,7 @@ app.post('/generate-image-question', async (req, res) => {
 
     console.log('🎨 Génération de l\'image avec Imagen...');
 
-    const imageResponse = await gemini.models.generateImages({
+    const imageResponse = await getImagenClient().models.generateImages({
       model: 'imagen-4.0-generate-001',
       prompt: scenario.description,
       config: {
@@ -1557,6 +1558,12 @@ app.post('/generate-image-question', async (req, res) => {
   }
 });
 
+// ============================================================================
+// LEGACY ENDPOINT — fun-fact ("Saviez-vous que…") generation. Routed
+// through the AI router for failover. Modern bank questions ship with
+// their saviez_vous already stored, so live matches don't hit this; it
+// remains for legacy cache/Solo paths and admin tools.
+// ============================================================================
 app.post('/generate-fun-fact', async (req, res) => {
   const { questionText = '', correctAnswer = '', language = 'fr' } = req.body;
 
@@ -1572,25 +1579,14 @@ app.post('/generate-fun-fact', async (req, res) => {
   try {
     const prompt = `Tu es un expert en culture générale. Basé sur cette question de quiz : "${questionText}" avec la bonne réponse "${correctAnswer}", explique POURQUOI cette réponse est correcte ou donne le contexte qui permet de comprendre la réponse. Maximum 2 phrases courtes. Réponds en ${langName}. Réponds UNIQUEMENT avec du JSON valide: {"factText": "ton explication ici"}`;
 
-    const geminiResponse = await gemini.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [
-        { role: 'user', parts: [{ text: prompt }] }
-      ],
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 150,
-        responseMimeType: 'application/json'
-      }
+    const routedFunFact = await aiRouter.generate({
+      userPrompt: prompt,
+      temperature: 0.7,
+      maxOutputTokens: 150,
+      responseMimeType: 'application/json',
     });
 
-    let content = '';
-    if (geminiResponse.candidates && geminiResponse.candidates[0]?.content?.parts) {
-      content = geminiResponse.candidates[0].content.parts.map(p => p.text || '').join('');
-    } else if (geminiResponse.text) {
-      content = geminiResponse.text;
-    }
-    content = content?.trim() || '';
+    let content = (routedFunFact.text || '').trim();
 
     let cleanContent = content;
     if (cleanContent.startsWith('```json')) cleanContent = cleanContent.slice(7);
@@ -1614,6 +1610,161 @@ app.post('/generate-fun-fact', async (req, res) => {
         : 'Every question is an opportunity to learn something new!'
     });
   }
+});
+
+// =============================================================================
+// BANK REFILL — multi-provider rich JSON contract
+// =============================================================================
+//
+// This endpoint is the documented entry point for the continuous bank refill
+// worker (#82). It is NEVER on the critical path of a live match: gameplay
+// reads from the persisted bank exclusively. The endpoint produces the rich
+// JSON contract (concept_id, translations, saviez_vous, ...) and rejects
+// any provider output that doesn't match it.
+//
+// Body:
+//   {
+//     "domain": string, "sub_domain": string,
+//     "cognitive_type": "recognition" | "reasoning" | "deceptive_trap",
+//     "question_type": "qcm" | "true_false",
+//     "difficulty_depth": 1..10,
+//     "languages": ["fr", "en", ...],          // optional, default ["fr"]
+//     "concept_hint": string,                  // optional
+//     "preferred_provider": "gemini"|"openai"  // optional
+//   }
+app.post('/generate-bank-question', async (req, res) => {
+  const {
+    domain,
+    sub_domain,
+    cognitive_type,
+    question_type = 'qcm',
+    difficulty_depth,
+    languages = ['fr'],
+    concept_hint = '',
+  } = req.body || {};
+
+  if (!domain || !sub_domain || !cognitive_type || !difficulty_depth) {
+    return res.status(400).json({
+      ok: false,
+      error: 'missing required fields: domain, sub_domain, cognitive_type, difficulty_depth',
+    });
+  }
+  if (!['recognition', 'reasoning', 'deceptive_trap'].includes(cognitive_type)) {
+    return res.status(400).json({
+      ok: false,
+      error: `cognitive_type must be one of recognition|reasoning|deceptive_trap (got: ${cognitive_type})`,
+    });
+  }
+
+  const langList = Array.isArray(languages) && languages.length > 0 ? languages : ['fr'];
+  const langSchema = langList
+    .map(
+      (l) =>
+        `    "${l}": { "question_text": "...", "answer_a": "...", "answer_b": "...", "answer_c": "...", "answer_d": "...", "correct_answer_key": "A|B|C|D", "explanation": "...", "saviez_vous": "..." }`
+    )
+    .join(',\n');
+
+  const cognitiveExplain = {
+    recognition: 'fait direct, mémorisation pure ; pas de raisonnement multi-étapes',
+    reasoning: 'requiert une déduction, comparaison ou calcul léger ; pas un simple rappel',
+    deceptive_trap: 'distracteurs très plausibles ; confusion classique ; bonne réponse contre-intuitive',
+  }[cognitive_type];
+
+  const isTF = question_type === 'true_false';
+  const answersHint = isTF
+    ? '`answer_a` = libellé "Vrai" dans la langue principale, `answer_b` = libellé "Faux", `answer_c` et `answer_d` = null.'
+    : 'Fournis exactement 4 réponses non-vides (answer_a/b/c/d), une seule correcte.';
+
+  const systemPrompt =
+    'Tu es un générateur de questions de quiz pour StrategyBuzzer. Tu réponds UNIQUEMENT en JSON valide (pas de markdown, pas de prose).';
+
+  const userPrompt = `Génère UNE question de quiz dans le format JSON exact ci-dessous.
+
+CONTRAINTES:
+- Domaine: ${domain}
+- Sous-domaine: ${sub_domain}
+- Type cognitif: ${cognitive_type} — ${cognitiveExplain}
+- Difficulté (depth ${difficulty_depth}/10): adapte la complexité
+- Type de question: ${question_type}
+- ${answersHint}
+- ${concept_hint ? `Indice concept: ${concept_hint}` : 'Choisis un fait précis et vérifiable.'}
+- correct_answer_key DOIT être la même lettre dans TOUTES les langues
+- saviez_vous OBLIGATOIRE, anecdote concrète d'au moins 30 caractères
+
+Format JSON exact attendu:
+{
+  "question_text": "...",
+  "answer_a": "...",
+  "answer_b": "...",
+  "answer_c": "...",
+  "answer_d": "${isTF ? 'null' : '...'}",
+  "correct_answer_key": "A|B|C|D",
+  "explanation": "...",
+  "saviez_vous": "...",
+  "domain": "${domain}",
+  "sub_domain": "${sub_domain}",
+  "question_type": "${question_type}",
+  "cognitive_type": "${cognitive_type}",
+  "difficulty_depth": ${difficulty_depth},
+  "concept_id": "<kebab-case unique>",
+  "concept_family": "<kebab-case famille plus large>",
+  "translations": {
+${langSchema}
+  }
+}`;
+
+  // Validation runs INSIDE the router retry loop: parse + rich-contract
+  // validation failures are treated as provider errors so the router can
+  // try the next key / failover to the next provider before bubbling up.
+  const validate = (text) => {
+    let raw = (text || '').trim();
+    if (raw.startsWith('```json')) raw = raw.slice(7);
+    if (raw.startsWith('```')) raw = raw.slice(3);
+    if (raw.endsWith('```')) raw = raw.slice(0, -3);
+    raw = raw.trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      return { ok: false, reason: `invalid JSON: ${e.message}` };
+    }
+
+    const v = aiValidation.validateRichContract(parsed);
+    if (!v.ok) return { ok: false, reason: v.reason };
+    return { ok: true, value: v.payload };
+  };
+
+  let routed;
+  try {
+    routed = await aiRouter.generate({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.85,
+      maxOutputTokens: 2000,
+      responseMimeType: 'application/json',
+      validate,
+    });
+  } catch (err) {
+    if (err.name === 'NoProvidersConfiguredError') {
+      return res.status(503).json({ ok: false, error: 'no_providers_configured', detail: err.message });
+    }
+    if (err.name === 'AllProvidersExhaustedError') {
+      // The router has already recorded reject reasons for any
+      // contract-validation failures encountered along the way.
+      return res.status(503).json({ ok: false, error: 'all_providers_exhausted', detail: err.message });
+    }
+    return res.status(502).json({ ok: false, error: 'router_error', detail: err.message || String(err) });
+  }
+
+  // routed.validated holds the parsed + validated payload.
+  const enriched = {
+    ...routed.validated,
+    source: routed.provider,
+    provider_key_index: routed.keyIndex,
+    latency_ms: routed.latencyMs,
+  };
+  return res.json({ ok: true, payload: enriched });
 });
 
 const PORT = 3000;
