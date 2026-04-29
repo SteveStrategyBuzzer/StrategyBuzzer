@@ -104,7 +104,8 @@ class GameServerQuestionPipeline
             null,
             false,
             $language,
-            true
+            true,
+            'multiplayer' // #82: gate reactive AI off in multiplayer
         );
 
         if (!$firstQuestion) {
@@ -178,7 +179,8 @@ class GameServerQuestionPipeline
                     null,
                     false,
                     $config['language'],
-                    true
+                    true,
+                    'multiplayer' // #82: gate reactive AI off in multiplayer
                 );
 
                 if ($question) {

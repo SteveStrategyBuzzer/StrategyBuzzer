@@ -328,7 +328,8 @@ class GenerateMultiplayerQuestionsJob implements ShouldQueue
                     null,
                     false,
                     $this->language,
-                    true
+                    true,
+                    'multiplayer' // #82: gate reactive AI off in multiplayer
                 );
 
                 if ($generatedQuestion) {

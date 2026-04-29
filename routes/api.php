@@ -120,3 +120,7 @@ Route::middleware('auth:sanctum')->prefix('daily-quests')->group(function () {
     Route::get('/', [App\Http\Controllers\DailyQuestsController::class, 'apiIndex']);
     Route::post('/action', [App\Http\Controllers\DailyQuestsController::class, 'triggerAction']);
 });
+
+// #82 Bank worker health endpoint (admin-only ; protect with sanctum + ability check
+// once an Admin role exists. For now relies on infra-level access control.)
+Route::get('/admin/questions/health', \App\Http\Controllers\Admin\QuestionBankHealthController::class);

@@ -824,7 +824,8 @@ class LobbyService
                             null,
                             false,
                             $language,
-                            true
+                            true,
+                            'multiplayer' // #82: gate reactive AI off in multiplayer
                         );
                         
                         if ($q) {

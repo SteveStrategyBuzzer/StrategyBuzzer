@@ -74,7 +74,7 @@ class QuestionService
      * @param string $language Code langue ISO (fr, en, es, it, el, etc.) - défaut 'fr'
      * @return array La question générée avec réponses randomisées
      */
-    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $sessionUsedAnswers = [], $sessionUsedQuestionTexts = [], $opponentAge = null, $isBoss = false, $language = 'fr', $skipCache = false)
+    public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $sessionUsedAnswers = [], $sessionUsedQuestionTexts = [], $opponentAge = null, $isBoss = false, $language = 'fr', $skipCache = false, $context = 'solo')
     {
         // Combiner les réponses permanentes et de session pour éviter tous les doublons
         $allUsedAnswers = array_unique(array_merge($usedAnswers, $sessionUsedAnswers));
@@ -117,12 +117,40 @@ class QuestionService
                 ]);
                 
                 // Vérifier si on doit déclencher un refill en arrière-plan
-                $this->triggerRefillIfNeeded($theme, $niveau, $language, $usedQuestionIds, $allUsedAnswers);
+                $this->triggerRefillIfNeeded($theme, $niveau, $language, $usedQuestionIds, $allUsedAnswers, $context);
                 
                 return $question;
             }
         }
         
+        // #82 KILL-SWITCH: en multijoueur on n'appelle JAMAIS l'IA en synchrone.
+        // Si la banque + cache ratent, on tombe directement sur le pool de
+        // secours statique. Les matchs partent sans bloquer sur Gemini, et
+        // c'est le worker (#82) qui regarnit la banque hors trafic.
+        if ($context !== 'solo') {
+            Log::info('[QuestionService] multiplayer bank/cache miss → fallback pool only (no live AI)', [
+                'theme' => $theme,
+                'niveau' => $niveau,
+                'language' => $language,
+                'context' => $context,
+            ]);
+            $question = $this->getFallbackQuestion($theme, $language, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts);
+            if (!$question) {
+                throw new \RuntimeException(sprintf(
+                    '[QuestionService] multiplayer bank+cache+fallback all empty for theme=%s niveau=%s lang=%s — worker must catch up.',
+                    $theme, $niveau, $language
+                ));
+            }
+            // randomise + return early; we deliberately skip refill triggering
+            // (the gate at triggerRefillIfNeeded already blocks multiplayer).
+            if ($question['type'] === 'multiple') {
+                $correct = $question['answers'][$question['correct_index']];
+                shuffle($question['answers']);
+                $question['correct_index'] = array_search($correct, $question['answers'], true);
+            }
+            return $question;
+        }
+
         // Fallback: Générer la question via l'IA avec info adversaire et langue
         Log::info('[QuestionService] Generating via AI', [
             'theme' => $theme,
@@ -243,10 +271,22 @@ class QuestionService
     }
     
     /**
-     * Déclenche un job de pré-génération si le cache est bas
+     * Déclenche un job de pré-génération si le cache est bas.
+     *
+     * #82: la génération réactive en gameplay est INTERDITE pour
+     * tous les modes multijoueurs (Duo / Ligue / MJ / Master). Seul
+     * Solo conserve le filet temporaire (cible finale: zéro IA en
+     * gameplay aussi pour Solo, mais tant que la banque n'est pas
+     * pleinement remplie par le worker on garde le filet).
      */
-    private function triggerRefillIfNeeded(string $theme, int $niveau, string $language, array $usedQuestionIds = [], array $usedAnswers = []): void
+    private function triggerRefillIfNeeded(string $theme, int $niveau, string $language, array $usedQuestionIds = [], array $usedAnswers = [], string $context = 'solo'): void
     {
+        if ($context !== 'solo') {
+            // Multijoueur: pas d'IA réactive. Le worker (#82) remplit
+            // la banque hors trafic. Si la banque est vide, le caller
+            // tombe sur le pool de fallback statique.
+            return;
+        }
         if ($this->cacheService->needsRefill($theme, $niveau, $language, self::CACHE_REFILL_THRESHOLD)) {
             Log::info('[QuestionService] Dispatching refill job', [
                 'theme' => $theme,

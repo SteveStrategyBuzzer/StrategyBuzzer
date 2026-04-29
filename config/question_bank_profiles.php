@@ -132,4 +132,72 @@ return [
     | match, additional groups from that family are deprioritised.
     */
     'concept_family_match_max_share' => 0.35,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Continuous Bank Worker (#82)
+    |--------------------------------------------------------------------------
+    | Targets and safety rails for the long-running worker that keeps the
+    | bank refilled by SEGMENT (level/Boss × depth × domain × sub_domain ×
+    | cognitive_type × question_type × language).
+    |
+    | All knobs are env-overridable so dev / staging / prod can run at
+    | different rhythms without code changes.
+    */
+    'worker' => [
+        // How many distinct matches each profile must be able to build
+        // without recycling within `recycle_days`. The needs calculator
+        // multiplies by per-match cognitive quotas to derive segment depth.
+        'target_matches_per_profile' => (int) env('QB_WORKER_TARGET_MATCHES', 10),
+
+        // Number of days before a question may legitimately be re-served
+        // for a profile. Higher values demand more groups in the bank.
+        'recycle_days' => (int) env('QB_WORKER_RECYCLE_DAYS', 3),
+
+        // Token-bucket rate limit. Worker generates at most N segments per
+        // minute, regardless of upstream latency. Set to 0 to pause entirely.
+        'rate_per_minute' => (int) env('QB_WORKER_RATE_PER_MINUTE', 6),
+
+        // Sleep between cycles when nothing is needed (in seconds).
+        'idle_sleep_seconds' => (int) env('QB_WORKER_IDLE_SLEEP', 60),
+
+        // Bounded exponential back-off on upstream errors (429 / timeout / 5xx).
+        'backoff_initial_seconds' => 5,
+        'backoff_max_seconds' => 300,
+
+        // Languages a generation must minimally produce to be accepted as
+        // a valid group. Below this bar the row is rejected and retried.
+        'min_required_languages' => ['fr', 'en'],
+
+        // Languages the worker tries to fill in one shot. Real coverage may
+        // be smaller; we still insert with `validated=false` whenever any of
+        // these is missing, so the picker won't serve it for those languages.
+        'preferred_languages' => ['fr', 'en', 'es', 'it', 'de', 'pt', 'ru', 'zh', 'ar', 'el'],
+
+        // Quality guards.
+        'guards' => [
+            // A generated question_text whose normalised similarity (Jaccard
+            // on token shingles) with any existing same-segment text exceeds
+            // this is rejected as a clone / reformulation.
+            'text_similarity_max' => 0.55,
+
+            // Minimum length of saviez_vous (in characters, normalised). Below
+            // this is treated as too weak / generic.
+            'saviez_vous_min_length' => 30,
+
+            // Reject when concept_family already accounts for more than this
+            // share of a single segment (capped before insertion).
+            'concept_family_segment_max_share' => 0.40,
+        ],
+
+        // Redis keys (single source of truth so health endpoint can read them).
+        'redis_keys' => [
+            'semaphore' => 'qb:worker:lock',
+            'rate_bucket' => 'qb:worker:rate:%s', // sprintf with minute window
+            'last_success' => 'qb:worker:last_success',
+            'last_rejects' => 'qb:worker:last_rejects', // LIST capped to 25
+            'gen_counter_ok' => 'qb:worker:gen:ok:%s', // sprintf with minute window
+            'gen_counter_err' => 'qb:worker:gen:err:%s',
+        ],
+    ],
 ];
