@@ -42,6 +42,21 @@ class QuestionTranslation extends Model
     }
 
     /**
+     * Réponses ordonnées A,B,C,D (D peut être null pour true_false).
+     *
+     * @return array<int, string|null>
+     */
+    public function answersOrdered(): array
+    {
+        return [
+            $this->answer_a,
+            $this->answer_b,
+            $this->answer_c,
+            $this->answer_d,
+        ];
+    }
+
+    /**
      * Returns the 0-based index of the correct answer in answersList().
      */
     public function correctIndex(): int

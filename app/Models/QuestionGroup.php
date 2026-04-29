@@ -46,4 +46,12 @@ class QuestionGroup extends Model
     {
         return $this->translations()->where('language', $language)->first();
     }
+
+    /**
+     * Alias for translationFor() to support legacy calls.
+     */
+    public function translation(string $language): ?QuestionTranslation
+    {
+        return $this->translationFor($language);
+    }
 }

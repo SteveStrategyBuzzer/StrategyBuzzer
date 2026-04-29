@@ -13,6 +13,7 @@ class MatchQuestionPlan extends Model
 
     protected $fillable = [
         'plan_uid',
+        'match_id',
         'mode',
         'division',
         'difficulty_level',
@@ -25,6 +26,7 @@ class MatchQuestionPlan extends Model
         'per_round_composition',
         'group_ids',
         'issues',
+        'shortages',
     ];
 
     protected $casts = [
@@ -36,5 +38,6 @@ class MatchQuestionPlan extends Model
         'per_round_composition' => 'array',
         'group_ids' => 'array',
         'issues' => 'array',
+        'shortages' => 'array',
     ];
 }

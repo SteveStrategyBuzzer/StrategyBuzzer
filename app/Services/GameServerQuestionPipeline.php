@@ -16,11 +16,13 @@ class GameServerQuestionPipeline
 
     private QuestionService $questionService;
     private FirebaseService $firebase;
+    private MatchQuestionPlanner $planner;
 
     public function __construct()
     {
         $this->questionService = new QuestionService();
         $this->firebase = FirebaseService::getInstance();
+        $this->planner = new MatchQuestionPlanner();
     }
 
     private function getCacheKey(string $roomId, string $suffix): string
@@ -57,12 +59,25 @@ class GameServerQuestionPipeline
 
         $totalNeeded = $this->getTotalNeeded($maxRounds);
 
+        // Construit UN plan unique pour la partie. Tous les joueurs présents
+        // dans la salle reçoivent exactement la même séquence de slots —
+        // groupes (rendus à la volée via renderGroupForLanguage), ou
+        // questions seed pré-formatées si la banque ne couvre pas un slot.
+        // Aucun appel IA synchrone n'est fait sur un slot du plan.
+        $planResult = $this->buildMatchPlanFor($roomId, $theme, $niveau, $language, $maxRounds);
+        $orderedGroupIds = $planResult['ordered_group_ids'] ?? [];
+        $orderedPlanSlots = $planResult['ordered_plan_slots'] ?? [];
+        $planId = $planResult['plan_id'] ?? null;
+
         $config = [
             'theme' => $theme,
             'niveau' => $niveau,
             'language' => $language,
             'maxRounds' => $maxRounds,
             'totalNeeded' => $totalNeeded,
+            'planId' => $planId,
+            'orderedGroupIds' => $orderedGroupIds,
+            'orderedPlanSlots' => $orderedPlanSlots,
         ];
 
         $poolData = [
@@ -91,21 +106,20 @@ class GameServerQuestionPipeline
             'language' => $language,
             'max_rounds' => $maxRounds,
             'total_needed' => $totalNeeded,
+            'plan_id' => $planId,
+            'ordered_group_ids' => $orderedGroupIds,
+            'ordered_plan_slots' => $orderedPlanSlots,
         ], self::CACHE_TTL);
 
-        $firstQuestion = $this->questionService->generateQuestion(
+        // 1. Question 1 : on rend la question 1 depuis le plan (slot complet).
+        $firstQuestion = $this->renderFromPlanOrFallback(
+            $orderedPlanSlots,
+            1,
+            $language,
             $theme,
             $niveau,
-            1,
             [],
-            [],
-            [],
-            [],
-            null,
-            false,
-            $language,
-            true,
-            'multiplayer' // #82: gate reactive AI off in multiplayer
+            []
         );
 
         if (!$firstQuestion) {
@@ -166,21 +180,30 @@ class GameServerQuestionPipeline
             'block_size' => $blockSize,
         ]);
 
+        // On lit en priorité les slots COMPLETS du plan ; on garde
+        // ordered_group_ids comme source de compatibilité ascendante (anciens
+        // configs de salles déjà actives qui n'ont pas encore les slots).
+        $orderedPlanSlots = $config['ordered_plan_slots'] ?? [];
+        $orderedGroupIds = $config['ordered_group_ids'] ?? [];
+
         for ($questionNumber = $nextIndex; $questionNumber <= $endIndex; $questionNumber++) {
             try {
-                $question = $this->questionService->generateQuestion(
+                // Chemin nominal : on rend la question N depuis le plan partagé.
+                // Si le slot existe (= N est dans la longueur du plan), on
+                // sert STRICTEMENT depuis le plan — groupe rendu dans la
+                // langue, ou question seed pré-rendue, ou stub. Aucun appel
+                // IA n'est jamais fait sur un slot couvert par le plan.
+                // Le fallback historique (qui peut appeler l'IA) ne se
+                // déclenche QUE pour les indices hors plan : bonus skill et
+                // tiebreaker, qui ne sont pas planifiés par le planner.
+                $question = $this->renderFromPlanOrFallback(
+                    !empty($orderedPlanSlots) ? $orderedPlanSlots : $orderedGroupIds,
+                    $questionNumber,
+                    $config['language'],
                     $config['theme'],
                     $config['niveau'] ?? $config['level'] ?? 1,
-                    $questionNumber,
                     $usedIds,
-                    [],
-                    [],
-                    $usedTexts,
-                    null,
-                    false,
-                    $config['language'],
-                    true,
-                    'multiplayer' // #82: gate reactive AI off in multiplayer
+                    $usedTexts
                 );
 
                 if ($question) {
@@ -573,5 +596,279 @@ class GameServerQuestionPipeline
             ]);
             return false;
         }
+    }
+
+    /**
+     * Construit (ou tente de construire) un plan de match unique via
+     * MatchQuestionPlanner. Si la combinaison (theme, niveau) n'est pas
+     * supportée par les profils déclaratifs, retourne un résultat vide
+     * et le pipeline retombera sur l'ancien chemin par-question.
+     *
+     * Le plan est persisté en BDD (table match_question_plans) avec son
+     * match_id = roomId, ce qui garantit la propriété "même
+     * ordered_group_ids pour tous les joueurs de la salle".
+     *
+     * @return array{plan_id: string|null, ordered_group_ids: array<int, int|null>, ordered_plan_slots: array<int, array>}
+     */
+    private function buildMatchPlanFor(
+        string $roomId,
+        string $theme,
+        int $niveau,
+        string $language,
+        int $maxRounds
+    ): array {
+        try {
+            $params = $this->derivePlannerParams($theme, $niveau, $maxRounds);
+            if (!$params) {
+                Log::info('[GameServerQuestionPipeline] no planner profile for params, falling back to per-question flow', [
+                    'room_id' => $roomId,
+                    'theme'   => $theme,
+                    'niveau'  => $niveau,
+                ]);
+                return ['plan_id' => null, 'ordered_group_ids' => [], 'ordered_plan_slots' => []];
+            }
+            $plan = $this->planner->buildPlan(
+                $params['mode'],
+                $params['level_or_division'],
+                $params['total'],
+                $params['rounds'],
+                $language,
+                [
+                    'domain'   => $params['domain'],
+                    'match_id' => $roomId,
+                ]
+            );
+
+            $orderedGroupIds = array_values(array_map(
+                fn ($id) => (is_int($id) || ctype_digit((string) $id)) ? (int) $id : null,
+                $plan['ordered_group_ids'] ?? []
+            ));
+
+            // On persiste les SLOTS COMPLETS du plan (groupes formatés OU
+            // questions seed pré-rendues OU stubs de shortage), pas seulement
+            // les ids de groupe. C'est cette structure qui sert de source de
+            // vérité au runtime : tout slot couvert par le plan est servi
+            // depuis le plan, JAMAIS via une génération IA en cours de partie.
+            $orderedPlanSlots = array_values($plan['ordered_questions'] ?? []);
+
+            Log::info('[GameServerQuestionPipeline] match plan built', [
+                'room_id'        => $roomId,
+                'plan_id'        => $plan['plan_id'] ?? null,
+                'mode'           => $params['mode'],
+                'level'          => $params['level_or_division'],
+                'planned_count'  => count($orderedGroupIds),
+                'slots_count'    => count($orderedPlanSlots),
+                'shortages'      => count($plan['shortages'] ?? []),
+            ]);
+
+            return [
+                'plan_id'            => $plan['plan_id'] ?? null,
+                'ordered_group_ids'  => $orderedGroupIds,
+                'ordered_plan_slots' => $orderedPlanSlots,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('[GameServerQuestionPipeline] planner failed, falling back to per-question flow', [
+                'room_id' => $roomId,
+                'error'   => $e->getMessage(),
+            ]);
+            return ['plan_id' => null, 'ordered_group_ids' => [], 'ordered_plan_slots' => []];
+        }
+    }
+
+    /**
+     * Mappe (theme legacy, niveau, maxRounds) vers les inputs du planner :
+     *  - mode (solo|boss)
+     *  - level_or_division (int Solo, ou int boss)
+     *  - total questions à planifier (= QUESTIONS_PER_ROUND × maxRounds ;
+     *    bonus + tiebreaker restent gérés en hors-plan)
+     *  - rounds
+     *  - domain canonique
+     *
+     * Retourne null si aucun profil n'est applicable.
+     *
+     * @return array{mode:string, level_or_division:int, total:int, rounds:int, domain:string}|null
+     */
+    private function derivePlannerParams(string $theme, int $niveau, int $maxRounds): ?array
+    {
+        if ($niveau < 1 || $niveau > 100) {
+            return null;
+        }
+        $mode = ($niveau % 10 === 0 && $niveau >= 10 && $niveau <= 100) ? 'boss' : 'solo';
+        if ($mode === 'boss') {
+            $bossLevels = array_keys(config('question_bank_profiles.boss_profiles', []));
+            if (!in_array($niveau, $bossLevels, true)) {
+                return null;
+            }
+        }
+        $domain = $this->canonicalDomain($theme);
+        $total = $maxRounds * self::QUESTIONS_PER_ROUND;
+        return [
+            'mode'              => $mode,
+            'level_or_division' => $niveau,
+            'total'             => $total,
+            'rounds'            => $maxRounds,
+            'domain'            => $domain,
+        ];
+    }
+
+    private function canonicalDomain(string $theme): string
+    {
+        $allowed = config('question_bank_profiles.domains', ['general']);
+        $normalized = strtolower(trim($theme));
+        $aliases = [
+            'culture générale'   => 'general',
+            'culture generale'   => 'general',
+            'general'            => 'general',
+            'général'            => 'general',
+            'histoire'           => 'histoire',
+            'sport'              => 'sport',
+            'sports'             => 'sport',
+            'géographie'         => 'geographie',
+            'geographie'         => 'geographie',
+            'art'                => 'art',
+            'cuisine'            => 'cuisine',
+            'science'            => 'science',
+            'sciences'           => 'science',
+            'cinéma'             => 'cinema',
+            'cinema'             => 'cinema',
+            'faune'              => 'faune',
+        ];
+        $candidate = $aliases[$normalized] ?? $normalized;
+        return in_array($candidate, $allowed, true) ? $candidate : 'general';
+    }
+
+    /**
+     * Sert la question N pour la salle.
+     *
+     * Règle stricte (cf. cahier des charges du planner) :
+     *   - SI le slot est COUVERT par le plan (= index dans la longueur du
+     *     plan), on sert STRICTEMENT depuis le plan : groupe rendu dans la
+     *     langue, ou question seed pré-rendue, ou stub de shortage. Aucun
+     *     appel IA synchrone n'est jamais fait sur un slot du plan, même en
+     *     cas de shortage — c'est exactement la garantie qu'on doit aux
+     *     joueurs (pas d'attente IA pendant la partie).
+     *   - SI l'index est HORS plan (typiquement bonus skill ou tiebreaker,
+     *     que le planner ne planifie pas), on retombe sur le chemin
+     *     per-question historique (QuestionService::generateQuestion →
+     *     bank picker → cache → IA → seed). C'est le SEUL endroit où l'IA
+     *     peut encore être appelée.
+     *
+     * Le tableau `$orderedSlots` peut être :
+     *   - une liste de slots COMPLETS (format planner ordered_questions :
+     *     groupes formatés / seed / stubs) — chemin nominal.
+     *   - une liste d'IDs de groupe (compat ascendante : configs cache
+     *     antérieures à la persistance des slots complets).
+     */
+    private function renderFromPlanOrFallback(
+        array $orderedSlots,
+        int $questionNumber,
+        string $language,
+        string $theme,
+        int $niveau,
+        array $usedIds,
+        array $usedTexts
+    ): ?array {
+        $idx = $questionNumber - 1;
+        $isPlannedSlot = array_key_exists($idx, $orderedSlots);
+
+        if ($isPlannedSlot) {
+            $slot = $orderedSlots[$idx];
+
+            // Cas 1 — slot = ID de groupe (compat ascendante).
+            if (is_int($slot) || (is_string($slot) && ctype_digit($slot))) {
+                $rendered = $this->planner->renderGroupForLanguage((int) $slot, $language);
+                if ($rendered) {
+                    return $rendered;
+                }
+                // Le groupe a été supprimé / la traduction n'existe pas et
+                // l'arborescence de fallback FR→EN n'a rien : on rend un
+                // stub plutôt que d'appeler l'IA.
+                Log::warning('[GameServerQuestionPipeline] plan group_id slot unrenderable, serving stub', [
+                    'question_number' => $questionNumber,
+                    'group_id'        => $slot,
+                    'language'        => $language,
+                ]);
+                return $this->buildPlanStubPayload($questionNumber, $language);
+            }
+
+            // Cas 2 — slot = payload complet (format planner).
+            if (is_array($slot)) {
+                if (!empty($slot['group_id'])) {
+                    // Re-rendu dans la langue du joueur (utile pour rooms
+                    // multilingues : le slot a été initialement rendu dans la
+                    // langue d'init, mais un autre joueur peut demander une
+                    // autre langue).
+                    $rendered = $this->planner->renderGroupForLanguage((int) $slot['group_id'], $language);
+                    if ($rendered) {
+                        return $rendered;
+                    }
+                    // Si le re-rendu échoue, on sert le slot tel quel
+                    // (déjà formaté par le planner avec fallback FR→EN).
+                    if (!empty($slot['question_text']) || !empty($slot['text'])) {
+                        return $slot;
+                    }
+                    return $this->buildPlanStubPayload($questionNumber, $language);
+                }
+
+                // Slot seed pré-rendu, ou stub de shortage. Dans les deux
+                // cas on le sert tel quel — on ne tente PAS l'IA.
+                if (!empty($slot['from_seed']) || !empty($slot['question_text']) || !empty($slot['text'])) {
+                    return $slot;
+                }
+
+                // Stub de shortage sans texte exploitable : on rend un stub
+                // déterministe plutôt que d'appeler l'IA.
+                return $this->buildPlanStubPayload($questionNumber, $language, $slot);
+            }
+
+            // Slot inattendu (null, etc.) couvert par le plan : on rend un
+            // stub. L'IA reste interdite ici.
+            return $this->buildPlanStubPayload($questionNumber, $language);
+        }
+
+        // Index HORS plan (bonus skill, tiebreaker, ou plan vide parce
+        // qu'aucun profil ne s'applique) : chemin historique autorisé.
+        return $this->questionService->generateQuestion(
+            $theme,
+            $niveau,
+            $questionNumber,
+            $usedIds,
+            [],
+            [],
+            $usedTexts,
+            null,
+            false,
+            $language,
+            true
+        );
+    }
+
+    /**
+     * Construit un payload de question minimal et déterministe pour les
+     * slots planifiés qu'on n'a pas pu rendre depuis la banque NI depuis le
+     * seed pool. Sert à garantir qu'une partie ne bloque jamais sur un
+     * slot du plan même dans le pire cas (banque vide + seed pool vide), et
+     * cela SANS jamais appeler l'IA en cours de match.
+     */
+    private function buildPlanStubPayload(int $questionNumber, string $language, array $hint = []): array
+    {
+        $stubText = '[Question indisponible]';
+        return [
+            'id'             => 'plan_stub_' . $questionNumber,
+            'group_id'       => null,
+            'type'           => 'multiple',
+            'question_text'  => $stubText,
+            'text'           => $stubText,
+            'answers'        => ['—', '—', '—', '—'],
+            'correct_index'  => 0,
+            'correct_id'     => 0,
+            'explanation'    => null,
+            'theme'          => $hint['sub_domain'] ?? 'general',
+            'sub_theme'      => $hint['sub_domain'] ?? null,
+            'cognitive_type' => $hint['cognitive_type'] ?? null,
+            'language'       => $language,
+            'shortage'       => true,
+            'from_plan_stub' => true,
+        ];
     }
 }

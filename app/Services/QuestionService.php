@@ -14,9 +14,6 @@ class QuestionService
     private $aiGenerator;
     private $cacheService;
     private QuestionBankPicker $bankPicker;
-    private QuestionBankRepository $bankRepo;
-    private const CACHE_REFILL_THRESHOLD = 5;
-    private const CACHE_REFILL_COUNT = 10;
 
     public function __construct()
     {
@@ -34,29 +31,78 @@ class QuestionService
      *
      * @return array{plan_uid:string, questions:array<int,array>, issues:array<string>}|null
      */
-    public function buildMatchPlan(string $mode, $levelOrDivision, int $totalQuestions, int $roundsCount, string $language, string $domain = 'general'): ?array
+    public function buildMatchPlan(string $mode, $levelOrDivision, int $totalQuestions, int $roundsCount, string $language, string $domain = "general"): ?array
     {
         try {
             $planner = new MatchQuestionPlanner($this->bankRepo);
             $plan = $planner->buildPlan($mode, $levelOrDivision, $totalQuestions, $roundsCount, $language, $domain);
-            if (!empty($plan['questions'])) {
+            if (!empty($plan["questions"])) {
                 IncrementQuestionUsageJob::dispatch(
-                    array_map(fn ($q) => (int) ($q['group_id'] ?? 0), $plan['questions'])
-                )->onQueue('default');
+                    array_map(fn ($q) => (int) ($q["group_id"] ?? 0), $plan["questions"])
+                )->onQueue("default");
             }
             return [
-                'plan_uid' => $plan['plan_uid'],
-                'questions' => $plan['questions'],
-                'issues' => $plan['issues'],
+                "plan_uid" => $plan["plan_uid"],
+                "questions" => $plan["questions"],
+                "issues" => $plan["issues"],
             ];
         } catch (\Throwable $e) {
-            Log::warning('[QuestionService] buildMatchPlan failed', [
-                'mode' => $mode,
-                'division' => $levelOrDivision,
-                'error' => $e->getMessage(),
+            Log::warning("[QuestionService] buildMatchPlan failed", [
+                "mode" => $mode,
+                "division" => $levelOrDivision,
+                "error" => $e->getMessage(),
             ]);
             return null;
         }
+    }
+
+    /**
+     * Mappe (theme legacy, niveau, isBoss) vers (mode, levelOrDivision) pour
+     * le picker de la banque. Le legacy passe historiquement "Culture
+     * g303251n303251rale" / etc. comme th303250me 342200224 on le canonicalise vers les domaines de
+     * la banque. Si le mapping n342200231est pas 303251vident, on retourne null pour
+     * que le caller saute la banque.
+     *
+     * @return array{mode:string, level:int|string, domain:string}|null
+     */
+    private function bankParamsFromLegacy(string $theme, int $niveau, bool $isBoss): ?array
+    {
+        if ($niveau < 1 || $niveau > 100) {
+            return null;
+        }
+        $mode = ($isBoss || ($niveau % 10 === 0 && $niveau >= 10)) ? "boss" : "solo";
+        $domain = $this->canonicalDomain($theme);
+        return [
+            "mode"   => $mode,
+            "level"  => $niveau,
+            "domain" => $domain,
+        ];
+    }
+
+    private function canonicalDomain(string $theme): string
+    {
+        $allowed = config("question_bank_profiles.domains", ["general"]);
+        $normalized = strtolower(trim($theme));
+        $aliases = [
+            "culture g303251n303251rale"   => "general",
+            "culture generale"   => "general",
+            "general"            => "general",
+            "g303251n303251ral"            => "general",
+            "histoire"           => "histoire",
+            "sport"              => "sport",
+            "sports"             => "sport",
+            "g303251ographie"         => "geographie",
+            "geographie"         => "geographie",
+            "art"                => "art",
+            "cuisine"            => "cuisine",
+            "science"            => "science",
+            "sciences"           => "science",
+            "cin303251ma"             => "cinema",
+            "cinema"             => "cinema",
+            "faune"              => "faune",
+        ];
+        $candidate = $aliases[$normalized] ?? $normalized;
+        return in_array($candidate, $allowed, true) ? $candidate : "general";
     }
 
     /**
@@ -82,23 +128,39 @@ class QuestionService
         // ÉTAPE 1 — Banque persistante (Postgres). Chemin nominal pour TOUS les modes.
         // La banque retourne null si elle ne peut pas servir (ex. segment vide pour cette langue).
         // Dans ce cas, on retombe sur le chemin historique cache → IA → seed.
-        $bankQuestion = $this->bankPicker->pickOne($theme, (int) $niveau, $language, $usedQuestionIds);
-        if ($bankQuestion !== null) {
-            Log::info('[QuestionService] Served from persistent bank', [
-                'theme' => $theme,
-                'niveau' => $niveau,
-                'language' => $language,
-                'group_id' => $bankQuestion['group_id'] ?? null,
-            ]);
-            if (!empty($bankQuestion['group_id'])) {
-                IncrementQuestionUsageJob::dispatch([(int) $bankQuestion['group_id']])->onQueue('default');
+        $bankParams = $this->bankParamsFromLegacy((string) $theme, (int) $niveau, (bool) $isBoss);
+        $bankQuestion = null;
+        if ($bankParams) {
+            try {
+                $bankQuestion = $this->bankPicker->pickOne(
+                    $bankParams["mode"],
+                    $bankParams["level"],
+                    $language,
+                    ["domain" => $bankParams["domain"], "used_ids" => $usedQuestionIds]
+                );
+            } catch (\Throwable $e) {
+                Log::warning("[QuestionService] bank picker threw, falling through to cache/AI", [
+                    "error" => $e->getMessage(),
+                ]);
             }
-            // Compatibilité format historique : randomiser pour QCM, fixer pour true_false.
-            if (($bankQuestion['type'] ?? 'multiple') === 'multiple') {
-                $correctAnswer = $bankQuestion['answers'][$bankQuestion['correct_index']];
-                shuffle($bankQuestion['answers']);
-                $bankQuestion['correct_index'] = array_search($correctAnswer, $bankQuestion['answers'], true);
-                $bankQuestion['correct_id'] = $bankQuestion['correct_index'];
+        }
+
+        if ($bankQuestion !== null) {
+            Log::info("[QuestionService] Served from persistent bank", [
+                "theme" => $theme,
+                "niveau" => $niveau,
+                "language" => $language,
+                "group_id" => $bankQuestion["group_id"] ?? null,
+            ]);
+            if (!empty($bankQuestion["group_id"])) {
+                IncrementQuestionUsageJob::dispatch([(int) $bankQuestion["group_id"]])->onQueue("default");
+            }
+            // Compatibilit303251 format historique : randomiser pour QCM, fixer pour true_false.
+            if (($bankQuestion["type"] ?? "multiple") === "multiple") {
+                $correctAnswer = $bankQuestion["answers"][$bankQuestion["correct_index"]];
+                shuffle($bankQuestion["answers"]);
+                $bankQuestion["correct_index"] = array_search($correctAnswer, $bankQuestion["answers"], true);
+                $bankQuestion["correct_id"] = $bankQuestion["correct_index"];
             }
             return $bankQuestion;
         }

@@ -48,7 +48,16 @@ return [
     | each of the 8 sub-domains gets 1/8 of the total. Override with an
     | associative array { 'Histoire' => 2, 'Sport' => 1, ... } if needed.
     */
-    'general_sub_domain_weights' => 'equal',
+    'general_sub_domain_weights' => [
+        'Histoire'   => 14,
+        'Sport'      => 12,
+        'Géographie' => 14,
+        'Art'        => 10,
+        'Cuisine'    => 10,
+        'Science'    => 14,
+        'Cinéma'     => 12,
+        'Faune'      => 14,
+    ],
 
     /*
     | Qualitative rubric per depth band. The worker (#82) injects this into
@@ -200,4 +209,45 @@ return [
             'gen_counter_err' => 'qb:worker:gen:err:%s',
         ],
     ],
+
+    /*
+     * Domaines canoniques. Tous les autres champs "domain" passés au planner
+     * doivent appartenir à cette liste pour être bank-able.
+     */
+    'domains' => [
+        'general',
+        'histoire',
+        'sport',
+        'geographie',
+        'art',
+        'cuisine',
+        'science',
+        'cinema',
+        'faune',
+    ],
+
+    /*
+     * Ordre stable utilisé par QuotaAllocator pour départager les fractions
+     * résiduelles égales lors du largest-remainder. L'ordre est :
+     * recognition > deceptive_trap > reasoning.
+     */
+    'stable_tiebreak_order' => [
+        'recognition',
+        'deceptive_trap',
+        'reasoning',
+    ],
+
+    /*
+     * Tolérance autorisée par cognitive_type au global ET par manche, en
+     * questions. ±1 = la composition réelle peut s'écarter de 1 unité de la
+     * cible théorique sur chaque cognitive_type.
+     */
+    'composition_tolerance' => 1,
+
+    /*
+     * Langues de fallback si une traduction manque pour un question_group.
+     * On essaie le français d'abord, puis l'anglais.
+     */
+    'translation_fallback_chain' => ['fr', 'en'],
 ];
+
