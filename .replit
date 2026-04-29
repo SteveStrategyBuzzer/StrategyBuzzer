@@ -35,10 +35,6 @@ args = "Game Server"
 task = "workflow.run"
 args = "Redis Server"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Question Bank Worker"
-
 [[workflows.workflow]]
 name = "Backend"
 author = "agent"
@@ -93,17 +89,6 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "redis-server --port 6379 --bind 127.0.0.1"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow]]
-name = "Question Bank Worker"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "php artisan questions:worker"
 
 [workflows.workflow.metadata]
 outputType = "console"
