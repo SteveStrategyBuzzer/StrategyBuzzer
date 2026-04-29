@@ -1,6 +1,5 @@
 # ===============================
 # Security hardening
-# ===============================
 client_secret*.json
 *.p12
 *.pem
@@ -11,16 +10,12 @@ client_secret*.json
 *.keystore
 *.jks
 
-# ===============================
 # Environment
-# ===============================
 .env
 .env.*
 !.env.example
 
-# ===============================
 # Laravel
-# ===============================
 /vendor/
 /bootstrap/cache/*.php
 /node_modules/
@@ -42,9 +37,7 @@ public/storage
 !/storage/framework/.gitignore
 !/storage/logs/.gitignore
 
-# ===============================
 # Node / TS / builds
-# ===============================
 apps/game-server/node_modules/
 apps/game-server/dist/
 /dist/
@@ -57,9 +50,7 @@ packages/*/src/*.js.map
 packages/*/src/*.d.ts
 packages/*/src/*.d.ts.map
 
-# ===============================
 # Temporary / backup files
-# ===============================
 *.bak
 *.bak.*
 *.backup
@@ -79,10 +70,8 @@ storage/app/firebase-credentials.json
 attached_assets/Pasted-Je-travaille-sur-un-projet-appel-StrategyBuzzer-un-jeu-_1773518592336.txt
 
 # backups
-*.bak
 *.save
 *.bak_*
-*.bak.*
 firebase/firebase-service-account.json
 dump.rdb
 
@@ -92,3 +81,5 @@ tests/e2e/test-results/
 playwright-report/
 test-results/
 /.phpunit.result.cache
+
+/.phpunit.cache/
