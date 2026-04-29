@@ -33,7 +33,104 @@ class MatchQuestionPlanner
     {
         $this->repo = $repo ?? new QuestionBankRepository();
         $this->seedPool = $seedPool ?? new SeedQuestionPoolService();
-        $this->profilesCfg = config('question_bank_profiles', []);
+        $this->profilesCfg = $this->normaliseConfig(config('question_bank_profiles', []));
+    }
+
+    /**
+     * Re-render a previously selected group_id in the requested language.
+     * Used by GameServerQuestionPipeline to serve the same canonical
+     * concept in another language for multilingual rooms, with a FR→EN
+     * fallback chain so missing translations never call the IA.
+     *
+     * Returns null when neither the requested language nor any fallback
+     * translation exists; the caller is expected to render a stub instead.
+     */
+    public function renderGroupForLanguage(int $groupId, string $language): ?array
+    {
+        $group = QuestionGroup::with('translations')->find($groupId);
+        if (!$group) {
+            return null;
+        }
+
+        $chain = array_unique(array_merge([$language], $this->profilesCfg['translation_fallback_chain'] ?? ['fr', 'en']));
+        $translation = null;
+        foreach ($chain as $lang) {
+            $translation = $group->translationFor($lang);
+            if ($translation) {
+                break;
+            }
+        }
+        if (!$translation) {
+            $translation = $group->translations()->first();
+        }
+        if (!$translation) {
+            return null;
+        }
+
+        $answers = $translation->answersList();
+        $correctIndex = $translation->correctIndex();
+        if ($correctIndex >= count($answers)) {
+            $correctIndex = 0;
+        }
+
+        return [
+            'id'              => 'qb_' . $group->id,
+            'group_id'        => $group->id,
+            'type'            => $group->question_type === 'true_false' ? 'true_false' : 'multiple',
+            'question_text'   => $translation->question_text,
+            'text'            => $translation->question_text,
+            'answers'         => $answers,
+            'correct_index'   => $correctIndex,
+            'correct_id'      => $correctIndex,
+            'explanation'     => $translation->explanation,
+            'saviez_vous'     => $translation->saviez_vous,
+            'theme'           => $group->domain,
+            'sub_theme'       => $group->sub_domain,
+            'cognitive_type'  => $group->cognitive_type,
+            'difficulty_depth'=> $group->difficulty_depth,
+            'concept_id'      => $group->concept_id,
+            'language'        => $translation->language,
+            'source'          => 'bank',
+        ];
+    }
+
+    /**
+     * Boss profile in question_bank_profiles.php uses key `mix`; the legacy
+     * planner internals expect `cognitive_mix`. Mirror it without losing
+     * the original to stay forward-compatible with the new planner.
+     */
+    private function normaliseBossProfile(array $bossProfile): array
+    {
+        if (!isset($bossProfile['cognitive_mix']) && isset($bossProfile['mix'])) {
+            $bossProfile['cognitive_mix'] = $bossProfile['mix'];
+        }
+        return $bossProfile;
+    }
+
+    /**
+     * Bridge between the two coexisting config dialects after the #81/#82
+     * rebase: the new authoritative keys live in question_bank_profiles.php
+     * (`student_cognitive_mix`, `student_bands`, `general_sub_domain_weights`)
+     * while this legacy planner still reads the old names. We expose both so
+     * either reader works.
+     */
+    private function normaliseConfig(array $cfg): array
+    {
+        if (!isset($cfg['student_mix']) && isset($cfg['student_cognitive_mix'])) {
+            $cfg['student_mix'] = $cfg['student_cognitive_mix'];
+        }
+        if (!isset($cfg['solo_bands']) && isset($cfg['student_bands'])) {
+            $cfg['solo_bands'] = array_map(function ($band) {
+                if (!isset($band['depth']) && isset($band['depth_range'])) {
+                    $band['depth'] = $band['depth_range'];
+                }
+                return $band;
+            }, $cfg['student_bands']);
+        }
+        if (!isset($cfg['general_subdomain_weights']) && isset($cfg['general_sub_domain_weights'])) {
+            $cfg['general_subdomain_weights'] = $cfg['general_sub_domain_weights'];
+        }
+        return $cfg;
     }
 
     /**
@@ -205,13 +302,14 @@ class MatchQuestionPlanner
             if (!$bossProfile) {
                 throw new \InvalidArgumentException("Unknown boss level: {$bossLevel}");
             }
+            $bossProfile = $this->normaliseBossProfile($bossProfile);
             return [
                 'profile'    => $bossProfile,
                 'kind'       => 'boss',
                 'level'      => null,
                 'boss_level' => $bossLevel,
-                'depth_min'  => $bossProfile['depth'],
-                'depth_max'  => $bossProfile['depth'],
+                'depth_min'  => is_array($bossProfile['depth']) ? $bossProfile['depth'][0] : $bossProfile['depth'],
+                'depth_max'  => is_array($bossProfile['depth']) ? $bossProfile['depth'][1] : $bossProfile['depth'],
                 'level_range'=> null,
             ];
         }
@@ -239,19 +337,21 @@ class MatchQuestionPlanner
             throw new \InvalidArgumentException("Unknown {$mode} division: {$levelOrDivision}");
         }
 
-        if (($mapping['kind'] ?? '') === 'boss') {
+        $mappingKind = $mapping['kind'] ?? $mapping['type'] ?? '';
+        if ($mappingKind === 'boss') {
             $bossLevel = (int) $mapping['level'];
             $bossProfile = $cfg['boss_profiles'][$bossLevel] ?? null;
             if (!$bossProfile) {
                 throw new \InvalidArgumentException("Unknown boss level: {$bossLevel}");
             }
+            $bossProfile = $this->normaliseBossProfile($bossProfile);
             return [
                 'profile'    => $bossProfile,
                 'kind'       => 'boss',
                 'level'      => null,
                 'boss_level' => $bossLevel,
-                'depth_min'  => $bossProfile['depth'],
-                'depth_max'  => $bossProfile['depth'],
+                'depth_min'  => is_array($bossProfile['depth']) ? $bossProfile['depth'][0] : $bossProfile['depth'],
+                'depth_max'  => is_array($bossProfile['depth']) ? $bossProfile['depth'][1] : $bossProfile['depth'],
                 'level_range'=> null,
             ];
         }

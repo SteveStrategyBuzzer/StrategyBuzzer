@@ -514,7 +514,8 @@ class QuestionBankPlannerTest extends TestCase
                 $opponentAge = null,
                 $isBoss = false,
                 $language = 'fr',
-                $skipCache = false
+                $skipCache = false,
+                $context = 'solo'
             ) {
                 $this->calls++;
                 return [
@@ -542,7 +543,7 @@ class QuestionBankPlannerTest extends TestCase
         // On construit un plan riche (30 slots, tous des groupes), puis on
         // injecte un slot seed et un slot stub à des positions précises pour
         // couvrir les 3 cas du plan.
-        $planner = new MatchQuestionPlanner();
+        $planner = new FlatPlanner();
         $plan = $planner->buildPlan('duo', 'intermediaire', 30, 3, 'fr', ['domain' => 'general']);
         $slots = $plan['ordered_questions'];
 

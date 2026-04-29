@@ -52,10 +52,16 @@ class BankWorker
         // we still own it (avoids "old worker deletes new worker's lock"
         // after TTL expiry).
         $ownerToken = (gethostname() ?: 'worker') . ':' . getmypid() . ':' . bin2hex(random_bytes(6));
-        $acquired = Redis::set($semaphoreKey, $ownerToken, 'EX', 300, 'NX');
-        // predis returns the string 'OK' on success and null on collision;
-        // phpredis returns true / false. Normalise.
-        $acquired = $acquired === true || $acquired === 'OK' || $acquired === 1;
+        $rawAcquire = Redis::set($semaphoreKey, $ownerToken, 'EX', 300, 'NX');
+        // Normalise the assorted return shapes:
+        //   - phpredis  : true / false
+        //   - predis    : Predis\Response\Status object whose __toString() == "OK", or null
+        //   - raw redis : "OK" / null / 1 / 0
+        $acquired = $rawAcquire === true
+            || $rawAcquire === 1
+            || (is_string($rawAcquire) && strcasecmp($rawAcquire, 'OK') === 0)
+            || (is_object($rawAcquire) && method_exists($rawAcquire, '__toString')
+                && strcasecmp((string) $rawAcquire, 'OK') === 0);
         if (!$acquired) {
             Log::warning('[BankWorker] another instance holds the semaphore — exiting', [
                 'key' => $semaphoreKey,
