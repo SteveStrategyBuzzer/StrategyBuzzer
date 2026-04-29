@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class QuestionGroup extends Model
+{
+    use HasFactory;
+
+    protected $table = 'question_groups';
+
+    protected $fillable = [
+        'difficulty_level',
+        'boss_level',
+        'difficulty_depth',
+        'domain',
+        'sub_domain',
+        'question_type',
+        'cognitive_type',
+        'concept_id',
+        'concept_family',
+        'source',
+        'validated',
+        'usage_count',
+        'last_used_at',
+    ];
+
+    protected $casts = [
+        'difficulty_level' => 'integer',
+        'boss_level' => 'integer',
+        'difficulty_depth' => 'integer',
+        'validated' => 'boolean',
+        'usage_count' => 'integer',
+        'last_used_at' => 'datetime',
+    ];
+
+    public function translations(): HasMany
+    {
+        return $this->hasMany(QuestionTranslation::class, 'question_group_id');
+    }
+
+    public function translationFor(string $language): ?QuestionTranslation
+    {
+        return $this->translations()->where('language', $language)->first();
+    }
+}

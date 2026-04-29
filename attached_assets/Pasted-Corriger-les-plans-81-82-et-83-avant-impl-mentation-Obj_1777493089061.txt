@@ -1,0 +1,486 @@
+Corriger les plans #81, #82 et #83 avant implémentation.
+
+Objectif global :
+Créer une banque centrale Postgres multilingue de questions pré-générées, avec planner de match contrôlé, worker continu, puis routeur IA multi-provider uniquement pour remplir la banque.
+
+Règle absolue :
+Aucun appel Gemini/OpenAI ne doit être déclenché pendant un match.
+Le gameplay consomme uniquement des questions déjà présentes dans Postgres/Redis.
+
+==================================================
+PLAN #81 — À CORRIGER
+Persistent Question Bank With Multilingual Question Groups
+==================================================
+
+Conserver l’idée principale du plan #81, mais corriger/renforcer ces points :
+
+1. Pourcentages cognitifs = quotas réels, pas probabilités
+
+Le planner ne doit pas faire :
+“chaque question a X% de chance d’être recognition”.
+
+Il doit construire un question_plan avant le match avec un nombre réel de questions par type cognitif.
+
+Exemple 30 questions avec 50/20/30 :
+- recognition = 15
+- reasoning = 6
+- deceptive_trap = 9
+
+Tolérance maximale : ±1 par cognitive_type seulement si la banque ne permet pas le quota exact.
+
+2. Cognitive types officiels
+
+Supprimer définitivement mixed.
+
+Les seuls cognitive_type autorisés :
+
+- recognition
+- reasoning
+- deceptive_trap
+
+3. Profils élèves Solo
+
+Cognitive mix constant pour tous les niveaux élèves :
+
+recognition 50%
+reasoning 20%
+deceptive_trap 30%
+
+Depth par niveau :
+
+Solo levels 1-9:
+depth 3-4
+
+Solo levels 11-19:
+depth 4-5
+
+Solo levels 21-39:
+depth 5-6
+
+Solo level 40:
+depth 6-7
+
+Solo levels 41-69:
+depth 7-8
+
+Solo level 70:
+depth 8-9
+
+Solo levels 71-99:
+depth 9-10
+
+Important :
+Ne laisser aucun niveau orphelin.
+Les niveaux 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 peuvent être des Boss ou seuils selon la logique du jeu, mais le mapping doit être explicite.
+
+4. Profils Boss officiels
+
+Boss niveau 10:
+depth 6
+recognition 40%
+reasoning 20%
+deceptive_trap 40%
+
+Boss niveaux 20 et 30:
+depth 7
+recognition 40%
+reasoning 30%
+deceptive_trap 30%
+
+Boss niveaux 40 et 60:
+depth 8
+recognition 50%
+reasoning 30%
+deceptive_trap 20%
+
+Boss niveaux 70 et 90:
+depth 9
+recognition 60%
+reasoning 30%
+deceptive_trap 10%
+
+Boss niveau 100:
+depth 10
+recognition 55%
+reasoning 30%
+deceptive_trap 15%
+
+Sur 30 questions, Boss 100 doit donner :
+- recognition = 17
+- reasoning = 9
+- deceptive_trap = 4
+
+5. Allocation déterministe des quotas
+
+Le planner doit convertir les pourcentages en nombres entiers avec une méthode déterministe.
+
+Exigence :
+- le total doit toujours correspondre exactement au nombre total de questions
+- utiliser une stratégie type largest remainder allocation
+- en cas d’égalité, appliquer un ordre stable défini dans la config
+
+Exemple :
+55/30/15 sur 30 questions :
+- raw = 16.5 / 9 / 4.5
+- final = 17 / 9 / 4
+- total = 30
+
+6. Distribution par manche
+
+Le planner doit équilibrer les cognitive_type non seulement sur le match complet, mais aussi par manche.
+
+Exemple :
+30 questions = 3 manches de 10.
+
+Si profil 50/20/30 :
+Match complet :
+- recognition 15
+- reasoning 6
+- deceptive_trap 9
+
+Par manche, éviter une concentration excessive :
+- chaque manche doit approximer le ratio global
+- tolérance ±1 par cognitive_type par manche quand possible
+
+Objectif :
+Éviter qu’une manche ait 8 deceptive_trap et une autre 0.
+
+7. Domaine Général = orchestrateur
+
+Général ne doit pas être une banque séparée.
+
+Général pioche dans :
+- Histoire
+- Sport
+- Géographie
+- Art
+- Cuisine
+- Science
+- Cinéma
+- Faune
+
+Le question_plan doit :
+- appliquer un profil pondéré de sous-domaines
+- éviter les répétitions consécutives de la même sous-catégorie
+- équilibrer les sous-domaines sur le match et par manche quand possible
+
+8. Structure Postgres attendue
+
+question_groups :
+- id
+- difficulty_level nullable
+- boss_level nullable
+- difficulty_depth
+- domain
+- sub_domain
+- question_type: qcm / true_false
+- cognitive_type: recognition / reasoning / deceptive_trap
+- concept_id
+- concept_family
+- source
+- validated
+- usage_count
+- last_used_at
+
+question_translations :
+- question_group_id
+- language
+- question_text
+- answer_a
+- answer_b
+- answer_c
+- answer_d nullable
+- correct_answer_key
+- explanation
+- saviez_vous
+
+Règle multilingue :
+Une question = un question_group_id canonique.
+Les 10 langues doivent pointer vers le même question_group_id.
+Les clés A/B/C/D doivent représenter la même réponse logique dans toutes les langues.
+
+9. Mappings officiels des modes
+
+Duo :
+- novice = Solo levels 31-39
+- intermediaire = Solo levels 51-59
+- expert = Solo levels 71-79
+
+MJ automatique :
+- novice = Solo levels 31-39
+- intermediaire = Solo levels 51-59
+- expert = Solo levels 71-79
+
+Ligue :
+- bronze = Boss 10
+- argent = Boss 30
+- or = Boss 40
+- platine = Boss 60
+- diamant = Boss 70
+- legende = Boss 90
+
+10. Outillage obligatoire
+
+Ajouter :
+- php artisan questions:bank:stats
+- php artisan questions:plan:dryrun
+
+Le dryrun doit afficher :
+- mode
+- niveau/division
+- total questions
+- quotas attendus
+- quotas réellement disponibles
+- répartition par manche
+- sous-domaines utilisés
+- manque par segment si banque insuffisante
+
+==================================================
+PLAN #82 — À CORRIGER
+Continuous Generation Worker For Real StrategyBuzzer Segments
+==================================================
+
+Le worker doit remplir la banque selon la vraie structure de #81 corrigée.
+
+1. Segments réels
+
+Un segment n’est pas seulement theme/niveau/langue.
+
+Un segment réel doit inclure :
+- difficulty_level OU boss_level
+- difficulty_depth
+- domain
+- sub_domain
+- question_type
+- cognitive_type
+- language coverage
+- concept_id/concept_family constraints
+
+2. Le worker doit dériver ses besoins depuis les plans-types
+
+Le worker ne doit pas viser un nombre arbitraire par segment.
+
+Il doit calculer les besoins à partir des profils officiels :
+- Solo bandes élèves
+- Boss 10/20/30/40/60/70/90/100
+- Duo novice/intermediaire/expert
+- MJ novice/intermediaire/expert
+- Ligue bronze/argent/or/platine/diamant/legende
+
+Le worker doit se demander :
+“Combien de matchs complets ce segment permet-il de construire aujourd’hui avec le planner #81 ?”
+
+3. Remplissage par déficit
+
+À chaque cycle :
+- lire profondeur actuelle par segment
+- simuler les plans-types
+- calculer les segments bloquants
+- prioriser les segments avec le plus gros déficit
+- générer exactement le type manquant
+
+Exemple :
+Si Duo intermédiaire manque de deceptive_trap depth 7-8 en Science :
+le worker génère ce segment précis, pas juste “Duo intermédiaire général”.
+
+4. Génération multilingue
+
+Le worker doit créer un question_group canonique avec traductions.
+
+Idéal :
+- générer les 10 langues immédiatement
+
+Minimum acceptable temporaire :
+- FR + EN
+- validated=false tant que les 10 langues requises ne sont pas complètes
+
+Une question incomplète ne doit pas être servie dans un match multilingue nécessitant une langue manquante.
+
+5. Garde-fous anti-clones
+
+Avant insertion, rejeter ou bloquer :
+- même concept_id dans le même segment
+- concept_family saturée
+- reformulation sémantique du même concept
+- question trop proche textuellement
+- question trop facile pour son depth
+- mauvais cognitive_type
+- réponses non alignées avec correct_answer_key
+- Saviez-vous absent ou trop faible
+
+6. Validation depth
+
+Le worker doit injecter la rubrique officielle dans le prompt IA.
+
+Rubrique :
+3-4 :
+accessible mais pas bébé; distracteurs plausibles; aucune question trop évidente
+
+5-6 :
+intermédiaire; vraie connaissance ou petite déduction; réponse non évidente
+
+7-8 :
+avancé; comparaison, élimination ou raisonnement solide; distracteurs subtils
+
+9-10 :
+élite; très difficile mais répondable; connaissance avancée; pièges crédibles; aucune réponse évidente
+
+7. Aucun gameplay reactive refill
+
+Neutraliser l’ancien triggerRefillIfNeeded pour :
+- Duo
+- Ligue
+- MJ
+- Master
+- tout multijoueur
+
+Solo peut conserver un filet temporaire si banque vide, mais la cible finale est aussi zéro IA en match.
+
+8. Observabilité
+
+Endpoint admin :
+GET /api/admin/questions/health
+
+Doit retourner :
+- profondeur par segment
+- estimation matchs restants par profil
+- segments critiques
+- vitesse génération sur 1h
+- taux erreur provider sur 1h
+- état du worker
+- dernière génération réussie
+- derniers rejets qualité
+
+Commande :
+php artisan questions:bank:report
+
+9. Rate-limit
+
+Le worker doit :
+- tourner à rythme constant
+- ne pas suivre le trafic joueur
+- utiliser un token bucket
+- appliquer backoff exponentiel borné
+- utiliser sémaphore Redis pour éviter plusieurs workers concurrents
+
+==================================================
+PLAN #83 — À CORRIGER
+Multi-Provider Multi-Key AI Router
+==================================================
+
+Le plan #83 est bon, mais il doit être explicitement “Bank Refill Only”.
+
+1. Interdiction gameplay
+
+Le routeur IA ne doit jamais être utilisé par :
+- init match
+- next question
+- Node gameplay
+- Duo
+- Ligue
+- MJ en temps réel
+- Solo gameplay nominal
+
+Il sert uniquement :
+- worker #82
+- outils admin/debug
+- éventuellement génération manuelle MJ hors match live
+
+2. Contrat JSON riche obligatoire
+
+Chaque provider doit produire exactement le même contrat :
+
+- question_text
+- answer_a
+- answer_b
+- answer_c
+- answer_d nullable
+- correct_answer_key
+- explanation
+- saviez_vous
+- domain
+- sub_domain
+- question_type
+- cognitive_type
+- difficulty_depth
+- concept_id
+- concept_family
+- translations
+- source/provider metadata
+
+cognitive_type ne peut être que :
+- recognition
+- reasoning
+- deceptive_trap
+
+3. Même validation pour tous les providers
+
+Gemini et OpenAI doivent passer par la même validation :
+- JSON valide
+- champs obligatoires présents
+- cognitive_type autorisé
+- depth cohérent
+- correct_answer_key aligné
+- traductions alignées
+- concept_id présent
+- Saviez-vous présent
+- pas de sortie partielle marquée comme succès
+
+4. Failover
+
+Ordre :
+- Gemini principal
+- OpenAI secondaire
+- Anthropic plus tard
+
+Multi-clés :
+- GEMINI_API_KEYS
+- OPENAI_API_KEYS
+- conserver GEMINI_API_KEY et OPENAI_API_KEY pour rétrocompatibilité
+
+Sur 429 :
+- quarantaine locale de la clé
+- bascule sur clé suivante
+- si provider épuisé, bascule provider secondaire
+- si tous échouent, erreur retournée au worker
+- le worker applique backoff
+
+5. Santé
+
+/health doit exposer :
+- providers actifs
+- clés actives
+- clés en quarantaine
+- dernier failover
+- taux succès/échec par provider
+- latence moyenne
+- dernier contrat JSON rejeté avec raison courte
+
+==================================================
+ORDRE D’EXÉCUTION OBLIGATOIRE
+==================================================
+
+1. Corriger #81 d’abord.
+Le schéma, les profils, les mappings et le planner doivent être justes avant de coder le worker.
+
+2. Corriger #82 ensuite.
+Le worker dépend du planner et des segments réels.
+
+3. Corriger #83 en dernier.
+Le multi-provider sert seulement à fiabiliser le remplissage de banque, pas à résoudre le gameplay.
+
+==================================================
+CONTRAINTES FINALES
+==================================================
+
+- Postgres = source persistante de vérité.
+- Redis = cache chaud seulement.
+- Node = autorité gameplay, mais ne génère jamais de questions.
+- Laravel/API sert les questions déjà planifiées.
+- IA = remplissage asynchrone de banque seulement.
+- Général = orchestrateur de sous-domaines, pas banque séparée.
+- Les pourcentages cognitifs sont des quotas réels de composition de match.
+- Les quotas doivent être équilibrés sur le match et par manche.
+- Les questions multilingues doivent partager le même question_group_id.
+- Aucun mixed.
+- cognitive_type officiel = recognition / reasoning / deceptive_trap.

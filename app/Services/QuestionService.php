@@ -3,12 +3,18 @@
 namespace App\Services;
 
 use App\Jobs\GenerateQuestionsJob;
+use App\Jobs\IncrementQuestionUsageJob;
+use App\Services\QuestionBank\MatchQuestionPlanner;
+use App\Services\QuestionBank\QuestionBankPicker;
+use App\Services\QuestionBank\QuestionBankRepository;
 use Illuminate\Support\Facades\Log;
 
 class QuestionService
 {
     private $aiGenerator;
     private $cacheService;
+    private QuestionBankPicker $bankPicker;
+    private QuestionBankRepository $bankRepo;
     private const CACHE_REFILL_THRESHOLD = 5;
     private const CACHE_REFILL_COUNT = 10;
 
@@ -16,6 +22,41 @@ class QuestionService
     {
         $this->aiGenerator = new AIQuestionGeneratorService();
         $this->cacheService = new QuestionCacheService();
+        $this->bankRepo = new QuestionBankRepository();
+        $this->bankPicker = new QuestionBankPicker($this->bankRepo);
+    }
+
+    /**
+     * Build a complete match plan from the persistent bank. Returns the
+     * ordered list of questions in the legacy format expected by
+     * GameServerQuestionPipeline::formatQuestion(). Used by the multiplayer
+     * init path so no IA call is ever made during a match.
+     *
+     * @return array{plan_uid:string, questions:array<int,array>, issues:array<string>}|null
+     */
+    public function buildMatchPlan(string $mode, $levelOrDivision, int $totalQuestions, int $roundsCount, string $language, string $domain = 'general'): ?array
+    {
+        try {
+            $planner = new MatchQuestionPlanner($this->bankRepo);
+            $plan = $planner->buildPlan($mode, $levelOrDivision, $totalQuestions, $roundsCount, $language, $domain);
+            if (!empty($plan['questions'])) {
+                IncrementQuestionUsageJob::dispatch(
+                    array_map(fn ($q) => (int) ($q['group_id'] ?? 0), $plan['questions'])
+                )->onQueue('default');
+            }
+            return [
+                'plan_uid' => $plan['plan_uid'],
+                'questions' => $plan['questions'],
+                'issues' => $plan['issues'],
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('[QuestionService] buildMatchPlan failed', [
+                'mode' => $mode,
+                'division' => $levelOrDivision,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 
     /**
@@ -37,8 +78,32 @@ class QuestionService
     {
         // Combiner les réponses permanentes et de session pour éviter tous les doublons
         $allUsedAnswers = array_unique(array_merge($usedAnswers, $sessionUsedAnswers));
-        
-        // Essayer d'abord le cache (sauf pour les Boss ou si skipCache est true)
+
+        // ÉTAPE 1 — Banque persistante (Postgres). Chemin nominal pour TOUS les modes.
+        // La banque retourne null si elle ne peut pas servir (ex. segment vide pour cette langue).
+        // Dans ce cas, on retombe sur le chemin historique cache → IA → seed.
+        $bankQuestion = $this->bankPicker->pickOne($theme, (int) $niveau, $language, $usedQuestionIds);
+        if ($bankQuestion !== null) {
+            Log::info('[QuestionService] Served from persistent bank', [
+                'theme' => $theme,
+                'niveau' => $niveau,
+                'language' => $language,
+                'group_id' => $bankQuestion['group_id'] ?? null,
+            ]);
+            if (!empty($bankQuestion['group_id'])) {
+                IncrementQuestionUsageJob::dispatch([(int) $bankQuestion['group_id']])->onQueue('default');
+            }
+            // Compatibilité format historique : randomiser pour QCM, fixer pour true_false.
+            if (($bankQuestion['type'] ?? 'multiple') === 'multiple') {
+                $correctAnswer = $bankQuestion['answers'][$bankQuestion['correct_index']];
+                shuffle($bankQuestion['answers']);
+                $bankQuestion['correct_index'] = array_search($correctAnswer, $bankQuestion['answers'], true);
+                $bankQuestion['correct_id'] = $bankQuestion['correct_index'];
+            }
+            return $bankQuestion;
+        }
+
+        // Essayer ensuite le cache Redis (sauf pour les Boss ou si skipCache est true)
         $question = null;
         if (!$isBoss && !$skipCache) {
             $question = $this->cacheService->getQuestion($theme, $niveau, $language);

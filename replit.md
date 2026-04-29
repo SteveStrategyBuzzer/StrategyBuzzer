@@ -29,6 +29,8 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Question Management:** A file-based question cache and `QuestionService` manage AI-ready, theme-based question generation with adaptive difficulty using Google Gemini 2.0 Flash. Image-memory questions use Google Imagen.
 
+**Persistent Question Bank (Postgres):** Canonical multilingual question store under `App\Services\QuestionBank\*` with 3 tables (`question_groups`, `question_translations`, `match_question_plans`). The bank is the **nominal path for every match** — `QuestionService::generateQuestion()` consults the bank first via `QuestionBankPicker` before falling back to cache→IA. `MatchQuestionPlanner::buildMatchPlan()` produces a full match plan in one shot (composition via `QuotaAllocator` largest-remainder + greedy redistribution that guarantees exact slot count per round and ±1 cog drift). Configuration lives in `config/question_bank_profiles.php` (8 sub-domains, student bands 1-9/11-19/21-39/40/41-69/70/71-99, Boss profiles, depth_rubric for the worker). Plans/picks identify a canonical `question_group_id` so a French and an English match draw the **same conceptual questions**, just translated. Usage tracking is async via `IncrementQuestionUsageJob`. Dev tools: `php artisan questions:bank:stats`, `php artisan questions:plan:dryrun --mode=… --division=…`. Continuous worker (#82) and multi-provider AI router (#83) feed the bank offline so the match critical path stays IA-free.
+
 **Lobby Management:** `LobbyPresenceManager` handles player registration in Firebase sessions.
 
 **Firestore Structure & Authentication:** All game modes use a unified `/gameSessions/{sessionId}` Firestore collection with security rules.

@@ -1,0 +1,132 @@
+On garde les plans #81, #82 et #83, mais il faut les ajuster à la vraie architecture StrategyBuzzer.
+
+Objectif central :
+Créer une banque persistante Postgres de questions pré-générées, servie en temps réel sans aucun appel IA pendant une partie.
+
+Règle absolue :
+Aucun match Solo, Duo, Ligue ou MJ ne doit dépendre d’un appel Gemini/OpenAI en temps réel.
+Le gameplay consomme uniquement des questions déjà présentes dans la banque.
+
+Alignement avec #81 — Persistent Question Bank
+La table ne doit pas être seulement indexée par theme/niveau/langue.
+On veut une banque centrale basée sur une graduation Solo/Boss, puis les autres modes utilisent des mappings.
+
+Structure conceptuelle :
+
+question_groups:
+- id
+- difficulty_level
+- difficulty_band
+- boss_level nullable
+- domain
+- sub_domain
+- question_type: qcm / true_false
+- cognitive_type: recognition / reasoning / deceptive_trap
+- difficulty_depth: 1-10
+- concept_id
+- concept_family
+- source
+- validated
+- usage_count
+- last_used_at
+
+question_translations:
+- question_group_id
+- language
+- question_text
+- answer_a
+- answer_b
+- answer_c
+- answer_d
+- correct_answer_key
+- explanation
+- saviez_vous
+
+Règle multilingue :
+Une question = un question_group_id canonique.
+Les 10 langues sont des traductions du même groupe.
+Deux joueurs de langues différentes doivent recevoir le même question_group_id, avec la traduction adaptée à leur langue.
+Les réponses doivent rester alignées par clé logique A/B/C/D.
+
+Domaine Général :
+Général n’est pas une banque séparée.
+Général est un orchestrateur qui pioche dans les sous-catégories :
+Histoire, Sport, Géographie, Art, Cuisine, Science, Cinéma, Faune.
+Le moteur doit utiliser des profils pondérés par niveau/mode et éviter les répétitions de sous-catégories.
+
+Cognitive model final :
+On retire mixed.
+Les seuls cognitive_type officiels sont :
+- recognition
+- reasoning
+- deceptive_trap
+
+Pour les niveaux élèves, cognitive mix constant :
+recognition 50%
+reasoning 20%
+deceptive_trap 30%
+
+La difficulté change par depth :
+levels 1-9 => depth 3-4
+levels 21-39 => depth 5-6
+levels 41-69 => depth 7-8
+levels 71-99 => depth 9-10
+
+Les Boss auront leurs profils dédiés plus tard.
+
+Mappings modes :
+Duo :
+- novice = solo levels 31-39
+- intermediaire = solo levels 51-59
+- expert = solo levels 71-79
+
+MJ automatique :
+- novice = solo levels 31-39
+- intermediaire = solo levels 51-59
+- expert = solo levels 71-79
+
+Ligue :
+- bronze = boss_10
+- argent = boss_30
+- or = boss_40
+- platine = boss_60
+- diamant = boss_70
+- legende = boss_90
+
+Alignement avec #82 — Continuous Generation Worker
+Le worker doit remplir la banque par combinaison complète :
+difficulty mapping + domain + sub_domain + question_type + cognitive_type + depth + language coverage.
+
+Il doit surveiller les stocks par segment.
+Si une combinaison est basse, il remplit cette combinaison précise.
+
+Le worker doit aussi éviter :
+- clones sémantiques
+- reformulations infinies du même concept
+- surutilisation d’un même concept_family
+- questions trop faciles pour un depth élevé
+
+Chaque question doit avoir :
+- concept_id
+- concept_family
+- cognitive_type
+- difficulty_depth
+- question_group_id
+- traductions complètes
+- Saviez-vous traduit
+
+Alignement avec #83 — Multi-Provider Multi-Key AI Router
+Le multi-provider est utile, mais il vient après la banque et le worker.
+Le router IA doit servir uniquement au remplissage de la banque, jamais au gameplay en temps réel.
+
+Priorité d’exécution :
+1. Adapter #81 avec question_groups + question_translations + mappings + concept dedupe.
+2. Adapter #82 pour remplir les segments réels StrategyBuzzer.
+3. Ensuite seulement intégrer #83 pour fiabiliser la génération via Gemini/OpenAI.
+
+Contraintes :
+- Redis reste cache chaud seulement.
+- Postgres est source persistante.
+- Le Game Server Node ne doit pas calculer/générer les questions.
+- Node consomme les questions déjà servies par Laravel/API.
+- Aucun appel IA dans le chemin critique du match.

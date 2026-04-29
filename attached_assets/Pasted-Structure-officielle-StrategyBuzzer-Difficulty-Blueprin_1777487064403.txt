@@ -1,0 +1,221 @@
+Structure officielle StrategyBuzzer — Difficulty Blueprint
+
+Objectif :
+La banque de questions doit permettre de construire un match avec une distribution réelle de types cognitifs, pas seulement une chance aléatoire.
+
+Règle importante :
+Sur un match minimum de 3 manches / 30 questions, le système doit garantir le bon ratio approximatif de :
+- recognition
+- reasoning
+- deceptive_trap
+
+Donc on ne fait pas :
+“chaque question a 50% de chance d’être recognition”
+
+On fait :
+“sur 30 questions, on sélectionne environ 15 recognition, 6 reasoning, 9 deceptive_trap”
+selon le profil ciblé.
+
+==================================================
+1. SOLO — PROFIL ÉLÈVES STANDARD
+==================================================
+
+Cognitive mix constant pour les niveaux élèves :
+
+recognition: 50%
+reasoning: 20%
+deceptive_trap: 30%
+
+Depth par niveau Solo :
+
+Solo levels 1-9:
+depth 3-4
+
+Solo levels 21-39:
+depth 5-6
+
+Solo levels 41-69:
+depth 7-8
+
+Solo levels 71-99:
+depth 9-10
+
+Règle :
+Le mix cognitif reste identique pour tous les niveaux élèves.
+Seule la profondeur change.
+
+Sur 30 questions élèves :
+- recognition ≈ 15 questions
+- reasoning ≈ 6 questions
+- deceptive_trap ≈ 9 questions
+
+==================================================
+2. BOSS — PROFILS OFFICIELS
+==================================================
+
+Boss niveau 10:
+depth 6
+recognition: 40%
+reasoning: 20%
+deceptive_trap: 40%
+
+Sur 30 questions :
+- recognition ≈ 12
+- reasoning ≈ 6
+- deceptive_trap ≈ 12
+
+Boss niveaux 20 et 30:
+depth 7
+recognition: 40%
+reasoning: 30%
+deceptive_trap: 30%
+
+Sur 30 questions :
+- recognition ≈ 12
+- reasoning ≈ 9
+- deceptive_trap ≈ 9
+
+Boss niveaux 40 et 60:
+depth 8
+recognition: 50%
+reasoning: 30%
+deceptive_trap: 20%
+
+Sur 30 questions :
+- recognition ≈ 15
+- reasoning ≈ 9
+- deceptive_trap ≈ 6
+
+Boss niveaux 70 et 90:
+depth 9
+recognition: 60%
+reasoning: 30%
+deceptive_trap: 10%
+
+Sur 30 questions :
+- recognition ≈ 18
+- reasoning ≈ 9
+- deceptive_trap ≈ 3
+
+Boss niveau 100:
+depth 10
+recognition: 70%
+reasoning: 20%
+deceptive_trap: 10%
+
+Sur 30 questions :
+- recognition ≈ 21
+- reasoning ≈ 6
+- deceptive_trap ≈ 3
+
+==================================================
+3. ÉQUIVALENCES DES MODES
+==================================================
+
+Duo :
+novice = Solo levels 31-39
+intermediaire = Solo levels 51-59
+expert = Solo levels 71-79
+
+MJ automatique :
+novice = Solo levels 31-39
+intermediaire = Solo levels 51-59
+expert = Solo levels 71-79
+
+Ligue :
+bronze = Boss niveau 10
+argent = Boss niveau 30
+or = Boss niveau 40
+platine = Boss niveau 60
+diamant = Boss niveau 70
+legende = Boss niveau 90
+
+==================================================
+4. RÈGLE DE SÉLECTION DES QUESTIONS
+==================================================
+
+Le moteur doit construire un question_plan avant le match.
+
+Exemple pour 30 questions :
+- calculer le nombre exact/approximatif requis par cognitive_type
+- sélectionner les questions dans la banque selon :
+  - niveau/depth
+  - domaine
+  - sous-domaine
+  - type de question
+  - cognitive_type
+  - langue disponible
+  - anti-clone concept_id
+  - anti-répétition concept_family
+
+Le plan doit garantir le ratio final du match à ±1 question.
+
+Exemple :
+Si le profil demande 50/20/30 sur 30 questions :
+- recognition = 15
+- reasoning = 6
+- deceptive_trap = 9
+
+Ce n’est pas un tirage probabiliste question par question.
+C’est une composition contrôlée du match.
+
+==================================================
+5. RÈGLE MULTILINGUE
+==================================================
+
+Chaque question sélectionnée doit venir d’un question_group_id.
+Les joueurs de langues différentes reçoivent le même question_group_id.
+Seule la traduction change.
+
+Chaque question_group doit avoir :
+- question text traduit
+- réponses traduites
+- correct_answer_key commun
+- explication traduite
+- Saviez-vous traduit
+
+==================================================
+6. GÉNÉRAL = ORCHESTRATEUR
+==================================================
+
+Le domaine Général ne possède pas une banque séparée.
+Il pioche dans :
+- Histoire
+- Sport
+- Géographie
+- Art
+- Cuisine
+- Science
+- Cinéma
+- Faune
+
+Le question_plan doit aussi équilibrer les sous-catégories selon le profil du mode/niveau et éviter de répéter la même sous-catégorie trop souvent.
+
+==================================================
+7. CONTRAT FINAL
+==================================================
+
+La banque Postgres doit stocker les questions avec :
+- question_group_id
+- difficulty_level
+- boss_level nullable
+- depth
+- domain
+- sub_domain
+- question_type
+- cognitive_type
+- concept_id
+- concept_family
+- translations
+- usage_count
+- validated
+
+Le moteur de match ne doit pas demander une question au hasard pur.
+Il doit construire un plan contrôlé respectant :
+- le niveau
+- le depth
+- le mix cognitif
+- le domaine/sous-domaine
+- les traductions
+- l’anti-clone
+- le nombre total de questions du match.
