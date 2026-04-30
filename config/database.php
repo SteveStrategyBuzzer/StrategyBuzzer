@@ -15,8 +15,10 @@ return [
     |
     */
 
-    // Force PostgreSQL if Replit environment variables are present, ignore .env file
-    'default' => 'pgsql',
+    // Default connection. Honors DB_CONNECTION env var (set by phpunit.xml to "sqlite"
+    // during tests) so tests using RefreshDatabase NEVER touch the live Postgres DB.
+    // Falls back to "pgsql" in normal runtime where DB_CONNECTION is unset.
+    'default' => env('DB_CONNECTION', 'pgsql'),
 
     /*
     |--------------------------------------------------------------------------
