@@ -159,38 +159,10 @@ class BankAIGeneratorRouterTest extends TestCase
     }
 
     /**
-     * Contract-ambiguity guard: the strict reading of #91 req.5 says the
-     * Solo router request body MUST include `difficulty_level`. The
-     * production contract today (#87 implementation + the user's explicit
-     * 6-field body list) sends only `difficulty_depth`. Captured as a
-     * visible regression signal via markTestIncomplete — see follow-up
-     * task for the product decision (send level metadata to the router or
-     * formalise that bank metadata stays worker-side).
-     */
-    public function test_solo_segment_request_body_includes_difficulty_level(): void
-    {
-        $this->markTestIncomplete(
-            'Production sends only difficulty_depth to /generate-bank-question. '
-            .'Awaiting product decision: include level metadata in the router '
-            .'body, or formalise level fields as worker-only metadata. See the '
-            .'follow-up task filed alongside #91.'
-        );
-    }
-
-    public function test_boss_segment_request_body_includes_boss_level(): void
-    {
-        $this->markTestIncomplete(
-            'Production sends only difficulty_depth to /generate-bank-question. '
-            .'Awaiting product decision: include level metadata in the router '
-            .'body, or formalise level fields as worker-only metadata. See the '
-            .'follow-up task filed alongside #91.'
-        );
-    }
-
-    /**
-     * Solo segment must not leak boss_level into the router request body
-     * (regression: a future change sending boss_level for a Solo segment).
-     * The output payload then carries the correct level field for addToBank.
+     * Solo segment: body must not leak boss_level (regression: a future
+     * change sending boss_level for a Solo segment). The output payload
+     * carries the correct level field for addToBank — that's where the
+     * production XOR lives (router body itself only carries difficulty_depth).
      */
     public function test_solo_segment_does_not_leak_boss_level_into_request_body(): void
     {
