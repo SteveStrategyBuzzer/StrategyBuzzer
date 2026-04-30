@@ -4,14 +4,10 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Services\GameServerService;
-use App\Services\QuestionPlanBuilder;
-use App\Services\QuestionService;
-use App\Services\AntiDuplicationCacheService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use App\Jobs\GenerateMultiplayerQuestionsJob;
 use App\Services\CoinLedgerService;
 
 class LobbyService
@@ -161,6 +157,13 @@ class LobbyService
             'teams_enabled' => in_array($mode, ['league_team', 'master']),
             'theme' => __('Culture générale'),
             'nb_questions' => 10,
+            // #84 Phase 1 — niveau/language must reach the Node room's
+            // pipelineConfig so the plan-aware /init callback uses the
+            // lobby's settings instead of falling back to defaults
+            // (general/5/fr). Pre-edit, Q1 was generated server-side
+            // with these values; now they MUST flow into createRoom.
+            'niveau' => 3,
+            'language' => app()->getLocale(),
         ], $settings);
 
         $matchId = $settings['match_id'] ?? null;
@@ -177,6 +180,10 @@ class LobbyService
                     'nb_questions' => $mergedSettings['nb_questions'],
                     'lobby_code' => $lobbyCode,
                     'hasBot' => (bool) ($mergedSettings['hasBot'] ?? false),
+                    // #84 Phase 1 — propagate to Node pipelineConfig
+                    'theme' => $mergedSettings['theme'],
+                    'niveau' => $mergedSettings['niveau'],
+                    'language' => $mergedSettings['language'],
                 ]
             );
 
@@ -798,126 +805,43 @@ class LobbyService
                         'gsLobbyCode' => $gsLobbyCode,
                         'socketUrl' => $socketUrl,
                     ]);
-                    
-                    $questionService = app(QuestionService::class);
-                    $questions = [];
-                    $nbQuestions = $lobby['settings']['nb_questions'] ?? 10;
-                    $theme = $lobby['settings']['theme'] ?? 'culture générale';
-                    $niveau = $lobby['settings']['niveau'] ?? 3;
-                    $language = $lobby['settings']['language'] ?? app()->getLocale();
-                    
-                    Log::info("[LobbyService] Generating question 1 synchronously, questions 2-{$nbQuestions} will be generated in background", [
-                        'theme' => $theme,
-                        'niveau' => $niveau,
-                        'language' => $language,
-                    ]);
-                    
-                    for ($i = 1; $i <= 1; $i++) {
-                        $q = $questionService->generateQuestion(
-                            $theme,
-                            $niveau,
-                            $i,
-                            [],
-                            [],
-                            [],
-                            [],
-                            null,
-                            false,
-                            $language,
-                            true,
-                            'multiplayer' // #82: gate reactive AI off in multiplayer
-                        );
-                        
-                        if ($q) {
-                            $questions[] = [
-                                'id' => $q['id'] ?? 'q_' . $i,
-                                'text' => $q['question_text'] ?? $q['text'] ?? '',
-                                'answers' => $q['answers'] ?? [],
-                                'correct_index' => $q['correct_id'] ?? $q['correct_index'] ?? 0,
-                                'sub_theme' => $q['sub_theme'] ?? '',
-                                'theme' => $theme,
-                            ];
-                        }
-                    }
-                    
-                    Log::info("[LobbyService] Generated questions", [
-                        'count' => count($questions),
-                    ]);
-                    
-                    $sendResult = $this->gameServerService->sendQuestions($roomId, $questions);
-                    
-                    if (!($sendResult['success'] ?? false)) {
-                        Log::error("[LobbyService] Failed to send questions to Game Server", [
-                            'roomId' => $roomId,
-                            'error' => $sendResult['error'] ?? 'Unknown error',
-                        ]);
-                        return [
-                            'success' => false,
-                            'error' => $sendResult['error'] ?? __('Erreur lors de l\'envoi des questions'),
-                        ];
-                    }
-                    
-                    $usedQuestionIds = array_map(fn($q) => $q['id'], $questions);
-                    $usedAnswers = [];
-                    $usedQuestionTexts = [];
-                    foreach ($questions as $q) {
-                        $usedQuestionTexts[] = $q['text'];
-                        foreach ($q['answers'] as $answer) {
-                            $answerText = is_array($answer) ? ($answer['text'] ?? '') : $answer;
-                            if ($answerText) {
-                                $usedAnswers[] = $answerText;
-                            }
-                        }
-                    }
-                    
-                    $antiDuplicationCache = new AntiDuplicationCacheService();
-                    if (!empty($questions)) {
-                        $antiDuplicationCache->initialize($code, $questions[0]);
-                        for ($i = 1; $i < count($questions); $i++) {
-                            $antiDuplicationCache->addQuestion($code, $questions[$i]);
-                        }
-                    }
-                    Log::info("[LobbyService] Initialized anti-duplication cache with Q1", [
+
+                    // ---------------------------------------------------------
+                    // #84 PHASE 1 — Le pré-fill legacy de Q1 + push au Game
+                    // Server + dispatch de GenerateMultiplayerQuestionsJob
+                    // a été retiré ici. Justification :
+                    //
+                    //  - Q1 était généré ici via QuestionService::generateQuestion()
+                    //    (bypass plan), puis poussé au Game Server. Conséquence :
+                    //    Node voyait room.state.questions.length > 0 et SAUTAIT
+                    //    complètement le pipeline plan-aware (#81).
+                    //  - QuestionPlanBuilder::build() construisait un 3e plan
+                    //    fantôme distinct des 2 MatchQuestionPlanner réels.
+                    //  - GenerateMultiplayerQuestionsJob bouclait
+                    //    QuestionService::generateQuestion() par question, sans
+                    //    plan, brisant l'invariant "1 plan / match".
+                    //
+                    // Maintenant : on enchaîne directement vers
+                    // gameServerService->startGame() ci-dessous. Côté Node,
+                    // GameOrchestrator.startGame() voit
+                    // room.state.questions.length === 0 et appelle
+                    // initQuestionPipeline() → POST /api/game-server/init →
+                    // GameServerQuestionPipeline::initMatch() qui (a) construit
+                    // UN plan unique persisté en base (match_question_plans),
+                    // (b) sert Q1 depuis le plan, (c) dispatche
+                    // GenerateGameServerQuestionsJob pour la suite via
+                    // pipeline->generateNextBlock(). Source unique = pipeline.
+                    //
+                    // Note : le job GenerateMultiplayerQuestionsJob et la
+                    // classe QuestionPlanBuilder sont conservés pour Phase 3
+                    // (#84 finalisation) où ils seront supprimés une fois
+                    // les filets de sécurité (#86) testés et validés.
+                    // ---------------------------------------------------------
+                    Log::info("[LobbyService] Duo: legacy pre-fill skipped (#84 phase 1) — pipeline will provide Q1 via /init", [
                         'lobby_code' => $code,
-                        'question_count' => count($questions),
+                        'roomId' => $roomId,
                     ]);
-                    
-                    $hasStrategicAvatar = !empty($lobby['settings']['strategic_avatar'] ?? null) 
-                        && ($lobby['settings']['strategic_avatar'] ?? 'Aucun') !== 'Aucun';
-                    
-                    $plan = QuestionPlanBuilder::build([
-                        'nb_questions' => $nbQuestions,
-                        'nb_rounds' => $lobby['settings']['nb_rounds'] ?? 3,
-                        'strategic_avatar' => $lobby['settings']['strategic_avatar'] ?? 'Aucun',
-                        'skill_bonus_enabled' => $hasStrategicAvatar,
-                        'tiebreaker_questions' => 5,
-                    ]);
-                    
-                    $totalQuestions = $plan['total_questions'];
-                    
-                    if ($totalQuestions > 1) {
-                        GenerateMultiplayerQuestionsJob::dispatch(
-                            $code,
-                            'duo',
-                            $theme,
-                            $niveau,
-                            $language,
-                            $totalQuestions,
-                            2,
-                            4,
-                            $usedQuestionIds,
-                            $usedAnswers,
-                            $usedQuestionTexts,
-                            $hasStrategicAvatar,
-                            true,
-                            $plan['main_questions'],
-                            $plan['skill_bonus_questions']
-                        );
-                        Log::info("[LobbyService] Dispatched background job for questions 2-{$totalQuestions}", [
-                            'plan' => $plan,
-                        ]);
-                    }
-                    
+
                     $startResult = $this->gameServerService->startGame($roomId, (string) $host->id);
                     
                     if (!($startResult['success'] ?? false)) {
