@@ -520,6 +520,12 @@ Route::get('/privacy-policy', function () {
     return view('privacy');
 });
 
+// #109 Admin observability page for admin_question_audit_log (#94 audit table).
+// Same shared-secret auth as /api/admin/questions/health (QB_HEALTH_TOKEN,
+// timing-safe hash_equals, fail-closed). Read-only: no AI logic, no gameplay.
+Route::get('/admin/questions/audit-log', \App\Http\Controllers\Admin\QuestionBankAuditLogController::class)
+    ->name('admin.questions.audit-log');
+
 Route::view('/data-deletion', 'data-deletion')->name('data.deletion');
 
 /* ===== DEV/TEST-ONLY SUPPORT ROUTES =====
