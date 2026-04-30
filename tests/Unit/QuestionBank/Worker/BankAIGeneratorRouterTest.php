@@ -20,7 +20,26 @@ class BankAIGeneratorRouterTest extends TestCase
 
     protected function setUp(): void
     {
+        // CRITICAL safety belt: hard-pin sqlite in-memory BEFORE parent::setUp()
+        // boots the app and RefreshDatabase reads the DB connection. phpunit.xml
+        // already declares it, but a stray real DB_CONNECTION env var (set in
+        // some CI/validator runners) would otherwise win and RefreshDatabase
+        // would migrate:fresh against the live Neon Postgres — wiping it. We
+        // force the override at every layer Laravel reads from.
+        putenv('DB_CONNECTION=sqlite');
+        putenv('DB_DATABASE=:memory:');
+        $_ENV['DB_CONNECTION'] = 'sqlite';
+        $_ENV['DB_DATABASE'] = ':memory:';
+        $_SERVER['DB_CONNECTION'] = 'sqlite';
+        $_SERVER['DB_DATABASE'] = ':memory:';
+
         parent::setUp();
+
+        // Belt-and-braces: also pin the resolved Laravel config so anything
+        // that reads config('database.default') sees sqlite, regardless of
+        // .env precedence.
+        config()->set('database.default', 'sqlite');
+        config()->set('database.connections.sqlite.database', ':memory:');
 
         $this->previousQuestionApiUrl = getenv('QUESTION_API_URL') ?: null;
         putenv('QUESTION_API_URL='.self::ROUTER_BASE);
