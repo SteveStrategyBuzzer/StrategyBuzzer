@@ -1,0 +1,119 @@
+STOP. Ne fais aucun rollback destructif.
+
+Je suis dans une situation confuse après rollback/checkpoint :
+- je ne veux pas perdre le code récent
+- je veux comprendre où sont passés les IDs/comptes
+- je veux retrouver la base la plus récente possible
+- je veux sécuriser avant toute restauration
+
+Objectif :
+faire un rollback propre, contrôlé, réversible.
+
+PHASE 1 — AUDIT NON DESTRUCTIF OBLIGATOIRE
+
+Ne rien modifier.
+Ne pas lancer :
+- migrate:fresh
+- db:seed
+- rollback DB
+- reset SQLite
+- checkout destructif
+- restore checkpoint
+
+Lister d’abord :
+
+1. État Git actuel
+- git status
+- git log --oneline -20
+- git branch --show-current
+
+2. Bases disponibles
+Chercher tous les fichiers DB/backups :
+- database/*.sqlite
+- *.sqlite
+- *.db
+- backups/
+- storage/
+- dumps SQL
+- exports
+
+3. Vérifier la DB active Laravel
+Afficher :
+- DB_CONNECTION
+- DB_DATABASE
+- chemin réel de la base utilisée
+
+4. Lister les utilisateurs existants dans la DB active
+Afficher :
+- id
+- email
+- name
+- player_code
+- coins
+- competence_coins
+- created_at
+- updated_at
+
+5. Vérifier les tables critiques
+Lister count + quelques lignes :
+- users
+- profiles
+- purchases/payments
+- coin_ledger
+- user_quest_progress
+- user_daily_quests
+- match histories si existantes
+
+6. Chercher les IDs manquants
+Vérifier si les colonnes existent encore :
+- user_id
+- player_id
+- player_code
+- match_id
+- lobby_id
+- room_id
+
+PHASE 2 — SNAPSHOT AVANT ACTION
+
+Avant toute correction :
+- faire une copie complète de la DB active
+- faire une archive du code actuel
+- noter le commit actuel
+- noter le checkpoint actuel
+
+Aucune restauration tant que ce snapshot n’est pas fait.
+
+PHASE 3 — COMPARAISON
+
+Comparer :
+- DB active actuelle
+- anciennes DB/backups trouvées
+- dumps SQL disponibles
+
+Objectif :
+identifier quelle base contient :
+- les 10 comptes
+- les bons IDs
+- les bons player_code
+- les gains/pièces
+- les quêtes
+- les achats
+
+PHASE 4 — PLAN DE RESTAURATION
+
+Ne restaure rien automatiquement.
+
+Propose-moi d’abord :
+Option A — restaurer toute une DB
+Option B — réimporter seulement les comptes manquants
+Option C — réparer les IDs/player_code
+Option D — recréer uniquement les accès/mots de passe
+
+Pour chaque option, donne :
+- risques
+- données perdues
+- données conservées
+- commandes exactes
+
+RÈGLE ABSOLUE :
+Aucun rollback, aucune migration destructive, aucun seed, aucune restauration sans mon accord écrit.
