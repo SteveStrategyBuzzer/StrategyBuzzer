@@ -87,34 +87,50 @@ const ADMIN_JWT_PURPOSE = 'qapi_admin';
 const ADMIN_JWT_MAX_LIFETIME_SECONDS = 60;
 const ADMIN_JWT_CLOCK_SKEW_SECONDS = 5;
 
-// In-memory replay protection. `seenJtis` maps jti -> exp (epoch seconds);
-// a sweep on each request drops expired entries. For 60s tokens the set
-// stays tiny even under heavy admin traffic.
-const seenJtis = new Map();
-function rememberJti(jti, exp) {
-  seenJtis.set(jti, exp);
-  if (seenJtis.size > 1024) {
-    const now = Math.floor(Date.now() / 1000);
-    for (const [k, v] of seenJtis) {
-      if (v <= now) seenJtis.delete(k);
-    }
-  }
+// Replay protection — Redis-backed.
+//
+// #110 — A captured admin JWT (60s TTL) used to be remembered in a per-process
+// `Map`. That broke down across restarts and across replicas behind a load
+// balancer: the same token could be replayed, up to its `exp`, on a fresh
+// instance. We now claim each `jti` atomically in Redis with
+// `SET key 1 NX EX <remaining_ttl>`:
+//   - The first request that presents a given jti wins ('OK').
+//   - Any later request with the same jti gets `null` (key already exists)
+//     and is rejected as a replay.
+//   - The key auto-expires when the JWT does, so the keyspace stays bounded.
+// If Redis is unavailable, the middleware fails closed (HTTP 503) — there is
+// no silent fallback to in-memory state, because that would re-open the very
+// hole this task closes.
+const ADMIN_JWT_JTI_PREFIX = 'qapi:admin-jti:';
+let _adminJwtRedisClient = null;
+function getAdminJwtRedisClient() {
+  if (_adminJwtRedisClient) return _adminJwtRedisClient;
+  const Redis = require('ioredis');
+  const RedisCtor = Redis.default || Redis;
+  const url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+  _adminJwtRedisClient = new RedisCtor(url);
+  return _adminJwtRedisClient;
 }
-function isJtiReplay(jti) {
-  const exp = seenJtis.get(jti);
-  if (exp === undefined) return false;
-  if (exp <= Math.floor(Date.now() / 1000)) {
-    seenJtis.delete(jti);
-    return false;
-  }
-  return true;
+function setAdminJwtRedisClient(client) {
+  _adminJwtRedisClient = client;
+}
+
+// Atomically claim a jti for the remainder of its lifetime. Returns
+// 'fresh' the first time the jti is presented, 'replay' on every subsequent
+// call (until the key expires). Throws on Redis errors so the caller can
+// fail the request closed.
+async function claimJti(jti, exp) {
+  const ttl = Math.max(1, exp - Math.floor(Date.now() / 1000));
+  const key = ADMIN_JWT_JTI_PREFIX + jti;
+  const result = await getAdminJwtRedisClient().set(key, '1', 'NX', 'EX', ttl);
+  return result === 'OK' ? 'fresh' : 'replay';
 }
 
 function denyAdmin(res, status, error, details) {
   return res.status(status).json({ success: false, error, details });
 }
 
-function requireAdminJwt(req, res, next) {
+async function requireAdminJwt(req, res, next) {
   if (!ADMIN_JWT_SECRET) {
     return denyAdmin(res, 503, 'admin_jwt_not_configured',
       'QUESTION_API_JWT_SECRET (or GAME_SERVER_JWT_SECRET) must be set on the question-api service.');
@@ -164,9 +180,6 @@ function requireAdminJwt(req, res, next) {
   if (!jti) {
     return denyAdmin(res, 403, 'invalid_admin_jwt', 'jti claim is required.');
   }
-  if (isJtiReplay(jti)) {
-    return denyAdmin(res, 403, 'invalid_admin_jwt', 'jti has already been used (replay).');
-  }
 
   // Bind the token to the exact bytes of the body the caller signed. If
   // anything (a proxy, a man-in-the-middle, a buggy retry) mutated the body,
@@ -184,7 +197,19 @@ function requireAdminJwt(req, res, next) {
       'payload_hash claim does not match sha256(body).');
   }
 
-  rememberJti(jti, exp);
+  // Atomic claim — also serves as the replay check. Done last so that a
+  // request rejected for any earlier reason does not burn its jti.
+  let claimResult;
+  try {
+    claimResult = await claimJti(jti, exp);
+  } catch (err) {
+    console.error('[admin-jwt] replay-store error', err && err.message ? err.message : err);
+    return denyAdmin(res, 503, 'admin_jwt_replay_store_unavailable',
+      `Replay-protection store is unavailable: ${err && err.message ? err.message : 'unknown error'}`);
+  }
+  if (claimResult !== 'fresh') {
+    return denyAdmin(res, 403, 'invalid_admin_jwt', 'jti has already been used (replay).');
+  }
 
   req.adminCaller = {
     sub: typeof claims.sub === 'string' ? claims.sub : null,
@@ -211,11 +236,12 @@ const requireAdminToken = requireAdminJwt;
 // Exposed for unit tests.
 module.exports.__test = {
   requireAdminJwt,
-  rememberJti,
-  isJtiReplay,
+  claimJti,
+  setAdminJwtRedisClient,
   ADMIN_JWT_AUDIENCE,
   ADMIN_JWT_PURPOSE,
   ADMIN_JWT_MAX_LIFETIME_SECONDS,
+  ADMIN_JWT_JTI_PREFIX,
 };
 
 // Mapping des langues supportées avec traductions vrai/faux

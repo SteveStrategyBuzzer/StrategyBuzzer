@@ -20,7 +20,8 @@
     "test:e2e:master-join-browser": "node tests/e2e/master-join-room.browser.spec.js",
     "test:e2e:league-individual-join-browser": "node tests/e2e/league-individual-join-room.browser.spec.js",
     "test:providers:anthropic-contract": "node tests/providers/anthropic.contract.test.js",
-    "test:question-api:admin-jwt": "node --test tests/question-api/admin-jwt.test.js"
+    "test:question-api:admin-jwt": "node --test tests/question-api/admin-jwt.test.js",
+    "test:security:admin-jwt-replay": "node tests/security/admin-jwt-replay.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
