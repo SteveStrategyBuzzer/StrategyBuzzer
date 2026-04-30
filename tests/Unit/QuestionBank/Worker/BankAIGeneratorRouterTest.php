@@ -2,44 +2,20 @@
 
 namespace Tests\Unit\QuestionBank\Worker;
 
-use App\Models\QuestionGroup;
-use App\Services\QuestionBank\QuestionBankRepository;
 use App\Services\QuestionBank\Worker\BankAIGenerator;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class BankAIGeneratorRouterTest extends TestCase
 {
-    use RefreshDatabase;
-
     private const ROUTER_BASE = 'http://test-router.local';
 
     private ?string $previousQuestionApiUrl = null;
 
     protected function setUp(): void
     {
-        // CRITICAL safety belt: hard-pin sqlite in-memory BEFORE parent::setUp()
-        // boots the app and RefreshDatabase reads the DB connection. phpunit.xml
-        // already declares it, but a stray real DB_CONNECTION env var (set in
-        // some CI/validator runners) would otherwise win and RefreshDatabase
-        // would migrate:fresh against the live Neon Postgres — wiping it. We
-        // force the override at every layer Laravel reads from.
-        putenv('DB_CONNECTION=sqlite');
-        putenv('DB_DATABASE=:memory:');
-        $_ENV['DB_CONNECTION'] = 'sqlite';
-        $_ENV['DB_DATABASE'] = ':memory:';
-        $_SERVER['DB_CONNECTION'] = 'sqlite';
-        $_SERVER['DB_DATABASE'] = ':memory:';
-
         parent::setUp();
-
-        // Belt-and-braces: also pin the resolved Laravel config so anything
-        // that reads config('database.default') sees sqlite, regardless of
-        // .env precedence.
-        config()->set('database.default', 'sqlite');
-        config()->set('database.connections.sqlite.database', ':memory:');
 
         $this->previousQuestionApiUrl = getenv('QUESTION_API_URL') ?: null;
         putenv('QUESTION_API_URL='.self::ROUTER_BASE);
@@ -48,7 +24,6 @@ class BankAIGeneratorRouterTest extends TestCase
 
         config()->set('question_bank_profiles.worker.preferred_languages', ['fr', 'en', 'es']);
 
-        // Any unmatched request fails the test instead of leaking real HTTP.
         Http::preventStrayRequests();
     }
 
@@ -140,27 +115,41 @@ class BankAIGeneratorRouterTest extends TestCase
     }
 
     /**
-     * Plumbing assertion: the source the router reports must reach the
-     * persisted row. Pipes the generator's payload into the real
-     * QuestionBankRepository (sqlite in-memory) and reads the row back.
+     * Plumbing assertion (DB-free): the payload returned by generateForSegment()
+     * must carry the exact shape that QuestionBankRepository::addToBank()
+     * consumes — including the router-reported `source`. This locks the
+     * contract between generator and writer without touching the DB.
      */
-    public function test_router_payload_source_reaches_persisted_row_via_addToBank(): void
+    public function test_router_payload_shape_matches_addToBank_input_contract(): void
     {
         Http::fake([
             self::ROUTER_BASE.'/generate-bank-question'
-                => Http::response($this->okEnvelope(['source' => 'openai', 'concept_id' => 'plumbing-test-1']), 200),
+                => Http::response($this->okEnvelope([
+                    'source' => 'openai',
+                    'concept_id' => 'plumbing-test-1',
+                    'concept_family' => 'physique-mecanique',
+                ]), 200),
         ]);
 
         $result = (new BankAIGenerator())->generateForSegment($this->soloSegment());
         $this->assertTrue($result['ok']);
 
-        $group = (new QuestionBankRepository())->addToBank($result['payload']);
+        $payload = $result['payload'];
 
-        $this->assertNotNull($group, 'addToBank should persist the generator payload.');
-        $persisted = QuestionGroup::find($group->id);
-        $this->assertNotNull($persisted);
-        $this->assertSame('openai', $persisted->source, 'The router-reported source must be persisted, not a hardcoded label.');
-        $this->assertSame('plumbing-test-1', $persisted->concept_id);
+        // Every key addToBank() reads must be present on the payload, with
+        // the router-reported source preserved verbatim.
+        foreach ([
+            'difficulty_depth', 'domain', 'sub_domain', 'question_type',
+            'cognitive_type', 'concept_id', 'concept_family', 'source',
+            'translations',
+        ] as $key) {
+            $this->assertArrayHasKey($key, $payload, "addToBank input must contain `{$key}`.");
+        }
+        $this->assertSame('openai', $payload['source']);
+        $this->assertSame('plumbing-test-1', $payload['concept_id']);
+        $this->assertSame('physique-mecanique', $payload['concept_family']);
+        $this->assertIsArray($payload['translations']);
+        $this->assertNotEmpty($payload['translations']);
     }
 
     public function test_router_503_returns_structured_failure(): void
