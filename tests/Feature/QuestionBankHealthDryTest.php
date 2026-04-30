@@ -6,13 +6,6 @@ use App\Services\QuestionBank\BankDryDetector;
 use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
-/**
- * #92 — GET /api/admin/questions/health must expose a `dry` section so
- * Ops can detect when live matches are degraded (served from seed pool)
- * or critical (bank+cache+seed all empty).
- *
- * The endpoint stays gated by QB_HEALTH_TOKEN (deny-by-default if unset).
- */
 class QuestionBankHealthDryTest extends TestCase
 {
     private const TEST_TOKEN = 'test-qb-health-token-92';
@@ -21,7 +14,6 @@ class QuestionBankHealthDryTest extends TestCase
     {
         parent::setUp();
         config(['app.env' => 'testing']);
-        // Set the env var the controller reads via env() for the duration of the test.
         putenv('QB_HEALTH_TOKEN='.self::TEST_TOKEN);
         $this->flushDryKeys();
     }
@@ -41,13 +33,27 @@ class QuestionBankHealthDryTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonStructure([
-            'dry' => ['fallback_used_1h', 'total_dry_1h', 'last_event', 'severity'],
+            'dry' => [
+                'fallback_used_1h',
+                'total_dry_1h',
+                'dry_segment_count_1h',
+                'fallback_segment_count_1h',
+                'segments_top_critical',
+                'segments_top_degraded',
+                'last_event',
+                'last_dry_at',
+                'severity',
+                'alert',
+            ],
         ]);
         $response->assertJson([
             'dry' => [
                 'fallback_used_1h' => 0,
                 'total_dry_1h' => 0,
+                'dry_segment_count_1h' => 0,
+                'fallback_segment_count_1h' => 0,
                 'last_event' => null,
+                'last_dry_at' => null,
                 'severity' => BankDryDetector::SEVERITY_OK,
             ],
         ]);
@@ -65,6 +71,7 @@ class QuestionBankHealthDryTest extends TestCase
         $body = $response->json('dry');
         $this->assertSame(1, $body['fallback_used_1h']);
         $this->assertSame(0, $body['total_dry_1h']);
+        $this->assertSame(1, $body['fallback_segment_count_1h']);
         $this->assertSame(BankDryDetector::SEVERITY_DEGRADED, $body['severity']);
         $this->assertSame('histoire', $body['last_event']['segment']['theme']);
         $this->assertSame('fr', $body['last_event']['segment']['language']);
@@ -82,21 +89,71 @@ class QuestionBankHealthDryTest extends TestCase
         $body = $response->json('dry');
         $this->assertSame(0, $body['fallback_used_1h']);
         $this->assertSame(1, $body['total_dry_1h']);
+        $this->assertSame(1, $body['dry_segment_count_1h']);
         $this->assertSame(BankDryDetector::SEVERITY_CRITICAL, $body['severity']);
         $this->assertSame('sport', $body['last_event']['segment']['theme']);
         $this->assertTrue($body['last_event']['segment']['is_boss']);
+    }
+
+    public function test_health_endpoint_reports_distinct_segments_and_top_offender(): void
+    {
+        $detector = new BankDryDetector();
+        // Same segment 4×, plus 2 other distinct segments.
+        for ($i = 0; $i < 4; $i++) {
+            $detector->recordTotalDry('histoire', 21, 'fr', false, 'solo');
+        }
+        $detector->recordTotalDry('sport', 50, 'en', true, 'duo');
+        $detector->recordTotalDry('art', 41, 'es', false, 'solo');
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.self::TEST_TOKEN,
+        ])->getJson('/api/admin/questions/health');
+
+        $response->assertOk();
+        $body = $response->json('dry');
+        $this->assertSame(6, $body['total_dry_1h']);
+        $this->assertSame(3, $body['dry_segment_count_1h']);
+        $this->assertCount(3, $body['segments_top_critical']);
+        $this->assertSame(
+            BankDryDetector::segmentLabel('histoire', 21, 'fr', false),
+            $body['segments_top_critical'][0]['label']
+        );
+        $this->assertSame(4, $body['segments_top_critical'][0]['count']);
+    }
+
+    public function test_health_endpoint_exposes_alert_configuration_under_dry_section(): void
+    {
+        config([
+            'question_bank_profiles.worker.dry_alert.threshold' => 5,
+            'question_bank_profiles.worker.dry_alert.window_minutes' => 10,
+            'question_bank_profiles.worker.dry_alert.cooldown_minutes' => 30,
+            'question_bank_profiles.worker.dry_alert.slack_webhook_url' => 'https://hooks.slack.test/x',
+            'question_bank_profiles.worker.dry_alert.email_recipient' => '',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.self::TEST_TOKEN,
+        ])->getJson('/api/admin/questions/health');
+
+        $response->assertOk();
+        $alert = $response->json('dry.alert');
+        $this->assertSame(5, $alert['threshold']);
+        $this->assertSame(10, $alert['window_minutes']);
+        $this->assertSame(30, $alert['cooldown_minutes']);
+        $this->assertTrue($alert['slack_configured']);
+        $this->assertFalse($alert['email_configured']);
+        $this->assertFalse($alert['in_cooldown']);
+        $this->assertNull($alert['last_alert_at']);
     }
 
     public function test_health_endpoint_remains_gated_dry_section_not_leaked_without_token(): void
     {
         (new BankDryDetector())->recordTotalDry('sport', 100, 'es', true, 'master');
 
-        // No Authorization header → 403, no dry section in body.
         $response = $this->getJson('/api/admin/questions/health');
         $response->assertStatus(403);
         $response->assertJsonMissingPath('dry');
 
-        // Wrong token → still 403.
         $response = $this->withHeaders([
             'Authorization' => 'Bearer wrong-token',
         ])->getJson('/api/admin/questions/health');
@@ -111,13 +168,19 @@ class QuestionBankHealthDryTest extends TestCase
             $patterns = [
                 config('question_bank_profiles.worker.redis_keys.dry_fallback_counter'),
                 config('question_bank_profiles.worker.redis_keys.dry_total_counter'),
+                config('question_bank_profiles.worker.redis_keys.dry_total_segment_counts'),
+                config('question_bank_profiles.worker.redis_keys.dry_fallback_segment_counts'),
             ];
-            for ($i = -2; $i < 65; $i++) {
+            for ($i = -2; $i < 130; $i++) {
                 foreach ($patterns as $pat) {
                     Redis::del(sprintf($pat, $minute - $i));
                 }
             }
             Redis::del(config('question_bank_profiles.worker.redis_keys.dry_last_event'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_last_critical_event'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_total_segment_seen'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_fallback_segment_seen'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_last_alert'));
         } catch (\Throwable $e) {
             // intentionally ignored
         }

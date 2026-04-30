@@ -207,13 +207,39 @@ return [
             'last_rejects' => 'qb:worker:last_rejects', // LIST capped to 25
             'gen_counter_ok' => 'qb:worker:gen:ok:%s', // sprintf with minute window
             'gen_counter_err' => 'qb:worker:gen:err:%s',
-            // #92 — bank-dry detector. The two counters are sprintf'd with the
-            // minute window (`floor(time()/60)`) so the health endpoint can
-            // sum the last 60 minutes for a rolling 1h figure. last_event is
-            // a JSON blob of the most recent dry incident (segment + severity).
+            // Bank-dry counters (sprintf with floor(time()/60) for per-minute
+            // buckets summed into a rolling 1h figure by the health endpoint).
             'dry_fallback_counter' => 'qb:dry:fallback:%s',
             'dry_total_counter' => 'qb:dry:total:%s',
             'dry_last_event' => 'qb:dry:last_event',
+            // Per-minute hashes (one HASH per minute bucket, field=label,
+            // value=count) so the rolling 1h count summed across the last
+            // 60 buckets is exact, not cumulative-since-TTL. Last-seen
+            // ZSETs (score=ts, member=label) drive the "top offender" list
+            // and bound which labels we sum over.
+            'dry_total_segment_counts' => 'qb:dry:total:seg:counts:%d',
+            'dry_total_segment_seen' => 'qb:dry:total:seg:seen',
+            'dry_fallback_segment_counts' => 'qb:dry:fallback:seg:counts:%d',
+            'dry_fallback_segment_seen' => 'qb:dry:fallback:seg:seen',
+            // Last CRITICAL-only event marker — separate from dry_last_event
+            // (which is the most recent event of any severity) so a degraded
+            // fallback after a critical dry doesn't shift the "last critical
+            // dry" timestamp displayed on the health endpoint.
+            'dry_last_critical_event' => 'qb:dry:last_critical_event',
+            // Cooldown marker (JSON blob) so a sustained outage produces
+            // one alert per cooldown window, not a flood.
+            'dry_last_alert' => 'qb:dry:last_alert',
+        ],
+
+        // Ops alert thresholds for bank-dry CRITICAL events. The alerter
+        // is a no-op for any channel left unset; both unset = disabled.
+        'dry_alert' => [
+            'threshold' => (int) env('QB_DRY_ALERT_THRESHOLD', 5),
+            'window_minutes' => (int) env('QB_DRY_ALERT_WINDOW_MINUTES', 10),
+            'cooldown_minutes' => (int) env('QB_DRY_ALERT_COOLDOWN_MINUTES', 30),
+            'slack_webhook_url' => env('QB_DRY_ALERT_SLACK_WEBHOOK_URL', ''),
+            'email_recipient' => env('QB_DRY_ALERT_EMAIL', ''),
+            'environment_label' => env('APP_ENV', 'unknown'),
         ],
     ],
 

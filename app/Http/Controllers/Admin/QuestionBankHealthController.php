@@ -66,10 +66,6 @@ class QuestionBankHealthController extends Controller
         $lastRejectsRaw = Redis::lrange(config('question_bank_profiles.worker.redis_keys.last_rejects'), 0, 9) ?? [];
         $lastRejects = array_map(fn ($r) => json_decode($r, true) ?: $r, $lastRejectsRaw);
 
-        // #92 — bank-dry snapshot. Tells Ops whether live matches are
-        // currently being served from the seed pool (degraded) or have
-        // exhausted every source (critical). Read-only; never triggers
-        // the worker, never calls an AI provider.
         $dry = (new BankDryDetector())->snapshot();
 
         return response()->json([

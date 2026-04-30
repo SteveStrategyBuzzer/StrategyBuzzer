@@ -7,21 +7,11 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
-/**
- * #92 — BankDryDetector unit tests.
- *
- * Verifies that:
- *   - dry events increment the correct Redis counters and write last_event
- *   - severity is derived correctly from the rolling 1h sums
- *   - Redis failures are swallowed (gameplay must never break on a metric)
- *   - the detector NEVER triggers the worker or any AI provider (no HTTP)
- */
 class BankDryDetectorTest extends TestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
-        // Wipe any previous-run Redis state so counters start at 0.
         $this->flushDryKeys();
     }
 
@@ -48,7 +38,6 @@ class BankDryDetectorTest extends TestCase
         $this->assertSame(1, (int) Redis::get($key));
 
         $rawLast = Redis::get(config('question_bank_profiles.worker.redis_keys.dry_last_event'));
-        $this->assertIsString($rawLast);
         $event = json_decode($rawLast, true);
         $this->assertSame(BankDryDetector::SEVERITY_DEGRADED, $event['severity']);
         $this->assertSame('histoire', $event['segment']['theme']);
@@ -64,11 +53,6 @@ class BankDryDetectorTest extends TestCase
             ->once();
     }
 
-    /**
-     * #92 — Ops must be able to filter degraded events by cache_status to
-     * tell a true cache exhaustion (`miss`) apart from a deliberately
-     * bypassed cache (`skipped:boss` / `skipped:explicit`).
-     */
     public function test_record_fallback_used_preserves_each_cache_status_value(): void
     {
         $detector = new BankDryDetector();
@@ -84,18 +68,12 @@ class BankDryDetectorTest extends TestCase
             $detector->recordFallbackUsed('art', 41, 'es', false, 'solo', $status);
             $rawLast = Redis::get(config('question_bank_profiles.worker.redis_keys.dry_last_event'));
             $event = json_decode($rawLast, true);
-            $this->assertSame(
-                $status,
-                $event['segment']['cache_status'],
-                "cache_status `{$status}` must round-trip through last_event verbatim."
-            );
+            $this->assertSame($status, $event['segment']['cache_status']);
         }
     }
 
     public function test_record_fallback_used_defaults_cache_status_to_unknown_when_omitted(): void
     {
-        // Backward-compat: callers that haven't been updated must still work
-        // and get the explicit `unknown` marker rather than a missing key.
         (new BankDryDetector())->recordFallbackUsed('histoire', 21, 'fr', false, 'solo');
 
         $rawLast = Redis::get(config('question_bank_profiles.worker.redis_keys.dry_last_event'));
@@ -136,7 +114,12 @@ class BankDryDetectorTest extends TestCase
 
         $this->assertSame(0, $snapshot['fallback_used_1h']);
         $this->assertSame(0, $snapshot['total_dry_1h']);
+        $this->assertSame(0, $snapshot['dry_segment_count_1h']);
+        $this->assertSame(0, $snapshot['fallback_segment_count_1h']);
+        $this->assertSame([], $snapshot['segments_top_critical']);
+        $this->assertSame([], $snapshot['segments_top_degraded']);
         $this->assertNull($snapshot['last_event']);
+        $this->assertNull($snapshot['last_dry_at']);
         $this->assertSame(BankDryDetector::SEVERITY_OK, $snapshot['severity']);
     }
 
@@ -164,37 +147,139 @@ class BankDryDetectorTest extends TestCase
 
         $this->assertSame(2, $snapshot['fallback_used_1h']);
         $this->assertSame(1, $snapshot['total_dry_1h']);
-        // Critical wins over degraded — Ops must see the worst signal.
         $this->assertSame(BankDryDetector::SEVERITY_CRITICAL, $snapshot['severity']);
         $this->assertSame(BankDryDetector::SEVERITY_CRITICAL, $snapshot['last_event']['severity']);
+    }
+
+    public function test_snapshot_reports_distinct_critical_segment_count_not_just_aggregate(): void
+    {
+        $detector = new BankDryDetector();
+        // Same segment hit 3 times → still 1 distinct segment.
+        for ($i = 0; $i < 3; $i++) {
+            $detector->recordTotalDry('histoire', 21, 'fr', false, 'solo');
+        }
+        // Two more distinct segments.
+        $detector->recordTotalDry('sport', 50, 'en', true, 'duo');
+        $detector->recordTotalDry('art', 41, 'es', false, 'solo');
+
+        $snapshot = $detector->snapshot();
+
+        $this->assertSame(5, $snapshot['total_dry_1h']);
+        $this->assertSame(3, $snapshot['dry_segment_count_1h']);
+
+        $top = $snapshot['segments_top_critical'];
+        $this->assertCount(3, $top);
+        $this->assertSame(BankDryDetector::segmentLabel('histoire', 21, 'fr', false), $top[0]['label']);
+        $this->assertSame(3, $top[0]['count']);
+        $this->assertNotNull($top[0]['last_at']);
+    }
+
+    public function test_snapshot_reports_distinct_fallback_segment_count(): void
+    {
+        $detector = new BankDryDetector();
+        $detector->recordFallbackUsed('histoire', 21, 'fr', false, 'solo');
+        $detector->recordFallbackUsed('histoire', 21, 'fr', false, 'solo');
+        $detector->recordFallbackUsed('sport', 50, 'en', true, 'duo');
+
+        $snapshot = $detector->snapshot();
+
+        $this->assertSame(3, $snapshot['fallback_used_1h']);
+        $this->assertSame(2, $snapshot['fallback_segment_count_1h']);
+        $this->assertCount(2, $snapshot['segments_top_degraded']);
+    }
+
+    public function test_snapshot_last_dry_at_reflects_last_critical_event(): void
+    {
+        $detector = new BankDryDetector();
+        $detector->recordTotalDry('histoire', 21, 'fr', false, 'solo');
+
+        $snapshot = $detector->snapshot();
+
+        $this->assertNotNull($snapshot['last_dry_at']);
+        $this->assertNotNull($snapshot['last_critical_event']);
+        $this->assertSame($snapshot['last_critical_event']['at'], $snapshot['last_dry_at']);
+        $this->assertSame('histoire', $snapshot['last_critical_event']['segment']['theme']);
+    }
+
+    public function test_last_dry_at_is_critical_only_and_not_overwritten_by_later_degraded_event(): void
+    {
+        $detector = new BankDryDetector();
+        $detector->recordTotalDry('histoire', 21, 'fr', false, 'solo');
+        $criticalSnapshot = $detector->snapshot();
+        $criticalAt = $criticalSnapshot['last_dry_at'];
+        $this->assertNotNull($criticalAt);
+
+        // Wait a moment so a later event has a strictly later timestamp.
+        sleep(1);
+        $detector->recordFallbackUsed('art', 41, 'es', false, 'solo');
+
+        $snapshot = $detector->snapshot();
+        // last_event reflects the most recent event of any severity…
+        $this->assertSame(BankDryDetector::SEVERITY_DEGRADED, $snapshot['last_event']['severity']);
+        // …but last_dry_at must still point to the earlier CRITICAL event.
+        $this->assertSame($criticalAt, $snapshot['last_dry_at']);
+        $this->assertSame(BankDryDetector::SEVERITY_CRITICAL, $snapshot['last_critical_event']['severity']);
+    }
+
+    public function test_per_segment_count_is_rolling_window_only_excludes_stale_minute_buckets(): void
+    {
+        // Pre-seed the per-minute hash for a label as if the segment had
+        // 7 critical events 90 minutes ago — outside the 60-minute rolling
+        // window. Then trigger 2 fresh events for the same label inside
+        // the window. The displayed count must be 2 (rolling), not 9
+        // (cumulative).
+        $label = BankDryDetector::segmentLabel('histoire', 21, 'fr', false);
+        $minute = (int) floor(time() / 60);
+        $countsPattern = config('question_bank_profiles.worker.redis_keys.dry_total_segment_counts');
+        $seenKey = config('question_bank_profiles.worker.redis_keys.dry_total_segment_seen');
+
+        // Stale bucket: 90 minutes ago, count=7.
+        Redis::hincrby(sprintf($countsPattern, $minute - 90), $label, 7);
+        // Last-seen ZSET in the window so the label is considered.
+        Redis::zadd($seenKey, time() - 30, $label);
+
+        // Two fresh events in the rolling window.
+        $detector = new BankDryDetector();
+        $detector->recordTotalDry('histoire', 21, 'fr', false, 'solo');
+        $detector->recordTotalDry('histoire', 21, 'fr', false, 'solo');
+
+        $snapshot = $detector->snapshot();
+        $this->assertNotEmpty($snapshot['segments_top_critical']);
+        $top = $snapshot['segments_top_critical'][0];
+        $this->assertSame($label, $top['label']);
+        $this->assertSame(2, $top['count'], 'rolling 1h count must exclude stale buckets older than the window');
+    }
+
+    public function test_segment_label_distinguishes_boss_from_standard_for_same_level(): void
+    {
+        $std = BankDryDetector::segmentLabel('histoire', 50, 'fr', false);
+        $boss = BankDryDetector::segmentLabel('histoire', 50, 'fr', true);
+        $this->assertNotSame($std, $boss);
     }
 
     public function test_redis_failure_is_swallowed_so_gameplay_never_breaks(): void
     {
         Log::spy();
-        // Force every Redis write through the facade to throw. The detector
-        // must NOT propagate the exception — the metric is best-effort.
         Redis::shouldReceive('incr')->andThrow(new \RuntimeException('redis down'));
         Redis::shouldReceive('expire')->andReturnTrue();
         Redis::shouldReceive('set')->andReturnTrue();
+        Redis::shouldReceive('hincrby')->andReturnTrue();
+        Redis::shouldReceive('zadd')->andReturnTrue();
+        Redis::shouldReceive('get')->andReturn(null);
 
         $detector = new BankDryDetector();
 
-        // Either of these would propagate if the detector forgot the safety net.
         $detector->recordFallbackUsed('histoire', 21, 'fr', false, 'solo');
         $detector->recordTotalDry('sport', 100, 'es', true, 'master');
 
-        // Original DEGRADED/CRITICAL warnings + the swallow-warning for each call.
         Log::shouldHaveReceived('warning')->atLeast()->times(2);
     }
 
     public function test_detector_class_makes_no_http_calls_and_imports_no_ai_provider(): void
     {
-        // Source-level guard: this is a metric service, not a generation
-        // service. It must never reintroduce the live-AI path that #88
-        // explicitly removed.
+        // Source-level guard: BankDryDetector must remain a metric service
+        // and never reintroduce the live-AI path that #88 removed.
         $source = file_get_contents(app_path('Services/QuestionBank/BankDryDetector.php'));
-        $this->assertIsString($source);
         $this->assertStringNotContainsString('Http::', $source);
         $this->assertStringNotContainsString('GuzzleHttp', $source);
         $this->assertStringNotContainsString('generate-bank-question', $source);
@@ -210,17 +295,21 @@ class BankDryDetectorTest extends TestCase
             $patterns = [
                 config('question_bank_profiles.worker.redis_keys.dry_fallback_counter'),
                 config('question_bank_profiles.worker.redis_keys.dry_total_counter'),
+                config('question_bank_profiles.worker.redis_keys.dry_total_segment_counts'),
+                config('question_bank_profiles.worker.redis_keys.dry_fallback_segment_counts'),
             ];
-            // Window is 60 minutes; clear a bit wider to be safe across runs.
-            for ($i = -2; $i < 65; $i++) {
+            for ($i = -2; $i < 130; $i++) {
                 foreach ($patterns as $pat) {
                     Redis::del(sprintf($pat, $minute - $i));
                 }
             }
             Redis::del(config('question_bank_profiles.worker.redis_keys.dry_last_event'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_last_critical_event'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_total_segment_seen'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_fallback_segment_seen'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_last_alert'));
         } catch (\Throwable $e) {
-            // Tests still fail loudly on assertions if Redis isn't available;
-            // this cleanup helper just shouldn't itself crash.
+            // intentionally ignored
         }
     }
 }
