@@ -11,13 +11,17 @@ use Illuminate\Support\Facades\Log;
 class QuestionService
 {
     private $cacheService;
+    private QuestionBankRepository $bankRepo;
     private QuestionBankPicker $bankPicker;
+    private \App\Services\QuestionBank\BankDryDetector $dryDetector;
 
     public function __construct()
     {
         $this->cacheService = new QuestionCacheService();
         $this->bankRepo = new QuestionBankRepository();
         $this->bankPicker = new QuestionBankPicker($this->bankRepo);
+        // #92 — dry detector. Pure metric service, no AI, no worker triggers.
+        $this->dryDetector = new \App\Services\QuestionBank\BankDryDetector();
     }
 
     /**
@@ -173,7 +177,15 @@ class QuestionService
         }
 
         // ÉTAPE 2 — Cache Redis (fill historique, pas d'IA réactive).
-        if (!$isBoss && !$skipCache) {
+        // #92 — track cache_status so the dry detector can distinguish a true
+        // cache miss from a cache that was deliberately bypassed (boss /
+        // skipCache). Ops then sees actionable signal vs. expected behavior.
+        $cacheStatus = \App\Services\QuestionBank\BankDryDetector::CACHE_STATUS_UNKNOWN;
+        if ($isBoss) {
+            $cacheStatus = \App\Services\QuestionBank\BankDryDetector::CACHE_STATUS_SKIPPED_BOSS;
+        } elseif ($skipCache) {
+            $cacheStatus = \App\Services\QuestionBank\BankDryDetector::CACHE_STATUS_SKIPPED_EXPLICIT;
+        } else {
             $cached = $this->cacheService->getQuestion($theme, $niveau, $language);
             if ($cached) {
                 Log::info('[QuestionService] Using cached question (bank miss)', [
@@ -184,6 +196,7 @@ class QuestionService
                 ]);
                 return $cached;
             }
+            $cacheStatus = \App\Services\QuestionBank\BankDryDetector::CACHE_STATUS_MISS;
         }
 
         // ÉTAPE 3 — Pool de secours statique embarqué. Garantit qu'un match
@@ -197,11 +210,17 @@ class QuestionService
         ]);
         $question = $this->getFallbackQuestion($theme, $language, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts);
         if (!$question) {
+            // #92 — bank + cache + seed all empty. Critical alert before throwing
+            // so Ops sees the segment that broke. NO worker trigger, NO AI call.
+            $this->dryDetector->recordTotalDry($theme, (int) $niveau, $language, (bool) $isBoss, $context, $cacheStatus);
             throw new \RuntimeException(sprintf(
                 '[QuestionService] bank+cache+seed all empty for theme=%s niveau=%s lang=%s — worker must catch up. Live AI is disabled (#88).',
                 $theme, $niveau, $language
             ));
         }
+        // #92 — match continues but the bank is degraded for this segment.
+        // Pure metric + warning log; no worker trigger, no AI call.
+        $this->dryDetector->recordFallbackUsed($theme, (int) $niveau, $language, (bool) $isBoss, $context, $cacheStatus);
 
         // Randomiser les réponses pour QCM ; vrai/faux garde ses positions.
         if (($question['type'] ?? 'multiple') === 'multiple') {

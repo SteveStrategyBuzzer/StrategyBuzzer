@@ -207,6 +207,13 @@ return [
             'last_rejects' => 'qb:worker:last_rejects', // LIST capped to 25
             'gen_counter_ok' => 'qb:worker:gen:ok:%s', // sprintf with minute window
             'gen_counter_err' => 'qb:worker:gen:err:%s',
+            // #92 — bank-dry detector. The two counters are sprintf'd with the
+            // minute window (`floor(time()/60)`) so the health endpoint can
+            // sum the last 60 minutes for a rolling 1h figure. last_event is
+            // a JSON blob of the most recent dry incident (segment + severity).
+            'dry_fallback_counter' => 'qb:dry:fallback:%s',
+            'dry_total_counter' => 'qb:dry:total:%s',
+            'dry_last_event' => 'qb:dry:last_event',
         ],
     ],
 

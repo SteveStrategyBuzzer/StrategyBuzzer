@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\QuestionBank\BankDryDetector;
 use App\Services\QuestionBank\QuestionBankRepository;
 use App\Services\QuestionBank\Worker\BankNeedsCalculator;
 use Illuminate\Http\JsonResponse;
@@ -65,6 +66,12 @@ class QuestionBankHealthController extends Controller
         $lastRejectsRaw = Redis::lrange(config('question_bank_profiles.worker.redis_keys.last_rejects'), 0, 9) ?? [];
         $lastRejects = array_map(fn ($r) => json_decode($r, true) ?: $r, $lastRejectsRaw);
 
+        // #92 — bank-dry snapshot. Tells Ops whether live matches are
+        // currently being served from the seed pool (degraded) or have
+        // exhausted every source (critical). Read-only; never triggers
+        // the worker, never calls an AI provider.
+        $dry = (new BankDryDetector())->snapshot();
+
         return response()->json([
             'reported_at' => now()->toIso8601String(),
             'worker' => [
@@ -79,6 +86,7 @@ class QuestionBankHealthController extends Controller
             ],
             'critical_segments' => $deficits,
             'matches_buildable' => $buildable,
+            'dry' => $dry,
         ]);
     }
 
