@@ -1,0 +1,662 @@
+{
+    "_meta": {
+        "purpose": "Embedded seed pool (#88/#93). Consumed when bank+cache are dry. NEVER calls AI.",
+        "language": "el",
+        "theme": "general",
+        "subdomains": [
+            "Histoire",
+            "Sport",
+            "Géographie",
+            "Art",
+            "Cuisine",
+            "Science",
+            "Cinéma",
+            "Faune"
+        ],
+        "count": 32,
+        "source_version": 1,
+        "generated_by": "seed-pool:build"
+    },
+    "questions": [
+        {
+            "type": "multiple",
+            "concept_id": "hist_berlin_wall_1989",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια χρονιά έπεσε το Τείχος του Βερολίνου;",
+            "answers": [
+                "1985",
+                "1989",
+                "1991",
+                "1993"
+            ],
+            "correct_id": 1,
+            "explanation": "Το Τείχος του Βερολίνου έπεσε στις 9 Νοεμβρίου 1989.",
+            "saviez_vous": "Το τείχος χώριζε Ανατολικό και Δυτικό Βερολίνο από το 1961."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_columbus_1492",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια χρονιά έφτασε ο Κολόμβος στην Αμερική;",
+            "answers": [
+                "1392",
+                "1492",
+                "1592",
+                "1692"
+            ],
+            "correct_id": 1,
+            "explanation": "Ο Κολόμβος αποβιβάστηκε στις Μπαχάμες στις 12 Οκτωβρίου 1492.",
+            "saviez_vous": "Νόμιζε ότι είχε φτάσει στην ασιατική Ινδία."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_ww1_trigger",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο γεγονός πυροδότησε τον Α' Παγκόσμιο Πόλεμο το 1914;",
+            "answers": [
+                "Η εισβολή στην Πολωνία",
+                "Η δολοφονία του αρχιδούκα Φραγκίσκου Φερδινάνδου",
+                "Η κρίση της Κούβας",
+                "Η ρωσική επανάσταση"
+            ],
+            "correct_id": 1,
+            "explanation": "Η δολοφονία στο Σεράγεβο στις 28 Ιουνίου 1914 ενεργοποίησε τις συμμαχίες.",
+            "saviez_vous": "Ο αρχιδούκας δολοφονήθηκε από τον Σέρβο εθνικιστή Γαβρίλο Πρίντσιπ."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_largest_empire_mongol",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια αυτοκρατορία ήταν η μεγαλύτερη σε συνεχόμενη έκταση στην ιστορία;",
+            "answers": [
+                "Ρωμαϊκή αυτοκρατορία",
+                "Μογγολική αυτοκρατορία",
+                "Βρετανική αυτοκρατορία",
+                "Οθωμανική αυτοκρατορία"
+            ],
+            "correct_id": 1,
+            "explanation": "Η Μογγολική αυτοκρατορία του 13ου αιώνα κάλυπτε ~24 εκατ. km² ενιαία.",
+            "saviez_vous": "Η Βρετανική ήταν μεγαλύτερη συνολικά αλλά διασκορπισμένη."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_football_players_11",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Πόσοι παίκτες αποτελούν μια ομάδα ποδοσφαίρου στο γήπεδο;",
+            "answers": [
+                "9",
+                "10",
+                "11",
+                "12"
+            ],
+            "correct_id": 2,
+            "explanation": "Μια ομάδα παρατάσσει 11 παίκτες: 1 τερματοφύλακα και 10 παίκτες πεδιάς.",
+            "saviez_vous": "Η FIFA περιορίζει τον αριθμό αναπληρωματικών ανά αγώνα."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_olympics_2024_paris",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια πόλη φιλοξένησε τους Θερινούς Ολυμπιακούς Αγώνες 2024;",
+            "answers": [
+                "Τόκιο",
+                "Παρίσι",
+                "Λος Άντζελες",
+                "Λονδίνο"
+            ],
+            "correct_id": 1,
+            "explanation": "Το Παρίσι φιλοξένησε τους Αγώνες από 26 Ιουλίου έως 11 Αυγούστου 2024.",
+            "saviez_vous": "Ήταν η τρίτη φορά που το Παρίσι φιλοξένησε Θερινούς Αγώνες."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_basketball_highest_score",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο από αυτά τα ομαδικά αθλήματα έχει κατά μέσο όρο το υψηλότερο σύνολο πόντων ανά αγώνα;",
+            "answers": [
+                "Ποδόσφαιρο",
+                "Χόκεϊ επί πάγου",
+                "Μπάσκετ",
+                "Ράγκμπι 15"
+            ],
+            "correct_id": 2,
+            "explanation": "Οι αγώνες NBA ξεπερνούν συχνά τους 200 συνολικούς πόντους.",
+            "saviez_vous": "Στο ποδόσφαιρο ο μ.ό. γκολ ανά αγώνα είναι ~2,5."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_marathon_distance_42195",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια είναι η επίσημη απόσταση του Μαραθωνίου;",
+            "answers": [
+                "Ακριβώς 42 χλμ.",
+                "42,195 χλμ.",
+                "40 χλμ.",
+                "45 χλμ."
+            ],
+            "correct_id": 1,
+            "explanation": "Από το 1921 η επίσημη απόσταση είναι 42,195 χλμ.",
+            "saviez_vous": "Προέρχεται από τους Ολυμπιακούς Αγώνες του Λονδίνου το 1908."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_capital_australia_canberra",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια είναι η πρωτεύουσα της Αυστραλίας;",
+            "answers": [
+                "Σίδνεϊ",
+                "Καμπέρα",
+                "Μελβούρνη",
+                "Περθ"
+            ],
+            "correct_id": 1,
+            "explanation": "Η Καμπέρα επιλέχθηκε το 1908 ως συμβιβασμός Σίδνεϊ-Μελβούρνης.",
+            "saviez_vous": "Είναι μία από τις λίγες πρωτεύουσες σχεδιασμένες εξ αρχής."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_largest_ocean_pacific",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιος είναι ο μεγαλύτερος ωκεανός του κόσμου;",
+            "answers": [
+                "Ατλαντικός",
+                "Ινδικός",
+                "Ειρηνικός",
+                "Αρκτικός"
+            ],
+            "correct_id": 2,
+            "explanation": "Ο Ειρηνικός καλύπτει περίπου 165 εκατ. km².",
+            "saviez_vous": "Από μόνος του καλύπτει πάνω από τη μισή επιφάνεια των ωκεανών της Γης."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_most_timezones_france",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια χώρα καλύπτει τις περισσότερες ζώνες ώρας (με τα εδάφη της);",
+            "answers": [
+                "Ρωσία",
+                "Γαλλία",
+                "ΗΠΑ",
+                "Κίνα"
+            ],
+            "correct_id": 1,
+            "explanation": "Η Γαλλία καλύπτει 12 ζώνες χάρη στα υπερπόντια εδάφη της.",
+            "saviez_vous": "Η Ρωσία έχει 11 ζώνες μόνο στην ηπειρωτική της χώρα."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_most_populous_india_2024",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια χώρα είναι η πολυπληθέστερη στον κόσμο από το 2023;",
+            "answers": [
+                "Κίνα",
+                "Ινδία",
+                "ΗΠΑ",
+                "Ινδονησία"
+            ],
+            "correct_id": 1,
+            "explanation": "Η Ινδία ξεπέρασε την Κίνα το 2023 σύμφωνα με τον ΟΗΕ.",
+            "saviez_vous": "Ο πληθυσμός της Κίνας μειώνεται λόγω της ηλικιακής δομής."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_mona_lisa_da_vinci",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιος ζωγράφισε τη Μόνα Λίζα;",
+            "answers": [
+                "Μιχαήλ Άγγελος",
+                "Ραφαήλ",
+                "Λεονάρντο ντα Βίντσι",
+                "Μποτιτσέλι"
+            ],
+            "correct_id": 2,
+            "explanation": "Ο Λεονάρντο ντα Βίντσι ζωγράφισε τη Μόνα Λίζα μεταξύ 1503-1519.",
+            "saviez_vous": "Ο πίνακας εκτίθεται στο Λούβρο, στο Παρίσι."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_starry_night_van_gogh",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιος ζωγράφισε την «Έναστρη Νύχτα»;",
+            "answers": [
+                "Κλωντ Μονέ",
+                "Βίνσεντ βαν Γκογκ",
+                "Πολ Γκωγκέν",
+                "Πάμπλο Πικάσο"
+            ],
+            "correct_id": 1,
+            "explanation": "Ο βαν Γκογκ ζωγράφισε την «Έναστρη Νύχτα» το 1889 στο Σαιν-Ρεμί.",
+            "saviez_vous": "Ο πίνακας φυλάσσεται στο MoMA της Νέας Υόρκης."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_picasso_cubism_movement",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο καλλιτεχνικό κίνημα συνίδρυσε ο Πικάσο με τον Ζορζ Μπρακ;",
+            "answers": [
+                "Ιμπρεσιονισμός",
+                "Κυβισμός",
+                "Σουρεαλισμός",
+                "Ρομαντισμός"
+            ],
+            "correct_id": 1,
+            "explanation": "Ο Πικάσο και ο Μπρακ ίδρυσαν τον Κυβισμό γύρω στο 1907-1908.",
+            "saviez_vous": "Οι «Δεσποινίδες της Αβινιόν» (1907) θεωρούνται η τομή του Κυβισμού."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_statue_liberty_bartholdi",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιος είναι ο γλύπτης του Αγάλματος της Ελευθερίας;",
+            "answers": [
+                "Ογκίστ Ροντέν",
+                "Φρεντερίκ Ογκίστ Μπαρτολντί",
+                "Γκυστάβ Άιφελ",
+                "Καμίγ Κλωντέλ"
+            ],
+            "correct_id": 1,
+            "explanation": "Το έγλυψε ο Μπαρτολντί· ο Άιφελ σχεδίασε μόνο τον εσωτερικό σκελετό.",
+            "saviez_vous": "Η Γαλλία δώρισε το άγαλμα στις ΗΠΑ το 1886."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_pizza_origin_italy",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Από ποια χώρα κατάγεται η σύγχρονη πίτσα;",
+            "answers": [
+                "Ελλάδα",
+                "Ιταλία",
+                "Ισπανία",
+                "Γαλλία"
+            ],
+            "correct_id": 1,
+            "explanation": "Η σύγχρονη πίτσα γεννήθηκε στη Νάπολη τον 18ο αιώνα.",
+            "saviez_vous": "Η Μαργαρίτα φέρεται να δημιουργήθηκε το 1889 προς τιμήν της βασίλισσας Μαργαρίτας."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_sushi_japan",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Από ποια χώρα κατάγεται το σούσι;",
+            "answers": [
+                "Κίνα",
+                "Κορέα",
+                "Ιαπωνία",
+                "Βιετνάμ"
+            ],
+            "correct_id": 2,
+            "explanation": "Το σούσι είναι παραδοσιακό πιάτο της Ιαπωνίας.",
+            "saviez_vous": "Το σύγχρονο νιγκίρι γεννήθηκε στο Έντο (Τόκιο) τον 19ο αιώνα."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_most_expensive_spice_saffron",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο από αυτά τα μπαχαρικά είναι το ακριβότερο ανά βάρος;",
+            "answers": [
+                "Βανίλια",
+                "Σαφράν",
+                "Κάρδαμο",
+                "Μαύρο πιπέρι"
+            ],
+            "correct_id": 1,
+            "explanation": "Το σαφράν χρειάζεται ~150.000 άνθη για 1 κιλό, εξ ου και η τιμή.",
+            "saviez_vous": "Κάθε κρόκος δίνει μόλις 3 στίγματα, που μαζεύονται με το χέρι."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_croissant_origin_austria",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Από πού προέρχεται το κρουασάν;",
+            "answers": [
+                "Αυστρία",
+                "Γαλλία",
+                "Ιταλία",
+                "Βέλγιο"
+            ],
+            "correct_id": 0,
+            "explanation": "Το κρουασάν κατάγεται από το βιενέζικο «Kipferl» και έγινε δημοφιλές στη Γαλλία.",
+            "saviez_vous": "Ο Αυστριακός August Zang άνοιξε βιενέζικο αρτοποιείο στο Παρίσι το 1839."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_gold_symbol_au",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο είναι το χημικό σύμβολο του χρυσού;",
+            "answers": [
+                "Go",
+                "Au",
+                "Ag",
+                "Gd"
+            ],
+            "correct_id": 1,
+            "explanation": "Το «Au» προέρχεται από το λατινικό «aurum» που σημαίνει χρυσός.",
+            "saviez_vous": "Ο χρυσός είναι από τα σπανιότερα στοιχεία στον φλοιό της Γης."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_red_planet_mars",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιος πλανήτης αποκαλείται «κόκκινος»;",
+            "answers": [
+                "Αφροδίτη",
+                "Δίας",
+                "Άρης",
+                "Κρόνος"
+            ],
+            "correct_id": 2,
+            "explanation": "Ο Άρης οφείλει το χρώμα του στο οξείδιο του σιδήρου στην επιφάνειά του.",
+            "saviez_vous": "Στον Άρη βρίσκεται το μεγαλύτερο γνωστό ηφαίστειο: Όλυμπος."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_most_abundant_universe_hydrogen",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο χημικό στοιχείο είναι το πιο άφθονο στο σύμπαν;",
+            "answers": [
+                "Οξυγόνο",
+                "Ήλιο",
+                "Άνθρακας",
+                "Υδρογόνο"
+            ],
+            "correct_id": 3,
+            "explanation": "Το υδρογόνο αντιστοιχεί στο ~75% της βαρυονικής μάζας του σύμπαντος.",
+            "saviez_vous": "Είναι το «καύσιμο» των άστρων που το συντήκουν σε ήλιο."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_octopus_blood_blue",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Τι χρώμα έχει το αίμα του χταποδιού;",
+            "answers": [
+                "Κόκκινο",
+                "Μπλε",
+                "Πράσινο",
+                "Κίτρινο"
+            ],
+            "correct_id": 1,
+            "explanation": "Είναι μπλε γιατί ο μεταφορέας οξυγόνου του είναι η αιμοκυανίνη, με βάση τον χαλκό.",
+            "saviez_vous": "Των σπονδυλωτών το αίμα είναι κόκκινο λόγω της αιμοσφαιρίνης με σίδηρο."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_titanic_director_cameron",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιος σκηνοθέτησε την ταινία «Τιτανικός» (1997);",
+            "answers": [
+                "Στίβεν Σπίλμπεργκ",
+                "Τζέιμς Κάμερον",
+                "Ρίντλεϊ Σκοτ",
+                "Μάρτιν Σκορσέζε"
+            ],
+            "correct_id": 1,
+            "explanation": "Ο Τζέιμς Κάμερον σκηνοθέτησε τον Τιτανικό (1997).",
+            "saviez_vous": "Η ταινία πήρε 11 Όσκαρ, ισόπαλη με «Μπεν Χουρ» και «Άρχοντας των Δαχτυλιδιών»."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_forrest_gump_hanks",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιος ηθοποιός πρωταγωνιστεί στην ταινία «Φόρεστ Γκάμπ» (1994);",
+            "answers": [
+                "Τομ Κρουζ",
+                "Τομ Χανκς",
+                "Μπραντ Πιτ",
+                "Ρόμπερτ Ντε Νίρο"
+            ],
+            "correct_id": 1,
+            "explanation": "Ο Τομ Χανκς υποδύεται τον Φόρεστ Γκαμπ και κέρδισε για αυτό το Όσκαρ Α' Ανδρικού.",
+            "saviez_vous": "Ο Τομ Χανκς κέρδισε δύο διαδοχικά Όσκαρ (Φιλαδέλφεια 1994, Φόρεστ Γκαμπ 1995)."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_most_oscars_titanic_11",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο ρεκόρ Όσκαρ μοιράζονται οι Μπεν Χουρ, Τιτανικός και Άρχοντας των Δαχτυλιδιών: Η Επιστροφή του Βασιλιά;",
+            "answers": [
+                "9 Όσκαρ",
+                "10 Όσκαρ",
+                "11 Όσκαρ",
+                "12 Όσκαρ"
+            ],
+            "correct_id": 2,
+            "explanation": "Κέρδισαν 11 Όσκαρ η καθεμία — το απόλυτο ρεκόρ.",
+            "saviez_vous": "Η «Επιστροφή του Βασιλιά» κέρδισε 11 από 11 υποψηφιότητες."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_first_talkie_jazz_singer",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποια ταινία θεωρείται η πρώτη ομιλούσα μεγάλου μήκους;",
+            "answers": [
+                "Ο Τραγουδιστής της Τζαζ (1927)",
+                "Η Γέννηση ενός Έθνους (1915)",
+                "Μητρόπολις (1927)",
+                "Ένα Ταξίδι στη Σελήνη (1902)"
+            ],
+            "correct_id": 0,
+            "explanation": "Ο Τραγουδιστής της Τζαζ (1927) εγκαινίασε τον εμπορικό ομιλούντα κινηματογράφο.",
+            "saviez_vous": "Από τότε ο όρος «talkies» χρησιμοποιείται για τις ομιλούσες ταινίες."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_largest_land_elephant",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο είναι το μεγαλύτερο χερσαίο ζώο που ζει σήμερα;",
+            "answers": [
+                "Καμηλοπάρδαλη",
+                "Λευκός ρινόκερως",
+                "Αφρικανικός ελέφαντας",
+                "Ιπποπόταμος"
+            ],
+            "correct_id": 2,
+            "explanation": "Ο αφρικανικός ελέφαντας της σαβάνας ζυγίζει έως και 6 τόνους.",
+            "saviez_vous": "Η προβοσκίδα του περιέχει περίπου 40.000 μύες."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_fastest_cheetah",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο είναι το γρηγορότερο χερσαίο ζώο;",
+            "answers": [
+                "Λιοντάρι",
+                "Τσιτάχ",
+                "Αντιλόπη",
+                "Άλογο"
+            ],
+            "correct_id": 1,
+            "explanation": "Ο τσιτάχ φτάνει τα ~110 χλμ/ώρα στην κορύφωση.",
+            "saviez_vous": "Διατηρεί αυτή την ταχύτητα μόνο για μερικές εκατοντάδες μέτρα."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_egg_laying_mammal_platypus",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ποιο θηλαστικό είναι γνωστό ότι γεννά αυγά;",
+            "answers": [
+                "Καγκουρό",
+                "Πλατύποδας",
+                "Βραδύποδας",
+                "Αρμαντίλο"
+            ],
+            "correct_id": 1,
+            "explanation": "Ο πλατύποδας είναι μονοτρηματικό θηλαστικό: γεννά αυγά.",
+            "saviez_vous": "Οι εχίδνες είναι τα άλλα μονοτρηματικά θηλαστικά."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_shark_is_fish",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "el",
+            "question_text": "Ο καρχαρίας είναι ψάρι ή θηλαστικό;",
+            "answers": [
+                "Θηλαστικό",
+                "Ψάρι",
+                "Ερπετό",
+                "Αμφίβιο"
+            ],
+            "correct_id": 1,
+            "explanation": "Ο καρχαρίας είναι χονδριχθύς — αναπνέει με βράγχια, όχι με πνεύμονες.",
+            "saviez_vous": "Μην το συγχέετε με φάλαινες και δελφίνια, που είναι θηλαστικά."
+        }
+    ]
+}

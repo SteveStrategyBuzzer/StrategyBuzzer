@@ -1,0 +1,662 @@
+{
+    "_meta": {
+        "purpose": "Embedded seed pool (#88/#93). Consumed when bank+cache are dry. NEVER calls AI.",
+        "language": "ru",
+        "theme": "general",
+        "subdomains": [
+            "Histoire",
+            "Sport",
+            "Géographie",
+            "Art",
+            "Cuisine",
+            "Science",
+            "Cinéma",
+            "Faune"
+        ],
+        "count": 32,
+        "source_version": 1,
+        "generated_by": "seed-pool:build"
+    },
+    "questions": [
+        {
+            "type": "multiple",
+            "concept_id": "hist_berlin_wall_1989",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "В каком году пала Берлинская стена?",
+            "answers": [
+                "1985",
+                "1989",
+                "1991",
+                "1993"
+            ],
+            "correct_id": 1,
+            "explanation": "Берлинская стена пала 9 ноября 1989 года.",
+            "saviez_vous": "Стена разделяла Восточный и Западный Берлин с 1961 года."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_columbus_1492",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "В каком году Колумб достиг Америки?",
+            "answers": [
+                "1392",
+                "1492",
+                "1592",
+                "1692"
+            ],
+            "correct_id": 1,
+            "explanation": "Колумб высадился на Багамах 12 октября 1492 года.",
+            "saviez_vous": "Он думал, что достиг азиатской Индии."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_ww1_trigger",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какое событие спровоцировало Первую мировую войну в 1914 году?",
+            "answers": [
+                "Вторжение в Польшу",
+                "Убийство эрцгерцога Франца Фердинанда",
+                "Кубинский кризис",
+                "Русская революция"
+            ],
+            "correct_id": 1,
+            "explanation": "Убийство в Сараево 28 июня 1914 года запустило систему альянсов.",
+            "saviez_vous": "Эрцгерцога застрелил Гаврило Принцип, молодой сербский националист."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_largest_empire_mongol",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какая империя была крупнейшей по непрерывной территории в истории?",
+            "answers": [
+                "Римская империя",
+                "Монгольская империя",
+                "Британская империя",
+                "Османская империя"
+            ],
+            "correct_id": 1,
+            "explanation": "Монгольская империя XIII века занимала ~24 млн км² единой территорией.",
+            "saviez_vous": "Британская империя была больше в сумме, но разрозненной."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_football_players_11",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Сколько игроков футбольной команды находятся на поле?",
+            "answers": [
+                "9",
+                "10",
+                "11",
+                "12"
+            ],
+            "correct_id": 2,
+            "explanation": "Команда выставляет 11 игроков: 1 вратарь и 10 полевых.",
+            "saviez_vous": "ФИФА ограничивает число запасных на матч."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_olympics_2024_paris",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какой город принимал летние Олимпийские игры 2024?",
+            "answers": [
+                "Токио",
+                "Париж",
+                "Лос-Анджелес",
+                "Лондон"
+            ],
+            "correct_id": 1,
+            "explanation": "Париж принимал Игры с 26 июля по 11 августа 2024 года.",
+            "saviez_vous": "Это был третий раз, когда Париж принимал летние Игры."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_basketball_highest_score",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "В каком из этих командных видов спорта в среднем больше всего очков за матч?",
+            "answers": [
+                "Футбол",
+                "Хоккей с шайбой",
+                "Баскетбол",
+                "Регби-15"
+            ],
+            "correct_id": 2,
+            "explanation": "Матчи НБА часто превышают 200 очков в сумме.",
+            "saviez_vous": "В футболе среднее количество голов за матч около 2,5."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_marathon_distance_42195",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какова официальная дистанция марафона?",
+            "answers": [
+                "Ровно 42 км",
+                "42,195 км",
+                "40 км",
+                "45 км"
+            ],
+            "correct_id": 1,
+            "explanation": "С 1921 года официальная дистанция — 42,195 км.",
+            "saviez_vous": "Точная длина сложилась на Олимпиаде в Лондоне 1908 года."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_capital_australia_canberra",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какая столица у Австралии?",
+            "answers": [
+                "Сидней",
+                "Канберра",
+                "Мельбурн",
+                "Перт"
+            ],
+            "correct_id": 1,
+            "explanation": "Канберра выбрана в 1908 году как компромисс между Сиднеем и Мельбурном.",
+            "saviez_vous": "Это одна из немногих столиц, построенных с нуля."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_largest_ocean_pacific",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какой океан самый большой в мире?",
+            "answers": [
+                "Атлантический",
+                "Индийский",
+                "Тихий",
+                "Северный Ледовитый"
+            ],
+            "correct_id": 2,
+            "explanation": "Тихий океан занимает около 165 миллионов км².",
+            "saviez_vous": "Один он покрывает больше половины всей океанской поверхности."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_most_timezones_france",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какая страна охватывает больше всего часовых поясов (с территориями)?",
+            "answers": [
+                "Россия",
+                "Франция",
+                "США",
+                "Китай"
+            ],
+            "correct_id": 1,
+            "explanation": "Франция охватывает 12 поясов благодаря заморским территориям.",
+            "saviez_vous": "У России 11 поясов только на материковой части."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_most_populous_india_2024",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какая страна с 2023 года самая населённая в мире?",
+            "answers": [
+                "Китай",
+                "Индия",
+                "США",
+                "Индонезия"
+            ],
+            "correct_id": 1,
+            "explanation": "Индия обогнала Китай в 2023 году по данным ООН.",
+            "saviez_vous": "Население Китая сокращается из-за возрастной структуры."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_mona_lisa_da_vinci",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Кто написал «Мону Лизу»?",
+            "answers": [
+                "Микеланджело",
+                "Рафаэль",
+                "Леонардо да Винчи",
+                "Боттичелли"
+            ],
+            "correct_id": 2,
+            "explanation": "Леонардо да Винчи написал «Мону Лизу» между 1503 и 1519 годами.",
+            "saviez_vous": "Картина находится в Лувре в Париже."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_starry_night_van_gogh",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какой художник написал «Звёздную ночь»?",
+            "answers": [
+                "Клод Моне",
+                "Винсент ван Гог",
+                "Поль Гоген",
+                "Пабло Пикассо"
+            ],
+            "correct_id": 1,
+            "explanation": "Ван Гог написал «Звёздную ночь» в 1889 году в Сен-Реми-де-Прованс.",
+            "saviez_vous": "Картина хранится в MoMA в Нью-Йорке."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_picasso_cubism_movement",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какое художественное течение Пикассо основал вместе с Жоржем Браком?",
+            "answers": [
+                "Импрессионизм",
+                "Кубизм",
+                "Сюрреализм",
+                "Романтизм"
+            ],
+            "correct_id": 1,
+            "explanation": "Пикассо и Брак основали кубизм около 1907-1908 годов.",
+            "saviez_vous": "«Авиньонские девицы» (1907) считаются прорывом кубизма."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_statue_liberty_bartholdi",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Кто скульптор Статуи Свободы?",
+            "answers": [
+                "Огюст Роден",
+                "Фредерик Огюст Бартольди",
+                "Гюстав Эйфель",
+                "Камилла Клодель"
+            ],
+            "correct_id": 1,
+            "explanation": "Скульптор — Бартольди; Эйфель спроектировал лишь внутренний каркас.",
+            "saviez_vous": "Франция подарила статую США в 1886 году."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_pizza_origin_italy",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "В какой стране появилась современная пицца?",
+            "answers": [
+                "Греция",
+                "Италия",
+                "Испания",
+                "Франция"
+            ],
+            "correct_id": 1,
+            "explanation": "Современная пицца появилась в Неаполе в XVIII веке.",
+            "saviez_vous": "Маргариту, по легенде, создали в 1889 году в честь королевы Маргариты."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_sushi_japan",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "В какой стране появилось суши?",
+            "answers": [
+                "Китай",
+                "Корея",
+                "Япония",
+                "Вьетнам"
+            ],
+            "correct_id": 2,
+            "explanation": "Суши — традиционное блюдо Японии.",
+            "saviez_vous": "Современное нигири появилось в Эдо (Токио) в XIX веке."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_most_expensive_spice_saffron",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какая из этих специй самая дорогая по весу?",
+            "answers": [
+                "Ваниль",
+                "Шафран",
+                "Кардамон",
+                "Чёрный перец"
+            ],
+            "correct_id": 1,
+            "explanation": "Для 1 кг шафрана нужно ~150 000 цветков, поэтому он так дорог.",
+            "saviez_vous": "Каждый крокус даёт лишь 3 рыльца, собираемых вручную."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_croissant_origin_austria",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Откуда родом круассан?",
+            "answers": [
+                "Австрия",
+                "Франция",
+                "Италия",
+                "Бельгия"
+            ],
+            "correct_id": 0,
+            "explanation": "Круассан происходит от венского «кипферла», а во Франции стал популярным позже.",
+            "saviez_vous": "В 1839 году австриец Август Цанг открыл венскую пекарню в Париже."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_gold_symbol_au",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Каков химический символ золота?",
+            "answers": [
+                "Go",
+                "Au",
+                "Ag",
+                "Gd"
+            ],
+            "correct_id": 1,
+            "explanation": "«Au» происходит от латинского «aurum» — золото.",
+            "saviez_vous": "Золото — один из самых редких элементов земной коры."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_red_planet_mars",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какую планету называют «красной»?",
+            "answers": [
+                "Венера",
+                "Юпитер",
+                "Марс",
+                "Сатурн"
+            ],
+            "correct_id": 2,
+            "explanation": "Цвет Марса обусловлен оксидом железа на поверхности.",
+            "saviez_vous": "На Марсе находится крупнейший известный вулкан — Олимп."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_most_abundant_universe_hydrogen",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какой химический элемент самый распространённый во Вселенной?",
+            "answers": [
+                "Кислород",
+                "Гелий",
+                "Углерод",
+                "Водород"
+            ],
+            "correct_id": 3,
+            "explanation": "Водород составляет около 75 % барионной массы Вселенной.",
+            "saviez_vous": "Это топливо звёзд, которые сжигают его в гелий."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_octopus_blood_blue",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какого цвета кровь у осьминога?",
+            "answers": [
+                "Красная",
+                "Синяя",
+                "Зелёная",
+                "Жёлтая"
+            ],
+            "correct_id": 1,
+            "explanation": "Она синяя — переносчик кислорода гемоцианин содержит медь.",
+            "saviez_vous": "Кровь позвоночных красная из-за железосодержащего гемоглобина."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_titanic_director_cameron",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Кто снял фильм «Титаник» (1997)?",
+            "answers": [
+                "Стивен Спилберг",
+                "Джеймс Кэмерон",
+                "Ридли Скотт",
+                "Мартин Скорсезе"
+            ],
+            "correct_id": 1,
+            "explanation": "Джеймс Кэмерон снял «Титаник», вышедший в 1997 году.",
+            "saviez_vous": "Фильм получил 11 «Оскаров» — рекорд, разделённый с «Бен-Гуром» и «Властелином колец»."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_forrest_gump_hanks",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какой актёр играет главную роль в фильме «Форрест Гамп» (1994)?",
+            "answers": [
+                "Том Круз",
+                "Том Хэнкс",
+                "Брэд Питт",
+                "Роберт Де Ниро"
+            ],
+            "correct_id": 1,
+            "explanation": "Том Хэнкс играет Форреста Гампа и получил за роль «Оскар».",
+            "saviez_vous": "Том Хэнкс получил два «Оскара» подряд («Филадельфия» 1994, «Форрест Гамп» 1995)."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_most_oscars_titanic_11",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какой рекорд «Оскаров» разделяют «Бен-Гур», «Титаник» и «Возвращение короля»?",
+            "answers": [
+                "9 «Оскаров»",
+                "10 «Оскаров»",
+                "11 «Оскаров»",
+                "12 «Оскаров»"
+            ],
+            "correct_id": 2,
+            "explanation": "Каждый фильм взял по 11 «Оскаров» — абсолютный рекорд.",
+            "saviez_vous": "«Возвращение короля» победило в 11 из 11 номинаций."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_first_talkie_jazz_singer",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какой фильм считается первым полнометражным звуковым?",
+            "answers": [
+                "«Певец джаза» (1927)",
+                "«Рождение нации» (1915)",
+                "«Метрополис» (1927)",
+                "«Путешествие на Луну» (1902)"
+            ],
+            "correct_id": 0,
+            "explanation": "«Певец джаза» (1927) открыл эпоху коммерческого звукового кино.",
+            "saviez_vous": "С тех пор звуковые фильмы стали называть «talkies»."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_largest_land_elephant",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какое самое крупное живое наземное животное?",
+            "answers": [
+                "Жираф",
+                "Белый носорог",
+                "Африканский слон",
+                "Бегемот"
+            ],
+            "correct_id": 2,
+            "explanation": "Африканский саванный слон может весить до 6 тонн.",
+            "saviez_vous": "В хоботе слона около 40 000 мышц."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_fastest_cheetah",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какое наземное животное самое быстрое?",
+            "answers": [
+                "Лев",
+                "Гепард",
+                "Антилопа",
+                "Лошадь"
+            ],
+            "correct_id": 1,
+            "explanation": "Гепард способен развивать скорость около 110 км/ч.",
+            "saviez_vous": "Он удерживает эту скорость лишь несколько сотен метров."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_egg_laying_mammal_platypus",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Какое млекопитающее знаменито тем, что откладывает яйца?",
+            "answers": [
+                "Кенгуру",
+                "Утконос",
+                "Ленивец",
+                "Броненосец"
+            ],
+            "correct_id": 1,
+            "explanation": "Утконос — однопроходное млекопитающее, оно откладывает яйца.",
+            "saviez_vous": "Ехидны — единственные другие яйцекладущие млекопитающие."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_shark_is_fish",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ru",
+            "question_text": "Акула — это рыба или млекопитающее?",
+            "answers": [
+                "Млекопитающее",
+                "Рыба",
+                "Рептилия",
+                "Земноводное"
+            ],
+            "correct_id": 1,
+            "explanation": "Акула — хрящевая рыба: у неё жабры, а не лёгкие.",
+            "saviez_vous": "Не путайте с китами и дельфинами — они млекопитающие."
+        }
+    ]
+}

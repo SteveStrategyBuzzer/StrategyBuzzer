@@ -1,7 +1,7 @@
 {
     "_meta": {
         "purpose": "Embedded seed pool (#88/#93). Consumed when bank+cache are dry. NEVER calls AI.",
-        "language": "fr",
+        "language": "de",
         "theme": "general",
         "subdomains": [
             "Histoire",
@@ -26,8 +26,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "En quelle année est tombé le mur de Berlin ?",
+            "language": "de",
+            "question_text": "In welchem Jahr fiel die Berliner Mauer?",
             "answers": [
                 "1985",
                 "1989",
@@ -35,8 +35,8 @@
                 "1993"
             ],
             "correct_id": 1,
-            "explanation": "Le mur de Berlin est tombé le 9 novembre 1989.",
-            "saviez_vous": "Le mur séparait Berlin-Est de Berlin-Ouest depuis 1961."
+            "explanation": "Die Berliner Mauer fiel am 9. November 1989.",
+            "saviez_vous": "Die Mauer trennte Ost- und West-Berlin seit 1961."
         },
         {
             "type": "multiple",
@@ -46,8 +46,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "En quelle année Christophe Colomb a-t-il atteint l'Amérique ?",
+            "language": "de",
+            "question_text": "In welchem Jahr erreichte Kolumbus Amerika?",
             "answers": [
                 "1392",
                 "1492",
@@ -55,8 +55,8 @@
                 "1692"
             ],
             "correct_id": 1,
-            "explanation": "Christophe Colomb débarqua aux Bahamas le 12 octobre 1492.",
-            "saviez_vous": "Il pensait avoir atteint les Indes asiatiques."
+            "explanation": "Kolumbus landete am 12. Oktober 1492 auf den Bahamas.",
+            "saviez_vous": "Er glaubte, das asiatische Indien erreicht zu haben."
         },
         {
             "type": "multiple",
@@ -66,17 +66,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel événement a déclenché la Première Guerre mondiale en 1914 ?",
+            "language": "de",
+            "question_text": "Welches Ereignis löste 1914 den Ersten Weltkrieg aus?",
             "answers": [
-                "L'invasion de la Pologne",
-                "L'assassinat de François-Ferdinand",
-                "La crise de Cuba",
-                "La révolution russe"
+                "Überfall auf Polen",
+                "Attentat auf Erzherzog Franz Ferdinand",
+                "Kuba-Krise",
+                "Russische Revolution"
             ],
             "correct_id": 1,
-            "explanation": "L'assassinat de l'archiduc à Sarajevo le 28 juin 1914 enclencha les alliances.",
-            "saviez_vous": "L'archiduc fut tué par Gavrilo Princip, étudiant nationaliste serbe."
+            "explanation": "Das Attentat von Sarajevo am 28. Juni 1914 aktivierte die Bündnisse.",
+            "saviez_vous": "Der Erzherzog wurde von Gavrilo Princip erschossen, einem serbischen Nationalisten."
         },
         {
             "type": "multiple",
@@ -86,17 +86,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel empire fut le plus vaste de l'histoire en superficie continue ?",
+            "language": "de",
+            "question_text": "Welches Reich war das größte zusammenhängende Landreich der Geschichte?",
             "answers": [
-                "Empire romain",
-                "Empire mongol",
-                "Empire britannique",
-                "Empire ottoman"
+                "Römisches Reich",
+                "Mongolisches Reich",
+                "Britisches Empire",
+                "Osmanisches Reich"
             ],
             "correct_id": 1,
-            "explanation": "L'Empire mongol au XIIIe siècle couvrait ~24 millions de km² d'un seul tenant.",
-            "saviez_vous": "L'Empire britannique était plus vaste au total mais discontinu sur la planète."
+            "explanation": "Das Mongolenreich des 13. Jh. umfasste ~24 Mio. km² zusammenhängend.",
+            "saviez_vous": "Das Britische Empire war insgesamt größer, aber nicht zusammenhängend."
         },
         {
             "type": "multiple",
@@ -106,8 +106,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Combien de joueurs composent une équipe de football sur le terrain ?",
+            "language": "de",
+            "question_text": "Wie viele Spieler stehen pro Fußballmannschaft auf dem Platz?",
             "answers": [
                 "9",
                 "10",
@@ -115,8 +115,8 @@
                 "12"
             ],
             "correct_id": 2,
-            "explanation": "Une équipe aligne 11 joueurs : 1 gardien et 10 joueurs de champ.",
-            "saviez_vous": "L'effectif total d'un match (avec remplaçants) est plafonné par les règles FIFA."
+            "explanation": "Eine Mannschaft stellt 11 Spieler: 1 Torwart und 10 Feldspieler.",
+            "saviez_vous": "Die FIFA begrenzt die Anzahl der Auswechselspieler pro Spiel."
         },
         {
             "type": "multiple",
@@ -126,17 +126,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quelle ville a accueilli les Jeux olympiques d'été 2024 ?",
+            "language": "de",
+            "question_text": "Welche Stadt war Gastgeber der Olympischen Sommerspiele 2024?",
             "answers": [
-                "Tokyo",
+                "Tokio",
                 "Paris",
                 "Los Angeles",
-                "Londres"
+                "London"
             ],
             "correct_id": 1,
-            "explanation": "Paris a accueilli les JO d'été du 26 juillet au 11 août 2024.",
-            "saviez_vous": "C'était la troisième fois que Paris organisait les JO d'été."
+            "explanation": "Paris richtete die Sommerspiele vom 26. Juli bis 11. August 2024 aus.",
+            "saviez_vous": "Es war das dritte Mal, dass Paris die Sommerspiele veranstaltete."
         },
         {
             "type": "multiple",
@@ -146,17 +146,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Parmi ces sports collectifs, lequel cumule le plus de points par match en moyenne ?",
+            "language": "de",
+            "question_text": "Welcher dieser Mannschaftssportarten hat im Schnitt die höchste Gesamtpunktzahl pro Spiel?",
             "answers": [
-                "Football",
-                "Hockey sur glace",
+                "Fußball",
+                "Eishockey",
                 "Basketball",
-                "Rugby à XV"
+                "Rugby Union"
             ],
             "correct_id": 2,
-            "explanation": "Le basket NBA dépasse régulièrement 200 points cumulés par match.",
-            "saviez_vous": "Au football, la moyenne de buts par match tourne autour de 2,5."
+            "explanation": "NBA-Spiele übertreffen regelmäßig 200 Gesamtpunkte.",
+            "saviez_vous": "Im Fußball liegt der Schnitt bei rund 2,5 Toren pro Spiel."
         },
         {
             "type": "multiple",
@@ -166,17 +166,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quelle est la distance officielle d'un marathon ?",
+            "language": "de",
+            "question_text": "Wie lang ist ein offizieller Marathon?",
             "answers": [
-                "42 km exactement",
+                "Genau 42 km",
                 "42,195 km",
                 "40 km",
                 "45 km"
             ],
             "correct_id": 1,
-            "explanation": "Depuis 1921, la distance officielle est fixée à 42,195 km.",
-            "saviez_vous": "La distance vient des JO de Londres 1908, ajustée pour finir devant la loge royale."
+            "explanation": "Seit 1921 ist die offizielle Distanz 42,195 km.",
+            "saviez_vous": "Die Distanz stammt von den Olympischen Spielen 1908 in London."
         },
         {
             "type": "multiple",
@@ -186,8 +186,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quelle est la capitale de l'Australie ?",
+            "language": "de",
+            "question_text": "Wie heißt die Hauptstadt Australiens?",
             "answers": [
                 "Sydney",
                 "Canberra",
@@ -195,8 +195,8 @@
                 "Perth"
             ],
             "correct_id": 1,
-            "explanation": "Canberra fut choisie en 1908 comme compromis entre Sydney et Melbourne.",
-            "saviez_vous": "C'est l'une des rares capitales construites de toutes pièces."
+            "explanation": "Canberra wurde 1908 als Kompromiss zwischen Sydney und Melbourne gewählt.",
+            "saviez_vous": "Sie ist eine der wenigen am Reißbrett geplanten Hauptstädte."
         },
         {
             "type": "multiple",
@@ -206,17 +206,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel est le plus grand océan du monde ?",
+            "language": "de",
+            "question_text": "Welcher ist der größte Ozean der Welt?",
             "answers": [
-                "Atlantique",
-                "Indien",
-                "Pacifique",
-                "Arctique"
+                "Atlantik",
+                "Indischer Ozean",
+                "Pazifik",
+                "Arktischer Ozean"
             ],
             "correct_id": 2,
-            "explanation": "Le Pacifique couvre environ 165 millions de km².",
-            "saviez_vous": "Il représente plus de la moitié de la surface marine du globe."
+            "explanation": "Der Pazifik umfasst rund 165 Millionen km².",
+            "saviez_vous": "Er allein bedeckt mehr als die Hälfte der gesamten Ozeanfläche."
         },
         {
             "type": "multiple",
@@ -226,17 +226,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel pays compte le plus de fuseaux horaires (territoires inclus) ?",
+            "language": "de",
+            "question_text": "Welches Land erstreckt sich über die meisten Zeitzonen (inkl. Überseegebiete)?",
             "answers": [
-                "Russie",
-                "France",
-                "États-Unis",
-                "Chine"
+                "Russland",
+                "Frankreich",
+                "USA",
+                "China"
             ],
             "correct_id": 1,
-            "explanation": "La France couvre 12 fuseaux grâce à ses territoires d'outre-mer.",
-            "saviez_vous": "La Russie en a 11 sur son seul territoire continental."
+            "explanation": "Frankreich umfasst 12 Zeitzonen dank seiner Überseegebiete.",
+            "saviez_vous": "Russland hat allein auf dem Festland 11 Zeitzonen."
         },
         {
             "type": "multiple",
@@ -246,17 +246,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel pays est le plus peuplé du monde depuis 2023 ?",
+            "language": "de",
+            "question_text": "Welches Land ist seit 2023 das bevölkerungsreichste der Welt?",
             "answers": [
-                "Chine",
-                "Inde",
-                "États-Unis",
-                "Indonésie"
+                "China",
+                "Indien",
+                "USA",
+                "Indonesien"
             ],
             "correct_id": 1,
-            "explanation": "L'Inde a dépassé la Chine en 2023 selon l'ONU.",
-            "saviez_vous": "La Chine subit une baisse démographique liée à sa pyramide des âges."
+            "explanation": "Indien hat 2023 China gemäß UN-Schätzungen überholt.",
+            "saviez_vous": "Chinas Bevölkerung schrumpft wegen seiner Altersstruktur."
         },
         {
             "type": "multiple",
@@ -266,17 +266,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Qui a peint « La Joconde » ?",
+            "language": "de",
+            "question_text": "Wer malte die Mona Lisa?",
             "answers": [
-                "Michel-Ange",
-                "Raphaël",
-                "Léonard de Vinci",
+                "Michelangelo",
+                "Raffael",
+                "Leonardo da Vinci",
                 "Botticelli"
             ],
             "correct_id": 2,
-            "explanation": "Léonard de Vinci a peint La Joconde entre 1503 et 1519.",
-            "saviez_vous": "Le tableau est exposé au Louvre, à Paris."
+            "explanation": "Leonardo da Vinci malte die Mona Lisa zwischen 1503 und 1519.",
+            "saviez_vous": "Das Bild hängt im Louvre in Paris."
         },
         {
             "type": "multiple",
@@ -286,8 +286,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel artiste a peint « La Nuit étoilée » ?",
+            "language": "de",
+            "question_text": "Welcher Künstler malte „Sternennacht“?",
             "answers": [
                 "Claude Monet",
                 "Vincent van Gogh",
@@ -295,8 +295,8 @@
                 "Pablo Picasso"
             ],
             "correct_id": 1,
-            "explanation": "Van Gogh a peint La Nuit étoilée en 1889 à Saint-Rémy-de-Provence.",
-            "saviez_vous": "L'œuvre est aujourd'hui conservée au MoMA de New York."
+            "explanation": "Van Gogh malte die Sternennacht 1889 in Saint-Rémy-de-Provence.",
+            "saviez_vous": "Das Werk hängt im MoMA in New York."
         },
         {
             "type": "multiple",
@@ -306,17 +306,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel mouvement artistique Pablo Picasso a-t-il cofondé avec Georges Braque ?",
+            "language": "de",
+            "question_text": "Welche Kunstrichtung gründete Picasso zusammen mit Georges Braque?",
             "answers": [
-                "Impressionnisme",
-                "Cubisme",
-                "Surréalisme",
-                "Romantisme"
+                "Impressionismus",
+                "Kubismus",
+                "Surrealismus",
+                "Romantik"
             ],
             "correct_id": 1,
-            "explanation": "Picasso et Braque ont fondé le cubisme vers 1907-1908.",
-            "saviez_vous": "« Les Demoiselles d'Avignon » (1907) marque la rupture cubiste."
+            "explanation": "Picasso und Braque begründeten den Kubismus um 1907-1908.",
+            "saviez_vous": "„Les Demoiselles d'Avignon“ (1907) gilt als kubistischer Durchbruch."
         },
         {
             "type": "multiple",
@@ -326,8 +326,8 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Qui est le sculpteur de la Statue de la Liberté ?",
+            "language": "de",
+            "question_text": "Wer ist der Bildhauer der Freiheitsstatue?",
             "answers": [
                 "Auguste Rodin",
                 "Frédéric Auguste Bartholdi",
@@ -335,8 +335,8 @@
                 "Camille Claudel"
             ],
             "correct_id": 1,
-            "explanation": "Bartholdi est le sculpteur ; Eiffel a conçu la structure interne.",
-            "saviez_vous": "La statue fut offerte par la France aux États-Unis en 1886."
+            "explanation": "Bartholdi schuf sie; Eiffel entwarf nur das innere Stahlgerüst.",
+            "saviez_vous": "Frankreich schenkte die Statue 1886 den USA."
         },
         {
             "type": "multiple",
@@ -346,17 +346,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "De quel pays est originaire la pizza moderne ?",
+            "language": "de",
+            "question_text": "Aus welchem Land stammt die moderne Pizza?",
             "answers": [
-                "Grèce",
-                "Italie",
-                "Espagne",
-                "France"
+                "Griechenland",
+                "Italien",
+                "Spanien",
+                "Frankreich"
             ],
             "correct_id": 1,
-            "explanation": "La pizza moderne est née à Naples au XVIIIe siècle.",
-            "saviez_vous": "La pizza Margherita aurait été créée en 1889 en l'honneur de la reine Marguerite."
+            "explanation": "Die moderne Pizza entstand im 18. Jahrhundert in Neapel.",
+            "saviez_vous": "Die Margherita soll 1889 zu Ehren von Königin Margherita kreiert worden sein."
         },
         {
             "type": "multiple",
@@ -366,17 +366,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "De quel pays est originaire le sushi ?",
+            "language": "de",
+            "question_text": "Aus welchem Land stammt Sushi?",
             "answers": [
-                "Chine",
-                "Corée",
-                "Japon",
+                "China",
+                "Korea",
+                "Japan",
                 "Vietnam"
             ],
             "correct_id": 2,
-            "explanation": "Le sushi est un plat traditionnel du Japon.",
-            "saviez_vous": "Le sushi moderne (nigiri) est né à Edo (Tokyo) au XIXe siècle."
+            "explanation": "Sushi ist ein traditionelles japanisches Gericht.",
+            "saviez_vous": "Das moderne Nigiri-Sushi entstand im 19. Jh. in Edo (Tokio)."
         },
         {
             "type": "multiple",
@@ -386,17 +386,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Parmi ces épices, laquelle est la plus chère au poids ?",
+            "language": "de",
+            "question_text": "Welches dieser Gewürze ist pro Gewicht am teuersten?",
             "answers": [
                 "Vanille",
                 "Safran",
-                "Cardamome",
-                "Poivre noir"
+                "Kardamom",
+                "Schwarzer Pfeffer"
             ],
             "correct_id": 1,
-            "explanation": "Le safran nécessite ~150 000 fleurs pour obtenir 1 kg, ce qui le rend très coûteux.",
-            "saviez_vous": "Chaque crocus ne fournit que 3 stigmates, récoltés à la main."
+            "explanation": "Safran braucht ~150.000 Blüten für 1 kg und ist deshalb extrem teuer.",
+            "saviez_vous": "Jeder Krokus liefert nur 3 Narben, die von Hand gepflückt werden."
         },
         {
             "type": "multiple",
@@ -406,17 +406,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "D'où vient à l'origine le croissant ?",
+            "language": "de",
+            "question_text": "Woher stammt das Croissant ursprünglich?",
             "answers": [
-                "Autriche",
-                "France",
-                "Italie",
-                "Belgique"
+                "Österreich",
+                "Frankreich",
+                "Italien",
+                "Belgien"
             ],
             "correct_id": 0,
-            "explanation": "Le croissant descend du « Kipferl » viennois ; il a été popularisé ensuite en France.",
-            "saviez_vous": "C'est August Zang, un Autrichien, qui ouvre une viennoiserie à Paris en 1839."
+            "explanation": "Das Croissant geht auf das Wiener „Kipferl“ zurück; in Frankreich wurde es später populär.",
+            "saviez_vous": "Der Österreicher August Zang eröffnete 1839 eine Wiener Bäckerei in Paris."
         },
         {
             "type": "multiple",
@@ -426,17 +426,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel est le symbole chimique de l'or ?",
+            "language": "de",
+            "question_text": "Was ist das chemische Symbol für Gold?",
             "answers": [
-                "Or",
+                "Go",
                 "Au",
                 "Ag",
-                "Go"
+                "Gd"
             ],
             "correct_id": 1,
-            "explanation": "« Au » vient du latin « aurum », qui signifie or.",
-            "saviez_vous": "L'or est l'un des éléments les plus rares de la croûte terrestre."
+            "explanation": "„Au“ kommt vom lateinischen „aurum“ (Gold).",
+            "saviez_vous": "Gold gehört zu den seltensten Elementen der Erdkruste."
         },
         {
             "type": "multiple",
@@ -446,17 +446,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quelle planète est surnommée la « planète rouge » ?",
+            "language": "de",
+            "question_text": "Welcher Planet trägt den Beinamen „roter Planet“?",
             "answers": [
-                "Vénus",
+                "Venus",
                 "Jupiter",
                 "Mars",
-                "Saturne"
+                "Saturn"
             ],
             "correct_id": 2,
-            "explanation": "Mars doit sa couleur à l'oxyde de fer présent à sa surface.",
-            "saviez_vous": "Mars possède le plus grand volcan connu : Olympus Mons."
+            "explanation": "Mars verdankt seine Farbe dem Eisenoxid auf seiner Oberfläche.",
+            "saviez_vous": "Auf dem Mars liegt der größte bekannte Vulkan: Olympus Mons."
         },
         {
             "type": "multiple",
@@ -466,17 +466,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel élément chimique est le plus abondant dans l'univers ?",
+            "language": "de",
+            "question_text": "Welches chemische Element ist im Universum am häufigsten?",
             "answers": [
-                "Oxygène",
-                "Hélium",
-                "Carbone",
-                "Hydrogène"
+                "Sauerstoff",
+                "Helium",
+                "Kohlenstoff",
+                "Wasserstoff"
             ],
             "correct_id": 3,
-            "explanation": "L'hydrogène représente environ 75 % de la masse baryonique de l'univers.",
-            "saviez_vous": "C'est le carburant des étoiles, qui le fusionnent en hélium."
+            "explanation": "Wasserstoff macht rund 75 % der baryonischen Masse des Universums aus.",
+            "saviez_vous": "Es ist der Brennstoff der Sterne, die ihn zu Helium fusionieren."
         },
         {
             "type": "multiple",
@@ -486,17 +486,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "De quelle couleur est le sang d'une pieuvre ?",
+            "language": "de",
+            "question_text": "Welche Farbe hat das Blut eines Oktopus?",
             "answers": [
-                "Rouge",
-                "Bleu",
-                "Vert",
-                "Jaune"
+                "Rot",
+                "Blau",
+                "Grün",
+                "Gelb"
             ],
             "correct_id": 1,
-            "explanation": "Il est bleu car son transporteur d'oxygène est l'hémocyanine, à base de cuivre.",
-            "saviez_vous": "Le sang des vertébrés est rouge à cause de l'hémoglobine, à base de fer."
+            "explanation": "Es ist blau, weil sein Sauerstoffträger Hämocyanin Kupfer enthält.",
+            "saviez_vous": "Das Blut von Wirbeltieren ist rot wegen des eisenhaltigen Hämoglobins."
         },
         {
             "type": "multiple",
@@ -506,8 +506,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Qui a réalisé le film « Titanic » (1997) ?",
+            "language": "de",
+            "question_text": "Wer führte beim Film „Titanic“ (1997) Regie?",
             "answers": [
                 "Steven Spielberg",
                 "James Cameron",
@@ -515,8 +515,8 @@
                 "Martin Scorsese"
             ],
             "correct_id": 1,
-            "explanation": "James Cameron a réalisé Titanic, sorti en 1997.",
-            "saviez_vous": "Le film a remporté 11 Oscars, à égalité avec Ben-Hur et Le Retour du roi."
+            "explanation": "James Cameron führte Regie bei Titanic (1997).",
+            "saviez_vous": "Der Film gewann 11 Oscars, gleichauf mit Ben-Hur und Der Herr der Ringe: Die Rückkehr des Königs."
         },
         {
             "type": "multiple",
@@ -526,8 +526,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel acteur incarne le rôle-titre dans « Forrest Gump » (1994) ?",
+            "language": "de",
+            "question_text": "Welcher Schauspieler spielt die Hauptrolle in „Forrest Gump“ (1994)?",
             "answers": [
                 "Tom Cruise",
                 "Tom Hanks",
@@ -535,8 +535,8 @@
                 "Robert De Niro"
             ],
             "correct_id": 1,
-            "explanation": "Tom Hanks joue Forrest Gump, rôle qui lui a valu l'Oscar du meilleur acteur.",
-            "saviez_vous": "Tom Hanks a remporté deux Oscars consécutifs (Philadelphia 1994, Forrest Gump 1995)."
+            "explanation": "Tom Hanks spielt Forrest Gump und gewann dafür den Oscar als bester Hauptdarsteller.",
+            "saviez_vous": "Tom Hanks gewann zwei Oscars in Folge (Philadelphia 1994, Forrest Gump 1995)."
         },
         {
             "type": "multiple",
@@ -546,8 +546,8 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel record d'Oscars ces films partagent-ils : Ben-Hur, Titanic, Le Retour du roi ?",
+            "language": "de",
+            "question_text": "Welchen Oscar-Rekord teilen sich Ben-Hur, Titanic und Die Rückkehr des Königs?",
             "answers": [
                 "9 Oscars",
                 "10 Oscars",
@@ -555,8 +555,8 @@
                 "12 Oscars"
             ],
             "correct_id": 2,
-            "explanation": "Chacun a remporté 11 Oscars, record absolu.",
-            "saviez_vous": "Le Retour du roi a gagné 11 statuettes sur 11 nominations."
+            "explanation": "Jeder Film gewann 11 Oscars — Allzeitrekord.",
+            "saviez_vous": "Die Rückkehr des Königs gewann 11 von 11 Nominierungen."
         },
         {
             "type": "multiple",
@@ -566,17 +566,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel film est considéré comme le premier long-métrage parlant ?",
+            "language": "de",
+            "question_text": "Welcher Film gilt als der erste abendfüllende Tonfilm?",
             "answers": [
-                "Le Chanteur de jazz (1927)",
-                "Naissance d'une nation (1915)",
-                "Métropolis (1927)",
-                "Le Voyage dans la Lune (1902)"
+                "Der Jazzsänger (1927)",
+                "Die Geburt einer Nation (1915)",
+                "Metropolis (1927)",
+                "Die Reise zum Mond (1902)"
             ],
             "correct_id": 0,
-            "explanation": "Le Chanteur de jazz (1927) inaugure le cinéma parlant grand public.",
-            "saviez_vous": "On parle de « talkies » à partir de cette époque pour désigner les films sonores."
+            "explanation": "Der Jazzsänger (1927) begründete den kommerziellen Tonfilm.",
+            "saviez_vous": "Seitdem nennt man Tonfilme im Englischen „Talkies“."
         },
         {
             "type": "multiple",
@@ -586,17 +586,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel est le plus grand animal terrestre vivant ?",
+            "language": "de",
+            "question_text": "Welches ist das größte lebende Landtier?",
             "answers": [
-                "Girafe",
-                "Rhinocéros blanc",
-                "Éléphant d'Afrique",
-                "Hippopotame"
+                "Giraffe",
+                "Breitmaulnashorn",
+                "Afrikanischer Elefant",
+                "Flusspferd"
             ],
             "correct_id": 2,
-            "explanation": "L'éléphant de savane d'Afrique peut peser jusqu'à 6 tonnes.",
-            "saviez_vous": "Sa trompe contient environ 40 000 muscles."
+            "explanation": "Der Afrikanische Steppenelefant kann bis zu 6 Tonnen wiegen.",
+            "saviez_vous": "Der Rüssel enthält rund 40.000 Muskeln."
         },
         {
             "type": "multiple",
@@ -606,17 +606,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel est l'animal terrestre le plus rapide ?",
+            "language": "de",
+            "question_text": "Welches ist das schnellste Landtier?",
             "answers": [
-                "Lion",
-                "Guépard",
+                "Löwe",
+                "Gepard",
                 "Antilope",
-                "Cheval"
+                "Pferd"
             ],
             "correct_id": 1,
-            "explanation": "Le guépard peut atteindre 110 km/h en pointe.",
-            "saviez_vous": "Il ne tient cette vitesse que sur quelques centaines de mètres."
+            "explanation": "Der Gepard erreicht Spitzen von etwa 110 km/h.",
+            "saviez_vous": "Er hält diese Geschwindigkeit nur für ein paar hundert Meter."
         },
         {
             "type": "multiple",
@@ -626,17 +626,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel mammifère est célèbre pour pondre des œufs ?",
+            "language": "de",
+            "question_text": "Welches Säugetier legt bekanntermaßen Eier?",
             "answers": [
-                "Kangourou",
-                "Ornithorynque",
-                "Paresseux",
-                "Tatou"
+                "Känguru",
+                "Schnabeltier",
+                "Faultier",
+                "Gürteltier"
             ],
             "correct_id": 1,
-            "explanation": "L'ornithorynque est un mammifère monotrème : il pond des œufs.",
-            "saviez_vous": "Les échidnés sont les autres mammifères monotrèmes."
+            "explanation": "Das Schnabeltier ist ein eierlegendes Säugetier (Monotrem).",
+            "saviez_vous": "Ameisenigel sind die einzigen anderen eierlegenden Säugetiere."
         },
         {
             "type": "multiple",
@@ -646,17 +646,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Le requin est-il un poisson ou un mammifère ?",
+            "language": "de",
+            "question_text": "Ist der Hai ein Fisch oder ein Säugetier?",
             "answers": [
-                "Mammifère",
-                "Poisson",
-                "Reptile",
-                "Amphibien"
+                "Säugetier",
+                "Fisch",
+                "Reptil",
+                "Amphibie"
             ],
             "correct_id": 1,
-            "explanation": "Le requin est un poisson cartilagineux : il a des branchies, pas de poumons.",
-            "saviez_vous": "À ne pas confondre avec les baleines et dauphins, qui sont eux des mammifères."
+            "explanation": "Der Hai ist ein Knorpelfisch — er hat Kiemen, keine Lungen.",
+            "saviez_vous": "Nicht zu verwechseln mit Walen und Delfinen, die Säugetiere sind."
         }
     ]
 }

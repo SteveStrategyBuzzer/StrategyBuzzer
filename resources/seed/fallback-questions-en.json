@@ -1,7 +1,7 @@
 {
     "_meta": {
         "purpose": "Embedded seed pool (#88/#93). Consumed when bank+cache are dry. NEVER calls AI.",
-        "language": "fr",
+        "language": "en",
         "theme": "general",
         "subdomains": [
             "Histoire",
@@ -26,8 +26,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "En quelle année est tombé le mur de Berlin ?",
+            "language": "en",
+            "question_text": "In which year did the Berlin Wall fall?",
             "answers": [
                 "1985",
                 "1989",
@@ -35,8 +35,8 @@
                 "1993"
             ],
             "correct_id": 1,
-            "explanation": "Le mur de Berlin est tombé le 9 novembre 1989.",
-            "saviez_vous": "Le mur séparait Berlin-Est de Berlin-Ouest depuis 1961."
+            "explanation": "The Berlin Wall fell on November 9, 1989.",
+            "saviez_vous": "The wall had separated East from West Berlin since 1961."
         },
         {
             "type": "multiple",
@@ -46,8 +46,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "En quelle année Christophe Colomb a-t-il atteint l'Amérique ?",
+            "language": "en",
+            "question_text": "In which year did Christopher Columbus reach the Americas?",
             "answers": [
                 "1392",
                 "1492",
@@ -55,8 +55,8 @@
                 "1692"
             ],
             "correct_id": 1,
-            "explanation": "Christophe Colomb débarqua aux Bahamas le 12 octobre 1492.",
-            "saviez_vous": "Il pensait avoir atteint les Indes asiatiques."
+            "explanation": "Columbus landed in the Bahamas on October 12, 1492.",
+            "saviez_vous": "He thought he had reached the East Indies in Asia."
         },
         {
             "type": "multiple",
@@ -66,17 +66,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel événement a déclenché la Première Guerre mondiale en 1914 ?",
+            "language": "en",
+            "question_text": "Which event triggered the start of World War I in 1914?",
             "answers": [
-                "L'invasion de la Pologne",
-                "L'assassinat de François-Ferdinand",
-                "La crise de Cuba",
-                "La révolution russe"
+                "Invasion of Poland",
+                "Assassination of Archduke Franz Ferdinand",
+                "Cuban missile crisis",
+                "Russian revolution"
             ],
             "correct_id": 1,
-            "explanation": "L'assassinat de l'archiduc à Sarajevo le 28 juin 1914 enclencha les alliances.",
-            "saviez_vous": "L'archiduc fut tué par Gavrilo Princip, étudiant nationaliste serbe."
+            "explanation": "The Sarajevo assassination on June 28, 1914 set off the alliance system.",
+            "saviez_vous": "The Archduke was shot by Gavrilo Princip, a young Serbian nationalist."
         },
         {
             "type": "multiple",
@@ -86,17 +86,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel empire fut le plus vaste de l'histoire en superficie continue ?",
+            "language": "en",
+            "question_text": "Which empire was the largest contiguous land empire in history?",
             "answers": [
-                "Empire romain",
-                "Empire mongol",
-                "Empire britannique",
-                "Empire ottoman"
+                "Roman Empire",
+                "Mongol Empire",
+                "British Empire",
+                "Ottoman Empire"
             ],
             "correct_id": 1,
-            "explanation": "L'Empire mongol au XIIIe siècle couvrait ~24 millions de km² d'un seul tenant.",
-            "saviez_vous": "L'Empire britannique était plus vaste au total mais discontinu sur la planète."
+            "explanation": "The 13th-century Mongol Empire covered ~24 million km² in one connected stretch.",
+            "saviez_vous": "The British Empire was bigger overall but spread across non-adjacent territories."
         },
         {
             "type": "multiple",
@@ -106,8 +106,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Combien de joueurs composent une équipe de football sur le terrain ?",
+            "language": "en",
+            "question_text": "How many players are on a football (soccer) team on the pitch?",
             "answers": [
                 "9",
                 "10",
@@ -115,8 +115,8 @@
                 "12"
             ],
             "correct_id": 2,
-            "explanation": "Une équipe aligne 11 joueurs : 1 gardien et 10 joueurs de champ.",
-            "saviez_vous": "L'effectif total d'un match (avec remplaçants) est plafonné par les règles FIFA."
+            "explanation": "A team fields 11 players: 1 goalkeeper and 10 outfield players.",
+            "saviez_vous": "FIFA caps how many substitutes a team can name for a match."
         },
         {
             "type": "multiple",
@@ -126,17 +126,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quelle ville a accueilli les Jeux olympiques d'été 2024 ?",
+            "language": "en",
+            "question_text": "Which city hosted the 2024 Summer Olympic Games?",
             "answers": [
                 "Tokyo",
                 "Paris",
                 "Los Angeles",
-                "Londres"
+                "London"
             ],
             "correct_id": 1,
-            "explanation": "Paris a accueilli les JO d'été du 26 juillet au 11 août 2024.",
-            "saviez_vous": "C'était la troisième fois que Paris organisait les JO d'été."
+            "explanation": "Paris hosted the Summer Olympics from July 26 to August 11, 2024.",
+            "saviez_vous": "It was the third time Paris hosted the Summer Olympics."
         },
         {
             "type": "multiple",
@@ -146,17 +146,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Parmi ces sports collectifs, lequel cumule le plus de points par match en moyenne ?",
+            "language": "en",
+            "question_text": "Which of these team sports averages the highest combined score per game?",
             "answers": [
-                "Football",
-                "Hockey sur glace",
+                "Football (soccer)",
+                "Ice hockey",
                 "Basketball",
-                "Rugby à XV"
+                "Rugby union"
             ],
             "correct_id": 2,
-            "explanation": "Le basket NBA dépasse régulièrement 200 points cumulés par match.",
-            "saviez_vous": "Au football, la moyenne de buts par match tourne autour de 2,5."
+            "explanation": "NBA basketball games regularly exceed 200 combined points.",
+            "saviez_vous": "Soccer averages roughly 2.5 goals per game."
         },
         {
             "type": "multiple",
@@ -166,17 +166,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quelle est la distance officielle d'un marathon ?",
+            "language": "en",
+            "question_text": "What is the official marathon distance?",
             "answers": [
-                "42 km exactement",
-                "42,195 km",
+                "Exactly 42 km",
+                "42.195 km",
                 "40 km",
                 "45 km"
             ],
             "correct_id": 1,
-            "explanation": "Depuis 1921, la distance officielle est fixée à 42,195 km.",
-            "saviez_vous": "La distance vient des JO de Londres 1908, ajustée pour finir devant la loge royale."
+            "explanation": "Since 1921 the official distance has been fixed at 42.195 km.",
+            "saviez_vous": "The exact distance dates back to the 1908 London Olympics."
         },
         {
             "type": "multiple",
@@ -186,8 +186,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quelle est la capitale de l'Australie ?",
+            "language": "en",
+            "question_text": "What is the capital of Australia?",
             "answers": [
                 "Sydney",
                 "Canberra",
@@ -195,8 +195,8 @@
                 "Perth"
             ],
             "correct_id": 1,
-            "explanation": "Canberra fut choisie en 1908 comme compromis entre Sydney et Melbourne.",
-            "saviez_vous": "C'est l'une des rares capitales construites de toutes pièces."
+            "explanation": "Canberra was chosen in 1908 as a compromise between Sydney and Melbourne.",
+            "saviez_vous": "It is one of the few capitals purpose-built from scratch."
         },
         {
             "type": "multiple",
@@ -206,17 +206,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel est le plus grand océan du monde ?",
+            "language": "en",
+            "question_text": "Which is the world's largest ocean?",
             "answers": [
-                "Atlantique",
-                "Indien",
-                "Pacifique",
-                "Arctique"
+                "Atlantic",
+                "Indian",
+                "Pacific",
+                "Arctic"
             ],
             "correct_id": 2,
-            "explanation": "Le Pacifique couvre environ 165 millions de km².",
-            "saviez_vous": "Il représente plus de la moitié de la surface marine du globe."
+            "explanation": "The Pacific Ocean spans about 165 million km².",
+            "saviez_vous": "It alone covers more than half of all ocean surface on Earth."
         },
         {
             "type": "multiple",
@@ -226,17 +226,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel pays compte le plus de fuseaux horaires (territoires inclus) ?",
+            "language": "en",
+            "question_text": "Which country spans the most time zones (territories included)?",
             "answers": [
-                "Russie",
+                "Russia",
                 "France",
-                "États-Unis",
-                "Chine"
+                "United States",
+                "China"
             ],
             "correct_id": 1,
-            "explanation": "La France couvre 12 fuseaux grâce à ses territoires d'outre-mer.",
-            "saviez_vous": "La Russie en a 11 sur son seul territoire continental."
+            "explanation": "France covers 12 time zones thanks to its overseas territories.",
+            "saviez_vous": "Russia has 11 zones on its mainland alone."
         },
         {
             "type": "multiple",
@@ -246,17 +246,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel pays est le plus peuplé du monde depuis 2023 ?",
+            "language": "en",
+            "question_text": "Which country has been the world's most populous since 2023?",
             "answers": [
-                "Chine",
-                "Inde",
-                "États-Unis",
-                "Indonésie"
+                "China",
+                "India",
+                "United States",
+                "Indonesia"
             ],
             "correct_id": 1,
-            "explanation": "L'Inde a dépassé la Chine en 2023 selon l'ONU.",
-            "saviez_vous": "La Chine subit une baisse démographique liée à sa pyramide des âges."
+            "explanation": "India overtook China in 2023 according to UN estimates.",
+            "saviez_vous": "China's population is now declining due to its age structure."
         },
         {
             "type": "multiple",
@@ -266,17 +266,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Qui a peint « La Joconde » ?",
+            "language": "en",
+            "question_text": "Who painted the Mona Lisa?",
             "answers": [
-                "Michel-Ange",
-                "Raphaël",
-                "Léonard de Vinci",
+                "Michelangelo",
+                "Raphael",
+                "Leonardo da Vinci",
                 "Botticelli"
             ],
             "correct_id": 2,
-            "explanation": "Léonard de Vinci a peint La Joconde entre 1503 et 1519.",
-            "saviez_vous": "Le tableau est exposé au Louvre, à Paris."
+            "explanation": "Leonardo da Vinci painted the Mona Lisa between 1503 and 1519.",
+            "saviez_vous": "The painting hangs in the Louvre Museum in Paris."
         },
         {
             "type": "multiple",
@@ -286,8 +286,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel artiste a peint « La Nuit étoilée » ?",
+            "language": "en",
+            "question_text": "Which artist painted The Starry Night?",
             "answers": [
                 "Claude Monet",
                 "Vincent van Gogh",
@@ -295,8 +295,8 @@
                 "Pablo Picasso"
             ],
             "correct_id": 1,
-            "explanation": "Van Gogh a peint La Nuit étoilée en 1889 à Saint-Rémy-de-Provence.",
-            "saviez_vous": "L'œuvre est aujourd'hui conservée au MoMA de New York."
+            "explanation": "Van Gogh painted The Starry Night in 1889 at Saint-Rémy-de-Provence.",
+            "saviez_vous": "The painting is held at the MoMA in New York."
         },
         {
             "type": "multiple",
@@ -306,17 +306,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel mouvement artistique Pablo Picasso a-t-il cofondé avec Georges Braque ?",
+            "language": "en",
+            "question_text": "Which art movement did Pablo Picasso co-found with Georges Braque?",
             "answers": [
-                "Impressionnisme",
-                "Cubisme",
-                "Surréalisme",
-                "Romantisme"
+                "Impressionism",
+                "Cubism",
+                "Surrealism",
+                "Romanticism"
             ],
             "correct_id": 1,
-            "explanation": "Picasso et Braque ont fondé le cubisme vers 1907-1908.",
-            "saviez_vous": "« Les Demoiselles d'Avignon » (1907) marque la rupture cubiste."
+            "explanation": "Picasso and Braque founded Cubism around 1907-1908.",
+            "saviez_vous": "Les Demoiselles d'Avignon (1907) is considered the breakthrough cubist work."
         },
         {
             "type": "multiple",
@@ -326,8 +326,8 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Qui est le sculpteur de la Statue de la Liberté ?",
+            "language": "en",
+            "question_text": "Who sculpted the Statue of Liberty?",
             "answers": [
                 "Auguste Rodin",
                 "Frédéric Auguste Bartholdi",
@@ -335,8 +335,8 @@
                 "Camille Claudel"
             ],
             "correct_id": 1,
-            "explanation": "Bartholdi est le sculpteur ; Eiffel a conçu la structure interne.",
-            "saviez_vous": "La statue fut offerte par la France aux États-Unis en 1886."
+            "explanation": "Bartholdi sculpted it; Eiffel only designed the internal iron framework.",
+            "saviez_vous": "France gifted the statue to the United States in 1886."
         },
         {
             "type": "multiple",
@@ -346,17 +346,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "De quel pays est originaire la pizza moderne ?",
+            "language": "en",
+            "question_text": "Modern pizza originated in which country?",
             "answers": [
-                "Grèce",
-                "Italie",
-                "Espagne",
+                "Greece",
+                "Italy",
+                "Spain",
                 "France"
             ],
             "correct_id": 1,
-            "explanation": "La pizza moderne est née à Naples au XVIIIe siècle.",
-            "saviez_vous": "La pizza Margherita aurait été créée en 1889 en l'honneur de la reine Marguerite."
+            "explanation": "Modern pizza was born in Naples in the 18th century.",
+            "saviez_vous": "The Margherita is said to have been created in 1889 to honour Queen Margherita."
         },
         {
             "type": "multiple",
@@ -366,17 +366,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "De quel pays est originaire le sushi ?",
+            "language": "en",
+            "question_text": "Sushi originated in which country?",
             "answers": [
-                "Chine",
-                "Corée",
-                "Japon",
+                "China",
+                "Korea",
+                "Japan",
                 "Vietnam"
             ],
             "correct_id": 2,
-            "explanation": "Le sushi est un plat traditionnel du Japon.",
-            "saviez_vous": "Le sushi moderne (nigiri) est né à Edo (Tokyo) au XIXe siècle."
+            "explanation": "Sushi is a traditional Japanese dish.",
+            "saviez_vous": "Modern nigiri sushi was born in 19th-century Edo (now Tokyo)."
         },
         {
             "type": "multiple",
@@ -386,17 +386,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Parmi ces épices, laquelle est la plus chère au poids ?",
+            "language": "en",
+            "question_text": "Which of these spices is the most expensive by weight?",
             "answers": [
-                "Vanille",
-                "Safran",
-                "Cardamome",
-                "Poivre noir"
+                "Vanilla",
+                "Saffron",
+                "Cardamom",
+                "Black pepper"
             ],
             "correct_id": 1,
-            "explanation": "Le safran nécessite ~150 000 fleurs pour obtenir 1 kg, ce qui le rend très coûteux.",
-            "saviez_vous": "Chaque crocus ne fournit que 3 stigmates, récoltés à la main."
+            "explanation": "Saffron requires ~150,000 flowers to yield 1 kg, making it extremely costly.",
+            "saviez_vous": "Each crocus only produces three stigmas, harvested by hand."
         },
         {
             "type": "multiple",
@@ -406,17 +406,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "D'où vient à l'origine le croissant ?",
+            "language": "en",
+            "question_text": "Where did the croissant originate?",
             "answers": [
-                "Autriche",
+                "Austria",
                 "France",
-                "Italie",
-                "Belgique"
+                "Italy",
+                "Belgium"
             ],
             "correct_id": 0,
-            "explanation": "Le croissant descend du « Kipferl » viennois ; il a été popularisé ensuite en France.",
-            "saviez_vous": "C'est August Zang, un Autrichien, qui ouvre une viennoiserie à Paris en 1839."
+            "explanation": "The croissant descends from the Viennese Kipferl; it was popularised later in France.",
+            "saviez_vous": "Austrian August Zang opened a Viennese bakery in Paris in 1839."
         },
         {
             "type": "multiple",
@@ -426,17 +426,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel est le symbole chimique de l'or ?",
+            "language": "en",
+            "question_text": "What is the chemical symbol for gold?",
             "answers": [
-                "Or",
+                "Go",
                 "Au",
                 "Ag",
-                "Go"
+                "Gd"
             ],
             "correct_id": 1,
-            "explanation": "« Au » vient du latin « aurum », qui signifie or.",
-            "saviez_vous": "L'or est l'un des éléments les plus rares de la croûte terrestre."
+            "explanation": "\"Au\" comes from the Latin \"aurum\", meaning gold.",
+            "saviez_vous": "Gold is one of the rarest elements in Earth's crust."
         },
         {
             "type": "multiple",
@@ -446,17 +446,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quelle planète est surnommée la « planète rouge » ?",
+            "language": "en",
+            "question_text": "Which planet is nicknamed the \"red planet\"?",
             "answers": [
-                "Vénus",
+                "Venus",
                 "Jupiter",
                 "Mars",
-                "Saturne"
+                "Saturn"
             ],
             "correct_id": 2,
-            "explanation": "Mars doit sa couleur à l'oxyde de fer présent à sa surface.",
-            "saviez_vous": "Mars possède le plus grand volcan connu : Olympus Mons."
+            "explanation": "Mars owes its colour to iron oxide on its surface.",
+            "saviez_vous": "Mars hosts the largest known volcano in the solar system: Olympus Mons."
         },
         {
             "type": "multiple",
@@ -466,17 +466,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel élément chimique est le plus abondant dans l'univers ?",
+            "language": "en",
+            "question_text": "Which chemical element is the most abundant in the universe?",
             "answers": [
-                "Oxygène",
-                "Hélium",
-                "Carbone",
-                "Hydrogène"
+                "Oxygen",
+                "Helium",
+                "Carbon",
+                "Hydrogen"
             ],
             "correct_id": 3,
-            "explanation": "L'hydrogène représente environ 75 % de la masse baryonique de l'univers.",
-            "saviez_vous": "C'est le carburant des étoiles, qui le fusionnent en hélium."
+            "explanation": "Hydrogen makes up about 75% of the baryonic mass of the universe.",
+            "saviez_vous": "It is the fuel of stars, which fuse it into helium."
         },
         {
             "type": "multiple",
@@ -486,17 +486,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "De quelle couleur est le sang d'une pieuvre ?",
+            "language": "en",
+            "question_text": "What colour is an octopus's blood?",
             "answers": [
-                "Rouge",
-                "Bleu",
-                "Vert",
-                "Jaune"
+                "Red",
+                "Blue",
+                "Green",
+                "Yellow"
             ],
             "correct_id": 1,
-            "explanation": "Il est bleu car son transporteur d'oxygène est l'hémocyanine, à base de cuivre.",
-            "saviez_vous": "Le sang des vertébrés est rouge à cause de l'hémoglobine, à base de fer."
+            "explanation": "It is blue because its oxygen carrier is haemocyanin, which contains copper.",
+            "saviez_vous": "Vertebrate blood is red because of iron-based haemoglobin."
         },
         {
             "type": "multiple",
@@ -506,8 +506,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Qui a réalisé le film « Titanic » (1997) ?",
+            "language": "en",
+            "question_text": "Who directed the 1997 film \"Titanic\"?",
             "answers": [
                 "Steven Spielberg",
                 "James Cameron",
@@ -515,8 +515,8 @@
                 "Martin Scorsese"
             ],
             "correct_id": 1,
-            "explanation": "James Cameron a réalisé Titanic, sorti en 1997.",
-            "saviez_vous": "Le film a remporté 11 Oscars, à égalité avec Ben-Hur et Le Retour du roi."
+            "explanation": "James Cameron directed Titanic, released in 1997.",
+            "saviez_vous": "The film won 11 Oscars, tied with Ben-Hur and The Return of the King."
         },
         {
             "type": "multiple",
@@ -526,8 +526,8 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel acteur incarne le rôle-titre dans « Forrest Gump » (1994) ?",
+            "language": "en",
+            "question_text": "Which actor plays the title role in \"Forrest Gump\" (1994)?",
             "answers": [
                 "Tom Cruise",
                 "Tom Hanks",
@@ -535,8 +535,8 @@
                 "Robert De Niro"
             ],
             "correct_id": 1,
-            "explanation": "Tom Hanks joue Forrest Gump, rôle qui lui a valu l'Oscar du meilleur acteur.",
-            "saviez_vous": "Tom Hanks a remporté deux Oscars consécutifs (Philadelphia 1994, Forrest Gump 1995)."
+            "explanation": "Tom Hanks plays Forrest Gump and won the Best Actor Oscar for it.",
+            "saviez_vous": "Tom Hanks won back-to-back Best Actor Oscars (Philadelphia 1994, Forrest Gump 1995)."
         },
         {
             "type": "multiple",
@@ -546,8 +546,8 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel record d'Oscars ces films partagent-ils : Ben-Hur, Titanic, Le Retour du roi ?",
+            "language": "en",
+            "question_text": "What Oscar record do Ben-Hur, Titanic, and The Return of the King share?",
             "answers": [
                 "9 Oscars",
                 "10 Oscars",
@@ -555,8 +555,8 @@
                 "12 Oscars"
             ],
             "correct_id": 2,
-            "explanation": "Chacun a remporté 11 Oscars, record absolu.",
-            "saviez_vous": "Le Retour du roi a gagné 11 statuettes sur 11 nominations."
+            "explanation": "Each won 11 Oscars — the all-time record.",
+            "saviez_vous": "The Return of the King won 11 out of 11 nominations."
         },
         {
             "type": "multiple",
@@ -566,17 +566,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel film est considéré comme le premier long-métrage parlant ?",
+            "language": "en",
+            "question_text": "Which film is considered the first feature-length \"talkie\"?",
             "answers": [
-                "Le Chanteur de jazz (1927)",
-                "Naissance d'une nation (1915)",
-                "Métropolis (1927)",
-                "Le Voyage dans la Lune (1902)"
+                "The Jazz Singer (1927)",
+                "Birth of a Nation (1915)",
+                "Metropolis (1927)",
+                "A Trip to the Moon (1902)"
             ],
             "correct_id": 0,
-            "explanation": "Le Chanteur de jazz (1927) inaugure le cinéma parlant grand public.",
-            "saviez_vous": "On parle de « talkies » à partir de cette époque pour désigner les films sonores."
+            "explanation": "The Jazz Singer (1927) launched mainstream sound cinema.",
+            "saviez_vous": "The term \"talkies\" came into use after this film to label sound movies."
         },
         {
             "type": "multiple",
@@ -586,17 +586,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel est le plus grand animal terrestre vivant ?",
+            "language": "en",
+            "question_text": "What is the largest living land animal?",
             "answers": [
-                "Girafe",
-                "Rhinocéros blanc",
-                "Éléphant d'Afrique",
-                "Hippopotame"
+                "Giraffe",
+                "White rhinoceros",
+                "African elephant",
+                "Hippopotamus"
             ],
             "correct_id": 2,
-            "explanation": "L'éléphant de savane d'Afrique peut peser jusqu'à 6 tonnes.",
-            "saviez_vous": "Sa trompe contient environ 40 000 muscles."
+            "explanation": "The African bush elephant can weigh up to 6 tonnes.",
+            "saviez_vous": "An elephant's trunk contains around 40,000 muscles."
         },
         {
             "type": "multiple",
@@ -606,17 +606,17 @@
             "cognitive_type": "recognition",
             "niveau_band": "easy",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel est l'animal terrestre le plus rapide ?",
+            "language": "en",
+            "question_text": "Which is the fastest land animal?",
             "answers": [
                 "Lion",
-                "Guépard",
-                "Antilope",
-                "Cheval"
+                "Cheetah",
+                "Antelope",
+                "Horse"
             ],
             "correct_id": 1,
-            "explanation": "Le guépard peut atteindre 110 km/h en pointe.",
-            "saviez_vous": "Il ne tient cette vitesse que sur quelques centaines de mètres."
+            "explanation": "The cheetah can reach top speeds of about 110 km/h.",
+            "saviez_vous": "It can only sustain that speed for a few hundred metres."
         },
         {
             "type": "multiple",
@@ -626,17 +626,17 @@
             "cognitive_type": "reasoning",
             "niveau_band": "medium",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Quel mammifère est célèbre pour pondre des œufs ?",
+            "language": "en",
+            "question_text": "Which mammal is famous for laying eggs?",
             "answers": [
-                "Kangourou",
-                "Ornithorynque",
-                "Paresseux",
-                "Tatou"
+                "Kangaroo",
+                "Platypus",
+                "Sloth",
+                "Armadillo"
             ],
             "correct_id": 1,
-            "explanation": "L'ornithorynque est un mammifère monotrème : il pond des œufs.",
-            "saviez_vous": "Les échidnés sont les autres mammifères monotrèmes."
+            "explanation": "The platypus is a monotreme mammal — it lays eggs.",
+            "saviez_vous": "Echidnas are the only other egg-laying mammals."
         },
         {
             "type": "multiple",
@@ -646,17 +646,17 @@
             "cognitive_type": "deceptive_trap",
             "niveau_band": "hard",
             "theme": "general",
-            "language": "fr",
-            "question_text": "Le requin est-il un poisson ou un mammifère ?",
+            "language": "en",
+            "question_text": "Is the shark a fish or a mammal?",
             "answers": [
-                "Mammifère",
-                "Poisson",
+                "Mammal",
+                "Fish",
                 "Reptile",
-                "Amphibien"
+                "Amphibian"
             ],
             "correct_id": 1,
-            "explanation": "Le requin est un poisson cartilagineux : il a des branchies, pas de poumons.",
-            "saviez_vous": "À ne pas confondre avec les baleines et dauphins, qui sont eux des mammifères."
+            "explanation": "Sharks are cartilaginous fish — they have gills, not lungs.",
+            "saviez_vous": "Don't confuse them with whales and dolphins, which are mammals."
         }
     ]
 }

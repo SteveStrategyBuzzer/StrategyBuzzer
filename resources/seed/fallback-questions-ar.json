@@ -1,0 +1,662 @@
+{
+    "_meta": {
+        "purpose": "Embedded seed pool (#88/#93). Consumed when bank+cache are dry. NEVER calls AI.",
+        "language": "ar",
+        "theme": "general",
+        "subdomains": [
+            "Histoire",
+            "Sport",
+            "Géographie",
+            "Art",
+            "Cuisine",
+            "Science",
+            "Cinéma",
+            "Faune"
+        ],
+        "count": 32,
+        "source_version": 1,
+        "generated_by": "seed-pool:build"
+    },
+    "questions": [
+        {
+            "type": "multiple",
+            "concept_id": "hist_berlin_wall_1989",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "في أي عام سقط جدار برلين؟",
+            "answers": [
+                "1985",
+                "1989",
+                "1991",
+                "1993"
+            ],
+            "correct_id": 1,
+            "explanation": "سقط جدار برلين في 9 نوفمبر 1989.",
+            "saviez_vous": "كان الجدار يفصل برلين الشرقية عن الغربية منذ 1961."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_columbus_1492",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "في أي عام وصل كولومبوس إلى الأمريكتين؟",
+            "answers": [
+                "1392",
+                "1492",
+                "1592",
+                "1692"
+            ],
+            "correct_id": 1,
+            "explanation": "وصل كولومبوس إلى الباهاما في 12 أكتوبر 1492.",
+            "saviez_vous": "كان يظن أنه وصل إلى الهند الآسيوية."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_ww1_trigger",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما الحدث الذي أشعل الحرب العالمية الأولى عام 1914؟",
+            "answers": [
+                "غزو بولندا",
+                "اغتيال الأرشيدوق فرانز فرديناند",
+                "أزمة الصواريخ الكوبية",
+                "الثورة الروسية"
+            ],
+            "correct_id": 1,
+            "explanation": "اغتيال سراييفو في 28 يونيو 1914 أطلق نظام التحالفات.",
+            "saviez_vous": "قتل الأرشيدوق على يد الشاب القومي الصربي غافريلو برينسيب."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_largest_empire_mongol",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي إمبراطورية كانت الأكبر في التاريخ من حيث المساحة المتصلة؟",
+            "answers": [
+                "الإمبراطورية الرومانية",
+                "الإمبراطورية المغولية",
+                "الإمبراطورية البريطانية",
+                "الإمبراطورية العثمانية"
+            ],
+            "correct_id": 1,
+            "explanation": "بلغت الإمبراطورية المغولية في القرن 13 نحو 24 مليون كم² متصلة.",
+            "saviez_vous": "كانت الإمبراطورية البريطانية أكبر إجمالاً لكن متفرقة."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_football_players_11",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "كم عدد لاعبي فريق كرة القدم في الملعب؟",
+            "answers": [
+                "9",
+                "10",
+                "11",
+                "12"
+            ],
+            "correct_id": 2,
+            "explanation": "يضم الفريق 11 لاعباً: حارس مرمى و10 لاعبين ميدانيين.",
+            "saviez_vous": "يحدد الفيفا عدد البدلاء المسموح بهم لكل مباراة."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_olympics_2024_paris",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي مدينة استضافت الألعاب الأولمبية الصيفية 2024؟",
+            "answers": [
+                "طوكيو",
+                "باريس",
+                "لوس أنجلوس",
+                "لندن"
+            ],
+            "correct_id": 1,
+            "explanation": "استضافت باريس الألعاب من 26 يوليو إلى 11 أغسطس 2024.",
+            "saviez_vous": "كانت ثالث مرة تستضيف فيها باريس الألعاب الصيفية."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_basketball_highest_score",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي من الرياضات الجماعية التالية يجمع أعلى عدد نقاط في المباراة في المتوسط؟",
+            "answers": [
+                "كرة القدم",
+                "هوكي الجليد",
+                "كرة السلة",
+                "رغبي الاتحاد"
+            ],
+            "correct_id": 2,
+            "explanation": "تتجاوز مباريات NBA عادةً 200 نقطة إجمالية.",
+            "saviez_vous": "متوسط أهداف كرة القدم نحو 2.5 لكل مباراة."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_marathon_distance_42195",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما هي المسافة الرسمية للماراثون؟",
+            "answers": [
+                "42 كم بالضبط",
+                "42.195 كم",
+                "40 كم",
+                "45 كم"
+            ],
+            "correct_id": 1,
+            "explanation": "منذ 1921 تحدّدت المسافة الرسمية بـ 42.195 كم.",
+            "saviez_vous": "تعود هذه المسافة إلى أولمبياد لندن 1908."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_capital_australia_canberra",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما هي عاصمة أستراليا؟",
+            "answers": [
+                "سيدني",
+                "كانبيرا",
+                "ملبورن",
+                "بيرث"
+            ],
+            "correct_id": 1,
+            "explanation": "اختيرت كانبيرا عام 1908 كتسوية بين سيدني وملبورن.",
+            "saviez_vous": "هي من العواصم القليلة التي بُنيت من الصفر."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_largest_ocean_pacific",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما هو أكبر محيط في العالم؟",
+            "answers": [
+                "الأطلسي",
+                "الهندي",
+                "الهادئ",
+                "المتجمد الشمالي"
+            ],
+            "correct_id": 2,
+            "explanation": "يغطي المحيط الهادئ نحو 165 مليون كم².",
+            "saviez_vous": "يغطي وحده أكثر من نصف مساحة محيطات الأرض."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_most_timezones_france",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي دولة تمتد عبر أكبر عدد من المناطق الزمنية (مع الأقاليم)؟",
+            "answers": [
+                "روسيا",
+                "فرنسا",
+                "الولايات المتحدة",
+                "الصين"
+            ],
+            "correct_id": 1,
+            "explanation": "تمتد فرنسا على 12 منطقة زمنية بفضل أقاليمها فيما وراء البحار.",
+            "saviez_vous": "لروسيا 11 منطقة زمنية في أراضيها القارية وحدها."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_most_populous_india_2024",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي دولة هي الأكثر سكاناً في العالم منذ 2023؟",
+            "answers": [
+                "الصين",
+                "الهند",
+                "الولايات المتحدة",
+                "إندونيسيا"
+            ],
+            "correct_id": 1,
+            "explanation": "تجاوزت الهند الصين عام 2023 وفق تقديرات الأمم المتحدة.",
+            "saviez_vous": "سكان الصين في تراجع بسبب الهرم العمري."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_mona_lisa_da_vinci",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "من رسم لوحة «الموناليزا»؟",
+            "answers": [
+                "مايكل أنجلو",
+                "رافائيل",
+                "ليوناردو دافنشي",
+                "بوتيتشيلي"
+            ],
+            "correct_id": 2,
+            "explanation": "رسم ليوناردو دافنشي الموناليزا بين 1503 و1519.",
+            "saviez_vous": "تُعرض اللوحة في متحف اللوفر بباريس."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_starry_night_van_gogh",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي فنان رسم لوحة «ليلة النجوم»؟",
+            "answers": [
+                "كلود مونيه",
+                "فينسنت فان غوخ",
+                "بول غوغان",
+                "بابلو بيكاسو"
+            ],
+            "correct_id": 1,
+            "explanation": "رسم فان غوخ «ليلة النجوم» عام 1889 في سان ريمي دو بروفنس.",
+            "saviez_vous": "تُحفظ اللوحة في متحف MoMA بنيويورك."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_picasso_cubism_movement",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما الحركة الفنية التي شارك بيكاسو في تأسيسها مع جورج براك؟",
+            "answers": [
+                "الانطباعية",
+                "التكعيبية",
+                "السريالية",
+                "الرومانسية"
+            ],
+            "correct_id": 1,
+            "explanation": "أسس بيكاسو وبراك التكعيبية حوالي 1907-1908.",
+            "saviez_vous": "تُعد لوحة «آنسات أفينيون» (1907) انطلاقة التكعيبية."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_statue_liberty_bartholdi",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "من نحت تمثال الحرية؟",
+            "answers": [
+                "أوغست رودان",
+                "فريدريك أوغست بارتولدي",
+                "غوستاف إيفل",
+                "كاميل كلوديل"
+            ],
+            "correct_id": 1,
+            "explanation": "بارتولدي هو النحات، أما إيفل فصمّم الهيكل الداخلي فقط.",
+            "saviez_vous": "أهدت فرنسا التمثال للولايات المتحدة عام 1886."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_pizza_origin_italy",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "من أي بلد نشأت البيتزا الحديثة؟",
+            "answers": [
+                "اليونان",
+                "إيطاليا",
+                "إسبانيا",
+                "فرنسا"
+            ],
+            "correct_id": 1,
+            "explanation": "وُلدت البيتزا الحديثة في نابولي في القرن الثامن عشر.",
+            "saviez_vous": "يُقال إن مارغريتا ابتُكرت عام 1889 تكريماً للملكة مارغريتا."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_sushi_japan",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "من أي بلد نشأ السوشي؟",
+            "answers": [
+                "الصين",
+                "كوريا",
+                "اليابان",
+                "فيتنام"
+            ],
+            "correct_id": 2,
+            "explanation": "السوشي طبق ياباني تقليدي.",
+            "saviez_vous": "وُلد النيغيري الحديث في إيدو (طوكيو) خلال القرن التاسع عشر."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_most_expensive_spice_saffron",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي من هذه التوابل الأغلى ثمناً بالوزن؟",
+            "answers": [
+                "الفانيلا",
+                "الزعفران",
+                "الهيل",
+                "الفلفل الأسود"
+            ],
+            "correct_id": 1,
+            "explanation": "يحتاج كل كيلوغرام من الزعفران إلى نحو 150,000 زهرة، مما يجعله باهظ الثمن.",
+            "saviez_vous": "تنتج كل زهرة زعفران 3 خيوط فقط تُقطف يدوياً."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_croissant_origin_austria",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "من أين نشأ الكرواسون أصلاً؟",
+            "answers": [
+                "النمسا",
+                "فرنسا",
+                "إيطاليا",
+                "بلجيكا"
+            ],
+            "correct_id": 0,
+            "explanation": "يعود الكرواسون إلى الـ«كيبفرل» الفييني، ثم انتشر لاحقاً في فرنسا.",
+            "saviez_vous": "افتتح النمساوي أوغست تسانغ مخبزاً فييناوياً في باريس عام 1839."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_gold_symbol_au",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما هو الرمز الكيميائي للذهب؟",
+            "answers": [
+                "Go",
+                "Au",
+                "Ag",
+                "Gd"
+            ],
+            "correct_id": 1,
+            "explanation": "«Au» مشتق من اللاتينية «aurum» وتعني الذهب.",
+            "saviez_vous": "الذهب من أندر العناصر في القشرة الأرضية."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_red_planet_mars",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي كوكب يُلقب بـ«الكوكب الأحمر»؟",
+            "answers": [
+                "الزهرة",
+                "المشتري",
+                "المريخ",
+                "زحل"
+            ],
+            "correct_id": 2,
+            "explanation": "يدين المريخ بلونه لأكسيد الحديد على سطحه.",
+            "saviez_vous": "يضم المريخ أكبر بركان معروف: أوليمبوس مونس."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_most_abundant_universe_hydrogen",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما العنصر الكيميائي الأكثر وفرة في الكون؟",
+            "answers": [
+                "الأكسجين",
+                "الهيليوم",
+                "الكربون",
+                "الهيدروجين"
+            ],
+            "correct_id": 3,
+            "explanation": "يمثّل الهيدروجين نحو 75% من الكتلة الباريونية للكون.",
+            "saviez_vous": "هو وقود النجوم التي تُحوِّله إلى هيليوم."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_octopus_blood_blue",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما لون دم الأخطبوط؟",
+            "answers": [
+                "أحمر",
+                "أزرق",
+                "أخضر",
+                "أصفر"
+            ],
+            "correct_id": 1,
+            "explanation": "دمه أزرق لأن حامل الأكسجين لديه هو الهيموسيانين القائم على النحاس.",
+            "saviez_vous": "دم الفقاريات أحمر بسبب الهيموغلوبين القائم على الحديد."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_titanic_director_cameron",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "من أخرج فيلم «تيتانيك» (1997)؟",
+            "answers": [
+                "ستيفن سبيلبرغ",
+                "جيمس كاميرون",
+                "ريدلي سكوت",
+                "مارتن سكورسيزي"
+            ],
+            "correct_id": 1,
+            "explanation": "أخرج جيمس كاميرون فيلم تيتانيك الصادر عام 1997.",
+            "saviez_vous": "فاز الفيلم بـ11 جائزة أوسكار، متساوياً مع «بن هور» و«عودة الملك»."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_forrest_gump_hanks",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي ممثل أدى الدور الرئيسي في «فورست غامب» (1994)؟",
+            "answers": [
+                "توم كروز",
+                "توم هانكس",
+                "براد بيت",
+                "روبرت دي نيرو"
+            ],
+            "correct_id": 1,
+            "explanation": "يؤدي توم هانكس دور فورست غامب وفاز عنه بأوسكار أفضل ممثل.",
+            "saviez_vous": "حصل توم هانكس على جائزتي أوسكار متتاليتين (فيلادلفيا 1994، فورست غامب 1995)."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_most_oscars_titanic_11",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما الرقم القياسي لجوائز الأوسكار الذي تتقاسمه أفلام «بن هور» و«تيتانيك» و«عودة الملك»؟",
+            "answers": [
+                "9 جوائز",
+                "10 جوائز",
+                "11 جائزة",
+                "12 جائزة"
+            ],
+            "correct_id": 2,
+            "explanation": "فاز كل منها بـ11 جائزة أوسكار، الرقم القياسي على الإطلاق.",
+            "saviez_vous": "فاز «عودة الملك» بكل ترشيحاته الـ11."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_first_talkie_jazz_singer",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما الفيلم الذي يُعد أول فيلم روائي طويل ناطق؟",
+            "answers": [
+                "مغني الجاز (1927)",
+                "مولد أمة (1915)",
+                "متروبوليس (1927)",
+                "رحلة إلى القمر (1902)"
+            ],
+            "correct_id": 0,
+            "explanation": "افتتح فيلم «مغني الجاز» (1927) عصر السينما الناطقة التجارية.",
+            "saviez_vous": "منذ ذلك الحين شاع مصطلح «talkies» للأفلام الناطقة."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_largest_land_elephant",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما هو أكبر حيوان بري حي؟",
+            "answers": [
+                "الزرافة",
+                "وحيد القرن الأبيض",
+                "الفيل الأفريقي",
+                "فرس النهر"
+            ],
+            "correct_id": 2,
+            "explanation": "يصل وزن فيل السافانا الأفريقي إلى 6 أطنان.",
+            "saviez_vous": "يحتوي خرطومه على حوالي 40,000 عضلة."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_fastest_cheetah",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "ما هو أسرع حيوان بري؟",
+            "answers": [
+                "الأسد",
+                "الفهد",
+                "الظبي",
+                "الحصان"
+            ],
+            "correct_id": 1,
+            "explanation": "يصل الفهد إلى سرعة قصوى نحو 110 كم/س.",
+            "saviez_vous": "لا يحافظ على هذه السرعة إلا لبضع مئات من الأمتار."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_egg_laying_mammal_platypus",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "أي ثديي يشتهر بأنه يبيض؟",
+            "answers": [
+                "الكنغر",
+                "منقار البط",
+                "الكسلان",
+                "المدرع"
+            ],
+            "correct_id": 1,
+            "explanation": "منقار البط من الثدييات وحيدات المسلك التي تبيض.",
+            "saviez_vous": "القنفذ النملي هو الثديي الآخر الوحيد الذي يبيض."
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_shark_is_fish",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "ar",
+            "question_text": "هل القرش سمكة أم ثديي؟",
+            "answers": [
+                "ثديي",
+                "سمكة",
+                "زاحف",
+                "برمائي"
+            ],
+            "correct_id": 1,
+            "explanation": "القرش سمكة غضروفية: يتنفس بالخياشيم لا بالرئتين.",
+            "saviez_vous": "لا تخلط بينه وبين الحيتان والدلافين فهي ثدييات."
+        }
+    ]
+}

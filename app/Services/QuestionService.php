@@ -237,11 +237,14 @@ class QuestionService
     {
         $seedPath = resource_path("seed/fallback-questions-{$language}.json");
         if (!file_exists($seedPath)) {
-            // Repli sur le français si la langue demandée n'a pas de pool dédié.
-            $seedPath = resource_path('seed/fallback-questions-fr.json');
-            if (!file_exists($seedPath)) {
-                return null;
-            }
+            // #93 : silent fallback to French is REMOVED. We log the gap so the
+            // BankDryDetector + ops surfaces see the real missing-language
+            // problem instead of silently serving FR to a non-FR player.
+            Log::warning('[QuestionService] no seed pool file for language — silent FR fallback DISABLED (#93)', [
+                'language' => $language,
+                'expected_path' => $seedPath,
+            ]);
+            return null;
         }
 
         $raw = file_get_contents($seedPath);

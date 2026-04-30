@@ -1,0 +1,662 @@
+{
+    "_meta": {
+        "purpose": "Embedded seed pool (#88/#93). Consumed when bank+cache are dry. NEVER calls AI.",
+        "language": "zh",
+        "theme": "general",
+        "subdomains": [
+            "Histoire",
+            "Sport",
+            "Géographie",
+            "Art",
+            "Cuisine",
+            "Science",
+            "Cinéma",
+            "Faune"
+        ],
+        "count": 32,
+        "source_version": 1,
+        "generated_by": "seed-pool:build"
+    },
+    "questions": [
+        {
+            "type": "multiple",
+            "concept_id": "hist_berlin_wall_1989",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "柏林墙是哪一年倒塌的？",
+            "answers": [
+                "1985",
+                "1989",
+                "1991",
+                "1993"
+            ],
+            "correct_id": 1,
+            "explanation": "柏林墙于1989年11月9日倒塌。",
+            "saviez_vous": "柏林墙自1961年起将东西柏林分隔开。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_columbus_1492",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "哥伦布是哪一年到达美洲的？",
+            "answers": [
+                "1392",
+                "1492",
+                "1592",
+                "1692"
+            ],
+            "correct_id": 1,
+            "explanation": "哥伦布于1492年10月12日登陆巴哈马。",
+            "saviez_vous": "他以为自己到达了亚洲的印度。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_ww1_trigger",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "1914年第一次世界大战是由什么事件引发的？",
+            "answers": [
+                "入侵波兰",
+                "弗朗茨·斐迪南大公遇刺",
+                "古巴导弹危机",
+                "俄国革命"
+            ],
+            "correct_id": 1,
+            "explanation": "1914年6月28日萨拉热窝刺杀事件触发了同盟体系。",
+            "saviez_vous": "大公被年轻的塞尔维亚民族主义者加夫里洛·普林西普枪杀。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "hist_largest_empire_mongol",
+            "sub_domain": "Histoire",
+            "sub_theme": "Histoire",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "历史上连续领土面积最大的帝国是？",
+            "answers": [
+                "罗马帝国",
+                "蒙古帝国",
+                "大英帝国",
+                "奥斯曼帝国"
+            ],
+            "correct_id": 1,
+            "explanation": "13世纪的蒙古帝国连续领土约2400万平方公里。",
+            "saviez_vous": "大英帝国总面积更大，但领土分散。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_football_players_11",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "一支足球队在场上有多少名球员？",
+            "answers": [
+                "9",
+                "10",
+                "11",
+                "12"
+            ],
+            "correct_id": 2,
+            "explanation": "一支球队上场11人：1名守门员和10名场上球员。",
+            "saviez_vous": "国际足联限制每场比赛的替补人数。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_olympics_2024_paris",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "2024年夏季奥运会在哪个城市举办？",
+            "answers": [
+                "东京",
+                "巴黎",
+                "洛杉矶",
+                "伦敦"
+            ],
+            "correct_id": 1,
+            "explanation": "巴黎于2024年7月26日至8月11日举办了夏季奥运会。",
+            "saviez_vous": "这是巴黎第三次举办夏季奥运会。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_basketball_highest_score",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "以下团队运动中，哪个比赛平均总得分最高？",
+            "answers": [
+                "足球",
+                "冰球",
+                "篮球",
+                "15人制橄榄球"
+            ],
+            "correct_id": 2,
+            "explanation": "NBA篮球赛双方总得分常常超过200分。",
+            "saviez_vous": "足球比赛平均进球约2.5个。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "sport_marathon_distance_42195",
+            "sub_domain": "Sport",
+            "sub_theme": "Sport",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "马拉松的官方距离是多少？",
+            "answers": [
+                "正好42公里",
+                "42.195公里",
+                "40公里",
+                "45公里"
+            ],
+            "correct_id": 1,
+            "explanation": "自1921年起，马拉松官方距离固定为42.195公里。",
+            "saviez_vous": "该距离源于1908年伦敦奥运会。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_capital_australia_canberra",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "澳大利亚的首都是哪里？",
+            "answers": [
+                "悉尼",
+                "堪培拉",
+                "墨尔本",
+                "珀斯"
+            ],
+            "correct_id": 1,
+            "explanation": "堪培拉于1908年被选为悉尼和墨尔本之间的折中首都。",
+            "saviez_vous": "它是少数从零规划建造的首都之一。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_largest_ocean_pacific",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "世界上最大的海洋是哪个？",
+            "answers": [
+                "大西洋",
+                "印度洋",
+                "太平洋",
+                "北冰洋"
+            ],
+            "correct_id": 2,
+            "explanation": "太平洋面积约1.65亿平方公里。",
+            "saviez_vous": "它独自覆盖了地球海洋面积的一半以上。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_most_timezones_france",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "哪个国家横跨最多时区（含海外领地）？",
+            "answers": [
+                "俄罗斯",
+                "法国",
+                "美国",
+                "中国"
+            ],
+            "correct_id": 1,
+            "explanation": "法国凭借海外领地横跨12个时区。",
+            "saviez_vous": "俄罗斯仅本土就有11个时区。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "geo_most_populous_india_2024",
+            "sub_domain": "Géographie",
+            "sub_theme": "Géographie",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "自2023年起世界上人口最多的国家是？",
+            "answers": [
+                "中国",
+                "印度",
+                "美国",
+                "印度尼西亚"
+            ],
+            "correct_id": 1,
+            "explanation": "据联合国数据，印度于2023年超过中国。",
+            "saviez_vous": "由于人口结构，中国人口正在下降。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_mona_lisa_da_vinci",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "《蒙娜丽莎》是谁画的？",
+            "answers": [
+                "米开朗基罗",
+                "拉斐尔",
+                "达·芬奇",
+                "波提切利"
+            ],
+            "correct_id": 2,
+            "explanation": "达·芬奇于1503年至1519年间创作了《蒙娜丽莎》。",
+            "saviez_vous": "该画作现存于巴黎卢浮宫。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_starry_night_van_gogh",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "《星夜》是哪位艺术家创作的？",
+            "answers": [
+                "克劳德·莫奈",
+                "文森特·梵高",
+                "保罗·高更",
+                "巴勃罗·毕加索"
+            ],
+            "correct_id": 1,
+            "explanation": "梵高于1889年在圣雷米创作了《星夜》。",
+            "saviez_vous": "该画现藏于纽约现代艺术博物馆（MoMA）。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_picasso_cubism_movement",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "毕加索与乔治·布拉克共同创立了哪个艺术流派？",
+            "answers": [
+                "印象派",
+                "立体主义",
+                "超现实主义",
+                "浪漫主义"
+            ],
+            "correct_id": 1,
+            "explanation": "毕加索与布拉克于1907—1908年前后创立立体主义。",
+            "saviez_vous": "《亚维农的少女》（1907）被视为立体主义的开端。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "art_statue_liberty_bartholdi",
+            "sub_domain": "Art",
+            "sub_theme": "Art",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "自由女神像的雕塑家是谁？",
+            "answers": [
+                "奥古斯特·罗丹",
+                "弗雷德里克·奥古斯特·巴托尔迪",
+                "古斯塔夫·埃菲尔",
+                "卡米耶·克洛岱尔"
+            ],
+            "correct_id": 1,
+            "explanation": "巴托尔迪是雕塑家；埃菲尔仅设计了内部钢架。",
+            "saviez_vous": "法国于1886年将自由女神像赠予美国。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_pizza_origin_italy",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "现代披萨起源于哪个国家？",
+            "answers": [
+                "希腊",
+                "意大利",
+                "西班牙",
+                "法国"
+            ],
+            "correct_id": 1,
+            "explanation": "现代披萨18世纪诞生于那不勒斯。",
+            "saviez_vous": "玛格丽特披萨据说于1889年为纪念玛格丽特王后而创制。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_sushi_japan",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "寿司起源于哪个国家？",
+            "answers": [
+                "中国",
+                "韩国",
+                "日本",
+                "越南"
+            ],
+            "correct_id": 2,
+            "explanation": "寿司是日本的传统料理。",
+            "saviez_vous": "现代握寿司于19世纪诞生在江户（今东京）。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_most_expensive_spice_saffron",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "以下香料中，按重量计算哪种最贵？",
+            "answers": [
+                "香草",
+                "藏红花",
+                "小豆蔻",
+                "黑胡椒"
+            ],
+            "correct_id": 1,
+            "explanation": "1公斤藏红花需要约15万朵花，因此价格极高。",
+            "saviez_vous": "每朵番红花只产3根柱头，全部需手工采摘。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cuisine_croissant_origin_austria",
+            "sub_domain": "Cuisine",
+            "sub_theme": "Cuisine",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "可颂面包最初源自哪里？",
+            "answers": [
+                "奥地利",
+                "法国",
+                "意大利",
+                "比利时"
+            ],
+            "correct_id": 0,
+            "explanation": "可颂源自维也纳的Kipferl，后来在法国流行起来。",
+            "saviez_vous": "1839年，奥地利人奥古斯特·赞格在巴黎开了一家维也纳风格面包店。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_gold_symbol_au",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "黄金的化学符号是什么？",
+            "answers": [
+                "Go",
+                "Au",
+                "Ag",
+                "Gd"
+            ],
+            "correct_id": 1,
+            "explanation": "\"Au\"来自拉丁语\"aurum\"，意为黄金。",
+            "saviez_vous": "黄金是地壳中最稀有的元素之一。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_red_planet_mars",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "哪颗行星被称为\"红色行星\"？",
+            "answers": [
+                "金星",
+                "木星",
+                "火星",
+                "土星"
+            ],
+            "correct_id": 2,
+            "explanation": "火星的颜色源于其表面的氧化铁。",
+            "saviez_vous": "火星上有太阳系最大的火山：奥林帕斯山。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_most_abundant_universe_hydrogen",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "宇宙中含量最丰富的化学元素是？",
+            "answers": [
+                "氧",
+                "氦",
+                "碳",
+                "氢"
+            ],
+            "correct_id": 3,
+            "explanation": "氢约占宇宙重子物质质量的75%。",
+            "saviez_vous": "它是恒星的燃料，被聚变成氦。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "science_octopus_blood_blue",
+            "sub_domain": "Science",
+            "sub_theme": "Science",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "章鱼的血是什么颜色？",
+            "answers": [
+                "红色",
+                "蓝色",
+                "绿色",
+                "黄色"
+            ],
+            "correct_id": 1,
+            "explanation": "章鱼血呈蓝色，因为其载氧蛋白血蓝蛋白以铜为核心。",
+            "saviez_vous": "脊椎动物的血液因含铁血红蛋白而呈红色。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_titanic_director_cameron",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "1997年电影《泰坦尼克号》的导演是谁？",
+            "answers": [
+                "史蒂文·斯皮尔伯格",
+                "詹姆斯·卡梅隆",
+                "雷德利·斯科特",
+                "马丁·斯科塞斯"
+            ],
+            "correct_id": 1,
+            "explanation": "詹姆斯·卡梅隆执导了1997年上映的《泰坦尼克号》。",
+            "saviez_vous": "该片获得11项奥斯卡奖，与《宾虚》和《指环王：王者归来》并列纪录。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_forrest_gump_hanks",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "1994年电影《阿甘正传》的主演是谁？",
+            "answers": [
+                "汤姆·克鲁斯",
+                "汤姆·汉克斯",
+                "布拉德·皮特",
+                "罗伯特·德尼罗"
+            ],
+            "correct_id": 1,
+            "explanation": "汤姆·汉克斯出演阿甘并凭此获得奥斯卡最佳男主角。",
+            "saviez_vous": "汤姆·汉克斯连续两年获奥斯卡最佳男主角（1994《费城故事》、1995《阿甘正传》）。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_most_oscars_titanic_11",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "《宾虚》《泰坦尼克号》《指环王：王者归来》共享的奥斯卡纪录是？",
+            "answers": [
+                "9项",
+                "10项",
+                "11项",
+                "12项"
+            ],
+            "correct_id": 2,
+            "explanation": "三部影片各获11项奥斯卡，并列史上最多。",
+            "saviez_vous": "《王者归来》以11项提名全部获奖。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "cinema_first_talkie_jazz_singer",
+            "sub_domain": "Cinéma",
+            "sub_theme": "Cinéma",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "哪部电影被视为第一部长片有声电影？",
+            "answers": [
+                "《爵士歌手》(1927)",
+                "《一个国家的诞生》(1915)",
+                "《大都会》(1927)",
+                "《月球旅行记》(1902)"
+            ],
+            "correct_id": 0,
+            "explanation": "《爵士歌手》(1927)开创了商业有声电影时代。",
+            "saviez_vous": "此后\"talkies\"一词被用来指代有声电影。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_largest_land_elephant",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "现存最大的陆地动物是？",
+            "answers": [
+                "长颈鹿",
+                "白犀牛",
+                "非洲象",
+                "河马"
+            ],
+            "correct_id": 2,
+            "explanation": "非洲草原象体重可达6吨。",
+            "saviez_vous": "大象的鼻子约由4万块肌肉组成。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_fastest_cheetah",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "recognition",
+            "niveau_band": "easy",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "陆地上最快的动物是？",
+            "answers": [
+                "狮子",
+                "猎豹",
+                "羚羊",
+                "马"
+            ],
+            "correct_id": 1,
+            "explanation": "猎豹的极速可达约110公里/小时。",
+            "saviez_vous": "它只能维持这种速度几百米。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_egg_laying_mammal_platypus",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "reasoning",
+            "niveau_band": "medium",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "哪种哺乳动物以产卵著称？",
+            "answers": [
+                "袋鼠",
+                "鸭嘴兽",
+                "树懒",
+                "犰狳"
+            ],
+            "correct_id": 1,
+            "explanation": "鸭嘴兽是单孔目哺乳动物，会产卵。",
+            "saviez_vous": "针鼹是另一种会产卵的哺乳动物。"
+        },
+        {
+            "type": "multiple",
+            "concept_id": "fauna_shark_is_fish",
+            "sub_domain": "Faune",
+            "sub_theme": "Faune",
+            "cognitive_type": "deceptive_trap",
+            "niveau_band": "hard",
+            "theme": "general",
+            "language": "zh",
+            "question_text": "鲨鱼是鱼类还是哺乳动物？",
+            "answers": [
+                "哺乳动物",
+                "鱼类",
+                "爬行动物",
+                "两栖动物"
+            ],
+            "correct_id": 1,
+            "explanation": "鲨鱼是软骨鱼类，用鳃呼吸，没有肺。",
+            "saviez_vous": "别和鲸鱼、海豚混淆，后者是哺乳动物。"
+        }
+    ]
+}
