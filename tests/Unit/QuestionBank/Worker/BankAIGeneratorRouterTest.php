@@ -2,13 +2,18 @@
 
 namespace Tests\Unit\QuestionBank\Worker;
 
+use App\Models\QuestionGroup;
+use App\Services\QuestionBank\QuestionBankRepository;
 use App\Services\QuestionBank\Worker\BankAIGenerator;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class BankAIGeneratorRouterTest extends TestCase
 {
+    use RefreshDatabase;
+
     private const ROUTER_BASE = 'http://test-router.local';
 
     private ?string $previousQuestionApiUrl = null;
@@ -97,7 +102,7 @@ class BankAIGeneratorRouterTest extends TestCase
         });
     }
 
-    public function test_router_payload_source_is_honoured_in_output_payload(): void
+    public function test_router_payload_source_is_returned_unchanged(): void
     {
         Http::fake([
             self::ROUTER_BASE.'/generate-bank-question'
@@ -108,6 +113,30 @@ class BankAIGeneratorRouterTest extends TestCase
 
         $this->assertTrue($result['ok']);
         $this->assertSame('openai', $result['payload']['source']);
+    }
+
+    /**
+     * Plumbing assertion: the source the router reports must reach the
+     * persisted row. Pipes the generator's payload into the real
+     * QuestionBankRepository (sqlite in-memory) and reads the row back.
+     */
+    public function test_router_payload_source_reaches_persisted_row_via_addToBank(): void
+    {
+        Http::fake([
+            self::ROUTER_BASE.'/generate-bank-question'
+                => Http::response($this->okEnvelope(['source' => 'openai', 'concept_id' => 'plumbing-test-1']), 200),
+        ]);
+
+        $result = (new BankAIGenerator())->generateForSegment($this->soloSegment());
+        $this->assertTrue($result['ok']);
+
+        $group = (new QuestionBankRepository())->addToBank($result['payload']);
+
+        $this->assertNotNull($group, 'addToBank should persist the generator payload.');
+        $persisted = QuestionGroup::find($group->id);
+        $this->assertNotNull($persisted);
+        $this->assertSame('openai', $persisted->source, 'The router-reported source must be persisted, not a hardcoded label.');
+        $this->assertSame('plumbing-test-1', $persisted->concept_id);
     }
 
     public function test_router_503_returns_structured_failure(): void
@@ -130,13 +159,11 @@ class BankAIGeneratorRouterTest extends TestCase
     }
 
     /**
-     * Solo vs Boss XOR is enforced on the output payload that addToBank()
-     * persists (DB CHECK enforces the level XOR at the row level).
-     * The router request body itself only carries `difficulty_depth` —
-     * the level/boss metadata is stamped on the payload by the worker
-     * after the router answers.
+     * Solo segment must not leak boss_level into the router request body
+     * (regression: a future change sending boss_level for a Solo segment).
+     * The output payload then carries the correct level field for addToBank.
      */
-    public function test_solo_segment_output_payload_carries_difficulty_level_only(): void
+    public function test_solo_segment_does_not_leak_boss_level_into_request_body(): void
     {
         Http::fake([
             self::ROUTER_BASE.'/generate-bank-question' => Http::response($this->okEnvelope(), 200),
@@ -146,14 +173,33 @@ class BankAIGeneratorRouterTest extends TestCase
             'mode_target' => ['type' => 'solo_range', 'levels' => [11, 19]],
         ]);
 
-        $payload = (new BankAIGenerator())->generateForSegment($segment)['payload'];
+        $result = (new BankAIGenerator())->generateForSegment($segment);
 
+        Http::assertSent(function (Request $req) {
+            $body = $req->data();
+            $this->assertArrayNotHasKey(
+                'boss_level',
+                $body,
+                'Solo segment must NEVER send boss_level to the router.'
+            );
+            return true;
+        });
+
+        // And the resulting payload (bound for addToBank) carries the
+        // correct level field — the actual production XOR.
+        $payload = $result['payload'];
         $this->assertArrayHasKey('difficulty_level', $payload);
         $this->assertSame(11, $payload['difficulty_level']);
         $this->assertArrayNotHasKey('boss_level', $payload);
     }
 
-    public function test_boss_segment_output_payload_carries_boss_level_only(): void
+    /**
+     * Boss segment must not leak difficulty_level into the router request
+     * body (regression: a future change sending difficulty_level for a
+     * Boss segment). The output payload then carries the correct level
+     * field for addToBank.
+     */
+    public function test_boss_segment_does_not_leak_difficulty_level_into_request_body(): void
     {
         Http::fake([
             self::ROUTER_BASE.'/generate-bank-question' => Http::response($this->okEnvelope(), 200),
@@ -163,8 +209,19 @@ class BankAIGeneratorRouterTest extends TestCase
             'mode_target' => ['type' => 'boss', 'level' => 30],
         ]);
 
-        $payload = (new BankAIGenerator())->generateForSegment($segment)['payload'];
+        $result = (new BankAIGenerator())->generateForSegment($segment);
 
+        Http::assertSent(function (Request $req) {
+            $body = $req->data();
+            $this->assertArrayNotHasKey(
+                'difficulty_level',
+                $body,
+                'Boss segment must NEVER send difficulty_level to the router.'
+            );
+            return true;
+        });
+
+        $payload = $result['payload'];
         $this->assertArrayHasKey('boss_level', $payload);
         $this->assertSame(30, $payload['boss_level']);
         $this->assertArrayNotHasKey('difficulty_level', $payload);
