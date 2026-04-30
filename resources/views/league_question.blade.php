@@ -650,6 +650,9 @@ $mode = 'league';
     }
 </style>
 
+{{-- #100 — League gameplay views opt in explicitly to the connection-status
+     badge (own CSS above, own updater script below). Removing this div opts
+     the page out, just like the Duo views do. --}}
 <div class="connection-status connecting" id="connectionStatus">{{ __('Connexion...') }}</div>
 
 <div class="game-container">

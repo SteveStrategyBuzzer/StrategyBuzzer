@@ -297,8 +297,6 @@ $totalQuestions = $totalQuestions ?? 10;
     }
 </style>
 
-{{-- connection-status provided by layouts.game --}}
-
 @php
 $playerLeading  = $playerScore > $opponentScore;
 $opponentLeading = $opponentScore > $playerScore;

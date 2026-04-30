@@ -177,11 +177,13 @@
     </div>
 </div>
 
-<!-- Connection Status Badge — Duo uses lobby/SYNC indicators; do not render
-     the shared badge on Duo routes (League injects its own from view content). -->
-@if (! request()->routeIs('duo.*') && ! request()->routeIs('game.duo.*'))
-<div id="connectionStatus"></div>
-@endif
+<!-- Connection Status Badge — opt-in only (#100). The layout no longer renders
+     the badge by default. A view that wants it must explicitly push the markup
+     here via `@section('connection-status')`. CSS for `#connectionStatus`
+     (above) stays as a baseline so any opt-in view gets the standard styling
+     automatically. Duo gameplay views deliberately do not opt in (lobby +
+     SYNC brain are the canonical presence indicators). -->
+@yield('connection-status')
 
 <!-- Voice Mic Button (WebRTC — shown by VoiceChat init, hidden by default) -->
 <button id="voiceMicButton" title="{{ __('Activer/désactiver le micro') }}">
