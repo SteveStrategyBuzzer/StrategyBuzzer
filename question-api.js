@@ -67,10 +67,14 @@ app.use(express.json({
 // (fail-closed) so an accidentally-deployed worker without auth material
 // cannot expose AI generation publicly.
 // ============================================================================
-const ADMIN_JWT_SECRET = (() => {
+// Pure function so tests can exercise the resolver (and especially the
+// "missing/weak secret" branch) without having to re-require the whole
+// module. The actual ADMIN_JWT_SECRET below is `resolveAdminJwtSecret(process.env)`.
+function resolveAdminJwtSecret(env) {
+  const source = env || {};
   const candidates = [
-    process.env.QUESTION_API_JWT_SECRET || '',
-    process.env.GAME_SERVER_JWT_SECRET || '',
+    source.QUESTION_API_JWT_SECRET || '',
+    source.GAME_SERVER_JWT_SECRET || '',
   ];
   for (const raw of candidates) {
     if (!raw) continue;
@@ -80,7 +84,9 @@ const ADMIN_JWT_SECRET = (() => {
     if (value.trim().length >= 16) return value;
   }
   return '';
-})();
+}
+
+const ADMIN_JWT_SECRET = resolveAdminJwtSecret(process.env);
 
 const ADMIN_JWT_AUDIENCE = 'question-api';
 const ADMIN_JWT_PURPOSE = 'qapi_admin';
@@ -238,6 +244,8 @@ module.exports.__test = {
   requireAdminJwt,
   claimJti,
   setAdminJwtRedisClient,
+  resolveAdminJwtSecret,
+  ADMIN_JWT_SECRET,
   ADMIN_JWT_AUDIENCE,
   ADMIN_JWT_PURPOSE,
   ADMIN_JWT_MAX_LIFETIME_SECONDS,
