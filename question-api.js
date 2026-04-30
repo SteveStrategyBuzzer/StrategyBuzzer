@@ -1253,6 +1253,8 @@ ${langSchema}
 });
 
 const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Question API server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Question API server running on port ${PORT}`);
+  });
+}
