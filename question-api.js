@@ -961,9 +961,17 @@ app.post('/generate-image-question', requireAdminToken, async (req, res) => {
 //     "question_type": "qcm" | "true_false",
 //     "difficulty_depth": 1..10,
 //     "languages": ["fr", "en", ...],          // optional, default ["fr"]
+//     "difficulty_level": 1..99,               // Solo segments — XOR with boss_level
+//     "boss_level":       10..100,             // Boss segments — XOR with difficulty_level
 //     "concept_hint": string,                  // optional
 //     "preferred_provider": "gemini"|"openai"  // optional
 //   }
+//
+// Level-context XOR: callers MUST send EITHER `difficulty_level` (Solo)
+// OR `boss_level` (Boss), never both, never neither. The router itself
+// does not act on these today — they are forwarded so future prompt
+// tuning and downstream tooling have the full match context. The DB
+// CHECK on `question_groups` enforces the same XOR on storage.
 app.post('/generate-bank-question', async (req, res) => {
   const {
     domain,

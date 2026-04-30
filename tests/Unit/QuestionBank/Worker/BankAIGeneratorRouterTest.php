@@ -77,6 +77,7 @@ class BankAIGeneratorRouterTest extends TestCase
         Http::assertSent(function (Request $req) {
             $body = $req->data();
 
+            // The 6 always-present fields
             $this->assertArrayHasKey('domain', $body);
             $this->assertArrayHasKey('sub_domain', $body);
             $this->assertArrayHasKey('cognitive_type', $body);
@@ -96,6 +97,12 @@ class BankAIGeneratorRouterTest extends TestCase
 
             $this->assertIsArray($body['languages']);
             $this->assertSame(['fr', 'en', 'es'], $body['languages']);
+
+            // 7th field — the level-context XOR. This Solo segment must
+            // carry difficulty_level pinned to the low end of the band.
+            $this->assertArrayHasKey('difficulty_level', $body);
+            $this->assertSame(21, $body['difficulty_level']);
+            $this->assertArrayNotHasKey('boss_level', $body);
 
             return true;
         });
@@ -189,6 +196,7 @@ class BankAIGeneratorRouterTest extends TestCase
 
         $result = (new BankAIGenerator())->generateForSegment($segment);
 
+        // Request body: difficulty_level present, boss_level absent.
         Http::assertSent(function (Request $req) {
             $body = $req->data();
             $this->assertArrayHasKey(
@@ -230,6 +238,7 @@ class BankAIGeneratorRouterTest extends TestCase
 
         $result = (new BankAIGenerator())->generateForSegment($segment);
 
+        // Request body: boss_level present, difficulty_level absent.
         Http::assertSent(function (Request $req) {
             $body = $req->data();
             $this->assertArrayHasKey(
@@ -246,6 +255,7 @@ class BankAIGeneratorRouterTest extends TestCase
             return true;
         });
 
+        // Persisted payload (bound for addToBank): same XOR.
         $payload = $result['payload'];
         $this->assertArrayHasKey('boss_level', $payload);
         $this->assertSame(30, $payload['boss_level']);

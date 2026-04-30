@@ -16,10 +16,12 @@
 
 const geminiProvider = require('./gemini');
 const openaiProvider = require('./openai');
+const anthropicProvider = require('./anthropic');
 
 const PROVIDERS = {
   [geminiProvider.name]: geminiProvider,
   [openaiProvider.name]: openaiProvider,
+  [anthropicProvider.name]: anthropicProvider,
 };
 
 function parseKeys(provider) {
@@ -158,7 +160,7 @@ class AllProvidersExhaustedError extends Error {
 
 class NoProvidersConfiguredError extends Error {
   constructor() {
-    super('AI router: no providers configured (set GEMINI_API_KEY or OPENAI_API_KEY)');
+    super('AI router: no providers configured (set GEMINI_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY)');
     this.name = 'NoProvidersConfiguredError';
   }
 }
