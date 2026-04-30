@@ -726,9 +726,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         50% { opacity: 0.7; }
     }
 
-    /* Hide connection badge when connected — only show when disconnected */
-    #connectionStatus.connected { display: none !important; }
-
     /* Hide voice mic on answer page — only shown on result page */
     #voiceMicButton { display: none !important; }
 
@@ -738,7 +735,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     #gameHeader { display: none !important; }
 </style>
 
-{{-- connection-status, voice-mic-button: provided by layouts.game --}}
+{{-- voice-mic-button: provided by layouts.game --}}
 
 <div class="game-container">
     <div class="header-row">
@@ -1075,7 +1072,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const timerBar = document.getElementById('timerBar');
     const timerSeconds = document.getElementById('timerSeconds');
     const potentialPoints = document.getElementById('potentialPoints');
-    const connectionStatus = document.getElementById('connectionStatus');
     const resultOverlay = document.getElementById('resultOverlay');
     const resultText = document.getElementById('resultText');
     const pointsText = document.getElementById('pointsText');
@@ -1098,21 +1094,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function updatePotentialPointsDisplay(points) {
         potentialPoints.textContent = '+' + points;
         potentialPoints.className = 'potential-points points-' + points;
-    }
-    
-    function updateConnectionStatus(status) {
-        connectionStatus.className = 'connection-status ' + status;
-        switch(status) {
-            case 'connected':
-                connectionStatus.textContent = '{{ __("Connecté") }}';
-                break;
-            case 'disconnected':
-                connectionStatus.textContent = '{{ __("Déconnecté") }}';
-                break;
-            case 'connecting':
-                connectionStatus.textContent = '{{ __("Connexion...") }}';
-                break;
-        }
     }
     
     function startTimer() {
@@ -1538,7 +1519,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         });
     }
     function _onAnswerDisconnect(reason) {
-        updateConnectionStatus('disconnected');
     }
     function _onAnswerError(error) {
         console.error('[DuoAnswer] Socket error:', error);
@@ -1818,7 +1798,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             }
         });
         if (GAME_SERVER_URL) {
-            updateConnectionStatus('connecting');
             GameEffectsRuntime.init(DuoSocketClient, PLAYER_ID);
         }
     }

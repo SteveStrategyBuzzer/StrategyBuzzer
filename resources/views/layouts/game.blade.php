@@ -177,8 +177,11 @@
     </div>
 </div>
 
-<!-- Connection Status Badge -->
+<!-- Connection Status Badge — Duo uses lobby/SYNC indicators; do not render
+     the shared badge on Duo routes (League injects its own from view content). -->
+@if (! request()->routeIs('duo.*') && ! request()->routeIs('game.duo.*'))
 <div id="connectionStatus"></div>
+@endif
 
 <!-- Voice Mic Button (WebRTC — shown by VoiceChat init, hidden by default) -->
 <button id="voiceMicButton" title="{{ __('Activer/désactiver le micro') }}">

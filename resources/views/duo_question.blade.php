@@ -523,9 +523,6 @@ $mode = 'duo';
     }
     
 
-    /* Hide connection badge when connected — only show disconnected/connecting states */
-    #connectionStatus.connected { display: none !important; }
-
     /* Chrono turns red during last 3 seconds */
     .chrono-circle.urgent {
         background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
@@ -743,7 +740,7 @@ $mode = 'duo';
        circles) so the shared header would duplicate / overlap the panels. */
     #gameHeader { display: none !important; }
 </style>
-{{-- loading-overlay, connection-status, voice-mic-button: provided by layouts.game --}}
+{{-- loading-overlay, voice-mic-button: provided by layouts.game --}}
 
 <div class="game-container" id="gameContainer" style="display: none;">
     <div class="question-header">
@@ -993,7 +990,6 @@ $mode = 'duo';
     const chronoTimer = document.getElementById('chronoTimer');
     const buzzButton = document.getElementById('buzzButton');
     const buzzContainer = document.getElementById('buzzContainer');
-    const connectionStatus = document.getElementById('connectionStatus');
     const questionText = document.getElementById('questionText');
     const questionTheme = document.getElementById('questionTheme');
     const questionCounter = document.getElementById('questionCounter');
@@ -1083,21 +1079,6 @@ $mode = 'duo';
     function updateLoadingText(text) {
         if (loadingText) {
             loadingText.textContent = text;
-        }
-    }
-    
-    function updateConnectionStatus(status) {
-        connectionStatus.className = 'connection-status ' + status;
-        switch(status) {
-            case 'connected':
-                connectionStatus.textContent = '{{ __("Connecté") }}';
-                break;
-            case 'disconnected':
-                connectionStatus.textContent = '{{ __("Déconnecté") }}';
-                break;
-            default:
-                connectionStatus.textContent = '{{ __("Connexion...") }}';
-                break;
         }
     }
     

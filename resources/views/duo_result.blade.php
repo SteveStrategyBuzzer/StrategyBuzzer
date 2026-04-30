@@ -963,7 +963,7 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     #gameHeader { display: none !important; }
 </style>
 
-{{-- connection-status, voice-mic button: provided by layouts.game --}}
+{{-- voice-mic button: provided by layouts.game --}}
 
 {{-- Tâche #77 P77.3 — Le mode "pending" (overlay #resultPendingOverlay + variable
      $resultPending + CSS associée) a été supprimé. La page /duo/result n'est désormais
@@ -1297,7 +1297,6 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         ? Number(window.GR_RESTORED_PHASE_ENDS_AT) || null
         : null;
     
-    const connectionStatus = document.getElementById('connectionStatus');
     const btnGo = document.getElementById('btnGo');
     const waitingMessage = document.getElementById('waitingMessage');
     // NOTE: outer-scope playerScoreEl / opponentScoreEl removed — they were
@@ -1314,21 +1313,6 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     
     function getGameServerUrl() {
         return window.location.origin;
-    }
-    
-    function updateConnectionStatus(status) {
-        connectionStatus.className = 'connection-status ' + status;
-        switch(status) {
-            case 'connected':
-                connectionStatus.textContent = '{{ __("Connecté") }}';
-                break;
-            case 'disconnected':
-                connectionStatus.textContent = '{{ __("Déconnecté") }}';
-                break;
-            case 'connecting':
-                connectionStatus.textContent = '{{ __("Connexion...") }}';
-                break;
-        }
     }
     
     function setPlayerReady() {
