@@ -405,14 +405,25 @@ class LeagueTeamService
         }
 
         foreach ($team->members as $member) {
-            $this->coinLedgerService->credit(
-                $member,
-                $coinsEarned,
-                'league_team_reward',
-                'league_team_match',
-                $matchId,
-                'competence'
-            );
+            if ($matchId !== null) {
+                $this->coinLedgerService->creditOnce(
+                    $member,
+                    $coinsEarned,
+                    'league_team_reward',
+                    'league_team_match',
+                    $matchId,
+                    'competence'
+                );
+            } else {
+                $this->coinLedgerService->credit(
+                    $member,
+                    $coinsEarned,
+                    'league_team_reward',
+                    'league_team_match',
+                    null,
+                    'competence'
+                );
+            }
         }
     }
 

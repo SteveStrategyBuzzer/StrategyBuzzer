@@ -9,7 +9,7 @@ import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipelin
 import { appendEventLog, setRoomState, setMatchResult } from "./RedisService.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
 import { saveRoomSnapshot } from "./RoomRecovery.js";
-import { notifyMatchFinalized } from "./InternalLaravelClient.js";
+import { notifyMatchFinalized, saveMatchSnapshot } from "./InternalLaravelClient.js";
 
 export class GameOrchestrator {
   private io: SocketIOServer;
@@ -1395,6 +1395,17 @@ export class GameOrchestrator {
 
     this.io.to(roomId).emit("event", { event: roundEndedEvent });
     this.logEventToRedis(roomId, roundEndedEvent);
+
+    // Checkpoint mid-match state to Postgres so it can survive a Redis restart.
+    saveMatchSnapshot(
+      roomId,
+      room.state.config.mode ?? "DUO",
+      room.state.currentRound,
+      playerScores,
+      playerRoundsWon,
+      roundPlayerStats as unknown as Record<string, unknown>
+    ).catch(() => { /* fire-and-forget, already logged inside saveMatchSnapshot */ });
+
     this.io.to(roomId).emit("round_ended", {
       roundNumber: room.state.currentRound,
       playerScores,

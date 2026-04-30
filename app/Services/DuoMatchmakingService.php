@@ -258,7 +258,7 @@ class DuoMatchmakingService
                 $totalPot = (int) $betInfo['total_pot'];
                 $winner = $winnerId === $match->player1_id ? $player1 : $player2;
 
-                $this->coinLedgerService->credit(
+                $this->coinLedgerService->creditOnce(
                     $winner,
                     $totalPot,
                     'duo_bet_pot_win',
@@ -367,9 +367,9 @@ class DuoMatchmakingService
                 'is_tie' => $isTie,
             ]);
 
-            // Multijoueur gagne des pièces d'Intelligence
+            // Multijoueur gagne des pièces d'Intelligence (creditOnce = jamais de double-crédit)
             if ($player1Reward['coins'] > 0) {
-                $this->coinLedgerService->credit(
+                $this->coinLedgerService->creditOnce(
                     $player1,
                     (int) $player1Reward['coins'],
                     'duo_match_reward',
@@ -380,7 +380,7 @@ class DuoMatchmakingService
             }
 
             if ($player2Reward['coins'] > 0) {
-                $this->coinLedgerService->credit(
+                $this->coinLedgerService->creditOnce(
                     $player2,
                     (int) $player2Reward['coins'],
                     'duo_match_reward',

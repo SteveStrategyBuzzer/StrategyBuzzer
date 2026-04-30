@@ -52,6 +52,44 @@ function finalizePathForMode(mode?: string): string {
  *                 "LEAGUE_TEAM" | "MASTER"). Routing falls back to the Duo
  *                 endpoint when omitted, matching pre-Task-#50 behavior.
  */
+/**
+ * Persist a mid-match checkpoint to Postgres (via Laravel) so the state
+ * can be recovered if Redis is lost between rounds.
+ * Fire-and-forget: errors are logged but never thrown.
+ */
+export async function saveMatchSnapshot(
+  roomId: string,
+  mode: string,
+  roundNumber: number,
+  playerScores: Record<string, number>,
+  roundsWon: Record<string, number>,
+  playerStats: Record<string, unknown>
+): Promise<void> {
+  try {
+    const token = signInternalToken();
+    const response = await fetch(`${LARAVEL_ORIGIN}/internal/match/snapshot`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ roomId, mode, roundNumber, playerScores, roundsWon, playerStats }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      console.error(
+        `[InternalLaravelClient] snapshot ${roomId} R${roundNumber} failed: HTTP ${response.status} ${text}`
+      );
+    }
+  } catch (err) {
+    console.error(
+      `[InternalLaravelClient] snapshot ${roomId} R${roundNumber} threw:`,
+      err instanceof Error ? err.message : err
+    );
+  }
+}
+
 export async function notifyMatchFinalized(roomId: string, mode?: string): Promise<void> {
   const path = finalizePathForMode(mode);
   try {

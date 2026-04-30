@@ -86,12 +86,12 @@ waitForPort = 3001
 name = "Redis Server"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "redis-server --port 6379 --bind 127.0.0.1"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "redis-cli ping | grep -q PONG && echo 'Redis already running — monitoring' || redis-server --port 6379 --bind 127.0.0.1; while sleep 30; do redis-cli ping || exit 1; done"
 
 [[ports]]
 localPort = 3000

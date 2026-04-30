@@ -59,6 +59,34 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Multi-Currency Stripe Pricing:** `CurrencyDetectionService.php` detects country via IP geolocation for Stripe Checkout sessions.
 
+### Phase 2 — Data Security (2026-04-30, COMPLETE)
+
+**T-A — CoinLedger idempotency:**
+- `CoinLedgerService`: `lockForUpdate()` on user row in `credit()`/`debit()`; new `creditOnce()`/`debitOnce()` idempotent methods.
+- Migration: Postgres partial UNIQUE index on `coin_ledger(user_id, ref_type, ref_id, reason, coin_type) WHERE ref_type IS NOT NULL`.
+
+**T-B — Match-end coin credits hardened:**
+- `DuoMatchmakingService`, `LeagueTeamService`, `LeagueIndividualService`: all match-end credits use `creditOnce()`.
+- `DailyQuestService`: injects `CoinLedgerService`, uses `creditOnce()` for quest rewards.
+- `AuthController` registration: `DB::transaction` + `creditOnce()` for welcome bonus (30 intelligence + 250 competence).
+
+**T-C — Critical action audit log:**
+- Migration: `critical_actions_log` table.
+- Model: `App\Models\CriticalActionLog`.
+- Trait: `App\Traits\LogsCriticalAction` (instance `logAction()` + static `writeLog()`; both catch Throwable silently).
+- Controllers wired: `BoutiqueController` (purchase), `AvatarController` (avatar_select), `DailyQuestController` (daily_quest_action, daily_quest_completed), `AuthController` (user_login, user_login_failed, user_registered).
+
+**T-D — Match snapshot checkpoints:**
+- Migration: `match_snapshots` table (UUID PK on `match_id`, jsonb columns for player_scores/rounds_won/player_stats).
+- Model: `App\Models\MatchSnapshot`.
+- Laravel endpoint: `POST /internal/match/snapshot` → `InternalMatchController::storeSnapshot` (same JWT auth as finalize).
+- Node Game Server: `saveMatchSnapshot()` in `InternalLaravelClient.ts`; called fire-and-forget after every `ROUND_ENDED` event in `GameOrchestrator.ts`.
+
+**T-E — Hardening:**
+- Rate limiting: `throttle:5,1` on `POST /auth/email/login` and `POST /auth/email/register`; `throttle:10,1` on `POST /boutique/purchase`.
+- Stripe idempotency: `Session::create()` now receives `['idempotency_key' => ...]` (keyed on `purchaseIntentId` when available).
+- Security: `Cloud_SQL_Export_2025-09-05 (09:06:02).sql` (full DB dump) removed from repo root; `.gitignore` updated with `Cloud_SQL_Export*.sql`, `*_export.sql`, `*.dump.sql` patterns.
+
 ### External Dependencies
 
 -   **Core Frameworks**: Laravel Framework, React, Inertia.js

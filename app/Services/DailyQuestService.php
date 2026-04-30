@@ -15,6 +15,13 @@ class DailyQuestService
     private const DAILY_IDS_MAX = 95;
     private const QUESTS_PER_DAY = 3;
 
+    private CoinLedgerService $coinLedgerService;
+
+    public function __construct(CoinLedgerService $coinLedgerService)
+    {
+        $this->coinLedgerService = $coinLedgerService;
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // ROTATION — assignation / récupération
     // ─────────────────────────────────────────────────────────────────────
@@ -134,8 +141,18 @@ class DailyQuestService
                 $record->rewarded     = true;
                 $record->save();
 
-                // Créditer les pièces de Compétence
-                $user->increment('competence_coins', (int) ($quest->reward_coins ?? 0));
+                // Créditer les pièces de Compétence via le ledger (idempotent)
+                $rewardAmount = (int) ($quest->reward_coins ?? 0);
+                if ($rewardAmount > 0) {
+                    $this->coinLedgerService->creditOnce(
+                        $user,
+                        $rewardAmount,
+                        'daily_quest_reward',
+                        'UserDailyQuest',
+                        $record->id,
+                        'competence'
+                    );
+                }
 
                 Log::info("DailyQuest completed: user={$user->id}, code={$quest->detection_code}, reward={$quest->reward_coins}");
                 return true;

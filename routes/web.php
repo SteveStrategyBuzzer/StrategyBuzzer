@@ -64,7 +64,7 @@ Route::post('/avatars/select', [AvatarController::class, 'select'])->name('avata
 Route::get('/boutique',             [BoutiqueController::class, 'index'])->name('boutique');
 Route::get('/boutique/buzzers/{subcategory}', [BoutiqueController::class, 'buzzerSubcategory'])->name('boutique.buzzer.subcategory');
 Route::get('/boutique/{category}',  [BoutiqueController::class, 'category'])->name('boutique.category');
-Route::post('/boutique/purchase',   [BoutiqueController::class, 'purchase'])->name('boutique.purchase');
+Route::post('/boutique/purchase',   [BoutiqueController::class, 'purchase'])->name('boutique.purchase')->middleware('throttle:10,1');
 
 /* Aliases boutique (anciens liens) */
 Route::get('/avatar/boutique', fn () => redirect()->route('boutique'))->name('avatar.boutique');
@@ -126,9 +126,9 @@ Route::get('/auth/facebook/callback', [AuthController::class, 'handleFacebookCal
 /* Email / Apple / Phone Authentication */
 Route::get('/auth/email',             [AuthController::class, 'showEmailLogin'])->name('email.login');
 Route::get('/auth/email/login',       [AuthController::class, 'showEmailLogin'])->name('email.login.form');
-Route::post('/auth/email/login',      [AuthController::class, 'handleEmailLogin'])->name('email.login.submit');
+Route::post('/auth/email/login',      [AuthController::class, 'handleEmailLogin'])->name('email.login.submit')->middleware('throttle:5,1');
 Route::get('/auth/email/register',    [AuthController::class, 'showEmailRegister'])->name('email.register');
-Route::post('/auth/email/register',   [AuthController::class, 'handleEmailRegister'])->name('email.register.submit');
+Route::post('/auth/email/register',   [AuthController::class, 'handleEmailRegister'])->name('email.register.submit')->middleware('throttle:5,1');
 Route::get('/auth/apple',             [AuthController::class, 'redirectToApple'])->name('auth.apple');
 Route::get('/auth/apple/callback',    [AuthController::class, 'handleAppleCallback'])->name('apple.callback');
 Route::get('/auth/phone',             [AuthController::class, 'showPhoneLogin'])->name('auth.phone');
@@ -423,6 +423,10 @@ Route::prefix('internal/duo')->name('internal.duo.')->group(function () {
 Route::prefix('internal/league/team')->name('internal.league.team.')->group(function () {
     Route::post('/match/finalize', [App\Http\Controllers\LeagueTeamController::class, 'internalFinalize'])->name('match.finalize');
 });
+
+/* Match snapshot checkpoint — Node game server → Laravel (T-D). */
+Route::post('/internal/match/snapshot', [App\Http\Controllers\InternalMatchController::class, 'storeSnapshot'])
+    ->name('internal.match.snapshot');
 
 /* ===== INTERFACE DE JEU LEAGUE (Socket.IO) ===== */
 Route::prefix('game/league')->name('game.league.')->middleware('auth')->group(function () {

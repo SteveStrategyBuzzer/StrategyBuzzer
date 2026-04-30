@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Services\DailyQuestService;
+use App\Traits\LogsCriticalAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class DailyQuestController extends Controller
 {
+    use LogsCriticalAction;
+
     public function __construct(private DailyQuestService $dailyQuestService) {}
 
     /**
@@ -73,6 +76,8 @@ class DailyQuestController extends Controller
             'shop_purchase'       => 'daily_buy_item',
         ];
 
+        $this->logAction('daily_quest_action', ['action' => $action]);
+
         $completed = [];
         if (isset($actionCodeMap[$action])) {
             $done = $this->dailyQuestService->checkAndCompleteDailyQuest(
@@ -82,6 +87,7 @@ class DailyQuestController extends Controller
             );
             if ($done) {
                 $completed[] = $actionCodeMap[$action];
+                $this->logAction('daily_quest_completed', ['action' => $action, 'code' => $actionCodeMap[$action]]);
             }
         }
 

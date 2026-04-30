@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Traits\LogsCriticalAction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,8 @@ use App\Support\Currency;
 
 class BoutiqueController extends Controller
 {
+    use LogsCriticalAction;
+
     public function __construct(
         private StripeService $stripeService,
         private CoinLedgerService $coinLedgerService,
@@ -329,6 +332,13 @@ class BoutiqueController extends Controller
                 null,
                 'competence'
             );
+
+            $this->logAction('boutique_purchase', [
+                'kind'   => $kind,
+                'target' => $target,
+                'qty'    => $qty,
+                'total'  => $total,
+            ]);
 
             $user->refresh();
             $settings = (array) ($user?->profile_settings ?? []);

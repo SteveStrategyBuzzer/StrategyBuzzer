@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Traits\LogsCriticalAction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +11,8 @@ use App\Services\CoinLedgerService;
 
 class AvatarController extends Controller
 {
+    use LogsCriticalAction;
+
     public function __construct(
         private CoinLedgerService $coinLedgerService
     ) {}
@@ -224,6 +227,7 @@ class AvatarController extends Controller
         if ($changed) {
             $user->profile_settings = $settings;
             $user->save();
+            $this->logAction('avatar_select', ['value' => $value, 'from' => $from]);
             session()->flash('avatar_updated', true);
 
             // Quête avatars_different_2 : changer d'avatar au moins 2 fois

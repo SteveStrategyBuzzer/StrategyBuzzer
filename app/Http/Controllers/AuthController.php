@@ -8,10 +8,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Services\CoinLedgerService;
 use App\Services\CurrencyDetectionService;
+use App\Traits\LogsCriticalAction;
 
 class AuthController extends Controller
 {
+    use LogsCriticalAction;
     /**
      * Détecte la langue préférée depuis le header Accept-Language du navigateur.
      * Retourne un code de langue supporté ('fr', 'en', etc.) ou 'fr' par défaut.
@@ -173,9 +176,10 @@ public function redirectToGoogle()
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            
-            // Vérifier si le profil est complété
+
             $user = Auth::user();
+            $this->logAction('user_login', ['method' => 'email']);
+
             if (!($user->profile_completed ?? false)) {
                 return redirect()->route('profile.show')->with('info', 'Veuillez compléter votre profil avant de continuer.');
             }
@@ -183,6 +187,7 @@ public function redirectToGoogle()
             return redirect()->intended('/menu')->with('success', 'Connexion réussie !');
         }
 
+        $this->logAction('user_login_failed', ['method' => 'email', 'email' => $credentials['email']]);
         return back()->withErrors([
             'email' => 'Les identifiants fournis ne correspondent pas à nos enregistrements.',
         ])->onlyInput('email');
@@ -201,14 +206,27 @@ public function redirectToGoogle()
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'coins' => 30,
-            'competence_coins' => 250,
-            'preferred_language' => $this->detectBrowserLanguage($request),
-        ]);
+        $language = $this->detectBrowserLanguage($request);
+        $ledger   = app(CoinLedgerService::class);
+
+        $user = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $language, $ledger) {
+            $newUser = User::create([
+                'name'               => $validated['name'],
+                'email'              => $validated['email'],
+                'password'           => Hash::make($validated['password']),
+                'coins'              => 0,
+                'competence_coins'   => 0,
+                'preferred_language' => $language,
+            ]);
+
+            // Le ledger est la source de vérité des soldes initiaux (idempotent : pas de replay)
+            $ledger->creditOnce($newUser, 30,  'welcome_bonus', 'user_registration', $newUser->id, 'intelligence');
+            $ledger->creditOnce($newUser, 250, 'welcome_bonus', 'user_registration', $newUser->id, 'competence');
+
+            return $newUser->fresh();
+        });
+
+        $this->logAction('user_registered', ['method' => 'email', 'user_id' => $user->id]);
 
         // Sauvegarder le pays détecté via IP
         $this->saveInitialCountry($user);

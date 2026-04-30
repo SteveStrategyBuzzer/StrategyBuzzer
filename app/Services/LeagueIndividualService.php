@@ -297,9 +297,9 @@ class LeagueIndividualService
         // Suivi des points de saison
         $this->seasonService->recordMatchResult($user, 'league_individual', $pointsEarned > 0);
 
-        // Ligue gagne des pièces d'Intelligence (car vous prouvez vos connaissances)
+        // Ligue gagne des pièces d'Intelligence (creditOnce = jamais de double-crédit)
         if ($coinsEarned > 0) {
-            $this->coinLedgerService->credit(
+            $this->coinLedgerService->creditOnce(
                 $user,
                 $coinsEarned,
                 'league_individual_reward',
