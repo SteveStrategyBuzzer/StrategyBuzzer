@@ -177,7 +177,8 @@ Route::prefix('solo')->name('solo.')->middleware('auth')->group(function () {
     Route::post('/submit-answer', [SoloController::class, 'submitAnswerApi'])->name('submit-answer');
     Route::post('/generate-batch', [SoloController::class, 'generateBatch'])->name('generate-batch');
     Route::post('/generate-block', [SoloController::class, 'generateBlock'])->name('generate-block'); // NOUVEAU: génération progressive
-    Route::post('/generate-queue', [SoloController::class, 'generateQueue'])->name('generate-queue');
+    // #88 — progressive-queue route removed: it routed live gameplay through
+    // the AI provider. Matches now read from the persistent question bank.
     Route::get('/round-result', [SoloController::class, 'roundResult'])->name('round-result');
     Route::get('/victory', [SoloController::class, 'victory'])->name('victory');
     Route::get('/defeat',  [SoloController::class, 'defeat'])->name('defeat');

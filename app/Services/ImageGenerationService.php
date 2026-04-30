@@ -24,10 +24,13 @@ class ImageGenerationService
                 'language' => $language
             ]);
             
-            $response = Http::timeout(60)->post(env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-image-question', [
-                'questionNumber' => $questionNumber,
-                'language' => $language
-            ]);
+            // #88: image-question composition endpoint is admin-locked, send shared secret.
+            $response = Http::timeout(60)
+                ->withHeaders(['X-Admin-Token' => (string) env('MASTER_API_ADMIN_TOKEN', '')])
+                ->post(env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-image-question', [
+                    'questionNumber' => $questionNumber,
+                    'language' => $language,
+                ]);
             
             if (!$response->successful()) {
                 Log::error('ImageGenerationService: Échec appel API', [

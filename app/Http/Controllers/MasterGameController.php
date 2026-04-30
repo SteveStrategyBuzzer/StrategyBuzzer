@@ -227,6 +227,13 @@ class MasterGameController extends Controller
             abort(403, 'Vous n\'êtes pas l\'hôte de cette partie');
         }
 
+        // #88 hard-gate: this endpoint hits /generate-master-question on the
+        // question-api (the only remaining provider-touching path). It MUST
+        // never be reachable once the match has started — composition only.
+        if ($game->started_at !== null) {
+            abort(403, 'Régénération IA interdite après le démarrage de la partie (#88).');
+        }
+
         // Récupérer les questions déjà créées pour éviter les doublons
         $existingQuestions = MasterGameQuestion::where('master_game_id', $gameId)
             ->where('question_number', '!=', $questionNumber)
@@ -255,7 +262,11 @@ class MasterGameController extends Controller
         try {
             $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
 
-            $response = Http::timeout(30)->post($apiUrl, [
+            // #88: composition endpoints are admin-locked. Send the shared secret
+            // so the question-api accepts the request from this trusted backend.
+            $response = Http::timeout(30)
+                ->withHeaders(['X-Admin-Token' => (string) env('MASTER_API_ADMIN_TOKEN', '')])
+                ->post($apiUrl, [
                 'theme' => $theme,
                 'language' => $language,
                 'questionType' => $isImageQuestion ? 'multiple_choice' : $questionType,
@@ -955,6 +966,16 @@ class MasterGameController extends Controller
     // Générer la question de départage
     private function generateTiebreakerQuestion($game, $questionNumber, $previousQuestions = [])
     {
+        // #88 hard-gate: AI composition is composition-only. Once the match
+        // is live (`started_at` set), tiebreakers MUST come from the local
+        // default pool — never from /generate-master-question.
+        if ($game->started_at !== null) {
+            Log::info('Master: live tiebreaker — bypassing AI per #88, using default', [
+                'game_id' => $game->id, 'question_number' => $questionNumber,
+            ]);
+            $this->createDefaultTiebreakerQuestion($game, $questionNumber, strtolower($game->language ?? 'fr'));
+            return;
+        }
         try {
             $language = strtolower($game->language ?? 'fr');
             
@@ -966,37 +987,30 @@ class MasterGameController extends Controller
             }
             
             // Appeler l'API Node.js pour générer une question difficile
+            // #88: composition endpoint is admin-locked, send shared secret header.
             $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
+            $adminToken = (string) env('MASTER_API_ADMIN_TOKEN', '');
             
-            $postData = json_encode([
-                'theme' => $theme . ' (question difficile de départage)',
-                'language' => $language,
-                'questionType' => 'multiple_choice',
-                'questionNumber' => $questionNumber,
-                'previousQuestions' => $previousQuestions,
-                'gameSeed' => $game->id,
-                'domainType' => $game->domain_type,
-                'schoolLevel' => $game->school_level,
-                'schoolGrade' => $game->school_grade,
-                'schoolSubject' => $game->school_subject,
-                'schoolCountry' => $game->school_country,
-                'mode' => $game->mode,
-                'totalQuestions' => $game->total_questions,
-            ]);
+            $response = Http::timeout(30)
+                ->withHeaders(['X-Admin-Token' => $adminToken])
+                ->post($apiUrl, [
+                    'theme' => $theme . ' (question difficile de départage)',
+                    'language' => $language,
+                    'questionType' => 'multiple_choice',
+                    'questionNumber' => $questionNumber,
+                    'previousQuestions' => $previousQuestions,
+                    'gameSeed' => $game->id,
+                    'domainType' => $game->domain_type,
+                    'schoolLevel' => $game->school_level,
+                    'schoolGrade' => $game->school_grade,
+                    'schoolSubject' => $game->school_subject,
+                    'schoolCountry' => $game->school_country,
+                    'mode' => $game->mode,
+                    'totalQuestions' => $game->total_questions,
+                ]);
             
-            $context = stream_context_create([
-                'http' => [
-                    'method' => 'POST',
-                    'header' => "Content-Type: application/json\r\n",
-                    'content' => $postData,
-                    'timeout' => 30
-                ]
-            ]);
-            
-            $response = @file_get_contents($apiUrl, false, $context);
-            
-            if ($response !== false) {
-                $data = json_decode($response, true);
+            if ($response->successful()) {
+                $data = $response->json();
                 
                 if ($data && isset($data['success']) && $data['success']) {
                     MasterGameQuestion::create([
@@ -1187,6 +1201,17 @@ class MasterGameController extends Controller
     // Générer une question texte via l'API Node.js
     private function generateTextQuestionWithAI($game, $questionNumber, $questionType, $previousQuestions = [])
     {
+        // #88 hard-gate: AI text generation is composition-only. Once the
+        // match is live (`started_at` set), this method MUST NOT call
+        // /generate-master-question — fall back to a placeholder so the
+        // host has to fill it manually or the bank/seed pool can take over.
+        if ($game->started_at !== null) {
+            Log::info('Master: live text generation — bypassing AI per #88, placeholder', [
+                'game_id' => $game->id, 'question_number' => $questionNumber,
+            ]);
+            $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
+            return null;
+        }
         try {
             $language = strtolower($game->language ?? 'fr');
             
@@ -1198,51 +1223,45 @@ class MasterGameController extends Controller
             }
             
             // Appeler l'API Node.js pour générer la question
+            // #88: composition endpoint is admin-locked, send shared secret header.
             $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
+            $adminToken = (string) env('MASTER_API_ADMIN_TOKEN', '');
             
-            $postData = json_encode([
-                'theme' => $theme,
-                'language' => $language,
-                'questionType' => $questionType,
-                'questionNumber' => $questionNumber,
-                'previousQuestions' => $previousQuestions,
-                'gameSeed' => $game->id,
-                'domainType' => $game->domain_type,
-                'schoolLevel' => $game->school_level,
-                'schoolGrade' => $game->school_grade,
-                'schoolSubject' => $game->school_subject,
-                'schoolCountry' => $game->school_country,
-                'mode' => $game->mode,
-                'totalQuestions' => $game->total_questions,
-            ]);
+            $response = Http::timeout(30)
+                ->withHeaders(['X-Admin-Token' => $adminToken])
+                ->post($apiUrl, [
+                    'theme' => $theme,
+                    'language' => $language,
+                    'questionType' => $questionType,
+                    'questionNumber' => $questionNumber,
+                    'previousQuestions' => $previousQuestions,
+                    'gameSeed' => $game->id,
+                    'domainType' => $game->domain_type,
+                    'schoolLevel' => $game->school_level,
+                    'schoolGrade' => $game->school_grade,
+                    'schoolSubject' => $game->school_subject,
+                    'schoolCountry' => $game->school_country,
+                    'mode' => $game->mode,
+                    'totalQuestions' => $game->total_questions,
+                ]);
             
-            $context = stream_context_create([
-                'http' => [
-                    'method' => 'POST',
-                    'header' => "Content-Type: application/json\r\n",
-                    'content' => $postData,
-                    'timeout' => 30
-                ]
-            ]);
-            
-            $response = @file_get_contents($apiUrl, false, $context);
-            
-            if ($response === false) {
-                Log::warning('Master: API Node.js non accessible', [
+            if (!$response->successful()) {
+                Log::warning('Master: API Node.js non accessible ou refusée', [
                     'game_id' => $game->id,
-                    'question_number' => $questionNumber
+                    'question_number' => $questionNumber,
+                    'status' => $response->status(),
                 ]);
                 $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
                 return null;
             }
             
-            $data = json_decode($response, true);
+            $data = $response->json();
             
             if (!$data || !isset($data['success']) || !$data['success']) {
                 Log::warning('Master: Réponse API invalide', [
                     'game_id' => $game->id,
                     'question_number' => $questionNumber,
-                    'response' => $response
+                    'response' => $response->body(),
                 ]);
                 $this->createPlaceholderQuestion($game, $questionNumber, $questionType);
                 return null;

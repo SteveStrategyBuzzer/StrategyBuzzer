@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\GenerateGameServerQuestionsJob;
+use App\Services\QuestionBank\QuestionBankPicker;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -14,15 +15,18 @@ class GameServerQuestionPipeline
     private const TIEBREAKER_QUESTIONS = 5;
     private const DEFAULT_BLOCK_SIZE = 4;
 
-    private QuestionService $questionService;
     private FirebaseService $firebase;
     private MatchQuestionPlanner $planner;
+    private QuestionBankPicker $bankPicker;
 
     public function __construct()
     {
-        $this->questionService = new QuestionService();
+        // #88: live gameplay never instantiates QuestionService here — the
+        // off-plan path now uses the bank picker directly + a deterministic
+        // stub. No HTTP path can be reached from this pipeline.
         $this->firebase = FirebaseService::getInstance();
         $this->planner = new MatchQuestionPlanner();
+        $this->bankPicker = app(QuestionBankPicker::class);
     }
 
     private function getCacheKey(string $roomId, string $suffix): string
@@ -748,10 +752,11 @@ class GameServerQuestionPipeline
      *     cas de shortage — c'est exactement la garantie qu'on doit aux
      *     joueurs (pas d'attente IA pendant la partie).
      *   - SI l'index est HORS plan (typiquement bonus skill ou tiebreaker,
-     *     que le planner ne planifie pas), on retombe sur le chemin
-     *     per-question historique (QuestionService::generateQuestion →
-     *     bank picker → cache → IA → seed). C'est le SEUL endroit où l'IA
-     *     peut encore être appelée.
+     *     que le planner ne planifie pas), on tente une pioche directe dans
+     *     la banque persistante (QuestionBankPicker), puis on retombe sur
+     *     un stub déterministe. AUCUN appel IA n'est fait ici (#88) — la
+     *     banque alimentée par le worker offline est la seule source de
+     *     contenu, et un stub garantit que la partie ne bloque jamais.
      *
      * Le tableau `$orderedSlots` peut être :
      *   - une liste de slots COMPLETS (format planner ordered_questions :
@@ -827,20 +832,29 @@ class GameServerQuestionPipeline
         }
 
         // Index HORS plan (bonus skill, tiebreaker, ou plan vide parce
-        // qu'aucun profil ne s'applique) : chemin historique autorisé.
-        return $this->questionService->generateQuestion(
-            $theme,
-            $niveau,
-            $questionNumber,
-            $usedIds,
-            [],
-            [],
-            $usedTexts,
-            null,
-            false,
-            $language,
-            true
-        );
+        // qu'aucun profil ne s'applique). #88 : on n'appelle JAMAIS l'IA en
+        // cours de partie. On tente le bank picker direct, puis on retombe
+        // sur un stub déterministe — exactement comme un slot planifié non
+        // rendable. Aucun chemin runtime ici ne peut produire un appel HTTP
+        // sortant vers l'AI router.
+        try {
+            $bankPick = $this->bankPicker->pickOne(
+                $theme,
+                $niveau,
+                $language,
+                $usedIds
+            );
+            if (is_array($bankPick)) {
+                return $bankPick;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[GameServerQuestionPipeline] off-plan bank pick threw, serving stub (#88, no AI)', [
+                'question_number' => $questionNumber,
+                'language'        => $language,
+                'error'           => $e->getMessage(),
+            ]);
+        }
+        return $this->buildPlanStubPayload($questionNumber, $language);
     }
 
     /**

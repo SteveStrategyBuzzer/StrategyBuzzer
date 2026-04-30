@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Jobs\GenerateQuestionsJob;
 use App\Jobs\IncrementQuestionUsageJob;
 use App\Services\QuestionBank\MatchQuestionPlanner;
 use App\Services\QuestionBank\QuestionBankPicker;
@@ -11,13 +10,11 @@ use Illuminate\Support\Facades\Log;
 
 class QuestionService
 {
-    private $aiGenerator;
     private $cacheService;
     private QuestionBankPicker $bankPicker;
 
     public function __construct()
     {
-        $this->aiGenerator = new AIQuestionGeneratorService();
         $this->cacheService = new QuestionCacheService();
         $this->bankRepo = new QuestionBankRepository();
         $this->bankPicker = new QuestionBankPicker($this->bankRepo);
@@ -122,12 +119,22 @@ class QuestionService
      */
     public function generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds = [], $usedAnswers = [], $sessionUsedAnswers = [], $sessionUsedQuestionTexts = [], $opponentAge = null, $isBoss = false, $language = 'fr', $skipCache = false, $context = 'solo')
     {
+        // ============================================================
+        // #88 — HARD GATE: NEVER call any AI provider during gameplay.
+        // The persistent question bank (#82/#83/#87 worker) is the
+        // ONLY legitimate AI consumer. Live matches read from:
+        //   1) persistent bank (Postgres, primary path)
+        //   2) Redis cache (legacy warm path; bank-sourced fills only)
+        //   3) embedded seed pool (resources/seed/fallback-questions-*.json)
+        // No router/HTTP/AI SDK call is ever made from this method.
+        // The $context parameter is preserved for caller compatibility
+        // but no longer gates anything (every context is bank-only).
+        // ============================================================
+
         // Combiner les réponses permanentes et de session pour éviter tous les doublons
         $allUsedAnswers = array_unique(array_merge($usedAnswers, $sessionUsedAnswers));
 
         // ÉTAPE 1 — Banque persistante (Postgres). Chemin nominal pour TOUS les modes.
-        // La banque retourne null si elle ne peut pas servir (ex. segment vide pour cette langue).
-        // Dans ce cas, on retombe sur le chemin historique cache → IA → seed.
         $bankParams = $this->bankParamsFromLegacy((string) $theme, (int) $niveau, (bool) $isBoss);
         $bankQuestion = null;
         if ($bankParams) {
@@ -139,7 +146,7 @@ class QuestionService
                     ["domain" => $bankParams["domain"], "used_ids" => $usedQuestionIds]
                 );
             } catch (\Throwable $e) {
-                Log::warning("[QuestionService] bank picker threw, falling through to cache/AI", [
+                Log::warning("[QuestionService] bank picker threw, falling through to cache/seed", [
                     "error" => $e->getMessage(),
                 ]);
             }
@@ -155,7 +162,7 @@ class QuestionService
             if (!empty($bankQuestion["group_id"])) {
                 IncrementQuestionUsageJob::dispatch([(int) $bankQuestion["group_id"]])->onQueue("default");
             }
-            // Compatibilit303251 format historique : randomiser pour QCM, fixer pour true_false.
+            // Compatibilité format historique : randomiser pour QCM, fixer pour true_false.
             if (($bankQuestion["type"] ?? "multiple") === "multiple") {
                 $correctAnswer = $bankQuestion["answers"][$bankQuestion["correct_index"]];
                 shuffle($bankQuestion["answers"]);
@@ -165,103 +172,43 @@ class QuestionService
             return $bankQuestion;
         }
 
-        // Essayer ensuite le cache Redis (sauf pour les Boss ou si skipCache est true)
-        $question = null;
+        // ÉTAPE 2 — Cache Redis (fill historique, pas d'IA réactive).
         if (!$isBoss && !$skipCache) {
-            $question = $this->cacheService->getQuestion($theme, $niveau, $language);
-            
-            if ($question) {
-                Log::info('[QuestionService] Using cached question', [
+            $cached = $this->cacheService->getQuestion($theme, $niveau, $language);
+            if ($cached) {
+                Log::info('[QuestionService] Using cached question (bank miss)', [
                     'theme' => $theme,
                     'niveau' => $niveau,
                     'language' => $language,
-                    'question_id' => $question['id'] ?? 'unknown'
+                    'question_id' => $cached['id'] ?? 'unknown',
                 ]);
-                
-                // Vérifier si on doit déclencher un refill en arrière-plan
-                $this->triggerRefillIfNeeded($theme, $niveau, $language, $usedQuestionIds, $allUsedAnswers, $context);
-                
-                return $question;
+                return $cached;
             }
-        }
-        
-        // #82 KILL-SWITCH: en multijoueur on n'appelle JAMAIS l'IA en synchrone.
-        // Si la banque + cache ratent, on tombe directement sur le pool de
-        // secours statique. Les matchs partent sans bloquer sur Gemini, et
-        // c'est le worker (#82) qui regarnit la banque hors trafic.
-        if ($context !== 'solo') {
-            Log::info('[QuestionService] multiplayer bank/cache miss → fallback pool only (no live AI)', [
-                'theme' => $theme,
-                'niveau' => $niveau,
-                'language' => $language,
-                'context' => $context,
-            ]);
-            $question = $this->getFallbackQuestion($theme, $language, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts);
-            if (!$question) {
-                throw new \RuntimeException(sprintf(
-                    '[QuestionService] multiplayer bank+cache+fallback all empty for theme=%s niveau=%s lang=%s — worker must catch up.',
-                    $theme, $niveau, $language
-                ));
-            }
-            // randomise + return early; we deliberately skip refill triggering
-            // (the gate at triggerRefillIfNeeded already blocks multiplayer).
-            if ($question['type'] === 'multiple') {
-                $correct = $question['answers'][$question['correct_index']];
-                shuffle($question['answers']);
-                $question['correct_index'] = array_search($correct, $question['answers'], true);
-            }
-            return $question;
         }
 
-        // Fallback: Générer la question via l'IA avec info adversaire et langue
-        Log::info('[QuestionService] Generating via AI', [
+        // ÉTAPE 3 — Pool de secours statique embarqué. Garantit qu'un match
+        // peut TOUJOURS partir même si la banque + le cache sont vides pour
+        // ce segment, sans jamais frapper le router IA.
+        Log::info('[QuestionService] bank+cache miss → embedded seed pool (no AI call)', [
             'theme' => $theme,
             'niveau' => $niveau,
             'language' => $language,
-            'is_boss' => $isBoss,
-            'skip_cache' => $skipCache
+            'context' => $context,
         ]);
-
-        try {
-            $question = $this->aiGenerator->generateQuestion($theme, $niveau, $questionNumber, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts, $opponentAge, $isBoss, $language);
-        } catch (\Throwable $e) {
-            // L'IA est indisponible (quota Gemini épuisé, panne réseau, etc.).
-            // Au lieu de faire échouer le démarrage du match, on sert une
-            // question depuis le pool de secours pré-embarqué. Sans ce filet
-            // de sécurité, un 429 Gemini bloquait toute initialisation de
-            // partie côté Node Game Server (POST /api/game-server/init → 500).
-            Log::warning('[QuestionService] AI generation failed, falling back to seed pool', [
-                'theme' => $theme,
-                'niveau' => $niveau,
-                'language' => $language,
-                'error' => $e->getMessage(),
-            ]);
-            $question = $this->getFallbackQuestion($theme, $language, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts);
-            if (!$question) {
-                // Pas de filet de secours dispo (langue non couverte par le seed
-                // ou pool entièrement consommé) — on relaie l'erreur d'origine
-                // pour ne pas masquer un vrai problème.
-                throw $e;
-            }
+        $question = $this->getFallbackQuestion($theme, $language, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts);
+        if (!$question) {
+            throw new \RuntimeException(sprintf(
+                '[QuestionService] bank+cache+seed all empty for theme=%s niveau=%s lang=%s — worker must catch up. Live AI is disabled (#88).',
+                $theme, $niveau, $language
+            ));
         }
-        
-        // Randomiser les réponses pour questions à choix multiples
-        // Les questions vrai/faux gardent leurs positions fixes (Vrai toujours à gauche, Faux à droite)
-        if ($question['type'] === 'multiple') {
+
+        // Randomiser les réponses pour QCM ; vrai/faux garde ses positions.
+        if (($question['type'] ?? 'multiple') === 'multiple') {
             $correctAnswer = $question['answers'][$question['correct_index']];
-            
-            // Mélanger les réponses de manière aléatoire
             shuffle($question['answers']);
-            
-            // Trouver le nouvel index de la bonne réponse après mélange
             $question['correct_index'] = array_search($correctAnswer, $question['answers'], true);
         }
-        
-        // Déclencher refill après génération directe si pas un Boss et pas depuis un job
-        if (!$isBoss && !$skipCache) {
-            $this->triggerRefillIfNeeded($theme, $niveau, $language, $usedQuestionIds, $allUsedAnswers);
-        }
-        
         return $question;
     }
 
@@ -330,51 +277,6 @@ class QuestionService
         $picked['type'] = $picked['type'] ?? 'multiple';
 
         return $picked;
-    }
-    
-    /**
-     * Déclenche un job de pré-génération si le cache est bas.
-     *
-     * #82: la génération réactive en gameplay est INTERDITE pour
-     * tous les modes multijoueurs (Duo / Ligue / MJ / Master). Seul
-     * Solo conserve le filet temporaire (cible finale: zéro IA en
-     * gameplay aussi pour Solo, mais tant que la banque n'est pas
-     * pleinement remplie par le worker on garde le filet).
-     */
-    private function triggerRefillIfNeeded(string $theme, int $niveau, string $language, array $usedQuestionIds = [], array $usedAnswers = [], string $context = 'solo'): void
-    {
-        if ($context !== 'solo') {
-            // Multijoueur: pas d'IA réactive. Le worker (#82) remplit
-            // la banque hors trafic. Si la banque est vide, le caller
-            // tombe sur le pool de fallback statique.
-            return;
-        }
-        if ($this->cacheService->needsRefill($theme, $niveau, $language, self::CACHE_REFILL_THRESHOLD)) {
-            Log::info('[QuestionService] Dispatching refill job', [
-                'theme' => $theme,
-                'niveau' => $niveau,
-                'language' => $language,
-                'current_count' => $this->cacheService->getAvailableCount($theme, $niveau, $language)
-            ]);
-            
-            GenerateQuestionsJob::dispatch(
-                $theme,
-                $niveau,
-                $language,
-                self::CACHE_REFILL_COUNT,
-                $usedQuestionIds,
-                $usedAnswers
-            );
-        }
-    }
-    
-    /**
-     * Pré-remplit le cache pour un thème/niveau/langue donné
-     * Utile pour le warmup initial
-     */
-    public function warmupCache(string $theme, int $niveau, string $language, int $count = 10): void
-    {
-        GenerateQuestionsJob::dispatch($theme, $niveau, $language, $count, [], []);
     }
     
     /**

@@ -4011,76 +4011,6 @@ class SoloController extends Controller
     }
 
     /**
-     * NOUVEAU SYSTÈME DE QUEUE : Génère les questions progressivement pendant le countdown
-     * Les questions sont stockées dans une queue et le jeu pioche la première disponible
-     * Appelé via AJAX au début du countdown pour démarrer la génération en arrière-plan
-     */
-    public function generateQueue(Request $request)
-    {
-        try {
-            $roundNumber = $request->input('round', 1);
-            
-            // Récupérer les paramètres de session
-            $theme = session('theme', 'general');
-            $niveau = session('niveau_selectionne', 1);
-            $avatar = session('avatar', 'Aucun');
-            
-            Log::info("Queue generation started via Node.js API", [
-                'round' => $roundNumber,
-                'theme' => $theme,
-                'niveau' => $niveau,
-                'avatar' => $avatar
-            ]);
-            
-            // Appeler l'API Node.js pour générer les questions progressivement
-            $response = Http::post(env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-queue', [
-                'theme' => $theme,
-                'niveau' => $niveau,
-                'avatar' => $avatar,
-                'roundNumber' => $roundNumber
-            ]);
-            
-            if (!$response->successful()) {
-                throw new \Exception('Queue generation API failed: ' . $response->body());
-            }
-            
-            $data = $response->json();
-            $questions = $data['questions'] ?? [];
-            
-            // Stocker les questions générées dans la queue de session
-            $queueKey = "question_queue_round_{$roundNumber}";
-            session([$queueKey => $questions]);
-            
-            Log::info("Queue generation complete", [
-                'round' => $roundNumber,
-                'total' => $data['total'] ?? 0,
-                'generated' => $data['generated'] ?? 0,
-                'failed' => $data['failed'] ?? 0,
-                'session_key' => $queueKey
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'total' => $data['total'] ?? 0,
-                'generated' => $data['generated'] ?? 0,
-                'failed' => $data['failed'] ?? 0,
-                'round' => $roundNumber
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error("Queue generation failed", [
-                'error' => $e->getMessage(),
-                'round' => $request->input('round', 1)
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    /**
      * Retourne le profil de compétences d'un boss selon son niveau
      * Profil = pourcentages de maîtrise dans les 9 thèmes
      */
@@ -4269,37 +4199,37 @@ class SoloController extends Controller
     }
     
     /**
-     * Génère un fait intéressant "Le saviez-vous" basé sur la question via l'API Node (Gemini)
+     * Retourne un message "Le saviez-vous" statique. La banque de questions
+     * (#82/#83/#87) embarque déjà un champ saviez_vous par question, ce qui
+     * supprime tout besoin d'appel IA réactif pour ce texte.
+     *
+     * #88 — toute requête HTTP vers le générateur de fun-fact a été retirée :
+     * aucun chemin de gameplay n'a le droit d'invoquer le router IA.
      */
     private function generateDidYouKnow($question, $isCorrect)
     {
-        try {
-            $correctAnswer = $question['answers'][$question['correct_index']] ?? '';
-            $questionText = $question['text'] ?? '';
-            $language = $this->getUserLanguage();
-
-            $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-fun-fact';
-
-            $response = \Illuminate\Support\Facades\Http::timeout(15)->post($apiUrl, [
-                'questionText' => $questionText,
-                'correctAnswer' => $correctAnswer,
-                'language' => $language,
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                if (!empty($data['factText'])) {
-                    return trim($data['factText']);
-                }
+        // Préférer le saviez_vous embarqué par la banque s'il existe
+        // (clés possibles : saviez_vous, did_you_know, fun_fact, fact_text).
+        foreach (['saviez_vous', 'did_you_know', 'fun_fact', 'fact_text'] as $key) {
+            if (!empty($question[$key]) && is_string($question[$key])) {
+                return trim($question[$key]);
             }
-
-            \Log::warning('Fun fact: réponse API invalide', ['status' => $response->status()]);
-            return 'Chaque question est une opportunité d\'apprendre quelque chose de nouveau !';
-
-        } catch (\Exception $e) {
-            \Log::error('Erreur génération "Le saviez-vous": ' . $e->getMessage());
-            return 'Chaque question est une opportunité d\'apprendre quelque chose de nouveau !';
         }
+
+        $language = $this->getUserLanguage();
+        $messages = [
+            'fr' => 'Chaque question est une opportunité d\'apprendre quelque chose de nouveau !',
+            'en' => 'Every question is an opportunity to learn something new!',
+            'es' => '¡Cada pregunta es una oportunidad para aprender algo nuevo!',
+            'it' => 'Ogni domanda è un\'opportunità per imparare qualcosa di nuovo!',
+            'de' => 'Jede Frage ist eine Gelegenheit, etwas Neues zu lernen!',
+            'pt' => 'Cada pergunta é uma oportunidade de aprender algo novo!',
+            'ru' => 'Каждый вопрос — возможность узнать что-то новое!',
+            'ar' => 'كل سؤال فرصة لتعلم شيء جديد!',
+            'zh' => '每个问题都是学习新事物的机会！',
+            'el' => 'Κάθε ερώτηση είναι μια ευκαιρία να μάθεις κάτι καινούργιο!',
+        ];
+        return $messages[$language] ?? $messages['fr'];
     }
 
     /**

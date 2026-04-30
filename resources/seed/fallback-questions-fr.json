@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "purpose": "Fallback question pool used by QuestionService when the AI generator is unavailable (e.g. Google Gemini quota exhausted / 429). These questions keep matches startable when the upstream AI service is down. Format mirrors the shape returned by AIQuestionGeneratorService::generateQuestion (so QuestionService can return them transparently).",
+    "purpose": "Embedded seed pool consumed by QuestionService when the persistent question bank and Redis cache are both empty for a given segment. Live matches NEVER call any AI provider (#88) — these seed entries guarantee a match can always start. Format matches the shape produced by the worker-fed bank so QuestionService can return them transparently.",
     "language": "fr",
     "theme": "general",
     "niveau_range": "3-7",
