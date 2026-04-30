@@ -75,6 +75,7 @@ class BankAIGeneratorRouterTest extends TestCase
             'cognitive_type' => 'reasoning',
             'question_type' => 'qcm',
             'depth_range' => [3, 5],
+            'mode_target' => ['type' => 'solo_range', 'levels' => [21, 39]],
         ]);
 
         (new BankAIGenerator())->generateForSegment($segment);
@@ -88,12 +89,16 @@ class BankAIGeneratorRouterTest extends TestCase
             $this->assertArrayHasKey('question_type', $body);
             $this->assertArrayHasKey('difficulty_depth', $body);
             $this->assertArrayHasKey('languages', $body);
+            // #91 contract: body MUST include exactly one of difficulty_level
+            // or boss_level (segment-context XOR).
+            $this->assertArrayHasKey('difficulty_level', $body);
 
             $this->assertSame('Histoire', $body['domain']);
             $this->assertSame('rome-antique', $body['sub_domain']);
             $this->assertSame('reasoning', $body['cognitive_type']);
             $this->assertSame('qcm', $body['question_type']);
             $this->assertSame(5, $body['difficulty_depth']);
+            $this->assertSame(21, $body['difficulty_level']);
 
             $this->assertIsArray($body['languages']);
             $this->assertSame(['fr', 'en', 'es'], $body['languages']);
@@ -159,12 +164,12 @@ class BankAIGeneratorRouterTest extends TestCase
     }
 
     /**
-     * Solo segment: body must not leak boss_level (regression: a future
-     * change sending boss_level for a Solo segment). The output payload
-     * carries the correct level field for addToBank — that's where the
-     * production XOR lives (router body itself only carries difficulty_depth).
+     * Solo segment XOR (#91 official contract):
+     *  - body MUST contain difficulty_level (anchored on the LOW end of the band)
+     *  - body MUST NOT contain boss_level
+     * Output payload carries the same XOR for addToBank().
      */
-    public function test_solo_segment_does_not_leak_boss_level_into_request_body(): void
+    public function test_solo_segment_request_body_includes_difficulty_level_and_excludes_boss_level(): void
     {
         Http::fake([
             self::ROUTER_BASE.'/generate-bank-question' => Http::response($this->okEnvelope(), 200),
@@ -178,16 +183,21 @@ class BankAIGeneratorRouterTest extends TestCase
 
         Http::assertSent(function (Request $req) {
             $body = $req->data();
+            $this->assertArrayHasKey(
+                'difficulty_level',
+                $body,
+                'Solo segment MUST send difficulty_level in the router body.'
+            );
+            $this->assertSame(11, $body['difficulty_level']);
             $this->assertArrayNotHasKey(
                 'boss_level',
                 $body,
-                'Solo segment must NEVER send boss_level to the router.'
+                'Solo segment MUST NOT send boss_level in the router body.'
             );
             return true;
         });
 
-        // And the resulting payload (bound for addToBank) carries the
-        // correct level field — the actual production XOR.
+        // Output payload (bound for addToBank) mirrors the same XOR.
         $payload = $result['payload'];
         $this->assertArrayHasKey('difficulty_level', $payload);
         $this->assertSame(11, $payload['difficulty_level']);
@@ -195,12 +205,12 @@ class BankAIGeneratorRouterTest extends TestCase
     }
 
     /**
-     * Boss segment must not leak difficulty_level into the router request
-     * body (regression: a future change sending difficulty_level for a
-     * Boss segment). The output payload then carries the correct level
-     * field for addToBank.
+     * Boss segment XOR (#91 official contract):
+     *  - body MUST contain boss_level
+     *  - body MUST NOT contain difficulty_level
+     * Output payload carries the same XOR for addToBank().
      */
-    public function test_boss_segment_does_not_leak_difficulty_level_into_request_body(): void
+    public function test_boss_segment_request_body_includes_boss_level_and_excludes_difficulty_level(): void
     {
         Http::fake([
             self::ROUTER_BASE.'/generate-bank-question' => Http::response($this->okEnvelope(), 200),
@@ -214,10 +224,16 @@ class BankAIGeneratorRouterTest extends TestCase
 
         Http::assertSent(function (Request $req) {
             $body = $req->data();
+            $this->assertArrayHasKey(
+                'boss_level',
+                $body,
+                'Boss segment MUST send boss_level in the router body.'
+            );
+            $this->assertSame(30, $body['boss_level']);
             $this->assertArrayNotHasKey(
                 'difficulty_level',
                 $body,
-                'Boss segment must NEVER send difficulty_level to the router.'
+                'Boss segment MUST NOT send difficulty_level in the router body.'
             );
             return true;
         });

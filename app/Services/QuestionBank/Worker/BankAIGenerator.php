@@ -46,6 +46,21 @@ class BankAIGenerator
             'languages' => array_values($languages),
         ];
 
+        // Segment-context XOR (#91 contract): the body MUST carry exactly one
+        // of difficulty_level (Solo) or boss_level (Boss). The router uses
+        // it to anchor the prompt's narrative target; the worker also
+        // re-stamps the same field on the output payload (DB CHECK enforces
+        // the XOR at the storage layer too).
+        $target = $segment['mode_target'];
+        if (($target['type'] ?? null) === 'boss') {
+            $body['boss_level'] = (int) $target['level'];
+        } else {
+            // For solo_range we pin to the LOW end of the band so the
+            // generated row is reusable across the entire band — same rule
+            // shapeIntoPayload() applies to the output payload.
+            $body['difficulty_level'] = (int) $target['levels'][0];
+        }
+
         try {
             $response = Http::timeout(self::REQUEST_TIMEOUT_SECONDS)->post($endpoint, $body);
         } catch (\Throwable $e) {
