@@ -511,6 +511,11 @@ class MatchQuestionPlanner
                         'sub_domain'     => $subDomain,
                         'round'          => $r,
                         'shortage'       => true,
+                        // Carry the segment (#93) so the seed-pool fallback in
+                        // loadAndFormatQuestions() can target the right
+                        // (theme, niveau) bucket instead of picking blind.
+                        'domain'         => $domain,
+                        'depth_range'    => [$resolved['depth_min'], $resolved['depth_max']],
                     ];
                     continue;
                 }
@@ -534,6 +539,11 @@ class MatchQuestionPlanner
                     'sub_domain'     => $picked->sub_domain,
                     'round'          => $r,
                     'shortage'       => false,
+                    // #93 — carry the slot's segment so a translation gap
+                    // can fall through to the targeted seed pool, not a
+                    // random one.
+                    'domain'         => $domain,
+                    'depth_range'    => [$resolved['depth_min'], $resolved['depth_max']],
                 ];
             }
         }
@@ -686,7 +696,18 @@ class MatchQuestionPlanner
             if ($formatted === null) {
                 // Tout dernier recours : pioche dans le seed pool. Aucune
                 // sortie sur l'IA, jamais — c'est la garantie du planner.
+                // #93 — on transmet le segment complet (domain + depth_band +
+                // sub_domain) pour piocher dans la bonne case du pool, pas
+                // au hasard. Le seed pool sait dégrader proprement si une
+                // case est vide (sub → band → domain → tout).
+                $depthBand = null;
+                $depthRange = $slot['depth_range'] ?? null;
+                if (is_array($depthRange) && isset($depthRange[1])) {
+                    $depthBand = self::depthToBand((int) $depthRange[1]);
+                }
                 $seed = $this->seedPool->pickOne($language, [
+                    'domain'     => $slot['domain'] ?? null,
+                    'depth_band' => $depthBand,
                     'sub_domain' => $slot['sub_domain'] ?? null,
                 ], $usedSeedHashes);
                 if ($seed) {
@@ -744,6 +765,21 @@ class MatchQuestionPlanner
             'concept_id'     => $group->concept_id,
             'language'       => $tr->language,
         ];
+    }
+
+    /**
+     * #93 — map a depth (3-10) to one of the seed depth bands declared in
+     * config('question_bank_profiles.depth_rubric'). The same mapping lives
+     * in QuestionService and SeedQuestionPoolService; keeping it duplicated
+     * (3 lines) is preferable to creating a new service just for that.
+     */
+    private static function depthToBand(int $depth): ?string
+    {
+        if ($depth <= 0) return null;
+        if ($depth <= 4)  return '3-4';
+        if ($depth <= 6)  return '5-6';
+        if ($depth <= 8)  return '7-8';
+        return '9-10';
     }
 
     private function buildShortageStub(array $slot, string $language): array

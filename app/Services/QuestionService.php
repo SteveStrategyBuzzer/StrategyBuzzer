@@ -206,7 +206,7 @@ class QuestionService
             'language' => $language,
             'context' => $context,
         ]);
-        $question = $this->getFallbackQuestion($theme, $language, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts);
+        $question = $this->getFallbackQuestion($theme, $language, $usedQuestionIds, $allUsedAnswers, $sessionUsedQuestionTexts, (int) $niveau, (bool) $isBoss);
         if (!$question) {
             $this->dryDetector->recordTotalDry($theme, (int) $niveau, $language, (bool) $isBoss, $context, $cacheStatus);
             throw new \RuntimeException(sprintf(
@@ -233,7 +233,15 @@ class QuestionService
      *
      * @return array|null Question au format aiGenerator (type, question_text, answers, correct_index, …)
      */
-    private function getFallbackQuestion(string $theme, string $language, array $usedQuestionIds = [], array $usedAnswers = [], array $usedQuestionTexts = []): ?array
+    private function getFallbackQuestion(
+        string $theme,
+        string $language,
+        array $usedQuestionIds = [],
+        array $usedAnswers = [],
+        array $usedQuestionTexts = [],
+        int $niveau = 0,
+        bool $isBoss = false
+    ): ?array
     {
         $seedPath = resource_path("seed/fallback-questions-{$language}.json");
         if (!file_exists($seedPath)) {
@@ -264,9 +272,31 @@ class QuestionService
         $normalize = fn ($t) => mb_strtolower(trim((string)$t));
 
         $candidates = $decoded['questions'];
-        // Privilégier les questions du même thème quand possible, sinon n'importe lesquelles.
-        $sameTheme = array_values(array_filter($candidates, fn ($q) => ($q['theme'] ?? '') === $theme));
-        $pool = !empty($sameTheme) ? $sameTheme : $candidates;
+        $canonicalTheme = $this->canonicalDomain($theme);
+
+        // Cascading preference (best → fallback) so a (theme, niveau) request
+        // gets the most appropriate seed even when coverage is uneven:
+        //   1) same canonical theme + same depth band
+        //   2) same canonical theme (any band)
+        //   3) same depth band (any theme)
+        //   4) anything in the file
+        $depthBand = $this->depthBandForNiveau($niveau, $isBoss);
+        $sameThemeBand = [];
+        $sameTheme = [];
+        $sameBand = [];
+        foreach ($candidates as $q) {
+            $qTheme = $this->canonicalDomain((string) ($q['theme'] ?? 'general'));
+            $qBand = (string) ($q['depth_band'] ?? '');
+            $themeMatch = ($qTheme === $canonicalTheme);
+            $bandMatch = ($depthBand !== null && $qBand === $depthBand);
+            if ($themeMatch && $bandMatch) $sameThemeBand[] = $q;
+            if ($themeMatch) $sameTheme[] = $q;
+            if ($bandMatch) $sameBand[] = $q;
+        }
+        if (!empty($sameThemeBand)) $pool = $sameThemeBand;
+        elseif (!empty($sameTheme))  $pool = $sameTheme;
+        elseif (!empty($sameBand))   $pool = $sameBand;
+        else                         $pool = $candidates;
 
         $usedIdSet = array_flip(array_map('strval', $usedQuestionIds));
         $usedTextSet = array_flip(array_map($normalize, $usedQuestionTexts));
@@ -293,6 +323,42 @@ class QuestionService
         $picked['type'] = $picked['type'] ?? 'multiple';
 
         return $picked;
+    }
+
+    /**
+     * Map a (niveau, isBoss) request to one of the seed depth_band buckets
+     * defined in config('question_bank_profiles.depth_rubric'). Returns null
+     * if the niveau is out of range or the rubric is empty (= no preference).
+     */
+    private function depthBandForNiveau(int $niveau, bool $isBoss): ?string
+    {
+        if ($niveau < 1 || $niveau > 100) return null;
+
+        // Boss → take the depth straight from boss_profiles.
+        if ($isBoss || ($niveau % 10 === 0 && $niveau >= 10)) {
+            $depth = (int) (config("question_bank_profiles.boss_profiles.{$niveau}.depth") ?: 0);
+            return self::depthToBand($depth);
+        }
+
+        // Solo students → find the band that contains this level.
+        foreach (config('question_bank_profiles.student_bands', []) as $band) {
+            $lo = (int) ($band['levels'][0] ?? 0);
+            $hi = (int) ($band['levels'][1] ?? 0);
+            if ($niveau >= $lo && $niveau <= $hi) {
+                $depth = (int) ($band['depth_range'][1] ?? 0);
+                return self::depthToBand($depth);
+            }
+        }
+        return null;
+    }
+
+    private static function depthToBand(int $depth): ?string
+    {
+        if ($depth <= 0) return null;
+        if ($depth <= 4)  return '3-4';
+        if ($depth <= 6)  return '5-6';
+        if ($depth <= 8)  return '7-8';
+        return '9-10';
     }
     
     /**

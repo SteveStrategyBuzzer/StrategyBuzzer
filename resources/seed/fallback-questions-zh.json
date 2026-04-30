@@ -1,662 +1,6340 @@
 {
-    "_meta": {
-        "purpose": "Embedded seed pool (#88/#93). Consumed when bank+cache are dry. NEVER calls AI.",
-        "language": "zh",
-        "theme": "general",
-        "subdomains": [
-            "Histoire",
-            "Sport",
-            "Géographie",
-            "Art",
-            "Cuisine",
-            "Science",
-            "Cinéma",
-            "Faune"
-        ],
-        "count": 32,
-        "source_version": 1,
-        "generated_by": "seed-pool:build"
+  "_meta": {
+    "purpose": "Embedded seed pool consumed by QuestionService and SeedQuestionPoolService when the persistent question bank and Redis cache are both empty. Live matches NEVER call any AI provider (#88) — these seed entries guarantee a match can always start.",
+    "language": "zh",
+    "schema_version": 2,
+    "bands": [
+      "3-4",
+      "5-6",
+      "7-8",
+      "9-10"
+    ],
+    "domains": [
+      "general",
+      "histoire",
+      "sport",
+      "geographie",
+      "art",
+      "cuisine",
+      "science",
+      "cinema",
+      "faune"
+    ],
+    "coverage": {
+      "general": {
+        "3-4": 10,
+        "5-6": 17,
+        "7-8": 10,
+        "9-10": 10
+      },
+      "histoire": {
+        "5-6": 10,
+        "7-8": 10,
+        "9-10": 10,
+        "3-4": 10
+      },
+      "sport": {
+        "3-4": 10,
+        "5-6": 10,
+        "9-10": 19,
+        "7-8": 10
+      },
+      "geographie": {
+        "3-4": 10,
+        "5-6": 10,
+        "7-8": 18,
+        "9-10": 18
+      },
+      "art": {
+        "9-10": 10,
+        "5-6": 10,
+        "7-8": 10,
+        "3-4": 10
+      },
+      "cuisine": {
+        "3-4": 10,
+        "7-8": 10,
+        "5-6": 10,
+        "9-10": 10
+      },
+      "science": {
+        "3-4": 10,
+        "5-6": 10,
+        "7-8": 19,
+        "9-10": 10
+      },
+      "cinema": {
+        "3-4": 10,
+        "7-8": 10,
+        "5-6": 18,
+        "9-10": 10
+      },
+      "faune": {
+        "7-8": 10,
+        "5-6": 18,
+        "9-10": 10,
+        "3-4": 10
+      }
     },
-    "questions": [
-        {
-            "type": "multiple",
-            "concept_id": "hist_berlin_wall_1989",
-            "sub_domain": "Histoire",
-            "sub_theme": "Histoire",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "柏林墙是哪一年倒塌的？",
-            "answers": [
-                "1985",
-                "1989",
-                "1991",
-                "1993"
-            ],
-            "correct_id": 1,
-            "explanation": "柏林墙于1989年11月9日倒塌。",
-            "saviez_vous": "柏林墙自1961年起将东西柏林分隔开。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "hist_columbus_1492",
-            "sub_domain": "Histoire",
-            "sub_theme": "Histoire",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "哥伦布是哪一年到达美洲的？",
-            "answers": [
-                "1392",
-                "1492",
-                "1592",
-                "1692"
-            ],
-            "correct_id": 1,
-            "explanation": "哥伦布于1492年10月12日登陆巴哈马。",
-            "saviez_vous": "他以为自己到达了亚洲的印度。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "hist_ww1_trigger",
-            "sub_domain": "Histoire",
-            "sub_theme": "Histoire",
-            "cognitive_type": "reasoning",
-            "niveau_band": "medium",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "1914年第一次世界大战是由什么事件引发的？",
-            "answers": [
-                "入侵波兰",
-                "弗朗茨·斐迪南大公遇刺",
-                "古巴导弹危机",
-                "俄国革命"
-            ],
-            "correct_id": 1,
-            "explanation": "1914年6月28日萨拉热窝刺杀事件触发了同盟体系。",
-            "saviez_vous": "大公被年轻的塞尔维亚民族主义者加夫里洛·普林西普枪杀。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "hist_largest_empire_mongol",
-            "sub_domain": "Histoire",
-            "sub_theme": "Histoire",
-            "cognitive_type": "deceptive_trap",
-            "niveau_band": "hard",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "历史上连续领土面积最大的帝国是？",
-            "answers": [
-                "罗马帝国",
-                "蒙古帝国",
-                "大英帝国",
-                "奥斯曼帝国"
-            ],
-            "correct_id": 1,
-            "explanation": "13世纪的蒙古帝国连续领土约2400万平方公里。",
-            "saviez_vous": "大英帝国总面积更大，但领土分散。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "sport_football_players_11",
-            "sub_domain": "Sport",
-            "sub_theme": "Sport",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "一支足球队在场上有多少名球员？",
-            "answers": [
-                "9",
-                "10",
-                "11",
-                "12"
-            ],
-            "correct_id": 2,
-            "explanation": "一支球队上场11人：1名守门员和10名场上球员。",
-            "saviez_vous": "国际足联限制每场比赛的替补人数。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "sport_olympics_2024_paris",
-            "sub_domain": "Sport",
-            "sub_theme": "Sport",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "2024年夏季奥运会在哪个城市举办？",
-            "answers": [
-                "东京",
-                "巴黎",
-                "洛杉矶",
-                "伦敦"
-            ],
-            "correct_id": 1,
-            "explanation": "巴黎于2024年7月26日至8月11日举办了夏季奥运会。",
-            "saviez_vous": "这是巴黎第三次举办夏季奥运会。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "sport_basketball_highest_score",
-            "sub_domain": "Sport",
-            "sub_theme": "Sport",
-            "cognitive_type": "reasoning",
-            "niveau_band": "medium",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "以下团队运动中，哪个比赛平均总得分最高？",
-            "answers": [
-                "足球",
-                "冰球",
-                "篮球",
-                "15人制橄榄球"
-            ],
-            "correct_id": 2,
-            "explanation": "NBA篮球赛双方总得分常常超过200分。",
-            "saviez_vous": "足球比赛平均进球约2.5个。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "sport_marathon_distance_42195",
-            "sub_domain": "Sport",
-            "sub_theme": "Sport",
-            "cognitive_type": "deceptive_trap",
-            "niveau_band": "hard",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "马拉松的官方距离是多少？",
-            "answers": [
-                "正好42公里",
-                "42.195公里",
-                "40公里",
-                "45公里"
-            ],
-            "correct_id": 1,
-            "explanation": "自1921年起，马拉松官方距离固定为42.195公里。",
-            "saviez_vous": "该距离源于1908年伦敦奥运会。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "geo_capital_australia_canberra",
-            "sub_domain": "Géographie",
-            "sub_theme": "Géographie",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "澳大利亚的首都是哪里？",
-            "answers": [
-                "悉尼",
-                "堪培拉",
-                "墨尔本",
-                "珀斯"
-            ],
-            "correct_id": 1,
-            "explanation": "堪培拉于1908年被选为悉尼和墨尔本之间的折中首都。",
-            "saviez_vous": "它是少数从零规划建造的首都之一。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "geo_largest_ocean_pacific",
-            "sub_domain": "Géographie",
-            "sub_theme": "Géographie",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "世界上最大的海洋是哪个？",
-            "answers": [
-                "大西洋",
-                "印度洋",
-                "太平洋",
-                "北冰洋"
-            ],
-            "correct_id": 2,
-            "explanation": "太平洋面积约1.65亿平方公里。",
-            "saviez_vous": "它独自覆盖了地球海洋面积的一半以上。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "geo_most_timezones_france",
-            "sub_domain": "Géographie",
-            "sub_theme": "Géographie",
-            "cognitive_type": "reasoning",
-            "niveau_band": "medium",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "哪个国家横跨最多时区（含海外领地）？",
-            "answers": [
-                "俄罗斯",
-                "法国",
-                "美国",
-                "中国"
-            ],
-            "correct_id": 1,
-            "explanation": "法国凭借海外领地横跨12个时区。",
-            "saviez_vous": "俄罗斯仅本土就有11个时区。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "geo_most_populous_india_2024",
-            "sub_domain": "Géographie",
-            "sub_theme": "Géographie",
-            "cognitive_type": "deceptive_trap",
-            "niveau_band": "hard",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "自2023年起世界上人口最多的国家是？",
-            "answers": [
-                "中国",
-                "印度",
-                "美国",
-                "印度尼西亚"
-            ],
-            "correct_id": 1,
-            "explanation": "据联合国数据，印度于2023年超过中国。",
-            "saviez_vous": "由于人口结构，中国人口正在下降。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "art_mona_lisa_da_vinci",
-            "sub_domain": "Art",
-            "sub_theme": "Art",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "《蒙娜丽莎》是谁画的？",
-            "answers": [
-                "米开朗基罗",
-                "拉斐尔",
-                "达·芬奇",
-                "波提切利"
-            ],
-            "correct_id": 2,
-            "explanation": "达·芬奇于1503年至1519年间创作了《蒙娜丽莎》。",
-            "saviez_vous": "该画作现存于巴黎卢浮宫。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "art_starry_night_van_gogh",
-            "sub_domain": "Art",
-            "sub_theme": "Art",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "《星夜》是哪位艺术家创作的？",
-            "answers": [
-                "克劳德·莫奈",
-                "文森特·梵高",
-                "保罗·高更",
-                "巴勃罗·毕加索"
-            ],
-            "correct_id": 1,
-            "explanation": "梵高于1889年在圣雷米创作了《星夜》。",
-            "saviez_vous": "该画现藏于纽约现代艺术博物馆（MoMA）。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "art_picasso_cubism_movement",
-            "sub_domain": "Art",
-            "sub_theme": "Art",
-            "cognitive_type": "reasoning",
-            "niveau_band": "medium",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "毕加索与乔治·布拉克共同创立了哪个艺术流派？",
-            "answers": [
-                "印象派",
-                "立体主义",
-                "超现实主义",
-                "浪漫主义"
-            ],
-            "correct_id": 1,
-            "explanation": "毕加索与布拉克于1907—1908年前后创立立体主义。",
-            "saviez_vous": "《亚维农的少女》（1907）被视为立体主义的开端。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "art_statue_liberty_bartholdi",
-            "sub_domain": "Art",
-            "sub_theme": "Art",
-            "cognitive_type": "deceptive_trap",
-            "niveau_band": "hard",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "自由女神像的雕塑家是谁？",
-            "answers": [
-                "奥古斯特·罗丹",
-                "弗雷德里克·奥古斯特·巴托尔迪",
-                "古斯塔夫·埃菲尔",
-                "卡米耶·克洛岱尔"
-            ],
-            "correct_id": 1,
-            "explanation": "巴托尔迪是雕塑家；埃菲尔仅设计了内部钢架。",
-            "saviez_vous": "法国于1886年将自由女神像赠予美国。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "cuisine_pizza_origin_italy",
-            "sub_domain": "Cuisine",
-            "sub_theme": "Cuisine",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "现代披萨起源于哪个国家？",
-            "answers": [
-                "希腊",
-                "意大利",
-                "西班牙",
-                "法国"
-            ],
-            "correct_id": 1,
-            "explanation": "现代披萨18世纪诞生于那不勒斯。",
-            "saviez_vous": "玛格丽特披萨据说于1889年为纪念玛格丽特王后而创制。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "cuisine_sushi_japan",
-            "sub_domain": "Cuisine",
-            "sub_theme": "Cuisine",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "寿司起源于哪个国家？",
-            "answers": [
-                "中国",
-                "韩国",
-                "日本",
-                "越南"
-            ],
-            "correct_id": 2,
-            "explanation": "寿司是日本的传统料理。",
-            "saviez_vous": "现代握寿司于19世纪诞生在江户（今东京）。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "cuisine_most_expensive_spice_saffron",
-            "sub_domain": "Cuisine",
-            "sub_theme": "Cuisine",
-            "cognitive_type": "reasoning",
-            "niveau_band": "medium",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "以下香料中，按重量计算哪种最贵？",
-            "answers": [
-                "香草",
-                "藏红花",
-                "小豆蔻",
-                "黑胡椒"
-            ],
-            "correct_id": 1,
-            "explanation": "1公斤藏红花需要约15万朵花，因此价格极高。",
-            "saviez_vous": "每朵番红花只产3根柱头，全部需手工采摘。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "cuisine_croissant_origin_austria",
-            "sub_domain": "Cuisine",
-            "sub_theme": "Cuisine",
-            "cognitive_type": "deceptive_trap",
-            "niveau_band": "hard",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "可颂面包最初源自哪里？",
-            "answers": [
-                "奥地利",
-                "法国",
-                "意大利",
-                "比利时"
-            ],
-            "correct_id": 0,
-            "explanation": "可颂源自维也纳的Kipferl，后来在法国流行起来。",
-            "saviez_vous": "1839年，奥地利人奥古斯特·赞格在巴黎开了一家维也纳风格面包店。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "science_gold_symbol_au",
-            "sub_domain": "Science",
-            "sub_theme": "Science",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "黄金的化学符号是什么？",
-            "answers": [
-                "Go",
-                "Au",
-                "Ag",
-                "Gd"
-            ],
-            "correct_id": 1,
-            "explanation": "\"Au\"来自拉丁语\"aurum\"，意为黄金。",
-            "saviez_vous": "黄金是地壳中最稀有的元素之一。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "science_red_planet_mars",
-            "sub_domain": "Science",
-            "sub_theme": "Science",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "哪颗行星被称为\"红色行星\"？",
-            "answers": [
-                "金星",
-                "木星",
-                "火星",
-                "土星"
-            ],
-            "correct_id": 2,
-            "explanation": "火星的颜色源于其表面的氧化铁。",
-            "saviez_vous": "火星上有太阳系最大的火山：奥林帕斯山。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "science_most_abundant_universe_hydrogen",
-            "sub_domain": "Science",
-            "sub_theme": "Science",
-            "cognitive_type": "reasoning",
-            "niveau_band": "medium",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "宇宙中含量最丰富的化学元素是？",
-            "answers": [
-                "氧",
-                "氦",
-                "碳",
-                "氢"
-            ],
-            "correct_id": 3,
-            "explanation": "氢约占宇宙重子物质质量的75%。",
-            "saviez_vous": "它是恒星的燃料，被聚变成氦。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "science_octopus_blood_blue",
-            "sub_domain": "Science",
-            "sub_theme": "Science",
-            "cognitive_type": "deceptive_trap",
-            "niveau_band": "hard",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "章鱼的血是什么颜色？",
-            "answers": [
-                "红色",
-                "蓝色",
-                "绿色",
-                "黄色"
-            ],
-            "correct_id": 1,
-            "explanation": "章鱼血呈蓝色，因为其载氧蛋白血蓝蛋白以铜为核心。",
-            "saviez_vous": "脊椎动物的血液因含铁血红蛋白而呈红色。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "cinema_titanic_director_cameron",
-            "sub_domain": "Cinéma",
-            "sub_theme": "Cinéma",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "1997年电影《泰坦尼克号》的导演是谁？",
-            "answers": [
-                "史蒂文·斯皮尔伯格",
-                "詹姆斯·卡梅隆",
-                "雷德利·斯科特",
-                "马丁·斯科塞斯"
-            ],
-            "correct_id": 1,
-            "explanation": "詹姆斯·卡梅隆执导了1997年上映的《泰坦尼克号》。",
-            "saviez_vous": "该片获得11项奥斯卡奖，与《宾虚》和《指环王：王者归来》并列纪录。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "cinema_forrest_gump_hanks",
-            "sub_domain": "Cinéma",
-            "sub_theme": "Cinéma",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "1994年电影《阿甘正传》的主演是谁？",
-            "answers": [
-                "汤姆·克鲁斯",
-                "汤姆·汉克斯",
-                "布拉德·皮特",
-                "罗伯特·德尼罗"
-            ],
-            "correct_id": 1,
-            "explanation": "汤姆·汉克斯出演阿甘并凭此获得奥斯卡最佳男主角。",
-            "saviez_vous": "汤姆·汉克斯连续两年获奥斯卡最佳男主角（1994《费城故事》、1995《阿甘正传》）。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "cinema_most_oscars_titanic_11",
-            "sub_domain": "Cinéma",
-            "sub_theme": "Cinéma",
-            "cognitive_type": "reasoning",
-            "niveau_band": "medium",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "《宾虚》《泰坦尼克号》《指环王：王者归来》共享的奥斯卡纪录是？",
-            "answers": [
-                "9项",
-                "10项",
-                "11项",
-                "12项"
-            ],
-            "correct_id": 2,
-            "explanation": "三部影片各获11项奥斯卡，并列史上最多。",
-            "saviez_vous": "《王者归来》以11项提名全部获奖。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "cinema_first_talkie_jazz_singer",
-            "sub_domain": "Cinéma",
-            "sub_theme": "Cinéma",
-            "cognitive_type": "deceptive_trap",
-            "niveau_band": "hard",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "哪部电影被视为第一部长片有声电影？",
-            "answers": [
-                "《爵士歌手》(1927)",
-                "《一个国家的诞生》(1915)",
-                "《大都会》(1927)",
-                "《月球旅行记》(1902)"
-            ],
-            "correct_id": 0,
-            "explanation": "《爵士歌手》(1927)开创了商业有声电影时代。",
-            "saviez_vous": "此后\"talkies\"一词被用来指代有声电影。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "fauna_largest_land_elephant",
-            "sub_domain": "Faune",
-            "sub_theme": "Faune",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "现存最大的陆地动物是？",
-            "answers": [
-                "长颈鹿",
-                "白犀牛",
-                "非洲象",
-                "河马"
-            ],
-            "correct_id": 2,
-            "explanation": "非洲草原象体重可达6吨。",
-            "saviez_vous": "大象的鼻子约由4万块肌肉组成。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "fauna_fastest_cheetah",
-            "sub_domain": "Faune",
-            "sub_theme": "Faune",
-            "cognitive_type": "recognition",
-            "niveau_band": "easy",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "陆地上最快的动物是？",
-            "answers": [
-                "狮子",
-                "猎豹",
-                "羚羊",
-                "马"
-            ],
-            "correct_id": 1,
-            "explanation": "猎豹的极速可达约110公里/小时。",
-            "saviez_vous": "它只能维持这种速度几百米。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "fauna_egg_laying_mammal_platypus",
-            "sub_domain": "Faune",
-            "sub_theme": "Faune",
-            "cognitive_type": "reasoning",
-            "niveau_band": "medium",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "哪种哺乳动物以产卵著称？",
-            "answers": [
-                "袋鼠",
-                "鸭嘴兽",
-                "树懒",
-                "犰狳"
-            ],
-            "correct_id": 1,
-            "explanation": "鸭嘴兽是单孔目哺乳动物，会产卵。",
-            "saviez_vous": "针鼹是另一种会产卵的哺乳动物。"
-        },
-        {
-            "type": "multiple",
-            "concept_id": "fauna_shark_is_fish",
-            "sub_domain": "Faune",
-            "sub_theme": "Faune",
-            "cognitive_type": "deceptive_trap",
-            "niveau_band": "hard",
-            "theme": "general",
-            "language": "zh",
-            "question_text": "鲨鱼是鱼类还是哺乳动物？",
-            "answers": [
-                "哺乳动物",
-                "鱼类",
-                "爬行动物",
-                "两栖动物"
-            ],
-            "correct_id": 1,
-            "explanation": "鲨鱼是软骨鱼类，用鳃呼吸，没有肺。",
-            "saviez_vous": "别和鲸鱼、海豚混淆，后者是哺乳动物。"
-        }
-    ]
+    "total": 417,
+    "generated_at": "2026-04-30T14:33:07.285Z",
+    "generator": "scripts/seed/generate_seed_pool.mjs"
+  },
+  "questions": [
+    {
+      "type": "multiple",
+      "question_text": "世界上最大的沙漠是什么？",
+      "answers": [
+        "撒哈拉沙漠",
+        "阿拉伯沙漠",
+        "戈壁沙漠",
+        "南极沙漠"
+      ],
+      "correct_id": 3,
+      "explanation": "南极沙漠是世界上最大的沙漠，尽管它覆盖着冰雪。",
+      "theme": "general",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "谁是著名的物理学家，提出相对论？",
+      "answers": [
+        "牛顿",
+        "爱因斯坦",
+        "伽利略",
+        "法拉第"
+      ],
+      "correct_id": 1,
+      "explanation": "爱因斯坦因其相对论而闻名于世，改变了我们对时间和空间的理解。",
+      "theme": "general",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《星球大战》的创造者是谁？",
+      "answers": [
+        "史蒂文·斯皮尔伯格",
+        "乔治·卢卡斯",
+        "詹姆斯·卡梅隆",
+        "马丁·斯科塞斯"
+      ],
+      "correct_id": 1,
+      "explanation": "乔治·卢卡斯是《星球大战》系列的创始人和导演。",
+      "theme": "general",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "中国的国宝动物是什么？",
+      "answers": [
+        "大象",
+        "熊猫",
+        "狮子",
+        "袋鼠"
+      ],
+      "correct_id": 1,
+      "explanation": "熊猫是中国的国宝，以其可爱的外形和珍稀性著称。",
+      "theme": "general",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一种食物是意大利的传统美食？",
+      "answers": [
+        "寿司",
+        "披萨",
+        "汉堡",
+        "塔可"
+      ],
+      "correct_id": 1,
+      "explanation": "披萨是意大利的传统美食，风靡全球。",
+      "theme": "general",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "谁是《小王子》的作者？",
+      "answers": [
+        "马尔克斯",
+        "海明威",
+        "圣埃克苏佩里",
+        "托尔斯泰"
+      ],
+      "correct_id": 2,
+      "explanation": "安东尼·德·圣埃克苏佩里是《小王子》的作者，这本书享誉全球。",
+      "theme": "general",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种运动被称为“国球”？",
+      "answers": [
+        "乒乓球",
+        "足球",
+        "篮球",
+        "网球"
+      ],
+      "correct_id": 0,
+      "explanation": "乒乓球被誉为中国的“国球”，在国内外都非常受欢迎。",
+      "theme": "general",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古埃及的法老通常埋葬在哪里？",
+      "answers": [
+        "金字塔",
+        "神庙",
+        "城堡",
+        "墓地"
+      ],
+      "correct_id": 0,
+      "explanation": "古埃及法老通常埋葬在宏伟的金字塔中，以示尊贵。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "世界上最大的哺乳动物是什么？",
+      "answers": [
+        "大象",
+        "长颈鹿",
+        "蓝鲸",
+        "北极熊"
+      ],
+      "correct_id": 2,
+      "explanation": "蓝鲸是世界上最大的哺乳动物，体长可达30米以上。",
+      "theme": "general",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家以“枫叶”作为国旗的标志？",
+      "answers": [
+        "澳大利亚",
+        "加拿大",
+        "日本",
+        "中国"
+      ],
+      "correct_id": 1,
+      "explanation": "加拿大的国旗上有一个显著的红色枫叶，象征着国家的自然之美。",
+      "theme": "general",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位艺术家以《最后的晚餐》而闻名？",
+      "answers": [
+        "达芬奇",
+        "米开朗基罗",
+        "拉斐尔",
+        "梵高"
+      ],
+      "correct_id": 0,
+      "explanation": "达芬奇的《最后的晚餐》是文艺复兴时期最著名的壁画之一。",
+      "theme": "general",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种运动是现代奥林匹克运动会的创始项目？",
+      "answers": [
+        "田径",
+        "游泳",
+        "举重",
+        "拳击"
+      ],
+      "correct_id": 0,
+      "explanation": "田径是现代奥林匹克运动会的创始项目，最早的比赛始于1896年。",
+      "theme": "general",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "地球上最大的沙漠是哪个？",
+      "answers": [
+        "撒哈拉沙漠",
+        "阿拉伯沙漠",
+        "戈壁沙漠",
+        "南极沙漠"
+      ],
+      "correct_id": 3,
+      "explanation": "南极沙漠是地球上最大的沙漠，面积超过1400万平方公里。",
+      "theme": "general",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《肖申克的救赎》是基于哪位作家的小说改编的？",
+      "answers": [
+        "斯蒂芬·金",
+        "阿加莎·克里斯蒂",
+        "海明威",
+        "福克纳"
+      ],
+      "correct_id": 0,
+      "explanation": "《肖申克的救赎》改编自斯蒂芬·金的小说《丽塔·海沃斯与肖申克的救赎》。",
+      "theme": "general",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在烹饪中，哪种油被广泛使用于亚洲菜肴，尤其是中国菜？",
+      "answers": [
+        "橄榄油",
+        "葵花籽油",
+        "花生油",
+        "菜籽油"
+      ],
+      "correct_id": 2,
+      "explanation": "花生油在亚洲菜肴中广泛使用，因其独特的香气和高烟点。",
+      "theme": "general",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种化学元素的符号是Fe？",
+      "answers": [
+        "铝",
+        "铁",
+        "锌",
+        "铜"
+      ],
+      "correct_id": 1,
+      "explanation": "Fe是铁的化学符号，来自拉丁语‘Ferrum’。",
+      "theme": "general",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古代埃及的第一位女性法老是谁？",
+      "answers": [
+        "哈特谢普苏特",
+        "克利奥帕特拉",
+        "努比亚",
+        "图特摩斯"
+      ],
+      "correct_id": 0,
+      "explanation": "哈特谢普苏特是古代埃及历史上第一位女性法老，统治时期约在公元前1479年至公元前1458年。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "文艺复兴时期的一个重要发展是哪个？",
+      "answers": [
+        "印刷术",
+        "蒸汽机",
+        "电灯",
+        "电脑"
+      ],
+      "correct_id": 0,
+      "explanation": "印刷术的发明使知识的传播变得更加普及，促进了文艺复兴的兴起。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种运动被称为“皇后的运动”？",
+      "answers": [
+        "网球",
+        "高尔夫",
+        "游泳",
+        "田径"
+      ],
+      "correct_id": 0,
+      "explanation": "网球因其历史悠久和优雅的比赛风格，被誉为“皇后的运动”。",
+      "theme": "general",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古代埃及的金字塔主要用于什么目的？",
+      "answers": [
+        "墓葬",
+        "天文观测",
+        "军事防御",
+        "贸易中心"
+      ],
+      "correct_id": 0,
+      "explanation": "金字塔是古代埃及法老的墓葬，象征着他们的权力和宗教信仰。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位历史人物被称为“罗马的父亲”？",
+      "answers": [
+        "尤利乌斯·凯撒",
+        "奥古斯都",
+        "罗慕路斯",
+        "马克·安东尼"
+      ],
+      "correct_id": 2,
+      "explanation": "罗慕路斯是传说中的罗马创始人，被誉为罗马的父亲。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "工业革命最早发生在哪个国家？",
+      "answers": [
+        "法国",
+        "美国",
+        "英国",
+        "德国"
+      ],
+      "correct_id": 2,
+      "explanation": "工业革命起源于18世纪的英国，改变了生产和社会结构。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪场战争导致了美国独立？",
+      "answers": [
+        "南北战争",
+        "七年战争",
+        "美国独立战争",
+        "法印战争"
+      ],
+      "correct_id": 2,
+      "explanation": "美国独立战争（1775-1783）导致美国从英国获得独立。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "谁是《共产党宣言》的共同作者之一？",
+      "answers": [
+        "列宁",
+        "马克思",
+        "恩格斯",
+        "斯大林"
+      ],
+      "correct_id": 2,
+      "explanation": "恩格斯与马克思共同撰写了《共产党宣言》，对社会主义思想产生了深远影响。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古代中国的四大发明中，不包括哪一项？",
+      "answers": [
+        "纸",
+        "火药",
+        "印刷术",
+        "航海术"
+      ],
+      "correct_id": 3,
+      "explanation": "航海术不是古代中国的四大发明之一，四大发明包括纸、火药、印刷术和指南针。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "二战期间，哪一事件被称为“珍珠港事件”？",
+      "answers": [
+        "日本轰炸美国海军基地",
+        "德国入侵波兰",
+        "苏联与德国签署互不侵犯条约",
+        "美国向日本宣战"
+      ],
+      "correct_id": 0,
+      "explanation": "珍珠港事件是1941年日本袭击美国海军基地，导致美国正式参战。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古罗马的斗兽场主要用于什么活动？",
+      "answers": [
+        "政治会议",
+        "军事演习",
+        "角斗士比赛",
+        "宗教仪式"
+      ],
+      "correct_id": 2,
+      "explanation": "斗兽场是古罗马时期进行角斗士比赛和其他公共娱乐活动的场所。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "谁是法国大革命期间的著名领袖之一？",
+      "answers": [
+        "路易十六",
+        "罗伯斯庇尔",
+        "拿破仑",
+        "德拉克洛瓦"
+      ],
+      "correct_id": 1,
+      "explanation": "罗伯斯庇尔是法国大革命期间重要的政治人物，以其激进政策著称。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一文明以其金字塔而闻名于世？",
+      "answers": [
+        "玛雅文明",
+        "古埃及文明",
+        "印度河文明",
+        "古希腊文明"
+      ],
+      "correct_id": 1,
+      "explanation": "古埃及文明以其宏伟的金字塔而闻名，象征着其强大的建筑技术。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "篮球比赛中，每个队伍可以在场上有多少名球员？",
+      "answers": [
+        "5名",
+        "6名",
+        "7名",
+        "4名"
+      ],
+      "correct_id": 0,
+      "explanation": "一场篮球比赛中，每个队伍在场上有5名球员。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在奥运会历史上，哪个国家赢得的奖牌总数最多？",
+      "answers": [
+        "美国",
+        "中国",
+        "俄罗斯",
+        "德国"
+      ],
+      "correct_id": 0,
+      "explanation": "美国是历史上获得奥运会奖牌总数最多的国家。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "足球比赛中，进球的有效区域是哪个？",
+      "answers": [
+        "门框内",
+        "禁区内",
+        "中圈内",
+        "角球区内"
+      ],
+      "correct_id": 0,
+      "explanation": "进球必须在门框内，才算有效。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在游泳比赛中，哪种泳姿被称为“蛙泳”？",
+      "answers": [
+        "自由泳",
+        "仰泳",
+        "蛙泳",
+        "蝶泳"
+      ],
+      "correct_id": 2,
+      "explanation": "蛙泳是一种广为人知的游泳姿势，以双腿向外蹬水为特征。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在田径比赛中，短跑的标准距离通常为多少米？",
+      "answers": [
+        "100米",
+        "200米",
+        "400米",
+        "800米"
+      ],
+      "correct_id": 0,
+      "explanation": "短跑比赛的标准距离通常为100米。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "网球比赛中，比赛采用什么方式计分？",
+      "answers": [
+        "15-30-40",
+        "2-3",
+        "0-1-2",
+        "10-20-30"
+      ],
+      "correct_id": 0,
+      "explanation": "网球比赛的计分方式是15-30-40。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在乒乓球比赛中，一个球员必须先得多少分才能赢得一局？",
+      "answers": [
+        "11分",
+        "15分",
+        "21分",
+        "7分"
+      ],
+      "correct_id": 0,
+      "explanation": "乒乓球比赛中，球员必须先得11分才能赢得一局。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在职业棒球比赛中，哪个位置的球员负责投球？",
+      "answers": [
+        "投手",
+        "接手",
+        "外野手",
+        "内野手"
+      ],
+      "correct_id": 0,
+      "explanation": "在棒球比赛中，投手是负责投球的球员。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在奥林匹克运动会中，哪个项目是唯一一个包含马匹的？",
+      "answers": [
+        "马术",
+        "田径",
+        "游泳",
+        "篮球"
+      ],
+      "correct_id": 0,
+      "explanation": "马术是奥林匹克运动会中唯一包含马匹的项目。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在橄榄球比赛中，进攻队伍如何得分？",
+      "answers": [
+        "达阵",
+        "罚球",
+        "投篮",
+        "滑行"
+      ],
+      "correct_id": 0,
+      "explanation": "在橄榄球比赛中，达阵是进攻队伍得分的主要方式。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在二战期间，哪个国家最早向纳粹德国宣战？",
+      "answers": [
+        "波兰",
+        "英国",
+        "法国",
+        "苏联"
+      ],
+      "correct_id": 0,
+      "explanation": "波兰在1939年9月1日被德国侵略后，正式宣战，标志着二战的开始。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在2016年里约热内卢奥运会上，哪个国家赢得了最多的金牌？",
+      "answers": [
+        "美国",
+        "中国",
+        "俄罗斯",
+        "英国"
+      ],
+      "correct_id": 0,
+      "explanation": "美国在2016年里约热内卢奥运会上赢得了46枚金牌，位居金牌榜首。",
+      "theme": "general",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家有世界上最长的海岸线？",
+      "answers": [
+        "美国",
+        "加拿大",
+        "俄罗斯",
+        "巴西"
+      ],
+      "correct_id": 1,
+      "explanation": "加拿大的海岸线长度超过202,080公里，是世界上最长的。",
+      "theme": "general",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "文艺复兴时期，哪位艺术家以《大卫像》而闻名？",
+      "answers": [
+        "达芬奇",
+        "米开朗基罗",
+        "拉斐尔",
+        "提香"
+      ],
+      "correct_id": 1,
+      "explanation": "米开朗基罗的《大卫像》是文艺复兴时期的杰作之一，展现了完美的人体比例。",
+      "theme": "general",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一种食材被称为“黑色黄金”？",
+      "answers": [
+        "香料",
+        "松露",
+        "黑胡椒",
+        "橄榄油"
+      ],
+      "correct_id": 1,
+      "explanation": "松露因其稀缺和高价值而被誉为“黑色黄金”，在美食界备受推崇。",
+      "theme": "general",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "牛顿的三大运动定律中，哪一条描述了作用与反作用的关系？",
+      "answers": [
+        "第一定律",
+        "第二定律",
+        "第三定律",
+        "万有引力定律"
+      ],
+      "correct_id": 2,
+      "explanation": "牛顿的第三定律指出，每个作用都有一个相等且相反的反作用力。",
+      "theme": "general",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影获得了2020年奥斯卡最佳影片奖？",
+      "answers": [
+        "寄生虫",
+        "1917",
+        "小丑",
+        "刀锋"
+      ],
+      "correct_id": 0,
+      "explanation": "《寄生虫》成为首部获得奥斯卡最佳影片奖的非英语电影，颠覆了传统。",
+      "theme": "general",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物是世界上最大的陆地哺乳动物？",
+      "answers": [
+        "非洲象",
+        "北极熊",
+        "长颈鹿",
+        "犀牛"
+      ],
+      "correct_id": 0,
+      "explanation": "非洲象是世界上最大的陆地哺乳动物，成年雄象可重达6000公斤。",
+      "theme": "general",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一位科学家提出了相对论？",
+      "answers": [
+        "牛顿",
+        "爱因斯坦",
+        "伽利略",
+        "赫兹"
+      ],
+      "correct_id": 1,
+      "explanation": "阿尔伯特·爱因斯坦在20世纪初提出了相对论，改变了物理学的基础。",
+      "theme": "general",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在历史上，哪个城市被称为“永恒之城”？",
+      "answers": [
+        "雅典",
+        "罗马",
+        "耶路撒冷",
+        "开罗"
+      ],
+      "correct_id": 1,
+      "explanation": "罗马因其悠久的历史和文化，被誉为“永恒之城”。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一位历史人物被誉为“现代经济学之父”？",
+      "answers": [
+        "亚当·斯密",
+        "卡尔·马克思",
+        "约翰·梅纳德·凯恩斯",
+        "大卫·李嘉图"
+      ],
+      "correct_id": 0,
+      "explanation": "亚当·斯密的著作《国富论》奠定了现代经济学的基础。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在古代埃及，哪一位法老以其金字塔闻名？",
+      "answers": [
+        "胡夫",
+        "图特摩斯三世",
+        "拉美西斯二世",
+        "阿蒙霍特普四世"
+      ],
+      "correct_id": 0,
+      "explanation": "胡夫法老是大金字塔的建造者，这是古埃及最著名的金字塔之一。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪场战争被认为是美国南北战争的直接后果？",
+      "answers": [
+        "美国独立战争",
+        "墨西哥战争",
+        "美国内战",
+        "朝鲜战争"
+      ],
+      "correct_id": 1,
+      "explanation": "墨西哥战争加剧了南北之间关于奴隶制的分歧，直接导致南北战争的爆发。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一部作品标志着文艺复兴时期的开始？",
+      "answers": [
+        "《神曲》",
+        "《十日谈》",
+        "《乌托邦》",
+        "《莎士比亚全集》"
+      ],
+      "correct_id": 0,
+      "explanation": "但丁的《神曲》被视为文艺复兴时期思想转变的象征。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位历史人物是中国三国时期的重要军事家和政治家？",
+      "answers": [
+        "诸葛亮",
+        "曹操",
+        "孙权",
+        "刘备"
+      ],
+      "correct_id": 0,
+      "explanation": "诸葛亮以其卓越的谋略和政治能力，成为三国时期的代表性人物。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一事件导致了法国大革命的爆发？",
+      "answers": [
+        "巴士底狱的攻陷",
+        "路易十六的处决",
+        "《人权宣言》的发布",
+        "三级会议的召开"
+      ],
+      "correct_id": 3,
+      "explanation": "三级会议的召开引发了社会各阶层对权力和权利的激烈争论，成为革命的导火索。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家在19世纪末至20世纪初经历了明治维新？",
+      "answers": [
+        "中国",
+        "日本",
+        "韩国",
+        "泰国"
+      ],
+      "correct_id": 1,
+      "explanation": "明治维新是日本历史上重要的现代化改革时期，标志着国家的快速发展。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位皇帝在罗马帝国时期推行了重要的法制改革？",
+      "answers": [
+        "奥古斯都",
+        "尼禄",
+        "哈德良",
+        "君士坦丁"
+      ],
+      "correct_id": 2,
+      "explanation": "哈德良帝推行法制改革，重视法律与公正，为罗马法的发展奠定了基础。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一场战役被认为是第一次世界大战的转折点？",
+      "answers": [
+        "索姆河战役",
+        "凡尔登战役",
+        "坦能堡战役",
+        "加尔利波战役"
+      ],
+      "correct_id": 1,
+      "explanation": "凡尔登战役是第一次世界大战中最惨烈的战役之一，标志着战局的重大变化。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一位历史人物被称为“南美解放者”？",
+      "answers": [
+        "西蒙·玻利瓦尔",
+        "何塞·马丁",
+        "米格尔·伊达尔戈",
+        "奥古斯托·皮诺切特"
+      ],
+      "correct_id": 0,
+      "explanation": "西蒙·玻利瓦尔是南美洲多国独立运动的领袖，获得了“解放者”的称号。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一位历史学家提出了\"历史是当代的回声\"这一观点？",
+      "answers": [
+        "阿诺德·汤因比",
+        "赫尔穆特·冯·莫尔",
+        "马克斯·韦伯",
+        "卡尔·马克思"
+      ],
+      "correct_id": 0,
+      "explanation": "阿诺德·汤因比是著名的历史学家，他强调历史的循环性和当代的影响。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在古罗马，哪位帝王因其对基督教的支持而被称为\"大帝\"？",
+      "answers": [
+        "奥古斯都",
+        "君士坦丁大帝",
+        "提图斯",
+        "哈德良"
+      ],
+      "correct_id": 1,
+      "explanation": "君士坦丁大帝是第一位支持基督教的罗马皇帝，并在313年颁布了米兰敕令。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在中国历史上，哪个朝代首次统一了全国的度量衡？",
+      "answers": [
+        "汉朝",
+        "秦朝",
+        "唐朝",
+        "宋朝"
+      ],
+      "correct_id": 1,
+      "explanation": "秦朝在公元前221年统一了中国，并实施了统一的度量衡制度。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪场战役标志着美国南北战争的转折点？",
+      "answers": [
+        "葛底斯堡战役",
+        "安提坦战役",
+        "沙伊洛战役",
+        "弗雷德里克斯堡战役"
+      ],
+      "correct_id": 0,
+      "explanation": "葛底斯堡战役被认为是南北战争的转折点，促使联邦军士气大增。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位法国君主被称为\"太阳王\"？",
+      "answers": [
+        "路易十四",
+        "路易十六",
+        "亨利四世",
+        "查理九世"
+      ],
+      "correct_id": 0,
+      "explanation": "路易十四以其奢华的宫廷和集权统治而闻名，被称为\"太阳王\"。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古代埃及的法老图坦卡蒙以何种方式而闻名？",
+      "answers": [
+        "统一埃及",
+        "其墓葬的发现",
+        "修建金字塔",
+        "扩张领土"
+      ],
+      "correct_id": 1,
+      "explanation": "图坦卡蒙因其几乎未被盗掘的墓葬而闻名，提供了大量古埃及的文物。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在历史上，谁被认为是近代民主思想的奠基人之一？",
+      "answers": [
+        "约翰·洛克",
+        "托马斯·霍布斯",
+        "让-雅克·卢梭",
+        "卡尔·马克思"
+      ],
+      "correct_id": 0,
+      "explanation": "约翰·洛克的思想对近代民主理论产生了深远影响，尤其是自然权利的概念。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位历史人物负责推动了美国的独立宣言？",
+      "answers": [
+        "乔治·华盛顿",
+        "本杰明·富兰克林",
+        "托马斯·杰斐逊",
+        "约翰·亚当斯"
+      ],
+      "correct_id": 2,
+      "explanation": "托马斯·杰斐逊是《独立宣言》的主要起草者，他的思想深刻影响了美国建国。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在二战期间，哪一场战役被称为“东线的转折点”？",
+      "answers": [
+        "斯大林格勒战役",
+        "库尔斯克战役",
+        "莫斯科战役",
+        "列宁格勒围城战"
+      ],
+      "correct_id": 0,
+      "explanation": "斯大林格勒战役被认为是东线的转折点，标志着苏联军队的反攻开始。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一事件标志着冷战的开始？",
+      "answers": [
+        "柏林封锁",
+        "古巴导弹危机",
+        "朝鲜战争",
+        "越南战争"
+      ],
+      "correct_id": 0,
+      "explanation": "柏林封锁是冷战初期最具象征性的事件，标志着东西方的对立加剧。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在历史上，哪位罗马帝国皇帝因其对基督教的宽容而闻名？",
+      "answers": [
+        "君士坦丁一世",
+        "奥古斯都",
+        "提比略",
+        "尼禄"
+      ],
+      "correct_id": 0,
+      "explanation": "君士坦丁一世是罗马历史上第一位支持基督教的皇帝，颁布了米兰敕令。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在田径中，谁是史上获得最多奥运金牌的运动员？",
+      "answers": [
+        "鲍勃·霍普",
+        "迈克尔·菲尔普斯",
+        "尤塞恩·博尔特",
+        "卡尔·刘易斯"
+      ],
+      "correct_id": 1,
+      "explanation": "迈克尔·菲尔普斯在奥运会上赢得了总共23枚金牌，创下了历史纪录。",
+      "theme": "general",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "地球上最高的山峰是哪个？",
+      "answers": [
+        "乔戈里峰",
+        "珠穆朗玛峰",
+        "洛子峰",
+        "干城章嘉峰"
+      ],
+      "correct_id": 1,
+      "explanation": "珠穆朗玛峰是世界上最高的山峰，海拔8848米。",
+      "theme": "general",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位艺术家创作了《最后的晚餐》？",
+      "answers": [
+        "米开朗基罗",
+        "达芬奇",
+        "拉斐尔",
+        "提香"
+      ],
+      "correct_id": 1,
+      "explanation": "达芬奇的《最后的晚餐》是文艺复兴时期最著名的画作之一。",
+      "theme": "general",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种调味料是意大利菜中最常见的？",
+      "answers": [
+        "迷迭香",
+        "百里香",
+        "罗勒",
+        "香菜"
+      ],
+      "correct_id": 2,
+      "explanation": "罗勒是意大利美食中不可或缺的调味料，常用于制作青酱。",
+      "theme": "general",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "量子力学的基础理论之一是由谁提出的？",
+      "answers": [
+        "爱因斯坦",
+        "海森堡",
+        "波尔",
+        "德布罗意"
+      ],
+      "correct_id": 1,
+      "explanation": "海森堡提出的不确定性原理是量子力学的核心概念之一。",
+      "theme": "general",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影是由斯坦利·库布里克执导的经典科幻影片？",
+      "answers": [
+        "异形",
+        "2001太空漫游",
+        "银翼杀手",
+        "星际迷航"
+      ],
+      "correct_id": 1,
+      "explanation": "《2001太空漫游》是斯坦利·库布里克最具影响力的电影之一。",
+      "theme": "general",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "世界上最大的陆生动物是什么？",
+      "answers": [
+        "非洲象",
+        "北极熊",
+        "长颈鹿",
+        "白犀牛"
+      ],
+      "correct_id": 0,
+      "explanation": "非洲象是世界上最大的陆生动物，体重可达6000千克以上。",
+      "theme": "general",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位历史人物是美国独立宣言的主要起草人？",
+      "answers": [
+        "乔治·华盛顿",
+        "亚伯拉罕·林肯",
+        "托马斯·杰斐逊",
+        "本杰明·富兰克林"
+      ],
+      "correct_id": 2,
+      "explanation": "托马斯·杰斐逊被认为是美国独立宣言的主要作者。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在网球比赛中，哪一项是四大满贯赛事之一？",
+      "answers": [
+        "温布尔登",
+        "ATP总决赛",
+        "大师赛",
+        "国际网球联合会杯"
+      ],
+      "correct_id": 0,
+      "explanation": "温布尔登是世界上历史最悠久的网球比赛之一，也是四大满贯之一。",
+      "theme": "general",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古埃及的金字塔主要用于什么目的？",
+      "answers": [
+        "作为法老的陵墓",
+        "用于农业灌溉",
+        "作为市场",
+        "作为军事基地"
+      ],
+      "correct_id": 0,
+      "explanation": "金字塔是古埃及法老的陵墓，展示了他们的权力和信仰。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位美国总统发表了《解放宣言》？",
+      "answers": [
+        "亚伯拉罕·林肯",
+        "乔治·华盛顿",
+        "西奥多·罗斯福",
+        "富兰克林·罗斯福"
+      ],
+      "correct_id": 0,
+      "explanation": "亚伯拉罕·林肯于1863年发布了《解放宣言》，解放了南方的奴隶。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古代罗马的主要城市是什么？",
+      "answers": [
+        "罗马",
+        "雅典",
+        "开罗",
+        "巴比伦"
+      ],
+      "correct_id": 0,
+      "explanation": "罗马是古代罗马帝国的首都，文化和政治中心。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "第二次世界大战是在哪一年开始的？",
+      "answers": [
+        "1939年",
+        "1945年",
+        "1941年",
+        "1936年"
+      ],
+      "correct_id": 0,
+      "explanation": "第二次世界大战于1939年爆发，持续到1945年。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "中国的长城最初是为了什么修建的？",
+      "answers": [
+        "防御敌人",
+        "贸易运输",
+        "农业灌溉",
+        "文化交流"
+      ],
+      "correct_id": 0,
+      "explanation": "长城最初是为了防御外敌而修建的，保护国家安全。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古印度的文明主要集中在哪条河流附近？",
+      "answers": [
+        "恒河",
+        "尼罗河",
+        "美索不达米亚河",
+        "亚马逊河"
+      ],
+      "correct_id": 0,
+      "explanation": "古印度文明主要在恒河流域发展，是农业和文化的摇篮。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位著名的探险家发现了新大陆？",
+      "answers": [
+        "克里斯托弗·哥伦布",
+        "马可·波罗",
+        "麦哲伦",
+        "达·伽马"
+      ],
+      "correct_id": 0,
+      "explanation": "克里斯托弗·哥伦布于1492年发现了美洲，被称为新大陆。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古希腊的主要城邦之一是？",
+      "answers": [
+        "雅典",
+        "罗马",
+        "开罗",
+        "大马士革"
+      ],
+      "correct_id": 0,
+      "explanation": "雅典是古希腊著名的城邦，以文化和民主制度闻名。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位女性在法国历史上被称为“圣女”？",
+      "answers": [
+        "贞德",
+        "玛丽·安托瓦内特",
+        "克莉奥帕特拉",
+        "伊丽莎白一世"
+      ],
+      "correct_id": 0,
+      "explanation": "贞德是法国的民族英雄，以其在百年战争中的领导而闻名。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一文明以其灌溉技术而闻名？",
+      "answers": [
+        "美索不达米亚文明",
+        "古埃及文明",
+        "古印度文明",
+        "古希腊文明"
+      ],
+      "correct_id": 0,
+      "explanation": "美索不达米亚文明以其复杂的灌溉系统促进了农业的发展。",
+      "theme": "histoire",
+      "sub_theme": "histoire",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际足联世界杯历史上，哪支球队赢得了最多的冠军？",
+      "answers": [
+        "巴西",
+        "德国",
+        "意大利",
+        "阿根廷"
+      ],
+      "correct_id": 0,
+      "explanation": "巴西队赢得了五次世界杯，是历史上最成功的国家队。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "奥林匹克运动会的现代版首次在何处举办？",
+      "answers": [
+        "雅典",
+        "巴黎",
+        "伦敦",
+        "东京"
+      ],
+      "correct_id": 0,
+      "explanation": "现代奥林匹克运动会于1896年在雅典举办。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在网球比赛中，赢得四个大满贯赛事的球员称为什么？",
+      "answers": [
+        "双冠王",
+        "金满贯",
+        "全满贯",
+        "超级冠军"
+      ],
+      "correct_id": 2,
+      "explanation": "赢得四个大满贯赛事的球员被称为全满贯得主。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在篮球比赛中，三分球的距离是多远？",
+      "answers": [
+        "6.75米",
+        "7.25米",
+        "8.00米",
+        "9.00米"
+      ],
+      "correct_id": 0,
+      "explanation": "在国际篮球比赛中，三分球线距离篮筐6.75米。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在田径比赛中，男子马拉松的标准距离是多少？",
+      "answers": [
+        "42.195公里",
+        "40公里",
+        "42公里",
+        "43公里"
+      ],
+      "correct_id": 0,
+      "explanation": "男子马拉松的标准距离为42.195公里。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位运动员被称为“飞人”？",
+      "answers": [
+        "博尔特",
+        "乔丹",
+        "梅西",
+        "费德勒"
+      ],
+      "correct_id": 0,
+      "explanation": "尤塞恩·博尔特因其迅速的跑步速度而被称为“飞人”。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在冰球比赛中，比赛的标准时间是多少分钟？",
+      "answers": [
+        "60分钟",
+        "50分钟",
+        "70分钟",
+        "80分钟"
+      ],
+      "correct_id": 0,
+      "explanation": "冰球比赛的标准时间为60分钟，分为三节进行。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在游泳比赛中，100米自由泳的世界纪录由谁保持？",
+      "answers": [
+        "凯尔·肖尔",
+        "迈克尔·菲尔普斯",
+        "亚当·皮蒂",
+        "罗马尼亚游泳队"
+      ],
+      "correct_id": 1,
+      "explanation": "迈克尔·菲尔普斯曾保持男子100米自由泳的世界纪录。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在橄榄球比赛中，达阵得分是多少分？",
+      "answers": [
+        "5分",
+        "7分",
+        "3分",
+        "6分"
+      ],
+      "correct_id": 1,
+      "explanation": "在橄榄球比赛中，达阵得分为7分。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家主办了2022年冬季奥林匹克运动会？",
+      "answers": [
+        "中国",
+        "日本",
+        "加拿大",
+        "美国"
+      ],
+      "correct_id": 0,
+      "explanation": "2022年冬季奥林匹克运动会在中国北京举行。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "中国的首都是哪个城市？",
+      "answers": [
+        "北京",
+        "上海",
+        "广州",
+        "深圳"
+      ],
+      "correct_id": 0,
+      "explanation": "北京是中国的首都，拥有丰富的历史和文化遗产。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "世界上最长的河流是？",
+      "answers": [
+        "亚马逊河",
+        "尼罗河",
+        "长江",
+        "黄河"
+      ],
+      "correct_id": 1,
+      "explanation": "尼罗河被认为是世界上最长的河流，流经多个非洲国家。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "美国的国家公园黄石位于哪个州？",
+      "answers": [
+        "加利福尼亚州",
+        "德克萨斯州",
+        "怀俄明州",
+        "佛罗里达州"
+      ],
+      "correct_id": 2,
+      "explanation": "黄石国家公园主要位于怀俄明州，是美国第一个国家公园。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家被称为“千湖之国”？",
+      "answers": [
+        "瑞典",
+        "芬兰",
+        "挪威",
+        "丹麦"
+      ],
+      "correct_id": 1,
+      "explanation": "芬兰因其众多湖泊而被称为“千湖之国”。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "埃及的首都是什么？",
+      "answers": [
+        "开罗",
+        "亚历山大",
+        "卢克索",
+        "苏伊士"
+      ],
+      "correct_id": 0,
+      "explanation": "开罗是埃及的首都，以其古老的历史和文化著称。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "喜马拉雅山脉中最高的山峰是什么？",
+      "answers": [
+        "K2",
+        "珠穆朗玛峰",
+        "洛子峰",
+        "干城章嘉峰"
+      ],
+      "correct_id": 1,
+      "explanation": "珠穆朗玛峰是喜马拉雅山脉中最高的山峰，海拔8848米。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个大洋是世界上最大的洋？",
+      "answers": [
+        "印度洋",
+        "大西洋",
+        "南冰洋",
+        "太平洋"
+      ],
+      "correct_id": 3,
+      "explanation": "太平洋是世界上最大的洋，面积超过1.6亿平方公里。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个城市是意大利的首都？",
+      "answers": [
+        "米兰",
+        "罗马",
+        "佛罗伦萨",
+        "威尼斯"
+      ],
+      "correct_id": 1,
+      "explanation": "罗马是意大利的首都，拥有丰富的历史和文化遗产。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家的国土上有最北的城市？",
+      "answers": [
+        "挪威",
+        "冰岛",
+        "芬兰",
+        "瑞典"
+      ],
+      "correct_id": 0,
+      "explanation": "挪威的斯瓦尔巴特群岛上有世界上最北的城市，朗伊尔城。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "南美洲的安第斯山脉主要经过哪些国家？",
+      "answers": [
+        "巴西和阿根廷",
+        "智利和秘鲁",
+        "哥伦比亚和厄瓜多尔",
+        "乌拉圭和巴拉圭"
+      ],
+      "correct_id": 1,
+      "explanation": "安第斯山脉是南美洲最长的山脉，主要经过智利和秘鲁。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在2016年里约热内卢奥运会上，获得男子100米短跑金牌的是哪位运动员？",
+      "answers": [
+        "尤塞恩·博尔特",
+        "贾斯汀·加特林",
+        "汤姆·阿米妮",
+        "约翰·布雷克"
+      ],
+      "correct_id": 0,
+      "explanation": "尤塞恩·博尔特在2016年里约热内卢奥运会上成功卫冕，完成了三连冠。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际足联世界杯历史上，哪位球员是唯一一位连续两届赛事获得金靴奖的球员？",
+      "answers": [
+        "米歇尔·普拉蒂尼",
+        "罗纳尔多",
+        "加布里埃尔·巴蒂斯图塔",
+        "哈里·凯恩"
+      ],
+      "correct_id": 1,
+      "explanation": "罗纳尔多在1998年和2002年世界杯上分别获得金靴奖，成为唯一的连续得主。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位运动员在游泳项目中是获得最多奥运金牌的选手？",
+      "answers": [
+        "迈克尔·菲尔普斯",
+        "马特·比昂迪",
+        "亚当·皮蒂",
+        "凯特·琳·霍普金斯"
+      ],
+      "correct_id": 0,
+      "explanation": "迈克尔·菲尔普斯是奥运历史上获得金牌最多的运动员，共获得23枚金牌。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在NBA历史上，哪位球员的职业生涯场均得分最高？",
+      "answers": [
+        "迈克尔·乔丹",
+        "科比·布莱恩特",
+        "凯文·杜兰特",
+        "勒布朗·詹姆斯"
+      ],
+      "correct_id": 0,
+      "explanation": "迈克尔·乔丹以场均30.1分的成绩成为NBA历史上场均得分最高的球员。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在网球大满贯历史上，哪位女性选手赢得的单打冠军数量最多？",
+      "answers": [
+        "玛格丽特·考特",
+        "塞雷娜·威廉姆斯",
+        "斯维特拉娜·库兹涅佐娃",
+        "小威廉姆斯"
+      ],
+      "correct_id": 0,
+      "explanation": "玛格丽特·考特赢得了24个单打大满贯冠军，是历史上最多的女性选手。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在冬季奥林匹克运动会历史上，哪位运动员获得的金牌数量最多？",
+      "answers": [
+        "比约恩·达哈利",
+        "林赛·沃恩",
+        "马尔特·斯特拉克",
+        "奥斯卡·斯科特"
+      ],
+      "correct_id": 0,
+      "explanation": "比约恩·达哈利在冬季奥运会上获得了总计8枚金牌，记录至今无人打破。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际田联的历史上，谁是唯一一位在同一届世锦赛中同时赢得100米和200米金牌的运动员？",
+      "answers": [
+        "尤塞恩·博尔特",
+        "卡尔·刘易斯",
+        "弗朗西斯·阿尔斯通",
+        "汤姆·阿米妮"
+      ],
+      "correct_id": 0,
+      "explanation": "尤塞恩·博尔特在2009年世界田径锦标赛上实现了100米和200米双冠。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在FIFA世界杯历史上，哪一届赛事的决赛是第一次在点球大战中决出胜负？",
+      "answers": [
+        "1994年",
+        "1982年",
+        "1978年",
+        "1998年"
+      ],
+      "correct_id": 0,
+      "explanation": "1994年世界杯决赛是第一次通过点球大战决出冠军，巴西击败意大利。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际橄榄球联合会的规则中，演练的“黄牌”和“红牌”分别表示什么？",
+      "answers": [
+        "警告和罚下",
+        "罚下和禁赛",
+        "警告和禁赛",
+        "罚下和再警告"
+      ],
+      "correct_id": 0,
+      "explanation": "黄牌表示警告，红牌表示罚下，二者在橄榄球中运用广泛。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个国家被誉为“千湖之国”？",
+      "answers": [
+        "芬兰",
+        "瑞典",
+        "挪威",
+        "丹麦"
+      ],
+      "correct_id": 0,
+      "explanation": "芬兰因其拥有众多湖泊而被称为“千湖之国”。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "世界上最长的河流是哪一条？",
+      "answers": [
+        "亚马逊河",
+        "尼罗河",
+        "长江",
+        "密西西比河"
+      ],
+      "correct_id": 1,
+      "explanation": "尼罗河被广泛认为是世界上最长的河流，流经多个非洲国家。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个城市是日本的首都？",
+      "answers": [
+        "东京",
+        "大阪",
+        "京都",
+        "名古屋"
+      ],
+      "correct_id": 0,
+      "explanation": "东京是日本的首都，也是该国最大的城市。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "喜马拉雅山脉的最高峰是什么？",
+      "answers": [
+        "K2",
+        "安纳布尔纳峰",
+        "珠穆朗玛峰",
+        "洛子峰"
+      ],
+      "correct_id": 2,
+      "explanation": "珠穆朗玛峰是喜马拉雅山脉的最高峰，也是世界最高峰。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个国家不与印度接壤？",
+      "answers": [
+        "巴基斯坦",
+        "中国",
+        "尼泊尔",
+        "越南"
+      ],
+      "correct_id": 3,
+      "explanation": "越南与印度不接壤，其他三个国家均与印度接壤。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "南美洲的主要山脉是什么？",
+      "answers": [
+        "安第斯山脉",
+        "落基山脉",
+        "阿尔卑斯山脉",
+        "大分水岭"
+      ],
+      "correct_id": 0,
+      "explanation": "安第斯山脉是南美洲最长且最高的山脉。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "撒哈拉沙漠主要位于哪个洲？",
+      "answers": [
+        "亚洲",
+        "非洲",
+        "南美洲",
+        "澳大利亚"
+      ],
+      "correct_id": 1,
+      "explanation": "撒哈拉沙漠是世界上最大的热带沙漠，位于非洲。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个城市被称为“水城”？",
+      "answers": [
+        "威尼斯",
+        "阿姆斯特丹",
+        "布拉格",
+        "悉尼"
+      ],
+      "correct_id": 0,
+      "explanation": "威尼斯因其运河而被称为“水城”。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "澳大利亚的首都是什么？",
+      "answers": [
+        "悉尼",
+        "墨尔本",
+        "堪培拉",
+        "布里斯班"
+      ],
+      "correct_id": 2,
+      "explanation": "堪培拉是澳大利亚的首都，位于两个主要城市之间。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家是世界上面积最大的国家？",
+      "answers": [
+        "中国",
+        "美国",
+        "俄罗斯",
+        "加拿大"
+      ],
+      "correct_id": 2,
+      "explanation": "俄罗斯是世界上面积最大的国家，覆盖了广阔的土地。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位艺术家是超现实主义运动的重要代表之一？",
+      "answers": [
+        "萨尔瓦多·达利",
+        "巴勃罗·毕加索",
+        "亨利·马蒂斯",
+        "克劳德·莫奈"
+      ],
+      "correct_id": 0,
+      "explanation": "萨尔瓦多·达利以其梦幻般的画作而闻名，是超现实主义的核心人物。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在文学史上，哪部作品被认为是现代主义小说的先驱？",
+      "answers": [
+        "《追忆似水年华》",
+        "《了不起的盖茨比》",
+        "《白鲸》",
+        "《百年孤独》"
+      ],
+      "correct_id": 0,
+      "explanation": "《追忆似水年华》是马塞尔·普鲁斯特的代表作，被广泛视为现代主义小说的开创之作。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位艺术家以其在美国开创的动作绘画（Action painting）而著名？",
+      "answers": [
+        "杰克逊·波洛克",
+        "马克·罗斯科",
+        "安迪·沃霍尔",
+        "温斯顿·肖"
+      ],
+      "correct_id": 0,
+      "explanation": "杰克逊·波洛克是动作绘画的代表，以其独特的滴画技法著称。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个流派主要强调对光和色彩的表现？",
+      "answers": [
+        "浪漫主义",
+        "印象派",
+        "表现主义",
+        "古典主义"
+      ],
+      "correct_id": 1,
+      "explanation": "印象派艺术家通过捕捉光线和色彩的瞬息变化而著称。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位作家被称为美国文学中的“失落一代”代表？",
+      "answers": [
+        "海明威",
+        "福克纳",
+        "菲茨杰拉德",
+        "卡夫卡"
+      ],
+      "correct_id": 2,
+      "explanation": "F. 斯科特·菲茨杰拉德因其描绘“失落一代”的生活而闻名，尤其是在《了不起的盖茨比》中。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在雕塑艺术中，哪位艺术家因其对人体的细致描绘而闻名？",
+      "answers": [
+        "米开朗基罗",
+        "罗丹",
+        "布朗库西",
+        "贾科梅蒂"
+      ],
+      "correct_id": 0,
+      "explanation": "米开朗基罗以其对人体解剖学的深刻理解，创造了许多经典雕塑作品。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位画家的作品以其鲜艳的色彩和梦幻般的主题而闻名？",
+      "answers": [
+        "亨利·马蒂斯",
+        "文森特·梵高",
+        "爱德华·蒙克",
+        "克劳德·莫奈"
+      ],
+      "correct_id": 0,
+      "explanation": "亨利·马蒂斯的作品以大胆的色彩和装饰性构图而著称，是野兽派的主要代表。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在印象派画家中，谁以水景画作而特别著名？",
+      "answers": [
+        "克劳德·莫奈",
+        "皮埃尔·奥古斯特·雷诺阿",
+        "埃德加·德加",
+        "阿尔弗雷德·西斯莱"
+      ],
+      "correct_id": 0,
+      "explanation": "克劳德·莫奈的《睡莲》系列作品展示了他对水面光影变化的独特观察。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种艺术形式主要通过文字传达情感和思想？",
+      "answers": [
+        "戏剧",
+        "诗歌",
+        "绘画",
+        "雕塑"
+      ],
+      "correct_id": 1,
+      "explanation": "诗歌是一种通过语言的韵律和意象表达情感和思想的艺术形式。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在文艺复兴时期，哪位艺术家不仅是一位画家，还是一位科学家和工程师？",
+      "answers": [
+        "达·芬奇",
+        "拉斐尔",
+        "米开朗基罗",
+        "提香"
+      ],
+      "correct_id": 0,
+      "explanation": "列奥纳多·达·芬奇以其跨越艺术和科学领域的成就而闻名，被誉为文艺复兴的典范。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个国家拥有最长的海岸线？",
+      "answers": [
+        "加拿大",
+        "巴西",
+        "澳大利亚",
+        "俄罗斯"
+      ],
+      "correct_id": 0,
+      "explanation": "加拿大的海岸线长达202,080公里，是世界上最长的海岸线。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪条河流是世界上最长的？",
+      "answers": [
+        "亚马逊河",
+        "尼罗河",
+        "长江",
+        "密西西比河"
+      ],
+      "correct_id": 1,
+      "explanation": "尼罗河全长约6,650公里，曾被认为是世界上最长的河流。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个城市是美国的首都？",
+      "answers": [
+        "纽约",
+        "华盛顿特区",
+        "洛杉矶",
+        "芝加哥"
+      ],
+      "correct_id": 1,
+      "explanation": "华盛顿特区是美国的联邦首都，设立于1790年。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "世界上最高的山峰是哪个？",
+      "answers": [
+        "K2",
+        "珠穆朗玛峰",
+        "干城章嘉峰",
+        "洛子峰"
+      ],
+      "correct_id": 1,
+      "explanation": "珠穆朗玛峰的高度为8,848.86米，是世界最高峰。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家的面积最大？",
+      "answers": [
+        "中国",
+        "美国",
+        "俄罗斯",
+        "巴西"
+      ],
+      "correct_id": 2,
+      "explanation": "俄罗斯的总面积为17,098,242平方公里，是世界上面积最大的国家。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个湖泊是世界上最深的？",
+      "answers": [
+        "贝加尔湖",
+        "坦噶尼喀湖",
+        "维多利亚湖",
+        "安大略湖"
+      ],
+      "correct_id": 0,
+      "explanation": "贝加尔湖的最大深度达1,642米，是全球最深的湖泊。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个地形是美国西部的主要特征？",
+      "answers": [
+        "大平原",
+        "落基山脉",
+        "阿巴拉契亚山脉",
+        "中央山脉"
+      ],
+      "correct_id": 1,
+      "explanation": "落基山脉是美国西部的一大地理特征，延伸至加拿大。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家是世界上唯一的双重内陆国家？",
+      "answers": [
+        "哈萨克斯坦",
+        "瑞士",
+        "列支敦士登",
+        "乌兹别克斯坦"
+      ],
+      "correct_id": 1,
+      "explanation": "瑞士是唯一一个被两个内陆国家包围的国家，分别是奥地利和列支敦士登。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个海洋是面积最大的？",
+      "answers": [
+        "大西洋",
+        "印度洋",
+        "北冰洋",
+        "太平洋"
+      ],
+      "correct_id": 3,
+      "explanation": "太平洋是世界上最大的海洋，面积约为168,723,000平方公里。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个国家的首都位于南半球？",
+      "answers": [
+        "乌拉圭",
+        "秘鲁",
+        "巴西",
+        "智利"
+      ],
+      "correct_id": 0,
+      "explanation": "乌拉圭的首都蒙得维的亚位于南半球。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个山脉被认为是欧洲和亚洲的分界线？",
+      "answers": [
+        "阿尔卑斯山",
+        "乌拉尔山",
+        "安第斯山",
+        "喜马拉雅山"
+      ],
+      "correct_id": 1,
+      "explanation": "乌拉尔山通常被认为是欧洲与亚洲的自然分界线。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个海洋是世界上最小的海洋？",
+      "answers": [
+        "南极洲海",
+        "加勒比海",
+        "北冰洋",
+        "阿拉伯海"
+      ],
+      "correct_id": 0,
+      "explanation": "南极洲海是世界上最小的海洋，面积约为1,500,000平方公里。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪座城市被称为“光之城”？",
+      "answers": [
+        "巴黎",
+        "纽约",
+        "东京",
+        "伦敦"
+      ],
+      "correct_id": 0,
+      "explanation": "巴黎因其浪漫氛围和丰富的历史而被称为“光之城”。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "地球上最深的海沟是哪个？",
+      "answers": [
+        "马里亚纳海沟",
+        "菲律宾海沟",
+        "琉球海沟",
+        "波多黎各海沟"
+      ],
+      "correct_id": 0,
+      "explanation": "马里亚纳海沟深度超过11,000米，是地球上最深的海沟。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个国家的边界与印度接壤？",
+      "answers": [
+        "巴基斯坦",
+        "孟加拉国",
+        "尼泊尔",
+        "所有选项"
+      ],
+      "correct_id": 3,
+      "explanation": "巴基斯坦、孟加拉国和尼泊尔都与印度接壤，所有选项均正确。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个地方是世界遗产之一，著名的古代城市遗址？",
+      "answers": [
+        "罗马",
+        "马丘比丘",
+        "长城",
+        "金字塔"
+      ],
+      "correct_id": 1,
+      "explanation": "马丘比丘是秘鲁的古代印加城市遗址，现为世界遗产。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "世界上最高的活火山是哪一座？",
+      "answers": [
+        "富士山",
+        "阿空加瓜山",
+        "基尔梅斯火山",
+        "梅尔基火山"
+      ],
+      "correct_id": 1,
+      "explanation": "阿空加瓜山位于阿根廷，被认为是世界最高的活火山，海拔约6814米。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种食材是意大利面主要的成分？",
+      "answers": [
+        "小麦",
+        "米",
+        "玉米",
+        "大豆"
+      ],
+      "correct_id": 0,
+      "explanation": "意大利面的主要成分是小麦，尤其是硬小麦粉。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "寿司起源于哪个国家？",
+      "answers": [
+        "中国",
+        "日本",
+        "韩国",
+        "泰国"
+      ],
+      "correct_id": 1,
+      "explanation": "寿司起源于日本，最早是用来保存鱼类的食品。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种饮料是用红茶和牛奶混合制作的？",
+      "answers": [
+        "拿铁",
+        "奶茶",
+        "浓咖啡",
+        "热巧克力"
+      ],
+      "correct_id": 1,
+      "explanation": "奶茶是用红茶和牛奶混合制作的，广受欢迎。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "泰国菜中常用的香料是什么？",
+      "answers": [
+        "香菜",
+        "迷迭香",
+        "百里香",
+        "薄荷"
+      ],
+      "correct_id": 0,
+      "explanation": "香菜是泰国菜中常用的香料，增添独特风味。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "意大利的经典面食“比萨”通常由什么烘烤而成？",
+      "answers": [
+        "米饭",
+        "面团",
+        "土豆",
+        "面包"
+      ],
+      "correct_id": 1,
+      "explanation": "比萨由面团烘烤而成，通常会加上各种配料。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种甜点是法国的传统美食？",
+      "answers": [
+        "提拉米苏",
+        "马卡龙",
+        "泡芙",
+        "布丁"
+      ],
+      "correct_id": 1,
+      "explanation": "马卡龙是法国的传统甜点，以其色彩鲜艳和口感细腻著称。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种食物是墨西哥的传统食品？",
+      "answers": [
+        "寿司",
+        "塔可",
+        "意大利面",
+        "泡菜"
+      ],
+      "correct_id": 1,
+      "explanation": "塔可是墨西哥的传统食品，常用玉米饼包裹各种馅料。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "中国的“春卷”通常是用什么包裹的？",
+      "answers": [
+        "面团",
+        "米纸",
+        "生菜",
+        "蛋皮"
+      ],
+      "correct_id": 0,
+      "explanation": "春卷通常是用薄面团包裹的，里面有各种馅料。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "意大利的经典饮品“浓咖啡”在意大利语中称为什么？",
+      "answers": [
+        "Espresso",
+        "Cappuccino",
+        "Latte",
+        "Macchiato"
+      ],
+      "correct_id": 0,
+      "explanation": "浓咖啡在意大利语中称为Espresso，是意大利的经典饮品。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "“法式洋葱汤”中主要的蔬菜是什么？",
+      "answers": [
+        "胡萝卜",
+        "洋葱",
+        "西红柿",
+        "土豆"
+      ],
+      "correct_id": 1,
+      "explanation": "法式洋葱汤的主要成分是洋葱，通常会有浓郁的味道。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪位艺术家被认为是立体主义的创始人之一？",
+      "answers": [
+        "巴勃罗·毕加索",
+        "亨利·马蒂斯",
+        "克劳德·莫奈",
+        "文森特·梵高"
+      ],
+      "correct_id": 0,
+      "explanation": "巴勃罗·毕加索与乔治·布拉克共同创立了立体主义艺术运动。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《追风筝的人》这部小说的作者是谁？",
+      "answers": [
+        "卡勒德·胡赛尼",
+        "哈珀·李",
+        "乔治·奥威尔",
+        "福克纳"
+      ],
+      "correct_id": 0,
+      "explanation": "卡勒德·胡赛尼的《追风筝的人》讲述了阿富汗的友谊与背叛。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种艺术运动以表现光影和色彩的变化为特点？",
+      "answers": [
+        "印象派",
+        "超现实主义",
+        "象征主义",
+        "未来主义"
+      ],
+      "correct_id": 0,
+      "explanation": "印象派艺术家注重捕捉瞬间的光影变化与自然景观。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位诗人被誉为“现代诗之父”？",
+      "answers": [
+        "艾兹拉·庞德",
+        "T.S.艾略特",
+        "威尔士·惠特曼",
+        "罗伯特·弗罗斯特"
+      ],
+      "correct_id": 1,
+      "explanation": "T.S.艾略特以其创新的诗歌形式和主题改变了现代诗的面貌。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《最后的晚餐》这幅画的创作者是谁？",
+      "answers": [
+        "米开朗基罗",
+        "列奥纳多·达芬奇",
+        "拉斐尔",
+        "提香"
+      ],
+      "correct_id": 1,
+      "explanation": "列奥纳多·达芬奇创作的《最后的晚餐》是文艺复兴时期的杰作。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪位艺术家以其巨型雕塑而闻名？",
+      "answers": [
+        "米开朗基罗",
+        "阿尔贝托·贾科梅蒂",
+        "亨利·摩尔",
+        "安东尼·戈德温"
+      ],
+      "correct_id": 2,
+      "explanation": "亨利·摩尔以其大型抽象雕塑闻名于世，常常使用自然形态。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《罪与罚》这部小说的作者是哪位俄国作家？",
+      "answers": [
+        "陀思妥耶夫斯基",
+        "托尔斯泰",
+        "契诃夫",
+        "高尔基"
+      ],
+      "correct_id": 0,
+      "explanation": "陀思妥耶夫斯基的《罪与罚》探讨了道德和良知的复杂性。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪一位是维也纳分离派的代表艺术家？",
+      "answers": [
+        "古斯塔夫·克林姆特",
+        "爱德华·蒙克",
+        "巴勃罗·毕加索",
+        "文森特·梵高"
+      ],
+      "correct_id": 0,
+      "explanation": "古斯塔夫·克林姆特以其装饰性和象征主义风格而闻名于维也纳分离派。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《红与黑》这部小说的作者是谁？",
+      "answers": [
+        "福楼拜",
+        "司汤达",
+        "巴尔扎克",
+        "雨果"
+      ],
+      "correct_id": 1,
+      "explanation": "司汤达的《红与黑》是19世纪法国文学的重要作品，探讨了野心与社会阶级。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪位女性艺术家因其独特的拼贴艺术而闻名？",
+      "answers": [
+        "弗里达·卡洛",
+        "乔治亚·欧基夫",
+        "草间弥生",
+        "凯瑟琳·霍普金斯"
+      ],
+      "correct_id": 0,
+      "explanation": "弗里达·卡洛以其个人化的风格和拼贴作品著称，表达了深刻的情感和身份。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪位艺术家被认为是印象派的奠基人之一？",
+      "answers": [
+        "克劳德·莫奈",
+        "皮埃尔·奥古斯特·雷诺阿",
+        "埃德加·德加",
+        "保罗·塞尚"
+      ],
+      "correct_id": 0,
+      "explanation": "克劳德·莫奈是印象派的关键人物，他的作品如《日出·印象》奠定了这一艺术运动的基础。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《百年孤独》的作者是？",
+      "answers": [
+        "加布里埃尔·加西亚·马尔克斯",
+        "米哈伊·巴赫金",
+        "博尔赫斯",
+        "萨尔瓦多·阿连德"
+      ],
+      "correct_id": 0,
+      "explanation": "加布里埃尔·加西亚·马尔克斯以《百年孤独》闻名于世，这部作品被视为魔幻现实主义的经典之作。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位艺术家以其超现实主义作品而闻名？",
+      "answers": [
+        "萨尔瓦多·达利",
+        "巴勃罗·毕加索",
+        "亨利·马蒂斯",
+        "安迪·沃霍尔"
+      ],
+      "correct_id": 0,
+      "explanation": "萨尔瓦多·达利是超现实主义的代表性艺术家，以其梦幻般的画作而著称。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种艺术运动强调对现实的反映，并常常使用日常生活的主题？",
+      "answers": [
+        "现实主义",
+        "表现主义",
+        "野兽派",
+        "超现实主义"
+      ],
+      "correct_id": 0,
+      "explanation": "现实主义艺术运动强调对社会和日常生活的真实描绘，反对浪漫主义的理想化表现。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "谁是《悲惨世界》的作者？",
+      "answers": [
+        "维克多·雨果",
+        "查尔斯·狄更斯",
+        "福楼拜",
+        "马尔克斯"
+      ],
+      "correct_id": 0,
+      "explanation": "维克多·雨果是法国著名作家，《悲惨世界》是他的代表作之一，探讨了社会不平等与救赎。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位女性艺术家以其独特的装置艺术而闻名？",
+      "answers": [
+        "草间弥生",
+        "弗里达·卡洛",
+        "雅典娜·阿尔贝尔",
+        "艾米莉·卡尔"
+      ],
+      "correct_id": 0,
+      "explanation": "草间弥生因其使用点子和装置艺术而知名，作品常探讨无穷与孤独的主题。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪部作品是文艺复兴时期的重要雕塑？",
+      "answers": [
+        "大卫",
+        "维纳斯的诞生",
+        "最后的晚餐",
+        "创世纪"
+      ],
+      "correct_id": 0,
+      "explanation": "米开朗基罗的《大卫》是文艺复兴时期的标志性雕塑，体现了人体美和古典理想。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位作家以其对存在主义的贡献而著称？",
+      "answers": [
+        "让-保罗·萨特",
+        "阿尔贝·加缪",
+        "西蒙娜·波伏娃",
+        "弗朗茨·卡夫卡"
+      ],
+      "correct_id": 0,
+      "explanation": "让-保罗·萨特是存在主义的主要代表之一，他的作品探讨了自由与责任的主题。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪位画家被称为“现代艺术之父”？",
+      "answers": [
+        "保罗·毕加索",
+        "亨利·马蒂斯",
+        "马尔克·夏卡尔",
+        "瓦西里·康丁斯基"
+      ],
+      "correct_id": 3,
+      "explanation": "瓦西里·康丁斯基被认为是现代艺术的先驱之一，他的作品对抽象艺术有深远影响。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位诗人以其对自然的细致描写而闻名？",
+      "answers": [
+        "威廉·华兹华斯",
+        "约翰·济慈",
+        "罗伯特·弗罗斯特",
+        "艾米莉·迪金森"
+      ],
+      "correct_id": 0,
+      "explanation": "威廉·华兹华斯是英国浪漫主义诗人，以其细腻的自然描写和对乡村生活的赞美而闻名。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种食材是制作意大利面最常用的主要成分？",
+      "answers": [
+        "小麦粉",
+        "玉米粉",
+        "大米",
+        "荞麦"
+      ],
+      "correct_id": 0,
+      "explanation": "意大利面主要由小麦粉制成，是其经典口感的基础。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在日本料理中，哪种酱油被称为“生抽”？",
+      "answers": [
+        "淡口酱油",
+        "浓口酱油",
+        "甜酱油",
+        "味噌"
+      ],
+      "correct_id": 0,
+      "explanation": "生抽是一种轻口味的酱油，常用于调味和蘸食。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种香料是印度咖喱的主要成分之一？",
+      "answers": [
+        "藏红花",
+        "肉桂",
+        "姜黄",
+        "茴香"
+      ],
+      "correct_id": 2,
+      "explanation": "姜黄是咖喱的主要成分，赋予其独特的颜色和风味。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种烹饪方法最常用于制作法式煎饼（Crêpe）？",
+      "answers": [
+        "蒸",
+        "煮",
+        "煎",
+        "炸"
+      ],
+      "correct_id": 2,
+      "explanation": "法式煎饼通常是用平底锅煎制而成，外皮薄且柔软。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在中餐中，哪种菜肴最常使用“红烧”的烹饪技法？",
+      "answers": [
+        "清蒸鱼",
+        "宫保鸡丁",
+        "红烧肉",
+        "酸辣汤"
+      ],
+      "correct_id": 2,
+      "explanation": "红烧肉是一道经典的中式菜肴，以其甜咸的味道著称。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种食品是墨西哥传统的玉米制成的？",
+      "answers": [
+        "饼干",
+        "玉米饼",
+        "米饭",
+        "意大利面"
+      ],
+      "correct_id": 1,
+      "explanation": "玉米饼是墨西哥饮食中不可或缺的一部分，常用于包裹其他食物。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在法国料理中，通常用于制作酥皮点心的面团是什么？",
+      "answers": [
+        "千层酥皮",
+        "泡芙面团",
+        "戚风蛋糕",
+        "奶油面团"
+      ],
+      "correct_id": 0,
+      "explanation": "千层酥皮是制作法式酥皮点心的基础，层次分明，口感酥脆。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一种果蔬是制作鳄梨酱（Guacamole）的主要成分？",
+      "answers": [
+        "番茄",
+        "洋葱",
+        "鳄梨",
+        "青椒"
+      ],
+      "correct_id": 2,
+      "explanation": "鳄梨是制作鳄梨酱的关键成分，赋予其独特的 creamy 口感。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种饮品是阿根廷的传统饮品，以其独特的草药味而闻名？",
+      "answers": [
+        "红酒",
+        "马黛茶",
+        "咖啡",
+        "冰茶"
+      ],
+      "correct_id": 1,
+      "explanation": "马黛茶是阿根廷的传统饮品，常与朋友分享，具有社交性质。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在泰国菜中，哪种汤以酸辣味著称？",
+      "answers": [
+        "冬阴功汤",
+        "绿咖喱汤",
+        "鸡汤",
+        "牛肉汤"
+      ],
+      "correct_id": 0,
+      "explanation": "冬阴功汤是泰国著名的酸辣汤，以虾和香料为主料。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位画家以《星空》而闻名？",
+      "answers": [
+        "文森特·梵高",
+        "克劳德·莫奈",
+        "巴勃罗·毕加索",
+        "亨利·马蒂斯"
+      ],
+      "correct_id": 0,
+      "explanation": "文森特·梵高创作的《星空》是他最著名的作品之一，展示了他对色彩和情感的独特表达。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位作家创作了《哈利·波特》系列？",
+      "answers": [
+        "J.K. 罗琳",
+        "斯蒂芬·金",
+        "乔治·R·R·马丁",
+        "马克·吐温"
+      ],
+      "correct_id": 0,
+      "explanation": "J.K. 罗琳是《哈利·波特》系列的作者，这一系列书籍风靡全球，影响了几代人。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种艺术运动强调对现实生活的真实描绘？",
+      "answers": [
+        "现实主义",
+        "印象派",
+        "表现主义",
+        "超现实主义"
+      ],
+      "correct_id": 0,
+      "explanation": "现实主义艺术运动在19世纪中期兴起，关注普通人的生活和社会现实。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《大卫》雕像是由哪位艺术家创作的？",
+      "answers": [
+        "米开朗基罗",
+        "多纳泰罗",
+        "罗丹",
+        "贝尔尼尼"
+      ],
+      "correct_id": 0,
+      "explanation": "米开朗基罗的《大卫》雕像被视为文艺复兴时期的杰作，展现了完美的人体雕刻技艺。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位诗人被称为“美国的莎士比亚”？",
+      "answers": [
+        "沃尔特·惠特曼",
+        "艾米莉·迪金森",
+        "罗伯特·弗罗斯特",
+        "兰斯顿·休斯"
+      ],
+      "correct_id": 0,
+      "explanation": "沃尔特·惠特曼因其独特的风格和对美国文化的深刻影响而被称为“美国的莎士比亚”。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位画家的作品以“蓝色时期”而闻名？",
+      "answers": [
+        "巴勃罗·毕加索",
+        "克劳德·莫奈",
+        "亨利·马蒂斯",
+        "文森特·梵高"
+      ],
+      "correct_id": 0,
+      "explanation": "巴勃罗·毕加索的“蓝色时期”作品以其悲伤和忧郁的主题而著称，表现了艺术家的内心情感。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《了不起的盖茨比》是由哪位作家创作的？",
+      "answers": [
+        "F. 斯科特·菲茨杰拉德",
+        "海明威",
+        "马克·吐温",
+        "约瑟夫·康拉德"
+      ],
+      "correct_id": 0,
+      "explanation": "F. 斯科特·菲茨杰拉德的《了不起的盖茨比》是美国文学的经典之作，描绘了20世纪20年代的社会。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位艺术家以《最后的晚餐》而著称？",
+      "answers": [
+        "列奥纳多·达·芬奇",
+        "拉斐尔",
+        "米开朗基罗",
+        "提香"
+      ],
+      "correct_id": 0,
+      "explanation": "列奥纳多·达·芬奇的《最后的晚餐》是一幅著名的壁画，展示了耶稣与门徒的最后晚餐场景。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种艺术风格主要通过光影效果来表现？",
+      "answers": [
+        "印象派",
+        "立体派",
+        "超现实主义",
+        "古典主义"
+      ],
+      "correct_id": 0,
+      "explanation": "印象派艺术家通过对光的变化和色彩的运用，捕捉瞬间的印象和氛围。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "“白色的女神”是指哪位著名女艺术家？",
+      "answers": [
+        "弗里达·卡洛",
+        "乔治亚·欧基夫",
+        "凯瑟琳·赫本",
+        "阿米莉亚·埃尔哈特"
+      ],
+      "correct_id": 1,
+      "explanation": "乔治亚·欧基夫因其以花卉和自然为主题的作品而被称为“白色的女神”。",
+      "theme": "art",
+      "sub_theme": "art",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "意大利面的主要成分是什么？",
+      "answers": [
+        "小麦",
+        "大米",
+        "玉米",
+        "荞麦"
+      ],
+      "correct_id": 0,
+      "explanation": "意大利面主要是由小麦面粉制成的，特别是杜兰小麦。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "法国菜中常用的调味料是？",
+      "answers": [
+        "酱油",
+        "香草",
+        "辣椒粉",
+        "橄榄油"
+      ],
+      "correct_id": 1,
+      "explanation": "香草在法国料理中被广泛使用，尤其是大蒜、百里香和迷迭香。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "寿司的主要成分是什么？",
+      "answers": [
+        "米饭",
+        "面包",
+        "牛肉",
+        "豆腐"
+      ],
+      "correct_id": 0,
+      "explanation": "寿司的主要成分是醋米，通常搭配生鱼片等食材。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "印度咖喱通常使用哪种香料？",
+      "answers": [
+        "肉桂",
+        "姜黄",
+        "香葱",
+        "八角"
+      ],
+      "correct_id": 1,
+      "explanation": "姜黄是印度咖喱的主要成分之一，给咖喱带来独特的颜色和味道。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "西班牙的传统小吃被称为什么？",
+      "answers": [
+        "塔帕斯",
+        "饺子",
+        "刺身",
+        "汉堡"
+      ],
+      "correct_id": 0,
+      "explanation": "塔帕斯是西班牙的一种传统小吃，通常以小份量的多种食物组成。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种饮料在中国被称为“茶”？",
+      "answers": [
+        "咖啡",
+        "可可",
+        "红茶",
+        "果汁"
+      ],
+      "correct_id": 2,
+      "explanation": "红茶是中国传统茶类之一，具有浓厚的风味和深色的茶汤。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "墨西哥的传统玉米饼叫做？",
+      "answers": [
+        "葱饼",
+        "薄饼",
+        "玉米饼",
+        "煎饼"
+      ],
+      "correct_id": 2,
+      "explanation": "玉米饼是墨西哥的基本食品，通常用作各种菜肴的载体。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "泰国的经典菜肴“冬阴功”主要以什么为特色？",
+      "answers": [
+        "酸辣味",
+        "甜味",
+        "咸味",
+        "苦味"
+      ],
+      "correct_id": 0,
+      "explanation": "冬阴功汤以其独特的酸辣味而闻名，常用柠檬草和虾制成。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种食材是意大利披萨的传统配料？",
+      "answers": [
+        "洋葱",
+        "菠萝",
+        "番茄酱",
+        "丁香"
+      ],
+      "correct_id": 2,
+      "explanation": "番茄酱是意大利披萨的经典配料之一，通常作为底料使用。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "中东地区常见的鹰嘴豆泥主要成分是什么？",
+      "answers": [
+        "土豆",
+        "鹰嘴豆",
+        "扁豆",
+        "豌豆"
+      ],
+      "correct_id": 1,
+      "explanation": "鹰嘴豆泥是以鹰嘴豆为主要成分，搭配橄榄油和大蒜制作的。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "光的传播速度在真空中是多少？",
+      "answers": [
+        "约 299,792,458 米/秒",
+        "约 150,000,000 米/秒",
+        "约 3,000,000 米/秒",
+        "约 300,000 米/秒"
+      ],
+      "correct_id": 0,
+      "explanation": "光在真空中的速度被称为光速，是物理学中一个重要的常数。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "地球上最大的陆地动物是什么？",
+      "answers": [
+        "非洲象",
+        "蓝鲸",
+        "长颈鹿",
+        "白犀牛"
+      ],
+      "correct_id": 0,
+      "explanation": "非洲象是现存最大的陆地动物，体重大可达6吨以上。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "水的化学式是什么？",
+      "answers": [
+        "H2O",
+        "CO2",
+        "NaCl",
+        "O2"
+      ],
+      "correct_id": 0,
+      "explanation": "水的化学式H2O表示每个水分子由两个氢原子和一个氧原子组成。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "太阳系中最大的行星是哪一颗？",
+      "answers": [
+        "木星",
+        "土星",
+        "地球",
+        "火星"
+      ],
+      "correct_id": 0,
+      "explanation": "木星是太阳系中最大的行星，其直径约为地球的11倍。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "细胞的基本单位是什么？",
+      "answers": [
+        "细胞",
+        "组织",
+        "器官",
+        "系统"
+      ],
+      "correct_id": 0,
+      "explanation": "细胞是生命的基本单位，所有生物体都是由细胞构成的。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "什么是地球的卫星？",
+      "answers": [
+        "月球",
+        "火星",
+        "金星",
+        "水星"
+      ],
+      "correct_id": 0,
+      "explanation": "月球是地球唯一的自然卫星，围绕地球运行。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "牛顿的万有引力定律描述了什么？",
+      "answers": [
+        "物体之间的引力",
+        "光的速度",
+        "能量守恒",
+        "气体状态"
+      ],
+      "correct_id": 0,
+      "explanation": "万有引力定律说明任何两个物体之间都有引力，且与它们的质量成正比。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "光合作用主要发生在哪种植物细胞中？",
+      "answers": [
+        "叶绿体",
+        "细胞壁",
+        "细胞核",
+        "线粒体"
+      ],
+      "correct_id": 0,
+      "explanation": "光合作用主要在植物的叶绿体中进行，利用阳光将二氧化碳和水转化为能量。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "氧气的化学符号是什么？",
+      "answers": [
+        "O",
+        "O2",
+        "H",
+        "N"
+      ],
+      "correct_id": 1,
+      "explanation": "氧气的化学符号O2表示每个氧分子由两个氧原子组成。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "全球变暖主要由什么引起的？",
+      "answers": [
+        "温室气体",
+        "地震",
+        "火山爆发",
+        "太阳活动"
+      ],
+      "correct_id": 0,
+      "explanation": "温室气体的增加是导致全球变暖的主要原因，影响地球的气候系统。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "世界上最长的河流是哪个？",
+      "answers": [
+        "尼罗河",
+        "亚马逊河",
+        "长江",
+        "密西西比河"
+      ],
+      "correct_id": 1,
+      "explanation": "亚马逊河被认为是世界上最长的河流，长度超过7000公里。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家拥有最多的邻国？",
+      "answers": [
+        "巴西",
+        "中国",
+        "俄罗斯",
+        "印度"
+      ],
+      "correct_id": 1,
+      "explanation": "中国与14个国家接壤，是拥有最多邻国的国家。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个山脉是地球上最高的山脉？",
+      "answers": [
+        "安第斯山脉",
+        "喜马拉雅山脉",
+        "洛基山脉",
+        "阿尔卑斯山脉"
+      ],
+      "correct_id": 1,
+      "explanation": "喜马拉雅山脉是地球上最高的山脉，包含珠穆朗玛峰。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个湖泊是世界上最深的湖泊？",
+      "answers": [
+        "贝加尔湖",
+        "坦噶尼喀湖",
+        "苏必利尔湖",
+        "维多利亚湖"
+      ],
+      "correct_id": 0,
+      "explanation": "贝加尔湖是世界上最深的湖泊，深度达到1642米。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个城市是世界上人口最多的城市？",
+      "answers": [
+        "东京",
+        "上海",
+        "孟买",
+        "纽约"
+      ],
+      "correct_id": 0,
+      "explanation": "东京是世界上人口最多的城市，人口超过3700万。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家的国土面积最大？",
+      "answers": [
+        "中国",
+        "加拿大",
+        "俄罗斯",
+        "巴西"
+      ],
+      "correct_id": 2,
+      "explanation": "俄罗斯是国土面积最大的国家，面积超过1700万平方公里。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个大陆是人口最少的？",
+      "answers": [
+        "南极洲",
+        "北美洲",
+        "欧洲",
+        "澳大利亚"
+      ],
+      "correct_id": 0,
+      "explanation": "南极洲的人口极少，常住人口几乎为零，只有科研人员临时居住。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个岛屿是世界上最大的岛屿？",
+      "answers": [
+        "格林兰",
+        "新几内亚",
+        "加尔各答",
+        "日本"
+      ],
+      "correct_id": 0,
+      "explanation": "格林兰是世界上最大的岛屿，面积约为216万平方公里。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个海洋是世界上最小的海洋？",
+      "answers": [
+        "北冰洋",
+        "印度洋",
+        "大西洋",
+        "南极洲海洋"
+      ],
+      "correct_id": 0,
+      "explanation": "北冰洋是世界上最小的海洋，面积约为1500万平方公里。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "世界上最大的沙漠是哪个？",
+      "answers": [
+        "撒哈拉沙漠",
+        "阿拉伯沙漠",
+        "戈壁沙漠",
+        "大沙漠"
+      ],
+      "correct_id": 0,
+      "explanation": "撒哈拉沙漠是世界上最大的热带沙漠，面积约为910万平方公里。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个国家位于南半球？",
+      "answers": [
+        "巴西",
+        "加拿大",
+        "俄罗斯",
+        "中国"
+      ],
+      "correct_id": 0,
+      "explanation": "巴西是一个位于南半球的国家，拥有丰富的热带雨林。",
+      "theme": "general",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "古代罗马的斗兽场主要用于什么活动？",
+      "answers": [
+        "剧场表演",
+        "角斗士比赛",
+        "市场交易",
+        "政治集会"
+      ],
+      "correct_id": 1,
+      "explanation": "斗兽场是古罗马举办角斗士比赛和其他娱乐活动的场所。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "阿尔卑斯山脉主要横跨哪个地区？",
+      "answers": [
+        "北美洲",
+        "亚洲",
+        "南美洲",
+        "欧洲"
+      ],
+      "correct_id": 3,
+      "explanation": "阿尔卑斯山脉是欧洲最高的山脉，贯穿多个国家。",
+      "theme": "general",
+      "sub_theme": "geographie",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种食物是意大利的传统菜肴？",
+      "answers": [
+        "寿司",
+        "比萨",
+        "咖喱",
+        "炸春卷"
+      ],
+      "correct_id": 1,
+      "explanation": "比萨是意大利著名的传统菜肴，以其多样的配料而闻名。",
+      "theme": "general",
+      "sub_theme": "cuisine",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪位科学家提出了相对论？",
+      "answers": [
+        "牛顿",
+        "爱因斯坦",
+        "伽利略",
+        "霍金"
+      ],
+      "correct_id": 1,
+      "explanation": "爱因斯坦在20世纪初提出了相对论，对现代物理学产生了深远影响。",
+      "theme": "general",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物被认为是哺乳动物？",
+      "answers": [
+        "海豚",
+        "鳄鱼",
+        "乌龟",
+        "金鱼"
+      ],
+      "correct_id": 0,
+      "explanation": "海豚是一种哺乳动物，属于海洋中的高智商物种。",
+      "theme": "general",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在奥林匹克运动会中，田径项目的比赛通常在什么场地进行？",
+      "answers": [
+        "游泳池",
+        "足球场",
+        "田径场",
+        "篮球馆"
+      ],
+      "correct_id": 2,
+      "explanation": "田径项目的比赛通常在专门设计的田径场上进行。",
+      "theme": "general",
+      "sub_theme": "sport",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列作家中，谁是《1984》的作者？",
+      "answers": [
+        "海明威",
+        "乔治·奥威尔",
+        "福克纳",
+        "菲茨杰拉德"
+      ],
+      "correct_id": 1,
+      "explanation": "乔治·奥威尔的《1984》是一部重要的反乌托邦小说。",
+      "theme": "general",
+      "sub_theme": "histoire",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "光的传播速度大约是多少？",
+      "answers": [
+        "每秒299,792公里",
+        "每秒150,000公里",
+        "每秒186,000公里",
+        "每秒300,000公里"
+      ],
+      "correct_id": 0,
+      "explanation": "光在真空中的传播速度是每秒299,792公里，这是物理学中的一个基本常数。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种元素是地球上最丰富的？",
+      "answers": [
+        "氧",
+        "氢",
+        "碳",
+        "氮"
+      ],
+      "correct_id": 0,
+      "explanation": "氧是地球上最丰富的元素，约占地壳质量的46%。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "牛顿的第一运动定律主要讲述了什么？",
+      "answers": [
+        "物体保持静止或匀速直线运动的状态",
+        "物体会因受力而加速",
+        "物体的质量与重力成正比",
+        "物体会在真空中自由下落"
+      ],
+      "correct_id": 0,
+      "explanation": "牛顿的第一运动定律指出，物体会保持其静止或匀速运动状态，直到受到外力作用。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "光合作用的主要场所是哪里？",
+      "answers": [
+        "叶绿体",
+        "细胞核",
+        "线粒体",
+        "细胞膜"
+      ],
+      "correct_id": 0,
+      "explanation": "光合作用主要发生在植物的叶绿体中，是植物制造能量的过程。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种粒子是原子的主要组成部分？",
+      "answers": [
+        "电子",
+        "光子",
+        "中子",
+        "质子"
+      ],
+      "correct_id": 3,
+      "explanation": "质子和中子组成原子的核心，电子则在原子外部的轨道上运动。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在化学反应中，反应物的质量与生成物的质量关系如何？",
+      "answers": [
+        "反应物总质量等于生成物总质量",
+        "反应物质量大于生成物质量",
+        "反应物质量小于生成物质量",
+        "质量会消失"
+      ],
+      "correct_id": 0,
+      "explanation": "根据质量守恒定律，反应物的总质量等于生成物的总质量。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种天体被认为是太阳系的中心？",
+      "answers": [
+        "地球",
+        "月球",
+        "太阳",
+        "火星"
+      ],
+      "correct_id": 2,
+      "explanation": "太阳是太阳系的中心，提供了大部分的光和能量。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种细胞是免疫系统的关键成分？",
+      "answers": [
+        "红细胞",
+        "白细胞",
+        "血小板",
+        "神经细胞"
+      ],
+      "correct_id": 1,
+      "explanation": "白细胞是免疫系统的关键成分，负责抵抗感染和疾病。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "牛顿的万有引力定律主要描述了什么？",
+      "answers": [
+        "物体之间的引力与质量成正比",
+        "物体的运动与时间成反比",
+        "物体的质量与体积成正比",
+        "物体的速度与加速度成反比"
+      ],
+      "correct_id": 0,
+      "explanation": "牛顿的万有引力定律表明，两个物体之间的引力与它们的质量成正比，且与距离的平方成反比。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种元素是组成水的主要成分？",
+      "answers": [
+        "氢",
+        "氧",
+        "氮",
+        "氦"
+      ],
+      "correct_id": 1,
+      "explanation": "水的化学式是H2O，氢和氧是其主要成分，氧的质量占比更大。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在化学中，什么元素是地壳中最丰富的元素？",
+      "answers": [
+        "氧",
+        "硅",
+        "铝",
+        "铁"
+      ],
+      "correct_id": 0,
+      "explanation": "氧是地壳中最丰富的元素，约占地壳质量的46.6%。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "牛顿的三大运动定律中，哪个定律描述了物体的加速度与作用力的关系？",
+      "answers": [
+        "第一定律",
+        "第二定律",
+        "第三定律",
+        "万有引力定律"
+      ],
+      "correct_id": 1,
+      "explanation": "牛顿的第二定律表明，物体的加速度与施加在其上的力成正比，质量成反比。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在生物分类中，以下哪个是最高的分类层级？",
+      "answers": [
+        "界",
+        "门",
+        "纲",
+        "属"
+      ],
+      "correct_id": 0,
+      "explanation": "界是生物分类中最高的层级，下面是门、纲等。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在天文学中，什么是光年？",
+      "answers": [
+        "光在真空中一年内传播的距离",
+        "光在地球一年内的最远距离",
+        "太阳到地球的距离",
+        "星系之间的平均距离"
+      ],
+      "correct_id": 0,
+      "explanation": "光年是光在真空中一年内传播的距离，约为9.46万亿公里。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在物理学中，以下哪种力是长程力？",
+      "answers": [
+        "重力",
+        "摩擦力",
+        "弹力",
+        "静电力"
+      ],
+      "correct_id": 0,
+      "explanation": "重力是长程力，它作用于物体之间的距离，而摩擦力和弹力是短程力。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在化学中，pH值为7的溶液被称为？",
+      "answers": [
+        "酸性溶液",
+        "碱性溶液",
+        "中性溶液",
+        "强酸溶液"
+      ],
+      "correct_id": 2,
+      "explanation": "pH值为7的溶液是中性溶液，代表氢离子和氢氧根离子的浓度相等。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在量子力学中，波粒二象性指的是什么现象？",
+      "answers": [
+        "光既表现为波动又表现为粒子",
+        "电子总是以粒子形式存在",
+        "物质只能以波动形式存在",
+        "粒子之间的相互作用"
+      ],
+      "correct_id": 0,
+      "explanation": "波粒二象性是指光和物质同时具有波动性和粒子性的特性。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在生态学中，什么是生态位？",
+      "answers": [
+        "生物在生态系统中的角色",
+        "生物的栖息地",
+        "生物的遗传特征",
+        "生物的繁殖方式"
+      ],
+      "correct_id": 0,
+      "explanation": "生态位是指生物在其生态系统中的角色及其对资源的利用方式。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在数学中，什么是复数的实部和虚部？",
+      "answers": [
+        "实数部分和虚数部分",
+        "两条直线的交点",
+        "平面上的坐标",
+        "两个相同数的和"
+      ],
+      "correct_id": 0,
+      "explanation": "复数由实部和虚部组成，实部是实数，虚部是与虚数单位i相乘的数。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在量子力学中，哪个原理描述了粒子状态的不确定性？",
+      "answers": [
+        "海森堡不确定性原理",
+        "波尔原理",
+        "德布罗意假设",
+        "泡利不相容原理"
+      ],
+      "correct_id": 0,
+      "explanation": "海森堡不确定性原理指出，粒子的位置和动量不能同时被精确确定。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在化学中，哪个元素的原子序数为6？",
+      "answers": [
+        "氮",
+        "氧",
+        "碳",
+        "氢"
+      ],
+      "correct_id": 2,
+      "explanation": "碳的原子序数为6，是构成生命的重要元素。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在天文学中，哪个星系被认为是银河系的邻居？",
+      "answers": [
+        "仙女座星系",
+        "大麦哲伦云",
+        "小麦哲伦云",
+        "漩涡星系"
+      ],
+      "correct_id": 0,
+      "explanation": "仙女座星系是离银河系最近的大型星系。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在生物学中，哪个过程是细胞分裂的最后阶段？",
+      "answers": [
+        "有丝分裂",
+        "细胞周期",
+        "细胞质分裂",
+        "减数分裂"
+      ],
+      "correct_id": 2,
+      "explanation": "细胞质分裂是有丝分裂后细胞分裂的最后阶段。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在数学中，哪个定理描述了三角形的内角和？",
+      "answers": [
+        "毕达哥拉斯定理",
+        "三角形内角和定理",
+        "余弦定理",
+        "正弦定理"
+      ],
+      "correct_id": 1,
+      "explanation": "三角形内角和定理指出，任意三角形的内角和为180度。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在物理学中，哪个定律描述了气体的压力与体积的关系？",
+      "answers": [
+        "查理定律",
+        "波义尔定律",
+        "理想气体定律",
+        "阿伏伽德罗定律"
+      ],
+      "correct_id": 1,
+      "explanation": "波义尔定律指出，在温度不变时，气体的压力与体积成反比。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在化学反应中，什么是催化剂的作用？",
+      "answers": [
+        "加速反应",
+        "减缓反应",
+        "改变反应物",
+        "消耗能量"
+      ],
+      "correct_id": 0,
+      "explanation": "催化剂能够加速化学反应而不被消耗。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在生态学中，哪个术语用于描述生态系统中物种之间的相互作用？",
+      "answers": [
+        "竞争",
+        "共生",
+        "捕食",
+        "生态位"
+      ],
+      "correct_id": 3,
+      "explanation": "生态位是指物种在生态系统中的角色和位置。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在天文学中，哪种类型的星星是宇宙中最普遍的？",
+      "answers": [
+        "红矮星",
+        "黄矮星",
+        "蓝巨星",
+        "白矮星"
+      ],
+      "correct_id": 0,
+      "explanation": "红矮星是宇宙中最常见的星星类型，约占所有恒星的70%。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在统计学中，哪个概念用于衡量数据的集中趋势？",
+      "answers": [
+        "中位数",
+        "方差",
+        "标准差",
+        "偏度"
+      ],
+      "correct_id": 0,
+      "explanation": "中位数是将一组数据分成两部分的值，是集中趋势的一个重要指标。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影讲述了一只名叫伍迪的玩具牛仔的冒险故事？",
+      "answers": [
+        "玩具总动员",
+        "海底总动员",
+        "超人总动员",
+        "汽车总动员"
+      ],
+      "correct_id": 0,
+      "explanation": "《玩具总动员》是皮克斯制作的首部全电脑动画长片，深受观众喜爱。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位导演因电影《泰坦尼克号》而获得了奥斯卡最佳导演奖？",
+      "answers": [
+        "詹姆斯·卡梅隆",
+        "史蒂文·斯皮尔伯格",
+        "马丁·斯科塞斯",
+        "弗朗西斯·福特·科波拉"
+      ],
+      "correct_id": 0,
+      "explanation": "詹姆斯·卡梅隆因《泰坦尼克号》于1998年获得最佳导演奖。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "电影《冰雪奇缘》中，艾莎公主演唱的著名歌曲是什么？",
+      "answers": [
+        "让它去",
+        "你是我的眼",
+        "小星星",
+        "爱的旋律"
+      ],
+      "correct_id": 0,
+      "explanation": "《冰雪奇缘》中艾莎唱的《让它去》在全球广受欢迎，成为经典。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影讲述了一位失业父亲努力养活家庭的故事？",
+      "answers": [
+        "当幸福来敲门",
+        "阿甘正传",
+        "肖申克的救赎",
+        "美丽心灵"
+      ],
+      "correct_id": 0,
+      "explanation": "《当幸福来敲门》是根据真实故事改编，讲述坚持与希望。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位演员以其在《好莱坞往事》中的表演而闻名？",
+      "answers": [
+        "莱昂纳多·迪卡普里奥",
+        "布拉德·皮特",
+        "约翰尼·德普",
+        "汤姆·汉克斯"
+      ],
+      "correct_id": 1,
+      "explanation": "布拉德·皮特因在《好莱坞往事》中精彩的表演获得了广泛好评。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《星球大战》系列中，汉·索罗的座驾是什么？",
+      "answers": [
+        "千年隼",
+        "帝国巡洋舰",
+        "X翼战机",
+        "死星"
+      ],
+      "correct_id": 0,
+      "explanation": "汉·索罗驾驶的千年隼是《星球大战》系列中的标志性飞船。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影中有著名的角色叫做“阿甘”？",
+      "answers": [
+        "阿甘正传",
+        "勇敢的心",
+        "侏罗纪公园",
+        "盗梦空间"
+      ],
+      "correct_id": 0,
+      "explanation": "《阿甘正传》讲述了阿甘的传奇人生，并获得多项奥斯卡奖。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《复仇者联盟》中，哪位超级英雄是雷神？",
+      "answers": [
+        "索尔",
+        "钢铁侠",
+        "黑寡妇",
+        "美国队长"
+      ],
+      "correct_id": 0,
+      "explanation": "索尔是《复仇者联盟》中的雷神，拥有强大的力量和神秘的锤子。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位女性导演执导了《小妇人》新版电影？",
+      "answers": [
+        "格蕾塔·葛韦格",
+        "凯瑟琳·毕格罗",
+        "艾娃·杜威内",
+        "苏菲亚·科波拉"
+      ],
+      "correct_id": 0,
+      "explanation": "格蕾塔·葛韦格于2019年执导的《小妇人》广受好评。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《狮子王》中，辛巴的父亲叫什么名字？",
+      "answers": [
+        "木法沙",
+        "斯卡",
+        "丁满",
+        "彭彭"
+      ],
+      "correct_id": 0,
+      "explanation": "木法沙是《狮子王》中辛巴的父亲，他是荣耀之王。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种食材是制作意大利香肠的主要成分之一？",
+      "answers": [
+        "猪肉",
+        "牛肉",
+        "鸡肉",
+        "羊肉"
+      ],
+      "correct_id": 0,
+      "explanation": "意大利香肠通常以猪肉为主要成分，配合香料和其他成分制作而成。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在日本料理中，哪种米饭通常用于制作寿司？",
+      "answers": [
+        "糯米",
+        "长粒米",
+        "短粒米",
+        "香米"
+      ],
+      "correct_id": 2,
+      "explanation": "制作寿司的米饭通常使用短粒米，因为它的黏性更适合成型。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种调味品是法国菜中的经典配料？",
+      "answers": [
+        "酱油",
+        "香醋",
+        "百里香",
+        "姜"
+      ],
+      "correct_id": 2,
+      "explanation": "百里香是法国烹饪中常用的草本调味品，广泛用于肉类和汤品中。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在印度菜肴中，通常使用哪种香料来制作咖喱？",
+      "answers": [
+        "肉桂",
+        "咖喱粉",
+        "黑胡椒",
+        "洋葱粉"
+      ],
+      "correct_id": 1,
+      "explanation": "咖喱粉是制作印度咖喱的关键调料，通常由多种香料混合而成。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种意大利面食以其形状而闻名，通常用于制作沙拉？",
+      "answers": [
+        "意大利面条",
+        "通心粉",
+        "饺子",
+        "千层面"
+      ],
+      "correct_id": 1,
+      "explanation": "通心粉的形状适合搭配沙拉，能很好地吸附酱汁。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种食材在墨西哥菜中被称为“青椒”？",
+      "answers": [
+        "哈瓦那辣椒",
+        "墨西哥干辣椒",
+        "尖椒",
+        "青柠"
+      ],
+      "correct_id": 0,
+      "explanation": "哈瓦那辣椒在墨西哥料理中被称为“青椒”，以其辛辣和独特风味而闻名。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在中国菜中，哪种调味料主要用于增鲜和提味？",
+      "answers": [
+        "蚝油",
+        "花生酱",
+        "番茄酱",
+        "沙拉酱"
+      ],
+      "correct_id": 0,
+      "explanation": "蚝油是一种常用的调味料，在中国菜中用于增鲜和提味。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种奶酪是意大利菜中的重要成分，常用于披萨？",
+      "answers": [
+        "布里奶酪",
+        "帕尔马干酪",
+        "马苏里拉奶酪",
+        "切达奶酪"
+      ],
+      "correct_id": 2,
+      "explanation": "马苏里拉奶酪以其良好的拉丝效果和口感，是披萨的经典配料。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种亚洲食物通常使用米纸包裹并搭配酱汁食用？",
+      "answers": [
+        "春卷",
+        "饺子",
+        "米粉",
+        "烧卖"
+      ],
+      "correct_id": 0,
+      "explanation": "春卷是用米纸包裹的亚洲小吃，通常搭配甜辣酱或花生酱食用。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种豆类在中东地区的饮食中占据重要地位？",
+      "answers": [
+        "扁豆",
+        "豌豆",
+        "黑豆",
+        "红豆"
+      ],
+      "correct_id": 0,
+      "explanation": "扁豆在中东饮食中十分重要，常用于制作汤和沙拉。",
+      "theme": "cuisine",
+      "sub_theme": "cuisine",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际足球比赛中，哪个国家赢得过最多的世界杯冠军？",
+      "answers": [
+        "巴西",
+        "德国",
+        "意大利",
+        "阿根廷"
+      ],
+      "correct_id": 0,
+      "explanation": "巴西国家队赢得了五次世界杯冠军，是历史上最多的球队。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在奥林匹克运动会上，第一个获得金牌的女性运动员是谁？",
+      "answers": [
+        "哈丽特·基尔",
+        "波莉·阿德里安",
+        "德尔法·安德森",
+        "卡米尔·勒普"
+      ],
+      "correct_id": 0,
+      "explanation": "哈丽特·基尔在1900年巴黎奥运会上成为首位获得金牌的女性运动员。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在篮球历史上，哪位球员的职业生涯得分最高？",
+      "answers": [
+        "迈克尔·乔丹",
+        "卡里姆·阿卜杜尔-贾巴尔",
+        "科比·布莱恩特",
+        "勒布朗·詹姆斯"
+      ],
+      "correct_id": 1,
+      "explanation": "卡里姆·阿卜杜尔-贾巴尔以38387分成为NBA历史职业生涯得分最高的球员。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在网球四大满贯赛事中，哪一个赛事是第一个举办的？",
+      "answers": [
+        "温布尔登",
+        "美国公开赛",
+        "法国公开赛",
+        "澳大利亚公开赛"
+      ],
+      "correct_id": 0,
+      "explanation": "温布尔登网球锦标赛是四大满贯中最早举办的赛事，创办于1877年。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在奥运会田径比赛中，男子100米的世界纪录保持者是谁？",
+      "answers": [
+        "乌塞恩·博尔特",
+        "卡尔·刘易斯",
+        "博尔特·约翰逊",
+        "泰森·盖布尔"
+      ],
+      "correct_id": 0,
+      "explanation": "乌塞恩·博尔特在2009年创造了男子100米的世界纪录，时间为9.58秒。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在滑雪项目中，女子速滑的奥运会金牌获得者是哪个国家的运动员？",
+      "answers": [
+        "挪威",
+        "瑞士",
+        "荷兰",
+        "加拿大"
+      ],
+      "correct_id": 2,
+      "explanation": "荷兰在女子速滑项目中表现优异，多次夺得奥运金牌。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际象棋界，哪位棋手被广泛认为是史上最伟大的棋手之一？",
+      "answers": [
+        "鲍里斯·斯帕斯基",
+        "卡尔·波尔加",
+        "加里·卡斯帕罗夫",
+        "安东尼·萨拉姆"
+      ],
+      "correct_id": 2,
+      "explanation": "加里·卡斯帕罗夫在1985年至2000年间是国际象棋世界冠军，被视为伟大棋手。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在游泳项目中，男子1500米自由泳的世界纪录保持者是谁？",
+      "answers": [
+        "迈克尔·菲尔普斯",
+        "凯尔·查尔默斯",
+        "格雷戈尔·斯图尔特",
+        "杨金"
+      ],
+      "correct_id": 0,
+      "explanation": "迈克尔·菲尔普斯以14分34秒04的成绩保持男子1500米自由泳的世界纪录。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在赛车运动中，F1历史上获得最多冠军的车手是谁？",
+      "answers": [
+        "刘易斯·汉密尔顿",
+        "迈克尔·舒马赫",
+        "阿尔贝托·阿斯卡里",
+        "尼尔森·皮奎特"
+      ],
+      "correct_id": 0,
+      "explanation": "刘易斯·汉密尔顿是F1历史上获得最多冠军的车手，赢得七次世界冠军。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在橄榄球比赛中，哪场比赛被认为是世界橄榄球的最高荣誉？",
+      "answers": [
+        "超级碗",
+        "橄榄球世界杯",
+        "六国锦标赛",
+        "欧洲杯"
+      ],
+      "correct_id": 1,
+      "explanation": "橄榄球世界杯是最高水平的国际橄榄球比赛，每四年举办一次。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在1972年慕尼黑奥运会上，哪位运动员赢得了男子100米自由泳金牌？",
+      "answers": [
+        "马克·斯皮茨",
+        "鲍勃·霍普",
+        "亚历克斯·阿尔波",
+        "迈克尔·菲尔普斯"
+      ],
+      "correct_id": 0,
+      "explanation": "马克·斯皮茨在1972年慕尼黑奥运会上赢得了男子100米自由泳金牌，最终获得七枚金牌。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际田联世界田径锦标赛历史上，哪位运动员在撑杆跳项目上创造了最多的世界纪录？",
+      "answers": [
+        "尤里·佩特罗夫",
+        "史蒂夫·霍金斯",
+        "阿尔贝托·巴赫",
+        "大卫·斯特恩"
+      ],
+      "correct_id": 0,
+      "explanation": "尤里·佩特罗夫在撑杆跳项目上创造了多项世界纪录，成为该项目的重要人物。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际足球历史上，哪位球员在世界杯决赛中打入的进球最多？",
+      "answers": [
+        "盖德·穆勒",
+        "齐达内",
+        "罗纳尔多",
+        "马拉多纳"
+      ],
+      "correct_id": 0,
+      "explanation": "盖德·穆勒在世界杯决赛中打入了两个进球，成为历史最佳射手之一。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪一项运动是奥林匹克运动会的传统项目？",
+      "answers": [
+        "摔跤",
+        "网球",
+        "滑雪",
+        "高尔夫"
+      ],
+      "correct_id": 0,
+      "explanation": "摔跤是古代奥林匹克运动会的传统项目，至今仍是现代奥运会的一部分。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在NBA历史上，哪位球员以单场得分最多的纪录著称？",
+      "answers": [
+        "科比·布莱恩特",
+        "威尔特·张伯伦",
+        "迈克尔·乔丹",
+        "勒布朗·詹姆斯"
+      ],
+      "correct_id": 1,
+      "explanation": "威尔特·张伯伦在1962年单场比赛中得到了100分，至今无人超越。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在羽毛球世界锦标赛中，哪位选手在男子单打项目上获得过最多的金牌？",
+      "answers": [
+        "林丹",
+        "李宗伟",
+        "鲍勃·霍普",
+        "陶菲克"
+      ],
+      "correct_id": 0,
+      "explanation": "林丹是羽毛球历史上获得世界锦标赛男子单打金牌最多的选手。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在FIFA世界杯历史上，哪一届比赛的决赛以点球大战结束？",
+      "answers": [
+        "1994年",
+        "2006年",
+        "1974年",
+        "1982年"
+      ],
+      "correct_id": 1,
+      "explanation": "2006年世界杯决赛在点球大战中结束，意大利战胜法国夺冠。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际奥委会的历史上，哪位主席任期最长？",
+      "answers": [
+        "皮埃尔·德·顾拜旦",
+        "雅克·罗格",
+        "托马斯·巴赫",
+        "哈维尔·巴尔德尔"
+      ],
+      "correct_id": 0,
+      "explanation": "皮埃尔·德·顾拜旦是国际奥委会历史上任期最长的主席，任职时间从1896年到1925年。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在冬季奥运会上，哪项运动首次成为正式比赛项目？",
+      "answers": [
+        "滑雪",
+        "冰壶",
+        "短道速滑",
+        "花样滑冰"
+      ],
+      "correct_id": 3,
+      "explanation": "花样滑冰在1908年伦敦冬季奥运会上首次成为正式比赛项目。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在国际乒乓球联合会历史上，哪位乒乓球选手获得的世界冠军次数最多？",
+      "answers": [
+        "马龙",
+        "张怡宁",
+        "王励勤",
+        "邓亚萍"
+      ],
+      "correct_id": 1,
+      "explanation": "张怡宁是获得世界乒乓球锦标赛冠军次数最多的选手之一，成功夺得多个冠军。",
+      "theme": "sport",
+      "sub_theme": "sport",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个国家的首都是维也纳？",
+      "answers": [
+        "奥地利",
+        "捷克",
+        "匈牙利",
+        "斯洛伐克"
+      ],
+      "correct_id": 0,
+      "explanation": "维也纳是奥地利的首都，以其丰富的音乐和文化历史而闻名。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪条河流是南美洲最长的河流？",
+      "answers": [
+        "亚马逊河",
+        "尼尔河",
+        "拉普拉塔河",
+        "奥里诺科河"
+      ],
+      "correct_id": 0,
+      "explanation": "亚马逊河是南美洲最长的河流，也是世界上流量最大的河流。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个山脉是欧洲和亚洲的分界线？",
+      "answers": [
+        "阿尔卑斯山",
+        "乌拉尔山",
+        "喜马拉雅山",
+        "安第斯山"
+      ],
+      "correct_id": 1,
+      "explanation": "乌拉尔山被视为欧洲和亚洲的地理分界线，具有重要的地理意义。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个国家没有海岸线？",
+      "answers": [
+        "瑞士",
+        "挪威",
+        "意大利",
+        "希腊"
+      ],
+      "correct_id": 0,
+      "explanation": "瑞士是一个内陆国家，完全被陆地包围，没有海岸线。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪个城市是日本的首都？",
+      "answers": [
+        "东京",
+        "大阪",
+        "京都",
+        "札幌"
+      ],
+      "correct_id": 0,
+      "explanation": "东京是日本的首都，也是该国最大的城市和经济中心。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一个海洋是世界上面积最大的海洋？",
+      "answers": [
+        "大西洋",
+        "印度洋",
+        "北冰洋",
+        "太平洋"
+      ],
+      "correct_id": 3,
+      "explanation": "太平洋是世界上面积最大的海洋，覆盖了地球表面的约三分之一。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个国家的国旗上有一只雄鹰？",
+      "answers": [
+        "埃及",
+        "墨西哥",
+        "阿根廷",
+        "巴西"
+      ],
+      "correct_id": 1,
+      "explanation": "墨西哥国旗上有一只雄鹰，站在仙人掌上，象征着国家的历史和文化。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪座山峰是世界上最高的山？",
+      "answers": [
+        "K2",
+        "珠穆朗玛峰",
+        "干城章嘉峰",
+        "洛子峰"
+      ],
+      "correct_id": 1,
+      "explanation": "珠穆朗玛峰是世界上最高的山峰，海拔8848米，位于喜马拉雅山脉。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪个城市被称为“永恒之城”？",
+      "answers": [
+        "巴黎",
+        "罗马",
+        "雅典",
+        "开罗"
+      ],
+      "correct_id": 1,
+      "explanation": "罗马被称为“永恒之城”，因其历史悠久和丰富文化而闻名。",
+      "theme": "geographie",
+      "sub_theme": "geographie",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位导演以其作品《第七封印》而闻名，并对电影语言产生了深远的影响？",
+      "answers": [
+        "英格玛·伯格曼",
+        "弗朗西斯·福特·科波拉",
+        "斯坦利·库布里克",
+        "马丁·斯科塞斯"
+      ],
+      "correct_id": 0,
+      "explanation": "英格玛·伯格曼是瑞典著名导演，以其对人性和存在主义的深刻探讨而闻名。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《教父》中的维托·柯里昂由哪位演员扮演？",
+      "answers": [
+        "阿尔·帕西诺",
+        "马龙·白兰度",
+        "杰克·尼科尔森",
+        "罗伯特·德尼罗"
+      ],
+      "correct_id": 1,
+      "explanation": "马龙·白兰度在《教父》中扮演维托·柯里昂，凭此获得了奥斯卡最佳男主角奖。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影获得了1989年的奥斯卡最佳影片奖？",
+      "answers": [
+        "《雨人》",
+        "《钢琴师》",
+        "《辛德勒的名单》",
+        "《阿甘正传》"
+      ],
+      "correct_id": 0,
+      "explanation": "《雨人》是1989年获得奥斯卡最佳影片奖的电影，讲述了兄弟之间的情感纽带。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《玩具总动员》是由哪家动画工作室制作的？",
+      "answers": [
+        "梦工厂",
+        "皮克斯",
+        "蓝天工作室",
+        "迪士尼"
+      ],
+      "correct_id": 1,
+      "explanation": "《玩具总动员》是皮克斯动画工作室制作的，标志着3D动画电影的开端。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位女性导演因其影片《女神》而获得广泛认可？",
+      "answers": [
+        "凯瑟琳·毕格罗",
+        "格蕾塔·葛韦格",
+        "索菲亚·科波拉",
+        "阿拉米·哈米尔顿"
+      ],
+      "correct_id": 0,
+      "explanation": "凯瑟琳·毕格罗因《女神》而被认为是打破性别偏见的先锋，获得多个奖项。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪部电影是由昆汀·塔伦蒂诺执导的？",
+      "answers": [
+        "《好家伙》",
+        "《低俗小说》",
+        "《无间道》",
+        "《盗梦空间》"
+      ],
+      "correct_id": 1,
+      "explanation": "《低俗小说》是昆汀·塔伦蒂诺执导的经典电影，以其非线性叙事而著称。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《黑暗骑士》中小丑的扮演者是？",
+      "answers": [
+        "杰克·尼科尔森",
+        "希斯·莱杰",
+        "阿尔·帕西诺",
+        "迈克尔·基顿"
+      ],
+      "correct_id": 1,
+      "explanation": "希斯·莱杰在《黑暗骑士》中饰演小丑，并因其出色表演获得了奥斯卡最佳男配角奖。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位导演以其作品《大白鲨》奠定了现代好莱坞的商业电影模式？",
+      "answers": [
+        "斯皮尔伯格",
+        "乔治·卢卡斯",
+        "詹姆斯·卡梅隆",
+        "马丁·斯科塞斯"
+      ],
+      "correct_id": 0,
+      "explanation": "斯皮尔伯格的《大白鲨》被视为现代商业大片的开创之作，改变了电影发行模式。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位作曲家为《星球大战》创作了标志性的配乐？",
+      "answers": [
+        "汉斯·季默",
+        "约翰·威廉姆斯",
+        "艾伦·梅嫩肯",
+        "丹尼·艾夫曼"
+      ],
+      "correct_id": 1,
+      "explanation": "约翰·威廉姆斯为《星球大战》创作的配乐成为电影音乐的经典，广受赞誉。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《肖申克的救赎》根据哪位作家的小说改编？",
+      "answers": [
+        "斯蒂芬·金",
+        "阿加莎·克里斯蒂",
+        "哈珀·李",
+        "乔治·奥威尔"
+      ],
+      "correct_id": 0,
+      "explanation": "《肖申克的救赎》改编自斯蒂芬·金的短篇小说，讲述了希望和自由的主题。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《泰坦尼克号》的导演是谁？",
+      "answers": [
+        "詹姆斯·卡梅隆",
+        "史蒂文·斯皮尔伯格",
+        "马丁·斯科塞斯",
+        "弗朗西斯·福特·科波拉"
+      ],
+      "correct_id": 0,
+      "explanation": "《泰坦尼克号》是詹姆斯·卡梅隆执导的一部经典爱情灾难片。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位演员曾获得过两次奥斯卡最佳男主角奖？",
+      "answers": [
+        "汤姆·汉克斯",
+        "莱昂纳多·迪卡普里奥",
+        "丹泽尔·华盛顿",
+        "杰克·尼科尔森"
+      ],
+      "correct_id": 3,
+      "explanation": "杰克·尼科尔森获得过两次奥斯卡最佳男主角奖，分别是《飞越疯人院》和《爱情的阴暗面》。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《冰雪奇缘》的主要角色是谁？",
+      "answers": [
+        "艾莎公主演",
+        "茉莉公主演",
+        "白雪公主演",
+        "小美人鱼"
+      ],
+      "correct_id": 0,
+      "explanation": "艾莎公主演是《冰雪奇缘》的核心角色，她拥有控制冰雪的魔法。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪部电影是由斯皮尔伯格执导的？",
+      "answers": [
+        "《侏罗纪公园》",
+        "《盗梦空间》",
+        "《黑暗骑士》",
+        "《无间道》"
+      ],
+      "correct_id": 0,
+      "explanation": "《侏罗纪公园》是斯皮尔伯格执导的一部经典科幻冒险片。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《阿凡达》的拍摄技术主要采用了什么技术？",
+      "answers": [
+        "3D技术",
+        "手绘动画",
+        "实景拍摄",
+        "定格动画"
+      ],
+      "correct_id": 0,
+      "explanation": "《阿凡达》使用了先进的3D技术来增强观影体验。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位导演以其在恐怖片领域的贡献而闻名？",
+      "answers": [
+        "阿尔弗雷德·希区柯克",
+        "昆汀·塔伦蒂诺",
+        "克里斯托弗·诺兰",
+        "大卫·芬奇"
+      ],
+      "correct_id": 0,
+      "explanation": "阿尔弗雷德·希区柯克被誉为“悬疑片之父”，他对恐怖片的影响深远。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《指环王：王者归来》获得了多少项奥斯卡奖？",
+      "answers": [
+        "11项",
+        "8项",
+        "5项",
+        "3项"
+      ],
+      "correct_id": 0,
+      "explanation": "《指环王：王者归来》在2004年获得了11项奥斯卡奖，创下了纪录。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影讲述了一只叫“沃尔特”的小狗的冒险故事？",
+      "answers": [
+        "《小狗的生活》",
+        "《忠犬八公的故事》",
+        "《海洋之歌》",
+        "《狗狗的疯狂假期》"
+      ],
+      "correct_id": 1,
+      "explanation": "《忠犬八公的故事》讲述了沃尔特和他的主人之间感人的故事。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位演员在《黑天鹅》中饰演主角妮娜？",
+      "answers": [
+        "娜塔莉·波特曼",
+        "梅根·福克斯",
+        "艾米·亚当斯",
+        "朱莉安·摩尔"
+      ],
+      "correct_id": 0,
+      "explanation": "娜塔莉·波特曼因在《黑天鹅》中的出色表现获得了奥斯卡最佳女主角奖。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在生物分类中，哪种动物被归类为哺乳动物？",
+      "answers": [
+        "海豚",
+        "蜻蜓",
+        "乌龟",
+        "鲨鱼"
+      ],
+      "correct_id": 0,
+      "explanation": "海豚是哺乳动物，具有温血和哺乳特性。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物拥有最强的嗅觉？",
+      "answers": [
+        "狗",
+        "猫",
+        "大象",
+        "老鼠"
+      ],
+      "correct_id": 2,
+      "explanation": "大象的嗅觉非常敏锐，可以嗅到几公里外的气味。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在生态系统中，哪个动物通常被视为顶级捕食者？",
+      "answers": [
+        "狼",
+        "老鹰",
+        "狮子",
+        "海豹"
+      ],
+      "correct_id": 2,
+      "explanation": "狮子是草原生态系统中的顶级捕食者，控制猎物种群。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物以腐食为生？",
+      "answers": [
+        "狮子",
+        "秃鹫",
+        "狐狸",
+        "羚羊"
+      ],
+      "correct_id": 1,
+      "explanation": "秃鹫主要以腐肉为食，帮助清理生态环境。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物在迁徙时可以飞行超过5000公里？",
+      "answers": [
+        "候鸟",
+        "蝙蝠",
+        "鲸鱼",
+        "海龟"
+      ],
+      "correct_id": 0,
+      "explanation": "候鸟如北极燕鸥每年迁徙的距离可超过5000公里。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种生物在海洋生态系统中扮演着重要的清道夫角色？",
+      "answers": [
+        "小丑鱼",
+        "海星",
+        "虾",
+        "珊瑚"
+      ],
+      "correct_id": 2,
+      "explanation": "虾通过清洁底部的有机物质，维持海洋生态的健康。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪个动物以其独特的变色能力而闻名？",
+      "answers": [
+        "变色龙",
+        "青蛙",
+        "蛇",
+        "龙虾"
+      ],
+      "correct_id": 0,
+      "explanation": "变色龙通过改变皮肤颜色来适应环境和交流。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物的心脏结构最为复杂？",
+      "answers": [
+        "鸟",
+        "哺乳动物",
+        "爬行动物",
+        "两栖动物"
+      ],
+      "correct_id": 1,
+      "explanation": "哺乳动物拥有四腔心脏，支持高效的血液循环。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在世界上，哪种动物的寿命最长？",
+      "answers": [
+        "弓头鲸",
+        "亚洲象",
+        "海龟",
+        "白鲟"
+      ],
+      "correct_id": 0,
+      "explanation": "弓头鲸的寿命可以达到200年以上，是最长寿的哺乳动物之一。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种动物是食肉动物？",
+      "answers": [
+        "袋鼠",
+        "鸵鸟",
+        "北极熊",
+        "野兔"
+      ],
+      "correct_id": 2,
+      "explanation": "北极熊是典型的食肉动物，以海豹等为食。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物被认为是草原上最快的奔跑者？",
+      "answers": [
+        "猎豹",
+        "马",
+        "角马",
+        "羚羊"
+      ],
+      "correct_id": 0,
+      "explanation": "猎豹是陆地上最快的动物，能够以每小时超过100公里的速度奔跑。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "海洋中哪种动物以其超声波定位能力而闻名？",
+      "answers": [
+        "海豚",
+        "鲨鱼",
+        "章鱼",
+        "海龟"
+      ],
+      "correct_id": 0,
+      "explanation": "海豚利用超声波定位来捕猎和交流，是其智能行为的表现。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物是著名的夜行性捕食者？",
+      "answers": [
+        "猫头鹰",
+        "金雕",
+        "鸽子",
+        "麻雀"
+      ],
+      "correct_id": 0,
+      "explanation": "猫头鹰以其夜间活动和敏锐的视力而著称，是典型的夜行性捕食者。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物是世界上最大的陆地动物？",
+      "answers": [
+        "非洲象",
+        "北极熊",
+        "犀牛",
+        "大象"
+      ],
+      "correct_id": 0,
+      "explanation": "非洲象是目前已知的最大的陆地动物，成年雄性体重大约可达6000公斤。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种动物是以其长寿著称的？",
+      "answers": [
+        "格陵兰鲨鱼",
+        "海龟",
+        "大象",
+        "猩猩"
+      ],
+      "correct_id": 0,
+      "explanation": "格陵兰鲨鱼可以活到400岁以上，是已知寿命最长的脊椎动物之一。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在自然界中，哪种动物以其伪装能力著称？",
+      "answers": [
+        "变色龙",
+        "青蛙",
+        "蛇",
+        "老虎"
+      ],
+      "correct_id": 0,
+      "explanation": "变色龙能根据环境改变皮肤颜色，以适应周围环境并隐藏自己。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物是世界上最大的飞鸟？",
+      "answers": [
+        "信天翁",
+        "鸵鸟",
+        "大鹰",
+        "灰雁"
+      ],
+      "correct_id": 0,
+      "explanation": "信天翁是最大的飞鸟，翼展可达3.5米，适合长时间飞行。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列动物中，哪一种以集体生活而闻名？",
+      "answers": [
+        "蜜蜂",
+        "狐狸",
+        "狼",
+        "老虎"
+      ],
+      "correct_id": 0,
+      "explanation": "蜜蜂以其社会性和集体生活而著称，形成复杂的蜂群结构。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物以其强大的嗅觉著称？",
+      "answers": [
+        "狗",
+        "猫",
+        "兔子",
+        "鼠标"
+      ],
+      "correct_id": 0,
+      "explanation": "狗的嗅觉能力极强，可以嗅出人类无法察觉的气味。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位导演以其在恐怖电影领域的贡献而闻名，特别是《闪灵》一片?",
+      "answers": [
+        "斯坦利·库布里克",
+        "阿尔弗雷德·希区柯克",
+        "大卫·林奇",
+        "约翰·卡朋特"
+      ],
+      "correct_id": 0,
+      "explanation": "斯坦利·库布里克因其对心理恐怖的独特视角而著称，特别是在《闪灵》中展现得淋漓尽致。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影赢得了1994年奥斯卡最佳影片奖，并且至今仍被誉为经典?",
+      "answers": [
+        "《阿甘正传》",
+        "《肖申克的救赎》",
+        "《低俗小说》",
+        "《美丽心灵》"
+      ],
+      "correct_id": 0,
+      "explanation": "《阿甘正传》在1994年获得了奥斯卡最佳影片奖，并在全球范围内广受欢迎。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位动画导演以其在《千与千寻》中的作品而获奖，成为国际知名的日本动画大师?",
+      "answers": [
+        "宫崎骏",
+        "高畑勋",
+        "今敏",
+        "押井守"
+      ],
+      "correct_id": 0,
+      "explanation": "宫崎骏的《千与千寻》在2003年赢得了奥斯卡最佳动画长片奖。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位演员因其在《战地之王》中的表演而获得了金球奖最佳男主角?",
+      "answers": [
+        "汤姆·汉克斯",
+        "肖恩·潘",
+        "杰克·尼科尔森",
+        "马修·麦康纳"
+      ],
+      "correct_id": 1,
+      "explanation": "肖恩·潘在《战地之王》中出色的表演使他获得了金球奖最佳男主角。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位导演的作品《黑天鹅》在2011年获得了多个奖项，并受到好评?",
+      "answers": [
+        "达伦·阿伦诺夫斯基",
+        "克里斯托弗·诺兰",
+        "大卫·芬奇",
+        "沃卓斯基姐妹"
+      ],
+      "correct_id": 0,
+      "explanation": "达伦·阿伦诺夫斯基凭借《黑天鹅》获得了广泛的赞誉和多个奖项。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪部电影是根据诺贝尔文学奖得主的作品改编的?",
+      "answers": [
+        "《了不起的盖茨比》",
+        "《追风筝的人》",
+        "《风之谷》",
+        "《一九八四》"
+      ],
+      "correct_id": 1,
+      "explanation": "《追风筝的人》是根据卡勒德·胡赛尼的同名小说改编的，受到了高度评价。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位演员首次在《教父》中饰演迈克尔·柯里昂这一角色?",
+      "answers": [
+        "阿尔·帕西诺",
+        "罗伯特·德尼罗",
+        "马龙·白兰度",
+        "詹姆斯·卡恩"
+      ],
+      "correct_id": 0,
+      "explanation": "阿尔·帕西诺在《教父》中首次饰演迈克尔·柯里昂，奠定了他的演艺生涯。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位女性导演凭借《女儿的情书》获得了戛纳电影节金棕榈奖?",
+      "answers": [
+        "索菲亚·科波拉",
+        "艾尔·斯通",
+        "贾梅拉·阿尔·阿巴斯",
+        "娜塔莉·波特曼"
+      ],
+      "correct_id": 0,
+      "explanation": "索菲亚·科波拉因执导《女儿的情书》而获得了戛纳电影节金棕榈奖，成为业界先锋。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影是由昆汀·塔伦蒂诺执导，因其非线性叙事结构而著名?",
+      "answers": [
+        "《低俗小说》",
+        "《无耻混蛋》",
+        "《杀死比尔》",
+        "《好家伙》"
+      ],
+      "correct_id": 0,
+      "explanation": "《低俗小说》以其独特的非线性叙事结构而闻名，成为电影界的经典之作。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位导演因其在《大白鲨》中运用的创新技巧而被誉为恐怖片之父?",
+      "answers": [
+        "史蒂文·斯皮尔伯格",
+        "约翰·卡朋特",
+        "詹姆斯·卡梅隆",
+        "弗朗西斯·福特·科波拉"
+      ],
+      "correct_id": 0,
+      "explanation": "史蒂文·斯皮尔伯格因在《大白鲨》中运用的紧张气氛和叙事技巧而被认为是恐怖片之父。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物是世界上体型最大、最重的陆生动物？",
+      "answers": [
+        "非洲草原象",
+        "北极熊",
+        "南美洲安第斯山羊",
+        "亚洲象"
+      ],
+      "correct_id": 0,
+      "explanation": "非洲草原象是目前已知最大的陆生动物，体重可达六吨以上。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种鸟类以其极具智慧和工具使用能力而闻名？",
+      "answers": [
+        "鸦科鸟",
+        "鹦鹉",
+        "鹰",
+        "鸽子"
+      ],
+      "correct_id": 0,
+      "explanation": "鸦科鸟，如乌鸦，已被证实能够使用工具并表现出复杂的社交行为。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物以其独特的电感应能力而著称？",
+      "answers": [
+        "电鳗",
+        "鲨鱼",
+        "金枪鱼",
+        "海豚"
+      ],
+      "correct_id": 0,
+      "explanation": "电鳗能够生成电流用于捕猎和防御，是电感应能力的典型代表。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物被认为是地球上最古老的生物之一，存在超过五亿年？",
+      "answers": [
+        "海绵",
+        "珊瑚",
+        "蜗牛",
+        "章鱼"
+      ],
+      "correct_id": 0,
+      "explanation": "海绵是最早的多细胞生物之一，化石记录显示其历史可追溯到寒武纪。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "长颈鹿的心脏和血压为什么特别高？",
+      "answers": [
+        "为了维持脖子的血液流动",
+        "为了跳得更高",
+        "为了繁殖",
+        "为了长途迁徙"
+      ],
+      "correct_id": 0,
+      "explanation": "长颈鹿需要高血压以确保血液能够有效到达高高的头部，维持正常的生理功能。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种生物是世界上最长寿的已知动物之一，能够活到超过500岁？",
+      "answers": [
+        "格陵兰鲨鱼",
+        "红杉树",
+        "乌龟",
+        "象鲸"
+      ],
+      "correct_id": 0,
+      "explanation": "格陵兰鲨鱼以其极长的寿命而闻名，能活到500岁以上，成为海洋中最古老的动物之一。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "与其他生物相比，海洋中的哪种生物具有最强的再生能力？",
+      "answers": [
+        "海星",
+        "海豹",
+        "鲨鱼",
+        "章鱼"
+      ],
+      "correct_id": 0,
+      "explanation": "海星以其极强的再生能力而闻名，失去的肢体可以再生，甚至可以再生出新的个体。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物以其复杂的社交结构和合作狩猎行为著称？",
+      "answers": [
+        "狼",
+        "豹",
+        "狮子",
+        "狐狸"
+      ],
+      "correct_id": 2,
+      "explanation": "狮子以其群体生活和复杂的社交结构而闻名，合作狩猎是它们生存的关键。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种鱼类拥有独特的生物发光能力，且能在深海环境中生存？",
+      "answers": [
+        "琵琶鱼",
+        "金枪鱼",
+        "鲨鱼",
+        "鳐鱼"
+      ],
+      "correct_id": 0,
+      "explanation": "琵琶鱼以其生物发光能力著称，可以在黑暗的深海中吸引猎物。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物在其生命周期的某个阶段会经历蜕皮以适应生长？",
+      "answers": [
+        "昆虫",
+        "哺乳动物",
+        "鸟类",
+        "爬行动物"
+      ],
+      "correct_id": 0,
+      "explanation": "许多昆虫在生长过程中会经历蜕皮，以适应其不断变化的体型。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "9-10"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物以食草为主，通常生活在草原或森林中？",
+      "answers": [
+        "大象",
+        "狮子",
+        "鲨鱼",
+        "狼"
+      ],
+      "correct_id": 0,
+      "explanation": "大象是以植物为主的食草动物，常见于非洲和亚洲的草原和森林中。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物以其强大的嗅觉著称，通常被用作搜救犬？",
+      "answers": [
+        "猫",
+        "金毛寻回犬",
+        "乌鸦",
+        "海豚"
+      ],
+      "correct_id": 1,
+      "explanation": "金毛寻回犬以其敏锐的嗅觉和友好的性格，常被用于搜救和导盲工作。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种鸟类以其美丽的羽毛和求偶舞蹈而闻名？",
+      "answers": [
+        "鹦鹉",
+        "孔雀",
+        "鸽子",
+        "鹰"
+      ],
+      "correct_id": 1,
+      "explanation": "孔雀因其华丽的羽毛和复杂的求偶舞蹈而著称，是鸟类中的佼佼者。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物是世界上最大的哺乳动物？",
+      "answers": [
+        "大白鲨",
+        "蓝鲸",
+        "长颈鹿",
+        "北极熊"
+      ],
+      "correct_id": 1,
+      "explanation": "蓝鲸是地球上最大的哺乳动物，成年蓝鲸可以长达30米以上。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物以其智慧和社交行为而闻名，常在海洋中生活？",
+      "answers": [
+        "海豚",
+        "鲨鱼",
+        "海星",
+        "章鱼"
+      ],
+      "correct_id": 0,
+      "explanation": "海豚以其高智商和复杂的社交行为而受到广泛关注，常被认为是海洋中的智慧生物。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物是世界上最快的陆地动物？",
+      "answers": [
+        "猎豹",
+        "马",
+        "大象",
+        "狼"
+      ],
+      "correct_id": 0,
+      "explanation": "猎豹是最快的陆地动物，能够在短时间内达到每小时100公里以上的速度。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种爬行动物以其能够长时间不饮水而著称？",
+      "answers": [
+        "鳄鱼",
+        "乌龟",
+        "蜥蜴",
+        "蛇"
+      ],
+      "correct_id": 1,
+      "explanation": "乌龟能够在极端干燥的环境中生存，并且可以长时间不饮水。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物以其独特的黑白条纹而闻名？",
+      "answers": [
+        "斑马",
+        "老虎",
+        "豹",
+        "小鹿"
+      ],
+      "correct_id": 0,
+      "explanation": "斑马以其独特的黑白条纹而著称，这种条纹可能在群体中起到迷惑捕食者的作用。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物以其变色能力而闻名？",
+      "answers": [
+        "变色龙",
+        "青蛙",
+        "海豚",
+        "老虎"
+      ],
+      "correct_id": 0,
+      "explanation": "变色龙能够根据环境变化其颜色，常用于伪装和交流。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物是典型的食肉动物，以其他动物为食？",
+      "answers": [
+        "大象",
+        "狮子",
+        "长颈鹿",
+        "兔子"
+      ],
+      "correct_id": 1,
+      "explanation": "狮子是典型的食肉动物，通常以其他哺乳动物作为主要食物来源。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "3-4"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在化学中，哪种元素的原子序数是6？",
+      "answers": [
+        "碳",
+        "氧",
+        "氮",
+        "氟"
+      ],
+      "correct_id": 0,
+      "explanation": "碳是周期表中原子序数为6的元素，广泛存在于有机化合物中。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪一位科学家提出了相对论的概念？",
+      "answers": [
+        "艾萨克·牛顿",
+        "阿尔伯特·爱因斯坦",
+        "尼古拉·特斯拉",
+        "伽利略"
+      ],
+      "correct_id": 1,
+      "explanation": "阿尔伯特·爱因斯坦于20世纪初提出了狭义和广义相对论的理论。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在生物学中，遗传信息的载体是什么？",
+      "answers": [
+        "RNA",
+        "DNA",
+        "蛋白质",
+        "脂质"
+      ],
+      "correct_id": 1,
+      "explanation": "DNA是生物体中遗传信息的主要载体，负责信息的存储和传递。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "光的速度在真空中约为多少？",
+      "answers": [
+        "3×10^8 米/秒",
+        "3×10^6 米/秒",
+        "3×10^5 米/秒",
+        "3×10^9 米/秒"
+      ],
+      "correct_id": 0,
+      "explanation": "光在真空中的传播速度约为3×10^8米每秒，是宇宙中最快的速度。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种粒子是原子核的组成部分？",
+      "answers": [
+        "电子",
+        "质子",
+        "光子",
+        "中微子"
+      ],
+      "correct_id": 1,
+      "explanation": "质子是组成原子核的重要粒子，具有正电荷，决定了元素的性质。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "根据经典力学，物体的动量是由什么决定的？",
+      "answers": [
+        "质量和速度",
+        "质量和加速度",
+        "体积和速度",
+        "力和时间"
+      ],
+      "correct_id": 0,
+      "explanation": "动量是物体质量与其速度的乘积，是描述运动状态的重要物理量。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在天文学中，哪种天体是太阳系中最大的行星？",
+      "answers": [
+        "地球",
+        "土星",
+        "木星",
+        "火星"
+      ],
+      "correct_id": 2,
+      "explanation": "木星是太阳系中最大的行星，其直径约为地球的11倍。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "在化学反应中，催化剂的作用是什么？",
+      "answers": [
+        "提高反应速率",
+        "降低反应速率",
+        "增加反应物的数量",
+        "改变反应物的性质"
+      ],
+      "correct_id": 0,
+      "explanation": "催化剂能够加速化学反应而不被消耗，从而提高反应速率。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "牛顿的第一运动定律主要说明了什么？",
+      "answers": [
+        "力的作用",
+        "物体的惯性",
+        "能量的守恒",
+        "运动的加速度"
+      ],
+      "correct_id": 1,
+      "explanation": "牛顿的第一运动定律表明，物体在没有外力作用下会保持静止或匀速直线运动。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "光的波粒二象性是哪个领域的核心概念？",
+      "answers": [
+        "物理学",
+        "化学",
+        "生物学",
+        "地球科学"
+      ],
+      "correct_id": 0,
+      "explanation": "波粒二象性是物理学中描述光和物质行为的关键概念，体现了其既是波又是粒子的特性。",
+      "theme": "science",
+      "sub_theme": "science",
+      "depth_band": "7-8"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种动物是世界上最大的陆生动物？",
+      "answers": [
+        "非洲象",
+        "北极熊",
+        "长颈鹿",
+        "灰狼"
+      ],
+      "correct_id": 0,
+      "explanation": "非洲象是地球上最大的陆地哺乳动物，体重可达6吨。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种鸟类以其强大的模仿能力著称？",
+      "answers": [
+        "鹦鹉",
+        "鸽子",
+        "麻雀",
+        "燕子"
+      ],
+      "correct_id": 0,
+      "explanation": "鹦鹉因其能够模仿人类语言和其他声音而广受欢迎。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物是唯一一种能够飞行的哺乳动物？",
+      "answers": [
+        "蝙蝠",
+        "松鼠",
+        "老鼠",
+        "猫"
+      ],
+      "correct_id": 0,
+      "explanation": "蝙蝠是唯一能够持续飞行的哺乳动物，适应了空中生活。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种生物是已知的最长寿命的动物之一？",
+      "answers": [
+        "格陵兰鲨鱼",
+        "大象",
+        "海龟",
+        "狮子"
+      ],
+      "correct_id": 0,
+      "explanation": "格陵兰鲨鱼可以活到400岁以上，是最长寿的脊椎动物之一。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物被认为是地球上的顶级掠食者？",
+      "answers": [
+        "虎鲸",
+        "狮子",
+        "狼",
+        "猎豹"
+      ],
+      "correct_id": 0,
+      "explanation": "虎鲸是食物链的顶端，几乎没有天敌。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪种动物以其能在极端寒冷环境中生存而闻名？",
+      "answers": [
+        "北极熊",
+        "非洲狮",
+        "袋鼠",
+        "海豚"
+      ],
+      "correct_id": 0,
+      "explanation": "北极熊适应了极寒环境，拥有厚厚的脂肪和毛发以保持温暖。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物以其在水下的出色游泳能力著称？",
+      "answers": [
+        "海豚",
+        "骆驼",
+        "兔子",
+        "鳄鱼"
+      ],
+      "correct_id": 0,
+      "explanation": "海豚是海洋中的高效游泳者，能够达到每小时60公里的速度。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪种动物以其复杂的社交结构和团队合作而闻名？",
+      "answers": [
+        "蜜蜂",
+        "狐狸",
+        "山羊",
+        "蛇"
+      ],
+      "correct_id": 0,
+      "explanation": "蜜蜂在蜂巢中有复杂的社会结构，分工明确，合作觅食和繁殖。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "下列哪种动物以其独特的跳跃能力而著称？",
+      "answers": [
+        "袋鼠",
+        "猴子",
+        "大象",
+        "马"
+      ],
+      "correct_id": 0,
+      "explanation": "袋鼠因其强大的后腿和独特的跳跃方式而闻名。",
+      "theme": "faune",
+      "sub_theme": "faune",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位导演执导了《盗梦空间》？",
+      "answers": [
+        "克里斯托弗·诺兰",
+        "斯蒂文·斯皮尔伯格",
+        "昆汀·塔伦蒂诺",
+        "马丁·斯科塞斯"
+      ],
+      "correct_id": 0,
+      "explanation": "克里斯托弗·诺兰以其复杂的叙事结构而闻名，尤其是《盗梦空间》。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部动画电影在2013年获得了奥斯卡最佳动画长片奖？",
+      "answers": [
+        "《冰雪奇缘》",
+        "《海洋奇缘》",
+        "《大英雄天团》",
+        "《玩具总动员3》"
+      ],
+      "correct_id": 0,
+      "explanation": "《冰雪奇缘》因其音乐和视觉效果而备受赞誉，获得了奥斯卡奖。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪位演员因在电影《小丑》中的表演而获得了奥斯卡最佳男主角奖？",
+      "answers": [
+        "杰昆·菲尼克斯",
+        "罗伯特·帕丁森",
+        "莱昂纳多·迪卡普里奥",
+        "马修·麦康纳"
+      ],
+      "correct_id": 0,
+      "explanation": "杰昆·菲尼克斯凭借其在《小丑》中的出色表现获得了奥斯卡奖。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《教父》这部电影的导演是谁？",
+      "answers": [
+        "弗朗西斯·福特·科波拉",
+        "马丁·斯科塞斯",
+        "斯坦利·库布里克",
+        "大卫·林奇"
+      ],
+      "correct_id": 0,
+      "explanation": "弗朗西斯·福特·科波拉因执导《教父》而获得了广泛认可。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪部电影是基于玛雅文化的史诗故事？",
+      "answers": [
+        "《寻梦环游记》",
+        "《阿凡达》",
+        "《魔法奇缘》",
+        "《勇敢传说》"
+      ],
+      "correct_id": 0,
+      "explanation": "《寻梦环游记》探索了墨西哥的亡灵节和玛雅文化。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "以下哪部电影是由斯皮尔伯格导演的？",
+      "answers": [
+        "《侏罗纪公园》",
+        "《黑天鹅》",
+        "《银翼杀手》",
+        "《盗梦空间》"
+      ],
+      "correct_id": 0,
+      "explanation": "《侏罗纪公园》是斯皮尔伯格1980年代末至1990年代初的重要作品。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《肖申克的救赎》的原著作家是谁？",
+      "answers": [
+        "斯蒂芬·金",
+        "阿加莎·克里斯蒂",
+        "乔治·R·R·马丁",
+        "J.K. 罗琳"
+      ],
+      "correct_id": 0,
+      "explanation": "斯蒂芬·金的短篇小说《丽塔·海华丝及肖申克的救赎》是电影的基础。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "哪位演员在电影《泰坦尼克号》中饰演杰克·道森？",
+      "answers": [
+        "莱昂纳多·迪卡普里奥",
+        "布拉德·皮特",
+        "约翰尼·德普",
+        "汤姆·汉克斯"
+      ],
+      "correct_id": 0,
+      "explanation": "莱昂纳多·迪卡普里奥因在《泰坦尼克号》的角色而成名。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    },
+    {
+      "type": "multiple",
+      "question_text": "《星球大战》系列的创始人是谁？",
+      "answers": [
+        "乔治·卢卡斯",
+        "史蒂文·斯皮尔伯格",
+        "詹姆斯·卡梅隆",
+        "弗朗西斯·福特·科波拉"
+      ],
+      "correct_id": 0,
+      "explanation": "乔治·卢卡斯创造了《星球大战》宇宙并执导了首部电影。",
+      "theme": "cinema",
+      "sub_theme": "cinema",
+      "depth_band": "5-6"
+    }
+  ]
 }

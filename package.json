@@ -13,6 +13,8 @@
     "build:all": "npm run build:shared && npm run build:game-engine && npm run build:game-server",
     "dev:game-server": "npm -w @strategybuzzer/game-server run dev",
     "start:game-server": "npm -w @strategybuzzer/game-server run start",
+    "seed:check": "node scripts/seed/check_seed_coverage.mjs",
+    "seed:generate": "node scripts/seed/generate_seed_pool.mjs",
     "test:e2e:duo-join": "node tests/e2e/duo-join-room.test.js",
     "test:e2e:duo-join-browser": "node tests/e2e/duo-join-room.browser.spec.js",
     "test:e2e:master-join-browser": "node tests/e2e/master-join-room.browser.spec.js",

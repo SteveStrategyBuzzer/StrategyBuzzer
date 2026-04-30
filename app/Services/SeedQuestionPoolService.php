@@ -13,12 +13,22 @@ use Illuminate\Support\Facades\Log;
  * Aucun appel IA n'est jamais fait : la règle est seed-first quand la banque
  * est insuffisante (#88).
  *
- * #93 :
- *  - le service supporte désormais les filtres `sub_domain`, `cognitive_type`
- *    et `niveau_band` pour s'aligner sur le contrat du planner.
- *  - le fallback silencieux vers la version FR est REMOVED. Si la langue
- *    demandée n'a pas de fichier seed, on log un warning et on retourne
- *    null pour que le détecteur dry de #92 voie la lacune réelle.
+ * #93 — le service supporte un panel élargi de filtres pour s'aligner sur le
+ * contrat du planner :
+ *   - 'domain'         => 'general' | 'histoire' | …  (theme canonique)
+ *   - 'sub_domain'     => 'histoire' | 'sport' | …    (utile pour 'general')
+ *   - 'depth_band'     => '3-4' | '5-6' | '7-8' | '9-10'
+ *   - 'depth'          => entier 3-10 (mappé automatiquement vers depth_band)
+ *   - 'cognitive_type' => 'recognition' | 'reasoning' | 'deceptive_trap'
+ *   - 'niveau_band'    => string (compat avec l'ancien tagging)
+ *
+ * Stratégie de cascade : on resserre les filtres tant qu'il reste des
+ * candidats ; dès qu'un filtre vide la liste, on saute ce filtre. Ainsi on
+ * sert toujours la question la plus pertinente disponible sans jamais tomber
+ * dans un état "rien à servir" tant que la langue a un pool. Le fallback
+ * silencieux vers la version FR est REMOVED — si la langue demandée n'a pas
+ * de fichier seed, on log un warning et on retourne null pour que le
+ * détecteur dry de #92 voie la lacune réelle.
  */
 class SeedQuestionPoolService
 {
@@ -26,11 +36,9 @@ class SeedQuestionPoolService
     private array $memo = [];
 
     /**
-     * Retourne une question seed adaptée au filtre demandé. La sélection
-     * tente de matcher le sub_domain, le cognitive_type, puis le niveau_band
-     * — chaque contrainte est appliquée seulement si elle réduit l'ensemble
-     * des candidats sans le vider. Retourne null si le pool est vide pour
-     * cette langue (jamais de fallback silencieux vers une autre langue).
+     * Retourne une question seed adaptée au filtre demandé. Voir le PHPDoc de
+     * la classe pour la liste des filtres supportés et la stratégie de
+     * cascade. Retourne null si le pool est vide pour cette langue.
      *
      * @param array<int,string> $usedTextHashes
      */
@@ -52,6 +60,12 @@ class SeedQuestionPoolService
             $available = $pool;
         }
 
+        // Cascading best-effort filters. Order: most-specific contextual
+        // signals first (domain/depth define the segment we generated for),
+        // then the legacy quality tags (cognitive_type / niveau_band) which
+        // help when the bank planner is also expressing pedagogy intent.
+        $available = $this->narrowDomain($available, $filter);
+        $available = $this->narrowDepthBand($available, $filter);
         $available = $this->narrow($available, $filter, 'sub_domain');
         $available = $this->narrow($available, $filter, 'cognitive_type');
         $available = $this->narrow($available, $filter, 'niveau_band');
@@ -96,6 +110,60 @@ class SeedQuestionPoolService
             return $vSource === $needle || $vKey === $needle;
         }));
         return !empty($matched) ? $matched : $candidates;
+    }
+
+    /**
+     * Same drop-if-empty cascade as narrow(), but matches against the
+     * canonical `theme` field which the seed generator writes alongside
+     * `sub_theme`. Only applied when filter['domain'] is set.
+     *
+     * @param array<int, array<string, mixed>> $candidates
+     * @param array<string, mixed>             $filter
+     * @return array<int, array<string, mixed>>
+     */
+    private function narrowDomain(array $candidates, array $filter): array
+    {
+        if (empty($filter['domain'])) {
+            return $candidates;
+        }
+        $domain = strtolower((string) $filter['domain']);
+        $matched = array_values(array_filter($candidates, function ($q) use ($domain) {
+            return strtolower((string) ($q['theme'] ?? 'general')) === $domain;
+        }));
+        return !empty($matched) ? $matched : $candidates;
+    }
+
+    /**
+     * Drop-if-empty filter on depth_band. Accepts either an explicit
+     * 'depth_band' key, or a numeric 'depth' which is mapped via depthToBand().
+     *
+     * @param array<int, array<string, mixed>> $candidates
+     * @param array<string, mixed>             $filter
+     * @return array<int, array<string, mixed>>
+     */
+    private function narrowDepthBand(array $candidates, array $filter): array
+    {
+        $band = $filter['depth_band'] ?? null;
+        if ($band === null && isset($filter['depth'])) {
+            $band = self::depthToBand((int) $filter['depth']);
+        }
+        if (empty($band)) {
+            return $candidates;
+        }
+        $needle = (string) $band;
+        $matched = array_values(array_filter($candidates, function ($q) use ($needle) {
+            return (string) ($q['depth_band'] ?? '') === $needle;
+        }));
+        return !empty($matched) ? $matched : $candidates;
+    }
+
+    private static function depthToBand(int $depth): ?string
+    {
+        if ($depth <= 0) return null;
+        if ($depth <= 4)  return '3-4';
+        if ($depth <= 6)  return '5-6';
+        if ($depth <= 8)  return '7-8';
+        return '9-10';
     }
 
     private function loadPool(string $language): array
