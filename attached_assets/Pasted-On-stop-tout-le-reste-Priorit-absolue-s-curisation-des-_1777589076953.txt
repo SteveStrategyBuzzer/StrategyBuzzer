@@ -1,0 +1,99 @@
+On stop tout le reste. Priorité absolue : sécurisation des données critiques avant toute remise en place du UI (#18 rollback).
+
+Contexte :
+Rollback effectué → perte/instabilité des identifiants et des états.
+Avant de réappliquer quoi que ce soit, on verrouille le système.
+
+OBJECTIF :
+Garantir que RIEN ne peut être perdu ou corrompu pour :
+- achats
+- identifiants joueurs
+- gains / pertes
+- quêtes
+- progression
+
+---
+
+PHASE 1 — Audit complet (obligatoire, pas de code encore)
+
+Lister précisément :
+- où sont stockés :
+  - user_id / player_id
+  - achats (transactions)
+  - gains / pertes (scores, currency)
+  - quêtes / progression
+- quels services écrivent dessus (Laravel / Node / Redis / DB)
+- quels endpoints ou events modifient ces données
+- risques actuels :
+  - overwrite
+  - duplication
+  - perte sur rollback
+  - désync multi-serveur
+
+Sortie attendue :
+→ mapping complet des flux critiques
+
+---
+
+PHASE 2 — Verrous de sécurité (à implémenter)
+
+1. ID immuables
+- user_id / player_id jamais recalculés
+- aucune dépendance au frontend
+- validation stricte côté backend
+
+2. Transactions protégées
+- toutes les écritures DB critiques en transaction (DB::transaction)
+- rollback automatique si erreur
+
+3. Idempotence
+- achats / rewards / quêtes ne peuvent pas être appliqués 2 fois
+- utiliser transaction_id / event_id unique
+
+4. Journalisation (audit log)
+- toute action critique loguée :
+  - user_id
+  - action
+  - payload
+  - timestamp
+- table dédiée (ex: critical_actions_log)
+
+5. Source of truth claire
+- DB = vérité finale
+- Redis = cache uniquement
+- Node = autorité gameplay (pas persistance finale)
+
+6. Protection contre perte
+- aucune écriture critique sans confirmation DB
+- fallback interdit silencieux
+
+---
+
+PHASE 3 — Validation
+
+- tests :
+  - double achat → impossible
+  - perte de connexion → données intactes
+  - retry API → pas de duplication
+- grep des zones critiques pour vérifier unicité des écritures
+
+---
+
+PHASE 4 — Seulement après validation
+
+→ on peut réappliquer les changements UI (#18 et autres)
+
+---
+
+RÈGLE ABSOLUE
+
+AUCUNE feature UI tant que :
+- IDs sécurisés
+- transactions protégées
+- idempotence en place
+- logs actifs
+
+---
+
+Objectif final :
+zéro perte de données, zéro duplication, zéro désync.
