@@ -260,27 +260,29 @@ class MasterGameController extends Controller
         $previousQuestions = array_values($existingQuestions);
 
         try {
-            $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
-
-            // #88: composition endpoints are admin-locked. Send the shared secret
-            // so the question-api accepts the request from this trusted backend.
-            $response = Http::timeout(30)
-                ->withHeaders(['X-Admin-Token' => (string) env('MASTER_API_ADMIN_TOKEN', '')])
-                ->post($apiUrl, [
-                'theme' => $theme,
-                'language' => $language,
-                'questionType' => $isImageQuestion ? 'multiple_choice' : $questionType,
-                'questionNumber' => (int) $questionNumber,
-                'previousQuestions' => $previousQuestions,
-                'gameSeed' => $game->id,
-                'domainType' => $game->domain_type,
-                'schoolLevel' => $game->school_level,
-                'schoolGrade' => $game->school_grade,
-                'schoolSubject' => $game->school_subject,
-                'schoolCountry' => $game->school_country,
-                'mode' => $game->mode,
-                'totalQuestions' => $game->total_questions,
-            ]);
+            // #94: composition endpoints accept short-lived signed JWTs minted
+            // per-call by QuestionApiClient (sub=caller user id, payload-hash
+            // bound, audit-logged). Replaces the static MASTER_API_ADMIN_TOKEN.
+            $client = app(\App\Services\QuestionApi\QuestionApiClient::class);
+            $response = $client->postAdmin(
+                \App\Services\QuestionApi\QuestionApiClient::ENDPOINT_MASTER_QUESTION,
+                [
+                    'theme' => $theme,
+                    'language' => $language,
+                    'questionType' => $isImageQuestion ? 'multiple_choice' : $questionType,
+                    'questionNumber' => (int) $questionNumber,
+                    'previousQuestions' => $previousQuestions,
+                    'gameSeed' => $game->id,
+                    'domainType' => $game->domain_type,
+                    'schoolLevel' => $game->school_level,
+                    'schoolGrade' => $game->school_grade,
+                    'schoolSubject' => $game->school_subject,
+                    'schoolCountry' => $game->school_country,
+                    'mode' => $game->mode,
+                    'totalQuestions' => $game->total_questions,
+                ],
+                ['source' => 'master.regenerateQuestion']
+            );
 
             if (!$response->successful()) {
                 Log::warning('Master regenerate: API Node erreur HTTP', ['status' => $response->status()]);
@@ -986,14 +988,11 @@ class MasterGameController extends Controller
                 $theme = ($game->school_subject ?? 'Culture générale') . ' - ' . ($game->school_level ?? 'Général');
             }
             
-            // Appeler l'API Node.js pour générer une question difficile
-            // #88: composition endpoint is admin-locked, send shared secret header.
-            $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
-            $adminToken = (string) env('MASTER_API_ADMIN_TOKEN', '');
-            
-            $response = Http::timeout(30)
-                ->withHeaders(['X-Admin-Token' => $adminToken])
-                ->post($apiUrl, [
+            // #94: short-lived signed JWT per call (replaces MASTER_API_ADMIN_TOKEN).
+            $client = app(\App\Services\QuestionApi\QuestionApiClient::class);
+            $response = $client->postAdmin(
+                \App\Services\QuestionApi\QuestionApiClient::ENDPOINT_MASTER_QUESTION,
+                [
                     'theme' => $theme . ' (question difficile de départage)',
                     'language' => $language,
                     'questionType' => 'multiple_choice',
@@ -1007,7 +1006,12 @@ class MasterGameController extends Controller
                     'schoolCountry' => $game->school_country,
                     'mode' => $game->mode,
                     'totalQuestions' => $game->total_questions,
-                ]);
+                ],
+                [
+                    'caller_user_id' => $game->host_user_id,
+                    'source' => 'master.generateTiebreakerQuestion',
+                ]
+            );
             
             if ($response->successful()) {
                 $data = $response->json();
@@ -1127,7 +1131,8 @@ class MasterGameController extends Controller
                 'language' => $language
             ]);
             
-            $result = $imageService->generateImageQuestion($questionNumber, $language);
+            // #94: pass host as caller for the audit row.
+            $result = $imageService->generateImageQuestion($questionNumber, $language, $game->host_user_id);
             
             if (!$result) {
                 Log::warning('Master: Échec génération image IA', [
@@ -1222,14 +1227,11 @@ class MasterGameController extends Controller
                 $theme = ($game->school_subject ?? 'Culture générale') . ' - ' . ($game->school_level ?? 'Général');
             }
             
-            // Appeler l'API Node.js pour générer la question
-            // #88: composition endpoint is admin-locked, send shared secret header.
-            $apiUrl = env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-master-question';
-            $adminToken = (string) env('MASTER_API_ADMIN_TOKEN', '');
-            
-            $response = Http::timeout(30)
-                ->withHeaders(['X-Admin-Token' => $adminToken])
-                ->post($apiUrl, [
+            // #94: short-lived signed JWT per call (replaces MASTER_API_ADMIN_TOKEN).
+            $client = app(\App\Services\QuestionApi\QuestionApiClient::class);
+            $response = $client->postAdmin(
+                \App\Services\QuestionApi\QuestionApiClient::ENDPOINT_MASTER_QUESTION,
+                [
                     'theme' => $theme,
                     'language' => $language,
                     'questionType' => $questionType,
@@ -1243,7 +1245,12 @@ class MasterGameController extends Controller
                     'schoolCountry' => $game->school_country,
                     'mode' => $game->mode,
                     'totalQuestions' => $game->total_questions,
-                ]);
+                ],
+                [
+                    'caller_user_id' => $game->host_user_id,
+                    'source' => 'master.generateTextQuestionWithAI',
+                ]
+            );
             
             if (!$response->successful()) {
                 Log::warning('Master: API Node.js non accessible ou refusée', [

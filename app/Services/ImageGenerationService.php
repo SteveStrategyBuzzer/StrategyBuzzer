@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
+use App\Services\QuestionApi\QuestionApiClient;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -11,26 +12,34 @@ class ImageGenerationService
     /**
      * Génère une question image-mémoire via Imagen (Gemini API)
      * Exclusif au mode Maître du Jeu
-     * 
+     *
      * @param int $questionNumber Numéro de la question
      * @param string $language Code langue (fr, en, es, etc.)
+     * @param int|null $callerUserId  Caller user id for audit (defaults to Auth::id()).
      * @return array|null La question générée avec l'image ou null en cas d'erreur
      */
-    public function generateImageQuestion($questionNumber = 1, $language = 'fr')
+    public function generateImageQuestion($questionNumber = 1, $language = 'fr', ?int $callerUserId = null)
     {
         try {
             Log::info('ImageGenerationService: Démarrage génération image-mémoire', [
                 'questionNumber' => $questionNumber,
                 'language' => $language
             ]);
-            
-            // #88: image-question composition endpoint is admin-locked, send shared secret.
-            $response = Http::timeout(60)
-                ->withHeaders(['X-Admin-Token' => (string) env('MASTER_API_ADMIN_TOKEN', '')])
-                ->post(env('QUESTION_API_URL', 'http://localhost:3000') . '/generate-image-question', [
+
+            // #94: short-lived signed JWT per call (replaces MASTER_API_ADMIN_TOKEN).
+            $client = app(QuestionApiClient::class);
+            $response = $client->postAdmin(
+                QuestionApiClient::ENDPOINT_IMAGE_QUESTION,
+                [
                     'questionNumber' => $questionNumber,
                     'language' => $language,
-                ]);
+                ],
+                [
+                    'caller_user_id' => $callerUserId ?? Auth::id(),
+                    'source' => 'image.generateImageQuestion',
+                    'timeout' => 60,
+                ]
+            );
             
             if (!$response->successful()) {
                 Log::error('ImageGenerationService: Échec appel API', [

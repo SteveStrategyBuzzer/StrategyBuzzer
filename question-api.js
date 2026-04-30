@@ -1,4 +1,6 @@
 const express = require('express');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const { GoogleGenAI } = require('@google/genai');
 const { router: aiRouter, validation: aiValidation } = require('./providers');
 
@@ -32,46 +34,189 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use(express.json());
+// We need the raw bytes of the request body so the admin JWT can prove the
+// body it received is exactly the body the caller signed (sha256 hex match).
+// Capturing the raw buffer in express.json's `verify` is the cheapest way
+// to do this without parsing twice.
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    if (buf && buf.length) {
+      req.rawBody = buf;
+    }
+  },
+}));
 
 // ============================================================================
-// #88 — ADMIN-TOKEN GUARD for composition tools.
+// #94 — ADMIN-JWT GUARD for composition tools.
 //
-// After task #88, the AI router MUST NOT be reachable from any live-match
-// gameplay path. The remaining router-touching endpoints in this service
-// (/generate-master-question, /generate-image-question) are reserved for
-// out-of-match admin/host composition workflows. They are guarded by a
-// shared-secret token sent in the `X-Admin-Token` header. The token is
-// loaded from MASTER_API_ADMIN_TOKEN at boot and compared with a constant-
-// time equality check.
+// After #88 the AI router was reachable only by callers that knew the static
+// MASTER_API_ADMIN_TOKEN shared secret. #94 replaces that with short-lived
+// per-call JWTs minted by Laravel (App\Services\QuestionApi\QuestionApiClient)
+// so we get: per-user identity (sub claim), per-call audit, and natural
+// rotation/revocation (60s TTL).
 //
-// If MASTER_API_ADMIN_TOKEN is not set, the guard rejects EVERY request
-// (fail-closed) so an accidentally-deployed worker without the secret
+// Token rules (HS256, secret = QUESTION_API_JWT_SECRET, fallback
+// GAME_SERVER_JWT_SECRET so a single-secret deploy keeps working):
+//   - aud === 'question-api'
+//   - purpose === 'qapi_admin'
+//   - endpoint === <request path>          (binds token to one route)
+//   - payload_hash === sha256_hex(rawBody) (binds token to one body)
+//   - exp <= iat + 60s, jti seen at most once within its TTL
+//
+// If the secret is missing or weaker than 16 chars, EVERY request is rejected
+// (fail-closed) so an accidentally-deployed worker without auth material
 // cannot expose AI generation publicly.
 // ============================================================================
-function requireAdminToken(req, res, next) {
-  const expected = process.env.MASTER_API_ADMIN_TOKEN || '';
-  const provided = req.header('x-admin-token') || '';
-  if (!expected) {
-    return res.status(503).json({
-      success: false,
-      error: 'admin_token_not_configured',
-      details: 'MASTER_API_ADMIN_TOKEN must be set on the question-api service.',
-    });
+const ADMIN_JWT_SECRET = (() => {
+  const candidates = [
+    process.env.QUESTION_API_JWT_SECRET || '',
+    process.env.GAME_SERVER_JWT_SECRET || '',
+  ];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const value = raw.startsWith('base64:')
+      ? Buffer.from(raw.slice('base64:'.length), 'base64').toString('utf8')
+      : raw;
+    if (value.trim().length >= 16) return value;
   }
-  // Constant-time comparison to avoid timing leaks.
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  const equal = a.length === b.length && require('crypto').timingSafeEqual(a, b);
-  if (!equal) {
-    return res.status(403).json({
-      success: false,
-      error: 'forbidden',
-      details: 'Valid X-Admin-Token header is required for AI composition endpoints.',
-    });
+  return '';
+})();
+
+const ADMIN_JWT_AUDIENCE = 'question-api';
+const ADMIN_JWT_PURPOSE = 'qapi_admin';
+const ADMIN_JWT_MAX_LIFETIME_SECONDS = 60;
+const ADMIN_JWT_CLOCK_SKEW_SECONDS = 5;
+
+// In-memory replay protection. `seenJtis` maps jti -> exp (epoch seconds);
+// a sweep on each request drops expired entries. For 60s tokens the set
+// stays tiny even under heavy admin traffic.
+const seenJtis = new Map();
+function rememberJti(jti, exp) {
+  seenJtis.set(jti, exp);
+  if (seenJtis.size > 1024) {
+    const now = Math.floor(Date.now() / 1000);
+    for (const [k, v] of seenJtis) {
+      if (v <= now) seenJtis.delete(k);
+    }
   }
+}
+function isJtiReplay(jti) {
+  const exp = seenJtis.get(jti);
+  if (exp === undefined) return false;
+  if (exp <= Math.floor(Date.now() / 1000)) {
+    seenJtis.delete(jti);
+    return false;
+  }
+  return true;
+}
+
+function denyAdmin(res, status, error, details) {
+  return res.status(status).json({ success: false, error, details });
+}
+
+function requireAdminJwt(req, res, next) {
+  if (!ADMIN_JWT_SECRET) {
+    return denyAdmin(res, 503, 'admin_jwt_not_configured',
+      'QUESTION_API_JWT_SECRET (or GAME_SERVER_JWT_SECRET) must be set on the question-api service.');
+  }
+
+  const authHeader = req.header('authorization') || '';
+  const match = /^Bearer\s+(.+)$/i.exec(authHeader.trim());
+  if (!match) {
+    return denyAdmin(res, 401, 'missing_admin_jwt',
+      'Authorization: Bearer <jwt> header is required for AI composition endpoints.');
+  }
+  const token = match[1].trim();
+
+  let claims;
+  try {
+    claims = jwt.verify(token, ADMIN_JWT_SECRET, {
+      algorithms: ['HS256'],
+      audience: ADMIN_JWT_AUDIENCE,
+      clockTolerance: ADMIN_JWT_CLOCK_SKEW_SECONDS,
+    });
+  } catch (err) {
+    return denyAdmin(res, 403, 'invalid_admin_jwt',
+      `JWT verification failed: ${err && err.message ? err.message : 'unknown'}`);
+  }
+
+  if (!claims || typeof claims !== 'object') {
+    return denyAdmin(res, 403, 'invalid_admin_jwt', 'JWT payload is not an object.');
+  }
+  if (claims.purpose !== ADMIN_JWT_PURPOSE) {
+    return denyAdmin(res, 403, 'invalid_admin_jwt', `purpose must be "${ADMIN_JWT_PURPOSE}".`);
+  }
+
+  const requestPath = req.path || req.originalUrl || '';
+  if (claims.endpoint !== requestPath) {
+    return denyAdmin(res, 403, 'invalid_admin_jwt',
+      `endpoint claim "${claims.endpoint}" does not match request path "${requestPath}".`);
+  }
+
+  const iat = typeof claims.iat === 'number' ? claims.iat : 0;
+  const exp = typeof claims.exp === 'number' ? claims.exp : 0;
+  if (!iat || !exp || exp - iat > ADMIN_JWT_MAX_LIFETIME_SECONDS + ADMIN_JWT_CLOCK_SKEW_SECONDS) {
+    return denyAdmin(res, 403, 'invalid_admin_jwt',
+      `token lifetime must be <= ${ADMIN_JWT_MAX_LIFETIME_SECONDS}s.`);
+  }
+
+  const jti = typeof claims.jti === 'string' ? claims.jti : '';
+  if (!jti) {
+    return denyAdmin(res, 403, 'invalid_admin_jwt', 'jti claim is required.');
+  }
+  if (isJtiReplay(jti)) {
+    return denyAdmin(res, 403, 'invalid_admin_jwt', 'jti has already been used (replay).');
+  }
+
+  // Bind the token to the exact bytes of the body the caller signed. If
+  // anything (a proxy, a man-in-the-middle, a buggy retry) mutated the body,
+  // the hash will not match and we reject — even if the JWT is otherwise
+  // valid. Empty body => hash of "".
+  const rawBody = req.rawBody || Buffer.alloc(0);
+  const computedHash = crypto.createHash('sha256').update(rawBody).digest('hex');
+  if (typeof claims.payload_hash !== 'string' ||
+      claims.payload_hash.length !== computedHash.length ||
+      !crypto.timingSafeEqual(
+        Buffer.from(claims.payload_hash, 'hex'),
+        Buffer.from(computedHash, 'hex'),
+      )) {
+    return denyAdmin(res, 403, 'invalid_admin_jwt',
+      'payload_hash claim does not match sha256(body).');
+  }
+
+  rememberJti(jti, exp);
+
+  req.adminCaller = {
+    sub: typeof claims.sub === 'string' ? claims.sub : null,
+    jti,
+    endpoint: claims.endpoint,
+    payloadHash: claims.payload_hash,
+    iat,
+    exp,
+  };
+
+  console.log('[admin-jwt] accepted', {
+    endpoint: claims.endpoint,
+    sub: req.adminCaller.sub,
+    jti,
+    payloadHashPrefix: computedHash.slice(0, 12),
+  });
+
   return next();
 }
+
+// Backwards-compat alias used by the route definitions below.
+const requireAdminToken = requireAdminJwt;
+
+// Exposed for unit tests.
+module.exports.__test = {
+  requireAdminJwt,
+  rememberJti,
+  isJtiReplay,
+  ADMIN_JWT_AUDIENCE,
+  ADMIN_JWT_PURPOSE,
+  ADMIN_JWT_MAX_LIFETIME_SECONDS,
+};
 
 // Mapping des langues supportées avec traductions vrai/faux
 const LANGUAGES = {
