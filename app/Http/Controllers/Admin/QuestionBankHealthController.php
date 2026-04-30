@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\QuestionBank\BankDryDetector;
+use App\Services\QuestionBank\BankSelfHealer;
 use App\Services\QuestionBank\QuestionBankRepository;
 use App\Services\QuestionBank\Worker\BankNeedsCalculator;
 use Illuminate\Http\JsonResponse;
@@ -67,6 +68,12 @@ class QuestionBankHealthController extends Controller
         $lastRejects = array_map(fn ($r) => json_decode($r, true) ?: $r, $lastRejectsRaw);
 
         $dry = (new BankDryDetector())->snapshot();
+
+        $selfHealer = new BankSelfHealer();
+        $dry['self_heal'] = [
+            'config' => $selfHealer->configSnapshot(),
+            'last_action' => $selfHealer->lastActionSnapshot(),
+        ];
 
         return response()->json([
             'reported_at' => now()->toIso8601String(),

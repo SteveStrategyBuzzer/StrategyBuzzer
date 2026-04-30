@@ -4,6 +4,9 @@ namespace App\Services\QuestionBank\Worker;
 
 use App\Services\QuestionBank\QuestionBankRepository;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
+use Throwable;
 
 /**
  * Computes per-segment deficits in the question bank.
@@ -112,11 +115,115 @@ class BankNeedsCalculator
 
         usort($rows, fn ($a, $b) => $b['deficit'] <=> $a['deficit']);
 
+        // Auto-remediation (#99): when BankSelfHealer pinned a priority
+        // segment, prepend rows whose (mode, sub_domain, language) match
+        // so the worker attacks that tuple first. The rest of the sort
+        // order is preserved so unrelated segments still drain by
+        // largest-deficit-first.
+        $rows = $this->prependPrioritySegmentRows($rows);
+
         if ($limit !== null) {
             $rows = array_slice($rows, 0, $limit);
         }
 
         return $rows;
+    }
+
+    /**
+     * Reads `qb:worker:priority_segment` (written by BankSelfHealer) and
+     * pulls every matching deficit row to the front of the list. Match
+     * is on language + mode_target (boss vs. solo + level falls inside
+     * the band) + sub_domain (case-insensitive). The "general" theme
+     * matches every sub-domain so a global dry alert still surfaces.
+     */
+    private function prependPrioritySegmentRows(array $rows): array
+    {
+        try {
+            $key = (string) config('question_bank_profiles.worker.redis_keys.priority_segment');
+            if ($key === '') {
+                return $rows;
+            }
+            $raw = Redis::get($key);
+            if (!is_string($raw) || $raw === '') {
+                return $rows;
+            }
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) {
+                return $rows;
+            }
+            $until = (int) ($decoded['until_ts'] ?? 0);
+            if ($until > 0 && $until <= time()) {
+                return $rows;
+            }
+            $segment = $decoded['segment'] ?? null;
+            if (!is_array($segment)) {
+                return $rows;
+            }
+
+            $theme = isset($segment['theme']) ? (string) $segment['theme'] : null;
+            $language = isset($segment['language']) ? (string) $segment['language'] : null;
+            $isBoss = (bool) ($segment['is_boss'] ?? false);
+            $niveau = (int) ($segment['niveau'] ?? 0);
+
+            $matches = [];
+            $rest = [];
+            foreach ($rows as $row) {
+                if ($this->rowMatchesPrioritySegment($row, $theme, $language, $isBoss, $niveau)) {
+                    $matches[] = $row;
+                } else {
+                    $rest[] = $row;
+                }
+            }
+            return array_merge($matches, $rest);
+        } catch (Throwable $e) {
+            Log::warning('[BankNeedsCalculator] priority segment read failed (non-fatal)', [
+                'error' => $e->getMessage(),
+            ]);
+            return $rows;
+        }
+    }
+
+    private function rowMatchesPrioritySegment(
+        array $row,
+        ?string $theme,
+        ?string $language,
+        bool $isBoss,
+        int $niveau
+    ): bool {
+        if ($language !== null && $language !== '' && ($row['language'] ?? null) !== $language) {
+            return false;
+        }
+        $modeTarget = $row['mode_target'] ?? [];
+        $type = $modeTarget['type'] ?? null;
+        if ($isBoss) {
+            if ($type !== 'boss') {
+                return false;
+            }
+            if ($niveau > 0 && (int) ($modeTarget['level'] ?? 0) !== $niveau) {
+                return false;
+            }
+        } else {
+            if ($type !== 'solo_range') {
+                return false;
+            }
+            if ($niveau > 0) {
+                $levels = $modeTarget['levels'] ?? [0, 0];
+                $from = (int) ($levels[0] ?? 0);
+                $to = (int) ($levels[1] ?? 0);
+                if ($niveau < $from || $niveau > $to) {
+                    return false;
+                }
+            }
+        }
+
+        if ($theme !== null && $theme !== '' && mb_strtolower($theme) !== 'general' && mb_strtolower($theme) !== 'général') {
+            $rowSub = mb_strtolower((string) ($row['sub_domain'] ?? ''));
+            if ($rowSub !== mb_strtolower($theme)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

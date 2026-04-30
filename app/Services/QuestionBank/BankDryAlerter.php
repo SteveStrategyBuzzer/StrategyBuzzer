@@ -29,11 +29,15 @@ class BankDryAlerter
     private const PAGERDUTY_DEDUP_PREFIX = 'qb-bank-dry';
     private const PAGERDUTY_OPEN_TTL_SECONDS = 86400 * 7;
 
+    private BankSelfHealer $selfHealer;
+
     public function __construct(
         private readonly ?int $thresholdOverride = null,
         private readonly ?int $windowMinutesOverride = null,
         private readonly ?int $cooldownMinutesOverride = null,
+        ?BankSelfHealer $selfHealer = null,
     ) {
+        $this->selfHealer = $selfHealer ?? new BankSelfHealer();
     }
 
     public function maybeAlert(array $segment): void
@@ -56,6 +60,13 @@ class BankDryAlerter
                 return;
             }
 
+            // Self-heal BEFORE notifying Ops so the descriptor of what
+            // we did (rate boost, bucket flush, priority enqueue) lands
+            // inside the same alert payload. The healer is a no-op when
+            // QB_DRY_AUTOREMEDIATE_ENABLED is unset, in which case
+            // $selfHeal stays null.
+            $selfHeal = $this->selfHealer->attempt($segment);
+
             $slackUrl = (string) config('question_bank_profiles.worker.dry_alert.slack_webhook_url', '');
             $email = (string) config('question_bank_profiles.worker.dry_alert.email_recipient', '');
             $pagerDutyKey = $this->pagerDutyRoutingKey();
@@ -70,6 +81,7 @@ class BankDryAlerter
                     'window_minutes' => $windowMinutes,
                     'threshold' => $threshold,
                     'segment' => $segment,
+                    'self_heal' => $selfHeal,
                 ]);
                 return;
             }
@@ -81,6 +93,7 @@ class BankDryAlerter
                 'segment' => $segment,
                 'environment' => (string) config('question_bank_profiles.worker.dry_alert.environment_label', 'unknown'),
                 'at' => now()->toIso8601String(),
+                'self_heal' => $selfHeal,
             ];
 
             $delivered = false;
@@ -251,12 +264,13 @@ class BankDryAlerter
                 isset($segment['is_boss']) && $segment['is_boss'] ? ' (BOSS)' : ''
             );
             $text = sprintf(
-                ":rotating_light: *Question bank DRY* — %d CRITICAL events in last %d min (threshold=%d) on `%s`.\nLast segment: `%s`",
+                ":rotating_light: *Question bank DRY* — %d CRITICAL events in last %d min (threshold=%d) on `%s`.\nLast segment: `%s`%s",
                 $payload['count'],
                 $payload['window_minutes'],
                 $payload['threshold'],
                 $payload['environment'],
-                $segmentLabel
+                $segmentLabel,
+                $this->selfHealLine($payload['self_heal'] ?? null)
             );
             $response = Http::timeout(5)->post($url, ['text' => $text]);
             if ($response->successful()) {
@@ -285,6 +299,23 @@ class BankDryAlerter
             ]);
         }
         return false;
+    }
+
+    private function selfHealLine(?array $selfHeal): string
+    {
+        if (!is_array($selfHeal) || ($selfHeal['enabled'] ?? false) !== true) {
+            return '';
+        }
+        $outcome = (string) ($selfHeal['outcome'] ?? 'unknown');
+        $actionTypes = array_column($selfHeal['actions'] ?? [], 'type');
+        $actionsLabel = empty($actionTypes) ? 'no-op' : implode(', ', $actionTypes);
+        return sprintf(
+            "\nSelf-heal: %s (%s, boost=%dx for %d min)",
+            $outcome,
+            $actionsLabel,
+            (int) ($selfHeal['boost_rate_per_minute'] ?? 0),
+            (int) ($selfHeal['boost_minutes'] ?? 0)
+        );
     }
 
     private function sendPagerDutyTrigger(string $routingKey, array $payload): bool

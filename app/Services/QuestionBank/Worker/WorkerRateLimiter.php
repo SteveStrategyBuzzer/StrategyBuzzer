@@ -2,7 +2,9 @@
 
 namespace App\Services\QuestionBank\Worker;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Throwable;
 
 /**
  * Tiny token-bucket rate limiter backed by Redis. One bucket per
@@ -12,6 +14,13 @@ use Illuminate\Support\Facades\Redis;
  * The worker calls `acquireOrSleep()` before every IA call. If the
  * current window is full, the call blocks until the next minute, so
  * the rhythm stays constant by design.
+ *
+ * Auto-remediation (#99): when the BankSelfHealer writes a
+ * `qb:worker:rate_override` JSON blob (TTL = boost window), the limiter
+ * uses `max(default_rate, override_rate)` for the duration so a
+ * temporary throughput surge can drain a dry segment quickly. The
+ * override is read on every acquire so it both kicks in and decays
+ * automatically without restarting the worker.
  */
 class WorkerRateLimiter
 {
@@ -26,7 +35,8 @@ class WorkerRateLimiter
      */
     public function acquireOrSleep(): void
     {
-        if ($this->ratePerMinute <= 0) {
+        $effectiveRate = $this->effectiveRatePerMinute();
+        if ($effectiveRate <= 0) {
             // Pause mode — sleep one minute then retry.
             sleep(60);
             $this->acquireOrSleep();
@@ -35,6 +45,7 @@ class WorkerRateLimiter
 
         $tries = 0;
         while ($tries++ < 3) {
+            $effectiveRate = $this->effectiveRatePerMinute();
             $minute = (int) floor(time() / 60);
             $key = sprintf($this->bucketKeyPattern, $minute);
 
@@ -43,7 +54,7 @@ class WorkerRateLimiter
                 // First incr in this window — set TTL to ensure cleanup.
                 Redis::expire($key, 65);
             }
-            if ($count <= $this->ratePerMinute) {
+            if ($count <= $effectiveRate) {
                 return; // slot acquired
             }
 
@@ -51,6 +62,39 @@ class WorkerRateLimiter
             $now = time();
             $sleep = 60 - ($now % 60);
             sleep(max(1, $sleep));
+        }
+    }
+
+    /**
+     * Returns the active per-minute budget. Reads the optional
+     * `rate_override` key written by BankSelfHealer and uses
+     * max(default, override) while the override is in its TTL window.
+     */
+    public function effectiveRatePerMinute(): int
+    {
+        $base = $this->ratePerMinute;
+        try {
+            $overrideKey = (string) config('question_bank_profiles.worker.redis_keys.rate_override');
+            if ($overrideKey === '') {
+                return $base;
+            }
+            $raw = Redis::get($overrideKey);
+            if (!is_string($raw) || $raw === '') {
+                return $base;
+            }
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) {
+                return $base;
+            }
+            $until = (int) ($decoded['until_ts'] ?? 0);
+            if ($until <= time()) {
+                return $base;
+            }
+            $override = (int) ($decoded['rate_per_minute'] ?? 0);
+            return $override > $base ? $override : $base;
+        } catch (Throwable $e) {
+            Log::warning('[WorkerRateLimiter] override read failed (non-fatal)', ['error' => $e->getMessage()]);
+            return $base;
         }
     }
 }

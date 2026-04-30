@@ -233,6 +233,13 @@ return [
             // Presence means an incident has been triggered and not yet
             // resolved; the alerter clears it on a successful resolve.
             'dry_pagerduty_open' => 'qb:dry:pagerduty_open',
+            // Auto-remediation hooks (#99). The worker reads
+            // rate_override and priority_segment to bump throughput and
+            // attack the affected segment first; the health endpoint
+            // reads dry_last_self_heal to surface what was done.
+            'rate_override' => 'qb:worker:rate_override',
+            'priority_segment' => 'qb:worker:priority_segment',
+            'dry_last_self_heal' => 'qb:dry:last_self_heal',
         ],
 
         // Ops alert thresholds for bank-dry CRITICAL events. The alerter
@@ -252,6 +259,21 @@ return [
             // empty so the canonical PagerDuty Events v2 URL is used.
             'pagerduty_endpoint' => env('QB_DRY_ALERT_PAGERDUTY_ENDPOINT', ''),
             'environment_label' => env('APP_ENV', 'unknown'),
+        ],
+
+        /*
+        | Auto-remediation hook (#99). When enabled, a CRITICAL bank-dry
+        | breach triggers a self-heal cycle that bumps the worker's
+        | per-minute budget for `boost_minutes`, force-flushes the
+        | current rate bucket, and pins a priority segment so the worker
+        | refills the affected tuple first. All effects are TTL-bounded
+        | so a misfire automatically self-recovers. Default OFF — flip
+        | `QB_DRY_AUTOREMEDIATE_ENABLED=true` once dry-run looks sane.
+        */
+        'dry_autoremediate' => [
+            'enabled' => filter_var(env('QB_DRY_AUTOREMEDIATE_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+            'boost_minutes' => (int) env('QB_DRY_AUTOREMEDIATE_BOOST_MINUTES', 10),
+            'boost_rate_per_minute' => (int) env('QB_DRY_AUTOREMEDIATE_BOOST_RATE', 30),
         ],
     ],
 

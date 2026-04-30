@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Services\QuestionBank\BankDryDetector;
+use App\Services\QuestionBank\BankSelfHealer;
 use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
@@ -146,6 +147,59 @@ class QuestionBankHealthDryTest extends TestCase
         $this->assertNull($alert['last_alert_at']);
     }
 
+    public function test_health_endpoint_reports_self_heal_section_with_disabled_default(): void
+    {
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.self::TEST_TOKEN,
+        ])->getJson('/api/admin/questions/health');
+
+        $response->assertOk();
+        $selfHeal = $response->json('dry.self_heal');
+        $this->assertIsArray($selfHeal);
+        $this->assertArrayHasKey('config', $selfHeal);
+        $this->assertArrayHasKey('last_action', $selfHeal);
+        $this->assertFalse($selfHeal['config']['enabled']);
+        $this->assertNull($selfHeal['last_action']);
+        $this->assertNull($selfHeal['config']['active_boost']);
+    }
+
+    public function test_health_endpoint_surfaces_last_self_heal_action_after_critical(): void
+    {
+        config([
+            'question_bank_profiles.worker.dry_alert.threshold' => 1,
+            'question_bank_profiles.worker.dry_alert.window_minutes' => 10,
+            'question_bank_profiles.worker.dry_alert.cooldown_minutes' => 0,
+            'question_bank_profiles.worker.dry_alert.slack_webhook_url' => '',
+            'question_bank_profiles.worker.dry_alert.email_recipient' => '',
+            'question_bank_profiles.worker.dry_autoremediate.enabled' => true,
+            'question_bank_profiles.worker.dry_autoremediate.boost_minutes' => 8,
+            'question_bank_profiles.worker.dry_autoremediate.boost_rate_per_minute' => 22,
+        ]);
+
+        // Two CRITICAL events to push past threshold=1.
+        $detector = new BankDryDetector();
+        $detector->recordTotalDry('art', 41, 'fr', false, 'solo');
+        $detector->recordTotalDry('art', 41, 'fr', false, 'solo');
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.self::TEST_TOKEN,
+        ])->getJson('/api/admin/questions/health');
+
+        $response->assertOk();
+        $selfHeal = $response->json('dry.self_heal');
+        $this->assertTrue($selfHeal['config']['enabled']);
+        $this->assertSame(8, $selfHeal['config']['boost_minutes']);
+        $this->assertSame(22, $selfHeal['config']['boost_rate_per_minute']);
+        $this->assertIsArray($selfHeal['last_action']);
+        $this->assertSame('art', $selfHeal['last_action']['segment']['theme']);
+        $this->assertSame('success', $selfHeal['last_action']['outcome']);
+        $this->assertGreaterThan(0, $selfHeal['last_action']['ts']);
+        $actionTypes = array_column($selfHeal['last_action']['actions'], 'type');
+        $this->assertContains('rate_boost', $actionTypes);
+        $this->assertContains('priority_segment_enqueued', $actionTypes);
+        $this->assertIsArray($selfHeal['config']['active_boost']);
+    }
+
     public function test_health_endpoint_remains_gated_dry_section_not_leaked_without_token(): void
     {
         (new BankDryDetector())->recordTotalDry('sport', 100, 'es', true, 'master');
@@ -181,6 +235,9 @@ class QuestionBankHealthDryTest extends TestCase
             Redis::del(config('question_bank_profiles.worker.redis_keys.dry_total_segment_seen'));
             Redis::del(config('question_bank_profiles.worker.redis_keys.dry_fallback_segment_seen'));
             Redis::del(config('question_bank_profiles.worker.redis_keys.dry_last_alert'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.rate_override'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.priority_segment'));
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_last_self_heal'));
         } catch (\Throwable $e) {
             // intentionally ignored
         }
