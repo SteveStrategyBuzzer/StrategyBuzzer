@@ -229,16 +229,28 @@ return [
             // Cooldown marker (JSON blob) so a sustained outage produces
             // one alert per cooldown window, not a flood.
             'dry_last_alert' => 'qb:dry:last_alert',
+            // PagerDuty incident-open marker (JSON blob with dedup_key + ts).
+            // Presence means an incident has been triggered and not yet
+            // resolved; the alerter clears it on a successful resolve.
+            'dry_pagerduty_open' => 'qb:dry:pagerduty_open',
         ],
 
         // Ops alert thresholds for bank-dry CRITICAL events. The alerter
-        // is a no-op for any channel left unset; both unset = disabled.
+        // is a no-op for any channel left unset; all three unset = disabled.
         'dry_alert' => [
             'threshold' => (int) env('QB_DRY_ALERT_THRESHOLD', 5),
             'window_minutes' => (int) env('QB_DRY_ALERT_WINDOW_MINUTES', 10),
             'cooldown_minutes' => (int) env('QB_DRY_ALERT_COOLDOWN_MINUTES', 30),
             'slack_webhook_url' => env('QB_DRY_ALERT_SLACK_WEBHOOK_URL', ''),
             'email_recipient' => env('QB_DRY_ALERT_EMAIL', ''),
+            // PagerDuty Events API v2 routing (integration) key. Unset = disabled.
+            // When set, threshold breach opens an incident with a stable
+            // dedup_key, and the alerter resolves it once the rolling
+            // CRITICAL count over `window_minutes` falls back to 0.
+            'pagerduty_routing_key' => env('QB_DRY_ALERT_PAGERDUTY_ROUTING_KEY', ''),
+            // Endpoint override for tests; production should leave this
+            // empty so the canonical PagerDuty Events v2 URL is used.
+            'pagerduty_endpoint' => env('QB_DRY_ALERT_PAGERDUTY_ENDPOINT', ''),
             'environment_label' => env('APP_ENV', 'unknown'),
         ],
     ],

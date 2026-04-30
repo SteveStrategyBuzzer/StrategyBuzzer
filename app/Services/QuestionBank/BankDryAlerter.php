@@ -10,14 +10,25 @@ use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 /**
- * Proactive ops alerter for bank-dry CRITICAL events. Posts to Slack
- * and/or email once the rolling CRITICAL count over a configurable
- * window strictly exceeds the configured threshold, then enters a
- * cooldown so a sustained outage produces one alert per cooldown
- * window. Never propagates exceptions — gameplay is the priority.
+ * Proactive ops alerter for bank-dry CRITICAL events. Posts to Slack,
+ * email and/or PagerDuty once the rolling CRITICAL count over a
+ * configurable window strictly exceeds the configured threshold, then
+ * enters a cooldown so a sustained outage produces one alert per
+ * cooldown window.
+ *
+ * PagerDuty integration uses Events API v2: the alerter opens an
+ * incident with a stable dedup_key on threshold breach and resolves it
+ * once the rolling CRITICAL count over the same window falls back to 0
+ * (auto-recovery, no manual ack needed).
+ *
+ * Never propagates exceptions — gameplay is the priority.
  */
 class BankDryAlerter
 {
+    private const PAGERDUTY_DEFAULT_ENDPOINT = 'https://events.pagerduty.com/v2/enqueue';
+    private const PAGERDUTY_DEDUP_PREFIX = 'qb-bank-dry';
+    private const PAGERDUTY_OPEN_TTL_SECONDS = 86400 * 7;
+
     public function __construct(
         private readonly ?int $thresholdOverride = null,
         private readonly ?int $windowMinutesOverride = null,
@@ -47,12 +58,13 @@ class BankDryAlerter
 
             $slackUrl = (string) config('question_bank_profiles.worker.dry_alert.slack_webhook_url', '');
             $email = (string) config('question_bank_profiles.worker.dry_alert.email_recipient', '');
+            $pagerDutyKey = $this->pagerDutyRoutingKey();
 
             // No destination wired: log a critical line so the signal
             // still reaches the log aggregator, and do NOT bump the
             // cooldown — the next CRITICAL event after Ops configures
             // a destination must be able to fire immediately.
-            if ($slackUrl === '' && $email === '') {
+            if ($slackUrl === '' && $email === '' && $pagerDutyKey === '') {
                 Log::critical('[BankDryAlerter] Threshold breached but no destination configured', [
                     'count' => $count,
                     'window_minutes' => $windowMinutes,
@@ -78,6 +90,12 @@ class BankDryAlerter
             if ($email !== '') {
                 $delivered = $this->sendEmail($email, $payload) || $delivered;
             }
+            if ($pagerDutyKey !== '') {
+                if ($this->sendPagerDutyTrigger($pagerDutyKey, $payload)) {
+                    $this->markPagerDutyOpen($this->pagerDutyDedupKey());
+                    $delivered = true;
+                }
+            }
 
             if ($delivered) {
                 $this->markAlertSent($cooldownSeconds, $payload);
@@ -90,9 +108,46 @@ class BankDryAlerter
     }
 
     /**
+     * Auto-resolve an open PagerDuty incident once the rolling CRITICAL
+     * count over the alert window has returned to 0. Safe to call on
+     * every health snapshot — it is a cheap no-op when PagerDuty is
+     * not configured or no incident is open.
+     */
+    public function maybeResolve(): void
+    {
+        try {
+            $routingKey = $this->pagerDutyRoutingKey();
+            if ($routingKey === '') {
+                return;
+            }
+            if (!$this->isPagerDutyOpen()) {
+                return;
+            }
+
+            $windowMinutes = $this->windowMinutes();
+            if ($windowMinutes <= 0) {
+                return;
+            }
+
+            $count = $this->rollingCriticalCount($windowMinutes);
+            if ($count > 0) {
+                return;
+            }
+
+            if ($this->sendPagerDutyResolve($routingKey)) {
+                $this->clearPagerDutyOpen();
+            }
+        } catch (Throwable $e) {
+            Log::warning('[BankDryAlerter] maybeResolve failed (non-fatal)', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * @return array{
      *   threshold:int, window_minutes:int, cooldown_minutes:int,
-     *   slack_configured:bool, email_configured:bool,
+     *   slack_configured:bool, email_configured:bool, pagerduty_configured:bool,
      *   in_cooldown:bool, last_alert_at:?string,
      * }
      */
@@ -122,6 +177,7 @@ class BankDryAlerter
             'cooldown_minutes' => $this->cooldownMinutes(),
             'slack_configured' => ((string) config('question_bank_profiles.worker.dry_alert.slack_webhook_url', '')) !== '',
             'email_configured' => ((string) config('question_bank_profiles.worker.dry_alert.email_recipient', '')) !== '',
+            'pagerduty_configured' => $this->pagerDutyRoutingKey() !== '',
             'in_cooldown' => $inCooldown,
             'last_alert_at' => $lastAlertAt,
         ];
@@ -229,6 +285,145 @@ class BankDryAlerter
             ]);
         }
         return false;
+    }
+
+    private function sendPagerDutyTrigger(string $routingKey, array $payload): bool
+    {
+        try {
+            $segment = $payload['segment'];
+            $segmentLabel = sprintf(
+                'theme=%s niveau=%s lang=%s%s',
+                $segment['theme'] ?? '?',
+                $segment['niveau'] ?? '?',
+                $segment['language'] ?? '?',
+                isset($segment['is_boss']) && $segment['is_boss'] ? ' (BOSS)' : ''
+            );
+            $body = [
+                'routing_key' => $routingKey,
+                'event_action' => 'trigger',
+                'dedup_key' => $this->pagerDutyDedupKey(),
+                'payload' => [
+                    'summary' => sprintf(
+                        'Question bank DRY — %d CRITICAL events in last %d min (threshold=%d) on %s',
+                        $payload['count'],
+                        $payload['window_minutes'],
+                        $payload['threshold'],
+                        $payload['environment']
+                    ),
+                    'source' => 'question-bank',
+                    'severity' => 'critical',
+                    'component' => 'question-bank',
+                    'group' => (string) $payload['environment'],
+                    'class' => 'bank-dry',
+                    'custom_details' => [
+                        'segment_label' => $segmentLabel,
+                        'segment' => $segment,
+                        'count' => $payload['count'],
+                        'window_minutes' => $payload['window_minutes'],
+                        'threshold' => $payload['threshold'],
+                        'environment' => $payload['environment'],
+                        'at' => $payload['at'] ?? null,
+                    ],
+                ],
+            ];
+            $response = Http::timeout(5)->post($this->pagerDutyEndpoint(), $body);
+            if ($response->successful()) {
+                return true;
+            }
+            Log::warning('[BankDryAlerter] PagerDuty trigger returned non-2xx', [
+                'status' => $response->status(),
+                'body_preview' => substr((string) $response->body(), 0, 200),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('[BankDryAlerter] PagerDuty trigger POST failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+        return false;
+    }
+
+    private function sendPagerDutyResolve(string $routingKey): bool
+    {
+        try {
+            $body = [
+                'routing_key' => $routingKey,
+                'event_action' => 'resolve',
+                'dedup_key' => $this->pagerDutyDedupKey(),
+            ];
+            $response = Http::timeout(5)->post($this->pagerDutyEndpoint(), $body);
+            if ($response->successful()) {
+                return true;
+            }
+            Log::warning('[BankDryAlerter] PagerDuty resolve returned non-2xx', [
+                'status' => $response->status(),
+                'body_preview' => substr((string) $response->body(), 0, 200),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('[BankDryAlerter] PagerDuty resolve POST failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+        return false;
+    }
+
+    private function isPagerDutyOpen(): bool
+    {
+        try {
+            $key = config('question_bank_profiles.worker.redis_keys.dry_pagerduty_open');
+            $raw = Redis::get($key);
+            return is_string($raw) && $raw !== '';
+        } catch (Throwable $e) {
+            Log::warning('[BankDryAlerter] pagerduty open read failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    private function markPagerDutyOpen(string $dedupKey): void
+    {
+        try {
+            $key = config('question_bank_profiles.worker.redis_keys.dry_pagerduty_open');
+            $body = json_encode([
+                'dedup_key' => $dedupKey,
+                'ts' => time(),
+                'at' => now()->toIso8601String(),
+            ], JSON_UNESCAPED_UNICODE);
+            Redis::set($key, $body);
+            Redis::expire($key, self::PAGERDUTY_OPEN_TTL_SECONDS);
+        } catch (Throwable $e) {
+            Log::warning('[BankDryAlerter] markPagerDutyOpen failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function clearPagerDutyOpen(): void
+    {
+        try {
+            Redis::del(config('question_bank_profiles.worker.redis_keys.dry_pagerduty_open'));
+        } catch (Throwable $e) {
+            Log::warning('[BankDryAlerter] clearPagerDutyOpen failed', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function pagerDutyRoutingKey(): string
+    {
+        return (string) config('question_bank_profiles.worker.dry_alert.pagerduty_routing_key', '');
+    }
+
+    private function pagerDutyEndpoint(): string
+    {
+        $endpoint = (string) config('question_bank_profiles.worker.dry_alert.pagerduty_endpoint', '');
+        return $endpoint !== '' ? $endpoint : self::PAGERDUTY_DEFAULT_ENDPOINT;
+    }
+
+    private function pagerDutyDedupKey(): string
+    {
+        $env = (string) config('question_bank_profiles.worker.dry_alert.environment_label', 'unknown');
+        return self::PAGERDUTY_DEDUP_PREFIX . ':' . ($env !== '' ? $env : 'unknown');
     }
 
     private function threshold(): int

@@ -157,6 +157,11 @@ class BankDryDetector
             $severity = self::SEVERITY_OK;
         }
 
+        // Best-effort auto-resolve of any open PagerDuty incident now
+        // that the rolling CRITICAL count may have returned to 0.
+        // Cheap no-op when PagerDuty isn't configured / no incident open.
+        $this->alerter->maybeResolve();
+
         return [
             'fallback_used_1h' => $fallback1h,
             'total_dry_1h' => $total1h,
