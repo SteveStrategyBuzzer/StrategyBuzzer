@@ -799,6 +799,18 @@ class DuoController extends Controller
         ]);
     }
 
+    /**
+     * Duo "hint" joker.
+     *
+     * Historically called Gemini directly from PHP. As of #87 the
+     * architectural invariant is that NO PHP gameplay path holds AI
+     * credentials — the bank-refill router endpoint is the only
+     * AI-touching path left, and it is reserved for the bank worker.
+     *
+     * Until a router-backed hint endpoint is wired (tracked separately),
+     * this joker degrades to the deterministic fallback that was already
+     * served whenever the Gemini key was absent.
+     */
     public function getHint(Request $request, DuoMatch $match)
     {
         $user = Auth::user();
@@ -813,37 +825,16 @@ class DuoController extends Controller
             return response()->json(['hint' => 'Aucune question disponible']);
         }
 
-        try {
-            $apiKey = env('GEMINI_API_KEY');
-            if (!$apiKey) {
-                return response()->json(['hint' => 'Réfléchissez bien à cette question...']);
-            }
-
-            $client = new \GuzzleHttp\Client();
-            $response = $client->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}", [
-                'json' => [
-                    'contents' => [[
-                        'parts' => [[
-                            'text' => "Donne un indice court (max 15 mots) pour aider à répondre à cette question de quiz sans donner la réponse directement: \"{$question}\""
-                        ]]
-                    ]],
-                    'generationConfig' => [
-                        'temperature' => 0.7,
-                        'maxOutputTokens' => 50,
-                    ]
-                ],
-                'timeout' => 5,
-            ]);
-
-            $result = json_decode($response->getBody(), true);
-            $hint = $result['candidates'][0]['content']['parts'][0]['text'] ?? 'Réfléchissez bien...';
-
-            return response()->json(['hint' => trim($hint)]);
-        } catch (\Exception $e) {
-            return response()->json(['hint' => 'Cherchez dans vos connaissances...']);
-        }
+        return response()->json(['hint' => 'Réfléchissez bien à cette question...']);
     }
 
+    /**
+     * Duo "AI suggestion" joker.
+     *
+     * Same architectural rationale as `getHint()`: no direct Gemini call
+     * from PHP. Degrades to the random-answer fallback that already ran
+     * whenever the Gemini key was absent.
+     */
     public function getAISuggestion(Request $request, DuoMatch $match)
     {
         $user = Auth::user();
@@ -852,51 +843,16 @@ class DuoController extends Controller
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
 
-        $question = $request->input('question', '');
         $answers = $request->input('answers', []);
+        $question = $request->input('question', '');
 
         if (empty($question) || empty($answers)) {
             $randomIndex = rand(0, 3);
             return response()->json(['suggestion' => $randomIndex, 'confidence' => 50]);
         }
 
-        try {
-            $apiKey = env('GEMINI_API_KEY');
-            if (!$apiKey) {
-                $randomIndex = rand(0, count($answers) - 1);
-                return response()->json(['suggestion' => $randomIndex, 'confidence' => 60]);
-            }
-
-            $answersText = implode("\n", array_map(fn($a, $i) => ($i + 1) . ". " . $a, $answers, array_keys($answers)));
-
-            $client = new \GuzzleHttp\Client();
-            $response = $client->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}", [
-                'json' => [
-                    'contents' => [[
-                        'parts' => [[
-                            'text' => "Question: {$question}\nRéponses possibles:\n{$answersText}\n\nRéponds UNIQUEMENT avec le numéro de la réponse la plus probable (1, 2, 3 ou 4). Rien d'autre."
-                        ]]
-                    ]],
-                    'generationConfig' => [
-                        'temperature' => 0.3,
-                        'maxOutputTokens' => 10,
-                    ]
-                ],
-                'timeout' => 5,
-            ]);
-
-            $result = json_decode($response->getBody(), true);
-            $answerText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '1';
-            $answerNum = (int) preg_replace('/[^0-9]/', '', $answerText);
-
-            $suggestion = max(0, min(count($answers) - 1, $answerNum - 1));
-            $confidence = rand(75, 90);
-
-            return response()->json(['suggestion' => $suggestion, 'confidence' => $confidence]);
-        } catch (\Exception $e) {
-            $randomIndex = rand(0, count($answers) - 1);
-            return response()->json(['suggestion' => $randomIndex, 'confidence' => 55]);
-        }
+        $randomIndex = rand(0, count($answers) - 1);
+        return response()->json(['suggestion' => $randomIndex, 'confidence' => 60]);
     }
 
     public function getPreviewQuestions(Request $request, DuoMatch $match)

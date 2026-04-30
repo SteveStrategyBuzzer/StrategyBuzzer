@@ -3,23 +3,29 @@
 namespace App\Services\QuestionBank\Worker;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Bank-side LLM caller. INDEPENDENT from the legacy live-match path
- * (AIQuestionGeneratorService → Node API) — the worker speaks to
- * Gemini directly so we can ship a rich, segment-aware prompt
- * (depth rubric, cognitive_type explanation, multilingual JSON schema)
- * without bloating the live-match endpoint.
+ * Bank-side LLM caller. Talks to the Node Question API's bank-refill
+ * endpoint (`POST /generate-bank-question`), which is itself wired
+ * through the multi-provider AI router (multi-key, quarantine,
+ * failover) shipped in #83.
  *
- * #82 ships single-provider Gemini. #83 swaps this generator for a
- * multi-provider router with key rotation; the worker doesn't change.
+ * Before #87 this class hit a single provider directly, so an outage on
+ * that provider would freeze the bank refill pipeline entirely. Now the
+ * worker sends the segment to the router endpoint, which:
+ *   - rotates keys per provider, fails over across providers on outage,
+ *   - validates the rich JSON contract INSIDE its retry loop,
+ *   - returns the parsed payload enriched with `source` (provider name),
+ *     `provider_key_index` and `latency_ms`.
+ *
+ * AI credentials live exclusively on the Node service. The worker
+ * remains the only PHP caller of the router endpoint (architectural
+ * constraint locked in by #88).
  */
 class BankAIGenerator
 {
-    private const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s';
-    private const GEMINI_MODEL = 'gemini-2.0-flash';
+    private const REQUEST_TIMEOUT_SECONDS = 90;
 
     /**
      * @param  array  $segment  one row from BankNeedsCalculator output
@@ -27,57 +33,55 @@ class BankAIGenerator
      */
     public function generateForSegment(array $segment): array
     {
-        $apiKey = env('GEMINI_API_KEY');
-        if (!$apiKey) {
-            return ['ok' => false, 'error' => 'GEMINI_API_KEY not set'];
-        }
+        $endpoint = rtrim(env('QUESTION_API_URL', 'http://localhost:3000'), '/').'/generate-bank-question';
 
-        $prompt = $this->buildPrompt($segment);
+        $languages = config('question_bank_profiles.worker.preferred_languages', ['fr']);
+
+        $body = [
+            'domain' => (string) $segment['domain'],
+            'sub_domain' => (string) $segment['sub_domain'],
+            'cognitive_type' => (string) $segment['cognitive_type'],
+            'question_type' => (string) ($segment['question_type'] ?? 'qcm'),
+            'difficulty_depth' => (int) $segment['depth_range'][1],
+            'languages' => array_values($languages),
+        ];
 
         try {
-            $response = Http::timeout(45)->post(
-                sprintf(self::GEMINI_URL, self::GEMINI_MODEL, $apiKey),
-                [
-                    'contents' => [[
-                        'parts' => [['text' => $prompt]],
-                    ]],
-                    'generationConfig' => [
-                        'response_mime_type' => 'application/json',
-                        'temperature' => 0.85,
-                        'topP' => 0.95,
-                    ],
-                ]
-            );
+            $response = Http::timeout(self::REQUEST_TIMEOUT_SECONDS)->post($endpoint, $body);
         } catch (\Throwable $e) {
             return ['ok' => false, 'error' => 'transport: '.$e->getMessage()];
         }
 
         if (!$response->successful()) {
+            // The router returns structured 503/502 payloads (no_providers_configured,
+            // all_providers_exhausted, router_error); surface the detail so the
+            // worker's existing exponential backoff kicks in just like before.
+            $detail = null;
+            try {
+                $json = $response->json();
+                if (is_array($json)) {
+                    $detail = $json['error'] ?? null;
+                    if (!empty($json['detail'])) {
+                        $detail = $detail ? $detail.': '.$json['detail'] : $json['detail'];
+                    }
+                }
+            } catch (\Throwable $_) {
+                // Body wasn't JSON; ignore and fall back to status only.
+            }
+
             return [
                 'ok' => false,
-                'error' => 'gemini http error',
+                'error' => 'router http error'.($detail ? ' ('.$detail.')' : ''),
                 'http_status' => $response->status(),
             ];
         }
 
         $body = $response->json();
-        $text = $body['candidates'][0]['content']['parts'][0]['text'] ?? null;
-        if (!$text) {
-            return ['ok' => false, 'error' => 'no candidate text'];
+        if (!is_array($body) || ($body['ok'] ?? false) !== true || !is_array($body['payload'] ?? null)) {
+            return ['ok' => false, 'error' => 'router returned invalid envelope'];
         }
 
-        // Gemini sometimes wraps JSON in ```json fences. Strip them.
-        $text = trim($text);
-        if (str_starts_with($text, '```')) {
-            $text = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', $text) ?? $text;
-        }
-
-        $decoded = json_decode($text, true);
-        if (!is_array($decoded)) {
-            return ['ok' => false, 'error' => 'invalid JSON: '.json_last_error_msg()];
-        }
-
-        $payload = $this->shapeIntoPayload($decoded, $segment);
+        $payload = $this->shapeIntoPayload($body['payload'], $segment);
         if ($payload === null) {
             return ['ok' => false, 'error' => 'shape mismatch'];
         }
@@ -85,59 +89,20 @@ class BankAIGenerator
         return ['ok' => true, 'payload' => $payload];
     }
 
-    private function buildPrompt(array $segment): string
-    {
-        $config = config('question_bank_profiles');
-        $depth = (int) $segment['depth_range'][1];
-        $rubric = $this->rubricFor($depth, $config);
-        $cogExplain = $this->cognitiveExplain($segment['cognitive_type']);
-        $langs = $config['worker']['preferred_languages'];
-        $langList = implode(',', $langs);
-
-        $schema = "{\n";
-        $schema .= '  "concept_id": "<short stable kebab-case id, unique to this fact>",'."\n";
-        $schema .= '  "concept_family": "<broader topic family, lowercase kebab>",'."\n";
-        $schema .= '  "translations": {'."\n";
-        foreach ($langs as $lang) {
-            $schema .= '    "'.$lang.'": { "question_text": "...", "answer_a": "...", "answer_b": "...", "answer_c": "...", "answer_d": "...", "correct_answer_key": "A|B|C|D", "explanation": "...", "saviez_vous": "..." },'."\n";
-        }
-        $schema = rtrim($schema, ",\n")."\n  }\n}";
-
-        return <<<PROMPT
-Tu es un générateur de questions de quiz pour StrategyBuzzer. Génère UNE question dans le format JSON exact ci-dessous.
-
-CONTRAINTES STRICTES:
-- Domaine: {$segment['domain']}
-- Sous-domaine: {$segment['sub_domain']}
-- Type cognitif requis: {$segment['cognitive_type']} — {$cogExplain}
-- Niveau de difficulté (depth {$depth}): {$rubric}
-- Format: 4 réponses (A, B, C, D), une seule correcte
-- Le `correct_answer_key` doit être la même lettre dans TOUTES les langues (les positions A/B/C/D sont logiquement alignées)
-- Le champ `saviez_vous` est OBLIGATOIRE et doit contenir une anecdote concrète d'au moins 30 caractères, jamais générique
-- Les langues à fournir: {$langList}
-
-LANGUES: produis chaque traduction NATURELLE dans la langue cible (pas de traduction littérale mot à mot). La logique de la question doit être identique partout.
-
-CONCEPT_ID: utilise un identifiant stable (kebab-case) qui décrit le fait précis testé. Exemple: "tour-eiffel-construction-1889" plutôt que "monument-paris-1".
-
-Réponds UNIQUEMENT avec le JSON suivant (pas de markdown, pas de prose):
-{$schema}
-PROMPT;
-    }
-
     /**
-     * Reshape the LLM response into the canonical addToBank() payload,
-     * carrying every fixed field from the segment so the writer doesn't
-     * need to trust the LLM on classification.
+     * Reshape the router's validated payload into the canonical addToBank()
+     * payload, carrying every fixed field from the segment so the writer
+     * doesn't trust the LLM on classification, and stamping the worker's
+     * own `source` (the provider that produced the question, as reported
+     * by the router — surfaces real failover events in the bank report).
      */
-    private function shapeIntoPayload(array $decoded, array $segment): ?array
+    private function shapeIntoPayload(array $routed, array $segment): ?array
     {
-        $translations = $decoded['translations'] ?? null;
+        $translations = $routed['translations'] ?? null;
         if (!is_array($translations) || empty($translations)) {
             return null;
         }
 
-        // Sanitise translations.
         $cleanTranslations = [];
         foreach ($translations as $lang => $tr) {
             if (!is_array($tr)) {
@@ -158,15 +123,20 @@ PROMPT;
             return null;
         }
 
+        // The router stamps `source` with the provider that actually answered
+        // (gemini|openai|...). Persist it so `php artisan questions:bank:report`
+        // can show real failover events. Fall back to a safe label if missing.
+        $source = (string) ($routed['source'] ?? 'router');
+
         $payload = [
             'difficulty_depth' => (int) $segment['depth_range'][1],
             'domain' => (string) $segment['domain'],
             'sub_domain' => (string) $segment['sub_domain'],
             'question_type' => (string) ($segment['question_type'] ?? 'qcm'),
             'cognitive_type' => (string) $segment['cognitive_type'],
-            'concept_id' => (string) ($decoded['concept_id'] ?? Str::random(20)),
-            'concept_family' => (string) ($decoded['concept_family'] ?? $segment['sub_domain']),
-            'source' => 'gemini',
+            'concept_id' => (string) ($routed['concept_id'] ?? Str::random(20)),
+            'concept_family' => (string) ($routed['concept_family'] ?? $segment['sub_domain']),
+            'source' => $source,
             'validated' => $this->hasAllPreferred($cleanTranslations),
             'translations' => $cleanTranslations,
         ];
@@ -194,23 +164,5 @@ PROMPT;
             }
         }
         return true;
-    }
-
-    private function rubricFor(int $depth, array $config): string
-    {
-        if ($depth >= 9) return $config['depth_rubric']['9-10'];
-        if ($depth >= 7) return $config['depth_rubric']['7-8'];
-        if ($depth >= 5) return $config['depth_rubric']['5-6'];
-        return $config['depth_rubric']['3-4'];
-    }
-
-    private function cognitiveExplain(string $type): string
-    {
-        return match ($type) {
-            'recognition' => 'fait direct, mémorisation pure ; pas de raisonnement multi-étapes',
-            'reasoning' => 'requiert une déduction, comparaison ou calcul léger ; pas un simple rappel',
-            'deceptive_trap' => 'distracteurs très plausibles ; confusion classique ; bonne réponse contre-intuitive',
-            default => 'générique',
-        };
     }
 }
