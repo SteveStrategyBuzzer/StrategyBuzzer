@@ -66,6 +66,9 @@ Cloud_SQL_Export*.sql
 *_export.sql
 *.dump.sql
 
+# Migration exports temporaires VM→Neon (jamais commiter, supprimer après import)
+database/migration_exports/
+
 # Firebase credentials
 storage/app/firebase-credentials.json
 
