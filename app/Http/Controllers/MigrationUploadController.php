@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * TEMPORAIRE — Migration VM→Neon
+ * À supprimer intégralement après import via scripts/migration_cleanup.sh
+ */
 class MigrationUploadController extends Controller
 {
     private const UPLOAD_SECRET = '81528f0c3498cc2cb5ad04146e2d5028700b7269a635b7fa8a890beb38d43d73';
@@ -24,10 +28,23 @@ class MigrationUploadController extends Controller
         'export_player_messages',
     ];
 
+    /**
+     * Vérifie le secret dans chaque requête entrante.
+     */
+    private function checkSecret(Request $request): bool
+    {
+        return $request->header('X-Migration-Secret') === self::UPLOAD_SECRET;
+    }
+
+    /**
+     * Reçoit un fichier CSV et le stocke HORS de public/.
+     * Destination : <project_root>/database/migration_exports/
+     * (non accessible via HTTP — le web root est public/)
+     */
     public function upload(Request $request)
     {
-        if ($request->header('X-Migration-Secret') !== self::UPLOAD_SECRET) {
-            Log::warning('Migration upload: invalid secret attempt from ' . $request->ip());
+        if (!$this->checkSecret($request)) {
+            Log::warning('Migration upload: tentative non autorisée depuis ' . $request->ip());
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
@@ -45,18 +62,19 @@ class MigrationUploadController extends Controller
             return response()->json(['error' => 'Only CSV files accepted'], 422);
         }
 
+        // Stockage dans database/migration_exports/ — hors public/, non exposé web
         $destination = base_path('database/migration_exports');
         if (!is_dir($destination)) {
-            mkdir($destination, 0755, true);
+            mkdir($destination, 0700, true);
         }
 
         $filename = $name . '.csv';
         $file->move($destination, $filename);
 
-        $path = $destination . '/' . $filename;
-        $lines = max(0, count(file($path)) - 1);
+        $path    = $destination . '/' . $filename;
+        $lines   = max(0, count(file($path)) - 1);
 
-        Log::info("Migration upload received: {$filename} ({$lines} data rows)");
+        Log::info("Migration upload reçu : {$filename} ({$lines} lignes de données)");
 
         return response()->json([
             'status'    => 'ok',
@@ -65,14 +83,22 @@ class MigrationUploadController extends Controller
         ]);
     }
 
-    public function status()
+    /**
+     * Retourne l'état des fichiers uploadés.
+     * Protégé par le même secret X-Migration-Secret.
+     */
+    public function status(Request $request)
     {
+        if (!$this->checkSecret($request)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $destination = base_path('database/migration_exports');
-        $files = [];
+        $files       = [];
 
         foreach (self::ALLOWED_FILES as $name) {
-            $path = $destination . '/' . $name . '.csv';
-            $files[$name] = file_exists($path)
+            $path          = $destination . '/' . $name . '.csv';
+            $files[$name]  = file_exists($path)
                 ? ['exists' => true, 'rows' => max(0, count(file($path)) - 1), 'size' => filesize($path)]
                 : ['exists' => false];
         }
