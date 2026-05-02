@@ -557,12 +557,3 @@ if (! app()->environment('production')) {
             ->name('league.individual.setup-bot-match');
     });
 }
-
-// ============================================================
-// MIGRATION TEMPORAIRE VM→Neon — À SUPPRIMER APRÈS IMPORT
-// ============================================================
-Route::prefix('_migration')->group(function () {
-    Route::post('/upload', [App\Http\Controllers\MigrationUploadController::class, 'upload'])
-        ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
-    Route::get('/status', [App\Http\Controllers\MigrationUploadController::class, 'status']);
-});
