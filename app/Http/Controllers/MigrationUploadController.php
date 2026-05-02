@@ -28,6 +28,14 @@ class MigrationUploadController extends Controller
         'export_player_messages',
     ];
 
+    // Noms acceptés sans préfixe export_ (normalisés automatiquement)
+    private const NAME_ALIASES = [
+        'users', 'quests', 'coin_ledger', 'payments',
+        'player_statistics', 'player_duo_stats', 'match_performances',
+        'duo_matches', 'user_avatars', 'user_quest_progress',
+        'player_contacts', 'player_messages',
+    ];
+
     /**
      * Vérifie le secret dans chaque requête entrante.
      */
@@ -49,8 +57,12 @@ class MigrationUploadController extends Controller
         }
 
         $name = $request->input('name');
+        // Normalise : accepte "users" ou "export_users"
+        if (in_array($name, self::NAME_ALIASES, true)) {
+            $name = 'export_' . $name;
+        }
         if (!in_array($name, self::ALLOWED_FILES, true)) {
-            return response()->json(['error' => 'Invalid file name'], 422);
+            return response()->json(['error' => 'Invalid file name: ' . $name], 422);
         }
 
         if (!$request->hasFile('file')) {
