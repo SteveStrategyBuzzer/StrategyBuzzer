@@ -185,7 +185,20 @@ class BoutiqueController extends Controller
         $coins    = $user?->coins ?? 0;
         $competenceCoins = $user?->competence_coins ?? 0;
         $settings = (array) ($user?->profile_settings ?? []);
-        $unlocked = $settings['unlocked_avatars'] ?? [];
+
+        // Source de vérité : profile_settings + table user_avatars fusionnés
+        $unlockedDb = $user ? DB::connection('pgsql')
+            ->table('user_avatars')
+            ->where('user_id', $user->id)
+            ->where('unlocked', true)
+            ->pluck('avatar_name')
+            ->toArray() : [];
+        $unlocked = array_values(array_unique(array_merge(
+            (array) ($settings['unlocked_avatars'] ?? []),
+            (array) ($settings['unlocked'] ?? []),
+            $unlockedDb
+        )));
+
         $masterPurchased = $user && ($user->master_purchased ?? false);
         $duoPurchased = $user && ($user->duo_purchased ?? false);
         $leaguePurchased = $user && ($user->league_purchased ?? false);
