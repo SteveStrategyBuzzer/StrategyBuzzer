@@ -1104,6 +1104,202 @@
   </div>
 </div>
 
+{{-- =================== DONNÉES COMPLÈTES DU COMPTE =================== --}}
+@php
+    $ps = data_get($settings, 'pseudonym', $player?->name ?? '—');
+    $avatarUrl = data_get($settings, 'avatar.url', '');
+    $avatarName = data_get($settings, 'avatar.name', '—');
+    $lang = data_get($settings, 'language', '—');
+    $country = data_get($settings, 'country', '—');
+    $ambianceOn = data_get($settings, 'sound.ambiance', false);
+    $gameplayOn = data_get($settings, 'sound.gameplay', false);
+    $completedQuests = collect($profileQuests ?? [])->filter(fn($q) => !empty($q->completed_at));
+    $pendingQuests   = collect($profileQuests ?? [])->filter(fn($q) => empty($q->completed_at));
+    $totalPayments   = count($profilePayments ?? []);
+    $completedPays   = collect($profilePayments ?? [])->filter(fn($p) => $p->status === 'completed');
+    $totalCoinsAwarded = $completedPays->sum('coins_awarded');
+@endphp
+
+<div class="sb-panel" style="margin-top:12px;">
+  <div class="sb-title" style="text-align:center; margin-bottom:16px;">🧾 {{ __('Données du Compte') }}</div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+
+    {{-- Identité --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px;">
+      <div style="font-size:15px; font-weight:700; margin-bottom:10px; color:#4FC3F7;">👤 {{ __('Identité') }}</div>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">ID</span>
+          <span style="font-weight:700; font-family:monospace;">{{ $player?->id ?? '—' }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">{{ __('Email') }}</span>
+          <span style="font-weight:700;">{{ $player?->email ?? '—' }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">{{ __('Nom') }}</span>
+          <span style="font-weight:700;">{{ $player?->name ?? '—' }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">{{ __('Pseudonyme') }}</span>
+          <span style="font-weight:700; color:#FFD700;">{{ $ps }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">{{ __('Code Joueur') }}</span>
+          <span style="font-weight:700; font-family:monospace; color:#4FC3F7;">#{{ $player?->player_code ?? '—' }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">{{ __('Langue') }}</span>
+          <span style="font-weight:700;">{{ strtoupper($lang) }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">{{ __('Pays') }}</span>
+          <span style="font-weight:700;">{{ $country ?: '—' }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">{{ __('Ambiance') }}</span>
+          <span style="font-weight:700; color:{{ $ambianceOn ? '#4CAF50' : '#F44336' }};">{{ $ambianceOn ? '✅ ON' : '❌ OFF' }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="opacity:.75;">{{ __('Sons Gameplay') }}</span>
+          <span style="font-weight:700; color:{{ $gameplayOn ? '#4CAF50' : '#F44336' }};">{{ $gameplayOn ? '✅ ON' : '❌ OFF' }}</span>
+        </div>
+      </div>
+    </div>
+
+    {{-- Pièces & Avatar --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px;">
+      <div style="font-size:15px; font-weight:700; margin-bottom:10px; color:#FFD700;">💰 {{ __('Pièces & Avatar') }}</div>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="opacity:.75;">{{ __('Pièces Intelligence') }}</span>
+          <span style="display:flex; align-items:center; gap:4px; font-weight:700; color:#FFD700;">
+            <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:16px; height:16px;">
+            {{ number_format($player?->coins ?? 0) }}
+          </span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="opacity:.75;">{{ __('Pièces Compétence') }}</span>
+          <span style="display:flex; align-items:center; gap:4px; font-weight:700; color:#9C27B0;">
+            <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="width:16px; height:16px; filter:hue-rotate(180deg);" onerror="this.style.display='none'">
+            {{ number_format($player?->competence_coins ?? 0) }}
+          </span>
+        </div>
+        @if(!empty($coinLedger))
+          <div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,255,255,.1);">
+            <div style="opacity:.75; margin-bottom:4px; font-size:12px;">{{ __('Transactions Ledger') }}</div>
+            @foreach($coinLedger as $cl)
+              <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:3px;">
+                <span>{{ ucfirst($cl->coin_type) }}</span>
+                <span style="font-weight:700; color:{{ $cl->total >= 0 ? '#4CAF50' : '#F44336' }};">
+                  {{ $cl->total >= 0 ? '+' : '' }}{{ $cl->total }} ({{ $cl->nb }} txn)
+                </span>
+              </div>
+            @endforeach
+          </div>
+        @endif
+        <div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.1);">
+          <div style="opacity:.75; margin-bottom:6px; font-size:12px;">{{ __('Avatar sélectionné') }}</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            @if($avatarUrl)
+              <img src="{{ $avatarUrl }}" alt="{{ $avatarName }}" style="width:40px; height:40px; border-radius:50%; border:2px solid #FFD700;">
+            @else
+              <div style="width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; font-size:18px;">👤</div>
+            @endif
+            <span style="font-weight:700;">{{ $avatarName }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{-- Paiements --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px;">
+      <div style="font-size:15px; font-weight:700; margin-bottom:10px; color:#4CAF50;">💳 {{ __('Paiements') }} ({{ $totalPayments }})</div>
+      <div style="display:flex; flex-direction:column; gap:5px; font-size:12px; max-height:250px; overflow-y:auto;">
+        @forelse($profilePayments as $pay)
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:rgba(255,255,255,.03); border-radius:6px; border-left:3px solid {{ $pay->status === 'completed' ? '#4CAF50' : '#F44336' }};">
+            <div>
+              <div style="font-weight:600;">{{ $pay->product_key }}</div>
+              <div style="opacity:.65; font-size:11px;">{{ substr($pay->created_at, 0, 10) }}</div>
+            </div>
+            <div style="text-align:right;">
+              @if($pay->status === 'completed')
+                <div style="color:#4CAF50; font-weight:700;">✅ +{{ $pay->coins_awarded }} coins</div>
+              @else
+                <div style="color:#F44336; font-weight:700;">❌ {{ $pay->status }}</div>
+              @endif
+              <div style="opacity:.65; font-size:11px;">{{ strtoupper($pay->currency) }}</div>
+            </div>
+          </div>
+        @empty
+          <div style="opacity:.6;">{{ __('Aucun paiement') }}</div>
+        @endforelse
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{{-- =================== AVATARS & QUÊTES =================== --}}
+<div class="sb-panel" style="margin-top:12px;">
+  <div class="sb-title" style="text-align:center; margin-bottom:16px;">🎭 {{ __('Avatars & Quêtes') }}</div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+
+    {{-- Avatars débloqués --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px;">
+      <div style="font-size:15px; font-weight:700; margin-bottom:10px; color:#FF9800;">
+        🔓 {{ __('Avatars Débloqués') }} ({{ count($profileAvatars) }})
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        @forelse($profileAvatars as $av)
+          @php
+            $avPath = 'images/avatars/strategiques/' . $av->avatar_name . '.png';
+            $avFull = public_path($avPath);
+          @endphp
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:70px;">
+            <div style="width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,.08); border:2px solid rgba(255,165,0,.5); overflow:hidden; display:flex; align-items:center; justify-content:center;">
+              @if(file_exists($avFull))
+                <img src="{{ asset($avPath) }}" alt="{{ $av->avatar_name }}" style="width:100%; height:100%; object-fit:cover;">
+              @else
+                <span style="font-size:20px;">🎭</span>
+              @endif
+            </div>
+            <span style="font-size:10px; text-align:center; opacity:.85; word-break:break-word;">{{ $av->avatar_name }}</span>
+          </div>
+        @empty
+          <div style="opacity:.6; font-size:13px;">{{ __('Aucun avatar débloqué') }}</div>
+        @endforelse
+      </div>
+    </div>
+
+    {{-- Quêtes complétées --}}
+    <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px;">
+      <div style="font-size:15px; font-weight:700; margin-bottom:10px; color:#4CAF50;">
+        ✅ {{ __('Quêtes Complétées') }} ({{ $completedQuests->count() }}/{{ count($profileQuests) }})
+      </div>
+      <div style="display:flex; flex-direction:column; gap:5px; font-size:12px; max-height:260px; overflow-y:auto;">
+        @foreach($completedQuests as $q)
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:rgba(76,175,80,.08); border-radius:6px; border-left:3px solid #4CAF50;">
+            <span style="font-weight:600;">{{ $q->badge_emoji ?? '🏅' }} {{ $q->name ?? '—' }}</span>
+            <span style="opacity:.65; font-size:11px;">{{ substr($q->completed_at, 0, 10) }}</span>
+          </div>
+        @endforeach
+        @if($pendingQuests->count() > 0)
+          <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,.1); font-weight:600; opacity:.75; font-size:12px;">
+            ⏳ {{ __('En cours') }} ({{ $pendingQuests->count() }})
+          </div>
+          @foreach($pendingQuests as $q)
+            <div style="display:flex; align-items:center; padding:4px 8px; background:rgba(255,255,255,.03); border-radius:6px; border-left:3px solid rgba(255,255,255,.2);">
+              <span style="opacity:.7;">{{ $q->badge_emoji ?? '⏳' }} {{ $q->name ?? '—' }}</span>
+            </div>
+          @endforeach
+        @endif
+      </div>
+    </div>
+
+  </div>
+</div>
+
 {{-- =================== BULLE BOT (Pleine largeur) =================== --}}
 @php
     $bp = $botProfile ?? null;
