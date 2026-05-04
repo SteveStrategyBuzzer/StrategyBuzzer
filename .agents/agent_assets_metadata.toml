@@ -906,6 +906,90 @@ uri = "file://public/images/avatars/musicien/banjo_f.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "OPnQ3wa-OqQ1yKfIiyiBW"
+uri = "file://public/images/avatars/automobile/hotrod_40.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "hZq0lTgA0_S6kw6NMF09Z"
+uri = "file://public/images/avatars/automobile/sedan_40.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7PRtXO7oQVgK7IpDeE2qr"
+uri = "file://public/images/avatars/automobile/mustang_65.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "1I4qALO4R7mK6jeQPkUNj"
+uri = "file://public/images/avatars/automobile/camaro_69.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "fsgJvQ6saTKzoKXY5DhKQ"
+uri = "file://public/images/avatars/automobile/gto_67.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "R65_yiadHb5bTbFJnTw8x"
+uri = "file://public/images/avatars/automobile/challenger_70.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "vUxhWQpo6fjxhap-ukEZC"
+uri = "file://public/images/avatars/automobile/chevelle_70.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "IKFK1jUn8jcojGkCco6gv"
+uri = "file://public/images/avatars/automobile/ferrari.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "KT8XA3FttM3noLB6ndsaA"
+uri = "file://public/images/avatars/automobile/lamborghini.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "GyMXMtDmPvY5DyvY47p3N"
+uri = "file://public/images/avatars/automobile/bugatti.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lLvCzvLvklyr-bbg0thw8"
+uri = "file://public/images/avatars/automobile/mclaren.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "DkXqLTXBJiRblP8er3j8k"
+uri = "file://public/images/avatars/automobile/porsche.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "sT0iCrI0dsOGfCbMHouXQ"
+uri = "file://public/images/avatars/automobile/koenigsegg.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "SJvqFOjimH62d76u3SRdj"
+uri = "file://public/images/avatars/automobile/pagani.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
