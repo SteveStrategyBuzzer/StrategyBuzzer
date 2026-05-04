@@ -882,6 +882,30 @@ uri = "file://public/images/avatars/musicien/rappeuse.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "VoRszaeNIWkdoQzTJOj7K"
+uri = "file://public/images/avatars/musicien/ukulele.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "DJXsC_K-FJcPGFp4wHFlg"
+uri = "file://public/images/avatars/musicien/ukulele_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "5l0znEyF_DyNQlaxg_Nng"
+uri = "file://public/images/avatars/musicien/banjo.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "RvCAHlpyviV9_7pg_yLQT"
+uri = "file://public/images/avatars/musicien/banjo_f.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
