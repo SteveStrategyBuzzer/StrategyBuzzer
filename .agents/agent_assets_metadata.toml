@@ -708,6 +708,48 @@ uri = "file://public/images/avatars/nation/nigeriane.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "QIal2WhW4f8dJwygWaUZF"
+uri = "file://public/images/avatars/nation/africaine.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "VueTsQoXKIILu1e-usKrs"
+uri = "file://public/images/avatars/nation/indienne.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lQKcqp4_kWBD6YPTqeDOn"
+uri = "file://public/images/avatars/nation/indonesien.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lVizFWChB849LqW-dzjC5"
+uri = "file://public/images/avatars/nation/japonaise.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "r_bK8fQ3qHBUj6iPur2aO"
+uri = "file://public/images/avatars/nation/ecossaise.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kBFz4S3Vrmj9WvWMM1R-L"
+uri = "file://public/images/avatars/nation/indien.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "AL5KfB5yUfNUTol1c5i9I"
+uri = "file://public/images/avatars/nation/irlandais.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
