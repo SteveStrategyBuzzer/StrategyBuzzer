@@ -762,6 +762,126 @@ uri = "file://public/images/avatars/nation/amerindienne.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "cRPZ2qxkBygu_0dAFJyXt"
+uri = "file://public/images/avatars/musicien/guitariste.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "57ouKn11FwmG_CQ420ndD"
+uri = "file://public/images/avatars/musicien/guitariste_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "4njUDVDQaRthbo0WubNi0"
+uri = "file://public/images/avatars/musicien/pianiste.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ARkyau8XSI0rqjV6vPe-u"
+uri = "file://public/images/avatars/musicien/pianiste_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "yFLviget1oPRLTobNPZnE"
+uri = "file://public/images/avatars/musicien/chanteur.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "1XlUu2LNVyhY-q1Pz0VCc"
+uri = "file://public/images/avatars/musicien/chanteuse.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ldEZKQ0ahToO5DEzXr_IG"
+uri = "file://public/images/avatars/musicien/batteur.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "NAjfPi6ku_IJBzcxlnEgf"
+uri = "file://public/images/avatars/musicien/batteuse.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-evgik7uTYu754Ljg7tDq"
+uri = "file://public/images/avatars/musicien/violoniste.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kdgDLMyxJyR0b4z3XQDAD"
+uri = "file://public/images/avatars/musicien/violoniste_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "77uglBNTEG9dL0nN-KO92"
+uri = "file://public/images/avatars/musicien/dj.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "rwGUIBuIZaXaV4gEvJuXV"
+uri = "file://public/images/avatars/musicien/dj_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "mVgtaOVYkgXQPSCSulv0I"
+uri = "file://public/images/avatars/musicien/saxophoniste.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Qc-Yvo91uaaMfuC-xVRZ4"
+uri = "file://public/images/avatars/musicien/saxophoniste_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "MxlvwX3wYSJtUnNKbIKH8"
+uri = "file://public/images/avatars/musicien/trompettiste.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "JB6FtrNx5ePSTL8Q6ZHKJ"
+uri = "file://public/images/avatars/musicien/trompettiste_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "nRSVzp2CZMGwwvMIMnW2A"
+uri = "file://public/images/avatars/musicien/chef_orchestre.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "_OrVWdUluGI1GMIJqEkDr"
+uri = "file://public/images/avatars/musicien/chef_orchestre_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "5pyumUA8lgeB3pPK7Ijx2"
+uri = "file://public/images/avatars/musicien/rappeur.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "S2-gBLrgO_7pgsQ5T1nLe"
+uri = "file://public/images/avatars/musicien/rappeuse.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
