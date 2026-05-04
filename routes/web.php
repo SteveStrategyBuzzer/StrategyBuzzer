@@ -557,3 +557,26 @@ if (! app()->environment('production')) {
             ->name('league.individual.setup-bot-match');
     });
 }
+
+// === DEBUG TEMPORAIRE — à supprimer après diagnostic ===
+Route::get('/who-am-i', function () {
+    $user = Auth::user();
+    if (!$user) return response()->json(['authenticated' => false]);
+    return response()->json([
+        'authenticated' => true,
+        'id'                => $user->id,
+        'email'             => $user->email,
+        'name'              => $user->name,
+        'player_code'       => $user->player_code,
+        'coins'             => $user->coins,
+        'competence_coins'  => $user->competence_coins,
+        'profile_completed' => $user->profile_completed,
+        'connection'        => $user->getConnectionName(),
+        'profile_settings_pseudonym' => data_get(
+            is_string($user->profile_settings)
+                ? json_decode($user->profile_settings, true)
+                : ($user->profile_settings ?? []),
+            'pseudonym'
+        ),
+    ]);
+})->middleware('auth');
