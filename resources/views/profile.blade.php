@@ -1785,56 +1785,55 @@ document.addEventListener('DOMContentLoaded', () => {
 (function() {
   const form = document.getElementById('profileForm');
   const avatarLinks = document.querySelectorAll('a.sb-thumb');
-  
+
+  // Toujours effacer un backup orphelin au cas où (ex: après login, migration)
+  // sauf si on revient vraiment de la page avatars
+  const referrer = document.referrer || '';
+  const returningFromAvatar = referrer.includes('/avatars') || referrer.includes('/avatar');
+
+  if (!returningFromAvatar) {
+    sessionStorage.removeItem('profile_form_backup');
+  }
+
   if (!form) {
-    console.warn('Formulaire profileForm introuvable');
     return;
   }
-  
+
   // Sauvegarder les données du formulaire avant navigation vers avatars
   avatarLinks.forEach(link => {
     link.addEventListener('click', function(e) {
       const formData = new FormData(form);
       const data = {};
-      
       formData.forEach((value, key) => {
         data[key] = value;
       });
-      
       sessionStorage.setItem('profile_form_backup', JSON.stringify(data));
-      console.log('Données sauvegardées:', data);
     });
   });
-  
-  // Restaurer les données au chargement de la page
-  const backup = sessionStorage.getItem('profile_form_backup');
-  if (backup) {
-    try {
-      const data = JSON.parse(backup);
-      console.log('Restauration des données:', data);
-      
-      // Restaurer chaque champ
-      Object.keys(data).forEach(name => {
-        const input = form.querySelector(`[name="${name}"]`);
-        if (input) {
-          if (input.type === 'checkbox') {
-            input.checked = data[name] === '1';
-          } else {
-            input.value = data[name];
+
+  // Restaurer les données UNIQUEMENT si on revient de la page avatars
+  if (returningFromAvatar) {
+    const backup = sessionStorage.getItem('profile_form_backup');
+    if (backup) {
+      try {
+        const data = JSON.parse(backup);
+        Object.keys(data).forEach(name => {
+          const input = form.querySelector(`[name="${name}"]`);
+          if (input) {
+            if (input.type === 'checkbox') {
+              input.checked = data[name] === '1';
+            } else {
+              input.value = data[name];
+            }
+            const event = new Event('change', { bubbles: true });
+            input.dispatchEvent(event);
           }
-          
-          // Déclencher l'événement change pour mettre à jour l'aperçu
-          const event = new Event('change', { bubbles: true });
-          input.dispatchEvent(event);
-        }
-      });
-      
-      // Nettoyer la sauvegarde après restauration
-      sessionStorage.removeItem('profile_form_backup');
-      console.log('Données restaurées avec succès');
-    } catch(e) {
-      console.error('Erreur restauration:', e);
-      sessionStorage.removeItem('profile_form_backup');
+        });
+      } catch(e) {
+        // ignore
+      } finally {
+        sessionStorage.removeItem('profile_form_backup');
+      }
     }
   }
 })();
