@@ -73,14 +73,23 @@
 .preview-grid img{width:100%;aspect-ratio:1/1;height:auto;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12)}
 .preview-main{width:100%;height:196px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.12)}
 
-/* Stratégiques grid (4-4-4, no global title) */
-.stratégiques{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+/* Stratégiques — groupés par tier */
+.tier-group{margin-bottom:24px}
+.tier-group-header{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:10px;font-weight:700;font-size:.95rem;margin-bottom:12px;letter-spacing:.4px}
+.tier-group-header.t-rare  {background:#1e3a8a;border-left:4px solid #3b82f6;color:#bfdbfe}
+.tier-group-header.t-epic  {background:#3b0764;border-left:4px solid #a855f7;color:#e9d5ff}
+.tier-group-header.t-legend{background:#451a03;border-left:4px solid #f59e0b;color:#fde68a}
+.stratégiques{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 @media (max-width:900px){ .stratégiques{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (max-width:640px){ .stratégiques{grid-template-columns:repeat(2,minmax(0,1fr))} }
-.stratégique-card{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:#0f1530;cursor:pointer}
-.stratégique-card img{width:100%;height:120px;object-fit:cover;display:block}
-.tier-pill{position:absolute;top:8px;left:8px;padding:4px 8px;border-radius:999px;font-size:.78rem;border:1px solid rgba(255,255,255,.22)}
-.t-rare{background:#1e3a8a}.t-epic{background:#6d28d9}.t-legend{background:#b45309}
+.stratégique-card{position:relative;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:#0f1530;cursor:pointer;display:flex;flex-direction:column;align-items:center;padding-bottom:10px}
+.stratégique-card .strat-img-wrap{position:relative;width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0a1022}
+.stratégique-card .strat-img-wrap img{width:100%;height:100%;object-fit:contain;object-position:center top;display:block;transition:transform .25s}
+.stratégique-card:hover .strat-img-wrap img{transform:scale(1.04)}
+.stratégique-card .strat-name{font-size:.78rem;font-weight:600;color:#e2e8f0;text-align:center;margin-top:7px;padding:0 6px;line-height:1.3}
+.stratégique-card.active-strat{box-shadow:0 0 0 3px #FFD700}
+/* tier-pill kept for JS modal backward compat but hidden visually */
+.tier-pill{display:none}
 
 /* === RESPONSIVE POUR ORIENTATION === */
 
@@ -337,50 +346,87 @@
       </div>
     </div>
 
-    {{-- ==== Avatars stratégiques : une seule grille 4-4-4 ==== --}}
+    {{-- ==== Avatars stratégiques : groupés par tier ==== --}}
     @php
       $stratégiques = $groups['stratégique'] ?? [];
-      $selectedVal = $selectedStrat ?? '';
+      $selectedVal  = $selectedStrat ?? '';
+      $imgMap = [
+        'mathematicien'=>'images/avatars/mathematicien.png',
+        'scientifique' =>'images/avatars/scientifique.png',
+        'explorateur'  =>'images/avatars/explorateur.png',
+        'defenseur'    =>'images/avatars/defenseur.png',
+        'historien'    =>'images/avatars/historien.png',
+        'comedienne'   =>'images/avatars/comedienne.png',
+        'magicienne'   =>'images/avatars/magicienne.png',
+        'challenger'   =>'images/avatars/challenger.png',
+        'ia-junior'    =>'images/avatars/ia-junior.png',
+        'stratege'     =>'images/avatars/stratege.png',
+        'sprinteur'    =>'images/avatars/sprinteur.png',
+        'visionnaire'  =>'images/avatars/visionnaire.png',
+      ];
+      $tierConfig = [
+        'Rare'       => ['class'=>'t-rare',   'icon'=>'🔵', 'label'=>__('Rare')],
+        'Épique'     => ['class'=>'t-epic',   'icon'=>'🟣', 'label'=>__('Épique')],
+        'Légendaire' => ['class'=>'t-legend', 'icon'=>'🟡', 'label'=>__('Légendaire')],
+      ];
+      $byTier = [];
+      foreach ($stratégiques as $a) {
+        $byTier[$a['tier'] ?? 'Rare'][] = $a;
+      }
     @endphp
 
     <div class="card" style="margin-top:20px">
-      <h3 style="margin:0 0 12px 0;font-size:1.1rem;color:#fff">⚔️ {{ __('Avatars Stratégiques') }}</h3>
-      <div class="stratégiques">
-      @foreach($stratégiques as $a)
-        @php
-          $slug = $a['slug'];
-          $isUnlocked = !empty($a['unlocked']);
-          $tierName = $a['tier'] ?? 'Rare';
-          $tierClass = $tierName==='Légendaire' ? 't-legend' : ($tierName==='Épique' ? 't-epic' : 't-rare');
-          $imgMap = [
-            'mathematicien'=>'images/avatars/mathematicien.png',
-            'scientifique' =>'images/avatars/scientifique.png',
-            'explorateur'  =>'images/avatars/explorateur.png',
-            'defenseur'    =>'images/avatars/defenseur.png',
-            'historien'    =>'images/avatars/historien.png',
-            'comedienne'   =>'images/avatars/comedienne.png',
-            'magicienne'   =>'images/avatars/magicienne.png',
-            'challenger'   =>'images/avatars/challenger.png',
-            'ia-junior'    =>'images/avatars/ia-junior.png',
-            'stratege'     =>'images/avatars/stratege.png',
-            'sprinteur'    =>'images/avatars/sprinteur.png',
-            'visionnaire'  =>'images/avatars/visionnaire.png',
-          ];
-          $img = $imgMap[$slug] ?? null;
-          $isActive = ($selectedVal === $slug);
-        @endphp
+      <h3 style="margin:0 0 18px 0;font-size:1.1rem;color:#fff">⚔️ {{ __('Avatars Stratégiques') }}</h3>
 
-        <div class="stratégique-card" onclick="onStratégiqueClick('{{ $slug }}', {{ $isUnlocked ? 'true' : 'false' }})">
-          <div class="tier-pill {{ $tierClass }}">{{ $tierName }}</div>
-          @if($img)
-            <img src="{{ asset($img) }}" alt="{{ $a['name'] ?? $slug }}" class="{{ $isUnlocked ? '' : 'locked' }}" onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-          @else
-            <div style="height:120px;display:grid;place-items:center;color:#cbd5e1">{{ ucfirst($slug) }}</div>
-          @endif
-          @if($isActive) <div class="active-tag">{{ __('Actif') }}</div> @endif
+      @foreach($tierConfig as $tierKey => $tierMeta)
+        @if(!empty($byTier[$tierKey]))
+        <div class="tier-group">
+          <div class="tier-group-header {{ $tierMeta['class'] }}">
+            {{ $tierMeta['icon'] }} {{ $tierMeta['label'] }}
+            <span style="font-weight:400;font-size:.82rem;opacity:.75;margin-left:4px;">({{ count($byTier[$tierKey]) }})</span>
+          </div>
+          <div class="stratégiques">
+            @foreach($byTier[$tierKey] as $a)
+              @php
+                $slug      = $a['slug'];
+                $isUnlocked = !empty($a['unlocked']);
+                $isActive  = ($selectedVal === $slug);
+                $img       = $imgMap[$slug] ?? null;
+                $name      = $a['name'] ?? ucfirst($slug);
+                $tierName  = $a['tier'] ?? 'Rare';
+                $tierClass = $tierMeta['class'];
+              @endphp
+              <div class="stratégique-card{{ $isActive ? ' active-strat' : '' }}"
+                   onclick="onStratégiqueClick('{{ $slug }}', {{ $isUnlocked ? 'true' : 'false' }})">
+                {{-- pill conservé invisible pour JS --}}
+                <div class="tier-pill {{ $tierClass }}">{{ $tierName }}</div>
+
+                <div class="strat-img-wrap">
+                  @if($img)
+                    <img src="{{ asset($img) }}"
+                         alt="{{ $name }}"
+                         class="{{ $isUnlocked ? '' : 'locked' }}"
+                         onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+                  @else
+                    <div style="width:100%;height:100%;display:grid;place-items:center;color:#94a3b8;font-size:.9rem;">
+                      {{ ucfirst($slug) }}
+                    </div>
+                  @endif
+                  @if(!$isUnlocked)
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font-size:1.6rem;">🔒</div>
+                  @endif
+                </div>
+
+                <div class="strat-name">{{ $name }}</div>
+                @if($isActive)
+                  <div class="active-tag" style="position:static;margin-top:4px;">{{ __('Actif') }}</div>
+                @endif
+              </div>
+            @endforeach
+          </div>
         </div>
+        @endif
       @endforeach
-      </div>
     </div>
 
   </div> {{-- /wrap --}}
