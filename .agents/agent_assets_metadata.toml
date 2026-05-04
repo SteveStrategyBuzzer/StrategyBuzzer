@@ -156,6 +156,120 @@ uri = "file://public/images/avatars/cartoon/26.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "UK63j5xk9DlHhc9XuTnpk"
+uri = "file://public/images/avatars/portraits/8.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "B_unsVR_ITBiWW29DG8u6"
+uri = "file://public/images/avatars/portraits/9.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "JoKEMyAr5Ure1XvepGErs"
+uri = "file://public/images/avatars/portraits/10.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "j2CCTj3GM38DufXxxJtXT"
+uri = "file://public/images/avatars/portraits/11.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "zGd7TLdR3CaHIqsl5Y-i0"
+uri = "file://public/images/avatars/portraits/12.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "TvUcmKVZJ3CEhmauUVQuH"
+uri = "file://public/images/avatars/portraits/13.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "sTcYAnvRUHb1iiYTGTthH"
+uri = "file://public/images/avatars/portraits/14.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "OktzLB8veLDtu-MHYUB5y"
+uri = "file://public/images/avatars/portraits/15.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "yujK8PvSFff_ov-LxtjAU"
+uri = "file://public/images/avatars/portraits/16.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "8TNXCM3YW-ChqWprBIXJl"
+uri = "file://public/images/avatars/portraits/17.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3KFlMg5zsYmlUdsO-3a4G"
+uri = "file://public/images/avatars/portraits/18.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "JqHkhAJLTa_zscMiOe5XZ"
+uri = "file://public/images/avatars/portraits/19.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "hB5Cy9t6QnZzNSwG6iZUw"
+uri = "file://public/images/avatars/portraits/20.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "S2e37_MtKg3TrYxlPwHoU"
+uri = "file://public/images/avatars/portraits/21.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "M_noY7JWH3Ft0SK66s3-Z"
+uri = "file://public/images/avatars/portraits/22.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "dLuGV9aSEZOsgAcrP9zPI"
+uri = "file://public/images/avatars/portraits/23.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "yEGTy855z6EhLglok2boI"
+uri = "file://public/images/avatars/portraits/24.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ZZiYUhXlJJDGrcucrWb4h"
+uri = "file://public/images/avatars/portraits/25.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "MAdSX03Q6unOzZQgMm99D"
+uri = "file://public/images/avatars/portraits/26.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
