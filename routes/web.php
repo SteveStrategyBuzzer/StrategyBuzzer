@@ -34,6 +34,7 @@ Route::get('/', function () {
 /* ===== Profil ===== */
 Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
 Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+Route::post('/profile/bot-config', [ProfileController::class, 'updateBotConfig'])->name('profile.bot.config')->middleware('auth');
 
 /* ===== Avatars (pages de catalogue) ===== */
 Route::get('/avatars',             [AvatarController::class, 'index'])->name('avatars');

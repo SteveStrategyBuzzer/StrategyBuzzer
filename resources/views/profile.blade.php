@@ -1145,7 +1145,10 @@
 @endphp
 
 <div class="sb-panel" style="margin-top:12px;">
-  <div class="sb-title" style="text-align:center; margin-bottom:16px;">🤖 {{ __('Votre Bot') }}</div>
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+    <div class="sb-title" style="margin:0;">🤖 {{ __('Votre Bot') }}</div>
+    <span id="bot-save-indicator" style="font-size:12px; color:#4CAF50; opacity:0; transition:opacity .4s;">✓ {{ __('Sauvegardé') }}</span>
+  </div>
 
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
 
@@ -1268,12 +1271,8 @@
 
   </div>
 
-  {{-- Tooltip + Save --}}
-  <div style="margin-top:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-    <button type="submit" form="profileForm"
-            style="background:linear-gradient(135deg, #4CAF50, #45a049); border:none; border-radius:8px; padding:10px 24px; color:#fff; font-size:14px; font-weight:700; cursor:pointer;">
-      ✅ {{ __('Enregistrer') }}
-    </button>
+  {{-- Tooltip info --}}
+  <div style="margin-top:12px;">
     <button type="button" onclick="document.getElementById('bot-info-tooltip').style.display = document.getElementById('bot-info-tooltip').style.display === 'none' ? 'block' : 'none';"
             style="background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.22); border-radius:8px; padding:8px 16px; color:#fff; font-size:13px; cursor:pointer; font-weight:600;">
       ❓ {{ __('Comment votre Bot fonctionne') }}
@@ -1283,6 +1282,71 @@
     {{ __('bot_tooltip_text') }}
   </div>
 </div>
+
+<script>
+(function () {
+  const BOT_CONFIG_URL = '{{ route('profile.bot.config') }}';
+  const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+  let saveTimer = null;
+
+  function showSaved() {
+    const el = document.getElementById('bot-save-indicator');
+    if (!el) return;
+    el.style.opacity = '1';
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => { el.style.opacity = '0'; }, 2000);
+  }
+
+  function collectBotData() {
+    const data = new FormData();
+    const active = document.getElementById('bot-active-toggle');
+    if (active) data.append('bot_active', active.checked ? '1' : '0');
+
+    const stakeToggle = document.getElementById('bot-stake-toggle');
+    if (stakeToggle) data.append('bot_stake_enabled', stakeToggle.checked ? '1' : '0');
+
+    const maxStake = document.getElementById('bot-max-stake-input');
+    if (maxStake) data.append('bot_max_stake', maxStake.value);
+
+    const avatarRadio = document.querySelector('input[name="bot_avatar_slug"]:checked');
+    data.append('bot_avatar_slug', avatarRadio ? avatarRadio.value : '');
+
+    return data;
+  }
+
+  function saveBotConfig() {
+    const data = collectBotData();
+    fetch(BOT_CONFIG_URL, {
+      method: 'POST',
+      headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+      body: data,
+    })
+    .then(r => r.json())
+    .then(json => {
+      if (json.success) showSaved();
+    })
+    .catch(() => {});
+  }
+
+  function scheduleSave(delay = 600) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveBotConfig, delay);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Toggle activer bot
+    document.getElementById('bot-active-toggle')?.addEventListener('change', () => scheduleSave(0));
+    // Toggle mise
+    document.getElementById('bot-stake-toggle')?.addEventListener('change', () => scheduleSave(0));
+    // Montant mise (debounce)
+    document.getElementById('bot-max-stake-input')?.addEventListener('input', () => scheduleSave(800));
+    // Radios avatar bot
+    document.querySelectorAll('input[name="bot_avatar_slug"]').forEach(r => {
+      r.addEventListener('change', () => scheduleSave(0));
+    });
+  });
+})();
+</script>
 
   </div> {{-- Fin de sb-wrap --}}
 </div> {{-- Fin de sb-page --}}

@@ -291,6 +291,49 @@ class ProfileController extends Controller
         return redirect()->route('profile.show')->with('status', 'Profil mis à jour.');
     }
 
+    /** Sauvegarde AJAX de la config bot uniquement */
+    public function updateBotConfig(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) return response()->json(['success' => false], 401);
+
+        $data = $request->validate([
+            'bot_active'        => 'nullable|boolean',
+            'bot_avatar_slug'   => 'nullable|string|max:64',
+            'bot_stake_enabled' => 'nullable|boolean',
+            'bot_max_stake'     => 'nullable|integer|min:0|max:500',
+        ]);
+
+        $botProfile = BotProfile::firstOrCreate(
+            ['user_id' => $user->id],
+            ['is_active' => false]
+        );
+
+        $wantsActive  = $request->boolean('bot_active');
+        $qualifyCount = BotQualificationEvent::where('user_id', $user->id)->count();
+        $botProfile->is_active = $wantsActive && $qualifyCount >= 10;
+
+        $botProfile->stake_enabled        = $request->boolean('bot_stake_enabled');
+        $botProfile->max_stake_per_match  = max(0, min(500, (int) $request->input('bot_max_stake', 0)));
+
+        $slugInput = $request->input('bot_avatar_slug') ?: null;
+        if ($slugInput) {
+            $unlockedSlugs = array_keys($this->getUnlockedStrategicAvatars($user));
+            $botProfile->bot_avatar_slug = in_array($slugInput, $unlockedSlugs, true) ? $slugInput : null;
+        } else {
+            $botProfile->bot_avatar_slug = null;
+        }
+
+        $botProfile->save();
+
+        return response()->json([
+            'success'       => true,
+            'is_active'     => $botProfile->is_active,
+            'qualify_count' => $qualifyCount,
+            'qualified'     => $qualifyCount >= 10,
+        ]);
+    }
+
     private function getUnlockedStrategicAvatars($user): array
     {
         if (!$user) return [];
