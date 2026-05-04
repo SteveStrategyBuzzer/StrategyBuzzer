@@ -138,11 +138,15 @@ class ProfileController extends Controller
 
         $unlockedStrategicAvatars = $this->getUnlockedStrategicAvatars($player);
 
-        return view('profile', compact(
+        return response()->view('profile', compact(
             'settings','routes','currentCountry','suggestedCountry',
             'stratName','stratUrl','stratTier','stratSkills','player','hasAvatar',
             'botProfile','botQualifyCount','botTier','unlockedStrategicAvatars'
-        ));
+        ))->withHeaders([
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma'        => 'no-cache',
+            'Expires'       => '0',
+        ]);
     }
 
     /** Mise à jour profil */

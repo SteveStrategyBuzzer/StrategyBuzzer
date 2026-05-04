@@ -2,6 +2,10 @@
 
 @section('title', __('Profile du Joueur') . ' — StrategyBuzzer')
 
+@push('head')
+<meta name="auth-user-id" content="{{ Auth::id() ?? '' }}">
+@endpush
+
 @section('content')
 @php
     use Symfony\Component\Intl\Countries;
@@ -1786,38 +1790,53 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('profileForm');
   const avatarLinks = document.querySelectorAll('a.sb-thumb');
 
-  // Toujours effacer un backup orphelin au cas où (ex: après login, migration)
-  // sauf si on revient vraiment de la page avatars
+  // User ID fourni par le serveur — clé de backup isolée par utilisateur
+  const userId = (document.querySelector('meta[name="auth-user-id"]') || {}).content || '';
+  const BACKUP_KEY = userId ? `profile_form_backup_${userId}` : 'profile_form_backup';
+
+  // Nettoyer TOUS les backups appartenant à d'autres utilisateurs
+  for (let i = sessionStorage.length - 1; i >= 0; i--) {
+    const k = sessionStorage.key(i);
+    if (k && k.startsWith('profile_form_backup') && k !== BACKUP_KEY) {
+      sessionStorage.removeItem(k);
+    }
+  }
+  // Nettoyer aussi l'ancienne clé générique (migration)
+  sessionStorage.removeItem('profile_form_backup');
+
+  // Restauration uniquement si on revient de la page avatars
   const referrer = document.referrer || '';
   const returningFromAvatar = referrer.includes('/avatars') || referrer.includes('/avatar');
 
   if (!returningFromAvatar) {
-    sessionStorage.removeItem('profile_form_backup');
+    sessionStorage.removeItem(BACKUP_KEY);
   }
 
-  if (!form) {
-    return;
-  }
+  if (!form) return;
 
-  // Sauvegarder les données du formulaire avant navigation vers avatars
+  // Sauvegarder avant navigation vers avatars (avec user_id dans le payload)
   avatarLinks.forEach(link => {
-    link.addEventListener('click', function(e) {
+    link.addEventListener('click', function() {
       const formData = new FormData(form);
-      const data = {};
-      formData.forEach((value, key) => {
-        data[key] = value;
-      });
-      sessionStorage.setItem('profile_form_backup', JSON.stringify(data));
+      const data = { _user_id: userId };
+      formData.forEach((value, key) => { data[key] = value; });
+      sessionStorage.setItem(BACKUP_KEY, JSON.stringify(data));
     });
   });
 
-  // Restaurer les données UNIQUEMENT si on revient de la page avatars
+  // Restaurer UNIQUEMENT au retour des avatars, pour le même utilisateur
   if (returningFromAvatar) {
-    const backup = sessionStorage.getItem('profile_form_backup');
-    if (backup) {
+    const raw = sessionStorage.getItem(BACKUP_KEY);
+    if (raw) {
       try {
-        const data = JSON.parse(backup);
+        const data = JSON.parse(raw);
+        // Rejeter si le backup appartient à un autre utilisateur
+        if (data._user_id && userId && data._user_id !== userId) {
+          sessionStorage.removeItem(BACKUP_KEY);
+          return;
+        }
         Object.keys(data).forEach(name => {
+          if (name === '_user_id') return;
           const input = form.querySelector(`[name="${name}"]`);
           if (input) {
             if (input.type === 'checkbox') {
@@ -1832,7 +1851,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch(e) {
         // ignore
       } finally {
-        sessionStorage.removeItem('profile_form_backup');
+        sessionStorage.removeItem(BACKUP_KEY);
       }
     }
   }
