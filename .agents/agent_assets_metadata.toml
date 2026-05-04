@@ -282,6 +282,156 @@ uri = "file://public/images/avatars/portraits/28.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "SN5gPWb-EB5g8gO6NV0o6"
+uri = "file://public/images/avatars/objet/1.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ga0_wZn30Gw-wj37SWFmP"
+uri = "file://public/images/avatars/objet/2.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "oX8JH0xHykWk1s62MJ7Ib"
+uri = "file://public/images/avatars/objet/3.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "mA90iUMJ8XvPCGd4rosB8"
+uri = "file://public/images/avatars/objet/4.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "RRYMsVPha8HydJoomIM2D"
+uri = "file://public/images/avatars/objet/5.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "S6wrsqK-V2bixSjuFoSA9"
+uri = "file://public/images/avatars/objet/6.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "YxsAdvBf84USouD1pnk56"
+uri = "file://public/images/avatars/objet/7.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "JON_XifIP4veAn1EqlA27"
+uri = "file://public/images/avatars/objet/8.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "nlyf_W4x8ltJVy-KZL61k"
+uri = "file://public/images/avatars/objet/9.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "hYKdGZgdAfh-LxhGhFV9u"
+uri = "file://public/images/avatars/objet/10.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6i89vZfzyaXB7dpR1ltK5"
+uri = "file://public/images/avatars/objet/11.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "sfCd-NYWqidjgONuUcqVk"
+uri = "file://public/images/avatars/objet/12.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "yjeWtAyK8exjQzuLnmD2K"
+uri = "file://public/images/avatars/objet/13.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "MEVGobf5xK0nBSZ6Dp1X7"
+uri = "file://public/images/avatars/objet/14.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "sy5W39V9TkZLzDM_luCJT"
+uri = "file://public/images/avatars/objet/15.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QonvQmSwMC8CEO-hO8F6L"
+uri = "file://public/images/avatars/objet/16.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "uCAqhBgZsiwCNl-ji6A79"
+uri = "file://public/images/avatars/objet/17.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Q0IGvx6MGvzq9jYaRWI9W"
+uri = "file://public/images/avatars/objet/18.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "x1TTDUMaDp1VEVxgYiJoY"
+uri = "file://public/images/avatars/objet/19.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "n-ExA6N8JY226_XfVuMr2"
+uri = "file://public/images/avatars/objet/20.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "qJcskQMqzPMe4_LKtV8io"
+uri = "file://public/images/avatars/objet/21.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "h0_LSYyFYkNNyP5V-y73q"
+uri = "file://public/images/avatars/objet/22.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "9OSVS-vCTHG3kZ8MIP0XP"
+uri = "file://public/images/avatars/objet/23.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "H280H0Gl0esnp4UujUm2B"
+uri = "file://public/images/avatars/objet/24.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "2gyt-WQsGD1x87Uz3dxuQ"
+uri = "file://public/images/avatars/objet/25.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
