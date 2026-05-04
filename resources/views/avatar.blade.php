@@ -178,7 +178,7 @@
                 $count  = (int)($p['count'] ?? 0);
               @endphp
               <div class="card pack-card pack-anim"
-                   onclick="{{ $locked ? "window.location.href='".route('boutique',['item'=>$p['slug']])."';"
+                   onclick="{{ $locked ? "window.location.href='".route('boutique.category', 'packs')."?pack=".$p['slug']."';"
                                       : "openPack('".$p['slug']."', '".$p['label']."')" }}">
                 <div class="badge">{{ $p['label'] }}{{ $count ? ' · '.$count : '' }}</div>
                 <div class="inner {{ $locked ? 'locked' : '' }}"><h3>{{ $locked ? '' : $p['label'] }}</h3></div>

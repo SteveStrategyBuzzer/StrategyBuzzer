@@ -7,6 +7,7 @@
     // Routes sûres (si la route n’existe pas, on tombe sur une URL par défaut)
     $rAvatarSelect      = Route::has('avatar.select')     ? route('avatar.select')     : url('/avatar/select');
     $rBoutique          = Route::has('boutique')          ? route('boutique')          : url('/boutique');
+    $rBoutiquePacks     = Route::has('boutique.category') ? route('boutique.category', 'packs') : url('/boutique/packs');
     $rBoutiquePurchase  = Route::has('boutique.purchase') ? route('boutique.purchase') : url('/boutique/purchase');
 @endphp
 
@@ -584,7 +585,7 @@
         const slug = packCard.dataset.slug;
         const label = packCard.dataset.label;
         if(locked){ 
-          window.location.href = @json($rBoutique) + '?item=' + slug; 
+          window.location.href = @json($rBoutiquePacks) + '?pack=' + slug; 
         } else { 
           openPack(slug, label); 
         }
