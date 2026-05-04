@@ -432,6 +432,168 @@ uri = "file://public/images/avatars/objet/25.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "n-JJm-Wg-XD0bolpmXFkL"
+uri = "file://public/images/avatars/metier/cuisiniere.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "uA-GA5ZFLWVEy-o41OUv-"
+uri = "file://public/images/avatars/metier/policiere.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lp8YlRFvzYAu03eiMcreP"
+uri = "file://public/images/avatars/metier/pompiere.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "T2pMWHynN0GR3JD2pKQjE"
+uri = "file://public/images/avatars/metier/medecin.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "y0tym9OOUfH-_u4p7CVEC"
+uri = "file://public/images/avatars/metier/medecine.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "bma4e2qX_XwKw2h4B7Boi"
+uri = "file://public/images/avatars/metier/infirmier.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ELi3AUrVFyhwuT5CG3aDY"
+uri = "file://public/images/avatars/metier/infirmiere.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "c9MXGRWOtLynAp6zNuocW"
+uri = "file://public/images/avatars/metier/enseignant.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-oT3ISslOKXcEk1pty4Th"
+uri = "file://public/images/avatars/metier/enseignante.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "n29OrY7MqGSaqtytCxqok"
+uri = "file://public/images/avatars/metier/astronaute.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "0jpEz_e03KaWF4BtqHn7C"
+uri = "file://public/images/avatars/metier/astronaute_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "9CKmY-XsTQJSt7G84BABx"
+uri = "file://public/images/avatars/metier/soldat.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "e809EpWuiN09mHUBNYOky"
+uri = "file://public/images/avatars/metier/soldate.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "D238Mq639tzcCZx1_YUqp"
+uri = "file://public/images/avatars/metier/pilote.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "vEk14sGZ3JvplorJN70B3"
+uri = "file://public/images/avatars/metier/pilote_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "AUH7SeSTO5upxTDUG9gGV"
+uri = "file://public/images/avatars/metier/veterinaire.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "_nDNVckvU3L-pwf13igHR"
+uri = "file://public/images/avatars/metier/veterinaire_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "xxXMCDvYF7OR91eBHZa3m"
+uri = "file://public/images/avatars/metier/avocat.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ZPHhdxr4thks8CRHzY2E1"
+uri = "file://public/images/avatars/metier/avocate.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "LFRHkh0xo-m_RHm9SUItp"
+uri = "file://public/images/avatars/metier/scientifique_m.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Pm_C6aYlTak2BOLT_eFJt"
+uri = "file://public/images/avatars/metier/scientifique_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3PZB43GvqLVu6YL3rRb4M"
+uri = "file://public/images/avatars/metier/sportif.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-aFprdIChIjGr6BOiWClI"
+uri = "file://public/images/avatars/metier/sportive.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "x2FOfIpGlbDiItBEsb3eI"
+uri = "file://public/images/avatars/metier/agriculteur.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "M8PTke_cpDzgHJ8gEuHcY"
+uri = "file://public/images/avatars/metier/agricultrice.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "4pcHMsP8kxr3we_RkLUCF"
+uri = "file://public/images/avatars/metier/artiste.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kVXcqN7iGaTozhxqnDbJb"
+uri = "file://public/images/avatars/metier/artiste_f.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
