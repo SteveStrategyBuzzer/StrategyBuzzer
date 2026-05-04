@@ -220,6 +220,7 @@ class AvatarCatalog
         $files = glob($dir . '/*.{png,jpg,jpeg,webp}', GLOB_BRACE) ?: [];
         natsort($files);
         foreach ($files as $f) {
+            if (basename($f) === 'default.png') continue;
             $out[] = $relativeDir . '/' . basename($f);
         }
         return $out;

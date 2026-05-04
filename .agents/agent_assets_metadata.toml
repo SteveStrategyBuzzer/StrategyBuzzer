@@ -1,5 +1,100 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "YSL07KVN61ZXq6d1N_4SA"
+uri = "file://public/images/avatars/cartoon/1.png"
+type = "image"
+title = "pixel-math-male"
+
+[[generated]]
+id = "m21vbuoX3SZDn6SfyOAR8"
+uri = "file://public/images/avatars/cartoon/2.png"
+type = "image"
+title = "pixel-math-female"
+
+[[generated]]
+id = "ZRV9DBSGmVjCaGZjUcSxV"
+uri = "file://public/images/avatars/cartoon/3.png"
+type = "image"
+title = "pixel-scientist-male"
+
+[[generated]]
+id = "tvh8d09R9NZ8_EmhfScBc"
+uri = "file://public/images/avatars/cartoon/4.png"
+type = "image"
+title = "pixel-scientist-female"
+
+[[generated]]
+id = "_xmw5QRTCaR9pdqWQJeTd"
+uri = "file://public/images/avatars/cartoon/5.png"
+type = "image"
+title = "pixel-explorer-male"
+
+[[generated]]
+id = "Ui7lUDNx3Yiltpk_gcobK"
+uri = "file://public/images/avatars/cartoon/6.png"
+type = "image"
+title = "pixel-explorer-female"
+
+[[generated]]
+id = "MTOHGV4h25DmOtbHpxlW-"
+uri = "file://public/images/avatars/cartoon/7.png"
+type = "image"
+title = "pixel-warrior-male"
+
+[[generated]]
+id = "gy8iQ-hWjimQ4ZsMg9fCk"
+uri = "file://public/images/avatars/cartoon/8.png"
+type = "image"
+title = "pixel-warrior-female"
+
+[[generated]]
+id = "pt8WD71aXSTtyB13Fl_dO"
+uri = "file://public/images/avatars/cartoon/9.png"
+type = "image"
+title = "pixel-mage-male"
+
+[[generated]]
+id = "QDkSDrEUsivYYurg0-MYE"
+uri = "file://public/images/avatars/cartoon/10.png"
+type = "image"
+title = "pixel-mage-female"
+
+[[generated]]
+id = "lzxZRulSBi6eh8pesmcut"
+uri = "file://public/images/avatars/cartoon/11.png"
+type = "image"
+title = "pixel-detective-male"
+
+[[generated]]
+id = "jiSMEP22GaGyx_evWP9HF"
+uri = "file://public/images/avatars/cartoon/12.png"
+type = "image"
+title = "pixel-detective-female"
+
+[[generated]]
+id = "gFjI9Wtqk0kUGmuwp-8Gs"
+uri = "file://public/images/avatars/cartoon/13.png"
+type = "image"
+title = "pixel-knight-male"
+
+[[generated]]
+id = "cAnGzT4CJylEytXyE-Q8E"
+uri = "file://public/images/avatars/cartoon/14.png"
+type = "image"
+title = "pixel-knight-female"
+
+[[generated]]
+id = "zKLvg9rCmNrS1hl85_CGI"
+uri = "file://public/images/avatars/cartoon/15.png"
+type = "image"
+title = "pixel-robot-male"
+
+[[generated]]
+id = "VMPyxGetqvQWFjJCMUGDJ"
+uri = "file://public/images/avatars/cartoon/16.png"
+type = "image"
+title = "pixel-robot-female"
 
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
