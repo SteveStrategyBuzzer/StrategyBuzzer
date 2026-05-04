@@ -96,6 +96,66 @@ uri = "file://public/images/avatars/cartoon/16.png"
 type = "image"
 title = "pixel-robot-female"
 
+[[generated]]
+id = "8EFNLB0KnOfjWYl8eVt0I"
+uri = "file://public/images/avatars/cartoon/17.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "pebZV9_3ZJW67ChA3BNHJ"
+uri = "file://public/images/avatars/cartoon/18.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HJQ5NJh0bFyWWKTGT6uUQ"
+uri = "file://public/images/avatars/cartoon/19.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "5kxdaRhbCO9xKXH3kCq3H"
+uri = "file://public/images/avatars/cartoon/20.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Mep69BojhbLem5ydpGtwq"
+uri = "file://public/images/avatars/cartoon/21.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "YdwTY89lHTIONFtXpckd6"
+uri = "file://public/images/avatars/cartoon/22.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "tdjC2ATQc8U6Fkh-7Pkeh"
+uri = "file://public/images/avatars/cartoon/23.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "2HJBohRTZUu0TX1-pBp5_"
+uri = "file://public/images/avatars/cartoon/24.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "DcyOGewccOCp5orlqX16u"
+uri = "file://public/images/avatars/cartoon/25.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "WSQlphPZevLKDQ4HDU3f9"
+uri = "file://public/images/avatars/cartoon/26.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
