@@ -1254,6 +1254,66 @@ uri = "file://public/images/avatars/animal/animal30.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "g7Y8tjMhibY9w3mYrV0vg"
+uri = "file://public/images/avatars/animal/elephant.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "fIdlSa2TqiPQXTds70XMC"
+uri = "file://public/images/avatars/animal/hyene.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ezwDxeDm37V6AZ7MP8byj"
+uri = "file://public/images/avatars/animal/kodiak.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7jmNmewvsUkZZE_hhw9Cd"
+uri = "file://public/images/avatars/animal/lion.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Af-cWzfAU5f3btwrASi16"
+uri = "file://public/images/avatars/animal/ours-noir.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "p4rWVFha880nXkuQa_qIr"
+uri = "file://public/images/avatars/animal/phacochère.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "UWwMoDAt5JK4TPbRoOU92"
+uri = "file://public/images/avatars/animal/porc-epic.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "i45UaVi3VFAuoTi9TsRf_"
+uri = "file://public/images/avatars/animal/rhinoceros.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-fwbc4Hika6yY8r8w8gAK"
+uri = "file://public/images/avatars/animal/tigre.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ZQB24uDW3MlBrGX48fdab"
+uri = "file://public/images/avatars/animal/zebre.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
