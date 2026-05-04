@@ -990,6 +990,66 @@ uri = "file://public/images/avatars/automobile/pagani.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "tTPIiHZ9x1FKFkCX6B9xJ"
+uri = "file://public/images/avatars/automobile/vw_beetle.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QJGM4I8_s9vSqhiMEeb2z"
+uri = "file://public/images/avatars/automobile/vw_kombi.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "LNyrtECHEY4xnJE9vwhme"
+uri = "file://public/images/avatars/automobile/bmw_classic.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "u4PM6GBsh5qnfOS5SbBpd"
+uri = "file://public/images/avatars/automobile/mercedes_gullwing.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "eS0hBEJ4I2HjxtRxKPOsW"
+uri = "file://public/images/avatars/automobile/cadillac.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "VTwCflYVwU-8yXPSpi5Qy"
+uri = "file://public/images/avatars/automobile/chevy_belair.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "atTu3nvZVDZopxLtNhIkv"
+uri = "file://public/images/avatars/automobile/mini_cooper.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "erkKHDkOjLZjdHpHkd52Q"
+uri = "file://public/images/avatars/automobile/jaguar_etype.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "fUwjiZfAkR-mYkMJ_DIXY"
+uri = "file://public/images/avatars/automobile/rolls_royce.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "GpD_NnN7cang5K_uUD6Hw"
+uri = "file://public/images/avatars/automobile/citroen_2cv.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
