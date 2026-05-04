@@ -93,16 +93,29 @@ class AvatarController extends Controller
         $unlockedAv    = (array) data_get($settings, 'unlocked_avatars', []);
         $questsDone    = (array) data_get($settings, 'quests_completed', []);
 
-        // Fusionner les deux sources pour stratégiques
+        // Source de vérité : table user_avatars (slugs des stratégiques débloqués)
+        $unlockedFromDb = [];
+        if ($user) {
+            $unlockedFromDb = DB::connection('pgsql')
+                ->table('user_avatars')
+                ->where('user_id', $user->id)
+                ->where('unlocked', true)
+                ->pluck('avatar_name')
+                ->toArray();
+        }
+
+        // Fusionner les trois sources pour stratégiques
         $unlockedStrategiques = array_values(array_unique(array_merge(
             array_intersect(self::STRATEGIQUE_ORDER, $unlockedRaw),
-            array_intersect(self::STRATEGIQUE_ORDER, $unlockedAv)
+            array_intersect(self::STRATEGIQUE_ORDER, $unlockedAv),
+            array_intersect(self::STRATEGIQUE_ORDER, $unlockedFromDb)
         )));
 
         // Fusionner les deux sources pour packs
         $unlockedPacks = array_values(array_unique(array_merge(
             array_intersect(self::PACKS, $unlockedRaw),
-            array_intersect(self::PACKS, $unlockedAv)
+            array_intersect(self::PACKS, $unlockedAv),
+            array_intersect(self::PACKS, $unlockedFromDb)
         )));
 
         // Catalog (si service dispo) pour récupérer prix/overrides

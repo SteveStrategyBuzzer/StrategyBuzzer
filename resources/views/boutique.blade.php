@@ -413,4 +413,38 @@
         </a>
     </div>
 </div>
+
+{{-- =================== HISTORIQUE DES PAIEMENTS =================== --}}
+@if(!empty($boutiquePaiements ?? []))
+<div class="sb-panel" style="margin-top:20px; max-width:800px; margin-left:auto; margin-right:auto;">
+  <div class="sb-title" style="margin-bottom:14px;">💳 {{ __('Historique des Paiements') }}</div>
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    @foreach($boutiquePaiements as $pay)
+      @php
+        $done = ($pay->status ?? '') === 'completed';
+        $date = isset($pay->created_at) ? substr($pay->created_at, 0, 10) : '—';
+        $amountDisplay = isset($pay->amount_cents)
+            ? number_format($pay->amount_cents / 100, 2) . ' ' . strtoupper($pay->currency ?? 'EUR')
+            : '—';
+      @endphp
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px;
+                  background:rgba(255,255,255,.04); border-radius:10px;
+                  border-left:4px solid {{ $done ? '#4CAF50' : '#F44336' }};">
+        <div>
+          <div style="font-weight:700; font-size:14px;">{{ $pay->product_key ?? '—' }}</div>
+          <div style="opacity:.6; font-size:12px; margin-top:2px;">{{ $date }}</div>
+        </div>
+        <div style="text-align:right;">
+          @if($done)
+            <div style="color:#4CAF50; font-weight:700; font-size:14px;">✅ +{{ $pay->coins_awarded ?? 0 }} coins</div>
+          @else
+            <div style="color:#F44336; font-weight:700; font-size:14px;">❌ {{ $pay->status ?? 'failed' }}</div>
+          @endif
+          <div style="opacity:.6; font-size:12px; margin-top:2px;">{{ $amountDisplay }}</div>
+        </div>
+      </div>
+    @endforeach
+  </div>
+</div>
+@endif
 @endsection

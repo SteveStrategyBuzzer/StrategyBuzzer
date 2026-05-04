@@ -1529,9 +1529,16 @@ class QuestService
             case 'avatars_unlocked_25':
                 $required = $params['count'] ?? 1;
                 $settings = (array) ($user->profile_settings ?? []);
+                $unlockedDb = \Illuminate\Support\Facades\DB::connection('pgsql')
+                    ->table('user_avatars')
+                    ->where('user_id', $user->id)
+                    ->where('unlocked', true)
+                    ->pluck('avatar_name')
+                    ->toArray();
                 $unlocked = array_merge(
                     (array) ($settings['unlocked_avatars'] ?? []),
-                    (array) ($settings['unlocked'] ?? [])
+                    (array) ($settings['unlocked'] ?? []),
+                    $unlockedDb
                 );
                 return count(array_unique($unlocked)) >= $required;
 

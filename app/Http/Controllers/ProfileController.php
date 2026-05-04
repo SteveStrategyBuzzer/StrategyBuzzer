@@ -138,58 +138,10 @@ class ProfileController extends Controller
 
         $unlockedStrategicAvatars = $this->getUnlockedStrategicAvatars($player);
 
-        // === Données complètes du compte ===
-        $profileAvatars = [];
-        $profileQuests  = [];
-        $coinLedger     = [];
-        $profilePayments = [];
-        $profileDuoStats = null;
-
-        if ($player) {
-            $db = \Illuminate\Support\Facades\DB::connection('pgsql');
-
-            // Avatars débloqués
-            $profileAvatars = $db->select(
-                'SELECT avatar_name, created_at FROM user_avatars WHERE user_id=? AND unlocked=true ORDER BY created_at',
-                [$player->id]
-            );
-
-            // Quêtes avec nom et emoji
-            $profileQuests = $db->select(
-                'SELECT uqp.completed_at, uqp.rewarded, q.name, q.badge_emoji, q.rarity
-                 FROM user_quest_progress uqp
-                 LEFT JOIN quests q ON q.id = uqp.quest_id
-                 WHERE uqp.user_id = ?
-                 ORDER BY uqp.completed_at DESC NULLS LAST',
-                [$player->id]
-            );
-
-            // Coin ledger par type
-            $coinLedger = $db->select(
-                'SELECT coin_type, COUNT(*) as nb, SUM(delta) as total
-                 FROM coin_ledger WHERE user_id=? GROUP BY coin_type ORDER BY coin_type',
-                [$player->id]
-            );
-
-            // Paiements
-            $profilePayments = $db->select(
-                'SELECT product_key, amount_cents, currency, coins_awarded, status, processed_at, created_at
-                 FROM payments WHERE user_id=? ORDER BY created_at DESC',
-                [$player->id]
-            );
-
-            // Duo stats depuis player_duo_stats
-            $profileDuoStats = $db->selectOne(
-                'SELECT total_matches, victories, defeats, win_rate, level FROM player_duo_stats WHERE user_id=?',
-                [$player->id]
-            );
-        }
-
         return response()->view('profile', compact(
             'settings','routes','currentCountry','suggestedCountry',
             'stratName','stratUrl','stratTier','stratSkills','player','hasAvatar',
-            'botProfile','botQualifyCount','botTier','unlockedStrategicAvatars',
-            'profileAvatars','profileQuests','coinLedger','profilePayments','profileDuoStats'
+            'botProfile','botQualifyCount','botTier','unlockedStrategicAvatars'
         ))->withHeaders([
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'Pragma'        => 'no-cache',

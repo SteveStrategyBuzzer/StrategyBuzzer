@@ -36,7 +36,26 @@ class BoutiqueController extends Controller
         $coins           = $user?->coins ?? 0;
         $competenceCoins = $user?->competence_coins ?? 0;
         $settings        = (array) ($user?->profile_settings ?? []);
-        $unlocked        = $settings['unlocked_avatars'] ?? [];
+        // Source de vérité : table user_avatars + profile_settings fusionnés
+        $unlockedDb = $user ? DB::connection('pgsql')
+            ->table('user_avatars')
+            ->where('user_id', $user->id)
+            ->where('unlocked', true)
+            ->pluck('avatar_name')
+            ->toArray() : [];
+        $unlocked = array_values(array_unique(array_merge(
+            (array) ($settings['unlocked_avatars'] ?? []),
+            (array) ($settings['unlocked'] ?? []),
+            $unlockedDb
+        )));
+
+        // Historique des paiements
+        $boutiquePaiements = $user ? DB::connection('pgsql')
+            ->table('payments')
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->toArray() : [];
 
         $itemSlug        = $request->query('item');
         $strategiqueSlug = $request->query('stratégique');
@@ -49,6 +68,7 @@ class BoutiqueController extends Controller
             'mode'              => null,
             'entity'            => null,
             'slug'              => null,
+            'boutiquePaiements' => $boutiquePaiements,
             'intelligencePacks' => config('coins.intelligence_packs', []),
             'competencePacks'   => config('coins.competence_packs', []),
             'pricing'           => [

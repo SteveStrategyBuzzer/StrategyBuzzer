@@ -1,0 +1,165 @@
+🧾 Données du Compte
+👤 Identité
+ID
+15
+Email
+lefunnygr@gmail.com
+Nom
+LeFunny
+Pseudonyme
+LeFunny
+Code Joueur
+#SB-TEQN
+Langue
+FR
+Pays
+CA
+Ambiance
+❌ OFF
+Sons Gameplay
+❌ OFF
+💰 Pièces & Avatar
+Pièces Intelligence
+500
+Pièces Compétence
+735
+Transactions Ledger
+Competence
++105 (4 txn)
+Avatar sélectionné
+
+💳 Paiements (12)
+competence_starter
+2026-03-04
+✅ +100 coins
+CAD
+competence_starter
+2026-03-04
+✅ +100 coins
+CAD
+competence_starter
+2026-03-04
+✅ +100 coins
+CAD
+competence_starter
+2026-02-18
+✅ +100 coins
+USD
+competence_starter
+2026-02-17
+✅ +100 coins
+CAD
+competence_starter
+2026-02-17
+✅ +100 coins
+CAD
+competence_starter
+2025-12-12
+❌ failed
+CAD
+competence_starter
+2025-12-12
+❌ failed
+USD
+intelligence_starter
+2025-12-12
+❌ failed
+USD
+competence_mega
+2025-12-12
+❌ failed
+USD
+starter
+2025-10-12
+❌ failed
+USD
+starter
+2025-10-12
+❌ failed
+USD
+🎭 Avatars & Quêtes
+🔓 Avatars Débloqués (12)
+🎭
+mathematicien
+🎭
+scientifique
+🎭
+explorateur
+🎭
+defenseur
+🎭
+comedienne
+🎭
+magicienne
+🎭
+challenger
+🎭
+historien
+🎭
+ia-junior
+🎭
+stratege
+🎭
+sprinteur
+🎭
+visionnaire
+✅ Quêtes Complétées (13/19)
+🏆 Ligue ouverte
+2026-04-29
+🐔 Chicken
+2026-04-07
+🎭 Nouveau visage
+2026-04-06
+💬 Actif du jour
+2026-03-18
+⚡ Buzz rapide
+2025-11-17
+🏃 Marathonien
+2025-10-26
+💠 Parfait x10
+2025-10-26
+💰 Richesse
+2025-10-26
+👥 Duo Élite
+2025-10-26
+🎭 Polyvalent
+2025-10-26
+💎 Parfait x3
+2025-10-26
+💯 Génie du jour
+2025-10-26
+🚀 C'est un Départ
+2025-10-26
+⏳ En cours (6)
+⚡ Éclair
+🎯 Sans Faute
+🌏 Océanographe
+🏰 Curieux du monde
+🧮 MathExpress
+🛡️ Invincible
+🤖 Votre Bot
+Statut
+❌ Non qualifié
+Jouez encore 10 parties pour qualifier votre bot
+Sélectionné
+0 fois
+Victoires
+0
+Défaites
+0
+Pièces gagnées pour vous
+0
+Configuration du Bot
+Activer mon bot
+
+Oui
+Avatar de votre bot
+Débloquez des avatars stratégiques pour les assigner à votre bot
+Mon bot peut miser
+
+Oui
+Mise max par match
+0
+
+✅ Enregistrer
+❓ Comment votre Bot fonctionne
