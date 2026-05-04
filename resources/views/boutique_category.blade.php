@@ -1274,6 +1274,11 @@ function openPackModal(slug, label, price, isUnlocked) {
     
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+
+    // Met à jour l'URL sans recharger la page
+    const url = new URL(window.location.href);
+    url.searchParams.set('pack', slug);
+    window.history.pushState({ pack: slug }, '', url.toString());
 }
 
 function closePackModal() {
@@ -1281,7 +1286,31 @@ function closePackModal() {
     modal.style.display = 'none';
     document.body.style.overflow = '';
     currentPackSlug = null;
+
+    // Retire le paramètre ?pack= de l'URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('pack');
+    window.history.pushState({}, '', url.toString());
 }
+
+// Auto-ouvre le modal si ?pack= est présent dans l'URL au chargement
+document.addEventListener('DOMContentLoaded', function () {
+    const params = new URLSearchParams(window.location.search);
+    const packSlug = params.get('pack');
+    if (!packSlug) return;
+
+    // Cherche la carte du pack pour récupérer ses données
+    const card = document.getElementById('pack-' + packSlug);
+    if (!card) return;
+
+    const onclick = card.getAttribute('onclick');
+    if (onclick) {
+        // Exécute le onclick existant pour ouvrir le modal
+        card.click();
+        // Scroll vers la carte
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+});
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && currentPackSlug) {
