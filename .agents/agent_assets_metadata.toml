@@ -594,6 +594,120 @@ uri = "file://public/images/avatars/metier/artiste_f.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "-54G85DkbCfy_fO1kPC5M"
+uri = "file://public/images/avatars/nation/africain.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "gKbPAwF_62OmN3U1dJMwx"
+uri = "file://public/images/avatars/nation/indonesienne.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "EyRmDnyD8HcFotCgacSuD"
+uri = "file://public/images/avatars/nation/japonais.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "gdQifTxw-fJofSjpwP0p1"
+uri = "file://public/images/avatars/nation/ecossais.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "MApyZplJpHfW11Dx3AO4b"
+uri = "file://public/images/avatars/nation/irlandaise.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ufoE2JyIf__Bt0GQrokeN"
+uri = "file://public/images/avatars/nation/mexicain.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "mDj3kcLDIK1PS3d4BdLWg"
+uri = "file://public/images/avatars/nation/mexicaine.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "TWGm39eMyzrvxaP2yPGLI"
+uri = "file://public/images/avatars/nation/francais.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "NtKgaOwLzEdj8PG2AVCpA"
+uri = "file://public/images/avatars/nation/francaise.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "AllFP4w6KFOpr6GRucOWC"
+uri = "file://public/images/avatars/nation/americain.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ru1RIVZMnBSLjFCYD9xL2"
+uri = "file://public/images/avatars/nation/americaine.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3pdYt3KMsOxEQagmGly9r"
+uri = "file://public/images/avatars/nation/bresilien.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-xxBWs_jj_W7bMVxidWro"
+uri = "file://public/images/avatars/nation/bresilienne.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "YQ1rH7_k5XAbLl3R34oTW"
+uri = "file://public/images/avatars/nation/chinois.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "TqzkjW6EhRIlQ5IHQxGHk"
+uri = "file://public/images/avatars/nation/chinoise.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3qwpXt78WM1r0iN2sb3f-"
+uri = "file://public/images/avatars/nation/russe.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ls2PiypD5W1UDghqu1NFK"
+uri = "file://public/images/avatars/nation/russe_f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "meJoCq-5kdMoGFJDJxcPe"
+uri = "file://public/images/avatars/nation/nigerian.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HTYtUSCTnR-cQprn4bGu8"
+uri = "file://public/images/avatars/nation/nigeriane.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
