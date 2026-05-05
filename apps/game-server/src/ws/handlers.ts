@@ -683,29 +683,25 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           }
         } else if (
           (room.state.phase === "RESULT" || room.state.phase === "REVEAL") &&
-          payload.isReady === true
+          payload.isReady === true &&
+          players.length > 0 &&
+          players.every(
+            (p) =>
+              !p.isConnected ||
+              ((p as Player & { isReady?: boolean }).isReady) === true
+          )
         ) {
-          // RESULT-phase short-circuit: ALL *connected* human players have pressed
-          // the GO button on /duo/result. Bots emit ready:true on every RESULT entry
-          // but must never drive this transition on their own.
-          // Disconnected humans (temporarily gone during page navigation) are NOT
-          // treated as "ready" — the old `!p.isConnected` shorthand caused the
-          // transition to fire the instant the bot pressed GO while the human was
-          // navigating, which made the result page flash and disappear immediately.
-          // The 60 s fallback timeout covers the case where a human truly leaves.
-          const humanPlayers = players.filter(p => p.isBot !== true);
-          const connectedHumans = humanPlayers.filter(p => p.isConnected);
-          if (
-            connectedHumans.length > 0 &&
-            connectedHumans.every(
-              (p) => ((p as Player & { isReady?: boolean }).isReady) === true
-            )
-          ) {
-            console.log(
-              `[WS] All connected humans ready in ${room.state.phase} for room ${payload.roomId} — short-circuiting fallback timeout`
-            );
-            gameOrchestrator.requestEarlyResultTransition(payload.roomId);
-          }
+          // RESULT-phase short-circuit: every connected player has pressed
+          // the GO button on /duo/result. Bypass the 60 s fallback timeout
+          // and advance to the next question immediately. The orchestrator
+          // method clears the pending phase timer so transitionAfterResult
+          // is not invoked twice. The isReady flag is reset back to false
+          // by GameOrchestrator.revealAnswer() on the NEXT entry into
+          // RESULT, so this path will not re-fire spuriously.
+          console.log(
+            `[WS] All players ready in ${room.state.phase} for room ${payload.roomId} — short-circuiting fallback timeout`
+          );
+          gameOrchestrator.requestEarlyResultTransition(payload.roomId);
         }
 
         MetricsService.incrementEventsProcessed();

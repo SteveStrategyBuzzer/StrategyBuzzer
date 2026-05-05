@@ -2086,20 +2086,7 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         // Task #78 — Signal arrival on /duo/result so the server can re-stamp
         // the canonical 60s countdown only when BOTH humans are present
         // (cf. GameOrchestrator.handleResultPageReady).
-        //
-        // BUG FIX: do NOT emit on the raw `connect` event. On reconnect, the
-        // client emits `join_room` AND this `result_page_ready` simultaneously on
-        // `connect`, and the server processes them asynchronously. If
-        // `result_page_ready` is processed before `join_room`, the handler
-        // doesn't know the player yet and returns NOT_IN_ROOM — the signal is
-        // silently lost. Instead: emit once on initial load (socket already
-        // joined), and on reconnect, emit after `game_state` fires (which is the
-        // server's ack that join_room was processed). A per-session flag avoids
-        // duplicate emissions within the same connection cycle.
-        var _resultReadySignaled = false;
         function _emitResultPageReady() {
-            if (_resultReadySignaled) return;
-            _resultReadySignaled = true;
             try {
                 if (ds.socket && ds.socket.connected) {
                     ds.socket.emit('result_page_ready', {
@@ -2110,16 +2097,13 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
                 }
             } catch (e) { console.warn('[DuoResult] result_page_ready emit failed', e); }
         }
-        // Reset signal on each new connection so a reconnect can re-emit.
-        ds.on('connect', function() { _resultReadySignaled = false; });
-        // Initial emit when socket was already connected at DOMContentLoaded.
         if (ds.isConnected && ds.isConnected()) {
             _emitResultPageReady();
         }
-        // On cold-load (socket still handshaking) or reconnect: emit only after
-        // the server confirms join_room via game_state, ensuring currentRoomId is
-        // set server-side before result_page_ready is processed.
-        ds.on('game_state', _emitResultPageReady);
+        // Also fire on (re)connect — covers the cold-load race where the
+        // socket is still handshaking when DOMContentLoaded runs, and any
+        // mid-page reconnect after a transient drop.
+        ds.on('connect', _emitResultPageReady);
     });
 })();
 </script>
