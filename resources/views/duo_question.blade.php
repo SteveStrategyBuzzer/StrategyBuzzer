@@ -1543,10 +1543,10 @@ $mode = 'duo';
             if (String(lockedId) === CURRENT_USER_ID) {
                 redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 150);
             } else {
-                // Non-buzzer: stay on Question. Laravel rejects /answer during ANSWER_SELECTION
-                // unless this player is the locked answer player. Visual feedback only.
+                // Non-buzzer: go to Answer too (Duo participatif, 0-point path).
+                // Node enforces scoring via didBuzz=false / buzzOrder=0.
                 handleOpponentBuzz();
-                applyPhaseVisualState();
+                redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID), 150);
             }
             return;
         }
