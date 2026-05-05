@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\DuoMatch;
 use App\Models\PlayerDuoStat;
 use App\Models\PlayerDivision;
+use App\Services\ProfileStatsService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -295,6 +296,22 @@ class DuoMatchmakingService
                 ['level' => 0]
             );
             $player2Stats->updateAfterMatch($player2Won);
+
+            // Update profile_stats + match_performances for each player
+            $totalScore = $player1Score + $player2Score;
+            $p1Perf = $totalScore > 0 ? round(($player1Score / $totalScore) * 100, 2) : ($player1Won ? 100.0 : 0.0);
+            $p2Perf = $totalScore > 0 ? round(($player2Score / $totalScore) * 100, 2) : ($player2Won ? 100.0 : 0.0);
+            $matchGameId = 'duo_match_' . $match->id;
+            try {
+                ProfileStatsService::updateDuoStats($player1, $player1Won, $p1Perf, $matchGameId . '_p1');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('ProfileStats duo p1 failed: ' . $e->getMessage());
+            }
+            try {
+                ProfileStatsService::updateDuoStats($player2, $player2Won, $p2Perf, $matchGameId . '_p2');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('ProfileStats duo p2 failed: ' . $e->getMessage());
+            }
 
             $this->divisionService->updateDivisionPointsWithFloor($player1Division, $player1Points);
             $player1Division->level = $player1Stats->level;
