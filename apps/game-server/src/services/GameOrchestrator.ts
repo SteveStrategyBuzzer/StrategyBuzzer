@@ -341,7 +341,7 @@ export class GameOrchestrator {
     // QUESTION_ACTIVE (e.g. a bot that buzzes and answers before the phase
     // transition) do not trigger a premature reveal.
     const isAnswerWindow = room.state.phase === "ANSWER_SELECTION" || room.state.phase === "ANSWER_COLLECTION";
-    const totalPlayers = Object.keys(room.state.players).length;
+    const totalPlayers = room.state.config.maxPlayers;
     if (isAnswerWindow && roomAnswers.size >= totalPlayers) {
       console.log(`[GameOrchestrator] All ${roomAnswers.size}/${totalPlayers} players answered — early reveal for room ${roomId}`);
       this.clearPhaseTimer(roomId);
