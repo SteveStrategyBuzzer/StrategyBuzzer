@@ -387,19 +387,18 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
         // Eligibility tiers:
         //   1) Player is in buzzQueue OR holds lockedAnswerPlayerId
         //      → full scoring (first=+2, second=+1, wrong=-1, timeout=-2)
-        //   2) Player is NOT in the queue but the room is in an answer-collecting
-        //      phase (ANSWER_SELECTION / ANSWER_COLLECTION) and the round had
-        //      at least ONE buzzer → "participatif", scored ALWAYS 0 pts.
-        //      Lets the non-buzzer keep playing on /duo/answer (same UI, same
-        //      audio cues for correct/wrong) without affecting the scoreboard.
-        //
-        // No-buzz rounds (queue empty) skip ANSWER_SELECTION entirely on the
-        // server, so no participatif path is needed there — handled upstream.
+        //   2) Player is NOT in the queue but the room is in ANSWER_SELECTION or
+        //      ANSWER_COLLECTION → "participatif", scored ALWAYS 0 pts.
+        //      The phase itself is the authoritative signal: handleQuestionTimeout
+        //      only enters ANSWER_SELECTION when buzzQueue.length >= 1, so we do
+        //      NOT re-check buzzQueue here. The earlier hasBuzzers guard was fragile:
+        //      the 4 Redis awaits inside rateLimiter.canAnswer() create a window where
+        //      a disconnect/reconnect can empty buzzQueue before the reducer runs,
+        //      producing a spurious "did not buzz" error + 12-second forced wait.
         const isInBuzzQueue = room.state.buzzQueue.some(b => b.playerId === currentPlayerId);
         const isLocked = room.state.lockedAnswerPlayerId === currentPlayerId;
         const isAnswerPhase = room.state.phase === "ANSWER_SELECTION" || room.state.phase === "ANSWER_COLLECTION";
-        const hasBuzzers = room.state.buzzQueue.length > 0;
-        const isParticipatif = !isInBuzzQueue && !isLocked && isAnswerPhase && hasBuzzers;
+        const isParticipatif = !isInBuzzQueue && !isLocked && isAnswerPhase;
         if (!isInBuzzQueue && !isLocked && !isParticipatif) {
           MetricsService.incrementEventsFailed();
           socket.emit("error", { code: "NOT_YOUR_TURN", message: "You have not buzzed for this question" });

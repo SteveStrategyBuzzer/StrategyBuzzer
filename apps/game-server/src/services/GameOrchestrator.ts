@@ -263,10 +263,14 @@ export class GameOrchestrator {
     const buzzIndex = room.state.buzzQueue.findIndex(b => b.playerId === playerId);
     const isBuzzer = buzzIndex !== -1;
     if (!isBuzzer) {
+      // Task #78 — participatif path: allow any non-buzzer during ANSWER_SELECTION /
+      // ANSWER_COLLECTION. The phase is authoritative (handleQuestionTimeout only enters
+      // ANSWER_SELECTION when buzzQueue.length >= 1), so we do NOT re-check
+      // buzzQueue.length here. The old hasBuzzers guard was the last line of the same
+      // race-condition that caused the "Player did not buzz" crash in the reducer.
       const isAnswerPhase = room.state.phase === "ANSWER_SELECTION" || room.state.phase === "ANSWER_COLLECTION";
-      const hasBuzzers = room.state.buzzQueue.length > 0;
-      if (!isAnswerPhase || !hasBuzzers) {
-        console.log(`[GameOrchestrator] Answer rejected: ${playerId} did not buzz and not eligible for participatif`);
+      if (!isAnswerPhase) {
+        console.log(`[GameOrchestrator] Answer rejected: ${playerId} did not buzz and phase is ${room.state.phase}`);
         return;
       }
     }
@@ -948,6 +952,20 @@ export class GameOrchestrator {
 
     room.state = applyEvent(room.state, phaseEvent);
     room.events.push(phaseEvent);
+
+    // Defensive guard — lockedAnswerPlayerId must match the first buzzer when we
+    // enter ANSWER_SELECTION. Under normal operation the BUZZ_RECEIVED reducer
+    // sets it to buzzQueue[0].playerId when the first buzz arrives. However a
+    // rapid disconnect + reconnect during the async rateLimiter window can clear
+    // it (PLAYER_LEFT non-disconnect path removes the locked player). If we land
+    // here with buzzers but no locked player, restore it from the queue head so
+    // the bot, clients, and emitPhaseChanged all see the correct locked player.
+    if (!room.state.lockedAnswerPlayerId && room.state.buzzQueue.length > 0) {
+      room.state.lockedAnswerPlayerId = room.state.buzzQueue[0].playerId;
+      console.warn(
+        `[GameOrchestrator] Restored lockedAnswerPlayerId → ${room.state.lockedAnswerPlayerId} (was undefined with ${room.state.buzzQueue.length} buzzer(s) in queue)`
+      );
+    }
 
     this.io.to(roomId).emit("event", { event: phaseEvent });
     this.logEventToRedis(roomId, phaseEvent);

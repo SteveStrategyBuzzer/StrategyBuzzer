@@ -188,14 +188,19 @@ export function applyEvent(state: GameState, event: GameEvent): GameState {
         "Answer not allowed in current phase"
       );
       // Task #78 — Non-buzzer "participatif" submissions (Duo) are allowed
-      // when the answer phase is active and at least one buzzer exists in the
-      // queue. The legacy assertion required `isInBuzzQueue`, which crashed
-      // applyEvent for participatif players (the WS handler authorises them
-      // via the same isParticipatif rule in handlers.ts:402). We keep the
-      // strict check on the player existing — but allow non-queued players to
-      // record their answer when the room has at least one real buzzer.
+      // in any answer phase (ANSWER_SELECTION / ANSWER_COLLECTION).
+      //
+      // WHY phase-based, not buzzQueue.length-based:
+      //   handleQuestionTimeout only enters ANSWER_SELECTION when buzzQueue.length >= 1,
+      //   so being in ANSWER_SELECTION/ANSWER_COLLECTION is authoritative proof that at
+      //   least one real buzz occurred this round. Checking buzzQueue.length > 0 here was
+      //   fragile: the 4 sequential Redis awaits inside rateLimiter.canAnswer() create a
+      //   window during which a concurrent disconnect/reconnect or stale phase-timer can
+      //   empty buzzQueue before applyEvent runs, causing a spurious "did not buzz" error
+      //   and a 12-second forced wait even when the round legitimately had buzzers.
       const isInBuzzQueue = s.buzzQueue.some((b) => b.playerId === event.playerId);
-      const isParticipatif = !isInBuzzQueue && s.buzzQueue.length > 0;
+      const isAnswerPhase = s.phase === "ANSWER_SELECTION" || s.phase === "ANSWER_COLLECTION";
+      const isParticipatif = !isInBuzzQueue && isAnswerPhase;
       assert(
         isInBuzzQueue || isParticipatif,
         "Player did not buzz for this question"
