@@ -516,14 +516,23 @@ document.addEventListener('DOMContentLoaded', function() {
         onPhase(data.phase || data.toPhase || null);
     });
 
+    // Skip the very first `state` / `game_state` fired during join_sync so we
+    // don't immediately redirect away before the intro animation plays.
+    // If the INTRO phase is already over when the page loads, the real
+    // `phase_changed` (source ≠ join_sync) or `question_published` event will
+    // arrive and trigger navigation with a brief delay so the player can at
+    // least glimpse the intro screen.
+    var initialStateSeen = false;
     DuoSocketClient.on('state', function(payload) {
         if (!payload) return;
+        if (!initialStateSeen) { initialStateSeen = true; return; }
         var data = payload.state || payload;
         onPhase(data ? (data.phase || null) : null);
     });
 
     DuoSocketClient.on('game_state', function(data) {
         if (!data) return;
+        if (!initialStateSeen) { initialStateSeen = true; return; }
         onPhase(data.phase || null);
     });
 
