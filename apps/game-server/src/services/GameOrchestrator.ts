@@ -334,8 +334,19 @@ export class GameOrchestrator {
 
     console.log(`[GameOrchestrator] Player ${playerId} answered (buzz order: ${buzzOrder}). ${roomAnswers.size}/${room.state.buzzQueue.length} buzzers answered`);
 
-    // V3: Do NOT reveal early — let QUESTION_ACTIVE run its full timer.
-    // ANSWER_COLLECTION will catch any remaining answers after the timer expires.
+    // Early-reveal: once every player in the room has an entry in roomAnswers
+    // (buzzers + participatif non-buzzers), there is nothing left to wait for —
+    // cancel the running ANSWER_SELECTION / ANSWER_COLLECTION timer and go straight
+    // to RESULT. Guard on isAnswerWindow so answers that arrive early during
+    // QUESTION_ACTIVE (e.g. a bot that buzzes and answers before the phase
+    // transition) do not trigger a premature reveal.
+    const isAnswerWindow = room.state.phase === "ANSWER_SELECTION" || room.state.phase === "ANSWER_COLLECTION";
+    const totalPlayers = Object.keys(room.state.players).length;
+    if (isAnswerWindow && roomAnswers.size >= totalPlayers) {
+      console.log(`[GameOrchestrator] All ${roomAnswers.size}/${totalPlayers} players answered — early reveal for room ${roomId}`);
+      this.clearPhaseTimer(roomId);
+      this.revealAnswer(roomId);
+    }
   }
 
   private revealAnswer(roomId: string): void {
