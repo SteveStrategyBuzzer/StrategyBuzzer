@@ -154,6 +154,16 @@ class AvatarController extends Controller
             }
         }
 
+        // Standard avatars — dynamic list from catalog (auto-discovers all standard*.png)
+        $standardImgs = (array) data_get($catalog, 'standards.images', []);
+        // Fallback: hardcoded baseline if catalog returned nothing
+        if (empty($standardImgs)) {
+            $standardImgs = array_map(
+                fn($i) => "images/avatars/standard/standard{$i}.png",
+                range(1, 8)
+            );
+        }
+
         // Vue avatars
         return view('avatars', [
             'coins'          => $coins,
@@ -161,6 +171,7 @@ class AvatarController extends Controller
             'unlockedPacks'  => $unlockedPacks,
             'selected'       => $selectedStd,
             'selectedStrat'  => $selectedStrat,
+            'standardImgs'   => $standardImgs,
         ]);
     }
 

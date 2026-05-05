@@ -28,7 +28,9 @@ class AvatarCatalog
 
         foreach ($packs as $slug => $p) {
             $packs[$slug]['slug']   = $slug;
-            $packs[$slug]['images'] = self::scanImages("images/avatars/{$slug}");
+            // 'standards' slug → actual directory is 'standard' (no trailing 's')
+            $dir = $slug === 'standards' ? 'images/avatars/standard' : "images/avatars/{$slug}";
+            $packs[$slug]['images'] = self::scanImages($dir);
             $packs[$slug]['count']  = count($packs[$slug]['images']);
         }
 

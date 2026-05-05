@@ -255,12 +255,7 @@
       <button class="std-nav std-right" onclick="stdNext()" aria-label="{{ __('Suivant') }}"><span>›</span></button>
       <div class="std-viewport" id="stdViewport">
         <div id="stdTrack" class="std-track">
-          @php
-            $stdImgs = [
-              'images/avatars/standard/standard1.png','images/avatars/standard/standard2.png','images/avatars/standard/standard3.png','images/avatars/standard/standard4.png',
-              'images/avatars/standard/standard5.png','images/avatars/standard/standard6.png','images/avatars/standard/standard7.png','images/avatars/standard/standard8.png',
-            ];
-          @endphp
+          @php $stdImgs = $standardImgs ?? []; @endphp
           @foreach($stdImgs as $simg)
             @php $isStdActive = ($selected ?? '') === $simg; @endphp
             <div class="std-thumb" onclick="stdSelect('{{ $simg }}')">
@@ -471,10 +466,7 @@
   function assetPath(p){ return (ASSET_BASE + p).replace(/\/+$/, '').replace(/([^:]\/)\/+/g, '$1'); }
 
   /* ===== Standards (mini-carousel avec transform) ===== */
-  const STANDARDS = [
-    'images/avatars/standard/standard1.png','images/avatars/standard/standard2.png','images/avatars/standard/standard3.png','images/avatars/standard/standard4.png',
-    'images/avatars/standard/standard5.png','images/avatars/standard/standard6.png','images/avatars/standard/standard7.png','images/avatars/standard/standard8.png',
-  ];
+  const STANDARDS = @json($standardImgs ?? []);
   const stdViewport = document.querySelector('.std-viewport');
   const stdTrack = document.getElementById('stdTrack');
   let stdIndex = 0;
