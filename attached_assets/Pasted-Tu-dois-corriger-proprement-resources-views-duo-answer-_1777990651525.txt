@@ -1,0 +1,73 @@
+Tu dois corriger proprement `resources/views/duo_answer.blade.php`.
+
+Contexte :
+Nous sommes en train de stabiliser le timer Duo Answer V3.
+Node est l’unique autorité gameplay.
+`phaseEndsAtMs` est la seule vérité du timer.
+Interdit d’inventer du temps côté client.
+Interdit de fake 10s.
+Interdit de logique autonome client.
+
+Problèmes trouvés dans le fichier :
+
+1. `startTimer()` redémarrait le timer même si un interval existait déjà.
+Nous avons ajouté :
+if (timerInterval) return;
+Mais il faut vérifier que cette logique est propre et qu’il n’y a plus de code mort inutile juste après.
+
+2. Le bloc `ANSWER_COLLECTION` doit pouvoir redémarrer le timer uniquement quand c’est réellement la fenêtre du joueur :
+- `PLAYER_BUZZ_POSITION === 'second'`
+- ou `historianSkillUsed`
+
+Pour ce cas précis seulement, il est correct de faire :
+clearInterval(timerInterval);
+timerInterval = null;
+startTimer();
+
+Parce que `ANSWER_COLLECTION` représente une nouvelle deadline Node pour le joueur concerné.
+
+3. L’indentation actuelle autour de ce bloc est sale à cause d’un patch manuel :
+Zone autour de :
+if (phase === 'ANSWER_COLLECTION') {
+...
+if (isMyCollectionWindow && data.phaseEndsAtMs) {
+...
+if (timerInterval) {
+clearInterval(timerInterval);
+timerInterval = null;
+}
+...
+}
+
+Tu dois remettre ce bloc proprement, sans changer la logique métier.
+
+Correction attendue :
+- `startTimer()` ne doit jamais restart si `timerInterval` existe déjà.
+- `ANSWER_SELECTION` ne doit pas provoquer de double restart si même `phaseEndsAtMs`.
+- `ANSWER_COLLECTION` ne doit restart le timer que pour le joueur position 2 ou Historien.
+- Les joueurs déjà répondus doivent garder le waitingOverlay jusqu’à RESULT.
+- Aucun timer local inventé.
+- Aucun clamp mensonger.
+- Aucun setTimeout de navigation.
+- Navigation seulement via `phase_changed`.
+
+Méthode obligatoire :
+1. Lire le slice réel autour de `startTimer()`.
+2. Lire le slice réel autour de `_onAnswerPhaseChanged` / `ANSWER_COLLECTION`.
+3. Corriger uniquement les zones nécessaires.
+4. Ne pas modifier d’autres fichiers.
+5. Ne pas toucher au score.
+6. Ne pas toucher à la navigation.
+
+Validation obligatoire :
+- `php -l resources/views/duo_answer.blade.php`
+- afficher :
+  `nl -ba resources/views/duo_answer.blade.php | sed -n '1099,1120p'`
+- afficher :
+  `nl -ba resources/views/duo_answer.blade.php | sed -n '1608,1685p'`
+
+But final :
+Un seul timer actif.
+Pas de snap.
+Pas de double startTimer.
+Restart autorisé seulement pour `ANSWER_COLLECTION` quand la nouvelle fenêtre appartient vraiment au joueur.

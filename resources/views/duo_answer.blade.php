@@ -1104,7 +1104,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // No local TIMER_DURATION fallback, no `setTimeout` safety net.
         // If Node has not yet published a deadline, we display "--" and
         // wait silently until the next socket hydration.
-        if (timerInterval) clearInterval(timerInterval);
+        // PATCH: prevent restart if already running
+        if (timerInterval) return;
 
         if (!phaseEndsAtMs) {
             if (timerSeconds) timerSeconds.textContent = '--';
@@ -1670,6 +1671,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             if (isMyCollectionWindow && data.phaseEndsAtMs) {
                 phaseEndsAtMs = data.phaseEndsAtMs;
                 if (data.phaseStartedAtMs) phaseStartedAtMs = data.phaseStartedAtMs;
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
                 if (canAnswer() && !answered) {
                     startTimer();
                 }
