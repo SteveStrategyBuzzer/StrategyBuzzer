@@ -2712,14 +2712,11 @@ class DuoController extends Controller
                     if (in_array($currentPhase, $answerUnrestricted)) {
                         break; // Valid for all players
                     }
-                    // ANSWER_SELECTION / BUZZ_WINNER_ANSWERING: only the buzz winner may be here
+                    // ANSWER_SELECTION / BUZZ_WINNER_ANSWERING: all players allowed (Duo participatif).
+                    // Buzz order and scoring are Node's responsibility (didBuzz + buzzOrder).
+                    // Laravel must not gate /answer based on lockedAnswerPlayerId.
                     if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING'])) {
-                        $playerId = (string) $user->id;
-                        if (!$lockedAnswerPlayerId || $lockedAnswerPlayerId === $playerId) {
-                            break; // Buzz winner (or unknown) — allow
-                        }
-                        // Non-buzz winner arrived on answer page — send back to question
-                        return $toQuestion();
+                        break; // Valid for all players
                     }
                     // Server moved backwards or to a different page
                     if (in_array($currentPhase, ['INTRO', 'WAITING', 'SYNC'])) {
