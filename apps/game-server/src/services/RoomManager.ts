@@ -149,6 +149,18 @@ export class RoomManager {
     const room = this.rooms.get(roomId);
     if (!room) return null;
 
+    // During an active game a socket disconnect is a temporary page-navigation
+    // event (Blade redirect from question page to answer page, or vice-versa).
+    // Emitting PLAYER_LEFT in this situation removes the player from buzzQueue
+    // and clears lockedAnswerPlayerId, which corrupts ANSWER_SELECTION and
+    // causes the "Player did not buzz for this question" crash.
+    // The player will reconnect immediately via join_room; their presence in
+    // playerToRoom must be preserved so joinRoom recognises the reconnect.
+    if (room.state.phase !== "LOBBY") {
+      console.log(`[RoomManager] Player ${playerId} left room ${roomId} (disconnect ignored during active game phase: ${room.state.phase})`);
+      return null;
+    }
+
     const event: GameEvent = {
       id: room.state.lastEventId + 1,
       type: "PLAYER_LEFT",
