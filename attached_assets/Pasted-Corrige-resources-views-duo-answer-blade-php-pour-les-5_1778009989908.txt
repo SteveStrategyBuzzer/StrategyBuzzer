@@ -1,0 +1,81 @@
+Corrige `resources/views/duo_answer.blade.php` pour les 5 bugs UI/feedback de la page Réponses Duo.
+
+Contexte officiel :
+- Flow Duo V3 = Q → R → R → S
+- Tous les joueurs vont sur Réponses
+- 1er buzzer : +2 si bonne / -2 si mauvaise
+- 2e buzzer : +1 si bonne / -2 si mauvaise
+- non-buzzer : 0 si bonne / 0 si mauvaise
+- Node reste l’unique autorité via didBuzz + buzzOrder
+- La page Réponses affiche seulement, elle ne recalcule pas le score final
+
+Bugs à corriger :
+1. Supprimer tout popup/overlay texte de résultat du type “0 point”, “bonne réponse”, “mauvaise réponse”.
+2. Le pointage affiché doit respecter Node :
+   - afficher +2, +1 ou -2 quand `pointsEarned` est non zéro
+   - ne rien afficher quand `pointsEarned === 0`
+   - ne jamais afficher “0 point”.
+3. La bannière/vitesse de buzz en bas ne doit pas rester toujours `0.00ms`.
+   - Si joueur a buzzé : afficher le vrai temps de buzz si disponible.
+   - Si aucun temps fiable n’est disponible : afficher “Buzz enregistré” ou “Vous avez buzzé”, mais jamais `0.00ms`.
+   - Si non-buzzer : afficher clairement participation 0 point, sans faux temps.
+4. Les sons bonne/mauvaise réponse doivent rejouer correctement dans `showResult()`.
+   - Garder correctSound / incorrectSound
+   - Avant `play()`, faire `currentTime = 0`
+   - Catcher l’erreur sans casser le visuel.
+5. Les réponses doivent changer visuellement :
+   - choix du joueur correct : contour vert / classe `.correct`
+   - choix du joueur incorrect : contour rouge / classe `.incorrect`
+   - ne pas afficher de popup texte
+   - ne pas retirer inutilement `.selected` avant d’appliquer `.correct` / `.incorrect`
+   - le bouton choisi doit rester visuellement identifiable
+
+Zones réelles déjà vues :
+- Buzz/status UI : lignes 840–875
+- `showResult()` : lignes 1308–1352
+- handler `answer_revealed` : lignes 1538–1562
+
+Correction attendue dans `showResult()` :
+- normaliser `correctIndex` en nombre
+- normaliser `selectedIndex` en nombre
+- ne pas faire `btn.classList.remove('selected')`
+- enlever seulement anciens états `correct/incorrect`
+- ajouter `.correct` au bouton sélectionné si `isCorrect`
+- ajouter `.incorrect` au bouton sélectionné si `!isCorrect`
+- optionnel : si `correctIndex` est connu et différent du selected incorrect, ajouter aussi `.correct` à la bonne réponse pour repère visuel
+- `pointsText.textContent = ''` si `pointsEarned === 0`
+- `resultText.textContent = ''`
+- `correctAnswerText.textContent = ''`
+- éviter que `resultOverlay` ressemble à un popup de résultat textuel
+
+Correction attendue pour audio :
+Dans `showResult()` :
+- si correctSound / incorrectSound existe :
+  - `sound.currentTime = 0`
+  - `sound.play().catch(function(){})`
+
+Correction attendue pour buzzTime :
+Dans le bloc PHP/Blade de la bannière :
+- ne jamais afficher `number_format($buzzTime, 1)` si `$buzzTime <= 0`
+- pour un buzzer sans temps fiable : afficher “Vous avez buzzé”
+- pour non-buzzer : garder participation 0 point
+- ne pas toucher à Node ni au score
+
+Interdictions :
+- ne pas toucher au flow de navigation
+- ne pas toucher à DuoController
+- ne pas toucher à Node
+- ne pas calculer le score final côté client
+- ne pas remettre de popup texte bonne/mauvaise réponse
+- ne pas ajouter de score dans l’URL
+
+Validation obligatoire :
+php -l resources/views/duo_answer.blade.php
+
+Puis afficher :
+nl -ba resources/views/duo_answer.blade.php | sed -n '840,875p'
+nl -ba resources/views/duo_answer.blade.php | sed -n '1308,1365p'
+nl -ba resources/views/duo_answer.blade.php | sed -n '1538,1570p'
+
+But final :
+La page Réponses doit montrer le feedback uniquement par son + couleur des boutons + delta de points seulement si non zéro.

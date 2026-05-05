@@ -853,7 +853,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         </div>
     @elseif($isBuzzWinner)
         <div class="buzz-status-banner buzzed">
-            {{ __('Vous avez buzzé en') }} {{ number_format($buzzTime, 1) }}s 💚
+            @if($buzzTime > 0)
+                {{ __('Vous avez buzzé en') }} {{ number_format($buzzTime, 1) }}s 💚
+            @else
+                💚 {{ __('Vous avez buzzé') }}
+            @endif
         </div>
     @else
         {{-- Task #78 — Non-buzzer "participatif" banner. The non-buzzer can still
@@ -1307,34 +1311,51 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     // de score : le delta affiché est strictement la valeur fournie par Node.
     function showResult(isCorrect, correctIndex, pointsEarned) {
         // Audio cue (non-textuel) — autorisé.
+        // Reset currentTime so the sound replays even if it was played recently.
         if (isCorrect && correctSound) {
+            correctSound.currentTime = 0;
             correctSound.play().catch(function() {});
         } else if (!isCorrect && incorrectSound) {
+            incorrectSound.currentTime = 0;
             incorrectSound.play().catch(function() {});
         }
 
+        // Normalize indices as numbers to avoid type-coercion mismatches.
+        var _correctIndex  = Number(correctIndex);
+        var _selectedIndex = Number(selectedIndex);
+
         // Highlight visuel sur les boutons de réponse :
-        //  - bouton de la bonne réponse canonique (`correctIndex`) → vert + ✓
-        //  - bouton choisi par le joueur s'il s'est trompé           → rouge + ✗
+        //  - bouton sélectionné par le joueur → vert (.correct) si bonne réponse,
+        //                                        rouge (.incorrect) si mauvaise réponse
+        //  - bonne réponse canonique → aussi vert quand le joueur s'est trompé (repère)
+        // Ne pas retirer .selected — le bouton choisi doit rester identifiable.
         answerButtons.forEach(function(btn, idx) {
-            btn.classList.remove('selected');
-            const indicator = document.getElementById('indicator' + idx);
-            if (idx === correctIndex) {
+            btn.classList.remove('correct', 'incorrect');
+            var indicator = document.getElementById('indicator' + idx);
+            if (indicator) indicator.textContent = '';
+
+            if (idx === _selectedIndex) {
+                if (isCorrect) {
+                    btn.classList.add('correct');
+                    if (indicator) indicator.textContent = '✓';
+                } else {
+                    btn.classList.add('incorrect');
+                    if (indicator) indicator.textContent = '✗';
+                }
+            } else if (idx === _correctIndex && !isCorrect) {
+                // Montre la bonne réponse quand le joueur s'est trompé.
                 btn.classList.add('correct');
                 if (indicator) indicator.textContent = '✓';
-            } else if (idx === selectedIndex && !isCorrect) {
-                btn.classList.add('incorrect');
-                if (indicator) indicator.textContent = '✗';
             }
         });
 
         // Badge numérique : strictement `pointsEarned` reçu de Node.
-        // Aucun calcul local (pas d'appel à `calculatePotentialPoints` ici).
+        // Ne jamais afficher "0 point" — silence total si delta nul.
         var pts = Number(pointsEarned);
         if (!isFinite(pts)) pts = 0;
         if (pointsText) {
             if (pts === 0) {
-                pointsText.textContent = @json(__('0 point'));
+                pointsText.textContent = '';
             } else {
                 var unit = (pts === 1 || pts === -1)
                     ? @json(__('point'))
@@ -1344,10 +1365,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
         if (resultText)        resultText.textContent = '';
         if (correctAnswerText) correctAnswerText.textContent = '';
+        // N'afficher l'overlay que s'il y a un delta de points (évite le popup vide).
         if (resultOverlay) {
-            var variant = pts > 0 ? 'correct' : (pts < 0 ? 'incorrect' : '');
-            resultOverlay.className = 'result-overlay' + (variant ? ' ' + variant : '');
-            resultOverlay.style.display = 'block';
+            if (pts !== 0) {
+                var variant = pts > 0 ? 'correct' : 'incorrect';
+                resultOverlay.className = 'result-overlay ' + variant;
+                resultOverlay.style.display = 'block';
+            } else {
+                resultOverlay.style.display = 'none';
+            }
         }
     }
     
