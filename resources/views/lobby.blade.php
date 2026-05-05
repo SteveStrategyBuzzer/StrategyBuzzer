@@ -4432,6 +4432,11 @@ window.initLobbySocketListeners = function() {
             console.log('[Socket.IO] Connected to Game Server');
             window.duoSocketConnected = true;
         });
+        // If already connected before this function ran, set flag immediately
+        if (typeof DuoSocketClient !== 'undefined' && DuoSocketClient.isConnected()) {
+            console.log('[Socket.IO] Already connected — setting duoSocketConnected=true immediately');
+            window.duoSocketConnected = true;
+        }
         
         DuoSocketClient.on('disconnect', (reason) => {
             console.log('[Socket.IO] Disconnected:', reason);
