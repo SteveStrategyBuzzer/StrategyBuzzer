@@ -2744,13 +2744,10 @@ class DuoController extends Controller
                     }
                     // Tâche #77 P77.3 — Suppression de la dérogation Bug #1.
                     // Pendant ANSWER_SELECTION / BUZZ_WINNER_ANSWERING / ANSWER_COLLECTION,
-                    // PERSONNE n'est autorisé à atterrir sur /duo/result. Le buzz-winner
-                    // est renvoyé sur /duo/answer (où il attend phase_changed RESULT) ;
-                    // les autres sont renvoyés sur /duo/question. Conformité stricte
-                    // « Node = autorité unique de navigation ».
+                    // le joueur peut arriver sur /result car il navigue à sa propre vitesse
+                    // (navigation individuelle immédiate après submit). On laisse passer.
                     if (in_array($currentPhase, ['ANSWER_SELECTION', 'BUZZ_WINNER_ANSWERING', 'ANSWER_COLLECTION'])) {
-                        $playerId = (string) $user->id;
-                        return ($lockedAnswerPlayerId === $playerId) ? $toAnswer() : $toQuestion();
+                        break;
                     }
                     if ($currentPhase === 'ROUND_SCOREBOARD') {
                         return $toScoreboard();
