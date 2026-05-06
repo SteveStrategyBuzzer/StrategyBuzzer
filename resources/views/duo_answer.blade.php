@@ -1034,6 +1034,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     // bookkeeping was removed in favour of the real ANSWER_SELECTION
     // phase (10s) emitted by the orchestrator after QUESTION_ACTIVE.
     let phaseEndsAtMs = null;
+    // V3: deadline de la phase QUESTION_ACTIVE. Permet d'afficher un chrono
+    // question sur /answer quand le buzzeur arrive avant ANSWER_SELECTION.
+    // N'est jamais utilisé pour l'auto-submit (gated sur isMyAnswerWindow).
+    let questionEndsAtMs = null;
     // Post-#76 follow-up — server-published phase START. Captured at the same
     // points as `phaseEndsAtMs` (state event, phase_changed ANSWER_SELECTION
     // and ANSWER_COLLECTION). Used by startTimer() to compute the bar's
@@ -1102,35 +1106,27 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     
     function startTimer() {
         // Patch 2 (#65) — Node-only chrono.
-        // The answer countdown is 100% driven by the server-published
-        // `phaseEndsAtMs` (initial socket `state` event on connect, or
-        // `phase_changed` for ANSWER_SELECTION / BUZZ_WINNER_ANSWERING).
-        // No local TIMER_DURATION fallback, no `setTimeout` safety net.
-        // If Node has not yet published a deadline, we display "--" and
-        // wait silently until the next socket hydration.
+        // V3: pendant QUESTION_ACTIVE, fallback sur questionEndsAtMs pour afficher
+        // le chrono question restant. L'auto-submit reste gated sur isMyAnswerWindow
+        // — aucune soumission pendant QUESTION_ACTIVE même si le timer atteint 0.
         // PATCH: prevent restart if already running
         if (timerInterval) return;
 
-        if (!phaseEndsAtMs) {
+        // V3: utiliser questionEndsAtMs pendant QUESTION_ACTIVE si phaseEndsAtMs absent
+        var activeDeadline = phaseEndsAtMs ||
+            (currentPhase === 'QUESTION_ACTIVE' ? questionEndsAtMs : null);
+
+        if (!activeDeadline) {
             if (timerSeconds) timerSeconds.textContent = '--';
             if (timerBar) timerBar.style.width = '0%';
             return;
         }
 
-        const remaining = Math.max(0, phaseEndsAtMs - Date.now());
-        // Bar denominator anchored on the SERVER-PUBLISHED phase window
-        // (`phaseEndsAtMs - phaseStartedAtMs`) when available. This is the
-        // TRUE window length emitted by Node (10 000 ms for ANSWER_SELECTION,
-        // 2 000 for ANSWER_COLLECTION). Using this instead of `remaining`
-        // means the bar honestly reflects how much of the window has already
-        // elapsed before the client could render — e.g. starts at 95 % when
-        // 500 ms of network/render latency were lost — instead of starting
-        // at 100 % and silently shrinking its absolute scale on every
-        // restart. Falls back to `remaining` only when phaseStartedAtMs is
-        // missing (legacy paths). The numeric `timeLeft` below is computed
-        // from `remaining` and is NEVER falsified or clamped: it is the
-        // truthful Math.ceil of (server deadline - local clock).
-        var serverWindow = (phaseStartedAtMs && phaseEndsAtMs > phaseStartedAtMs)
+        const remaining = Math.max(0, activeDeadline - Date.now());
+        // Bar denominator: ANSWER_SELECTION utilise phaseStartedAtMs pour la vraie
+        // fenêtre publiée par Node. QUESTION_ACTIVE path : phaseStartedAtMs est null,
+        // on utilise remaining (bar démarre à 100% du temps restant — honnête).
+        var serverWindow = (phaseStartedAtMs && phaseEndsAtMs && phaseEndsAtMs > phaseStartedAtMs)
             ? (phaseEndsAtMs - phaseStartedAtMs)
             : 0;
         if (serverWindow > 0) {
@@ -1141,8 +1137,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         timeLeft = Math.ceil(remaining / 1000);
         if (timeLeft <= 0) timeLeft = 1; // at least 1 tick before auto-timeout
 
-        console.log('[DuoAnswer] startTimer phaseEndsAtMs=' + phaseEndsAtMs +
-            ' phaseStartedAtMs=' + phaseStartedAtMs +
+        console.log('[DuoAnswer] startTimer activeDeadline=' + activeDeadline +
+            ' (phaseEndsAtMs=' + phaseEndsAtMs + ' questionEndsAtMs=' + questionEndsAtMs + ')' +
             ' remaining=' + remaining + 'ms' +
             ' window=' + answerWindowMs + 'ms');
 
@@ -1152,12 +1148,17 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
 
         timerInterval = setInterval(function() {
-            // Recompute from the server-published `phaseEndsAtMs` at every
-            // tick. This mirrors the duo_question canonical pattern, survives
-            // backgrounded tabs / throttled timers, and keeps both players
-            // in sync to within one tick. No defensive local decrement —
-            // Patch 2 forbids any non-server source for the chrono.
-            const remainingMs = Math.max(0, phaseEndsAtMs - Date.now());
+            // Recompute à chaque tick depuis la deadline active (phaseEndsAtMs pour
+            // ANSWER_SELECTION, questionEndsAtMs pour QUESTION_ACTIVE).
+            var _deadline = phaseEndsAtMs ||
+                (currentPhase === 'QUESTION_ACTIVE' ? questionEndsAtMs : null);
+            if (!_deadline) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                if (timerSeconds) timerSeconds.textContent = '--';
+                return;
+            }
+            const remainingMs = Math.max(0, _deadline - Date.now());
             timeLeft = Math.ceil(remainingMs / 1000);
 
             const percentage = answerWindowMs > 0
@@ -1413,15 +1414,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             applyBuzzPosition(data.playerBuzzOrder === 1 ? 'first' : 'second');
         }
 
-        // Patch 2 (#65) — `game_state` is intentionally NOT an authorised
-        // source for the answer chrono. The two canonical sources are:
-        //   1. the initial `state` event on (re)connect (only when the
-        //      reported phase is ANSWER_SELECTION / BUZZ_WINNER_ANSWERING),
-        //   2. `phase_changed` for ANSWER_SELECTION / BUZZ_WINNER_ANSWERING.
-        // Hydrating `phaseEndsAtMs` here from QUESTION_ACTIVE or
-        // ANSWER_COLLECTION would reintroduce the stale-start risk this
-        // patch is meant to eliminate. We therefore deliberately do NOT
-        // touch `phaseEndsAtMs` or the timer from this handler.
+        // Patch 2 (#65) — `game_state` n'hydrate PAS phaseEndsAtMs (risque stale-start).
+        // V3 exception: pendant QUESTION_ACTIVE, hydrater questionEndsAtMs (variable
+        // séparée) pour afficher le chrono question sans toucher au chrono réponse.
+        if (phase === 'QUESTION_ACTIVE' && data.phaseEndsAtMs) {
+            questionEndsAtMs = data.phaseEndsAtMs;
+            if (!timerInterval && canAnswer() && !answered) {
+                startTimer();
+            }
+        }
     }
 
     /**
@@ -1484,20 +1485,12 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         // ── Timer hydration (Patch 2 / #65) ──────────────────────────────────
-        // Strictly gated to the two authorised answer-window phases. Any
-        // other phase (QUESTION_ACTIVE, ANSWER_COLLECTION, REVEAL, RESULT…)
-        // is intentionally ignored as a chrono source: the timer here is
-        // the answer-selection countdown only.
         if (data.phaseEndsAtMs) {
             var phase = data.phase || '';
             if (phase === 'ANSWER_SELECTION' || phase === 'BUZZ_WINNER_ANSWERING') {
                 currentPhase = phase;
                 phaseEndsAtMs = data.phaseEndsAtMs;
                 if (data.phaseStartedAtMs) phaseStartedAtMs = data.phaseStartedAtMs;
-                // Initial `state` event on (re)connect is the primary
-                // hydration path for buzzers landing on this page: start the
-                // timer here if the IIFE init found a null phaseEndsAtMs
-                // and bailed out, OR resume mid-phase after a refresh.
                 if (!timerInterval && canAnswer() && !answered) {
                     startTimer();
                     return;
@@ -1507,6 +1500,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 if (Math.abs(srvLeft - timeLeft) > 1) {
                     console.log('[DuoAnswer] state: timer resync local=' + timeLeft + ' server=' + srvLeft);
                     timeLeft = srvLeft;
+                }
+            }
+            // V3: QUESTION_ACTIVE — hydrater questionEndsAtMs pour le chrono question
+            if (phase === 'QUESTION_ACTIVE') {
+                questionEndsAtMs = data.phaseEndsAtMs;
+                currentPhase = phase;
+                if (!timerInterval && canAnswer() && !answered) {
+                    startTimer();
                 }
             }
         }
@@ -1638,27 +1639,33 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             window.GR_SAVE_STATE_EXTRA.phase = phase;
         }
 
-        // Patch 2 (#65) — Hydrate `phaseEndsAtMs` from the canonical
-        // `phase_changed` event when Node opens the real answer window
-        // (ANSWER_SELECTION = 10 s, BUZZ_WINNER_ANSWERING = legacy alias).
-        // This is the second authorised source for the chrono (the first
-        // being the initial `state` event on connect). startTimer() is
-        // (re)started from here so the bar resets to 100 % at the exact
-        // tick Node opens the window — never from a hardcoded fallback.
+        // V3: pendant QUESTION_ACTIVE, hydrater questionEndsAtMs pour le chrono question.
+        // La page affiche le temps restant de la question sans débloquer l'auto-submit.
+        if (phase === 'QUESTION_ACTIVE') {
+            if (data.phaseEndsAtMs) {
+                questionEndsAtMs = data.phaseEndsAtMs;
+                if (!timerInterval && canAnswer() && !answered) {
+                    startTimer();
+                }
+            }
+            return;
+        }
+
+        // Patch 2 (#65) — Hydrate `phaseEndsAtMs` depuis phase_changed ANSWER_SELECTION.
         if (phase === 'ANSWER_SELECTION' || phase === 'BUZZ_WINNER_ANSWERING') {
             if (data.phaseEndsAtMs) {
-                // Anti-restart guard (post-#76 follow-up): on initial connect
-                // the socket emits `state` then `phase_changed ANSWER_SELECTION`
-                // ~30 ms apart — both publish the SAME phaseEndsAtMs. The
-                // first call (via _onAnswerState, line 1395) starts the timer;
-                // without this guard the second call clears the freshly-started
-                // setInterval and re-anchors answerWindowMs on a slightly
-                // smaller `remaining`, making the bar visibly jump backwards
-                // ~30 ms and its absolute scale shift. If the deadline truly
-                // moved (skill extension, new phase), the inequality holds and
-                // we relance normally.
+                // Anti-restart guard: state + phase_changed arrivent ~30 ms après
+                // connect avec le même phaseEndsAtMs. Si le timer tourne déjà avec
+                // la même deadline, on ne redémarre pas (évite un jump visuel -30 ms).
                 if (timerInterval && phaseEndsAtMs === data.phaseEndsAtMs) {
                     return;
+                }
+                // V3: clear le timer question (QUESTION_ACTIVE path) avant de démarrer
+                // le timer réponse. startTimer() baillait sur `if (timerInterval) return`
+                // si le question-timer tournait encore.
+                if (timerInterval && !phaseEndsAtMs) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
                 }
                 phaseEndsAtMs = data.phaseEndsAtMs;
                 if (data.phaseStartedAtMs) phaseStartedAtMs = data.phaseStartedAtMs;
