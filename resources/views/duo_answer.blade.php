@@ -1227,6 +1227,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         });
         
         DuoSocketClient.answer(-1);
+
+        // Navigation individuelle immédiate sur timeout (même règle que selectAnswer).
+        isRedirecting = true;
+        var _navTo = window.duoNavigate || function(u) { window.location.href = u; };
+        setTimeout(function() {
+            _navTo((window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID));
+        }, 800);
     }
     
     function selectAnswer(index) {
@@ -1261,17 +1268,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             historianSkillUsed: historianSkillUsed
         });
 
-        // Show waiting overlay until phase_changed → RESULT.
-        // Tâche #77 P77.3 — La dérogation Bug #1 (immediate client nav vers /duo/result)
-        // a été supprimée. Le buzz-winner reste sur /duo/answer après submit jusqu'à ce
-        // que Node émette `phase_changed RESULT`, qui est intercepté par
-        // `_onAnswerPhaseChanged` (branche `phase === 'RESULT'`, ligne ~1594) :
-        // celle-ci masque l'overlay et navigue vers /duo/result après le délai visuel
-        // standard (2500 ms). Cette voie est l'unique source de navigation après submit.
-        // → Conformité « Node = autorité unique de navigation ».
-        if (waitingOverlay) {
-            waitingOverlay.style.display = 'flex';
-        }
+        // Navigation individuelle immédiate : chaque joueur avance à sa propre vitesse.
+        // On n'attend pas les autres joueurs ni le timer Node.
+        // Node reste autorité unique sur le score — on ne fait que naviguer.
+        isRedirecting = true;
+        var _navNow = window.duoNavigate || function(u) { window.location.href = u; };
+        setTimeout(function() {
+            _navNow((window.RESULT_URL || '/game/duo/result') + '?match_id=' + encodeURIComponent(MATCH_ID));
+        }, 800);
     }
     
     function activateHistorianSkill() {
