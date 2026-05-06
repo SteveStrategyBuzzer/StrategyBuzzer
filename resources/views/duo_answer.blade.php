@@ -1253,7 +1253,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
         
         answerButtons.forEach(function(btn) {
-            btn.classList.remove('selected');
             btn.classList.add('disabled');
         });
         
