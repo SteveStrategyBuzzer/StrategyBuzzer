@@ -1258,19 +1258,16 @@ $mode = 'duo';
         buzzerSound.play().catch(e => console.log('Erreur audio:', e));
         
         buzzButton.disabled = true;
+        buzzContainer.classList.add('buzzed');
         setBuzzerState('hidden');
-        
+
         if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
             window.DuoSocketClient.buzz(Date.now());
         }
 
-        // Navigation individuelle immédiate : la question est consommée pour ce joueur.
-        // Le délai (600 ms) couvre la durée du son buzzer (~500 ms).
-        // Backend case 'answer' autorise QUESTION_ACTIVE explicitement.
-        // isRedirecting = true (posé par redirectOnce) bloque handleBuzzWinner
-        // et phase_changed:ANSWER_SELECTION contre un double-navigate.
-        // Node reste autorité du score — on ne fait que naviguer.
-        redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 600);
+        // UX : feedback visible pendant l'attente de la confirmation Node.
+        // Navigation déclenchée uniquement par handleBuzzWinner() ou phase_changed:ANSWER_SELECTION.
+        showSkillMessage('{{ __("Buzzer envoyé\u00a0— en attente\u2026") }}', 'info', 3000);
     }
     
     function handleNoBuzz() {
