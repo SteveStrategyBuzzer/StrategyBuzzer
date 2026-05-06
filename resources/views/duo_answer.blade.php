@@ -1239,7 +1239,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     function selectAnswer(index) {
         // V3: canAnswer() vérifie PLAYER_BUZZ_POSITION (first/second/no_buzz) — 'none' bloqué
         // Le skill Historien (historianSkillUsed) peut débloquer 'none' explicitement
-        if (answered || (!canAnswer() && !historianSkillUsed)) return;
+        if (answered) return;
         
         answered = true;
         selectedIndex = index;
