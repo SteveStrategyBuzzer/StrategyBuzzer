@@ -1245,14 +1245,7 @@ $mode = 'duo';
         if (buzzed || isRedirecting || currentPhase !== 'QUESTION_ACTIVE') return;
         
         buzzed = true;
-        // Persist locally so the ANSWER_COLLECTION phase_changed handler can detect
-        // this player as a buzzer (used for the position-2 grace window navigation).
-        // Navigation itself is driven exclusively by the server: handleBuzzWinner
-        // (on `buzz_winner` for position-1) and the ANSWER_COLLECTION phase change
-        // (for position-2). Do NOT navigate optimistically here — if the server
-        // rejects/dedupes the buzz, an eager redirect would bounce off the backend
-        // phase guard (validatePhaseAccess) and surface as "Question → flash → back
-        // to Question → Result", breaking the Duo 3-page contract.
+        // Persister localement pour le handler ANSWER_COLLECTION (position-2).
         try {
             const qIdx = (window.SB_LIVE_STATS && window.SB_LIVE_STATS.questionIndex !== undefined)
                 ? window.SB_LIVE_STATS.questionIndex
@@ -1270,11 +1263,14 @@ $mode = 'duo';
         if (window.DuoSocketClient && window.DuoSocketClient.isConnected()) {
             window.DuoSocketClient.buzz(Date.now());
         }
-        
-        // Node = sole authority on navigation. The server will emit `buzz_winner`
-        // (handled by handleBuzzWinner) for accepted buzzes, which performs the
-        // /duo/answer redirect. Late/rejected buzzes correctly stay on /duo/question
-        // until the next phase_changed event.
+
+        // Navigation individuelle immédiate : la question est consommée pour ce joueur.
+        // Le délai (600 ms) couvre la durée du son buzzer (~500 ms).
+        // Backend case 'answer' autorise QUESTION_ACTIVE explicitement.
+        // isRedirecting = true (posé par redirectOnce) bloque handleBuzzWinner
+        // et phase_changed:ANSWER_SELECTION contre un double-navigate.
+        // Node reste autorité du score — on ne fait que naviguer.
+        redirectOnce(ANSWER_URL + '?match_id=' + encodeURIComponent(MATCH_ID) + '&buzzed=true', 600);
     }
     
     function handleNoBuzz() {
