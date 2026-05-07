@@ -563,100 +563,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         50%      { box-shadow: 0 0 28px rgba(186, 85, 211, 0.95); }
     }
     
-    .result-overlay {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.95);
-        padding: 40px 60px;
-        border-radius: 30px;
-        text-align: center;
-        z-index: 200;
-        border: 3px solid;
-        animation: fadeIn 0.3s ease;
-        display: none;
-    }
-    
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translate(-50%, -60%);
-        }
-        to {
-            opacity: 1;
-            transform: translate(-50%, -50%);
-        }
-    }
-    
-    .result-overlay.correct {
-        border-color: #4ECDC4;
-        box-shadow: 0 0 50px rgba(78, 205, 196, 0.8);
-    }
-    
-    .result-overlay.incorrect {
-        border-color: #FF6B6B;
-        box-shadow: 0 0 50px rgba(255, 107, 107, 0.8);
-    }
-    
-    .result-text {
-        font-size: 2.5rem;
-        font-weight: 900;
-        margin-bottom: 15px;
-    }
-    
-    .result-overlay.correct .result-text {
-        color: #4ECDC4;
-    }
-    
-    .result-overlay.incorrect .result-text {
-        color: #FF6B6B;
-    }
-    
-    .points-text {
-        font-size: 1.5rem;
-        font-weight: 600;
-        opacity: 0.9;
-    }
-    
-    .correct-answer-text {
-        font-size: 1.2rem;
-        margin-top: 15px;
-        color: #FFD700;
-    }
-    
-    .waiting-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 150;
-    }
-    
-    .waiting-message {
-        background: rgba(0, 0, 0, 0.9);
-        padding: 40px 60px;
-        border-radius: 30px;
-        text-align: center;
-        border: 3px solid #FFD700;
-        box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
-    }
-    
-    .waiting-message h2 {
-        font-size: 1.8rem;
-        color: #FFD700;
-        margin-bottom: 10px;
-    }
-    
-    .waiting-message p {
-        font-size: 1.1rem;
-        opacity: 0.9;
-    }
     
     /* voice-mic-button styles: provided by layouts.game */
     
@@ -868,18 +774,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     @endif
 </div>
 
-<div class="result-overlay" id="resultOverlay">
-    <div class="result-text" id="resultText"></div>
-    <div class="points-text" id="pointsText"></div>
-    <div class="correct-answer-text" id="correctAnswerText"></div>
-</div>
-
-<div class="waiting-overlay" id="waitingOverlay">
-    <div class="waiting-message">
-        <h2>⏳ {{ __('En attente...') }}</h2>
-        <p id="waitingText">{{ __(':name répond à la question...', ['name' => $opponentName ?? __('Adversaire')]) }}</p>
-    </div>
-</div>
 
 <audio id="correctSound" preload="auto">
     <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
@@ -996,14 +890,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                 btn.disabled = true;
             }
         });
-        // Mettre à jour l'overlay d'attente
-        if (!answered) {
-            if (isAnswerable) {
-                if (waitingOverlay) waitingOverlay.style.display = 'none';
-                if (!timerInterval) startTimer();
-            } else {
-                if (waitingOverlay) waitingOverlay.style.display = 'flex';
-            }
+        if (!answered && isAnswerable && !timerInterval) {
+            startTimer();
         }
         updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
     }
@@ -1080,11 +968,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const timerBar = document.getElementById('timerBar');
     const timerSeconds = document.getElementById('timerSeconds');
     const potentialPoints = document.getElementById('potentialPoints');
-    const resultOverlay = document.getElementById('resultOverlay');
-    const resultText = document.getElementById('resultText');
-    const pointsText = document.getElementById('pointsText');
-    const correctAnswerText = document.getElementById('correctAnswerText');
-    const waitingOverlay = document.getElementById('waitingOverlay');
     const answersContainer = document.getElementById('answersContainer');
     const correctSound = document.getElementById('correctSound');
     const incorrectSound = document.getElementById('incorrectSound');
@@ -1357,28 +1240,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // Ne jamais afficher "0 point" — silence total si delta nul.
         var pts = Number(pointsEarned);
         if (!isFinite(pts)) pts = 0;
-        if (pointsText) {
-            if (pts === 0) {
-                pointsText.textContent = '';
-            } else {
-                var unit = (pts === 1 || pts === -1)
-                    ? @json(__('point'))
-                    : @json(__('points'));
-                pointsText.textContent = (pts > 0 ? '+' : '') + pts + ' ' + unit;
-            }
-        }
-        if (resultText)        resultText.textContent = '';
-        if (correctAnswerText) correctAnswerText.textContent = '';
-        // N'afficher l'overlay que s'il y a un delta de points (évite le popup vide).
-        if (resultOverlay) {
-            if (pts !== 0) {
-                var variant = pts > 0 ? 'correct' : 'incorrect';
-                resultOverlay.className = 'result-overlay ' + variant;
-                resultOverlay.style.display = 'block';
-            } else {
-                resultOverlay.style.display = 'none';
-            }
-        }
     }
     
     answerButtons.forEach(function(btn, index) {
@@ -1521,23 +1382,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             .replace(/"/g, '&quot;');
     }
 
-    // P0.3 — "Le saviez-vous?" toast. Mirrors duo_question.blade.php's helper but
-    // uses textContent for the trivia body (XSS-safe) since the funFact comes
-    // straight from question content. Auto-dismisses after ~6 s.
-    function showDidYouKnow(text) {
-        if (!text) return;
-        var div = document.createElement('div');
-        div.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);max-width:600px;width:90%;padding:14px 20px;border-radius:12px;background:linear-gradient(135deg,#8E44AD,#6C3483);color:#fff;font-size:14px;z-index:9998;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
-        var label = document.createElement('strong');
-        label.textContent = '{{ __("Le saviez-vous?") }} ';
-        var body = document.createTextNode(String(text));
-        div.appendChild(label);
-        div.appendChild(body);
-        document.body.appendChild(div);
-        setTimeout(function() { div.style.transition = 'opacity 0.5s'; div.style.opacity = '0'; }, 5500);
-        setTimeout(function() { if (div.parentNode) div.remove(); }, 6100);
-    }
-
     function _attachAnswerBtnListeners() {
         var container = document.getElementById('answersContainer');
         if (!container) return;
@@ -1582,7 +1426,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // does not interfere with the imminent navigation; the highlight
         // helps the eye anchor on the correct/incorrect button before the
         // page swaps.
-        waitingOverlay.style.display = 'none';
         const isCorrect    = data.isCorrect || false;
         const correctIndex = data.correctIndex !== undefined ? data.correctIndex : data.correctAnswer;
         // Patch 4 — Source unique de vérité = `pointsEarned` strict (Node).
@@ -1715,9 +1558,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                     startTimer();
                 }
             }
-            if (answered && waitingOverlay) {
-                waitingOverlay.style.display = 'flex';
-            }
             return;
         }
 
@@ -1735,8 +1575,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // out by the playerId guard added in #63. Each player progresses at
             // their own pace; the overlay only makes sense during
             // ANSWER_SELECTION/ANSWER_COLLECTION, never beyond.
-            if (waitingOverlay) waitingOverlay.style.display = 'none';
-
             // CLAIM the navigation slot SYNCHRONOUSLY (not inside the
             // setTimeout) — fixes the "du retour à question" symptom.
             // Previously, RESULT scheduled a 2500 ms delayed nav to /result
@@ -1900,8 +1738,6 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     // V3: canAnswer() dérive de PLAYER_BUZZ_POSITION (first/second/no_buzz = actif, none = attente)
     if (canAnswer()) {
         startTimer();
-    } else {
-        if (waitingOverlay) waitingOverlay.style.display = 'flex';
     }
 
     window.addEventListener('beforeunload', function() {
