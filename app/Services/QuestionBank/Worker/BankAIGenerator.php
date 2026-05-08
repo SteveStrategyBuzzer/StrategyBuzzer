@@ -347,11 +347,17 @@ class BankAIGenerator
             return null;
         }
 
-        // Slug: sub_domain → ASCII lowercase → only [a-z0-9], hyphens for word breaks
+        // Slug: sub_domain → NFD decomposition → strip combining diacritics → [a-z0-9]
+        // Uses Normalizer::NFD (ext-intl, Unicode standard) instead of iconv to avoid
+        // locale-dependent transliteration artefacts ('é' → '?' on this server).
         $slug = mb_strtolower($subDomain, 'UTF-8');
-        $slug = (string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $slug);
+        $slug = (string) \Normalizer::normalize($slug, \Normalizer::NFD);
+        $slug = (string) preg_replace('/[\x{0300}-\x{036f}]/u', '', $slug);
         $slug = (string) preg_replace('/[^a-z0-9]+/', '-', $slug);
         $slug = trim($slug, '-');
+        if ($slug === '') {
+            $slug = 'general'; // defensive guard: empty slug after normalisation
+        }
 
         // Normalise FR text: lowercase → ASCII → strip non-alphanum → collapse spaces
         $norm = mb_strtolower($frText, 'UTF-8');
