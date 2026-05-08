@@ -1286,6 +1286,233 @@ ${langSchema}
   return res.json({ ok: true, payload: enriched });
 });
 
+// =============================================================================
+// POST /translate-bank-question
+//
+// Receives a validated master question (source_language, default="fr") and
+// a list of target languages. Produces exact linguistic translations —
+// no content changes are permitted whatsoever. The prompt explicitly
+// forbids reformulation, answer permutation, key change, concept drift,
+// and cultural substitution.
+//
+// Body:
+//   {
+//     "master": {
+//       "question_text": "...",
+//       "answer_a": "...", "answer_b": "...",
+//       "answer_c": "...", "answer_d": "...",   // null for true_false
+//       "correct_answer_key": "A",              // fixed across all languages
+//       "explanation": "...",
+//       "saviez_vous": "...",
+//       "question_type": "qcm"                 // or "true_false"
+//     },
+//     "source_language": "fr",
+//     "target_languages": ["en","es","it","de","pt","ru","zh","ar","el"]
+//   }
+//
+// Response:
+//   { ok: true, translations: { "en": {...}, "es": {...}, ... }, source, latency_ms }
+//
+// Each translation carries: question_text, answer_a/b/c/d,
+// correct_answer_key (== master), explanation, saviez_vous.
+// =============================================================================
+app.post('/translate-bank-question', async (req, res) => {
+  const { master, source_language = 'fr', target_languages } = req.body || {};
+
+  // ── Input validation ──────────────────────────────────────────────────────
+  if (!master || typeof master !== 'object') {
+    return res.status(400).json({ ok: false, error: 'master payload required' });
+  }
+  if (!Array.isArray(target_languages) || target_languages.length === 0) {
+    return res.status(400).json({ ok: false, error: 'target_languages must be a non-empty array' });
+  }
+  const REQUIRED_MASTER = [
+    'question_text', 'answer_a', 'answer_b', 'answer_c',
+    'correct_answer_key', 'explanation', 'saviez_vous',
+  ];
+  for (const f of REQUIRED_MASTER) {
+    if (!master[f] || typeof master[f] !== 'string' || !master[f].trim()) {
+      return res.status(400).json({ ok: false, error: `master.${f} missing or empty` });
+    }
+  }
+
+  const isTF = (master.question_type || 'qcm') === 'true_false';
+  const correctKey = String(master.correct_answer_key || '').toUpperCase();
+
+  // Count how many answers the master has (source of truth for validation).
+  const masterAnswerCount = ['answer_a', 'answer_b', 'answer_c', 'answer_d']
+    .filter(f => typeof master[f] === 'string' && master[f].trim().length > 0)
+    .length;
+
+  // ── Build prompt ──────────────────────────────────────────────────────────
+  const langLines = target_languages
+    .map(l => `- ${l} (${(LANGUAGES[l] || {}).name || l})`)
+    .join('\n');
+
+  const answersBlock = [
+    `  answer_a = "${master.answer_a}"`,
+    `  answer_b = "${master.answer_b}"`,
+    `  answer_c = "${master.answer_c}"`,
+    !isTF && master.answer_d ? `  answer_d = "${master.answer_d}"` : null,
+  ].filter(Boolean).join('\n');
+
+  const translationSchema = target_languages
+    .map(l => {
+      if (isTF) {
+        return `    "${l}": { "question_text": "...", "answer_a": "...", "answer_b": "...", "answer_c": null, "answer_d": null, "correct_answer_key": "${correctKey}", "explanation": "...", "saviez_vous": "..." }`;
+      }
+      return `    "${l}": { "question_text": "...", "answer_a": "...", "answer_b": "...", "answer_c": "...", "answer_d": "...", "correct_answer_key": "${correctKey}", "explanation": "...", "saviez_vous": "..." }`;
+    })
+    .join(',\n');
+
+  const systemPrompt =
+    'Tu es un traducteur structuré strict pour une base de questions de quiz. ' +
+    'Tu réponds UNIQUEMENT en JSON valide (pas de markdown, pas de prose).';
+
+  const userPrompt =
+`Tu dois traduire une question de quiz depuis le ${source_language.toUpperCase()} vers les langues cibles ci-dessous.
+
+RÈGLES ABSOLUES — AUCUNE EXCEPTION :
+1. Tu es un TRADUCTEUR STRICT, pas un créateur de contenu.
+2. Le sens, les faits et la structure de la question NE CHANGENT PAS.
+3. Les réponses (answer_a, answer_b, answer_c, answer_d) sont traduites EXACTEMENT — même sens, même ordre imposé (A reste A, B reste B, C reste C, D reste D).
+4. correct_answer_key = "${correctKey}" dans TOUTES les langues, sans exception, même si une autre réponse te semble plus logique.
+5. INTERDIT : reformuler, simplifier, enrichir, changer les réponses, permuter l'ordre des réponses, changer la bonne réponse, modifier le concept, inventer de nouvelles informations.
+6. Les distracteurs doivent rester des distracteurs équivalents exacts. Ne pas remplacer une réponse par une autre référence culturelle.
+7. explanation et saviez_vous : traduis fidèlement, sans ajouter ni supprimer d'information.
+8. Si une réponse est un nom propre, un nombre, une date, un acronyme ou un terme technique : conserve-le TEL QUEL sans traduction.
+
+QUESTION SOURCE (${source_language.toUpperCase()}) :
+  question_text = "${master.question_text}"
+${answersBlock}
+  correct_answer_key = "${correctKey}"
+  explanation = "${master.explanation}"
+  saviez_vous = "${master.saviez_vous}"
+
+LANGUES CIBLES :
+${langLines}
+
+Format JSON exact attendu (correct_answer_key = "${correctKey}" partout, sans aucune modification) :
+{
+${translationSchema}
+}`;
+
+  // ── Validate translation response ─────────────────────────────────────────
+  const validate = (text) => {
+    let raw = (text || '').trim();
+    if (raw.startsWith('```json')) raw = raw.slice(7);
+    if (raw.startsWith('```')) raw = raw.slice(3);
+    if (raw.endsWith('```')) raw = raw.slice(0, -3);
+    raw = raw.trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      return { ok: false, reason: `invalid JSON: ${e.message}` };
+    }
+    if (!parsed || typeof parsed !== 'object') {
+      return { ok: false, reason: 'response is not an object' };
+    }
+
+    for (const lang of target_languages) {
+      const tr = parsed[lang];
+      if (!tr || typeof tr !== 'object') {
+        return { ok: false, reason: `translations[${lang}] missing` };
+      }
+
+      // Required fields present
+      const required = [
+        'question_text', 'answer_a', 'answer_b', 'answer_c',
+        'correct_answer_key', 'explanation', 'saviez_vous',
+      ];
+      for (const f of required) {
+        if (!(f in tr)) {
+          return { ok: false, reason: `translations[${lang}].${f} missing` };
+        }
+      }
+
+      if (!tr.question_text || !tr.question_text.trim()) {
+        return { ok: false, reason: `translations[${lang}].question_text empty` };
+      }
+      if (!tr.saviez_vous || !tr.saviez_vous.trim()) {
+        return { ok: false, reason: `translations[${lang}].saviez_vous empty` };
+      }
+      if (!tr.explanation || !tr.explanation.trim()) {
+        return { ok: false, reason: `translations[${lang}].explanation empty` };
+      }
+
+      // correct_answer_key must match master exactly
+      const trKey = String(tr.correct_answer_key || '').toUpperCase();
+      if (trKey !== correctKey) {
+        return { ok: false, reason: `translations[${lang}].correct_answer_key=${trKey} ≠ master ${correctKey}` };
+      }
+
+      // Answer count must match master exactly
+      const trAnswerCount = ['answer_a', 'answer_b', 'answer_c', 'answer_d']
+        .filter(f => typeof tr[f] === 'string' && tr[f].trim().length > 0)
+        .length;
+      if (trAnswerCount !== masterAnswerCount) {
+        return { ok: false, reason: `translations[${lang}] has ${trAnswerCount} answers, master has ${masterAnswerCount}` };
+      }
+
+      // QCM: all 4 non-empty
+      if (!isTF) {
+        if (!tr.answer_a || !tr.answer_a.trim()) return { ok: false, reason: `translations[${lang}].answer_a empty` };
+        if (!tr.answer_b || !tr.answer_b.trim()) return { ok: false, reason: `translations[${lang}].answer_b empty` };
+        if (!tr.answer_c || !tr.answer_c.trim()) return { ok: false, reason: `translations[${lang}].answer_c empty` };
+        if (!tr.answer_d || !tr.answer_d.trim()) return { ok: false, reason: `translations[${lang}].answer_d empty` };
+      } else {
+        // true_false: only A and B allowed (C and D must be null/absent)
+        if (!tr.answer_a || !tr.answer_a.trim()) return { ok: false, reason: `translations[${lang}].answer_a empty (true_false)` };
+        if (!tr.answer_b || !tr.answer_b.trim()) return { ok: false, reason: `translations[${lang}].answer_b empty (true_false)` };
+        if (typeof tr.answer_c === 'string' && tr.answer_c.trim().length > 0) {
+          return { ok: false, reason: `translations[${lang}].answer_c must be null for true_false` };
+        }
+        if (typeof tr.answer_d === 'string' && tr.answer_d.trim().length > 0) {
+          return { ok: false, reason: `translations[${lang}].answer_d must be null for true_false` };
+        }
+      }
+    }
+
+    return { ok: true, value: parsed };
+  };
+
+  // ── Token budget ───────────────────────────────────────────────────────────
+  // Translation is cheaper than generation: question_text + explanation +
+  // saviez_vous need translation; answers may be names/numbers.
+  // ~500 tokens per language, floor at 2000.
+  const maxOutputTokens = Math.max(2000, target_languages.length * 600);
+
+  // ── Call router (low temperature = strict, literal translation) ────────────
+  let routed;
+  try {
+    routed = await aiRouter.generate({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.3,
+      maxOutputTokens,
+      responseMimeType: 'application/json',
+      validate,
+    });
+  } catch (err) {
+    if (err.name === 'NoProvidersConfiguredError') {
+      return res.status(503).json({ ok: false, error: 'no_providers_configured', detail: err.message });
+    }
+    if (err.name === 'AllProvidersExhaustedError') {
+      return res.status(503).json({ ok: false, error: 'all_providers_exhausted', detail: err.message });
+    }
+    return res.status(502).json({ ok: false, error: 'router_error', detail: err.message || String(err) });
+  }
+
+  return res.json({
+    ok: true,
+    translations: routed.validated,
+    source: routed.provider,
+    latency_ms: routed.latencyMs,
+  });
+});
+
 const PORT = 3000;
 if (require.main === module) {
   app.listen(PORT, () => {
