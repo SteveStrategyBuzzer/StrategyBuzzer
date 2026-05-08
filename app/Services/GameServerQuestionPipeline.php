@@ -134,7 +134,12 @@ class GameServerQuestionPipeline
         }
 
         $formattedQuestion = $this->formatQuestion($firstQuestion, 1);
-        
+
+        $rawGroupId = $firstQuestion['group_id'] ?? null;
+        if (is_int($rawGroupId) && $rawGroupId > 0) {
+            \App\Jobs\MarkQuestionGroupUsedJob::dispatch($rawGroupId);
+        }
+
         $this->addUsedQuestion($roomId, $formattedQuestion['id'], $formattedQuestion['text']);
         
         $this->storeQuestionToFirestore($roomId, 1, $formattedQuestion);
@@ -212,7 +217,12 @@ class GameServerQuestionPipeline
 
                 if ($question) {
                     $formattedQuestion = $this->formatQuestion($question, $questionNumber);
-                    
+
+                    $rawGroupId = $question['group_id'] ?? null;
+                    if (is_int($rawGroupId) && $rawGroupId > 0) {
+                        \App\Jobs\MarkQuestionGroupUsedJob::dispatch($rawGroupId);
+                    }
+
                     $usedIds[] = $formattedQuestion['id'];
                     $textHash = md5($formattedQuestion['text']);
                     $usedTexts[] = $textHash;
