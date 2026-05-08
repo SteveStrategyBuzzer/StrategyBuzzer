@@ -1243,6 +1243,7 @@ CONTRAINTES:
 - ${concept_hint ? `Indice concept: ${concept_hint}` : 'Choisis un fait précis et vérifiable.'}
 - correct_answer_key DOIT être la même lettre dans TOUTES les langues
 - saviez_vous OBLIGATOIRE, anecdote concrète d'au moins 30 caractères
+- concept_family : EN ANGLAIS, kebab-case, 1-4 mots, taxonomie stable (ex: "basketball-rules", "australian-geography", "medieval-history")
 ${forbiddenBlock}
 Format JSON exact attendu:
 {
@@ -1260,7 +1261,7 @@ Format JSON exact attendu:
   "cognitive_type": "${cognitive_type}",
   "difficulty_depth": ${difficulty_depth},
   "concept_id": "<kebab-case unique>",
-  "concept_family": "<kebab-case famille plus large>",
+  "concept_family": "<EN, kebab-case, 1-4 words (e.g. 'medieval-history', 'australian-geography', 'basketball-rules')>",
   "translations": {
 ${langSchema}
   }

@@ -265,7 +265,10 @@ class BankAIGenerator
                                     (string) $segment['sub_domain'],
                                     $cleanTranslations['fr']['question_text'] ?? null
                                 ),
-            'concept_family'   => (string) ($routed['concept_family'] ?? $segment['sub_domain']),
+            'concept_family'   => $this->normalizeConceptFamily(
+                                    (string) ($routed['concept_family'] ?? ''),
+                                    (string) $segment['sub_domain']
+                                ),
             'source'           => $source,
             'validated'        => $this->hasAllPreferred($cleanTranslations),
             'translations'     => $cleanTranslations,
@@ -318,6 +321,62 @@ class BankAIGenerator
             // Body non-JSON — ignoré.
         }
         return null;
+    }
+
+    /**
+     * P3 — Defensive concept_family normalisation.
+     *
+     * Normalises FORMAT only — never changes semantic meaning.
+     * Pipeline:
+     *   1. NFD decompose + strip combining diacritics (same as P2 slug fix)
+     *   2. Lowercase
+     *   3. Replace non-[a-z0-9] with hyphens
+     *   4. Collapse consecutive hyphens  ← defensive separator collapse
+     *   5. Trim leading/trailing hyphens
+     *   6. Cap at 64 chars
+     *   7. Reject noise tokens → fallback to sub_domain slug
+     *
+     * Noise blacklist: generic/meaningless values the LLM may emit
+     * ("general", "misc", "other", "concept", "family", "test",
+     *  "undefined", "null") that would pollute the taxonomy.
+     *
+     * Fallback chain:
+     *   valid slug → return as-is
+     *   noise / empty → normalised sub_domain slug
+     *   sub_domain slug empty → 'general'  (last resort, shouldn't happen)
+     *
+     * @param  string $raw       concept_family as returned by the LLM
+     * @param  string $subDomain segment sub_domain (fallback anchor)
+     * @return string            clean kebab-case slug, never empty
+     */
+    private function normalizeConceptFamily(string $raw, string $subDomain): string
+    {
+        static $NOISE = [
+            'general', 'misc', 'miscellaneous', 'other', 'others',
+            'concept', 'concepts', 'family', 'families',
+            'test', 'undefined', 'null', 'none', 'na', 'n-a',
+        ];
+
+        $applySlug = static function (string $s): string {
+            $s = mb_strtolower($s, 'UTF-8');
+            $s = (string) \Normalizer::normalize($s, \Normalizer::NFD);
+            $s = (string) preg_replace('/[\x{0300}-\x{036f}]/u', '', $s);
+            $s = (string) preg_replace('/[^a-z0-9]+/', '-', $s);
+            $s = (string) preg_replace('/-+/', '-', $s);   // collapse separators
+            $s = trim($s, '-');
+            return substr($s, 0, 64);
+        };
+
+        if ($raw !== '') {
+            $slug = $applySlug($raw);
+            if ($slug !== '' && !in_array($slug, $NOISE, true)) {
+                return $slug;
+            }
+        }
+
+        // Fallback: normalised sub_domain slug
+        $sub = $applySlug($subDomain);
+        return $sub !== '' ? $sub : 'general';
     }
 
     /**
