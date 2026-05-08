@@ -4,7 +4,6 @@ namespace App\Services\QuestionBank\Worker;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Bank-side LLM caller — two-step master/translate pipeline.
@@ -261,7 +260,10 @@ class BankAIGenerator
             'sub_domain'       => (string) $segment['sub_domain'],
             'question_type'    => (string) ($segment['question_type'] ?? 'qcm'),
             'cognitive_type'   => (string) $segment['cognitive_type'],
-            'concept_id'       => (string) ($routed['concept_id']    ?? Str::random(20)),
+            'concept_id'       => $this->buildConceptId(
+                                    (string) $segment['sub_domain'],
+                                    $cleanTranslations['fr']['question_text'] ?? null
+                                ),
             'concept_family'   => (string) ($routed['concept_family'] ?? $segment['sub_domain']),
             'source'           => $source,
             'validated'        => $this->hasAllPreferred($cleanTranslations),
@@ -315,5 +317,50 @@ class BankAIGenerator
             // Body non-JSON — ignoré.
         }
         return null;
+    }
+
+    /**
+     * Builds a deterministic concept_id from the sub_domain slug + a 12-char
+     * SHA-256 fingerprint of the normalised French question text.
+     *
+     * Format:  slug(sub_domain) + '-' + sha256(normalize(fr_text))[0:12]
+     * Example: "histoire-384493ca1fa3"   (≤ 23 chars, well within varchar(191))
+     *
+     * Normalisation absorbs formal variants (punctuation, accents, case, extra
+     * spaces) so the same question asked twice produces the same ID. Semantic
+     * reformulations produce different text → different hash → different ID;
+     * those are handled by P1 (forbidden_concepts prompt injection).
+     *
+     * The LLM-provided concept_id field is intentionally IGNORED. The LLM
+     * cannot be trusted to produce stable, collision-resistant identifiers.
+     * Str::random() fallback is removed entirely.
+     *
+     * Returns null when $frText is empty — callers treat null as a shape
+     * error and reject the question before it reaches the bank.
+     */
+    private function buildConceptId(string $subDomain, ?string $frText): ?string
+    {
+        if ($frText === null || $frText === '') {
+            Log::warning('[BankAIGenerator] buildConceptId: empty FR text — question rejected', [
+                'sub_domain' => $subDomain,
+            ]);
+            return null;
+        }
+
+        // Slug: sub_domain → ASCII lowercase → only [a-z0-9], hyphens for word breaks
+        $slug = mb_strtolower($subDomain, 'UTF-8');
+        $slug = (string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $slug);
+        $slug = (string) preg_replace('/[^a-z0-9]+/', '-', $slug);
+        $slug = trim($slug, '-');
+
+        // Normalise FR text: lowercase → ASCII → strip non-alphanum → collapse spaces
+        $norm = mb_strtolower($frText, 'UTF-8');
+        $norm = (string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $norm);
+        $norm = (string) preg_replace('/[^a-z0-9\s]+/', '', $norm);
+        $norm = (string) preg_replace('/\s+/', ' ', trim($norm));
+
+        $hash = substr(hash('sha256', $norm), 0, 12);
+
+        return $slug . '-' . $hash;
     }
 }
