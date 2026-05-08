@@ -95,7 +95,7 @@ class QuestionBankRepository
         }
 
         // Tri stable : favoriser les questions les moins utilisées en premier.
-        $q->orderBy('usage_count')->orderBy('id');
+        $q->orderBy('usage_count')->inRandomOrder();
 
         if (!empty($filters['limit'])) {
             $q->limit((int) $filters['limit']);
