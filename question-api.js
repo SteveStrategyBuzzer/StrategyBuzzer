@@ -1160,6 +1160,7 @@ app.post('/generate-bank-question', async (req, res) => {
     difficulty_depth,
     languages = ['fr'],
     concept_hint = '',
+    forbidden_concepts = [],
   } = req.body || {};
 
   if (!domain || !sub_domain || !cognitive_type || !difficulty_depth) {
@@ -1197,6 +1198,39 @@ app.post('/generate-bank-question', async (req, res) => {
   const systemPrompt =
     'Tu es un générateur de questions de quiz pour StrategyBuzzer. Tu réponds UNIQUEMENT en JSON valide (pas de markdown, pas de prose).';
 
+  // P1 — forbidden_concepts block.
+  // Built from the array sent by the PHP worker (loadForbiddenConcepts).
+  // Each entry: { family: string, question_fr: string }.
+  // Entries with missing/empty fields are silently dropped.
+  // Total block capped at 12 000 chars to keep the prompt stable at high
+  // bank density — lines are added whole until the cap would be exceeded.
+  const FORBIDDEN_CHAR_CAP = 12000;
+  const forbiddenBlock = (() => {
+    if (!Array.isArray(forbidden_concepts) || forbidden_concepts.length === 0) return '';
+
+    const validEntries = forbidden_concepts.filter(
+      (c) =>
+        c &&
+        typeof c.family === 'string' && c.family.trim() !== '' &&
+        typeof c.question_fr === 'string' && c.question_fr.trim() !== ''
+    );
+    if (validEntries.length === 0) return '';
+
+    const header = '\nCONCEPTS DÉJÀ EN BANQUE (ne pas répéter, ne pas reformuler) :\n';
+    const footer =
+      '→ Choisis un fait DIFFÉRENT, non encore couvert ci-dessus.\n' +
+      '→ Tu peux rester dans le même domaine mais aborde un aspect ou fait nouveau.\n';
+
+    let body = '';
+    for (const c of validEntries) {
+      const line = `- [${c.family.trim()}] → "${c.question_fr.trim()}"\n`;
+      if (header.length + body.length + line.length + footer.length > FORBIDDEN_CHAR_CAP) break;
+      body += line;
+    }
+    if (body === '') return '';
+    return header + body + footer;
+  })();
+
   const userPrompt = `Génère UNE question de quiz dans le format JSON exact ci-dessous.
 
 CONTRAINTES:
@@ -1209,7 +1243,7 @@ CONTRAINTES:
 - ${concept_hint ? `Indice concept: ${concept_hint}` : 'Choisis un fait précis et vérifiable.'}
 - correct_answer_key DOIT être la même lettre dans TOUTES les langues
 - saviez_vous OBLIGATOIRE, anecdote concrète d'au moins 30 caractères
-
+${forbiddenBlock}
 Format JSON exact attendu:
 {
   "question_text": "...",

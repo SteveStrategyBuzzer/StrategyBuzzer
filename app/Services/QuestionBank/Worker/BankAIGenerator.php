@@ -111,7 +111,8 @@ class BankAIGenerator
             'cognitive_type'   => (string) $segment['cognitive_type'],
             'question_type'    => (string) ($segment['question_type'] ?? 'qcm'),
             'difficulty_depth' => (int) $segment['depth_range'][1],
-            'languages'        => ['fr'],   // master in French only
+            'languages'          => ['fr'],   // master in French only
+            'forbidden_concepts' => $this->loadForbiddenConcepts((string) $segment['sub_domain']),
         ];
 
         // Segment-context XOR (#91 contract): body MUST carry exactly one of
@@ -317,6 +318,55 @@ class BankAIGenerator
             // Body non-JSON — ignoré.
         }
         return null;
+    }
+
+    /**
+     * P1 — forbidden_concepts prompt injection.
+     *
+     * Returns the N most-used validated groups for the same sub_domain (all
+     * cognitive types) so the AI can avoid reformulating already-covered facts.
+     *
+     * Ordering: usage_count DESC (protect most-consumed concepts first),
+     *           then id DESC (prefer recent insertions as tie-breaker).
+     *
+     * Only entries with a non-empty concept_family AND a non-empty French
+     * question text are returned — blank fields are useless as prompt context.
+     *
+     * Returns [] on any DB error (fail-open: generation proceeds without
+     * context rather than aborting the cycle).
+     *
+     * @return list<array{family: string, question_fr: string}>
+     */
+    private function loadForbiddenConcepts(string $subDomain): array
+    {
+        try {
+            return \DB::table('question_groups as qg')
+                ->join('question_translations as qt', function ($join) {
+                    $join->on('qt.question_group_id', '=', 'qg.id')
+                         ->where('qt.language', '=', 'fr');
+                })
+                ->where('qg.sub_domain', $subDomain)
+                ->where('qg.validated', true)
+                ->whereNotNull('qg.concept_family')
+                ->where('qg.concept_family', '!=', '')
+                ->whereNotNull('qt.question_text')
+                ->where('qt.question_text', '!=', '')
+                ->orderByDesc('qg.usage_count')
+                ->orderByDesc('qg.id')
+                ->limit(50)
+                ->get(['qg.concept_family as family', 'qt.question_text as question_fr'])
+                ->map(fn ($row) => [
+                    'family'      => (string) $row->family,
+                    'question_fr' => (string) $row->question_fr,
+                ])
+                ->all();
+        } catch (\Throwable $e) {
+            \Log::warning('[BankAIGenerator] loadForbiddenConcepts: DB error — proceeding without context', [
+                'sub_domain' => $subDomain,
+                'error'      => $e->getMessage(),
+            ]);
+            return [];
+        }
     }
 
     /**
