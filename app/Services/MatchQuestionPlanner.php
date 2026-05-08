@@ -175,6 +175,9 @@ class MatchQuestionPlanner
         $questionType = $extra['question_type'] ?? null;
         $stableOrder = $this->profilesCfg['stable_tiebreak_order'] ?? [];
 
+        // Phase B — contexte mémoire cross-match joueur (optionnel, fail-open)
+        $playerContext = $extra['player_context'] ?? [];
+
         // --- 1. Quotas cognitifs globaux (largest-remainder) -----------------
         $cognitiveMix = $profile['cognitive_mix'];
         $globalQuotas = QuotaAllocator::allocate($cognitiveMix, $totalQuestions, $stableOrder);
@@ -200,7 +203,8 @@ class MatchQuestionPlanner
             $questionType,
             $language,
             $totalQuestions,
-            $roundsCount
+            $roundsCount,
+            $playerContext
         );
 
         // --- 5. Charge les traductions et formate ---------------------------
@@ -450,13 +454,26 @@ class MatchQuestionPlanner
         ?string $questionType,
         string $language,
         int $totalQuestions,
-        int $roundsCount
+        int $roundsCount,
+        array $playerContext = []
     ): array {
         $selected = [];
         $shortages = [];
         $usedConceptIds = [];
-        $usedConceptFamilies = [];
-        $usedGroupIds = [];
+
+        // Phase B — pré-charger la mémoire cross-match du joueur.
+        // Les group_ids (hard block) et concept_families (soft cooldown) sont
+        // injectés comme point de départ des tableaux d'exclusion intra-match
+        // existants. La chaîne de relax (Relax 1/2/3) gère naturellement les
+        // pools vides sans aucune modification.
+        $usedGroupIds = array_values(array_filter(
+            array_map('intval', $playerContext['exclude_group_ids'] ?? []),
+            fn ($id) => $id > 0
+        ));
+        $usedConceptFamilies = array_values(array_filter(
+            $playerContext['deprioritise_families'] ?? [],
+            fn ($f) => is_string($f) && $f !== ''
+        ));
         $perRoundActual = [];
         $globalActual = ['recognition' => 0, 'reasoning' => 0, 'deceptive_trap' => 0];
         $subActual = $subPerRound !== null ? [] : null;

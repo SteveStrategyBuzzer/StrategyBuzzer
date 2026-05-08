@@ -19,11 +19,12 @@ class GameServerController extends Controller
     public function init(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'roomId' => 'required|string',
-            'theme' => 'required|string',
-            'niveau' => 'required|integer|min:1|max:10',
-            'language' => 'required|string',
+            'roomId'    => 'required|string',
+            'theme'     => 'required|string',
+            'niveau'    => 'required|integer|min:1|max:10',
+            'language'  => 'required|string',
             'maxRounds' => 'required|integer|min:1',
+            'userId'    => 'nullable|integer|min:1',
         ]);
 
         $firstQuestion = $this->pipeline->initMatch(
@@ -31,7 +32,8 @@ class GameServerController extends Controller
             $validated['theme'],
             $validated['niveau'],
             $validated['language'],
-            $validated['maxRounds']
+            $validated['maxRounds'],
+            isset($validated['userId']) ? (int) $validated['userId'] : null
         );
 
         if (!$firstQuestion) {

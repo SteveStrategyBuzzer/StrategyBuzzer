@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\GenerateGameServerQuestionsJob;
+use App\Services\PlayerMemoryService;
 use App\Services\QuestionBank\QuestionBankPicker;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,10 @@ class GameServerQuestionPipeline
     private FirebaseService $firebase;
     private MatchQuestionPlanner $planner;
     private QuestionBankPicker $bankPicker;
+
+    // Phase A+B — mémoire cross-match joueur (optionnel, fail-open)
+    private ?int $userId    = null;
+    private string $matchMode = 'unknown';
 
     public function __construct()
     {
@@ -51,7 +56,7 @@ class GameServerQuestionPipeline
             + self::TIEBREAKER_QUESTIONS;
     }
 
-    public function initMatch(string $roomId, string $theme, int $niveau, string $language, int $maxRounds): ?array
+    public function initMatch(string $roomId, string $theme, int $niveau, string $language, int $maxRounds, ?int $userId = null): ?array
     {
         Log::info('[GameServerQuestionPipeline] Initializing match', [
             'room_id' => $roomId,
@@ -60,6 +65,9 @@ class GameServerQuestionPipeline
             'language' => $language,
             'max_rounds' => $maxRounds,
         ]);
+
+        // Phase A+B — stocker le user_id pour la mémoire cross-match joueur
+        $this->userId = $userId;
 
         $totalNeeded = $this->getTotalNeeded($maxRounds);
 
@@ -137,7 +145,7 @@ class GameServerQuestionPipeline
 
         $rawGroupId = $firstQuestion['group_id'] ?? null;
         if (is_int($rawGroupId) && $rawGroupId > 0) {
-            \App\Jobs\MarkQuestionGroupUsedJob::dispatch($rawGroupId);
+            \App\Jobs\MarkQuestionGroupUsedJob::dispatch($rawGroupId, $this->userId, $this->matchMode);
         }
 
         $this->addUsedQuestion($roomId, $formattedQuestion['id'], $formattedQuestion['text']);
@@ -220,7 +228,7 @@ class GameServerQuestionPipeline
 
                     $rawGroupId = $question['group_id'] ?? null;
                     if (is_int($rawGroupId) && $rawGroupId > 0) {
-                        \App\Jobs\MarkQuestionGroupUsedJob::dispatch($rawGroupId);
+                        \App\Jobs\MarkQuestionGroupUsedJob::dispatch($rawGroupId, $this->userId, $this->matchMode);
                     }
 
                     $usedIds[] = $formattedQuestion['id'];
@@ -641,6 +649,25 @@ class GameServerQuestionPipeline
                 ]);
                 return ['plan_id' => null, 'ordered_group_ids' => [], 'ordered_plan_slots' => []];
             }
+
+            // Stocker le mode résolu pour les dispatches Phase A
+            $this->matchMode = $params['mode'];
+
+            // Phase B — charger la mémoire cross-match joueur (fail-open)
+            $playerCtx = [];
+            if ($this->userId !== null) {
+                try {
+                    $playerCtx = app(PlayerMemoryService::class)
+                        ->getForPlan($this->userId, $this->matchMode);
+                } catch (\Throwable $e) {
+                    Log::warning('[GameServerQuestionPipeline] PlayerMemoryService::getForPlan failed (fail-open)', [
+                        'user_id' => $this->userId,
+                        'mode'    => $this->matchMode,
+                        'error'   => $e->getMessage(),
+                    ]);
+                }
+            }
+
             $plan = $this->planner->buildPlan(
                 $params['mode'],
                 $params['level_or_division'],
@@ -648,8 +675,9 @@ class GameServerQuestionPipeline
                 $params['rounds'],
                 $language,
                 [
-                    'domain'   => $params['domain'],
-                    'match_id' => $roomId,
+                    'domain'         => $params['domain'],
+                    'match_id'       => $roomId,
+                    'player_context' => $playerCtx,
                 ]
             );
 
