@@ -1494,19 +1494,21 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             return;
         }
 
-        // Patch 2 (#65) — Hydrate `phaseEndsAtMs` depuis phase_changed ANSWER_SELECTION.
+        // Patch B (#65) — Hydrate `phaseEndsAtMs` depuis phase_changed ANSWER_SELECTION.
+        // Règle unique : startTimer() est le seul point qui ré-ancre answerWindowMs.
+        //   Cas 1 — même deadline : timer déjà ancré, return immédiat (évite jump -30 ms).
+        //   Cas 2 — deadline différente (reconnect, clock skew, nouvelle phase) :
+        //           clear propre + restart → startTimer() recalcule answerWindowMs
+        //           depuis phaseEndsAtMs − phaseStartedAtMs.
+        //   Cas 3 — question-timer actif (phaseEndsAtMs null, toujours ≠ data) :
+        //           sous-cas de 2, même chemin clear + restart.
         if (phase === 'ANSWER_SELECTION' || phase === 'BUZZ_WINNER_ANSWERING') {
             if (data.phaseEndsAtMs) {
-                // Anti-restart guard: state + phase_changed arrivent ~30 ms après
-                // connect avec le même phaseEndsAtMs. Si le timer tourne déjà avec
-                // la même deadline, on ne redémarre pas (évite un jump visuel -30 ms).
                 if (timerInterval && phaseEndsAtMs === data.phaseEndsAtMs) {
-                    return;
+                    return; // cas 1 — même deadline, rien à faire
                 }
-                // V3: clear le timer question (QUESTION_ACTIVE path) avant de démarrer
-                // le timer réponse. startTimer() baillait sur `if (timerInterval) return`
-                // si le question-timer tournait encore.
-                if (timerInterval && !phaseEndsAtMs) {
+                // Cas 2 / 3 — deadline changée : clear propre avant restart.
+                if (timerInterval) {
                     clearInterval(timerInterval);
                     timerInterval = null;
                 }
