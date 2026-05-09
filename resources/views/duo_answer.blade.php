@@ -1006,19 +1006,29 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         const remaining = Math.max(0, activeDeadline - Date.now());
+
+        // Patch D (#65): deadline déjà passée côté serveur (latence réseau, reconnect tardif).
+        // Ne pas inventer 1 seconde artificielle — afficher l'état passif et laisser
+        // Node piloter la suite via phase_changed. Aucune soumission forcée côté client.
+        if (remaining <= 0) {
+            if (timerSeconds) timerSeconds.textContent = '--';
+            if (timerBar) timerBar.style.width = '0%';
+            return;
+        }
+
         // Bar denominator: ANSWER_SELECTION utilise phaseStartedAtMs pour la vraie
         // fenêtre publiée par Node. QUESTION_ACTIVE path : phaseStartedAtMs est null,
         // on utilise remaining (bar démarre à 100% du temps restant — honnête).
+        // remaining > 0 est garanti par le guard ci-dessus.
         var serverWindow = (phaseStartedAtMs && phaseEndsAtMs && phaseEndsAtMs > phaseStartedAtMs)
             ? (phaseEndsAtMs - phaseStartedAtMs)
             : 0;
         if (serverWindow > 0) {
             answerWindowMs = serverWindow;
         } else {
-            answerWindowMs = remaining > 0 ? remaining : 1;
+            answerWindowMs = remaining;
         }
         timeLeft = Math.ceil(remaining / 1000);
-        if (timeLeft <= 0) timeLeft = 1; // at least 1 tick before auto-timeout
 
         console.log('[DuoAnswer] startTimer activeDeadline=' + activeDeadline +
             ' (phaseEndsAtMs=' + phaseEndsAtMs + ' questionEndsAtMs=' + questionEndsAtMs + ')' +
@@ -1549,9 +1559,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             var isMyCollectionWindow =
                 PLAYER_BUZZ_POSITION === 'second' ||
                 historianSkillUsed;
-            if (isMyCollectionWindow && data.phaseEndsAtMs) {
+            // Patch C (#65): re-ancrage uniquement si phaseStartedAtMs ET phaseEndsAtMs
+            // sont tous les deux publiés par Node. Sans phaseStartedAtMs, startTimer()
+            // tomberait sur le fallback `answerWindowMs = remaining` (dénominateur ancré
+            // sur le temps de réception de l'event, variable selon latence réseau) —
+            // la barre serait visuellement fausse. Si les deux sont absents, le timer
+            // reste à "--" et Node pousse RESULT dans ~2 s de toute façon.
+            if (isMyCollectionWindow && data.phaseEndsAtMs && data.phaseStartedAtMs) {
                 phaseEndsAtMs = data.phaseEndsAtMs;
-                if (data.phaseStartedAtMs) phaseStartedAtMs = data.phaseStartedAtMs;
+                phaseStartedAtMs = data.phaseStartedAtMs;
                 if (timerInterval) {
                     clearInterval(timerInterval);
                     timerInterval = null;
@@ -1721,6 +1737,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // `phaseEndsAtMs` (Node's deadline) AND `answerWindowMs` (the bar
             // anchor). ANSWER_TIME is kept in sync for any legacy reader, but
             // startTimer() no longer reads it.
+            //
+            // #61 — LIMITATION CONNUE : l'extension de temps (skill time_bonus /
+            // Sprinteur) est appliquée localement côté client. `phaseEndsAtMs`
+            // est muté ici sans que Node publie une nouvelle deadline officielle.
+            // Si un `state` ou `phase_changed` arrive pendant l'extension
+            // (reconnect, lag), la deadline étendue est écrasée par la valeur
+            // Node et l'extension est perdue silencieusement.
+            // Correction complète = Node doit broadcast une deadline mise à jour
+            // après activation du skill. Scope : #61 (skills serveur).
             var addMs = seconds * 1000;
             if (phaseEndsAtMs) phaseEndsAtMs += addMs;
             answerWindowMs += addMs;
