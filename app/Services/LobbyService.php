@@ -884,7 +884,22 @@ class LobbyService
             } else {
                 $this->saveLobby($code, $lobby);
             }
-            
+
+            // Write player memory room index — used by /internal/player-memory/record (fail-open)
+            // Key: gs_room_users:{roomId} → JSON array of Laravel user_ids
+            // TTL: 24h — matches pipeline cache and longest match duration
+            $gsRoomId = $lobby['game_server']['roomId'] ?? null;
+            if ($gsRoomId && !empty($lobby['players'])) {
+                try {
+                    $uids = array_values(array_keys($lobby['players']));
+                    \Illuminate\Support\Facades\Redis::setex(
+                        "gs_room_users:{$gsRoomId}",
+                        86400,
+                        json_encode($uids)
+                    );
+                } catch (\Throwable) {}
+            }
+
             return ['success' => true, 'lobby' => $lobby];
         } finally {
             $lock->release();

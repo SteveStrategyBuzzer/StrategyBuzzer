@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 class GameServerQuestionPipeline
 {
-    private const CACHE_TTL = 1800; // 30 minutes - Cache is accelerator only
+    private const CACHE_TTL = 86400; // 24 hours — post-match player memory window requires warm cache
     private const QUESTIONS_PER_ROUND = 10;
     private const BONUS_SKILL_QUESTIONS = 5;
     private const TIEBREAKER_QUESTIONS = 5;

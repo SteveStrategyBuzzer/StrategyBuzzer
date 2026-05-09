@@ -9,7 +9,7 @@ import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipelin
 import { appendEventLog, setRoomState, setMatchResult } from "./RedisService.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
 import { saveRoomSnapshot } from "./RoomRecovery.js";
-import { notifyMatchFinalized, saveMatchSnapshot } from "./InternalLaravelClient.js";
+import { notifyMatchFinalized, saveMatchSnapshot, recordPlayerMemory } from "./InternalLaravelClient.js";
 
 export class GameOrchestrator {
   private io: SocketIOServer;
@@ -1627,6 +1627,9 @@ export class GameOrchestrator {
         console.error(`[GameOrchestrator] notifyMatchFinalized failed for ${roomId}:`, err);
       });
     }
+
+    // Player memory — all modes, fire-and-forget, never blocks endMatch()
+    recordPlayerMemory(roomId, room.state.config.mode).catch(() => {});
 
     this.io.to(roomId).emit("match_ended", {
       winnerId,

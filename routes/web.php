@@ -429,6 +429,9 @@ Route::prefix('internal/league/team')->name('internal.league.team.')->group(func
 Route::post('/internal/match/snapshot', [App\Http\Controllers\InternalMatchController::class, 'storeSnapshot'])
     ->name('internal.match.snapshot');
 
+Route::post('/internal/player-memory/record', [App\Http\Controllers\PlayerMemoryController::class, 'record'])
+    ->name('internal.player-memory.record');
+
 /* ===== INTERFACE DE JEU LEAGUE (Socket.IO) ===== */
 Route::prefix('game/league')->name('game.league.')->middleware('auth')->group(function () {
     Route::post('/start', [App\Http\Controllers\LeagueIndividualController::class, 'startGame'])->name('start');

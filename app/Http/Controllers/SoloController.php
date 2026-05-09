@@ -11,6 +11,7 @@ use App\Services\AnswerNormalizationService;
 use App\Services\ProfileStatsService;
 use App\Services\CoinLedgerService;
 use App\Models\QuestionHistory;
+use App\Services\PlayerMemoryService;
 
 class SoloController extends Controller
 {
@@ -604,6 +605,17 @@ class SoloController extends Controller
             // Sauvegarder dans l'historique permanent de la database
             // Note : $user est toujours présent car toutes les routes Solo nécessitent auth middleware
             QuestionHistory::recordQuestion($user->id, $question);
+            // Phase A — mémoire cross-match joueur (fail-open)
+            if (!empty($question['group_id'])) {
+                try {
+                    app(PlayerMemoryService::class)->recordGroupSeen(
+                        $user->id,
+                        (int) $question['group_id'],
+                        $question['concept_family'] ?? null,
+                        'solo'
+                    );
+                } catch (\Throwable) {}
+            }
         } else {
             $question = session('current_question');
         }
@@ -3637,7 +3649,18 @@ class SoloController extends Controller
         $user = \Illuminate\Support\Facades\Auth::user();
         if ($user) {
             QuestionHistory::recordQuestion($user->id, $question);
-            
+            // Phase A — mémoire cross-match joueur (bonus question, fail-open)
+            if (!empty($question['group_id'])) {
+                try {
+                    app(PlayerMemoryService::class)->recordGroupSeen(
+                        $user->id,
+                        (int) $question['group_id'],
+                        $question['concept_family'] ?? null,
+                        'solo'
+                    );
+                } catch (\Throwable) {}
+            }
+
             // Ajouter l'ID et la réponse aux listes d'exclusion
             $usedQuestionIds[] = $question['id'];
             session(['used_question_ids' => $usedQuestionIds]);

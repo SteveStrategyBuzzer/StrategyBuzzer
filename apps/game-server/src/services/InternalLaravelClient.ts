@@ -90,6 +90,50 @@ export async function saveMatchSnapshot(
   }
 }
 
+/**
+ * Record player memory for a completed match so Laravel can update
+ * per-player question-diversity tracking in Redis.
+ *
+ * Laravel resolves player user_ids and group_ids from its own cached data —
+ * Node sends only roomId + mode. Strictly fire-and-forget:
+ *   - 5-second timeout via AbortController
+ *   - try/catch with warn-only log
+ *   - never throws, never blocks endMatch()
+ */
+export async function recordPlayerMemory(roomId: string, mode: string): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  try {
+    const token = signInternalToken();
+    const response = await fetch(`${LARAVEL_ORIGIN}/internal/player-memory/record`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ roomId, mode }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      console.warn(
+        `[InternalLaravelClient] player-memory ${roomId} (${mode}) failed: HTTP ${response.status} ${text}`
+      );
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      console.warn(`[InternalLaravelClient] player-memory ${roomId} timed out`);
+    } else {
+      console.warn(
+        `[InternalLaravelClient] player-memory ${roomId} threw:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+}
+
 export async function notifyMatchFinalized(roomId: string, mode?: string): Promise<void> {
   const path = finalizePathForMode(mode);
   try {
