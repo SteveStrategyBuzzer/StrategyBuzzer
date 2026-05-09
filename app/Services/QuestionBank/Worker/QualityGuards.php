@@ -50,11 +50,15 @@ class QualityGuards
         }
 
         // 2. Saviez_vous strength on every supplied translation.
-        $minSv = (int) $guards['saviez_vous_min_length'];
+        // CJK/Arabic scripts are semantically denser per character, so they
+        // use a lower per-language threshold defined in guards config.
+        $minSvDefault  = (int) $guards['saviez_vous_min_length'];
+        $minSvByLang   = (array) ($guards['saviez_vous_min_length_by_lang'] ?? []);
         foreach ($translations as $lang => $tr) {
+            $minSv = isset($minSvByLang[$lang]) ? (int) $minSvByLang[$lang] : $minSvDefault;
             $sv = trim((string) ($tr['saviez_vous'] ?? ''));
             if (mb_strlen($sv) < $minSv) {
-                return ['ok' => false, 'code' => 'missing_saviez_vous', 'detail' => "{$lang} too short ({$lang} = ".mb_strlen($sv).')'];
+                return ['ok' => false, 'code' => 'missing_saviez_vous', 'detail' => "{$lang} too short ({$lang} = ".mb_strlen($sv)." < {$minSv})"];
             }
             // Trivial / tautological detector.
             $svLower = mb_strtolower($sv);

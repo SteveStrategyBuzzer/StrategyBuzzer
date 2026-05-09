@@ -194,6 +194,16 @@ return [
             // this is treated as too weak / generic.
             'saviez_vous_min_length' => 30,
 
+            // Per-language overrides for saviez_vous minimum length.
+            // CJK (zh) and Arabic (ar) scripts are semantically denser per
+            // character — 20 ideographs carry as much information as 40 Latin
+            // characters. Languages absent from this map fall back to the
+            // global saviez_vous_min_length above.
+            'saviez_vous_min_length_by_lang' => [
+                'zh' => 20,
+                'ar' => 20,
+            ],
+
             // Reject when concept_family already accounts for more than this
             // share of a single segment (capped before insertion).
             'concept_family_segment_max_share' => 0.40,

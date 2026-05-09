@@ -35,6 +35,10 @@ args = "Game Server"
 task = "workflow.run"
 args = "Redis Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Bank Worker"
+
 [[workflows.workflow]]
 name = "Backend"
 author = "agent"
@@ -92,6 +96,17 @@ outputType = "console"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "redis-cli ping | grep -q PONG && echo 'Redis already running — monitoring' || redis-server --port 6379 --bind 127.0.0.1; while sleep 30; do redis-cli ping || exit 1; done"
+
+[[workflows.workflow]]
+name = "Bank Worker"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "php artisan questions:worker"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [[ports]]
 localPort = 3000

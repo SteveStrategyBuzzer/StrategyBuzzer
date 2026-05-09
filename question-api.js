@@ -1402,7 +1402,8 @@ app.post('/translate-bank-question', async (req, res) => {
 
   const systemPrompt =
     'Tu es un traducteur structuré strict pour une base de questions de quiz. ' +
-    'Tu réponds UNIQUEMENT en JSON valide (pas de markdown, pas de prose).';
+    'Tu réponds UNIQUEMENT en JSON valide (pas de markdown, pas de prose). ' +
+    'Chaque clé du JSON de sortie doit être présente et non-vide pour TOUTES les langues cibles.';
 
   const userPrompt =
 `Tu dois traduire une question de quiz depuis le ${source_language.toUpperCase()} vers les langues cibles ci-dessous.
@@ -1414,8 +1415,9 @@ RÈGLES ABSOLUES — AUCUNE EXCEPTION :
 4. correct_answer_key = "${correctKey}" dans TOUTES les langues, sans exception, même si une autre réponse te semble plus logique.
 5. INTERDIT : reformuler, simplifier, enrichir, changer les réponses, permuter l'ordre des réponses, changer la bonne réponse, modifier le concept, inventer de nouvelles informations.
 6. Les distracteurs doivent rester des distracteurs équivalents exacts. Ne pas remplacer une réponse par une autre référence culturelle.
-7. explanation et saviez_vous : traduis fidèlement, sans ajouter ni supprimer d'information.
+7. explanation et saviez_vous : traduis fidèlement dans CHAQUE langue cible. Ces deux champs sont OBLIGATOIRES et non-vides dans TOUTES les langues — une valeur vide ou absente invalide la réponse entière.
 8. Si une réponse est un nom propre, un nombre, une date, un acronyme ou un terme technique : conserve-le TEL QUEL sans traduction.
+9. COMPLÉTUDE : le JSON de sortie doit contenir EXACTEMENT ${target_languages.length} entrées (une par langue cible). Aucune langue ne peut être omise ou tronquée.
 
 QUESTION SOURCE (${source_language.toUpperCase()}) :
   question_text = "${master.question_text}"
@@ -1424,10 +1426,10 @@ ${answersBlock}
   explanation = "${master.explanation}"
   saviez_vous = "${master.saviez_vous}"
 
-LANGUES CIBLES :
+LANGUES CIBLES (${target_languages.length} langues — TOUTES obligatoires) :
 ${langLines}
 
-Format JSON exact attendu (correct_answer_key = "${correctKey}" partout, sans aucune modification) :
+Format JSON exact attendu — TOUTES LES ${target_languages.length} LANGUES PRÉSENTES, correct_answer_key = "${correctKey}" partout :
 {
 ${translationSchema}
 }`;
@@ -1514,10 +1516,10 @@ ${translationSchema}
   };
 
   // ── Token budget ───────────────────────────────────────────────────────────
-  // Translation is cheaper than generation: question_text + explanation +
-  // saviez_vous need translation; answers may be names/numbers.
-  // ~500 tokens per language, floor at 2000.
-  const maxOutputTokens = Math.max(2000, target_languages.length * 600);
+  // Translation: question_text + explanation + saviez_vous + 4 answers per lang.
+  // Budget: ~800 tokens per language, floor at 4000 to avoid premature cutoff
+  // (the leading cause of translations[lang].saviez_vous empty rejections).
+  const maxOutputTokens = Math.max(4000, target_languages.length * 800);
 
   // ── Call router (low temperature = strict, literal translation) ────────────
   let routed;
