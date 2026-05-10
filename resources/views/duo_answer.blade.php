@@ -1355,17 +1355,37 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             applyBuzzPosition(data.playerBuzzOrder === 1 ? 'first' : 'second');
         }
 
-        // ── Timer hydration (Patch 2 / #65) ──────────────────────────────────
+        // ── Timer hydration (Patch E / #65) ──────────────────────────────────
         if (data.phaseEndsAtMs) {
             var phase = data.phase || '';
             if (phase === 'ANSWER_SELECTION' || phase === 'BUZZ_WINNER_ANSWERING') {
                 currentPhase = phase;
+                // Patch E (#65): capturer wasQuestionTimer AVANT l'assignation de
+                // phaseEndsAtMs. Sans ce guard, la séquence suivante corrompait la barre :
+                //   1. startTimer() au load → answerWindowMs = remaining_question (ex. 7000ms)
+                //   2. state:ANSWER_SELECTION → phaseEndsAtMs = T_ans (mis à jour ici)
+                //                            → timerInterval actif → pas de restart
+                //                            → answerWindowMs reste 7000ms (stale)
+                //   3. phase_changed:ANSWER_SELECTION → Patch B guard : même phaseEndsAtMs
+                //                                    → return, pas de restart
+                //   4. tick : remainingMs=10000 / answerWindowMs=7000 = 143% → 100% clamped
+                //      → barre au max qui redescend ("barre qui se remplit")
+                var wasQuestionTimer = timerInterval && !phaseEndsAtMs;
                 phaseEndsAtMs = data.phaseEndsAtMs;
                 if (data.phaseStartedAtMs) phaseStartedAtMs = data.phaseStartedAtMs;
-                if (!timerInterval && canAnswer() && !answered) {
-                    startTimer();
+                if (!timerInterval || wasQuestionTimer) {
+                    // Pas de timer actif, ou question-timer à remplacer par answer-timer :
+                    // clear propre puis startTimer() recalcule answerWindowMs correctement.
+                    if (wasQuestionTimer) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                    }
+                    if (canAnswer() && !answered) {
+                        startTimer();
+                    }
                     return;
                 }
+                // Timer ANSWER_SELECTION déjà actif avec bonne deadline : resync timeLeft.
                 var rem = Math.max(0, data.phaseEndsAtMs - Date.now());
                 var srvLeft = Math.ceil(rem / 1000);
                 if (Math.abs(srvLeft - timeLeft) > 1) {
