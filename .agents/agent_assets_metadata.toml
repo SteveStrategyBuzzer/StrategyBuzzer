@@ -1679,3 +1679,33 @@ id = "zaB-1zyHMOTGSjJgwse7S"
 uri = "file://.local/AUDIT_DUO.md"
 type = "text"
 title = "Audit Duo — Vérité Node vs Affichage Client"
+
+[[outputs]]
+id = "hyGP9T1ma5rYoyZ0GreEk"
+uri = "file://storage/app/qb_full_411.csv"
+type = "table"
+title = "QB — Export complet 411 groupes (FR + métadonnées)"
+
+[[outputs]]
+id = "44mHQHBJxYOM65pLPWjyS"
+uri = "file://storage/app/qb_sample_25.csv"
+type = "table"
+title = "QB — Aperçu 25 groupes représentatifs"
+
+[[outputs]]
+id = "rDS0HGKsdR7TwpQeGsj9Q"
+uri = "file://storage/app/qb_duo_depth5to10.csv"
+type = "table"
+title = "QB — Filtre Duo (depth 5-10, 195 groupes)"
+
+[[outputs]]
+id = "fftLpKqQj3_aUMEkk3mLC"
+uri = "file://storage/app/qb_weak_buckets_lt5.csv"
+type = "table"
+title = "QB — Buckets faibles < 5 questions (219 groupes)"
+
+[[outputs]]
+id = "sQ7JBCp6DqKNoZNCY1rn6"
+uri = "file://storage/app/qb_weak_buckets_lt10.csv"
+type = "table"
+title = "QB — Buckets faibles < 10 questions (219 groupes)"
