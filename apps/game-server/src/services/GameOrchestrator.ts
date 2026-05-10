@@ -27,6 +27,12 @@ export class GameOrchestrator {
   // not shrink it.
   private resultReadyMaps: Map<string, Set<string>> = new Map();
   private resultExpectedMaps: Map<string, Set<string>> = new Map();
+  // H1 — Pre-RESULT arrival buffer. Players who navigate to /duo/result
+  // during ANSWER_SELECTION or ANSWER_COLLECTION (V3 individual navigation)
+  // are stored here. revealAnswer() flushes them into resultReadyMaps so
+  // they count toward the "all humans present" re-stamp check. Idempotent
+  // (Set): reconnect duplicates are ignored automatically.
+  private resultEarlyArrivals: Map<string, Set<string>> = new Map();
   // Track last score delta per player for cancel_error retroactive correction.
   // Stores { questionIndex, delta } so cancel_error only applies to the
   // question that was just scored (prevents stale cross-question corrections).
@@ -411,6 +417,22 @@ export class GameOrchestrator {
     this.resultReadyMaps.set(roomId, new Set<string>());
     this.resultExpectedMaps.set(roomId, expectedHumans);
 
+    // H1 — Flush pre-RESULT early arrivals (players who navigated to
+    // /duo/result during ANSWER_SELECTION/ANSWER_COLLECTION). They are
+    // counted toward the "all humans present" re-stamp check. Only IDs
+    // that are in expectedHumans are accepted (bots never emit this).
+    const earlyArrivals = this.resultEarlyArrivals.get(roomId);
+    if (earlyArrivals && earlyArrivals.size > 0) {
+      const readyMap = this.resultReadyMaps.get(roomId)!;
+      for (const pid of earlyArrivals) {
+        if (expectedHumans.has(pid)) {
+          readyMap.add(pid);
+          console.log(`[GameOrchestrator] Flushed early result arrival: ${pid} in room ${roomId}`);
+        }
+      }
+      this.resultEarlyArrivals.delete(roomId);
+    }
+
     // Reset per-player ready flag so the next "GO" press on /duo/result is
     // required from each connected player before the early-transition
     // short-circuit (requestEarlyResultTransition) can fire. Without this
@@ -431,6 +453,13 @@ export class GameOrchestrator {
     this.pendingAnswers.delete(roomId);
     this.allBuzzerAnswers.delete(roomId);
     this.schedulePhaseTimeout(roomId);
+
+    // H1 — If all expected humans were already on /duo/result before the
+    // global RESULT phase (early arrivals flushed above), re-stamp the
+    // canonical 60s deadline immediately instead of waiting for the second
+    // arrival via handleResultPageReady. This is a no-op when fewer than
+    // all expected humans are present — the normal path takes over then.
+    this._tryRestamp(roomId);
   }
 
   private scoreAllBuzzers(
@@ -1288,54 +1317,20 @@ export class GameOrchestrator {
   }
 
   /**
-   * Task #78 — Symmetric per-arrival barrier on /duo/result.
-   *
-   * Each connected player emits `result_page_ready` once on mount of the
-   * /duo/result page. We re-arm the canonical 60 s RESULT countdown ONLY
-   * when ALL expected humans (snapshotted at REVEAL → RESULT entry) have
-   * arrived. Behaviour:
-   *   • 1st arrival           → register, do NOT touch the deadline. The
-   *                             player sees a "waiting for opponent" overlay.
-   *                             The soft ceiling (already armed in
-   *                             revealAnswer) keeps a hard upper bound.
-   *   • 2nd / Nth arrival     → re-stamp phaseEndsAtMs to Date.now() + 60s
-   *                             and re-emit phase_changed so every client
-   *                             snaps to the fresh deadline. Only THEN does
-   *                             the visible countdown start ticking down.
-   * Bot-only / single-human rooms hit the all-arrived condition on the
-   * first call, which is the desired behaviour: timer starts immediately.
+   * H1 — Shared re-stamp helper. Called both from handleResultPageReady
+   * (normal RESULT-phase arrival) and from revealAnswer() (all humans
+   * already present via early-arrival flush). Cancels the soft-ceiling
+   * timer and arms a fresh canonical 60s countdown. No-op if the
+   * all-arrived condition is not yet met.
    */
-  handleResultPageReady(roomId: string, playerId: string): void {
+  private _tryRestamp(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
-    if (room.state.phase !== "RESULT" && room.state.phase !== "REVEAL") {
-      console.log(`[GameOrchestrator] result_page_ready ignored: not in RESULT/REVEAL phase (${room.state.phase})`);
-      return;
-    }
-
     const readyMap = this.resultReadyMaps.get(roomId);
     const expectedSet = this.resultExpectedMaps.get(roomId);
-    if (!readyMap || !expectedSet) {
-      // Maps were cleared (e.g. transition already happened). Safe no-op.
-      return;
-    }
+    if (!readyMap || !expectedSet) return;
 
-    if (readyMap.has(playerId)) {
-      // Idempotent: ignore duplicate signals from the same player.
-      return;
-    }
-    readyMap.add(playerId);
-    console.log(`[GameOrchestrator] result_page_ready from ${playerId} in room ${roomId} (${readyMap.size}/${expectedSet.size} expected humans ready)`);
-
-    // Notify clients about per-player arrival progress (used by /duo/result
-    // to flip the per-side "Vous / Adversaire — En attente" status row).
-    this.io.to(roomId).emit("result_page_ready_progress", {
-      ready: [...readyMap],
-      expected: [...expectedSet],
-    });
-
-    // Re-arm the canonical countdown ONLY once all expected humans have arrived.
     if (expectedSet.size === 0 || ![...expectedSet].every(id => readyMap.has(id))) {
       return;
     }
@@ -1363,6 +1358,81 @@ export class GameOrchestrator {
     this.resultExpectedMaps.delete(roomId);
 
     console.log(`[GameOrchestrator] All ${expectedSet.size} human(s) on /duo/result — fresh ${resultTimer}ms countdown armed for room ${roomId}`);
+  }
+
+  /**
+   * Task #78 / H1 — Per-arrival barrier on /duo/result.
+   *
+   * V3 product rule: players navigate to /duo/result individually right
+   * after answering (800 ms post-click), BEFORE the global RESULT phase.
+   * This means result_page_ready can legitimately arrive during
+   * ANSWER_SELECTION or ANSWER_COLLECTION. Those early signals are buffered
+   * in resultEarlyArrivals; revealAnswer() flushes them into resultReadyMaps
+   * and calls _tryRestamp() to re-arm immediately when all humans are present.
+   *
+   * Behaviour summary:
+   *   • Early arrival (ANSWER_SELECTION / ANSWER_COLLECTION)
+   *                         → buffer in resultEarlyArrivals, return.
+   *   • 1st arrival in RESULT → register, emit progress, do NOT re-stamp yet.
+   *                             Player sees "waiting for opponent" overlay.
+   *                             Soft ceiling keeps a hard upper bound.
+   *   • Last arrival in RESULT → _tryRestamp() fires: cancel soft ceiling,
+   *                             emit fresh phase_changed(RESULT) with
+   *                             Date.now() + 60s. Clients remove overlay.
+   * Bot-only / single-human rooms: expectedSet.size === 1, so the
+   * all-arrived condition is met on the first real arrival (or immediately
+   * via the early-arrival flush in revealAnswer).
+   */
+  handleResultPageReady(roomId: string, playerId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room) return;
+
+    const phase = room.state.phase;
+
+    // H1 — Accept early arrivals: player navigated to /duo/result before
+    // the global phase reached RESULT. Buffer idempotently and return.
+    // revealAnswer() will flush these into resultReadyMaps.
+    if (phase === "ANSWER_SELECTION" || phase === "ANSWER_COLLECTION") {
+      let earlySet = this.resultEarlyArrivals.get(roomId);
+      if (!earlySet) {
+        earlySet = new Set<string>();
+        this.resultEarlyArrivals.set(roomId, earlySet);
+      }
+      if (!earlySet.has(playerId)) {
+        earlySet.add(playerId);
+        console.log(`[GameOrchestrator] result_page_ready EARLY from ${playerId} in room ${roomId} (phase=${phase}) — buffered`);
+      }
+      return;
+    }
+
+    if (phase !== "RESULT" && phase !== "REVEAL") {
+      console.log(`[GameOrchestrator] result_page_ready ignored: not in RESULT/REVEAL/ANSWER phase (${phase})`);
+      return;
+    }
+
+    const readyMap = this.resultReadyMaps.get(roomId);
+    const expectedSet = this.resultExpectedMaps.get(roomId);
+    if (!readyMap || !expectedSet) {
+      // Maps were cleared (e.g. transition already happened). Safe no-op.
+      return;
+    }
+
+    if (readyMap.has(playerId)) {
+      // Idempotent: ignore duplicate signals from the same player.
+      return;
+    }
+    readyMap.add(playerId);
+    console.log(`[GameOrchestrator] result_page_ready from ${playerId} in room ${roomId} (${readyMap.size}/${expectedSet.size} expected humans ready)`);
+
+    // Notify clients about per-player arrival progress (used by /duo/result
+    // to flip the per-side "Vous / Adversaire — En attente" status row).
+    this.io.to(roomId).emit("result_page_ready_progress", {
+      ready: [...readyMap],
+      expected: [...expectedSet],
+    });
+
+    // Re-arm the canonical countdown when all expected humans have arrived.
+    this._tryRestamp(roomId);
   }
 
   private endRound(roomId: string): void {
@@ -1800,6 +1870,9 @@ export class GameOrchestrator {
     this.allBuzzerAnswers.delete(roomId);
     this.playerStats.delete(roomId);
     this.currentQuestionPublishedAtMs.delete(roomId);
+    this.resultReadyMaps.delete(roomId);
+    this.resultExpectedMaps.delete(roomId);
+    this.resultEarlyArrivals.delete(roomId);
     console.log(`[GameOrchestrator] Cleaned up room ${roomId}`);
   }
 
