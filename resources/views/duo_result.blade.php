@@ -1347,8 +1347,12 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     }
     
     function resetReadyStatus() {
-        isReady = false;
-        
+        // Guard: if the player already pressed GO (isReady=true), the second
+        // PHASE_CHANGED(RESULT) from _tryRestamp must NOT revert their visual
+        // ready state. The server-side player.isReady flag is already set and
+        // the socket signal was already emitted — only the UI would be reset.
+        if (isReady) return;
+
         if (btnGo) {
             btnGo.disabled = false;
             btnGo.textContent = '{{ __("Go Mutuel") }}';
