@@ -1,0 +1,80 @@
+STOP nouveaux patchs.
+
+Le patch H1 a été appliqué trop large dans GameOrchestrator.
+Maintenant on ne continue PAS H2 et on ne fait aucun autre correctif tant que H1 n’est pas découpé, vérifié et sécurisé.
+
+Objectif immédiat :
+auditer précisément le patch H1 déjà appliqué et le ramener à une validation par étapes.
+
+Travail demandé maintenant :
+
+1. Afficher le diff exact H1
+Commande :
+git diff -- apps/game-server/src/services/GameOrchestrator.ts
+
+2. Découper le diff H1 en sous-blocs logiques :
+H1-A : nouveau champ resultEarlyArrivals
+H1-B : handleResultPageReady accepte early arrivals
+H1-C : stockage early arrivals sans restamp
+H1-D : flush early arrivals dans revealAnswer
+H1-E : _tryRestamp extraction / nouvelle méthode
+H1-F : cleanup resultEarlyArrivals
+
+3. Pour chaque sous-bloc, produire :
+- lignes modifiées
+- rôle exact
+- risque
+- validation minimale
+- dépendance avec les autres sous-blocs
+
+4. Ne pas ajouter de code.
+5. Ne pas faire H2.
+6. Ne pas toucher au client.
+7. Ne pas toucher GameplayRuntime.
+8. Ne pas toucher duo_result.
+9. Ne pas redémarrer encore inutilement.
+
+Validation obligatoire avant de considérer H1 acceptable :
+
+A. Compilation :
+cd apps/game-server && npm run build
+
+B. Logs à vérifier pendant match Duo :
+- result_page_ready EARLY from ...
+- Flushed early result arrival ...
+- All N human(s) on /duo/result
+- fresh 60000ms countdown armed
+- aucun result_page_ready ignored hors RESULT
+- aucun double phase_changed RESULT parasite
+- aucun chrono doublé
+- aucun soft-ceiling bloqué
+- aucun skip SYNC
+- GO mutuel intact
+- fallback 60s intact
+
+C. Scénarios runtime :
+1. joueur arrive sur Result avant RESULT global
+2. joueur arrive sur Result après RESULT global
+3. les deux joueurs arrivent avant RESULT
+4. un joueur reconnecte sur Result
+5. GO mutuel
+6. aucun GO → timeout 60s
+7. passage SYNC vers prochaine question
+8. fin de manche / fin de match
+
+Important :
+Si H1 montre un problème, ne pas corriger tout de suite.
+D’abord identifier quel sous-bloc H1-A à H1-F est responsable.
+
+Livrable attendu :
+un rapport structuré :
+
+Sous-bloc | lignes | fonction | risque | validation | statut
+
+Puis seulement après mon feu vert :
+on décidera si H1 reste tel quel, si on le réduit, ou si on le rollback partiellement.
+
+Règle :
+GameOrchestrator = zone critique.
+Plus aucun patch groupé dans ce fichier.
+Chaque modification future doit être micro-patchée avec validation entre chaque étape.
