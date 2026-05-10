@@ -374,6 +374,7 @@
                 var _targetUrl = window[_targetKey];
                 var _matchId   = window.MATCH_ID;
                 if (_targetUrl) {
+                    console.warn('[GameplayRuntime] MISMATCH NAV page=' + _page + ' phase=' + _phase + ' → ' + _targetKey + ' (' + _targetUrl + ')');
                     window.__GR_MISMATCH_NAV = true;
                     window.duoNavigate(_targetUrl + (_matchId ? '?match_id=' + encodeURIComponent(_matchId) : ''));
                 }
