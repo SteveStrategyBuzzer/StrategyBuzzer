@@ -355,12 +355,16 @@
                     WAITING:          'QUESTION_URL',
                     SYNC:             'QUESTION_URL',
                     QUESTION_ACTIVE:  'QUESTION_URL',
-                    // Answer phases: redirect to question; question page handleGameState
-                    // will then role-check lockedAnswerPlayerId and redirect buzz winner
-                    // to answer (avoids ping-pong for non-buzz-winners).
-                    ANSWER_SELECTION:      'QUESTION_URL',
-                    BUZZ_WINNER_ANSWERING: 'QUESTION_URL',
-                    ANSWER_COLLECTION:     'QUESTION_URL',
+                    // Patch G1 (#65) — ANSWER_SELECTION / BUZZ_WINNER_ANSWERING /
+                    // ANSWER_COLLECTION intentionally omitted from the result map.
+                    // In V3, the player navigates to /result immediately after submitting
+                    // (~800 ms delay) before Node has finished scoring and transitioning
+                    // to RESULT. These are normal transient states on /result — not
+                    // mismatches. validatePhaseAccess('result') already allows them
+                    // (P77.3). The result page's own _onResultState and
+                    // _onResultPhaseChanged handle them correctly (stay + wait).
+                    // SYNC above is sufficient to evict genuinely stale result pages
+                    // (SYNC always fires before ANSWER_SELECTION of the next question).
                     ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
                     MATCH_END:        'MATCH_RESULT_URL',
                     FINISHED:         'MATCH_RESULT_URL',
