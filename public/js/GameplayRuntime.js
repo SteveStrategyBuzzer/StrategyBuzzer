@@ -337,9 +337,14 @@
                     // QUESTION_ACTIVE intentionally omitted: server allows it on the
                     // answer page (buzz winner navigated here while phase still QUESTION_ACTIVE).
                     // ANSWER_COLLECTION omitted: valid grace-period phase for answer page.
+                    // SYNC intentionally omitted (Patch F / #65): SYNC fires at every
+                    // inter-question boundary. If a player has already answered and is
+                    // waiting for RESULT, this nav would reload the answer page with
+                    // answered=false, re-enabling the answer buttons (UX regression).
+                    // The answer page's own _onAnswerPhaseChanged handles SYNC correctly
+                    // via the isRedirecting guard — no mismatch nav needed here.
                     INTRO:            'QUESTION_URL',
                     WAITING:          'QUESTION_URL',
-                    SYNC:             'QUESTION_URL',
                     RESULT:           'RESULT_URL',
                     ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
                     MATCH_END:        'MATCH_RESULT_URL',
