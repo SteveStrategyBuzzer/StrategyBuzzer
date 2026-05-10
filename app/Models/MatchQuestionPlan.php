@@ -26,7 +26,6 @@ class MatchQuestionPlan extends Model
         'per_round_composition',
         'group_ids',
         'issues',
-        'shortages',
     ];
 
     protected $casts = [
@@ -38,6 +37,5 @@ class MatchQuestionPlan extends Model
         'per_round_composition' => 'array',
         'group_ids' => 'array',
         'issues' => 'array',
-        'shortages' => 'array',
     ];
 }

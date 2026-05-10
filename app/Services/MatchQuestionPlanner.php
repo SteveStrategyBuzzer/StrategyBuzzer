@@ -223,6 +223,7 @@ class MatchQuestionPlanner
                 'plan_uid'              => $planId,
                 'mode'                  => $mode,
                 'division'              => $division,
+                'domain'                => $domain,
                 'total_questions'       => $totalQuestions,
                 'rounds_count'          => $roundsCount,
                 'language'              => $language,
@@ -235,7 +236,7 @@ class MatchQuestionPlanner
                     'actual' => $perRoundActual,
                 ],
                 'group_ids'             => $orderedGroupIds,
-                'shortages'             => $shortages,
+                'issues'                => $shortages,
             ]);
         } catch (\Throwable $e) {
             Log::warning('[MatchQuestionPlanner] could not persist plan audit row', [
@@ -644,10 +645,12 @@ class MatchQuestionPlanner
 
         if ($resolved['kind'] === 'boss') {
             $base['boss_level'] = $resolved['boss_level'];
-        } elseif ($resolved['kind'] === 'solo' && $resolved['level'] !== null) {
-            $base['difficulty_level'] = $resolved['level'];
         }
-        // Pour solo_range on filtre par depth uniquement (pas un level précis).
+        // QB-1: depth_min/depth_max dans $base suffisent pour solo et solo_range.
+        // On n'ajoute PAS difficulty_level exact : la bank stocke un niveau canonique
+        // par band (1, 11, 21, 31…) qui peut ne pas correspondre au niveau du joueur.
+        // Filtrer par equality stricte rendrait toutes les recherches vides
+        // si le niveau joueur (ex: 3, 35, 55) n'existe pas dans la bank.
 
         // Relaxations successives
         $tries = [];
