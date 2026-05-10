@@ -1,0 +1,47 @@
+Correction produit importante :
+
+Je ne veux pas que Answer serve de salle d’attente.
+
+La logique voulue :
+
+- Le joueur clique une réponse.
+- Answer verrouille le choix.
+- Answer joue le son bonne/mauvaise réponse si disponible.
+- Answer envoie la réponse à Node.
+- Node accepte la réponse du joueur.
+- Le joueur quitte Answer et va sur Result.
+- Result est la salle d’attente officielle entre les joueurs.
+
+Sur Result :
+- le joueur voit son résultat individuel et vois le résultat des stats et pointage du joueurs adverse au moment qu’il rentre ou il sont déjà affichés si le joueur adverse est entré avant lui dans RESULT
+
+- le joueur voit quel bloc il est ex 3/x, le nombre de point gagné ou perdu.
+- le joueur voit son score  en cours / pointsEarned si disponible.
+- le joueur voit la bonne réponse / mauvais choix visuellement.
+- Le Saviez-Vous doit être affiché.
+- Le chrono de 60 sec démarre quand le dernier joueur est arrivé sur Result.
+- Ou, si tous les joueurs sont sur Result, ils peuvent passer au prochain bloc avec un GO mutuel.
+
+Important :
+Node reste autorité.
+Answer ne doit pas attendre l’autre joueur.
+Result synchronise les joueurs après leur réponse.
+SINK entre le joueurs avant chaque démarrage de bloc de Question
+
+Donc :
+- ne pas bloquer le joueur sur Answer.
+- ne pas utiliser Answer comme salle d’attente.
+- Result doit recevoir/attendre les infos officielles Node.
+- Result peut attendre les autres joueurs.
+- le démarrage du prochain bloc dépend soit du chrono 60 sec qu’on doit voir visuellement descendre après dernier arrivé, soit d’un GO mutuel.
+
+Audit demandé avant patch :
+- comment Answer sait que Node a accepté la réponse du joueur
+- quand duo_answer navigue vers Result
+- comment duo_result signale “je suis arrivé”
+- comment Node compte les joueurs arrivés sur Result
+- comment déclencher le chrono 60 sec après dernier arrivé
+- comment gérer le GO mutuel
+- quelles données Result reçoit : pointsEarned, bonne réponse, mauvais choix, Saviez-vous, score
+
+Ne pas patcher avant cet audit.
