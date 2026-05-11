@@ -1,0 +1,108 @@
+Audit global accepté, mais corriger l’exemple final.
+
+Dans le diagramme :
+si l’ordre devient [B,R,P,L] et que P = Paris est la bonne réponse,
+alors correctIndex doit être 2, pas 0.
+
+Donc :
+
+* joueur clique position 2
+* answer=2
+* correctIndex=2
+* réponse correcte
+
+Cette erreur semble être dans l’exemple d’explication, pas forcément dans l’architecture.
+Mais je veux que l’architecture soit reformulée sans ambiguïté.
+
+Sinon je valide les principes :
+
+* Node shuffle une seule fois au départ
+* Node gère le re-shuffle skill toutes les 2 sec
+* correctIndex est recalculé à chaque ordre
+* shuffleRevision protège les réponses pendant les changements
+* client affiche seulement l’ordre reçu
+* pas de shuffle local navigateur
+
+Ajout important à l’architecture Node-authoritative shuffle :
+
+Après tout shuffle ou re-shuffle :
+
+* le layout doit rester capable d’afficher correctement le résultat visuel.
+* bonne réponse = vert + crochet
+* mauvais choix du joueur = rouge + X
+* si le joueur choisit mauvais :
+  · son mauvais choix devient rouge avec X
+  · la bonne réponse devient verte avec crochet
+* si le joueur choisit bon :
+  · son choix devient vert avec crochet
+
+Important :
+les classes visuelles doivent utiliser l’ordre actuel reçu de Node.
+
+Donc :
+
+* correctIndex doit toujours correspondre à l’ordre affiché actuel
+* selectedIndex doit correspondre à l’ordre affiché actuel
+* answer_revealed doit envoyer les index selon la même shuffleRevision
+* aucun highlight ne doit utiliser l’ancien ordre A/B/C/D
+
+À vérifier dans l’audit/plan :
+
+* duo_answer showResult()
+* game_answer solo
+* result layout
+* acidify_error
+* ai_suggestion
+* illuminate_numbers
+
+Objectif :
+après shuffle Node, le joueur voit toujours :
+
+* bonne réponse en vert + crochet
+* mauvais choix en rouge + X
+  sans désalignement visuel.
+
+Ajout audio obligatoire :
+
+Le shuffle Node ne doit jamais casser les sons gameplay.
+
+Règles :
+
+* son bonne réponse doit toujours jouer correctement
+* son mauvaise réponse doit toujours jouer correctement
+* les sons doivent utiliser le selectedIndex et correctIndex de la shuffleRevision active
+* aucun son ne doit dépendre d’un ancien ordre A/B/C/D
+
+Très important :
+les sons choisis dans Profil par le joueur doivent rester utilisés pendant tout le gameplay.
+
+Donc :
+
+* le joueur peut personnaliser :
+  · son bonne réponse
+  · son mauvaise réponse
+* mais pendant la partie :
+  · les sons doivent toujours rester audibles
+  · même après shuffle/re-shuffle
+  · même après reconnect
+  · même après answer_order_changed
+
+Je veux aussi vérifier :
+
+* comment le profil stocke les sons sélectionnés
+* comment le gameplay recharge ces sons
+* comment éviter qu’un re-render ou shuffle DOM coupe l’audio
+* comment éviter double play ou overlap pendant re-shuffle
+
+Important :
+Node reste autorité gameplay.
+Le client joue seulement les sons correspondant aux événements validés officiellement.
+
+Ne pas patcher encore.
+
+Je veux :
+
+* diagramme corrigé
+* version finale propre sans ambiguïté
+* impacts audio/UI/runtime clairement expliqués
+  avant toute implémentation.
