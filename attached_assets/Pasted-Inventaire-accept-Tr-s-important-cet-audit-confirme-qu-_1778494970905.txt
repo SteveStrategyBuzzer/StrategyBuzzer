@@ -1,0 +1,90 @@
+Inventaire accepté.
+
+Très important :
+cet audit confirme qu’on ne doit PAS jeter les anciens composants utiles.
+Le problème principal était l’autorité locale, pas les effets UI eux-mêmes.
+
+Direction validée :
+- garder les bons renderers DOM
+- garder les animations
+- garder les classes CSS
+- garder les sons
+- garder les hooks runtime
+- retirer uniquement la décision locale gameplay
+
+Findings validés :
+- Fisher-Yates DOM movement récupérable
+- showResult presque déjà Node-compatible
+- <audio> déjà safe structurellement
+- le vrai conflit venait de la double autorité PHP/Node
+- GameEffectsRuntime était déjà la bonne direction
+
+Important :
+la migration doit maintenant être organisée comme une vraie migration contrôlée.
+
+Je veux maintenant :
+un PLAN D’IMPLÉMENTATION FINAL détaillé,
+étape par étape,
+avec :
+- ordre exact des patchs
+- fichiers touchés par étape
+- ancien code temporairement toléré ou supprimé
+- dépendances entre étapes
+- validations runtime attendues
+- greps cleanup obligatoires
+
+Je veux :
+Patch 1
+- objectif
+- fichiers
+- nouveau chemin
+- ancien chemin encore toléré ?
+- validation
+- cleanup immédiat ou différé ?
+
+Patch 2
+...
+
+etc.
+
+Très important :
+je ne veux pas :
+- un gros patch global
+- plusieurs responsabilités mélangées
+- migration “big bang”
+
+Je veux :
+migration progressive,
+runtime stable,
+cleanup contrôlé,
+aucun code fantôme final.
+
+Rappel :
+Node = autorité gameplay.
+Client = affichage/runtime.
+
+Et :
+- correctIndex doit toujours suivre shuffleRevision
+- showResult doit toujours rester aligné vert/rouge ✓/✗
+- les sons doivent toujours jouer après validation officielle
+- aucun calcul local isCorrect post-shuffle
+- aucun shuffle local navigateur
+- aucun vieux SHUFFLE_ACTIVE caché
+- aucun vieux Fisher-Yates autonome restant
+
+Objectif final :
+un runtime commun propre pour :
+- Solo
+- Duo
+- MJ
+- Ligue
+
+et pour les futurs skills :
+- shuffle_answers
+- illuminate_numbers
+- acidify_error
+- ai_suggestion
+- see_opponent_choice
+- timer penalty
+- cancel attack
+- etc.
