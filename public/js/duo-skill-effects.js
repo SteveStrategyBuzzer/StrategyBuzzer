@@ -315,6 +315,12 @@
 
         // ── Shuffle helpers ─────────────────────────────────────────────────
 
+        /**
+         * DOM-only shuffle animator — kept for any legacy caller and as a
+         * visual utility. Does NOT mutate correctIndex (Node is authoritative).
+         * For Duo V3 + Node-authoritative shuffle, use applyAnswerOrderFromNode()
+         * instead; this function is no longer called on an interval for Duo.
+         */
         function shuffleAnswers() {
             if (isAnswered()) return;
             var container = document.getElementById('answersContainer');
@@ -338,9 +344,69 @@
             }, 300);
         }
 
+        /**
+         * P7 — Node-authoritative answer reorder.
+         *
+         * Called on `answer_order_changed` (and optionally on `question_published`
+         * for the initial shuffle). Reorders DOM buttons to match the server-sent
+         * `choices` array using `data-text` attribute matching.
+         *
+         * @param {string[]}  choices          - Ordered choices from Node (canonical source of truth).
+         * @param {number}    revision         - Server shuffle revision (stored by caller as currentShuffleRevision).
+         * @param {string}   [containerSel]   - Optional container selector (default: '#answersContainer').
+         * @param {string}   [buttonSel]      - Optional button selector (default: '.answer-button').
+         *
+         * Guard 1 (answered): caller is responsible for checking `answered` before calling.
+         * Guard 2 (revision): caller stores `revision` as `currentShuffleRevision` for answer submission.
+         *
+         * After this call, the caller MUST re-query answerButtons (the NodeList is stale).
+         */
+        function applyAnswerOrderFromNode(choices, revision, containerSel, buttonSel) {
+            if (!choices || !choices.length) return;
+            var container = document.getElementById('answersContainer') ||
+                document.querySelector(containerSel || '#answersContainer');
+            if (!container) return;
+            var bSel    = buttonSel || '.answer-button';
+            var buttons = Array.from(container.querySelectorAll(bSel));
+            if (!buttons.length) return;
+            var indicator = container.querySelector('.shuffle-indicator');
+
+            // Map: normalized text → button element.
+            var textToBtn = {};
+            buttons.forEach(function (btn) {
+                var text = (btn.getAttribute('data-text') || btn.textContent || '').trim().toLowerCase();
+                textToBtn[text] = btn;
+            });
+
+            // Append buttons in Node-dictated order; unmatched buttons go last.
+            var ordered = [];
+            choices.forEach(function (choice) {
+                var key = (choice || '').trim().toLowerCase();
+                if (textToBtn[key]) {
+                    ordered.push(textToBtn[key]);
+                    delete textToBtn[key];
+                }
+            });
+            // Any button whose text wasn't found in choices (shouldn't happen)
+            Object.keys(textToBtn).forEach(function (k) { ordered.push(textToBtn[k]); });
+
+            ordered.forEach(function (btn) { btn.classList.add('shuffling'); });
+            ordered.forEach(function (btn) { container.appendChild(btn); });
+            if (indicator) container.insertBefore(indicator, container.firstChild);
+
+            setTimeout(function () {
+                ordered.forEach(function (btn) { btn.classList.remove('shuffling'); });
+            }, 300);
+
+            console.log('[Skills] applyAnswerOrderFromNode rev=' + revision +
+                ' choices=[' + choices.join(',') + ']');
+        }
+
         function startShuffleInterval(force) {
             if (!force && !shuffleActive) return;
             if (shuffleInterval) return;
+            // Note: for Duo V3, Node-authoritative shuffle fires via answer_order_changed.
+            // startShuffleInterval is retained for any future non-Node mode (e.g. Solo).
             shuffleInterval = setInterval(shuffleAnswers, 1500);
         }
 
@@ -356,6 +422,7 @@
             onSkillFailed:               onSkillFailed,
             onOpponentChoiceSubmitted:   onOpponentChoiceSubmitted,
             shuffleAnswers:              shuffleAnswers,
+            applyAnswerOrderFromNode:    applyAnswerOrderFromNode,
             startShuffleInterval:        startShuffleInterval,
             stopShuffleInterval:         stopShuffleInterval,
         };

@@ -3,6 +3,7 @@ import type { GameState, GameConfig } from "@strategybuzzer/shared";
 import type { GameEvent, PlayerJoinedEvent, GameStartedEvent, PhaseChangedEvent, BuzzReceivedEvent } from "@strategybuzzer/shared";
 import { createInitialState, applyEvent } from "@strategybuzzer/game-engine";
 import { getPhaseTimeout } from "@strategybuzzer/game-engine";
+import type { ShuffleState } from "./ShuffleService.js";
 
 export type RoomPipelineConfig = {
   theme: string;
@@ -28,6 +29,13 @@ export type Room = {
   pipelineConfig?: RoomPipelineConfig;
   usedQuestionIds?: Set<string>;
   skillEffects?: Record<string, ChallengerSkillEffect>;
+  /**
+   * Node-authoritative shuffle state for the current question.
+   * Initialised in broadcastQuestion() for MCQ questions, cleared in cleanup().
+   * Multi-mode: works for Duo now, League Individual + Team 5v5 later.
+   * resolvedRevision is passed locally (never stored here) to avoid Room pollution.
+   */
+  shuffleState?: ShuffleState;
 };
 
 export class RoomManager {

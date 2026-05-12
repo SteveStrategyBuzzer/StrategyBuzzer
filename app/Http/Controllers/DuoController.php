@@ -1849,13 +1849,10 @@ class DuoController extends Controller
         ]);
 
         if ($matchSkills['last_question_decremented'] < $currentQuestionNumber) {
-            if ($matchSkills['shuffle_answers_active'] && $matchSkills['shuffle_answers_questions_left'] > 0) {
-                $matchSkills['shuffle_answers_questions_left']--;
-                if ($matchSkills['shuffle_answers_questions_left'] <= 0) {
-                    $matchSkills['shuffle_answers_active'] = false;
-                    \Log::info('[DUO-CHALLENGER] Skill shuffle_answers épuisé', ['match_id' => $match->id]);
-                }
-            }
+            // P9 — shuffle_answers is now Node-authoritative (ShuffleService + GameOrchestrator).
+            // PHP no longer tracks shuffle_answers_active / shuffle_answers_questions_left per-question.
+            // Decrement / expiry for shuffle_answers is removed; Node's formal skill-engine
+            // (activeEffects + expireEffects) governs the effect lifetime server-side.
 
             if ($matchSkills['reduce_time_active'] && $matchSkills['reduce_time_questions_left'] > 0) {
                 $matchSkills['reduce_time_questions_left']--;
@@ -1869,8 +1866,11 @@ class DuoController extends Controller
             session([$skillsKey => $matchSkills]);
         }
 
-        $shuffleAnswersActive = $matchSkills['shuffle_answers_active'];
-        $shuffleQuestionsLeft = $matchSkills['shuffle_answers_questions_left'];
+        // P9 — shuffle_answers is Node-authoritative; PHP no longer drives it.
+        // Always false so the client SHUFFLE_ACTIVE flag stays off; Node emits
+        // answer_order_changed and the GameEffectsRuntime effect activation instead.
+        $shuffleAnswersActive = false;
+        $shuffleQuestionsLeft = 0;
 
         return view('duo_answer', [
             'match_id' => $match->id,

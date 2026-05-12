@@ -374,17 +374,25 @@ const DuoSocketClient = {
         return true;
     },
 
-    answer(answerValue) {
+    answer(answerValue, shuffleRevision) {
         if (!this.isConnected() || !this.currentRoomId) {
             this._log('Cannot answer: not connected or not in room');
             return false;
         }
 
-        this._log('Submitting answer', { answer: answerValue });
-        this.socket.emit('answer', {
+        // P5/P7 — Include shuffleRevision for Guard 2 race-condition resolution on Node.
+        // shuffleRevision is the revision index the client saw at the time of selection.
+        // undefined is acceptable (pre-migration clients or non-MCQ questions).
+        var payload = {
             roomId: this.currentRoomId,
             answer: answerValue
-        });
+        };
+        if (shuffleRevision !== undefined && shuffleRevision !== null) {
+            payload.shuffleRevision = shuffleRevision;
+        }
+
+        this._log('Submitting answer', { answer: answerValue, shuffleRevision: shuffleRevision });
+        this.socket.emit('answer', payload);
         return true;
     },
 

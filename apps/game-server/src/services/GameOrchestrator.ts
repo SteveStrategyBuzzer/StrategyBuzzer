@@ -3,6 +3,7 @@ import type { RoomManager, Room } from "./RoomManager.js";
 import type { Question, Mode, Phase, PlayerLiveStats, MatchStats, Player } from "@strategybuzzer/shared";
 import type { GameEvent, PhaseChangedEvent, QuestionPublishedEvent, AnswerRevealedEvent, AnswerSubmittedEvent, RoundEndedEvent, MatchEndedEvent, BuzzReceivedEvent, GameStartedEvent } from "@strategybuzzer/shared";
 import { applyEvent, hasActiveEffect, expireEffects, applyScoreEffects, rechargeInventory } from "@strategybuzzer/game-engine";
+import { shuffleOnce, resolveCorrectIndex, archiveRevision } from "./ShuffleService.js";
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
 import { updatePlayerLiveStats, emptyPlayerLiveStats } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
@@ -20,7 +21,9 @@ export class GameOrchestrator {
   // Task #78 — value type now carries `didBuzz` so scoreAllBuzzers can treat
   // non-buzzer participatif answers (Duo) separately: same UI feedback as
   // buzzers, but ALWAYS scored 0 pts and NOT counted as a buzz in live stats.
-  private allBuzzerAnswers: Map<string, Map<string, { answer: number | string | boolean; submittedAtMs: number; buzzOrder: number; didBuzz: boolean }>> = new Map();
+  // shuffleRevision: client-submitted revision at answer time, used by
+  // resolveCorrectIndex() for race-condition tolerance (Guard 2).
+  private allBuzzerAnswers: Map<string, Map<string, { answer: number | string | boolean; submittedAtMs: number; buzzOrder: number; didBuzz: boolean; shuffleRevision?: number }>> = new Map();
   // Task #78 — Symmetric per-arrival barrier on RESULT, mirroring SYNC. The
   // 60s countdown is reset on the SECOND human's `result_page_ready`. The
   // expected-set is snapshotted at REVEAL/RESULT entry; transient drops do
@@ -247,7 +250,7 @@ export class GameOrchestrator {
     // follow-up task once the timer contract is fully validated.
   }
 
-  handleAnswer(roomId: string, playerId: string, answer: number | string | boolean): void {
+  handleAnswer(roomId: string, playerId: string, answer: number | string | boolean, shuffleRevision?: number): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
@@ -298,7 +301,8 @@ export class GameOrchestrator {
     const buzzOrder = isBuzzer ? buzzIndex + 1 : 0; // 1-indexed for buzzers, 0 for participatif
 
     // Store this player's answer (with didBuzz flag for scoreAllBuzzers).
-    roomAnswers.set(playerId, { answer, submittedAtMs, buzzOrder, didBuzz: isBuzzer });
+    // shuffleRevision: Guard 2 — stored for per-buzzer correctIndex resolution in scoreAllBuzzers().
+    roomAnswers.set(playerId, { answer, submittedAtMs, buzzOrder, didBuzz: isBuzzer, shuffleRevision });
 
     // Task #78 — Visionnaire-side broadcast. Emit a targeted "opponent_choice_submitted"
     // socket event to all OTHER players in the room. The client filters the event
@@ -359,6 +363,9 @@ export class GameOrchestrator {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
+    // P6 — Stop shuffle interval: the question is over, no more reordering.
+    this.stopShuffleInterval(roomId);
+
     const currentQuestion = room.state.currentQuestion;
     
     if (!currentQuestion) {
@@ -369,11 +376,15 @@ export class GameOrchestrator {
 
     const fullQuestion = room.state.questions[room.state.questionIndex];
     
-    // Determine correct answer
+    // P2/P3 — Correct answer resolution.
+    // For MCQ: fullQuestion.correctIndex was mutated in-memory in broadcastQuestion()
+    // to the post-shuffle value (revision 0). It stays updated on each re-shuffle.
+    // Per-buzzer resolution (race conditions) happens in scoreAllBuzzers() via
+    // resolveCorrectIndex(shuffleState, buzzerAnswer.shuffleRevision).
     let correctAnswer: number | string | boolean = 0;
     if (fullQuestion) {
       if (fullQuestion.type === "MCQ" && fullQuestion.correctIndex !== undefined) {
-        correctAnswer = fullQuestion.correctIndex;
+        correctAnswer = fullQuestion.correctIndex; // post-shuffle (mutated in broadcastQuestion)
       } else if (fullQuestion.type === "TRUE_FALSE" && fullQuestion.correctBool !== undefined) {
         correctAnswer = fullQuestion.correctBool;
       } else if (fullQuestion.type === "TEXT" && fullQuestion.correctText !== undefined) {
@@ -491,6 +502,12 @@ export class GameOrchestrator {
       let isCorrect = false;
       let playerAnswer: number | string | boolean | null = null;
       let pointsEarned = 0;
+      // P3 — Per-buzzer shuffle resolution (Guard 2).
+      // resolveCorrectIndex reconciles the client's submitted shuffleRevision with
+      // the server's shuffleState history (race-condition tolerance: client may have
+      // sent the answer using revision N while Node already advanced to N+1).
+      let resolvedCorrectIndex: number = correctAnswer as number;
+      let resolvedRevision: number | undefined;
 
       if (buzzerAnswer) {
         // Player buzzed AND answered - score based on correctness
@@ -498,7 +515,15 @@ export class GameOrchestrator {
         
         if (question) {
           if (question.type === "MCQ" && question.correctIndex !== undefined) {
-            isCorrect = buzzerAnswer.answer === question.correctIndex;
+            // P3: use resolveCorrectIndex for per-buzzer race-condition tolerance.
+            if (room.shuffleState) {
+              const resolved = resolveCorrectIndex(room.shuffleState, buzzerAnswer.shuffleRevision);
+              resolvedCorrectIndex = resolved.correctIndex;
+              resolvedRevision = resolved.resolvedRevision;
+            } else {
+              resolvedCorrectIndex = question.correctIndex;
+            }
+            isCorrect = buzzerAnswer.answer === resolvedCorrectIndex;
           } else if (question.type === "TRUE_FALSE" && question.correctBool !== undefined) {
             isCorrect = buzzerAnswer.answer === question.correctBool;
           } else if (question.type === "TEXT" && question.correctText !== undefined) {
@@ -572,13 +597,16 @@ export class GameOrchestrator {
       this.logEventToRedis(roomId, revealEvent);
 
       // Emit socket events for UI updates
+      // P3: correctIndex = resolvedCorrectIndex (post-shuffle, revision-aligned).
+      // shuffleRevision = resolvedRevision (Guard 2: the revision actually used for scoring).
       this.io.to(roomId).emit("answer_revealed", {
         playerId: buzzer.playerId,
         playerName: player?.name,
         answer: playerAnswer,
         isCorrect,
         correctAnswer,
-        correctIndex: question?.correctIndex,
+        correctIndex: question?.type === "MCQ" ? resolvedCorrectIndex : question?.correctIndex,
+        shuffleRevision: resolvedRevision,
         correctBool: question?.correctBool,
         correctText: question?.correctText,
         pointsEarned,
@@ -644,9 +672,19 @@ export class GameOrchestrator {
       if (!player) continue;
 
       let isCorrect = false;
+      let partResolvedCorrectIndex: number = correctAnswer as number;
+      let partResolvedRevision: number | undefined;
       if (question) {
         if (question.type === "MCQ" && question.correctIndex !== undefined) {
-          isCorrect = ans.answer === question.correctIndex;
+          // P3: participatif non-buzzers also get per-revision resolution.
+          if (room.shuffleState) {
+            const resolved = resolveCorrectIndex(room.shuffleState, ans.shuffleRevision);
+            partResolvedCorrectIndex = resolved.correctIndex;
+            partResolvedRevision = resolved.resolvedRevision;
+          } else {
+            partResolvedCorrectIndex = question.correctIndex;
+          }
+          isCorrect = ans.answer === partResolvedCorrectIndex;
         } else if (question.type === "TRUE_FALSE" && question.correctBool !== undefined) {
           isCorrect = ans.answer === question.correctBool;
         } else if (question.type === "TEXT" && question.correctText !== undefined) {
@@ -681,7 +719,8 @@ export class GameOrchestrator {
         answer: ans.answer,
         isCorrect,
         correctAnswer,
-        correctIndex: question?.correctIndex,
+        correctIndex: question?.type === "MCQ" ? partResolvedCorrectIndex : question?.correctIndex,
+        shuffleRevision: partResolvedRevision,
         correctBool: question?.correctBool,
         correctText: question?.correctText,
         pointsEarned: 0,
@@ -866,6 +905,9 @@ export class GameOrchestrator {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
 
+    // P6 — Stop any shuffle interval from the previous question before starting a new one.
+    this.stopShuffleInterval(roomId);
+
     const question = room.state.questions[room.state.questionIndex];
     if (!question) {
       console.error(`[GameOrchestrator] No question at index ${room.state.questionIndex}`);
@@ -874,6 +916,48 @@ export class GameOrchestrator {
 
     const rawChoices = (question as Record<string, unknown>).choices || (question as Record<string, unknown>).answers;
     const sanitizedChoices = this.sanitizeChoices(rawChoices as unknown[] | undefined);
+
+    // P2 — Node-authoritative initial shuffle for MCQ questions.
+    // Fisher-Yates via ShuffleService. The result is:
+    //   1. Stored in room.shuffleState (revision 0) for race-condition resolution.
+    //   2. Mutated into question.choices / question.answers / question.correctIndex
+    //      in-memory so that any subsequent game_state reconnect hydration emits
+    //      the shuffled order — not the original DB order (C2 fix).
+    //   3. Used as broadcastChoices in question_published + QUESTION_PUBLISHED event.
+    let broadcastChoices = sanitizedChoices;
+    if (question.type === "MCQ" && sanitizedChoices.length > 1) {
+      const originalCorrectIndex = (question as Record<string, unknown>).correctIndex as number ?? 0;
+      const { choices: shuffledChoices, correctIndex: shuffledCorrectIndex } =
+        shuffleOnce(sanitizedChoices, originalCorrectIndex);
+
+      broadcastChoices = shuffledChoices;
+
+      // Mutate in-memory question (never persisted to DB, safe for the match lifetime).
+      // This keeps game_state reconnect payloads consistent with the shuffled order.
+      const q = question as Record<string, unknown>;
+      q.choices       = shuffledChoices;
+      q.answers       = shuffledChoices;
+      q.correctIndex  = shuffledCorrectIndex;
+
+      // Initialise room-level shuffle state (revision 0 = initial broadcast shuffle).
+      room.shuffleState = {
+        questionIndex:   room.state.questionIndex,
+        revision:        0,
+        choices:         shuffledChoices,
+        correctIndex:    shuffledCorrectIndex,
+        history:         [],
+        intervalId:      undefined,
+        targetPlayerIds: undefined,
+      };
+
+      console.log(
+        `[GameOrchestrator] MCQ shuffled rev=0 q=${room.state.questionIndex} ` +
+        `correctIndex: ${originalCorrectIndex} → ${shuffledCorrectIndex}`,
+      );
+    } else {
+      // Non-MCQ (TRUE_FALSE, TEXT) or single-choice: reset shuffleState — no shuffle.
+      room.shuffleState = undefined;
+    }
 
     // Expire any effects that have reached their question limit (formal skill-engine)
     room.state = expireEffects(room.state);
@@ -888,7 +972,7 @@ export class GameOrchestrator {
       questionIndex: room.state.questionIndex,
       questionId: question.id,
       text: question.text,
-      choices: sanitizedChoices,
+      choices: broadcastChoices,
       category: question.category,
       subCategory: question.subCategory,
       difficulty: question.difficulty,
@@ -921,7 +1005,7 @@ export class GameOrchestrator {
         questionIndex: room.state.questionIndex,
         questionId: question.id,
         text: question.text,
-        choices: sanitizedChoices,
+        choices: broadcastChoices,
         category: question.category,
         subCategory: question.subCategory,
         difficulty: question.difficulty,
@@ -929,11 +1013,33 @@ export class GameOrchestrator {
         phaseEndsAtMs: playerPhaseEndsAtMs,
         totalQuestions: room.state.questions.length,
         reduceTimeActive: isReduceTimeActive,
+        // P2: emit initial shuffle revision so clients can initialise their shuffleRevision.
+        shuffleRevision: room.shuffleState ? 0 : undefined,
         activeEffects: room.state.activeEffects.filter(e => e.targetPlayerId === playerId),
       });
       
       if (isReduceTimeActive) {
         console.log(`[GameOrchestrator] Player ${playerId} has reduce_time active (−${reductionMs}ms → ${playerTimeLimit}ms)`);
+      }
+    }
+
+    // P6 — Start the re-shuffle interval if shuffle_answers is active for any player.
+    // The skill is activated between questions (REVEAL/ROUND_SCOREBOARD) and stored
+    // as an activeEffect in room.state. broadcastQuestion() is the canonical trigger.
+    // targetPlayerIds = players who have shuffle_answers active targeting them
+    // (for Duo: the opponent; for League Team future: a whole team).
+    if (room.shuffleState) {
+      const shuffleTargets: string[] = [];
+      for (const pid of Object.keys(room.state.players)) {
+        if (hasActiveEffect(room.state, pid, "shuffle_answers")) {
+          shuffleTargets.push(pid);
+        }
+      }
+      if (shuffleTargets.length > 0) {
+        this.startShuffleInterval(roomId, shuffleTargets);
+        console.log(
+          `[GameOrchestrator] shuffle_answers interval started for targets=[${shuffleTargets.join(",")}] room=${roomId}`,
+        );
       }
     }
 
@@ -943,6 +1049,9 @@ export class GameOrchestrator {
   private handleQuestionTimeout(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
+
+    // P6 — Stop shuffle interval: question timer has expired, no more reordering.
+    this.stopShuffleInterval(roomId);
 
     // Patch 2 — QUESTION_ACTIVE timeout routing:
     //   • No buzzer at all  → skip ANSWER_SELECTION, go straight to RESULT.
@@ -1435,9 +1544,88 @@ export class GameOrchestrator {
     this._tryRestamp(roomId);
   }
 
+  // ── P6 — Node-authoritative shuffle interval management ─────────────────────
+  //
+  // startShuffleInterval: starts a re-shuffle interval that emits answer_order_changed
+  // to either the whole room (Duo now) or specific players (League Team future).
+  // MUST be called only when room.shuffleState exists (MCQ question active).
+  //
+  // stopShuffleInterval: clears the interval. Called at every phase exit point:
+  //   broadcastQuestion() start, revealAnswer(), handleQuestionTimeout(),
+  //   endRound(), cleanup(). Idempotent — safe to call when no interval runs.
+  //
+  // Multi-mode: targetPlayerIds drives targeting.
+  //   undefined   → io.to(roomId).emit() — full room broadcast (Duo).
+  //   string[]    → io.to(`player:<id>`).emit() per entry (League Team future).
+  private startShuffleInterval(roomId: string, targetPlayerIds?: string[]): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room?.shuffleState) return;
+    if (room.shuffleState.intervalId) return; // already running
+
+    if (targetPlayerIds && targetPlayerIds.length > 0) {
+      room.shuffleState.targetPlayerIds = targetPlayerIds;
+    }
+
+    room.shuffleState.intervalId = setInterval(() => {
+      const r = this.roomManager.getRoom(roomId);
+      if (!r?.shuffleState) return;
+
+      const question = r.state.questions[r.state.questionIndex] as Record<string, unknown>;
+      if (!question) return;
+
+      const currentChoices = (question.choices as string[] | undefined) ?? r.shuffleState.choices;
+
+      // Archive current revision before advancing
+      archiveRevision(r.shuffleState);
+
+      // Fisher-Yates re-shuffle
+      const { choices: newChoices, correctIndex: newCorrectIndex } =
+        shuffleOnce(currentChoices, r.shuffleState.correctIndex);
+
+      r.shuffleState.revision++;
+      r.shuffleState.choices     = newChoices;
+      r.shuffleState.correctIndex = newCorrectIndex;
+
+      // Mutate in-memory question so reconnect game_state sends latest order
+      question.choices      = newChoices;
+      question.answers      = newChoices;
+      question.correctIndex = newCorrectIndex;
+
+      const payload = {
+        questionIndex:   r.state.questionIndex,
+        choices:         newChoices,
+        shuffleRevision: r.shuffleState.revision,
+        phaseEndsAtMs:   r.state.phaseEndsAtMs,
+      };
+
+      const targets = r.shuffleState.targetPlayerIds;
+      if (targets && targets.length > 0) {
+        for (const pid of targets) {
+          this.io.to(`player:${pid}`).emit("answer_order_changed", payload);
+        }
+      } else {
+        this.io.to(roomId).emit("answer_order_changed", payload);
+      }
+
+      console.log(
+        `[GameOrchestrator] answer_order_changed rev=${r.shuffleState.revision} room=${roomId}`,
+      );
+    }, 2000);
+  }
+
+  private stopShuffleInterval(roomId: string): void {
+    const room = this.roomManager.getRoom(roomId);
+    if (!room?.shuffleState?.intervalId) return;
+    clearInterval(room.shuffleState.intervalId);
+    room.shuffleState.intervalId = undefined;
+  }
+
   private endRound(roomId: string): void {
     const room = this.roomManager.getRoom(roomId);
     if (!room) return;
+
+    // P6 — Stop any running shuffle interval at round boundary.
+    this.stopShuffleInterval(roomId);
 
     const playerScores: Record<string, number> = {};
     const playerRoundsWon: Record<string, number> = {};
@@ -1862,6 +2050,11 @@ export class GameOrchestrator {
   }
 
   cleanup(roomId: string): void {
+    // P6 — Stop shuffle interval before clearing room state.
+    this.stopShuffleInterval(roomId);
+    const room = this.roomManager.getRoom(roomId);
+    if (room) room.shuffleState = undefined;
+
     this.clearPhaseTimer(roomId);
     this.pendingAnswers.delete(roomId);
     this.lastScoreDeltas.delete(roomId);

@@ -417,10 +417,11 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
           MetricsService.recordAnswerLatency(answerLatency);
         }
         
-        console.log(`[WS] Answer from ${currentPlayerId}: ${payload.answer}`);
+        console.log(`[WS] Answer from ${currentPlayerId}: ${payload.answer} rev=${payload.shuffleRevision ?? 'none'}`);
         socket.emit("answer_received", { success: true });
         
-        gameOrchestrator.handleAnswer(payload.roomId, currentPlayerId, payload.answer);
+        // P5 — Pass shuffleRevision to handleAnswer for per-buzzer Guard 2 resolution.
+        gameOrchestrator.handleAnswer(payload.roomId, currentPlayerId, payload.answer, payload.shuffleRevision);
         MetricsService.incrementEventsProcessed();
       } catch (error) {
         console.error("[WS] Error processing answer:", error);
@@ -491,6 +492,9 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             return;
           }
           const question = room.state.questions[room.state.questionIndex];
+          // P5 — question.correctIndex is already post-shuffle (mutated in broadcastQuestion P2).
+          // applyAnswerPhaseSkill receives the correct post-shuffle index so illuminate_numbers,
+          // acidify_error, ai_suggestion compute hints against the actual displayed order.
           const correctIndex = question?.correctIndex ?? -1;
           const qRaw = question as Record<string, unknown>;
           const choicesArr = Array.isArray(qRaw?.choices) ? (qRaw.choices as unknown[]) : null;

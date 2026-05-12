@@ -37,6 +37,13 @@ export const BuzzSchema = z.object({
 export const AnswerSchema = z.object({
   roomId: z.string(),
   answer: z.union([z.number(), z.string(), z.boolean()]),
+  /**
+   * Client-submitted shuffle revision at the time of answer selection.
+   * Used by Node to resolve the correct correctIndex for scoring under
+   * race conditions (e.g. answer_order_changed arrives after answer emit).
+   * Optional: absent = no shuffle active or pre-migration client.
+   */
+  shuffleRevision: z.number().int().nonnegative().optional(),
 });
 
 export const SkillSchema = z.object({

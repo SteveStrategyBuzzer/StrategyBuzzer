@@ -1335,6 +1335,52 @@ let illuminateSkillUsed = false;
 const shuffleActive = {{ $shuffleAnswersActive ? 'true' : 'false' }};
 let shuffleInterval = null;
 
+// P8 — Track the correct answer TEXT so correctIndex can be re-resolved after each
+// DOM shuffle. Solo uses .answer-text textContent (no data-text attribute).
+// This ensures illuminate/acidify/form-submit always point to the right bubble.
+let correctAnswerText = null;
+(function _captureCorrectText() {
+    const grid = document.getElementById('answersGrid');
+    if (!grid) return;
+    const initialBubbles = Array.from(grid.querySelectorAll('.answer-bubble'));
+    const idx = typeof correctIndex !== 'undefined' ? correctIndex : -1;
+    if (idx >= 0 && initialBubbles[idx]) {
+        const textEl = initialBubbles[idx].querySelector('.answer-text');
+        correctAnswerText = textEl ? textEl.textContent.trim() : null;
+    }
+})();
+
+// P8 — Mutable correct index that tracks DOM position after shuffles.
+// Starts as the PHP-baked value; updated by _resolveCorrectIndexAfterShuffle().
+// All skill functions (illuminate, acidify, etc.) MUST use getCurrentCorrectIndex().
+let _currentCorrectIndex = correctIndex;
+
+/**
+ * P8 — Returns the current DOM-position of the correct answer bubble.
+ * Use instead of `correctIndex` (const) whenever the answer may have been shuffled.
+ */
+function getCurrentCorrectIndex() {
+    return _currentCorrectIndex;
+}
+
+/**
+ * Re-resolve correctIndex after a DOM shuffle by matching `.answer-text` textContent.
+ * Keeps _currentCorrectIndex in sync with the visually displayed position.
+ * Called by shuffleAnswers() after each DOM reorder.
+ */
+function _resolveCorrectIndexAfterShuffle() {
+    if (correctAnswerText === null) return;
+    const grid = document.getElementById('answersGrid');
+    if (!grid) return;
+    const bubbles = Array.from(grid.querySelectorAll('.answer-bubble'));
+    bubbles.forEach(function (bubble, idx) {
+        const textEl = bubble.querySelector('.answer-text');
+        if (textEl && textEl.textContent.trim() === correctAnswerText) {
+            _currentCorrectIndex = idx;
+        }
+    });
+}
+
 function shuffleAnswers() {
     if (answered) return;
     
@@ -1367,6 +1413,9 @@ function shuffleAnswers() {
         }
     });
     
+    // P8 — Re-resolve correctIndex to match new DOM order.
+    _resolveCorrectIndexAfterShuffle();
+    
     // Retirer l'effet après l'animation
     setTimeout(() => {
         bubbles.forEach(b => b.classList.remove('shuffling'));
@@ -1398,10 +1447,13 @@ function activateIlluminateSkill() {
     tickSound.pause();
     tickSound.currentTime = 0;
     
+    // P8 — Use getCurrentCorrectIndex() so post-shuffle position is always correct.
+    const _illuminateIdx = getCurrentCorrectIndex();
+
     // Illuminer la bonne réponse
     const bubbles = document.querySelectorAll('.answer-bubble');
     bubbles.forEach((bubble, index) => {
-        if (index === correctIndex) {
+        if (index === _illuminateIdx) {
             bubble.classList.add('illuminated');
             bubble.classList.add('selected');
         } else {
@@ -1415,7 +1467,7 @@ function activateIlluminateSkill() {
     correctSound.play().catch(e => console.log('Audio play failed:', e));
     
     // Sélectionner la bonne réponse dans le formulaire
-    document.getElementById('answerIndex').value = correctIndex;
+    document.getElementById('answerIndex').value = _illuminateIdx;
     document.getElementById('illuminateSkillUsedInput').value = '1';
     
     // Soumettre après 1.5 secondes
@@ -1437,11 +1489,14 @@ function activateAcidifySkill() {
         skillBtn.classList.add('used');
     }
     
+    // P8 — Use getCurrentCorrectIndex() so post-shuffle position is always correct.
+    const _acidifyCorrectIdx = getCurrentCorrectIndex();
+
     // Trouver les indices des mauvaises réponses
     const bubbles = document.querySelectorAll('.answer-bubble');
     const wrongIndices = [];
     bubbles.forEach((bubble, index) => {
-        if (index !== correctIndex) {
+        if (index !== _acidifyCorrectIdx) {
             wrongIndices.push(index);
         }
     });

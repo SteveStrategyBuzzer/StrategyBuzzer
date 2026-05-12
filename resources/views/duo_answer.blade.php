@@ -954,6 +954,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
     // Skill Challenger: Shuffle Answers (passive flag, server-driven via game_effects)
     const SHUFFLE_ACTIVE = {{ $shuffleAnswersActive ? 'true' : 'false' }};
+    // P7 — Node-authoritative shuffle revision. Initialised from question_published
+    // (shuffleRevision field). Updated on each answer_order_changed event.
+    // Sent to Node on answer submission (Guard 2 race-condition tolerance).
+    var currentShuffleRevision = 0;
 
     // Skill effects + activation handlers + answers shuffle live in
     // public/js/duo-skill-effects.js (extracted in Task #56). The init call
@@ -1035,8 +1039,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             ' remaining=' + remaining + 'ms' +
             ' window=' + answerWindowMs + 'ms');
 
-        // Démarrer le shuffle des réponses si actif
-        startShuffleInterval();
+        // P7 — Node is now authoritative for answer shuffle in Duo.
+        // startShuffleInterval() is no longer called here; re-shuffles arrive
+        // via `answer_order_changed` socket event → applyAnswerOrderFromNode().
+        // (Local interval kept in duo-skill-effects.js for Solo/future non-Node modes.)
 
         updatePotentialPointsDisplay(calculatePotentialPoints(timeLeft));
 
@@ -1156,10 +1162,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // V3: calculatePotentialPoints lit PLAYER_BUZZ_POSITION — correct pour tous les cas
         let pointsToSend = historianSkillUsed ? 1 : calculatePotentialPoints(timeLeft);
         
-        DuoSocketClient.answer(index, { 
-            potentialPoints: pointsToSend,
-            historianSkillUsed: historianSkillUsed
-        });
+        // P7 — Include currentShuffleRevision for Guard 2 race-condition tolerance on Node.
+        DuoSocketClient.answer(index, currentShuffleRevision);
 
         // Navigation individuelle immédiate : chaque joueur avance à sa propre vitesse.
         // On n'attend pas les autres joueurs ni le timer Node.
@@ -1702,9 +1706,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
                     container.insertBefore(ind, container.firstChild);
                 }
                 if (ind) ind.style.display = '';
-                // Force-start shuffle even if SHUFFLE_ACTIVE flag wasn't set at
-                // page render: this is the server telling us shuffle is now on.
-                if (skillEffects) skillEffects.startShuffleInterval(true);
+                // P7 — Node is now authoritative: answer_order_changed events drive
+                // all reordering. The local interval is NOT started here — no Fisher-Yates
+                // client-side loop. Only the visual indicator is shown; the first
+                // answer_order_changed from Node will reorder buttons.
             },
             onStop: function() {
                 if (skillEffects) skillEffects.stopShuffleInterval();
@@ -1741,6 +1746,26 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             if (skillEffects && skillEffects.onOpponentChoiceSubmitted) {
                 skillEffects.onOpponentChoiceSubmitted(data);
             }
+        },
+        // P7 — Node-authoritative shuffle: reorder answer buttons to match server choice order.
+        // Guard 1 (answered): ignore if player already submitted an answer (avoids visual glitch).
+        // Guard 2 (revision): store currentShuffleRevision for submittal with answer (Guard 2).
+        // After reorder: re-query answerButtons so index mapping stays correct.
+        answer_order_changed: function (data) {
+            if (answered) return;                          // Guard 1
+            if (!data || !data.choices) return;
+            if (!skillEffects || !skillEffects.applyAnswerOrderFromNode) return;
+
+            skillEffects.applyAnswerOrderFromNode(data.choices, data.shuffleRevision);
+            currentShuffleRevision = (typeof data.shuffleRevision === 'number')
+                ? data.shuffleRevision
+                : currentShuffleRevision;                  // Guard 2 revision update
+
+            // Re-query answerButtons — DOM order changed, old NodeList is stale.
+            answerButtons = Array.from(document.querySelectorAll('.answer-button'));
+
+            console.log('[DuoAnswer] answer_order_changed rev=' + currentShuffleRevision +
+                ' choices=[' + data.choices.join(',') + ']');
         },
         initEffects:     _initAnswerEffects
     };
@@ -1911,15 +1936,18 @@ window.voiceChatFirebase = { doc, collection, addDoc, onSnapshot, query, where, 
         var ds = window.DuoSocketClient;
         var h  = window._duoAnswerHandlers;
         if (!ds || !h) { console.error('[DuoAnswer] DuoSocketClient or handlers missing'); return; }
-        ds.on('connect',         h.connect);
-        ds.on('disconnect',      h.disconnect);
-        ds.on('error',           h.error);
-        ds.on('state',           h.state);
-        ds.on('game_state',      h.game_state);
-        ds.on('answer_revealed', h.answer_revealed);
-        ds.on('phase_changed',   h.phase_changed);
-        ds.on('skill_effect',    h.skill_effect);
-        ds.on('skill_failed',    h.skill_failed);
+        ds.on('connect',                h.connect);
+        ds.on('disconnect',             h.disconnect);
+        ds.on('error',                  h.error);
+        ds.on('state',                  h.state);
+        ds.on('game_state',             h.game_state);
+        ds.on('answer_revealed',        h.answer_revealed);
+        ds.on('phase_changed',          h.phase_changed);
+        ds.on('skill_effect',           h.skill_effect);
+        ds.on('skill_failed',           h.skill_failed);
+        ds.on('opponent_choice_submitted', h.opponent_choice_submitted);
+        // P7 — Node-authoritative shuffle: bind answer_order_changed.
+        ds.on('answer_order_changed',   h.answer_order_changed);
         h.initEffects();
     });
 })();
