@@ -917,45 +917,38 @@ export class GameOrchestrator {
     const rawChoices = (question as Record<string, unknown>).choices || (question as Record<string, unknown>).answers;
     const sanitizedChoices = this.sanitizeChoices(rawChoices as unknown[] | undefined);
 
-    // P2 — Node-authoritative initial shuffle for MCQ questions.
-    // Fisher-Yates via ShuffleService. The result is:
-    //   1. Stored in room.shuffleState (revision 0) for race-condition resolution.
-    //   2. Mutated into question.choices / question.answers / question.correctIndex
-    //      in-memory so that any subsequent game_state reconnect hydration emits
-    //      the shuffled order — not the original DB order (C2 fix).
-    //   3. Used as broadcastChoices in question_published + QUESTION_PUBLISHED event.
+    // BUG-B1 FIX — Revision 0 = original order = PHP-baked order.
+    // The duo_answer.blade.php page is rendered by PHP from session/DB/Redis, always in
+    // the ORIGINAL choice order. If Node shuffled at broadcast time (rev 0), the client's
+    // button indices would be misaligned with Node's shuffled correctIndex → wrong scoring.
+    //
+    // Solution: revision 0 carries original choices + original correctIndex.
+    // The first real shuffle is performed by startShuffleInterval (2 s interval → rev 1)
+    // which fires answer_order_changed → client reorders DOM → currentShuffleRevision = 1.
+    // Guard 2 resolveCorrectIndex() works identically for all revisions ≥ 0.
+    //
+    // No in-memory mutation of question.choices / question.correctIndex.
     let broadcastChoices = sanitizedChoices;
-    if (question.type === "MCQ" && sanitizedChoices.length > 1) {
+    if (question.type === "MCQ" && sanitizedChoices !== undefined && sanitizedChoices.length > 1) {
       const originalCorrectIndex = (question as Record<string, unknown>).correctIndex as number ?? 0;
-      const { choices: shuffledChoices, correctIndex: shuffledCorrectIndex } =
-        shuffleOnce(sanitizedChoices, originalCorrectIndex);
 
-      broadcastChoices = shuffledChoices;
-
-      // Mutate in-memory question (never persisted to DB, safe for the match lifetime).
-      // This keeps game_state reconnect payloads consistent with the shuffled order.
-      const q = question as Record<string, unknown>;
-      q.choices       = shuffledChoices;
-      q.answers       = shuffledChoices;
-      q.correctIndex  = shuffledCorrectIndex;
-
-      // Initialise room-level shuffle state (revision 0 = initial broadcast shuffle).
+      // Revision 0: original order — aligned with PHP rendering.
       room.shuffleState = {
         questionIndex:   room.state.questionIndex,
         revision:        0,
-        choices:         shuffledChoices,
-        correctIndex:    shuffledCorrectIndex,
+        choices:         sanitizedChoices,
+        correctIndex:    originalCorrectIndex,
         history:         [],
         intervalId:      undefined,
         targetPlayerIds: undefined,
       };
 
       console.log(
-        `[GameOrchestrator] MCQ shuffled rev=0 q=${room.state.questionIndex} ` +
-        `correctIndex: ${originalCorrectIndex} → ${shuffledCorrectIndex}`,
+        `[GameOrchestrator] MCQ shuffleState rev=0 q=${room.state.questionIndex} ` +
+        `correctIndex=${originalCorrectIndex} (original order — first shuffle via interval)`,
       );
     } else {
-      // Non-MCQ (TRUE_FALSE, TEXT) or single-choice: reset shuffleState — no shuffle.
+      // Non-MCQ (TRUE_FALSE, TEXT) or single-choice: no shuffle state.
       room.shuffleState = undefined;
     }
 
