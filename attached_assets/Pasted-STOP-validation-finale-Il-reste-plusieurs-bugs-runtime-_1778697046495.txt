@@ -1,0 +1,169 @@
+STOP validation finale.
+
+Il reste plusieurs bugs runtime critiques visibles.
+
+On va maintenant corriger ça un chantier à la fois.
+
+──────────────────────────────
+BUGS CONFIRMÉS RUNTIME
+──────────────────────────────
+
+1. Saviez-vous mal alignés
+
+* certains Saviez-vous ne correspondent pas à la bonne réponse/question
+* mismatch contenu Question Bank confirmé
+* parfois le Saviez-vous contredit la bonne réponse
+
+2. RESULT reste parfois sur 1/10
+
+* le bug n’est pas complètement réglé
+* il reste un path stale ou fallback incorrect
+
+3. Couleurs match absentes gameplay
+
+* les couleurs choisies dans le lobby ne suivent pas dans :
+  · Question
+  · Réponse
+  · RESULT
+  · ROUND_END
+
+4. Mélange blocs/réponses
+
+* certains blocs Question utilisent des réponses d’une autre question
+* corruption runtime encore présente
+* probablement :
+  · state stale
+  · reuse mauvais choices array
+  · planner collisions
+  · ou duplicate variants
+
+5. Saviez-vous faux
+
+* problème qualité Question Bank
+* certains facts ne sont pas véridiques
+* certains facts semblent associés à une autre question
+
+6. RESULT highlights cassés
+
+* bonne réponse parfois absente
+* parfois 2 réponses apparaissent comme bonnes
+* si le joueur a juste :
+  · une seule réponse doit être verte + ✓
+  · aucune autre réponse ne doit être marquée correcte
+* actuellement :
+  · double highlight visible
+
+7. ROUND_END flow cassé
+
+* décompte beaucoup trop court
+* après décompte :
+  · image buzzer figée plusieurs secondes
+  · manche suivante démarre tardivement
+* UX cassée
+
+8. Répétition questions
+
+* mêmes questions
+* variantes trop proches
+* parfois :
+  · faux devient bonne réponse
+  · ou variante contradictoire
+
+──────────────────────────────
+ORDRE OBLIGATOIRE
+──────────────────────────────
+
+PATCH GROUP 2A
+RESULT + highlights
+
+Objectifs :
+
+* corriger double highlight
+* une seule bonne réponse
+* corriger ✓ / ✗
+* corriger affichage bonne réponse
+* corriger 1/10 restant
+
+Je veux :
+
+* slices exacts
+* source exacte du double highlight
+* runtime path exact
+* patchs réels
+* validation runtime après patch
+
+──────────────────────────────
+PATCH GROUP 2B
+ROUND_END flow
+
+Objectifs :
+
+* timer 5 minutes OU Ready mutuel
+* empêcher image buzzer figée
+* transition propre manche suivante
+
+Très important :
+Node reste autorité.
+
+Je veux audit :
+
+* phase ROUND_SCOREBOARD
+* phase transition
+* timers
+* phaseEndsAtMs
+* state stale
+* loading overlay
+
+──────────────────────────────
+PATCH GROUP 2C
+Question Bank qualité
+
+Objectifs :
+
+* Saviez-vous cohérents
+* réponses cohérentes
+* variantes non contradictoires
+* éviter :
+  · faux facts
+  · réponses mélangées
+  · duplicate semantic variants
+
+Je veux :
+
+* audit planner
+* audit group variants
+* audit concept_family
+* audit answer consistency
+* audit distractors
+
+──────────────────────────────
+PATCH GROUP 2D
+Couleurs gameplay
+
+Objectifs :
+
+* couleurs lobby propagées partout :
+  · Question
+  · Réponse
+  · RESULT
+  · ROUND_END
+
+Je veux :
+
+* audit runtime color propagation
+* audit reconnect
+* audit socket state
+* audit stale fallback
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+On revient maintenant à :
+PATCH → runtime → validation.
+
+Plus seulement :
+
+* logs
+* audits
+* instrumentation.

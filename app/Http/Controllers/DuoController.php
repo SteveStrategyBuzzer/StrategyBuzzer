@@ -1649,15 +1649,28 @@ class DuoController extends Controller
             if (!is_array($roomState)) {
                 return null;
             }
+            // PATCH-5a: Node persists room state as {state:{questionIndex,players,...}, events:[], metadata:{}}.
+            // Previously PHP read top-level keys (always null). Unwrap the nested 'state' key.
+            $stateData = isset($roomState['state']) && is_array($roomState['state'])
+                ? $roomState['state']
+                : $roomState;
             $scores = [];
-            foreach (($roomState['players'] ?? []) as $pid => $pdata) {
+            foreach (($stateData['players'] ?? []) as $pid => $pdata) {
                 if (is_array($pdata) && isset($pdata['score'])) {
                     $scores[(string) $pid] = (int) $pdata['score'];
                 }
             }
+            // totalQuestions: not stored explicitly — compute from questions array length.
+            $tq = isset($stateData['totalQuestions']) ? (int) $stateData['totalQuestions'] : null;
+            if ($tq === null) {
+                $qs = $stateData['questions'] ?? [];
+                if (!empty($qs) && is_array($qs)) {
+                    $tq = count($qs);
+                }
+            }
             return [
-                'questionIndex0' => (int) ($roomState['questionIndex'] ?? 0),
-                'totalQuestions' => isset($roomState['totalQuestions']) ? (int) $roomState['totalQuestions'] : null,
+                'questionIndex0' => (int) ($stateData['questionIndex'] ?? 0),
+                'totalQuestions' => $tq,
                 'scores'         => $scores,
             ];
         } catch (\Exception $e) {
@@ -2019,6 +2032,10 @@ class DuoController extends Controller
         $lastAnswer = $gameState['last_answer'] ?? [];
         $isCorrect = $lastAnswer['is_correct'] ?? false;
         $pointsEarned = $lastAnswer['points'] ?? 0;
+        // PATCH-5d: Initialize $playerBuzzed HERE (before PATCH-4c) so PATCH-4c can
+        // override it from last_reveal without being clobbered by the later line that
+        // reads from session. The redundant line at the end of this method is removed.
+        $playerBuzzed = $gameState['last_player_buzzed'] ?? false;
 
         $roomId = $gameState['room_id'] ?? $match->room_id ?? null;
         $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
@@ -2046,11 +2063,16 @@ class DuoController extends Controller
         if ($roomId) {
             try {
                 // PATCH-4a — use rawGameRedisGet() (no prefix) instead of prefixed facade.
+                // PATCH-5b — unwrap nested {state:{...}} structure (same fix as readLiveRoomScores).
                 $rawState = $this->rawGameRedisGet("room:{$roomId}:state");
                 if ($rawState) {
                     $roomState = json_decode($rawState, true);
-                    $qIdx = $roomState['questionIndex'] ?? null;
-                    $questions = $roomState['questions'] ?? [];
+                    // Node persists: {state:{questionIndex,players,currentQuestion,...}, events:[], metadata:{}}
+                    $stateData = isset($roomState['state']) && is_array($roomState['state'])
+                        ? $roomState['state']
+                        : $roomState;
+                    $qIdx = $stateData['questionIndex'] ?? null;
+                    $questions = $stateData['questions'] ?? [];
                     if ($qIdx !== null) {
                         // 0-indexed → 1-indexed. The Result page renders for the
                         // just-finished question, which is exactly questionIndex
@@ -2059,7 +2081,7 @@ class DuoController extends Controller
                     }
                     // Prefer fun_fact from currentQuestion (set by ANSWER_REVEALED reducer),
                     // then fall back to the questions[] array.
-                    $currentQ = $roomState['currentQuestion'] ?? null;
+                    $currentQ = $stateData['currentQuestion'] ?? null;
                     if (empty($resultQuestion['fun_fact']) && !empty($currentQ['funFact'])) {
                         $resultQuestion['fun_fact'] = $currentQ['funFact'];
                     }
@@ -2093,6 +2115,10 @@ class DuoController extends Controller
                     }
                     if (!empty($lastReveal['correctAnswerText'])) {
                         $lastAnswer['correct_answer'] = $lastReveal['correctAnswerText'];
+                        // PATCH-5c: Also inject into $resultQuestion so the blade
+                        // `$question['correct_answer']` path (line ~1070) shows the
+                        // real answer text instead of '-'.
+                        $resultQuestion['correct_answer'] = $lastReveal['correctAnswerText'];
                     }
                     if (empty($resultQuestion['fun_fact']) && !empty($lastReveal['funFact'])) {
                         $resultQuestion['fun_fact'] = $lastReveal['funFact'];
@@ -2109,7 +2135,11 @@ class DuoController extends Controller
         $playerAvatar = $this->getSnapshotAvatarPath($playerSnapshot);
         $opponentAvatar = $this->getSnapshotAvatarPath($opponentSnapshot);
 
-        $playerBuzzed = $gameState['last_player_buzzed'] ?? false;
+        // PATCH-5d: $playerBuzzed is now initialized BEFORE PATCH-4c (above) so that
+        // last_reveal can override it. Do NOT re-assign here (would clobber PATCH-4c).
+
+        // PATCH-5e: Use totalQuestions from Redis if available (game may have ≠ 10 questions).
+        $totalQuestionsLive = $liveState['totalQuestions'] ?? null;
 
         return view('duo_result', [
             'match_id' => $match->id,
@@ -2125,7 +2155,8 @@ class DuoController extends Controller
             'player_score' => $playerScore,
             'opponent_score' => $opponentScore,
             'currentQuestion' => $currentQuestion,
-            'total_questions' => 10,
+            'total_questions' => $totalQuestionsLive ?? 10,
+            'totalQuestions'  => $totalQuestionsLive ?? 10,
             'skills' => $skills,
             'avatarName' => $avatarName,
             'strategicAvatarPath' => $strategicAvatarPath,
