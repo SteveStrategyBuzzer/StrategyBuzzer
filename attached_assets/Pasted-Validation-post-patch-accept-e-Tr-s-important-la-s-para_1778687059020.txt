@@ -1,0 +1,112 @@
+Validation post-patch acceptée.
+
+Très important :
+la séparation est maintenant enfin propre entre :
+
+* Shuffle Réponse
+* Shuffle Skill
+
+Je valide particulièrement :
+
+* rev=0 = Shuffle Réponse stable officiel
+* rev=1+ réservé au Skill Shuffle
+* Redis = source de vérité initiale
+* PHP et Node alignés sur le même ordre
+* Fallback C correctement limité au mode secours
+* aucun correctIndex exposé au client
+* question.correctIndex muté côté Node seulement
+* Guard1 / Guard2 conservés
+* answer_revealed reste compatible runtime
+* showResult reste compatible runtime
+* audio reste Node-authoritative via isCorrect
+
+──────────────────────────────
+VALIDATION AUDIO
+──────────────────────────────
+
+Je valide :
+
+* disparition complète des anciens chemins morts
+* remplacement correct vers :
+  · /sounds/correct.mp3
+  · /sounds/incorrect.mp3
+  · /audio/buzzers/default.mp3
+
+Je valide aussi :
+
+* console.warn dans les catch()
+* aucun refactor audio massif
+* aucun double trigger
+* aucun son sur answer_order_changed
+
+──────────────────────────────
+POINT CRITIQUE VALIDÉ
+──────────────────────────────
+
+Le vrai fix architectural est maintenant atteint :
+
+PHP render →
+même ordre que Node →
+même ordre runtime →
+même ordre scoring →
+même ordre RESULT.
+
+C’était le vrai problème de fond.
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Je veux une validation runtime réelle complète avant toute nouvelle modification.
+
+Checklist runtime obligatoire :
+
+1. ouverture page Réponse
+
+* réponses déjà mélangées
+* même ordre pour les 2 joueurs
+* aucun flash visuel
+
+2. submit réponse
+
+* score correct
+* showResult correct
+* vert/rouge correct
+* ✓ / ✗ corrects
+
+3. audio
+
+* bonne réponse → son correct
+* mauvaise réponse → son incorrect
+* aucun son parasite
+
+4. reconnect
+
+* même ordre restauré
+* aucun Guard2 parasite
+
+5. Skill Shuffle
+
+* rev=1 puis rev=2
+* reorder toutes les 2 sec
+* arrêt immédiat après answered=true
+
+6. RESULT
+
+* correctIndex cohérent
+* highlights cohérents
+* aucun désalignement visuel
+
+Très important :
+si :
+
+* mauvais score
+* mauvais highlight
+* mauvais son
+* réponses différentes entre joueurs
+* flash visuel
+* Guard2
+  → STOP immédiat.
+
+Je veux maintenant :
+logs runtime réels + observations UI réelles avant toute autre étape.
