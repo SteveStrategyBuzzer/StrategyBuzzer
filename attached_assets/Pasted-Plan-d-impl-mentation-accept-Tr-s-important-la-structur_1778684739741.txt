@@ -1,0 +1,184 @@
+Plan d’implémentation accepté.
+
+Très important :
+la structure PATCH-1 → PATCH-5 est propre et cohérente.
+
+Je valide particulièrement :
+
+* séparation claire :
+  · Shuffle Réponse
+  · Shuffle Skill
+
+* rev=0 réservé au Shuffle Réponse initial stable
+
+* rev=1+ réservé au Skill Shuffle dynamique
+
+* PHP et Node maintenant alignés sur le même ordre officiel
+
+* Redis comme source de vérité temporaire pour le rendu PHP
+
+* fallback C seulement comme filet sécurité
+
+* aucun flash visuel dans le flow normal
+
+* Guard1 / Guard2 conservés
+
+* RESULT/showResult compatibles
+
+* reconnect cohérent
+
+* V/F inchangé pour l’instant
+
+Très important aussi :
+la mutation en mémoire de question.correctIndex est logique ici,
+parce que :
+revealAnswer() continue de lire cette valeur.
+
+Je valide aussi :
+correctIndex ne doit PAS être envoyé au client dans initialShuffle.
+
+──────────────────────────────
+VALIDATION SUPPLÉMENTAIRE AVANT PATCH
+──────────────────────────────
+
+Avant tout patch réel,
+je veux encore une validation ciblée :
+
+1. vérifier que archiveRevision() est bien appelée AVANT chaque re-shuffle skill
+
+2. vérifier que history conserve bien rev=0 avant rev=1
+
+3. vérifier que answer_revealed.correctIndex utilise toujours resolveCorrectIndex()
+
+4. vérifier que showResult() utilise seulement les indices runtime actuels
+
+5. vérifier qu’aucun ancien shuffle client-side autonome ne reste dans duo_answer
+
+6. vérifier qu’aucun Fisher-Yates local navigateur ne survit encore
+
+7. vérifier que les handlers audio suivent toujours l’ordre runtime actuel
+
+──────────────────────────────
+GREP GLOBAL OBLIGATOIRE
+──────────────────────────────
+
+Je veux aussi un grep global :
+
+* shuffleChoices
+* fisher
+* randomSort
+* Math.random
+* reorderAnswers
+* applyAnswerOrderFromNode
+* correctIndex
+
+Objectif :
+détecter tout code fantôme encore actif.
+
+──────────────────────────────
+AUDIT AUDIO ACCEPTÉ
+──────────────────────────────
+
+Très important :
+la cause racine audio est maintenant confirmée.
+
+Les fichiers audio référencés dans duo_answer.blade.php n’existent pas :
+
+* /audio/buzzers/correct/correct1.mp3 → 404
+* /audio/buzzers/incorrect/incorrect1.mp3 → 404
+
+Les vrais fichiers existants sont :
+
+* /sounds/correct.mp3
+* /sounds/incorrect.mp3
+
+Je valide aussi :
+l’architecture audio actuelle est correcte :
+
+* answer_revealed vient de Node
+* isCorrect vient de Node
+* showResult déclenche le son
+* answer_order_changed ne joue aucun son
+* le shuffle ne casse pas le système audio
+* un seul trigger audio par joueur
+
+Très important :
+le problème n’était PAS :
+
+* autoplay policy
+* shuffle
+* Guard1/Guard2
+* RESULT
+* double event
+* scoring
+
+Mais simplement :
+des chemins audio morts.
+
+──────────────────────────────
+PATCH AUDIO VALIDÉS
+──────────────────────────────
+
+Je valide :
+PATCH A-1
+
+* correction des src audio
+
+Je valide aussi :
+PATCH A-2
+
+* ajouter les console.warn dans les catch play()
+
+Très important :
+pas de refactor audio massif.
+
+Le système actuel doit rester :
+
+Node autorité résultat
+→ client joue le son correspondant.
+
+On garde :
+
+* audio client-side
+* résultat Node-authoritative
+
+──────────────────────────────
+VALIDATION AUDIO SUPPLÉMENTAIRE
+──────────────────────────────
+
+Avant patch :
+
+je veux aussi vérifier :
+
+* qu’aucun ancien correctSound/incorrectSound n’existe ailleurs dans le projet
+* qu’aucun ancien path audio fantôme ne survit encore
+
+grep global obligatoire :
+
+* correctSound
+* incorrectSound
+* correct1.mp3
+* incorrect1.mp3
+* sounds/correct.mp3
+* sounds/incorrect.mp3
+
+──────────────────────────────
+ORDRE DEMANDÉ
+──────────────────────────────
+
+1. validation ciblée shuffle/runtime
+2. grep global anti-code fantôme
+3. validation audio finale
+4. PATCH Audio A-1 + A-2
+5. validation runtime audio
+6. seulement ensuite :
+   début PATCH-1 Shuffle Réponse
+
+Important :
+aucun patch aveugle.
+Je veux :
+
+* slices réels
+* fichiers exacts
+* preuves grep
+* validations runtime après chaque patch.
