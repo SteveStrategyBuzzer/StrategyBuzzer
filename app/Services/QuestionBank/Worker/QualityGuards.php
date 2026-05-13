@@ -109,7 +109,7 @@ class QualityGuards
             $segmentTotal = (clone $segmentBase)->count();
             $familyCount = (clone $segmentBase)->where('concept_family', $family)->count();
 
-            if ($segmentTotal > 0) {
+            if ($segmentTotal > 0 && $familyCount > 0) {
                 $share = ($familyCount + 1) / ($segmentTotal + 1);
                 if ($share > $guards['concept_family_segment_max_share']) {
                     return ['ok' => false, 'code' => 'concept_family_share', 'detail' => sprintf('%.2f > %.2f', $share, $guards['concept_family_segment_max_share'])];
