@@ -48,6 +48,10 @@ $mode = 'duo';
 @endphp
 
 <style>
+    :root {
+        --player-color: {{ $playerColor ?? '#4ECDC4' }};
+        --opponent-color: {{ $opponentColor ?? '#FF6B6B' }};
+    }
     body {
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
@@ -131,7 +135,7 @@ $mode = 'duo';
         width: 100px;
         height: 100px;
         border-radius: 50%;
-        border: 3px solid #4ECDC4;
+        border: 3px solid var(--player-color, #4ECDC4);
         box-shadow: 0 8px 30px rgba(78, 205, 196, 0.5);
         object-fit: cover;
     }
@@ -139,19 +143,19 @@ $mode = 'duo';
     .player-name {
         font-size: 1rem;
         font-weight: 600;
-        color: #4ECDC4;
+        color: var(--player-color, #4ECDC4);
     }
 
     .player-level {
         font-size: 0.85rem;
-        color: #4ECDC4;
+        color: var(--player-color, #4ECDC4);
         opacity: 0.8;
     }
     
     .player-score {
         font-size: 2rem;
         font-weight: 900;
-        color: #4ECDC4;
+        color: var(--player-color, #4ECDC4);
         text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
     }
 
@@ -178,8 +182,8 @@ $mode = 'duo';
         opacity: 0.65;
     }
 
-    .live-stats.player .stat-value { color: #4ECDC4; }
-    .live-stats.opponent .stat-value { color: #FF6B6B; }
+    .live-stats.player .stat-value { color: var(--player-color, #4ECDC4); }
+    .live-stats.opponent .stat-value { color: var(--opponent-color, #FF6B6B); }
     .live-stats .stat-value { font-weight: 800; }
     
     .opponent-circle {
@@ -193,7 +197,7 @@ $mode = 'duo';
         width: 100px;
         height: 100px;
         border-radius: 50%;
-        border: 3px solid #FF6B6B;
+        border: 3px solid var(--opponent-color, #FF6B6B);
         box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
         object-fit: cover;
     }
@@ -202,7 +206,7 @@ $mode = 'duo';
         width: 100px;
         height: 100px;
         border-radius: 50%;
-        border: 3px solid #FF6B6B;
+        border: 3px solid var(--opponent-color, #FF6B6B);
         box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5);
         display: flex;
         align-items: center;
@@ -210,25 +214,25 @@ $mode = 'duo';
         background: rgba(255, 107, 107, 0.1);
         font-size: 2.5rem;
         font-weight: 900;
-        color: #FF6B6B;
+        color: var(--opponent-color, #FF6B6B);
     }
     
     .opponent-name {
         font-size: 1rem;
         font-weight: 600;
-        color: #FF6B6B;
+        color: var(--opponent-color, #FF6B6B);
     }
 
     .opponent-level {
         font-size: 0.85rem;
-        color: #FF6B6B;
+        color: var(--opponent-color, #FF6B6B);
         opacity: 0.8;
     }
     
     .opponent-score {
         font-size: 2rem;
         font-weight: 900;
-        color: #FF6B6B;
+        color: var(--opponent-color, #FF6B6B);
         text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
     }
     

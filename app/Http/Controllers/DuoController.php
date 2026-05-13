@@ -20,6 +20,21 @@ use App\Models\User;
 
 class DuoController extends Controller
 {
+    private const COLOR_HEX_MAP = [
+        'red'    => '#E53935',
+        'blue'   => '#1E88E5',
+        'green'  => '#43A047',
+        'orange' => '#FB8C00',
+        'purple' => '#8E24AA',
+        'cyan'   => '#00ACC1',
+        'pink'   => '#F50057',
+        'yellow' => '#FDD835',
+        'teal'   => '#0097A7',
+        'indigo' => '#3949AB',
+        'lime'   => '#76FF03',
+        'brown'  => '#6D4C41',
+    ];
+
     public function __construct(
         private DuoMatchmakingService $matchmaking,
         private DivisionService $divisionService,
@@ -1403,6 +1418,8 @@ class DuoController extends Controller
             $playerScore   = $liveState['scores'][(string) $user->id]     ?? $playerScore;
             $opponentScore = $liveState['scores'][(string) $opponent->id] ?? $opponentScore;
         }
+        $playerColor   = ($liveState['playerColors'] ?? [])[(string) $user->id]     ?? '#4ECDC4';
+        $opponentColor = ($liveState['playerColors'] ?? [])[(string) $opponent->id] ?? '#FF6B6B';
 
         return view('duo_round_scoreboard', [
             'match_id'          => $match->id,
@@ -1420,6 +1437,8 @@ class DuoController extends Controller
             'currentRound'      => $matchGameState['current_round']          ?? 1,
             'totalQuestions'    => $matchGameState['total_questions']        ?? 10,
             'currentQuestion'   => $matchGameState['current_question_number'] ?? 1,
+            'playerColor'       => $playerColor,
+            'opponentColor'     => $opponentColor,
         ]);
     }
 
@@ -1660,6 +1679,18 @@ class DuoController extends Controller
                     $scores[(string) $pid] = (int) $pdata['score'];
                 }
             }
+            // Extract lobby-chosen player colors from Node room state.
+            // Node stores the color ID (e.g. 'blue', 'red') — look up the hex.
+            $playerColors = [];
+            foreach (($stateData['players'] ?? []) as $pid => $pdata) {
+                if (is_array($pdata) && isset($pdata['color'])) {
+                    $colorId = (string) $pdata['color'];
+                    $hex = self::COLOR_HEX_MAP[$colorId] ?? null;
+                    if ($hex) {
+                        $playerColors[(string) $pid] = $hex;
+                    }
+                }
+            }
             // totalQuestions: use questionsPerRound from config (the `questions` array is
             // pre-loaded for ALL rounds, so count($questions) gives a multiple like 25 or 30).
             // The player-facing counter must show progress within the current round only.
@@ -1677,6 +1708,7 @@ class DuoController extends Controller
                 'questionIndex0' => (int) ($stateData['questionIndex'] ?? 0),
                 'totalQuestions' => $tq,
                 'scores'         => $scores,
+                'playerColors'   => $playerColors,
             ];
         } catch (\Exception $e) {
             \Log::warning('[DUO] readLiveRoomScores failed', [
@@ -1736,6 +1768,8 @@ class DuoController extends Controller
             // questionIndex côté Node est 0-based, on affiche 1-based.
             $currentQuestion = $liveState['questionIndex0'] + 1;
         }
+        $playerColor   = ($liveState['playerColors'] ?? [])[(string) $user->id]              ?? '#4ECDC4';
+        $opponentColor = ($liveState['playerColors'] ?? [])[(string) ($opponent->id ?? '')] ?? '#FF6B6B';
 
         $playerLevel   = $this->getPlayerDuoLevel($user->id);
         $opponentLevel = $this->getPlayerDuoLevel($opponent->id ?? 0);
@@ -1763,6 +1797,8 @@ class DuoController extends Controller
             'themeDisplay' => $themeDisplay,
             'playerLevel' => $playerLevel,
             'opponentLevel' => $opponentLevel,
+            'playerColor'   => $playerColor,
+            'opponentColor' => $opponentColor,
         ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');
@@ -1794,6 +1830,8 @@ class DuoController extends Controller
             $opponentScore = $liveState['scores'][(string) $opponent->id] ?? $opponentScore;
             $currentQuestionNumber = $liveState['questionIndex0'] + 1;
         }
+        $playerColor   = ($liveState['playerColors'] ?? [])[(string) $user->id]     ?? '#4ECDC4';
+        $opponentColor = ($liveState['playerColors'] ?? [])[(string) $opponent->id] ?? '#FF6B6B';
 
         $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
         $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
@@ -1998,6 +2036,8 @@ class DuoController extends Controller
                 'score' => $opponentScore,
                 'level' => $opponentStats->level,
             ],
+            'playerColor'   => $playerColor,
+            'opponentColor' => $opponentColor,
         ]);
     }
 
@@ -2030,6 +2070,8 @@ class DuoController extends Controller
             $opponentScore = $liveState['scores'][(string) $opponent->id] ?? $opponentScore;
             $currentQuestion = $liveState['questionIndex0'] + 1;
         }
+        $playerColor   = ($liveState['playerColors'] ?? [])[(string) $user->id]     ?? '#4ECDC4';
+        $opponentColor = ($liveState['playerColors'] ?? [])[(string) $opponent->id] ?? '#FF6B6B';
 
         $stats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
         $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
@@ -2187,6 +2229,8 @@ class DuoController extends Controller
                 'score' => $opponentScore,
                 'level' => $opponentStats->level,
             ],
+            'playerColor'   => $playerColor,
+            'opponentColor' => $opponentColor,
         ]);
     }
 

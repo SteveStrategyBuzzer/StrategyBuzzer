@@ -66,6 +66,10 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
 @endphp
 
 <style>
+    :root {
+        --player-color: {{ $playerColor ?? '#4ECDC4' }};
+        --opponent-color: {{ $opponentColor ?? '#FF6B6B' }};
+    }
     body {
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
@@ -201,13 +205,13 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     
     .score-player {
         background: rgba(78, 205, 196, 0.15);
-        border: 3px solid #4ECDC4;
+        border: 3px solid var(--player-color, #4ECDC4);
         box-shadow: 0 8px 30px rgba(78, 205, 196, 0.3);
     }
     
     .score-opponent {
         background: rgba(255, 107, 107, 0.15);
-        border: 3px solid #FF6B6B;
+        border: 3px solid var(--opponent-color, #FF6B6B);
         box-shadow: 0 8px 30px rgba(255, 107, 107, 0.3);
     }
     
@@ -215,7 +219,7 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         width: 100px;
         height: 100px;
         border-radius: 50%;
-        border: 3px solid #4ECDC4;
+        border: 3px solid var(--player-color, #4ECDC4);
         object-fit: cover;
     }
     
@@ -223,7 +227,7 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         width: 100px;
         height: 100px;
         border-radius: 50%;
-        border: 3px solid #FF6B6B;
+        border: 3px solid var(--opponent-color, #FF6B6B);
         object-fit: cover;
     }
     

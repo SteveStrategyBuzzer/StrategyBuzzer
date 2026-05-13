@@ -70,6 +70,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 @endphp
 
 <style>
+    :root {
+        --player-color: {{ $playerColor ?? '#4ECDC4' }};
+        --opponent-color: {{ $opponentColor ?? '#FF6B6B' }};
+    }
     body {
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
@@ -148,7 +152,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         align-items: center;
         gap: 8px;
         font-size: 0.85rem;
-        color: #FF6B6B;
+        color: var(--opponent-color, #FF6B6B);
         font-weight: 600;
         padding-left: 10px;
         margin-left: 6px;
@@ -192,7 +196,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     
     .timer-bar {
         height: 100%;
-        background: linear-gradient(90deg, #4ECDC4, #667eea);
+        background: linear-gradient(90deg, var(--player-color, #4ECDC4), #667eea);
         border-radius: 4px;
         transition: width 0.3s linear;
         width: 100%;
@@ -205,7 +209,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     .timer-seconds {
         font-size: 1rem;
         font-weight: 700;
-        color: #4ECDC4;
+        color: var(--player-color, #4ECDC4);
         min-width: 30px;
         text-align: right;
     }
@@ -319,7 +323,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     .buzz-status-banner.buzzed {
         background: rgba(78, 205, 196, 0.15);
         border: 2px solid rgba(78, 205, 196, 0.5);
-        color: #4ECDC4;
+        color: var(--player-color, #4ECDC4);
     }
     
     .buzz-status-banner.no-buzz {
@@ -331,7 +335,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     .buzz-status-banner.opponent-buzz {
         background: rgba(255, 107, 107, 0.15);
         border: 2px solid rgba(255, 107, 107, 0.5);
-        color: #FF6B6B;
+        color: var(--opponent-color, #FF6B6B);
     }
     
     .buzz-status-banner.historian-active {

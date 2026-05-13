@@ -47,6 +47,10 @@ $totalQuestions = $totalQuestions ?? 10;
 @endphp
 
 <style>
+    :root {
+        --player-color: {{ $playerColor ?? '#4ECDC4' }};
+        --opponent-color: {{ $opponentColor ?? '#FF6B6B' }};
+    }
     body {
         background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
         color: #fff;
@@ -159,13 +163,13 @@ $totalQuestions = $totalQuestions ?? 10;
     .score-value {
         font-size: 2.8rem;
         font-weight: 900;
-        color: #4ECDC4;
+        color: var(--player-color, #4ECDC4);
         line-height: 1;
         text-shadow: 0 0 15px rgba(78, 205, 196, 0.4);
     }
 
     .score-value.opponent {
-        color: #FF6B6B;
+        color: var(--opponent-color, #FF6B6B);
         text-shadow: 0 0 15px rgba(255, 107, 107, 0.4);
     }
 
@@ -424,10 +428,16 @@ $tied = $playerScore === $opponentScore;
                 if (secsEl) secsEl.classList.add('urgent');
             }
             if (remainingMs <= 0) {
-                // Bar reached zero — stop the visual loop. DO NOT navigate.
-                // The Node server is the sole authority and will emit phase_changed
-                // when the next round/question is actually ready.
+                // Bar reached zero — stop the visual loop.
+                // Node is the sole authority and will emit phase_changed when ready.
+                // Safety fallback: if no navigation event arrives within 4 s,
+                // navigate anyway to prevent a frozen screen.
                 cancelCountdown();
+                if (!isRedirecting) {
+                    setTimeout(function() {
+                        if (!isRedirecting) { navigateToQuestion(); }
+                    }, 4000);
+                }
             }
         }, 250);
     }
