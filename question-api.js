@@ -1161,6 +1161,7 @@ app.post('/generate-bank-question', async (req, res) => {
     languages = ['fr'],
     concept_hint = '',
     forbidden_concepts = [],
+    forbidden_families = [],
   } = req.body || {};
 
   if (!domain || !sub_domain || !cognitive_type || !difficulty_depth) {
@@ -1231,6 +1232,25 @@ app.post('/generate-bank-question', async (req, res) => {
     return header + body + footer;
   })();
 
+  // P2 — forbidden_families block.
+  // Built from saturated families detected by BankNeedsCalculator.
+  // Forces the AI to choose a concept_family not already dominant in
+  // this (sub_domain, cognitive_type, depth) segment.
+  const forbiddenFamiliesBlock = (() => {
+    if (!Array.isArray(forbidden_families) || forbidden_families.length === 0) return '';
+    const list = forbidden_families
+      .filter((f) => typeof f === 'string' && f.trim() !== '')
+      .map((f) => `  - ${f.trim()}`)
+      .join('\n');
+    if (list === '') return '';
+    return (
+      '\nFAMILLES CONCEPT SATURÉES — trop représentées dans ce segment (NE PAS réutiliser) :\n' +
+      list +
+      '\n→ concept_family DOIT être une famille absente de cette liste.\n' +
+      '→ Invente un fait d\'un sous-thème non couvert ci-dessus.\n'
+    );
+  })();
+
   const userPrompt = `Génère UNE question de quiz dans le format JSON exact ci-dessous.
 
 CONTRAINTES:
@@ -1245,7 +1265,7 @@ CONTRAINTES:
 - saviez_vous OBLIGATOIRE : anecdote concrète (≥30 caractères) portant EXCLUSIVEMENT sur le fait de la réponse correcte de CETTE question. Interdit : anecdote sur un autre fait du domaine, fait générique non lié à la bonne réponse, copie reformulée de la question.
 - Distracteurs (réponses incorrectes) : chacun doit être plausible pour quelqu'un qui confond un fait proche, mais UNIVOQUEMENT FAUX. Interdit : distractor évident ("Je ne sais pas"), reformulation de la bonne réponse, contradiction logique, ou réponse qui pourrait être partiellement correcte.
 - concept_family : EN ANGLAIS, kebab-case, 1-4 mots, taxonomie stable (ex: "basketball-rules", "australian-geography", "medieval-history")
-${forbiddenBlock}
+${forbiddenFamiliesBlock}${forbiddenBlock}
 Format JSON exact attendu:
 {
   "question_text": "...",

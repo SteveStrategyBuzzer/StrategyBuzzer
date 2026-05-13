@@ -106,13 +106,17 @@ class BankAIGenerator
             . '/generate-bank-question';
 
         $body = [
-            'domain'           => (string) $segment['domain'],
-            'sub_domain'       => (string) $segment['sub_domain'],
-            'cognitive_type'   => (string) $segment['cognitive_type'],
-            'question_type'    => (string) ($segment['question_type'] ?? 'qcm'),
-            'difficulty_depth' => (int) $segment['depth_range'][1],
+            'domain'             => (string) $segment['domain'],
+            'sub_domain'         => (string) $segment['sub_domain'],
+            'cognitive_type'     => (string) $segment['cognitive_type'],
+            'question_type'      => (string) ($segment['question_type'] ?? 'qcm'),
+            'difficulty_depth'   => (int) $segment['depth_range'][1],
             'languages'          => ['fr'],   // master in French only
             'forbidden_concepts' => $this->loadForbiddenConcepts((string) $segment['sub_domain']),
+            // Saturated families detected by BankNeedsCalculator. The AI is
+            // told to invent a concept_family absent from this list so the
+            // worker diversifies instead of deepening dominant families.
+            'forbidden_families' => $segment['forbidden_families'] ?? [],
         ];
 
         // Segment-context XOR (#91 contract): body MUST carry exactly one of

@@ -35,7 +35,9 @@ class BankNeedsCalculator
     ) {}
 
     /**
-     * Returns deficits sorted by descending shortfall.
+     * Returns deficits sorted by descending priority_score (deficit × depth
+     * weight), then by deficit. Shallower depths (3-4) carry a ×4 weight so
+     * they always outrank equal-deficit deep rows (9-10 weight ×0.5).
      *
      * @return array<int, array{
      *     mode: string,
@@ -50,6 +52,8 @@ class BankNeedsCalculator
      *     required: int,
      *     present: int,
      *     deficit: int,
+     *     priority_score: int,
+     *     forbidden_families: list<string>,
      * }>
      */
     public function computeDeficits(?int $limit = null): array
@@ -65,6 +69,10 @@ class BankNeedsCalculator
         // cycle. The hashmap lookup makes the rest of the function pure-PHP.
         $counts = $this->loadCountsMap($languages);
 
+        // One extra query to detect per-segment saturated families so the
+        // generator avoids deepening already-dominant concept_family trees.
+        $saturatedFamilies = $this->loadSaturatedFamilies();
+
         $rows = [];
 
         foreach ($this->enumerateProfiles($config) as $profile) {
@@ -77,6 +85,10 @@ class BankNeedsCalculator
                     }
 
                     $required = $targetMatches;
+
+                    // depth_range is now always [d, d] (single-depth slice from
+                    // enumerateProfiles). Use depth_range[1] for the family key.
+                    $famKey = sprintf('%s|%s|%d', $subDomain, $cogType, $profile['depth_range'][1]);
 
                     foreach ($languages as $lang) {
                         $present = $this->countFromMap(
@@ -95,25 +107,39 @@ class BankNeedsCalculator
                         }
 
                         $rows[] = [
-                            'mode' => $profile['mode'],
-                            'division' => $profile['division'],
-                            'mode_target' => $profile['mode_target'],
-                            'depth_range' => $profile['depth_range'],
-                            'domain' => $domain,
-                            'sub_domain' => $subDomain,
-                            'cognitive_type' => $cogType,
-                            'question_type' => 'qcm',
-                            'language' => $lang,
-                            'required' => $required,
-                            'present' => $present,
-                            'deficit' => $deficit,
+                            'mode'               => $profile['mode'],
+                            'division'           => $profile['division'],
+                            'mode_target'        => $profile['mode_target'],
+                            'depth_range'        => $profile['depth_range'],
+                            'domain'             => $domain,
+                            'sub_domain'         => $subDomain,
+                            'cognitive_type'     => $cogType,
+                            'question_type'      => 'qcm',
+                            'language'           => $lang,
+                            'required'           => $required,
+                            'present'            => $present,
+                            'deficit'            => $deficit,
+                            'forbidden_families' => $saturatedFamilies[$famKey] ?? [],
                         ];
                     }
                 }
             }
         }
 
-        usort($rows, fn ($a, $b) => $b['deficit'] <=> $a['deficit']);
+        // Compute depth-weighted priority score: shallower depths are filled
+        // before deep ones, preventing the worker from spending cycles on
+        // depth=9/10 (already ≥15/segment) while depth=3/4 sits at 0-5.
+        foreach ($rows as &$row) {
+            $row['priority_score'] = (int) round(
+                $row['deficit'] * $this->depthWeight((int) $row['depth_range'][1])
+            );
+        }
+        unset($row);
+
+        usort($rows, function ($a, $b) {
+            $cmp = $b['priority_score'] <=> $a['priority_score'];
+            return $cmp !== 0 ? $cmp : ($b['deficit'] <=> $a['deficit']);
+        });
 
         // Auto-remediation (#99): when BankSelfHealer pinned a priority
         // segment, prepend rows whose (mode, sub_domain, language) match
@@ -381,6 +407,12 @@ class BankNeedsCalculator
     /**
      * Enumerates every profile the worker / health endpoint cares about.
      *
+     * Student bands and solo_range mode-mappings are expanded into one row
+     * PER individual depth value so the worker can target depth=3 separately
+     * from depth=4 instead of lumping them into a single [3,4] pool that
+     * always resolves to depth_range[1]=4. Boss profiles already carry a
+     * single depth so they are yielded as-is.
+     *
      * @return iterable<array{
      *     mode:string, division:string|int|null,
      *     mode_target:array, depth_range:array{int,int},
@@ -389,52 +421,148 @@ class BankNeedsCalculator
      */
     public function enumerateProfiles(array $config): iterable
     {
-        // Solo student bands (one profile per band, mid-level used as label).
+        // Solo student bands — one row per individual depth so the worker
+        // targets depth=3 (currently 0 groups) before depth=4 (5 groups).
         foreach ($config['student_bands'] as $band) {
             [$from, $to] = $band['levels'];
-            yield [
-                'mode' => 'solo',
-                'division' => "{$from}-{$to}",
-                'mode_target' => ['type' => 'solo_range', 'levels' => [$from, $to]],
-                'depth_range' => $band['depth_range'],
-                'cognitive_mix' => $config['student_cognitive_mix'],
-            ];
+            foreach (range($band['depth_range'][0], $band['depth_range'][1]) as $depth) {
+                yield [
+                    'mode'          => 'solo',
+                    'division'      => "{$from}-{$to}",
+                    'mode_target'   => ['type' => 'solo_range', 'levels' => [$from, $to]],
+                    'depth_range'   => [$depth, $depth],
+                    'cognitive_mix' => $config['student_cognitive_mix'],
+                ];
+            }
         }
 
-        // Boss profiles.
+        // Boss profiles — already single-depth, no expansion needed.
         foreach ($config['boss_profiles'] as $bossLevel => $bossProfile) {
             yield [
-                'mode' => 'boss',
-                'division' => $bossLevel,
-                'mode_target' => ['type' => 'boss', 'level' => (int) $bossLevel],
-                'depth_range' => [$bossProfile['depth'], $bossProfile['depth']],
+                'mode'          => 'boss',
+                'division'      => $bossLevel,
+                'mode_target'   => ['type' => 'boss', 'level' => (int) $bossLevel],
+                'depth_range'   => [$bossProfile['depth'], $bossProfile['depth']],
                 'cognitive_mix' => $bossProfile['mix'],
             ];
         }
 
         // Duo / MJ / Ligue divisions.
+        // solo_range divisions: expand per-depth (same logic as student bands).
+        // boss divisions: already single-depth.
         foreach ($config['mode_mappings'] as $mode => $divisions) {
             foreach ($divisions as $division => $target) {
                 if ($target['type'] === 'solo_range') {
-                    $depthRange = $this->depthRangeForSoloRange($target['levels'], $config);
-                    $cogMix = $config['student_cognitive_mix'];
+                    $baseRange = $this->depthRangeForSoloRange($target['levels'], $config);
+                    $cogMix    = $config['student_cognitive_mix'];
+                    foreach (range($baseRange[0], $baseRange[1]) as $depth) {
+                        yield [
+                            'mode'          => $mode,
+                            'division'      => $division,
+                            'mode_target'   => $target,
+                            'depth_range'   => [$depth, $depth],
+                            'cognitive_mix' => $cogMix,
+                        ];
+                    }
                 } else {
                     $bossProfile = $config['boss_profiles'][$target['level']] ?? null;
                     if (!$bossProfile) {
                         continue;
                     }
-                    $depthRange = [$bossProfile['depth'], $bossProfile['depth']];
-                    $cogMix = $bossProfile['mix'];
+                    yield [
+                        'mode'          => $mode,
+                        'division'      => $division,
+                        'mode_target'   => $target,
+                        'depth_range'   => [$bossProfile['depth'], $bossProfile['depth']],
+                        'cognitive_mix' => $bossProfile['mix'],
+                    ];
                 }
-                yield [
-                    'mode' => $mode,
-                    'division' => $division,
-                    'mode_target' => $target,
-                    'depth_range' => $depthRange,
-                    'cognitive_mix' => $cogMix,
-                ];
             }
         }
+    }
+
+    /**
+     * Priority multiplier for a given depth value. Shallower depths get a
+     * higher multiplier so deficit rows for depth=3/4 always outrank
+     * equal-deficit rows for depth=9/10 in the priority sort.
+     *
+     * Weights:
+     *   depth ≤ 4  → ×4.0  (bands 1-9, 11-19 — nearly empty, most impact)
+     *   depth ≤ 6  → ×3.0  (bands 21-39 — also thin)
+     *   depth ≤ 8  → ×1.0  (bands 40-69 — already at target)
+     *   depth > 8  → ×0.5  (bands 70-99 — de-prioritise depth 9-10)
+     */
+    private function depthWeight(int $depth): float
+    {
+        return match (true) {
+            $depth <= 4 => 4.0,
+            $depth <= 6 => 3.0,
+            $depth <= 8 => 1.0,
+            default     => 0.5,
+        };
+    }
+
+    /**
+     * Returns, per sub_domain, the list of concept_family names that already
+     * hold ≥ 12 validated groups ACROSS ALL depths and cognitive_types in
+     * that sub-domain. Checked at sub_domain granularity (not per exact
+     * segment) because dominant families like "mammalian-anatomical-adaptation"
+     * (23 groups total in Faune) are spread thin across 12 sub-cells, making
+     * per-cell detection fail. The sub_domain-level check correctly flags
+     * families that are globally dominant and should not be deepened further.
+     *
+     * The returned list is keyed by "sub_domain|cognitive_type|depth" so it
+     * plugs into the per-segment row without changing the caller contract —
+     * every segment of a given sub_domain inherits the same family blocklist.
+     *
+     * @return array<string, list<string>>
+     */
+    private function loadSaturatedFamilies(): array
+    {
+        $threshold = 12;
+
+        // Aggregate at (sub_domain, concept_family) level — depth and
+        // cognitive_type intentionally excluded so dominant cross-segment
+        // families are caught regardless of where their groups live.
+        $rows = DB::table('question_groups')
+            ->select(
+                'sub_domain',
+                'concept_family',
+                DB::raw('COUNT(*) as n')
+            )
+            ->whereNotNull('concept_family')
+            ->where('concept_family', '!=', '')
+            ->where('validated', true)
+            ->groupBy('sub_domain', 'concept_family')
+            ->havingRaw('COUNT(*) >= ?', [$threshold])
+            ->get();
+
+        // Build (sub_domain → saturated families) map first.
+        $bySubDomain = [];
+        foreach ($rows as $r) {
+            $bySubDomain[$r->sub_domain][] = (string) $r->concept_family;
+        }
+
+        if (empty($bySubDomain)) {
+            return [];
+        }
+
+        // Fan out to all (sub_domain|cognitive_type|depth) keys so the
+        // per-segment row lookup works without changing the caller contract.
+        $config   = config('question_bank_profiles');
+        $cogTypes = $config['cognitive_types'] ?? ['recognition', 'reasoning', 'deceptive_trap'];
+
+        $map = [];
+        foreach ($bySubDomain as $subDomain => $families) {
+            foreach ($cogTypes as $cog) {
+                for ($depth = 3; $depth <= 10; $depth++) {
+                    $key       = sprintf('%s|%s|%d', $subDomain, $cog, $depth);
+                    $map[$key] = $families;
+                }
+            }
+        }
+
+        return $map;
     }
 
     private function depthRangeForSoloRange(array $levels, array $config): array
