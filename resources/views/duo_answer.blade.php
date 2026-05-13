@@ -963,6 +963,20 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     // Sent to Node on answer submission (Guard 2 race-condition tolerance).
     var currentShuffleRevision = PHP_SHUFFLE_REVISION;
 
+    // ── LIVE VALIDATION DIAGNOSTICS ─────────────────────────────────────────
+    // CHECK 1 — Page Réponse : ordre shufflé PHP baked
+    (function() {
+        var phpChoices = @json($choices ?? []);
+        var phpSource  = {{ $phpShuffleRevision > 0 ? 'true' : 'false' }}
+            ? 'Redis init_shuffle (Option A)' : 'PHP fallback (Fallback C attendu)';
+        console.group('%c[DuoAnswer] CHECK 1 — Page Réponse (render PHP)', 'color:#4fc3f7;font-weight:bold');
+        console.log('PHP_SHUFFLE_REVISION:', PHP_SHUFFLE_REVISION);
+        console.log('Source:', phpSource);
+        console.log('Choices baked by PHP:', phpChoices);
+        console.log('→ Vérifier : même liste dans les 2 navigateurs, aucun flash DOM');
+        console.groupEnd();
+    })();
+
     // Skill effects + activation handlers + answers shuffle live in
     // public/js/duo-skill-effects.js (extracted in Task #56). The init call
     // is deferred until calculatePotentialPoints is defined further below;
@@ -1215,6 +1229,16 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     // n'est rendue ici (interdit par la règle gameplay). Aucun calcul local
     // de score : le delta affiché est strictement la valeur fournie par Node.
     function showResult(isCorrect, correctIndex, pointsEarned) {
+        // CHECK 2+3+6 LIVE VALIDATION
+        console.group('%c[DuoAnswer] CHECK 2+3+6 — showResult()', 'color:#a5d6a7;font-weight:bold');
+        console.log('isCorrect   :', isCorrect,    '← Node answer_revealed.isCorrect');
+        console.log('correctIndex:', correctIndex, '← Node answer_revealed.correctIndex (post-shuffle)');
+        console.log('pointsEarned:', pointsEarned, '← Node answer_revealed.pointsEarned');
+        console.log('selectedIndex (DOM):', selectedIndex);
+        console.log('currentShuffleRevision at reveal:', currentShuffleRevision);
+        console.log('→ Vérifier : vert=bonne réponse, rouge=mauvaise, son adapté, points corrects');
+        console.groupEnd();
+
         // Audio cue (non-textuel) — autorisé.
         // Reset currentTime so the sound replays even if it was played recently.
         if (isCorrect && correctSound) {
@@ -1222,11 +1246,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             correctSound.play().catch(function(err) {
                 console.warn('[DuoAnswer] correctSound play() blocked:', err && err.message);
             });
+            console.log('%c[DuoAnswer] CHECK 3 — Audio: correctSound.play() ✓', 'color:#a5d6a7');
         } else if (!isCorrect && incorrectSound) {
             incorrectSound.currentTime = 0;
             incorrectSound.play().catch(function(err) {
                 console.warn('[DuoAnswer] incorrectSound play() blocked:', err && err.message);
             });
+            console.log('%c[DuoAnswer] CHECK 3 — Audio: incorrectSound.play() ✗', 'color:#ef9a9a');
         }
 
         // Normalize indices as numbers to avoid type-coercion mismatches.
@@ -1493,6 +1519,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // Aucun fallback sur `data.points` (legacy) : si Node ne l'envoie pas,
         // on affiche 0 plutôt que de masquer un bug en aval.
         const pointsEarned = data.pointsEarned ?? 0;
+        // CHECK 2 LIVE VALIDATION — raw answer_revealed payload from Node
+        console.group('%c[DuoAnswer] CHECK 2 — answer_revealed reçu de Node', 'color:#ffcc80;font-weight:bold');
+        console.log('Raw payload:', JSON.parse(JSON.stringify(data)));
+        console.log('isCorrect   :', isCorrect);
+        console.log('correctIndex:', correctIndex);
+        console.log('pointsEarned:', pointsEarned);
+        console.log('shuffleRevision soumis:', currentShuffleRevision);
+        console.groupEnd();
         showResult(isCorrect, correctIndex, pointsEarned);
 
         // Side-effects below (sessionStorage stash) are only useful if we
@@ -1791,8 +1825,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             // Re-query answerButtons — DOM order changed, old NodeList is stale.
             answerButtons = Array.from(document.querySelectorAll('.answer-button'));
 
-            console.log('[DuoAnswer] answer_order_changed rev=' + currentShuffleRevision +
-                ' choices=[' + data.choices.join(',') + ']');
+            // CHECK 5 LIVE VALIDATION — Skill Shuffle
+            console.log(
+                '%c[DuoAnswer] CHECK 5 — answer_order_changed rev=' + currentShuffleRevision +
+                ' choices=[' + data.choices.join(',') + ']',
+                'color:#ce93d8;font-weight:bold'
+            );
+            console.log('→ Vérifier : boutons réordonnés dans le DOM, rev croissant, son=aucun');
         },
         initEffects:     _initAnswerEffects
     };
