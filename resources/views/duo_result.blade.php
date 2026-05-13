@@ -350,6 +350,12 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         flex: 1;
         text-align: left;
         font-weight: 500;
+        font-size: 0.85rem;
+        line-height: 1.35;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
     }
     
     .answer-icon {

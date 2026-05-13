@@ -1660,9 +1660,14 @@ class DuoController extends Controller
                     $scores[(string) $pid] = (int) $pdata['score'];
                 }
             }
-            // totalQuestions: not stored explicitly — compute from questions array length.
-            $tq = isset($stateData['totalQuestions']) ? (int) $stateData['totalQuestions'] : null;
+            // totalQuestions: use questionsPerRound from config (the `questions` array is
+            // pre-loaded for ALL rounds, so count($questions) gives a multiple like 25 or 30).
+            // The player-facing counter must show progress within the current round only.
+            $tq = isset($stateData['config']['questionsPerRound'])
+                ? (int) $stateData['config']['questionsPerRound']
+                : null;
             if ($tq === null) {
+                // Fallback: assume questions[] is exactly one round worth.
                 $qs = $stateData['questions'] ?? [];
                 if (!empty($qs) && is_array($qs)) {
                     $tq = count($qs);
