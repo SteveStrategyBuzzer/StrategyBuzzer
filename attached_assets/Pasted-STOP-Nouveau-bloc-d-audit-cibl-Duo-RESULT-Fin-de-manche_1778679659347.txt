@@ -1,0 +1,97 @@
+STOP. Nouveau bloc d’audit ciblé : Duo RESULT + Fin de manche.
+
+Observations runtime réelles :
+
+1. Fin manche 1 :
+
+* un bloc apparaît sur le côté
+* il pousse le layout de Fin manche hors écran
+* ce bloc doit être supprimé ou masqué
+
+2. Page RESULT :
+   a) le pointage cumulatif ne s’affiche pas toujours correctement
+   b) le bloc du haut affiche toujours :
+
+   * 1/10
+   * 0 points
+   * Pas Buzzer
+     c) “Le Saviez-vous” apparaît seulement à la question 9/10 de la deuxième manche
+     d) le visuel du chrono reste toujours plein à 60 sec
+     e) les choix de réponses bonne/mauvaise n’apparaissent jamais
+
+Je veux un audit ciblé avant patch.
+
+À vérifier :
+
+A — Fin de manche / ROUND_END layout
+
+* identifier le bloc latéral qui apparaît
+* fichier exact / composant exact
+* pourquoi il est rendu à Fin manche
+* s’il vient de RESULT, scoreboard, debug panel, stats panel ou ancien layout
+* pourquoi il pousse le layout hors écran
+* règle attendue : Fin manche doit être centré, propre, sans bloc parasite latéral
+
+B — RESULT data binding
+
+* vérifier d’où viennent :
+  · questionIndex / 1/10
+  · pointsEarned
+  · buzz status
+  · cumulative score
+  · Saviez-vous
+  · choices
+  · correct answer
+  · selected answer
+* vérifier si RESULT lit encore des valeurs statiques / fallback / ancien state
+* vérifier si answer_revealed transporte bien les données nécessaires
+* vérifier si duo_result.blade.php consomme les bonnes données Node
+
+C — Chrono RESULT 60 sec
+
+* vérifier pourquoi la barre reste pleine
+* vérifier phaseEndsAtMs / remainingMs
+* vérifier si le timer RESULT est initialisé mais jamais décrémenté
+* vérifier si progress width est hardcodé à 100%
+* vérifier si RESULT reçoit bien la phase RESULT et la deadline Node
+
+D — Saviez-vous
+
+* vérifier pourquoi il n’apparaît pas à chaque question
+* vérifier si le champ existe dans les payloads Question Bank
+* vérifier différence question 9/10 vs les autres
+* vérifier mapping : explanation / fun_fact / saviez_vous / did_you_know
+* vérifier si RESULT utilise le mauvais nom de champ
+
+E — Bonne/mauvaise réponse
+
+* vérifier pourquoi les choix de réponses ne s’affichent jamais sur RESULT
+* vérifier si RESULT reçoit choices / selectedIndex / correctIndex
+* vérifier si le DOM correspondant existe mais est masqué
+* vérifier si showResult existe seulement sur ANSWER et pas sur RESULT
+* règle attendue :
+  · bonne réponse visible en vert + ✓
+  · mauvais choix du joueur visible en rouge + ✗
+  · si bonne réponse : seulement vert + ✓
+
+Important :
+ne pas patcher avant audit.
+
+Je veux :
+
+* fichiers exacts impliqués
+* slices réels
+* source des données RESULT
+* payload Node answer_revealed / match state / Redis
+* raison précise de chaque bug
+* plan de patch séparé :
+
+  1. supprimer bloc parasite Fin manche
+  2. corriger données haut RESULT
+  3. corriger chrono RESULT
+  4. corriger Saviez-vous
+  5. afficher bonne/mauvaise réponse
+
+Rappel :
+Node reste autorité gameplay.
+RESULT doit afficher les données Node, pas recalculer côté client.
