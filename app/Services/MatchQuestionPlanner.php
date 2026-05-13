@@ -482,6 +482,12 @@ class MatchQuestionPlanner
         for ($r = 1; $r <= $roundsCount; $r++) {
             $perRoundActual[$r] = ['recognition' => 0, 'reasoning' => 0, 'deceptive_trap' => 0];
 
+            // Per-round concept_family tracker — prevents the same concept_family
+            // from appearing twice within one round even when the cross-match
+            // pool is exhausted and the planner falls through to relaxation.
+            // This is separate from $usedConceptFamilies (which is cross-round).
+            $roundConceptFamilies = [];
+
             // Construit l'ordre intra-manche : alterner les cognitive_types et
             // les sub_domains pour éviter les paquets.
             $cogQueue = $this->expandQuota($perRoundQuotas[$r]);
@@ -505,7 +511,8 @@ class MatchQuestionPlanner
                     $language,
                     $usedConceptIds,
                     $usedConceptFamilies,
-                    $usedGroupIds
+                    $usedGroupIds,
+                    $roundConceptFamilies
                 );
 
                 if ($picked === null) {
@@ -540,7 +547,8 @@ class MatchQuestionPlanner
 
                 $usedConceptIds[] = $picked->concept_id;
                 if ($picked->concept_family) {
-                    $usedConceptFamilies[] = $picked->concept_family;
+                    $usedConceptFamilies[] = $picked->concept_family;  // cross-round soft cooldown
+                    $roundConceptFamilies[] = $picked->concept_family;  // per-round hard exclusion
                 }
                 $usedGroupIds[] = $picked->id;
                 $lastSubDomain = $picked->sub_domain;
@@ -612,7 +620,13 @@ class MatchQuestionPlanner
     /**
      * Tire UNE question dans la banque selon les filtres demandés, avec
      * relaxation progressive : sub_domain exact → sub_domain libre → depth
-     * élargie → cognitive_type libre.
+     * élargie → family exacte → family inter-round seulement → aucune family.
+     *
+     * @param array $roundConceptFamilies  Families already used IN THE CURRENT
+     *   round. Unlike $usedConceptFamilies (cross-round soft exclusion), this
+     *   list is kept as a hard exclusion through all relaxation levels EXCEPT
+     *   the absolute-last-resort try. This prevents the same concept_family
+     *   from appearing twice within one round even when the bank is sparse.
      */
     private function pickOneFromBank(
         array $resolved,
@@ -623,15 +637,19 @@ class MatchQuestionPlanner
         string $language,
         array $usedConceptIds,
         array $usedConceptFamilies,
-        array $usedGroupIds
+        array $usedGroupIds,
+        array $roundConceptFamilies = []
     ): ?QuestionGroup {
+        // Merge cross-round + current-round families for the full family exclusion list.
+        $allFamilies = array_values(array_unique(array_merge($usedConceptFamilies, $roundConceptFamilies)));
+
         $base = [
             'depth_min'                => $resolved['depth_min'],
             'depth_max'                => $resolved['depth_max'],
             'cognitive_type'           => $cognitiveType,
             'language'                 => $language,
             'excluded_concept_ids'     => $usedConceptIds,
-            'excluded_concept_families'=> $usedConceptFamilies,
+            'excluded_concept_families'=> $allFamilies,
             'excluded_group_ids'       => $usedGroupIds,
             'limit'                    => 1,
         ];
@@ -653,22 +671,40 @@ class MatchQuestionPlanner
         // si le niveau joueur (ex: 3, 35, 55) n'existe pas dans la bank.
 
         // Relaxations successives
+        // Try 1 : exact sub_domain + full exclusions
         $tries = [];
         $tries[] = $base + ($subDomain ? ['sub_domain' => $subDomain] : []);
+
+        // Try 2 : drop sub_domain restriction
         if ($subDomain) {
-            $tries[] = $base; // libère le sub_domain
+            $tries[] = $base;
         }
-        // Élargit la depth ±1
+
+        // Try 3 : depth ±1 + sub_domain exact
         $widened = $base;
         $widened['depth_min'] = max(1, $resolved['depth_min'] - 1);
         $widened['depth_max'] = min(10, $resolved['depth_max'] + 1);
         $tries[] = $widened + ($subDomain ? ['sub_domain' => $subDomain] : []);
+
+        // Try 4 : depth ±1, no sub_domain
         $tries[] = $widened;
 
-        // Dernier recours : libère les exclusions concept_family (mais garde concept_id et group_id pour ne pas re-piocher la même)
-        $relaxFamily = $widened;
-        unset($relaxFamily['excluded_concept_families']);
-        $tries[] = $relaxFamily;
+        // Try 5 : drop cross-round family exclusions but KEEP current-round
+        // families hard-excluded. Prevents concept_family repetition within
+        // the same round even when the cross-match pool is exhausted.
+        if (!empty($roundConceptFamilies)) {
+            $relaxCrossRound = $widened;
+            $relaxCrossRound['excluded_concept_families'] = array_values(array_unique($roundConceptFamilies));
+            $tries[] = $relaxCrossRound;
+        }
+
+        // Try 6 (absolute last resort): drop ALL family exclusions. Keeps
+        // concept_id and group_id exclusions so the exact same question is
+        // never re-picked, but a repeated concept_family is accepted rather
+        // than leaving a slot empty.
+        $relaxAll = $widened;
+        unset($relaxAll['excluded_concept_families']);
+        $tries[] = $relaxAll;
 
         foreach ($tries as $filters) {
             $cands = $this->repo->findCandidates($filters);

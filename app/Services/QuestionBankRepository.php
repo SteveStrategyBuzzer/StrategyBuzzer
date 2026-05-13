@@ -94,8 +94,14 @@ class QuestionBankRepository
             });
         }
 
-        // Tri stable : favoriser les questions les moins utilisées en premier.
-        $q->orderBy('usage_count')->inRandomOrder();
+        // Weighted random: questions with lower usage_count get statistically
+        // higher draw probability without locking to the same group when the
+        // pool is small.  RANDOM() / (usage_count + 1) DESC gives true variety
+        // across games while still favouring less-used questions organically.
+        // The old orderBy('usage_count') caused lock-in: when the pool was
+        // sparse and every group had been used ≥1 time, the same single group
+        // (lowest usage_count) was always selected first every match.
+        $q->orderByRaw('RANDOM() / (CAST(usage_count AS float) + 1) DESC');
 
         if (!empty($filters['limit'])) {
             $q->limit((int) $filters['limit']);

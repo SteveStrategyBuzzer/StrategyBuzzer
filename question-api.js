@@ -1242,7 +1242,8 @@ CONTRAINTES:
 - ${answersHint}
 - ${concept_hint ? `Indice concept: ${concept_hint}` : 'Choisis un fait précis et vérifiable.'}
 - correct_answer_key DOIT être la même lettre dans TOUTES les langues
-- saviez_vous OBLIGATOIRE, anecdote concrète d'au moins 30 caractères
+- saviez_vous OBLIGATOIRE : anecdote concrète (≥30 caractères) portant EXCLUSIVEMENT sur le fait de la réponse correcte de CETTE question. Interdit : anecdote sur un autre fait du domaine, fait générique non lié à la bonne réponse, copie reformulée de la question.
+- Distracteurs (réponses incorrectes) : chacun doit être plausible pour quelqu'un qui confond un fait proche, mais UNIVOQUEMENT FAUX. Interdit : distractor évident ("Je ne sais pas"), reformulation de la bonne réponse, contradiction logique, ou réponse qui pourrait être partiellement correcte.
 - concept_family : EN ANGLAIS, kebab-case, 1-4 mots, taxonomie stable (ex: "basketball-rules", "australian-geography", "medieval-history")
 ${forbiddenBlock}
 Format JSON exact attendu:

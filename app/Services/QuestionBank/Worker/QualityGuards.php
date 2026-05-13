@@ -160,6 +160,78 @@ class QualityGuards
             return ['ok' => false, 'code' => 'depth_incoherent', 'detail' => "depth={$depth} text too short"];
         }
 
+        // 9. Correct-answer text frequency cap.
+        //
+        // When the same text ("Chine", "Picasso", "Australie"…) is already the
+        // correct answer for too many questions in the same sub_domain, adding
+        // one more makes the correct answer predictable by pattern-matching.
+        // We count existing FR rows where the keyed answer column matches.
+        //
+        // The check is skipped for true/false questions (Vrai/Faux are always
+        // the only two options and frequency is irrelevant).
+        if (($payload['question_type'] ?? 'qcm') === 'qcm') {
+            $frTr       = $translations['fr'] ?? $translations[array_key_first($translations)];
+            $correctKey = strtoupper((string) ($frTr['correct_answer_key'] ?? 'A'));
+            $columnMap  = ['A' => 'answer_a', 'B' => 'answer_b', 'C' => 'answer_c', 'D' => 'answer_d'];
+            $answerCol  = $columnMap[$correctKey] ?? null;
+            $answerText = $answerCol ? trim((string) ($frTr[$answerCol] ?? '')) : '';
+
+            if ($answerText !== '' && $answerCol !== null) {
+                $maxFreq = (int) ($guards['correct_answer_text_max_freq'] ?? 12);
+
+                $freq = DB::table('question_translations as qt')
+                    ->join('question_groups as qg', 'qg.id', '=', 'qt.question_group_id')
+                    ->where('qg.sub_domain', $payload['sub_domain'])
+                    ->where('qt.language', 'fr')
+                    ->where('qt.correct_answer_key', $correctKey)
+                    ->where("qt.{$answerCol}", $answerText)
+                    ->count();
+
+                if ($freq >= $maxFreq) {
+                    return [
+                        'ok'     => false,
+                        'code'   => 'correct_answer_overused',
+                        'detail' => "correct answer '{$answerText}' already appears {$freq}× in sub_domain '{$payload['sub_domain']}' (max {$maxFreq})",
+                    ];
+                }
+            }
+        }
+
+        // 10. Saviez_vous topic relevance — French only (cheap sanity check).
+        //
+        // The saviez_vous must be about the same fact as the question itself.
+        // We enforce a minimum Jaccard overlap between the saviez_vous tokens
+        // and the union of (question_text + answer texts). A saviez_vous that
+        // shares no tokens with the question is almost certainly cross-contaminated
+        // (fact from a different question injected by the LLM).
+        //
+        // Threshold 0.04 (≥1 shared 3-shingle in a typical 60-word text) is
+        // intentionally low to avoid false positives on correct paraphrases.
+        $frTr      = $translations['fr'] ?? null;
+        if ($frTr !== null) {
+            $sv = trim((string) ($frTr['saviez_vous'] ?? ''));
+            if ($sv !== '') {
+                $questionContext = implode(' ', array_filter([
+                    $frTr['question_text'] ?? '',
+                    $frTr['answer_a'] ?? '',
+                    $frTr['answer_b'] ?? '',
+                    $frTr['answer_c'] ?? '',
+                    $frTr['answer_d'] ?? '',
+                ]));
+                $overlap = $this->jaccardShingle($sv, $questionContext);
+                if ($overlap < 0.04 && mb_strlen($questionContext) > 20) {
+                    return [
+                        'ok'     => false,
+                        'code'   => 'saviez_vous_off_topic',
+                        'detail' => sprintf(
+                            'saviez_vous Jaccard overlap=%.3f with question context (< 0.04) — likely cross-contaminated',
+                            $overlap
+                        ),
+                    ];
+                }
+            }
+        }
+
         return ['ok' => true];
     }
 

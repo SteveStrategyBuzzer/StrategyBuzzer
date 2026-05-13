@@ -1,0 +1,122 @@
+Validation audit Shuffle acceptée. 
+
+Très important :
+la séparation est maintenant enfin claire entre :
+
+* erreurs runtime shuffle
+* erreurs Question Bank / IA
+
+Et ça change complètement la direction des prochains correctifs.
+
+──────────────────────────────
+VALIDATIONS ACCEPTÉES
+──────────────────────────────
+
+Je valide :
+
+* correct_answer_key → originalCorrectIndex
+* Fisher-Yates runtime
+* correctIndex après shuffle
+* resolveCorrectIndex()
+* room.shuffleState
+* Redis init_shuffle
+* selectedIndex joueur
+* correctAnswerText runtime
+* last_reveal pipeline
+* Guard1 / Guard2
+* RESULT runtime
+
+Très important :
+le pipeline shuffle normal ne semble PAS casser le scoring.
+
+──────────────────────────────
+ANOMALIES CORRIGÉES
+──────────────────────────────
+
+Je valide :
+
+1. suppression du +1
+
+* plus de faux Guard2 warnings
+* PHP_SHUFFLE_REVISION aligné Node
+
+2. log explicite indexOf=-1
+
+* plus de fallback silencieux dangereux
+
+Très important :
+excellent fix structurel.
+
+──────────────────────────────
+CONCLUSION IMPORTANTE
+──────────────────────────────
+
+Le groupe 685 était :
+
+* une erreur contenu IA / DB
+* PAS un bug shuffle runtime
+
+Donc maintenant :
+on doit recentrer les correctifs vers :
+
+* qualité Question Bank
+* planner rounds
+* variants
+* distractors
+* Saviez-vous
+* anti-duplicate
+* cohérence réponses
+
+──────────────────────────────
+PATCH GROUP SUIVANT
+──────────────────────────────
+
+Je veux maintenant un audit + correctifs réels sur :
+
+1. planner inter-rounds
+
+* mêmes questions
+* variantes trop proches
+* répétitions manche 1/2/3
+
+2. Saviez-vous
+
+* faux facts
+* facts d’une autre question
+* facts contradictoires
+
+3. validation réponse correcte
+
+* détecter :
+  · mauvaise bonne réponse IA
+  · contradiction choices
+  · distractor meilleur que la bonne réponse
+  · variantes incohérentes
+
+4. diversité gameplay
+
+* éviter :
+  · mêmes positions
+  · mêmes concepts
+  · mêmes formulations
+  · mêmes familles dans la même manche
+
+──────────────────────────────
+JE VEUX MAINTENANT
+──────────────────────────────
+
+* audit planner réel
+* audit generator réel
+* audit concept_family réel
+* audit distractors réel
+* patchs réels
+* validation runtime réelle
+
+Et :
+PATCH → runtime → validation.
+
+Plus seulement :
+
+* instrumentation
+* hypothèses
+* logs.

@@ -207,6 +207,12 @@ return [
             // Reject when concept_family already accounts for more than this
             // share of a single segment (capped before insertion).
             'concept_family_segment_max_share' => 0.40,
+
+            // Reject when the same correct-answer TEXT already appears as the
+            // correct answer for this many questions in the same sub_domain.
+            // Prevents "Chine" (23x), "Indonésie" (22x) style answer clustering
+            // that lets players pattern-match the right answer without knowing.
+            'correct_answer_text_max_freq' => 12,
         ],
 
         // Redis keys (single source of truth so health endpoint can read them).
