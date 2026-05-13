@@ -174,7 +174,7 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-submit">Se connecter</button>
+        <button type="submit" class="btn-submit" onclick="this.disabled=true;this.textContent='Connexion…';this.form.submit();">Se connecter</button>
     </form>
 
     <div class="register-link">

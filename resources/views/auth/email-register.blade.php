@@ -155,7 +155,7 @@
             <input type="password" id="password_confirmation" name="password_confirmation" placeholder="••••••••" required>
         </div>
 
-        <button type="submit" class="btn-submit">Créer mon compte</button>
+        <button type="submit" class="btn-submit" onclick="this.disabled=true;this.textContent='Création…';this.form.submit();">Créer mon compte</button>
     </form>
 
     <div class="login-link">
