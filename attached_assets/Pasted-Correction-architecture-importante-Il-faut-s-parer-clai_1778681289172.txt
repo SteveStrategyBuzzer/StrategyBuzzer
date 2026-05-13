@@ -1,0 +1,74 @@
+Correction architecture importante :
+
+Il faut séparer clairement deux choses :
+
+1. Shuffle Réponse
+   Objectif :
+
+* randomiser l’ordre des réponses à l’ouverture de la page Réponse
+* tous les joueurs doivent voir le même ordre
+* ordre stable pendant la réponse
+* pas de mouvement toutes les 2 secondes
+* sert à éviter que la bonne réponse soit toujours A / position fixe
+
+Règle :
+Node choisit l’ordre initial.
+Node envoie choices + correctIndex + shuffleRevision.
+Le client affiche cet ordre.
+Même ordre pour tous les joueurs.
+
+2. Shuffle Skill
+   Objectif :
+
+* pouvoir spécial qui perturbe le joueur
+* les réponses changent de position toutes les 2 secondes
+* le joueur doit avoir plus de difficulté à lire/trouver la bonne réponse
+* seulement quand le skill shuffle_answers est activé
+
+Règle :
+Node continue à émettre answer_order_changed toutes les 2 secondes.
+Client applique l’ordre reçu.
+Guard1 : après answered=true, plus aucun reorder.
+Guard2 : answer_revealed doit utiliser la revision scorée.
+
+Donc :
+
+* Shuffle Réponse = random initial stable
+* Shuffle Skill = re-shuffle dynamique toutes les 2 secondes
+
+Important :
+les deux doivent rester Node-authoritative.
+
+À corriger dans l’analyse précédente :
+Le fait d’avoir remis rev=0 en ordre original règle le bug PHP/Node, mais ça désactive le Shuffle Réponse initial.
+Ce n’est pas la cible finale.
+
+La cible finale doit être :
+
+* page Réponse ouvre déjà avec un ordre random Node-authoritative
+* cet ordre est identique pour tous les joueurs
+* ce n’est PAS le skill
+* le skill ajoute ensuite le re-shuffle toutes les 2 secondes
+
+Donc maintenant je veux un audit de conception :
+comment faire Shuffle Réponse initial sans désaligner PHP/Node ?
+
+Options à étudier :
+A. Node stocke l’ordre initial random dans Redis avant rendu PHP de /duo/answer
+B. Laravel demande à Node l’ordre officiel au chargement de la page Réponse
+C. duo_answer reçoit game_state au load et applique immédiatement l’ordre Node avant interaction
+D. sessionStorage depuis question_published vers answer page
+
+Je veux comparer :
+
+* stabilité
+* reconnect
+* même ordre pour les deux joueurs
+* correctIndex
+* showResult
+* sons
+* skills
+* risque de flash visuel
+* complexité
+
+Ne pas patcher avant cet audit.
