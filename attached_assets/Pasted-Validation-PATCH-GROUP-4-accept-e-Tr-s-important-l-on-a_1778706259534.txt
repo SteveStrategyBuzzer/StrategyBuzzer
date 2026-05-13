@@ -1,0 +1,172 @@
+Validation PATCH GROUP 4 acceptée. 
+
+Très important :
+là on attaque enfin les vraies causes structurelles de répétition et de qualité Question Bank.
+
+──────────────────────────────
+PATCH A — RANDOMISATION PONDÉRÉE
+──────────────────────────────
+
+Validation acceptée :
+
+Avant :
+
+* mêmes groupes dominants
+* mêmes ancres
+* mêmes questions entre parties
+
+Après :
+RANDOM() / (usage_count + 1)
+
+Très important :
+excellent compromis :
+
+* diversité réelle
+* sans ignorer totalement usage_count
+
+Je valide :
+
+* disparition progressive des groupes ancres
+* meilleure rotation gameplay
+
+──────────────────────────────
+PATCH B — QUALITY GUARD 9
+──────────────────────────────
+
+Validation acceptée :
+
+Plafond correct_answer_text par sous-domaine.
+
+Très important :
+excellent fix gameplay.
+
+Exemples validés :
+
+* Chine
+* Indonésie
+* Canada
+* Pablo Picasso
+* réponse "3"
+
+ne pourront plus dominer la banque.
+
+Très important :
+ça réduit énormément :
+
+* impression répétitive
+* prédictibilité
+* sensation IA “bloquée”
+
+──────────────────────────────
+PATCH C — QUALITY GUARD 10
+──────────────────────────────
+
+Validation acceptée :
+
+saviez_vous_off_topic
+
+Très important :
+excellent fix structurel.
+
+Le Saviez-vous doit maintenant :
+
+* parler du vrai sujet de la question
+* pas d’un concept voisin
+* pas d’une autre question
+
+Très important :
+ça corrige exactement :
+
+* facts incohérents
+* facts contradictoires
+* facts sans rapport
+
+──────────────────────────────
+PATCH D — PROMPT IA
+──────────────────────────────
+
+Validation acceptée :
+
+Nouvelles contraintes :
+
+* distracteurs plausibles
+* mais clairement faux
+* pas reformulation
+* pas contradiction logique
+
+Très important :
+excellent fix qualité gameplay.
+
+──────────────────────────────
+PATCH E — PLANNER RELAXATION
+──────────────────────────────
+
+Validation acceptée.
+
+Très important :
+la séparation :
+
+* cross-round
+* intra-round
+
+est maintenant enfin propre.
+
+Je valide fortement :
+Try 5 garde encore protection intra-round.
+
+Excellent fix structurel.
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Je veux validation runtime réelle longue durée.
+
+Objectifs :
+
+1. plusieurs parties Solo/Duo
+
+* vérifier disparition progressive répétitions
+
+2. vérifier :
+
+* moins de mêmes réponses correctes
+* moins de mêmes familles
+* moins de mêmes formulations
+
+3. vérifier :
+
+* Saviez-vous cohérents
+* distracteurs plausibles
+* moins de contradictions
+
+4. vérifier :
+
+* manche 1 ≠ manche 2
+* manche 2 ≠ manche 3
+
+5. vérifier :
+
+* rotation gameplay réellement plus variée
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Je ne veux PAS encore :
+
+* gros refactor Question Bank
+* suppression massive DB
+* rebuild complet banque
+
+Je veux d’abord :
+observer le comportement réel après ces guards.
+
+Puis :
+seulement ensuite,
+on décidera :
+
+* nettoyage rétroactif
+* migration qualité
+* rebuild segments faibles
+* ou enrichissement ciblé.
