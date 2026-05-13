@@ -1986,7 +1986,12 @@ class DuoController extends Controller
                     $initShuffle = json_decode($rawJson, true);
                     if (is_array($initShuffle) && isset($initShuffle['choices']) && is_array($initShuffle['choices'])) {
                         $questionData['choices'] = $initShuffle['choices'];
-                        $phpShuffleRevision = (int)($initShuffle['revision'] ?? 0) + 1;
+                        // Use Node's revision as-is (no +1). Guard 2 in resolveCorrectIndex
+                        // matches clientRevision against state.revision exactly. Adding +1
+                        // caused a systematic mismatch → spurious Guard 2 warnings in Node
+                        // logs every round (correctness was preserved via fallback, but the
+                        // warning polluted logs and obscured real Guard 2 events).
+                        $phpShuffleRevision = (int)($initShuffle['revision'] ?? 0);
                         \Log::debug('[DUO-ANSWER] init_shuffle loaded (raw predis)', [
                             'key'      => $initKey,
                             'revision' => $phpShuffleRevision,

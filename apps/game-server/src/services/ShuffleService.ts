@@ -69,9 +69,19 @@ export function shuffleOnce(
   }
 
   const newCorrectIndex = shuffled.indexOf(correctText);
+  if (newCorrectIndex < 0) {
+    // Should never happen: correctText came from choices[] so indexOf must find it.
+    // If it does, log loudly so a bad DB entry (empty/duplicate answer) is visible.
+    console.error(
+      `[ShuffleService] indexOf returned -1 for correctText="${correctText}" ` +
+      `choices=${JSON.stringify(shuffled)} — falling back to index 0. ` +
+      `Check DB for empty or duplicate answer options.`,
+    );
+    return { choices: shuffled, correctIndex: 0 };
+  }
   return {
     choices: shuffled,
-    correctIndex: newCorrectIndex < 0 ? 0 : newCorrectIndex,
+    correctIndex: newCorrectIndex,
   };
 }
 
