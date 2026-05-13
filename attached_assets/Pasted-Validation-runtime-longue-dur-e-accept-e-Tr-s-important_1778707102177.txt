@@ -1,0 +1,124 @@
+Validation runtime longue durée acceptée. 
+
+Très important :
+les résultats confirment maintenant que :
+
+* le planner fonctionne correctement
+* les guards fonctionnent correctement
+* les patches diversité fonctionnent réellement
+* le problème restant principal est maintenant :
+  densité Question Bank.
+
+──────────────────────────────
+VALIDATIONS MAJEURES
+──────────────────────────────
+
+Je valide :
+
+1. 30/30 bonnes réponses uniques
+
+* énorme amélioration gameplay
+* plus de sensation IA répétitive
+
+2. Saviez-vous
+
+* cohérents
+* longs
+* pertinents
+* plus de cross-contamination visible
+
+3. concept_family
+
+* 0 répétition intra-manche
+* 0 répétition inter-manches
+
+Excellent résultat.
+
+4. niveaux
+
+* isolation parfaite des pools
+* excellent comportement profondeur/difficulté
+
+5. groupe 685
+
+* définitivement corrigé
+* contenu maintenant valide
+
+──────────────────────────────
+POINT CRITIQUE CONFIRMÉ
+──────────────────────────────
+
+Le 57% overlap restant :
+
+* n’est PAS un bug planner
+* n’est PAS un bug random
+* n’est PAS un bug runtime
+
+C’est maintenant :
+un problème densité banque.
+
+Très important :
+ça confirme que le prochain chantier doit être :
+
+ENRICHISSEMENT CIBLÉ
+et non :
+refactor planner.
+
+──────────────────────────────
+PROCHAIN CHANTIER
+──────────────────────────────
+
+Je veux maintenant :
+
+AUDIT SEGMENTS FAIBLES
+
+Objectifs :
+identifier précisément :
+
+* sous-domaines faibles
+* depth faibles
+* cognitive_types faibles
+* familles sous-représentées
+
+Je veux :
+
+1. heatmap réelle banque
+
+* sub_domain
+* cognitive_type
+* depth_range
+* nb groupes
+
+2. identifier :
+
+* segments sous 40 groupes
+* segments sous 25 groupes
+* segments critiques sous 15 groupes
+
+3. identifier :
+
+* depth trous
+* familles dominantes
+* thèmes dominants
+* réponses dominantes
+
+4. worker targeting
+
+* enrichissement ciblé
+* pas génération aveugle
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Je ne veux PAS :
+
+* rebuild complet
+* reset usage_count
+* purge massive
+* changement planner majeur
+
+Le runtime/planner est maintenant suffisamment stable.
+
+Le vrai gain maintenant :
+c’est enrichir intelligemment la banque faible.
