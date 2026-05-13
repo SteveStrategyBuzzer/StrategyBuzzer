@@ -1,0 +1,160 @@
+Parfait.
+
+Là on voit enfin :
+
+* des vrais PATCHES runtime
+* des corrections structurelles
+* des validations Redis réelles
+* un vrai restart Game Server
+
+Je valide le travail effectué sur PATCH GROUP 1. 
+
+──────────────────────────────
+VALIDATION PATCH-4a
+──────────────────────────────
+
+Validation acceptée :
+
+* rawGameRedisGet()
+* suppression des lectures Redis prefixées
+* DB0 confirmée
+* questionIndex réel confirmé
+* scores live confirmés
+* funFact confirmé
+
+Très important :
+ça corrige enfin :
+
+* question figée à 1/10
+* scores stale
+* RESULT désynchronisé
+
+──────────────────────────────
+VALIDATION PATCH-4b
+──────────────────────────────
+
+Validation acceptée :
+
+Node écrit maintenant :
+room:{roomId}:last_reveal:{playerId}
+
+Très important :
+ça restaure enfin :
+
+* résultat runtime réel
+* isCorrect
+* pointsEarned
+* playerBuzzed
+* playerAnswer
+* correctAnswer
+
+Je valide aussi :
+TTL 5 minutes = bon choix.
+
+──────────────────────────────
+VALIDATION PATCH-4c
+──────────────────────────────
+
+Validation acceptée :
+
+renderResultView()
+lit maintenant :
+last_reveal:{userId}
+
+Très important :
+ça doit maintenant corriger :
+
+* 0 points permanents
+* Pas Buzzer permanent
+* highlights absents
+* ✓ / ✗ absents
+* réponse joueur absente
+
+──────────────────────────────
+VALIDATION PATCH-4d
+──────────────────────────────
+
+Validation acceptée :
+
+showRoundScoreboard()
+utilise maintenant :
+scores live Redis.
+
+Très important :
+plus de stale session/DB.
+
+──────────────────────────────
+VALIDATION PATCH-4e
+──────────────────────────────
+
+Validation acceptée :
+
+#gameHeader masqué.
+
+Ça doit maintenant corriger :
+
+* bloc parasite latéral
+* layout poussé hors écran
+
+──────────────────────────────
+POINT IMPORTANT
+──────────────────────────────
+
+Je valide l’analyse :
+
+Q7 a été révélée AVANT restart.
+Donc :
+absence de last_reveal attendue pour cette question seulement.
+
+À partir de Q8 :
+pipeline complet actif.
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Je vais refaire une vraie question complète après restart.
+
+Je veux observer :
+
+1. RESULT
+
+* vrai numéro question
+* vrai score
+* vrai statut buzz
+* vrai cumulatif
+
+2. highlights
+
+* vert/rouge visibles
+* ✓ / ✗ visibles
+* bonne réponse visible
+
+3. Saviez-vous
+
+* présent si disponible
+
+4. ROUND_END
+
+* plus de bloc parasite
+* layout stable
+
+5. audio
+
+* bonne réponse audible
+* mauvaise réponse audible
+* aucun double play
+
+6. Redis
+
+* last_reveal écrit correctement
+
+Si :
+
+* 0 points revient
+* Pas Buzzer revient
+* highlight absent
+* funFact absent
+* last_reveal absent après restart
+
+→ STOP immédiat + logs Redis/F12 exacts.
