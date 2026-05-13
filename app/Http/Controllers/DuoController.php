@@ -1877,19 +1877,30 @@ class DuoController extends Controller
         // immediately after the Fisher-Yates shuffle at rev=0. PHP reads it here so the
         // Answer page renders the Node-authoritative shuffled order on first load —
         // eliminating any flash or index misalignment between PHP and Node.
+        // PATCH-3b — Use a raw Predis\Client with NO prefix to read Node-written keys.
+        // Root cause: REDIS_CLIENT=predis + global options.prefix='strategy_buzzer_database_'
+        // causes Laravel's Redis facade to prepend the prefix, so 'game_server' connection
+        // reads 'strategy_buzzer_database_room:...:q4:init_shuffle' (missing key) instead of
+        // 'room:...:q4:init_shuffle' (what Node actually wrote). Raw Predis bypasses this.
         $phpShuffleRevision = 0;
         if ($roomId && isset($currentQuestionNumber)) {
             $qIdx = max(0, (int)$currentQuestionNumber - 1);
             try {
-                $redis   = \Illuminate\Support\Facades\Redis::connection('game_server');
+                $redisCfg = config('database.redis.game_server', []);
+                $rawPredis = new \Predis\Client([
+                    'host'     => $redisCfg['host']     ?? env('REDIS_HOST', '127.0.0.1'),
+                    'port'     => (int)($redisCfg['port']     ?? env('REDIS_PORT', 6379)),
+                    'database' => (int)($redisCfg['database'] ?? env('REDIS_DB', 0)),
+                    'password' => ($redisCfg['password'] ?? null) ?: null,
+                ]);
                 $initKey = "room:{$roomId}:q{$qIdx}:init_shuffle";
-                $rawJson = $redis->get($initKey);
+                $rawJson = $rawPredis->get($initKey);
                 if ($rawJson) {
                     $initShuffle = json_decode($rawJson, true);
                     if (is_array($initShuffle) && isset($initShuffle['choices']) && is_array($initShuffle['choices'])) {
                         $questionData['choices'] = $initShuffle['choices'];
-                        $phpShuffleRevision = (int)($initShuffle['revision'] ?? 0);
-                        \Log::debug('[DUO-ANSWER] init_shuffle loaded', [
+                        $phpShuffleRevision = (int)($initShuffle['revision'] ?? 0) + 1;
+                        \Log::debug('[DUO-ANSWER] init_shuffle loaded (raw predis)', [
                             'key'      => $initKey,
                             'revision' => $phpShuffleRevision,
                             'count'    => count($initShuffle['choices']),
@@ -1897,7 +1908,7 @@ class DuoController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-                \Log::warning('[DUO-ANSWER] init_shuffle Redis read failed', ['error' => $e->getMessage()]);
+                \Log::warning('[DUO-ANSWER] init_shuffle raw predis read failed', ['error' => $e->getMessage()]);
             }
         }
 

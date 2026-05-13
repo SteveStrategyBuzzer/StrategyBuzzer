@@ -913,7 +913,7 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     let timeLeft = ANSWER_TIME;
     let timerInterval = null;
     let answered = false;
-    let selectedIndex = null;
+    let selectedIndex = -1;
     let isRedirecting = false;
     let historianSkillUsed = false;
     // Patch 4 — Node is the sole authority on the answer countdown.
@@ -994,6 +994,36 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
     const correctSound = document.getElementById('correctSound');
     const incorrectSound = document.getElementById('incorrectSound');
     let answerButtons = document.querySelectorAll('.answer-button');
+
+    // Audio pre-warm — bypass autoplay policy.
+    // On the answer page the player may not have interacted yet when answer_revealed fires.
+    // We attempt a muted play()+pause() immediately (succeeds if the user interacted on
+    // any previous page) and fall back to a one-shot listener on first click/touch.
+    (function _preWarmAudio() {
+        var sounds = [correctSound, incorrectSound].filter(Boolean);
+        function unlock() {
+            sounds.forEach(function(s) {
+                try {
+                    s.muted = true;
+                    var p = s.play();
+                    if (p && typeof p.then === 'function') {
+                        p.then(function() { s.pause(); s.currentTime = 0; s.muted = false; })
+                         .catch(function() { s.muted = false; });
+                    } else {
+                        s.muted = false;
+                    }
+                } catch(e) { s.muted = false; }
+            });
+        }
+        unlock();
+        function onInteract() {
+            unlock();
+            document.removeEventListener('click', onInteract, true);
+            document.removeEventListener('touchstart', onInteract, true);
+        }
+        document.addEventListener('click', onInteract, true);
+        document.addEventListener('touchstart', onInteract, true);
+    })();
 
     
     function calculatePotentialPoints(remainingTime) {
@@ -1256,8 +1286,10 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
 
         // Normalize indices as numbers to avoid type-coercion mismatches.
+        // selectedIndex is -1 when the player never selected (non-buzzer or timeout).
         var _correctIndex  = Number(correctIndex);
-        var _selectedIndex = Number(selectedIndex);
+        var _selectedIndex = (selectedIndex !== null && selectedIndex !== undefined && Number(selectedIndex) >= 0)
+                            ? Number(selectedIndex) : -1;
 
         // Highlight visuel sur les boutons de réponse :
         //  - bouton sélectionné par le joueur → vert (.correct) si bonne réponse,

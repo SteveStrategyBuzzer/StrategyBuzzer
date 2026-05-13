@@ -1,0 +1,94 @@
+STOP runtime validation.
+
+Bug critique confirmé après session réelle :
+
+Quand le joueur répond :
+
+* les réponses affichées deviennent des dates ou du contenu qui n’a aucun rapport avec la question
+
+Mais :
+
+* si le joueur ne répond pas,
+* les bonnes réponses restent cohérentes avec la question.
+
+Donc :
+le problème apparaît pendant ou après le submit réponse.
+
+Très important :
+cela ressemble fortement à un désalignement runtime entre :
+
+* choices affichés
+* selectedIndex
+* correctIndex
+* state.question
+* answer_revealed
+* ou reconstruction DOM après réponse.
+
+Je veux un audit ciblé immédiat avant tout patch.
+
+──────────────────────────────
+À VÉRIFIER
+──────────────────────────────
+
+A — answer_revealed
+
+* payload complet réel envoyé par Node
+* vérifier :
+  · questionId
+  · choices
+  · correctIndex
+  · selectedIndex
+  · shuffleRevision
+  · currentQuestion
+* vérifier si answer_revealed contient encore un ancien tableau choices
+
+B — showResult()
+
+* vérifier si showResult reconstruit les boutons à partir d’un mauvais dataset
+* vérifier si les boutons runtime utilisent encore :
+  · CHOICES baked PHP
+  · state.currentQuestion.choices
+  · ou un ancien cache
+* vérifier si selectedIndex pointe vers un tableau différent
+
+C — applyAnswerOrderFromNode()
+
+* vérifier si un reorder tardif arrive après answered=true
+* vérifier si le DOM est réécrit après réponse
+* vérifier si answer_order_changed continue après réponse
+
+D — RESULT reconstruction
+
+* vérifier si _onAnswerState ou _onAnswerGameState reconstruit les réponses après submit
+* vérifier si un state stale écrase les boutons
+
+E — données Question Bank
+
+* vérifier si les “dates” proviennent :
+  · d’une autre question
+  · d’un Saviez-vous
+  · d’un metadata field
+  · d’un previous question cache
+* vérifier si les choices changent après submit
+
+──────────────────────────────
+JE VEUX MAINTENANT
+──────────────────────────────
+
+* logs F12 complets du moment exact du bug
+* payload answer_revealed réel
+* payload answer_order_changed réel
+* contenu exact des choices avant submit
+* contenu exact des choices après submit
+* questionId avant/après
+* screenshots si possible
+
+Très important :
+le fait que :
+
+* sans répondre = tout est correct
+* en répondant = corruption affichage
+
+prouve probablement :
+un problème runtime post-submit,
+pas un problème Question Bank initial.
