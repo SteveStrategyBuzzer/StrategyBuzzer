@@ -1,0 +1,64 @@
+STOP validation runtime.
+
+Observations réelles en match Duo :
+
+1. Répétition des questions aux mêmes positions dans chaque manche.
+2. Shuffle des réponses peu efficace.
+3. Les blocs Questions des 2 manches sont identiques.
+4. Les réponses dans les 2 manches sont presque toutes sans shuffle visible.
+5. Question 6 beaucoup trop longue pour le temps de lecture.
+6. Question 6 répétée dans les 2 manches, mais en manche 2 les réponses étaient mieux structurées et plus courtes.
+
+Je veux un audit ciblé avant de faire une patch.
+
+À vérifier :
+
+A — MatchQuestionPlanner / sélection des questions
+
+* pourquoi les mêmes blocs reviennent dans les mêmes positions
+* pourquoi manche 1 et manche 2 ont les mêmes questions
+* vérifier seed/randomization
+* vérifier exclusion des questions déjà utilisées dans le match
+* vérifier exclusion des groupes déjà utilisés dans la manche précédente
+* vérifier si le planner réutilise le même plan pour les deux manches
+
+B — Shuffle réponses
+
+* vérifier si answer_order_changed est réellement émis
+* vérifier si shuffle_answers skill est réellement actif
+* vérifier si applyAnswerOrderFromNode est appelé
+* vérifier si le DOM reorder se fait vraiment
+* vérifier pourquoi la majorité des réponses restent sans shuffle visible
+* vérifier si rev=1/rev=2 arrivent en console
+
+C — Longueur des questions/réponses
+
+* vérifier la question 6
+* mesurer longueur question + réponses
+* ajouter une règle max_length lisible selon temps de lecture
+* éviter les questions trop longues pour un timer court
+* vérifier pourquoi manche 2 a des réponses plus courtes pour le même bloc
+
+Important :
+ne pas patcher avant l’audit.
+
+Je veux :
+
+* logs du planner
+* plan exact des questions manche 1 et manche 2
+* group_id de chaque bloc
+* question_id / concept_id / concept_family
+* ordre des réponses par manche
+* shuffleRevision par bloc
+* preuve si les blocs sont réutilisés volontairement ou par bug
+
+Objectif :
+distinguer :
+
+* manque de profondeur Question Bank
+  vs
+* bug planner/cache/seed
+  vs
+* bug shuffle runtime
+  vs
+* problème de longueur contenu.
