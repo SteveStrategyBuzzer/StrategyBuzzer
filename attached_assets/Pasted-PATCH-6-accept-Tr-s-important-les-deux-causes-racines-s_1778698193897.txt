@@ -1,0 +1,124 @@
+PATCH-6 accepté. 
+
+Très important :
+les deux causes racines sont maintenant clairement identifiées et corrigées.
+
+──────────────────────────────
+PATCH-6a — TEXTE RÉPONSE ERRONÉ
+──────────────────────────────
+
+Cause confirmée :
+
+* question.choices = array original
+* playerAnswer = index espace shufflé
+
+Donc :
+question.choices[playerAnswer]
+lisait le mauvais texte.
+
+Très important :
+ça explique parfaitement :
+
+* réponses mélangées
+* textes différents dans RESULT
+* réponses sans rapport
+* confusion runtime après shuffle
+
+Je valide la correction :
+
+room.shuffleState.choices
+comme source unique runtime.
+
+Très important :
+le RESULT lit maintenant :
+le même ordre que le joueur a réellement vu.
+
+Je valide :
+
+* buzzer path
+* participatif path
+
+──────────────────────────────
+PATCH-6b — DOUBLE BONNE RÉPONSE
+──────────────────────────────
+
+Cause confirmée :
+
+Le Blade affichait toujours :
+
+* Votre réponse
+* Bonne réponse
+
+même quand :
+$wasCorrect = true
+
+Résultat :
+double ligne identique.
+
+Je valide :
+@if(!$wasCorrect)
+
+Très important :
+maintenant :
+
+Bonne réponse :
+
+* une seule ligne verte + ✓
+
+Mauvaise réponse :
+
+* réponse joueur
+* bonne réponse distincte
+
+Exactement la cible UX correcte.
+
+──────────────────────────────
+VALIDATION NODE
+──────────────────────────────
+
+Je valide :
+
+* Game Server restart propre
+* aucune erreur compilation
+* aucun crash runtime
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Je vais refaire une validation runtime réelle.
+
+Checklist :
+
+1. bonne réponse
+
+* une seule ligne verte
+* aucun doublon
+
+2. mauvaise réponse
+
+* vraie réponse joueur affichée
+* vraie bonne réponse affichée
+* textes cohérents avec page Answer
+
+3. shuffle
+
+* RESULT correspond exactement à l’ordre vu
+
+4. participatif
+
+* aucun texte vide incorrect
+* aucun texte provenant d’une autre question
+
+5. Saviez-vous
+
+* cohérent avec la bonne réponse
+
+Si :
+
+* réponse différente de la page Answer
+* double highlight
+* texte sans rapport
+* Saviez-vous faux
+
+→ STOP immédiat + logs exacts.
