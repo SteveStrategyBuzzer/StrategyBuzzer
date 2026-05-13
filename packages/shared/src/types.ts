@@ -336,7 +336,7 @@ export const DEFAULT_TIMERS: TimersConfig = {
   result: 30000,
   sync: 8000,
   waiting: 5000,
-  roundScoreboard: 30000,
+  roundScoreboard: 300000,
   tiebreakerChoice: 10000,
   matchEnd: 10000,
 };
@@ -351,7 +351,7 @@ export const DEFAULT_DUO_TIMERS: TimersConfig = {
   result: 60000,
   sync: 8000,
   waiting: 5000,
-  roundScoreboard: 30000,
+  roundScoreboard: 300000,
   tiebreakerChoice: 10000,
   matchEnd: 10000,
 };
