@@ -1063,12 +1063,15 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
             </div>
         @endif
         
+        {{-- Only show "Bonne réponse" when the player was wrong — redundant when correct --}}
+        @if(!$wasCorrect)
         <div class="answer-display answer-correct {{ $scrollSkillAvailable ? 'scroll-skill-clickable' : '' }}" 
              @if($scrollSkillAvailable) onclick="useScrollSkill({{ $pointsToRecover }})" style="cursor: pointer;" @endif>
             <span class="answer-icon">✓</span>
             <span class="answer-label">{{ __('Bonne réponse') }} :</span>
             <span class="answer-text">@if($scrollSkillAvailable)📜 @endif{{ $question['correct_answer'] ?? $question['answer'] ?? '-' }}</span>
         </div>
+        @endif
     </div>
     
     @if($scrollSkillAvailable)

@@ -621,10 +621,14 @@ export class GameOrchestrator {
       // can render the correct header/points/answers without relying on the stale
       // PHP session (which is never updated in Node-authoritative Duo mode).
       {
+        // PATCH-6a (buzzer path): use shuffleState.choices (already shuffled) for
+        // text lookups — question.choices is the ORIGINAL array while playerAnswer
+        // and resolvedCorrectIndex are indices in SHUFFLED space.
+        const _buzzLookupChoices = room.shuffleState?.choices ?? question.choices;
         const playerAnswerText: string = (() => {
           if (!question) return "";
           if (question.type === "MCQ" && typeof playerAnswer === "number") {
-            return String(question.choices?.[playerAnswer] ?? "");
+            return String(_buzzLookupChoices?.[playerAnswer] ?? "");
           }
           if (question.type === "TRUE_FALSE") {
             return playerAnswer ? "Vrai" : "Faux";
@@ -634,7 +638,7 @@ export class GameOrchestrator {
         const correctAnswerText: string = (() => {
           if (!question) return "";
           if (question.type === "MCQ") {
-            return String(question.choices?.[resolvedCorrectIndex] ?? "");
+            return String(_buzzLookupChoices?.[resolvedCorrectIndex] ?? "");
           }
           if (question.type === "TRUE_FALSE") {
             return question.correctBool ? "Vrai" : "Faux";
@@ -772,10 +776,12 @@ export class GameOrchestrator {
 
       // PATCH-4b (participatif path) — Write per-player reveal data for non-buzzers.
       {
+        // PATCH-6a (participatif path): same shuffle-choices fix as buzzer path.
+        const _partLookupChoices = room.shuffleState?.choices ?? question.choices;
         const partPlayerAnswerText: string = (() => {
           if (!question) return "";
           if (question.type === "MCQ" && typeof ans.answer === "number") {
-            return String(question.choices?.[ans.answer] ?? "");
+            return String(_partLookupChoices?.[ans.answer] ?? "");
           }
           if (question.type === "TRUE_FALSE") {
             return ans.answer ? "Vrai" : "Faux";
@@ -785,7 +791,7 @@ export class GameOrchestrator {
         const partCorrectAnswerText: string = (() => {
           if (!question) return "";
           if (question.type === "MCQ") {
-            return String(question.choices?.[partResolvedCorrectIndex] ?? "");
+            return String(_partLookupChoices?.[partResolvedCorrectIndex] ?? "");
           }
           if (question.type === "TRUE_FALSE") {
             return question.correctBool ? "Vrai" : "Faux";
