@@ -1,0 +1,107 @@
+Important :
+
+on a maintenant assez de :
+
+* logs
+* audits
+* instrumentation
+* validations pipeline
+
+Les causes racines principales ont déjà été identifiées.
+
+Donc :
+STOP phase analyse prolongée.
+START corrections runtime réelles.
+
+Je veux maintenant :
+PATCH → runtime test → validation → patch suivant.
+
+──────────────────────────────
+RÈGLES OBLIGATOIRES
+──────────────────────────────
+
+* un seul chantier à la fois
+* patchs chirurgicaux
+* slices réels avant patch
+* patch du bas vers le haut
+* validation runtime après chaque patch
+* aucun patch aveugle
+* aucun refactor massif
+
+──────────────────────────────
+ORDRE OBLIGATOIRE
+──────────────────────────────
+
+PATCH GROUP 1
+RESULT + ROUND_END
+
+Bugs à corriger :
+
+1. bloc parasite latéral Fin manche
+2. RESULT affiche toujours :
+   · 1/10
+   · 0 points
+   · Pas Buzzer
+3. pointage cumulatif incorrect
+4. chrono RESULT reste plein à 60 sec
+5. highlights vert/rouge absents
+6. ✓ / ✗ absents
+7. Saviez-vous absent presque tout le match
+
+Je veux :
+
+* fichiers exacts
+* source exacte des mauvaises données
+* patchs exacts
+* validation runtime réelle après patch
+
+──────────────────────────────
+PATCH GROUP 2
+Planner rounds
+
+Bugs :
+
+* mêmes blocs manche 1/manche 2
+* mêmes positions
+* même flow
+
+Je veux :
+
+* patch planner réel
+* exclusion inter-rounds
+* validation runtime réelle
+
+──────────────────────────────
+PATCH GROUP 3
+Audio buzzeur
+
+Je veux :
+
+* validation runtime buzzeur réel
+* aucun double play
+* aucun AbortError
+* aucun son parasite
+
+──────────────────────────────
+PATCH GROUP 4
+Skill Shuffle runtime
+
+Je veux :
+
+* rev=1/rev=2 réels
+* reorder visible
+* stop après answered=true
+* validation runtime réelle
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Je ne veux plus :
+
+* seulement des audits
+* seulement des logs
+* seulement des hypothèses
+
+Je veux maintenant :
+des corrections visibles dans le runtime réel.

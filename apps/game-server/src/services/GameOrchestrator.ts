@@ -617,6 +617,44 @@ export class GameOrchestrator {
         skillsTriggered: scoreEffectResult.skillsTriggered,
       });
 
+      // PATCH-4b — Write per-player reveal data to Redis so PHP's renderResultView()
+      // can render the correct header/points/answers without relying on the stale
+      // PHP session (which is never updated in Node-authoritative Duo mode).
+      {
+        const playerAnswerText: string = (() => {
+          if (!question) return "";
+          if (question.type === "MCQ" && typeof playerAnswer === "number") {
+            return String(question.choices?.[playerAnswer] ?? "");
+          }
+          if (question.type === "TRUE_FALSE") {
+            return playerAnswer ? "Vrai" : "Faux";
+          }
+          return String(playerAnswer ?? "");
+        })();
+        const correctAnswerText: string = (() => {
+          if (!question) return "";
+          if (question.type === "MCQ") {
+            return String(question.choices?.[resolvedCorrectIndex] ?? "");
+          }
+          if (question.type === "TRUE_FALSE") {
+            return question.correctBool ? "Vrai" : "Faux";
+          }
+          return String(question.correctText ?? "");
+        })();
+        const lastRevealKey = `room:${roomId}:last_reveal:${buzzer.playerId}`;
+        redisClient.set(lastRevealKey, JSON.stringify({
+          isCorrect,
+          pointsEarned,
+          playerBuzzed: true,
+          playerAnswerText,
+          correctAnswerText,
+          funFact: question?.funFact ?? null,
+          questionIndex: room.state.questionIndex,
+        }), "EX", 300).catch((err: unknown) => {
+          console.warn(`[GameOrchestrator] last_reveal write failed for buzzer ${buzzer.playerId}:`, err instanceof Error ? err.message : err);
+        });
+      }
+
       this.io.to(roomId).emit("score_update", {
         playerId: buzzer.playerId,
         score: newTotalScore,
@@ -731,6 +769,42 @@ export class GameOrchestrator {
         skillsTriggered: [],
         participatif: true,
       });
+
+      // PATCH-4b (participatif path) — Write per-player reveal data for non-buzzers.
+      {
+        const partPlayerAnswerText: string = (() => {
+          if (!question) return "";
+          if (question.type === "MCQ" && typeof ans.answer === "number") {
+            return String(question.choices?.[ans.answer] ?? "");
+          }
+          if (question.type === "TRUE_FALSE") {
+            return ans.answer ? "Vrai" : "Faux";
+          }
+          return String(ans.answer ?? "");
+        })();
+        const partCorrectAnswerText: string = (() => {
+          if (!question) return "";
+          if (question.type === "MCQ") {
+            return String(question.choices?.[partResolvedCorrectIndex] ?? "");
+          }
+          if (question.type === "TRUE_FALSE") {
+            return question.correctBool ? "Vrai" : "Faux";
+          }
+          return String(question.correctText ?? "");
+        })();
+        const partRevealKey = `room:${roomId}:last_reveal:${pid}`;
+        redisClient.set(partRevealKey, JSON.stringify({
+          isCorrect,
+          pointsEarned: 0,
+          playerBuzzed: false,
+          playerAnswerText: partPlayerAnswerText,
+          correctAnswerText: partCorrectAnswerText,
+          funFact: question?.funFact ?? null,
+          questionIndex: room.state.questionIndex,
+        }), "EX", 300).catch((err: unknown) => {
+          console.warn(`[GameOrchestrator] last_reveal write failed for participatif ${pid}:`, err instanceof Error ? err.message : err);
+        });
+      }
 
       console.log(`[GameOrchestrator] Non-buzzer participatif ${pid} answered ${isCorrect ? 'correctly' : 'incorrectly'}: 0 pts (always)`);
     }

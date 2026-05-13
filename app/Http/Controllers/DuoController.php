@@ -1397,6 +1397,13 @@ class DuoController extends Controller
         $lobbyCode = $gameState['lobby_code'] ?? $match->lobby_code ?? null;
         $jwtToken  = $this->generateFreshGameplayToken($roomId, $user->id);
 
+        // PATCH-4d — Use Redis-live scores instead of stale match.game_state.
+        $liveState = $this->readLiveRoomScores($match);
+        if ($liveState !== null) {
+            $playerScore   = $liveState['scores'][(string) $user->id]     ?? $playerScore;
+            $opponentScore = $liveState['scores'][(string) $opponent->id] ?? $opponentScore;
+        }
+
         return view('duo_round_scoreboard', [
             'match_id'          => $match->id,
             'room_id'           => $roomId,
@@ -1599,6 +1606,31 @@ class DuoController extends Controller
      *
      * @return array{questionIndex0:int, totalQuestions:int|null, scores:array<string,int>}|null
      */
+    /**
+     * PATCH-4a — Read a Redis key written by the Node game server WITHOUT any
+     * Laravel prefix. Root cause of all "stuck Question 1/10 / 0-0 score / missing
+     * fun_fact" bugs on the Result page: REDIS_CLIENT=predis + global
+     * options.prefix='strategy_buzzer_database_' makes Redis::connection('game_server')
+     * prepend the prefix to every key, so 'room:X:state' becomes
+     * 'strategy_buzzer_database_room:X:state' (missing key). Raw Predis bypasses that.
+     */
+    protected function rawGameRedisGet(string $key): ?string
+    {
+        try {
+            $cfg = config('database.redis.game_server', []);
+            $rawPredis = new \Predis\Client([
+                'host'     => $cfg['host']     ?? env('REDIS_HOST', '127.0.0.1'),
+                'port'     => (int)($cfg['port']     ?? env('REDIS_PORT', 6379)),
+                'database' => (int)($cfg['database'] ?? env('REDIS_DB', 0)),
+                'password' => ($cfg['password'] ?? null) ?: null,
+            ]);
+            return $rawPredis->get($key) ?: null;
+        } catch (\Exception $e) {
+            \Log::warning('[DUO] rawGameRedisGet failed', ['key' => $key, 'error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
     protected function readLiveRoomScores(?DuoMatch $match): ?array
     {
         if (!$match || $match->status === 'finished') {
@@ -1609,8 +1641,7 @@ class DuoController extends Controller
             return null;
         }
         try {
-            $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
-                ->get("room:{$roomId}:state");
+            $rawState = $this->rawGameRedisGet("room:{$roomId}:state");
             if (!$rawState) {
                 return null;
             }
@@ -2014,8 +2045,8 @@ class DuoController extends Controller
         $resultQuestion = $gameState['last_question'] ?? [];
         if ($roomId) {
             try {
-                $rawState = \Illuminate\Support\Facades\Redis::connection('game_server')
-                    ->get("room:{$roomId}:state");
+                // PATCH-4a — use rawGameRedisGet() (no prefix) instead of prefixed facade.
+                $rawState = $this->rawGameRedisGet("room:{$roomId}:state");
                 if ($rawState) {
                     $roomState = json_decode($rawState, true);
                     $qIdx = $roomState['questionIndex'] ?? null;
@@ -2026,16 +2057,47 @@ class DuoController extends Controller
                         // during the RESULT phase.
                         $currentQuestion = ((int)$qIdx) + 1;
                     }
-                    if (empty($resultQuestion['fun_fact']) && isset($questions[$qIdx])) {
+                    // Prefer fun_fact from currentQuestion (set by ANSWER_REVEALED reducer),
+                    // then fall back to the questions[] array.
+                    $currentQ = $roomState['currentQuestion'] ?? null;
+                    if (empty($resultQuestion['fun_fact']) && !empty($currentQ['funFact'])) {
+                        $resultQuestion['fun_fact'] = $currentQ['funFact'];
+                    }
+                    if (empty($resultQuestion['fun_fact']) && $qIdx !== null && isset($questions[$qIdx])) {
                         $q = $questions[$qIdx];
-                        $resultQuestion = [
-                            'text'     => $q['text'] ?? '',
+                        $resultQuestion = array_merge($resultQuestion, [
+                            'text'     => $resultQuestion['text'] ?? ($q['text'] ?? ''),
                             'fun_fact' => $q['funFact'] ?? $q['fun_fact'] ?? null,
-                        ];
+                        ]);
                     }
                 }
             } catch (\Exception $e) {
                 \Log::warning('[DUO-RESULT] Redis room-state fallback failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // PATCH-4c — Read the per-player reveal data that Node wrote to Redis during
+        // the ANSWER_REVEALED phase (see GameOrchestrator last_reveal write).
+        // This fixes: wrong header (Pas de buzz vs Bonne/Mauvaise réponse),
+        // 0 points always, missing ✓/✗, empty "Votre réponse" block.
+        if ($roomId) {
+            $lastRevealRaw = $this->rawGameRedisGet("room:{$roomId}:last_reveal:{$user->id}");
+            if ($lastRevealRaw) {
+                $lastReveal = json_decode($lastRevealRaw, true);
+                if (is_array($lastReveal)) {
+                    $isCorrect    = (bool)($lastReveal['isCorrect']    ?? $isCorrect);
+                    $pointsEarned = (int)($lastReveal['pointsEarned']  ?? $pointsEarned);
+                    $playerBuzzed = (bool)($lastReveal['playerBuzzed'] ?? $playerBuzzed);
+                    if (!empty($lastReveal['playerAnswerText'])) {
+                        $lastAnswer['player_answer'] = $lastReveal['playerAnswerText'];
+                    }
+                    if (!empty($lastReveal['correctAnswerText'])) {
+                        $lastAnswer['correct_answer'] = $lastReveal['correctAnswerText'];
+                    }
+                    if (empty($resultQuestion['fun_fact']) && !empty($lastReveal['funFact'])) {
+                        $resultQuestion['fun_fact'] = $lastReveal['funFact'];
+                    }
+                }
             }
         }
 

@@ -295,6 +295,11 @@ $totalQuestions = $totalQuestions ?? 10;
         border-color: #e74c3c;
         color: white;
     }
+
+    /* PATCH-4e — Hide shared layout #gameHeader on round_scoreboard (same reason as
+       duo_result.blade.php line 963): this view has its own integrated score display
+       so the shared header would create a duplicate "X/Y · Manche Z · Bot" sidebar. */
+    #gameHeader { display: none !important; }
 </style>
 
 @php
