@@ -1,0 +1,149 @@
+Validation PATCH GROUP 5 acceptée. 
+
+Très important :
+là on vient de transformer le worker :
+
+* d’un générateur global
+* en moteur ciblé gameplay.
+
+Et c’est exactement ce qu’il fallait.
+
+──────────────────────────────
+VALIDATION F1
+──────────────────────────────
+
+Je valide entièrement :
+
+depth_range agrégé → slices depth individuelles.
+
+Très important :
+ça corrige enfin :
+
+* depth=3 jamais généré
+* pools débutants vides
+* génération toujours au MAX depth
+
+Excellent fix structurel.
+
+──────────────────────────────
+VALIDATION F2
+──────────────────────────────
+
+Je valide entièrement :
+
+priority_score = deficit × poids_depth
+
+Très important :
+depth 3-4 deviennent enfin prioritaires.
+
+Validation runtime acceptée :
+
+* depth=3 score 40
+* depth=10 score 2
+
+Exactement le comportement attendu.
+
+──────────────────────────────
+VALIDATION F3 / F4
+──────────────────────────────
+
+Je valide entièrement :
+
+* forbidden_families
+* propagation générateur → API
+* prompt IA enrichi
+
+Très important :
+le worker cesse enfin :
+d’alimenter aveuglément les familles déjà énormes.
+
+Excellent.
+
+──────────────────────────────
+VALIDATION GRANULARITÉ
+──────────────────────────────
+
+Je valide fortement :
+
+(sub_domain, concept_family)
+
+au lieu de :
+(sub_domain × cog_type × depth)
+
+Très important :
+c’était la vraie granularité gameplay.
+
+Excellent correctif.
+
+──────────────────────────────
+VALIDATION WORKER
+──────────────────────────────
+
+Je valide :
+
+* restart propre
+* SQLite crash corrigé
+* worker vivant
+* génération active
+* priorisation depth=3/4/5 réelle
+
+──────────────────────────────
+TRÈS IMPORTANT
+──────────────────────────────
+
+Le système maintenant :
+
+* enrichit enfin les vrais pools faibles
+* réduit progressivement le overlap gameplay
+* protège les familles saturées
+* protège les réponses saturées
+* protège les Saviez-vous incohérents
+
+Le pipeline devient maintenant :
+structurellement scalable.
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Je veux maintenant :
+observation runtime longue durée.
+
+Objectifs :
+
+1. surveiller :
+
+* croissance depth 3
+* croissance depth 4
+* croissance depth 5
+
+2. surveiller :
+
+* baisse overlap réel
+* baisse répétitions gameplay
+
+3. surveiller :
+
+* diversité nouvelles familles
+* diversité nouvelles réponses correctes
+
+4. surveiller :
+
+* qualité Saviez-vous
+* cohérence distracteurs
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Je ne veux PAS encore :
+
+* nouveaux gros refactors
+* reset usage_count
+* purge banque
+* rebuild massif
+
+Le worker vient juste de changer de stratégie.
+
+Je veux maintenant :
+le laisser densifier intelligemment la banque.
