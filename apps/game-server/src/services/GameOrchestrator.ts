@@ -7,7 +7,7 @@ import { shuffleOnce, resolveCorrectIndex, archiveRevision } from "./ShuffleServ
 import { getNextPhase, getPhaseTimeout, isTerminalPhase } from "@strategybuzzer/game-engine";
 import { updatePlayerLiveStats, emptyPlayerLiveStats } from "@strategybuzzer/game-engine";
 import { initQuestionPipeline, fetchNextBlock, getPipelineStatus, cleanupPipeline } from "./QuestionService.js";
-import { appendEventLog, setRoomState, setMatchResult } from "./RedisService.js";
+import { appendEventLog, setRoomState, setMatchResult, redisClient } from "./RedisService.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
 import { saveRoomSnapshot } from "./RoomRecovery.js";
 import { notifyMatchFinalized, saveMatchSnapshot, recordPlayerMemory } from "./InternalLaravelClient.js";
@@ -917,35 +917,56 @@ export class GameOrchestrator {
     const rawChoices = (question as Record<string, unknown>).choices || (question as Record<string, unknown>).answers;
     const sanitizedChoices = this.sanitizeChoices(rawChoices as unknown[] | undefined);
 
-    // BUG-B1 FIX — Revision 0 = original order = PHP-baked order.
-    // The duo_answer.blade.php page is rendered by PHP from session/DB/Redis, always in
-    // the ORIGINAL choice order. If Node shuffled at broadcast time (rev 0), the client's
-    // button indices would be misaligned with Node's shuffled correctIndex → wrong scoring.
+    // Shuffle Réponse initial — Option A.
+    // Node shuffles choices at rev=0 and writes the result to Redis before emitting
+    // any socket events. PHP reads this key in renderAnswerView() so both PHP and Node
+    // serve the identical shuffled order from page load — no flash, no misalignment.
     //
-    // Solution: revision 0 carries original choices + original correctIndex.
-    // The first real shuffle is performed by startShuffleInterval (2 s interval → rev 1)
-    // which fires answer_order_changed → client reorders DOM → currentShuffleRevision = 1.
+    // rev=0 = stable initial random order (Shuffle Réponse)
+    // rev=1+ = reserved for Skill Shuffle dynamic re-shuffles (answer_order_changed)
+    //
     // Guard 2 resolveCorrectIndex() works identically for all revisions ≥ 0.
-    //
-    // No in-memory mutation of question.choices / question.correctIndex.
     let broadcastChoices = sanitizedChoices;
     if (question.type === "MCQ" && sanitizedChoices !== undefined && sanitizedChoices.length > 1) {
       const originalCorrectIndex = (question as Record<string, unknown>).correctIndex as number ?? 0;
 
-      // Revision 0: original order — aligned with PHP rendering.
+      // Fisher-Yates shuffle at rev=0 — Node-authoritative initial order.
+      const { choices: shuffledChoices, correctIndex: shuffledCorrectIndex } =
+        shuffleOnce(sanitizedChoices, originalCorrectIndex);
+
+      // Mutate question.correctIndex in-memory so revealAnswer() reads the correct
+      // post-shuffle value when building correctAnswer for the ANSWER_REVEALED event.
+      (question as Record<string, unknown>).correctIndex = shuffledCorrectIndex;
+
       room.shuffleState = {
         questionIndex:   room.state.questionIndex,
         revision:        0,
-        choices:         sanitizedChoices,
-        correctIndex:    originalCorrectIndex,
+        choices:         shuffledChoices,
+        correctIndex:    shuffledCorrectIndex,
         history:         [],
         intervalId:      undefined,
         targetPlayerIds: undefined,
       };
 
+      // Write shuffled order to Redis so PHP can render the same order on page load.
+      // Fire-and-forget: failure is logged but must not block the synchronous game flow.
+      const initKey = `room:${roomId}:q${room.state.questionIndex}:init_shuffle`;
+      redisClient.set(initKey, JSON.stringify({
+        choices:      shuffledChoices,
+        correctIndex: shuffledCorrectIndex,
+        revision:     0,
+      }), "EX", 300).catch((err: unknown) => {
+        console.warn(
+          `[GameOrchestrator] init_shuffle Redis write failed q=${room.state.questionIndex} room=${roomId}:`,
+          err instanceof Error ? err.message : err,
+        );
+      });
+
+      broadcastChoices = shuffledChoices;
+
       console.log(
-        `[GameOrchestrator] MCQ shuffleState rev=0 q=${room.state.questionIndex} ` +
-        `correctIndex=${originalCorrectIndex} (original order — first shuffle via interval)`,
+        `[GameOrchestrator] MCQ shuffleState rev=0 SHUFFLED q=${room.state.questionIndex} ` +
+        `correctIndex=${shuffledCorrectIndex} (was ${originalCorrectIndex}) room=${roomId}`,
       );
     } else {
       // Non-MCQ (TRUE_FALSE, TEXT) or single-choice: no shuffle state.

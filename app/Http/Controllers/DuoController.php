@@ -1872,6 +1872,35 @@ class DuoController extends Controller
         $shuffleAnswersActive = false;
         $shuffleQuestionsLeft = 0;
 
+        // PATCH-3 Shuffle Réponse — read Node's init_shuffle from Redis (Option A).
+        // Node writes `room:{roomId}:q{qIdx}:init_shuffle` (TTL 300s) in broadcastQuestion()
+        // immediately after the Fisher-Yates shuffle at rev=0. PHP reads it here so the
+        // Answer page renders the Node-authoritative shuffled order on first load —
+        // eliminating any flash or index misalignment between PHP and Node.
+        $phpShuffleRevision = 0;
+        if ($roomId && isset($currentQuestionNumber)) {
+            $qIdx = max(0, (int)$currentQuestionNumber - 1);
+            try {
+                $redis   = \Illuminate\Support\Facades\Redis::connection('game_server');
+                $initKey = "room:{$roomId}:q{$qIdx}:init_shuffle";
+                $rawJson = $redis->get($initKey);
+                if ($rawJson) {
+                    $initShuffle = json_decode($rawJson, true);
+                    if (is_array($initShuffle) && isset($initShuffle['choices']) && is_array($initShuffle['choices'])) {
+                        $questionData['choices'] = $initShuffle['choices'];
+                        $phpShuffleRevision = (int)($initShuffle['revision'] ?? 0);
+                        \Log::debug('[DUO-ANSWER] init_shuffle loaded', [
+                            'key'      => $initKey,
+                            'revision' => $phpShuffleRevision,
+                            'count'    => count($initShuffle['choices']),
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('[DUO-ANSWER] init_shuffle Redis read failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         return view('duo_answer', [
             'match_id' => $match->id,
             'room_id' => $roomId,
@@ -1894,6 +1923,7 @@ class DuoController extends Controller
             'opponentName' => $opponentName,
             'shuffleAnswersActive' => $shuffleAnswersActive,
             'shuffleQuestionsLeft' => $shuffleQuestionsLeft,
+            'phpShuffleRevision' => $phpShuffleRevision,
             'player_info' => [
                 'id' => $user->id,
                 'name' => $this->getSnapshotDisplayName($playerSnapshot, $user, 'Joueur'),

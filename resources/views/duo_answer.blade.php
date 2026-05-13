@@ -776,11 +776,11 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
 
 <audio id="correctSound" preload="auto">
-    <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('sounds/correct.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="incorrectSound" preload="auto">
-    <source src="{{ asset('audio/buzzers/incorrect/incorrect1.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('sounds/incorrect.mp3') }}" type="audio/mpeg">
 </audio>
 
 {{-- socket.io, DuoSocketClient, GameEffectsRuntime: loaded by layouts.game --}}
@@ -954,10 +954,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 
     // Skill Challenger: Shuffle Answers (passive flag, server-driven via game_effects)
     const SHUFFLE_ACTIVE = {{ $shuffleAnswersActive ? 'true' : 'false' }};
-    // P7 — Node-authoritative shuffle revision. Initialised from question_published
-    // (shuffleRevision field). Updated on each answer_order_changed event.
+    // PATCH-5 Shuffle Réponse — PHP-baked revision from Redis init_shuffle (Option A).
+    // When PHP successfully read the Redis key, this is 0 (initial Node-authoritative shuffle).
+    // When Redis key is absent (race / cold start), this is 0 and Fallback C (game_state) hydrates.
+    const PHP_SHUFFLE_REVISION = {{ (int)($phpShuffleRevision ?? 0) }};
+    // P7 — Node-authoritative shuffle revision. Initialised from PHP_SHUFFLE_REVISION
+    // (itself from Redis init_shuffle). Updated on each answer_order_changed event.
     // Sent to Node on answer submission (Guard 2 race-condition tolerance).
-    var currentShuffleRevision = 0;
+    var currentShuffleRevision = PHP_SHUFFLE_REVISION;
 
     // Skill effects + activation handlers + answers shuffle live in
     // public/js/duo-skill-effects.js (extracted in Task #56). The init call
@@ -1215,10 +1219,14 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         // Reset currentTime so the sound replays even if it was played recently.
         if (isCorrect && correctSound) {
             correctSound.currentTime = 0;
-            correctSound.play().catch(function() {});
+            correctSound.play().catch(function(err) {
+                console.warn('[DuoAnswer] correctSound play() blocked:', err && err.message);
+            });
         } else if (!isCorrect && incorrectSound) {
             incorrectSound.currentTime = 0;
-            incorrectSound.play().catch(function() {});
+            incorrectSound.play().catch(function(err) {
+                console.warn('[DuoAnswer] incorrectSound play() blocked:', err && err.message);
+            });
         }
 
         // Normalize indices as numbers to avoid type-coercion mismatches.
@@ -1297,6 +1305,25 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
             if (!timerInterval && canAnswer() && !answered) {
                 startTimer();
             }
+        }
+
+        // PATCH-5 Fallback C — game_state hydration of initialShuffle.
+        // Fires only when PHP had no Redis key (race / cold start → PHP_SHUFFLE_REVISION === 0)
+        // AND Node sends initialShuffle in game_state (PATCH-2).
+        // Applies the Node-authoritative shuffled order to the DOM so indices stay aligned.
+        // Guard: skip if player already answered (button highlight must not jump).
+        if (!answered && PHP_SHUFFLE_REVISION === 0 &&
+            data.initialShuffle && Array.isArray(data.initialShuffle.choices) &&
+            data.initialShuffle.choices.length > 0) {
+            var ds_rev = typeof data.initialShuffle.revision === 'number'
+                ? data.initialShuffle.revision : 0;
+            if (skillEffects && skillEffects.applyAnswerOrderFromNode) {
+                skillEffects.applyAnswerOrderFromNode(data.initialShuffle.choices, ds_rev);
+            }
+            currentShuffleRevision = ds_rev;
+            answerButtons = Array.from(document.querySelectorAll('.answer-button'));
+            console.log('[DuoAnswer] Fallback C: initialShuffle applied rev=' + ds_rev +
+                ' choices=[' + data.initialShuffle.choices.join(',') + ']');
         }
     }
 

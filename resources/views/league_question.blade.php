@@ -750,7 +750,7 @@ $mode = 'league';
      opponent (handled in JS handleOpponentBuzz). No DOM element needed. --}}
 
 <audio id="buzzerSound" preload="auto">
-    <source src="{{ asset('audio/buzzers/correct/correct1.mp3') }}" type="audio/mpeg">
+    <source src="{{ asset('audio/buzzers/default.mp3') }}" type="audio/mpeg">
 </audio>
 
 <audio id="noBuzzSound" preload="auto">

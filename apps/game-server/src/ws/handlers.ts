@@ -272,6 +272,15 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             };
           }
           
+          // PATCH-2 Shuffle Réponse — include initialShuffle for Fallback C hydration.
+          // correctIndex is intentionally OMITTED from the client-facing payload.
+          const _shuffleRoom = roomManager.getRoom(roomId);
+          const _shuffleState = _shuffleRoom?.shuffleState;
+          const initialShuffle = _shuffleState ? {
+            choices:  _shuffleState.choices,
+            revision: _shuffleState.revision,
+          } : undefined;
+
           socket.emit("game_state", {
             sessionId: state.sessionId,
             lobbyCode: state.lobbyCode,
@@ -286,6 +295,7 @@ export function setupSocketHandlers(io: SocketIOServer, roomManager: RoomManager
             lockedAnswerPlayerId: state.lockedAnswerPlayerId,
             buzzQueue: state.buzzQueue,
             roundResults: state.roundResults,
+            initialShuffle,
             config: {
               mode: state.config.mode,
               questionsPerRound: state.config.questionsPerRound,

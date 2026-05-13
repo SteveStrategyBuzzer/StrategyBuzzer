@@ -1,0 +1,114 @@
+Validation complète acceptée.
+
+Très important :
+les 7 validations critiques sont maintenant confirmées avant patch.
+
+Je valide particulièrement :
+
+* archiveRevision() avant chaque re-shuffle
+* history conserve bien rev=0
+* answer_revealed.correctIndex passe toujours par resolveCorrectIndex()
+* showResult() reste 100% runtime Node
+* aucun shuffle autonome actif dans Duo V3
+* Fisher-Yates client-side legacy confirmé inerte
+* audio déclenché seulement par answer_revealed.isCorrect
+
+Très important aussi :
+la distinction est maintenant claire entre :
+
+* code legacy dormant
+* code runtime réellement actif
+
+Et c’est essentiel avant le chantier Shuffle Réponse.
+
+──────────────────────────────
+VALIDATION AUDIO
+──────────────────────────────
+
+Cause racine audio confirmée :
+
+404 réels :
+
+* duo_answer.blade.php
+* league_answer.blade.php
+* league_question.blade.php
+
+Les vrais chemins fonctionnels sont :
+
+* /sounds/correct.mp3
+* /sounds/incorrect.mp3
+
+Je valide :
+
+* aucun problème Node
+* aucun problème autoplay
+* aucun problème answer_revealed
+* aucun problème showResult
+* aucun problème Guard1/Guard2
+
+Simplement :
+anciens chemins morts encore présents.
+
+──────────────────────────────
+POINT IMPORTANT
+──────────────────────────────
+
+Le système Profil possède déjà :
+
+* correctSoundId
+* wrongSoundId
+
+Mais :
+Duo ne les consomme pas encore.
+
+Donc :
+hors scope actuel.
+Ne pas connecter Profil → Duo maintenant.
+
+Objectif actuel :
+restaurer le système audio runtime stable.
+
+──────────────────────────────
+PATCHES AUTORISÉS
+──────────────────────────────
+
+Ordre validé :
+
+GROUPE 1 — AUDIO
+
+* A-1a
+* A-1b
+* A-1c
+* A-2
+
+Validation runtime audio obligatoire ensuite :
+
+* bonne réponse
+* mauvaise réponse
+* aucun double play
+* aucun son sur answer_order_changed
+
+Puis seulement :
+
+GROUPE 2 — SHUFFLE RÉPONSE
+
+* PATCH-1
+* PATCH-2
+* PATCH-3
+* PATCH-4
+* PATCH-5
+
+Très important :
+PATCH-1 → PATCH-5 doivent rester :
+
+* séquentiels
+* validés runtime entre groupes
+* sans patch aveugle
+* sans mélange Audio + Shuffle dans le même patch
+
+Je veux maintenant :
+
+* slices exacts avant chaque patch
+* patchs du bas vers le haut
+* validations runtime après chaque patch
+* grep post-patch pour confirmer disparition des chemins fantômes audio et anciens shuffles.
