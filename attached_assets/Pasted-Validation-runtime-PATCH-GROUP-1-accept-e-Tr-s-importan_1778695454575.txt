@@ -1,0 +1,132 @@
+Validation runtime PATCH GROUP 1 acceptée. 
+
+Très important :
+le pipeline RESULT est maintenant réellement vivant en production.
+
+──────────────────────────────
+VALIDATION REDIS
+──────────────────────────────
+
+Je valide :
+
+* room:{roomId}:last_reveal:{playerId}
+* room:{roomId}:last_reveal:{botId}
+
+Tous les champs critiques sont présents :
+
+* isCorrect
+* pointsEarned
+* playerBuzzed
+* playerAnswerText
+* correctAnswerText
+* funFact
+* questionIndex
+
+Très important :
+playerAnswerText="" avec answer=-1 est logique et cohérent.
+
+Le timeout/non-réponse est maintenant correctement représenté.
+
+──────────────────────────────
+VALIDATION BACKEND
+──────────────────────────────
+
+Je valide :
+
+* aucun Fatal PHP
+* aucun 500
+* /game/duo/result → 200
+
+Donc :
+renderResultView()
+lit maintenant correctement :
+
+* room:state
+* last_reveal
+* scores live
+* funFact
+
+──────────────────────────────
+VALIDATION NODE
+──────────────────────────────
+
+Je valide :
+
+* participatif path
+* buzzer path
+* last_reveal writes
+* RESULT phase
+* result_page_ready
+
+Aucune erreur TypeScript.
+Aucune erreur Game Server.
+
+──────────────────────────────
+POINT IMPORTANT
+──────────────────────────────
+
+Le mismatch :
+
+correctAnswerText = "Musées du Vatican"
+funFact = "Victoire de Samothrace / Louvre"
+
+semble être :
+
+* un problème qualité contenu Question Bank
+* pas un problème runtime shuffle/scoring
+
+Très important :
+le pipeline technique semble cohérent.
+
+──────────────────────────────
+VERDICT
+──────────────────────────────
+
+PATCH GROUP 1 validé runtime :
+
+* RESULT
+* ROUND_END
+* Redis reveal
+* scores live
+* highlights pipeline
+* funFact pipeline
+* questionIndex pipeline
+
+sont maintenant stabilisés structurellement.
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Avant PATCH GROUP 2,
+je veux encore une validation visuelle réelle finale :
+
+1. RESULT
+
+* vert/rouge visibles
+* ✓ / ✗ visibles
+* score correct affiché
+* cumulatif correct affiché
+* plus jamais :
+  · 1/10 figé
+  · 0 points figé
+  · Pas Buzzer figé
+
+2. ROUND_END
+
+* aucun bloc parasite
+* layout stable
+
+3. audio buzzeur
+
+* bonne réponse audible
+* mauvaise réponse audible
+
+4. Skill Shuffle runtime
+
+* reorder réel visible
+* stop après réponse
+
+Si tout est visuellement correct :
+alors on pourra passer :
+PATCH GROUP 2 → planner rounds.
