@@ -1,0 +1,125 @@
+Validation audit UX/runtime Duo acceptée. 
+
+Très important :
+la situation a changé.
+
+Le runtime central est maintenant suffisamment stable
+pour commencer une vraie phase :
+raffinage gameplay réel.
+
+Et l’audit confirme quelque chose d’important :
+
+les plus gros problèmes restants sont maintenant :
+UX / fluidité / sensation joueur.
+
+──────────────────────────────
+VALIDATIONS ACCEPTÉES
+──────────────────────────────
+
+Je valide :
+
+* GO button stable
+* SYNC fallback stable
+* RESULT fallback stable
+* reconnect safety correcte
+* worker stable
+* runtime stable
+
+Donc :
+on peut maintenant concentrer l’énergie sur :
+l’expérience réelle joueur.
+
+──────────────────────────────
+PRIORITÉS VALIDÉES
+──────────────────────────────
+
+Je valide fortement :
+
+P1
+Transitions Q→R→R→S trop brutes
+
+P2
+Buzz manque de sensation physique/sonore
+
+P3
+Chrono gameplay manque de lisibilité
+
+P4
+Fin manche Duo manque de chaleur/parité Solo
+
+P5
+Silence bot/grâce crée sensation freeze
+
+P6
+Safe-area mobile encore fragile
+
+P7
+Visionnaire vs bot incohérent
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+C’est exactement la bonne direction :
+
+moins chirurgie backend lourde
+plus raffinage gameplay réel.
+
+Très important :
+les nouveaux patchs doivent rester :
+
+* petits
+* isolés
+* runtime-safe
+* sans perturber :
+  · worker
+  · guards
+  · télémétrie
+  · densification banque
+
+──────────────────────────────
+DIRECTION VALIDÉE
+──────────────────────────────
+
+Je valide la logique :
+
+D-A
+Fade transitions Duo
+
+D-B
+Haptic + audio buzz
+
+D-C
+Parité UX Solo ↔ Duo scoreboard
+
+D-D
+Feedback visuel grâce bot
+
+D-E
+Safe-area mobile
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+On continue pleinement le développement Duo.
+
+Mais maintenant :
+gameplay-first.
+
+Je veux :
+
+1. patchs UX/runtime ciblés
+2. validation runtime réelle
+3. impact joueur immédiat
+4. convergence Solo ↔ Duo
+5. aucun gros refactor inutile
+
+Objectif :
+rendre Duo :
+
+* fluide
+* lisible
+* compétitif
+* immersif
+* cohérent avec Solo.

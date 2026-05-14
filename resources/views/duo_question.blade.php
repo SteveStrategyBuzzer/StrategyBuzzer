@@ -62,6 +62,8 @@ $mode = 'duo';
         padding: 10px;
         margin: 0;
         overflow: hidden;
+        opacity: 0;
+        transition: opacity 0.25s ease;
     }
     
     .game-container {
@@ -909,7 +911,20 @@ $mode = 'duo';
 <script>
 (function() {
     'use strict';
-    
+
+    // ── D-A — Page fade-in on load, fade-out before navigation ───────────────
+    // window.duoNavigate is checked by every redirectOnce() call on this page.
+    // Setting it here (before any phase event fires) ensures all navigations
+    // — buzz, answer reveal, round end, match end — use the same smooth fade.
+    window.duoNavigate = function(url) {
+        document.body.style.opacity = '0';
+        setTimeout(function() { window.location.href = url; }, 220);
+    };
+    document.addEventListener('DOMContentLoaded', function() {
+        requestAnimationFrame(function() { document.body.style.opacity = '1'; });
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
     const MATCH_ID        = window.MATCH_ID        || @json((string)($match_id ?? ''));
     const ROOM_ID         = window.ROOM_ID         || @json((string)($room_id ?? ''));
     const LOBBY_CODE      = window.LOBBY_CODE      || @json((string)($lobby_code ?? ''));
@@ -1249,6 +1264,8 @@ $mode = 'duo';
         if (buzzed || isRedirecting || currentPhase !== 'QUESTION_ACTIVE') return;
         
         buzzed = true;
+        // D-B — Haptic feedback: short sharp pulse on buzz (mobile devices)
+        if (navigator.vibrate) { navigator.vibrate([60]); }
         // Persister localement pour le handler ANSWER_COLLECTION (position-2).
         try {
             const qIdx = (window.SB_LIVE_STATS && window.SB_LIVE_STATS.questionIndex !== undefined)
@@ -1349,6 +1366,15 @@ $mode = 'duo';
                 setBuzzerState('waiting');
                 updateLoadingText('{{ __("Synchronisation...") }}');
                 if (window.showBrainSpin) window.showBrainSpin('{{ __("Synchronisation...") }}');
+                // D-D — After 4s in SYNC, hint that the opponent may still be loading
+                // (bot reconnect grace period, slow connection). Uses existing translation key.
+                setTimeout(function() {
+                    if (currentPhase === 'SYNC') {
+                        var waitMsg = '{{ __("En attente de l\'autre joueur") }}';
+                        updateLoadingText(waitMsg);
+                        if (window.showBrainSpin) window.showBrainSpin(waitMsg);
+                    }
+                }, 4000);
                 break;
                 
             case 'ANSWER_SELECTION':
@@ -1858,7 +1884,8 @@ $mode = 'duo';
 
     function showDidYouKnow(text) {
         const div = document.createElement('div');
-        div.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);max-width:600px;width:90%;padding:14px 20px;border-radius:12px;background:linear-gradient(135deg,#8E44AD,#6C3483);color:#fff;font-size:14px;z-index:9998;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
+        // D-E — safe-area-inset-bottom: prevents overlap with home indicator on notched phones
+        div.style.cssText = 'position:fixed;bottom:calc(80px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);max-width:600px;width:90%;padding:14px 20px;border-radius:12px;background:linear-gradient(135deg,#8E44AD,#6C3483);color:#fff;font-size:14px;z-index:9998;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
         div.innerHTML = '<strong>{{ __("Le saviez-vous?") }}</strong> ' + text;
         document.body.appendChild(div);
         setTimeout(function() { div.style.transition = 'opacity 0.5s'; div.style.opacity = '0'; }, 5500);

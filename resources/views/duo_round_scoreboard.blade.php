@@ -61,6 +61,8 @@ $totalQuestions = $totalQuestions ?? 10;
         padding: 10px;
         margin: 0;
         overflow: hidden;
+        opacity: 0;
+        transition: opacity 0.25s ease;
     }
 
     .scoreboard-container {
@@ -369,6 +371,37 @@ $tied = $playerScore === $opponentScore;
 <script>
 (function() {
     'use strict';
+
+    // ── D-A — Page fade-in + D-C score count-up animation (parité Solo) ──────
+    window.duoNavigate = function(url) {
+        document.body.style.opacity = '0';
+        setTimeout(function() { window.location.href = url; }, 220);
+    };
+    document.addEventListener('DOMContentLoaded', function() {
+        requestAnimationFrame(function() { document.body.style.opacity = '1'; });
+
+        // D-C — Animate score numbers from 0 → final value (same feel as Solo round_result)
+        function animateCount(el) {
+            if (!el) return;
+            var target = parseInt(el.textContent.trim(), 10) || 0;
+            if (target <= 0) return;
+            el.textContent = '0';
+            var start = null;
+            var duration = Math.min(900, 200 + target * 6);
+            requestAnimationFrame(function step(ts) {
+                if (!start) start = ts;
+                var progress = Math.min(1, (ts - start) / duration);
+                var eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+                el.textContent = Math.round(eased * target);
+                if (progress < 1) { requestAnimationFrame(step); }
+            });
+        }
+        setTimeout(function() {
+            animateCount(document.getElementById('sbPlayerScore'));
+            animateCount(document.getElementById('sbOpponentScore'));
+        }, 180);
+    });
+    // ─────────────────────────────────────────────────────────────────────────
 
     const MATCH_ID   = window.MATCH_ID   || '';
     const ROOM_ID    = window.ROOM_ID    || '';

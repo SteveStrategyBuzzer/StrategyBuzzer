@@ -84,6 +84,8 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         padding: 10px;
         margin: 0;
         overflow: hidden;
+        opacity: 0;
+        transition: opacity 0.25s ease;
     }
     
     .game-container {
@@ -798,6 +800,16 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
 <script>
 (function() {
     'use strict';
+
+    // ── D-A — Page fade-in on load, fade-out before navigation ───────────────
+    window.duoNavigate = function(url) {
+        document.body.style.opacity = '0';
+        setTimeout(function() { window.location.href = url; }, 220);
+    };
+    document.addEventListener('DOMContentLoaded', function() {
+        requestAnimationFrame(function() { document.body.style.opacity = '1'; });
+    });
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Diagnostic page-load watermark (Tâche #78 — "ouvre et re-ouvre" investigation)
     // Log a unique instance id + URL on every /duo/answer init. If the page is loaded
