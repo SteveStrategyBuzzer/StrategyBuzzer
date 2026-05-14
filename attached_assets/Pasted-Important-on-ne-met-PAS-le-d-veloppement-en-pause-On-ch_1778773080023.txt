@@ -1,0 +1,108 @@
+Important : on ne met PAS le développement en pause.
+
+On change simplement de phase.
+
+Avant :
+
+* survie système
+* stabilité worker
+* stabilité runtime
+* correction architecture lourde
+
+Maintenant :
+
+* qualité gameplay réelle
+* sensation joueur
+* fluidité runtime
+* cohérence Solo/Duo
+* maturité UX
+
+Le travail doit devenir plus gameplay-first et plus ciblé UX/runtime.
+
+Les gros systèmes sont maintenant plus stables :
+
+* runtime central plus stable
+* worker plus stable
+* guards qualité actifs
+* banque en densification
+* métriques en observation
+
+Donc :
+on évite les gros refactors inutiles,
+mais on continue pleinement les correctifs et raffinages gameplay.
+
+──────────────────────────────
+CHANTIERS DUO À CONTINUER
+──────────────────────────────
+
+Je veux continuer à travailler sur :
+
+* fluidité transitions Q → R → R → S
+* sensation buzzer
+* UX chrono sans perturber worker/guards/métriques
+* animations
+* anti-freeze
+* synchronisation joueurs
+* skills gameplay
+* lisibilité mobile
+* vitesse de lecture
+* pacing des manches
+* audio immersif
+* couleurs gameplay
+* résultats fin manche
+* reconnect propre
+* comportements bots
+* fairness gameplay
+* feeling compétitif
+* cohérence flow Solo ↔ Duo
+
+──────────────────────────────
+OBJECTIF CENTRAL
+──────────────────────────────
+
+Solo et Duo doivent converger vers :
+
+* le même rythme
+* le même feeling
+* le même noyau gameplay
+* les mêmes stats
+* la même logique Node
+* la même lisibilité
+* la même autorité runtime
+
+Node reste autorité gameplay.
+Client affiche.
+Laravel rend/persiste.
+Worker continue sa densification en arrière-plan.
+
+──────────────────────────────
+RÈGLE IMPORTANTE
+──────────────────────────────
+
+Ne pas casser :
+
+* worker apprend
+* guards filtrent
+* pools se densifient
+* métriques se stabilisent
+
+Donc :
+pas de gros refactor backend lourd sans nécessité.
+
+Mais :
+les bugs visibles gameplay doivent continuer d’être corrigés.
+
+──────────────────────────────
+PROCHAINE PHASE
+──────────────────────────────
+
+Je veux maintenant un plan UX/runtime Duo ciblé :
+
+1. audit des irritants gameplay restants
+2. priorisation impact joueur
+3. patchs petits et réels
+4. validation runtime réelle
+5. comparaison Solo ↔ Duo
+
+Objectif :
+rendre Duo fluide, lisible, compétitif et aligné avec la réalité gameplay de Solo.
