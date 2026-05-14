@@ -39,6 +39,10 @@ window.NO_SOCKET_OVERLAY = true;
 
     $playerWasCorrect = (bool) ($wasCorrect ?? false);
     $pointsValue = (int) ($pointsEarned ?? 0);
+
+    // T-3 — Leader glow: pure display logic, no business logic
+    $playerLeading  = $playerScoreValue > $opponentScoreValue;
+    $playerTrailing = $playerScoreValue < $opponentScoreValue;
 @endphp
 
 <style>
@@ -312,11 +316,13 @@ window.NO_SOCKET_OVERLAY = true;
     .score-side.player .avatar-frame {
         border: 3px solid #4ECDC4;
         box-shadow: 0 0 20px rgba(78, 205, 196, 0.18);
+        animation: breathe-player 2.8s ease-in-out infinite;
     }
 
     .score-side.opponent .avatar-frame {
         border: 3px solid #FF6B6B;
         box-shadow: 0 0 20px rgba(255, 107, 107, 0.18);
+        animation: breathe-opponent 2.8s ease-in-out infinite 0.6s;
     }
 
     .avatar-frame img {
@@ -367,6 +373,7 @@ window.NO_SOCKET_OVERLAY = true;
         color: #ffd86b;
         font-weight: 900;
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+        animation: heartbeat 1.6s ease-in-out infinite;
     }
 
     .points-box {
@@ -415,6 +422,41 @@ window.NO_SOCKET_OVERLAY = true;
         0%, 80%, 100% { transform: scale(0.35); opacity: 0.45; }
         40% { transform: scale(1); opacity: 1; }
     }
+
+    /* ── UX 4 — T-1 Avatar breathing ───────────────────────────────────────── */
+    @keyframes breathe-player {
+        0%, 100% { box-shadow: 0 0 20px rgba(78, 205, 196, 0.18); }
+        50%       { box-shadow: 0 0 40px rgba(78, 205, 196, 0.60); }
+    }
+    @keyframes breathe-opponent {
+        0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 107, 0.18); }
+        50%       { box-shadow: 0 0 40px rgba(255, 107, 107, 0.60); }
+    }
+
+    /* ── UX 4 — T-2 VS heartbeat ────────────────────────────────────────────── */
+    @keyframes heartbeat {
+        0%, 100% { transform: scale(1);    box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
+        14%       { transform: scale(1.13); box-shadow: 0 10px 34px rgba(255,215,0,0.55); }
+        28%       { transform: scale(1);    box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
+        42%       { transform: scale(1.07); box-shadow: 0 10px 28px rgba(255,215,0,0.35); }
+        56%       { transform: scale(1);    box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
+    }
+
+    /* ── UX 4 — T-3 Leader glow ─────────────────────────────────────────────── */
+    @keyframes glow-lead-player {
+        0%, 100% { border-color: rgba(78,  205, 196, 0.85); box-shadow: 0 0 0   rgba(78, 205,196,0); }
+        50%       { border-color: rgba(78,  205, 196, 1);    box-shadow: 0 0 22px rgba(78, 205,196,0.40); }
+    }
+    @keyframes glow-lead-opponent {
+        0%, 100% { border-color: rgba(255, 107, 107, 0.85); box-shadow: 0 0 0   rgba(255,107,107,0); }
+        50%       { border-color: rgba(255, 107, 107, 1);    box-shadow: 0 0 22px rgba(255,107,107,0.40); }
+    }
+    /* Leading card glows brighter and pulses its border */
+    .score-side.player.leading   { animation: glow-lead-player   2.2s ease-in-out infinite; }
+    .score-side.opponent.leading { animation: glow-lead-opponent  2.2s ease-in-out infinite; }
+    /* Trailing card dims slightly — reinforces dominance gap */
+    .score-side.player.trailing,
+    .score-side.opponent.trailing { opacity: 0.72; }
 
     @media (max-width: 860px) {
         .waiting-grid {
@@ -519,7 +561,7 @@ window.NO_SOCKET_OVERLAY = true;
             <h2 class="score-title">{{ __('Score du duel') }}</h2>
 
             <div class="duel-scoreboard">
-                <div class="score-side player">
+                <div class="score-side player {{ $playerLeading ? 'leading' : ($playerTrailing ? 'trailing' : '') }}">
                     <div class="avatar-frame">
                         <img src="{{ $playerAvatar }}" alt="{{ $playerDisplayName }}">
                     </div>
@@ -529,7 +571,7 @@ window.NO_SOCKET_OVERLAY = true;
 
                 <div class="vs-pill">VS</div>
 
-                <div class="score-side opponent">
+                <div class="score-side opponent {{ !$playerLeading && !$playerTrailing ? '' : ($playerLeading ? 'trailing' : 'leading') }}">
                     <div class="avatar-frame">
                         <img src="{{ $opponentAvatar }}" alt="{{ $opponentDisplayName }}">
                     </div>
