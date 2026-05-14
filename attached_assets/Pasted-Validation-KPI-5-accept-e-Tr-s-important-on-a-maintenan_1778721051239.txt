@@ -1,0 +1,131 @@
+Validation KPI-5 acceptée. 
+
+Très important :
+on a maintenant enfin :
+une télémétrie réelle qualité contenu.
+
+Et ça change énormément la capacité de pilotage du worker.
+
+──────────────────────────────
+VALIDATIONS ACCEPTÉES
+──────────────────────────────
+
+Je valide :
+
+* compteurs Redis par guard
+* session counters
+* logs worker avec code guard
+* dashboard KPI-5
+* monitor runtime
+* reset session propre
+
+Très important :
+excellent travail structurel.
+
+──────────────────────────────
+PREUVE CRITIQUE
+──────────────────────────────
+
+Le Guard 11 vient de déclencher en production :
+
+question_too_long
+question_text=292 > max=150
+
+Très important :
+ça confirme maintenant noir sur blanc :
+que la banque générait réellement
+du contenu gameplay beaucoup trop long.
+
+──────────────────────────────
+OBSERVATION IMPORTANTE
+──────────────────────────────
+
+saviez_vous_off_topic domine actuellement :
+64%
+
+Donc :
+le plus gros problème qualité actuel reste :
+la cohérence Saviez-vous.
+
+Très important :
+excellent signal runtime.
+
+──────────────────────────────
+POINT IMPORTANT
+──────────────────────────────
+
+Le fait que :
+
+* answer_too_long
+* saviez_vous_too_long
+* negative_framing
+
+soient encore à 0
+n’est PAS inquiétant.
+
+Ça veut simplement dire :
+
+* les autres guards bloquent avant
+* ou les segments actuels ne génèrent pas encore ces cas
+
+Je valide cette analyse.
+
+──────────────────────────────
+DIRECTION VALIDÉE
+──────────────────────────────
+
+Je valide maintenant complètement :
+
+* gameplay-first
+* telemetry-first
+* worker observability
+* guards pilotés par données réelles
+
+Et NON :
+
+* génération aveugle
+* rebuild massif
+* tuning à l’intuition
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Je veux observation runtime longue durée.
+
+Objectifs :
+
+1. surveiller :
+
+* Guards 11-14
+* évolution des proportions
+* baisse progressive du contenu problématique
+
+2. surveiller :
+
+* amélioration gameplay réelle
+* vitesse lecture
+* qualité distracteurs
+* qualité Saviez-vous
+
+3. surveiller :
+
+* baisse overlap
+* baisse répétitions
+* baisse contradictions
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Je ne veux PAS encore :
+
+* nouveaux gros patches
+* rebuild banque
+* purge massive
+
+Le système vient d’entrer :
+dans sa vraie phase d’apprentissage runtime.
+
+Je veux maintenant :
+laisser les métriques parler.
