@@ -1098,11 +1098,15 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
         timeLeft = Math.ceil(remaining / 1000);
 
-        // UX SAFE — positionne immédiatement la barre chrono à la vraie valeur
-        // (évite le flash 100% → valeur réelle au premier tick à +250ms)
+        // UX SAFE — positionne immédiatement la barre chrono à la vraie valeur.
+        // On coupe la transition CSS le temps d'un reflow pour éviter tout glissement
+        // de 100% → initPct (flash résiduel). La transition CSS reprend ensuite normalement.
         if (timerBar && answerWindowMs > 0) {
             var initPct = Math.max(0, Math.min(100, (remaining / answerWindowMs) * 100));
+            timerBar.style.transition = 'none';
             timerBar.style.width = initPct + '%';
+            timerBar.offsetWidth; // force reflow — flush GPU avant de réactiver la transition
+            timerBar.style.transition = '';
         }
 
         console.log('[DuoAnswer] startTimer activeDeadline=' + activeDeadline +
