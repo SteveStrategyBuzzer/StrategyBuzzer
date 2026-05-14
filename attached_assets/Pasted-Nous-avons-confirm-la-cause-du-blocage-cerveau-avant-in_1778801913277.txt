@@ -1,0 +1,80 @@
+Nous avons confirmé la cause du blocage cerveau avant intro :
+
+* Game Server OFF
+* WebSocket error
+* aucun `phase_changed: INTRO`
+* le cerveau reste affiché indéfiniment
+
+Objectif :
+corriger proprement ce problème sans casser l’architecture V3.
+
+Important :
+Node reste autorité gameplay.
+Le client ne doit jamais inventer une phase.
+Le client ne doit jamais démarrer INTRO localement.
+
+Je veux un plan de correction SAFE, puis patch seulement après slices.
+
+À corriger :
+
+1. Démarrage services
+
+* s’assurer que Redis démarre avant Game Server
+* s’assurer que Game Server démarre avec le projet complet
+* vérifier que `/health` retourne `{"status":"ok"}`
+
+2. Lobby / brain overlay
+
+* si le cerveau est affiché mais que Socket.IO échoue, ne pas rester bloqué indéfiniment
+* afficher un message clair :
+  “Connexion au serveur de jeu impossible”
+* garder le bouton de retour ou réessai
+* ne pas faire de fallback gameplay local
+* ne pas inventer `phase_changed`
+
+3. Timeout sécurité UI
+
+* si cerveau affiché > 10-15 secondes sans socket connecté ni phase_changed :
+
+  * masquer ou remplacer le cerveau par un message d’erreur propre
+  * proposer “Réessayer”
+  * log console clair
+
+4. Validation
+
+* Game Server OFF :
+
+  * le joueur ne reste plus bloqué sur cerveau
+  * message d’erreur propre visible
+* Game Server ON :
+
+  * Lobby → cerveau → INTRO fonctionne
+  * aucune régression phase
+  * aucun fallback client parasite
+
+Méthode obligatoire :
+GREP → SLICE → PATCH → VALIDATION.
+
+Fichiers probables :
+
+* `resources/views/lobby.blade.php`
+* `public/js/GameplayRuntime.js`
+* `public/js/DuoSocketClient.js`
+* workflows Replit / configuration startup si applicable
+
+Interdictions :
+
+* ne pas toucher scoring Node
+* ne pas toucher phases runtime
+* ne pas modifier GameOrchestrator
+* ne pas créer INTRO côté client
+* ne pas masquer les erreurs socket sans feedback joueur
+* ne pas toucher worker/guards Question Bank
+
+Retour attendu :
+
+* slices exacts
+* cause confirmée
+* patch minimal proposé
+* validation Game Server OFF
+* validation Game Server ON

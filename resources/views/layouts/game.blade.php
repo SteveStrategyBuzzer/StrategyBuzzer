@@ -48,6 +48,36 @@
         50%       { filter: drop-shadow(0 0 22px rgba(78,205,196,0.9)); }
     }
 
+    /* Brain connection error — shown when socket cannot reach Game Server */
+    #brainConnectError {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(11, 18, 32, 0.97);
+        z-index: 9200;
+        gap: 18px;
+        padding: 28px 24px;
+        text-align: center;
+    }
+    #brainConnectError.hidden { display: none; }
+    .bce-icon  { font-size: 3rem; line-height: 1; }
+    .bce-title { color: #FF6B6B; font-size: 1.25rem; font-weight: 800; margin: 0; }
+    .bce-msg   { color: rgba(255,255,255,0.68); font-size: 0.93rem; margin: 0; max-width: 300px; line-height: 1.55; }
+    .bce-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .bce-btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 11px 22px; border-radius: 12px; font-weight: 700;
+        font-size: 0.9rem; cursor: pointer; border: none;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .bce-btn:active { transform: scale(0.96); }
+    .bce-btn-retry { background: linear-gradient(135deg, #4ECDC4, #26a69a); color: #fff; }
+    .bce-btn-back  { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.72); border: 1px solid rgba(255,255,255,0.15); }
+    .bce-btn-retry:hover { box-shadow: 0 0 18px rgba(78,205,196,0.4); }
+
     /* Loading overlay */
     #loadingOverlay {
         position: fixed;
@@ -167,6 +197,17 @@
 <div id="brainOverlay" class="hidden">
     <img src="{{ asset('images/brain.png') }}" alt="" class="brain-spin-img" onerror="this.style.fontSize='4rem';this.outerHTML='<div style=\'font-size:4rem\'>🧠</div>'">
     <div class="brain-msg" id="brainMessage">{{ __('Préparation...') }}</div>
+</div>
+
+<!-- Brain connection error: shown by lobby when Game Server is unreachable -->
+<div id="brainConnectError" class="hidden">
+    <div class="bce-icon">⚠️</div>
+    <h2 class="bce-title">{{ __('Connexion au serveur de jeu impossible') }}</h2>
+    <p class="bce-msg">{{ __('Le serveur de jeu est inaccessible. Vérifiez votre connexion et réessayez.') }}</p>
+    <div class="bce-actions">
+        <button class="bce-btn bce-btn-retry" onclick="window.location.reload()">🔄 {{ __('Réessayer') }}</button>
+        <button class="bce-btn bce-btn-back" onclick="window.location.href='/duo'">← {{ __('Retour') }}</button>
+    </div>
 </div>
 
 <!-- Loading Overlay: shown while connecting, hidden by GameplayRuntime on connect -->

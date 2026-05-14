@@ -2453,7 +2453,8 @@ foreach ($colors as $color) {
                 const readyCards = document.querySelectorAll('.player-card.is-ready').length;
                 if (totalCards >= minNeeded && (readyCards + 1) >= totalCards && totalCards > 0) {
                     console.log('[Lobby] Ce joueur est le dernier prêt — cerveau affiché immédiatement.');
-                    if (window.showBrainSpin) window.showBrainSpin();
+                    if (window.lobbyShowBrainWithGuard) window.lobbyShowBrainWithGuard();
+                    else if (window.showBrainSpin) window.showBrainSpin();
                 }
             }
         } catch (error) {
@@ -4486,7 +4487,8 @@ window.initLobbySocketListeners = function() {
             const readyCards = document.querySelectorAll('.player-card.is-ready').length;
             if (totalCards >= minPlayersFirebase && readyCards === totalCards && readyCards > 0) {
                 console.log('[Socket.IO] All players ready via player_ready — showing brain immediately.');
-                if (window.showBrainSpin) window.showBrainSpin();
+                if (window.lobbyShowBrainWithGuard) window.lobbyShowBrainWithGuard();
+                else if (window.showBrainSpin) window.showBrainSpin();
             }
         });
         
@@ -4552,7 +4554,8 @@ window.initLobbySocketListeners = function() {
 
             if (mode === 'duo' && allReady) {
                 console.log('[Socket.IO] All players ready (Socket authoritative) — showing brain immediately.');
-                if (window.showBrainSpin) window.showBrainSpin();
+                if (window.lobbyShowBrainWithGuard) window.lobbyShowBrainWithGuard();
+                else if (window.showBrainSpin) window.showBrainSpin();
             }
         });
         
@@ -4560,6 +4563,7 @@ window.initLobbySocketListeners = function() {
             console.log('[Socket.IO] Phase changed:', data);
             if (data.phase === 'INTRO') {
                 console.log('[Socket.IO] INTRO received — navigating to game intro page.');
+                if (window.lobbyHideBrainTimer) window.lobbyHideBrainTimer();
                 if (window.pollingInterval) { clearInterval(window.pollingInterval); window.pollingInterval = null; }
                 if (window.lobbyPresenceManager) window.lobbyPresenceManager.cleanup();
                 if (window.webrtcManager) window.webrtcManager.cleanup();
@@ -4579,6 +4583,7 @@ window.initLobbySocketListeners = function() {
 
         DuoSocketClient.on('game_start_error', (data) => {
             console.warn('[Socket.IO] Game start failed:', data);
+            if (window.lobbyHideBrainTimer) window.lobbyHideBrainTimer();
             if (window.hideBrainSpin) window.hideBrainSpin();
             isReady = false;
             updateReadyButton();
@@ -4595,6 +4600,38 @@ window.initLobbySocketListeners = function() {
 if (window.useSocketIO && window.matchRoomId) {
     window.initLobbySocketListeners();
 }
+
+// ── Brain connection guard — lobby only ─────────────────────────────────────
+// Timeout safety net: if the brain overlay is shown optimistically but the
+// Game Server is unreachable (no phase_changed event within 15s), replace
+// the spinning brain with a clear error UI so the player is never stuck.
+// Node remains the sole phase authority — no fallback gameplay is created.
+(function () {
+    var _brainTimer = null;
+    var BRAIN_TIMEOUT_MS = 15000;
+
+    window.lobbyShowBrainWithGuard = function () {
+        if (window.showBrainSpin) window.showBrainSpin();
+        if (_brainTimer) clearTimeout(_brainTimer);
+        window._lobbyPhaseReceived = false;
+        _brainTimer = setTimeout(function () {
+            _brainTimer = null;
+            if (window._lobbyPhaseReceived) return;
+            console.warn('[Lobby] Brain timeout (15s) — Game Server unreachable. Showing error UI.');
+            if (window.hideBrainSpin) window.hideBrainSpin();
+            var err = document.getElementById('brainConnectError');
+            if (err) err.classList.remove('hidden');
+            if (window.gameStartNavigating) window.gameStartNavigating = false;
+        }, BRAIN_TIMEOUT_MS);
+    };
+
+    window.lobbyHideBrainTimer = function () {
+        if (_brainTimer) { clearTimeout(_brainTimer); _brainTimer = null; }
+        window._lobbyPhaseReceived = true;
+        var err = document.getElementById('brainConnectError');
+        if (err) err.classList.add('hidden');
+    };
+}());
 
 window.addEventListener('beforeunload', () => {
     if (window.webrtcManager) {
