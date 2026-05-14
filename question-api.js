@@ -1265,6 +1265,12 @@ CONTRAINTES:
 - saviez_vous OBLIGATOIRE : anecdote concrète (≥30 caractères) portant EXCLUSIVEMENT sur le fait de la réponse correcte de CETTE question. Interdit : anecdote sur un autre fait du domaine, fait générique non lié à la bonne réponse, copie reformulée de la question.
 - Distracteurs (réponses incorrectes) : chacun doit être plausible pour quelqu'un qui confond un fait proche, mais UNIVOQUEMENT FAUX. Interdit : distractor évident ("Je ne sais pas"), reformulation de la bonne réponse, contradiction logique, ou réponse qui pourrait être partiellement correcte.
 - concept_family : EN ANGLAIS, kebab-case, 1-4 mots, taxonomie stable (ex: "basketball-rules", "australian-geography", "medieval-history")
+- LONGUEUR STRICTE (limites absolues, dépassement = rejet automatique) :
+    · question_text : ≤ 120 caractères (FR/EN/…), ≤ 70 caractères (ZH/AR)
+    · chaque réponse (answer_a/b/c/d) : ≤ 70 caractères (FR/EN/…), ≤ 35 caractères (ZH/AR)
+    · saviez_vous : ≤ 200 caractères (FR/EN/…), ≤ 90 caractères (ZH/AR)
+- FORMULATION INTERDITE : ne jamais formuler la question en négatif. Interdit : "n'est pas", "ne sont pas", "sauf", "excepté", "hormis", "aucun de ces", "lequel ne", "jamais". Formule toujours la question de façon POSITIVE et directe.
+- Bonne réponse : doit être univoque, précise, et clairement distincte des distracteurs. Évite les réponses trop vagues ("Oui", "Non", "Les deux", "Aucune de ces réponses").
 ${forbiddenFamiliesBlock}${forbiddenBlock}
 Format JSON exact attendu:
 {

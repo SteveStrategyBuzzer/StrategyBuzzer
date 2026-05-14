@@ -204,6 +204,42 @@ return [
                 'ar' => 20,
             ],
 
+            // ── PATCH GROUP QUALITÉ CONTENU ─────────────────────────────────
+
+            // Guard 11 — question_text too long.
+            // Players have ≤30 s per question on mobile. At ~15 char/s reading
+            // speed a 150-char question already uses 10 s just for reading.
+            // The check runs on the French translation (densest per character).
+            // CJK / Arabic are shorter per semantic unit → separate cap.
+            'question_text_max_length'         => 150,
+            'question_text_max_length_by_lang' => ['zh' => 80, 'ar' => 100],
+
+            // Guard 12 — answer choice too long.
+            // Answer buttons are ~180 px wide on a 375 px screen; more than
+            // 80 chars wraps over 3 lines, hiding half the choice.
+            'answer_max_length'         => 80,
+            'answer_max_length_by_lang' => ['zh' => 40, 'ar' => 55],
+
+            // Guard 13 — saviez_vous too long.
+            // The RESULT screen shows saviez_vous for ~4 s before auto-advancing.
+            // 220 chars is ~1 500 ms at average reading speed — a hard upper cap.
+            'saviez_vous_max_length'         => 220,
+            'saviez_vous_max_length_by_lang' => ['zh' => 100, 'ar' => 140],
+
+            // Guard 14 — negative / ambiguous question framing.
+            // "Lequel n'est PAS …", "Sauf …", "Aucun de ces …" questions are
+            // cognitively expensive under time pressure and generate systematic
+            // false-positive correct answers. Detected via keyword scan on FR.
+            'negative_framing_keywords' => [
+                "n'est pas", "ne sont pas", "ne fut pas", "ne peut pas",
+                "ne doit pas", "n'a pas", "n'était pas", "jamais",
+                " sauf ", " excepté ", " hormis ", " à l'exception",
+                "aucun de ces", "aucune de ces", "lequel ne",
+                "laquelle ne", "lesquels ne",
+            ],
+
+            // ── END PATCH GROUP QUALITÉ CONTENU ─────────────────────────────
+
             // Reject when concept_family already accounts for more than this
             // share of a single segment (capped before insertion).
             'concept_family_segment_max_share' => 0.40,

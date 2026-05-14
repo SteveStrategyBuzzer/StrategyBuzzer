@@ -232,6 +232,99 @@ class QualityGuards
             }
         }
 
+        // ── PATCH GROUP QUALITÉ CONTENU ────────────────────────────────────
+
+        // 11. question_text length cap — gameplay readability guard.
+        //
+        // Players have ≤30 s per question on mobile; a 150-char question
+        // already consumes ~10 s of reading time at 15 chars/s. We check
+        // every supplied translation against its per-language cap (CJK/Arabic
+        // are denser per character so they get a lower absolute limit).
+        $qMaxDefault      = (int) ($guards['question_text_max_length']         ?? 150);
+        $qMaxByLang       = (array) ($guards['question_text_max_length_by_lang'] ?? []);
+        foreach ($translations as $lang => $tr) {
+            $qMax  = isset($qMaxByLang[$lang]) ? (int) $qMaxByLang[$lang] : $qMaxDefault;
+            $qText = mb_strlen(trim((string) ($tr['question_text'] ?? '')));
+            if ($qText > $qMax) {
+                return [
+                    'ok'     => false,
+                    'code'   => 'question_too_long',
+                    'detail' => "{$lang} question_text={$qText} > max={$qMax}",
+                ];
+            }
+        }
+
+        // 12. answer choice length cap — button readability guard.
+        //
+        // Answer buttons are ~180 px wide on a 375 px screen. More than 80
+        // chars wraps over 3 lines and makes fast scanning impossible.
+        $aMaxDefault = (int) ($guards['answer_max_length']         ?? 80);
+        $aMaxByLang  = (array) ($guards['answer_max_length_by_lang'] ?? []);
+        foreach ($translations as $lang => $tr) {
+            $aMax    = isset($aMaxByLang[$lang]) ? (int) $aMaxByLang[$lang] : $aMaxDefault;
+            $answers = [
+                'answer_a' => (string) ($tr['answer_a'] ?? ''),
+                'answer_b' => (string) ($tr['answer_b'] ?? ''),
+                'answer_c' => (string) ($tr['answer_c'] ?? ''),
+                'answer_d' => (string) ($tr['answer_d'] ?? ''),
+            ];
+            foreach ($answers as $field => $text) {
+                $text = trim($text);
+                if ($text === '' || $text === 'null') {
+                    continue; // true/false questions have null answer_d
+                }
+                $len = mb_strlen($text);
+                if ($len > $aMax) {
+                    return [
+                        'ok'     => false,
+                        'code'   => 'answer_too_long',
+                        'detail' => "{$lang}.{$field} len={$len} > max={$aMax}",
+                    ];
+                }
+            }
+        }
+
+        // 13. saviez_vous length cap — RESULT screen readability guard.
+        //
+        // The RESULT screen auto-advances after ~4 s. 220 chars is the hard
+        // ceiling (~1 500 ms reading at average speed). CJK/Arabic get tighter
+        // caps because their scripts are denser per character.
+        $svMaxDefault = (int) ($guards['saviez_vous_max_length']         ?? 220);
+        $svMaxByLang  = (array) ($guards['saviez_vous_max_length_by_lang'] ?? []);
+        foreach ($translations as $lang => $tr) {
+            $svMax = isset($svMaxByLang[$lang]) ? (int) $svMaxByLang[$lang] : $svMaxDefault;
+            $sv    = mb_strlen(trim((string) ($tr['saviez_vous'] ?? '')));
+            if ($sv > $svMax) {
+                return [
+                    'ok'     => false,
+                    'code'   => 'saviez_vous_too_long',
+                    'detail' => "{$lang} saviez_vous={$sv} > max={$svMax}",
+                ];
+            }
+        }
+
+        // 14. Negative / ambiguous question framing — gameplay clarity guard.
+        //
+        // "Lequel n'est PAS …", "Sauf …", "Aucun de ces …" framings are
+        // cognitively expensive under time pressure and systematically produce
+        // ambiguous correct answers (player must rule out 3 facts instead of
+        // recognising 1). Check runs on French text only (cheap string scan).
+        $frQuestion = mb_strtolower(trim((string) ($translations['fr']['question_text'] ?? '')));
+        if ($frQuestion !== '') {
+            $negKeywords = (array) ($guards['negative_framing_keywords'] ?? []);
+            foreach ($negKeywords as $kw) {
+                if (str_contains($frQuestion, mb_strtolower((string) $kw))) {
+                    return [
+                        'ok'     => false,
+                        'code'   => 'negative_framing',
+                        'detail' => "question contains forbidden framing: \"{$kw}\"",
+                    ];
+                }
+            }
+        }
+
+        // ── END PATCH GROUP QUALITÉ CONTENU ────────────────────────────────
+
         return ['ok' => true];
     }
 
