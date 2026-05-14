@@ -96,7 +96,7 @@ class BankWorker
                 // for >90s (blocked on a long HTTP call or crashed post-SIGKILL).
                 Redis::set('qb:worker:heartbeat', time(), 'EX', 90);
 
-                $deficits = $this->needs->computeDeficits(limit: 1);
+                $deficits = $this->needs->computeDeficits(limit: 20);
                 if (empty($deficits)) {
                     Log::info('[BankWorker] bank fully covered — idle sleep', [
                         'sleep' => (int) $config['idle_sleep_seconds'],
@@ -108,7 +108,30 @@ class BankWorker
                     continue;
                 }
 
-                $segment = $deficits[0];
+                // Select the first non-cooled-down segment from the top-20 list.
+                $segment = null;
+                foreach ($deficits as $candidate) {
+                    if (!$this->isSegmentCoolingDown($candidate)) {
+                        $segment = $candidate;
+                        break;
+                    }
+                    Log::info('[BankWorker] segment skipped — cooldown active', [
+                        'sub_domain'     => $candidate['sub_domain'] ?? null,
+                        'cognitive_type' => $candidate['cognitive_type'] ?? null,
+                        'language'       => $candidate['language'] ?? null,
+                    ]);
+                }
+
+                if ($segment === null) {
+                    Log::info('[BankWorker] all top-20 segments in cooldown — idle sleep', [
+                        'sleep' => (int) $config['idle_sleep_seconds'],
+                    ]);
+                    if ($onCycle) {
+                        $onCycle(['action' => 'idle_all_cooled', 'cycles' => $cycles]);
+                    }
+                    $this->sleepInterruptible((int) $config['idle_sleep_seconds']);
+                    continue;
+                }
 
                 if ($dryRun) {
                     Log::info('[BankWorker] dry-run, would generate segment', $segment);
@@ -152,7 +175,8 @@ class BankWorker
                     if ($onCycle) {
                         $onCycle(['action' => 'guard_rejected', 'segment' => $segment, 'code' => $eval['code'] ?? null, 'cycles' => $cycles]);
                     }
-                    continue; // try next cycle without back-off (different segment likely)
+                    $this->recordSegmentReject($segment);
+                    continue; // cooldown will engage if threshold reached
                 }
 
                 $group = $this->repo->addToBank($result['payload'], updateExisting: false);
@@ -177,6 +201,7 @@ class BankWorker
                     86400
                 );
                 $this->resetBackoff();
+                $this->resetSegmentRejectCount($segment);
 
                 Log::info('[BankWorker] inserted group', [
                     'group_id' => $group->id,
@@ -265,6 +290,108 @@ class BankWorker
         $end = time() + $seconds;
         while (time() < $end && !$this->stopRequested) {
             sleep(1);
+        }
+    }
+
+    // ── Segment cooldown helpers ───────────────────────────────────────────────
+
+    /**
+     * Stable Redis key fragment for a segment — deterministic md5 over
+     * the 5 fields that uniquely identify a segment for the worker.
+     */
+    private function segmentKey(array $segment): string
+    {
+        return md5(sprintf(
+            '%s|%s|%s|%d|%s',
+            $segment['mode']            ?? '',
+            $segment['sub_domain']      ?? '',
+            $segment['cognitive_type']  ?? '',
+            (int) ($segment['depth_range'][1] ?? 0),
+            $segment['language']        ?? ''
+        ));
+    }
+
+    /**
+     * Returns true when a cooldown key exists in Redis for this segment.
+     * Fail-open: if Redis is unavailable the worker continues normally.
+     */
+    private function isSegmentCoolingDown(array $segment): bool
+    {
+        try {
+            $pattern = (string) config('question_bank_profiles.worker.redis_keys.seg_cooldown');
+            $key     = sprintf($pattern, $this->segmentKey($segment));
+            return (bool) Redis::exists($key);
+        } catch (\Throwable $e) {
+            Log::warning('[BankWorker] cooldown check failed (non-fatal)', [
+                'error' => $e->getMessage(),
+            ]);
+            return false; // fail-open — never block the worker on a Redis error
+        }
+    }
+
+    /**
+     * Increments the per-segment consecutive-reject counter.
+     * When the counter reaches seg_reject_threshold, sets the cooldown key
+     * (TTL = seg_cooldown_seconds) so the segment is skipped for 30 minutes.
+     * Guards are NOT modified — the rejection still happened; we just stop
+     * hammering the same segment until the LLM can produce something new.
+     */
+    private function recordSegmentReject(array $segment): void
+    {
+        $config    = config('question_bank_profiles.worker');
+        $threshold = (int) ($config['seg_reject_threshold'] ?? 10);
+        $cooldown  = (int) ($config['seg_cooldown_seconds'] ?? 1800);
+        $hash      = $this->segmentKey($segment);
+
+        try {
+            $countKey    = sprintf((string) $config['redis_keys']['seg_reject_count'], $hash);
+            $cooldownKey = sprintf((string) $config['redis_keys']['seg_cooldown'],     $hash);
+
+            $count = (int) Redis::incr($countKey);
+            Redis::expire($countKey, $cooldown + 60); // auto-clean after cooldown ends
+
+            Log::info('[BankWorker] segment reject count', [
+                'sub_domain'     => $segment['sub_domain']     ?? null,
+                'cognitive_type' => $segment['cognitive_type'] ?? null,
+                'language'       => $segment['language']       ?? null,
+                'count'          => $count,
+                'threshold'      => $threshold,
+            ]);
+
+            if ($count >= $threshold) {
+                Redis::set($cooldownKey, time(), 'EX', $cooldown);
+                Log::warning('[BankWorker] segment cooldown started', [
+                    'sub_domain'       => $segment['sub_domain']     ?? null,
+                    'cognitive_type'   => $segment['cognitive_type'] ?? null,
+                    'language'         => $segment['language']       ?? null,
+                    'cooldown_seconds' => $cooldown,
+                    'reject_count'     => $count,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[BankWorker] recordSegmentReject failed (non-fatal)', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Clears the reject counter and cooldown key after a successful insertion.
+     * The segment is immediately eligible again after it produces a good question.
+     */
+    private function resetSegmentRejectCount(array $segment): void
+    {
+        $config = config('question_bank_profiles.worker');
+        $hash   = $this->segmentKey($segment);
+
+        try {
+            $countKey    = sprintf((string) $config['redis_keys']['seg_reject_count'], $hash);
+            $cooldownKey = sprintf((string) $config['redis_keys']['seg_cooldown'],     $hash);
+            Redis::del($countKey, $cooldownKey);
+        } catch (\Throwable $e) {
+            Log::warning('[BankWorker] resetSegmentRejectCount failed (non-fatal)', [
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

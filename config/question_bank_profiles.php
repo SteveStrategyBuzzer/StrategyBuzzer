@@ -172,7 +172,9 @@ return [
 
         // Bounded exponential back-off on upstream errors (429 / timeout / 5xx).
         'backoff_initial_seconds' => 5,
-        'backoff_max_seconds' => 300,
+        'backoff_max_seconds'    => 300,
+        'seg_reject_threshold'   => 10,    // consecutive guard rejections before cooldown
+        'seg_cooldown_seconds'   => 1800,  // 30 minutes
 
         // Languages a generation must minimally produce to be accepted as
         // a valid group. Below this bar the row is rejected and retried.
@@ -290,7 +292,9 @@ return [
             // attack the affected segment first; the health endpoint
             // reads dry_last_self_heal to surface what was done.
             'rate_override' => 'qb:worker:rate_override',
-            'priority_segment' => 'qb:worker:priority_segment',
+            'priority_segment'  => 'qb:worker:priority_segment',
+            'seg_reject_count'  => 'qb:worker:seg_rejects:%s',    // sprintf with segment hash
+            'seg_cooldown'      => 'qb:worker:seg_cooldown:%s',   // sprintf with segment hash
             'dry_last_self_heal' => 'qb:dry:last_self_heal',
         ],
 
