@@ -524,7 +524,7 @@ window.NO_SOCKET_OVERLAY = true;
                         <img src="{{ $playerAvatar }}" alt="{{ $playerDisplayName }}">
                     </div>
                     <div class="player-label">{{ $playerDisplayName }}</div>
-                    <div class="score-number">{{ $playerScoreValue }}</div>
+                    <div class="score-number" id="wtPlayerScore">{{ $playerScoreValue }}</div>
                 </div>
 
                 <div class="vs-pill">VS</div>
@@ -534,7 +534,7 @@ window.NO_SOCKET_OVERLAY = true;
                         <img src="{{ $opponentAvatar }}" alt="{{ $opponentDisplayName }}">
                     </div>
                     <div class="player-label">{{ $opponentDisplayName }}</div>
-                    <div class="score-number">{{ $opponentScoreValue }}</div>
+                    <div class="score-number" id="wtOpponentScore">{{ $opponentScoreValue }}</div>
                 </div>
             </div>
 
@@ -558,6 +558,27 @@ window.NO_SOCKET_OVERLAY = true;
 document.addEventListener('DOMContentLoaded', () => {
     // D-I — Fade in (body starts at opacity 0 via CSS)
     requestAnimationFrame(() => { document.body.style.opacity = '1'; });
+
+    // D-C (ported) — Animate inter-round scores 0 → final value (same pattern as duo_round_scoreboard)
+    function animateCount(el) {
+        if (!el) return;
+        var target = parseInt(el.textContent.trim(), 10) || 0;
+        if (target <= 0) return;
+        el.textContent = '0';
+        var start = null;
+        var duration = Math.min(900, 200 + target * 6);
+        requestAnimationFrame(function step(ts) {
+            if (!start) start = ts;
+            var progress = Math.min(1, (ts - start) / duration);
+            var eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+            el.textContent = Math.round(eased * target);
+            if (progress < 1) { requestAnimationFrame(step); }
+        });
+    }
+    setTimeout(function() {
+        animateCount(document.getElementById('wtPlayerScore'));
+        animateCount(document.getElementById('wtOpponentScore'));
+    }, 180);
 
     if (typeof DuoSocketClient === 'undefined') {
         console.error('[DuoWaiting] DuoSocketClient unavailable');
