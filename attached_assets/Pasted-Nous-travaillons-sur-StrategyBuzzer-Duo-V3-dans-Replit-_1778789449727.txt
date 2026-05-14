@@ -1,0 +1,63 @@
+Nous travaillons sur StrategyBuzzer Duo V3 dans Replit.
+
+Objectif :
+appliquer le micro patch SAFE du chrono sur la page Réponse Duo.
+
+Fichier cible :
+`resources/views/duo_answer.blade.php`
+
+Problème confirmé :
+dans `startTimer()`, la barre `timerBar` démarre visuellement à `width: 100%` via CSS, puis attend le premier tick `setInterval(250ms)` avant de recevoir sa vraie largeur.
+
+Résultat actuel :
+flash/recul brutal de la barre au chargement :
+100% → vraie valeur restante.
+
+Objectif du patch :
+positionner immédiatement la barre à sa vraie valeur dès l’appel de `startTimer()`, avant le premier tick.
+
+Contraintes :
+
+* ne pas toucher Node
+* ne pas toucher scoring
+* ne pas toucher phases runtime
+* ne pas toucher worker
+* ne pas toucher guards IA
+* ne pas toucher Question API
+* ne pas ajouter de durée locale inventée
+* ne pas modifier les appels `startTimer`
+* ne pas modifier le `setInterval(250ms)`
+* ne pas créer de nouveau timer
+
+Patch attendu :
+dans `startTimer()`, juste après le calcul de `answerWindowMs` et avant le `setInterval`, ajouter uniquement :
+
+```js
+// UX SAFE — positionne immédiatement la barre chrono à la vraie valeur
+if (timerBar && answerWindowMs > 0) {
+    var initPct = Math.max(0, Math.min(100, (remaining / answerWindowMs) * 100));
+    timerBar.style.width = initPct + '%';
+}
+```
+
+Méthode obligatoire :
+GREP → SLICE → PATCH → VALIDATION.
+
+Validation obligatoire :
+
+1. `php -l resources/views/duo_answer.blade.php`
+2. slice élargi de `startTimer()` autour du patch
+3. confirmer que :
+
+   * `setInterval` reste à `250ms`
+   * `transition: width 0.3s linear` reste inchangé
+   * `if (timerInterval) return;` reste inchangé
+   * aucune nouvelle durée locale n’est ajoutée
+
+Validation visuelle attendue :
+à l’ouverture de la page Réponse :
+
+* la barre ne flash plus de 100% vers la vraie valeur
+* elle apparaît directement à la bonne position
+* elle descend ensuite de façon fluide
+* le chiffre reste cohérent avec Node

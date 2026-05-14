@@ -1098,6 +1098,13 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         }
         timeLeft = Math.ceil(remaining / 1000);
 
+        // UX SAFE — positionne immédiatement la barre chrono à la vraie valeur
+        // (évite le flash 100% → valeur réelle au premier tick à +250ms)
+        if (timerBar && answerWindowMs > 0) {
+            var initPct = Math.max(0, Math.min(100, (remaining / answerWindowMs) * 100));
+            timerBar.style.width = initPct + '%';
+        }
+
         console.log('[DuoAnswer] startTimer activeDeadline=' + activeDeadline +
             ' (phaseEndsAtMs=' + phaseEndsAtMs + ' questionEndsAtMs=' + questionEndsAtMs + ')' +
             ' remaining=' + remaining + 'ms' +
