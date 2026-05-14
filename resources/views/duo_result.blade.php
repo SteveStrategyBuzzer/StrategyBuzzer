@@ -81,6 +81,8 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         margin: 0;
         overflow-x: hidden;
         overflow-y: auto;
+        opacity: 0;
+        transition: opacity 0.25s ease;
     }
     
     .result-container {
@@ -1279,7 +1281,17 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
 <script>
 (function() {
     'use strict';
-    
+
+    // ── D-F — Page fade-in on load, fade-out before navigation ───────────────
+    window.duoNavigate = function(url) {
+        document.body.style.opacity = '0';
+        setTimeout(function() { window.location.href = url; }, 220);
+    };
+    document.addEventListener('DOMContentLoaded', function() {
+        requestAnimationFrame(function() { document.body.style.opacity = '1'; });
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
     const MATCH_ID   = window.MATCH_ID   || '';
     const ROOM_ID    = window.ROOM_ID    || '';
     const LOBBY_CODE = window.LOBBY_CODE || '';

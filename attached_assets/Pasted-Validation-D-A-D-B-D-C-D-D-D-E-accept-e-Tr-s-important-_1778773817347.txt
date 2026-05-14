@@ -1,0 +1,115 @@
+Validation D-A / D-B / D-C / D-D / D-E acceptée. 
+
+Très important :
+on entre maintenant clairement
+dans une vraie phase :
+raffinage gameplay réel.
+
+──────────────────────────────
+VALIDATION D-A
+──────────────────────────────
+
+Fade transitions Duo acceptées.
+
+Je valide :
+
+* fade-in page
+* fade-out navigation
+* transitions Q→R→R→S plus fluides
+* réduction effet “reload PHP brutal”
+
+Très important :
+excellent gain immersion.
+
+──────────────────────────────
+VALIDATION D-B
+──────────────────────────────
+
+Haptic + audio buzz acceptés.
+
+Je valide :
+
+* vibration mobile
+* feedback physique
+* sensation buzz améliorée
+
+Très important :
+le buzzer devient enfin plus “vivant”.
+
+──────────────────────────────
+VALIDATION D-C
+──────────────────────────────
+
+Round scoreboard amélioré accepté.
+
+Je valide :
+
+* animation score
+* feeling plus compétitif
+* rapprochement Solo ↔ Duo
+
+Très important :
+bonne direction UX.
+
+──────────────────────────────
+VALIDATION D-D
+──────────────────────────────
+
+Feedback attente adversaire accepté.
+
+Je valide :
+
+* disparition sensation freeze
+* meilleur feedback joueur
+* meilleure lisibilité phase SYNC
+
+Excellent.
+
+──────────────────────────────
+VALIDATION D-E
+──────────────────────────────
+
+Safe-area mobile accepté.
+
+Je valide :
+
+* meilleure compatibilité notches
+* overlays moins agressifs
+* meilleure lisibilité mobile
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Très bonne direction globale :
+
+moins :
+
+* backend lourd
+* chirurgie architecture
+
+plus :
+
+* feeling gameplay
+* immersion
+* fluidité runtime
+* lisibilité
+* confort joueur
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Je veux validation runtime réelle :
+
+1. sensation buzz mobile
+2. fluidité transitions
+3. chrono lisibilité
+4. SYNC plus rassurant
+5. mobile safe-area
+6. scoreboard plus vivant
+7. comparaison Solo ↔ Duo
+
+Et :
+je veux maintenant continuer
+la convergence UX Solo/Duo.

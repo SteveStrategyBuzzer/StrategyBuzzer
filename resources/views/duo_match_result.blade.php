@@ -49,6 +49,8 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
         align-items: flex-start;
         justify-content: center;
         padding: 30px 16px 50px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
 
     .result-card {
@@ -364,9 +366,14 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
     </div>
 </div>
 
-@if($playerWon)
+{{-- D-G — Page fade-in + confetti on victory --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Fade in the page (body starts at opacity 0 via CSS)
+    requestAnimationFrame(function() { document.body.style.opacity = '1'; });
+
+    @if($playerWon)
+    // Victory confetti burst
     if (typeof confetti !== 'undefined') {
         confetti({ particleCount: 120, spread: 80, origin: { y: 0.55 } });
         setTimeout(function() {
@@ -374,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
             confetti({ particleCount: 60, spread: 60, origin: { x: 0.9, y: 0.6 } });
         }, 800);
     }
+    @endif
 });
 </script>
-@endif
 @endsection
