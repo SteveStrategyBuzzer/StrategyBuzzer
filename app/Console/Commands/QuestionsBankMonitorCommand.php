@@ -21,7 +21,9 @@ class QuestionsBankMonitorCommand extends Command
 {
     protected $signature = 'questions:bank:monitor
         {--sub_domain= : Filter a single sub_domain}
-        {--lang=       : Filter a single language for translation counts}';
+        {--lang=       : Filter a single language for translation counts}
+        {--guards      : Show only KPI-5 guard statistics (fast)}
+        {--reset-stats : Delete all-time guard stats from Redis before display}';
 
     protected $description = 'Runtime observation dashboard — depth growth, family diversity, overlap proxy, worker health.';
 
@@ -44,18 +46,25 @@ class QuestionsBankMonitorCommand extends Command
     {
         $this->line('');
         $this->line('╔══════════════════════════════════════════════════════════════╗');
-        $this->line('║       StrategyBuzzer — Bank Monitor  [PATCH GROUP 5]        ║');
+        $this->line('║    StrategyBuzzer — Bank Monitor  [PATCH GROUP 5 + QUALITÉ] ║');
         $this->line('╚══════════════════════════════════════════════════════════════╝');
         $this->line('  Snapshot at: ' . now()->format('Y-m-d H:i:s T'));
         $this->line('');
 
-        $this->kpi1DepthGrowth();
-        $this->kpi2FamilyDiversity();
-        $this->kpi3OverlapProxy();
-        $this->kpi4WorkerHealth();
+        if ($this->option('guards')) {
+            $this->kpi5GuardStats();
+        } else {
+            $this->kpi1DepthGrowth();
+            $this->kpi2FamilyDiversity();
+            $this->kpi3OverlapProxy();
+            $this->kpi4WorkerHealth();
+            $this->kpi5GuardStats();
+        }
 
         $this->line('');
         $this->line('  Run again anytime: php artisan questions:bank:monitor');
+        $this->line('  Guard stats only : php artisan questions:bank:monitor --guards');
+        $this->line('  Reset all-time   : php artisan questions:bank:monitor --guards --reset-stats');
         $this->line('');
 
         return self::SUCCESS;
@@ -343,6 +352,154 @@ class QuestionsBankMonitorCommand extends Command
             ->where('validated', true)
             ->max('created_at');
         $this->line('  Dernier groupe créé à   : ' . ($newest ?? 'N/A'));
+
+        $this->line('└───────────────────────────────────────────────────────────────┘');
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // KPI-5  Guard statistics (PATCH GROUP QUALITÉ CONTENU)
+    //
+    // NOTE: We read each guard code directly via Redis::get('qb:worker:guard_stats:CODE')
+    // instead of using Redis::keys() + Redis::get(rawKey). The Laravel Redis facade applies
+    // the connection prefix automatically on both set and get, so using raw keys returned by
+    // KEYS would double-apply the prefix and always return null.
+    // ─────────────────────────────────────────────────────────────────
+    private function kpi5GuardStats(): void
+    {
+        $this->line('┌─ KPI-5  GUARD STATISTICS (rejections par type) ───────────────┐');
+
+        // All known guard codes — exact strings returned by QualityGuards::evaluate().
+        // Key = Redis key suffix (= the 'code' field); value = human label.
+        $allCodes = [
+            // Existing guards (guards 1-10 range)
+            'missing_translations'     => 'Guard 01 — traduction manquante',
+            'missing_saviez_vous'      => 'Guard 02 — saviez_vous absent/court',
+            'answer_key_misaligned'    => 'Guard 03 — clé réponse incorrecte',
+            'dup_concept_id'           => 'Guard 04 — concept_id dupliqué',
+            'concept_family_share'     => 'Guard 05 — famille trop dominante',
+            'text_similarity'          => 'Guard 06 — similarité texte',
+            'cognitive_mismatch'       => 'Guard 07 — incohérence cognitive',
+            'depth_incoherent'         => 'Guard 08 — profondeur incohérente',
+            'correct_answer_overused'  => 'Guard 09 — réponse correcte surexposée',
+            'saviez_vous_off_topic'    => 'Guard 10 — saviez_vous hors sujet',
+            // New guards 11-14 (PATCH GROUP QUALITÉ CONTENU)
+            'question_too_long'        => 'Guard 11 — question trop longue  ★',
+            'answer_too_long'          => 'Guard 12 — réponse trop longue   ★',
+            'saviez_vous_too_long'     => 'Guard 13 — saviez_vous trop long ★',
+            'negative_framing'         => 'Guard 14 — formulation négative  ★',
+        ];
+
+        $qualityCodes = [
+            'question_too_long', 'answer_too_long',
+            'saviez_vous_too_long', 'negative_framing',
+        ];
+
+        // Optional reset — delete each known key directly (avoids KEYS prefix issue).
+        if ($this->option('reset-stats')) {
+            try {
+                foreach (array_keys($allCodes) as $code) {
+                    Redis::del('qb:worker:guard_stats:' . $code);
+                    Redis::del('qb:worker:guard_stats:session:' . $code);
+                }
+                Redis::del('qb:worker:guard_stats:_total');
+                Redis::del('qb:worker:guard_stats:session:_total');
+                $this->line('  ⚠  Compteurs all-time réinitialisés.');
+            } catch (\Throwable) {
+                $this->line('  ⚠  Impossible de réinitialiser (Redis indisponible).');
+            }
+        }
+
+        // Session start timestamp
+        $sessionTs = null;
+        try {
+            $raw = Redis::get('qb:worker:guard_stats:session_ts');
+            if ($raw && is_numeric($raw)) {
+                $sessionTs = now()->createFromTimestamp((int) $raw)->format('Y-m-d H:i:s T');
+            }
+        } catch (\Throwable) {}
+
+        $this->line('  Session démarrée à : ' . ($sessionTs ?? '(worker non encore démarré)'));
+        $this->line('');
+
+        // Read counters for each known code directly.
+        $stats = [];
+        $allTotal     = 0;
+        $sessionTotal = 0;
+
+        foreach (array_keys($allCodes) as $code) {
+            try {
+                $all     = (int) (Redis::get('qb:worker:guard_stats:' . $code) ?? 0);
+                $session = (int) (Redis::get('qb:worker:guard_stats:session:' . $code) ?? 0);
+            } catch (\Throwable) {
+                $all = $session = 0;
+            }
+            $stats[$code] = ['all' => $all, 'session' => $session];
+            $allTotal     += $all;
+            $sessionTotal += $session;
+        }
+
+        // Also check if there are unknown codes in the rolling reject list
+        // (guards added later or misspelled), just for the recent-reject display.
+        $rejectKey = config('question_bank_profiles.worker.redis_keys.last_rejects', 'qb:worker:last_rejects');
+        $recent    = [];
+        try {
+            $recent = Redis::lrange($rejectKey, 0, 9) ?: [];
+        } catch (\Throwable) {}
+
+        // Display
+        $this->line(sprintf(
+            '  %-38s %8s %12s',
+            'guard_code', 'all-time', 'cette session'
+        ));
+        $this->line('  ' . str_repeat('─', 64));
+
+        $this->line('  — Guards qualité contenu (★ PATCH QUALITÉ) :');
+        foreach ($qualityCodes as $code) {
+            $v   = $stats[$code];
+            $pct = $allTotal > 0 ? round($v['all'] / $allTotal * 100, 1) : 0.0;
+            $bar = $sessionTotal > 0 ? str_repeat('▪', min(18, (int) round($v['session'] / $sessionTotal * 18))) : '';
+            $this->line(sprintf(
+                '    %-36s %6d (%4.1f%%)  %6d  %s',
+                $code, $v['all'], $pct, $v['session'], $bar
+            ));
+        }
+
+        $this->line('');
+        $this->line('  — Autres guards :');
+        foreach ($stats as $code => $v) {
+            if (in_array($code, $qualityCodes, true)) {
+                continue;
+            }
+            $pct = $allTotal > 0 ? round($v['all'] / $allTotal * 100, 1) : 0.0;
+            $bar = $sessionTotal > 0 ? str_repeat('▪', min(18, (int) round($v['session'] / $sessionTotal * 18))) : '';
+            $this->line(sprintf(
+                '    %-36s %6d (%4.1f%%)  %6d  %s',
+                $code, $v['all'], $pct, $v['session'], $bar
+            ));
+        }
+
+        $this->line('  ' . str_repeat('─', 64));
+        $this->line(sprintf(
+            '  %-38s %6d         %6d',
+            'TOTAL rejections', $allTotal, $sessionTotal
+        ));
+
+        // Last 10 rejects
+        if (!empty($recent)) {
+            $this->line('');
+            $this->line('  Derniers rejets (heure · code · sous-domaine · détail) :');
+            foreach ($recent as $rawEntry) {
+                $item = json_decode($rawEntry, true);
+                if (!$item) {
+                    continue;
+                }
+                $ts  = isset($item['ts']) ? date('H:i:s', $item['ts']) : '?';
+                $cd  = str_pad($item['code'] ?? '?', 28);
+                $sub = str_pad($item['segment']['sub_domain'] ?? '?', 14);
+                $det = mb_substr($item['detail'] ?? '', 0, 55);
+                $this->line(sprintf('    %s  %s  %s  %s', $ts, $cd, $sub, $det));
+            }
+        }
 
         $this->line('└───────────────────────────────────────────────────────────────┘');
     }

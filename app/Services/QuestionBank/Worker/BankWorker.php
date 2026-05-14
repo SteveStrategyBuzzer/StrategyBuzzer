@@ -71,6 +71,16 @@ class BankWorker
 
         $this->installSignalHandlers();
 
+        // Reset per-session guard stats so the dashboard shows only this run.
+        try {
+            $sessionKeys = Redis::keys('qb:worker:guard_stats:session:*');
+            if (!empty($sessionKeys)) {
+                Redis::del(...$sessionKeys);
+            }
+            Redis::set('qb:worker:guard_stats:session_ts', time());
+            Redis::expire('qb:worker:guard_stats:session_ts', 86400 * 7);
+        } catch (\Throwable) {}
+
         $cycles = 0;
         try {
             while (!$this->stopRequested) {
@@ -205,6 +215,23 @@ class BankWorker
         Redis::lpush($key, $entry);
         Redis::ltrim($key, 0, 24);
         Redis::expire($key, 86400);
+
+        // Per-guard cumulative counters for KPI-5 dashboard.
+        // Key pattern: qb:worker:guard_stats:{code}
+        // Session key (reset each worker start via qb:worker:guard_stats:session_ts):
+        //   qb:worker:guard_stats:session:{code}
+        $allTimeKey  = 'qb:worker:guard_stats:' . $code;
+        $sessionKey  = 'qb:worker:guard_stats:session:' . $code;
+        Redis::incr($allTimeKey);
+        Redis::expire($allTimeKey, 86400 * 30);
+        Redis::incr($sessionKey);
+        Redis::expire($sessionKey, 86400 * 7);
+
+        // Total reject counter (all codes combined)
+        Redis::incr('qb:worker:guard_stats:_total');
+        Redis::expire('qb:worker:guard_stats:_total', 86400 * 30);
+        Redis::incr('qb:worker:guard_stats:session:_total');
+        Redis::expire('qb:worker:guard_stats:session:_total', 86400 * 7);
     }
 
     private function bumpBackoff(): void

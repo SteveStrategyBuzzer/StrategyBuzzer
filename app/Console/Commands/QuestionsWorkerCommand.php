@@ -44,12 +44,14 @@ class QuestionsWorkerCommand extends Command
             maxCycles: $maxCycles,
             dryRun: (bool) $this->option('dry'),
             onCycle: function ($info) {
-                $this->line('[cycle '.$info['cycles'].'] '.$info['action'].(isset($info['segment']) ? ' '.json_encode([
-                    'mode' => $info['segment']['mode'] ?? null,
-                    'sub_domain' => $info['segment']['sub_domain'] ?? null,
-                    'cog' => $info['segment']['cognitive_type'] ?? null,
-                    'lang' => $info['segment']['language'] ?? null,
-                ]) : ''));
+                $codePart = isset($info['code']) ? ' code='.$info['code'] : '';
+                $segPart  = isset($info['segment']) ? ' '.json_encode([
+                    'mode'  => $info['segment']['mode'] ?? null,
+                    'sub'   => $info['segment']['sub_domain'] ?? null,
+                    'cog'   => $info['segment']['cognitive_type'] ?? null,
+                    'lang'  => $info['segment']['language'] ?? null,
+                ]) : '';
+                $this->line('[cycle '.$info['cycles'].'] '.$info['action'].$codePart.$segPart);
             }
         );
 

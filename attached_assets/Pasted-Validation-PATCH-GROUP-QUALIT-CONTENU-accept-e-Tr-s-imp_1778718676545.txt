@@ -1,0 +1,187 @@
+Validation PATCH GROUP QUALITÉ CONTENU acceptée. 
+
+Très important :
+les données réelles confirment maintenant que :
+
+* le problème longueur était massif
+* le problème qualité distracteurs était réel
+* le problème Saviez-vous était réel
+* mais :
+  le pipeline runtime Duo n’était PAS la cause principale.
+
+──────────────────────────────
+AUDIT VALIDÉ
+──────────────────────────────
+
+Données réelles banque :
+
+question_text
+
+* moyenne : 166 chars
+* max : 510
+* 69% > 120 chars
+
+answer choices
+
+* max : 294
+* 29% > 60 chars
+
+saviez_vous
+
+* moyenne : 170
+* max : 552
+
+Très important :
+ça explique directement :
+
+* lecture trop lente
+* réponses impossibles à scanner rapidement
+* RESULT trop chargé
+* fatigue gameplay
+
+──────────────────────────────
+PATCH A — LIMITES GAMEPLAY
+──────────────────────────────
+
+Validation acceptée :
+
+Nouveaux guards :
+
+* question_text max
+* answer max
+* saviez_vous max
+
+Seuils validés :
+
+Generation :
+
+* question ≤ 150
+* réponse ≤ 80
+* saviez_vous ≤ 220
+
+Audit existant :
+
+* question > 250 flag
+* réponse > 130 flag
+* saviez_vous > 300 flag
+
+Excellent compromis :
+
+* amélioration qualité
+* sans casser toute la banque actuelle
+
+──────────────────────────────
+PATCH B — GUARD COHÉRENCE
+──────────────────────────────
+
+Validation acceptée :
+
+Détection :
+
+* distracteur ambigu
+* bonne réponse trop vague
+* formulation négative
+* pièges illisibles
+
+Je valide fortement :
+anti :
+
+* “Lequel n’est PAS…”
+* “Sauf…”
+* “Excepté…”
+
+Très important :
+excellent fix gameplay.
+
+──────────────────────────────
+PATCH C — SAVIEZ-VOUS
+──────────────────────────────
+
+Validation acceptée :
+
+Saviez-vous doit maintenant :
+
+* rester lié à la vraie réponse
+* rester lisible
+* rester court
+* éviter dérive encyclopédique
+
+Excellent.
+
+──────────────────────────────
+PATCH D — PROMPT IA
+──────────────────────────────
+
+Validation acceptée :
+
+Nouvelles contraintes :
+
+* questions courtes
+* réponses courtes
+* distracteurs plausibles
+* aucune ambiguïté
+* aucune formulation négative
+
+Très important :
+c’est exactement ce qui manquait au gameplay rapide.
+
+──────────────────────────────
+PATCH E — AUDIT DB
+──────────────────────────────
+
+Validation acceptée :
+
+Nouvelle commande :
+questions:bank:audit-content
+
+Très important :
+on peut maintenant :
+
+* détecter anciens groupes problématiques
+* sans purge massive
+* sans rebuild total
+
+Excellent.
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Je valide complètement :
+la direction actuelle :
+
+* worker ciblé
+* enrichissement intelligent
+* guards qualité
+* gameplay-first
+
+Et NON :
+
+* rebuild géant
+* purge aveugle
+* refactor runtime inutile
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Je veux observation runtime réelle longue durée :
+
+1. vitesse lecture gameplay
+2. qualité distracteurs
+3. qualité Saviez-vous
+4. baisse contradictions
+5. baisse questions trop longues
+6. baisse réponses trop longues
+
+Et :
+je veux statistiques runtime des nouveaux guards :
+
+* text_too_long
+* answer_too_long
+* saviez_vous_too_long
+* negative_framing
+* ambiguous_distractor
+
+pour mesurer :
+l’amélioration réelle du contenu généré.
