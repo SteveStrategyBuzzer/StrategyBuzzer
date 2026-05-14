@@ -1,0 +1,77 @@
+Je veux vérifier si la Question Bank possède déjà des guards pour empêcher les questions/réponses trop longues par rapport au temps donné au joueur.
+
+Objectif :
+s’assurer que les questions et réponses sont jouables dans Duo/Solo/MJ selon le temps de lecture disponible.
+
+Je veux une analyse réelle, aucun patch maintenant.
+
+Vérifie précisément dans :
+
+* `app/Services/QuestionBank/Worker/QualityGuards.php`
+* `app/Services/QuestionBank/Worker/BankAIGenerator.php`
+* `config/question_bank_profiles.php`
+* tout fichier lié aux guards qualité
+
+Questions précises :
+
+1. Existe-t-il déjà un guard sur :
+
+* longueur maximale de la question ?
+* longueur maximale des réponses ?
+* nombre maximal de mots ?
+* lisibilité selon âge/niveau ?
+* temps estimé de lecture ?
+* longueur différente selon mode : Solo, Duo, MJ, Ligue ?
+
+2. Est-ce que le guard tient compte du temps réel accordé ?
+   Exemple :
+
+* question active 8s
+* réponse 10s
+* mode audio
+* niveau scolaire
+* difficulté/depth
+
+3. Est-ce qu’une question trop longue peut actuellement passer les guards si elle est “correcte” mais injouable ?
+
+4. Est-ce que les réponses longues peuvent déborder visuellement ou être impossibles à lire rapidement ?
+
+5. Quels seuils existent déjà ?
+   Exemples attendus :
+
+* max caractères question
+* max caractères réponse
+* max mots question
+* max mots réponse
+* max complexité phrase
+
+6. Si le guard n’existe pas ou est incomplet :
+   proposer un plan SAFE pour ajouter un guard `readability_time_fit`.
+
+Ce guard devrait vérifier :
+
+* longueur question
+* longueur réponses
+* nombre de mots
+* temps estimé de lecture
+* mode de jeu
+* temps alloué
+* âge/niveau/depth
+* rejet si injouable dans le temps prévu
+
+Important :
+ne pas affaiblir les autres guards.
+Ne pas toucher gameplay.
+Ne pas toucher Duo runtime.
+Ne pas toucher Node.
+Ne pas modifier scoring/phases.
+
+Méthode :
+GREP → SLICE → ANALYSE uniquement.
+
+Retour attendu :
+
+* guards existants
+* manques exacts
+* risque actuel
+* plan de correction SAFE si nécessaire
