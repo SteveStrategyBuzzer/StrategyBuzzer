@@ -54,6 +54,8 @@ window.NO_SOCKET_OVERLAY = true;
         align-items: center;
         justify-content: center;
         overflow-x: hidden;
+        opacity: 0;
+        transition: opacity 0.25s ease;
     }
 
     .waiting-shell {
@@ -554,6 +556,9 @@ window.NO_SOCKET_OVERLAY = true;
 <script>
 // connect() + joinRoom() handled by GameplayRuntime — register view-specific handlers here
 document.addEventListener('DOMContentLoaded', () => {
+    // D-I — Fade in (body starts at opacity 0 via CSS)
+    requestAnimationFrame(() => { document.body.style.opacity = '1'; });
+
     if (typeof DuoSocketClient === 'undefined') {
         console.error('[DuoWaiting] DuoSocketClient unavailable');
         return;

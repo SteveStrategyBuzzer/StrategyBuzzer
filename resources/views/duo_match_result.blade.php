@@ -230,7 +230,7 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
 
     {{-- Opponent --}}
     <div class="opponent-block">
-        <img src="{{ asset('images/avatars/standard/standard1.png') }}" alt="{{ $opponentNameDisplay }}" onerror="this.src='{{ asset('images/avatars/standard/standard1.png') }}'">
+        <img src="{{ $opponent_avatar_path ?? asset('images/avatars/standard/standard1.png') }}" alt="{{ $opponentNameDisplay }}" onerror="this.src='{{ asset('images/avatars/standard/standard1.png') }}'">
         <div>
             <div class="opp-label">{{ $playerWon ? __('Vous avez battu') : ($isDraw ? __('Match nul contre') : __('Vous avez perdu contre')) }}</div>
             <div class="opp-name">{{ $opponentNameDisplay }}</div>

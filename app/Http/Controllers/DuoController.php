@@ -1500,11 +1500,19 @@ class DuoController extends Controller
 
         session()->forget('game_state');
 
+        // D-J — Derive real opponent avatar from profile_settings (same pattern as game view)
+        $opponentMatchSettings = $opponent->profile_settings ?? [];
+        if (is_string($opponentMatchSettings)) {
+            $opponentMatchSettings = json_decode($opponentMatchSettings, true) ?? [];
+        }
+        $opponentMatchAvatarPath = asset(data_get($opponentMatchSettings, 'avatar.url', 'images/avatars/standard/standard1.png'));
+
         return view('duo_match_result', [
             'match_result' => $matchResult,
             'opponent' => $opponent,
             'opponent_id' => $opponent->id ?? null,
             'opponent_name' => $opponent->name ?? 'Adversaire',
+            'opponent_avatar_path' => $opponentMatchAvatarPath,
             'new_division' => $division,
             'points_earned' => $pointsEarned,
             'coins_earned' => $coinsEarned,

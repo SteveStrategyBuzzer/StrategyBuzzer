@@ -542,6 +542,9 @@ $mode = 'duo';
         background: linear-gradient(180deg, #fff 0%, #FF6B6B 100%);
         -webkit-background-clip: text;
         background-clip: text;
+        /* D-H — required for gradient-text to actually render (masks base color) */
+        -webkit-text-fill-color: transparent;
+        color: transparent;
     }
 
     /* Buzz order indicator */
