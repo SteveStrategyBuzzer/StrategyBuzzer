@@ -209,18 +209,22 @@ return [
             // ── PATCH GROUP QUALITÉ CONTENU ─────────────────────────────────
 
             // Guard 11 — question_text too long.
-            // Players have ≤30 s per question on mobile. At ~15 char/s reading
-            // speed a 150-char question already uses 10 s just for reading.
-            // The check runs on the French translation (densest per character).
-            // CJK / Arabic are shorter per semantic unit → separate cap.
-            'question_text_max_length'         => 150,
-            'question_text_max_length_by_lang' => ['zh' => 80, 'ar' => 100],
+            // QUESTION_ACTIVE phase = 8 s in ALL game modes (Duo, Solo, Master,
+            // League) — confirmed in packages/shared/src/types.ts
+            // DEFAULT_TIMERS + DEFAULT_DUO_TIMERS (questionActive: 8000 ms).
+            // At 15 chars/s average mobile reading speed with a 0.9 comfort
+            // margin: 8 × 15 × 0.9 ≈ 108 → rounded to 110 chars.
+            // CJK/Arabic scripts are semantically denser per character
+            // (more meaning per glyph) → tighter absolute caps for those scripts.
+            'question_text_max_length'         => 110,
+            'question_text_max_length_by_lang' => ['zh' => 60, 'ar' => 75],
 
             // Guard 12 — answer choice too long.
-            // Answer buttons are ~180 px wide on a 375 px screen; more than
-            // 80 chars wraps over 3 lines, hiding half the choice.
-            'answer_max_length'         => 80,
-            'answer_max_length_by_lang' => ['zh' => 40, 'ar' => 55],
+            // ANSWER_SELECTION phase = 10 s for 4 choices on a ~375 px screen.
+            // 60 chars per choice ≈ 3 readable lines; beyond that the button
+            // overflows and fast scanning becomes impossible under time pressure.
+            'answer_max_length'         => 60,
+            'answer_max_length_by_lang' => ['zh' => 30, 'ar' => 40],
 
             // Guard 13 — saviez_vous too long.
             // The RESULT screen shows saviez_vous for ~4 s before auto-advancing.

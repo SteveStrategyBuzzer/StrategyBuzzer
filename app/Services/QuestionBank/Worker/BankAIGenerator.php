@@ -117,6 +117,12 @@ class BankAIGenerator
             // told to invent a concept_family absent from this list so the
             // worker diversifies instead of deepening dominant families.
             'forbidden_families' => $segment['forbidden_families'] ?? [],
+            // Readability caps — sent to the LLM BEFORE generation so it
+            // produces compliant text at source rather than being rejected by
+            // guards 11/12 after the fact. Values mirror the guard thresholds
+            // so the two layers stay in sync automatically.
+            'max_question_chars' => (int) config('question_bank_profiles.worker.guards.question_text_max_length', 110),
+            'max_answer_chars'   => (int) config('question_bank_profiles.worker.guards.answer_max_length', 60),
         ];
 
         // Segment-context XOR (#91 contract): body MUST carry exactly one of
